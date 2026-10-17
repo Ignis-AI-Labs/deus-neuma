@@ -1,0 +1,13 @@
+/* Relink Shell — LINE & CYCLE. Manifest only: SIZE-030 (#377) split the
+   2,135-line sheet by section into the partials below (each ≤500 lines;
+   rules moved byte-identical, load order = the original order). Vite
+   inlines the @imports at build; RelinkShell.jsx still imports this file. */
+@import './RelinkShell-shell.css';
+@import './RelinkShell-stream.css';
+@import './RelinkShell-composer.css';
+@import './RelinkShell-composer-palette.css';
+@import './RelinkShell-modes.css';
+@import './RelinkShell-message.css';
+@import './RelinkShell-gates.css';
+@import './RelinkShell-team.css';
+@import './RelinkShell-live.css';

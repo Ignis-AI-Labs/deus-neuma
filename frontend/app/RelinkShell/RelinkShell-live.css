@@ -1,0 +1,222 @@
+/* RelinkShell partial: LIVE (open mic, shared images, desk row, thought bubble, dictation) — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
+/* LIVE — the open mic. Same chamfered control register as the mic button;
+   wider because it carries a word, not a glyph. While on it breathes with
+   the mic's cadence so […] is always visible. */
+.relink-live,
+.relink-refine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.relink-live:hover:not(:disabled),
+.relink-refine:hover:not(:disabled) {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+.relink-live:disabled,
+.relink-refine:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* REFINE — shapes the draft (ComposerTools.jsx). Working: the word dims; the
+   refined draft offers UNDO in the signal ink; a refusal or a missing model
+   reads quietly in the secondary ink until it clears. */
+.relink-refine.is-refining { color: var(--color-text-tertiary, var(--color-text-secondary)); }
+.relink-refine.is-refined { border-color: var(--signal-dim); color: var(--signal); }
+
+.relink-live.is-on {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.relink-live.is-on.is-listening {
+  animation: mic-breathe 2.4s ease-in-out infinite;
+}
+
+.relink-live.is-on.is-capturing {
+  animation: mic-breathe 1.2s ease-in-out infinite;
+}
+
+.relink-live.is-on.is-transcribing {
+  animation: mic-breathe 0.6s ease-in-out infinite;
+}
+
+.relink-live.is-on.is-error {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+/* --- Shared images (paste/drop into the composer) --- */
+
+/* Pending chips above the mode bar: thumbnail + remove. */
+.relink-attach-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-1) var(--space-3);
+}
+
+.relink-attach-chip {
+  position: relative;
+  display: inline-flex;
+  border: 1px solid var(--line);
+}
+
+.relink-attach-chip.is-reading {
+  border-color: var(--signal-dim);
+}
+
+.relink-attach-thumb {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+}
+
+/* A document chip carries a filename, not a thumbnail — same chamfered frame,
+   sized to the name instead of a 56px square. */
+.relink-attach-doc {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  height: 56px;
+  padding: 0 var(--space-3);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.relink-attach-chip.is-doc.is-reading .relink-attach-doc { color: var(--signal-dim); }
+
+.relink-attach-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--color-void);
+  color: var(--signal-dim);
+  cursor: pointer;
+}
+
+.relink-attach-remove:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.relink-attach-note {
+  color: var(--signal-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* An image inside a stream message — bounded, never a layout breaker. */
+.relink-msg-image {
+  display: block;
+  max-width: min(320px, 100%);
+  max-height: 240px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  margin: var(--space-1) 0;
+}
+
+/* The desk row (D6) — Explorer panel + the window region, one flex row over
+   the whole shell. The panel column carries its own strip/dock clearances;
+   the window region's box is what snap/drag bounds derive from
+   (use-window-frame setDeskRegion), so windows never overlap the panel. */
+.relink-main {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.relink-desk {
+  /* stays position:static — floating windows keep anchoring to .relink-main
+     (inset 0 = viewport coordinates, unchanged coordinate space) */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* THE THOUGHT BUBBLE — a being's reasoning, folded shut. Data register, never
+   the voice register: this is instrument, not speech (Design note, 2026-07-30. It sits
+   quieter than a tool chip because it reports no act — only that thinking
+   happened, and how much. */
+.relink-thought {
+  margin: var(--space-2) 0;
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-2);
+}
+
+.relink-thought-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  transition: color var(--snap);
+}
+
+.relink-thought-head:hover { color: var(--color-text-secondary); }
+.relink-thought.is-open .relink-thought-head { color: var(--color-text-secondary); }
+
+/* SIGNAL means life: the mark carries it only while the thought is still
+   arriving, exactly as the rest of the desk uses it. */
+.relink-thought.is-live .relink-thought-mark { color: var(--signal); }
+.relink-thought-mark { color: var(--color-text-tertiary); }
+.relink-thought-weight { color: var(--color-text-tertiary); opacity: 0.7; }
+
+.relink-thought-body {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--line);
+  font-family: var(--font-voice);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  overflow-x: auto;
+  /* Long reasoning is long. It scrolls in place instead of pushing the answer
+     off the screen the operator came to read. */
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* THE LIVE DICTATION FLOW moved INTO the field (2026-08-28, Founder: […]) — the provisional span lives in the textarea itself
+   (use-hold-to-talk.js), so the old floating .relink-dictation-live line is
+   gone with its rule. */

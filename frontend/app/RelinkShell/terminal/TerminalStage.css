@@ -1,0 +1,69 @@
+/* TerminalStage — the shell fills the window body over the void. */
+
+.terminal-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--color-void);
+}
+
+/* The launcher strip: focus folder on the left, agent buttons on the right. */
+.terminal-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.terminal-launcher-cwd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-tertiary);
+}
+
+.terminal-launcher-agents {
+  display: flex;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+
+.terminal-agent-btn {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  padding: 2px 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.terminal-agent-btn:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.terminal-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-2);
+  background: var(--color-void);
+}
+
+.terminal-stage .xterm,
+.terminal-stage .xterm-viewport {
+  height: 100%;
+}
+
+/* Trim xterm's default scrollbar to the LINE & CYCLE register. */
+.terminal-stage .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+.terminal-stage .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--line-hover);
+}

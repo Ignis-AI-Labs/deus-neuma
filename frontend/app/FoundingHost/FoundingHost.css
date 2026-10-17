@@ -1,0 +1,113 @@
+/* FoundingHost — the FOUNDING RITE's full-screen stage. LINE & CYCLE: one
+   dark field, one centered column, the ceremony as the sole focus. The
+   movement internals reuse the house-anchor register grammar, scaled up
+   for the stage. */
+
+.founding-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: var(--color-bg, #000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.founding-column {
+  width: min(720px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  animation: founding-breathe 420ms ease both;
+}
+
+/* Each movement breathes in — the ceremony moves, it never snaps. */
+@keyframes founding-breathe {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The witness's own name — the one input that is a NAME, not a title. It
+   grows with the name (reactive inline width from the value's length)
+   inside its grid cell and never overflows it: a full name reads whole,
+   the row never breaks. */
+.founding-column .house-anchor-namein {
+  min-width: 22ch;
+  max-width: 100%;
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  letter-spacing: 0.06em;
+}
+
+/* A founding title: the canon as a dropdown, the founder's own word as a
+   field that appears only when chosen. */
+.founding-title-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.founding-title-selectwrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* THE CANONICAL TITLES legend moved to RelinkShell/TitleLegend.css — the
+   rite and the HOUSE window share one rendering (TitleLegend.jsx). */
+
+/* The one quiet way back — never rendered mid-walk. */
+.founding-leave {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 2;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.founding-leave:hover { color: var(--color-text-primary); border-color: var(--line-hover); }
+
+/* Stage-scale overrides of the shared register grammar. */
+.founding-column .house-anchor {
+  border-top: none;
+  padding: 0;
+  gap: var(--space-3);
+  display: flex;
+  flex-direction: column;
+}
+.founding-column .house-anchor-line { font-size: var(--text-xs); letter-spacing: 0.18em; }
+.founding-column .house-anchor-callname {
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  letter-spacing: 0.16em;
+  margin: var(--space-4) 0;
+}
+.founding-column .house-anchor-proclaim { font-size: clamp(1.6rem, 4vw, 2.4rem); }
+.founding-column .house-anchor-member {
+  font-size: var(--text-xs);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.founding-column .house-anchor-name,
+.founding-column .house-anchor-title { font-size: var(--text-base); }
+.founding-column .house-anchor-titlein {
+  width: 16ch;
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+}
+.founding-column .house-anchor-found {
+  padding: var(--space-4);
+  font-size: var(--text-xs);
+  letter-spacing: 0.2em;
+  margin-top: var(--space-3);
+}
+.founding-column .house-anchor-contract { font-size: var(--text-xs); }

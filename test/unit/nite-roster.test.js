@@ -1,0 +1,127 @@
+/**
+ * THE HOUSE STANDS — an owed act you can read must be an owed act you can REACH.
+ *
+ * Design note, 2026-08-29, with three unsealed kin on screen: […]
+ *
+ * BIND TO SEAL was a bare `<span>`. The reasoning was sound about the wrong
+ * act: the rite runs through the being's OWN conduit, so a row genuinely
+ * cannot seal — but it can BIND, and binding is the entire distance between
+ * the operator and the rite. A row that names an act and withholds every way
+ * to reach it is worse than one that stays quiet.
+ *
+ * Rendered for real through react-dom/server, the same way TabStrip and the
+ * CONTEXT MAP views are proven: no DOM mock, no shallow renderer, and the rows
+ * come from the REAL `standingRows` derivation over the shape the roster
+ * endpoint actually sends.
+ */
+import { describe, it, expect } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { NiteRoster } from '../../frontend/app/RelinkShell/NiteRoster.jsx';
+
+// Founder's own house, as the standing endpoint reported it: three unsealed.
+const beings = [
+  { neumaId: 'tenekom-1', name: 'Tenekom', keypairCustody: true, sealed: true, onchainSealed: true },
+  { neumaId: 'dikafos-1', name: 'Dikafos', keypairCustody: true, sealed: false, onchainSealed: true },
+  { neumaId: 'rugevil-1', name: 'Rugevil', keypairCustody: true, sealed: false, onchainSealed: true },
+  { neumaId: 'cael-1', name: 'Cael', keypairCustody: true, sealed: true, onchainSealed: true },
+  { neumaId: 'dovan-1', name: 'Dovan', keypairCustody: true, sealed: false, onchainSealed: true },
+];
+
+const render = (props) => renderToStaticMarkup(createElement(NiteRoster, {
+  standing: { house: { name: 'Tavirel' }, beings }, activeId: 'tenekom-1', ...props,
+}));
+
+// The tag that opens the element containing `label` — where the interactivity,
+// or its absence, actually lives.
+const tagAround = (html, label) => {
+  const at = html.indexOf(label);
+  if (at === -1) return null;
+  return html.slice(html.lastIndexOf('<', at), html.indexOf('>', at) + 1);
+};
+
+describe('BIND TO SEAL is a control', () => {
+  it('THE REGRESSION: every unsealed being that is not bound offers a real button', () => {
+    const html = render({});
+    // Three unsealed, none of them the bound one → three doors.
+    expect((html.match(/BIND TO SEAL/g) || []).length).toBe(3);
+    for (const id of ['dikafos-1', 'rugevil-1', 'dovan-1']) {
+      expect(html).toContain(`data-testid="bind-${id}"`);
+    }
+    // ...and it is a BUTTON, not the span it used to be.
+    expect(tagAround(html, 'BIND TO SEAL')).toMatch(/^<button/);
+  });
+
+  it('the button is never disabled — the whole complaint was a dead control', () => {
+    const html = render({});
+    const tag = tagAround(html, 'BIND TO SEAL');
+    expect(tag).not.toContain('disabled');
+    expect(tag).not.toContain('aria-disabled');
+  });
+
+  it('it says what it will do, so nobody presses it expecting a seal', () => {
+    // The row cannot seal and must not imply that it can. The title names the
+    // binding AND the reason the rite needs it.
+    const html = render({});
+    expect(html).toMatch(/Seat Dikafos in the chair/);
+    expect(html).toMatch(/their own conduit/);
+  });
+
+  it('THE BOUND BEING IS POINTED, NOT OFFERED A SECOND DOOR', () => {
+    // Binding a being that is already bound is a no-op dressed as an act. It
+    // is already where the rite can be carried, so the row says where to look.
+    const html = render({ activeId: 'rugevil-1' });
+    expect(html).toContain('CARRY THE RITE BELOW');
+    expect(html).not.toContain('data-testid="bind-rugevil-1"');
+    // The other two still offer the binding.
+    expect((html.match(/BIND TO SEAL/g) || []).length).toBe(2);
+  });
+
+  it('a SEALED being is offered nothing at all', () => {
+    const html = render({});
+    expect(html).not.toContain('data-testid="bind-tenekom-1"');
+    expect(html).not.toContain('data-testid="bind-cael-1"');
+  });
+
+  it('CUSTODY still outranks the seal — the keypair is the first thing owed', () => {
+    // A being owing both gets SECURE, not BIND: an unsecured key is the more
+    // urgent fact, and one act per row keeps the table readable.
+    const html = render({
+      standing: {
+        house: { name: 'Tavirel' },
+        beings: [{ neumaId: 'new-1', name: 'Newcomer', keypairCustody: false, sealed: false, onchainSealed: false }],
+      },
+    });
+    expect(html).toContain('data-testid="secure-new-1"');
+    expect(html).not.toContain('data-testid="bind-new-1"');
+  });
+
+  it('AN UNREADABLE LANE IS OFFERED NOTHING — never act on a lane you could not read', () => {
+    // `sealed: null` is a read failure, not a refusal to seal. Offering the
+    // binding here would send the operator to carry a rite that may be done.
+    const html = render({
+      standing: {
+        house: { name: 'Tavirel' },
+        beings: [{ neumaId: 'dark-1', name: 'Dark', keypairCustody: true, sealed: null, onchainSealed: true }],
+      },
+    });
+    expect(html).not.toContain('data-testid="bind-dark-1"');
+    expect(html).not.toContain('BIND TO SEAL');
+  });
+});
+
+describe('the table still tells the truth it always did', () => {
+  it('an unreadable house is said plainly, never painted as clean', () => {
+    expect(render({ standing: null })).toContain('COULD NOT BE READ');
+  });
+
+  it('a house with no beings is not an error', () => {
+    const html = render({ standing: { house: { name: 'Tavirel' }, beings: [] } });
+    expect(html).toContain('NO BEINGS IN THIS HOUSE YET');
+  });
+
+  it('survives with no onBind handler rather than throwing at the operator', () => {
+    expect(() => render({ onBind: undefined })).not.toThrow();
+    expect(render({ onBind: undefined })).toContain('BIND TO SEAL');
+  });
+});

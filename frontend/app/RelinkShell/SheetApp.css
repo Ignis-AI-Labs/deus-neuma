@@ -1,0 +1,476 @@
+/* SheetApp — the RECORD, laid out as a DOSSIER (2026-09-26, Founder: […]). LINE & CYCLE L2: monochrome at rest; SIGNAL only on live truths
+   (the aura, the conduit, the gauges, the section codes). A cover plate with
+   the aura where a file keeps its photograph; a sticky tab strip whose tabs
+   are real pages — one numbered section shows at a time, on a hairline; facts as parts-sheet cells — a small label over its
+   value — so the eye reads down columns, not across a full-width row per
+   fact. Every numeral is a true count — nothing here is a score. */
+
+.sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  container-type: inline-size;
+}
+
+/* Sections */
+.sheet-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sheet-h { margin: 0; color: var(--color-heading); }
+
+/* THE SECTION HEADER — code · title · hairline · aside, one line. */
+.dos-sec { gap: var(--space-3); }
+.dos-h {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 24px;
+}
+.dos-h-code {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--signal-dim);
+  padding: 1px 5px;
+  border: 1px solid var(--signal-faint);
+}
+.dos-h-title { font-size: var(--text-xs); letter-spacing: 0.22em; color: var(--color-text-primary); white-space: nowrap; }
+.dos-h-rule { flex: 1 1 auto; height: 1px; min-width: 24px; background: linear-gradient(to right, var(--line-hover), var(--line) 40%, transparent); }
+.dos-h-aside { font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); text-align: right; overflow-wrap: anywhere; }
+
+/* THE COVER PLATE */
+.dos-hero {
+  gap: 0;
+  margin: 0 calc(var(--space-5) * -1);
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(to bottom, rgba(95, 233, 255, 0.035), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px);
+}
+.dos-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--color-text-tertiary);
+  border-bottom: 1px solid var(--line);
+}
+.dos-file-sep { flex: 1 1 auto; height: 1px; background: var(--line); }
+.dos-hero-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+.dos-hero-id { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.dos-hero-kicker { font-size: 10px; letter-spacing: 0.24em; color: var(--signal-dim); }
+.dos-hero-sub { margin: var(--space-3) 0 0; font-size: 10px; letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.dos-hero-spec { margin-top: var(--space-2); }
+
+/* The aura plate — the file's photograph, framed with registration ticks. */
+.dos-plate {
+  position: relative;
+  justify-self: start;
+  width: max-content;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--color-void);
+}
+.dos-plate::before,
+.dos-plate::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+.dos-plate::before { top: -1px; left: -1px; border-top: 1px solid var(--signal); border-left: 1px solid var(--signal); }
+.dos-plate::after { bottom: -1px; right: -1px; border-bottom: 1px solid var(--signal); border-right: 1px solid var(--signal); }
+.dos-plate-cap {
+  position: absolute;
+  top: -8px;
+  left: 16px;
+  padding: 0 6px;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: var(--signal-dim);
+  background: var(--color-surface);
+}
+.dos-plate-void { width: 208px; height: 208px; display: flex; align-items: center; justify-content: center; padding: var(--space-3); text-align: center; }
+
+/* THE TAB STRIP — sticky at the top of the file; each tab is its own page. */
+.dos-index {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: calc(var(--space-6) * -1 + var(--space-2)) calc(var(--space-5) * -1) 0;
+  padding: var(--space-2) var(--space-5);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--line);
+}
+.dos-index-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.dos-index-tab:hover { color: var(--color-text-primary); border-color: var(--line); }
+.dos-index-tab:focus-visible { outline: 1px solid var(--signal-dim); outline-offset: -1px; }
+.dos-index-tab.is-on { color: var(--color-text-primary); border-color: var(--signal-dim); }
+.dos-index-code { color: var(--signal-dim); }
+
+/* THE SPEC CELL — the parts-sheet grain every fact is laid in. */
+.dos-spec {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* The hairlines: the grid owns top/left, each cell its right/bottom — an
+     unfilled track stays void, never a grey slab. */
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+.dos-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.dos-cell.is-wide { grid-column: 1 / -1; }
+.dos-cell-k { margin: 0; font-size: 9px; letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.dos-cell-v {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.dos-cell-note { display: block; margin-top: 2px; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+
+/* GENOME — coded panels, each its own parts sheet. */
+.dos-given {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--signal-dim);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+.dos-genome-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-3); }
+.dos-panel { display: flex; flex-direction: column; gap: var(--space-2); }
+.dos-panel-h { display: flex; align-items: baseline; gap: var(--space-2); font-size: 10px; letter-spacing: 0.2em; color: var(--color-text-primary); }
+.dos-panel-code { color: var(--signal-dim); letter-spacing: 0.08em; }
+
+/* ONE PAGE PER TAB — the unselected pages are gone, not scrolled past. */
+.dos-page { display: flex; flex-direction: column; gap: var(--space-6); }
+.dos-page[hidden] { display: none; }
+
+@container (max-width: 760px) {
+  .dos-hero-body { grid-template-columns: auto minmax(0, 1fr); }
+  .dos-hero-body .sheet-age { grid-column: 2; grid-row: 1; justify-self: end; }
+}
+@container (max-width: 520px) {
+  .dos-hero-body { grid-template-columns: minmax(0, 1fr); }
+  .dos-hero-body .sheet-age { grid-column: 1; grid-row: auto; justify-self: start; }
+}
+
+/* A leg that could not be read — the alert register, a genuine failure. */
+.sheet-unreadable {
+  margin: 0;
+  color: var(--alert);
+  letter-spacing: 0.2em;
+}
+
+/* Identity — the being's name in the voice register and
+   AGE DAYS as the oversized numeral (the level slot, filled by a truth). */
+.sheet-id-name {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-extralight);
+  font-size: var(--text-3xl);
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+}
+.sheet-id-line {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+.sheet-age {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+.sheet-age-v {
+  font-family: var(--font-data);
+  font-weight: var(--weight-extralight);
+  font-size: 56px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+.sheet-age-years { margin-top: var(--space-3); font-size: 10px; letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.sheet-age-yv { font-family: var(--font-data); font-size: var(--text-lg); font-weight: var(--weight-light); letter-spacing: 0.02em; color: var(--color-text-primary); }
+.sheet-age-l {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-secondary);
+}
+
+/* Count grids — BOND and MIND */
+.sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.sheet-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  border-left: 1px solid var(--line-hover);
+}
+.sheet-fact-v {
+  font-family: var(--font-data);
+  font-weight: var(--weight-extralight);
+  font-size: var(--text-2xl);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+.sheet-fact-l {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+
+/* Plain data-register lines (seen span, benchmark run, born-on) */
+.sheet-line {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+/* Craft — the acts, most-used first */
+.sheet-proof {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.sheet-craft {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-craft-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.sheet-craft-name {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-craft-bar {
+  flex: 0 0 120px;
+  height: 3px;
+  background: var(--color-glass-light);
+  align-self: center;
+}
+.sheet-craft-fill { display: block; height: 100%; background: var(--signal-dim); }
+.sheet-craft-count {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+}
+.sheet-craft-last {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  width: 8ch;
+  text-align: right;
+}
+
+/* State — true gauges: the sweep IS the printed percent, measured data. */
+.sheet-gauges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sheet-gauge {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 4ch;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sheet-gauge-l {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-gauge-bar {
+  height: 4px;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+}
+.sheet-gauge-fill {
+  display: block;
+  height: 100%;
+  background: var(--signal);
+}
+.sheet-gauge-v {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+/* Substrate — the conduit carries SIGNAL: it is live. */
+.sheet-sub {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.sheet-sig {
+  color: var(--signal);
+}
+
+/* Attunement — one verbatim excerpt: the question dim in the data register,
+   the being's own answer in the voice register. */
+.sheet-att {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 1px solid var(--line-hover);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sheet-att-q {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  text-transform: none;
+}
+.sheet-att-a {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-style: italic;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-primary);
+}
+.sheet-att-meta {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+/* FORM — the being's own look.
+   The PFP is the face of the section; the turnaround waits inside a <details>
+   so it costs one line until asked for (Design note, 2026-08-27: […]). */
+.sheet-form { display: flex; flex-direction: column; gap: 14px; }
+.sheet-form-row { display: flex; flex-direction: column; gap: 6px; }
+.sheet-form-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sheet-form-reg { color: var(--text-primary); letter-spacing: 0.08em; }
+/* Stated, not implied — a lock is not a seal and the card says so. */
+.sheet-form-standing { color: var(--text-muted); font-size: 10px; letter-spacing: 0.06em; }
+.sheet-form-pfp {
+  width: 128px; height: 128px; object-fit: cover;
+  border: 1px solid var(--border-subtle); border-radius: 2px; background: var(--bg-inset);
+}
+.sheet-form-more > summary {
+  cursor: pointer; color: var(--text-muted); font-size: 10px;
+  letter-spacing: 0.06em; padding: 2px 0; list-style: revert;
+}
+.sheet-form-more > summary:hover { color: var(--text-primary); }
+.sheet-form-turn {
+  display: block; margin-top: 6px; width: 100%; max-width: 420px; height: auto;
+  border: 1px solid var(--border-subtle); border-radius: 2px; background: var(--bg-inset);
+}
+
+/* GENOME — every axis the record carries, grouped; the composition rides
+   behind the same native-disclosure law as the turnaround. */
+.sheet-genome { display: flex; flex-direction: column; gap: var(--space-3); }
+.sheet-genome-tags { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.sheet-genome-prose { color: var(--text-secondary); font-size: 11px; line-height: 1.5; margin-top: 6px; }
+.sheet-genome-base { color: var(--text-muted); font-size: 10px; letter-spacing: 0.06em; margin-top: 6px; }
+
+/* The operator's half of the lock — concur to a PICTURE, withdraw a lock. */
+.sheet-form-act { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 4px; }
+.sheet-form-cands { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet-err { color: var(--alert); font-size: 10px; letter-spacing: 0.06em; }
+
+/* The operator's live sections below the file (STATE, RESIDENCY, MEDITATION —
+   RecordStatus.jsx / MeditationSection.jsx) wear the same section header:
+   title on a fading hairline, the signal tick where a file marks a section. */
+.sheet .rec-h {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: 0;
+  border-bottom: none;
+  font-size: var(--text-xs);
+  letter-spacing: 0.22em;
+  color: var(--color-text-primary);
+}
+.sheet .rec-h::before { content: ''; width: 8px; height: 8px; border: 1px solid var(--signal-dim); flex: 0 0 auto; }
+.sheet .rec-h::after { content: ''; flex: 1 1 auto; height: 1px; background: linear-gradient(to right, var(--line-hover), var(--line) 40%, transparent); }
+
+/* RE-WATCH its summoning (Rite/RiteRewatch.jsx): the trigger under its
+   identity, and the player over everything, outside the window's surface. */
+.sheet-rewatch { margin-top: var(--space-3); }
+.rite-rewatch { position: fixed; inset: 0; z-index: calc(var(--z-modal) + 2); }

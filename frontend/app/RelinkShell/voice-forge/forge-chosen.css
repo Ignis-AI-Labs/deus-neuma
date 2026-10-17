@@ -1,0 +1,58 @@
+/* forge-chosen.css — the CHOSEN bar: the voice chosen so far, under every
+ * way of finding one, with the one way on to HEAR IT. Imported after
+ * forge-doors.css at VoiceApp.jsx.
+ */
+
+/* The CHOSEN bar — pinned to the bottom of step one while it scrolls. */
+.vf-chosen-bar {
+  position: sticky;
+  bottom: calc(-1 * var(--space-6));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding: var(--space-3) 0 var(--space-6);
+  border-top: 1px solid var(--line);
+  background: var(--color-void);
+}
+.vf-chosen-bar[data-chosen="true"] {
+  border-top-color: var(--signal-dim);
+}
+.vf-chosen-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vf-chosen-kicker {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--signal);
+}
+.vf-chosen-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+.vf-chosen-detail {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+.vf-chosen-none {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+.vf-chosen-bar .vf-next {
+  flex: 0 0 auto;
+  min-height: 40px;
+}

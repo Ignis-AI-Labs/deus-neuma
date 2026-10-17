@@ -1,0 +1,207 @@
+/* WalletApp — LINE & CYCLE. A self-contained wallet: an identity rail navigates
+   ME + the house's neuma; each function (Send/Receive/Settings) opens its own
+   layer. Monochrome at rest; --signal marks live data, --alert marks warnings. */
+
+.wal {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Balance header — whose wallet, the current balance, the address */
+.wal-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.wal-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wal-head-who {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+/* REFRESH — re-runs the live RPC balance read on demand (funding a wallet
+   mid-session must be checkable without relinking). */
+.wal-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  transition: color var(--snap);
+}
+.wal-refresh:hover:not(:disabled) { color: var(--signal); }
+.wal-refresh:disabled { cursor: default; }
+/* The glyph spins in an HTML wrapper — Chromium never composites an
+   animation on an SVG node (it re-lays out every frame: 25 layouts per
+   window open, measured 2026-09-25). */
+.wal-refresh-glyph { display: inline-flex; transform-origin: center; }
+.wal-refresh.is-busy .wal-refresh-glyph { animation: wal-refresh-spin 0.9s linear infinite; }
+@keyframes wal-refresh-spin { to { transform: rotate(360deg); } }
+/* Display numeral doctrine: the balance is rendered huge in mono extralight —
+   decoration AND information, the NERV move. */
+.wal-head-bal {
+  font-family: var(--font-data);
+  font-size: 40px;
+  font-weight: 200;
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+/* Hero total + its 24h move sit on a shared baseline. */
+.wal-head-total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+/* 24h change — restrained to the LINE & CYCLE accent pair: signal (cyan) reads as
+   up/live, alert (red) as down. Neutral until a direction is known. */
+.wal-head-chg {
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+}
+.wal-head-chg.up { color: var(--signal); }
+.wal-head-chg.down { color: var(--alert); }
+/* Native ETH balance, shown small beneath the USD hero. */
+.wal-head-native {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+.wal-head-addr {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--signal);
+}
+.wal-head-addr:hover { color: var(--color-white); }
+.wal-copy-hint {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.wal-head-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+/* HISTORY — the wallet's complete record on the explorer. Capital stays
+   reviewable off-platform at all times. */
+.wal-head-scan {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color var(--snap);
+}
+.wal-head-scan:hover { color: var(--signal); }
+
+/* Home — function buttons */
+.wal-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.wal-action {
+  border: none;
+  cursor: pointer;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.wal-action:disabled { opacity: 0.4; cursor: default; }
+.wal-action-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  color: var(--color-text-secondary);
+  transition: color var(--snap), background var(--snap);
+}
+.wal-action:hover:not(:disabled) { background: var(--signal-dim); }
+.wal-action:hover:not(:disabled) .wal-action-in { color: var(--signal); }
+.wal-action-ico { display: flex; }
+.wal-action-lbl {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+/* Home — token holdings list (native ETH first, then non-zero tokens) */
+.wal-toks {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.wal-tok { background: var(--color-glass-light); }
+.wal-tok-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+.wal-tok-l {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.wal-tok-sym {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-primary);
+}
+.wal-tok-bal {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+.wal-tok-r {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.wal-tok-usd {
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+.wal-tok-px {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  display: inline-flex;
+  gap: var(--space-2);
+}
+/* 24h move — same restrained accent pair as the hero (cyan up / red down) */
+.wal-tok-chg.up { color: var(--signal); }
+.wal-tok-chg.down { color: var(--alert); }
+

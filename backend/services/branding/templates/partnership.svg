@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Partnership with {{data.partner}}">
+  {{fontface}}
+  <defs>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <line x1="160" y1="159" x2="250" y2="159" stroke="{{token.trim}}" stroke-width="1" opacity="0.6"/>
+    <text x="800" y="175" text-anchor="middle">{{data.eyebrow}}</text>
+    <line x1="1350" y1="159" x2="1440" y2="159" stroke="{{token.trim}}" stroke-width="1" opacity="0.6"/>
+  </g>
+
+  <!-- THE LOCKUP, REBUILT. Design note, 2026-08-31: […]
+       
+       THREE THINGS CHANGED.
+       1. THE TWO BOXES ARE NOT THE SAME THING, WHICH IS WHY 240 vs 400 LOOKED
+          BROKEN. `meet` scales a mark's whole viewBox into its box, and these
+          two viewBoxes are padded completely differently: the Umbrae mask inks
+          only 47% wide by 63% tall of its 1024 square, while Aerodrome's
+          tightened SVG inks 87% by 96%. So our 240 box drew 113x151 of actual
+          mark while their 400 box drew 348x384 — ours rendered a QUARTER the
+          height, not 60% of it. Box numbers are not comparable across marks;
+          only rendered ink is.
+          Our box is 609, chosen so the two inks are the same HEIGHT: 284x384
+          against their 346x384, both spanning y 188..572 exactly.
+          Height, not width, is what a side-by-side lockup is read on — matching
+          widths instead (660, inking 308x416) made ours 32px taller than
+          theirs and crowded the eyebrow rule above it. Two marks of different
+          proportion cannot match on both axes; the shared one is height.
+       2. THE PLACEMENT IS COMPUTED FROM THE INK, NOT THE BOXES. Founder,
+          2026-08-31: […] It was off three ways at
+          once: the reticle sat at 742 against an eyebrow and a name both
+          anchored at 800; the gaps either side of it were 29 and 103; and the
+          outer clearances were 111 and 59. All three came from positioning
+          boxes whose padding differs. Now: reticle symmetric about 800, equal
+          120px gaps to each mark, clearances 94 and 56.
+          ⚠️ The last 38px of clearance difference is the two marks' width
+          difference and CANNOT be removed while the reticle stays on 800 — the
+          arithmetic does not close. Sharing an axis with the type matters more
+          than 38px on a 1600px card, so that is the one that gives.
+          ⚠️ Sizing this by eye against the other template's number is exactly
+          the mistake that produced the broken version — measure the ink.
+       2. THEY SHARE ONE AXIS. Both boxes are centred on y=380 exactly, so the
+          two marks sit on one optical line whatever aspect either of them is.
+          The old lockup centred the boxes but not the marks inside them.
+       3. THE JOIN IS A RETICLE, NOT A GLYPH. A 26px "×" set in a text run was
+          the weakest mark on the card — type doing a diagram's job. This is
+          drawn: a bracketed span, a diamond on the axis, and tick marks
+          converging on it. It reads as an instrument acquiring a target, which
+          is the register the rest of the card is already in.
+
+       ⚠️ Their mark is boxed and `meet`, never `slice` — a partner's logo is
+       whatever aspect they publish it in, and cropping or stretching it is
+       publishing an altered trademark. -->
+  <image href="{{mark.mask}}" x="87" y="87" width="609" height="609"
+         preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- THE RETICLE, on the card's true centre. It sat at x=742 while the eyebrow
+       above it and the name below it are both anchored at 800 — a 58px drift
+       against two centred lines it shares a column with, which is exactly the
+       kind of thing that reads as "off" without being nameable. It is now
+       symmetric about 800, so all three stack. -->
+  <g stroke="{{token.trim}}" fill="none" stroke-width="1.5">
+    <path d="M650 392 H710"/>
+    <path d="M890 392 H950"/>
+    <path d="M650 368 V416"/>
+    <path d="M950 368 V416"/>
+  </g>
+  <g stroke="{{token.trimHot}}" fill="none" stroke-width="2">
+    <path d="M758 392 L800 350 L842 392 L800 434 Z"/>
+    <path d="M726 392 H754"/>
+    <path d="M846 392 H874"/>
+  </g>
+  <circle cx="800" cy="392" r="5" fill="{{token.trimHot}}"/>
+  <g stroke="{{token.trimHot}}" stroke-width="1.5" fill="none" opacity="0.55">
+    <path d="M754 326 H726 V354"/>
+    <path d="M846 326 H874 V354"/>
+    <path d="M754 458 H726 V430"/>
+    <path d="M846 458 H874 V430"/>
+  </g>
+
+  <image href="{{guest.mark}}" x="1043" y="192" width="400" height="400"
+         preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- The partner's name, centred under the lockup. 80px: declared at 22
+       characters, and 22 caps at 80px with displayTrack measures 1307px inside
+       the 1344px frame — 88px would run to 1437px and break the frame at both
+       ends, because this line is centre-anchored. -->
+  <text x="800" y="672" text-anchor="middle" font-family="{{font.display}}"
+        font-weight="{{font.displayWeight}}" font-size="88"
+        letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">{{data.partner}}</text>
+
+  <text x="800" y="723" text-anchor="middle" font-family="{{font.voice}}"
+        font-weight="{{font.voiceWeight}}" font-size="36"
+        fill="{{token.muted}}">{{data.support}}</text>
+
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

@@ -1,0 +1,89 @@
+/* DeskAmbient — the desk's AMBIENT plane (#185). The study's depth idiom
+   (lookdev §09): watermark geometry off-center right at 5–8% white, rotation
+   measured in minutes (the DEPTH law). Felt, not read. */
+
+.desk-ambient {
+  position: absolute;
+  inset: 0;
+  /* Same level as the grid; DOM order (grid → ambient → frame → windows)
+     keeps the plane under everything interactive — no new z token needed. */
+  z-index: var(--z-base);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.desk-ambient-stage {
+  position: absolute;
+  top: 50%;
+  right: -160px;
+  width: 720px;
+  height: 720px;
+  transform: translateY(-50%);
+  /* Mount (and every house-swap remount) arrives on this fade: 240ms linear —
+     lines snap, nothing organic. BACKWARDS, never both/forwards: a fill that
+     holds the last frame keeps the animation alive, and Chromium keeps an
+     animated layer under every window for good — each window, the desk and its
+     chrome above it were forced onto layers of their own (measured on the live
+     desk 2026-10-05: 46 layers → 26, ≈243 MB → ≈169 MB once released). The
+     end value is the plain opacity 1, so nothing needs holding. */
+  animation: deskAmbientIn 240ms linear backwards;
+}
+
+@keyframes deskAmbientIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.desk-ambient-lattice {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  /* Counter-rotation to the seal — minutes, never seconds. */
+  will-change: transform; /* a GPU layer: the compositor turns it */
+  animation: deskAmbientSpin 200s linear infinite reverse;
+}
+
+/* The study's ambient web value verbatim (lookdev §09: 5% white — under the
+   plane's 6% lattice ceiling). */
+.desk-ambient-lattice > svg { display: block; width: 100%; height: 100%; }
+
+.desk-ambient-lattice path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 1;
+}
+
+@keyframes deskAmbientSpin {
+  to { transform: rotate(360deg); }
+}
+
+.desk-ambient-seal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* The DEPTH law on the shared seal's bands: on this plane their periods
+   stretch into minutes (the seal's own rhythm stays untouched for the
+   Arrival veil's signal register). */
+.desk-ambient .es-r-slow { animation-duration: 240s; }
+.desk-ambient .es-r-mid { animation-duration: 180s; }
+.desk-ambient .es-r-fast { animation-duration: 120s; }
+.desk-ambient .es-r-breath { animation-duration: 48s; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The plane stands still — static seal, static lattice, no arrival fade. */
+  .desk-ambient-stage { animation: none; }
+  .desk-ambient-lattice { animation: none; }
+}
+
+/* STILL while any window is open (desk-ambient.jsx): no animation, no layer —
+   nothing turning under the windows, so nothing forces them onto layers. */
+.desk-ambient.is-still .desk-ambient-lattice,
+.desk-ambient.is-still .es-layer {
+  animation: none;
+  will-change: auto;
+}

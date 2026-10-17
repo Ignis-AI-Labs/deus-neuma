@@ -1,0 +1,20 @@
+.inline-action-confirm {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+}
+.inline-action-notice { overflow-wrap: anywhere; }
+.inline-action-confirm button {
+  background: none;
+  border: 1px solid var(--color-text-tertiary);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  font: inherit;
+}
+.inline-action-confirm .inline-action-commit { color: var(--alert); }
+.inline-action-confirm button:disabled { opacity: 0.5; cursor: wait; }

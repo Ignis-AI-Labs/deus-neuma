@@ -1,0 +1,141 @@
+/* REPORTS' EXPLORER — list on the left, depth on the right. The list scrolls
+   on its own; the detail is one continuous read (header → comparison →
+   stats → history), each section on the spine's hairline. Legible at the
+   window's normal size. BenchExplorer imports BenchAtlas.css for the shared
+   arm glyphs, segmented controls and table. */
+
+.bx {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  align-items: start;
+  flex: 0 0 auto; /* natural height: the window scrolls the detail, never clips it */
+}
+
+.bx-rail {
+  position: sticky; /* the list stays put while the detail scrolls */
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.bx-search {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  outline: none;
+}
+.bx-search:focus { border-color: var(--signal-dim); }
+.bx-tiers { align-self: flex-start; flex-wrap: wrap; }
+.bx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 62vh;
+  outline: none;
+}
+.bx-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--snap), border-color var(--snap);
+}
+.bx-item:hover { background: var(--color-glass-hover); }
+.bx-item.is-on { background: var(--signal-faint); border-left-color: var(--signal); }
+.bx-item-id { font-family: var(--font-data); font-size: var(--text-xs); color: var(--color-text-primary); letter-spacing: 0.03em; }
+.bx-item.is-on .bx-item-id { color: var(--signal); }
+.bx-item-meta { font-size: 10px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+/* The four-dot preview: each arm on its own hairline, placed by score. */
+.bx-dots { display: grid; gap: 3px; margin-top: 2px; }
+.bx-dot-track { position: relative; height: 6px; border-bottom: 1px solid var(--line); }
+.bx-dot-track .atlas-point { width: 6px; height: 6px; margin-left: -3px; margin-top: 0; top: 0; }
+.bx-none { padding: var(--space-3); font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-tertiary); }
+
+.bx-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bx-head { padding: var(--space-5) var(--space-5) var(--space-3); border-bottom: 1px solid var(--line); }
+.bx-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-voice);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+.bx-tag { font-size: 11px; letter-spacing: 0.12em; color: var(--color-text-tertiary); border: 1px solid var(--line); padding: 1px 6px; }
+.bx-meaning { margin: var(--space-2) 0 0; font-family: var(--font-voice); font-size: var(--text-sm); line-height: var(--leading-normal); color: var(--color-text-secondary); }
+.bx-variant { margin: var(--space-1) 0 0; font-size: 11px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+
+.bx-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+.bx-kicker { margin: 0; font-size: var(--text-xs); letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.bx-sets { display: flex; align-items: center; gap: var(--space-2); }
+.bx-sets .bl-btn { min-height: 32px; padding: 0 var(--space-3); }
+.bx-set-chips { display: flex; gap: var(--space-2); overflow-x: auto; flex: 1 1 auto; }
+.bx-chip {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--snap), border-color var(--snap);
+}
+.bx-chip:hover { color: var(--color-text-primary); border-color: var(--line-hover); }
+.bx-chip.is-on { color: var(--signal); border-color: var(--signal-dim); background: var(--signal-faint); }
+.bx-meta { margin: 0; font-size: 11px; letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.bx-chart .bench-bars { font-size: var(--text-xs); }
+.bx-note { margin: 0; font-family: var(--font-voice); font-size: var(--text-xs); color: var(--color-text-tertiary); }
+.bx-actions { display: flex; gap: var(--space-2); }
+
+.bx-table-wrap { overflow-x: auto; }
+.bx-stats td.bx-score { color: var(--color-text-primary); font-weight: 500; }
+.bx-stats td.is-up, .atlas-table td.is-up { color: var(--signal); }
+.bx-stats td.is-down { color: var(--color-text-secondary); }
+.bx-x { margin-left: 6px; font-size: 11px; color: var(--color-text-tertiary); }
+.bx-pin { margin-left: 8px; font-size: 9px; letter-spacing: 0.1em; color: var(--signal-dim); border: 1px solid var(--signal-faint); padding: 0 4px; }
+.bx-metric { color: var(--color-text-secondary); }
+
+/* THE HISTORY — each arm's runs as glyphs on a 0–100% field over time. */
+.bx-history {
+  position: relative;
+  height: 150px;
+  margin-left: 36px;
+  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.bx-history-grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(255, 255, 255, 0.08); }
+.bx-history-y { position: absolute; left: -36px; transform: translateY(-50%); font-size: 10px; color: var(--color-text-tertiary); }
+.bx-history-point { top: auto; margin-bottom: -5px; }

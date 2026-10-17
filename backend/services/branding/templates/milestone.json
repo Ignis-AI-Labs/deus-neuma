@@ -1,0 +1,30 @@
+{
+  "title": "Milestone",
+  "use": "one number that is the whole post — a TVL crossing, a claims total, a positions count",
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the small mono line above the number, e.g. MILESTONE or TOTAL VALUE LOCKED"
+    },
+    "value": {
+      "required": true,
+      "max": 10,
+      "label": "the number itself, already formatted — $228.4K, ~$21.7M, 66,952. Ten, not twelve: no figure the live feed publishes reaches twelve, and sizing for one cost 40px on every real card"
+    },
+    "label": {
+      "required": true,
+      "max": 58,
+      "label": "what the number is, in plain words"
+    },
+    "asOf": {
+      "required": true,
+      "max": 24,
+      "label": "the moment the number was true — 24: the footer line grew to 34px for mobile, and 24 is exactly a real stamp (\"31 Aug 2026 08:24:08 UTC\")"
+    }
+  }
+}

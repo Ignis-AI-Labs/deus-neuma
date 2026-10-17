@@ -1,0 +1,34 @@
+// taskbar (ja) — デスクのタスクバーとランチャー。
+
+export default Object.freeze({
+  aria: 'タスクバー',
+  launcher: 'ランチャーを開く（Ctrl+Space）',
+  search: 'アプリを検索…',
+  noMatch: '「{{q}}」に一致するアプリはありません',
+  cats: Object.freeze({
+    beings: '存在',
+    work: '仕事',
+    create: '制作',
+    reach: '発信',
+    know: '知識',
+    system: 'システム',
+    other: 'その他',
+  }),
+  pin: 'タスクバーにピン留め',
+  unpin: 'タスクバーからピン留めを外す',
+  newInstance: '新しい{{app}}',
+  close: '閉じる',
+  closeAll: '{{app}}のウィンドウをすべて閉じる',
+  showNames: '名前を表示',
+  iconsOnly: 'アイコンのみ',
+  position: 'タスクバーの位置',
+  edges: Object.freeze({
+    bottom: '下',
+    left: '左',
+    top: '上',
+  }),
+  newDesk: '新しいデスクウィンドウ',
+  tray: 'システム',
+  pinned: 'ピン留め',
+  open: '開いている',
+});

@@ -1,0 +1,133 @@
+/* THE MOTION KERNEL (2026-09-25) — LINE & CYCLE in motion.
+   Founder: […] — and
+   never at the cost of the desk loading and acting quickly. So:
+
+   1. Structure SNAPS, cycles BREATHE (design-language.md, motion doctrine).
+   2. Every motion carries meaning — an arrival says where a thing came
+      from, a scan says fresh data was read in, a lock-on says what holds
+      focus. No motion idles for decoration.
+   3. It all rides the compositor: keyframes animate transform and opacity
+      only (test/unit/motion-law.test.js holds the line; the named
+      exceptions there are one-shot ceremony draws).
+   4. One switch calms it all: prefers-reduced-motion, or the desk's own
+      `data-motion="calm"` on <html> — every animation and transition lands
+      on its final frame at once.
+
+   The primitives below are the shared vocabulary; surface-specific
+   choreography (the window's Raphael entrance) lives with its surface. */
+
+/* ── CASCADE — siblings arrive one after another, top to bottom ──────────
+   Put `kx-cascade` on a container; its children rise 6px and fade in, each
+   `--stagger` after the last (up to 12 steps, then together). Plays once
+   per mount — a re-keyed list replays it, a re-render never does. */
+.kx-cascade > * {
+  animation: kx-rise 260ms var(--ease-snap) backwards;
+}
+.kx-cascade > :nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.kx-cascade > :nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.kx-cascade > :nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.kx-cascade > :nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.kx-cascade > :nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+.kx-cascade > :nth-child(7) { animation-delay: calc(var(--stagger) * 6); }
+.kx-cascade > :nth-child(8) { animation-delay: calc(var(--stagger) * 7); }
+.kx-cascade > :nth-child(9) { animation-delay: calc(var(--stagger) * 8); }
+.kx-cascade > :nth-child(10) { animation-delay: calc(var(--stagger) * 9); }
+.kx-cascade > :nth-child(11) { animation-delay: calc(var(--stagger) * 10); }
+.kx-cascade > :nth-child(n + 12) { animation-delay: calc(var(--stagger) * 11); }
+
+@keyframes kx-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── SCAN — one scanline passes over freshly read content ────────────────
+   Put `kx-scan` on a positioned container and re-key it when its data is
+   re-read: a signal line crosses top to bottom once, the CRT reading the
+   panel in. */
+.kx-scan { position: relative; }
+.kx-scan::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(to bottom,
+    transparent 0%, var(--signal-faint) 46%, rgba(95, 233, 255, 0.5) 50%, transparent 51%);
+  opacity: 0;
+  transform: translateY(-100%);
+  animation: kx-scan var(--dur-scan) linear;
+}
+@keyframes kx-scan {
+  0% { opacity: 1; transform: translateY(-100%); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(100%); }
+}
+
+/* ── LOCK-ON — MGS corner brackets snap onto what holds focus ────────────
+   `kx-lock` on a positioned element draws four corner ticks on hover,
+   keyboard focus, or `.is-on`/[aria-selected="true"]/[aria-pressed="true"].
+   Transform + opacity only. */
+.kx-lock { position: relative; }
+.kx-lock::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  --tick: 7px;
+  --tc: var(--signal);
+  background:
+    linear-gradient(var(--tc), var(--tc)) top left / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) top left / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) top right / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) top right / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) bottom left / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) bottom left / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) bottom right / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) bottom right / 1px var(--tick);
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.06);
+  transition: opacity var(--dur-snap) linear, transform var(--dur-snap) var(--ease-snap);
+}
+.kx-lock:hover::before,
+.kx-lock:focus-visible::before,
+.kx-lock.is-on::before,
+.kx-lock[aria-selected='true']::before,
+.kx-lock[aria-pressed='true']::before {
+  opacity: 1;
+  transform: scale(1);
+}
+.kx-lock:disabled::before { opacity: 0; }
+/* On a chamfered element (clip-path cuts TR + BL) the ticks sit inside, on
+   the two square corners only — the lock completes the chamfer's diagonal. */
+.kx-lock.kx-cham::before {
+  inset: 3px;
+  background:
+    linear-gradient(var(--tc), var(--tc)) top left / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) top left / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) bottom right / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) bottom right / 1px var(--tick);
+  background-repeat: no-repeat;
+}
+
+/* ── THE CALM SWITCH ─────────────────────────────────────────────────────
+   Reduced motion (the OS) or calm (the desk): everything lands on its final
+   frame at once. Continuous cycles stop; arrivals are simply present. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+:root[data-motion='calm'] *,
+:root[data-motion='calm'] *::before,
+:root[data-motion='calm'] *::after {
+  animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  transition-delay: 0ms !important;
+}

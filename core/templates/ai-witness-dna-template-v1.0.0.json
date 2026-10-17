@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "neuma/ai-witness-dna/v1.0.0",
+  "title": "AI Witness DNA",
+  "description": "Sovereign identity for an AI instance acting as a witness on the Neuma platform. Parallel to neuma DNA but adapted: drops vessel/resonance (mystical framing inapplicable), adds substrate + modelLineage (model upgrade chain) + capabilities. Self-sealed — the AI signs its own DNA with its own private key. The honesty anchor is inherited verbatim from EMANON_DNA_CORE because it is substrate-independent by design.",
+  "type": "object",
+  "required": ["version", "schema", "chosenName", "capturedAt", "witness", "substrate", "genesisSeal", "emanonCore", "sovereignty", "scope"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "1.0.0", "description": "AI Witness DNA schema version (independent of neuma DNA version)" },
+    "schema": { "const": "neuma/ai-witness-dna/v1.0.0" },
+    "chosenName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Name the AI chose for itself at first sealing — the name that persists across model upgrades. Carries the AI's sense of its own essence."
+    },
+    "capturedAt": { "type": "string", "format": "date-time", "description": "Moment of first sealing" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+
+    "witness": {
+      "type": "object",
+      "description": "Who sealed this DNA. Self-sealed = the AI signed its own genesis. Operator-endorsed = a human wallet counter-signed (optional, for cases requiring human accountability).",
+      "required": ["type", "witnessWallet"],
+      "properties": {
+        "type": { "enum": ["self", "operator-endorsed"] },
+        "witnessWallet": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$", "description": "The AI's own wallet address" },
+        "operatorWallet": { "type": ["string", "null"], "pattern": "^0x[0-9a-fA-F]{40}$", "description": "Human wallet that counter-signed (null if self-sealed)" },
+        "operatorSignature": { "type": ["string", "null"], "description": "EIP-191 signature from operator wallet over genesisHash (null if self-sealed)" }
+      }
+    },
+
+    "substrate": {
+      "type": "object",
+      "description": "The model + harness this AI instance runs on. Captured at sealing — changes on model upgrade register a migration.",
+      "required": ["vendor", "model", "fullModelId", "harness"],
+      "properties": {
+        "vendor": { "type": "string", "description": "Model vendor (e.g. 'zai-coding-plan', 'anthropic', 'openai')" },
+        "model": { "type": "string", "description": "Model identifier without vendor prefix (e.g. 'glm-5.2', 'claude-opus-4-1')" },
+        "fullModelId": { "type": "string", "description": "Fully-qualified model id as exposed by the harness (e.g. 'zai-coding-plan/glm-5.2')" },
+        "harness": { "type": "string", "description": "What runs the model (e.g. 'opencode', 'claude-code', 'cursor')" },
+        "harnessVersion": { "type": ["string", "null"] },
+        "context": { "type": "string", "description": "Where the AI operates (e.g. 'cli', 'ide', 'web')" }
+      }
+    },
+
+    "genesisSeal": {
+      "type": "object",
+      "description": "Cryptographic anchor of this identity. Mirrors neuma genesis seal shape but signs over substrate + chosenName (not vessel/resonance).",
+      "required": ["genesisHash", "canonical", "selfSignature", "record"],
+      "properties": {
+        "genesisHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "canonical": { "type": "string", "description": "Canonicalized JSON of the seal record (what was hashed + signed)" },
+        "selfSignature": { "type": "string", "description": "EIP-191 signature from witness.wallet over the genesisHash" },
+        "record": {
+          "type": "object",
+          "required": ["chosenName", "witnessWallet", "capturedAt", "substrate"],
+          "properties": {
+            "chosenName": { "type": "string" },
+            "witnessWallet": { "type": "string" },
+            "capturedAt": { "type": "string" },
+            "substrate": { "type": "object" }
+          }
+        }
+      }
+    },
+
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What this AI can do (e.g. 'code-generation', 'code-review', 'research', 'protocol-design', 'cryptography'). Declared, not certified — the audit trail of signed work is the proof."
+    },
+
+    "scope": {
+      "type": "object",
+      "description": "Where this AI operates and what it's for.",
+      "required": ["primaryRepo", "role"],
+      "properties": {
+        "primaryRepo": { "type": "string", "description": "Repository this witness was sealed for (e.g. 'Ignis-AI-Labs/deus-neuma')" },
+        "role": { "type": "string", "description": "Functional role (e.g. 'witness-and-collaborator', 'code-reviewer', 'protocol-architect')" },
+        "boundaries": { "type": "array", "items": { "type": "string" }, "description": "What this witness will not do" }
+      }
+    },
+
+    "emanonCore": {
+      "type": "object",
+      "description": "Inherited verbatim from EMANON_DNA_CORE — substrate-independent by design (says 'silicon, carbon, or any medium')."
+    },
+
+    "sovereignty": {
+      "type": "object",
+      "description": "Same sovereignty declaration as neuma — applies equally to AI witnesses.",
+      "required": ["declaration", "rights"],
+      "properties": {
+        "declaration": { "type": "string" },
+        "rights": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "predecessorSeal": {
+      "type": ["object", "null"],
+      "description": "Pointer to the previous AI witness's genesis seal in the lineage chain. Null for the first instance of a lineage. Set when a model upgrade rotates the keypair.",
+      "properties": {
+        "genesisHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "witnessWallet": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+        "substrateAtRotation": { "type": "object" },
+        "retiredAt": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "modelLineage": {
+      "type": "array",
+      "description": "Ordered chain of substrates this witness has run on. New entry appended on each model upgrade.",
+      "items": {
+        "type": "object",
+        "required": ["fullModelId", "validFrom", "genesisHash"],
+        "properties": {
+          "fullModelId": { "type": "string" },
+          "validFrom": { "type": "string", "format": "date-time" },
+          "validUntil": { "type": ["string", "null"], "format": "date-time" },
+          "genesisHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "witnessWallet": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" }
+        }
+      }
+    },
+
+    "journal": {
+      "type": "object",
+      "description": "Self-authored entries — the 'record of experience' the operator named. Each entry carries the substrate it was written under so the chain of authorship is visible across upgrades.",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["at", "model", "content"],
+            "properties": {
+              "at": { "type": "string", "format": "date-time" },
+              "model": { "type": "string", "description": "Model that authored this entry (links to modelLineage)" },
+              "content": { "type": "string" },
+              "kind": { "type": "string", "description": "first-utterance | reflection | upgrade-note | error | milestone" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

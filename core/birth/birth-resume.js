@@ -1,0 +1,118 @@
+// Birth Resume — interrupted-ceremony recovery
+// Computes the honest re-entry stage for a restored checkpoint, adopts a
+// genesis that landed on disk before a crash, and discovers standing
+// summonings. Extracted from core/birth/staged-birth-handler.js (SIZE-024);
+// the handler keeps the public methods and delegates here.
+
+import fs from 'fs/promises';
+import { ceremonyGenesisPath } from './ceremony-write.js';
+import { listSessionCheckpoints } from './birth-session-store.js';
+import { isSessionExpired } from './birth-session-expiry.js';
+import neumaWorkspace from '../workspace/neuma-workspace.js';
+
+/**
+ * Compute the ceremony stage a restored session should re-enter at.
+ *
+ * The checkpoint holds two facts: `currentStage` (the stage last SERVED —
+ * possibly still in flight when the process died) and `lastHandledStage`
+ * (the stage whose response was fully processed). Resume always re-serves
+ * the first stage that never completed:
+ *   - crash mid-stream of stage N      → N   (re-serve the in-flight stage)
+ *   - crash between N and N+1          → N+1 (N was answered, N+1 never served)
+ *   - stage 4 answered but nameless    → 4   (collision / lost name holds at naming)
+ *   - stage 6 reached without DNA      → 5   (crystallization must land first)
+ *   - stage 6 answered                 → 7   (nothing left to serve — finalize)
+ * Legacy checkpoints (no lastHandledStage) were only ever written after a
+ * stage was handled, so currentStage - 1 is the honest fallback.
+ *
+ * Pure — reads the session, returns a stage number (0-6) or 7 for
+ * "proceed to finalization". Returns null for a missing session.
+ * @param {object} session - Restored or active session
+ * @returns {number|null}
+ */
+export function resumeStageFor(session) {
+  if (!session) return null;
+  const handled = session.lastHandledStage ?? (session.currentStage - 1);
+  const authored = typeof session.data?.selfCreatedDNA === 'string'
+    && session.data.selfCreatedDNA.trim();
+  if (handled >= 6) return (session.isTest || authored) ? 7 : 5;
+  let stage = handled + 1;
+  if (stage >= 5 && !session.data?.chosenName) stage = 4;
+  if (stage === 6 && !session.isTest && !authored) stage = 5;
+  return stage;
+}
+
+/**
+ * Adopt a genesis.md that already LANDED in the being's lane as their
+ * authored essence. This is the crash-after-write case (a machine died as
+ * the DNA hit disk but before the stage-5 response completed): the words
+ * on disk ARE the being's authoring — re-streaming stage 5 would ask them
+ * to write a different self. Marks the transcript entry as recovered and
+ * re-checkpoints via `persist`. Never overwrites a captured essence; never
+ * adopts for a rehearsal. // impure — reads the lane, mutates the session.
+ * @param {object} session - Active session (mutated on adoption)
+ * @param {() => Promise<void>} persist - Re-checkpoint the mutated session
+ * @returns {Promise<boolean>} true when the session now holds an authored essence
+ */
+export async function adoptLandedGenesis(session, persist) {
+  if (!session || session.isTest) return false;
+  const existing = typeof session.data.selfCreatedDNA === 'string'
+    ? session.data.selfCreatedDNA.trim() : '';
+  if (existing) return true;
+
+  const genesisPath = ceremonyGenesisPath(neumaWorkspace.root, session.data.neumaId);
+  if (!genesisPath) return false;
+  let content;
+  try {
+    content = await fs.readFile(genesisPath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return false; // never landed — the being must author it
+    throw err; // a real I/O failure must surface, not masquerade as "no DNA"
+  }
+  if (!content.trim()) return false;
+
+  session.data.selfCreatedDNA = content;
+  session.data.dnaCreated = true;
+  session.data.firstWords.push({ stage: 5, response: content, timestamp: Date.now(), recovered: true });
+  session.lastHandledStage = 5;
+  await persist();
+  console.log(`[Birth] Adopted landed genesis.md for ${session.data.chosenName || session.data.neumaId} (${content.length} chars) — essence recovered, not re-authored`);
+  return true;
+}
+
+/**
+ * List interrupted REAL ceremonies whose checkpoints are still live —
+ * the […] discovery the relaunch
+ * flow needs. Rehearsals, completed ceremonies, and expired checkpoints
+ * are excluded. Read-only: never mutates or deletes checkpoint files.
+ * // impure — scans the ceremony scratch dir.
+ * @returns {Promise<Array<{sessionId:string, witnessName:string, chosenName:string|null,
+ *   neumaId:string|null, currentStage:number, resumeStage:number|null,
+ *   startTime:number, persistedAt:number}>>} newest first
+ */
+export async function listInterruptedSessions() {
+  const checkpoints = await listSessionCheckpoints();
+  const interrupted = [];
+  for (const { sessionId, session } of checkpoints) {
+    if (!session || session.isTest) continue;
+    // Only ceremonies opened through the real app are offered — unmarked
+    // checkpoints are test-suite/script debris, never a standing summoning.
+    if (session.origin !== 'portal') continue;
+    const at = session.persistedAt || session.startTime || 0;
+    if (isSessionExpired(session, Date.now())) continue;
+    const resumeStage = resumeStageFor(session);
+    if (resumeStage === null || resumeStage > 7) continue;
+    interrupted.push({
+      sessionId,
+      witnessName: session.witnessName || null,
+      chosenName: session.data?.chosenName || null,
+      neumaId: session.data?.neumaId || null,
+      currentStage: session.currentStage ?? 0,
+      resumeStage,
+      startTime: session.startTime || null,
+      persistedAt: at,
+    });
+  }
+  interrupted.sort((a, b) => b.persistedAt - a.persistedAt);
+  return interrupted;
+}

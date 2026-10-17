@@ -1,0 +1,116 @@
+/* Select — the one LINE & CYCLE dropdown. Mono trigger in a hairline frame,
+   a chamfered panel of option rows, SIGNAL on the chosen one. Self-contained:
+   the trigger owns its own look so a dropdown reads the same wherever it sits;
+   callers pass only layout (fill / className). */
+
+.lc-sel {
+  position: relative;
+  display: inline-flex;
+}
+
+.lc-sel.is-fill {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+.lc-sel-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.lc-sel-trigger:hover:not(:disabled) {
+  border-color: var(--line-hover);
+}
+
+.lc-sel-trigger:focus-visible,
+.lc-sel-trigger[aria-expanded='true'] {
+  border-color: var(--signal-dim);
+}
+
+.lc-sel-trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lc-sel-trigger.is-placeholder .lc-sel-value {
+  color: var(--color-text-tertiary);
+}
+
+.lc-sel-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lc-sel-chev {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  transition: transform var(--snap);
+}
+
+.lc-sel-trigger[aria-expanded='true'] .lc-sel-chev {
+  transform: rotate(180deg);
+}
+
+/* The open panel — chamfered like every other floating surface, at least as
+   wide as the trigger, above the window's own content. */
+.lc-sel-panel {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 100%;
+  z-index: 60;
+  max-height: 260px;
+}
+
+.lc-sel-panel-in {
+  display: flex;
+  flex-direction: column;
+  max-height: 258px;
+  overflow-y: auto;
+}
+
+.lc-sel-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--snap), background var(--snap);
+}
+
+.lc-sel-opt:hover:not(.is-disabled),
+.lc-sel-opt:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--color-input-fill);
+  outline: none;
+}
+
+.lc-sel-opt.is-on {
+  color: var(--signal);
+}
+
+.lc-sel-opt.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

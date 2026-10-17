@@ -1,0 +1,61 @@
+/* CtxMenu — the in-app right-click menu, LINE & CYCLE: void panel, hairline
+   border, signal-edge selection — the same language as the desktop context
+   menu and the slash palette. Danger reads in ALERT, selected or not. */
+
+.cmenu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+}
+
+.cmenu {
+  position: fixed;
+  min-width: 190px;
+  max-width: 320px;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-1) 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cmenu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.cmenu-item.is-sel {
+  border-left-color: var(--signal);
+  background: var(--color-glass-light);
+  color: var(--signal);
+}
+
+.cmenu-item.is-danger {
+  color: var(--alert);
+}
+
+.cmenu-item.is-danger.is-sel {
+  border-left-color: var(--alert);
+  color: var(--alert);
+}
+
+.cmenu-sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--line);
+}

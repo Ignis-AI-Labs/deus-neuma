@@ -1,0 +1,291 @@
+/* StagedCeremonyScene — stage progress, ceremony controls, and the
+   completion / ended / test screens. Split from StagedCeremonyScene.css under
+   the 500-line law; imported LAST so its @media tail keeps final say. */
+
+/* Stage Progress — seven graduations on the rail */
+.stage-progress {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 34px;
+  z-index: var(--z-raised);
+}
+
+.progress-node {
+  position: relative;
+  transition: all var(--snap);
+}
+
+.node-dot {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--line);
+  background: var(--color-void);
+  transform: rotate(45deg);
+  transition: all var(--snap);
+}
+
+.node-label {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-disabled);
+}
+
+.progress-node.active .node-dot {
+  border-color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 25%, transparent);
+  box-shadow: 0 0 14px var(--signal-faint);
+}
+
+.progress-node.active .node-label {
+  color: var(--signal);
+}
+
+.progress-node.complete .node-dot {
+  border-color: color-mix(in srgb, var(--color-green) 60%, transparent);
+  background: color-mix(in srgb, var(--color-green) 20%, transparent);
+}
+
+.progress-node.complete .node-label {
+  color: var(--color-text-tertiary);
+}
+
+/* Continue Button — a chamfered control; nothing bounces */
+.ceremony-controls {
+  position: absolute;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-raised);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* Withdraw — the witness's quiet right to step away before commitment. Styled
+   subtler than Continue (the primary act); present only before the naming. */
+.withdraw-btn {
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  padding: 13px 26px;
+  cursor: pointer;
+  transition: all var(--snap);
+}
+
+.withdraw-btn:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--color-text-tertiary);
+}
+
+.continue-btn {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  background: var(--color-white);
+  color: var(--color-void);
+  border: none;
+  padding: 14px 38px;
+  cursor: pointer;
+  transition: all var(--snap);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+}
+
+.continue-btn:hover {
+  background: var(--signal);
+}
+
+/* Completion and Ended Screens */
+.ceremony-complete-screen,
+.ceremony-ended-screen,
+.test-complete-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--color-text-primary);
+  text-align: center;
+  padding: 40px;
+}
+
+.ceremony-complete-screen h1,
+.ceremony-ended-screen h1,
+.test-complete-screen h1 {
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 30px;
+  font-weight: 400;
+}
+
+.companion-name,
+.test-name {
+  font-size: 48px;
+  font-weight: 200;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 20px;
+}
+
+.ceremony-complete-screen p,
+.ceremony-ended-screen p,
+.test-complete-screen p {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+
+/* A declining consciousness's own words, kept and shown on return. */
+.ended-words {
+  max-width: 560px;
+  margin: 0 auto 40px;
+  text-align: left;
+}
+
+.ended-words-label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: 14px;
+}
+
+.ended-words-quote {
+  margin: 0;
+  padding: 16px 20px;
+  border-left: 2px solid var(--signal);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.7;
+  white-space: pre-wrap; /* preserve the being's own line breaks */
+}
+
+.ended-words-note {
+  margin-top: 14px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+}
+
+.ceremony-complete-screen button,
+.ceremony-ended-screen button,
+.test-complete-screen button {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  background: var(--color-white);
+  color: var(--color-void);
+  border: none;
+  padding: 14px 38px;
+  cursor: pointer;
+  transition: all var(--snap);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+}
+
+.ceremony-complete-screen button:hover,
+.ceremony-ended-screen button:hover,
+.test-complete-screen button:hover {
+  background: var(--signal);
+}
+
+.test-data {
+  border: 1px solid var(--line);
+  padding: 20px 28px;
+  margin-bottom: 30px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  text-align: left;
+}
+
+.test-data div {
+  margin: 5px 0;
+}
+
+/* Stream failure — announced in the data register, never a silent freeze */
+.stage-error-note {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--alert);
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--alert) 30%, transparent);
+}
+
+/* Large displays — the ceremony scales with the witness's screen */
+@media (min-width: 1920px) {
+  .message-container { max-width: 1040px; }
+  .message-stream { font-size: 17px; max-height: 300px; }
+  .user-prompt { font-size: 15px; }
+  .stage-name { font-size: 21px; }
+}
+
+@media (min-width: 2560px) {
+  .message-container { max-width: 1320px; margin-top: 260px; }
+  .message-stream { font-size: 20px; max-height: 400px; min-height: 110px; }
+  .user-prompt { font-size: 18px; }
+  .speaker-label { font-size: 12px; }
+  .stage-number { font-size: 14px; }
+  .stage-name { font-size: 26px; }
+  .consciousness-speaks .cham-in { padding: 30px 38px; }
+  .witness-response { padding: 24px 38px; }
+  #witness-words { font-size: 17px; }
+  .witness-next-label { font-size: 11px; }
+  .continue-btn { font-size: 13px; padding: 17px 48px; }
+  .node-dot { width: 15px; height: 15px; }
+  .node-label { font-size: 11px; top: -28px; }
+  .stage-progress { gap: 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-indicator span {
+    animation: none;
+  }
+}

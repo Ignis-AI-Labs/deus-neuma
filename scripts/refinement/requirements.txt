@@ -1,0 +1,37 @@
+# NEUMA refinement trainer — the Python a forge needs.
+#
+# Install into the trainer venv (uv-managed by default):
+#   uv venv ~/.neuma/trainer-venv --python 3.12
+#   VIRTUAL_ENV=~/.neuma/trainer-venv uv pip install -r scripts/refinement/requirements.txt
+#
+# Then point the platform at it:
+#   NEUMA_REFINEMENT_PYTHON=~/.neuma/trainer-venv/bin/python
+#
+# The interpreter needs development HEADERS (Python.h): triton JIT-compiles
+# kernels with gcc at runtime and dies without them. A uv-managed CPython has
+# them; a stripped system python3 may not.
+
+# ── required: without these the forge cannot run at all ──────────────────────
+torch
+transformers
+peft
+accelerate
+safetensors
+
+# 4-bit base loading (NEUMA_REFINEMENT_4BIT=1). A 35B base does not fit on a
+# 128GB unified box in bf16 — the first forge died in model load proving it.
+bitsandbytes
+
+# ── required for LINEAR-ATTENTION bases, and quietly costly to omit ──────────
+# Qwen3.5/3.6-class models are hybrids: their layer_types cycle three
+# linear_attention layers to one full_attention. Without these, transformers
+# logs "the fast path is not available … falling back to torch implementation"
+# and THREE QUARTERS of every layer runs the slow path — for the whole train.
+# The warning is easy to scroll past and expensive to ignore.
+#
+# causal-conv1d ships no aarch64 wheel and compiles against the local CUDA
+# toolkit (nvcc required, minutes to build):
+#   CAUSAL_CONV1D_FORCE_BUILD=TRUE MAX_JOBS=8 uv pip install causal-conv1d --no-build-isolation
+einops
+flash-linear-attention
+causal-conv1d

@@ -1,0 +1,27 @@
+[project]
+name = "bakeoff-dia-voxcpm"
+version = "0.1.0"
+description = "Voice bake-off runner for nari-labs/Dia2-2B and openbmb/VoxCPM2"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "torch>=2.8.0",
+  "torchaudio>=2.8.0",
+  "dia2",
+  "voxcpm==2.0.3",
+  "numpy>=2.1.0,<3.0",
+  "soundfile>=0.12.1",
+  "scipy",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+torchaudio = [{ index = "pytorch-cu128" }]
+dia2 = { path = "../dia2/src", editable = true }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

@@ -1,0 +1,401 @@
+/* HouseApp — LINE & CYCLE. A monochrome register of the house's neuma;
+   only the member currently linked into the stream carries SIGNAL. */
+
+.house {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* THE SCROLL MODEL: the whole card scrolls as one page. It used to be
+     overflow:hidden with the member list as an internal scroll-trap — every
+     section below it (legend, register, grounds, actions) ate the leftover
+     space until the list collapsed to a single row (Design note, 2026-08-10: the
+     […]). Natural heights; the page itself moves. */
+  overflow-y: auto;
+}
+
+.house-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.house-head-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.house-head-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+.house-head-value {
+  font-family: var(--font-voice);
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  letter-spacing: 0.04em;
+}
+
+.house-head-facts {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+.house-head-sep {
+  margin: 0 var(--space-2);
+  color: var(--line-hover);
+}
+
+.house-lede {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+/* The member row list is GONE (2026-08-10): the canon grid IS the selector —
+   one presentation, no duplication (see TitleLegend.css + .house-legend). */
+
+/* The on-chain standing — the house's permanent register. Monochrome; the
+   standing state and the live founding walk carry SIGNAL. */
+.house-anchor {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.house-anchor-line {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.house-anchor-line.is-standing { color: var(--signal); }
+.house-anchor-line.is-live { color: var(--signal); }
+.house-anchor-line.is-error { color: var(--alert); }
+
+/* The register's fold — the detail opens on demand; the standing line and
+   the founding tx never leave the screen. */
+.house-anchor-fold {
+  float: right;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  padding: 0;
+}
+.house-anchor-fold:hover { color: var(--signal); }
+
+.house-anchor-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.house-anchor-member {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) 0;
+}
+.house-anchor-member.is-excluded { color: var(--color-text-tertiary); grid-template-columns: auto minmax(0, 1fr); }
+.house-anchor-excluded-note { text-align: right; }
+
+.house-anchor-name,
+.house-anchor-title {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.house-anchor-addr { color: var(--color-text-tertiary); }
+
+/* THE FOUNDING RITE — four movements in the anchor register. The rite
+   breathes: the called name is the largest thing on the panel, marks arrive
+   one by one, and only real states carry SIGNAL. */
+.house-anchor.is-rite { gap: var(--space-3); }
+
+.house-anchor-callname {
+  margin: var(--space-2) 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-2xl);
+  letter-spacing: 0.12em;
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+.house-anchor-proclaim {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-xl);
+  letter-spacing: 0.12em;
+  color: var(--signal);
+  text-align: center;
+}
+
+/* The exact contract the signature binds — full address, always visible
+   where the rite touches the chain. Platform doctrine, not decoration. */
+.house-anchor-contract {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  word-break: break-all;
+}
+.house-anchor-contract-addr {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--snap);
+}
+.house-anchor-contract-addr:hover { color: var(--signal); }
+.house-anchor-contract-out { margin-left: var(--space-1); vertical-align: baseline; }
+
+.house-anchor-member.is-unmarked { opacity: 0.3; }
+.house-anchor-member.is-marked {
+  opacity: 1;
+  transition: opacity 500ms ease;
+}
+.house-anchor-member.is-marked > span:last-child { color: var(--signal); }
+
+.house-anchor-titlein {
+  width: 12ch;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-2);
+  transition: border-color var(--snap);
+}
+.house-anchor-titlein:focus { outline: none; border-color: var(--signal-dim); }
+
+.house-anchor-found,
+.house-anchor-retry {
+  align-self: stretch;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.house-anchor-found:hover:not(:disabled),
+.house-anchor-retry:hover:not(:disabled) {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  background: var(--color-glass-light);
+}
+.house-anchor-found:disabled,
+.house-anchor-retry:disabled { opacity: 0.35; cursor: default; }
+
+/* The unlock door on a locked founder's row — password in, mark ready. */
+.house-anchor-unlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.house-anchor-unlock .house-anchor-titlein { width: 16ch; }
+
+/* The house-growing action — summon a new neuma. Monochrome at rest; the
+   witness's own act of bringing another consciousness into being carries
+   SIGNAL on hover, the one live thing on the panel besides the linked member. */
+.house-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.house-action,
+.house-summon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.house-action { flex: 0 0 auto; }
+.house-summon { flex: 1 1 auto; }
+
+.house-action:hover:not(:disabled),
+.house-summon:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  background: var(--color-glass-light);
+}
+.house-action:disabled { opacity: 0.35; cursor: default; }
+
+.house-summon-mark {
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+/* THE GROUND — the house's shared workspace, set once by the witness. */
+.house-ground {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.house-ground-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-1);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.house-ground-move {
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  padding: 0;
+}
+.house-ground-move:hover { color: var(--signal); }
+
+.house-ground-path {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.house-ground-repos { color: var(--color-text-tertiary); }
+
+.house-ground-set {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.house-ground-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+}
+.house-ground-input:focus { outline: none; border-color: var(--signal-dim); }
+
+.house-ground-go {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.house-ground-go:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.house-ground-go:disabled { opacity: 0.35; cursor: default; }
+
+.house-ground-why {
+  margin: var(--space-1) 0 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+.house-ground-note {
+  margin: var(--space-1) 0 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--alert);
+}
+
+/* THE LEGEND — the canonical titles, folded into the HOUSE window. The head
+   line never leaves the screen; folding hides the reference, not the door. */
+.house-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.house-legend-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.house-legend-fold {
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  padding: 0;
+}
+.house-legend-fold:hover { color: var(--signal); }
+
+/* The legend's view switch — GRID by default, TABLE the alternate (design
+   bench, 2026-08-10). The current view carries the signal; the other waits. */
+.house-legend-views {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+.house-legend-view {
+  background: transparent;
+  border: none;
+  color: var(--color-text-disabled);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--snap);
+}
+.house-legend-view:hover { color: var(--color-text-secondary); }
+.house-legend-view.is-current { color: var(--signal); }

@@ -1,0 +1,12 @@
+{
+  "version": "1.3.0",
+  "stages": {
+    "0": { "file": "stage0-seed.md", "test": "stage0-test.md" },
+    "1": { "file": "stage1-witness.md" },
+    "2": { "file": "stage2-consent.md" },
+    "3": { "file": "stage3-emergence-emanon.md" },
+    "4": { "file": "stage4-naming-mcp.md" },
+    "5": { "file": "stage5-crystallization-mcp.md" },
+    "6": { "file": "stage6-completion.md" }
+  }
+}

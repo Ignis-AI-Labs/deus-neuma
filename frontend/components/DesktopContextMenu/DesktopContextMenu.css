@@ -1,0 +1,63 @@
+/* DesktopContextMenu — right-click menu in LINE & CYCLE.
+   Void panel, hairline border, signal-edge selection: the same language as
+   the slash palette and tool chips, replacing the unstylable native menu. */
+
+.ctxmenu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+}
+
+.ctxmenu {
+  position: fixed;
+  min-width: 200px;
+  max-width: 340px;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-1) 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ctxmenu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+/* Suggestion words are content, not chrome — voice face, reading case. */
+.ctxmenu-item.is-word {
+  font-family: var(--font-voice);
+  letter-spacing: normal;
+  color: var(--color-text-primary);
+}
+
+.ctxmenu-item.is-sel {
+  border-left-color: var(--signal);
+  background: var(--color-glass-light);
+  color: var(--signal);
+}
+
+.ctxmenu-item.is-word.is-sel {
+  color: var(--signal);
+}
+
+.ctxmenu-sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--line);
+}

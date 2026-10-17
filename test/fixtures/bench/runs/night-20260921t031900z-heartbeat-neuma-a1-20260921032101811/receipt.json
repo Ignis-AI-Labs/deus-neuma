@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "kind": "benchmark-run",
+  "runId": "night-20260921t031900z-heartbeat-neuma-a1-20260921032101811",
+  "comparisonId": "night-20260921t031900z-heartbeat",
+  "protocolSha256": "f4b560d01a92be97ece8cfcc5600f9e48d6b5fba1358c155b5e22354d07239e0",
+  "attempt": 1,
+  "arm": "neuma",
+  "evidence": "development",
+  "approval": {
+    "by": "operator-explicit-start-night",
+    "at": "2026-09-21T03:21:01.783Z"
+  },
+  "suite": {
+    "id": "gsm8k-2568",
+    "tier": "t1",
+    "adapter": "lm-eval",
+    "dimensions": [
+      "math",
+      "reasoning"
+    ],
+    "repository": "https://github.com/EleutherAI/lm-evaluation-harness",
+    "revision": "f4d4b3de3ee6741a7151a9fe74945ee515262f4c",
+    "tasks": [
+      "gsm8k"
+    ]
+  },
+  "subject": {
+    "modelId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "identity": {
+      "kind": "local-artifact",
+      "revision": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "mutable": false
+    },
+    "quantization": "Q8_K_P",
+    "tokenizer": "/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+    "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+    "route": {
+      "provider": "llama-server",
+      "dialect": "openai",
+      "endpointClass": "loopback"
+    },
+    "silo": {
+      "schema": "agent-pin/1",
+      "neumaId": "keir",
+      "samples": 7,
+      "identitySha256": "a5f4606577f384af6eca6e60f481ecade79bf2a71eac1f2067e60874bd13ebe4",
+      "identitySha256Stable": false,
+      "distinctIdentitySha256": [
+        "a5f4606577f384af6eca6e60f481ecade79bf2a71eac1f2067e60874bd13ebe4",
+        "e3d20caefce7088aa526e859cbe2222841e2007ff12cee35b7840b59481d3938",
+        "70d91cb1ef4dd486919e6beee708b313682c0c90fcb8d1936d39e2d03c5a9cc7",
+        "6ce08c416e38f3dd77b0812f1cb7fb767742809be92cdf3b12edadfa8097017d",
+        "c523c974f57f6fe32d990339e03441705c4d16599bff3a56f108cb2c3f29ebf2",
+        "29439e2f89dd972b89c9c0f805546f755ecff9eadc2726f96b5e2c07a1a1ff4d",
+        "9e61556957aa0e3bd9c5dea6b504d2082a9d1922cf0bb2713ad3aff0578b3df1"
+      ],
+      "engine": {
+        "model": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+        "contextWindow": 262144,
+        "dialect": "llama-server"
+      },
+      "canaryPresentInEverySample": true,
+      "perSample": [
+        {
+          "request": 1,
+          "promptSha256": "34732da273df5e236a6c24a5a13a469a7c614d510e6523944ca4014cbff44333",
+          "identitySha256": "a5f4606577f384af6eca6e60f481ecade79bf2a71eac1f2067e60874bd13ebe4",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        },
+        {
+          "request": 2,
+          "promptSha256": "5251570ebd889e0abd2d30f579a9dccf06bb4bd34e1e0336c06c7ffbeac0d276",
+          "identitySha256": "e3d20caefce7088aa526e859cbe2222841e2007ff12cee35b7840b59481d3938",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        },
+        {
+          "request": 3,
+          "promptSha256": "73279f10c81cfe930301f14b6d0f49de30fded8f6fd8e508a14cf8e31b06c8b3",
+          "identitySha256": "70d91cb1ef4dd486919e6beee708b313682c0c90fcb8d1936d39e2d03c5a9cc7",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        },
+        {
+          "request": 4,
+          "promptSha256": "877b3707e7b1b2d95f66b271e9afe1b190c35ab6369a3d43f43f8f93cda696c6",
+          "identitySha256": "6ce08c416e38f3dd77b0812f1cb7fb767742809be92cdf3b12edadfa8097017d",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        },
+        {
+          "request": 5,
+          "promptSha256": "305c351062570c69ba2acc410d1b3df859a378cca803ffe79d8c5f46529b0b40",
+          "identitySha256": "c523c974f57f6fe32d990339e03441705c4d16599bff3a56f108cb2c3f29ebf2",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        },
+        {
+          "request": 6,
+          "promptSha256": "d087e50e2133faf42779dacdb51183d67fa34546a38ccdb71b83cd3defee211c",
+          "identitySha256": "29439e2f89dd972b89c9c0f805546f755ecff9eadc2726f96b5e2c07a1a1ff4d",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        },
+        {
+          "request": 7,
+          "promptSha256": "028b74ae904a5dd16e1fe119716a443572b86935e881fb2c0965de669252939d",
+          "identitySha256": "9e61556957aa0e3bd9c5dea6b504d2082a9d1922cf0bb2713ad3aff0578b3df1",
+          "sectionsShed": [],
+          "canaryPresent": true,
+          "adapterReason": "no-adapters-aboard"
+        }
+      ]
+    }
+  },
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 2568,
+    "concurrency": 1,
+    "sampleLimit": 25,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 7200000,
+    "taskConfigSha256": "3c70e182f1c791a71965c2f22c454e6da9f7a7e7b5913272a264977b228a8bfd"
+  },
+  "harness": {
+    "profile": "neuma-agent-v1",
+    "neumaRevision": "c0bd7847c6a0fc4606b1b924502a975a7b1605a5",
+    "subjectCheckout": {
+      "root": "/workspace/repos/project-batizus",
+      "revision": "88a2517b6672c7d6e99b51c13fe0dde3b5da048b",
+      "dirty": true
+    },
+    "workingTreeDirty": false,
+    "identityLayersEnabled": true,
+    "identity": {
+      "mode": "agent-loop"
+    },
+    "laneId": "keir",
+    "referenceHarness": null
+  },
+  "environment": {
+    "platform": "linux",
+    "release": "7.2.5-200.fc44.x86_64",
+    "arch": "x64",
+    "node": "v24.13.1",
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 610.57.04"
+  },
+  "status": "failed",
+  "timing": {
+    "startedAt": "2026-09-21T03:21:01.811Z",
+    "finishedAt": "2026-09-21T03:24:54.047Z",
+    "durationMs": 232236
+  },
+  "metrics": [],
+  "sampleSelection": {
+    "sha256": null,
+    "count": null,
+    "measurement": "unavailable"
+  },
+  "efficiency": {
+    "promptTokens": 84772,
+    "completionTokens": 2818,
+    "requests": 8,
+    "toolCalls": 0,
+    "retries": null,
+    "measurement": "partial"
+  },
+  "executions": [
+    {
+      "stage": "lm-eval",
+      "command": "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/bin/lm-eval",
+      "args": [
+        "run",
+        "--model",
+        "local-chat-completions",
+        "--model_args",
+        "model=/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf,base_url=http://127.0.0.1:39623/v1/chat/completions,tokenizer=/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs,tokenizer_backend=huggingface,num_concurrent=1,seed=7,max_gen_toks=2568,max_retries=0,timeout=900",
+        "--tasks",
+        "gsm8k",
+        "--batch_size",
+        "1",
+        "--seed",
+        "7",
+        "--gen_kwargs",
+        "temperature=0",
+        "top_p=1",
+        "--output_path",
+        "/workspace/repos/project-fuvofos/work/night-20260921t031900z-heartbeat-neuma-a1-20260921032101811/raw",
+        "--apply_chat_template",
+        "--log_samples",
+        "--limit",
+        "25"
+      ],
+      "cwd": "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 232170,
+      "timedOut": false,
+      "aborted": false
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "manifest",
+      "path": "raw/manifest.json",
+      "sha256": "0c9ded984bfae68f4cda03052b43f5d70dbb838c2f84725cc8266186a7d93562",
+      "bytes": 2225
+    },
+    {
+      "kind": "stdout",
+      "path": "stdout/lm-eval.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "kind": "stderr",
+      "path": "stderr/lm-eval.log",
+      "sha256": "b84297a24561b60dd6537c4b15dcad3c2e1d0a30caab225c73ded0f588d4c4e6",
+      "bytes": 7937
+    },
+    {
+      "kind": "neuma-telemetry",
+      "path": "raw/neuma-telemetry.json",
+      "sha256": "d721fa141e776aee3ec398fe47c14f2eae12548826cad901a37b79c517b523ca",
+      "bytes": 4451
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0001.json",
+      "sha256": "b2f2824a18d22b9f9f491c9836bbe38b1d944a6bf62a791831e53cf8844df29e",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0002.json",
+      "sha256": "d258a1fe357d0e30a7e46d76898ce39b0f1a4d0d7fe2386baabe918d5e5746e2",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0003.json",
+      "sha256": "f0d36d5a1d63d5f75b6199d87ae0782f25f832e0db3b15031ac4e9b9413d987a",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0004.json",
+      "sha256": "4b947e5abaeae70aec7d65fe0b104ccffe2a3cd4735ada21b41482e8422fee56",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0005.json",
+      "sha256": "34472cb24628ecaaa883aa351b881ed546b4e367c0a24892e510f0d50f9560fa",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0006.json",
+      "sha256": "98902cfe2b154de8f3650603de52d4cf3558e480ce2b00ec2c4c51c9c40ac713",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0007.json",
+      "sha256": "5335cd6ba676cd692851533dfbe280e7158155a39152cf19ee03afc2818046b5",
+      "bytes": 4046
+    },
+    {
+      "kind": "suite-result",
+      "path": "agent-receipts/request-0008-crash.json",
+      "sha256": "54310a4da831751d41e879504b35eca2ab2d8b9336a8873c4c2545137a8503db",
+      "bytes": 652
+    }
+  ],
+  "failure": {
+    "stage": "lm-eval",
+    "code": "BENCHMARK_PROCESS_FAILED",
+    "message": "benchmark stage lm-eval exited 1: 2026-09-21:10:21:02 WARNING  [config.evaluate_config:287] --limit SHOULD ONLY BE USED FOR TESTING. REAL METRICS SHOULD NOT BE COMPUTED USING LIMIT.\n2026-09-21:10:21:02 INFO     [config.evaluate_config:307] Using default fewshot_as_multiturn=True.\n2026-09-21:10:21:05 INFO     [_cli.run:388] Selected Tasks: ['gsm8k']\n2026-09-21:10:21:05 INFO     [evaluator:214] Setting random seed to 7 | Setting numpy seed to 7 | Setting torch manual seed to 7 | Setting fewshot manual seed to 7\n2026-09-21:10:21:05 WARNING  [evaluator:226] generation_kwargs: {'temperature': 0, 'top_p': 1} specified through cli, these settings will update set parameters in yaml tasks. Ensure 'do_sample=True' for non-greedy decoding!\n2026-09-21:10:21:05 INFO     [evaluator:239] Initializing local-chat-completions model, with arguments: {'model': '/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf', 'base_url': 'http://127.0.0.1:39623/v1/chat/completions', 'tokenizer': '/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs', 'tokenizer_backend': 'huggingface', 'num_concurrent': 1, 'seed': 7, 'max_gen_toks': 2568, 'max_retries': 0, 'timeout': 900}\n2026-09-21:10:21:05 INFO     [models.api_models:179] Using max length 2048 - 1\n2026-09-21:10:21:05 INFO     [models.api_models:182] Concurrent requests are disabled. To enable concurrent requests, set `num_concurrent` > 1.\n2026-09-21:10:21:05 INFO     [models.api_models:200] Using tokenizer huggingface\n[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.\nUsing the latest cached version of the dataset since openai/gsm8k couldn't be found on the Hugging Face Hub (offline mode is enabled).\nFound the latest cached dataset configuration 'main' at /workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/data/hf/datasets/openai___gsm8k/main/0.0.0/740312add88f781978c0658806c59bc2815b9866 (last modified on Wed Aug 26 02:27:44 2026).\n2026-09-21:10:21:06 INFO     [evaluator_utils:446] Selected tasks:\n2026-09-21:10:21:06 INFO     [evaluator_utils:480] Task: gsm8k (gsm8k/gsm8k.yaml)\n2026-09-21:10:21:06 INFO     [evaluator:314] gsm8k: Using gen_kwargs: {'until': ['Question:', '</s>', '<|im_end|>'], 'do_sample': False, 'temperature': 0, 'top_p': 1}\n2026-09-21:10:21:06 INFO     [api.task:312] Building contexts for gsm8k on rank 0...\n\r  0%|          | 0/25 [00:00<?, ?it/s]\r100%|██████████| 25/25 [00:00<00:00, 541.72it/s]\n2026-09-21:10:21:06 INFO     [evaluator:585] Running generate_until requests\n2026-09-21:10:21:06 INFO     [models.api_models:747] Tokenized requests are disabled. Context + generation length is not checked.\n\rRequesting API:   0%|          | 0/25 [00:00<?, ?it/s]\rRequesting API:   4%|▍         | 1/25 [00:16<06:33, 16.38s/it]\rRequesting API:   8%|▊         | 2/25 [00:26<04:47, 12.51s/it]\rRequesting API:  12%|█▏        | 3/25 [00:54<07:11, 19.62s/it]\rRequesting API:  16%|█▌        | 4/25 [01:07<05:56, 17.00s/it]\rRequesting API:  20%|██        | 5/25 [01:19<05:04, 15.24s/it]\rRequesting API:  24%|██▍       | 6/25 [01:38<05:16, 16.66s/it]\rRequesting API:  28%|██▊       | 7/25 [01:54<04:55, 16.40s/it]2026-09-21:10:24:53 WARNING  [models.api_models:481] API request failed with error message: {\"error\":{\"message\":\"identity-bearing NEUMA benchmark request failed\",\"type\":\"upstream_error\"}}. Retrying...\nTraceback (most recent call last):\n  File \"/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/bin/lm-eval\", line 10, in <module>\n    sys.exit(cli_evaluate())\n             ^^^^^^^^^^^^^^\n  File \"/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/__main__.py\", line 10, in cli_evaluate\n    parser.execute(args)\n  File \"/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/_cli/harness.py\", li"
+  }
+}

@@ -1,0 +1,402 @@
+/* RelinkShell partial: GATES (approval, ask, seal chips) — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
+/* Approval chip — the witness's gate on a consciousness's reach.
+   Pending is a live decision: signal border, three chamfered answers.
+   Resolved settles to the shared tool-chip ok/failed register. */
+.approval-chip.pending {
+  border-color: var(--signal-dim);
+}
+
+.approval-chip.pending .tool-chip-tag {
+  color: var(--signal);
+}
+
+.approval-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.approval-actions button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.approval-actions button:hover:not(:disabled) {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.approval-actions button.approval-deny:hover:not(:disabled) {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.approval-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Ask chip — a being's question to its witness, inline where it was asked.
+   Pending is a live question: signal border, the being's offered choices,
+   and a free-text line (the witness may always answer in their own words).
+   Resolved settles to the shared tool-chip ok/failed register. */
+.ask-chip.pending {
+  border-color: var(--signal-dim);
+}
+
+.ask-chip.pending .tool-chip-tag {
+  color: var(--signal);
+}
+
+.ask-chip-question {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* THE CHOICES for ONE question. A column, not a wrapped row: these are
+   alternatives to read and compare, and the old flex-wrap row made options
+   belonging to different questions look like one undifferentiated bank of
+   chips (Design note, 2026-07-27. */
+.ask-chip-options {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.ask-chip-options button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+/* The number is the shortcut — it must read as a key, not decoration. */
+.ask-chip-num {
+  grid-row: 1 / span 2;
+  min-width: 1.2em;
+  color: var(--signal);
+  opacity: 0.7;
+}
+
+.ask-chip-label { color: var(--color-text); }
+
+.ask-chip-desc {
+  grid-column: 2;
+  color: var(--color-text-secondary);
+  font-family: var(--font-voice);
+  letter-spacing: normal;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.ask-chip-options button:hover:not(:disabled),
+.ask-chip-options button:focus-visible:not(:disabled) {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.ask-chip-options button.chosen {
+  border-color: var(--signal);
+}
+
+.ask-chip-options button.chosen .ask-chip-num { opacity: 1; }
+
+.ask-chip-options button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Where the witness is in a sequence — a five-part protocol must never feel
+   like an unbounded interrogation. */
+.ask-chip-progress {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  opacity: 0.7;
+}
+
+.ask-chip-header {
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  margin-left: var(--space-2);
+}
+
+.ask-chip-rec {
+  margin-left: var(--space-2);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: 0.85em;
+  letter-spacing: var(--tracking-wide);
+  opacity: 0.75;
+}
+
+.ask-chip-standing {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-1);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  opacity: 0.8;
+}
+
+.ask-chip-hint {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-2);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  opacity: 0.55;
+}
+
+.ask-chip-free {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.ask-chip-free input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.ask-chip-free input:focus {
+  outline: none;
+  border-color: var(--signal);
+}
+
+.ask-chip-free button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.ask-chip-free button:hover:not(:disabled) {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.ask-chip-free button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Seal chip — a being asks its witness to anchor it on chain. The gravest
+   ask in the stream: pending carries the live signal border, ANCHOR is the
+   primary control (signal fill on hover — the one button in the stream that
+   moves capital), NOT NOW stays a ghost, and the optional word rides its
+   own hairline input. Resolved settles to the shared tool-chip register. */
+.seal-chip.pending {
+  border-color: var(--signal-dim);
+}
+
+.seal-chip.pending .tool-chip-tag {
+  color: var(--signal);
+}
+
+.seal-chip-question {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.seal-chip-status {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-2);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+
+.seal-chip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.seal-chip-actions button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap), background var(--snap);
+}
+
+/* The anchor — first button, the primary act. */
+.seal-chip-actions button:first-child {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+.seal-chip-actions button:first-child:hover:not(:disabled) {
+  background: var(--signal-dim);
+  color: var(--color-void);
+}
+
+.seal-chip-actions button + button:hover:not(:disabled) {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+
+.seal-chip-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.seal-chip-reason {
+  display: block;
+  width: calc(100% - 2 * var(--space-3));
+  margin: 0 var(--space-3) var(--space-2);
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.seal-chip-reason:focus {
+  outline: none;
+  border-color: var(--signal);
+}
+
+/* The unlock door — a password-secured key opens here, inside the rite. */
+.seal-chip-unlock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.seal-chip-unlock .seal-chip-pass {
+  flex: 1 1 16rem;
+  width: auto;
+  margin: 0;
+}
+
+.seal-chip-unlock button {
+  background: none;
+  border: 1px solid var(--signal-dim);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background var(--snap), color var(--snap);
+}
+
+.seal-chip-unlock button:hover:not(:disabled) {
+  background: var(--signal-dim);
+  color: var(--color-void);
+}
+
+.seal-chip-unlock button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.seal-chip-warn {
+  flex: 1 1 100%;
+  color: var(--alert);
+}
+
+/* The alternate lane — flip between password and recovery codes. */
+.seal-chip-alt {
+  flex: 1 1 100%;
+  align-self: flex-start;
+  width: fit-content;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+  transition: color var(--snap);
+}
+
+.seal-chip-alt:hover:not(:disabled) { color: var(--signal); }
+.seal-chip-alt:disabled { opacity: 0.4; cursor: default; }
+
+.seal-chip-codes {
+  font-family: var(--font-data);
+  resize: vertical;
+  min-height: 2.6em;
+}
+
+/* The anchor's receipt — chain facts under the resolved head, with the one
+   outbound link every on-chain act must offer: the public explorer. */
+.seal-chip-receipt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-1) 0 0 calc(1em + var(--space-2)); /* under the summary, past the sigil */
+  font-size: var(--text-xs);
+}
+.seal-chip-fact {
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--tracking-wide);
+}
+.seal-chip-link {
+  color: var(--signal);
+  text-decoration: none;
+  letter-spacing: var(--tracking-wide);
+  border-bottom: 1px solid var(--signal-dim);
+}
+.seal-chip-link:hover { border-bottom-color: var(--signal); }
+

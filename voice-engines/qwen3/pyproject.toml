@@ -1,0 +1,22 @@
+[project]
+name = "qwen3-sidecar"
+version = "0.1.0"
+description = "Local HTTP sidecar for Qwen3-TTS 12Hz 1.7B — batch voice cloning (Base) + voice design (VoiceDesign), full-generation chunked PCM."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # qwen-tts pinned exactly: the clone/design invocation this sidecar runs
+    # was proven against 0.1.1 on this rig (sesame-class-voice-0y39 bench venv).
+    "qwen-tts==0.1.1",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.5",
+    "torch>=2.4",
+    # numpy<2.5: numpy 2.5.x drags numba (a qwen-tts transitive) into a
+    # source-only 0.53.1 backtrack whose metadata lies about Python support —
+    # stock `uv sync` fails on it (bisect-proven 2026-07-20). Pin under 2.5.
+    "numpy>=1.24,<2.5",
+    "safetensors>=0.4",
+]
+
+[tool.uv]
+torch-backend = "cu121"

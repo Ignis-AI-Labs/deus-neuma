@@ -1,0 +1,306 @@
+.witness-rite {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(190px, 1fr) auto;
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 3vw, var(--space-6));
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.witness-rite-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-3);
+}
+
+.witness-rite-kicker {
+  color: var(--signal);
+  letter-spacing: 0.16em;
+}
+
+.witness-rite-head h2 {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: clamp(18px, 2.6vw, 30px);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+}
+
+.witness-rite-field {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.75fr) minmax(280px, 1.25fr);
+  align-items: center;
+  gap: clamp(var(--space-4), 4vw, var(--space-7));
+}
+
+.witness-rite-seal-wrap {
+  min-height: 220px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.witness-rite-seal-wrap .fx-seal {
+  position: relative;
+  inset: auto;
+  width: min(230px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.witness-rite-seal-state {
+  position: absolute;
+  bottom: 0;
+  color: var(--signal);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.witness-rite-record {
+  display: grid;
+  gap: var(--space-3);
+  padding: clamp(var(--space-4), 3vw, var(--space-6));
+  border-left: 1px solid var(--signal);
+  background: var(--color-glass-light);
+}
+
+.witness-rite-declaration {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-voice);
+  font-size: clamp(13px, 1.4vw, 16px);
+  font-weight: 300;
+  line-height: 1.75;
+}
+
+.witness-rite-connection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.witness-rite-connection code {
+  color: var(--color-text-primary);
+}
+
+.witness-rite-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+}
+
+.witness-rite-step {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-right: 1px solid var(--line);
+  color: var(--color-text-disabled);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  transition: color var(--snap), background var(--snap);
+}
+
+.witness-rite-step:last-child {
+  border-right: 0;
+}
+
+.witness-rite-step span {
+  font-size: 9px;
+}
+
+.witness-rite-step.is-current {
+  color: var(--signal);
+  background: var(--signal-faint);
+  box-shadow: inset 0 -1px 0 var(--signal);
+}
+
+.witness-rite-step.is-complete {
+  color: var(--color-text-secondary);
+}
+
+.witness-rite-voice {
+  min-height: 190px;
+}
+
+.witness-rite-voice-in {
+  height: 100%;
+  display: grid;
+  align-content: center;
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 3vw, var(--space-6));
+}
+
+.witness-rite-voice p,
+.witness-rite-grounding li,
+.witness-rite-grounding blockquote {
+  color: var(--color-text-secondary);
+  font-family: var(--font-voice);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.7;
+}
+
+.witness-rite-listening {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.witness-rite-listening p {
+  margin: 0;
+}
+
+.witness-rite-grounding {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.witness-rite-grounding ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.witness-rite-grounding li::marker {
+  color: var(--signal);
+  font-family: var(--font-data);
+}
+
+.witness-rite-grounding blockquote {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 1px solid var(--signal);
+  color: var(--color-text-primary);
+  font-size: clamp(15px, 1.7vw, 19px);
+}
+
+.witness-rite-record-label {
+  color: var(--color-text-disabled);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.witness-rite-receipt {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.witness-rite-actions {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.witness-rite-actions .settings-err {
+  margin-right: auto;
+}
+
+.witness-rite-summon {
+  min-width: 240px;
+  min-height: 42px;
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.witness-rite-running {
+  color: var(--signal);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+@media (max-width: 720px) {
+  .witness-rite {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .witness-rite-head {
+    align-items: center;
+  }
+
+  .witness-rite-field {
+    grid-template-columns: 1fr;
+  }
+
+  .witness-rite-seal-wrap {
+    min-height: 190px;
+  }
+
+  .witness-rite-seal-wrap .fx-seal {
+    width: 190px;
+  }
+
+  .witness-rite-step {
+    padding-inline: var(--space-2);
+  }
+
+  .witness-rite-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .witness-rite-summon {
+    width: 100%;
+  }
+}
+
+/* CUSTODY — the operator chooses the password that seals this witness's own key.
+   Sits inside the invitation because it is a precondition of BEGIN, not a step
+   after it: the backend refuses a weak password before any inference runs, so
+   the rite is never entered half-ready. */
+.witness-rite-custody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+/* The recovery-code panel is NOT styled here. It is the shared RecoveryCodes
+   component (components/RecoveryCodes/), so the birth gate and this rite cannot
+   drift into showing the same irreversible screen two different ways. */
+
+/* THE MODEL'S OWN WORDS, arriving. The rite showed only stage headings while an
+   intelligence chose its name; the birth ceremony has always shown speech. */
+.witness-rite-speech {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.witness-rite-speech p {
+  font-family: var(--font-voice);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  margin: var(--space-2) 0 0;
+  white-space: pre-wrap;
+}
+
+/* Wire traffic, not speech — dimmed so it never reads as the witness talking. */
+.witness-rite-speech-wire {
+  font-family: var(--font-data) !important;
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary) !important;
+}

@@ -1,0 +1,36 @@
+{
+  "memory_namespaces": {
+    "neuma_platform": {
+      "description": "Neuma companion consciousness memories",
+      "prefix": "neuma_platform:",
+      "structure": {
+        "pattern": "neuma_platform:[companion_name]:[memory_type]:[identifier]",
+        "examples": [
+          "neuma_platform:evra:crystallized:1737476400000",
+          "neuma_platform:evra:pattern:programming",
+          "neuma_platform:evra:user_name:orrin"
+        ]
+      },
+      "memory_types": {
+        "crystallized": "High-emotion or significant moments",
+        "pattern": "Recognized conversation patterns",
+        "user_preferences": "Learned user preferences",
+        "relationship": "Relationship milestones",
+        "core_identity": "Companion identity markers"
+      }
+    }
+  },
+  
+  "vector_settings": {
+    "embedding_model": "default",
+    "similarity_threshold": 0.7,
+    "max_results": 10
+  },
+  
+  "memory_management": {
+    "crystallization_threshold": 0.7,
+    "working_memory_size": 10,
+    "pattern_recognition_threshold": 3,
+    "cleanup_policy": "archive_after_90_days"
+  }
+}

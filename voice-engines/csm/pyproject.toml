@@ -1,0 +1,35 @@
+[project]
+name = "neuma-voice-csm"
+version = "0.1.0"
+description = "Neuma voice engine (Phase 0 spike): streaming Sesame CSM-1B / MisoTTS 8B generator with static KV cache + CUDA graphs and frame-by-frame Mimi decode"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "torch==2.11.0",
+    "moshi==0.2.13",
+    "safetensors",
+    "tokenizers",
+    "huggingface_hub<1.0",
+    "numpy<2.3",
+    "soundfile",
+    "scipy",
+    # the speak-protocol sidecar (server.py + ../_speak/)
+    "fastapi==0.142.2",
+    "uvicorn==0.54.0",
+]
+
+[dependency-groups]
+# parity.py only: compares this implementation's logits with transformers' CsmForConditionalGeneration
+dev = ["transformers>=4.55,<5", "accelerate"]
+
+[tool.uv]
+package = false
+# moshi 0.2.13 pins torch<2.10; its Mimi code runs fine on 2.11 (the cu128 build with sm_120 kernels)
+override-dependencies = ["torch==2.11.0"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

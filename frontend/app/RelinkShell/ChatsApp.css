@@ -1,0 +1,230 @@
+/* ChatsApp — LINE & CYCLE. A monochrome roster of past chats; only the chat
+   currently in view carries SIGNAL. Data-register labels, chamfered rows. */
+
+.chats {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chats-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.chats-new {
+  flex: 1 1 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.chats-new:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.chats-refresh {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.chats-refresh:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.chats-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.chats-row {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.chats-row:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line);
+  background: var(--color-glass-light);
+}
+
+.chats-row-mark {
+  width: 6px;
+  height: 6px;
+  background: var(--line-hover);
+  transition: background var(--snap);
+}
+
+.chats-row.is-live {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.chats-row.is-live .chats-row-mark {
+  background: var(--signal);
+}
+
+.chats-row-label {
+  color: inherit;
+}
+
+.chats-row-id {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* Row wrap — holds the chat row, or its inline rename bar */
+.chats-rowwrap {
+  display: flex;
+  align-items: center;
+}
+.chats-rowwrap .chats-row { flex: 1 1 auto; min-width: 0; }
+
+/* Inline rename bar — triggered from the right-click menu */
+.chats-rename {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+.chats-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--color-void, #000);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+}
+.chats-rename-input:focus { border-color: var(--signal-dim); outline: none; }
+.chats-rename-go,
+.chats-rename-x {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  padding: var(--space-2);
+  cursor: pointer;
+}
+.chats-rename-go:hover { color: var(--signal); border-color: var(--signal-dim); }
+.chats-rename-x:hover { color: var(--color-text-primary); }
+
+/* Right-click context menu (portaled to <body>, so the window's transform
+   can't clip or mis-anchor it) */
+.chats-ctx {
+  position: fixed;
+  z-index: var(--z-popover);
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void, #000);
+  border: 1px solid var(--line-hover);
+  padding: var(--space-1);
+}
+.chats-ctx-item {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.chats-ctx-item:hover:not(:disabled) { color: var(--signal); background: var(--color-glass-hover); }
+.chats-ctx-item:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+
+.chats-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+/* The two registers of one history — private threads and the rooms. */
+.chats-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.chats-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.chats-tab:hover { color: var(--color-text-primary); }
+
+.chats-tab.is-on {
+  color: var(--signal);
+  border-color: var(--line);
+}
+
+/* The governed panel — one region, whichever register is showing. */
+.chats-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}

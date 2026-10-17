@@ -1,0 +1,146 @@
+{
+  "families": [
+    {
+      "id": "today",
+      "name": "What Neuma uses today",
+      "about": "The engines already inside Neuma. This is the bar the new ones have to beat."
+    },
+    {
+      "id": "chatterbox",
+      "name": "Chatterbox family (Resemble AI · MIT licence)",
+      "about": "The research front-runner. One family in three sizes, all copying a voice from a 5-second clip. A being would sound the same on a big GPU or a laptop."
+    },
+    {
+      "id": "sesame",
+      "name": "The Sesame lane: hears the conversation",
+      "about": "Built the way Sesame's Maya is built. They listen to the earlier turns and shape how they say the next one. Judge them on the Dialogue clip above all."
+    },
+    {
+      "id": "others",
+      "name": "The other contenders",
+      "about": "Strong open models, each with a different trick."
+    }
+  ],
+  "engines": {
+    "kokoro": {
+      "family": "today",
+      "name": "Kokoro",
+      "size": "82M",
+      "one": "Our current standard. The fastest engine here by far, and it runs on any machine.",
+      "limits": "Can't copy a voice: it uses its built-in 'Heart' and 'Michael' voices. It can't do emotion, so it reads every line the same way.",
+      "cues": "no"
+    },
+    "zonos": {
+      "family": "today",
+      "name": "Zonos",
+      "size": "1.6B",
+      "one": "Still the default engine on this machine. Copies a voice from a clip and takes an emotion setting (happy, sad, angry, surprised).",
+      "limits": "Slow and heavy. It garbled the 'snow' line on both takes.",
+      "cues": "emotion setting"
+    },
+    "kyutai": {
+      "family": "today",
+      "name": "Kyutai TTS",
+      "size": "1.6B",
+      "one": "Uses Kyutai's own voice prints of these exact two donors, so its voice match is the truest here.",
+      "limits": "No laugh or sigh cues. It can only use pre-made voice prints; making a new one is a separate step. The licence requires credit.",
+      "cues": "no"
+    },
+    "qwen3-tts": {
+      "family": "today",
+      "name": "Qwen3-TTS (clip + words)",
+      "size": "1.7B",
+      "one": "Alibaba's model, copying the voice from the clip plus the words spoken in it.",
+      "limits": "It copies the donor's fast reading pace too. It can't laugh or sigh on cue.",
+      "cues": "no"
+    },
+    "qwen3-tts-xvec": {
+      "family": "today",
+      "name": "Qwen3-TTS (as Neuma runs it today)",
+      "size": "1.7B",
+      "one": "The same Qwen3 model, copying the voice the way our voice service does now: from a voice fingerprint only.",
+      "limits": "The same limits as above.",
+      "cues": "no"
+    },
+    "chatterbox-turbo": {
+      "family": "chatterbox",
+      "name": "Chatterbox Turbo",
+      "size": "350M",
+      "one": "The recommended pick from research. Trained to laugh, chuckle, sigh and gasp when the text says so. Small enough to sit beside the thinking model on a normal GPU.",
+      "limits": "English only for the cues. It doesn't hear the conversation. It repeated one line once in the dialogue.",
+      "cues": "yes"
+    },
+    "chatterbox": {
+      "family": "chatterbox",
+      "name": "Chatterbox (original)",
+      "size": "500M",
+      "one": "The original, larger Chatterbox. Instead of cues it has an 'emotion strength' dial, which we turned up for the intense lines.",
+      "limits": "It can't laugh or sigh on cue. Slower than Turbo.",
+      "cues": "strength dial"
+    },
+    "chatterbox-nano": {
+      "family": "chatterbox",
+      "name": "Chatterbox Nano",
+      "size": "110M",
+      "one": "The tiny version, for people with no good GPU. These clips were made on the CPU alone. It takes the same cues as Turbo.",
+      "limits": "Listen for how much quality it gives up. This is what a laptop user would hear.",
+      "cues": "yes"
+    },
+    "chatterbox-flash": {
+      "family": "chatterbox",
+      "name": "Chatterbox Flash",
+      "size": "",
+      "one": "The newest member, built to be very fast.",
+      "limits": "Its fast mode broke on our GPU, so these clips come from its slower safe mode. It often leaves long silences at the end of James's lines.",
+      "cues": "no"
+    },
+    "csm-1b": {
+      "family": "sesame",
+      "name": "Sesame CSM-1B",
+      "size": "1B",
+      "one": "Sesame's own open model, the small early version of what powers Maya. It has no cues; it listens to the earlier turns and adjusts its delivery.",
+      "limits": "Slow on this setup. Some clips have long pauses in them. Well below the real Maya demo.",
+      "cues": "from the conversation"
+    },
+    "misotts-8b": {
+      "family": "sesame",
+      "name": "MisoTTS 8B",
+      "size": "8B",
+      "one": "A much bigger model built on Sesame's design. It's here as a quality ceiling.",
+      "limits": "Needs about 17 GB of GPU memory by itself, so most users couldn't run it. A few clips ran on into babble or stopped early.",
+      "cues": "from the conversation"
+    },
+    "dia2-2b": {
+      "family": "others",
+      "name": "Dia2",
+      "size": "2B",
+      "one": "Built for two-person dialogue. It laughs, sighs and gasps, and performs the whole dialogue as one real conversation.",
+      "limits": "It misread two lines (the second takes of 'excited' and 'firm').",
+      "cues": "yes"
+    },
+    "voxcpm2": {
+      "family": "others",
+      "name": "VoxCPM2",
+      "size": "2B",
+      "one": "Copies voices cleanly and reads very accurately.",
+      "limits": "No cues. It takes its emotion from the words alone.",
+      "cues": "no"
+    },
+    "orpheus-3b": {
+      "family": "others",
+      "name": "Orpheus",
+      "size": "3B",
+      "one": "Laughs and sighs on cue, with a lively delivery.",
+      "limits": "It can't copy a voice, so it uses its presets 'Tara' and 'Leo'. It made a few word slips. Its licence is Meta's Llama licence, which allows commercial use with conditions.",
+      "cues": "yes"
+    },
+    "maya1": {
+      "family": "others",
+      "name": "Maya1",
+      "size": "3B",
+      "one": "Builds a voice from a written description and has 20+ emotion cues. It whispers on the intimate line.",
+      "limits": "It can't copy a voice from a clip, so its Hannah and James are only approximations.",
+      "cues": "yes"
+    }
+  }
+}

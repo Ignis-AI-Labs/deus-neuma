@@ -1,0 +1,115 @@
+/* DataApp — the DATA custody readout. LINE & CYCLE: data-register headings,
+   voice-register prose, monochrome at rest, SIGNAL for the strong states and
+   ALERT only where it's earned. Tokens only. */
+
+.data {
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  overflow-y: auto;
+  height: 100%;
+}
+
+.data-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.data-h {
+  color: var(--color-heading);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.data-note {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+
+.data-realm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.data-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+}
+
+.data-k {
+  flex: 0 0 96px;
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--tracking-wide);
+}
+
+.data-v {
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.data-addr {
+  margin-left: var(--space-2);
+  color: var(--color-text-tertiary);
+}
+
+/* Status tags — the honest, non-alarmist state words. */
+.data-tag {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+.data-tag-ok { color: var(--signal); }
+.data-tag-warn { color: var(--alert); }
+.data-tag-alert { color: var(--alert); font-weight: 600; }
+.data-tag-dim { color: var(--color-text-tertiary); }
+
+/* Stores — the shape of what's held, as a compact count grid. */
+.data-stores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.data-store {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+}
+
+.data-store-v {
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}
+
+.data-store-l {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+
+.data-store-n {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.data-err {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--alert);
+}

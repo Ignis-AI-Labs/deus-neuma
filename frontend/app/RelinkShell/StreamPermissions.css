@@ -1,0 +1,200 @@
+/* StreamPermissions — the standing-grant rail. LINE & CYCLE: monochrome at
+   rest, --signal only where something is actually granted, --font-data for the
+   instrument labels, chamfers via .cham/.cham-in like every sibling rail. */
+
+.stream-perms {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--color-bg-primary);
+  border-left: 1px solid var(--color-border-primary);
+}
+
+.stream-perms-in {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  padding: var(--space-2);
+  gap: var(--space-2);
+}
+
+.perm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.perm-title {
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+
+.perm-scopebtn {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.perm-scopebtn:hover,
+.perm-scopebtn.is-on {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+/* THE STANDING LINE. The one thing that must never be missed about this list:
+   these are not settings, they are decisions already made and still in force. */
+.perm-standing {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+  border-left: 1px solid var(--color-border-primary);
+  padding-left: var(--space-2);
+}
+
+.perm-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.perm-being { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.perm-beinghead,
+.perm-grouphead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 2px;
+}
+
+.perm-count { color: var(--signal); }
+
+.perm-groupnote {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
+}
+
+.perm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.perm-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.perm-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.perm-scope,
+.perm-access { color: var(--color-text-tertiary); flex: 0 0 auto; }
+
+/* The dot carries the ESCALATION at a glance: a write or edit grant reaches
+   further than a read, and --alert is the desk's standing word for that. */
+.perm-dot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+}
+
+.perm-dot.is-write,
+.perm-dot.is-edit { background: var(--alert, #ff5533); }
+
+.perm-dot.is-read { background: var(--signal); }
+
+.perm-none,
+.perm-error,
+.perm-unreadable {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+}
+
+.perm-error,
+.perm-unreadable { color: var(--alert, #ff5533); }
+
+/* ── TAKING A GRANT BACK ─────────────────────────────────────────────────────
+   Design note, 2026-08-30: […]
+
+   REVOKE stays QUIET until the row is under the pointer. This list is read far
+   more often than it is edited — it exists to be scanned — and a destructive
+   control repeated on every row would pull the eye to the one thing the
+   operator is usually not doing. It appears on hover and on keyboard focus, so
+   it is never mouse-only. */
+.perm-revoke {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--snap), color var(--snap), border-color var(--snap);
+}
+
+.perm-row:hover .perm-revoke,
+.perm-revoke:focus-visible { opacity: 1; }
+
+.perm-revoke:hover,
+.perm-revoke:focus-visible {
+  color: var(--alert, #ff5533);
+  border-color: var(--alert, #ff5533);
+}
+
+/* ARMED. The confirm is always visible once raised — an armed row must never
+   be able to hide itself by the pointer drifting off, or the operator loses
+   track of which grant the question belongs to. */
+.perm-confirm {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.perm-yes,
+.perm-no {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+/* The destructive answer wears --alert; KEEP stays neutral, so the colour is
+   carried by the act that changes something. */
+.perm-yes { color: var(--alert, #ff5533); border-color: var(--alert, #ff5533); }
+.perm-no { color: var(--color-text-tertiary); }
+.perm-no:hover { color: var(--color-text-primary); }
+.perm-yes:disabled,
+.perm-no:disabled { opacity: 0.5; cursor: default; }

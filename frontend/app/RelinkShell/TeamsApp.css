@@ -1,0 +1,442 @@
+/* TeamsApp — LINE & CYCLE. A monochrome composer; SIGNAL marks the live run
+   and a completed member's output. */
+
+.teams {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.teams-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.teams-head-label { font-size: 10px; letter-spacing: 0.2em; color: var(--color-text-secondary); }
+.teams-head-cap { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.teams-head-cap.is-stale { color: var(--alert); }
+
+/* ── team identity: designation + hand-offs posture ─────────────────────── */
+.teams-identity {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) 0;
+}
+.teams-name {
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px; letter-spacing: 0.14em;
+  padding: var(--space-1) var(--space-2);
+}
+.teams-name::placeholder { color: var(--color-text-tertiary); }
+.teams-goal {
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px; letter-spacing: 0.14em; line-height: 1.7;
+  padding: var(--space-1) var(--space-2);
+  resize: vertical;
+}
+.teams-goal::placeholder { color: var(--color-text-tertiary); }
+.teams-step-done {
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 9px; letter-spacing: 0.12em;
+  padding: var(--space-1) var(--space-2);
+}
+.teams-step-done::placeholder { color: var(--color-text-tertiary); }
+.teams-handoffs { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.teams-handoffs-toggle {
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-secondary); font-family: var(--font-data);
+  font-size: 9px; letter-spacing: 0.16em; padding: var(--space-1) var(--space-2);
+  cursor: pointer; transition: color var(--snap), border-color var(--snap);
+}
+.teams-handoffs-toggle.is-on { color: var(--signal); border-color: var(--signal-dim); }
+.teams-handoffs-toggle:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.teams-handoffs-toggle:disabled { opacity: 0.35; cursor: default; }
+.teams-handoffs-hint { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+.teams-steps {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.teams-step {
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.teams-step-top { display: flex; align-items: center; gap: var(--space-2); }
+.teams-step-n {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); font-size: 10px; color: var(--color-text-tertiary);
+}
+.teams-step-who {
+  flex: 1 1 auto;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+}
+.teams-step-x {
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-tertiary); cursor: pointer;
+  width: 22px; height: 22px; line-height: 1; font-size: 14px;
+  transition: color var(--snap), border-color var(--snap);
+}
+.teams-step-x:hover:not(:disabled) { color: var(--alert); border-color: var(--alert); }
+.teams-step-x:disabled { opacity: 0.3; cursor: default; }
+
+.teams-step-task {
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  padding: var(--space-2);
+  resize: vertical;
+}
+.teams-step-task::placeholder { color: var(--color-text-tertiary); }
+
+.teams-step-needs { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.teams-needs-label { font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.teams-needs-none { font-size: 9px; color: var(--color-text-tertiary); }
+.teams-need-chip {
+  min-width: 20px; height: 18px;
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-tertiary); font-family: var(--font-data); font-size: 10px;
+  cursor: pointer; transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.teams-need-chip.is-on { color: var(--signal); border-color: var(--signal-dim); background: var(--color-glass-light); }
+
+.teams-actions {
+  display: flex; gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+.teams-add, .teams-run {
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-secondary); font-family: var(--font-data);
+  font-size: 10px; letter-spacing: 0.16em; padding: var(--space-2) var(--space-3);
+  cursor: pointer; transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.teams-add { flex: 0 0 auto; }
+.teams-run { flex: 1 1 auto; }
+.teams-add:hover:not(:disabled), .teams-run:hover:not(:disabled) {
+  color: var(--signal); border-color: var(--signal-dim); background: var(--color-glass-light);
+}
+.teams-add:disabled, .teams-run:disabled { opacity: 0.35; cursor: default; }
+
+.teams-results { border-top: 1px solid var(--line); padding: var(--space-3); }
+.teams-board { border: 1px solid var(--line); padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
+.teams-board-h { margin: 0 0 var(--space-1); font-size: 9px; letter-spacing: 0.2em; color: var(--color-heading); }
+.teams-board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.teams-board-row { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.teams-board-who { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.teams-board-state { font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.teams-board-row.is-working .teams-board-state { color: var(--signal); }
+.teams-board-row.is-done .teams-board-state { color: var(--signal-dim); }
+.teams-board-status { flex: 1 1 100%; margin: 0; font-size: 10px; line-height: 1.6; color: var(--color-text-tertiary); white-space: pre-wrap; }
+.teams-results-h { margin: 0 0 var(--space-2); font-size: 10px; letter-spacing: 0.16em; color: var(--color-heading); }
+.teams-result-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.teams-result { border: 1px solid var(--line); padding: var(--space-2) var(--space-3); }
+.teams-result.is-done { border-color: var(--signal-dim); }
+.teams-result-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.teams-result-who { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
+.teams-result.is-done .teams-result-who { color: var(--signal); }
+.teams-result-state { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.teams-result-task { margin: var(--space-1) 0 0; font-size: 10px; letter-spacing: 0.04em; color: var(--color-text-tertiary); }
+.teams-result-out {
+  margin: var(--space-2) 0 0; font-family: var(--font-voice); font-size: var(--text-sm);
+  color: var(--color-text-secondary); line-height: var(--leading-relaxed); white-space: pre-wrap;
+}
+.teams-err { margin: var(--space-2) 0 0; font-family: var(--font-data); font-size: 10px; color: var(--alert); }
+
+/* ── Tabs: FORM A TEAM | TRIAL ─────────────────────────────────────────── */
+.teams-tabs { display: flex; gap: var(--space-2); }
+.teams-tab {
+  background: transparent; border: 1px solid transparent; border-bottom-color: transparent;
+  color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.2em;
+  padding: var(--space-1) var(--space-2); cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.teams-tab:hover { color: var(--color-text-secondary); }
+.teams-tab.is-on { color: var(--color-text-primary); border-color: var(--line); border-bottom-color: var(--signal-dim); }
+
+.teams-step-role {
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px; letter-spacing: 0.14em;
+  padding: var(--space-1) var(--space-2);
+}
+.teams-step-role::placeholder { color: var(--color-text-tertiary); }
+.teams-result-role { font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.teams-result.is-done .teams-result-role { color: var(--signal-dim); }
+
+/* ── BRICKWORKS trial panel ────────────────────────────────────────────── */
+.trial { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
+.trial-blurb { margin: 0; font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); line-height: 1.7; }
+
+.trial-pick { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.trial-pick-label { font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.trial-member {
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-secondary); font-family: var(--font-voice); font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-3); cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.trial-member.is-on { color: var(--signal); border-color: var(--signal-dim); background: var(--color-glass-light); }
+.trial-member:disabled { opacity: 0.35; cursor: default; }
+
+.trial-roles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.trial-role {
+  display: flex; align-items: baseline; gap: var(--space-3);
+  border: 1px solid var(--line); padding: var(--space-1) var(--space-3);
+}
+.trial-role.is-done { border-color: var(--signal-dim); }
+.trial-role-name { width: 64px; font-size: 10px; letter-spacing: 0.16em; color: var(--color-text-secondary); }
+.trial-role-who { flex: 1 1 auto; font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
+.trial-role.is-done .trial-role-who { color: var(--signal); }
+.trial-role-state { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.trial-seat-who {
+  flex: 1 1 auto;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  padding: 2px var(--space-2);
+}
+.trial-role.is-done .trial-seat-who { color: var(--signal); }
+
+/* ── the locked prompts, readable before a run ───────────────────────────── */
+.trial-prompts-toggle {
+  align-self: flex-start;
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-secondary); font-family: var(--font-data);
+  font-size: 9px; letter-spacing: 0.16em; padding: var(--space-1) var(--space-2);
+  cursor: pointer; transition: color var(--snap), border-color var(--snap);
+}
+.trial-prompts-toggle:hover { color: var(--signal); border-color: var(--signal-dim); }
+.trial-prompts { display: flex; flex-direction: column; gap: var(--space-1); }
+.trial-prompts-note { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); line-height: 1.7; }
+.trial-prompt { border: 1px solid var(--line); }
+.trial-prompt summary {
+  padding: var(--space-1) var(--space-2); cursor: pointer;
+  font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-secondary);
+}
+.trial-prompt-text {
+  margin: 0; padding: var(--space-2);
+  font-size: 10px; line-height: 1.7; color: var(--color-text-tertiary);
+  white-space: pre-wrap; word-break: break-word;
+  border-top: 1px solid var(--line);
+  max-height: 40vh; overflow-y: auto;
+}
+.trial-wave-ledger { display: block; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+
+/* START rides the card like every one-shot bench — same control, same law. */
+.trial-card-start .trial-run { width: auto; }
+
+.trial-card { border: 1px solid var(--line); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.trial-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.trial-verdict { font-size: var(--text-sm); letter-spacing: 0.2em; }
+.trial-verdict.is-ok { color: var(--signal); }
+.trial-verdict.is-warn { color: var(--color-text-secondary); }
+.trial-verdict.is-bad { color: var(--alert); }
+.trial-card-meta { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+.trial-checks {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-1) var(--space-3);
+}
+.trial-check { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.trial-check.is-ok { color: var(--color-text-secondary); }
+.trial-check.is-ok .trial-check-mark { color: var(--signal); }
+
+.trial-times { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.trial-time { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+.trial-play {
+  background: transparent; border: 1px solid var(--signal-dim);
+  color: var(--signal); font-family: var(--font-data); font-size: 10px; letter-spacing: 0.2em;
+  padding: var(--space-2) var(--space-3); cursor: pointer;
+  transition: background var(--snap);
+}
+.trial-play:hover { background: var(--color-glass-light); }
+
+.trial-game {
+  width: 100%; aspect-ratio: 4 / 3; max-height: 400px;
+  border: 1px solid var(--line); background: #000;
+}
+
+.trial-history { border-top: 1px solid var(--line); padding-top: var(--space-2); }
+.trial-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.trial-history-row { font-size: 10px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.trial-history-row.is-ok { color: var(--color-text-secondary); }
+.trial-history-open {
+  background: transparent; border: none; padding: 0;
+  font-size: 10px; letter-spacing: 0.1em; color: inherit;
+  cursor: pointer; text-align: left;
+  transition: color var(--snap);
+}
+.trial-history-open:hover:not(:disabled) { color: var(--signal); }
+.trial-history-open:disabled { cursor: default; opacity: 0.5; }
+
+/* ── Trial v2: refinement loops + wave arc ─────────────────────────────── */
+.trial-loops { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.trial-loop-chip {
+  min-width: 24px; height: 20px;
+  background: transparent; border: 1px solid var(--line);
+  color: var(--color-text-tertiary); font-size: 10px;
+  cursor: pointer; transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.trial-loop-chip.is-on { color: var(--signal); border-color: var(--signal-dim); background: var(--color-glass-light); }
+.trial-loop-chip:disabled { opacity: 0.35; cursor: default; }
+.trial-loops-hint { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.trial-seats-hint { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+.trial-waves { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.trial-wave {
+  border: 1px solid var(--line); padding: var(--space-1) var(--space-2);
+  font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary);
+}
+.trial-wave.is-ok { color: var(--signal); border-color: var(--signal-dim); }
+.trial-wave.is-warn { color: var(--color-text-secondary); }
+.trial-wave.is-bad { color: var(--alert); border-color: var(--alert); }
+.trial-wave.is-live { color: var(--color-text-secondary); border-style: dashed; }
+
+/* --- drop recovery: failed states, torches, past runs (resume feed) --- */
+.teams-board-row.is-failed .teams-board-state { color: var(--alert); }
+.teams-result.is-failed { border-color: var(--alert); }
+.teams-result.is-failed .teams-result-state { color: var(--alert); }
+.teams-result-failwhy { margin: var(--space-1) 0 0; font-size: 9px; letter-spacing: 0.1em; color: var(--alert); }
+
+.teams-torches { margin-top: var(--space-3); }
+.teams-torch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.teams-torch-row { border-left: 1px solid var(--line); padding-left: var(--space-2); }
+.teams-torch-who { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.teams-torch-text {
+  margin: 2px 0 0; font-family: var(--font-data); font-size: var(--text-xs);
+  color: var(--color-text-secondary); white-space: pre-wrap;
+}
+
+.teams-failed-close { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); flex-wrap: wrap; }
+.teams-resume {
+  border: 1px solid var(--signal-dim); background: none; padding: var(--space-1) var(--space-2);
+  font-size: 9px; letter-spacing: 0.14em; color: var(--signal); cursor: pointer;
+}
+.teams-resume:hover { border-color: var(--signal); }
+.teams-resume:disabled { opacity: 0.35; cursor: default; }
+
+.teams-past { margin-top: var(--space-4); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.teams-past-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.teams-past-row { display: flex; align-items: center; gap: var(--space-3); }
+.teams-past-name { font-size: 10px; color: var(--color-text-primary); }
+.teams-past-state { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.teams-past-state.is-done { color: var(--signal-dim); }
+.teams-past-state.is-failed { color: var(--alert); }
+.teams-past-state.is-running { color: var(--color-text-secondary); }
+.teams-past-meta { font-size: 9px; color: var(--color-text-tertiary); }
+
+/* ── ONE-SHOT TRIALS — the community benchmarks, one click, watch the stream ── */
+.oneshot-trials {
+  border: 1px solid var(--hairline);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.oneshot-trials-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.oneshot-lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.oneshot-lead select {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  padding: 3px 8px;
+  font: inherit;
+}
+.oneshot-trials-hint {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.oneshot-qa { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.oneshot-qa-chip {
+  min-width: 34px; height: 20px;
+  background: transparent; border: 1px solid var(--hairline);
+  color: var(--ink-dim); font-size: 10px;
+  cursor: pointer;
+}
+.oneshot-qa-chip.is-on { color: var(--signal); border-color: var(--signal); }
+.oneshot-qa-chip:disabled { opacity: 0.35; cursor: default; }
+.oneshot-qa-hint { color: var(--ink-dim); font-size: 10px; }
+.oneshot-bench-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.oneshot-bench {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--hairline);
+  padding: 8px 10px;
+}
+.oneshot-bench-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.oneshot-bench-title { color: var(--ink); }
+.oneshot-bench-source { color: var(--ink-dim); font-size: 10px; }
+.oneshot-bench button {
+  background: transparent;
+  color: var(--signal);
+  border: 1px solid var(--signal);
+  padding: 5px 14px;
+  font: inherit;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.oneshot-bench button:disabled { opacity: 0.4; cursor: default; }
+.oneshot-note { margin: 0; font-size: 11px; letter-spacing: 0.04em; }
+.oneshot-note.ok { color: var(--signal); }
+.oneshot-note.err { color: var(--alert, #e0604f); }

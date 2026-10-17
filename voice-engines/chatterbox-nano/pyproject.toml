@@ -1,0 +1,33 @@
+[project]
+name = "chatterbox-nano-stream"
+version = "0.1.0"
+description = "One-voice LIGHT tier spike: Chatterbox Nano (ResembleAI, MIT, 110M) streaming on the CPU"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # master carries the Nano loader (nano=True); PyPI 0.1.7 does not. Same pin as scripts/voice-bakeoff.
+    "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox@5de7a54aa4e5e2baadb0182dde554908b48b85c2",
+    "torch==2.8.0",
+    "torchaudio==2.8.0",
+    "onnxruntime>=1.22",
+    "soundfile>=0.12",
+    "numpy<2",
+    "huggingface_hub",
+    "tokenizers",
+    # the speak-protocol sidecar (server.py + ../_speak/)
+    "fastapi==0.142.2",
+    "uvicorn==0.54.0",
+]
+
+[tool.uv]
+package = false
+# chatterbox-tts pins torch==2.6.0; this tier is CPU-only, so take the CPU wheels.
+override-dependencies = ["torch==2.8.0", "torchaudio==2.8.0"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

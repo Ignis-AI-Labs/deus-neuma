@@ -1,0 +1,40 @@
+.witness-attunement-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+.witness-attunement-notice--standalone {
+  max-width: 48rem;
+  margin: var(--space-12) auto;
+  padding: var(--space-6);
+}
+
+.witness-attunement-notice h3,
+.witness-attunement-notice p {
+  margin: 0;
+}
+
+.witness-attunement-notice h3,
+.witness-attunement-actions button {
+  font-size: var(--text-sm);
+}
+
+.witness-attunement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.witness-attunement-actions button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}

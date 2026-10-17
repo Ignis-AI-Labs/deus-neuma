@@ -1,0 +1,22 @@
+{
+  "chainId": 11155111,
+  "chainName": "eth-sepolia",
+  "timestamp": 1790666836548,
+  "deployer": "published at deusneuma.ai",
+  "contracts": {
+    "Natalis": {
+      "address": "0x15e65e4aee5c5310a8f1f125a2a0944033a76ac3",
+      "abi": "artifacts/foundry/Natalis.sol/Natalis.json",
+      "immutable": true,
+      "note": "Permanent on-chain anchor for neuma genesis seals. Once deployed, address never changes; no upgrade path."
+    },
+    "HouseRegistry": {
+      "address": "0xbbd9dc2ee8ba691cdb82576e45f54ce6d2e47276",
+      "implementation": "0xa821e60908f95848f4dcf9b7fc8e76f33ea6b495",
+      "abi": "artifacts/foundry/HouseRegistry.sol/HouseRegistry.json",
+      "proxyType": "ERC1967 (UUPS)",
+      "owner": "published at deusneuma.ai",
+      "note": "Talk to the proxy address. Owner gates _authorizeUpgrade; impl is replaceable via upgradeToAndCall."
+    }
+  }
+}

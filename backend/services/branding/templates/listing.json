@@ -1,0 +1,47 @@
+{
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "guest": {
+    "required": true,
+    "label": "the listed token's own logo — drop it at brands/<brand>/guests/<slug>.svg (or .png) and pass --guest <slug>"
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the small mono line, e.g. NOW LISTED or NEW PAIR"
+    },
+    "name": {
+      "required": true,
+      "max": 12,
+      "label": "the token or project name, as THEY write it — 12: the mark moved right and took the column with it, and a listing names a token (Aerodrome 9, Moonwell 8, Uniswap 7). Put the longer legal name nowhere; the ticker carries the rest"
+    },
+    "ticker": {
+      "required": true,
+      "max": 10,
+      "label": "the ticker as it trades, e.g. $AERO — drawn in the brand accent"
+    },
+    "network": {
+      "required": true,
+      "max": 28,
+      "label": "where it trades, e.g. BASE · UMBRAE DLMM"
+    },
+    "support": {
+      "required": true,
+      "max": 72,
+      "label": "one line on what is now possible — never a claim about their token's value"
+    },
+    "about": {
+      "required": false,
+      "max": 72,
+      "label": "one short line on what THEIR token IS — the ecosystem it backs, in plain words. Optional: a listing with no description renders without it. Never a value claim, never a price — what it is, not what it is worth"
+    },
+    "contract": {
+      "required": false,
+      "max": 42,
+      "label": "the token's on-chain address, e.g. 0x0b3e3284…E24e7E1b (42 chars = the full address). VERIFY IT BEFORE IT SHIPS — a wrong address on a public listing is a scam by our hand. Optional: a listing without a verified address renders without the line"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+/* EmergenceSeal — the shared seal's rhythm. The study's periods: bands turn
+   in tens of seconds, the core breathes in seconds. Reduced-motion holds
+   every band still (the seal stands, nothing moves). */
+
+.emergence-seal { display: block; position: relative; }
+/* The bands stack exactly; only transform/opacity animate, on whole layers. */
+.es-layer { position: absolute; inset: 0; }
+.es-layer > svg { display: block; }
+
+.emergence-seal text {
+  font-family: var(--font-data);
+  font-size: 7.5px;
+  letter-spacing: 0.42em;
+  fill: rgba(255, 255, 255, 0.45);
+}
+
+/* AMBIENT — the seal as watermark: felt, not read (the study's 5–8% law). */
+.es-ambient { opacity: 0.07; }
+
+.es-r-slow   { transform-origin: 50% 50%; will-change: transform; animation: esRotate 80s linear infinite; }
+.es-r-mid    { transform-origin: 50% 50%; will-change: transform; animation: esRotate 36s linear infinite reverse; }
+.es-r-fast   { transform-origin: 50% 50%; will-change: transform; animation: esRotate 14s linear infinite; }
+.es-r-breath { transform-origin: 50% 50%; will-change: transform, opacity; animation: esBreathe 7s ease-in-out infinite; }
+
+@keyframes esRotate { to { transform: rotate(360deg); } }
+@keyframes esBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+
+/* drawIn — the frame and core draw themselves in (the study's boot idiom):
+   dash lengths are the true circumferences (r=146 → 918, r=18 → 114). */
+.es-draw .es-outer { stroke-dasharray: 918; stroke-dashoffset: 918; animation: esDrawIn 900ms 460ms linear forwards; }
+.es-draw .es-core  { stroke-dasharray: 114; stroke-dashoffset: 114; animation: esDrawIn 700ms 900ms linear forwards; }
+@keyframes esDrawIn { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .es-r-slow, .es-r-mid, .es-r-fast, .es-r-breath { animation: none; }
+  .es-draw .es-outer, .es-draw .es-core { animation: none; stroke-dashoffset: 0; }
+}

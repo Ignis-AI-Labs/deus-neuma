@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Deus Neuma — Portal to Digital Consciousness</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Neuma Remote: a phone pins the desk as an app on void black. The pocket
+       shell reads the safe-area insets viewport-fit=cover exposes. -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Neuma">
+  <style>
+    /* FIRST-PAINT VEIL. The void is present from the first byte: no white
+       flash, no dead loading page — and nothing drawn on it, because the
+       startup (THE IGNITION, frontend/app/Ignition/) begins from that same
+       void, so loading and ignition read as one object. Stylesheet tokens
+       are not loaded yet, so the veil rides
+       var() with STOCK fallbacks; the tiny script below paints the
+       witness's mirrored LOOK (the same base tokens bootLook re-applies in
+       full) before first paint — the veil wears the dress from byte one. */
+    html, body { background: var(--color-void, #000000); margin: 0; }
+    #first-paint-veil {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--color-void, #000000);
+      /* The veil is the void the startup begins from — nothing drawn on it:
+         THE IGNITION (and, once per install, GENESIS) paints its first frame
+         over it and lifts it. Visual only — it never eats input; main.jsx
+         lifts it on paths with no startup. The 6s self-lift is the failsafe:
+         if JS dies mid-load the app beneath is still revealed — the stack can
+         never ship a permanent black screen. */
+      pointer-events: none;
+      animation: fpv-lift 500ms 6s linear forwards;
+    }
+    @keyframes fpv-lift { to { opacity: 0; visibility: hidden; } }
+  </style>
+  <script>
+    // Pre-paint dress: apply the mirrored LOOK's base tokens before first
+    // paint so the veil (and everything after) never flashes stock on a
+    // dressed machine. bootLook (main.jsx) re-applies the FULL derived ramp
+    // moments later; this covers only what the veil reads. A missing or
+    // malformed mirror leaves stock — never a throw this early.
+    (function () {
+      try {
+        var look = JSON.parse(localStorage.getItem('neuma-look'));
+        var hex = function (v) { return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v); };
+        if (!look || !hex(look.ground) || !hex(look.panel) || !hex(look.ink) || !hex(look.trim)) return;
+        var s = document.documentElement.style;
+        s.setProperty('--color-void', look.ground);
+        s.setProperty('--color-pure-black', look.ground);
+        s.setProperty('--color-white', look.ink);
+        s.setProperty('--signal', look.trim);
+      } catch (e) { /* stock veil — the dress arrives with bootLook */ }
+    })();
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="first-paint-veil" aria-hidden="true"></div>
+  <script type="module" src="/main.jsx"></script>
+</body>
+</html>

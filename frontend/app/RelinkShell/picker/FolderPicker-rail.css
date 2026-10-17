@@ -1,0 +1,92 @@
+/* FolderPicker rail — PLACES / PINNED / DRIVES / RECENT as one vertical
+   instrument on instrument paper (the 24px grid structural zones carry).
+   Each item reads name over where-it-lives; the place holding the current
+   folder carries a signal bar and signal name. */
+
+.picker-rail {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-4);
+  border-right: 1px solid var(--line);
+  background-color: var(--color-glass-light);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.picker-railsec + .picker-railsec { margin-top: var(--space-3); }
+.picker-railhead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+.picker-railhead-rule { flex: 1 1 auto; height: 1px; background: var(--line); }
+.picker-railhead-count { font-variant-numeric: tabular-nums; letter-spacing: 0.1em; }
+
+.picker-raillist { margin: 0; padding: 0; list-style: none; }
+.picker-railitem {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.picker-railitem:hover { background: var(--color-glass-hover); color: var(--color-text-primary); }
+.picker-railitem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 2px;
+  background: var(--signal);
+  opacity: 0;
+  transform: scaleY(0);
+  transition: opacity var(--dur-snap) linear, transform var(--dur-snap) var(--ease-snap);
+}
+.picker-railitem.is-active { background: var(--color-glass-hover); }
+.picker-railitem.is-active::before { opacity: 1; transform: scaleY(1); }
+.picker-railitem.is-active .picker-railname,
+.picker-railitem.is-active .picker-railglyph { color: var(--signal); }
+
+.picker-railglyph { flex: 0 0 auto; display: flex; padding-top: 2px; color: var(--color-text-tertiary); }
+.picker-railitem:hover .picker-railglyph { color: var(--color-text-secondary); }
+.picker-railtext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.picker-railname {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-railsub {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl; /* the nearest folders of a long path stay in view */
+  text-align: left;
+}
+
+@container picker (max-width: 640px) {
+  .picker-rail { max-height: 148px; border-right: none; border-bottom: 1px solid var(--line); }
+}

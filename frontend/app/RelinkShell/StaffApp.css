@@ -1,0 +1,197 @@
+/* StaffApp — the CHIEF OF STAFF window. LINE & CYCLE: monochrome at rest;
+   --signal marks what is live (the held seat, waiting dispatches, a run in
+   flight), --alert only where something failed. */
+
+.staff {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.staff-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.staff-head-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.staff-head-seat {
+  flex: 1 1 auto;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--signal);
+}
+.staff-head-seat.is-empty { color: var(--color-text-disabled); }
+
+.staff-error {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--alert);
+}
+
+.staff-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.staff-sec-head {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.staff-sub-head {
+  margin: var(--space-2) 0 0;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+
+.staff-seat-held {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--signal);
+}
+.staff-seat-empty {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-disabled);
+}
+.staff-seat-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.staff-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.staff-confirm-notice {
+  flex: 1 1 100%;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.staff-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: 4px var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.staff-btn:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.staff-btn:disabled { color: var(--color-text-disabled); cursor: default; }
+.staff-btn.is-danger:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
+
+.staff-house {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+}
+.staff-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.staff-roster-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+.staff-roster-title {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.staff-roster-holder {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.staff-roster-holder.label-data { font-family: var(--font-data); letter-spacing: 0.12em; }
+
+.staff-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.staff-tag.is-signal { color: var(--signal); border-color: var(--signal-dim); }
+.staff-tag.is-live { color: var(--signal); border-color: var(--signal-dim); }
+.staff-tag.is-loud { color: var(--alert); border-color: var(--alert-dim); }
+
+.staff-line {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+}
+.staff-line.is-signal { color: var(--signal); }
+.staff-post {
+  margin: 0;
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+.staff-plan-detail {
+  margin: 0;
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.staff-runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.staff-run {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.staff-run-line {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.staff-run.is-live .staff-run-line { color: var(--signal); }
+.staff-run.is-loud .staff-run-line { color: var(--alert); }

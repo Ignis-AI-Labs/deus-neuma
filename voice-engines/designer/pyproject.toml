@@ -1,0 +1,29 @@
+[project]
+name = "neuma-voice-designer"
+version = "0.1.0"
+description = "Voice designer sidecar for the forge's describe door: OpenBMB VoxCPM2 voice design (description -> clip + words). Its own venv: VoxCPM2's torch/transformers pins conflict with the csm engine's."
+requires-python = ">=3.12,<3.13"
+# Pins are the dia-voxcpm bake-off venv that produced the designed voices Founder heard
+# (scripts/voice-bakeoff/engines/dia-voxcpm), minus dia2.
+dependencies = [
+  "torch==2.11.0",
+  "torchaudio==2.11.0",
+  "voxcpm==2.0.3",
+  "transformers==5.12.1",
+  "numpy==2.5.3",
+  "soundfile==0.14.0",
+  "fastapi==0.142.2",
+  "uvicorn==0.54.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+torchaudio = [{ index = "pytorch-cu128" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

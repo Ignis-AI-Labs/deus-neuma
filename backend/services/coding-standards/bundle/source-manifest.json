@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "version": "2.0.0",
+  "core": ["POLICY", "GNOSIS", "KISS", "SECURITY", "FUNCTIONAL", "PLANNING", "TESTING", "BRANCHING", "WRITING"],
+  "modules": {
+    "WORKFLOW": "Shared work, substantial tasks, or interruption handoff",
+    "TODO": "Repositories using a local task tracker",
+    "DATA": "Storage, migrations, service clients, caches, or metrics",
+    "OPERATIONS": "Environments, consequential writes, deployments, or shared compute",
+    "RELEASES": "Versioned applications, packages, APIs, or artifacts",
+    "ASSETS": "User interfaces, brand assets, or generated exports",
+    "FUND_FLOW_PROOF": "Any movement or attribution of value",
+    "SECURITY_CHECKLIST": "Whole-system audits or material attack-surface changes"
+  }
+}

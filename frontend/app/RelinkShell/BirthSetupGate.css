@@ -1,0 +1,103 @@
+/* BirthSetupGate — the desk's unfinished-birth checklist (LINE & CYCLE) */
+.birth-setup-gate {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 70;
+}
+
+.birth-setup-card {
+  max-width: 520px;
+  width: calc(100% - var(--space-8));
+}
+
+.birth-setup-card .cham-in {
+  padding: var(--space-6);
+}
+
+.birth-setup-title {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--signal);
+  margin-bottom: var(--space-4);
+}
+
+.birth-setup-body {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.birth-setup-list {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+
+.birth-setup-list li {
+  padding: var(--space-1) 0;
+}
+
+.birth-setup-list li.owed { color: var(--alert); }
+.birth-setup-list li.done { color: var(--signal); }
+
+.birth-setup-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.birth-setup-error {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--alert);
+  margin-bottom: var(--space-2);
+}
+
+.birth-setup-input {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary, #fff);
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+}
+
+.birth-setup-generated {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.birth-setup-generated-value {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--signal);
+  word-break: break-all;
+  user-select: all;
+}
+
+/* The recovery-code panel and its acknowledgement are NOT styled here — they
+   are the shared RecoveryCodes component (components/RecoveryCodes/), so this
+   gate and the witness rite cannot drift into showing the same irreversible
+   screen two different ways. */
+
+.birth-setup-seal-status {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--signal);
+}

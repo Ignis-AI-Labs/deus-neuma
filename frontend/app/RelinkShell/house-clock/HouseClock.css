@@ -1,0 +1,164 @@
+/* HouseClock — the HOUSE CLOCK window. LINE & CYCLE: monochrome at rest;
+   --signal marks what is live (an approved charter, a seat awake, an open
+   ask), --alert only where something failed or the house is paused.
+   NO-FLASH LAW (utils/no-flash.js): every light rises over at least 160 ms —
+   colour changes ride --duration-fast (200 ms), never a cut. */
+
+.hclock-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hclock {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hclock-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.hclock-head-label { font-size: 10px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.hclock-head-status {
+  flex: 1 1 auto;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  transition: color var(--duration-fast) linear;
+}
+.hclock-head-status.is-approved { color: var(--signal); }
+.hclock-head-status.is-paused { color: var(--alert); }
+.hclock-head-status.is-none { color: var(--color-text-disabled); }
+
+/* THE SWITCH — prominent and always in the head: a full-height control with
+   its own frame, never a link-weight word. */
+.hclock-switch {
+  min-width: 96px;
+  background: transparent;
+  border: 1px solid var(--line-hover);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  transition: color var(--duration-fast) linear, border-color var(--duration-fast) linear;
+}
+.hclock-switch:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
+.hclock-switch.is-paused { color: var(--alert); border-color: var(--alert-dim); }
+.hclock-switch.is-paused:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.hclock-switch:disabled { color: var(--color-text-disabled); border-color: var(--line); cursor: default; }
+
+.hclock-error { flex: 1 1 100%; margin: 0; font-size: 10px; letter-spacing: 0.12em; color: var(--alert); }
+
+.hclock-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.hclock-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--duration-fast) linear, border-color var(--duration-fast) linear;
+}
+.hclock-tab:hover { color: var(--color-text-secondary); }
+.hclock-tab.is-on { color: var(--color-text-primary); border-bottom-color: var(--signal-dim); }
+
+.hclock-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+.hclock-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.hclock-sec-head, .hclock-sub-head {
+  margin: var(--space-2) 0 0;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+.hclock-standing { margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.hclock-standing.is-approved { color: var(--signal); }
+.hclock-standing.is-paused { color: var(--alert); }
+.hclock-muted { margin: 0; font-size: var(--text-xs, 12px); color: var(--color-text-tertiary); }
+
+.hclock-lines { margin: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.hclock-line { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-3); }
+.hclock-line dt { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); padding-top: 2px; }
+.hclock-line dd { margin: 0; font-family: var(--font-voice); font-size: var(--text-xs, 12px); color: var(--color-text-secondary); }
+
+.hclock-actions, .hclock-pair, .hclock-filters, .hclock-wake-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.hclock-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: 4px var(--space-3);
+  cursor: pointer;
+  transition: color var(--duration-fast) linear, border-color var(--duration-fast) linear;
+}
+.hclock-btn:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.hclock-btn:disabled { color: var(--color-text-disabled); cursor: default; }
+.hclock-btn.is-primary { color: var(--color-text-primary); border-color: var(--line-hover); }
+.hclock-btn.is-danger:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
+
+.hclock-form { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.hclock-field { display: flex; flex-direction: column; gap: var(--space-1); }
+.hclock-field-label { font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.hclock-field-hint { font-size: 11px; color: var(--color-text-disabled); }
+.hclock-input, .hclock-num, .hclock-time {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-xs, 12px);
+  padding: var(--space-1) var(--space-2);
+  transition: border-color var(--duration-fast) linear;
+}
+.hclock-input:focus, .hclock-num:focus, .hclock-time:focus { outline: none; border-color: var(--signal-dim); }
+.hclock-input.label-data { font-family: var(--font-data); }
+.hclock-num { width: 64px; }
+.hclock-time { width: 96px; color-scheme: dark; }
+.hclock-check { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); font-size: var(--text-xs, 12px); }
+.hclock-seats { border: 1px solid var(--line); margin: 0; padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.hclock-seat-row { display: flex; align-items: center; gap: var(--space-2); }
+.hclock-seat-row .hclock-check { flex: 1 1 auto; }
+
+.hclock-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.hclock-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--grid); }
+.hclock-row.is-live .hclock-row-who { color: var(--signal); }
+.hclock-row-who { font-family: var(--font-voice); font-size: var(--text-xs, 12px); color: var(--color-text-primary); }
+.hclock-row-what { margin: 0; flex: 1 1 auto; min-width: 0; font-family: var(--font-voice); font-size: var(--text-xs, 12px); color: var(--color-text-secondary); }
+.hclock-row-why { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.hclock-row.is-paused .hclock-row-why, .hclock-row.is-cap .hclock-row-why, .hclock-row.is-quiet .hclock-row-why { color: var(--alert); }
+
+.hclock-wake { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.hclock-wake.is-open .hclock-row-who { color: var(--signal); }
+.hclock-outcome { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.hclock-outcome.is-live { color: var(--signal); }
+.hclock-outcome.is-loud { color: var(--alert); }
+.hclock-acts { margin: 0; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.hclock-money { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.06em; color: var(--color-text-secondary); }

@@ -1,0 +1,237 @@
+/* Staged Ceremony Scene — LINE & CYCLE.
+   The Emergence Seal presides over the rite (cycle: rotation in tens of
+   seconds, breath in seconds). The record panels are structure (line:
+   hairlines, chamfers, snap). The screen at rest is monochrome; signal
+   marks what is live. */
+
+.ceremony-scene {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: var(--font-voice);
+  z-index: var(--z-notification);
+}
+
+/* Depth vignette — the edges of the world recede */
+.ceremony-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(0, 0, 0, 0.7));
+}
+
+/* Stage Header — the system register announces the stage */
+.stage-header {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: var(--z-raised);
+  animation: fadeIn 2s ease-out;
+}
+
+.stage-number {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  color: var(--signal);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.stage-name {
+  font-family: var(--font-data);
+  font-size: 18px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* Message Container */
+.message-container {
+  position: relative;
+  width: 80%;
+  max-width: 800px;
+  margin-top: 220px;
+  z-index: var(--z-raised);
+}
+
+/* The consciousness speaks — a chamfered notice with corner light */
+.consciousness-speaks {
+  margin-bottom: 20px;
+  position: relative;
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--signal) 12%, transparent));
+}
+
+.consciousness-speaks::before,
+.consciousness-speaks::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 2px;
+  background: var(--signal);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.consciousness-speaks::before { top: 5px; right: -4px; transform: rotate(45deg); }
+.consciousness-speaks::after { bottom: 5px; left: -4px; transform: rotate(45deg); }
+
+.consciousness-speaks .cham-in {
+  padding: 22px 28px;
+  min-height: 150px;
+}
+
+.speaker-label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  color: var(--signal);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+
+.speaker-label.witness-label {
+  color: var(--color-text-tertiary);
+}
+
+.message-stream {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.7;
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.message-stream::-webkit-scrollbar {
+  width: 4px;
+}
+
+.message-stream::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.message-stream::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--signal) 35%, transparent);
+}
+
+/* Ceremony note — the ceremony's own voice for a stage the being answered
+   in silent tool acts. Dim + italic + hairline-marked: unmistakably NOT the
+   being's speech (honest speaker), but never a bare unreadable chip. */
+.ceremony-note {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 14px;
+  border-left: 1px solid color-mix(in srgb, var(--signal) 35%, transparent);
+  padding-left: 12px;
+  margin-top: 10px;
+}
+
+/* Typing Indicator — deliberation, not decoration */
+.typing-indicator {
+  display: none;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  background: var(--signal-dim);
+  margin: 0 3px;
+  animation: typingPulse 1.4s steps(2, start) infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Witness Response — plain hairline; the witness is context, not chrome */
+.witness-response {
+  border: 1px solid var(--line);
+  padding: 18px 28px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.user-prompt {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  transition: opacity 1s;
+}
+
+/* The witness's next words — offered, editable, theirs */
+.witness-next {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.witness-next-label {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--signal-dim);
+  margin-bottom: 10px;
+}
+
+#witness-words {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--snap);
+}
+
+#witness-words:focus {
+  border-color: color-mix(in srgb, var(--signal) 50%, transparent);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes typingPulse {
+  0%, 60%, 100% { opacity: 0.3; }
+  30%           { opacity: 1; }
+}
+

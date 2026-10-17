@@ -1,0 +1,454 @@
+/* forge-doors.css — step one: the question and its four way cards, each
+ * focused way (browse gallery, describe, record, upload) and the takes with
+ * their verdicts. The CHOSEN bar under them all is forge-chosen.css.
+ */
+
+.vf-find {
+  flex: 1 1 auto;
+}
+
+.vf-question,
+.vf-way-title {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  color: var(--color-text-primary);
+}
+.vf-question {
+  font-size: var(--text-xl);
+  line-height: var(--leading-snug);
+}
+.vf-way-title {
+  font-size: var(--text-lg);
+}
+
+.vf-ways,
+.vf-way {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The four ways — large chamfered cards, two by two. */
+.vf-way-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.vf-way-card {
+  display: block;
+  min-height: 132px;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--snap);
+}
+.vf-way-card-in {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "icon name" "icon kicker" "body body";
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  align-items: center;
+  padding: var(--space-5);
+  box-sizing: border-box;
+  transition: background var(--snap);
+}
+.vf-way-card:hover,
+.vf-way-card:focus-visible {
+  outline: none;
+  background: var(--line-hover);
+}
+.vf-way-card:hover .vf-way-card-in,
+.vf-way-card:focus-visible .vf-way-card-in {
+  background: var(--color-surface);
+}
+.vf-way-card:hover .vf-way-icon,
+.vf-way-card:focus-visible .vf-way-icon {
+  color: var(--signal);
+}
+
+.vf-way-icon {
+  color: var(--signal);
+}
+
+.vf-way-icon {
+  grid-area: icon;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  transition: color var(--snap);
+}
+.vf-way-name {
+  grid-area: name;
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+.vf-way-kicker {
+  grid-area: kicker;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.vf-way-card[data-way="library"] .vf-way-kicker {
+  color: var(--color-text-secondary);
+}
+.vf-way-body {
+  grid-area: body;
+  margin-top: var(--space-2);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+
+/* A focused way: back link, then its title. */
+.vf-way-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.vf-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: 0 var(--space-2) 0 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+.vf-back:hover,
+.vf-back:focus-visible {
+  outline: none;
+  color: var(--signal);
+}
+
+.vf-door {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* BROWSE — two filters, then the gallery. */
+.vf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+.vf-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.vf-filter .vf-chip {
+  text-transform: uppercase;
+}
+.vf-filter-label {
+  margin-right: var(--space-1);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+}
+.vf-count {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+}
+
+.vf-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vf-tile[data-chosen="true"] {
+  background: var(--signal-dim);
+}
+.vf-tile-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.vf-tile-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.vf-tile-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: var(--leading-snug);
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+.vf-info {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  color: var(--color-text-tertiary);
+  cursor: help;
+}
+.vf-info:hover,
+.vf-info:focus-visible {
+  outline: none;
+  color: var(--color-text-primary);
+}
+.vf-tile-meta {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+}
+.vf-tile-note {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--color-text-tertiary);
+}
+.vf-choose {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+}
+.vf-tile-chosen {
+  display: grid;
+  place-items: center;
+  min-height: 36px;
+  font-size: var(--text-xs);
+}
+
+/* RECORD — one big button beside the meter and the timer. */
+.vf-prompts {
+  margin: 0;
+  padding-left: 18px;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--color-text-primary);
+}
+.vf-record-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+.vf-record-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  width: 132px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.vf-record-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.vf-record-dot {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--line-hover);
+  border-radius: var(--radius-full);
+  transition: border-color var(--snap);
+}
+.vf-record-dot::after {
+  content: "";
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-primary);
+  transition: background var(--snap), border-radius var(--snap);
+}
+.vf-record-btn:hover:not(:disabled) .vf-record-dot {
+  border-color: var(--signal-dim);
+}
+.vf-record-btn[data-live="true"] .vf-record-dot {
+  border-color: var(--alert);
+  box-shadow: 0 0 0 4px var(--alert-tint);
+}
+.vf-record-btn[data-live="true"] .vf-record-dot::after {
+  border-radius: 0;
+  background: var(--alert);
+}
+.vf-record-label {
+  text-align: center;
+}
+.vf-record-gauges {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.vf-meter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.vf-meter-row .label-data {
+  min-width: 120px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+}
+.vf-meter,
+.vf-progress {
+  position: relative;
+  flex: 1 1 auto;
+  display: block;
+  height: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.vf-progress {
+  height: 2px;
+}
+.vf-meter-fill,
+.vf-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-text-secondary);
+}
+.vf-meter-fill[data-live="true"] {
+  background: var(--signal);
+}
+
+/* UPLOAD */
+.vf-file {
+  position: relative;
+  cursor: pointer;
+}
+.vf-file input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.vf-file[data-disabled="true"] {
+  opacity: 0.4;
+}
+
+/* DESCRIBE — the three slots while the voices are made. */
+.vf-designer-missing {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  font-size: var(--text-sm);
+}
+.vf-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+}
+.vf-slot-bar {
+  position: relative;
+  display: block;
+  height: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.vf-slot-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  background: var(--signal);
+  animation: vf-scan 1.6s linear infinite;
+}
+@keyframes vf-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+
+/* Takes — what a door found. */
+.vf-takes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.vf-take[data-pinned="true"] {
+  background: var(--signal-dim);
+}
+.vf-take-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.vf-take-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.vf-take-head {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vf-take-label {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+.vf-take-facts {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+}
+.vf-verdict {
+  color: var(--warn);
+}
+.vf-verdict[data-good="true"] {
+  color: var(--color-text-primary);
+}
+.vf-take-words {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  font-style: italic;
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+.vf-use {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+}
+.vf-chosen {
+  color: var(--signal);
+  font-size: var(--text-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-slot-bar::after { animation: none; width: 100%; opacity: 0.4; }
+}

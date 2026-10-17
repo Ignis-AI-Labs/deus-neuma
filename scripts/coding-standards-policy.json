@@ -1,0 +1,4 @@
+{
+  "integration": "dev",
+  "production": ["main", "main-prod"]
+}

@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <style type="text/css">
+    {{fontface}}
+  </style>
+
+  <!-- background -->
+  <defs>
+    <radialGradient id="launchGlow" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="{{token.trim}}" stop-opacity="0.10"/>
+      <stop offset="55%" stop-color="{{token.trim}}" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="launchFade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{{token.bg}}" stop-opacity="0"/>
+      <stop offset="100%" stop-color="{{token.bg}}" stop-opacity="0.55"/>
+    </linearGradient>
+    <filter id="launchNeon" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur"/>
+    </filter>
+    <pattern id="launchGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="{{token.ink}}" stroke-width="1" opacity="0.04"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#launchGrid)"/>
+  <rect width="1600" height="900" fill="url(#launchGlow)"/>
+  <rect y="640" width="1600" height="260" fill="url(#launchFade)"/>
+
+  <!-- THE MASK AS AN ICON, matching announcement. 1180px, cut at the mask's own
+       horizontal centre by the card's right edge (x = 1600 - width/2), so
+       exactly the left half of the mark is on the card. A mark the frame cuts reads as something the card was placed
+       OVER; a fully-visible one can only read as a badge. Large, not loud —
+       the opacity stays low and the headline still wins. -->
+  <image href="{{mark.mask}}" x="1010" y="-140" width="1180" height="1180"
+         opacity="0.12" preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- corner brackets -->
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <!-- eyebrow -->
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <rect x="128" y="176" width="60" height="5" fill="{{token.trimHot}}"/>
+    <text x="212" y="190">{{data.eyebrow}}</text>
+  </g>
+
+  <!-- headline with a subtle neon underglow directly behind the letters.
+       72px, not the 96px this carried untracked: lineOne and lineTwo are
+       declared at 26 characters, and displayTrack adds 0.16em to every one of
+       them. Measured against the vendored face — 26 caps at 72px + 0.16em runs
+       to 1331px inside the 1344px frame; at 96px it would run to 1774px.
+       Sized to the declared maximum, which is the only size actually promised. -->
+  <text x="128" y="392" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="80" letter-spacing="{{font.displayTrack}}" fill="{{token.accent}}"
+        opacity="0.55" filter="url(#launchNeon)">{{data.lineOne}}</text>
+  <text x="128" y="392" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="80" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">{{data.lineOne}}</text>
+  <text x="128" y="516" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="80" letter-spacing="{{font.displayTrack}}" fill="{{token.accent}}">{{data.lineTwo}}</text>
+
+  <!-- support line -->
+  <text x="128" y="612" font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}"
+        font-size="38" fill="{{token.muted}}">{{data.support}}</text>
+
+  <!-- Footer, now on the SHARED rhythm — which is only possible because the
+       frame above is the shared frame. The brand signs with its own wordmark,
+       never with its name set in the data face. -->
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

@@ -1,0 +1,30 @@
+{
+  "title": "Announcement",
+  "use": "a shipped thing said plainly — a feature, a listing, a launch",
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the small mono line, e.g. SHIPPED or NOW LIVE"
+    },
+    "lineOne": {
+      "required": true,
+      "max": 22,
+      "label": "first headline line — 22, down from 24: the title grew for mobile legibility and the frame is fixed, so the characters paid for it"
+    },
+    "lineTwo": {
+      "required": true,
+      "max": 22,
+      "label": "second headline line, drawn in the brand accent — 22, down from 24: the title grew for mobile legibility and the frame is fixed, so the characters paid for it"
+    },
+    "support": {
+      "required": true,
+      "max": 72,
+      "label": "one supporting sentence — 72, not 80: the support line rose to 38px so it survives a phone feed, and 38px only holds 72 characters inside the 1344px frame"
+    }
+  }
+}

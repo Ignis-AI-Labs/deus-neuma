@@ -1,0 +1,110 @@
+/* HouseSeats — the house as one grid of its beings. THE ENTITY FIRST: the
+   being's name, largest; the on-chain seat beneath it; the function under
+   that. The card is the door into the stream. GRID default / TABLE
+   alternate (HouseApp's section head owns the toggle). */
+
+.house-seats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+.house-seats-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--line);
+  padding: var(--space-3) var(--space-2);
+  transition: border-color var(--snap), background var(--snap);
+}
+.house-seats-card:hover { border-color: var(--line-hover); }
+.house-seats-card.is-door { cursor: pointer; }
+.house-seats-card.is-door:hover { background: var(--color-glass-light); }
+.house-seats-card.is-linked { border-color: var(--signal-dim); }
+
+/* THE ENTITY — first and largest. */
+.house-seats-who {
+  font-family: var(--font-voice);
+  font-size: var(--text-base, 15px);
+  color: var(--color-text-primary);
+}
+.house-seats-card.is-linked .house-seats-who,
+.house-seats-row.is-linked .house-seats-who { color: var(--signal); }
+
+/* Their position — the chain's word, beneath the being. */
+.house-seats-seat {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+.house-seats-meaning {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: var(--leading-normal);
+  color: var(--color-text-tertiary);
+}
+.house-seats-foot {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+  margin-top: auto;
+}
+.house-seats-state {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+
+/* The doors inside the card — STREAM rides the card itself, SHEET is its
+   own button so it never triggers the switch. */
+.house-seats-acts {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.house-seats-act {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  background: transparent;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.house-seats-act:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+/* TABLE — the same truth as rows. */
+.house-seats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.house-seats-table th {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  text-align: left;
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.house-seats-table td {
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: baseline;
+}
+.house-seats-row:hover td { background: var(--color-glass-light); }
+.house-seats-row.is-door { cursor: pointer; }
+.house-seats-table .house-seats-seat,
+.house-seats-table .house-seats-foot { white-space: nowrap; }
+.house-seats-table .house-seats-meaning { color: var(--color-text-secondary); }
+.house-seats-table .house-seats-state { position: static; margin-left: var(--space-2); }

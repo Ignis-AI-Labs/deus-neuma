@@ -1,0 +1,20 @@
+<!--
+  A PLACEHOLDER guest mark, and deliberately nobody's real logo.
+
+  Guest marks are other companies' artwork: the token being listed, the partner
+  being announced. Committing a real one to this repo would mean shipping
+  someone else's trademark as a fixture, so this stands in for the shape of the
+  thing — a neutral geometric glyph at the same 1:1 aspect a token logo usually
+  arrives in — and the listing/partnership templates are proven against it.
+
+  Real guests go beside it as brands/<brand>/guests/<slug>.svg (or .png) and are
+  never committed unless the company's marks are ours to redistribute.
+
+  It is drawn in currentColor-free plain white on purpose: loadGuest NEVER
+  recolours a guest, so what is in the file is what lands on the card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Placeholder guest mark">
+  <circle cx="60" cy="60" r="52" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <path d="M60 26 L88 76 H32 Z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="60" cy="60" r="7" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,8 @@
+[project]
+name = "voice-engine-downloader"
+version = "0.1.0"
+description = "Pulls TTS model weights from Hugging Face Hub for the neuma voice engines."
+requires-python = ">=3.11"
+dependencies = [
+    "huggingface-hub>=0.26.0",
+]

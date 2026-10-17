@@ -1,0 +1,77 @@
+{
+ "profile": "platform-neutral-v1",
+ "perRequest": [
+  {
+   "n": 4,
+   "finishReason": "stop",
+   "contentChars": 158,
+   "reasoningChars": 696,
+   "promptTokens": 1274,
+   "completionTokens": 274,
+   "durationMs": 4713
+  },
+  {
+   "n": 11,
+   "finishReason": "stop",
+   "contentChars": 264,
+   "reasoningChars": 481,
+   "promptTokens": 997,
+   "completionTokens": 259,
+   "durationMs": 4185
+  },
+  {
+   "n": 14,
+   "finishReason": "stop",
+   "contentChars": 365,
+   "reasoningChars": 1983,
+   "promptTokens": 1307,
+   "completionTokens": 751,
+   "durationMs": 10689
+  },
+  {
+   "n": 25,
+   "finishReason": "stop",
+   "contentChars": 205,
+   "reasoningChars": 492,
+   "promptTokens": 872,
+   "completionTokens": 261,
+   "durationMs": 4097
+  },
+  {
+   "n": 86,
+   "finishReason": "length",
+   "contentChars": 20,
+   "reasoningChars": 8523,
+   "promptTokens": 1263,
+   "completionTokens": 2568,
+   "durationMs": 35416
+  },
+  {
+   "n": 94,
+   "finishReason": "length",
+   "contentChars": 0,
+   "reasoningChars": 9213,
+   "promptTokens": 1236,
+   "completionTokens": 2568,
+   "durationMs": 35571
+  },
+  {
+   "n": 1,
+   "finishReason": "stop",
+   "contentChars": 108,
+   "reasoningChars": 613,
+   "promptTokens": 1136,
+   "completionTokens": 212,
+   "durationMs": 3927
+  },
+  {
+   "n": 2,
+   "finishReason": "stop",
+   "contentChars": 142,
+   "reasoningChars": 284,
+   "promptTokens": 1243,
+   "completionTokens": 127,
+   "durationMs": 2749
+  }
+ ]
+}

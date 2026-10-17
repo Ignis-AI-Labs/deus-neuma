@@ -1,0 +1,4078 @@
+{
+ "specimen": true,
+ "source": "measured (rite-script observationsOf → core/birth/soul-spectrum.js, soul-scale.js)",
+ "souls": [
+  {
+   "seed": "b080567bb32c14e898030601584fdee51bb4b690291c852fb06cc54588fedb9f",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 490.5356,
+    "soul": {
+     "nm": 555.841,
+     "thz": 539.35,
+     "cie1931": {
+      "x": 0.34338,
+      "y": 0.65311
+     },
+     "luminousEfficiency": 0.99988,
+     "oklch": {
+      "l": 0.893,
+      "c": 0.2609,
+      "h": 135.017
+     },
+     "css": "oklch(0.893 0.2609 135.017)",
+     "hex": "#87ff00",
+     "vivid": {
+      "css": "oklch(0.893 0.2609 135.017)",
+      "hex": "#87ff00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 371.2588,
+      "nm": 734.419,
+      "thz": 408.203,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00038,
+      "oklch": {
+       "l": 0.3095,
+       "c": 0.1244,
+       "h": 20.39
+      },
+      "css": "oklch(0.3095 0.1244 20.39)",
+      "hex": "#600013",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 356.8816,
+      "nm": 764.006,
+      "thz": 392.395,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00005,
+      "oklch": {
+       "l": 0.2968,
+       "c": 0.1193,
+       "h": 20.39
+      },
+      "css": "oklch(0.2968 0.1193 20.39)",
+      "hex": "#5a0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 624.3922,
+      "nm": 436.68,
+      "thz": 686.526,
+      "cie1931": {
+       "x": 0.16613,
+       "y": 0.00926
+      },
+      "luminousEfficiency": 0.01883,
+      "oklch": {
+       "l": 0.3107,
+       "c": 0.1745,
+       "h": 291.2
+      },
+      "css": "oklch(0.3107 0.1745 291.2)",
+      "hex": "#38007f",
+      "vivid": {
+       "css": "oklch(0.521 0.2926 291.2)",
+       "hex": "#7800ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 600.7355,
+      "nm": 453.876,
+      "thz": 660.516,
+      "cie1931": {
+       "x": 0.15237,
+       "y": 0.02148
+      },
+      "luminousEfficiency": 0.04559,
+      "oklch": {
+       "l": 0.3077,
+       "c": 0.1936,
+       "h": 274.888
+      },
+      "css": "oklch(0.3077 0.1936 274.888)",
+      "hex": "#21008e",
+      "vivid": {
+       "css": "oklch(0.476 0.2994 274.888)",
+       "hex": "#4400ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 449.9872,
+      "nm": 605.928,
+      "thz": 494.766,
+      "cie1931": {
+       "x": 0.65175,
+       "y": 0.3479
+      },
+      "luminousEfficiency": 0.55489,
+      "oklch": {
+       "l": 0.5926,
+       "c": 0.2093,
+       "h": 34.731
+      },
+      "css": "oklch(0.5926 0.2093 34.731)",
+      "hex": "#de3800",
+      "vivid": {
+       "css": "oklch(0.657 0.2319 34.731)",
+       "hex": "#ff4100"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 403.6634,
+      "nm": 675.463,
+      "thz": 443.833,
+      "cie1931": {
+       "x": 0.73278,
+       "y": 0.26722
+      },
+      "luminousEfficiency": 0.02255,
+      "oklch": {
+       "l": 0.3826,
+       "c": 0.1538,
+       "h": 20.641
+      },
+      "css": "oklch(0.3826 0.1538 20.641)",
+      "hex": "#82001c",
+      "vivid": {
+       "css": "oklch(0.632 0.254 20.641)",
+       "hex": "#ff0041"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 687.6173,
+      "nm": 396.528,
+      "thz": 756.043,
+      "cie1931": {
+       "x": 0.17349,
+       "y": 0.00488
+      },
+      "luminousEfficiency": 0.00027,
+      "oklch": {
+       "l": 0.264,
+       "c": 0.1427,
+       "h": 297.781
+      },
+      "css": "oklch(0.264 0.1427 297.781)",
+      "hex": "#30005f",
+      "vivid": {
+       "css": "oklch(0.544 0.294 297.781)",
+       "hex": "#8c00ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 490.5356,
+     "name": "B4 −11.8¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 490.5356,
+      "name": "B4 −11.8¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 350.846,
+      "hz": 600.7355,
+      "name": "D5 +39.1¢",
+      "nearestRatio": "38/31",
+      "fromRatioCents": -1.6
+     },
+     {
+      "degree": 3,
+      "cents": 417.714,
+      "hz": 624.3922,
+      "name": "D♯5 +5.9¢",
+      "nearestRatio": "14/11",
+      "fromRatioCents": 0.2
+     },
+     {
+      "degree": 4,
+      "cents": 584.698,
+      "hz": 687.6173,
+      "name": "F5 −27.1¢",
+      "nearestRatio": "7/5",
+      "fromRatioCents": 2.2
+     },
+     {
+      "degree": 5,
+      "cents": 649.305,
+      "hz": 713.7632,
+      "name": "F5 +37.5¢",
+      "nearestRatio": "16/11",
+      "fromRatioCents": 0.6
+     },
+     {
+      "degree": 6,
+      "cents": 717.681,
+      "hz": 742.5176,
+      "name": "F♯5 +5.9¢",
+      "nearestRatio": "47/31",
+      "fromRatioCents": -2.8
+     },
+     {
+      "degree": 7,
+      "cents": 862.554,
+      "hz": 807.3268,
+      "name": "G♯5 −49.2¢",
+      "nearestRatio": "51/31",
+      "fromRatioCents": 0.7
+     },
+     {
+      "degree": 8,
+      "cents": 1050.631,
+      "hz": 899.9744,
+      "name": "A5 +38.9¢",
+      "nearestRatio": "11/6",
+      "fromRatioCents": 1.3
+     }
+    ]
+   }
+  },
+  {
+   "seed": "12d4af0b9e57096e0ece77ae3160026a11aa5a0eab95334eec6cc60d8ac170d6",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 482.2009,
+    "soul": {
+     "nm": 565.448,
+     "thz": 530.185,
+     "cie1931": {
+      "x": 0.41193,
+      "y": 0.58646
+     },
+     "luminousEfficiency": 0.97658,
+     "oklch": {
+      "l": 0.9319,
+      "c": 0.2235,
+      "h": 120.972
+     },
+     "css": "oklch(0.9319 0.2235 120.972)",
+     "hex": "#d4fd00",
+     "vivid": {
+      "css": "oklch(0.936 0.2245 120.972)",
+      "hex": "#d5ff00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 625.3826,
+      "nm": 435.989,
+      "thz": 687.615,
+      "cie1931": {
+       "x": 0.16645,
+       "y": 0.00896
+      },
+      "luminousEfficiency": 0.01799,
+      "oklch": {
+       "l": 0.3107,
+       "c": 0.1742,
+       "h": 291.545
+      },
+      "css": "oklch(0.3107 0.1742 291.545)",
+      "hex": "#38007e",
+      "vivid": {
+       "css": "oklch(0.523 0.2926 291.545)",
+       "hex": "#7901ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 686.7811,
+      "nm": 397.011,
+      "thz": 755.124,
+      "cie1931": {
+       "x": 0.17347,
+       "y": 0.00486
+      },
+      "luminousEfficiency": 0.00028,
+      "oklch": {
+       "l": 0.2644,
+       "c": 0.1429,
+       "h": 297.771
+      },
+      "css": "oklch(0.2644 0.1429 297.771)",
+      "hex": "#30005f",
+      "vivid": {
+       "css": "oklch(0.544 0.2939 297.771)",
+       "hex": "#8c00ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 626.9225,
+      "nm": 434.918,
+      "thz": 689.309,
+      "cie1931": {
+       "x": 0.16693,
+       "y": 0.00852
+      },
+      "luminousEfficiency": 0.01675,
+      "oklch": {
+       "l": 0.3095,
+       "c": 0.173,
+       "h": 292.043
+      },
+      "css": "oklch(0.3095 0.173 292.043)",
+      "hex": "#39007d",
+      "vivid": {
+       "css": "oklch(0.524 0.2928 292.043)",
+       "hex": "#7a00ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 680.8763,
+      "nm": 400.454,
+      "thz": 748.631,
+      "cie1931": {
+       "x": 0.17332,
+       "y": 0.00479
+      },
+      "luminousEfficiency": 0.00041,
+      "oklch": {
+       "l": 0.2671,
+       "c": 0.1444,
+       "h": 297.689
+      },
+      "css": "oklch(0.2671 0.1444 297.689)",
+      "hex": "#310061",
+      "vivid": {
+       "css": "oklch(0.544 0.2937 297.689)",
+       "hex": "#8c01ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 529.9514,
+      "nm": 514.499,
+      "thz": 582.688,
+      "cie1931": {
+       "x": 0.03587,
+       "y": 0.80752
+      },
+      "luminousEfficiency": 0.59757,
+      "oklch": {
+       "l": 0.8073,
+       "c": 0.1752,
+       "h": 162.703
+      },
+      "css": "oklch(0.8073 0.1752 162.703)",
+      "hex": "#00e29e",
+      "vivid": {
+       "css": "oklch(0.884 0.1919 162.703)",
+       "hex": "#00ffb3"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 355.9109,
+      "nm": 766.09,
+      "thz": 391.328,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00004,
+      "oklch": {
+       "l": 0.2962,
+       "c": 0.119,
+       "h": 20.39
+      },
+      "css": "oklch(0.2962 0.119 20.39)",
+      "hex": "#5a0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 615.5735,
+      "nm": 442.936,
+      "thz": 676.83,
+      "cie1931": {
+       "x": 0.16259,
+       "y": 0.01248
+      },
+      "luminousEfficiency": 0.02687,
+      "oklch": {
+       "l": 0.3135,
+       "c": 0.1804,
+       "h": 287.354
+      },
+      "css": "oklch(0.3135 0.1804 287.354)",
+      "hex": "#340085",
+      "vivid": {
+       "css": "oklch(0.51 0.2929 287.354)",
+       "hex": "#6c01ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 482.2009,
+     "name": "B4 −41.4¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 482.2009,
+      "name": "B4 −41.4¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 163.471,
+      "hz": 529.9514,
+      "name": "C5 +22¢",
+      "nearestRatio": "11/10",
+      "fromRatioCents": -1.5
+     },
+     {
+      "degree": 3,
+      "cents": 422.756,
+      "hz": 615.5735,
+      "name": "D♯5 −18.7¢",
+      "nearestRatio": "37/29",
+      "fromRatioCents": 1
+     },
+     {
+      "degree": 4,
+      "cents": 452.255,
+      "hz": 626.1521,
+      "name": "D♯5 +10.8¢",
+      "nearestRatio": "13/10",
+      "fromRatioCents": -2
+     },
+     {
+      "degree": 5,
+      "cents": 597.31,
+      "hz": 680.8763,
+      "name": "F5 −44.1¢",
+      "nearestRatio": "24/17",
+      "fromRatioCents": 0.3
+     },
+     {
+      "degree": 6,
+      "cents": 612.259,
+      "hz": 686.7811,
+      "name": "F5 −29.2¢",
+      "nearestRatio": "37/26",
+      "fromRatioCents": 1.4
+     },
+     {
+      "degree": 7,
+      "cents": 674.258,
+      "hz": 711.8218,
+      "name": "F5 +32.8¢",
+      "nearestRatio": "31/21",
+      "fromRatioCents": 0
+     }
+    ]
+   }
+  },
+  {
+   "seed": "5e570cb00d5429a901908079c1f20f28124fbe75c83d3604bc698a0e76cd33b5",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 474.8217,
+    "soul": {
+     "nm": 574.236,
+     "thz": 522.072,
+     "cie1931": {
+      "x": 0.47353,
+      "y": 0.52543
+     },
+     "luminousEfficiency": 0.92156,
+     "oklch": {
+      "l": 0.9005,
+      "c": 0.1878,
+      "h": 100.951
+     },
+     "css": "oklch(0.9005 0.1878 100.951)",
+     "hex": "#fae000",
+     "vivid": {
+      "css": "oklch(0.914 0.1906 100.951)",
+      "hex": "#ffe500"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 451.4961,
+      "nm": 603.903,
+      "thz": 496.425,
+      "cie1931": {
+       "x": 0.64387,
+       "y": 0.35573
+      },
+      "luminousEfficiency": 0.58089,
+      "oklch": {
+       "l": 0.6053,
+       "c": 0.2046,
+       "h": 36.58
+      },
+      "css": "oklch(0.6053 0.2046 36.58)",
+      "hex": "#e14100",
+      "vivid": {
+       "css": "oklch(0.666 0.2248 36.58)",
+       "hex": "#ff4b01"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 468.2623,
+      "nm": 582.28,
+      "thz": 514.86,
+      "cie1931": {
+       "x": 0.52741,
+       "y": 0.47173
+      },
+      "luminousEfficiency": 0.84638,
+      "oklch": {
+       "l": 0.7937,
+       "c": 0.1655,
+       "h": 77.959
+      },
+      "css": "oklch(0.7937 0.1655 77.959)",
+      "hex": "#f5ac00",
+      "vivid": {
+       "css": "oklch(0.818 0.1705 77.959)",
+       "hex": "#ffb300"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 416.7274,
+      "nm": 654.288,
+      "thz": 458.197,
+      "cie1931": {
+       "x": 0.72798,
+       "y": 0.27202
+      },
+      "luminousEfficiency": 0.08492,
+      "oklch": {
+       "l": 0.4372,
+       "c": 0.1759,
+       "h": 21.284
+      },
+      "css": "oklch(0.4372 0.1759 21.284)",
+      "hex": "#9c0022",
+      "vivid": {
+       "css": "oklch(0.632 0.2542 21.284)",
+       "hex": "#ff003e"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 652.866,
+      "nm": 417.635,
+      "thz": 717.834,
+      "cie1931": {
+       "x": 0.17179,
+       "y": 0.00492
+      },
+      "luminousEfficiency": 0.00299,
+      "oklch": {
+       "l": 0.2858,
+       "c": 0.1555,
+       "h": 296.615
+      },
+      "css": "oklch(0.2858 0.1555 296.615)",
+      "hex": "#36006b",
+      "vivid": {
+       "css": "oklch(0.54 0.2935 296.615)",
+       "hex": "#8801ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 383.8354,
+      "nm": 710.356,
+      "thz": 422.031,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00204,
+      "oklch": {
+       "l": 0.3285,
+       "c": 0.132,
+       "h": 20.39
+      },
+      "css": "oklch(0.3285 0.132 20.39)",
+      "hex": "#690015",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 473.3764,
+      "nm": 575.989,
+      "thz": 520.483,
+      "cie1931": {
+       "x": 0.48554,
+       "y": 0.51346
+      },
+      "luminousEfficiency": 0.9071,
+      "oklch": {
+       "l": 0.8743,
+       "c": 0.1799,
+       "h": 96.133
+      },
+      "css": "oklch(0.8743 0.1799 96.133)",
+      "hex": "#f9d400",
+      "vivid": {
+       "css": "oklch(0.89 0.1831 96.133)",
+       "hex": "#ffd900"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 444.3863,
+      "nm": 613.564,
+      "thz": 488.608,
+      "cie1931": {
+       "x": 0.67625,
+       "y": 0.32356
+      },
+      "luminousEfficiency": 0.45875,
+      "oklch": {
+       "l": 0.5507,
+       "c": 0.2234,
+       "h": 29.619
+      },
+      "css": "oklch(0.5507 0.2234 29.619)",
+      "hex": "#d50800",
+      "vivid": {
+       "css": "oklch(0.63 0.2555 29.619)",
+       "hex": "#ff0c00"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 474.8217,
+     "name": "A♯4 +31.9¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 474.8217,
+      "name": "A♯4 +31.9¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 551.281,
+      "hz": 652.866,
+      "name": "E5 −16.9¢",
+      "nearestRatio": "11/8",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 3,
+      "cents": 831.722,
+      "hz": 767.6708,
+      "name": "G5 −36.4¢",
+      "nearestRatio": "21/13",
+      "fromRatioCents": 1.5
+     },
+     {
+      "degree": 4,
+      "cents": 974.062,
+      "hz": 833.4548,
+      "name": "G♯5 +5.9¢",
+      "nearestRatio": "51/29",
+      "fromRatioCents": -3.3
+     },
+     {
+      "degree": 5,
+      "cents": 1085.314,
+      "hz": 888.7726,
+      "name": "A5 +17.2¢",
+      "nearestRatio": "58/31",
+      "fromRatioCents": 0.8
+     },
+     {
+      "degree": 6,
+      "cents": 1112.793,
+      "hz": 902.9922,
+      "name": "A5 +44.7¢",
+      "nearestRatio": "59/31",
+      "fromRatioCents": -1.3
+     },
+     {
+      "degree": 7,
+      "cents": 1175.917,
+      "hz": 936.5246,
+      "name": "A♯5 +7.8¢",
+      "nearestRatio": "63/32",
+      "fromRatioCents": 3.2
+     },
+     {
+      "degree": 8,
+      "cents": 1194.722,
+      "hz": 946.7528,
+      "name": "A♯5 +26.6¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": -5.3
+     }
+    ]
+   }
+  },
+  {
+   "seed": "7c1e15d11d64aee8c21d3a6f5d03d5c57df0f3e2589437dcc21fb9e5bcd787d4",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 459.1677,
+    "soul": {
+     "nm": 593.813,
+     "thz": 504.86,
+     "cie1931": {
+      "x": 0.59664,
+      "y": 0.40278
+     },
+     "luminousEfficiency": 0.70984,
+     "oklch": {
+      "l": 0.6782,
+      "c": 0.1788,
+      "h": 50.188
+     },
+     "css": "oklch(0.6782 0.1788 50.188)",
+     "hex": "#eb6f00",
+     "vivid": {
+      "css": "oklch(0.721 0.1901 50.188)",
+      "hex": "#ff7900"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 599.281,
+      "nm": 454.978,
+      "thz": 658.916,
+      "cie1931": {
+       "x": 0.15101,
+       "y": 0.02272
+      },
+      "luminousEfficiency": 0.04795,
+      "oklch": {
+       "l": 0.3067,
+       "c": 0.1958,
+       "h": 273.09
+      },
+      "css": "oklch(0.3067 0.1958 273.09)",
+      "hex": "#1e008f",
+      "vivid": {
+       "css": "oklch(0.472 0.3013 273.09)",
+       "hex": "#3d00ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 626.711,
+      "nm": 435.064,
+      "thz": 689.076,
+      "cie1931": {
+       "x": 0.16687,
+       "y": 0.00858
+      },
+      "luminousEfficiency": 0.01692,
+      "oklch": {
+       "l": 0.3098,
+       "c": 0.1732,
+       "h": 291.976
+      },
+      "css": "oklch(0.3098 0.1732 291.976)",
+      "hex": "#39007d",
+      "vivid": {
+       "css": "oklch(0.524 0.2929 291.976)",
+       "hex": "#7a00ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 536.1724,
+      "nm": 508.53,
+      "thz": 589.528,
+      "cie1931": {
+       "x": 0.00938,
+       "y": 0.72499
+      },
+      "luminousEfficiency": 0.47375,
+      "oklch": {
+       "l": 0.7795,
+       "c": 0.1584,
+       "h": 167.706
+      },
+      "css": "oklch(0.7795 0.1584 167.706)",
+      "hex": "#00d7a3",
+      "vivid": {
+       "css": "oklch(0.887 0.1802 167.706)",
+       "hex": "#00ffc2"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 543.9378,
+      "nm": 501.27,
+      "thz": 598.066,
+      "cie1931": {
+       "x": 0.0059,
+       "y": 0.56958
+      },
+      "luminousEfficiency": 0.3428,
+      "oklch": {
+       "l": 0.7456,
+       "c": 0.1402,
+       "h": 175.304
+      },
+      "css": "oklch(0.7456 0.1402 175.304)",
+      "hex": "#00c9a8",
+      "vivid": {
+       "css": "oklch(0.893 0.1678 175.304)",
+       "hex": "#01ffd6"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 521.6104,
+      "nm": 522.727,
+      "thz": 573.517,
+      "cie1931": {
+       "x": 0.09579,
+       "y": 0.83205
+      },
+      "luminousEfficiency": 0.75746,
+      "oklch": {
+       "l": 0.8372,
+       "c": 0.1974,
+       "h": 157.56
+      },
+      "css": "oklch(0.8372 0.1974 157.56)",
+      "hex": "#00ef95",
+      "vivid": {
+       "css": "oklch(0.88 0.2074 157.56)",
+       "hex": "#00ffa0"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 394.7118,
+      "nm": 690.782,
+      "thz": 433.99,
+      "cie1931": {
+       "x": 0.73443,
+       "y": 0.26557
+      },
+      "luminousEfficiency": 0.00775,
+      "oklch": {
+       "l": 0.3532,
+       "c": 0.1419,
+       "h": 20.425
+      },
+      "css": "oklch(0.3532 0.1419 20.425)",
+      "hex": "#740019",
+      "vivid": {
+       "css": "oklch(0.632 0.254 20.425)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 537.8168,
+      "nm": 506.975,
+      "thz": 591.336,
+      "cie1931": {
+       "x": 0.00598,
+       "y": 0.69562
+      },
+      "luminousEfficiency": 0.44384,
+      "oklch": {
+       "l": 0.7722,
+       "c": 0.1542,
+       "h": 169.186
+      },
+      "css": "oklch(0.7722 0.1542 169.186)",
+      "hex": "#00d4a4",
+      "vivid": {
+       "css": "oklch(0.888 0.1774 169.186)",
+       "hex": "#00ffc6"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 459.1677,
+     "name": "A♯4 −26.2¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 459.1677,
+      "name": "A♯4 −26.2¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 220.742,
+      "hz": 521.6104,
+      "name": "C5 −5.4¢",
+      "nearestRatio": "25/22",
+      "fromRatioCents": -0.6
+     },
+     {
+      "degree": 3,
+      "cents": 268.411,
+      "hz": 536.1724,
+      "name": "C5 +42.2¢",
+      "nearestRatio": "7/6",
+      "fromRatioCents": 1.5
+     },
+     {
+      "degree": 4,
+      "cents": 273.712,
+      "hz": 537.8168,
+      "name": "C5 +47.5¢",
+      "nearestRatio": "34/29",
+      "fromRatioCents": -1.7
+     },
+     {
+      "degree": 5,
+      "cents": 293.305,
+      "hz": 543.9378,
+      "name": "C♯5 −32.9¢",
+      "nearestRatio": "32/27",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 6,
+      "cents": 461.054,
+      "hz": 599.281,
+      "name": "D5 +34.9¢",
+      "nearestRatio": "30/23",
+      "fromRatioCents": 1.1
+     },
+     {
+      "degree": 7,
+      "cents": 538.535,
+      "hz": 626.711,
+      "name": "D♯5 +12.4¢",
+      "nearestRatio": "15/11",
+      "fromRatioCents": 1.6
+     },
+     {
+      "degree": 8,
+      "cents": 938.134,
+      "hz": 789.4236,
+      "name": "G5 +12¢",
+      "nearestRatio": "55/32",
+      "fromRatioCents": 0.5
+     }
+    ]
+   }
+  },
+  {
+   "seed": "e84e7c535180a5aa352c201246cf2d2fb8e13e01ac4df412d247ec8cc0ca391c",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 497.9082,
+    "soul": {
+     "nm": 547.61,
+     "thz": 547.456,
+     "cie1931": {
+      "x": 0.28452,
+      "y": 0.7078
+     },
+     "luminousEfficiency": 0.98918,
+     "oklch": {
+      "l": 0.8643,
+      "c": 0.2913,
+      "h": 142.778
+     },
+     "css": "oklch(0.8643 0.2913 142.778)",
+     "hex": "#00fe15",
+     "vivid": {
+      "css": "oklch(0.866 0.2919 142.778)",
+      "hex": "#00ff15"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 402.3148,
+      "nm": 677.727,
+      "thz": 442.35,
+      "cie1931": {
+       "x": 0.7331,
+       "y": 0.2669
+      },
+      "luminousEfficiency": 0.01961,
+      "oklch": {
+       "l": 0.3781,
+       "c": 0.152,
+       "h": 20.599
+      },
+      "css": "oklch(0.3781 0.152 20.599)",
+      "hex": "#7f001c",
+      "vivid": {
+       "css": "oklch(0.632 0.254 20.599)",
+       "hex": "#ff0041"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 503.9023,
+      "nm": 541.096,
+      "thz": 554.046,
+      "cie1931": {
+       "x": 0.23759,
+       "y": 0.74795
+      },
+      "luminousEfficiency": 0.96081,
+      "oklch": {
+       "l": 0.8647,
+       "c": 0.2545,
+       "h": 147.361
+      },
+      "css": "oklch(0.8647 0.2545 147.361)",
+      "hex": "#00fc62",
+      "vivid": {
+       "css": "oklch(0.871 0.2564 147.361)",
+       "hex": "#00ff63"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 589.1289,
+      "nm": 462.818,
+      "thz": 647.754,
+      "cie1931": {
+       "x": 0.13943,
+       "y": 0.03483
+      },
+      "luminousEfficiency": 0.06754,
+      "oklch": {
+       "l": 0.4105,
+       "c": 0.1444,
+       "h": 256.775
+      },
+      "css": "oklch(0.4105 0.1444 256.775)",
+      "hex": "#004796",
+      "vivid": {
+       "css": "oklch(0.609 0.2142 256.775)",
+       "hex": "#007dff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 413.8267,
+      "nm": 658.874,
+      "thz": 455.007,
+      "cie1931": {
+       "x": 0.72964,
+       "y": 0.27036
+      },
+      "luminousEfficiency": 0.06527,
+      "oklch": {
+       "l": 0.4244,
+       "c": 0.1707,
+       "h": 21.06
+      },
+      "css": "oklch(0.4244 0.1707 21.06)",
+      "hex": "#950021",
+      "vivid": {
+       "css": "oklch(0.632 0.2542 21.06)",
+       "hex": "#ff003f"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 515.7079,
+      "nm": 528.709,
+      "thz": 567.027,
+      "cie1931": {
+       "x": 0.14446,
+       "y": 0.81165
+      },
+      "luminousEfficiency": 0.84566,
+      "oklch": {
+       "l": 0.8508,
+       "c": 0.213,
+       "h": 154.36
+      },
+      "css": "oklch(0.8508 0.213 154.36)",
+      "hex": "#00f58b",
+      "vivid": {
+       "css": "oklch(0.877 0.2196 154.36)",
+       "hex": "#00ff91"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 417.3789,
+      "nm": 653.266,
+      "thz": 458.913,
+      "cie1931": {
+       "x": 0.72754,
+       "y": 0.27246
+      },
+      "luminousEfficiency": 0.08983,
+      "oklch": {
+       "l": 0.4401,
+       "c": 0.1771,
+       "h": 21.343
+      },
+      "css": "oklch(0.4401 0.1771 21.343)",
+      "hex": "#9d0022",
+      "vivid": {
+       "css": "oklch(0.632 0.2541 21.343)",
+       "hex": "#ff013e"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 627.788,
+      "nm": 434.318,
+      "thz": 690.26,
+      "cie1931": {
+       "x": 0.16719,
+       "y": 0.0083
+      },
+      "luminousEfficiency": 0.01607,
+      "oklch": {
+       "l": 0.3091,
+       "c": 0.1725,
+       "h": 292.307
+      },
+      "css": "oklch(0.3091 0.1725 292.307)",
+      "hex": "#39007d",
+      "vivid": {
+       "css": "oklch(0.525 0.2929 292.307)",
+       "hex": "#7b00ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 497.9082,
+     "name": "B4 +14.1¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 497.9082,
+      "name": "B4 +14.1¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 20.717,
+      "hz": 503.9023,
+      "name": "B4 +34.8¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 20.7
+     },
+     {
+      "degree": 3,
+      "cents": 60.809,
+      "hz": 515.7079,
+      "name": "C5 −25.1¢",
+      "nearestRatio": "29/28",
+      "fromRatioCents": 0.1
+     },
+     {
+      "degree": 4,
+      "cents": 291.244,
+      "hz": 589.1289,
+      "name": "D5 +5.3¢",
+      "nearestRatio": "13/11",
+      "fromRatioCents": 2
+     },
+     {
+      "degree": 5,
+      "cents": 401.277,
+      "hz": 627.788,
+      "name": "D♯5 +15.3¢",
+      "nearestRatio": "29/23",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 6,
+      "cents": 830.934,
+      "hz": 804.6296,
+      "name": "G5 +45¢",
+      "nearestRatio": "21/13",
+      "fromRatioCents": 0.7
+     },
+     {
+      "degree": 7,
+      "cents": 879.776,
+      "hz": 827.6534,
+      "name": "G♯5 −6.2¢",
+      "nearestRatio": "5/3",
+      "fromRatioCents": -4.6
+     },
+     {
+      "degree": 8,
+      "cents": 894.573,
+      "hz": 834.7578,
+      "name": "G♯5 +8.6¢",
+      "nearestRatio": "52/31",
+      "fromRatioCents": -0.9
+     }
+    ]
+   }
+  },
+  {
+   "seed": "bafb9be20276c517de0a46aefa99b1ccc98482cbcfa501bdcd0421072822e45e",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 508.9149,
+    "soul": {
+     "nm": 535.767,
+     "thz": 559.558,
+     "cie1931": {
+      "x": 0.1986,
+      "y": 0.7776
+     },
+     "luminousEfficiency": 0.92166,
+     "oklch": {
+      "l": 0.8611,
+      "c": 0.2342,
+      "h": 150.528
+     },
+     "css": "oklch(0.8611 0.2342 150.528)",
+     "hex": "#00fa79",
+     "vivid": {
+      "css": "oklch(0.874 0.2377 150.528)",
+      "hex": "#00ff7c"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 582.9377,
+      "nm": 467.734,
+      "thz": 640.947,
+      "cie1931": {
+       "x": 0.12971,
+       "y": 0.04847
+      },
+      "luminousEfficiency": 0.08276,
+      "oklch": {
+       "l": 0.4828,
+       "c": 0.1176,
+       "h": 243.394
+      },
+      "css": "oklch(0.4828 0.1176 243.394)",
+      "hex": "#00649b",
+      "vivid": {
+       "css": "oklch(0.7 0.1706 243.394)",
+       "hex": "#00a7ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 686.1145,
+      "nm": 397.397,
+      "thz": 754.391,
+      "cie1931": {
+       "x": 0.17345,
+       "y": 0.00485
+      },
+      "luminousEfficiency": 0.0003,
+      "oklch": {
+       "l": 0.2647,
+       "c": 0.1431,
+       "h": 297.762
+      },
+      "css": "oklch(0.2647 0.1431 297.762)",
+      "hex": "#31005f",
+      "vivid": {
+       "css": "oklch(0.544 0.2939 297.762)",
+       "hex": "#8c00ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 378.5946,
+      "nm": 720.189,
+      "thz": 416.269,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00103,
+      "oklch": {
+       "l": 0.3195,
+       "c": 0.1284,
+       "h": 20.39
+      },
+      "css": "oklch(0.3195 0.1284 20.39)",
+      "hex": "#650014",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 630.8032,
+      "nm": 432.242,
+      "thz": 693.575,
+      "cie1931": {
+       "x": 0.16805,
+       "y": 0.00757
+      },
+      "luminousEfficiency": 0.01384,
+      "oklch": {
+       "l": 0.3073,
+       "c": 0.1706,
+       "h": 293.171
+      },
+      "css": "oklch(0.3073 0.1706 293.171)",
+      "hex": "#39007b",
+      "vivid": {
+       "css": "oklch(0.528 0.2929 293.171)",
+       "hex": "#7e00ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 571.2057,
+      "nm": 477.341,
+      "thz": 628.047,
+      "cie1931": {
+       "x": 0.10157,
+       "y": 0.10589
+      },
+      "luminousEfficiency": 0.12449,
+      "oklch": {
+       "l": 0.5891,
+       "c": 0.1053,
+       "h": 217.069
+      },
+      "css": "oklch(0.5891 0.1053 217.069)",
+      "hex": "#008ca6",
+      "vivid": {
+       "css": "oklch(0.813 0.1453 217.069)",
+       "hex": "#00d8ff"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 498.0575,
+      "nm": 547.446,
+      "thz": 547.62,
+      "cie1931": {
+       "x": 0.28335,
+       "y": 0.70885
+      },
+      "luminousEfficiency": 0.98871,
+      "oklch": {
+       "l": 0.8642,
+       "c": 0.2901,
+       "h": 142.907
+      },
+      "css": "oklch(0.8642 0.2901 142.907)",
+      "hex": "#00fe1b",
+      "vivid": {
+       "css": "oklch(0.866 0.2907 142.907)",
+       "hex": "#00ff1b"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 629.9033,
+      "nm": 432.86,
+      "thz": 692.586,
+      "cie1931": {
+       "x": 0.1678,
+       "y": 0.00778
+      },
+      "luminousEfficiency": 0.01448,
+      "oklch": {
+       "l": 0.3078,
+       "c": 0.1711,
+       "h": 292.926
+      },
+      "css": "oklch(0.3078 0.1711 292.926)",
+      "hex": "#39007b",
+      "vivid": {
+       "css": "oklch(0.527 0.293 292.926)",
+       "hex": "#7d00ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 508.9149,
+     "name": "C5 −48.1¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 508.9149,
+      "name": "C5 −48.1¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 199.903,
+      "hz": 571.2057,
+      "name": "D5 −48.2¢",
+      "nearestRatio": "28/25",
+      "fromRatioCents": 3.7
+     },
+     {
+      "degree": 3,
+      "cents": 235.101,
+      "hz": 582.9377,
+      "name": "D5 −13¢",
+      "nearestRatio": "8/7",
+      "fromRatioCents": 3.9
+     },
+     {
+      "degree": 4,
+      "cents": 370.483,
+      "hz": 630.3531,
+      "name": "D♯5 +22.4¢",
+      "nearestRatio": "26/21",
+      "fromRatioCents": 0.7
+     },
+     {
+      "degree": 5,
+      "cents": 517.23,
+      "hz": 686.1145,
+      "name": "F5 −30.9¢",
+      "nearestRatio": "31/23",
+      "fromRatioCents": 0.5
+     },
+     {
+      "degree": 6,
+      "cents": 687.875,
+      "hz": 757.1892,
+      "name": "F♯5 +39.8¢",
+      "nearestRatio": "46/31",
+      "fromRatioCents": 4.6
+     },
+     {
+      "degree": 7,
+      "cents": 1162.665,
+      "hz": 996.115,
+      "name": "B5 +14.6¢",
+      "nearestRatio": "45/23",
+      "fromRatioCents": 0.7
+     }
+    ]
+   }
+  },
+  {
+   "seed": "c53758368aaa3ae3a0c16bc6277c1cf673e5aeeb08464dfb4f4abeacce9f680a",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 474.3857,
+    "soul": {
+     "nm": 574.764,
+     "thz": 521.593,
+     "cie1931": {
+      "x": 0.47715,
+      "y": 0.52182
+     },
+     "luminousEfficiency": 0.9173,
+     "oklch": {
+      "l": 0.8929,
+      "c": 0.1853,
+      "h": 99.523
+     },
+     "css": "oklch(0.8929 0.1853 99.523)",
+     "hex": "#fadc00",
+     "vivid": {
+      "css": "oklch(0.907 0.1882 99.523)",
+      "hex": "#ffe101"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 358.4289,
+      "nm": 760.708,
+      "thz": 394.097,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00006,
+      "oklch": {
+       "l": 0.2978,
+       "c": 0.1197,
+       "h": 20.39
+      },
+      "css": "oklch(0.2978 0.1197 20.39)",
+      "hex": "#5b0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 662.0625,
+      "nm": 411.834,
+      "thz": 727.945,
+      "cie1931": {
+       "x": 0.17241,
+       "y": 0.0048
+      },
+      "luminousEfficiency": 0.0015,
+      "oklch": {
+       "l": 0.2775,
+       "c": 0.1506,
+       "h": 297.079
+      },
+      "css": "oklch(0.2775 0.1506 297.079)",
+      "hex": "#340067",
+      "vivid": {
+       "css": "oklch(0.541 0.2936 297.079)",
+       "hex": "#8a00ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 473.8138,
+      "nm": 575.457,
+      "thz": 520.964,
+      "cie1931": {
+       "x": 0.48191,
+       "y": 0.51708
+      },
+      "luminousEfficiency": 0.91156,
+      "oklch": {
+       "l": 0.882,
+       "c": 0.1821,
+       "h": 97.616
+      },
+      "css": "oklch(0.882 0.1821 97.616)",
+      "hex": "#f9d700",
+      "vivid": {
+       "css": "oklch(0.897 0.1852 97.616)",
+       "hex": "#ffdc00"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 627.2981,
+      "nm": 434.657,
+      "thz": 689.722,
+      "cie1931": {
+       "x": 0.16704,
+       "y": 0.00843
+      },
+      "luminousEfficiency": 0.01645,
+      "oklch": {
+       "l": 0.3091,
+       "c": 0.1726,
+       "h": 292.157
+      },
+      "css": "oklch(0.3091 0.1726 292.157)",
+      "hex": "#38007d",
+      "vivid": {
+       "css": "oklch(0.524 0.2926 292.157)",
+       "hex": "#7a00ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 426.4582,
+      "nm": 639.358,
+      "thz": 468.896,
+      "cie1931": {
+       "x": 0.71844,
+       "y": 0.28153
+      },
+      "luminousEfficiency": 0.18012,
+      "oklch": {
+       "l": 0.4799,
+       "c": 0.1936,
+       "h": 22.614
+      },
+      "css": "oklch(0.4799 0.1936 22.614)",
+      "hex": "#b10024",
+      "vivid": {
+       "css": "oklch(0.631 0.2545 22.614)",
+       "hex": "#ff0038"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 399.7473,
+      "nm": 682.08,
+      "thz": 439.527,
+      "cie1931": {
+       "x": 0.73369,
+       "y": 0.26631
+      },
+      "luminousEfficiency": 0.01476,
+      "oklch": {
+       "l": 0.3697,
+       "c": 0.1486,
+       "h": 20.521
+      },
+      "css": "oklch(0.3697 0.1486 20.521)",
+      "hex": "#7b001b",
+      "vivid": {
+       "css": "oklch(0.632 0.254 20.521)",
+       "hex": "#ff0041"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 691.9435,
+      "nm": 394.049,
+      "thz": 760.8,
+      "cie1931": {
+       "x": 0.1736,
+       "y": 0.00494
+      },
+      "luminousEfficiency": 0.00019,
+      "oklch": {
+       "l": 0.2621,
+       "c": 0.1416,
+       "h": 297.841
+      },
+      "css": "oklch(0.2621 0.1416 297.841)",
+      "hex": "#30005e",
+      "vivid": {
+       "css": "oklch(0.544 0.2939 297.841)",
+       "hex": "#8c00ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 474.3857,
+     "name": "A♯4 +30.3¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 474.3857,
+      "name": "A♯4 +30.3¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 483.709,
+      "hz": 627.2981,
+      "name": "D♯5 +14¢",
+      "nearestRatio": "41/31",
+      "fromRatioCents": -0.3
+     },
+     {
+      "degree": 3,
+      "cents": 577.088,
+      "hz": 662.0625,
+      "name": "E5 +7.4¢",
+      "nearestRatio": "39/28",
+      "fromRatioCents": 3.4
+     },
+     {
+      "degree": 4,
+      "cents": 653.512,
+      "hz": 691.9435,
+      "name": "F5 −16.2¢",
+      "nearestRatio": "35/24",
+      "fromRatioCents": 0.3
+     },
+     {
+      "degree": 5,
+      "cents": 714.752,
+      "hz": 716.8578,
+      "name": "F5 +45¢",
+      "nearestRatio": "47/31",
+      "fromRatioCents": -5.7
+     },
+     {
+      "degree": 6,
+      "cents": 903.633,
+      "hz": 799.4946,
+      "name": "G5 +33.9¢",
+      "nearestRatio": "32/19",
+      "fromRatioCents": 1.1
+     },
+     {
+      "degree": 7,
+      "cents": 1015.613,
+      "hz": 852.9164,
+      "name": "G♯5 +45.9¢",
+      "nearestRatio": "9/5",
+      "fromRatioCents": -2
+     }
+    ]
+   }
+  },
+  {
+   "seed": "224bcacda132fad96993c3fd3f2a3bd2a2eb90db2c792c9a0a03f33aaf4db3ab",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 464.0155,
+    "soul": {
+     "nm": 587.609,
+     "thz": 510.19,
+     "cie1931": {
+      "x": 0.56089,
+      "y": 0.43842
+     },
+     "luminousEfficiency": 0.78584,
+     "oklch": {
+      "l": 0.7354,
+      "c": 0.1669,
+      "h": 63.587
+     },
+     "css": "oklch(0.7354 0.1669 63.587)",
+     "hex": "#f18e00",
+     "vivid": {
+      "css": "oklch(0.768 0.1743 63.587)",
+      "hex": "#ff9700"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 615.188,
+      "nm": 443.214,
+      "thz": 676.406,
+      "cie1931": {
+       "x": 0.1624,
+       "y": 0.01265
+      },
+      "luminousEfficiency": 0.02726,
+      "oklch": {
+       "l": 0.3133,
+       "c": 0.1805,
+       "h": 287.139
+      },
+      "css": "oklch(0.3133 0.1805 287.139)",
+      "hex": "#340085",
+      "vivid": {
+       "css": "oklch(0.509 0.2932 287.139)",
+       "hex": "#6b00ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 403.382,
+      "nm": 675.934,
+      "thz": 443.523,
+      "cie1931": {
+       "x": 0.73285,
+       "y": 0.26715
+      },
+      "luminousEfficiency": 0.02189,
+      "oklch": {
+       "l": 0.3816,
+       "c": 0.1534,
+       "h": 20.632
+      },
+      "css": "oklch(0.3816 0.1534 20.632)",
+      "hex": "#81001c",
+      "vivid": {
+       "css": "oklch(0.632 0.254 20.632)",
+       "hex": "#ff0041"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 695.8915,
+      "nm": 391.813,
+      "thz": 765.141,
+      "cie1931": {
+       "x": 0.17371,
+       "y": 0.00494
+      },
+      "luminousEfficiency": 0.00015,
+      "oklch": {
+       "l": 0.2606,
+       "c": 0.1408,
+       "h": 297.914
+      },
+      "css": "oklch(0.2606 0.1408 297.914)",
+      "hex": "#2f005d",
+      "vivid": {
+       "css": "oklch(0.544 0.2938 297.914)",
+       "hex": "#8c00ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 651.805,
+      "nm": 418.315,
+      "thz": 716.667,
+      "cie1931": {
+       "x": 0.17169,
+       "y": 0.00496
+      },
+      "luminousEfficiency": 0.00325,
+      "oklch": {
+       "l": 0.2864,
+       "c": 0.1559,
+       "h": 296.537
+      },
+      "css": "oklch(0.2864 0.1559 296.537)",
+      "hex": "#36006c",
+      "vivid": {
+       "css": "oklch(0.539 0.2934 296.537)",
+       "hex": "#8800ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 512.7781,
+      "nm": 531.73,
+      "thz": 563.805,
+      "cie1931": {
+       "x": 0.16819,
+       "y": 0.79777
+      },
+      "luminousEfficiency": 0.88195,
+      "oklch": {
+       "l": 0.8562,
+       "c": 0.2217,
+       "h": 152.743
+      },
+      "css": "oklch(0.8562 0.2217 152.743)",
+      "hex": "#00f785",
+      "vivid": {
+       "css": "oklch(0.876 0.2268 152.743)",
+       "hex": "#00ff89"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 431.3406,
+      "nm": 632.121,
+      "thz": 474.264,
+      "cie1931": {
+       "x": 0.71064,
+       "y": 0.28931
+      },
+      "luminousEfficiency": 0.24373,
+      "oklch": {
+       "l": 0.4999,
+       "c": 0.2021,
+       "h": 23.765
+      },
+      "css": "oklch(0.4999 0.2021 23.765)",
+      "hex": "#bb0022",
+      "vivid": {
+       "css": "oklch(0.63 0.2547 23.765)",
+       "hex": "#ff0032"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 592.3326,
+      "nm": 460.315,
+      "thz": 651.277,
+      "cie1931": {
+       "x": 0.14347,
+       "y": 0.03023
+      },
+      "luminousEfficiency": 0.06082,
+      "oklch": {
+       "l": 0.3558,
+       "c": 0.1724,
+       "h": 262.579
+      },
+      "css": "oklch(0.3558 0.1724 262.579)",
+      "hex": "#002e94",
+      "vivid": {
+       "css": "oklch(0.534 0.2588 262.579)",
+       "hex": "#0056ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 464.0155,
+     "name": "A♯4 −8¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 464.0155,
+      "name": "A♯4 −8¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 172.994,
+      "hz": 512.7781,
+      "name": "C5 −35¢",
+      "nearestRatio": "21/19",
+      "fromRatioCents": -0.3
+     },
+     {
+      "degree": 3,
+      "cents": 422.681,
+      "hz": 592.3326,
+      "name": "D5 +14.7¢",
+      "nearestRatio": "37/29",
+      "fromRatioCents": 0.9
+     },
+     {
+      "degree": 4,
+      "cents": 488.225,
+      "hz": 615.188,
+      "name": "D♯5 −19.8¢",
+      "nearestRatio": "41/31",
+      "fromRatioCents": 4.2
+     },
+     {
+      "degree": 5,
+      "cents": 588.321,
+      "hz": 651.805,
+      "name": "E5 −19.7¢",
+      "nearestRatio": "45/32",
+      "fromRatioCents": -1.9
+     },
+     {
+      "degree": 6,
+      "cents": 701.627,
+      "hz": 695.8915,
+      "name": "F5 −6.4¢",
+      "nearestRatio": "3/2",
+      "fromRatioCents": -0.3
+     },
+     {
+      "degree": 7,
+      "cents": 957.568,
+      "hz": 806.764,
+      "name": "G5 +49.6¢",
+      "nearestRatio": "40/23",
+      "fromRatioCents": -0.5
+     },
+     {
+      "degree": 8,
+      "cents": 1073.585,
+      "hz": 862.6812,
+      "name": "A5 −34.4¢",
+      "nearestRatio": "13/7",
+      "fromRatioCents": 1.9
+     }
+    ]
+   }
+  },
+  {
+   "seed": "73e14a510a55eda73e6b52731d9abf2183363bbe5cd25e1a0ed14219c680f4e5",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 491.709,
+    "soul": {
+     "nm": 554.514,
+     "thz": 540.64,
+     "cie1931": {
+      "x": 0.33391,
+      "y": 0.66212
+     },
+     "luminousEfficiency": 0.99988,
+     "oklch": {
+      "l": 0.888,
+      "c": 0.2664,
+      "h": 136.472
+     },
+     "css": "oklch(0.888 0.2664 136.472)",
+     "hex": "#7bff00",
+     "vivid": {
+      "css": "oklch(0.888 0.2664 136.472)",
+      "hex": "#7bff00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 647.8512,
+      "nm": 420.868,
+      "thz": 712.32,
+      "cie1931": {
+       "x": 0.17123,
+       "y": 0.0052
+      },
+      "luminousEfficiency": 0.00447,
+      "oklch": {
+       "l": 0.2909,
+       "c": 0.1587,
+       "h": 296.153
+      },
+      "css": "oklch(0.2909 0.1587 296.153)",
+      "hex": "#37006f",
+      "vivid": {
+       "css": "oklch(0.538 0.2935 296.153)",
+       "hex": "#8700ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 567.8387,
+      "nm": 480.171,
+      "thz": 624.345,
+      "cie1931": {
+       "x": 0.0906,
+       "y": 0.13462
+      },
+      "luminousEfficiency": 0.13999,
+      "oklch": {
+       "l": 0.6164,
+       "c": 0.1069,
+       "h": 210.768
+      },
+      "css": "oklch(0.6164 0.1069 210.768)",
+      "hex": "#0096a9",
+      "vivid": {
+       "css": "oklch(0.838 0.1453 210.768)",
+       "hex": "#00e2ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 691.4374,
+      "nm": 394.337,
+      "thz": 760.243,
+      "cie1931": {
+       "x": 0.17359,
+       "y": 0.00493
+      },
+      "luminousEfficiency": 0.0002,
+      "oklch": {
+       "l": 0.2623,
+       "c": 0.1417,
+       "h": 297.833
+      },
+      "css": "oklch(0.2623 0.1417 297.833)",
+      "hex": "#30005e",
+      "vivid": {
+       "css": "oklch(0.544 0.2939 297.833)",
+       "hex": "#8c00ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 614.5047,
+      "nm": 443.706,
+      "thz": 675.655,
+      "cie1931": {
+       "x": 0.16206,
+       "y": 0.01296
+      },
+      "luminousEfficiency": 0.02794,
+      "oklch": {
+       "l": 0.3134,
+       "c": 0.181,
+       "h": 286.751
+      },
+      "css": "oklch(0.3134 0.181 286.751)",
+      "hex": "#340085",
+      "vivid": {
+       "css": "oklch(0.508 0.2932 286.751)",
+       "hex": "#6a01ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 579.1235,
+      "nm": 470.814,
+      "thz": 636.753,
+      "cie1931": {
+       "x": 0.12198,
+       "y": 0.06167
+      },
+      "luminousEfficiency": 0.09419,
+      "oklch": {
+       "l": 0.521,
+       "c": 0.1093,
+       "h": 234.209
+      },
+      "css": "oklch(0.521 0.1093 234.209)",
+      "hex": "#00729e",
+      "vivid": {
+       "css": "oklch(0.744 0.1561 234.209)",
+       "hex": "#00baff"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 431.2078,
+      "nm": 632.316,
+      "thz": 474.118,
+      "cie1931": {
+       "x": 0.71088,
+       "y": 0.28908
+      },
+      "luminousEfficiency": 0.24187,
+      "oklch": {
+       "l": 0.4994,
+       "c": 0.2019,
+       "h": 23.73
+      },
+      "css": "oklch(0.4994 0.2019 23.73)",
+      "hex": "#bb0022",
+      "vivid": {
+       "css": "oklch(0.63 0.2547 23.73)",
+       "hex": "#ff0032"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 595.5105,
+      "nm": 457.859,
+      "thz": 654.771,
+      "cie1931": {
+       "x": 0.14713,
+       "y": 0.02644
+      },
+      "luminousEfficiency": 0.05464,
+      "oklch": {
+       "l": 0.303,
+       "c": 0.2026,
+       "h": 267.759
+      },
+      "css": "oklch(0.303 0.2026 267.759)",
+      "hex": "#100092",
+      "vivid": {
+       "css": "oklch(0.46 0.3076 267.759)",
+       "hex": "#2400ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 491.709,
+     "name": "B4 −7.6¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 491.709,
+      "name": "B4 −7.6¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 249.212,
+      "hz": 567.8387,
+      "name": "C♯5 +41.6¢",
+      "nearestRatio": "15/13",
+      "fromRatioCents": 1.5
+     },
+     {
+      "degree": 3,
+      "cents": 283.28,
+      "hz": 579.1235,
+      "name": "D5 −24.4¢",
+      "nearestRatio": "33/28",
+      "fromRatioCents": -1.2
+     },
+     {
+      "degree": 4,
+      "cents": 331.587,
+      "hz": 595.5105,
+      "name": "D5 +23.9¢",
+      "nearestRatio": "23/19",
+      "fromRatioCents": 0.8
+     },
+     {
+      "degree": 5,
+      "cents": 385.943,
+      "hz": 614.5047,
+      "name": "D♯5 −21.7¢",
+      "nearestRatio": "5/4",
+      "fromRatioCents": -0.4
+     },
+     {
+      "degree": 6,
+      "cents": 477.429,
+      "hz": 647.8512,
+      "name": "E5 −30.2¢",
+      "nearestRatio": "29/22",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 7,
+      "cents": 590.153,
+      "hz": 691.4374,
+      "name": "F5 −17.5¢",
+      "nearestRatio": "45/32",
+      "fromRatioCents": -0.1
+     },
+     {
+      "degree": 8,
+      "cents": 972.694,
+      "hz": 862.4156,
+      "name": "A5 −34.9¢",
+      "nearestRatio": "7/4",
+      "fromRatioCents": 3.9
+     }
+    ]
+   }
+  },
+  {
+   "seed": "d2293d80deb1e7331dd3e463fe3a0ec88d8b8573f17b38b4e6e655a8ccaa7d20",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 468.363,
+    "soul": {
+     "nm": 582.155,
+     "thz": 514.971,
+     "cie1931": {
+      "x": 0.5266,
+      "y": 0.47253
+     },
+     "luminousEfficiency": 0.84773,
+     "oklch": {
+      "l": 0.7949,
+      "c": 0.1655,
+      "h": 78.318
+     },
+     "css": "oklch(0.7949 0.1655 78.318)",
+     "hex": "#f5ad00",
+     "vivid": {
+      "css": "oklch(0.819 0.1705 78.318)",
+      "hex": "#ffb400"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 377.7471,
+      "nm": 721.805,
+      "thz": 415.337,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00092,
+      "oklch": {
+       "l": 0.3183,
+       "c": 0.1279,
+       "h": 20.39
+      },
+      "css": "oklch(0.3183 0.1279 20.39)",
+      "hex": "#640014",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 620.8181,
+      "nm": 439.194,
+      "thz": 682.597,
+      "cie1931": {
+       "x": 0.16486,
+       "y": 0.01045
+      },
+      "luminousEfficiency": 0.02197,
+      "oklch": {
+       "l": 0.3123,
+       "c": 0.1769,
+       "h": 289.839
+      },
+      "css": "oklch(0.3123 0.1769 289.839)",
+      "hex": "#370081",
+      "vivid": {
+       "css": "oklch(0.517 0.2928 289.839)",
+       "hex": "#7300ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 692.6372,
+      "nm": 393.654,
+      "thz": 761.563,
+      "cie1931": {
+       "x": 0.17362,
+       "y": 0.00494
+      },
+      "luminousEfficiency": 0.00018,
+      "oklch": {
+       "l": 0.2618,
+       "c": 0.1415,
+       "h": 297.852
+      },
+      "css": "oklch(0.2618 0.1415 297.852)",
+      "hex": "#30005e",
+      "vivid": {
+       "css": "oklch(0.544 0.2939 297.852)",
+       "hex": "#8c00ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 605.85,
+      "nm": 450.045,
+      "thz": 666.139,
+      "cie1931": {
+       "x": 0.15659,
+       "y": 0.01775
+      },
+      "luminousEfficiency": 0.03808,
+      "oklch": {
+       "l": 0.3112,
+       "c": 0.1879,
+       "h": 280.288
+      },
+      "css": "oklch(0.3112 0.1879 280.288)",
+      "hex": "#2b008b",
+      "vivid": {
+       "css": "oklch(0.49 0.2957 280.288)",
+       "hex": "#5600ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 480.0545,
+      "nm": 567.976,
+      "thz": 527.826,
+      "cie1931": {
+       "x": 0.42982,
+       "y": 0.56881
+      },
+      "luminousEfficiency": 0.96398,
+      "oklch": {
+       "l": 0.9437,
+       "c": 0.2156,
+       "h": 115.986
+      },
+      "css": "oklch(0.9437 0.2156 115.986)",
+      "hex": "#e6fc00",
+      "vivid": {
+       "css": "oklch(0.95 0.2171 115.986)",
+       "hex": "#e9ff00"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 373.6125,
+      "nm": 729.793,
+      "thz": 410.791,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00053,
+      "oklch": {
+       "l": 0.3125,
+       "c": 0.1256,
+       "h": 20.39
+      },
+      "css": "oklch(0.3125 0.1256 20.39)",
+      "hex": "#610013",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 437.1971,
+      "nm": 623.654,
+      "thz": 480.703,
+      "cie1931": {
+       "x": 0.69833,
+       "y": 0.30156
+      },
+      "luminousEfficiency": 0.33696,
+      "oklch": {
+       "l": 0.5238,
+       "c": 0.2127,
+       "h": 25.7
+      },
+      "css": "oklch(0.5238 0.2127 25.7)",
+      "hex": "#c8001c",
+      "vivid": {
+       "css": "oklch(0.629 0.2554 25.7)",
+       "hex": "#ff0027"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 468.363,
+     "name": "A♯4 +8.1¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 468.363,
+      "name": "A♯4 +8.1¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 42.685,
+      "hz": 480.0545,
+      "name": "B4 −49.2¢",
+      "nearestRatio": "33/32",
+      "fromRatioCents": -10.6
+     },
+     {
+      "degree": 3,
+      "cents": 445.6,
+      "hz": 605.85,
+      "name": "D♯5 −46.3¢",
+      "nearestRatio": "22/17",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 4,
+      "cents": 487.852,
+      "hz": 620.8181,
+      "name": "D♯5 −4¢",
+      "nearestRatio": "41/31",
+      "fromRatioCents": 3.8
+     },
+     {
+      "degree": 5,
+      "cents": 677.367,
+      "hz": 692.6372,
+      "name": "F5 −14.5¢",
+      "nearestRatio": "34/23",
+      "fromRatioCents": 0.7
+     },
+     {
+      "degree": 6,
+      "cents": 808.699,
+      "hz": 747.225,
+      "name": "F♯5 +16.8¢",
+      "nearestRatio": "51/32",
+      "fromRatioCents": 1.8
+     },
+     {
+      "degree": 7,
+      "cents": 827.752,
+      "hz": 755.4942,
+      "name": "F♯5 +35.9¢",
+      "nearestRatio": "50/31",
+      "fromRatioCents": 0.2
+     },
+     {
+      "degree": 8,
+      "cents": 1080.788,
+      "hz": 874.3942,
+      "name": "A5 −11.1¢",
+      "nearestRatio": "28/15",
+      "fromRatioCents": 0.2
+     }
+    ]
+   }
+  },
+  {
+   "seed": "ffa3286b5fa71e4f709e0eeaa20fd38556ecfb744d1afaa262edae5333574d97",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 473.8893,
+    "soul": {
+     "nm": 575.366,
+     "thz": 521.047,
+     "cie1931": {
+      "x": 0.48128,
+      "y": 0.5177
+     },
+     "luminousEfficiency": 0.91233,
+     "oklch": {
+      "l": 0.8831,
+      "c": 0.1825,
+      "h": 97.87
+     },
+     "css": "oklch(0.8831 0.1825 97.87)",
+     "hex": "#f9d800",
+     "vivid": {
+      "css": "oklch(0.898 0.1855 97.87)",
+      "hex": "#ffdd00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 548.6863,
+      "nm": 496.932,
+      "thz": 603.287,
+      "cie1931": {
+       "x": 0.01651,
+       "y": 0.46122
+      },
+      "luminousEfficiency": 0.28147,
+      "oklch": {
+       "l": 0.7262,
+       "c": 0.1309,
+       "h": 181.023
+      },
+      "css": "oklch(0.7262 0.1309 181.023)",
+      "hex": "#00c1ab",
+      "vivid": {
+       "css": "oklch(0.896 0.1615 181.023)",
+       "hex": "#00ffe3"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 352.3528,
+      "nm": 773.826,
+      "thz": 387.416,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00002,
+      "oklch": {
+       "l": 0.2943,
+       "c": 0.1182,
+       "h": 20.39
+      },
+      "css": "oklch(0.2943 0.1182 20.39)",
+      "hex": "#590011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 624.7429,
+      "nm": 436.435,
+      "thz": 686.912,
+      "cie1931": {
+       "x": 0.16624,
+       "y": 0.00916
+      },
+      "luminousEfficiency": 0.01853,
+      "oklch": {
+       "l": 0.3109,
+       "c": 0.1745,
+       "h": 291.322
+      },
+      "css": "oklch(0.3109 0.1745 291.322)",
+      "hex": "#38007f",
+      "vivid": {
+       "css": "oklch(0.522 0.2928 291.322)",
+       "hex": "#7800ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 622.5497,
+      "nm": 437.973,
+      "thz": 684.501,
+      "cie1931": {
+       "x": 0.1655,
+       "y": 0.00985
+      },
+      "luminousEfficiency": 0.02042,
+      "oklch": {
+       "l": 0.3116,
+       "c": 0.1757,
+       "h": 290.531
+      },
+      "css": "oklch(0.3116 0.1757 290.531)",
+      "hex": "#370080",
+      "vivid": {
+       "css": "oklch(0.519 0.2927 290.531)",
+       "hex": "#7600ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 404.5777,
+      "nm": 673.936,
+      "thz": 444.838,
+      "cie1931": {
+       "x": 0.73257,
+       "y": 0.26743
+      },
+      "luminousEfficiency": 0.02481,
+      "oklch": {
+       "l": 0.3858,
+       "c": 0.1551,
+       "h": 20.668
+      },
+      "css": "oklch(0.3858 0.1551 20.668)",
+      "hex": "#83001c",
+      "vivid": {
+       "css": "oklch(0.632 0.254 20.668)",
+       "hex": "#ff0041"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 391.605,
+      "nm": 696.262,
+      "thz": 430.574,
+      "cie1931": {
+       "x": 0.73463,
+       "y": 0.26537
+      },
+      "luminousEfficiency": 0.00525,
+      "oklch": {
+       "l": 0.3448,
+       "c": 0.1386,
+       "h": 20.399
+      },
+      "css": "oklch(0.3448 0.1386 20.399)",
+      "hex": "#700017",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.399)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 359.7342,
+      "nm": 757.948,
+      "thz": 395.532,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00007,
+      "oklch": {
+       "l": 0.2987,
+       "c": 0.12,
+       "h": 20.391
+      },
+      "css": "oklch(0.2987 0.12 20.391)",
+      "hex": "#5b0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.391)",
+       "hex": "#ff0042"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 473.8893,
+     "name": "A♯4 +28.5¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 473.8893,
+      "name": "A♯4 +28.5¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 253.718,
+      "hz": 548.6863,
+      "name": "C♯5 −17.8¢",
+      "nearestRatio": "22/19",
+      "fromRatioCents": -0.1
+     },
+     {
+      "degree": 3,
+      "cents": 472.367,
+      "hz": 622.5497,
+      "name": "D♯5 +0.8¢",
+      "nearestRatio": "21/16",
+      "fromRatioCents": 1.6
+     },
+     {
+      "degree": 4,
+      "cents": 478.455,
+      "hz": 624.7429,
+      "name": "D♯5 +6.9¢",
+      "nearestRatio": "29/22",
+      "fromRatioCents": 0.2
+     },
+     {
+      "degree": 5,
+      "cents": 686.965,
+      "hz": 704.7056,
+      "name": "F5 +15.4¢",
+      "nearestRatio": "46/31",
+      "fromRatioCents": 3.7
+     },
+     {
+      "degree": 6,
+      "cents": 722.857,
+      "hz": 719.4684,
+      "name": "F♯5 −48.7¢",
+      "nearestRatio": "41/27",
+      "fromRatioCents": -0.3
+     },
+     {
+      "degree": 7,
+      "cents": 869.819,
+      "hz": 783.21,
+      "name": "G5 −1.7¢",
+      "nearestRatio": "38/23",
+      "fromRatioCents": 0.6
+     },
+     {
+      "degree": 8,
+      "cents": 926.24,
+      "hz": 809.1554,
+      "name": "G♯5 −45.3¢",
+      "nearestRatio": "41/24",
+      "fromRatioCents": -0.9
+     }
+    ]
+   }
+  },
+  {
+   "seed": "10433307def06f4b04aca4cebf42ed1a899c69800e1306f3a23b4254095fa9b2",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 496.4512,
+    "soul": {
+     "nm": 549.217,
+     "thz": 545.854,
+     "cie1931": {
+      "x": 0.29602,
+      "y": 0.69741
+     },
+     "luminousEfficiency": 0.99328,
+     "oklch": {
+      "l": 0.8689,
+      "c": 0.2889,
+      "h": 141.474
+     },
+     "css": "oklch(0.8689 0.2889 141.474)",
+     "hex": "#34fe00",
+     "vivid": {
+      "css": "oklch(0.87 0.2892 141.474)",
+      "hex": "#34ff00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 673.4338,
+      "nm": 404.88,
+      "thz": 740.448,
+      "cie1931": {
+       "x": 0.17303,
+       "y": 0.00477
+      },
+      "luminousEfficiency": 0.00063,
+      "oklch": {
+       "l": 0.27,
+       "c": 0.1461,
+       "h": 297.503
+      },
+      "css": "oklch(0.27 0.1461 297.503)",
+      "hex": "#320062",
+      "vivid": {
+       "css": "oklch(0.543 0.2939 297.503)",
+       "hex": "#8b00ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 552.4671,
+      "nm": 493.531,
+      "thz": 607.444,
+      "cie1931": {
+       "x": 0.02952,
+       "y": 0.37639
+      },
+      "luminousEfficiency": 0.2425,
+      "oklch": {
+       "l": 0.7129,
+       "c": 0.1249,
+       "h": 186.218
+      },
+      "css": "oklch(0.7129 0.1249 186.218)",
+      "hex": "#00bbae",
+      "vivid": {
+       "css": "oklch(0.899 0.1575 186.218)",
+       "hex": "#00ffee"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 359.935,
+      "nm": 757.525,
+      "thz": 395.753,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00007,
+      "oklch": {
+       "l": 0.2988,
+       "c": 0.1201,
+       "h": 20.39
+      },
+      "css": "oklch(0.2988 0.1201 20.39)",
+      "hex": "#5b0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 622.9396,
+      "nm": 437.698,
+      "thz": 684.929,
+      "cie1931": {
+       "x": 0.16563,
+       "y": 0.00973
+      },
+      "luminousEfficiency": 0.02008,
+      "oklch": {
+       "l": 0.3117,
+       "c": 0.1757,
+       "h": 290.674
+      },
+      "css": "oklch(0.3117 0.1757 290.674)",
+      "hex": "#380080",
+      "vivid": {
+       "css": "oklch(0.52 0.2928 290.674)",
+       "hex": "#7601ff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 460.9346,
+      "nm": 591.537,
+      "thz": 506.803,
+      "cie1931": {
+       "x": 0.58401,
+       "y": 0.4154
+      },
+      "luminousEfficiency": 0.73814,
+      "oklch": {
+       "l": 0.6989,
+       "c": 0.1738,
+       "h": 54.633
+      },
+      "css": "oklch(0.6989 0.1738 54.633)",
+      "hex": "#ed7a00",
+      "vivid": {
+       "css": "oklch(0.738 0.1833 54.633)",
+       "hex": "#ff8401"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 365.1176,
+      "nm": 746.772,
+      "thz": 401.451,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00015,
+      "oklch": {
+       "l": 0.3029,
+       "c": 0.1217,
+       "h": 20.39
+      },
+      "css": "oklch(0.3029 0.1217 20.39)",
+      "hex": "#5d0012",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 510.4627,
+      "nm": 534.142,
+      "thz": 561.26,
+      "cie1931": {
+       "x": 0.18647,
+       "y": 0.78599
+      },
+      "luminousEfficiency": 0.90678,
+      "oklch": {
+       "l": 0.8596,
+       "c": 0.229,
+       "h": 151.433
+      },
+      "css": "oklch(0.8596 0.229 151.433)",
+      "hex": "#00f97e",
+      "vivid": {
+       "css": "oklch(0.875 0.2331 151.433)",
+       "hex": "#00ff81"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 496.4512,
+     "name": "B4 +9¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 496.4512,
+      "name": "B4 +9¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 48.184,
+      "hz": 510.4627,
+      "name": "C5 −42.8¢",
+      "nearestRatio": "33/32",
+      "fromRatioCents": -5.1
+     },
+     {
+      "degree": 3,
+      "cents": 185.084,
+      "hz": 552.4671,
+      "name": "C♯5 −5.9¢",
+      "nearestRatio": "10/9",
+      "fromRatioCents": 2.7
+     },
+     {
+      "degree": 4,
+      "cents": 392.928,
+      "hz": 622.9396,
+      "name": "D♯5 +1.9¢",
+      "nearestRatio": "39/31",
+      "fromRatioCents": -4.5
+     },
+     {
+      "degree": 5,
+      "cents": 527.861,
+      "hz": 673.4338,
+      "name": "E5 +36.8¢",
+      "nearestRatio": "19/14",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 6,
+      "cents": 643.301,
+      "hz": 719.87,
+      "name": "F♯5 −47.7¢",
+      "nearestRatio": "29/20",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 7,
+      "cents": 668.051,
+      "hz": 730.2352,
+      "name": "F♯5 −23¢",
+      "nearestRatio": "25/17",
+      "fromRatioCents": 0.4
+     },
+     {
+      "degree": 8,
+      "cents": 1071.492,
+      "hz": 921.8692,
+      "name": "A♯5 −19.5¢",
+      "nearestRatio": "13/7",
+      "fromRatioCents": -0.2
+     }
+    ]
+   }
+  },
+  {
+   "seed": "9b92dfb8fe66d71f0deb34441a9bfae9691c76d57f000268821d227176a0c163",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 498.5235,
+    "soul": {
+     "nm": 546.934,
+     "thz": 548.132,
+     "cie1931": {
+      "x": 0.27966,
+      "y": 0.71214
+     },
+     "luminousEfficiency": 0.9872,
+     "oklch": {
+      "l": 0.865,
+      "c": 0.2866,
+      "h": 143.304
+     },
+     "css": "oklch(0.865 0.2866 143.304)",
+     "hex": "#00fe29",
+     "vivid": {
+      "css": "oklch(0.867 0.2873 143.304)",
+      "hex": "#00ff29"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 677.9949,
+      "nm": 402.156,
+      "thz": 745.463,
+      "cie1931": {
+       "x": 0.17323,
+       "y": 0.00478
+      },
+      "luminousEfficiency": 0.00048,
+      "oklch": {
+       "l": 0.2677,
+       "c": 0.1448,
+       "h": 297.634
+      },
+      "css": "oklch(0.2677 0.1448 297.634)",
+      "hex": "#310061",
+      "vivid": {
+       "css": "oklch(0.543 0.2937 297.634)",
+       "hex": "#8b00ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 416.3385,
+      "nm": 654.899,
+      "thz": 457.769,
+      "cie1931": {
+       "x": 0.72823,
+       "y": 0.27177
+      },
+      "luminousEfficiency": 0.08207,
+      "oklch": {
+       "l": 0.4355,
+       "c": 0.1752,
+       "h": 21.25
+      },
+      "css": "oklch(0.4355 0.1752 21.25)",
+      "hex": "#9b0022",
+      "vivid": {
+       "css": "oklch(0.632 0.2542 21.25)",
+       "hex": "#ff003e"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 593.2848,
+      "nm": 459.576,
+      "thz": 652.324,
+      "cie1931": {
+       "x": 0.1446,
+       "y": 0.02903
+      },
+      "luminousEfficiency": 0.05892,
+      "oklch": {
+       "l": 0.3001,
+       "c": 0.1866,
+       "h": 264.191
+      },
+      "css": "oklch(0.3001 0.1866 264.191)",
+      "hex": "#001289",
+      "vivid": {
+       "css": "oklch(0.452 0.3128 264.191)",
+       "hex": "#0200ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 589.0296,
+      "nm": 462.896,
+      "thz": 647.645,
+      "cie1931": {
+       "x": 0.1393,
+       "y": 0.03499
+      },
+      "luminousEfficiency": 0.06776,
+      "oklch": {
+       "l": 0.4119,
+       "c": 0.1438,
+       "h": 256.586
+      },
+      "css": "oklch(0.4119 0.1438 256.586)",
+      "hex": "#004796",
+      "vivid": {
+       "css": "oklch(0.611 0.2131 256.586)",
+       "hex": "#017eff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 532.0302,
+      "nm": 512.489,
+      "thz": 584.973,
+      "cie1931": {
+       "x": 0.02473,
+       "y": 0.7858
+      },
+      "luminousEfficiency": 0.55487,
+      "oklch": {
+       "l": 0.7982,
+       "c": 0.1695,
+       "h": 164.263
+      },
+      "css": "oklch(0.7982 0.1695 164.263)",
+      "hex": "#00dea0",
+      "vivid": {
+       "css": "oklch(0.885 0.1879 164.263)",
+       "hex": "#00ffb8"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 451.9805,
+      "nm": 603.255,
+      "thz": 496.958,
+      "cie1931": {
+       "x": 0.6412,
+       "y": 0.35839
+      },
+      "luminousEfficiency": 0.5892,
+      "oklch": {
+       "l": 0.6095,
+       "c": 0.203,
+       "h": 37.232
+      },
+      "css": "oklch(0.6095 0.203 37.232)",
+      "hex": "#e24400",
+      "vivid": {
+       "css": "oklch(0.669 0.2225 37.232)",
+       "hex": "#ff4e01"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 584.3293,
+      "nm": 466.62,
+      "thz": 642.477,
+      "cie1931": {
+       "x": 0.1322,
+       "y": 0.04464
+      },
+      "luminousEfficiency": 0.07903,
+      "oklch": {
+       "l": 0.4679,
+       "c": 0.1221,
+       "h": 246.668
+      },
+      "css": "oklch(0.4679 0.1221 246.668)",
+      "hex": "#005e9a",
+      "vivid": {
+       "css": "oklch(0.682 0.178 246.668)",
+       "hex": "#009fff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 498.5235,
+     "name": "B4 +16.2¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 498.5235,
+      "name": "B4 +16.2¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 112.616,
+      "hz": 532.0302,
+      "name": "C5 +28.8¢",
+      "nearestRatio": "16/15",
+      "fromRatioCents": 0.9
+     },
+     {
+      "degree": 3,
+      "cents": 274.944,
+      "hz": 584.3293,
+      "name": "D5 −8.9¢",
+      "nearestRatio": "34/29",
+      "fromRatioCents": -0.4
+     },
+     {
+      "degree": 4,
+      "cents": 288.814,
+      "hz": 589.0296,
+      "name": "D5 +5¢",
+      "nearestRatio": "13/11",
+      "fromRatioCents": -0.4
+     },
+     {
+      "degree": 5,
+      "cents": 301.276,
+      "hz": 593.2848,
+      "name": "D5 +17.5¢",
+      "nearestRatio": "25/21",
+      "fromRatioCents": -0.6
+     },
+     {
+      "degree": 6,
+      "cents": 532.335,
+      "hz": 677.9949,
+      "name": "E5 +48.5¢",
+      "nearestRatio": "34/25",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 7,
+      "cents": 888.115,
+      "hz": 832.677,
+      "name": "G♯5 +4.3¢",
+      "nearestRatio": "5/3",
+      "fromRatioCents": 3.8
+     },
+     {
+      "degree": 8,
+      "cents": 1030.319,
+      "hz": 903.961,
+      "name": "A5 +46.5¢",
+      "nearestRatio": "29/16",
+      "fromRatioCents": 0.7
+     }
+    ]
+   }
+  },
+  {
+   "seed": "e23cba7a4938e968a6e4ac2ff2098263bace069508c4a65a2b4b3987bd89dc54",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 467.1051,
+    "soul": {
+     "nm": 583.722,
+     "thz": 513.587,
+     "cie1931": {
+      "x": 0.53669,
+      "y": 0.46249
+     },
+     "luminousEfficiency": 0.83065,
+     "oklch": {
+      "l": 0.7765,
+      "c": 0.1647,
+      "h": 73.871
+     },
+     "css": "oklch(0.7765 0.1647 73.871)",
+     "hex": "#f4a300",
+     "vivid": {
+      "css": "oklch(0.803 0.1703 73.871)",
+      "hex": "#ffab00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 372.9879,
+      "nm": 731.015,
+      "thz": 410.105,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00048,
+      "oklch": {
+       "l": 0.3117,
+       "c": 0.1252,
+       "h": 20.391
+      },
+      "css": "oklch(0.3117 0.1252 20.391)",
+      "hex": "#610013",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.391)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 519.9104,
+      "nm": 524.436,
+      "thz": 571.648,
+      "cie1931": {
+       "x": 0.10962,
+       "y": 0.82787
+      },
+      "luminousEfficiency": 0.78453,
+      "oklch": {
+       "l": 0.8414,
+       "c": 0.2017,
+       "h": 156.643
+      },
+      "css": "oklch(0.8414 0.2017 156.643)",
+      "hex": "#00f093",
+      "vivid": {
+       "css": "oklch(0.879 0.2107 156.643)",
+       "hex": "#00ff9c"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 560.0165,
+      "nm": 486.878,
+      "thz": 615.745,
+      "cie1931": {
+       "x": 0.05991,
+       "y": 0.23301
+      },
+      "luminousEfficiency": 0.18266,
+      "oklch": {
+       "l": 0.6798,
+       "c": 0.1156,
+       "h": 197.658
+      },
+      "css": "oklch(0.6798 0.1156 197.658)",
+      "hex": "#00adb1",
+      "vivid": {
+       "css": "oklch(0.892 0.1518 197.658)",
+       "hex": "#00f9ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 587.392,
+      "nm": 464.187,
+      "thz": 645.844,
+      "cie1931": {
+       "x": 0.13702,
+       "y": 0.03786
+      },
+      "luminousEfficiency": 0.07147,
+      "oklch": {
+       "l": 0.4327,
+       "c": 0.1349,
+       "h": 253.342
+      },
+      "css": "oklch(0.4327 0.1349 253.342)",
+      "hex": "#005098",
+      "vivid": {
+       "css": "oklch(0.638 0.1987 253.342)",
+       "hex": "#008bff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 487.9532,
+      "nm": 558.782,
+      "thz": 536.51,
+      "cie1931": {
+       "x": 0.36442,
+       "y": 0.63287
+      },
+      "luminousEfficiency": 0.99721,
+      "oklch": {
+       "l": 0.9045,
+       "c": 0.2488,
+       "h": 131.425
+      },
+      "css": "oklch(0.9045 0.2488 131.425)",
+      "hex": "#a0ff00",
+      "vivid": {
+       "css": "oklch(0.905 0.249 131.425)",
+       "hex": "#a0ff00"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 360.5103,
+      "nm": 756.316,
+      "thz": 396.385,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00008,
+      "oklch": {
+       "l": 0.2992,
+       "c": 0.1202,
+       "h": 20.39
+      },
+      "css": "oklch(0.2992 0.1202 20.39)",
+      "hex": "#5c0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 643.2876,
+      "nm": 423.853,
+      "thz": 707.302,
+      "cie1931": {
+       "x": 0.17057,
+       "y": 0.0056
+      },
+      "luminousEfficiency": 0.00644,
+      "oklch": {
+       "l": 0.2961,
+       "c": 0.162,
+       "h": 295.577
+      },
+      "css": "oklch(0.2961 0.162 295.577)",
+      "hex": "#380072",
+      "vivid": {
+       "css": "oklch(0.536 0.2934 295.577)",
+       "hex": "#8500ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 467.1051,
+     "name": "A♯4 +3.5¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 467.1051,
+      "name": "A♯4 +3.5¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 75.595,
+      "hz": 487.9532,
+      "name": "B4 −20.9¢",
+      "nearestRatio": "23/22",
+      "fromRatioCents": -1.4
+     },
+     {
+      "degree": 3,
+      "cents": 185.419,
+      "hz": 519.9104,
+      "name": "C5 −11.1¢",
+      "nearestRatio": "10/9",
+      "fromRatioCents": 3
+     },
+     {
+      "degree": 4,
+      "cents": 314.067,
+      "hz": 560.0165,
+      "name": "C♯5 +17.6¢",
+      "nearestRatio": "6/5",
+      "fromRatioCents": -1.6
+     },
+     {
+      "degree": 5,
+      "cents": 396.692,
+      "hz": 587.392,
+      "name": "D5 +0.2¢",
+      "nearestRatio": "39/31",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 6,
+      "cents": 554.06,
+      "hz": 643.2876,
+      "name": "E5 −42.4¢",
+      "nearestRatio": "40/29",
+      "fromRatioCents": -2.7
+     },
+     {
+      "degree": 7,
+      "cents": 751.552,
+      "hz": 721.0206,
+      "name": "F♯5 −45¢",
+      "nearestRatio": "17/11",
+      "fromRatioCents": -2.1
+     },
+     {
+      "degree": 8,
+      "cents": 810.458,
+      "hz": 745.9758,
+      "name": "F♯5 +14¢",
+      "nearestRatio": "8/5",
+      "fromRatioCents": -3.2
+     }
+    ]
+   }
+  },
+  {
+   "seed": "3f232fd690123dba8a1eb7b146fdd3f151c65b610dc95709e5b7d10fc56ace25",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 500.2607,
+    "soul": {
+     "nm": 545.035,
+     "thz": 550.042,
+     "cie1931": {
+      "x": 0.26603,
+      "y": 0.7241
+     },
+     "luminousEfficiency": 0.98043,
+     "oklch": {
+      "l": 0.8649,
+      "c": 0.2744,
+      "h": 144.711
+     },
+     "css": "oklch(0.8649 0.2744 144.711)",
+     "hex": "#00fd44",
+     "vivid": {
+      "css": "oklch(0.868 0.2754 144.711)",
+      "hex": "#00ff45"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 355.3023,
+      "nm": 767.402,
+      "thz": 390.659,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00004,
+      "oklch": {
+       "l": 0.2959,
+       "c": 0.1189,
+       "h": 20.391
+      },
+      "css": "oklch(0.2959 0.1189 20.391)",
+      "hex": "#5a0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.391)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 428.045,
+      "nm": 636.988,
+      "thz": 470.64,
+      "cie1931": {
+       "x": 0.71615,
+       "y": 0.28382
+      },
+      "luminousEfficiency": 0.19965,
+      "oklch": {
+       "l": 0.4868,
+       "c": 0.1965,
+       "h": 22.946
+      },
+      "css": "oklch(0.4868 0.1965 22.946)",
+      "hex": "#b40023",
+      "vivid": {
+       "css": "oklch(0.631 0.2547 22.946)",
+       "hex": "#ff0036"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 655.7618,
+      "nm": 415.791,
+      "thz": 721.018,
+      "cie1931": {
+       "x": 0.172,
+       "y": 0.00485
+      },
+      "luminousEfficiency": 0.0024,
+      "oklch": {
+       "l": 0.2827,
+       "c": 0.1537,
+       "h": 296.785
+      },
+      "css": "oklch(0.2827 0.1537 296.785)",
+      "hex": "#35006a",
+      "vivid": {
+       "css": "oklch(0.54 0.2935 296.785)",
+       "hex": "#8900ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 353.5126,
+      "nm": 771.287,
+      "thz": 388.691,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00003,
+      "oklch": {
+       "l": 0.2949,
+       "c": 0.1185,
+       "h": 20.391
+      },
+      "css": "oklch(0.2949 0.1185 20.391)",
+      "hex": "#5a0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.391)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 504.908,
+      "nm": 540.018,
+      "thz": 555.152,
+      "cie1931": {
+       "x": 0.22976,
+       "y": 0.75422
+      },
+      "luminousEfficiency": 0.95412,
+      "oklch": {
+       "l": 0.8645,
+       "c": 0.25,
+       "h": 148.035
+      },
+      "css": "oklch(0.8645 0.25 148.035)",
+      "hex": "#00fc68",
+      "vivid": {
+       "css": "oklch(0.872 0.2522 148.035)",
+       "hex": "#00ff69"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 659.0714,
+      "nm": 413.703,
+      "thz": 724.657,
+      "cie1931": {
+       "x": 0.17222,
+       "y": 0.00481
+      },
+      "luminousEfficiency": 0.00187,
+      "oklch": {
+       "l": 0.2801,
+       "c": 0.1521,
+       "h": 296.945
+      },
+      "css": "oklch(0.2801 0.1521 296.945)",
+      "hex": "#340068",
+      "vivid": {
+       "css": "oklch(0.541 0.2937 296.945)",
+       "hex": "#8900ff"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 643.5293,
+      "nm": 423.694,
+      "thz": 707.568,
+      "cie1931": {
+       "x": 0.17061,
+       "y": 0.00558
+      },
+      "luminousEfficiency": 0.00633,
+      "oklch": {
+       "l": 0.2957,
+       "c": 0.1618,
+       "h": 295.608
+      },
+      "css": "oklch(0.2957 0.1618 295.608)",
+      "hex": "#380072",
+      "vivid": {
+       "css": "oklch(0.536 0.2933 295.608)",
+       "hex": "#8500ff"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 500.2607,
+     "name": "B4 +22.2¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 500.2607,
+      "name": "B4 +22.2¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 16.008,
+      "hz": 504.908,
+      "name": "B4 +38.2¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 16
+     },
+     {
+      "degree": 3,
+      "cents": 435.991,
+      "hz": 643.5293,
+      "name": "E5 −41.8¢",
+      "nearestRatio": "9/7",
+      "fromRatioCents": 0.9
+     },
+     {
+      "degree": 4,
+      "cents": 468.59,
+      "hz": 655.7618,
+      "name": "E5 −9.2¢",
+      "nearestRatio": "38/29",
+      "fromRatioCents": 0.7
+     },
+     {
+      "degree": 5,
+      "cents": 477.306,
+      "hz": 659.0714,
+      "name": "E5 −0.5¢",
+      "nearestRatio": "29/22",
+      "fromRatioCents": -1
+     },
+     {
+      "degree": 6,
+      "cents": 598.898,
+      "hz": 707.0252,
+      "name": "F5 +21.1¢",
+      "nearestRatio": "41/29",
+      "fromRatioCents": -0.6
+     },
+     {
+      "degree": 7,
+      "cents": 607.64,
+      "hz": 710.6046,
+      "name": "F5 +29.9¢",
+      "nearestRatio": "27/19",
+      "fromRatioCents": -0.7
+     },
+     {
+      "degree": 8,
+      "cents": 930.099,
+      "hz": 856.09,
+      "name": "A5 −47.7¢",
+      "nearestRatio": "53/31",
+      "fromRatioCents": 1.6
+     }
+    ]
+   }
+  },
+  {
+   "seed": "d2948daec3b4445c8a9cc0768cb39151b6619cc8f47829534c20b6bc7d857a72",
+   "spectrum": {
+    "source": "measured",
+    "frequency": 495.3747,
+    "soul": {
+     "nm": 550.411,
+     "thz": 544.67,
+     "cie1931": {
+      "x": 0.30456,
+      "y": 0.68958
+     },
+     "luminousEfficiency": 0.99567,
+     "oklch": {
+      "l": 0.8733,
+      "c": 0.2838,
+      "h": 140.446
+     },
+     "css": "oklch(0.8733 0.2838 140.446)",
+     "hex": "#4aff00",
+     "vivid": {
+      "css": "oklch(0.874 0.2841 140.446)",
+      "hex": "#4aff00"
+     }
+    },
+    "stages": [
+     {
+      "stage": 0,
+      "frequency": 580.5305,
+      "nm": 469.673,
+      "thz": 638.3,
+      "cie1931": {
+       "x": 0.12497,
+       "y": 0.05634
+      },
+      "luminousEfficiency": 0.08976,
+      "oklch": {
+       "l": 0.5076,
+       "c": 0.1118,
+       "h": 237.577
+      },
+      "css": "oklch(0.5076 0.1118 237.577)",
+      "hex": "#006d9d",
+      "vivid": {
+       "css": "oklch(0.729 0.1605 237.577)",
+       "hex": "#00b4ff"
+      }
+     },
+     {
+      "stage": 1,
+      "frequency": 688.6671,
+      "nm": 395.924,
+      "thz": 757.197,
+      "cie1931": {
+       "x": 0.17352,
+       "y": 0.0049
+      },
+      "luminousEfficiency": 0.00024,
+      "oklch": {
+       "l": 0.2635,
+       "c": 0.1424,
+       "h": 297.795
+      },
+      "css": "oklch(0.2635 0.1424 297.795)",
+      "hex": "#30005f",
+      "vivid": {
+       "css": "oklch(0.544 0.294 297.795)",
+       "hex": "#8c00ff"
+      }
+     },
+     {
+      "stage": 2,
+      "frequency": 657.9961,
+      "nm": 414.379,
+      "thz": 723.474,
+      "cie1931": {
+       "x": 0.17215,
+       "y": 0.00482
+      },
+      "luminousEfficiency": 0.00203,
+      "oklch": {
+       "l": 0.2811,
+       "c": 0.1527,
+       "h": 296.894
+      },
+      "css": "oklch(0.2811 0.1527 296.894)",
+      "hex": "#350069",
+      "vivid": {
+       "css": "oklch(0.541 0.2935 296.894)",
+       "hex": "#8901ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 355.2078,
+      "nm": 767.606,
+      "thz": 390.555,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00004,
+      "oklch": {
+       "l": 0.2958,
+       "c": 0.1189,
+       "h": 20.391
+      },
+      "css": "oklch(0.2958 0.1189 20.391)",
+      "hex": "#5a0011",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.391)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 520.435,
+      "nm": 523.907,
+      "thz": 572.224,
+      "cie1931": {
+       "x": 0.10529,
+       "y": 0.8294
+      },
+      "luminousEfficiency": 0.77636,
+      "oklch": {
+       "l": 0.8408,
+       "c": 0.2005,
+       "h": 156.926
+      },
+      "css": "oklch(0.8408 0.2005 156.926)",
+      "hex": "#00f094",
+      "vivid": {
+       "css": "oklch(0.88 0.2096 156.926)",
+       "hex": "#02ff9d"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 383.4339,
+      "nm": 711.099,
+      "thz": 421.59,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00194,
+      "oklch": {
+       "l": 0.3278,
+       "c": 0.1317,
+       "h": 20.39
+      },
+      "css": "oklch(0.3278 0.1317 20.39)",
+      "hex": "#680015",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 368.8408,
+      "nm": 739.234,
+      "thz": 405.545,
+      "cie1931": {
+       "x": 0.73469,
+       "y": 0.26531
+      },
+      "luminousEfficiency": 0.00026,
+      "oklch": {
+       "l": 0.3067,
+       "c": 0.1232,
+       "h": 20.39
+      },
+      "css": "oklch(0.3067 0.1232 20.39)",
+      "hex": "#5f0012",
+      "vivid": {
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
+      }
+     }
+    ]
+   },
+   "scale": {
+    "source": "measured",
+    "tonic": {
+     "hz": 495.3747,
+     "name": "B4 +5.2¢"
+    },
+    "notes": [
+     {
+      "degree": 1,
+      "cents": 0,
+      "hz": 495.3747,
+      "name": "B4 +5.2¢",
+      "nearestRatio": "1/1",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 2,
+      "cents": 85.437,
+      "hz": 520.435,
+      "name": "C5 −9.3¢",
+      "nearestRatio": "21/20",
+      "fromRatioCents": 1
+     },
+     {
+      "degree": 3,
+      "cents": 274.622,
+      "hz": 580.5305,
+      "name": "D5 −20.2¢",
+      "nearestRatio": "34/29",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 4,
+      "cents": 491.471,
+      "hz": 657.9961,
+      "name": "E5 −3.3¢",
+      "nearestRatio": "4/3",
+      "fromRatioCents": -6.6
+     },
+     {
+      "degree": 5,
+      "cents": 570.344,
+      "hz": 688.6671,
+      "name": "F5 −24.4¢",
+      "nearestRatio": "32/23",
+      "fromRatioCents": -1.4
+     },
+     {
+      "degree": 6,
+      "cents": 624.172,
+      "hz": 710.4156,
+      "name": "F5 +29.4¢",
+      "nearestRatio": "33/23",
+      "fromRatioCents": -0.8
+     },
+     {
+      "degree": 7,
+      "cents": 689.374,
+      "hz": 737.6816,
+      "name": "F♯5 −5.4¢",
+      "nearestRatio": "46/31",
+      "fromRatioCents": 6.1
+     },
+     {
+      "degree": 8,
+      "cents": 756.549,
+      "hz": 766.8678,
+      "name": "G5 −38.2¢",
+      "nearestRatio": "48/31",
+      "fromRatioCents": -0.4
+     }
+    ]
+   }
+  }
+ ]
+}

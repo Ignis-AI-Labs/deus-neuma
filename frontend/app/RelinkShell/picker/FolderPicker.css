@@ -1,0 +1,379 @@
+/* FolderPicker — the LINE & CYCLE "Open Folder" instrument (shell: overlay,
+   panel, entrance, head, address bar, foot). The rail and the list carry
+   their own sheets (FolderPicker-rail.css, FolderPicker-list.css), imported
+   at the same site in cascade order.
+
+   Inline (Projects/House) it fills its host window (absolute, not fixed, so
+   a transformed window ancestor can't mis-anchor it); portaled to the body
+   (FolderOpenFlow) it is a centered, DRAGGABLE dialog over a dimmed backdrop.
+
+   Redesign 2026-09-29: zones are divided by hairlines, not boxed — a
+   control earns a frame only where it takes input (the address, the
+   filter) or commits (OPEN). Monochrome at rest; SIGNAL marks where you are
+   and what OPEN will take. */
+
+.picker-overlay {
+  position: absolute;
+  inset: 0;
+  /* modal tier: inside a window this resolves locally (still above its
+     content); portaled to the body (FolderOpenFlow) it must also clear the
+     dock and every floating window */
+  z-index: var(--z-modal);
+  background: var(--color-glass);
+}
+
+/* Absolutely positioned with a DEFINITE height so the inner column reliably
+   bounds the scrolling list and pins the footer. Viewport-centered and sized
+   to MOVE (witness law); a dragged picker pins inline (left/top/height). */
+.picker {
+  --cut: 12px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(880px, calc(100% - var(--space-8)));
+  height: min(640px, calc(100% - var(--space-8)));
+  display: flex;
+}
+
+.picker-in {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* keep content inside the chamfer so the footer stays clickable */
+  container: picker / inline-size;
+}
+
+/* ── Entrance — the window's Raphael idiom at dialog scale ───────────────
+   A line of light draws across center, two void shutters part from it, the
+   body reads in behind. Overlay layers only; transform + opacity only
+   (THE MOTION LAW) — the panel itself never animates. */
+.picker-light {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  z-index: 8;
+  pointer-events: none;
+  background: var(--signal);
+  box-shadow: 0 0 14px var(--signal);
+  opacity: 0;
+  transform: translateY(-50%) scaleX(0);
+  animation: picker-line 620ms linear forwards;
+}
+.picker-in::before,
+.picker-in::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  z-index: 7;
+  pointer-events: none;
+  background: var(--color-void);
+  transform: scaleY(0);
+  animation: picker-shutter var(--dur-unfold) 180ms var(--ease-snap) backwards;
+}
+.picker-in::before { top: 0; transform-origin: top center; }
+.picker-in::after { bottom: 0; transform-origin: bottom center; }
+
+@keyframes picker-line {
+  0% { opacity: 1; transform: translateY(-50%) scaleX(0); }
+  30% { opacity: 1; transform: translateY(-50%) scaleX(1); }
+  60% { opacity: 1; transform: translateY(-50%) scaleX(1); }
+  100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+}
+@keyframes picker-shutter {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0); }
+}
+
+/* ── Head — emblem, title, a rule to the edge, the close ───────────────── */
+.picker-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 44px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+/* The portaled dialog's head is the drag handle (witness law: movable).
+   touch-action:none so a touch/pen drag moves the panel, not the page. */
+.picker.is-draggable .picker-head { cursor: grab; touch-action: none; }
+.picker.is-draggable .picker-head:active { cursor: grabbing; }
+.picker-emblem { display: flex; color: var(--signal); }
+.picker-title {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: var(--color-text-primary);
+}
+.picker-head-rule { flex: 1 1 auto; height: 1px; background: var(--line); }
+.picker-head-meta {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+.picker-x {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.picker-x:hover { color: var(--alert); background: var(--color-glass-hover); }
+
+/* ── Address bar — up / home / the trail-or-typed path / go ────────────── */
+.picker-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.picker-nav {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.picker-nav:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.picker-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.picker-address {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  height: 36px;
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  transition: border-color var(--snap), background var(--snap);
+}
+.picker-address:hover { border-color: var(--line-hover); }
+.picker-address.is-editing { border-color: var(--signal-dim); background: var(--color-input-fill-focus); }
+.picker-pathinput {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+  padding: 0 var(--space-3);
+  cursor: text;
+  /* the trail and the typed value swap in one snap — base.css's input
+     transition would cross-fade them into a double exposure */
+  transition: none;
+}
+/* At rest the trail stands over the input: the typed value hides, the open
+   space of the bar still falls through to the input (click to type). */
+.picker-address:not(.is-editing) .picker-pathinput { color: transparent; caret-color: transparent; }
+/* the world's signal ::selection would otherwise keep painting the hidden
+   value under the trail */
+.picker-address:not(.is-editing) .picker-pathinput::selection { color: transparent; background: transparent; }
+.picker-crumbs {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 64px; /* clear of GO */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0 var(--space-2);
+  list-style: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* When the trail overflows, the ancestors give way (ellipsis) and the tail
+   — where you are — never does. */
+.picker-crumb-item { display: flex; align-items: center; flex: 0 1 auto; min-width: 28px; }
+.picker-crumb-item:last-child { flex-shrink: 0; min-width: 0; }
+.picker-crumb-sep { flex: 0 0 auto; display: flex; color: var(--color-text-disabled); padding: 0 1px; }
+.picker-crumb {
+  pointer-events: auto;
+  height: 26px;
+  padding: 0 var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 13px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.picker-crumb:hover { color: var(--color-text-primary); background: var(--color-glass-hover); }
+.picker-crumb.is-here { color: var(--signal); }
+.picker-go {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.picker-go:hover { color: var(--signal); background: var(--color-glass-hover); }
+
+/* ── Body — rail beside the contents ───────────────────────────────────── */
+.picker-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+/* A note from the System: errors in alert, confirmations quiet. */
+.picker-err {
+  flex: 0 0 auto;
+  margin: var(--space-2) var(--space-4) 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--line-hover);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+.picker-err.is-error { border-left-color: var(--alert); color: var(--alert); }
+
+/* ── Foot — the TARGET readout and the verbs ───────────────────────────── */
+.picker-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+.picker-target {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.picker-target-label {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+.picker-cwd {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* keep the chosen folder visible when the path overflows; the <bdi>
+     inside keeps the path itself reading left-to-right */
+  direction: rtl;
+  text-align: left;
+}
+.picker-foot-actions { flex: 0 0 auto; display: flex; gap: var(--space-2); }
+.picker-cancel,
+.picker-open,
+.picker-newfolder-open,
+.picker-newfolder-go {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.picker-cancel:hover,
+.picker-newfolder-open:hover:not(:disabled),
+.picker-newfolder-go:hover:not(:disabled) { color: var(--color-text-primary); border-color: var(--line-hover); }
+.picker-newfolder-open:disabled,
+.picker-newfolder-go:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* The primary control (idiom 5): white fill, void text, chamfered. */
+.picker-open {
+  --cut-a: var(--cut-sm);
+  max-width: 280px;
+  border: none;
+  background: var(--color-text-primary);
+  color: var(--color-void);
+  clip-path: polygon(0 0, calc(100% - var(--cut-a)) 0, 100% var(--cut-a), 100% 100%, var(--cut-a) 100%, 0 calc(100% - var(--cut-a)));
+}
+.picker-open:hover:not(:disabled) { background: var(--color-white); color: var(--color-void); }
+.picker-open:disabled { opacity: 0.4; cursor: not-allowed; }
+.picker-open-verb { flex: 0 0 auto; font-weight: var(--weight-semibold); }
+.picker-open-name {
+  min-width: 0;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The inline NEW FOLDER name row — lives in the foot beside CANCEL/OPEN. */
+.picker-newfolder { display: flex; gap: var(--space-2); }
+.picker-newfolder-input {
+  width: 180px;
+  height: 36px;
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+  padding: 0 var(--space-3);
+}
+.picker-newfolder-input:focus { outline: none; border-color: var(--signal-dim); }
+
+/* ── Narrow hosts — the rail stacks above the contents ─────────────────── */
+@container picker (max-width: 640px) {
+  .picker-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .picker-head-meta { display: none; }
+  .picker-foot { flex-wrap: wrap; }
+  .picker-target { flex-basis: 100%; }
+  .picker-foot-actions { margin-left: auto; }
+}

@@ -1,0 +1,369 @@
+/* VesselApp — VESSEL, the stat sheets. LINE & CYCLE L2 (OPERATIONS):
+   monochrome at rest; SIGNAL only on live truths (the selected lane, the
+   serving telemetry strip, READY/BOUND evolution facts, a benchmark's
+   trend); ALERT only for warnings (OVERDUE) and refusals. Counts in the
+   voice register, labels and metadata in the data register; every numeral
+   is a true measurement or '—' — never a fabricated zero. */
+
+.vl {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Lane switcher — ME plus one chip per house neuma; the lane on screen
+   carries SIGNAL (a live truth). */
+.vl-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.vl-scope {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.vl-scope:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--line-hover);
+}
+.vl-scope.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+.vl-scope-note {
+  margin: 0;
+  letter-spacing: 0.16em;
+}
+
+/* Sections — the header is a hairline-divided data-register label. */
+.vl-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.vl-h {
+  color: var(--color-heading);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+/* At-a-glance strips and fact grids — a value over its plain label. */
+.vl-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-3);
+}
+.vl-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.vl-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+}
+.vl-fact-v {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xl);
+  line-height: 1;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vl-fact-v.is-live {
+  color: var(--signal);
+}
+.vl-fact-s,
+.vl-fact-l {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.vl-fact-l {
+  color: var(--color-text-tertiary);
+}
+
+/* Toggle chips — life markers, units, the marker pick. The chosen (or
+   already-logged-today) one carries SIGNAL. */
+.vl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.vl-chip {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.vl-chip:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--line-hover);
+}
+.vl-chip.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+/* Plain lines — PR board and RECENT: voice for the content, mono for the
+   tag, the measurement, and the date. */
+.vl-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vl-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.vl-line:last-child {
+  border-bottom: none;
+}
+.vl-line-kind {
+  flex: 0 0 auto;
+  width: 9ch;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.vl-line-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vl-line-meta {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+}
+.vl-line-date {
+  flex: 0 0 auto;
+  width: 6ch;
+  text-align: right;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+/* The LOG form — content inputs in the voice register, controls in data. */
+.vl-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.vl-form-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.vl-in {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+.vl-in:focus {
+  outline: none;
+  background: var(--color-input-fill-focus);
+  border-color: var(--line-hover);
+}
+.vl-in::placeholder {
+  color: var(--color-text-disabled);
+}
+.vl-in-num {
+  flex: 0 1 10ch;
+}
+.vl-add {
+  align-self: flex-start;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.vl-add:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+.vl-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The structured session form — each lift a bordered block, set tags mono. */
+.vcal-set {
+  display: block;
+}
+
+/* A daily that never landed on a past day — missed, plainly (ALERT-dim, the
+   same ink the month grid's failures wear). */
+.vl-chip.is-missed {
+  color: var(--alert-dim);
+  border-color: var(--alert-dim);
+}
+.vl-work-ex {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-2) var(--space-3);
+  border-left: 1px solid var(--line);
+}
+.vl-work-tag {
+  align-self: center;
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+
+/* Mono fact rows — the machine vessel's facts. */
+.vl-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+}
+.vl-row-l {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.vl-row-v {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Benchmark dimensions — label, the true percent, the trend in SIGNAL. */
+.vl-dims {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vl-dim {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.vl-dim:last-child {
+  border-bottom: none;
+}
+.vl-dim-l {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vl-dim-v {
+  flex: 0 0 auto;
+  width: 5ch;
+  text-align: right;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+}
+.vl-dim-t {
+  flex: 0 0 auto;
+  width: 2ch;
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--signal);
+}
+
+/* Honest quiet states and the two registers of emphasis. */
+.vl-quiet {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  text-transform: none;
+}
+.vl-unreadable {
+  margin: 0;
+  color: var(--alert);
+  letter-spacing: 0.2em;
+}
+.vl-error {
+  margin: 0;
+  color: var(--alert);
+  letter-spacing: 0.12em;
+  text-transform: none;
+}
+.vl-ready {
+  color: var(--signal);
+}
+.vl-overdue {
+  color: var(--alert);
+}
+.vl-shared {
+  margin: 0;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+.vl-cap {
+  margin: 0;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}

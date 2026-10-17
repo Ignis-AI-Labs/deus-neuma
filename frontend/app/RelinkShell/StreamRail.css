@@ -1,0 +1,74 @@
+/* StreamRail — ONE strip on the stream's right edge.
+
+   Before this, each rail wore its own full-height spine and they stood as two
+   columns; every rail added later took another column of stream width. Founder,
+   2026-08-25: […]
+
+   So the strip is ONE column of buttons, and it costs the same width whether it
+   holds two rails or six. That is the resolution-scaling property he asked for:
+   the chrome is constant, the panel is what varies. */
+
+.stream-rail-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 0 0 auto;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  /* The strip owns the edge, so a panel opening beside it never pushes it off
+     screen and never reflows the buttons. */
+  z-index: 1;
+}
+
+.stream-rail-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  /* Each button takes only the height its word needs, so the buttons stack as
+     a menu rather than each claiming the full height the old spines did. */
+  flex: 0 0 auto;
+  padding: var(--space-3) 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+
+.stream-rail-tab:last-child {
+  border-bottom: none;
+}
+
+.stream-rail-tab:hover {
+  color: var(--color-text-secondary);
+}
+
+/* The OPEN one is marked on the strip itself. With the strip always standing,
+   the button is the only thing that says which panel you are looking at — a
+   hover colour alone would leave the answer to the panel's own header. */
+.stream-rail-tab.is-open {
+  color: var(--signal);
+  background: var(--surface-raised, rgba(255, 255, 255, 0.03));
+}
+
+.stream-rail-word {
+  writing-mode: vertical-rl;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+}
+
+.stream-rail-count {
+  font-size: 9px;
+  color: var(--signal);
+}
+
+.stream-rail-tab.is-open .stream-rail-count {
+  color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-rail-tab { transition: none; }
+}

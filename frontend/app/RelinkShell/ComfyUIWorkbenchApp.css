@@ -1,0 +1,245 @@
+/* THE COMFY VIEWPORT — LINE & CYCLE: monochrome at rest, SIGNAL marks life. */
+
+.forgebench {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  min-width: 340px;
+}
+
+/* With the canvas up the window is a workbench, not a card: the panes take
+   every remaining pixel and the chrome shrinks to one strip. */
+.forgebench.is-open {
+  height: 100%;
+  padding: 10px;
+  gap: 10px;
+}
+
+.forgebench-bar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.forgebench-note {
+  margin: 0;
+  font-size: var(--text-xs, 12px);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.forgebench-status {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.forgebench-lamp {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+  background: var(--color-text-tertiary);
+  flex: 0 0 auto;
+}
+
+.forgebench-lamp-ready { background: var(--signal); }
+.forgebench-lamp-launching { background: var(--signal); opacity: 0.5; }
+.forgebench-lamp-failed { background: var(--alert); }
+
+.forgebench-word {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.forgebench-line {
+  font-size: var(--text-xs, 11px);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.forgebench-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.forgebench-act {
+  font: inherit;
+  font-size: var(--text-xs, 11px);
+  letter-spacing: var(--tracking-wide, 0.08em);
+  padding: 6px 12px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.forgebench-act:hover:not(:disabled) {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.forgebench-act:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.forgebench-err {
+  margin: 0;
+  font-size: var(--text-xs, 11px);
+  line-height: 1.5;
+  color: var(--alert);
+  overflow-wrap: anywhere;
+}
+
+/* ── the two panes ─────────────────────────────────────────────────────── */
+
+.forgebench-panes {
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.forgebench.is-open .forgebench-panes { align-items: stretch; }
+
+.forgebench-idle {
+  flex: 1 1 auto;
+  align-self: flex-start;
+}
+
+/* The engine's own UI. A <webview> is a replaced element — it needs explicit
+   size or it collapses to 300x150. */
+.forgebench-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 1px solid var(--line);
+  background: var(--color-bg, #000);
+}
+
+/* ── the AI activity rail ──────────────────────────────────────────────── */
+
+.forgebench-rail {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  border: 1px solid var(--line);
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.forgebench-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.forgebench-rail-live {
+  font-size: var(--text-xs, 10px);
+  letter-spacing: var(--tracking-wide, 0.08em);
+  color: var(--signal);
+}
+
+.forgebench-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.forgebench-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+}
+
+/* Signal means life — only a job the engine is working on right now. */
+.forgebench-row.is-live { border-color: var(--signal); }
+.forgebench-row.is-bad { border-color: var(--alert); }
+
+.forgebench-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.forgebench-row-word {
+  font-size: var(--text-xs, 10px);
+  color: var(--color-text-primary);
+}
+
+.forgebench-row.is-live .forgebench-row-word { color: var(--signal); }
+.forgebench-row.is-bad .forgebench-row-word { color: var(--alert); }
+
+.forgebench-row-who {
+  font-size: var(--text-xs, 11px);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.forgebench-row-pipe,
+.forgebench-row-detail {
+  margin: 0;
+  font-size: var(--text-xs, 10px);
+  line-height: 1.45;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.forgebench-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 12px;
+  border: 1px solid var(--line);
+}
+
+.forgebench-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--signal);
+  opacity: 0.35;
+}
+
+.forgebench-bar-num {
+  position: relative;
+  margin-left: auto;
+  padding-right: 4px;
+  font-family: var(--font-data);
+  font-size: 9px;
+  color: var(--color-text-secondary);
+}
+
+.forgebench-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.forgebench-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}

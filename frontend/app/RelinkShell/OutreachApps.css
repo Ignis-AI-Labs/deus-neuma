@@ -1,0 +1,317 @@
+/* OutreachApps — each platform is its own window; this file owns the space
+   chrome. The boards inside carry the settings-* section styling; the
+   .settings register on the panel carries scroll, padding, and rhythm. */
+
+.outreach-panel {
+  outline: none;
+}
+
+/* A space's own boards — CAMPAIGNS / QUEUE — hang from this strip. Same
+   register as the chats tabs. */
+.outreach-tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.outreach-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.outreach-tab:hover { color: var(--color-text-primary); }
+
+.outreach-tab.is-on {
+  color: var(--signal);
+  border-color: var(--line);
+}
+
+/* THE QUEUE BOARD'S FOLD (Design note, 2026-07-27: […]). The entry header is
+   a button so a finished post opens on click and reads to a screen reader as
+   what it is — the row keeps the same line as before, so folding changes what
+   is shown, never where things sit. */
+.queue-entry-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.queue-entry-head:hover .settings-k {
+  color: var(--color-signal);
+}
+
+/* Folded, the body shows as a single dimmed line — an index of what is there,
+   not an anonymous row. */
+.queue-entry-peek {
+  opacity: 0.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-fold-bar {
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* THE LANES (Design note, 2026-07-27: […]). This is a SECOND-level
+   strip, sitting under the space's own CAMPAIGNS/QUEUE tabs, so it is a quieter
+   register on purpose — an underline rather than a boxed tab. Two identical
+   strips stacked would read as one confused row. */
+/* KIND before STANDING (Design note, 2026-08-06: the section strip is the board's
+   primary split — POSTS | REPLIES — one letterspacing step wider and framed,
+   so it reads as the axis above the lane strip rather than a sibling row. */
+.queue-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+
+.queue-section-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.queue-section-tab:hover { color: var(--color-text-primary); }
+
+.queue-section-tab.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.queue-lanes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.queue-lane {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.queue-lane:hover { color: var(--color-text-primary); }
+
+.queue-lane.is-on {
+  color: var(--signal);
+  border-bottom-color: var(--signal);
+}
+
+/* The count rides with the label, so the strip is an index of the whole board
+   before any lane is opened. */
+.queue-lane-n {
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+/* A lane's inner headings — QUEUED separates awaiting-approval from approved,
+   SENT separates the failures from the deliveries. Only those two lanes carry
+   one; a header over a lane's only group is noise. */
+.queue-group {
+  margin-bottom: var(--space-2);
+}
+
+.queue-group-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.22em;
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+/* How many are under this heading — the pile's own measure, so a section can
+   be judged before it is scrolled. */
+.queue-group-n {
+  flex: 0 0 auto;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+/* THE DECISION BLOCK (Design note, 2026-08-06: […]). Drafts awaiting the witness are lifted out of the
+   lane's group flow and stood at the head of the board inside their own frame:
+   under 87 inbound knocks, a decision rendered in lane order was a decision
+   nobody reached. The signal edge marks it as the one block that is asking. */
+.queue-decisions {
+  border: 1px solid var(--signal-dim);
+  border-left-width: 2px;
+  background: var(--color-glass-light);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.queue-decisions-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--signal);
+  letter-spacing: 0.22em;
+  margin: 0 0 var(--space-2);
+}
+
+.queue-decisions-n {
+  flex: 0 0 auto;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+/* THE MONTH GRID (Design note, 2026-07-28: […]). The board zoomed OUT: a 6×7 month of
+   days, each carrying only the counts that decide whether it is worth
+   opening. Data register throughout — SIGNAL marks a decision owed, the
+   settled stay in the quiet ink, and replies carry an R so engagement reads
+   separately at a glance. */
+.qcal-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.qcal-month {
+  color: var(--color-text-secondary);
+  letter-spacing: 0.22em;
+}
+
+.qcal-weekdays,
+.qcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.qcal-weekday {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  padding: var(--space-1);
+}
+
+.qcal-cell {
+  min-height: 52px;
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-align: left;
+  transition: border-color var(--snap), background var(--snap);
+}
+
+button.qcal-cell:hover {
+  border-color: var(--line-hover);
+  background: var(--color-glass-hover);
+}
+
+/* Padding seats are the neighbouring months' — blank, never clickable, so
+   the grid keeps its 6×7 height without pretending they are days. */
+.qcal-cell.is-pad {
+  border-color: var(--grid);
+  cursor: default;
+}
+
+/* Today speaks in SIGNAL — the one day the operator is standing in. */
+.qcal-cell.is-today .qcal-day { color: var(--signal); }
+
+/* The day you drilled into keeps its mark when you come back to the month. */
+.qcal-cell.is-on {
+  border-color: var(--signal-dim);
+  background: var(--signal-faint);
+}
+
+.qcal-counts {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  font-size: 9px;
+}
+
+.qcal-n.is-await { color: var(--signal); }
+.qcal-n.is-live { color: var(--color-text-secondary); }
+.qcal-n.is-done { color: var(--color-text-tertiary); }
+
+/* F — a failure wants an eye, on the month as on the cards. */
+.qcal-n.is-fail { color: var(--alert-dim); }
+
+/* Replies are distinguished by the R mark and the brighter ink, never a new
+   hue — the month stays monochrome-plus-signal. */
+.qcal-n.is-reply {
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--signal-dim);
+}
+
+/* THE DAY NAVIGATOR — the slim row the day view walks with: back to the
+   month, the day's own label, and the adjacent days either side. */
+.queue-daynav {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-2) 0;
+}
+
+.queue-daynav-label {
+  color: var(--color-text-secondary);
+  letter-spacing: 0.22em;
+}
+
+/* THE OWED LINE (Design note, 2026-10-13: off STAGED, the decisions shrink to one
+   signal-edged line that opens them — never missable, never bulky. */
+.reply-board-owed {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  margin: var(--space-2) 0;
+}

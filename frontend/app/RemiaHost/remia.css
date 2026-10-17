@@ -1,0 +1,338 @@
+/* Remia — the witness's own attunement, staged like the birth ceremony.
+   LINE & CYCLE: the grid void, a depth vignette, mono uppercase registers,
+   the signal accent ONLY on the ceremony's own voice and the single live
+   action. The witness's panels stay hairline monochrome — the witness is
+   context, not chrome. Tokens only, no literal color: an undefined token
+   fails visibly, never paints off-palette. */
+
+.remia {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  overflow-y: auto;
+  background: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  animation: remiaFadeIn 600ms ease-out;
+}
+
+/* the world recedes — depth vignette over the grid */
+.remia::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, transparent 55%, color-mix(in srgb, var(--color-void) 70%, transparent));
+}
+
+@keyframes remiaFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── stage header, pinned top-center ─────────────────────────────────── */
+
+.remia-stage-header {
+  position: fixed;
+  top: 2.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 2;
+  animation: remiaHeaderIn 2s ease-out;
+}
+
+@keyframes remiaHeaderIn {
+  from { opacity: 0; transform: translate(-50%, -20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.remia-ordinal {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 0.5rem;
+}
+
+.remia-stage-name {
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+.remia-close {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 2;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.remia-close:hover { border-color: var(--line-hover); }
+
+/* ── the reading column ──────────────────────────────────────────────── */
+
+.remia-column {
+  position: relative;
+  z-index: 1;
+  width: 80%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 10rem 0 5rem;
+}
+
+.remia-step {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: remiaStepIn 400ms ease-out forwards;
+}
+
+@keyframes remiaStepIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── the ceremony's voice: chamfered, corner-lit, signal-registered ──── */
+
+.remia-asks {
+  position: relative;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-void) 60%, transparent);
+  padding: 22px 28px;
+  clip-path: polygon(
+    var(--cut-sm) 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm),
+    100% calc(100% - var(--cut-sm)), calc(100% - var(--cut-sm)) 100%,
+    var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)), 0 var(--cut-sm)
+  );
+  filter: drop-shadow(0 0 24px var(--signal-faint));
+}
+
+/* corner-light accents — the ceremony is the live presence here */
+.remia-asks::before,
+.remia-asks::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 2px;
+  background: var(--signal);
+}
+.remia-asks::before { top: 8px; left: 8px; transform: rotate(-45deg); }
+.remia-asks::after { bottom: 8px; right: 8px; transform: rotate(-45deg); }
+
+.remia-speaker {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 0.9rem;
+}
+
+.remia-prose {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  margin: 0;
+}
+.remia-disclosure p { margin: 0 0 1em; }
+.remia-disclosure p:last-child { margin-bottom: 0; }
+
+/* ── the witness's panel: plain hairline, deliberately un-accented ───── */
+
+.remia-witness-panel {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-void) 60%, transparent);
+  padding: 18px 28px;
+  margin-top: 1.25rem;
+}
+
+.remia-label {
+  display: block;
+  margin: 0 0 0.5rem;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+}
+
+.remia-input,
+.remia-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  padding: 0.75rem;
+  transition: border-color var(--snap);
+}
+.remia-input:focus,
+.remia-textarea:focus {
+  outline: none;
+  border-color: var(--signal-dim);
+}
+
+.remia-consent { min-height: 5rem; }
+.remia-answer { min-height: 11rem; }
+
+/* mic state — signal only while genuinely live */
+.remia-mic {
+  margin: 0.6rem 0 0;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+.remia-mic-recording { color: var(--signal); }
+.remia-mic-transcribing { color: var(--signal-dim); }
+.remia-mic-error { color: var(--alert); }
+
+/* ── controls ────────────────────────────────────────────────────────── */
+
+.remia-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.remia-controls > .remia-primary:only-child { margin-left: auto; }
+
+.remia-primary {
+  background: none;
+  border: 1px solid var(--signal);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  clip-path: polygon(
+    var(--cut-sm) 0, 100% 0, 100% calc(100% - var(--cut-sm)),
+    calc(100% - var(--cut-sm)) 100%, 0 100%, 0 var(--cut-sm)
+  );
+  transition: background var(--snap);
+}
+.remia-primary:hover { background: var(--signal-faint); }
+.remia-primary:disabled {
+  border-color: var(--line);
+  color: var(--color-text-disabled);
+  cursor: default;
+  background: none;
+}
+
+.remia-secondary,
+.remia-quietbtn {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  transition: border-color var(--snap);
+}
+.remia-secondary:hover,
+.remia-quietbtn:hover { border-color: var(--line-hover); }
+
+.remia-quiet {
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.remia-centered { text-align: center; }
+
+.remia-error { color: var(--alert); line-height: 1.6; }
+
+.remia-unreadable {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--alert);
+  line-height: 1.6;
+}
+
+.remia-past { margin-top: 2rem; }
+.remia-past-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 0.5rem;
+}
+
+/* ── the abandon dialog — in-ceremony, never the OS prompt ───────────── */
+
+.remia-dialog-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-void) 75%, transparent);
+  animation: remiaFadeIn 200ms ease-out;
+}
+
+.remia-dialog {
+  width: 90%;
+  max-width: 34rem;
+  border: 1px solid var(--line);
+  background: var(--color-surface);
+  padding: 1.75rem 2rem;
+}
+.remia-dialog .remia-label { margin-top: 1.25rem; }
+
+/* ── the codex ───────────────────────────────────────────────────────── */
+
+.remia-codex-title {
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--signal);
+  font-weight: 400;
+  margin: 0 0 1rem;
+}
+
+.remia-codex .remia-fn {
+  margin: 1rem 0;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-void) 60%, transparent);
+  padding: 0.75rem 1rem;
+}
+.remia-codex summary {
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  color: var(--color-text-primary);
+}
+.remia-codex summary:hover { color: var(--signal); }
+.remia-entry { margin: 1.25rem 0; }
+.remia-entry-q { color: var(--color-text-secondary); line-height: 1.6; font-size: 0.9rem; }
+.remia-entry-a { line-height: 1.7; white-space: pre-wrap; }
+.remia-entry-note { font-size: 0.75rem; color: var(--color-text-tertiary); font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  .remia, .remia-step, .remia-stage-header, .remia-dialog-veil { animation: none; }
+  .remia-step { opacity: 1; transform: none; }
+}

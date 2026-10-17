@@ -1,0 +1,241 @@
+/* WorkflowApp — the team's substream, full-pane. Same hairline register as
+   the rest of the desk; the run gets room the chat chip cannot give it. */
+
+.workflow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* The empty state's long copy keeps its centered column — a layout extra on
+   the shared .empty-state, not a bespoke style. */
+.workflow > .empty-state {
+  margin: auto;
+  max-width: 420px;
+  line-height: 1.8;
+}
+
+.workflow-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.workflow-state { font-size: var(--text-xs); letter-spacing: 0.1em; }
+.workflow-state.is-live { color: var(--signal); }
+.workflow-state.is-ok { color: var(--signal); }
+.workflow-state.is-bad { color: var(--alert); }
+.workflow-name { color: var(--color-text-secondary); }
+
+.workflow-goal {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.workflow-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+.workflow-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+}
+.workflow-row.is-working { color: var(--signal); }
+.workflow-row.is-done { color: var(--color-text-secondary); }
+.workflow-row.is-failed { color: var(--alert); }
+/* A member row opens into its panel: the head is a plain button so the
+   whole line toggles, and the STOP sits beside it. */
+.workflow-row-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.workflow-member-panel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2) var(--space-4);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line);
+  color: var(--color-text-secondary);
+}
+.workflow-member-text {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.workflow-member-thought .workflow-member-text { color: var(--color-text-tertiary); }
+.workflow-member-tool-list { list-style: none; margin: var(--space-1) 0 0; padding: 0; font-size: 10px; display: flex; flex-direction: column; gap: 2px; }
+.workflow-member-tool.is-ok { color: var(--color-text-secondary); }
+.workflow-member-tool.is-executing { color: var(--signal); }
+.workflow-member-tool.is-error,
+.workflow-member-tool.is-denied { color: var(--alert); }
+.workflow-member-tool-summary { color: var(--color-text-tertiary); word-break: break-word; }
+.workflow-steer { display: flex; flex-direction: column; gap: var(--space-1); }
+.workflow-steer-notes { margin: 0; padding-left: var(--space-3); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.workflow-steer-input {
+  width: 100%;
+  resize: vertical;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+}
+.workflow-steer-send {
+  align-self: flex-start;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--signal);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.workflow-steer-send:disabled { color: var(--color-text-tertiary); cursor: default; }
+.workflow-steer-error { color: var(--alert); font-size: 10px; }
+.workflow-member-failure { margin: 0; color: var(--alert); font-size: 10px; }
+.workflow-lead { color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.08em; }
+.workflow-runs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.workflow-run-pick {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.workflow-run-pick.is-live { color: var(--signal); }
+.workflow-run-pick.is-picked { border-color: var(--color-text-secondary); color: var(--color-text-primary); }
+.workflow-glyph { flex: 0 0 auto; }
+.workflow-member { color: inherit; }
+.workflow-status {
+  flex-basis: 100%;
+  padding-left: var(--space-4);
+  letter-spacing: 0.04em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.workflow-h {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+}
+.workflow-torches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.workflow-torch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.workflow-torch {
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+.workflow-torch-head { color: var(--signal); font-size: 10px; }
+.workflow-torch-text {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.workflow-hint { margin: 0; color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.08em; }
+
+/* The settled sections (WorkHistory / DeliveryDesk) reuse the chip's
+   .delivery classes — give them the window's border register here. */
+.workflow .delivery { border: 1px solid var(--line); }
+.workflow-resume { display: flex; flex-direction: column; gap: var(--space-1); border: 1px solid var(--line); padding: var(--space-2) var(--space-3); }
+.workflow-resume-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.workflow-resume-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.workflow-resume-name { color: var(--color-text-primary); }
+.workflow-resume-why { color: var(--alert); font-size: 10px; }
+.workflow-resume-go {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--signal);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.workflow-resume-go:disabled { color: var(--color-text-tertiary); cursor: default; }
+
+/* Where a working member stands — waiting its turn for the model, or stopped
+   short with the run about to continue it — and the door to its whole log. */
+.workflow-standing {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.workflow-standing.is-retry { color: var(--alert); }
+.workflow-open-log {
+  padding: 1px 6px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.workflow-open-log:hover { color: var(--signal); }
+.workflow-member-tool-why { color: var(--alert); word-break: break-word; }
+
+/* The TEAM CHANNEL — what the team tells each other, and the operator's word. */
+.workflow-channel { display: flex; flex-direction: column; gap: var(--space-2); border: 1px solid var(--line); padding: var(--space-2) var(--space-3); }
+.workflow-channel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); max-height: 320px; overflow-y: auto; }
+.workflow-channel-head { color: var(--signal); font-size: 10px; letter-spacing: 0.06em; }
+.workflow-channel-post.is-yours .workflow-channel-head { color: var(--color-text-secondary); }
+.workflow-channel-text { margin: 2px 0 0; color: var(--color-text-secondary); font-size: var(--text-xs); white-space: pre-wrap; word-break: break-word; }
+.workflow-channel-compose { display: flex; flex-direction: column; gap: var(--space-1); }
+.workflow-channel-to {
+  align-self: flex-start;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+}

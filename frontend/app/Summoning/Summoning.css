@@ -1,0 +1,26 @@
+/* THE SUMMONING — the specimen's frame: four sequences on one clock, or one
+   alone. The sequence itself is painted on canvas (summoning-frame.js). */
+
+.sum-root { position: fixed; inset: 0; background: var(--color-void); overflow: hidden; }
+.sum-stage { position: absolute; inset: 0 0 57px 0; display: grid; gap: 1px; background: var(--line); }
+.sum-root.is-quad .sum-stage { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.sum-root.is-solo .sum-stage { grid-template-columns: 1fr; }
+.sum-cell { position: relative; display: block; padding: 0; margin: 0; border: 0; background: var(--color-void); cursor: pointer; overflow: hidden; }
+.sum-root.is-solo .sum-cell { cursor: default; }
+.sum-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sum-form {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  max-width: 70%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+.sum-form b { color: var(--signal); font-weight: 400; }

@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.headline}}">
+  {{fontface}}
+  <defs>
+    <linearGradient id="wash" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{{token.bgScreen}}"/>
+      <stop offset="100%" stop-color="{{token.bg}}"/>
+    </linearGradient>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{{token.trim}}" stop-opacity="0.10"/>
+      <stop offset="18%" stop-color="{{token.bg}}" stop-opacity="0"/>
+      <stop offset="82%" stop-color="{{token.bg}}" stop-opacity="0"/>
+      <stop offset="100%" stop-color="{{token.trim}}" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#wash)"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#edge)" opacity="0.5"/>
+  <rect x="0" y="0" width="1600" height="3" fill="{{token.trim}}" opacity="0.9"/>
+
+  <!-- TOP-RIGHT, CONTAINED — the explainer treatment, and the family's corner.
+       Design note, 2026-09-01: the mask belongs top-right here as on the other cards,
+       and larger — the small mark parked between the captions and the footer
+       rule read as an orphan, not a signature. This used to sit at (1308, 600)
+       at 140px on the argument that a full-length headline reaches x=1447 and
+       no top band was safe. explainer.svg settled that argument: at 0.18 the
+       mark is behind the type, never in front of it — the same overlap
+       announcement and milestone live with by design. The alternative is
+       cutting the headline budget to protect a watermark, which is paying the
+       wrong price. 320px, same seat and same opacity as explainer, so the
+       corner means one thing across the family. -->
+  <image href="{{mark.mask}}" x="1145" y="45" width="320" height="320"
+         preserveAspectRatio="xMidYMid meet" opacity="0.18"/>
+
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <rect x="128" y="146" width="16" height="16"/>
+    <text x="168" y="168">{{data.eyebrow}}</text>
+  </g>
+
+  <!-- 68px, and the PROMISE is what bought it. Design note, 2026-08-31: […] A 1600px card renders about 390px wide in a phone feed, so every
+       size here divides by roughly four — 52px landed at 13 CSS px, which is a
+       squint on the one line that says what the card is about.
+       68px was impossible at the old 34-character declaration (34 caps would
+       have run to 1659px against a 1344px frame). Dropping `headline` to 26
+       makes it fit at 1319px. Shorter promise, bigger type: the trade is worth
+       it, because a headline nobody can read is not a shorter headline. -->
+  <text x="128" y="268" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="76" letter-spacing="{{font.displayTrack}}"
+        fill="{{token.ink}}">{{data.headline}}</text>
+
+  <!-- THREE CELLS, AND THE THREE COLOURS MEAN THREE THINGS.
+       Design note, 2026-08-31: […] So the position carries a meaning and the palette answers it:
+
+         a — ink       THE ANCHOR. What is held. Neutral, because a balance is
+                       not good news or bad news, it is the fact everything
+                       else is measured against.
+         b — accent    THE FLOW. Throughput — trades, volume, activity. The
+                       system register: it is the machine running.
+         c — rise      THE GAIN. What was earned. Green, and only ever green
+                       when the number genuinely went up.
+
+       ⚠️ That ordering is a promise to the reader. Putting a loss in cell c
+       draws it in the gain colour, which is worse than drawing it in grey —
+       so a falling figure belongs in `fall`, not here.
+
+       Every cell is required, so the row is never lopsided by an absent stat.
+       The figures are set on the NUMERAL face, not
+       the display face — the look-dev sets every large number in mono
+       ExtraLight (.stat .v, .spec-numeral), and a number drawn in the headline
+       face reads as a headline instead of as an instrument. 76px, not larger:
+       the third cell has only 416px to the margin and mono is a wide face —
+       9 monospaced characters at 76px measure 397px, at 80px they measure 418
+       and cross it. -->
+  <g>
+    <line x1="128" y1="360" x2="1472" y2="360" stroke="{{token.hairline}}" stroke-width="1"/>
+    <line x1="576" y1="392" x2="576" y2="648" stroke="{{token.hairlineSoft}}" stroke-width="1"/>
+    <line x1="1024" y1="392" x2="1024" y2="648" stroke="{{token.hairlineSoft}}" stroke-width="1"/>
+
+    <text x="128" y="520" font-family="{{font.numeral}}" font-weight="{{font.numeralWeight}}"
+          font-size="76" letter-spacing="{{font.numeralTrack}}" fill="{{token.ink}}">{{data.aValue}}</text>
+    <text x="128" y="576" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+          font-size="30" letter-spacing="{{font.labelTrack}}" fill="{{token.muted}}">{{data.aLabel}}</text>
+
+    <text x="608" y="520" font-family="{{font.numeral}}" font-weight="{{font.numeralWeight}}"
+          font-size="76" letter-spacing="{{font.numeralTrack}}" fill="{{token.accent}}">{{data.bValue}}</text>
+    <text x="608" y="576" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+          font-size="30" letter-spacing="{{font.labelTrack}}" fill="{{token.muted}}">{{data.bLabel}}</text>
+
+    <text x="1056" y="520" font-family="{{font.numeral}}" font-weight="{{font.numeralWeight}}"
+          font-size="76" letter-spacing="{{font.numeralTrack}}" fill="{{token.rise}}">{{data.cValue}}</text>
+    <text x="1056" y="576" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+          font-size="30" letter-spacing="{{font.labelTrack}}" fill="{{token.muted}}">{{data.cLabel}}</text>
+  </g>
+
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">AS OF {{data.asOf}}</text>
+</svg>

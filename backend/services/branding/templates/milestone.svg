@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.value}} — {{data.label}}">
+  {{fontface}}
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="{{token.hairline}}" stroke-width="0.5" opacity="0.15"/>
+    </pattern>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{{token.trim}}" stop-opacity="0.10"/>
+      <stop offset="18%" stop-color="{{token.bg}}" stop-opacity="0"/>
+      <stop offset="82%" stop-color="{{token.bg}}" stop-opacity="0"/>
+      <stop offset="100%" stop-color="{{token.trim}}" stop-opacity="0.08"/>
+    </linearGradient>
+    <!-- ⚠️ The halo floods with `halo`, NOT `accent`. They were the same token
+         until 2026-08-31, and that coupling is what forced a choice nobody
+         should have to make: `accent` now carries a MEANING on the stat card
+         (flow — cyan, the machine running), while the hero number here wants a
+         WARM halo, because the number is the anchor and amber is the colour
+         that says look here. One token could not be both, so the halo got its
+         own name. Founder picked palette F for stat and palette E for milestone;
+         they differed in exactly this and nothing else. -->
+    <filter id="underglow" x="-50%" y="-50%" width="200%" height="200%">
+      <feFlood flood-color="{{token.halo}}" flood-opacity="0.25" result="glowColor"/>
+      <feComposite in="glowColor" in2="SourceAlpha" operator="in" result="glow"/>
+      <feGaussianBlur in="glow" stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#edge)" opacity="0.4"/>
+
+  <!-- THE MASK: large, faint, centred behind the number. It occupies the card's
+       centre as a watermark — present but never competing with the value. -->
+  <image href="{{mark.mask}}" x="450" y="120" width="700" height="700"
+         preserveAspectRatio="xMidYMid meet" opacity="0.06"/>
+
+  <!-- Frame: hairline inner border -->
+  <g stroke="{{token.hairline}}" stroke-width="1.5" fill="none">
+    <rect x="24" y="24" width="1552" height="852"/>
+  </g>
+
+  <!-- Corner brackets: trim colour -->
+  <!-- ⚠️ THE CORNER BRACKETS ARE THE SAME ON EVERY CARD — 40/1560/860, pinned
+       by brand-card.test.js. This card sat at 24/1576/876 and launch at
+       96/1504/804; three cards, three frames. Design note, 2026-08-31, on the aligned
+       one: […] That alignment is geometry, not luck — at
+       40/1560/860 the bottom-right bracket lands exactly where the half-cut
+       mask's lower edge sweeps past it — and it only holds if every card uses
+       the same numbers.
+       The hairline rect stays OUTSIDE them at 24, so this card keeps its own
+       double-frame reading without moving the brackets. -->
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <!-- Eyebrow: centred, with trim lines flanking it -->
+  <!-- 30px, not 20 (Design note, 2026-08-31: […]). On a card whose whole job is ONE number, the line naming what the
+       number is has to carry weight of its own — at 20px it read as a caption
+       on a 220px figure.
+
+       ⚠️ THE FLANKING RULES MOVED, AND THEY WERE ALREADY WRONG. They sat at
+       600–680 and 920–1000 while a full 28-character eyebrow spans 570–1030 at
+       the OLD 20px — so the longest declared eyebrow has been striking straight
+       through both rules since this card shipped. It never showed because every
+       eyebrow written so far has been short. At 30px the max spans 456–1144, so
+       the rules stand clear of it at 340–420 and 1180–1260 and the card is
+       correct at its declared maximum rather than at its convenient one. -->
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <line x1="160" y1="159" x2="250" y2="159" stroke="{{token.trim}}" stroke-width="1" opacity="0.6"/>
+    <text x="800" y="175" text-anchor="middle">{{data.eyebrow}}</text>
+    <line x1="1350" y1="159" x2="1440" y2="159" stroke="{{token.trim}}" stroke-width="1" opacity="0.6"/>
+  </g>
+
+  <!-- The value on the NUMERAL face, not the display face. This is the card the
+       drift was most visible on: the look-dev sets its hero figures in mono
+       ExtraLight (.spec-numeral, .tick-num) and this drew them in the headline
+       face at 900 — a weight Space Grotesk does not even have, so it was being
+       faux-bolded into metrics no designer chose.
+
+       220px (Design note, 2026-08-31: […]). The size rose because the PROMISE shrank: `value` was declared
+       at 12 characters, which no figure the live feed publishes ever reaches —
+       $228.4K and ~$21.7M are 7, the trade count is 6, locked U1 is 9. Sizing
+       for a 12-character case that does not exist cost 40px on every real card.
+       At 10 declared characters, mono at 220 spans 1276 inside the 1344 budget;
+       at 232 it spans 1346 and breaks the footer rule at BOTH ends, because
+       this line is centre-anchored. -->
+  <text x="800" y="500" text-anchor="middle" font-family="{{font.numeral}}"
+        font-weight="{{font.numeralWeight}}" font-size="220"
+        letter-spacing="{{font.numeralTrack}}" fill="{{token.ink}}"
+        filter="url(#underglow)">{{data.value}}</text>
+
+  <!-- The label: centred, under the value -->
+  <text x="800" y="580" text-anchor="middle" font-family="{{font.voice}}"
+        font-weight="{{font.voiceWeight}}" font-size="42"
+        fill="{{token.inkSoft}}">{{data.label}}</text>
+
+  <!-- Footer: hairline rule, wordmark left, timestamp right -->
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMidYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">AS OF {{data.asOf}}</text>
+</svg>

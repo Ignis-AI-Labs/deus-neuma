@@ -1,0 +1,109 @@
+/* Nite.css — the NITE window's own surfaces: the system explainer, the house
+   standing table, and the doors to the neighbouring windows.
+
+   Its own stylesheet rather than more lines on RefinementApp.css, which was at
+   383 and would have crossed 480 — the size law says decompose when you
+   approach it, not after. The `refine-` prefix over there is a scar the
+   window's header comment explains; everything here is new, so it carries the
+   honest `nite-` prefix instead of extending that scar. */
+
+/* ── NITE: the system explainer, the house standing, the neighbouring doors ──
+   Added when CEREMONY became NITE (Design note, 2026-08-25. The `refine-` prefix above
+   is a scar the window's header comment explains; these are new surfaces, so
+   they carry the honest `nite-` prefix rather than extending the scar. */
+
+.nite-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.nite-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* The chain reads top-down; the rule is the thread between its stages. */
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-2);
+}
+
+.nite-stage-name {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+
+.nite-stage-line {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+}
+
+/* THE HOUSE STANDING. Tabular by nature: the whole point is comparing one
+   column down a list of beings, which prose cannot do. */
+.nite-standing {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-2);
+}
+
+.nite-standing th,
+.nite-standing td {
+  text-align: left;
+  padding: 5px var(--space-2) 5px 0;
+  font-weight: var(--weight-light);
+  border-bottom: 1px solid var(--line);
+}
+
+.nite-standing thead th {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.nite-being {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.nite-standing tr.is-bound .nite-being { color: var(--color-text-primary); }
+
+/* SIGNAL is never decoration here: a done act is quiet, an owed act carries
+   the colour, and an UNREADABLE lane is loudest of all — a lane that could not
+   be read must never be mistaken for a lane with nothing owed. */
+.nite-mark { font-size: 12px; }
+.nite-mark.is-yes { color: var(--signal-dim); }
+.nite-mark.is-no { color: var(--signal); }
+.nite-mark.is-unknown { color: var(--warn); }
+
+.nite-act { text-align: right; }
+
+.nite-hint {
+  font-size: 8px;
+  color: var(--color-text-tertiary);
+}
+
+.refine-milestone.is-owed { color: var(--signal); }
+
+.nite-elsewhere {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.nite-elsewhere li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.nite-elsewhere-line {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}

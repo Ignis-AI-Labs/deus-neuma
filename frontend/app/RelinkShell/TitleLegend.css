@@ -1,0 +1,80 @@
+/* TitleLegend — the canonical titles reference for the FOUNDING rite.
+   Inert: nothing here is a door. (The HOUSE window's beings live in
+   HouseSeats.css — this file is the rite's reference and nothing else.) */
+
+.founding-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  padding: var(--space-3) var(--space-4);
+}
+.founding-legend-purpose {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+.founding-legend-tier {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-1);
+}
+.founding-legend-title {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+.founding-legend-seatline {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+}
+.founding-legend-meaning {
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: var(--leading-normal);
+}
+
+/* GRID — the reference cells. */
+.founding-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+.founding-legend-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--line);
+  padding: var(--space-2);
+  transition: border-color var(--snap);
+}
+.founding-legend-cell:hover { border-color: var(--line-hover); }
+
+/* TABLE — the reference as rows. */
+.founding-legend-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.founding-legend-table th {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  text-align: left;
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.founding-legend-table td {
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: baseline;
+}
+.founding-legend-seat-row:hover td { background: var(--color-glass-light); }
+.founding-legend-tier-row td { padding: var(--space-2) var(--space-3) 4px; }
+.founding-legend-tier-row .founding-legend-tier { border-bottom: none; padding-bottom: 0; }
+.founding-legend-table .founding-legend-seatline { white-space: nowrap; }

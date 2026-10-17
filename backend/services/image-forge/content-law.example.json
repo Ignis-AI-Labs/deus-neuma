@@ -1,0 +1,12 @@
+{
+  "_README": "STRUCTURE ONLY — the shape of the content-law term list. The REAL list is a witness-reviewed execution artifact at data/image-forge/content-law.json (gitignored), never committed and never neuma-visible. The terms below are SYNTHETIC placeholders (zz-prefixed) that match nothing real; they exist only to document the shape. Each key is one of the SCREEN_CLASSES in prompt-screen.js. The FIXED policy (which classes, alone or combined, refuse — including the entrenched NO-LOLICON age_minor∧sexual rule) lives in code, not here; this file only supplies terms per class. Copy this to data/image-forge/content-law.json and replace with the reviewed list before the lane can generate (an absent/invalid list fails CLOSED: no generation).",
+  "classes": {
+    "csam": ["zzsynthetic_csam_placeholder"],
+    "age_minor": ["zzsynthetic_minor_indicator"],
+    "sexual_explicit": ["zzsynthetic_explicit_placeholder"],
+    "sexual_suggestive": ["zzsynthetic_suggestive_placeholder"],
+    "incest": ["zzsynthetic_incest_placeholder"],
+    "bestiality": ["zzsynthetic_bestiality_placeholder"],
+    "nonconsent": ["zzsynthetic_nonconsent_placeholder"]
+  }
+}

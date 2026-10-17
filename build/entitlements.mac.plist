@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Deus Neuma — the hardened runtime's exceptions, for the signed + notarized Mac build.
+  Applied to the app AND everything inside it (entitlementsInherit): the backend runs as
+  a spawned Electron-as-Node child, which loads native modules (better-sqlite3, node-pty,
+  onnxruntime-node) and JITs JavaScript like the app itself.
+-->
+<plist version="1.0">
+<dict>
+  <!-- V8 compiles JavaScript at runtime (the app and the backend child) -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- the native modules' dylibs (onnxruntime) load into the Node child -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <!-- voice: push-to-talk, the live sitting, the voice forge's recorder -->
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+</dict>
+</plist>

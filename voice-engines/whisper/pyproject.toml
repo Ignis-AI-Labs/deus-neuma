@@ -1,0 +1,35 @@
+[project]
+name = "whisper-sidecar"
+version = "0.1.0"
+description = "Local speech-to-text sidecar — Nemotron streaming live lane + Whisper large-v3 transcription."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "faster-whisper>=1.1.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "nvidia-cublas-cu12>=12.1",
+    "nvidia-cudnn-cu12>=9.1",
+    # /stream endpoint: canonical ufal whisper_online.py (vendored, MIT) needs
+    # numpy/librosa/soundfile at import (the fallback whisper lane).
+    "numpy>=1.26",
+    "librosa>=0.10",
+    "soundfile>=0.12",
+    # torch runs the live lane's Nemotron — on the GPU when one has room for it
+    # (Design note, 2026-10-09: […]), else on
+    # the CPU. The cu128 build runs either way and carries sm_120 (Blackwell)
+    # kernels; 2.11.0 matches the csm engine's pin, so the wheel is shared.
+    "torch==2.11.0",
+    "torchaudio==2.11.0",
+    # The live lane's model (NVIDIA Nemotron Speech Streaming, nemotron_lane.py):
+    # cache-aware streaming RNNT landed in transformers 5.13.
+    "transformers>=5.19",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }

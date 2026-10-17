@@ -1,0 +1,30 @@
+/* OpeningField — the gateway's environment: THE ARMILLARY in 3D and the
+   panel painted over it (OpeningField.jsx). Beneath the gateway's content
+   (z 2+), above its backdrop; it never takes a pointer itself — the hand is
+   read from the window, so the threshold stays clickable. */
+.of {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.of-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 160ms linear;
+}
+.of.on .of-canvas { opacity: 1; }
+
+/* The witness crosses: the camera dives into the core as the field yields */
+.of.mode-exiting .of-canvas {
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .of-canvas { transition: none; }
+}

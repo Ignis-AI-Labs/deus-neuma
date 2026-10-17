@@ -1,0 +1,390 @@
+/* StreamTasks — the stream's right rail. The Explorer's register, inside the
+   conversation: chamfered frame, data labels, monochrome at rest, SIGNAL only
+   where something is genuinely live. Its own stylesheet so the rail's look never
+   entangles with the shell's.
+
+   The two layout classes below exist ONLY to host this rail: the stream's own
+   column (panel + gauge + composer) and the rail beside it. They live here
+   rather than in the shell stylesheet so this workstream owns its whole surface.
+   min-height/min-width 0 on both is load-bearing — without them a long
+   conversation stretches the flex row instead of scrolling inside it. */
+
+.stream-row {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.stream-col {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.stream-tasks {
+  flex: 0 0 var(--stream-tasks-w, 236px);
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--color-glass-light);
+  border-left: 1px solid var(--line);
+}
+
+.stream-tasks-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  overflow-y: auto;
+}
+
+/* Collapsed: a spine, not a disappearance. The count keeps standing work
+   visible even when the list is folded — folding hides the rows, never the
+   fact that rows exist. */
+.stream-tasks.is-collapsed {
+  flex: 0 0 auto;
+  background: transparent;
+}
+
+.stream-tasks-spine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-2) 4px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.stream-tasks-spine:hover {
+  color: var(--color-text-secondary);
+  border-left-color: var(--line-hover);
+}
+
+.stream-tasks-spine-word {
+  writing-mode: vertical-rl;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+}
+
+.stream-tasks-spine-count {
+  font-size: 9px;
+  color: var(--signal);
+}
+
+.stream-tasks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.stream-tasks-title {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-tasks-fold {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.stream-tasks-fold:hover {
+  color: var(--color-text-secondary);
+}
+
+.stream-tasks-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stream-tasks-h {
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+  margin: var(--space-1) 0 0;
+}
+
+.stream-tasks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stream-tasks-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--line-faint, var(--line));
+}
+
+/* THEIR work, not the operator's list: the mark says a being is on it now, and
+   no settle controls appear — it is not the operator's to close. */
+.stream-tasks-row.is-theirs {
+  color: var(--color-text-primary);
+}
+
+.stream-tasks-mark {
+  flex: 0 0 auto;
+  color: var(--signal);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.stream-tasks-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stream-tasks-steps {
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+}
+
+.stream-tasks-acts {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--snap);
+}
+
+/* The settle controls arrive on approach and on keyboard focus — a rail at rest
+   is a list to read, not a row of buttons. */
+.stream-tasks-row:hover .stream-tasks-acts,
+.stream-tasks-row:focus-within .stream-tasks-acts {
+  opacity: 1;
+}
+
+.stream-tasks-act {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.stream-tasks-act:hover:not(:disabled) {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.stream-tasks-act.is-drop:hover:not(:disabled) {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+.stream-tasks-act:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stream-tasks-empty {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  margin: var(--space-1) 0;
+}
+
+.stream-tasks-empty.is-warn {
+  color: var(--alert);
+}
+
+.stream-tasks-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+.stream-tasks-others-h,
+.stream-tasks-editor {
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  text-align: left;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
+.stream-tasks-others-h:hover,
+.stream-tasks-editor:hover {
+  color: var(--color-text-secondary);
+}
+
+.stream-tasks-others {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stream-tasks-other {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.stream-tasks-other-name {
+  flex: 1 1 auto;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-tasks-other:hover .stream-tasks-other-name {
+  color: var(--signal);
+}
+
+/* A witness stands BESIDE the house — the row says so rather than letting the
+   two standings read alike. */
+.stream-tasks-kind {
+  flex: 0 0 auto;
+  font-size: 7px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+
+.stream-tasks-other-count {
+  flex: 0 0 auto;
+  font-size: 9px;
+  color: var(--signal);
+}
+
+/* THE BOX IS A MARK, NOT A CONTROL (Design note, 2026-08-03. The operator reads
+   whether a goal is met; settling a being's self-authored task still goes
+   through the being. So it carries no hover, no pointer, and no affordance
+   that would promise an act the operator does not own.
+
+   DRAWN, NOT TYPESET (Design note, 2026-08-06: […]). The ☑/☐ glyphs rendered at
+   whatever size the font felt like and read as punctuation. This is the
+   house's own hairline box — the TodoApp ledger's mark at rail scale — so the
+   two surfaces show a being's goals in one register.
+
+   CENTRED ON THE TEXT, not on its first line: a title that wraps to three
+   lines used to leave the box stranded at the top. align-self keeps the rest
+   of the row (the settle acts on the operator's own list) top-aligned. */
+.stream-tasks-box {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-hover);
+  font-family: var(--font-data);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+}
+.stream-tasks-row.is-done .stream-tasks-box {
+  border-color: var(--signal-dim);
+  color: var(--signal-dim);
+}
+.stream-tasks-row.is-done .stream-tasks-text {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: var(--line);
+}
+
+/* SIGNAL means life: exactly one task is being worked, and it is the only row
+   that earns the live colour. The frame carries it too — at 14px the box is
+   read as a shape before its contents. */
+.stream-tasks-row.is-in-progress .stream-tasks-box {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+.stream-tasks-state.is-now { color: var(--signal); }
+
+/* The crash case. An interrupted task that reads like an untouched one gets
+   redone from the start — which is the waste this whole flow exists to end. */
+.stream-tasks-row.is-interrupted .stream-tasks-box {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+.stream-tasks-state.is-warn { color: var(--alert); }
+
+.stream-tasks-state {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+/* HOW BIG, in the quietest register there is. A size is an input to the
+   operator's choice of what to take on next — not news — so it sits at the
+   weight of the step count beside it and never competes with the state. */
+.stream-tasks-size {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+/* BLOCKED work is dimmed, never hidden: it is the reason another task matters.
+   The whole row recedes — this is the one thing on the list that cannot be
+   picked up — while the blocker's name stays legible enough to act on. */
+.stream-tasks-row.is-blocked .stream-tasks-text { color: var(--color-text-tertiary); }
+.stream-tasks-blocked {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+/* The order cycle sits in the head beside the title: quiet at MY ORDER (the
+   list's own, which claims nothing) and lit once the operator has actually
+   chosen a direction — so the rail always says whether it is sorting. */
+.stream-tasks-order {
+  margin-left: auto;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+.stream-tasks-order:hover { color: var(--color-text-secondary); }
+.stream-tasks-order.is-on { color: var(--signal); }

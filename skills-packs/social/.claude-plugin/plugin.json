@@ -1,0 +1,5 @@
+{
+  "name": "social",
+  "description": "Witness-governed social presence — posting to X through the platform's post_to_x capability",
+  "version": "0.1.0"
+}

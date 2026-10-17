@@ -1,0 +1,117 @@
+/* FirstRunWitness — the guided road. Shares the door's stage so the three beats
+   (choice → standing → door) read as one continuous introduction rather than
+   three unrelated screens. LINE & CYCLE: monochrome at rest, chamfers, tokens. */
+
+.firstrun-witness {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-void);
+  padding: var(--space-6);
+  overflow-y: auto;
+  /* Above desk chrome (tops out at 900), below the session overlays — the boot
+     ignition (9600) and opening field (9500) own the start of a session. */
+  z-index: 1000;
+}
+
+.firstrun-witness-inner {
+  width: 100%;
+  max-width: 52rem;
+  background: var(--color-surface);
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  padding: var(--space-10);
+}
+
+/* The card's chamfer is painted BEHIND it, not clipped onto it (.cham clips
+   its content): a dropdown opened near the bottom — the provider list — must
+   float past the edge, not be cut off by it. */
+.firstrun-witness-inner.cham {
+  position: relative;
+  isolation: isolate;
+  clip-path: none;
+  background: none;
+  border: none;
+}
+
+.firstrun-witness-inner.cham::before,
+.firstrun-witness-inner.cham::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  clip-path: polygon(
+    0 0, calc(100% - var(--cut)) 0, 100% var(--cut),
+    100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))
+  );
+}
+
+.firstrun-witness-inner.cham::before {
+  inset: 0;
+  background: var(--color-border-primary);
+}
+
+.firstrun-witness-inner.cham::after {
+  inset: var(--border-width-thin);
+  background: var(--color-surface);
+}
+
+.firstrun-witness-points {
+  list-style: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.firstrun-witness-points > li {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: var(--border-width-thin) solid var(--color-border-primary);
+}
+
+.firstrun-witness-points .label-data {
+  color: var(--signal);
+}
+
+.firstrun-witness-points p {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.firstrun-witness-form {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 0;
+}
+
+.firstrun-witness-note {
+  color: var(--color-text-tertiary);
+}
+
+.firstrun-witness-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+/* Back is a way out, not a peer of the forward act — it reads as text so the
+   one thing to do next is unmistakable. */
+.firstrun-witness-back {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.firstrun-witness-back:hover {
+  color: var(--color-text-secondary);
+}

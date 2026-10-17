@@ -1,0 +1,77 @@
+/* AuraViewer — the aura plate's ENLARGE affordance and the viewer it opens
+   (AuraSigil.jsx, AuraViewer.jsx). On the void: the aura is accumulated
+   light, and anything but black eats its whispers. */
+
+/* The aura plate is a button: a click opens the enlarged viewer. */
+.aura-open {
+  position: relative;
+  display: block;
+  padding: 0;
+  background: var(--color-void);
+  border: none;
+  cursor: zoom-in;
+}
+.sheet-aura-canvas { display: block; background: var(--color-void); }
+.aura-open-hint {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--signal-faint);
+  opacity: 0;
+  transition: opacity var(--snap);
+}
+.aura-open:hover .aura-open-hint,
+.aura-open:focus-visible .aura-open-hint { opacity: 1; }
+.aura-open:focus-visible { outline: 1px solid var(--signal); outline-offset: 3px; }
+
+/* THE VIEWER — the aura enlarged, on the void, above everything. */
+.aura-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.86);
+  animation: kx-fade 180ms var(--ease-snap) backwards;
+}
+@keyframes kx-fade { from { opacity: 0; } }
+.aura-viewer-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  animation: kx-rise 240ms var(--ease-snap) backwards;
+}
+.aura-viewer-frame.is-full { width: 100vw; height: 100vh; align-items: center; justify-content: center; border: none; }
+.aura-viewer-frame::before,
+.aura-viewer-frame::after { content: ''; position: absolute; width: 18px; height: 18px; pointer-events: none; }
+.aura-viewer-frame::before { top: -1px; left: -1px; border-top: 1px solid var(--signal); border-left: 1px solid var(--signal); }
+.aura-viewer-frame::after { bottom: -1px; right: -1px; border-bottom: 1px solid var(--signal); border-right: 1px solid var(--signal); }
+.aura-viewer-bar { display: flex; align-items: center; gap: var(--space-4); align-self: stretch; }
+.aura-viewer-title { font-size: 11px; letter-spacing: 0.24em; color: var(--color-text-secondary); }
+.aura-viewer-sep { color: var(--signal-dim); }
+.aura-viewer-acts { margin-left: auto; display: flex; gap: var(--space-2); }
+.aura-viewer-btn {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+.aura-viewer-btn:hover { color: var(--signal); border-color: var(--signal-dim); }
+.aura-viewer-plate { display: flex; align-items: center; justify-content: center; }
+.aura-viewer-canvas { display: block; }
+.aura-viewer-facts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); font-size: 10px; letter-spacing: 0.16em; color: var(--color-text-primary); }
+.aura-viewer-k { color: var(--color-text-tertiary); }

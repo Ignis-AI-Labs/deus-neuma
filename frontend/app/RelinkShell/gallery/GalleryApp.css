@@ -1,0 +1,423 @@
+/* THE GALLERY — LINE & CYCLE: monochrome at rest, SIGNAL marks the live choice. */
+
+/* Positioned so THE ROOM covers the gallery and nothing else — without this
+   the viewer anchors to the window frame and swallows its own title bar, so
+   the operator cannot move or resize the window they are looking through. */
+.gallery {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 480px;
+  min-height: 0;
+}
+
+.gallery-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.gallery-kinds,
+.gallery-sorts {
+  display: flex;
+  gap: 6px;
+}
+
+.gallery-act {
+  font: inherit;
+  font-size: var(--text-xs, 11px);
+  letter-spacing: var(--tracking-wide, 0.08em);
+  padding: 5px 10px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gallery-act:hover:not(:disabled) { border-color: var(--signal); color: var(--signal); }
+.gallery-act:disabled { opacity: 0.45; cursor: default; }
+.gallery-act.is-on { border-color: var(--signal); color: var(--signal); }
+
+.gallery-count {
+  font-family: var(--font-data);
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+  margin-left: 4px;
+}
+
+.gallery-search {
+  font: inherit;
+  font-size: var(--text-xs, 11px);
+  padding: 5px 8px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  min-width: 140px;
+  flex: 1 1 140px;
+}
+
+.gallery-search:focus { outline: none; border-color: var(--signal); }
+
+.gallery-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* ── the folder rail ─────────────────────────────────────────────────── */
+
+.gallery-roots {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.gallery-roots-head { color: var(--color-text-tertiary); }
+
+.gallery-root-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.gallery-root {
+  font: inherit;
+  font-size: var(--text-xs, 11px);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.gallery-root:hover { border-color: var(--signal); color: var(--signal); }
+.gallery-root.is-on { border-color: var(--signal); color: var(--signal); }
+.gallery-root.is-bad { border-color: var(--alert); color: var(--alert); }
+
+.gallery-root-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.gallery-root-row .gallery-root { flex: 1 1 auto; width: auto; }
+
+.gallery-root-drop {
+  font: inherit;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 4px 7px;
+  line-height: 1;
+}
+
+.gallery-root-drop:hover { border-color: var(--alert); color: var(--alert); }
+
+.gallery-root-err {
+  flex: 1 1 100%;
+  font-size: 10px;
+  color: var(--alert);
+  overflow-wrap: anywhere;
+}
+
+.gallery-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* The search box grows along the BAR, which is a row — reused here in the
+   folder rail, which is a column, that same `flex: 1 1 140px` made the field
+   140px TALL and let it swallow the rest of the rail. */
+.gallery-add .gallery-search {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.gallery-note {
+  margin: 0;
+  font-size: var(--text-xs, 11px);
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+}
+
+.gallery-err {
+  margin: 0 0 8px;
+  font-size: var(--text-xs, 11px);
+  color: var(--alert);
+  overflow-wrap: anywhere;
+}
+
+/* ── the grid ────────────────────────────────────────────────────────── */
+
+.gallery-grid-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 18px 28px;
+}
+
+/* A day is a hanging — its rule runs the width of the wall, the way a section
+   is marked out on a gallery floor. */
+.gallery-day { margin-bottom: 30px; }
+
+.gallery-day-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: var(--tracking-widest, 0.1em);
+}
+
+.gallery-day-head::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--line);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(186px, 1fr));
+  gap: 20px 16px;
+  margin-top: 14px;
+}
+
+/* The work carries the tile. No frame at rest — a wall of bordered boxes reads
+   as a file manager; the image's own hairline is enough, and SIGNAL arrives
+   only under the cursor. */
+.gallery-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+}
+
+.gallery-tile-img,
+.gallery-tile-video {
+  width: 100%;
+  height: 176px;
+  object-fit: cover;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  transition: border-color var(--snap), opacity var(--snap);
+}
+
+.gallery-tile:hover .gallery-tile-img,
+.gallery-tile:hover .gallery-tile-video { border-color: var(--signal); }
+
+.gallery-tile:focus-visible { outline: none; }
+.gallery-tile:focus-visible .gallery-tile-img,
+.gallery-tile:focus-visible .gallery-tile-video { border-color: var(--signal); }
+
+.gallery-tile:hover .gallery-tile-name { color: var(--color-text-primary); }
+
+.gallery-tile-video {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+}
+
+.gallery-tile-name {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-tile-meta { font-size: 9px; color: var(--color-text-tertiary); }
+
+/* A tile that could not load keeps the grid's shape and says so — the browser
+   holds the box for one that is merely still arriving. */
+.gallery-tile-img.is-missing {
+  border-color: var(--alert);
+  object-fit: contain;
+}
+
+/* ── the viewer: THE ROOM ─────────────────────────────────────────────
+   One work on a dark wall, its label beneath it, the being's account under
+   that. Every rule here exists to keep the art the largest thing on screen. */
+
+.gallery-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void);
+  z-index: 2;
+}
+
+.gallery-viewer:focus { outline: none; }
+
+/* The rail names the room and gets out of the way: walking, looking, leaving.
+   Everything the old bar carried here — name, source, size, date — moved to
+   the wall label under the work, which is where a label belongs. */
+/* Above the wall in BOTH orders. A leaned-in work is transformed, which paints
+   it as though positioned: its painted overflow is clipped by the stage, but
+   its hit area is not, so without this the art swallows the pointer over the
+   rail and FIT / CLOSE go dead exactly when the operator is zoomed in and
+   wants them. Proven by test/e2e/gallery-room.spec.js. */
+.gallery-viewer-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--color-void);
+  flex: 0 0 auto;
+}
+
+.gallery-viewer-spacer { flex: 1 1 auto; }
+
+.gallery-step {
+  min-width: 30px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 8px 4px;
+}
+
+.gallery-viewer-pos {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  min-width: 54px;
+  text-align: center;
+}
+
+.gallery-viewer-zoom {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  min-width: 44px;
+  text-align: right;
+}
+
+/* THE WALL. Deep, matte, and generous — the margin around a work is what makes
+   it read as hung rather than as a file preview. */
+.gallery-viewer-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0.045), transparent 72%),
+    var(--color-void);
+  touch-action: none;
+}
+
+.gallery-viewer-stage.is-zoomed { cursor: grab; }
+.gallery-viewer-stage.is-zoomed:active { cursor: grabbing; }
+
+/* THE HANG — the browser's own fit. A max never magnifies, so the work grows
+   with the window and stops dead at its own resolution; the transform on top
+   is the operator's lean. No transition on it: a zoom that lags the wheel
+   feels like a stutter, not like weight. */
+.gallery-viewer-media {
+  flex: 0 0 auto;
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: center center;
+  box-shadow: 0 0 0 1px var(--line), 0 24px 60px -20px rgba(0, 0, 0, 0.9);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Walking the room by hand — an edge you can click, weightless until wanted. */
+.gallery-walk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--snap), color var(--snap);
+}
+
+.gallery-walk-back { left: 0; }
+.gallery-walk-on { right: 0; }
+
+.gallery-viewer-stage:hover .gallery-walk { opacity: 0.65; }
+.gallery-walk:hover { opacity: 1; color: var(--signal); }
+.gallery-walk:focus-visible { opacity: 1; outline: 1px solid var(--signal); }
+
+/* THE WALL LABEL — maker, facts, accession. Museum order, museum restraint.
+   Raised over the wall for the same reason the rail is. */
+.gallery-plaque {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--color-void);
+}
+
+.gallery-plaque-maker {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm, 13px);
+  letter-spacing: var(--tracking-wide, 0.025em);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.gallery-plaque-facts {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* A forge render is named by UUID. That is an accession number, not a title,
+   so it is set like one: last, smallest, and allowed to run out of the line. */
+.gallery-plaque-accession {
+  font-size: 9px;
+  color: var(--color-text-disabled);
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-viewer-media.is-missing {
+  min-width: 220px;
+  min-height: 140px;
+  box-shadow: 0 0 0 1px var(--alert);
+}

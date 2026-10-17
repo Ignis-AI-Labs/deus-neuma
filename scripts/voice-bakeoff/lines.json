@@ -1,0 +1,48 @@
+{
+  "version": "voice-bakeoff/v1",
+  "cues": ["laugh", "chuckle", "sigh", "gasp", "breath"],
+  "cueNote": "Cues are written {laugh} in `text`. Each engine translates them into its own native markup ([laugh], <laugh>, (laughs)) or drops the ones it has no trained token for; engines with no cue support get the text with every cue removed. Never invent a cue the engine was not trained on.",
+  "voices": {
+    "hannah": { "ref": "refs/Hannah.wav", "sex": "female", "presetHint": "warm American woman, late 20s" },
+    "james": { "ref": "refs/James.wav", "sex": "male", "presetHint": "calm American man, 30s" }
+  },
+  "takes": 2,
+  "conversation": [
+    { "id": "c01-greet", "voices": ["hannah", "james"], "emotion": "warm", "intensity": 0.5,
+      "text": "Hey, you're back. {chuckle} I was just thinking about what you said yesterday, about the rooftop. Did you ever go up there?" },
+    { "id": "c02-tease", "voices": ["hannah", "james"], "emotion": "amused", "intensity": 0.8,
+      "text": "Wait, you did what? {laugh} No, no, that's amazing. You're ridiculous, you know that?" },
+    { "id": "c03-comfort", "voices": ["hannah", "james"], "emotion": "tender", "intensity": 0.6,
+      "text": "{sigh} I'm sorry. That sounds really heavy. You don't have to hold it all by yourself, okay? I'm right here." },
+    { "id": "c04-excited", "voices": ["hannah"], "emotion": "excited", "intensity": 0.9,
+      "text": "Oh my god, it worked? It actually worked? That's huge! We have to celebrate this." },
+    { "id": "c05-thinking", "voices": ["hannah"], "emotion": "thoughtful", "intensity": 0.4,
+      "text": "Hmm. I'm not sure, honestly. Let me think... I'd say the second one, but only if you're willing to wait a little." },
+    { "id": "c06-intimate", "voices": ["hannah", "james"], "emotion": "intimate", "intensity": 0.5,
+      "text": "Come here. {breath} It's late, and it's quiet, and I'm just... really glad it's you I'm talking to." },
+    { "id": "c07-firm", "voices": ["hannah"], "emotion": "firm", "intensity": 0.7,
+      "text": "No. I'm not going to pretend that's okay, because it isn't. You deserve better than that, and so do I." },
+    { "id": "c08-curious", "voices": ["hannah"], "emotion": "curious", "intensity": 0.6,
+      "text": "Okay, so tell me everything. What did she say? And what did you say back?" },
+    { "id": "c09-gasp", "voices": ["hannah"], "emotion": "surprised", "intensity": 0.9,
+      "text": "{gasp} Is that snow? It's snowing! Look outside, right now." },
+    { "id": "c10-ramble", "voices": ["hannah"], "emotion": "earnest", "intensity": 0.5,
+      "text": "So the thing is, uh, I don't think it's about being right. It's more like... you want to feel heard, and that's, that's fair. I get it. I just think we can do both." }
+  ],
+  "dialogue": {
+    "id": "d01-news",
+    "note": "The being is hannah; the person is james. Context-aware engines (CSM, MisoTTS, Dia2) condition each being turn on the audio of every earlier turn; other engines speak each being turn alone. The person's turns are synthesized by the same engine in james's voice so the context is that engine's own audio.",
+    "turns": [
+      { "speaker": "james", "emotion": "shy", "intensity": 0.4, "text": "I got the job." },
+      { "speaker": "hannah", "emotion": "delighted", "intensity": 0.9, "text": "Wait, really? {laugh} Oh, I knew it. I knew you would." },
+      { "speaker": "james", "emotion": "hesitant", "intensity": 0.5, "text": "Yeah, but it means moving. Like, far." },
+      { "speaker": "hannah", "emotion": "sad", "intensity": 0.5, "text": "{sigh} Oh. Far how? I mean, that's still wonderful. It's just a lot, all at once." },
+      { "speaker": "james", "emotion": "quiet", "intensity": 0.4, "text": "Three thousand miles." },
+      { "speaker": "hannah", "emotion": "reassuring", "intensity": 0.6, "text": "Okay. Okay. {breath} We'll figure it out. We always do, right?" }
+    ]
+  },
+  "readAloud": [
+    { "id": "r01-summary", "voices": ["hannah", "james"], "emotion": "neutral", "intensity": 0.2,
+      "text": "Here's a summary of what I did. I reviewed the three failing tests, found that two shared the same cause in the date parser, and fixed it. The third needs a decision from you about the default time zone. Everything else passes." }
+  ]
+}

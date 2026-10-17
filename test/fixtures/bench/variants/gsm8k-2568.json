@@ -1,0 +1,16 @@
+{
+  "$comment": [
+    "gsm8k with reasoning room: completion budget = 768 answer + 1800 reasoning",
+    "(neuma's THINK_TOKEN_BUDGET), the fix proven under neuma #506 — at 768 the",
+    "reasoning channel can exhaust the whole budget on harder questions and the",
+    "answer comes back EMPTY with finish_reason=length. The raw 768 cell stays",
+    "frozen as the historical baseline; this cell measures capability, not budget",
+    "exhaustion. Shares the same slab as gsm8k (same upstream, same revision)."
+  ],
+  "id": "gsm8k-2568",
+  "label": "GSM8K — grade-school math word problems, 8-shot chain of thought — 2568-token reasoning and final-answer budget",
+  "protocol": {
+    "maxTokens": 2568
+  },
+  "evidence": "development"
+}

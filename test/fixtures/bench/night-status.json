@@ -1,0 +1,19 @@
+{
+  "status": "deadline-or-signal",
+  "pid": 2832134,
+  "startedAt": "2026-09-21T19:22:52.799Z",
+  "deadline": "2026-09-22T03:17:52.709Z",
+  "groups": [
+    {
+      "id": "heartbeat",
+      "status": "endpoint-unavailable",
+      "attempts": []
+    }
+  ],
+  "steps": [],
+  "waitingFor": "model-endpoint",
+  "unstartedGroups": [
+    "arc-bare"
+  ],
+  "finishedAt": "2026-09-22T03:16:28.434Z"
+}

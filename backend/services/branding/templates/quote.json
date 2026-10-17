@@ -1,0 +1,38 @@
+{
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "what kind of thing this is \u2014 FROM THE TEAM, ON BUILDING IN PUBLIC. 28 to match every other card's eyebrow; the tier is shared and pinned"
+    },
+    "lineOne": {
+      "required": true,
+      "max": 28,
+      "label": "Use only a published quote or words supplied verbatim by the operator. Never invent or paraphrase words and attribute them to a person. Preserve the wording when choosing line breaks; if it does not fit, request a shorter sourced excerpt instead of rewriting it. the quote's first line. YOU choose the break \u2014 a pull quote's rag is a typographic decision, not a wrapper's. \u26a0\ufe0f TWENTY-EIGHT, cut from 31 when the half-cut mark landed on 2026-09-01: at 31 a line reaches x=1403 and runs into the densest ink of the mark. The mask is paid for in characters, the same way a size rise is."
+    },
+    "lineTwo": {
+      "required": true,
+      "max": 28,
+      "label": "the second line. Required \u2014 a one-line quote wants the statement card; this frame is built for a spoken sentence with a shape"
+    },
+    "lineThree": {
+      "required": false,
+      "max": 28,
+      "label": "the third line, if the sentence needs it. The only optional line: two reads as a quote, three reads as a quote, four would need a smaller face than a person words deserve"
+    },
+    "speaker": {
+      "required": true,
+      "max": 24,
+      "label": "Credit the actual speaker named by the source or operator; never invent the attribution. who said it. Required \u2014 an unattributed line is not a quote, it is a statement, and there is a card for that"
+    },
+    "role": {
+      "required": true,
+      "max": 32,
+      "label": "their standing \u2014 what makes the line worth quoting. FOUNDER, UMBRAE \u00b7 HEAD OF PROTOCOL. Required for the same reason: a name with no standing invites the reader to guess"
+    }
+  }
+}

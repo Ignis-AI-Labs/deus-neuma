@@ -1,0 +1,199 @@
+/* VoiceSitting — the immersion shell (F-03/F-04), LINE & CYCLE.
+   The register change IS the signal: the chat drops to a dimmed, inert
+   background and one chamfered panel in SIGNAL owns the surface — at a
+   glance you are IN a voice sitting, not in a chat with a mic on.
+   --signal marks live voice only; monochrome everywhere else. */
+
+.voice-sitting {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* THE TAKEOVER (Design note, 2026-08-01: […]).
+
+   The chat stays MOUNTED and steps out of the layout — not unmounted. The
+   thread, its scroll position and every open row are exactly where they were
+   when the talk ends; display:none only takes the space, it takes no state. */
+.voice-sitting-stream {
+  display: none;
+}
+
+.voice-sitting-panel {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--signal-dim);
+  background: var(--color-void);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The panel takes focus on mount so nothing on the desk keeps it (a focused
+   TALK button answers to Space, the sitting's own speak key). It is a
+   container, not a control — tabIndex -1, never in the tab order — so it wears
+   no ring; the EXIT button inside keeps its own. */
+.voice-sitting-panel:focus {
+  outline: none;
+}
+
+.voice-sitting-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.voice-sitting-title {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  color: var(--signal);
+}
+
+.voice-sitting-name {
+  flex: 1;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The foot carries the two things worth knowing while the talk runs: which
+   mic is actually live, and how to leave. */
+.voice-sitting-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.voice-sitting-hint {
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.08em;
+}
+
+/* HEARING YOU reads in SIGNAL, like every other live-voice mark here — the
+   witness must be able to tell at a glance whether the key actually took. */
+.voice-sitting-hint[data-live="1"] {
+  color: var(--signal);
+}
+
+/* WHICH MIC IS LIVE (Design note, 2026-08-01: […]). Mono while shut;
+   an open grant reads in SIGNAL, like every other live-voice mark here. */
+.voice-sitting-mic {
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.08em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+.voice-sitting-mic[data-live="1"] {
+  color: var(--signal);
+}
+
+/* The visualization: two honest bar channels with a turn readout between.
+   Bars are mono at rest; a channel lights in SIGNAL only while it is
+   actually carrying voice. It OWNS the panel now — the talk is the window,
+   so the channels take the height rather than sitting in a strip. */
+.vs-viz {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.vs-viz-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.vs-viz-label {
+  min-width: 7ch;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.08em;
+}
+
+/* Chunky, low-resolution bars on purpose — the 90s VOX register Founder asked
+   for, and honest by construction: every bar is the ONE real level shaped by
+   the pure envelope, never invented motion. A hard step on the gap keeps the
+   blocks reading as blocks at any width. */
+.vs-viz-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: clamp(56px, 18vh, 160px);
+  border-bottom: 1px solid var(--line);
+}
+
+.vs-viz-bar {
+  flex: 1;
+  height: 0%;
+  min-height: 2px;
+  background: var(--color-text-disabled);
+  /* Snappier than the strip version: at this size a 60 ms ramp reads as lag
+     on plosives. The bars must land ON the syllable, not behind it. */
+  transition: height 40ms linear;
+}
+
+.vs-viz-bars[data-live="1"] .vs-viz-bar {
+  background: var(--signal);
+}
+
+.vs-viz-turn {
+  text-align: center;
+  letter-spacing: 0.22em;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* LISTENING (mic hot) and SPEAKING (playback live) are live voice — SIGNAL.
+   THINKING is the being's silent work; it stays in the secondary register. */
+/* HEARD is live voice too — it is the acknowledgement that the witness's turn
+   was taken, and it has to read at a glance or a slow reply is indistinguishable
+   from a lost one. */
+.vs-viz-turn[data-turn="listening"],
+.vs-viz-turn[data-turn="heard"],
+.vs-viz-turn[data-turn="speaking"] {
+  color: var(--signal);
+}
+
+/* WAITING is the resting standing under hold-to-talk: granted, but nothing
+   reaching the being. It stays mono — SIGNAL means live voice, and claiming
+   it here would be the readout lying about an open ear. */
+.vs-viz-turn[data-turn="waiting"] {
+  color: var(--color-text-tertiary);
+}
+
+/* WHAT WAS HEARD (Design note, 2026-08-01: […]). The witness's own words, on the
+   one surface he is looking at. A partial is still changing, so it reads dim
+   and italic — the convention every browser speech demo uses; the settled
+   line, the one that was actually sent, reads plainly. Never dressed up as
+   final while it is still a guess. */
+.voice-sitting-heard {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  min-height: 1.5em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.voice-sitting-heard[data-settled="1"] {
+  color: var(--color-text-secondary);
+  font-style: normal;
+}

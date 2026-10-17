@@ -1,0 +1,99 @@
+/* RelinkShell partial: MODES (composer mode chip + menu, VOX chip) — the
+   chat-mode controls moved to the composer's eye level (Design note, 2026-08-26. */
+
+/* The mode chip sits in the composer row beside AttachMenu — same chamfered
+   control register as .relink-plus, wide enough to carry a word. */
+.relink-mode-root {
+  position: relative;
+  flex: 0 0 auto;
+  padding-bottom: var(--composer-baseline); /* the row's one baseline */
+}
+
+.relink-mode-chip,
+.relink-vox-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+  transition: border-color var(--snap), color var(--snap);
+}
+
+/* ⚠️ VOX HAS NO ROOT WRAPPER. ModeMenu and AttachMenu each wrap their button in
+   a positioned root that carries the baseline; VoxChip is a bare <button>
+   rendered straight into the row, so it must lift ITSELF or it sits a notch low
+   under `align-items: flex-end` — which is exactly what it was doing. Margin,
+   not padding: padding would grow the button's own 34px box instead of moving
+   it. */
+.relink-vox-chip {
+  margin-bottom: var(--composer-baseline);
+}
+
+.relink-mode-chip:hover:not(:disabled),
+.relink-vox-chip:hover:not(:disabled) {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+.relink-mode-chip:disabled,
+.relink-vox-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Monochrome at rest: DEFAULT is the void's natural state and carries no
+   signal. A live non-default bearing marks itself — PLAN in signal, AUTO in
+   alert, because hands-off is the bearing that must never be invisible. */
+.relink-mode-chip.is-plan {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.relink-mode-chip.is-auto {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.relink-vox-chip.is-on {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+/* The mode drop-up — anchored like .relink-attach-menu (the chamfered input
+   box clips positioned descendants, proven live). */
+.relink-mode-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 4px);
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  z-index: var(--z-sticky);
+}
+
+/* AUTO's row reads as what it is — the dangerous choice. */
+.relink-attach-menu-row.is-mode-auto .relink-attach-menu-name {
+  color: var(--alert);
+}
+
+.relink-attach-menu-row.is-mode-auto.is-active .relink-attach-menu-mark {
+  background: var(--alert);
+  border-color: var(--alert);
+}

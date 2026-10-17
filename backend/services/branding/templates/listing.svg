@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.name}} listed, ticker {{data.ticker}}">
+  {{fontface}}
+  <defs>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+    <linearGradient id="listEdge" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="{{token.accentGlow}}"/>
+      <stop offset="46%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#listEdge)" opacity="0.45"/>
+
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <rect x="128" y="90" width="16" height="16"/>
+    <text x="168" y="112">{{data.eyebrow}}</text>
+  </g>
+
+  <!-- THE GUEST'S MARK, at the top of the card and never recoloured. A listing
+       card is about THEIR token arriving on OUR venue, so their mark leads and
+       ours signs at the foot. Boxed in a fixed square with xMidYMid meet: a
+       guest logo is whatever aspect they publish, and a card that stretched a
+       partner's mark to fill a slot would be publishing a distorted logo.
+       440px on the RIGHT (Design note, 2026-08-31: […]).
+       Nearly double the 236 it carried on the left, and it now owns a column
+       rather than sitting above the copy as a header ornament.
+
+       ⚠️ WHAT THIS COSTS, AND WHERE IT IS PAID. A 440px mark starting at x=1010
+       leaves the copy 128..960. The NAME therefore drops to 12 characters — at
+       100px a 12-character name measures 827px against that 832px column, and
+       13 would not fit at any size worth setting a title in. That is affordable
+       because a listing names a TOKEN: Aerodrome is 9, Moonwell 8, Uniswap 7,
+       Morpho 6. The SUPPORT line does not pay it — it runs full width UNDER the
+       mark instead, where all 72 characters still fit. -->
+  <image href="{{guest.mark}}" x="1010" y="144" width="440" height="440"
+         preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- The name, at 88px: declared at 20 characters, and displayTrack adds
+       0.16em to each — 20 caps at 88px measures 1299px inside the 1344px
+       frame, where 96px would run to 1417px. -->
+  <text x="128" y="400" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="100" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">{{data.name}}</text>
+
+  <!-- Ticker and network on the DATA face, as a readout — this is the row a
+       trader actually scans, and the look-dev sets every readout in mono. -->
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}">
+    <text x="128" y="500" fill="{{token.accent}}">{{data.ticker}}</text>
+  </g>
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="34"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">
+    <text x="128" y="562">{{data.network}}</text>
+  </g>
+
+  <!-- The guest ends at y=584; full-width copy starts below it, with
+       separate glyph rows before the unchanged footer at y=757. -->
+  <!-- ABOUT: one line on what THEIR token is — the ecosystem it backs. A listing
+       names a project people may not know, so the card says what it is in plain
+       words. Optional: when a listing carries no description the line resolves
+       to nothing and the card reads ticker → network → support, exactly as
+       before. Never a value claim — what it is, not what it is worth. -->
+  <text x="128" y="632" font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}"
+        font-size="34" fill="{{token.muted}}">{{data.about}}</text>
+
+  <!-- CONTRACT: the token's on-chain address, the readout a trader copies to
+       verify the listing. Scams are the standing threat, so an unfamiliar token
+       ships with its address for anyone to check. Mono, dim, the quietest line
+       on the card — it is a reference, not a headline. Optional: a listing
+       without a verified address renders without it. The address is verified
+       against the chain BEFORE the card ships, never transcribed from memory. -->
+  <text x="128" y="684" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+        font-size="34" letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{data.contract}}</text>
+
+  <text x="128" y="736" font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}"
+        font-size="36" fill="{{token.muted}}">{{data.support}}</text>
+
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

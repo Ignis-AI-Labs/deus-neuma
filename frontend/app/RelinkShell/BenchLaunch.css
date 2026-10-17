@@ -1,0 +1,430 @@
+/* LAUNCH — two columns (2026-09-25, the operator chose it): pick on the
+   left, THIS RUN stays put on the right. LINE & CYCLE: hairlines on void,
+   short MONO labels, sentence-case INTER prose at a readable size (the
+   2026-09-07 legibility law: ≥14px working content, 12px metadata), one
+   white primary act, --signal only for what is chosen or live, --alert only
+   for a blocked run. Below ~760px of window the columns stack. */
+
+.bl-grid {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+}
+@container (max-width: 760px) {
+  .bl-setup, .bl-run { grid-column: 1 / -1; }
+  .bl-setup { border-right: none; }
+  .bl-run { position: static; }
+}
+
+.bl-setup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+}
+
+/* A numbered step — the spine's tick: number, label, an aside count. */
+.bl-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.bl-step-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.bl-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line-hover);
+  font-size: var(--text-xs);
+  letter-spacing: 0;
+  color: var(--color-text-primary);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+.bl-step-title {
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  color: var(--color-text-primary);
+}
+.bl-step-aside {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+
+.bl-prose {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+.bl-prose.is-alert { color: var(--alert); }
+.bl-kicker {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.bl-kicker.is-signal { color: var(--signal); }
+
+/* Tier tabs — a segmented rail; the open tier is lit. */
+.bl-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bl-tier {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  transition: color var(--snap), border-color var(--snap);
+}
+.bl-tier:hover { color: var(--color-text-primary); border-color: var(--line-hover); }
+.bl-tier.is-on { color: var(--signal); border-color: var(--signal-dim); background: var(--signal-faint); }
+.bl-tier-count { color: var(--color-text-tertiary); margin-left: var(--space-1); }
+.bl-tier.is-on .bl-tier-count { color: var(--signal-dim); }
+
+/* The tier's benchmarks — its own scroll box, never the page's. */
+.bl-bench-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 440px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+}
+.bl-bench {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-left: 2px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--snap), border-color var(--snap);
+}
+.bl-bench-list li:last-child .bl-bench { border-bottom: none; }
+.bl-bench:hover { background: var(--color-glass-hover); }
+.bl-bench.is-on { border-left-color: var(--signal); background: var(--signal-faint); }
+.bl-bench-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.bl-bench.is-on .bl-bench-name { color: var(--signal); }
+.bl-bench-about {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.bl-bench-meta {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--color-text-tertiary);
+}
+
+.bl-bench-name { display: flex; align-items: baseline; gap: var(--space-2); }
+.bl-bench-versions {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  padding: 0 5px;
+}
+
+/* WHICH VERSION — a family's variants, asked beneath the picked row: one
+   radio line each, the standard first. */
+.bl-versions {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line);
+  border-left: 2px solid var(--signal-dim);
+  background: var(--signal-faint);
+}
+.bl-versions-head { margin: 0 0 var(--space-1); font-size: 11px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.bl-version {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--space-2);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--snap);
+}
+.bl-version:hover { background: var(--color-glass-hover); }
+.bl-version-mark {
+  width: 10px;
+  height: 10px;
+  align-self: center;
+  border: 1px solid var(--line-hover);
+  border-radius: 50%;
+}
+.bl-version.is-on .bl-version-mark { border-color: var(--signal); background: var(--signal); box-shadow: 0 0 6px var(--signal-dim); }
+.bl-version-line { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
+.bl-version.is-on .bl-version-line { color: var(--signal); }
+.bl-version-meta { grid-column: 2; font-size: 11px; letter-spacing: 0.06em; text-transform: none; color: var(--color-text-tertiary); }
+
+/* The arms — four tiles, two by two; an arm the benchmark does not offer
+   stands dimmed and says why. */
+.bl-arms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+.bl-arm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 88px;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  transition: border-color var(--snap), background var(--snap);
+}
+.bl-arm:hover:not(:disabled) { border-color: var(--line-hover); }
+.bl-arm.is-on { border-color: var(--signal-dim); background: var(--signal-faint); }
+.bl-arm:disabled { cursor: default; opacity: 0.45; }
+.bl-arm-name {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-primary);
+}
+.bl-arm.is-on .bl-arm-name { color: var(--signal); }
+.bl-arm-line {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--color-text-secondary);
+}
+.bl-arm-id {
+  margin-top: auto;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: none;
+  color: var(--color-text-tertiary);
+}
+
+.bl-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.bl-fields-row { display: flex; gap: var(--space-3); }
+
+/* Folds — fine control, the night window, the harness checks. */
+.bl-fold {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+.bl-fold-toggle {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap);
+}
+.bl-fold-toggle:hover { color: var(--signal); }
+.bl-fold-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+.bl-fold-body .bench-line,
+.bl-fold-body .bench-confirm-notice {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: var(--leading-normal);
+}
+.bl-fold-body .bench-field-label { font-size: var(--text-xs); }
+
+/* THIS RUN — the right column, pinned while the left scrolls. */
+.bl-run {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+.bl-run-head {
+  margin: 0;
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  color: var(--color-text-primary);
+}
+.bl-run-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.bl-run-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.bl-run-meta {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.bl-run-meta.is-signal { color: var(--signal); margin: 0; }
+.bl-run-notice {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+.bl-run-notice.is-alert { color: var(--alert); }
+/* The display numeral — the cost of the click, NERV-sized, extralight. */
+.bl-numeral {
+  font-family: var(--font-data);
+  font-size: var(--text-4xl);
+  font-weight: 200;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+}
+.bl-run-clock {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+.bl-run-verdict {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+.bl-run-verdict.is-signal { color: var(--signal); }
+.bl-run-verdict.is-alert { color: var(--alert); }
+.bl-run .bl-fold { padding: var(--space-3) 0 0; border-bottom: none; border-top: 1px solid var(--line); }
+
+/* The stage list — one determinate bar per arm. */
+.bl-stages {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.bl-stage {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-rows: auto 3px;
+  column-gap: var(--space-2);
+  row-gap: 4px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+.bl-stage-mark { grid-row: 1; }
+.bl-stage-name { grid-row: 1; }
+.bl-stage-items {
+  grid-column: 3;
+  grid-row: 1;
+  color: var(--signal);
+}
+.bl-stage-bar {
+  grid-column: 2;
+  grid-row: 2;
+  background: var(--line);
+  overflow: hidden;
+}
+.bl-stage-fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  transform-origin: left center;
+  transition: transform 600ms linear;
+}
+.bl-stage.is-done { color: var(--color-text-primary); }
+.bl-stage.is-live { color: var(--signal); }
+.bl-stage.is-failed { color: var(--alert); }
+
+.bl-run-acts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.bl-btn {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: 1px solid var(--line-hover);
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.bl-btn:hover:not(:disabled) { border-color: var(--color-text-primary); }
+.bl-btn:disabled { color: var(--color-text-disabled); border-color: var(--line); cursor: default; }
+.bl-btn.is-primary { background: #FFFFFF; border-color: #FFFFFF; color: #000000; }
+.bl-btn.is-primary:hover:not(:disabled) { background: var(--signal); border-color: var(--signal); }
+.bl-btn.is-primary:disabled { background: transparent; color: var(--color-text-disabled); border-color: var(--line); }
+.bl-btn.is-danger { border-color: var(--alert-dim); color: var(--alert); }
+.bl-btn.is-danger:hover:not(:disabled) { background: var(--alert); color: #000000; }
+
+/* The two middle layers (PLATFORM WIRE, SILO) are diagnostic — tucked under
+   the three core arms, open on demand (Design note, 2026-09-29. */
+.bl-diagnostic { margin-top: var(--space-3); }
+.bl-diagnostic > summary { cursor: pointer; color: var(--color-text-tertiary); }
+.bl-diagnostic[open] > summary { margin-bottom: var(--space-2); }
+
+/* THE LIVE TAB (BenchLive.jsx) — a set in flight, the machine's other runs */
+.bl-live { display: flex; flex-direction: column; gap: var(--space-3); }
+.bl-live-set .bl-stages { margin: var(--space-2) 0; }
+.bl-live-run { display: flex; flex-direction: column; gap: 4px; padding: var(--space-2) 0; }
+.bl-live-bar { display: block; height: 3px; }

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.lineOne}} {{data.lineTwo}} {{data.lineThree}}">
+  {{fontface}}
+  <defs>
+    <linearGradient id="edge" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="{{token.accentGlow}}"/>
+      <stop offset="42%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"/>
+    </filter>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#edge)" opacity="0.5"/>
+
+  <!-- ⚠️ CENTRED, where quote cuts its mark on the right edge. This card is
+       symmetrical about its own centre line and a half-cut mark would pull it
+       off that axis — the composition IS the meaning here, a single declaration
+       with nothing beside it. So the mark grows on the axis instead of moving
+       off it: 600 → 760 at 0.05 → 0.12. It sits directly behind the type, which
+       is why the lines below are glowed. -->
+  <image href="{{mark.mask}}" x="420" y="120" width="760" height="760"
+         preserveAspectRatio="xMidYMid meet" opacity="0.12"/>
+
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <!-- Centred eyebrow with flanking rules. milestone does the same, and the two
+       cards are cousins: each has one thing to say and the whole frame is built
+       around it. Rules stand clear of a full-width 28-character eyebrow at
+       46px, which spans 456–1144. -->
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <line x1="160" y1="159" x2="250" y2="159" stroke="{{token.trim}}" stroke-width="1" opacity="0.6"/>
+    <text x="800" y="175" text-anchor="middle">{{data.eyebrow}}</text>
+    <line x1="1350" y1="159" x2="1440" y2="159" stroke="{{token.trim}}" stroke-width="1" opacity="0.6"/>
+  </g>
+
+  <!-- ⚠️ THE DISPLAY FACE, NOT THE VOICE FACE — and this is the whole
+       difference between this card and `quote`. `design-language.md:243-247`
+       splits the two registers by WHO IS TALKING: Inter for what someone says,
+       the display face for what the house sets in type. A statement is the
+       brand's own position, so it is set, not spoken.
+       Centred, because there is no mouth to point at. `quote` is left-aligned
+       and carries a spine for exactly the opposite reason.
+       88px: a hero tier, tuned to this card. Three lines at 100px leading fill
+       the frame's middle without crowding the eyebrow or the footer. -->
+  <g font-family="{{font.display}}" font-weight="{{font.displayWeight}}" font-size="88"
+     letter-spacing="{{font.displayTrack}}" text-anchor="middle" fill="{{token.ink}}">
+    <g opacity="0.5" filter="url(#softGlow)">
+      <text x="800" y="392">{{data.lineOne}}</text>
+      <text x="800" y="492">{{data.lineTwo}}</text>
+      <text x="800" y="592">{{data.lineThree}}</text>
+    </g>
+    <text x="800" y="392">{{data.lineOne}}</text>
+    <text x="800" y="492">{{data.lineTwo}}</text>
+    <text x="800" y="592">{{data.lineThree}}</text>
+  </g>
+
+  <!-- ⚠️ NO ATTRIBUTION, AND IT IS NOT AN OVERSIGHT. The wordmark in the footer
+       already says who is speaking. A name under a house statement demotes the
+       brand's position into one person's opinion — if a person is the point,
+       the card is a `quote`.
+       NO `asOf` either: nothing here is measured. -->
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

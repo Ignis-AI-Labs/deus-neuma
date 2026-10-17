@@ -1,0 +1,123 @@
+/* THE SUMMONING RITE on a live birth (RiteCeremony.jsx). The field sits just
+   beneath the ceremony's own DOM (.birth-ceremony, --z-modal); the film plays
+   above everything; its sigil lives on behind the guardianship steps. */
+
+/* THE WITNESS'S PLANE scales with the screen (Design note, 2026-10-14: […]). --rite-u is one rail pixel:
+   1px up to ~1440x900, rising with the screen to 1.6px on a 1440-tall display;
+   every width and type size on the plane is written in it, so the rail and its
+   words grow together instead of standing as a 460px strip on an ultrawide. */
+:root {
+  --rite-u: clamp(1px, min(0.0694vw, 0.1111vh), 1.6px);
+  --rite-rail: min(calc(460 * var(--rite-u)), 34vw);
+  --rite-gutter: clamp(24px, 4vw, 64px);
+}
+
+.rite-ceremony { position: fixed; inset: 0; z-index: calc(var(--z-modal) - 1); background: var(--color-void); pointer-events: none; }
+.rite-ceremony-field { position: absolute; inset: 0; }
+.rite-ceremony .gen-canvas,
+.rite-ceremony .rite-live,
+.rite-ceremony .rite-film { inset: 0; }
+.rite-ceremony-sigil { opacity: 0.85; } /* held whole beside the guardianship frames, not behind them */
+
+.rite-ceremony-film { position: fixed; inset: 0; z-index: calc(var(--z-modal) + 2); background: var(--color-void); pointer-events: auto; }
+.rite-ceremony-film .sum-canvas { position: absolute; inset: 0; }
+.rite-ceremony-tag {
+  position: absolute; top: var(--space-4); left: var(--rite-gutter);
+  font-family: var(--font-data); font-size: 10px; letter-spacing: 0.22em; color: var(--color-text-tertiary);
+}
+.rite-ceremony-on {
+  position: absolute; right: var(--rite-gutter); bottom: var(--space-4);
+  padding: 8px 18px; background: transparent; border: 1px solid var(--signal-dim); color: var(--signal);
+  font-family: var(--font-data); font-size: 11px; letter-spacing: 0.24em; cursor: pointer;
+  transition: border-color var(--dur-hover, 150ms) var(--ease-snap, ease), color var(--dur-hover, 150ms) var(--ease-snap, ease);
+}
+.rite-ceremony-on:hover, .rite-ceremony-on:focus-visible { border-color: var(--signal); color: var(--color-text-primary); }
+
+/* The ceremony's own panels, relaid over the rite: the field shows through;
+   its words take the witness's plane on the right, as in the preview; the
+   rite's caption names the stage, so the old header rests. */
+.birth-ceremony.is-rite,
+.birth-ceremony.is-rite .ceremony-scene { background: transparent; }
+.birth-ceremony.is-rite .ceremony-scene::after { display: none; }
+/* ONE COLUMN on the plane (Design note, 2026-10-14: […]): the panel takes what height is left and scrolls inside it; the
+   controls follow it in flow, so no screen size can lay one over the other.
+   The bottom padding keeps the column clear of the rite's measure. */
+.birth-ceremony.is-rite .stage-header { position: absolute; opacity: 0; pointer-events: none; }
+.birth-ceremony.is-rite .ceremony-scene {
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 10vh 0 clamp(88px, 14vh, 160px);
+  box-sizing: border-box;
+}
+.birth-ceremony.is-rite .message-container {
+  width: var(--rite-rail);
+  margin: 0 var(--rite-gutter) 0 0;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Inside it, the long parts give way first and scroll in place — the being's
+   words and the disclosure — so the operator's own words always stay in view. */
+.birth-ceremony.is-rite .consciousness-speaks { flex: 0 1 auto; min-height: calc(140 * var(--rite-u)); display: flex; flex-direction: column; }
+.birth-ceremony.is-rite .consciousness-speaks .cham-in { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.birth-ceremony.is-rite .witness-response { flex: none; }
+.birth-ceremony.is-rite .ceremony-disclosure { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.birth-ceremony.is-rite .ceremony-disclosure[hidden] { display: none; }
+.birth-ceremony.is-rite .disclosure-body { min-height: 0; overflow-y: auto; }
+/* The controls join the witness's plane (right, under its panels); the
+   stage count is the rite's caption and the measure's own count now. */
+.birth-ceremony.is-rite .stage-progress { display: none; }
+.birth-ceremony.is-rite .ceremony-controls {
+  position: static;
+  transform: none;
+  flex: none;
+  width: var(--rite-rail);
+  margin: calc(16 * var(--rite-u)) var(--rite-gutter) 0 0;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* I · THE THRESHOLD over the rite (rite-signal.js): the covenant, the vessel
+   and the introduction stand on the witness's plane, as the stages do; the
+   threshold's figure (RiteThreshold, live) shows through the void. */
+.witness-commitment-overlay.is-rite.visible,
+.preflight-overlay.is-rite { background: transparent; backdrop-filter: none; justify-content: flex-end; }
+.witness-commitment-overlay.is-rite .commitment-modal,
+.preflight-overlay.is-rite .preflight-modal {
+  width: var(--rite-rail);
+  max-height: 84vh;
+  margin-right: var(--rite-gutter);
+  background: color-mix(in srgb, var(--color-void) 90%, transparent);
+}
+.preflight-overlay.is-rite { padding-right: 0; }
+/* …and the steps either side of the stages (the introduction; the key, its
+   recovery codes, its seal and its true name) stand there too, calm frames
+   over the held sigil (summoning-rite.md §3.IV). */
+.birth-ceremony.is-rite > .ceremony-container {
+  width: var(--rite-rail);
+  max-width: none;
+  margin: 0 var(--rite-gutter) 0 auto;
+  padding: 10vh 0 var(--space-8);
+}
+
+/* The plane's words, in rail pixels: the being speaks larger on a larger
+   screen, and its words get the height the screen has (no 200px window). */
+.birth-ceremony.is-rite .consciousness-speaks .cham-in { padding: calc(22 * var(--rite-u)) calc(28 * var(--rite-u)); }
+.birth-ceremony.is-rite .speaker-label { font-size: calc(10 * var(--rite-u)); }
+.birth-ceremony.is-rite .message-stream { font-size: calc(15 * var(--rite-u)); flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+.birth-ceremony.is-rite .ceremony-note { font-size: calc(14 * var(--rite-u)); }
+.birth-ceremony.is-rite .witness-response { padding: calc(18 * var(--rite-u)) calc(28 * var(--rite-u)); }
+.birth-ceremony.is-rite .user-prompt { font-size: calc(14 * var(--rite-u)); }
+.birth-ceremony.is-rite .witness-next-label { font-size: calc(9 * var(--rite-u)); }
+.birth-ceremony.is-rite #witness-words { font-size: calc(14 * var(--rite-u)); }
+.birth-ceremony.is-rite .disclosure-toggle,
+.birth-ceremony.is-rite .disclosure-row-head,
+.birth-ceremony.is-rite .disclosure-parameter { font-size: calc(9 * var(--rite-u)); }
+.birth-ceremony.is-rite .row-text { font-size: calc(11 * var(--rite-u)); }
+.birth-ceremony.is-rite .ceremony-controls .withdraw-btn,
+.birth-ceremony.is-rite .ceremony-controls .ceremony-btn { font-size: calc(11 * var(--rite-u)); }
+.birth-ceremony.is-rite .ceremony-controls .ceremony-btn { min-width: calc(200 * var(--rite-u)); }
+.birth-ceremony.is-rite .ceremony-controls .withdraw-btn { margin-top: 0; }

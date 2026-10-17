@@ -1,0 +1,34 @@
+[project]
+name = "bakeoff-chatterbox"
+version = "0.1.0"
+description = "Voice bake-off runner for the Resemble AI Chatterbox family (turbo, original, nano, flash)"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # master carries the Nano loader (nano=True); PyPI 0.1.7 does not.
+    "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox@5de7a54aa4e5e2baadb0182dde554908b48b85c2",
+    "chatterbox-flash==0.1.0",
+    "torch==2.8.0",
+    "torchaudio==2.8.0",
+    "soundfile>=0.12",
+    "numpy<2",
+    # check.py: ASR sanity pass (cues read aloud, babble, dropped words)
+    "faster-whisper>=1.1",
+]
+
+[tool.uv]
+package = false
+# chatterbox-flash runs on its pure-PyTorch SDPA engine here. FlashInfer 0.6.17
+# (+ jit-cache cu128) was tried: sm_120 head_dim-64 kernels had to JIT with the
+# system nvcc 13.2 (needs CC=g++-15; gcc 16 is rejected) and the model then
+# produced garbled run-on speech. Not worth shipping a broken path.
+# chatterbox-tts pins torch==2.6.0 (cu126, no sm_120 kernels). Blackwell needs cu128+.
+override-dependencies = ["torch==2.8.0", "torchaudio==2.8.0"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

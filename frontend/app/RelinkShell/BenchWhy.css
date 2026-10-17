@@ -1,0 +1,115 @@
+/* THE WHY — WHY IT MISSED and WHAT HAPPENED (BenchWhy.jsx). LINE & CYCLE:
+   the causes read by tone, never by the alert colour (a miss is data to act
+   on, not an alarm) — except a stage that died, which is the one thing that
+   needs the operator. Inside the Explorer/RUNS frame (.bx-sec). */
+
+.why-head { display: flex; align-items: center; gap: var(--space-3); }
+.why-copy { margin-left: auto; }
+.why-note { margin: 0; font-family: var(--font-voice); font-size: var(--text-xs); color: var(--color-text-tertiary); }
+.why-note.is-error { color: var(--alert); display: flex; align-items: center; gap: var(--space-3); }
+.why-retry { min-height: 28px; }
+
+.why-findings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.why-findings li {
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--signal-dim);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+
+/* The causes' tones: blank-family pale, cut-off mid, format signal (the
+   fixable one), grader faint signal, instruction/wrong bright white. */
+.why-swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+.why-swatch.is-budget-in-reasoning, .why-bar-part.is-budget-in-reasoning { background: rgba(255, 255, 255, 0.28); }
+.why-swatch.is-blank, .why-bar-part.is-blank { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0 2px, transparent 2px 4px); }
+.why-swatch.is-cut-off, .why-bar-part.is-cut-off { background: rgba(255, 255, 255, 0.5); }
+.why-swatch.is-format, .why-bar-part.is-format { background: var(--signal); }
+.why-swatch.is-grader-rejected-equal, .why-bar-part.is-grader-rejected-equal { background: var(--signal-dim); }
+.why-swatch.is-broke-instruction, .why-bar-part.is-broke-instruction { background: rgba(255, 255, 255, 0.72); }
+.why-swatch.is-wrong, .why-bar-part.is-wrong { background: rgba(255, 255, 255, 0.92); }
+
+.why-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: 11px; letter-spacing: 0.06em; color: var(--color-text-secondary); }
+.why-legend-item { display: inline-flex; align-items: center; }
+
+.why-table td { vertical-align: middle; }
+.why-table tr { cursor: default; }
+.why-bar {
+  position: relative;
+  display: flex;
+  width: 160px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+.why-bar-part { height: 100%; transform-origin: left; animation: why-grow 320ms var(--ease-snap) backwards; }
+@keyframes why-grow { from { transform: scaleX(0); } }
+.why-vs { color: var(--color-text-secondary); }
+.why-vs-by { display: block; font-size: 10px; color: var(--color-text-tertiary); white-space: normal; max-width: 260px; }
+
+.why-examples { display: flex; flex-direction: column; gap: var(--space-2); }
+.why-example-group { display: flex; flex-direction: column; gap: var(--space-2); padding-left: var(--space-3); border-left: 1px solid var(--line); }
+.why-example-head { margin: var(--space-2) 0 0; font-size: 11px; letter-spacing: 0.08em; color: var(--color-text-secondary); }
+.why-example { display: flex; flex-direction: column; gap: 2px; }
+.why-example-meta { margin: 0; font-size: 10px; letter-spacing: 0.06em; text-transform: none; color: var(--color-text-tertiary); }
+.why-example-answer,
+.why-log-tail {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  max-height: 14em;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  user-select: text;
+}
+.why-log-tail { max-height: 24em; }
+
+.why-skipped { display: flex; flex-direction: column; gap: 4px; }
+.why-skipped-head { margin: 0; font-size: 11px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+/* WHAT HAPPENED — the stages as chips: signal for exit 0, alert for a stage
+   that died, disabled for one that was stopped. */
+.why-stages { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.why-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+.why-stage.is-live .why-stage-verdict { color: var(--signal); }
+.why-stage.is-loud { border-color: var(--alert-dim); }
+.why-stage.is-loud .why-stage-verdict { color: var(--alert); }
+.why-stage.is-dim .why-stage-verdict { color: var(--color-text-disabled); }
+.why-stage-time { color: var(--color-text-tertiary); }
+.why-log { display: flex; flex-direction: column; gap: 4px; }
+.why-log-head { margin: 0; font-size: 10px; letter-spacing: 0.08em; text-transform: none; color: var(--color-text-tertiary); }
+
+/* SAMPLE MISMATCH — the arms answered different questions; it leads the panel. */
+.why-mismatch {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--alert-dim);
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  color: var(--alert);
+}
+.why-vs-by.is-alert { color: var(--alert); }

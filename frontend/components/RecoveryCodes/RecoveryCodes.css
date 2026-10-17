@@ -1,0 +1,88 @@
+/* RecoveryCodes — one look for the second door, in every ceremony that opens
+   it. Given the alert register deliberately: leaving this screen without the
+   codes is irreversible, and the panel should say so before the prose does. */
+
+.reccodes {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--alert);
+}
+
+.reccodes-h {
+  color: var(--alert);
+  margin-bottom: var(--space-2);
+}
+
+.reccodes-warn {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.reccodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  background: var(--color-void);
+  border: 1px solid var(--line);
+}
+
+.reccodes-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.reccodes-index {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  min-width: 1.5em;
+  text-align: right;
+}
+
+.reccodes-value {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--signal);
+  /* One tap selects the whole code — these get moved by hand often enough. */
+  user-select: all;
+}
+
+.reccodes-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* Type comes from the `label-data` register the button also carries (main.css) —
+   the house's one data voice. Restating a size here would either duplicate that
+   register or quietly disagree with every other chip on the desk. */
+.reccodes-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.reccodes-btn:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.reccodes-ack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}

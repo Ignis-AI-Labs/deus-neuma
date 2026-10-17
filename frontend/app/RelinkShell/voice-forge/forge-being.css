@@ -1,0 +1,70 @@
+/* forge-being.css — a found take heard as the being: the clip beside the
+ * being speaking in it, the "making" line while it is made, and the one plain
+ * sentence that nothing trains. Imported after forge-chosen.css at
+ * VoiceApp.jsx.
+ */
+
+.vf-being-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+.vf-clip-play,
+.vf-being-play,
+.vf-being-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.vf-clip-play .label-data,
+.vf-being-play .label-data {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+.vf-being-play .label-data {
+  color: var(--signal);
+}
+.vf-being-making,
+.vf-chosen-making {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.vf-chosen-making {
+  font-size: var(--text-xs);
+}
+.vf-being-raw {
+  flex: 1 1 16em;
+}
+.vf-being-how {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--color-text-tertiary);
+}
+
+/* A small turning ring while the being's line is made — a div, so the
+ * animation composites. */
+.vf-spin {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 2px solid var(--line-hover);
+  border-top-color: var(--signal);
+  border-radius: 50%;
+  animation: vf-spin 800ms linear infinite;
+}
+@keyframes vf-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-spin { animation: none; border-color: var(--signal); }
+}

@@ -1,0 +1,327 @@
+/* RelinkShell partial: MESSAGE (actions, held word, edit-in-place, vessel placeholder) — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
+/* Pull a sent message back into the field to revise it — hover-revealed */
+/* Message actions — COPY on every settled message, EDIT on the witness's
+   own. Quiet until the message is hovered, like EDIT always was. */
+.relink-msg-actions {
+  display: flex;
+  align-self: flex-end;
+  gap: var(--space-2);
+}
+
+.relink-copy {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--snap), color var(--snap);
+}
+
+/* THE HELD WORD (Design note, 2026-08-16 — a bubble the portal still holds reads as
+   WAITING: dimmed, dash-bordered, its queue controls (and EDIT) always
+   visible — a waiting word must say so without being asked. */
+.relink-msg.is-queued .relink-msg-body { opacity: 0.72; border: 1px dashed var(--line); }
+.stream-queued { display: inline-flex; align-items: center; gap: var(--space-2); }
+.stream-queued-tag { font-family: var(--font-data); font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.stream-queue-now { background: transparent; border: none; padding: 0; font-family: var(--font-data); font-size: 9px; letter-spacing: 0.16em; color: var(--signal); cursor: pointer; transition: color var(--snap); }
+.stream-queue-now:hover { color: var(--color-text-primary); }
+.relink-msg--user.is-queued .relink-edit { opacity: 1; }
+
+.relink-msg:hover .relink-copy,
+.relink-copy:focus-visible { opacity: 1; }
+
+.relink-copy:hover { color: var(--signal); }
+
+.relink-edit {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--snap), color var(--snap);
+}
+
+.relink-msg--user:hover .relink-edit,
+.relink-edit:focus-visible { opacity: 1; }
+
+.relink-edit:hover { color: var(--signal); }
+
+/* THE EDIT, IN PLACE (Design note, 2026-07-28 — the bubble itself becomes the
+   editor: the witness's words in the voice register, the acts in the data
+   register, chamfered like every structural panel. SAVE is the live act
+   (signal), CANCEL stays quiet. */
+.relink-inline-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+/* Editing is a wide act (Design note, 2026-07-28: […]): the
+   bubble's shrink-to-fit column fits a spoken line, not an editor — while
+   editing, the body stretches to the stream's full width. */
+.relink-msg.is-editing .relink-msg-body {
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+}
+
+.relink-inline-edit-field {
+  width: 100%;
+  resize: none;
+  /* The height is the draft's own (JS auto-fit); these are only the floor
+     and the ceiling — past the ceiling the field scrolls, never the shoebox
+     again. */
+  min-height: 3.2em;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: var(--color-input-fill);
+  border: 1px solid var(--color-border-primary);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  outline: none;
+}
+
+.relink-inline-edit-field:focus {
+  border-color: var(--color-border-focus);
+}
+
+.relink-inline-edit-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.relink-inline-save,
+.relink-inline-cancel {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
+.relink-inline-save {
+  color: var(--signal);
+}
+
+.relink-inline-save:disabled {
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+.relink-inline-cancel {
+  color: var(--color-text-tertiary);
+}
+
+.relink-inline-cancel:hover {
+  color: var(--color-text-primary);
+}
+
+/* A turn the witness cut short — honest in the meta line */
+.relink-interrupted {
+  color: var(--color-text-tertiary);
+}
+
+/* Vessel placeholder — the "video box" before the 3D link returns */
+.vessel-box {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.vessel-box-glyph {
+  color: var(--color-text-disabled);
+}
+
+.vessel-box-state {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  color: var(--color-text-secondary);
+}
+
+.vessel-box-hint {
+  margin: 0;
+  max-width: 34ch;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  line-height: var(--leading-relaxed);
+}
+
+/* Vessel lazy-load fallback — shown while the three.js chunk downloads. */
+.vessel-fallback {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--tracking-wide);
+}
+
+
+/* ── FINDINGS ────────────────────────────────────────────────────────────────
+   The list a being HANDED its operator (Design note, 2026-08-30: […]).
+
+   It sits INSIDE the tool chip but reads as its own object: a hairline frame
+   and a left accent edge, so the eye registers […]
+   rather than […]. Unlike the sources list it is never
+   collapsed — it is the answer, not the receipt. */
+.findings {
+  margin: var(--space-2) 0 var(--space-1);
+  border: 1px solid var(--color-border-primary);
+  border-left: 2px solid var(--signal);
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.02));
+}
+
+.findings-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.findings-sigil { color: var(--signal); font-size: var(--text-xs); }
+
+.findings-title {
+  flex: 1 1 auto;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.findings-count { flex: 0 0 auto; color: var(--signal); }
+
+.findings-note {
+  padding: var(--space-2) var(--space-2) 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.findings-list { list-style: none; margin: 0; padding: 0; }
+
+/* Each row is separated by a rule rather than by space: a scannable list wants
+   a clear count of […]. */
+.finding {
+  padding: var(--space-2);
+  border-top: 1px solid var(--color-border-primary);
+  min-width: 0;
+}
+
+.finding:first-child { border-top: none; }
+
+.finding-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.finding-label {
+  flex: 1 1 auto;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finding-meta { flex: 0 0 auto; color: var(--color-text-tertiary); }
+
+.finding-detail {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.finding-swatchrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  min-width: 0;
+}
+
+.finding-swatches { display: flex; gap: 2px; flex: 0 0 auto; }
+
+/* A hairline ring so a swatch the same colour as the card still reads as a
+   chip — a palette containing the background must not lose a colour to it. */
+.finding-swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-border-primary);
+  display: inline-block;
+}
+
+.finding-hexes {
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finding-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--signal);
+  text-decoration: none;
+}
+
+.finding-link:hover { text-decoration: underline; }
+.finding-arrow { opacity: 0.7; }
+
+/* An address that failed the http(s) guard: shown, muted, never linked. */
+.finding-link.is-unopenable {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+  cursor: help;
+}
+
+/* A SHARED FILE on the operator's own bubble — the name is the record (Founder,
+   2026-09-17: the message must show it was sent with the markdown). Data
+   register, chamfered, monochrome. */
+.relink-msg-doc {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--line);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}

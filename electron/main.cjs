@@ -1,0 +1,97 @@
+// NEUMA — Electron main process.
+//
+// The downloadable app is a thin native shell around the existing stack: it
+// starts the Node backend (which already serves the built frontend + API + WS
+// on one port in production) and points a window at it. The neuma's secrets and
+// sovereign workspaces live under the OS app-data dir, so a fresh install is
+// self-contained — no .env, no manual setup.
+//
+// This file owns ONLY the app lifecycle — single-instance, boot orchestration,
+// quit — and wires the modules that hold the real surfaces (SIZE-020):
+//   backend-spawn.cjs  — the backend child: port resolution, launch, health, kill
+//   desk-windows.cjs   — desk slots, boot/handoff relay, the one window factory
+//   ipc-handlers.cjs   — every renderer-facing IPC registration + the app menu
+//   tray.cjs           — the corner tab + the once-per-install "still running" notice
+//
+// Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
+
+const { app, BrowserWindow, Notification, dialog, shell } = require('electron');
+const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
+const { createDeskWindows } = require('./desk-windows.cjs');
+const { registerIpcHandlers } = require('./ipc-handlers.cjs');
+const tray = require('./tray.cjs');
+const autoUpdate = require('./auto-update.cjs');
+
+const deskWindows = createDeskWindows({
+  getOrigin,
+  announceStillRunning: () => tray.announceStillRunning(),
+});
+tray.initTray({ focusLiveDesk: deskWindows.focusLiveDesk, createWindow: deskWindows.createWindow });
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // A second launch means "another desk", not […] (VS Code
+    // behavior) — carried on the focused desk's session when one is up.
+    deskWindows.openDeskFromFocused().catch((err) => {
+      dialog.showErrorBox('Deus Neuma', `Could not open a new desk.\n\n${err.message}`);
+    });
+  });
+
+  app.whenReady().then(async () => {
+    // Every renderer-facing registration lands BEFORE anything spawns — a desk
+    // must never load ahead of its handlers, and the wallet store opens before
+    // any window exists.
+    registerIpcHandlers({ deskWindows });
+
+    // The port question is asked BEFORE spawning anything; a held or exhausted
+    // lane shows its honest dialog and quits inside the resolver.
+    if (!(await resolveStartupPort())) return;
+    try {
+      await startBackend();
+      await waitForBackend();
+      await deskWindows.createWindow();
+      tray.ensureTray(); // the corner tab — present from the first desk onward
+      autoUpdate.init({ app, shell, Notification, refreshTray: tray.rebuildTrayMenu });
+    } catch (err) {
+      dialog.showErrorBox('Deus Neuma', `Could not start the local backend.\n\n${err.message}`);
+      app.quit();
+    }
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) deskWindows.createWindow();
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    // ALWAYS-ON: the last window closing used to kill the app (and with it
+    // the backend — and the queue's clock). Now the app lives in the tray
+    // until QUIT is chosen deliberately. Nothing here — on purpose.
+  });
+
+  app.on('before-quit', () => {
+    app.isQuitting = true;
+    killBackendTree();
+    tray.destroyTray();
+  });
+
+  // CTRL-C IN THE TERMINAL still has to take the backend down with us.
+  //
+  // Making the backend its own process-group leader (#211) means the terminal's
+  // SIGINT reaches Electron and NOT the backend — and the default signal action
+  // terminates us before `before-quit` can run. That left the backend holding
+  // port 47317 after every Ctrl-C, so the next launch failed with EADDRINUSE
+  // and read as a port conflict rather than […]
+  // (#215, observed live 2026-07-31).
+  //
+  // Registering a handler replaces the default action, so the exit is ours to
+  // perform. A crash or SIGKILL still runs none of this — that case belongs to
+  // the backend's own parent-watch, which is why both exist.
+  ['SIGINT', 'SIGTERM', 'SIGHUP'].forEach((signal) => {
+    process.on(signal, () => {
+      app.isQuitting = true;
+      killBackendTree();
+      app.quit();
+    });
+  });
+}

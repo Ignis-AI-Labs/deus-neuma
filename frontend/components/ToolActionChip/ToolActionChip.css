@@ -1,0 +1,253 @@
+/* Tool Action Chip — LINE & CYCLE
+   Live action carries signal; a resolved action settles back to
+   monochrome. Chamfered control register, data font, no rounding. */
+
+.tool-chip {
+  margin: var(--space-2) 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  max-width: 100%;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+}
+
+.tool-chip-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+}
+
+.tool-chip.acting {
+  border-color: var(--signal-dim);
+}
+
+.tool-chip.acting .tool-chip-tag {
+  color: var(--signal);
+}
+
+.tool-chip-name {
+  color: var(--color-text-secondary);
+}
+
+/* The deliberation tick — the action is alive */
+.tool-chip-tick {
+  width: 6px;
+  height: 6px;
+  background: var(--signal);
+  animation: tool-chip-tick 0.9s steps(2, start) infinite;
+}
+
+@keyframes tool-chip-tick {
+  to { opacity: 0; }
+}
+
+.tool-chip.resolved.ok .tool-chip-sigil {
+  color: var(--signal);
+}
+
+/* IN FLIGHT — still happening, so it speaks in SIGNAL (live), not ALERT.
+   A render reported itself seven times in warning red on its way to succeeding;
+   colour that cries wolf on every long action is colour the operator stops
+   reading (Design note, 2026-08-01. */
+.tool-chip.resolved.inflight {
+  border-color: var(--signal-dim);
+}
+
+.tool-chip.resolved.inflight .tool-chip-sigil {
+  color: var(--signal);
+}
+
+.tool-chip.resolved.inflight .tool-chip-summary {
+  color: var(--color-text-secondary);
+}
+
+.tool-chip.resolved.failed {
+  border-color: var(--alert);
+}
+
+.tool-chip.resolved.failed .tool-chip-sigil,
+.tool-chip.resolved.failed .tool-chip-summary {
+  color: var(--alert);
+}
+
+.tool-chip-summary {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-chip-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.tool-chip-toggle:hover {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+
+.tool-chip-detail {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* THE RESEARCH RECORD — every link a search pulled, opened by the chip's `+`.
+   The witness scans hosts down the left and clicks anything worth checking, so
+   the host stays monospace (instrument data) while the title stays in the
+   voice register. */
+.tool-chip-sources {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tool-chip-source {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+}
+
+.tool-chip-source + .tool-chip-source {
+  border-top: 1px solid var(--line);
+}
+
+.tool-chip-source-link {
+  color: var(--signal);
+  font-size: var(--text-xs);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.tool-chip-source-link:hover {
+  text-decoration: underline;
+}
+
+/* A source whose address is not an http(s) link. It still shows — the desk
+   reports what the being received — but it never becomes clickable. */
+.tool-chip-source-link.is-unopenable {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.tool-chip-source-host {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-2xs, var(--text-xs));
+  word-break: break-all;
+}
+
+.tool-chip-source-snippet {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  word-break: break-word;
+}
+
+/* What a yes actually grants — the stakes line of an approval prompt. */
+.tool-chip-scope {
+  padding: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  word-break: break-word;
+}
+
+/* WHAT THE BEING MADE — renders shown in the stream, where the work happened,
+   so seeing one costs no trip to the gallery (Design note, 2026-08-01. Collapsible
+   via the chip's own +/− toggle; opens itself when there are images, because
+   the image IS the result. */
+.tool-chip-made {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 2px;
+}
+
+.tool-chip-made-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  max-width: 320px;
+}
+
+.tool-chip-made-img {
+  display: block;
+  max-width: 320px;
+  max-height: 320px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  background: var(--color-bg, #000);
+}
+
+.tool-chip-made-meta {
+  display: flex;
+  min-width: 0;
+}
+
+/* The file location, and the way to get it: click to copy. */
+.tool-chip-made-path {
+  font-family: var(--font-data);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 3px 5px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.tool-chip-made-path:hover { border-color: var(--signal); color: var(--signal); }
+
+/* THE LOADING BAR — one row that fills, rather than a new row per heartbeat.
+   The chip's own width IS the track, so a render reads as a single progressing
+   thing that then becomes the image (Design note, 2026-08-02. */
+.tool-chip-bar {
+  position: relative;
+  height: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.tool-chip-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--signal);
+  transition: width var(--snap, 140ms) linear;
+}

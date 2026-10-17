@@ -1,0 +1,105 @@
+/* forge-tier.css — the voice quality link top-right of the forge, and its
+ * popover: auto and the three tiers with each one's cost on this machine.
+ */
+
+.vf-tier {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.vf-tier-change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  transition: color var(--snap), border-color var(--snap);
+}
+.vf-tier-change:hover,
+.vf-tier-change[aria-expanded="true"] {
+  border-color: var(--line);
+  color: var(--color-text-primary);
+}
+
+.vf-tier-menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 5;
+  width: 400px;
+  max-width: 80vw;
+}
+
+.vf-tier-menu-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.vf-tier-head {
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.vf-tier-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vf-tier-choice {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+.vf-tier-choice .label-data {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-primary);
+}
+.vf-tier-choice:hover,
+.vf-tier-choice[aria-pressed="true"] {
+  color: var(--color-text-primary);
+}
+.vf-tier-choice[aria-pressed="true"] .label-data {
+  color: var(--signal);
+}
+
+.vf-tier-cost {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-align: right;
+  color: var(--color-text-secondary);
+}
+
+.vf-tier-warn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

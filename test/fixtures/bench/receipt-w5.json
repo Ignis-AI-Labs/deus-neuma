@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "kind": "benchmark-run",
+  "runId": "bench-plane-w5-bare-a1-20260923090627544",
+  "comparisonId": "bench-plane-w5",
+  "protocolSha256": "7c2815d8aaea9125ebbde65a8bffc8d61b9c71b7b591b65422932aa3dbe1c369",
+  "attempt": 1,
+  "arm": "bare",
+  "evidence": "development",
+  "approval": {
+    "by": "0x0b8aa7ee9b16e5f4cdb366f2e7096a9c01ae69b5",
+    "at": "2026-09-23T09:06:27.515Z"
+  },
+  "suite": {
+    "id": "smoke",
+    "tier": "t0",
+    "adapter": "lm-eval",
+    "dimensions": [
+      "math",
+      "reasoning"
+    ],
+    "repository": "https://github.com/EleutherAI/lm-evaluation-harness",
+    "revision": "f4d4b3de3ee6741a7151a9fe74945ee515262f4c",
+    "tasks": [
+      "gsm8k"
+    ]
+  },
+  "subject": {
+    "modelId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "identity": {
+      "kind": "local-artifact",
+      "revision": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "mutable": false
+    },
+    "quantization": "Q8_K_P",
+    "tokenizer": "/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+    "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+    "route": {
+      "provider": "llama-server",
+      "dialect": "openai",
+      "endpointClass": "loopback"
+    }
+  },
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 768,
+    "concurrency": 1,
+    "sampleLimit": 5,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 1800000,
+    "taskConfigSha256": "8159dd70caf50e51e70a340a99d90e7c074467249ac9e5ccdc20d021e3956f0a"
+  },
+  "harness": {
+    "profile": "bare-v1",
+    "neumaRevision": "8e48ce61b261294d1da9eb2f98215fe010d1470e",
+    "subjectCheckout": null,
+    "workingTreeDirty": false,
+    "identityLayersEnabled": false,
+    "identity": {
+      "mode": "none"
+    },
+    "laneId": null,
+    "referenceHarness": null
+  },
+  "environment": {
+    "platform": "linux",
+    "release": "7.2.5-200.fc44.x86_64",
+    "arch": "x64",
+    "node": "v24.13.1",
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 610.57.04"
+  },
+  "status": "succeeded",
+  "timing": {
+    "startedAt": "2026-09-23T09:06:27.544Z",
+    "finishedAt": "2026-09-23T09:07:26.537Z",
+    "durationMs": 58993
+  },
+  "metrics": [
+    {
+      "id": "gsm8k/exact_match,strict-match",
+      "task": "gsm8k",
+      "value": 0.8,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 5,
+      "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-23T16-07-26.211544.json"
+    },
+    {
+      "id": "gsm8k/exact_match,flexible-extract",
+      "task": "gsm8k",
+      "value": 0.8,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 5,
+      "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-23T16-07-26.211544.json"
+    }
+  ],
+  "sampleSelection": {
+    "sha256": "a8bc48fa8d083d8ec4d59c6b09de23e011f2157087232e3eba9223c932c9aba7",
+    "count": 5,
+    "measurement": "measured"
+  },
+  "efficiency": {
+    "promptTokens": 6600,
+    "completionTokens": 743,
+    "requests": 5,
+    "toolCalls": 0,
+    "retries": null,
+    "measurement": "measured"
+  },
+  "executions": [
+    {
+      "stage": "lm-eval",
+      "command": "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/bin/lm-eval",
+      "args": [
+        "run",
+        "--model",
+        "local-chat-completions",
+        "--model_args",
+        "model=/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf,base_url=http://127.0.0.1:37783/v1/chat/completions,tokenizer=/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs,tokenizer_backend=huggingface,num_concurrent=1,seed=7,max_gen_toks=768,max_retries=0,timeout=900",
+        "--tasks",
+        "gsm8k",
+        "--batch_size",
+        "1",
+        "--seed",
+        "7",
+        "--gen_kwargs",
+        "temperature=0",
+        "top_p=1",
+        "--output_path",
+        "/workspace/repos/project-fuvofos/work/bench-plane-w5-bare-a1-20260923090627544/raw",
+        "--apply_chat_template",
+        "--log_samples",
+        "--limit",
+        "5"
+      ],
+      "cwd": "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 58934,
+      "timedOut": false,
+      "aborted": false
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "manifest",
+      "path": "raw/manifest.json",
+      "sha256": "bbb24ea55aec1e54c710a6868213d6eff442655424c8a0ff98851ff8ee4d2bf1",
+      "bytes": 2045
+    },
+    {
+      "kind": "stdout",
+      "path": "stdout/lm-eval.log",
+      "sha256": "9bdf9d255b717c3aef098acd30d2cf97f5e636f7d23a2cdb61707069c56c4b5e",
+      "bytes": 845
+    },
+    {
+      "kind": "stderr",
+      "path": "stderr/lm-eval.log",
+      "sha256": "c764fac55619a5ecf4d4e06792e61fc30199b39cafe5a1b4503b8c424b533621",
+      "bytes": 3447
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-23T16-07-26.211544.json",
+      "sha256": "52f9422e27fc07a7d1727bab34a578551d10b89f99c51f4be73c59e00f4fb52d",
+      "bytes": 14729
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/samples_gsm8k_2026-09-23T16-07-26.211544.jsonl",
+      "sha256": "fe385fd49a99273bc83dce3d3586a499ed9ac7af6130496bf77f350e5e8920e4",
+      "bytes": 54592
+    },
+    {
+      "kind": "protocol-telemetry",
+      "path": "raw/protocol-telemetry.json",
+      "sha256": "f0533af985de1133b8c5c034fa35320aab76adb89600807786224dc004666166",
+      "bytes": 403
+    }
+  ],
+  "failure": null
+}

@@ -1,0 +1,112 @@
+{
+  "$comment": [
+    "Terminal-Bench 0.1.1 rem2 split 2B (of the 25-task rem2 set,",
+    "2026-09-18): 25 heavy tasks at the 30-min allowance exceed one 8h window,",
+    "so the set runs as two windows. Network consent rides via the bridge",
+    "(--network, session-lived). Supersedes the unlaunched 25-task rem2 plan.",
+    "2026-09-19: toolRounds pinned at 36 (the silent default was 24): 3 of 6 agent trials on the 18th died at exactly the round cap. The 30-min allowance is unchanged, so window math holds.",
+    "2026-09-19 (2nd fix): stage wall 7h -> 7.83h — rem2a aborted at its 7h wall because a trial costs ~35min wall (30min agent + spin-up + grading), so 12 tasks need >7h. 7.83h fits the 8h window.",
+    "2026-09-20: concurrency 1 -> 2 — the MTP serving stack runs --parallel 4; serial trials left the GPU idle between turns. Halves wall time per window; per-trial conditions unchanged (30-min allowance, 36 rounds). rem2a wall also raised to 7.83h to match rem2b (13 heavy tasks x ~35min wall > 7h).",
+    "2026-09-20: concurrency 4 — capacity probe. Serving stack runs --parallel 4 with 43GB VRAM free; decode batching amortizes. Known baseline: rem2b 1/12 at concurrency 1 (night-20260919t153821z). Watch allowance-overrun rate; fallback 3 then 2.",
+    "2026-09-20: execBridge docker — the being's execute route runs inside the graded container (coding/execute via docker exec -w /app; fs/write|edit mirrored in; /tests visible). Repeat-hold now redirects instead of terminating. Both per neuma#531 (bridge proven 8/8 real-container tests neuma-side)."
+  ],
+  "schemaVersion": 1,
+  "id": "terminal-bench-rem2b",
+  "label": "Terminal-Bench 0.1.1 — rem2 2B (12 tasks)",
+  "tier": "t3",
+  "dimensions": [
+    "agents",
+    "code",
+    "terminal"
+  ],
+  "arms": [
+    "neuma"
+  ],
+  "adapter": {
+    "id": "terminal-bench",
+    "module": "../../_adapters/terminal-bench.mjs"
+  },
+  "upstream": {
+    "kind": "git",
+    "repository": "https://github.com/laude-institute/terminal-bench",
+    "revision": "d28711d0da2675d0bb1d56de45ae5df6082438a3",
+    "workingDirectory": ".",
+    "license": "Apache-2.0"
+  },
+  "prepare": {
+    "python": "3.12",
+    "steps": [
+      {
+        "command": "uv",
+        "args": [
+          "venv",
+          "--allow-existing",
+          "--python",
+          "3.12",
+          ".venv"
+        ]
+      },
+      {
+        "command": "uv",
+        "args": [
+          "pip",
+          "install",
+          "--python",
+          ".venv/bin/python",
+          "-e",
+          "."
+        ]
+      }
+    ],
+    "verify": {
+      "command": ".venv/bin/tb",
+      "args": [
+        "--help"
+      ]
+    }
+  },
+  "executable": ".venv/bin/tb",
+  "tasks": [
+    "solana-data",
+    "sqlite-db-truncate",
+    "sqlite-with-gcov",
+    "super-benchmark-upet",
+    "swe-bench-astropy-1",
+    "swe-bench-astropy-2",
+    "swe-bench-fsspec",
+    "swe-bench-langcodes",
+    "tmux-advanced-workflow",
+    "train-fasttext",
+    "vim-terminal-task",
+    "write-compressor"
+  ],
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 4096,
+    "concurrency": 4,
+    "requestTimeoutMs": 1800000,
+    "runTimeoutMs": 28200000,
+    "sampleLimit": 12
+  },
+  "adapterConfig": {
+    "dataset": "terminal-bench-core==0.1.1",
+    "containerCli": "podman",
+    "containerHost": "unix:///run/user/1000/podman/podman.sock",
+    "containerWorkdir": "/app",
+    "agentTimeoutSec": 1800,
+    "toolRounds": 36,
+    "execBridge": "docker"
+  },
+  "cost": {
+    "wallclockSec": 21600,
+    "gpu": true,
+    "vramMiB": 34000,
+    "container": true,
+    "judge": null,
+    "diskBytes": 2000000000,
+    "network": "per-run",
+    "stack": []
+  }
+}

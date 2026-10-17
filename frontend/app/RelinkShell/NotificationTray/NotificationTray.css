@@ -1,0 +1,274 @@
+/* NotificationTray — bottom-right announcement lane.
+ *
+ * Geometry note: the Dock is fixed at bottom 12px, spans the full width, and
+ * CENTRES its bar. At narrow viewports that bar can reach the right edge, so
+ * this stack sits ABOVE the dock's band rather than beside it and grows upward.
+ * It sits at --z-notification (700), over the dock's --z-sticky (200).
+ *
+ * LINE & CYCLE: monochrome at rest, var(--token) only, no emoji, chamfer via
+ * clip-path to match the desk's other surfaces.
+ */
+
+.ntray {
+  position: fixed;
+  right: var(--space-4, 1rem);
+  /* Clear of the dock band (bottom 12px + bar height), not level with it. */
+  bottom: 68px;
+  z-index: var(--z-notification);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.ntray > * {
+  pointer-events: auto;
+}
+
+/* ── the bell ─────────────────────────────────────────────────────────── */
+
+.ntray-bell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  padding: 6px 9px;
+  background: var(--color-void);
+  color: var(--color-white);
+  border: var(--border-width-thin) solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.ntray-bell:hover {
+  border-color: var(--line-hover);
+}
+
+/* SIGNAL marks live data — an unread count is the definition of it. */
+.ntray-bell.has-unread {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.ntray-bell-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ── toasts ───────────────────────────────────────────────────────────── */
+
+.ntray-toasts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+/* ── the panel ────────────────────────────────────────────────────────── */
+
+.ntray-panel {
+  width: 340px;
+  max-height: min(60vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void);
+  border: var(--border-width-thin) solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.ntray-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: var(--border-width-thin) solid var(--line);
+}
+
+.ntray-panel-title {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-white);
+}
+
+.ntray-panel-action {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--line-hover);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.ntray-panel-action:hover:not(:disabled) {
+  color: var(--signal);
+}
+
+.ntray-panel-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ntray-panel-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ntray-empty {
+  padding: var(--space-4, 1rem) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--line-hover);
+  text-align: center;
+}
+
+/* ── a card ───────────────────────────────────────────────────────────── */
+
+.ntray-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--space-2);
+  border-bottom: var(--border-width-thin) solid var(--line);
+  background: var(--color-void);
+}
+
+.ntray-panel-list .ntray-card:last-child {
+  border-bottom: none;
+}
+
+/* A toast is the same card, standing alone. */
+.ntray-card.is-toast {
+  width: 320px;
+  border: var(--border-width-thin) solid var(--line);
+  border-left-width: var(--border-width-medium);
+  border-left-color: var(--signal);
+  border-radius: var(--radius-sm);
+}
+
+.ntray-card.is-read {
+  opacity: 0.55;
+}
+
+.ntray-card.is-alert.is-toast {
+  border-left-color: var(--alert);
+}
+
+/* The witness / neuma split, made visible. A sealed third-party model stands
+   BESIDE the house and must never read as a housemate. */
+.ntray-card.is-witness.is-toast {
+  border-left-style: dashed;
+}
+
+.ntray-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ntray-card-kind {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--signal);
+}
+
+.ntray-card.is-alert .ntray-card-kind {
+  color: var(--alert);
+}
+
+.ntray-card-standing {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--line-hover);
+  border: var(--border-width-thin) solid var(--line);
+  padding: 0 4px;
+}
+
+.ntray-card-ago {
+  flex: 1;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--line-hover);
+}
+
+.ntray-card-dismiss {
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--line-hover);
+  cursor: pointer;
+  display: inline-flex;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.ntray-card-dismiss:hover {
+  color: var(--color-white);
+}
+
+.ntray-card-actor {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-white);
+}
+
+.ntray-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-primary, var(--font-mono));
+}
+
+.ntray-card-body:disabled {
+  cursor: default;
+}
+
+.ntray-card-title {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-white);
+  /* Titles are capped at 140 chars upstream; wrap rather than clip so the cap
+     is the only thing that ever truncates. */
+  overflow-wrap: anywhere;
+}
+
+.ntray-card-detail {
+  font-size: var(--text-xs);
+  color: var(--line-hover);
+  overflow-wrap: anywhere;
+}
+
+.ntray-card-target {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--line-hover);
+}
+
+.ntray-card-body:hover:not(:disabled) + .ntray-card-target {
+  color: var(--signal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ntray-bell,
+  .ntray-panel-action,
+  .ntray-card-dismiss {
+    transition: none;
+  }
+}

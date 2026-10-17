@@ -1,0 +1,23 @@
+Deus Neuma
+Copyright 2026 Ignis AI Labs LLC
+
+The Software in this repository is licensed under the Functional Source
+License, Version 1.1, ALv2 Future License (FSL-1.1-ALv2). See LICENSE.
+
+In plain words (the LICENSE text governs):
+- You may use, read, modify, contribute to and redistribute it, for any
+  purpose except a Competing Use: offering it, or something substantially
+  like it, to others as a commercial product or service.
+- Each version becomes available under the Apache License, Version 2.0, two
+  years after we first make it available.
+
+NOT COVERED BY THE LICENSE ABOVE
+- The Neuma soundscape (frontend/sounds-baked/) and the Neuma and Deus Neuma
+  names, logos and marks are licensed separately. See LICENSE-ASSETS.md.
+- Third-party components keep their own licences: npm dependencies (see
+  node_modules/*/LICENSE after install), and the fonts under
+  backend/services/branding/fonts/ (SIL Open Font License, texts alongside).
+
+"Neuma" and "Deus Neuma" are trademarks of Ignis AI Labs LLC. The licence
+grants no right to use them, except to identify us as the origin of the
+Software.

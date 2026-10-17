@@ -1,0 +1,157 @@
+/* SOVEREIGNTY — the operator's seat at the gateway */
+.sov {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  overflow-y: auto;
+  height: 100%;
+}
+.sov-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sov-h {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+.sov-line {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.sov-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+}
+.sov-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.sov-card-title {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+.sov-meta {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.sov-body {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+.sov-words {
+  border-left: 2px solid var(--signal);
+  padding-left: var(--space-3);
+}
+.sov-words-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.sov-words-text {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-primary);
+  white-space: pre-wrap; /* the FULL words, never truncated */
+}
+.sov-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.sov-btn {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.sov-btn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+.sov-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.sov-btn-go {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+.sov-btn-no {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+.sov-revise {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sov-notes {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: var(--space-2);
+  resize: vertical;
+}
+.sov-note {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: 11px;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-tertiary);
+}
+.sov-scream {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--alert);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--alert);
+}
+.sov-record {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sov-record-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.sov-record-title {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}

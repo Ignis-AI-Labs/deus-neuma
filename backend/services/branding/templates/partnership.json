@@ -1,0 +1,27 @@
+{
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "guest": {
+    "required": true,
+    "label": "the partner's own logo — drop it at brands/<brand>/guests/<slug>.svg (or .png) and pass --guest <slug>"
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the small mono line, e.g. PARTNERSHIP or INTEGRATION LIVE"
+    },
+    "partner": {
+      "required": true,
+      "max": 20,
+      "label": "the partner's name, as THEY write it — 20, down from 22: the title grew for mobile legibility and the frame is fixed, so the characters paid for it"
+    },
+    "support": {
+      "required": true,
+      "max": 72,
+      "label": "one line on what the two of you now do together — never a claim on their behalf"
+    }
+  }
+}

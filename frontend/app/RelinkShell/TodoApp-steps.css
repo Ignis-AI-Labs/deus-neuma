@@ -1,0 +1,199 @@
+/* TodoApp-steps.css — extracted from TodoApp.css (size law). The step area + presets; imported last — steps are subordinate to their parent row. */
+/* The step area — subordinate to its parent row: indented under the card,
+   smaller type, steps in the voice register a step dimmer than the task.
+   A worked step stays struck through, never removed from sight. */
+.todo-sub {
+  margin-left: var(--space-6);
+}
+.todo-sub-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.todo-sub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.todo-sub-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+.todo-sub-item:last-child {
+  border-bottom: none;
+}
+.todo-sub-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: var(--space-1) 0;
+}
+.todo-sub-title {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+  transition: color var(--snap);
+}
+.todo-sub-row:hover .todo-sub-title {
+  color: var(--color-text-primary);
+}
+.todo-sub-item.is-done .todo-sub-title {
+  color: var(--color-text-disabled);
+  text-decoration: line-through;
+}
+.todo-sub-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+.todo-sub-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-xs);
+}
+.todo-sub-add {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.todo-sub-add:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+.todo-sub-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.todo-sub-preset {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  letter-spacing: 0.18em;
+  transition: color var(--snap);
+}
+.todo-sub-preset:hover {
+  color: var(--color-text-secondary);
+}
+
+/* A quiet confirmation (a preset saved) — the data register, never ALERT:
+   nothing refused, nothing warned. */
+.todo-word {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.12em;
+}
+
+/* PRESETS — the toggle sits in the form row (SIGNAL while its panel is the
+   live surface); the panel is one chamfered card listing BUILT-IN then
+   YOURS, name in the voice register, the count · cadence meta in data. */
+.todo-presets-toggle {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.todo-presets-toggle:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--line-hover);
+}
+.todo-presets-toggle.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+.todo-presets-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+.todo-presets-part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.todo-presets-h {
+  margin: 0;
+  color: var(--color-heading);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-2);
+}
+.todo-presets-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.todo-preset {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.todo-preset-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.todo-preset-name {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.todo-preset-meta {
+  color: var(--color-text-tertiary);
+}
+.todo-preset-apply {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.todo-preset-apply:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+.todo-presets-empty {
+  margin: 0;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}

@@ -1,0 +1,122 @@
+/* EditorApp — one file per floating window (LINE & CYCLE). The editor pane
+   styles moved here from FilesApp.css when the in-panel pane was retired;
+   class names kept so CodeEditor's host contract is byte-identical. */
+
+.editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The shared empty state stays centered — layout extra. */
+.editor > .empty-state {
+  margin: auto;
+}
+
+.files-panehead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.files-panepath {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl; /* keep the filename visible when the path overflows */
+  text-align: left;
+}
+
+.files-save {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.files-save:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.files-save:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.files-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+.files-editor-host { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.files-editor-host .cm-editor { height: 100%; }
+
+/* The shared empty state stays centered in the editor pane — layout extra. */
+.files-editor > .empty-state {
+  margin: auto;
+}
+
+.files-note {
+  border-top: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+}
+
+/* NOT UTF-8 (#239). The banner sits between the head and the document because
+   it governs the whole file, not one line of it — and because the operator must
+   read it BEFORE reaching for SAVE, not after. */
+.files-readonly {
+  flex: 0 0 auto;
+  color: var(--alert);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+}
+
+.files-lossy {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  color: var(--alert);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+/* DISK MOVED UNDER THE BUFFER (#235). Same station as the lossy banner — it
+   governs the whole file and must be read before SAVE is touched again. The
+   choice is explicit in both directions; neither resolution is silent. */
+.files-conflict {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  color: var(--alert);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.files-conflict-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-left: var(--space-3);
+}
+
+.files-conflict-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.files-conflict-btn:hover { color: var(--signal); border-color: var(--signal-dim); }

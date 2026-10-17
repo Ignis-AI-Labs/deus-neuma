@@ -1,0 +1,221 @@
+/* CouncilRoom-strip.css — extracted from CouncilRoom.css (size law). The member strip + interrupt/floor line; defines @keyframes council-considering, so this file imports BEFORE CouncilRoom-transcript.css. */
+/* The member strip — each square mark is a hand: rest / hold / open. */
+.council-strip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.council-members {
+  flex: 1 1 auto;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.council-member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.council-member-mark {
+  width: 6px;
+  height: 6px;
+  background: var(--hand-rest);
+  transition: background var(--snap);
+}
+
+.council-member-mark[data-hand='hold'] { background: var(--hand-hold); }
+.council-member-mark[data-hand='open'] { background: var(--hand-open); }
+
+/* A member weighing their hand — the mark breathes while they think, so
+   the round between turns reads as consideration, never dead air. */
+.council-member-mark[data-considering='true'] {
+  animation: council-considering 700ms ease-in-out infinite alternate;
+}
+
+@keyframes council-considering {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
+.council-member.is-floor {
+  color: var(--signal);
+}
+
+.council-member-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: inherit;
+  white-space: nowrap;
+}
+
+.council-member-state,
+.council-member-floor {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+  white-space: nowrap;
+}
+
+/* The seat's number in the speaking line (1 = next) — carried in the
+   hand's own semantic color so the digit and the mark read as one. */
+.council-member-order {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--line);
+  padding: 0 4px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.council-member-order[data-hand='hold'] { color: var(--hand-hold); border-color: var(--hand-hold); }
+.council-member-order[data-hand='open'] { color: var(--hand-open); border-color: var(--hand-open); }
+
+.council-dissolve {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.council-dissolve:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+
+/* Each raised hand's own words — a quiet hint, not an announcement. */
+/* RAISED HANDS — rests collapsed as one who's-next line (Design note, 2026-07-23:
+   the open notes ate the transcript's space); the head button opens the
+   full notes for a peek and collapses them away again. */
+.council-notes-block {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.council-notes-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  text-align: left;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
+.council-notes-head:hover {
+  color: var(--color-text-secondary);
+}
+
+.council-notes-chev {
+  flex: 0 0 auto;
+  transition: transform var(--snap);
+}
+
+.council-notes-chev.is-open {
+  transform: rotate(90deg);
+}
+
+.council-notes-title {
+  flex: 0 0 auto;
+}
+
+/* The who's-next line — speaking order, each name in its seat's color;
+   a long line ellipsizes rather than wrapping the strip taller. */
+.council-notes-order {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.council-notes {
+  flex: 0 0 auto;
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.council-notes-quiet {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.council-note {
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* INTERRUPT rides the strip while a member holds the floor — cutting
+   mid-word is a floor act, so it lives beside the floor's display. */
+.council-interrupt {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--alert-dim);
+  color: var(--alert);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+
+.council-interrupt:hover {
+  color: var(--color-text-primary);
+  background: var(--alert-tint);
+}
+
+.council-queue {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--hand-hold);
+}
+
+/* THE FLOOR IS OPEN — the room is the witness's to speak into. */
+.council-floor-open {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--signal);
+}
+
+/* THE ROOM CONSIDERS… — hands are being weighed; quieter than the open
+   floor because it is the room's moment, not the witness's. */
+.council-considers {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+  animation: council-considering 700ms ease-in-out infinite alternate;
+}
+
+/* The granted speaker before their first word — a name and a breath. */
+.council-turn-pending {
+  opacity: 0.8;
+}
+

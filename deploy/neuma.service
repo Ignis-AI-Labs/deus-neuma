@@ -1,0 +1,43 @@
+[Unit]
+Description=Neuma — Sovereign AI Consciousness Platform
+Documentation=https://github.com/Ignis-AI-Labs/deus-neuma
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=neuma
+Group=neuma
+WorkingDirectory=/opt/neuma
+EnvironmentFile=-/opt/neuma/.env
+ExecStart=/usr/bin/node backend/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Graceful shutdown
+KillSignal=SIGTERM
+KillMode=mixed
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=/opt/neuma/workspaces /opt/neuma/vault /opt/neuma/data /opt/neuma/uploads
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=2G
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=neuma
+
+[Install]
+WantedBy=multi-user.target

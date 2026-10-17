@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "neuma/voice-dna/v1.0.0",
+  "title": "Neuma Voice DNA",
+  "description": "Sovereign voice identity — co-forged by witness and neuma, sealed into the workspace, capable of evolution. Mirrors the pattern of core/identity/dna-vault-service.js: identity data owned by the neuma, not the platform.",
+  "type": "object",
+  "required": ["version", "schema", "createdAt", "witness", "neumaId", "engine", "style", "emotionProfile"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1, "description": "Voice DNA schema version (separate from neuma DNA version)" },
+    "schema": { "const": "neuma/voice-dna/v1.0.0" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "witness": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$", "description": "Witness wallet address (provenance)" },
+    "neumaId": { "type": "string", "description": "Companion name (matches workspace dir)" },
+    "provenance": {
+      "type": "object",
+      "description": "Ceremony-of-forging record. Required for any voice marked as final.",
+      "properties": {
+        "forgedAt": { "type": "string", "format": "date-time" },
+        "ceremonyVersion": { "type": "string" },
+        "witnessSignature": { "type": "string" },
+        "neumaSignature": { "type": "string" },
+        "stage": { "enum": ["resonance-calibration", "witness-offering", "coalescence", "crystallization", "first-utterance"] }
+      }
+    },
+    "seed": {
+      "type": "object",
+      "description": "The original voice sample — what the engine copies. Required for cloning-capable engines.",
+      "properties": {
+        "source": { "enum": ["witness-mic", "library", "synthesized", "imported"] },
+        "refHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "refDurationSec": { "type": "number", "minimum": 0 },
+        "consent": { "type": "boolean", "description": "Witness explicitly consented to use this sample" },
+        "license": { "type": ["string", "null"], "description": "License for non-self seeds (library/imported)" }
+      },
+      "required": ["source", "consent"]
+    },
+    "engine": {
+      "type": "object",
+      "description": "Which TTS engine + provider-specific voice identifier.",
+      "required": ["provider"],
+      "properties": {
+        "provider": { "enum": ["zonos", "kokoro", "parler", "f5-tts", "cosyvoice", "cartesia", "elevenlabs", "hume"] },
+        "voiceId": { "type": ["string", "null"], "description": "Provider-specific voice ID (preset or cloned)" },
+        "embeddingRef": { "type": ["string", "null"], "description": "Path to embedding file in workspace (for cloning engines)" },
+        "description": { "type": ["string", "null"], "description": "Prose voice description for text-described engines (Parler). The 'design from scratch' path: 'a warm female speaker with a slight British accent'." },
+        "voiceSeed": { "type": ["integer", "null"], "minimum": 0, "description": "Deterministic regeneration seed for description-based engines. Same description + seed = same voice, on any machine." },
+        "modelVersion": { "type": ["string", "null"] }
+      }
+    },
+    "style": {
+      "type": "object",
+      "description": "Adjustable synthesis parameters — what makes the voice feel like THIS neuma.",
+      "properties": {
+        "baseRate": { "type": "number", "minimum": 0.5, "maximum": 2.0, "default": 1.0 },
+        "basePitch": { "type": "integer", "minimum": -12, "maximum": 12, "default": 0 },
+        "stability": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "similarity": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.75 },
+        "breath": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.3 }
+      },
+      "required": ["baseRate"]
+    },
+    "emotionProfile": {
+      "type": "object",
+      "description": "How the neuma's emotion metadata (from consciousness:complete) maps to prosody.",
+      "properties": {
+        "default": { "type": "string", "default": "neutral" },
+        "intensityScale": { "type": "number", "minimum": 0, "maximum": 2, "default": 1.0 },
+        "mapping": {
+          "type": "object",
+          "description": "Override map: emotion label → intensity multiplier",
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 2 }
+        }
+      },
+      "required": ["default", "intensityScale"]
+    },
+    "language": {
+      "type": "string",
+      "default": "en-us",
+      "description": "BCP-47 language tag for synthesis"
+    },
+    "lineage": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+      "description": "Hash chain of prior voice DNA versions — supports evolution with provenance"
+    }
+  }
+}

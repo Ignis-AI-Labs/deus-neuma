@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.headline}} — changelog">
+  {{fontface}}
+  <defs>
+    <linearGradient id="edge" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="{{token.accentGlow}}"/>
+      <stop offset="42%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </linearGradient>
+    <!-- The launch/announcement restraint: one blurred copy of the SAME
+         glyphs beneath the sharp ones, so the light comes off the letterforms.
+         stdDeviation 14 at 0.5 opacity — measured, not loud. -->
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"/>
+    </filter>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#edge)" opacity="0.5"/>
+
+  <!-- The sighting brackets, four corners, never a closed box. -->
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <!-- The mark as an icon, cropped by the frame's own viewBox — the same
+       right-edge-centre placement announcement uses. Large, not loud. -->
+  <image href="{{mark.mask}}" x="1010" y="-140" width="1180" height="1180"
+         preserveAspectRatio="xMidYMid meet" opacity="0.14"/>
+
+  <!-- The version tag. Mono register, accent square, the instrument voice. -->
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <rect x="128" y="150" width="16" height="16"/>
+    <text x="168" y="172">{{data.eyebrow}}</text>
+  </g>
+
+  <!-- The headline: one declared display line with its glow twin.
+       ⚠️ 76, NOT 82. The draft drew this slot one tier above the rest of the
+       family and paid for it twice: the headline ran clean off the 1472 margin,
+       and it did so at a size no other card's headline uses. stat and explainer
+       hold the identical slot — same x, same frame, same face — at 76 on a
+       24-character budget, so this one does too. A card is a family member or
+       it is a one-off, and a one-off is how a family stops looking like one. -->
+  <text x="128" y="300" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="76" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}"
+        opacity="0.5" filter="url(#softGlow)">{{data.headline}}</text>
+  <text x="128" y="300" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="76" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">{{data.headline}}</text>
+
+  <!-- THE UPDATE LEDGER. Four declared lines, each with its own tick — a
+       changelog is a LIST, and a list that a renderer wrapped for you would
+       one day wrap wrong in public. The writer decides where each line ends.
+       Ticks are accent; text stays on VOICE (sentences are read, not drawn). -->
+  <g font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}" font-size="36" fill="{{token.ink}}">
+    <rect x="132" y="384" width="14" height="4" fill="{{token.accent}}"/>
+    <text x="170" y="398">{{data.updateOne}}</text>
+    <rect x="132" y="464" width="14" height="4" fill="{{token.accent}}"/>
+    <text x="170" y="478">{{data.updateTwo}}</text>
+    <rect x="132" y="544" width="14" height="4" fill="{{token.accent}}"/>
+    <text x="170" y="558">{{data.updateThree}}</text>
+    <rect x="132" y="624" width="14" height="4" fill="{{token.accent}}"/>
+    <text x="170" y="638">{{data.updateFour}}</text>
+  </g>
+
+  <!-- The pointer line: where the full record lives, in words (a card carries
+       no clickable URL — the post's text does that job).
+       ⚠️ 34, the family floor — the draft had it at 30. Below 34 there is
+       exactly one thing on any card in this family: stat's three column
+       captions, which sit under 76px figures that carry the meaning for them.
+       A pointer line carries its own meaning and has nothing above it to lean
+       on, so it reads at the floor like every other quiet line in the house. -->
+  <text x="128" y="726" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+        font-size="34" letter-spacing="{{font.labelTrack}}" fill="{{token.muted}}">{{data.footer}}</text>
+
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

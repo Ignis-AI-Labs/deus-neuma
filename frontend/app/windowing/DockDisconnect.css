@@ -1,0 +1,4 @@
+.dock-disconnect-confirm {
+  max-width: 20rem;
+  padding: var(--space-2);
+}

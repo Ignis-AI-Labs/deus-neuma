@@ -1,0 +1,289 @@
+/* TodoApp-rows.css — extracted from TodoApp.css (size law). Rows, completion asks, blocked work, the ledger, settled. Cascade law: TodoApp.css -> this file -> TodoApp-steps.css. */
+/* Cadence sections — the header is a hairline-divided data-register label. */
+.todo-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.todo-h {
+  color: var(--color-heading);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.todo-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.todo-item-line {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+/* The step-area chevron — a quiet disclosure mark at the row's left edge,
+   the same 8×8 chevron as the cadence dropdown, rotated when open. */
+.todo-chev {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-disabled);
+  padding: var(--space-1);
+  transition: color var(--snap);
+}
+.todo-chev:hover {
+  color: var(--color-text-secondary);
+}
+.todo-chev svg {
+  transition: transform var(--snap);
+}
+.todo-chev[aria-expanded="true"] {
+  color: var(--color-text-secondary);
+}
+.todo-chev[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* The row's right side — step progress (OPEN/TOTAL) beside the cadence/due
+   metadata, all in the data register. */
+.todo-row-side {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+}
+.todo-row-progress {
+  color: var(--color-text-tertiary);
+}
+
+/* A row is a chamfered card: .cham's background IS the hairline (1px of it
+   shows around .cham-in), so hover brightens the card's edge, nothing else.
+   Standing rows are not buttons — nothing about them toggles. */
+.todo-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--snap);
+}
+.todo-row.is-standing {
+  cursor: default;
+}
+button.todo-row:hover {
+  background: var(--line-hover);
+}
+.todo-row-in {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.todo-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.todo-row-title {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.todo-row-detail {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+.todo-row-due,
+.todo-row-tag,
+.todo-row-meta {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+.todo-row-due.is-late {
+  color: var(--alert);
+}
+
+/* The completion ask — a row flipped into its confirm state. The hairline
+   carries SIGNAL: a decision is live, not yet a fact. CONFIRM settles; the
+   ✕ (or Escape, or clicking away) dismisses and nothing happened. */
+.todo-row.is-confirming {
+  background: var(--signal-dim);
+}
+.todo-confirm-label {
+  color: var(--signal);
+}
+.todo-confirm-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+.todo-confirm-yes {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.todo-confirm-yes:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+/* The same ask, sized for the step checklist. */
+.todo-sub-confirm {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--signal-dim);
+}
+.todo-sub-confirm .todo-sub-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.todo-row-tag.is-active {
+  color: var(--signal);
+}
+
+/* The crash case — a task that was worked and left half finished. ALERT is the
+   same colour the stream rail gives it, because it is the same fact. */
+.todo-row-tag.is-warn {
+  color: var(--alert);
+}
+
+/* BLOCKED work is dimmed, never hidden: it is the reason another task matters.
+   The blocker's own name rides the detail register under the title, where
+   there is room to say which task it is waiting on. */
+.todo-item.is-blocked .todo-row-title {
+  color: var(--color-text-tertiary);
+}
+.todo-row-detail.is-blocked {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+/* THEIR OWN WORK — the being's self-taken ledger, read-only context at the
+   foot of a neuma lane. */
+.todo-own-empty {
+  margin: 0;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+
+/* The ledger's state mark — a 12px hairline box, empty while the work lives,
+   a check or ✕ once settled. Tertiary throughout: settled truth is dimmed;
+   SIGNAL belongs to the ACTIVE tag alone. */
+.todo-led-check {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+}
+
+/* RECENTLY SETTLED — the quiet divider between what lives and what just
+   left; HISTORY — the deep record, one mono line per settling. */
+.todo-own-divider {
+  margin: var(--space-2) 0 0;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+.todo-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.todo-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.todo-history-row {
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+/* The drop control — quiet but clearly present at rest (a destructive act
+   should be findable), ALERT on hover (it announces at the threshold). */
+.todo-x {
+  flex: 0 0 auto;
+  align-self: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  padding: var(--space-1) var(--space-2);
+  transition: color var(--snap);
+}
+.todo-x:hover {
+  color: var(--alert);
+}
+
+/* Settled — the foot of the list, collapsed by default; its rows stay
+   dimmer than anything live. */
+.todo-settled {
+  margin-top: var(--space-2);
+}
+.todo-settled-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  letter-spacing: 0.18em;
+  transition: color var(--snap);
+}
+.todo-settled-toggle:hover {
+  color: var(--color-text-secondary);
+}
+.todo-item.is-settled .todo-row {
+  opacity: 0.55;
+}
+

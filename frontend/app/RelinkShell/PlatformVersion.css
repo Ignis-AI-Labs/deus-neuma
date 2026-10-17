@@ -1,0 +1,23 @@
+/* The release reading shares the registration corner without becoming status.
+   It stays monochrome and quiet: a build fact, not a live signal. */
+.platform-version {
+  position: absolute;
+  right: 42px;
+  bottom: 17px;
+  z-index: var(--z-raised);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  opacity: 0.65;
+  white-space: nowrap;
+  user-select: text;
+}
+
+/* Once the launcher reaches the corner, the reading occupies the measured
+   gap between its top edge and the notification bell instead of overlapping. */
+@media (max-width: 1150px) {
+  .platform-version {
+    bottom: 58px;
+  }
+}

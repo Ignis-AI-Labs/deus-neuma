@@ -1,0 +1,29 @@
+{
+  "$comment": [
+    "TB rem2 split REM2A (2026-09-18): 13 heavy tasks at the 30-min allowance, network consent via the bridge. See the cell comment."
+  ],
+  "windowHours": 8,
+  "model": "qwen3.8-27b-uncensored-hauhaucs",
+  "endpoint": "http://localhost:8089",
+  "lane": "keir",
+  "workspaceRoot": "/mnt/data/neuma/claude/aldmere",
+  "subjectRoot": "/workspace/repos/project-batizus",
+  "quietSeconds": 60,
+  "maxTransientRetries": 1,
+  "retryDelayMs": 30000,
+  "publishResults": true,
+  "groups": [
+    {
+      "id": "t3-rem2a",
+      "steps": [
+        {
+          "cell": "terminal-bench-rem2a",
+          "arm": "neuma",
+          "limit": 13,
+          "maxSeconds": 25200
+        }
+      ]
+    }
+  ],
+  "expectedOrigin": "https://github.com/example/project-fuvofos.git"
+}

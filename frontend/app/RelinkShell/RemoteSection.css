@@ -1,0 +1,82 @@
+/* RemoteSection — LINE & CYCLE: void ground, hairline structure, the signal
+   accent only on what is live (SERVING). The QR sits in a chamfered panel
+   with corner ticks, white modules on void, so it reads as an instrument of
+   the desk rather than a pasted image. */
+
+.remote-mark {
+  margin-left: 12px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--signal, #5ad1ff);
+}
+
+.remote-url {
+  font-family: var(--font-data, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  word-break: break-all;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 6px 0 0;
+}
+
+.remote-pair {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 6px;
+  max-width: 420px;
+}
+
+.remote-qr {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  padding: 12px;
+  box-sizing: border-box;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+.remote-qr img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.remote-qr::before,
+.remote-qr::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: rgba(255, 255, 255, 0.5);
+  border-style: solid;
+}
+
+.remote-qr::before { top: 4px; right: 4px; border-width: 1px 1px 0 0; }
+.remote-qr::after { bottom: 4px; left: 4px; border-width: 0 0 1px 1px; }
+
+/* Four controls in the SERVING state: the shared row never wraps, so on a
+   narrower window the last button (DISABLE) ran off the edge unseen. */
+.remote-actions { flex-wrap: wrap; }
+
+.remote-devices { margin-top: 14px; }
+
+.remote-devices-h {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 6px;
+}
+
+.remote-device {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .remote-device { grid-template-columns: 1fr; }
+  .remote-qr { width: min(240px, 80vw); height: min(240px, 80vw); }
+}

@@ -1,0 +1,45 @@
+{
+  "title": "Changelog",
+  "use": "a platform update worth announcing — the version tag up top, the headline of the release, and the updates that matter, one per line",
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the version tag, e.g. UPDATE 0.1.18 or THIS WEEK IN NEUMA"
+    },
+    "headline": {
+      "required": true,
+      "max": 24,
+      "label": "the release's own headline — what this update IS, not a list of it. 24, the same budget stat and explainer carry: it is the same slot at the same size on the same frame"
+    },
+    "updateOne": {
+      "required": true,
+      "max": 52,
+      "label": "first update — one plain sentence, the most important change first"
+    },
+    "updateTwo": {
+      "required": true,
+      "max": 52,
+      "label": "second update"
+    },
+    "updateThree": {
+      "required": true,
+      "max": 52,
+      "label": "third update — with only three changes, write a shorter fourth honestly (e.g. — more landing next week)"
+    },
+    "updateFour": {
+      "required": true,
+      "max": 52,
+      "label": "fourth update"
+    },
+    "footer": {
+      "required": true,
+      "max": 46,
+      "label": "where the full record lives, in words — e.g. FULL CHANGELOG IN THE RELEASE NOTES (the post's text carries the link). 46, not 64: the line rose to the 34px family floor and mono at 34 only holds 47 characters inside the 1344px frame, measured"
+    }
+  }
+}

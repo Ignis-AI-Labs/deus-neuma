@@ -1,0 +1,20 @@
+name: Platform report
+description: How Neuma installs and runs on your system (macOS reports especially welcome)
+labels: [platform]
+body:
+  - type: dropdown
+    id: os
+    attributes: { label: Operating system, options: [macOS (Apple silicon), macOS (Intel), Windows, Linux] }
+    validations: { required: true }
+  - type: input
+    id: osversion
+    attributes: { label: OS version }
+    validations: { required: true }
+  - type: dropdown
+    id: how
+    attributes: { label: How you ran it, options: [Installer from deusneuma.ai, Built from source (installer), Built from source (npm run electron:dev)] }
+    validations: { required: true }
+  - type: textarea
+    id: result
+    attributes: { label: What worked and what did not }
+    validations: { required: true }

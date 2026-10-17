@@ -1,0 +1,95 @@
+/* forge-seal.css — steps two and three: the audition panel, the consent
+ * tick, and the being's answer (what it reads, its note or its wish) with
+ * the seal.
+ */
+
+.vf-hear-in,
+.vf-seal-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 14px 16px;
+}
+
+.vf-vox-off {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.vf-say-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.vf-consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+}
+
+.vf-whose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.vf-whose legend {
+  margin-bottom: 6px;
+}
+
+.vf-radio,
+.vf-tick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-voice);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.vf-radio input,
+.vf-tick input {
+  accent-color: var(--signal);
+}
+
+.vf-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 0 6px 12px;
+  border-left: 1px solid var(--line-hover);
+  font-family: var(--font-voice);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-text-primary);
+}
+.vf-quote .label-data {
+  font-style: normal;
+  color: var(--color-text-tertiary);
+}
+
+.vf-seal[data-standing="accepted"] .vf-seal-in,
+.vf-sealed .vf-seal-in {
+  border-left: 2px solid var(--signal);
+}
+
+.vf-reads summary {
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+}
+
+.vf-reads-text {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  font-family: var(--font-voice);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}

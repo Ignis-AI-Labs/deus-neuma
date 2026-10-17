@@ -1,0 +1,470 @@
+/* RelinkShell partial: COMPOSER (input, attach, capacity, presets, model bar, mic, slash palette) — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
+/* Input — chamfered control register (hairline frame, cut-sm corners) */
+/* The composer row: the attach "+" beside the chamfered input box. The box's
+   clip-path clips positioned descendants, so the attach control (and its
+   drop-up) live OUTSIDE it, as siblings. */
+.relink-inputrow {
+  position: relative; /* anchors the dictation-setup prompt above the composer */
+  display: flex;
+  /* A narrow stream window wraps its controls onto another line — it never
+     crushes the field to nothing between them (seen 2026-10-14: at a laptop's
+     width the field read 0px wide between DEFAULT and LIVE, nowhere to type). */
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+
+  /* ⚠️ ONE BASELINE, ONE SOURCE — hand-copying it is how VOX drifted low under
+     flex-end. Every control BESIDE the chamfered box lifts by this to share its
+     bottom edge. Guarded in real paint by composer-attach.spec.js. */
+  --composer-baseline: calc(var(--space-1) + 1px);
+}
+
+.relink-input {
+  /* always room to type — see .relink-inputrow. LIVE, the mic and send sit
+     INSIDE this box, so its floor is wide enough to leave the field real room;
+     in a narrow window it takes the whole row. */
+  flex: 1 1 20rem;
+  min-width: min(20rem, 100%);
+  background: var(--line);
+  padding: 1px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+}
+
+.relink-input-in {
+  display: flex;
+  /* a box too narrow for the field AND its controls drops the controls under
+     the field, right-aligned — the field always keeps room to type */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  /* send stays anchored at the bottom edge while the field grows upward-tall */
+  align-items: flex-end;
+  gap: var(--space-2);
+  background: var(--color-void);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm) + 1px) 0,
+    100% calc(var(--cut-sm) - 1px),
+    100% 100%,
+    calc(var(--cut-sm) - 1px) 100%,
+    0 calc(100% - var(--cut-sm) + 1px)
+  );
+}
+
+.relink-input-field {
+  flex: 1 1 auto;
+  min-width: min(10rem, 100%);
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  padding: var(--space-2) 0;
+  /* the thought grows the field downward — never a horizontal scroll */
+  resize: none;
+  overflow-y: auto;
+  max-height: 168px;
+  /* The field grows with its thought without a JS measure per keystroke. */
+  field-sizing: content;
+  line-height: 1.5;
+}
+
+.relink-input-field::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.relink-input-field:disabled {
+  cursor: not-allowed;
+}
+
+
+.relink-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.relink-send:hover:not(:disabled) {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+/* The attach "+" — same instrument register as send/mic, anchored to the
+   composer row's bottom edge; its drop-up opens above. */
+.relink-attach-root {
+  position: relative;
+  flex: 0 0 auto;
+  padding-bottom: var(--composer-baseline);
+}
+
+.relink-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.relink-plus:hover:not(:disabled) {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+.relink-plus:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.relink-plus[aria-expanded='true'] {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.relink-attach-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 4px);
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  z-index: var(--z-sticky);
+}
+
+.relink-attach-menu-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.relink-attach-menu-row:hover {
+  border-left-color: var(--signal);
+  background: var(--color-glass-light);
+}
+
+.relink-attach-menu-name {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-primary);
+  flex: 0 0 auto;
+}
+
+.relink-attach-menu-row:hover .relink-attach-menu-name {
+  color: var(--signal);
+}
+
+.relink-attach-menu-desc {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* an honest capacity limit reads as a warning, not a feature blurb */
+.relink-attach-menu-desc.is-limit {
+  color: var(--alert);
+}
+
+.relink-attach-menu-sect {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border-top: 1px solid var(--line);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.relink-attach-menu-empty {
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-disabled);
+}
+
+.relink-attach-menu-row.is-project .relink-attach-menu-name {
+  font-family: var(--font-voice);
+  letter-spacing: 0;
+}
+
+.relink-attach-menu-mark {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  align-self: center;
+  border: 1px solid var(--color-text-tertiary);
+}
+
+.relink-attach-menu-row.is-active .relink-attach-menu-mark {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+/* Inference presets — one-tap mode above the input. Monochrome at rest; the
+   active mode carries SIGNAL. Names + tooltip blurbs, never raw numbers. */
+.relink-compose {
+  position: relative; /* anchors the slash palette (which must stay outside the clipped input box) */
+  display: flex;
+  flex-direction: column;
+}
+
+/* THE MODEL BAR — which mind answers, and how hard it thinks. Sits where the
+   three sampling-mode buttons used to; those became the standing default in
+   Settings > INFERENCE. Monochrome at rest, SIGNAL only where a rung is LIVE. */
+.relink-modelbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3) var(--space-2);
+  min-width: 0;
+}
+
+/* Both pickers ride the ONE global Select (never a native <select>); the bar
+   only states their width, their compact data-register scale, and — the
+   load-bearing part — that they open UPWARD. A composer sits at the bottom of
+   the window, so a downward panel would open into the field or off-screen. */
+.relink-modelbar .lc-sel-trigger {
+  background: transparent;
+  padding: 2px var(--space-2);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  min-width: 0;
+}
+
+.relink-modelbar .lc-sel-panel {
+  top: auto;
+  bottom: calc(100% + 2px);
+}
+.relink-modelbar.is-rig {
+  padding: 0;
+}
+.relink-modelbar.is-rig .lc-sel-panel {
+  top: calc(100% + 2px);
+  bottom: auto;
+}
+.relink-modelbar-model {
+  flex: 0 1 260px;
+  min-width: 0;
+}
+
+.relink-modelbar-effort {
+  flex: 0 0 auto;
+}
+
+/* The THINKING switch — data register, SIGNAL when the model is reasoning. */
+.relink-modelbar-think {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  padding: 3px var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.relink-modelbar-think:hover:not(:disabled) {
+  color: var(--color-text-secondary);
+  border-color: var(--line-hover);
+}
+
+.relink-modelbar-think.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.relink-modelbar-think:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* An absent ladder states itself instead of leaving a dead control. */
+.relink-modelbar-note {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.relink-modelbar-boot {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+
+.relink-modelbar-refusal {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--alert);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relink-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Hold-to-talk — monochrome at rest; SIGNAL only while the mic is live */
+.relink-mic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.relink-mic:hover:not(:disabled) {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+.relink-mic:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.relink-mic.is-recording {
+  border-color: var(--signal);
+  color: var(--signal);
+  animation: mic-breathe 1.2s ease-in-out infinite;
+}
+
+.relink-mic.is-transcribing {
+  border-color: var(--signal-dim);
+  color: var(--signal-dim);
+  animation: mic-breathe 0.6s ease-in-out infinite;
+}
+
+.relink-mic.is-error {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+/* the field frame itself signals a live capture */
+.relink-input-in.is-listening {
+  box-shadow: inset 0 0 0 1px var(--signal-dim);
+}
+
+@keyframes mic-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* THE HOUSE CHIP — who is working, right of the model bar (Design note, 2026-09-15.
+   Monochrome at rest; SIGNAL because live work is live data (LINE & CYCLE). */
+.relink-housechip {
+  position: relative;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.relink-housechip-btn {
+  color: var(--signal);
+}
+
+.relink-housechip-panel {
+  left: auto;
+  right: 0;
+  min-width: 300px;
+}
+
+.relink-housechip-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.relink-housechip-row .relink-housechip-task {
+  opacity: 0.72;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The row's right end — the benchmark chip, then the house chip */
+.relink-modelbar-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The harness's SERVER, beside its model (HarnessServerPick) */
+.relink-modelbar-server {
+  flex: 0 1 220px;
+  min-width: 0;
+}
+.relink-modelbar-left {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-tertiary);
+}

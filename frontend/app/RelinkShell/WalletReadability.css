@@ -1,0 +1,20 @@
+/* Keep controls readable at normal window size; detail yields before type shrinks. */
+.wal { padding: 24px; gap: 24px; }
+.wal .wal-head { gap: 12px; padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.wal .wal-head-who { font: 1rem var(--font-voice); color: var(--color-text-primary); letter-spacing: .015em; }
+.wal .wal-head-bal { font-size: clamp(2rem, 7vw, 2.75rem); font-weight: 400; overflow-wrap: anywhere; }
+.wal .wal-head-native, .wal .wal-head-chg { font-size: .9375rem; }
+.wal .wal-head-row { flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.wal .wal-head-addr { flex-wrap: wrap; font-size: .875rem; min-height: 36px; }
+.wal .wal-refresh, .wal .wal-head-scan, .wal .wal-copy-hint { font-size: .8125rem; letter-spacing: .03em; color: var(--color-text-secondary); min-height: 36px; display: inline-flex; align-items: center; }
+.wal .wal-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; }
+.wal .wal-action { min-width: 0; }
+.wal .wal-action-in { padding: 16px 12px; gap: 10px; }
+.wal .wal-action-lbl { font-size: .875rem; letter-spacing: .04em; color: var(--color-text-primary); }
+.wal .wal-tok { margin-bottom: 10px; }
+.wal .wal-tok-in { padding: 16px; }
+.wal .wal-tok span { font-size: .875rem; line-height: 1.6; letter-spacing: .02em; }
+.wal .wal-layer { gap: 20px; }
+.wal button:focus-visible, .wal a:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.wal .wal-head-top { flex-wrap: wrap; gap: 10px; }
+.wal .wal-head-addr { max-width: 100%; overflow-wrap: anywhere; }

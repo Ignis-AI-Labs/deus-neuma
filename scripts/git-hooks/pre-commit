@@ -1,0 +1,7 @@
+#!/bin/sh
+# SIZE LAW pre-commit — judges staged files against the frozen baseline.
+# One-time enable: git config core.hooksPath scripts/git-hooks
+# (then `git lfs install` so the lfs hooks follow the hooksPath — without it
+# the four live lfs hooks in .git/hooks go silent).
+# Emergency bypass: git commit --no-verify (visible in the audit trail).
+exec node "$(git rev-parse --show-toplevel)/scripts/check-file-size.mjs" --staged

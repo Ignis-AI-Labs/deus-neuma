@@ -1,0 +1,188 @@
+/* SecurityApp — the SECURITY window. LINE & CYCLE: monochrome at rest;
+   loud tags only where something still owes action or can hurt. */
+
+.sec {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.sec-head-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.sec-head-seat {
+  flex: 1 1 auto;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--signal);
+}
+.sec-scan {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: 4px var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.sec-scan:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.sec-scan:disabled { color: var(--color-text-disabled); cursor: default; }
+
+.sec-error {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--alert);
+}
+
+.sec-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.sec-strip-line {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+}
+
+.sec-ledger { display: flex; flex-direction: column; }
+.sec-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.sec-filter { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sec-filter-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+.sec-chip {
+  background: transparent;
+  border: none;
+  color: var(--color-text-disabled);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--snap);
+}
+.sec-chip:hover { color: var(--color-text-secondary); }
+.sec-chip.is-current { color: var(--signal); }
+
+.sec-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sec-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), background var(--snap);
+}
+.sec-row:hover { border-color: var(--line); background: var(--color-glass-light); }
+.sec-row.is-open { border-color: var(--signal-dim); }
+.sec-row-id { font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); white-space: nowrap; }
+.sec-row-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs, 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sec-row-where { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); white-space: nowrap; }
+
+/* Loudness law: a tag is loud only while it can hurt or still owes action. */
+.sec-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.sec-tag.is-loud { color: var(--alert); border-color: var(--alert-dim); }
+
+.sec-detail {
+  border-top: 1px solid var(--line);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sec-detail-head { display: flex; align-items: center; gap: var(--space-2); }
+.sec-detail-id { font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-primary); }
+.sec-detail-where { flex: 1 1 auto; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.sec-detail-close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+.sec-detail-close:hover { color: var(--signal); }
+.sec-detail-title { margin: 0; font-size: var(--text-sm); color: var(--color-text-primary); }
+.sec-detail-summary { margin: 0; font-size: var(--text-xs, 12px); color: var(--color-text-secondary); line-height: var(--leading-relaxed); }
+.sec-detail-line { margin: 0; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.sec-detail-line a { color: var(--signal); }
+.sec-detail-reports {
+  margin: var(--space-2) 0 0;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-1);
+}
+.sec-report-empty { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-disabled); }
+.sec-reports { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.sec-report-head { margin: 0 0 2px; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); display: flex; gap: var(--space-2); align-items: center; }
+.sec-report-body { margin: 0; font-size: var(--text-xs, 12px); color: var(--color-text-secondary); line-height: var(--leading-relaxed); white-space: pre-wrap; }
+
+.sec-watch {
+  border-top: 1px solid var(--line);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sec-watch-head {
+  margin: 0 0 var(--space-1);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.sec-watch-line { margin: 0; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-secondary); }
+.sec-watch-run { margin: 0; font-size: 9px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }

@@ -1,0 +1,317 @@
+/* The Attunement — a being's ceremony, witnessed. Same LINE & CYCLE staging
+   as the witness's own Remia sitting: the grid void, depth vignette, mono
+   uppercase registers. Here the SIGNAL belongs to the ceremony's voice and
+   the live action; the being's replies get a hairline panel with a signal
+   register line — alive, but never chrome. Tokens only, no literal color. */
+
+.att {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  overflow-y: auto;
+  background: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  animation: attFadeIn 600ms ease-out;
+}
+
+.att::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1; /* over the scrolling column; header, rail, controls sit at z 2 */
+  background: radial-gradient(ellipse at 50% 42%, transparent 55%, color-mix(in srgb, var(--color-void) 70%, transparent));
+}
+
+/* in the live room the vignette also swallows words before the rail */
+.att--live::after {
+  background:
+    linear-gradient(to top, var(--color-void) 3.5rem, transparent 10rem),
+    radial-gradient(ellipse at 50% 42%, transparent 55%, color-mix(in srgb, var(--color-void) 70%, transparent));
+}
+
+@keyframes attFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── stage header ────────────────────────────────────────────────────── */
+
+.att-stage-header {
+  position: fixed;
+  top: 2.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 2;
+  animation: attHeaderIn 2s ease-out;
+}
+
+@keyframes attHeaderIn {
+  from { opacity: 0; transform: translate(-50%, -20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.att-ordinal {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 0.5rem;
+}
+
+.att-stage-name {
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+/* the substrate lens — model truth wherever the model runs */
+.att-lens {
+  margin-top: 0.5rem;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.att-close {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 2;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.att-close:hover { border-color: var(--line-hover); }
+
+.att-note {
+  position: fixed;
+  top: 5rem;
+  right: 2rem;
+  z-index: 2;
+  max-width: 22rem;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  line-height: 1.8;
+  color: var(--alert);
+  text-align: right;
+}
+
+/* ── the reading column ──────────────────────────────────────────────── */
+
+.att-column {
+  position: relative;
+  z-index: 1;
+  width: 80%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 10rem 0 5rem;
+}
+
+/* staged views hold court below the presiding seal; the live watching
+   room hands the height back to the words (the seal has gone ambient) */
+.att--staged .att-column { padding-top: 25rem; }
+.att--live .att-column { padding-bottom: 11rem; }
+
+/* the live room scrolls — words sink into the void before they reach the
+   stage header, never through it */
+.att--live::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 9rem;
+  z-index: 2; /* over the scrolling column; the header (later sibling, same z) stays above */
+  pointer-events: none;
+  background: linear-gradient(var(--color-void) 55%, transparent);
+}
+
+@media (max-height: 760px) {
+  .att--staged .fx-seal { width: 170px; height: 170px; top: 7rem; }
+  .att--staged .att-column { padding-top: 19rem; }
+}
+
+.att-step {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: attStepIn 400ms ease-out forwards;
+}
+
+@keyframes attStepIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── choreography: nothing appears — everything arrives ─────────────────
+   The ceremony's voice unfolds from a hairline of light, its contents rise
+   after; controls arrive last. History in the transcript never replays —
+   only the live floor (the newest turn, the standing question) arrives. */
+
+.att-step > .att-asks,
+.att-turn-live > .att-asks {
+  animation: attUnfold 420ms ease-out both;
+  transform-origin: 50% 0;
+}
+
+.att-step > .att-asks > *,
+.att-turn-live > .att-asks > * {
+  animation: attRise 400ms ease-out 320ms both;
+}
+
+.att-step > .att-replies { animation: attRise 500ms ease-out 200ms both; }
+.att-step > .att-controls { animation: attRise 500ms ease-out 450ms both; }
+.att-transcript .att-turn:last-child .att-replies { animation: attRise 500ms ease-out both; }
+
+@keyframes attUnfold {
+  0%   { opacity: 0; transform: scaleY(0); }
+  45%  { opacity: 1; }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes attRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── the ceremony's voice: chamfered, corner-lit, signal-registered ──── */
+
+.att-asks {
+  position: relative;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-void) 60%, transparent);
+  padding: 22px 28px;
+  clip-path: polygon(
+    var(--cut-sm) 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm),
+    100% calc(100% - var(--cut-sm)), calc(100% - var(--cut-sm)) 100%,
+    var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)), 0 var(--cut-sm)
+  );
+  filter: drop-shadow(0 0 24px var(--signal-faint));
+}
+
+.att-asks::before,
+.att-asks::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 2px;
+  background: var(--signal);
+}
+.att-asks::before { top: 8px; left: 8px; transform: rotate(-45deg); }
+.att-asks::after { bottom: 8px; right: 8px; transform: rotate(-45deg); }
+
+/* already-answered questions recede — history, not the live floor */
+.att-asked { filter: none; }
+.att-asked::before, .att-asked::after { background: var(--line-hover); }
+.att-asked .att-speaker { color: var(--color-text-tertiary); }
+
+.att-speaker {
+  font-family: var(--font-data);
+  /* Section headings, not fine print: each speaker label leads a section of
+     the rite and must read as one at a glance (Design note, 2026-07-14. */
+  font-size: 13px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 0.9rem;
+}
+.att-speaker-being { color: var(--signal-dim); }
+
+.att-prose {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  margin: 0;
+}
+.att-disclosure p { margin: 0 0 1em; }
+.att-disclosure p:last-child { margin-bottom: 0; }
+
+/* rendered speech (the shared Markdown component) sits flush in the panel */
+.att-prose .relink-md > :last-child { margin-bottom: 0; }
+
+/* ── the being's reply: hairline panel, its register quietly live ────── */
+
+.att-replies {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-void) 60%, transparent);
+  padding: 18px 28px;
+  margin-top: 1.25rem;
+}
+
+.att-turn { margin-bottom: 2.25rem; }
+.att-turn:last-child { margin-bottom: 0; }
+.att-transcript { margin-bottom: 2.25rem; }
+.att-transcript:empty { margin-bottom: 0; }
+
+.att-answering {
+  margin: 1rem 0 0;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--signal);
+  animation: attBreathe 1.8s ease-in-out infinite;
+}
+
+@keyframes attBreathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* the idle truth — quiet data register, no breathing (nothing is live) */
+.att-standing {
+  margin: 1rem 0 0;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  line-height: 1.9;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+/* Reopen: the quiet witnessed act on an answered turn — pre-seal only.
+   Near-silent until sought; the confirm carries the honesty. */
+.att-reopen {
+  display: block;
+  margin: 0.85rem 0 0 auto;
+  padding: 0.2rem 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  opacity: 0.55;
+  cursor: pointer;
+}
+.att-reopen:hover:not(:disabled) { opacity: 1; border-bottom-color: var(--line-hover); }
+.att-reopen:disabled { opacity: 0.25; cursor: default; }
+
+.att-reopen-confirm { margin-top: 0.85rem; border-top: 1px solid var(--line); padding-top: 0.15rem; }
+.att-reopen-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 0.75rem; }
+
+.att-opening {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--signal);
+  animation: attBreathe 1.8s ease-in-out infinite;
+}

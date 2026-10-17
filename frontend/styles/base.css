@@ -1,0 +1,269 @@
+/* Base Styles - Global resets and foundations */
+@import './tokens.css';
+
+/* ============================================
+   RESET
+   ============================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================
+   DOCUMENT
+   ============================================ */
+html {
+  /* the root is void — even alpha canvases and transparent bodies
+     fall through to black, never browser white */
+  background: var(--color-void);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* THE DRAG BAND (2026-10-05). The desktop app draws no OS title bar on
+   Windows/Linux — minimize / maximize / close sit in a window-controls band
+   at the top right (electron/desk-windows.cjs). This band, left of those
+   buttons, is what moves the window. env(titlebar-area-*) exists only inside
+   that window: in a browser the band has no height and does nothing. */
+html::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: env(titlebar-area-x, 0);
+  width: env(titlebar-area-width, 0);
+  height: env(titlebar-area-height, 0);
+  -webkit-app-region: drag;
+  app-region: drag;
+  z-index: 2147483647;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--weight-light);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-heading);
+}
+
+h1 { font-size: var(--text-4xl); }
+h2 { font-size: var(--text-3xl); }
+h3 { font-size: var(--text-2xl); }
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
+
+p {
+  margin-bottom: var(--space-4);
+}
+
+em {
+  font-style: italic;
+  color: var(--color-italic);
+}
+
+strong {
+  font-weight: var(--weight-semibold);
+  color: var(--color-emphasis);
+}
+
+a {
+  color: var(--signal);
+  text-decoration: none;
+  transition: color var(--snap);
+}
+
+a:hover {
+  color: var(--color-white);
+}
+
+
+/* ============================================
+   WORLD CONSISTENCY — no frame of the outside
+   world pokes through (LINE & CYCLE)
+   ============================================ */
+::selection {
+  background: color-mix(in srgb, var(--signal) 28%, transparent);
+  color: var(--color-white);
+}
+
+:focus-visible {
+  outline: 1px solid var(--signal);
+  outline-offset: 3px;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+input,
+textarea,
+select {
+  /* A text box must read as a distinct, lighter surface against the black void —
+     a faint fill plus a clear hairline border, never deep-black-on-black. */
+  background: var(--color-input-fill);
+  border: var(--border-width-thin) solid var(--color-border-hover);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  /* Brighter neutral border on focus — NOT --signal, which LINE & CYCLE reserves
+     for live data. A 0.6-white border + ring is clearly visible without that semantic. */
+  outline: none;
+  border-color: var(--color-border-focus);
+  background: var(--color-input-fill-focus);
+  box-shadow: 0 0 0 1px var(--color-border-primary);
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+.hidden {
+  display: none !important;
+}
+
+.invisible {
+  visibility: hidden;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-glass);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) var(--color-glass);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(var(--space-4));
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   COMPANION ACTIVE STATE
+   When 3D vessel is visible, make backgrounds
+   transparent so canvas shows through.
+   ============================================ */
+body.companion-active {
+  background-color: transparent;
+}
+
+body.companion-active #app,
+body.companion-active #main-app {
+  background: transparent;
+}
+
+/* Animation utility classes */
+.animate-fadeIn {
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.animate-slideIn {
+  animation: slideIn var(--duration-normal) var(--ease-out);
+}
+
+.animate-scaleIn {
+  animation: scaleIn var(--duration-normal) var(--ease-out);
+}

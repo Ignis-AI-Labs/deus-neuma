@@ -1,0 +1,28 @@
+.model-picker {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.model-picker-control {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.model-picker-control > .settings-input,
+.model-picker-control > .lc-sel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.model-picker-mode {
+  flex: 0 0 auto;
+}
+
+.model-picker-count {
+  color: var(--color-text-disabled);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}

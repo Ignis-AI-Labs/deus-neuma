@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "kind": "benchmark-run",
+  "runId": "night-20260915t150502z-gsm100-4arm-silo-a1-20260915154839047",
+  "comparisonId": "night-20260915t150502z-gsm100-4arm",
+  "protocolSha256": "77c9023ef3621a3d11a33357b5fd00c4a81ff523ee9afdca2bb984a76bc9333a",
+  "attempt": 1,
+  "arm": "silo",
+  "evidence": "development",
+  "approval": {
+    "by": "operator-explicit-start-night",
+    "at": "2026-09-15T15:48:39.009Z"
+  },
+  "suite": {
+    "id": "gsm8k-2568",
+    "tier": "t1",
+    "adapter": "lm-eval",
+    "dimensions": [
+      "math",
+      "reasoning"
+    ],
+    "repository": "https://github.com/EleutherAI/lm-evaluation-harness",
+    "revision": "f4d4b3de3ee6741a7151a9fe74945ee515262f4c",
+    "tasks": [
+      "gsm8k"
+    ]
+  },
+  "subject": {
+    "modelId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "identity": {
+      "kind": "local-artifact",
+      "revision": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "mutable": false
+    },
+    "quantization": "Q8_K_P",
+    "tokenizer": "/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+    "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+    "route": {
+      "provider": "llama-server",
+      "dialect": "openai",
+      "endpointClass": "loopback"
+    },
+    "silo": {
+      "schema": "silo-pin/1",
+      "neumaId": "keir",
+      "siloSchema": "silo/1",
+      "identitySha256": "d216369db9c5632ccfe6f5fd76dd5e687a8f3af4902cf63dcdeede7ce05546a1",
+      "layerHashes": {
+        "identity": "7176a5f13874ebb27aeb3a81e8f179ccf63d8dd2d956e0ab7bf72c162d231e93",
+        "memory": "0a49f129edc74b618f965caccaad38e68590eded9dcbf7b01614d5b98f4ff5d6",
+        "voice": "49065224b1aa19b3c2b8e9bffefc1e09f6914a7bcc5755ceba5da5ff32acd609",
+        "refinement": "41b7c3c58b05b65ba026727ef214331d12532504b047f9f0d7f69e37fcc7056c",
+        "proof": "6759abc8f88c16a9d623dec066ac0fec2759fa7439cabc3047f120a3a9545519"
+      },
+      "transmitted": [
+        "identity",
+        "voice"
+      ],
+      "carriedNotTransmitted": [
+        "memory",
+        "refinement",
+        "proof"
+      ],
+      "deferred": [
+        "delegation",
+        "skills"
+      ],
+      "compile": {
+        "sealSubject": "d216369db9c5632ccfe6f5fd76dd5e687a8f3af4902cf63dcdeede7ce05546a1",
+        "compiledAt": "2026-09-15T15:48:39.162Z",
+        "stability": "per-compile",
+        "note": "sealSubject hashes createdAt, so it changes on every compile of identical layers. Compare runs with identitySha256."
+      },
+      "seal": {
+        "status": "unissued",
+        "verified": false,
+        "reason": "no platform signing key has been issued, so nothing has been signed. This receipt is REPRODUCIBLE and NOT ATTESTABLE.",
+        "sealSubjectRecomputable": true
+      },
+      "voicePack": {
+        "status": "absent",
+        "packSha256": null,
+        "sealedAt": null,
+        "entryCount": null
+      },
+      "mount": {
+        "seat": "neuma",
+        "engine": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+        "contextWindow": 262144,
+        "contextWindowSource": "provider-runtime",
+        "dialect": "llama-server",
+        "systemRole": "system",
+        "budgeted": true,
+        "overflow": false,
+        "siloScope": "identity",
+        "coreIds": [
+          "identity",
+          "trueName",
+          "genesis"
+        ],
+        "extendedIds": [
+          "voice"
+        ],
+        "sentIds": [
+          "identity",
+          "trueName",
+          "genesis",
+          "voice",
+          "silo"
+        ],
+        "shed": [],
+        "identityPromptTokens": 1821,
+        "identityPromptTokensCore": 1535,
+        "identityPromptTokensExtended": 286,
+        "tokenSource": "estimate:chars-3.6",
+        "promptSha256": "b01ede7fb7dce16e3ab8a5a0f744545468cf118fc1a85928be8163ba6583f745"
+      }
+    }
+  },
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 2568,
+    "concurrency": 1,
+    "sampleLimit": 100,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 7200000,
+    "taskConfigSha256": "90253191d26887271f6a57b31999ea2bb178321e684b482e03c7be4b0d59c1cb"
+  },
+  "harness": {
+    "profile": "silo-prefix-v1",
+    "neumaRevision": "826784a535905812a76d0de865e8bb4f5560aab6",
+    "subjectCheckout": {
+      "root": "/workspace/repos/project-batizus",
+      "revision": "6e367b3307788019f6483b69041553d3b654c1a0",
+      "dirty": true
+    },
+    "workingTreeDirty": true,
+    "identityLayersEnabled": true,
+    "identity": {
+      "mode": "silo-prefix"
+    },
+    "laneId": "keir",
+    "referenceHarness": null
+  },
+  "environment": {
+    "platform": "linux",
+    "release": "7.1.13-200.fc44.x86_64",
+    "arch": "x64",
+    "node": "v24.13.1",
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 610.57.04"
+  },
+  "status": "succeeded",
+  "timing": {
+    "startedAt": "2026-09-15T15:48:39.047Z",
+    "finishedAt": "2026-09-15T16:04:24.757Z",
+    "durationMs": 945710
+  },
+  "metrics": [
+    {
+      "id": "gsm8k/exact_match,strict-match",
+      "task": "gsm8k",
+      "value": 0.74,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 100,
+      "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-15T23-04-24.447209.json"
+    },
+    {
+      "id": "gsm8k/exact_match,flexible-extract",
+      "task": "gsm8k",
+      "value": 0.96,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 100,
+      "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-15T23-04-24.447209.json"
+    }
+  ],
+  "sampleSelection": {
+    "sha256": "30cdb11bc210ea1ca8c12681d5bace8f17eaab285b936dbbf79d8a5ad9a2f5e5",
+    "count": 100,
+    "measurement": "measured"
+  },
+  "efficiency": {
+    "promptTokens": 300700,
+    "completionTokens": 33414,
+    "requests": 100,
+    "toolCalls": 0,
+    "retries": null,
+    "measurement": "measured"
+  },
+  "executions": [
+    {
+      "stage": "lm-eval",
+      "command": "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/bin/lm-eval",
+      "args": [
+        "run",
+        "--model",
+        "local-chat-completions",
+        "--model_args",
+        "model=/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf,base_url=http://127.0.0.1:46655/v1/chat/completions,tokenizer=/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs,tokenizer_backend=huggingface,num_concurrent=1,seed=7,max_gen_toks=2568,max_retries=0,timeout=900",
+        "--tasks",
+        "gsm8k",
+        "--batch_size",
+        "1",
+        "--seed",
+        "7",
+        "--gen_kwargs",
+        "temperature=0",
+        "top_p=1",
+        "--output_path",
+        "/workspace/repos/project-fuvofos/work/night-20260915t150502z-gsm100-4arm-silo-a1-20260915154839047/raw",
+        "--apply_chat_template",
+        "--log_samples",
+        "--limit",
+        "100"
+      ],
+      "cwd": "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 945543,
+      "timedOut": false,
+      "aborted": false
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "manifest",
+      "path": "raw/manifest.json",
+      "sha256": "de7fd538bfb11585e99c75a21ace364627226ddb6f1f8905413f67c9a2898384",
+      "bytes": 2227
+    },
+    {
+      "kind": "silo-mount-probe",
+      "path": "silo-mount-probe.json",
+      "sha256": "7df2dd56a0a084ca268e8047da5d4d10bfc17af9da2de16a52265cf51af5f8ab",
+      "bytes": 884
+    },
+    {
+      "kind": "stdout",
+      "path": "stdout/lm-eval.log",
+      "sha256": "b69434bf9a60ea49eccdcfb9b0de5b7bc4f84846fec347ff47fb0a150c276cca",
+      "bytes": 848
+    },
+    {
+      "kind": "stderr",
+      "path": "stderr/lm-eval.log",
+      "sha256": "c352df91a09bc108487cd33f6a0160bbe46ded1157215fba25ba6bc607e6ccea",
+      "bytes": 11221
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-15T23-04-24.447209.json",
+      "sha256": "79ddcb19e41101fc5b9c87aae01657ff43db7e6c5c09247cfd8f3cf889f8ade7",
+      "bytes": 14739
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/samples_gsm8k_2026-09-15T23-04-24.447209.jsonl",
+      "sha256": "026a53100b85028067e9f0d401a0ca157e0a2b49793fff2330c7da57d3435b4e",
+      "bytes": 1011650
+    },
+    {
+      "kind": "silo-telemetry",
+      "path": "raw/silo-telemetry.json",
+      "sha256": "1b1bf6891b151b40201f6dc69b689bb1778f9be18c25305bd8b2a8b6b292d614",
+      "bytes": 22733
+    }
+  ],
+  "failure": null
+}

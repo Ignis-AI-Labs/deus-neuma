@@ -1,0 +1,226 @@
+/* WalletApp-layers.css — extracted from WalletApp.css (size law). Layer chrome, sections, RPC card, receive, rows, forms; defines @keyframes wal-layer-in, so this file imports BEFORE WalletApp-send.css. */
+/* Layer chrome — back + title. Layers ARRIVE (motion doctrine: structure
+   snaps — fast, deterministic, never bouncy). */
+.wal-layer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  animation: wal-layer-in 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes wal-layer-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wal-layer { animation: none; }
+}
+.wal-layerbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-3);
+}
+.wal-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: 0;
+  transition: color var(--snap);
+}
+.wal-back:hover { color: var(--signal); }
+.wal-layer-title {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-secondary);
+}
+
+/* Sections */
+.wal-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.wal-h {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--color-heading);
+}
+.wal-note {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-tertiary);
+}
+.wal-balance {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+/* Custom-RPC state card — unmistakable confirmation of what's locked in + live */
+.wal-rpc-state {
+  align-self: stretch;
+  background: var(--color-glass-light);
+}
+.wal-rpc-state-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+.wal-rpc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+.wal-rpc-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-tertiary);
+}
+.wal-rpc-state.is-custom .wal-rpc-badge { color: var(--signal); }
+.wal-rpc-state.is-custom .wal-rpc-badge::before {
+  background: var(--signal);
+  box-shadow: 0 0 6px var(--signal-dim);
+}
+.wal-rpc-endpoint {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--color-text-primary);
+  word-break: break-all;
+}
+.wal-rpc-probe {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+.wal-rpc-probe.ok { color: var(--signal); }
+.wal-rpc-probe.warn { color: var(--alert); }
+
+/* Receive */
+.wal-recv-box {
+  background: var(--color-glass-light);
+  align-self: stretch;
+}
+.wal-recv-addr {
+  display: block;
+  padding: var(--space-4);
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--signal);
+  word-break: break-all;
+  line-height: var(--leading-relaxed);
+}
+
+/* Rows — allowlist, ledger accounts, the witness's wallets */
+.wal-list {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.wal-row {
+  background: var(--color-glass-light);
+}
+.wal-row-in {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+.wal-addr {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+.wal-label {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.wal-active {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+.wal-x {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  transition: color 120ms ease;
+}
+.wal-x:hover {
+  color: var(--alert);
+}
+
+/* Forms */
+.wal-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  flex-wrap: wrap;
+}
+.wal-in {
+  /* bg, border, padding, placeholder + focus come from the global input rule in
+     base.css so every text box reads the same visible way; this adds layout + font. */
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: 12px;
+}
+.wal-in-label { flex: 1 1 8rem; }
+.wal-in-codes { font-family: var(--font-data); resize: vertical; min-height: 2.6em; }
+.wal-in-num { flex: 0 0 8rem; }
+.wal-in-wide { flex: 0 0 auto; width: 100%; }
+.wal-unit {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.wal-btn {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  background: var(--signal-faint);
+  border: 1px solid var(--signal-dim);
+  color: var(--signal);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-4);
+  transition: background 120ms ease;
+}
+.wal-btn:hover:not(:disabled) {
+  background: var(--signal-dim);
+  color: #000;
+}
+.wal-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+

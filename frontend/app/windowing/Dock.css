@@ -1,0 +1,295 @@
+/* Dock — LINE & CYCLE launcher bar, as a menu bar.
+   A chamfered strip centered at the foot of the desk: a Start button + one
+   button per section (NEUMA · WORKSPACE · KNOWLEDGE), each opening a drop-up
+   menu of its apps above the bar; WALLET is a direct launcher. Monochrome at
+   rest; SIGNAL marks a focused window, a dim mark an open-but-buried one. */
+
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  z-index: var(--z-sticky);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dock-bar {
+  pointer-events: auto;
+}
+
+.dock-bar-in {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  /* Belt-and-suspenders: the menu-bar layout (a handful of section labels) fits
+     any resolution, so this only guards a pathologically narrow viewport — and
+     Start stays reachable because it is the first child (scrollLeft 0). */
+  max-width: calc(100vw - var(--space-5));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dock-bar-in::-webkit-scrollbar { display: none; }
+
+/* A section: a divider + its trigger (label button) or direct launcher. */
+.dock-group {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+/* The stack holds the bar + the menu popover; the popover is a sibling of the
+   (chamfer-clipped) bar so it isn't cropped. */
+.dock-stack {
+  position: relative;
+}
+
+/* Start button — the launcher for system surfaces (Settings, …) */
+.dock-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.dock-start:hover,
+.dock-start.is-open {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.dock-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: var(--space-1) var(--space-1);
+  background: var(--line);
+}
+
+/* Section trigger — the clickable label (NEUMA, WORKSPACE, …) that opens the
+   drop-up. Carries a bottom-edge activity mark when a window inside it is open
+   (dim) or focused (SIGNAL); lights SIGNAL while its own menu is open. */
+.dock-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.dock-section-label {
+  color: inherit;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.dock-caret {
+  flex: 0 0 auto;
+  opacity: 0.5;
+  transition: transform var(--snap), opacity var(--snap);
+}
+
+.dock-section:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line);
+}
+.dock-section:hover .dock-caret { opacity: 0.8; }
+
+/* Menu open — the trigger is lit and its caret flips to point down. */
+.dock-section.is-menu {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+.dock-section.is-menu .dock-caret { transform: rotate(180deg); opacity: 1; }
+
+/* Activity mark — a window inside this section is open (dim) or focused (SIGNAL). */
+.dock-section-dot {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: 2px;
+  height: 1px;
+  background: transparent;
+  transition: background var(--snap);
+}
+.dock-section.is-open { color: var(--color-text-secondary); }
+.dock-section.is-open .dock-section-dot { background: var(--line-hover); }
+.dock-section.is-focused { color: var(--signal); }
+.dock-section.is-focused .dock-section-dot { background: var(--signal); }
+
+/* Drop-up menu — a popover above the bar (sibling of the clipped bar). Its
+   horizontal position is set inline from the trigger's measured offset. */
+.dock-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  min-width: 184px;
+  pointer-events: auto;
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.55));
+}
+
+.dock-menu-in {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+}
+
+.dock-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.dock-menu-item:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  background: var(--color-glass-light);
+}
+
+.dock-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.dock-menu-label {
+  color: inherit;
+}
+
+/* An app's window state, shown as a trailing dot + label tint. */
+.dock-menu-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  margin-left: auto;
+  background: transparent;
+  transition: background var(--snap);
+}
+.dock-menu-item.is-open .dock-menu-label { color: var(--color-text-primary); }
+.dock-menu-item.is-open .dock-menu-dot { background: var(--line-hover); }
+.dock-menu-item.is-focused .dock-menu-label { color: var(--signal); }
+.dock-menu-item.is-focused .dock-menu-dot { background: var(--signal); }
+
+.dock-menu-sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--line);
+}
+
+/* A BAND ROW — a labelled band rendered as a sub-tab: click it and its apps
+   pop out in a flyout to the right (Design note, 2026-08-28: […]).
+   It carries the rule that does the actual chunking: a wall of thirteen rows
+   reads as one undifferentiated list no matter how it is sorted (Founder,
+   2026-08-25: […]). The caret points at where the
+   flyout appears; the trailing dot is the band's aggregate activity mark. */
+.dock-menu-fly .dock-caret {
+  margin-left: auto;
+  transform: rotate(90deg); /* the base caret points up; the flyout is to the right */
+}
+
+.dock-menu-fly .dock-menu-dot { margin-left: var(--space-2); }
+
+/* Its flyout is open — the row stays lit like a hovered item. */
+.dock-menu-fly.is-fly {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  background: var(--color-glass-light);
+}
+.dock-menu-fly.is-fly .dock-caret { opacity: 1; }
+
+/* The flyout itself — a second .dock-menu panel beside the first; its left and
+   bottom are set inline from the clicked row's measured rect. */
+.dock-menu-flyout {
+  min-width: 168px;
+}
+
+/* DISCONNECT ends the session — ALERT-tinted on hover (a warning, per the
+   design language) rather than the signal cyan the app launchers use. */
+.dock-menu-danger:hover {
+  color: var(--alert);
+  border-color: var(--color-error-muted);
+  background: var(--color-error-bg);
+}
+
+/* Direct launcher — WALLET (an unlabelled section). One click, label always
+   shown (the menu bar is compact; there is no overflow to collapse for). */
+.dock-app {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.dock-app:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line);
+}
+
+.dock-app-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.dock-app-label {
+  color: inherit;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+
+/* State mark — bottom-edge underline */
+.dock-app-dot {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: 2px;
+  height: 1px;
+  background: transparent;
+  transition: background var(--snap);
+}
+
+.dock-app.is-open {
+  color: var(--color-text-secondary);
+}
+.dock-app.is-open .dock-app-dot {
+  background: var(--line-hover);
+}
+.dock-app.is-focused {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+.dock-app.is-focused .dock-app-dot {
+  background: var(--signal);
+}

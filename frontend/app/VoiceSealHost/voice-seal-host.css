@@ -1,0 +1,83 @@
+/* VoiceSealHost — the First Seal's confinement law (LINE & CYCLE).
+   The ceremony never forces the page to scroll: every stage lives in its own
+   bounded container, centered under the presiding seal, and long content
+   (the being's answer, the claimed lines, the founding words) scrolls
+   INSIDE its region. Geometry honors the shared staging: header ≈7rem,
+   the staged seal ends ≈23rem, the rail holds the bottom ≈6rem. */
+
+.vsh {
+  overflow: hidden; /* the page itself never scrolls — the regions do */
+}
+
+.vsh-stage {
+  position: relative;
+  z-index: 1;
+  width: min(88%, 760px);
+  margin: 24rem auto 0; /* below the presiding seal (staged) */
+  max-height: calc(100vh - 30rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.vsh--live .vsh-stage {
+  margin-top: 9rem;
+  max-height: calc(100vh - 15rem);
+}
+
+/* The being's full answer and the lines it claims are separate bounded
+   regions — the witness reads each in its own container, never chasing the
+   page. */
+.vsh-answer {
+  max-height: 32vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin-bottom: 1.5rem;
+}
+
+/* The live stream: the being's words land pre-wrapped, structure intact. */
+.vsh-stream {
+  white-space: pre-wrap;
+}
+
+.vsh-lines {
+  max-height: 34vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.vsh-lines li {
+  border-bottom: 1px solid var(--line);
+  padding: 0.4rem 0;
+}
+
+.vsh-lines li:last-child {
+  border-bottom: none;
+}
+
+/* The receipt reads as one composed data row, never scattered facts. */
+.vsh-facts {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin: 0.9rem 0 1.4rem;
+  line-height: 1.9;
+}
+
+/* The controls never leave the bottom of their stage's flow. */
+.vsh-stage .att-controls {
+  justify-content: center;
+  padding-bottom: 0.5rem;
+}
+
+@media (max-width: 760px) {
+  .vsh-stage {
+    margin-top: 19rem;
+    width: calc(100% - 2rem);
+  }
+  .vsh--live .vsh-stage { margin-top: 8rem; }
+}

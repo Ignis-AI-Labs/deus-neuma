@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.headline}} — {{data.aLabel}}, {{data.bLabel}}, {{data.cLabel}}">
+  {{fontface}}
+  <defs>
+    <linearGradient id="edge" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="{{token.accentGlow}}"/>
+      <stop offset="42%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+    <!-- ⚠️ THE HALF THAT MAKES AN OVERLAP DELIBERATE. Enlarging the mark to
+         320 put it under the right end of a full-length headline, and without
+         this the two simply collided — the final glyph tangled in the mark's
+         face. `announcement` has lived with the same overlap since it shipped
+         and reads as layering rather than collision for exactly one reason:
+         its headline is drawn TWICE, blurred beneath and sharp on top, so the
+         type carries its own separation. A big mark and a glowed headline are
+         one decision, not two. -->
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#edge)" opacity="0.5"/>
+
+  <!-- ⚠️ 320, NOT 140. Design note, 2026-09-01: […] He was right — 140px was
+       stat's treatment applied without asking whether this card had stat's
+       problem. It does not: stat's headline and three FIGURE columns leave one
+       narrow safe band, while this card's cells are text and its upper right is
+       genuinely open.
+       CONTAINED, not half-cut, and that is a deliberate departure from the
+       quote/announcement/launch treatment. `announcement.svg` states the rule
+       it is departing from: […] On a card whose whole subject is ONE thing, a badge is too
+       little. On this one — three columns of type, the densest in the family —
+       a badge is exactly right: it signs the card without competing with three
+       simultaneous readings.
+       ⚠️ IT MAY BE CROSSED, AND THAT IS FINE. At a full 24-character headline
+       Umbrae's type reaches x=1287 and overlaps this mark by ~127px. That is
+       the same overlap `announcement` lives with, and it works for the same
+       reason: at 0.18 the mark is behind the type, never in front of it. The
+       alternative was cutting the headline budget to protect a watermark, which
+       is paying the wrong price. -->
+  <image href="{{mark.mask}}" x="1145" y="45" width="320" height="320"
+         preserveAspectRatio="xMidYMid meet" opacity="0.18"/>
+
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <text x="128" y="175" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+        font-size="46" letter-spacing="{{font.labelTrack}}"
+        fill="{{token.trimHot}}">{{data.eyebrow}}</text>
+
+  <g font-family="{{font.display}}" font-weight="{{font.displayWeight}}" font-size="76"
+     letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">
+    <text x="128" y="268" opacity="0.5" filter="url(#softGlow)">{{data.headline}}</text>
+    <text x="128" y="268">{{data.headline}}</text>
+  </g>
+
+  <!-- ⚠️ STAT'S COLUMNS, TO THE PIXEL. Rule at y=360, dividers at 576 and 1024,
+       cells starting at 128 / 608 / 1056. Two cards sharing one frame is what
+       makes a family read as a family — and it is the thing most likely to
+       drift, because every card gets edited on its own.
+
+       ⚠️ ONE COLOUR ACROSS ALL THREE CELLS, WHERE STAT USES THREE. On stat the
+       position carries a meaning (ink = the anchor, accent = the flow, rise =
+       the gain) and the palette answers it. Here the three cells are equal
+       parts of one explanation — first, second, third, not better and worse.
+       Colouring them differently would invent a ranking the content does not
+       have, which is the same class of lie as a gauge that does not gauge. -->
+  <g>
+    <line x1="128" y1="360" x2="1472" y2="360" stroke="{{token.hairline}}" stroke-width="1"/>
+    <line x1="576" y1="392" x2="576" y2="648" stroke="{{token.hairlineSoft}}" stroke-width="1"/>
+    <line x1="1024" y1="392" x2="1024" y2="648" stroke="{{token.hairlineSoft}}" stroke-width="1"/>
+
+    <!-- 34, not stat's 30. stat's captions sit under 76px figures, so the
+         number carries the meaning and the caption only names it. Here the
+         label IS the step — it is the thing being read — and nothing that
+         carries meaning belongs in the tier below the comfortable line. -->
+    <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="34"
+       letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+      <text x="128" y="446">{{data.aLabel}}</text>
+      <text x="608" y="446">{{data.bLabel}}</text>
+      <text x="1056" y="446">{{data.cLabel}}</text>
+    </g>
+
+    <!-- Two lines per cell, declared. Same reason as every other multi-line
+         card here: SVG does not wrap, and the break is the author's call. -->
+    <g font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}" font-size="36"
+       fill="{{token.inkSoft}}">
+      <text x="128" y="522">{{data.aOne}}</text>
+      <text x="128" y="570">{{data.aTwo}}</text>
+      <text x="608" y="522">{{data.bOne}}</text>
+      <text x="608" y="570">{{data.bTwo}}</text>
+      <text x="1056" y="522">{{data.cOne}}</text>
+      <text x="1056" y="570">{{data.cTwo}}</text>
+    </g>
+  </g>
+
+  <!-- NO `asOf` — an explanation is not a measurement. -->
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

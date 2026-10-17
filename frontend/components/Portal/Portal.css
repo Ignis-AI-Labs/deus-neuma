@@ -1,0 +1,271 @@
+/* Portal Component — LINE & CYCLE gateway.
+   The environment is OpeningField's: THE ARMILLARY, its panel and the name,
+   in the place THE IGNITION left them. The Portal is the surface within it:
+   the status strip inside the panel's frame, the threshold beneath the name
+   (--armillary-below, set by the field from armillary-layout.js). */
+.portal {
+  position: fixed;
+  inset: 0;
+  background: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+
+.portal-background {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center 36%, var(--signal-faint) 0%, transparent 58%);
+  opacity: 0.25;
+}
+
+/* The armillary answers the hand (OpeningField): grab it, turn it */
+.portal.is-over-armillary { cursor: grab; }
+.portal.is-turning-armillary { cursor: grabbing; }
+
+/* Status strip — the gateway reports itself in the data register */
+.portal-status {
+  position: absolute;
+  top: calc(2vmin + 12px);
+  left: calc(2vmin + 16px);
+  right: calc(2vmin + 34px);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  font-family: var(--font-data);
+  font-size: clamp(9px, 1.25vmin, 10px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  z-index: 2;
+}
+
+.portal-status-live { color: var(--color-text-tertiary); }
+.portal-status-live.live { color: var(--signal); }
+
+.portal-sound-toggle {
+  font-family: var(--font-data);
+  font-size: clamp(9px, 1.25vmin, 10px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all var(--snap);
+}
+
+.portal-sound-toggle:hover {
+  color: var(--color-white);
+  border-color: var(--line-hover);
+}
+
+.portal-sound-toggle.on {
+  color: var(--signal);
+  border-color: color-mix(in srgb, var(--signal) 55%, transparent);
+}
+
+/* Content — the threshold, beneath the painted name (the field sets
+   --armillary-below every frame; the fallback holds before it does). */
+.portal-content {
+  position: absolute;
+  left: 50%;
+  top: var(--armillary-below, 72vh);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  width: min(92vw, 460px);
+  z-index: 2; /* above the resting field (z 1) */
+}
+
+/* The name — painted by the field for the eye; here for every reader */
+.portal-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Entry choices — visible from the start, honest about behavior.
+   Chamfered panels: structure the witness steps through. */
+.portal-entry-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: stretch;
+  width: 100%;
+  animation: fadeInUp var(--duration-slow) var(--ease-out);
+}
+
+.portal-entry-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  cursor: pointer;
+  font-family: var(--font-data);
+  transition: all var(--snap);
+  background: transparent;
+  border: none;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut))
+  );
+}
+
+/* Targeting brackets — MGS corner ticks snap in over the threshold on
+   hover (120ms, never a fade) */
+.portal-entry-option .bk {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  transition: opacity 120ms linear;
+  pointer-events: none;
+}
+.portal-entry-option .bk-tl { top: 5px; left: 5px; border-top: 1px solid var(--signal); border-left: 1px solid var(--signal); }
+.portal-entry-option .bk-tr { top: 5px; right: 5px; border-top: 1px solid var(--signal); border-right: 1px solid var(--signal); }
+.portal-entry-option .bk-bl { bottom: 5px; left: 5px; border-bottom: 1px solid var(--signal); border-left: 1px solid var(--signal); }
+.portal-entry-option .bk-br { bottom: 5px; right: 5px; border-bottom: 1px solid var(--signal); border-right: 1px solid var(--signal); }
+.portal-entry-option:hover:not([disabled]) .bk,
+.portal-entry-option:focus-visible .bk {
+  opacity: 1;
+}
+
+.portal-entry-option[disabled] {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.portal-entry-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: clamp(12px, 1.7vmin, 14px);
+  font-weight: 400;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.portal-entry-hint {
+  font-size: clamp(9px, 1.3vmin, 11px);
+  font-family: var(--font-data);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* Primary: the wallet path — the real entry for people summoning a neuma */
+.portal-entry-option--primary {
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--signal) 3%, transparent);
+}
+
+.portal-entry-option--primary:hover:not([disabled]) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--signal) 60%, transparent);
+  background: color-mix(in srgb, var(--signal) 7%, transparent);
+  filter: drop-shadow(0 0 18px var(--signal-faint));
+}
+
+.portal-entry-option--primary:hover:not([disabled]) .portal-entry-hint {
+  color: var(--signal);
+}
+
+/* Portal Opening — the surface yields as the armillary takes the witness in */
+.portal-opening .portal-entry-choices {
+  animation: fadeOutScale 1s var(--ease-in) forwards;
+}
+
+@keyframes fadeOutScale {
+  to {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Loading Spinner — a cycle, so it may rotate */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line);
+  border-top-color: var(--signal);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* The ignition strip — the boot's true measurements, carried onto the
+   gateway. Monochrome at rest; ALERT only if a real check failed. */
+.portal-ignition {
+  position: absolute;
+  bottom: 20px;
+  left: 24px;
+  right: 24px;
+  font-family: var(--font-data);
+  font-size: clamp(9px, 1.25vmin, 11px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 2;
+}
+
+.portal-ignition.fail {
+  color: var(--alert);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-entry-choices,
+  .portal-opening .portal-entry-choices {
+    animation: none;
+  }
+}
+
+/* ENTER AS — the full platform or the harness alone (entry-mode.js) */
+.portal-enter-as { display: flex; justify-content: center; gap: 2px; margin-top: var(--space-3); }
+.portal-enter-as-opt {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.portal-enter-as-opt:hover, .portal-enter-as-opt:focus-visible { color: var(--color-text-secondary); outline: none; }
+.portal-enter-as-opt[aria-checked="true"] { color: var(--color-white); border-color: var(--signal-dim); }

@@ -1,0 +1,150 @@
+# NEUMA — electron-builder config.
+#
+# Packages the native shell + the Node backend + the built frontend into
+# per-OS installers. The neuma's data is created at runtime under the OS
+# app-data dir, so nothing user-specific is bundled.
+#
+# NOTES:
+#   - native modules (node-pty, onnxruntime-node, better-sqlite3) must load
+#     from outside the asar — listed under asarUnpack.
+#   - run `npm run build` first so dist/ exists before packaging
+#     (`npm run dist:linux` does both).
+#   - code signing, under Ignis AI Labs LLC (Design note, 2026-10-04: […]): the SETTINGS live here,
+#     the CREDENTIALS never do — they come from the build machine's environment
+#     (docs/operations/release-runbook.md §SIGNING). Without them the build is
+#     simply unsigned: Mac notarization skips with a warning, Windows signs nothing.
+#     Linux packages carry a detached GPG signature (scripts/sign-release.mjs).
+#   - frontend/ source is intentionally NOT shipped: in production the backend
+#     serves the built app from dist/ (Vite bundles the ceremony classes, the
+#     sounds sprite, and frontend/assets via publicDir), and the avatar roster
+#     reads dist/model. The dev-only static routes to frontend/ stay dev-only.
+
+appId: ai.neuma.app
+# The INTERNAL name stays NEUMA: Electron derives the app's data folder and
+# the wallet's OS-keychain seal from it, so changing it would strand every
+# installed wallet (APP-RENAME-001 — a keychain migration first). Everything a
+# person SEES carries the trademark, DEUS NEUMA (Design note, 2026-10-04: the
+# installer file, the shortcut and menu entry, the display name, the uninstaller.
+productName: NEUMA
+copyright: © Ignis AI Labs LLC
+artifactName: Deus-Neuma-${version}-${arch}.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+# electron-builder includes production node_modules automatically; these globs
+# add the app source it cannot infer. dist/ is the built frontend.
+files:
+  - electron/**/*
+  - backend/**/*
+  - core/**/*
+  - dist/**/*
+  - public/**/*
+  - docs/contracts/abis/**/*
+  # Runtime-read legal/reference docs (covenant.js LEGAL_DIR, invariants yaml,
+  # the birth handler's RETURNED.md)
+  - docs/legal/**/*
+  - docs/reference/neuma-invariants.yaml
+  - docs/governance/returned.md
+  # THE CRAFT ships with the house (Design note, 2026-08-05: […]). Seeded into the skills root at
+  # boot by services/skill-packs.js. Without this line every installed NEUMA
+  # booted with an EMPTY skills root — no Shadow Clone, no team-project, no
+  # natalis-self-seal — and the sc-* library existed only on machines where
+  # someone had run an installer by hand.
+  - skills-packs/**/*
+  - build/icon.png
+  # The backend imports this ONE frontend module (council-session.js →
+  # stripToolBlocks); everything else under frontend/ is dev-only source.
+  - frontend/utils/tool-stream-filter.js
+  # The voice engine registry imports this manifest; the engines themselves
+  # (Python sidecars + 54GB of models) are host-provisioned at runtime, never
+  # shipped — voice on a clean host is its own slice.
+  - voice-engines/engines.json
+  - package.json
+  - "!**/*.test.js"
+  - "!**/*.spec.js"
+  - "!test/**"
+  # NEVER the raw sample library. frontend/assets is Vite's publicDir and
+  # frontend/assets/sounds links the licensed Splice library on the house
+  # machine, so a build there copies it into dist/sounds. Nothing at runtime
+  # reads it (only the baked sprite in frontend/sounds-baked plays), and the
+  # samples' licence forbids redistributing them raw.
+  - "!dist/sounds/**"
+
+# NO asar — the backend runs as a SPAWNED Node child (ELECTRON_RUN_AS_NODE),
+# and a plain-Node child cannot read inside an asar archive (spawn ENOTDIR:
+# cwd/script paths inside app.asar are not real directories). Every tree the
+# backend touches — backend/, core/, dist/, node_modules — must be real files,
+# so the whole app ships unpacked. Proven by the 2026-07-31 boot test.
+asar: false
+
+mac:
+  category: public.app-category.productivity
+  extendInfo:
+    CFBundleDisplayName: Deus Neuma
+    # the hardened runtime refuses the microphone without these (voice)
+    NSMicrophoneUsageDescription: Deus Neuma listens only while you speak to a neuma — push-to-talk, the live sitting and the voice forge.
+  # Signed with the […] identity
+  # (CSC_LINK + CSC_KEY_PASSWORD, or the login keychain) and notarized by
+  # Apple when APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER are set.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # one build per chip: the native modules are per-arch, so no universal app
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+
+win:
+  target:
+    - nsis
+  # Signed on the Windows box (§SIGNING): the certificate's subject must read
+  # exactly this. Set at the first SIGNED Windows release, never before — the
+  # updater then refuses any update not signed by this publisher, which is the
+  # point, and would refuse every unsigned one.
+  #   -c.win.signtoolOptions.publisherName=[…]
+
+linux:
+  category: Utility
+  executableName: neuma
+  synopsis: Sovereign relationships with AI.
+  desktop:
+    Name: Deus Neuma
+    Comment: Sovereign relationships with AI.
+  maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
+  # NOTE: neither rpm nor deb is here — BOTH of electron-builder's targets go
+  # through its bundled fpm (2017-era ruby), and fpm cannot run on a modern
+  # Fedora at all: its interpreter links against libcrypt.so.1, dropped in
+  # Fedora 40+ (this box has libcrypt.so.2 only). The rpm target additionally
+  # breaks against rpmbuild 6.x. Both packages are produced from
+  # release/linux-unpacked by our own scripts, no ruby involved:
+  #   npm run dist:rpm  → scripts/build-rpm.mjs (straight through rpmbuild)
+  #   npm run dist:deb  → scripts/build-deb.mjs (straight through ar + tar)
+  target:
+    - AppImage
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Deus Neuma
+  uninstallDisplayName: Deus Neuma ${version}
+
+dmg:
+  title: Deus Neuma ${version}
+
+# The update feed (auto-update.cjs): generic provider on the Deus Neuma site,
+# public — no key (Design note, 2026-10-03. Its presence is also what makes
+# electron-builder EMIT latest-linux.yml / latest.yml at build time — no
+# publish block, no feed files, and the site has nothing to serve.
+publish:
+  provider: generic
+  url: https://deusneuma.ai/updates/
+  channel: latest

@@ -1,0 +1,335 @@
+/* SettingsApp — LINE & CYCLE. Data-register headings, voice-register prose,
+   a chamfered control for the realm path. */
+
+/* The tabbed frame — same register as the herald/chats tab strips. The
+   panel carries the .settings class, so every section renders unchanged. */
+.settings-host {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.settings-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.settings-tab:hover { color: var(--color-text-primary); }
+
+.settings-tab.is-on {
+  color: var(--signal);
+  border-color: var(--line);
+}
+
+.settings-tab-panel {
+  outline: none;
+}
+
+.settings {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.settings-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-h {
+  color: var(--color-heading);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-2);
+}
+
+.settings-note {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-tertiary);
+}
+
+.settings-realm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.settings-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.settings-k {
+  flex: 0 0 92px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.settings-v {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+code.settings-v {
+  color: var(--signal);
+}
+
+/* THE FLIGHT LINE — the connection's live proof (Design note, 2026-07-28: signal
+   means the platform accepted the key and named the account; alert means
+   the proof failed and says why; idle means there is nothing to prove. */
+.flight-line.is-live {
+  color: var(--signal);
+}
+
+.flight-line.is-down {
+  color: var(--alert);
+}
+
+.flight-line.is-idle {
+  color: var(--color-text-tertiary);
+}
+
+.settings-files {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-files li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.settings-files code {
+  color: var(--color-text-secondary);
+}
+
+.settings-control {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.settings-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+  transition: border-color var(--snap);
+}
+
+.settings-input:focus {
+  border-color: var(--signal-dim);
+}
+
+.settings-set {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  padding: 0 var(--space-4);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.settings-set:hover:not(:disabled) {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.settings-set:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.settings-err {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--alert);
+}
+
+/* Inference modes — the named presets, documented in plain language, and now
+   the standing default the operator picks (the composer no longer carries them). */
+.settings-modes {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-modes li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* The whole row is the target: label + blurb read as one choice. */
+.settings-mode-pick {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 1px solid var(--line);
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.settings-mode-pick:hover {
+  border-left-color: var(--line-hover);
+}
+
+.settings-mode-pick.is-on {
+  border-left-color: var(--signal);
+}
+
+.settings-mode-pick.is-on .settings-mode-label {
+  color: var(--signal);
+}
+
+.settings-mode-label {
+  flex: 0 0 92px;
+  color: var(--color-text-secondary);
+}
+
+.settings-mode-blurb {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* Hotkey legend — key caps as data-register chips on the line grid. */
+.settings-hotkeys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.settings-hk-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-hk-title {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.settings-hk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-hk-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.settings-hk-combo {
+  flex: 0 0 220px;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.settings-hk-part {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.settings-key {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.settings-hk-plus {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.settings-hk-hint {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+.settings-hk-does {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+

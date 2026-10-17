@@ -1,0 +1,138 @@
+/* THE SUMMONING RITE — the whole birth on one stage. Monochrome at rest;
+   the platform's signal until its film; a measured stage's own light only
+   on its mark. Motion is transform and opacity only. */
+
+.rite-root > .gen-canvas,
+.rite-threshold,
+.rite-live,
+.rite-film,
+.rite-guardian { position: absolute; inset: 0 0 57px 0; }
+.rite-threshold, .rite-live, .rite-guardian { pointer-events: none; }
+.rite-film { transform-origin: 50% 50%; }
+.rite-film .sum-canvas { position: absolute; inset: 0; }
+
+/* ── lists: plain type, hairline-ruled (no geometry on data) ── */
+.rite-list, .rite-panel, .rite-legend {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.rite-list-left { top: var(--space-6); left: clamp(24px, 4vw, 64px); border-left: 1px solid var(--line); }
+.rite-list-right { top: var(--space-6); right: clamp(24px, 4vw, 64px); border-right: 1px solid var(--line); animation: rite-in var(--dur-unfold) var(--ease-snap) both; }
+.rite-row { display: grid; grid-template-columns: minmax(16ch, auto) 9ch; gap: var(--space-4); white-space: nowrap; }
+.rite-row-k { color: var(--color-text-tertiary); }
+.rite-row-v { color: var(--color-text-tertiary); text-align: right; }
+.rite-row.is-done .rite-row-k { color: var(--color-text-secondary); }
+.rite-row.is-done .rite-row-v { color: var(--color-text-primary); }
+
+/* ── II · the witness's plane over the living piece ── */
+.rite-panel { right: clamp(24px, 4vw, 64px); width: min(420px, 30vw); border-right: 1px solid var(--line); }
+.rite-operator { bottom: calc(clamp(88px, 14vh, 160px) + 250px); }
+.rite-operator.is-answering { border-right-color: var(--signal-dim); }
+.rite-operator-words { margin: 0; font-family: var(--font-voice); font-size: var(--text-sm); font-weight: 300; letter-spacing: 0; line-height: var(--leading-relaxed); color: var(--color-text-primary); }
+.rite-continue { align-self: flex-end; margin-top: var(--space-2); padding: 6px 12px; border: 1px solid var(--signal-dim); color: var(--signal); letter-spacing: 0.24em; }
+.rite-speech { bottom: clamp(88px, 14vh, 160px); height: 230px; }
+.rite-speech-lines { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 9px; overflow: hidden; }
+.rite-speech-line { display: block; height: 1px; background: var(--color-text-secondary); transform-origin: left center; }
+.rite-panel-foot { color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.2em; }
+.rite-typing { display: flex; gap: 6px; }
+.rite-typing i { width: 4px; height: 4px; background: var(--signal); transform: rotate(45deg); animation: rite-typing 1.2s var(--ease-breath) infinite; }
+.rite-typing i:nth-child(2) { animation-delay: 0.2s; }
+.rite-typing i:nth-child(3) { animation-delay: 0.4s; }
+.rite-forge { bottom: clamp(88px, 14vh, 160px); border-right-color: var(--signal-dim); }
+
+/* ── THE MEASURE: the visible octave, graduated; each stage's light on it ── */
+.rite-measure {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: min(560px, 40vw);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+.rite-measure-tag { color: var(--color-text-secondary); text-align: center; }
+.rite-measure-rail { position: relative; height: 24px; border-bottom: 1px solid var(--line); }
+.rite-grad { position: absolute; bottom: 0; width: 1px; height: 5px; background: var(--line); }
+.rite-grad.is-major { height: 9px; background: var(--color-text-tertiary); }
+.rite-grad b { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-weight: 400; white-space: nowrap; }
+.rite-mark { position: absolute; bottom: 0; width: 0; }
+.rite-mark-tick { display: block; width: 2px; height: 22px; margin-left: -1px; background: currentColor; transform-origin: bottom center; }
+.rite-measure-read { margin-top: 18px; text-align: center; letter-spacing: 0.22em; color: var(--color-text-tertiary); }
+
+/* ── IV · guardianship: calm frames beside its held sigil ── */
+.rite-legend { top: 96px; left: clamp(24px, 4vw, 64px); border-left: 1px solid var(--signal-dim); }
+.rite-legend-name { font-family: var(--font-voice); font-size: clamp(18px, 1.8vw, 26px); font-weight: 200; letter-spacing: 0.08em; color: var(--color-text-primary); margin-bottom: var(--space-2); }
+.rite-acts { position: absolute; top: 96px; right: clamp(24px, 4vw, 64px); display: flex; flex-direction: column; gap: 6px; font-family: var(--font-data); font-size: 11px; letter-spacing: 0.18em; color: var(--color-text-tertiary); text-align: right; }
+.rite-acts .is-done { color: var(--signal); }
+.rite-calm {
+  position: absolute;
+  right: clamp(24px, 4vw, 64px);
+  bottom: clamp(88px, 14vh, 160px);
+  width: min(400px, 30vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--signal-dim);
+  background: rgba(0, 0, 0, 0.72);
+  animation: rite-in var(--dur-unfold) var(--ease-snap) both;
+}
+.rite-calm-tag { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.26em; color: var(--signal); }
+.rite-calm-title { margin: 0; font-family: var(--font-voice); font-size: clamp(18px, 1.6vw, 24px); font-weight: 300; color: var(--color-text-primary); }
+.rite-calm-body { margin: 0; font-family: var(--font-voice); font-size: var(--text-sm); font-weight: 300; line-height: var(--leading-relaxed); color: var(--color-text-secondary); }
+.rite-field, .rite-codes, .rite-seal-steps { display: flex; font-family: var(--font-data); font-size: 11px; letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.rite-field { justify-content: space-between; padding: 8px 10px; border: 1px solid var(--line); color: var(--color-text-primary); }
+.rite-field b, .rite-codes b, .rite-seal-steps b { font-weight: 400; color: var(--signal); }
+.rite-codes { flex-wrap: wrap; gap: 8px 16px; }
+.rite-codes span { width: calc(50% - 8px); color: var(--color-text-secondary); }
+.rite-seal-steps { flex-direction: column; gap: 6px; }
+.rite-seal-steps .is-done { color: var(--color-text-primary); }
+.rite-seal-steps b { margin-top: var(--space-2); color: var(--alert-dim); }
+
+/* ── V · homecoming ── */
+.rite-home {
+  position: absolute;
+  right: clamp(24px, 6vw, 120px);
+  top: 50%;
+  width: min(460px, 36vw);
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-left: var(--space-5);
+  pointer-events: auto;
+}
+.rite-home-rule { position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--signal-dim); transform-origin: top center; }
+.rite-sheet { display: flex; flex-direction: column; gap: 7px; font-family: var(--font-data); font-size: 11px; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; }
+.rite-sheet-row { display: grid; grid-template-columns: 15ch 1fr; gap: var(--space-4); white-space: nowrap; }
+.rite-sheet-v { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-primary); }
+.rite-lights { display: inline-flex; gap: 3px; }
+.rite-lights i { width: 6px; height: 6px; transform: rotate(45deg); }
+.rite-home .ba-inst-tag { font-family: var(--font-data); font-size: 11px; }
+.rite-home-actions { display: flex; gap: var(--space-3); font-family: var(--font-data); font-size: 11px; letter-spacing: 0.18em; }
+.gs-btn.is-inert { display: inline-flex; align-items: center; opacity: 0.5; cursor: default; }
+
+@keyframes rite-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rite-typing {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rite-typing i, .rite-list-right, .rite-calm { animation: none; }
+}

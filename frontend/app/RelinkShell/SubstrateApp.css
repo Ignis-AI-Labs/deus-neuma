@@ -1,0 +1,206 @@
+/* SubstrateApp — the SUBSTRATE HUD. LINE & CYCLE: monochrome at rest, signal
+   marks live data, alert marks failure/heat. Chamfered instrument panels. */
+
+.sub-body {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-4);
+  font-family: var(--font-data);
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* header — the active model at a glance */
+.sub-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width-thin) solid var(--line);
+}
+.sub-live-dot {
+  width: 8px; height: 8px;
+  flex: 0 0 auto;
+  align-self: center;
+  background: var(--color-text-tertiary);
+  box-shadow: none;
+}
+.sub-live-dot.is-serving {
+  background: var(--signal);
+  box-shadow: 0 0 8px var(--signal);
+}
+.sub-model {
+  font-family: var(--font-voice);
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  letter-spacing: 0.01em;
+}
+.sub-provider {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+/* substrate controls — ignite / unload */
+.sub-controls { margin-left: auto; display: flex; gap: var(--space-2); }
+
+/* the global ignition switch — model picker + ignite/switch/unload */
+.ignite-control { display: flex; align-items: center; gap: var(--space-2); }
+.ignite-select {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: var(--border-width-thin) solid var(--line);
+  padding: 4px 6px;
+  max-width: 260px;
+}
+.ignite-select:hover:not(:disabled) { border-color: var(--line-hover); color: var(--color-text-primary); }
+.ignite-select:disabled { opacity: 0.5; }
+.ignite-select option { background: var(--color-background); color: var(--color-text-primary); }
+/* The substrate model dropdown keeps its bounded width; the shared Select
+   owns the rest of its look. */
+.ignite-select-dd { max-width: 260px; }
+.ignite-refusal { color: var(--alert); font-size: var(--text-xs); }
+.sub-btn {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: var(--border-width-thin) solid var(--line);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.sub-btn:hover:not(:disabled) { border-color: var(--line-hover); color: var(--color-text-primary); }
+.sub-btn.is-primary { color: var(--signal); border-color: var(--signal-dim); }
+.sub-btn.is-primary:hover:not(:disabled) { border-color: var(--signal); box-shadow: 0 0 8px var(--signal-faint); }
+.sub-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* panel grid */
+.sub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-3);
+}
+.sub-panel-wide { grid-column: 1 / -1; }
+
+.sub-panel { background: transparent; }
+.sub-panel-in {
+  background: var(--color-glass-light);
+  border: var(--border-width-thin) solid var(--line);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sub-panel-title {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  margin: 0 0 var(--space-1);
+}
+
+/* a single reading */
+.sub-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.sub-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--tracking-wide);
+}
+.sub-stat-value {
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.sub-stat-value.is-live { color: var(--signal); }
+.sub-stat-unit {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-left: 2px;
+}
+
+/* meter (VRAM / KV) */
+.sub-kv {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sub-kv-pct {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.sub-meter {
+  height: 6px;
+  background: var(--signal-faint);
+  overflow: hidden;
+}
+.sub-meter-fill {
+  height: 100%;
+  background: var(--signal);
+  /* scaleX, never width: a width transition re-lays-out the page on every
+     frame of every 1.5s poll; a transform stays on the GPU (profiled
+     2026-09-25). */
+  transform-origin: left center;
+  transition: transform 0.4s ease;
+}
+.sub-meter-fill.is-warm { background: var(--alert-dim); }
+.sub-meter-fill.is-hot { background: var(--alert); }
+
+/* adapters */
+.sub-adapters { display: flex; flex-direction: column; gap: 2px; }
+.sub-adapter-list {
+  font-size: var(--text-sm);
+  color: var(--signal-dim);
+}
+
+/* process list */
+.sub-proc-list, .sub-fail-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sub-proc {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+.sub-proc-name { color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-proc-pid { font-size: var(--text-xs); color: var(--color-text-tertiary); }
+.sub-proc-mem { color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+
+/* failures feed */
+.sub-fail {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-size: var(--text-sm);
+  padding: 2px 0;
+  border-left: var(--border-width-medium) solid var(--line);
+  padding-left: var(--space-2);
+}
+.sub-fail.is-error { border-left-color: var(--alert); }
+.sub-fail.is-warn { border-left-color: var(--alert-dim); }
+.sub-fail-ctx { font-size: var(--text-xs); color: var(--color-text-tertiary); }
+.sub-fail-msg { color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-fail-ts { font-size: var(--text-xs); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+
+.sub-empty-row { color: var(--color-text-tertiary); font-size: var(--text-xs); padding: var(--space-1) 0; }

@@ -1,0 +1,55 @@
+{
+  "title": "Stat row",
+  "use": "three numbers that belong together — the shape of a week, or a protocol at a glance",
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the small mono line, e.g. THIS WEEK"
+    },
+    "headline": {
+      "required": true,
+      "max": 24,
+      "label": "one line naming what the row is about — 24, down from 26: the title grew for mobile legibility and the frame is fixed, so the characters paid for it"
+    },
+    "aValue": {
+      "required": true,
+      "max": 9,
+      "label": "first number, already formatted"
+    },
+    "aLabel": {
+      "required": true,
+      "max": 16,
+      "label": "first caption — 16 characters, the most a 416px column holds at a legible 30px"
+    },
+    "bValue": {
+      "required": true,
+      "max": 9,
+      "label": "second number"
+    },
+    "bLabel": {
+      "required": true,
+      "max": 16,
+      "label": "second caption — 16 characters, the most a 416px column holds at a legible 30px"
+    },
+    "cValue": {
+      "required": true,
+      "max": 9,
+      "label": "third number — drawn in the brand accent, so put the one that matters here"
+    },
+    "cLabel": {
+      "required": true,
+      "max": 16,
+      "label": "third caption — 16 characters, the most a 416px column holds at a legible 30px"
+    },
+    "asOf": {
+      "required": true,
+      "max": 24,
+      "label": "the moment these were true — 24: the footer line grew to 34px for mobile, and 24 is exactly a real stamp (\"31 Aug 2026 08:24:08 UTC\")"
+    }
+  }
+}

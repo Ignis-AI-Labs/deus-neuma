@@ -1,0 +1,251 @@
+/**
+ * Chromium press — renders a complete HTML document to PDF bytes. // impure
+ *
+ * Drives a local Chromium binary over the raw DevTools protocol (CDP) using
+ * the ws dependency we already carry — no Puppeteer/Playwright runtime dep.
+ * Binary resolution order: NEUMA_CHROMIUM_PATH → Playwright's cached
+ * chromium builds → common system install paths.
+ */
+
+import { spawn } from 'child_process';
+import fs from 'fs/promises';
+import { existsSync, readdirSync } from 'fs';
+import os from 'os';
+import path from 'path';
+import { pathToFileURL } from 'url';
+import WebSocket from 'ws';
+import { createLogger } from './../logger.js';
+
+const log = createLogger('DocPress.Chromium');
+
+const LAUNCH_TIMEOUT_MS = 20_000;
+const RENDER_TIMEOUT_MS = 60_000;
+const WS_MAX_PAYLOAD = 512 * 1024 * 1024;
+
+const PAPER_SIZES_IN = Object.freeze({
+  letter: Object.freeze({ width: 8.5, height: 11 }),
+  a4: Object.freeze({ width: 8.27, height: 11.69 }),
+  legal: Object.freeze({ width: 8.5, height: 14 })
+});
+
+function playwrightChromiums() {
+  const root = path.join(os.homedir(), '.cache', 'ms-playwright');
+  try {
+    return readdirSync(root)
+      .filter((name) => /^chromium-\d+$/.test(name))
+      .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]))
+      .map((name) => path.join(root, name, 'chrome-linux', 'chrome'));
+  } catch {
+    return [];
+  }
+}
+
+const SYSTEM_CHROMIUMS = Object.freeze([
+  '/usr/bin/chromium-browser',
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/opt/google/chrome/chrome'
+]);
+
+/**
+ * Finds a usable Chromium binary or throws with guidance. // impure (fs probes)
+ * @returns {string}
+ */
+export function locateChromium() {
+  const fromEnv = process.env.NEUMA_CHROMIUM_PATH;
+  if (fromEnv) {
+    if (!existsSync(fromEnv)) {
+      throw new Error(`NEUMA_CHROMIUM_PATH is set but does not exist: ${fromEnv}`);
+    }
+    return fromEnv;
+  }
+  const found = [...playwrightChromiums(), ...SYSTEM_CHROMIUMS].find((p) => existsSync(p));
+  if (!found) {
+    throw new Error(
+      'No Chromium found for PDF pressing. Install Chrome/Chromium or set NEUMA_CHROMIUM_PATH to a browser binary.'
+    );
+  }
+  return found;
+}
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const guard = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer));
+}
+
+function launchChromium(executable, profileDir) {
+  const args = [
+    ...(executable.includes('headless_shell') ? [] : ['--headless=new']),
+    `--user-data-dir=${profileDir}`,
+    '--remote-debugging-port=0',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-gpu',
+    '--hide-scrollbars',
+    '--mute-audio',
+    'about:blank'
+  ];
+  const child = spawn(executable, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+  const wsUrl = new Promise((resolve, reject) => {
+    let stderrTail = '';
+    const timer = setTimeout(
+      () => reject(new Error(`Chromium did not expose DevTools within ${LAUNCH_TIMEOUT_MS}ms: ${stderrTail.slice(-500)}`)),
+      LAUNCH_TIMEOUT_MS
+    );
+    child.stderr.on('data', (chunk) => {
+      stderrTail += chunk.toString();
+      const match = stderrTail.match(/DevTools listening on (ws:\/\/\S+)/);
+      if (match) {
+        clearTimeout(timer);
+        resolve(match[1]);
+      }
+    });
+    child.once('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`Chromium exited before DevTools came up (code ${code}): ${stderrTail.slice(-500)}`));
+    });
+    child.once('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+  return { child, wsUrl };
+}
+
+function openSocket(url) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url, { maxPayload: WS_MAX_PAYLOAD });
+    socket.once('open', () => resolve(socket));
+    socket.once('error', reject);
+  });
+}
+
+function createCdpClient(socket) {
+  const pending = new Map();
+  const eventWaiters = new Set();
+  let nextId = 1;
+
+  socket.on('message', (raw) => {
+    const msg = JSON.parse(raw.toString());
+    if (msg.id !== undefined && pending.has(msg.id)) {
+      const { resolve, reject } = pending.get(msg.id);
+      pending.delete(msg.id);
+      if (msg.error) reject(new Error(`CDP ${msg.error.message || 'error'}`));
+      else resolve(msg.result);
+      return;
+    }
+    if (msg.method) {
+      for (const waiter of [...eventWaiters]) {
+        if (waiter.method === msg.method && (!waiter.sessionId || waiter.sessionId === msg.sessionId)) {
+          eventWaiters.delete(waiter);
+          waiter.resolve(msg.params);
+        }
+      }
+    }
+  });
+
+  const send = (method, params = {}, sessionId) =>
+    new Promise((resolve, reject) => {
+      const id = nextId++;
+      pending.set(id, { resolve, reject });
+      socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+    });
+
+  const waitForEvent = (method, sessionId, ms) =>
+    withTimeout(
+      new Promise((resolve) => {
+        eventWaiters.add({ method, sessionId, resolve });
+      }),
+      ms,
+      `CDP event ${method}`
+    );
+
+  return { send, waitForEvent };
+}
+
+/**
+ * Renders HTML to PDF bytes through a real Chromium print pipeline. // impure
+ * @param {object} params
+ * @param {string} params.html - Complete HTML document
+ * @param {string} [params.headerTemplate] - Print-chrome header (inline styles only)
+ * @param {string} [params.footerTemplate] - Print-chrome footer
+ * @param {string} [params.format] - Letter | A4 | Legal
+ * @param {number} [params.marginCm] - Uniform page margin in centimeters
+ * @returns {Promise<Buffer>}
+ */
+export async function pressPdf({ html, headerTemplate, footerTemplate, format = 'Letter', marginCm = 1.5 }) {
+  const paper = PAPER_SIZES_IN[String(format).toLowerCase()];
+  if (!paper) {
+    throw new Error(`Unsupported paper format: ${format} (supported: ${Object.keys(PAPER_SIZES_IN).join(', ')})`);
+  }
+  const marginIn = marginCm / 2.54;
+  const executable = locateChromium();
+
+  const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'doc-press-'));
+  const htmlPath = path.join(workDir, 'document.html');
+  await fs.writeFile(htmlPath, html, 'utf8');
+
+  const { child, wsUrl } = launchChromium(executable, path.join(workDir, 'profile'));
+  let socket = null;
+  try {
+    socket = await openSocket(await wsUrl);
+    const cdp = createCdpClient(socket);
+
+    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+    await cdp.send('Page.enable', {}, sessionId);
+
+    const loaded = cdp.waitForEvent('Page.loadEventFired', sessionId, RENDER_TIMEOUT_MS);
+    await cdp.send('Page.navigate', { url: pathToFileURL(htmlPath).href }, sessionId);
+    await loaded;
+
+    const { data } = await withTimeout(
+      cdp.send(
+        'Page.printToPDF',
+        {
+          printBackground: true,
+          displayHeaderFooter: true,
+          headerTemplate: headerTemplate || '<div></div>',
+          footerTemplate: footerTemplate || '<div></div>',
+          paperWidth: paper.width,
+          paperHeight: paper.height,
+          marginTop: marginIn,
+          marginBottom: marginIn,
+          marginLeft: marginIn,
+          marginRight: marginIn,
+          preferCSSPageSize: false
+        },
+        sessionId
+      ),
+      RENDER_TIMEOUT_MS,
+      'Page.printToPDF'
+    );
+
+    await cdp.send('Browser.close').catch(() => {});
+    return Buffer.from(data, 'base64');
+  } finally {
+    if (socket) {
+      try {
+        socket.close();
+      } catch {
+        // socket already gone — nothing to release
+      }
+    }
+    if (child.exitCode === null) {
+      child.kill('SIGKILL');
+      // Wait for the process to actually die — removing the profile dir
+      // while Chromium is still flushing it races into ENOTEMPTY.
+      await Promise.race([
+        new Promise((resolve) => child.once('exit', resolve)),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]);
+    }
+    await fs.rm(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 150 }).catch((err) => {
+      log.warn('Could not remove press work dir', { workDir, err: err.message });
+    });
+  }
+}

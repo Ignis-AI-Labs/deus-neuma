@@ -1,0 +1,263 @@
+/* TodoApp — TASKS, the standing-work window. LINE & CYCLE L2 (OPERATIONS):
+   monochrome at rest; SIGNAL marks the selected lane (a live truth: which
+   list you are looking at), ALERT marks an overdue milestone. Rows are
+   chamfered cards; titles in the voice register, cadence/due metadata in
+   the data register. */
+
+.todo {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* THE STANDING SWITCH — three standings, not one wall of chips.
+   A neuma lives in the HOUSE; a sealed witness stands BESIDE it
+   (docs/protocols/sovereignty-boundary.md); ME is the operator's own life. Sixteen
+   undifferentiated chips said none of that and wrapped into three rows. This
+   costs two lines however large the house grows. The selected standing carries
+   SIGNAL: it is the live truth of which list is on screen. */
+.todo-standing {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--line);
+}
+.todo-standing-tab {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  border-right: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.todo-standing-tab:last-child { border-right: none; }
+.todo-standing-tab:hover:not(:disabled) { color: var(--color-text-secondary); }
+.todo-standing-tab.is-on { color: var(--signal); }
+.todo-standing-tab:disabled { opacity: 0.35; cursor: default; }
+/* The witnesses' standing is marked at the switch itself, so the distinction
+   is structural rather than something the operator has to remember. */
+.todo-standing-tab.is-witness.is-on { border-bottom: 1px dashed var(--signal-dim); }
+.todo-standing-n {
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+}
+.todo-standing-tab.is-on .todo-standing-n { color: var(--signal-dim); }
+
+/* The lane picker inside the chosen standing — one dropdown, so the window
+   holds a house of any size without the selector growing. */
+.todo-lane-pick {
+  display: flex;
+}
+.todo-lane-pick > * { flex: 1 1 auto; }
+
+/* ONE BLOCK PER CHAT. Each parallel conversation is its own workflow, so it
+   gets its own header, its own live count, and its own fold. The chat the
+   stream is bound to is marked — it is the one you are in. */
+.todo-chat {
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.todo-chat.is-active { border-left-color: var(--signal-dim); }
+/* Work that belongs to no single chat is not a sitting — a dashed edge says so
+   without a second explanatory line. */
+.todo-chat.is-lane { border-left-style: dashed; }
+.todo-chat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+.todo-chat-head:hover .todo-chat-name { color: var(--color-text-primary); }
+.todo-chat-caret {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+.todo-chat-name {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  transition: color var(--snap);
+}
+.todo-chat.is-active .todo-chat-name { color: var(--signal); }
+.todo-chat-here {
+  color: var(--signal);
+  font-size: 9px;
+}
+.todo-chat-live {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+}
+.todo-chat-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.todo-scope-note {
+  margin: 0;
+  letter-spacing: 0.16em;
+}
+
+/* WHICH WORK TO TAKE FIRST — three exclusive choices, so all three stand
+   visible rather than hiding two behind a closed panel: the operator is
+   comparing directions, not picking from a long list. */
+.todo-order {
+  display: flex;
+  gap: var(--space-2);
+}
+.todo-order-pick {
+  padding: 0;
+  border: none;
+  background: none;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+.todo-order-pick:hover { color: var(--color-text-secondary); }
+.todo-order-pick.is-on { color: var(--signal); }
+
+/* The add form — content inputs in the voice register, cadence/due
+   controls in the data register. */
+.todo-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.todo-in {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+.todo-in:focus {
+  outline: none;
+  background: var(--color-input-fill-focus);
+  border-color: var(--line-hover);
+}
+.todo-in::placeholder {
+  color: var(--color-text-disabled);
+}
+.todo-form-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+.todo-sel {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  color-scheme: dark;
+}
+.todo-sel:focus {
+  outline: none;
+  border-color: var(--line-hover);
+}
+
+/* The CUSTOM cadence's weekday chips — the witness designs the rhythm
+   (Mon/Wed/Fri, weekends, any set). Hairline toggles in the data register;
+   SIGNAL marks a chosen day. */
+.todo-days {
+  display: flex;
+  gap: 2px;
+  align-items: stretch;
+}
+.todo-day {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.todo-day:hover { border-color: var(--line-hover); }
+.todo-day.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim, var(--signal));
+}
+
+/* The VESSEL mark — a daily that IS one of the operator's vessel dailies
+   (settling it marks the vessel log). Same hairline chip idiom as the
+   weekday picks; SIGNAL marks the on state. */
+.todo-vessel-toggle {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.todo-vessel-toggle:hover { border-color: var(--line-hover); }
+.todo-vessel-toggle.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim, var(--signal));
+}
+
+.todo-add {
+  margin-left: auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.todo-add:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+.todo-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The server's correction, in the alert register — a genuine refusal, not
+   an announcement (no guillemets). */
+.todo-error {
+  margin: 0;
+  color: var(--alert);
+  letter-spacing: 0.12em;
+  text-transform: none;
+}
+

@@ -1,0 +1,130 @@
+:root {
+  /* Stock LINE & CYCLE. THE LOOK overrides these at render (confirm.js
+     applies the theme MAIN read from the operator's own look store) —
+     --alert is semantic and is deliberately never themed. */
+  --void: #000000;
+  --panel: #000000;
+  --ink: #FFFFFF;
+  --ground: #000000;
+  --heading: var(--text-1);
+  --line: rgba(255,255,255,0.18);
+  --line-hover: rgba(255,255,255,0.40);
+  --text-1: rgba(255,255,255,0.95);
+  --text-2: rgba(255,255,255,0.70);
+  --text-3: rgba(255,255,255,0.50);
+  --signal: #5FE9FF;
+  --alert: #FF5533;
+  --font-voice: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-data: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+  --chamfer: 12px;
+  --accent: var(--signal);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; background: var(--void); overflow: hidden; }
+body {
+  font-family: var(--font-voice);
+  color: var(--text-1);
+  /* instrument-paper grid at <=2% */
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ink) 2%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 2%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+body.tone-alert { --accent: var(--alert); }
+
+/* frameless: the whole top strip drags the window */
+.titlebar {
+  -webkit-app-region: drag;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  font-family: var(--font-data);
+  font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--line);
+}
+.titlebar .mark { color: var(--text-2); }
+.titlebar .mark b { color: var(--accent); font-weight: 500; }
+
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 22px; min-height: 0; }
+
+/* the System Notice: chamfered on the top-right / bottom-left diagonal pair */
+.notice {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, var(--chamfer) 100%, 0 calc(100% - var(--chamfer)));
+  padding: 20px 22px 18px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 40px -8px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+/* lit chamfer corners -- the notice "corner light" */
+.notice::before, .notice::after {
+  content: ''; position: absolute; width: 17px; height: 2px; background: var(--accent);
+}
+.notice::before { top: 0; right: 0; transform: translate(-2px, 6px) rotate(-45deg); transform-origin: right top; }
+.notice::after  { bottom: 0; left: 0; transform: translate(2px, -6px) rotate(-45deg); transform-origin: left bottom; }
+
+.heading {
+  font-family: var(--font-data);
+  font-size: 15px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--heading);
+  display: flex; align-items: baseline; gap: 8px;
+}
+.heading .g { color: var(--accent); font-weight: 400; }
+.intro {
+  margin-top: 10px;
+  font-size: 13px; line-height: 1.5; color: var(--text-2); font-weight: 300;
+  max-width: 46ch;
+}
+
+.fields { margin-top: 16px; display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.field { display: grid; grid-template-columns: 92px 1fr; gap: 12px; background: var(--panel); padding: 9px 12px; }
+.field .k { font-family: var(--font-data); font-size: 10px; letter-spacing: 0.14em; color: var(--text-3); text-transform: uppercase; padding-top: 2px; }
+.field .v { font-family: var(--font-data); font-size: 12px; color: var(--text-1); word-break: break-all; user-select: text; }
+
+.body {
+  margin-top: 14px;
+  max-height: 168px; overflow-y: auto;
+  font-family: var(--font-data); font-size: 12px; line-height: 1.55;
+  color: var(--text-2); white-space: pre-wrap; word-break: break-word;
+  border-left: 1px solid var(--line); padding: 4px 0 4px 12px;
+  user-select: text;
+}
+
+.warn {
+  margin-top: 16px;
+  border: 1px solid var(--alert);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  padding: 12px 14px;
+}
+.warn .tag { font-family: var(--font-data); font-size: 10px; letter-spacing: 0.2em; color: var(--alert); text-transform: uppercase; }
+.warn .txt { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--text-1); font-weight: 300; }
+
+.actions { margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; }
+button {
+  -webkit-app-region: no-drag;
+  font-family: var(--font-data); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 11px 20px; cursor: pointer;
+  background: transparent; color: var(--text-1);
+  border: 1px solid var(--line);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+button:hover { border-color: var(--line-hover); }
+button:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+/* primary: white fill, black text (normal) -- alert fill on the alert tone */
+.btn-confirm { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.btn-confirm:hover { background: color-mix(in srgb, var(--ink) 86%, transparent); }
+body.tone-alert .btn-confirm { background: transparent; color: var(--alert); border-color: var(--alert); }
+body.tone-alert .btn-confirm:hover { background: var(--alert); color: var(--ground); }
+.btn-reject { color: var(--text-2); }
+.btn-reject:hover { color: var(--text-1); }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--line); }
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }

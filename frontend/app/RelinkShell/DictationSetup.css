@@ -1,0 +1,73 @@
+/* DictationSetup — install prompt for missing speech components.
+   Floats above the composer; LINE & CYCLE: chamfered panel, data labels,
+   signal only on the live affordance. */
+
+.dictation-setup {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  right: 0;
+  width: min(440px, 90vw);
+  z-index: 30;
+  background: var(--color-background);
+  border: var(--border-width-thin) solid var(--line);
+}
+
+.dictation-setup-in {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dictation-setup-title {
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-wide);
+}
+
+.dictation-setup-lead {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.dictation-setup-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2);
+  border: var(--border-width-thin) solid var(--line);
+}
+
+.dictation-setup-item p {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.dictation-setup-name { color: var(--color-text-primary); }
+
+.dictation-setup-cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dictation-setup-cmd code {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-input-fill);
+  padding: 4px 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.dictation-setup-gate { color: var(--color-text-tertiary); font-size: var(--text-xs); }
+
+.dictation-setup-note { color: var(--signal); font-size: var(--text-xs); }
+
+.dictation-setup-actions {
+  display: flex;
+  justify-content: flex-end;
+}

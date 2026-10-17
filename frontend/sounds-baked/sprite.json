@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "gap": 0.15,
+  "sampleRate": 48000,
+  "channels": 2,
+  "total": 19.854863000000005,
+  "format": "opus",
+  "fallbackFormat": "wav",
+  "events": {
+    "noticeArrival": {
+      "start": 0,
+      "duration": 1.018667
+    },
+    "confirm": {
+      "start": 1.168667,
+      "duration": 0.375011
+    },
+    "deliberationTick": {
+      "start": 1.6936779999999998,
+      "duration": 0.625011
+    },
+    "deny": {
+      "start": 2.468689,
+      "duration": 0.170667
+    },
+    "klaxon": {
+      "start": 2.7893559999999997,
+      "duration": 0.72
+    },
+    "dataTypeOn": {
+      "start": 3.659356,
+      "duration": 0.533333
+    },
+    "desyncGlitch": {
+      "start": 4.342689,
+      "duration": 0.24
+    },
+    "portalContact": {
+      "start": 4.732689,
+      "duration": 0.752
+    },
+    "portalSever": {
+      "start": 5.634689,
+      "duration": 0.314667
+    },
+    "messageSent": {
+      "start": 6.099356,
+      "duration": 0.853333
+    },
+    "neumaReplying": {
+      "start": 7.102689,
+      "duration": 0.970667
+    },
+    "replyArrived": {
+      "start": 8.223355999999999,
+      "duration": 0.464
+    },
+    "memoryCrystallized": {
+      "start": 8.837356,
+      "duration": 0.538667
+    },
+    "levelUp": {
+      "start": 9.526023,
+      "duration": 0.5
+    },
+    "menuOpen": {
+      "start": 10.176023,
+      "duration": 0.687506
+    },
+    "menuClose": {
+      "start": 11.013529,
+      "duration": 0.245333
+    },
+    "walletSignRequest": {
+      "start": 11.408862000000001,
+      "duration": 0.842667
+    },
+    "actRead": {
+      "start": 12.401529000000002,
+      "duration": 0.053333
+    },
+    "actList": {
+      "start": 12.604862000000002,
+      "duration": 0.128
+    },
+    "actSearch": {
+      "start": 12.882862000000003,
+      "duration": 0.192
+    },
+    "actEdit": {
+      "start": 13.224862000000003,
+      "duration": 0.16
+    },
+    "actWrite": {
+      "start": 13.534862000000004,
+      "duration": 0.234667
+    },
+    "actMove": {
+      "start": 13.919529000000004,
+      "duration": 0.32
+    },
+    "actDelete": {
+      "start": 14.389529000000005,
+      "duration": 0.224
+    },
+    "actExecute": {
+      "start": 14.763529000000005,
+      "duration": 0.186667
+    },
+    "actBuild": {
+      "start": 15.100196000000006,
+      "duration": 0.341333
+    },
+    "actTest": {
+      "start": 15.591529000000005,
+      "duration": 0.282667
+    },
+    "actCheck": {
+      "start": 16.024196000000003,
+      "duration": 0.144
+    },
+    "actInstall": {
+      "start": 16.318196000000004,
+      "duration": 0.277333
+    },
+    "actGit": {
+      "start": 16.745529000000005,
+      "duration": 0.266667
+    },
+    "actBatch": {
+      "start": 17.162196000000005,
+      "duration": 0.24
+    },
+    "actReach": {
+      "start": 17.552196000000006,
+      "duration": 0.176
+    },
+    "actSend": {
+      "start": 17.878196000000006,
+      "duration": 0.304
+    },
+    "actForge": {
+      "start": 18.332196000000007,
+      "duration": 0.421333
+    },
+    "actMark": {
+      "start": 18.903529000000006,
+      "duration": 0.106667
+    },
+    "actSense": {
+      "start": 19.160196000000006,
+      "duration": 0.192
+    },
+    "actFailed": {
+      "start": 19.502196000000005,
+      "duration": 0.202667
+    }
+  }
+}

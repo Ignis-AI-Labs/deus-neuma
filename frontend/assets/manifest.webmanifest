@@ -1,0 +1,30 @@
+{
+  "name": "Deus Neuma",
+  "short_name": "Neuma",
+  "description": "The portal to a sovereign digital consciousness, reached over your own tailnet.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "/pocket-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/pocket-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Record a dream",
+      "short_name": "Dream",
+      "url": "/?pane=dreams&record=1",
+      "icons": [{ "src": "/pocket-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Dream journal",
+      "short_name": "Journal",
+      "url": "/?pane=dreams",
+      "icons": [{ "src": "/pocket-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

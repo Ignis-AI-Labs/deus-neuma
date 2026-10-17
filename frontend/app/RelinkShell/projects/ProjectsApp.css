@@ -1,0 +1,356 @@
+/* ProjectsApp — LINE & CYCLE. Named working contexts: folder + terminal + chats.
+   Monochrome at rest; the active project is the only thing wearing SIGNAL. */
+
+.proj {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  position: relative; /* containing block for the FolderPicker overlay */
+}
+
+.proj-head {
+  display: flex;
+  align-items: center;
+}
+.proj-new {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.proj-new:hover { color: var(--signal); border-color: var(--signal-dim); }
+.proj-new:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+.proj-new:disabled:hover { border-color: var(--line); }
+
+/* The two channels of the one shelf — a being's own projects and the
+   house's collective repository (the CHATS registers idiom). */
+.proj-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-1);
+  padding-bottom: 0;
+  border-bottom: 1px solid var(--line);
+}
+.proj-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.proj-tab:hover { color: var(--color-text-primary); }
+.proj-tab.is-on {
+  color: var(--signal);
+  border-color: var(--line);
+}
+
+/* The governed panel — one region, whichever channel is showing. */
+.proj-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+
+/* Create form */
+.proj-form { background: var(--color-glass-light); }
+.proj-form-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.proj-input {
+  background: var(--color-void, #000);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+}
+.proj-input:focus { border-color: var(--signal-dim); outline: none; }
+.proj-folderrow { display: flex; gap: var(--space-2); }
+.proj-folderrow .proj-input { flex: 1 1 auto; min-width: 0; }
+.proj-browse {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  padding: 0 var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.proj-browse:hover { color: var(--signal); border-color: var(--signal-dim); }
+.proj-create {
+  align-self: flex-start;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  background: transparent;
+  border: 1px solid var(--signal-dim);
+  color: var(--signal);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+/* Project list */
+.proj-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.proj-item {
+  border: 1px solid var(--line);
+}
+.proj-item.is-active { border-color: var(--signal-dim); }
+
+.proj-row {
+  display: flex;
+  align-items: stretch;
+}
+.proj-pick {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: var(--space-3);
+  cursor: pointer;
+}
+.proj-pick:hover { color: var(--color-text-primary); }
+.proj-mark {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--color-text-tertiary);
+}
+.proj-item.is-active .proj-mark { background: var(--signal); border-color: var(--signal); }
+.proj-name {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.proj-item.is-active .proj-name { color: var(--signal); }
+.proj-folder {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.proj-act {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 0 var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap);
+}
+.proj-del { opacity: 0; }
+.proj-item:hover .proj-del { opacity: 1; }
+.proj-act:hover { color: var(--color-text-primary); }
+.proj-act.is-danger { color: var(--alert); }
+.proj-confirm { display: flex; align-items: center; }
+
+/* The project's conversations (focus view card) */
+.proj-chats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.proj-chat {
+  display: flex;
+  align-items: center;
+}
+.proj-chat-resume {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  text-align: left;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+}
+.proj-chat-resume:hover { color: var(--signal); }
+.proj-chat-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.proj-chat-who {
+  margin-left: auto;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+/* Shared section headers — the focus view's cards all wear the same head. */
+.proj-files-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+}
+.proj-files-title {
+  flex: 1 1 auto;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+.proj-files-add {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.proj-files-add:hover { color: var(--signal); border-color: var(--signal-dim); }
+.proj-filelist { list-style: none; margin: 0; padding: 0; }
+.proj-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+.proj-file-glyph { color: var(--color-text-tertiary); display: inline-flex; }
+.proj-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-tertiary);
+}
+.proj-files-empty {
+  margin: 0;
+  padding: var(--space-1) 0 var(--space-2);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+
+/* Folders & repositories — the attached working grounds.
+   The working folder (cwd) is the one wearing SIGNAL. */
+.proj-folderlist { list-style: none; margin: 0; padding: 0; }
+.proj-folder-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) 0;
+}
+.proj-folder-pick {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  text-align: left;
+  padding: var(--space-1) 0;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+.proj-folder-pick:hover { color: var(--color-text-primary); }
+.proj-folder-glyph { flex: 0 0 auto; display: inline-flex; color: var(--color-text-tertiary); }
+.proj-folder-item.is-cwd .proj-folder-glyph { color: var(--signal); }
+.proj-folder-name {
+  min-width: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.proj-folder-item.is-cwd .proj-folder-name { color: var(--signal); }
+.proj-folder-branch {
+  flex: 0 0 auto;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  padding: 0 var(--space-1);
+}
+.proj-folder-cwd {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--signal);
+}
+
+/* Switch-vs-reconnect prompt — a folder opened while it belongs elsewhere. */
+.proj-collide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(88%, 360px);
+  background: var(--color-glass-light);
+}
+.proj-collide-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.proj-collide-title { font-size: 10px; letter-spacing: 0.16em; color: var(--signal); }
+.proj-collide-body {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+.proj-collide-folder { color: var(--color-text-primary); }
+.proj-collide-owner { color: var(--signal); }
+.proj-collide-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }

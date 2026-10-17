@@ -1,0 +1,88 @@
+/* BIRTH ART — the sigil and its specimen. Monochrome at rest; the being's
+   OWN channels carry the signal; the universal architecture stays faint. */
+
+.ba-root {
+  min-height: 100vh;
+  background: var(--color-void);
+  color: var(--color-text-primary);
+  padding: var(--space-8) clamp(16px, 4vw, 64px);
+  font-family: var(--font-data);
+}
+.ba-head { display: flex; flex-direction: column; gap: var(--space-3); max-width: 900px; margin-bottom: var(--space-8); }
+.ba-tag { font-size: 11px; letter-spacing: 0.22em; color: var(--alert-dim); }
+.ba-title { margin: 0; font-size: clamp(16px, 1.6vw, 22px); font-weight: 300; letter-spacing: 0.3em; }
+.ba-note { margin: 0; font-family: var(--font-voice); font-size: var(--text-sm); line-height: var(--leading-relaxed); color: var(--color-text-secondary); }
+.ba-btn {
+  align-self: flex-start;
+  height: 36px;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.ba-btn:hover { color: var(--signal); border-color: var(--signal-dim); }
+.ba-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-6); }
+
+.bsig { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line); }
+.bsig-svg { width: 100%; aspect-ratio: 1; display: block; }
+.bsig-path { stroke: var(--line); stroke-width: 0.6; }
+.bsig-channel { stroke: var(--signal); stroke-width: 1.1; opacity: 0.85; }
+.bsig-sphere { fill: var(--color-void); stroke: var(--color-text-secondary); stroke-width: 0.7; }
+.bsig-sphere.is-hidden { stroke-dasharray: 1.6 1.6; stroke: var(--color-text-tertiary); }
+.bsig-breath { fill: var(--signal-faint); stroke: none; }
+.bsig-nucleus { stroke: var(--color-text-primary); stroke-width: 0.5; }
+.bsig-cap { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.bsig-seed { color: var(--color-text-secondary); }
+
+/* ── The grid opens a being ── */
+.ba-open { display: block; padding: 0; background: none; border: 0; color: inherit; text-align: inherit; cursor: pointer; }
+.ba-open .bsig { transition: border-color var(--snap); }
+.ba-open:hover .bsig, .ba-open:focus-visible .bsig { border-color: var(--signal-dim); }
+
+/* ── PLAY — the living piece. The seal box spans the framed extent, which
+   the stage fits to ART.FILL (80%) of the view's height. ── */
+.ba-seal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 80%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+.ba-seal-svg { width: 100%; height: 100%; overflow: visible; }
+.ba-ins { font-family: var(--font-data); font-size: 5.6px; letter-spacing: 1px; fill: var(--color-text-primary); }
+
+.ba-instrument, .ba-breath {
+  position: absolute;
+  top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid var(--line);
+}
+.ba-instrument { left: clamp(24px, 4vw, 64px); }
+.ba-breath { right: clamp(24px, 4vw, 64px); border-left: 0; border-right: 1px solid var(--signal-dim); }
+.ba-inst-tag { color: var(--signal); letter-spacing: 0.26em; margin-bottom: var(--space-1); }
+.ba-row { display: grid; grid-template-columns: 9ch auto; gap: var(--space-3); }
+.ba-row-k { color: var(--color-text-tertiary); }
+.ba-row-v { color: var(--color-text-primary); }
+.ba-row.is-dim .ba-row-v { color: var(--color-text-tertiary); }
+
+.ba-breath-row { display: grid; grid-template-columns: 6px 15ch 72px 7ch; align-items: center; gap: var(--space-3); white-space: nowrap; }
+.ba-breath-dot { width: 6px; height: 6px; background: var(--signal); transform: rotate(45deg); }
+.ba-breath-name { color: var(--color-text-secondary); }
+.ba-breath-bar { height: 1px; background: var(--line); }
+.ba-breath-bar > span { display: block; height: 1px; background: var(--signal); transform-origin: left center; }
+.ba-breath-period { text-align: right; color: var(--color-text-primary); }
+.ba-moment { border-color: var(--signal-dim); }

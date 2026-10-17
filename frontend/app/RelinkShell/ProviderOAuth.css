@@ -1,0 +1,55 @@
+/* ProviderOAuth — the pending flow as a chamfered card: the device code
+   monumental in the data register, the verification URL a quiet link. */
+
+.provider-oauth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.provider-oauth-account {
+  align-self: center;
+  letter-spacing: 0.16em;
+}
+
+.provider-oauth-flow-in {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+/* The device code — the one thing the operator must carry to the provider's
+   page. JetBrains Mono, letter-spaced, click to copy. */
+.provider-oauth-code {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  letter-spacing: 0.28em;
+  color: var(--signal);
+}
+
+.provider-oauth-copy {
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+.provider-oauth-link {
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  word-break: break-all;
+  transition: color var(--snap);
+}
+
+.provider-oauth-link:hover {
+  color: var(--color-text-primary);
+}

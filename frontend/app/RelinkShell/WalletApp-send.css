@@ -1,0 +1,222 @@
+/* WalletApp-send.css — extracted from WalletApp.css (size law). SEND instrument + receipt + status/network; uses @keyframes wal-layer-in from WalletApp-layers.css — imported last. */
+/* --- SEND — the transfer instrument --- */
+
+/* The amount as a display numeral: huge mono extralight, unit and live
+   allocation readout on the baseline. A gauge that gauges (SHINKEI). */
+.wal-send-display {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.wal-send-num {
+  font-family: var(--font-data);
+  font-size: 44px;
+  font-weight: 200;
+  color: var(--color-text-primary);
+  line-height: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wal-send-unit {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+.wal-send-alloc {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+
+/* Allocation chips — 25 / 50 / 75 / MAX. Hairline ghosts; the composed value
+   lights signal. */
+.wal-chiprow, .wal-house {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.wal-chip {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-3);
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.wal-chip:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+.wal-chip.is-active {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  background: var(--signal-faint);
+}
+.wal-chip:disabled { opacity: 0.4; cursor: default; }
+
+/* The allocation slider — a LINE instrument: hairline track, signal fill that
+   sweeps exactly the allocated share (--alloc), diamond thumb (45° square —
+   the chamfer, moving). */
+.wal-alloc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.wal-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.wal-slider:disabled { cursor: default; opacity: 0.4; }
+.wal-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(to right,
+    var(--signal) 0%, var(--signal) var(--alloc, 0%),
+    var(--line) var(--alloc, 0%), var(--line) 100%);
+}
+.wal-slider::-moz-range-track { height: 2px; background: var(--line); }
+.wal-slider::-moz-range-progress { height: 2px; background: var(--signal); }
+.wal-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -4px;
+  background: var(--color-surface, #000);
+  border: 1px solid var(--signal);
+  transform: rotate(45deg);
+}
+.wal-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 0;
+  background: var(--color-surface, #000);
+  border: 1px solid var(--signal);
+  transform: rotate(45deg);
+}
+.wal-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+/* Dotted-leader readouts — the codec panel. */
+.wal-leads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.wal-lead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.wal-lead-k {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.wal-lead-dots {
+  flex: 1 1 auto;
+  border-bottom: 1px dotted var(--line);
+  transform: translateY(-3px);
+  min-width: var(--space-4);
+}
+.wal-lead-v {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.wal-lead-v.hot { color: var(--signal); }
+.wal-lead-v.warn { color: var(--alert); }
+
+/* --- The receipt — the transaction's complete on-chain truth --- */
+.wal-rcpt {
+  margin-top: var(--space-3);
+  background: var(--color-glass-light);
+  animation: wal-layer-in 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wal-rcpt { animation: none; }
+}
+.wal-rcpt-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.wal-rcpt-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.wal-rcpt-status {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.wal-rcpt.is-success .wal-rcpt-status { color: var(--signal); }
+.wal-rcpt.is-reverted .wal-rcpt-status { color: var(--alert); }
+.wal-rcpt.is-pending .wal-rcpt-status { animation: wal-pending 2s ease-in-out infinite; }
+@keyframes wal-pending { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) {
+  .wal-rcpt.is-pending .wal-rcpt-status { animation: none; }
+}
+.wal-rcpt-link {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+  text-decoration: none;
+}
+.wal-rcpt-link:hover { color: var(--color-white); }
+.wal-hash {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+.wal-hash:hover { color: var(--signal); }
+
+/* Status lines */
+.wal-err {
+  margin: var(--space-1) 0 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--alert);
+}
+.wal-ok {
+  margin: var(--space-1) 0 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--signal);
+}
+
+/* Network selection — the active chain button lights signal; the testnet
+   badge rides the alert-dim register so a testnet wallet is unmistakable. */
+.wal-btn.is-active {
+  background: var(--signal-dim);
+  color: var(--color-surface);
+}
+.wal-testnet-badge { color: var(--alert-dim); }

@@ -1,0 +1,150 @@
+/* THE OPERATOR'S EYE — the verdict panel under an open forge render.
+ *
+ * LINE & CYCLE: monochrome at rest, --signal only where something is live,
+ * tokens only. The two standings read as two blocks because they ARE two
+ * standings — the operator's grade never overwrites the being's, and the
+ * layout must not imply otherwise.
+ *
+ * It is a SHELF under the work, not a panel floating on it: full-bleed, one
+ * hairline at the top, and a hard ceiling on its share of the room. The art is
+ * what the operator came for, so the account can never take more than a third
+ * of the wall however long the being's thinking runs — past that it scrolls.
+ */
+
+/* Raised over the wall: a leaned-in work is transformed, so its HIT area
+   overflows the stage even though its paint is clipped — without this the art
+   swallows the pointer over the shelf and the grade buttons go dead while the
+   operator is zoomed in. Proven by test/e2e/gallery-room.spec.js. */
+.verdict {
+  position: relative;
+  z-index: 1;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 34%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--color-void);
+}
+
+.verdict-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* A standing rail rather than an overlay scrollbar: a shelf that has been
+     cut off mid-sentence must SAY there is more, and an overlay bar that only
+     appears once you already scrolled cannot. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-hover) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Room for the scrollbar so a long account does not run under it. */
+  padding-right: 6px;
+}
+
+.verdict-standing-title {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs, 11px);
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+}
+
+.verdict-asked {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The ask is the anchor adherence is judged against — it reads as voice, not
+   as an instrument label, because it is what a person actually wrote. Set one
+   step down from the judgments: it is the reference the room is measured
+   against, and the being's reading of the work is what the operator came to
+   the shelf for. */
+.verdict-asked-text {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-tertiary);
+  line-height: 1.55;
+  max-width: 96ch;
+}
+
+.verdict-standing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* One judgment reads DOWN, not across. Side by side, a wide window ran the
+   mark, what was missing, the defects and the note together as a single line
+   of prose with no seam between four separate observations. */
+.verdict-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding-left: 2px;
+}
+
+.verdict-mark {
+  font-family: var(--font-data);
+  font-size: var(--text-xs, 11px);
+  letter-spacing: var(--tracking-wide, 0.08em);
+  color: var(--color-text-primary);
+}
+
+/* A verdict is a decision, so it carries the one live colour; discard is the
+   only one that warns. */
+.verdict-keep { color: var(--signal); }
+.verdict-redo { color: var(--color-text-primary); }
+.verdict-discard { color: var(--alert); }
+
+/* A measure, not a width. Prose set the full span of a maximized window is a
+   wall of text nobody finishes; a label is read because it is narrow. */
+.verdict-missing,
+.verdict-note {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm, 13px);
+  color: var(--color-text-secondary);
+  max-width: 88ch;
+  line-height: 1.5;
+}
+
+.verdict-missing { color: var(--color-text-tertiary); }
+
+.verdict-act {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.verdict-input {
+  flex: 1 1 220px;
+  min-width: 160px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm, 13px);
+}
+
+.verdict-input:focus {
+  outline: none;
+  border-color: var(--signal);
+}
+
+.verdict-btn { min-width: 74px; }
+.verdict-btn-discard:hover:not(:disabled) {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.verdict-error {
+  color: var(--alert);
+  font-size: var(--text-xs, 11px);
+}

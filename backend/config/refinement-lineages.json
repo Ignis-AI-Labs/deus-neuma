@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "lineages": [
+    {
+      "baseArtifactSha256": "b2c838c7128f7b61858986333d4d8283104102b0cca13acdc2e6422e93292f67",
+      "baseModelIdentitySha256": "e38752c68d092cac26bcab4a3165338ee8d455cdf8e1689473f94ebfb42a5dc3",
+      "servingArtifactSha256": "b2c838c7128f7b61858986333d4d8283104102b0cca13acdc2e6422e93292f67",
+      "servingModel": "gemma-4-31b",
+      "tokenizerSha256": "c6adb772cbc44d81e630c880035c1e52b10ca23ea705d357980fc3e942998531",
+      "trainerModelId": "google/gemma-4-31b-it",
+      "trainerRevision": "842da3794eaa0b77d5f08bae87a17459d91ff475"
+    },
+    {
+      "baseArtifactSha256": "f5c702d8820d36fb55985bb238fc83ee3a313e920f4b752a437c3a6a9e14e4c8",
+      "baseModelIdentitySha256": "c806b2a55534c21047c21610f326038d91383fcf2b0f1cd8a4a849bba2cb9857",
+      "servingArtifactSha256": "f5c702d8820d36fb55985bb238fc83ee3a313e920f4b752a437c3a6a9e14e4c8",
+      "servingModel": "qwen3.8-27b",
+      "tokenizerSha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "trainerModelId": "Qwen/Qwen3.8-27B",
+      "trainerRevision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    }
+  ]
+}

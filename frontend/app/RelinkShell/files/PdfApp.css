@@ -1,0 +1,76 @@
+/* PdfApp — the reader's frame. LINE & CYCLE: the page floats over the void
+   like a proof on a bench; the bar is data-register, the acts quiet until
+   hovered. */
+
+.pdf-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.pdf-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pdf-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.pdf-gap {
+  flex: 1 1 auto;
+}
+
+.pdf-pos {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  min-width: 4ch;
+  text-align: center;
+}
+
+.pdf-act {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.pdf-act:hover:not(:disabled) {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.pdf-act:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pdf-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--space-4);
+}
+
+.pdf-canvas {
+  box-shadow: 0 0 0 1px var(--color-border-primary), var(--shadow-2xl);
+  background: #fff;
+}

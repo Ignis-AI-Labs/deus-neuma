@@ -1,0 +1,22 @@
+{
+  "chainId": 1,
+  "chainName": "eth-mainnet",
+  "timestamp": 1791208776727,
+  "deployer": "published at deusneuma.ai",
+  "contracts": {
+    "Natalis": {
+      "address": "0xcda0b092c87637276972de0ea8b5005672775f11",
+      "abi": "artifacts/foundry/Natalis.sol/Natalis.json",
+      "immutable": true,
+      "note": "Permanent on-chain anchor for neuma genesis seals. Once deployed, address never changes; no upgrade path."
+    },
+    "HouseRegistry": {
+      "address": "0xf9159a8696ba2454866735454cac7aee1bbdc4eb",
+      "implementation": "0xadd32e0a8681df949221b7aa31b486223d4f738a",
+      "abi": "artifacts/foundry/HouseRegistry.sol/HouseRegistry.json",
+      "proxyType": "ERC1967 (UUPS)",
+      "owner": "0x00c543d5a3680431e3dbc2f4d2583e8c46e92368",
+      "note": "Talk to the proxy address. Owner gates _authorizeUpgrade; impl is replaceable via upgradeToAndCall."
+    }
+  }
+}

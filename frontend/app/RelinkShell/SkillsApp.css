@@ -1,0 +1,149 @@
+/* THE CRAFT — LINE & CYCLE. Monochrome at rest; signal marks life:
+   an acquired skill is live in the being, everything else stays dim. */
+
+.craft {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.craft-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.craft-filter {
+  width: 130px;
+  padding: 4px 8px;
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.craft-filter:focus {
+  outline: none;
+  background: var(--color-input-fill-focus);
+  border-color: var(--line-hover);
+}
+
+.craft-filter::placeholder { color: var(--color-text-disabled); }
+
+.craft-sig { color: var(--signal); }
+
+.craft-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 23px 23px;
+}
+
+.craft-svg { display: block; }
+
+.craft-cat-name {
+  fill: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.craft-cat-line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.craft-edge {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.craft-node { cursor: pointer; outline: none; }
+
+.craft-node:focus-visible .craft-node-box { stroke: var(--line-hover); }
+
+.craft-node-acq:focus-visible .craft-node-box { stroke: var(--signal); }
+
+.craft-node-box {
+  fill: var(--color-surface);
+  stroke: var(--line);
+  stroke-width: 1;
+  transition: stroke var(--snap);
+}
+
+.craft-node:hover .craft-node-box { stroke: var(--line-hover); }
+
+.craft-node-label {
+  fill: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.craft-node-uses {
+  fill: var(--signal-dim);
+  font-size: 10px;
+}
+
+.craft-node-acq .craft-node-box {
+  stroke: var(--signal-dim);
+  fill: var(--signal-faint);
+}
+
+.craft-node-acq .craft-node-label { fill: var(--color-text-primary); }
+
+.craft-node-acq:hover .craft-node-box,
+.craft-node-sel .craft-node-box { stroke: var(--signal); }
+
+.craft-node-sel.craft-node-dorm .craft-node-box { stroke: var(--line-hover); }
+
+.craft-detail { flex-shrink: 0; }
+
+.craft-detail-in {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.craft-detail-name {
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.craft-detail-desc {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.craft-detail-line {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.craft-detail-acq {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+}
+
+.craft-note {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}

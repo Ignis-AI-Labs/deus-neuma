@@ -1,0 +1,99 @@
+/* ImageApp — the picture's frame. LINE & CYCLE: the image floats over the void
+   like a proof on a bench (the PdfApp law), the bar is data-register, the acts
+   stay quiet until hovered. */
+
+.image-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.imageview {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.imageview-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.imageview-fact {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+.imageview-zoomset {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.imageview-btn {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  height: 22px;
+  min-width: 22px;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.imageview-btn:hover {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.imageview-zoom {
+  min-width: 6ch;
+  letter-spacing: 0.12em;
+}
+
+.imageview-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--space-4);
+}
+
+/* TRANSPARENCY IS INFORMATION. On this desk's pure-black ground a transparent
+   PNG and a black PNG are the same picture, and for a render that is exactly
+   the thing the operator is checking. The checker says which one it is. */
+.imageview-img {
+  box-shadow: 0 0 0 1px var(--color-border-primary), var(--shadow-2xl);
+  background-color: #0a0a0a;
+  background-image:
+    linear-gradient(45deg, #141414 25%, transparent 25%),
+    linear-gradient(-45deg, #141414 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #141414 75%),
+    linear-gradient(-45deg, transparent 75%, #141414 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  /* Renders are pixel work; the browser's smoothing lies about a hard edge. */
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* FIT never enlarges past natural size — a 64px icon blown across a 1200px
+   window is a worse reading of it than the icon. */
+.imageview-stage.is-fit .imageview-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}

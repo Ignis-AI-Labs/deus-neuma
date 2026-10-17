@@ -1,0 +1,390 @@
+/* CONTEXT MAP — LINE & CYCLE. Monochrome at rest; signal marks live data:
+   the bar segments and measured counts of the CURRENT event carry it,
+   labels and estimates stay in the grayscale registers. */
+
+.ctx {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.ctx-tabs {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ctx-tab {
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.ctx-tab:hover { border-color: var(--line-hover); color: var(--color-text-secondary); }
+
+.ctx-tab:focus-visible { outline: none; border-color: var(--color-border-focus); }
+
+.ctx-tab.is-on {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+
+.ctx-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* FIELD register: the canvas IS the content — the pane hands the field its
+   full remaining box (the stage flexes below the head) and only scrolls when
+   the window drops under the field's reasonable minimum. */
+.ctx-scroll.is-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.ctx-comp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ctx-h {
+  color: var(--color-heading);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+/* The anatomy bar — one segment per section, width proportional to its
+   token weight. The segments are the live data: signal, faint. */
+.ctx-bar {
+  display: flex;
+  height: 14px;
+  border: 1px solid var(--line);
+  background: var(--color-surface);
+}
+
+.ctx-seg {
+  flex-basis: 0;
+  min-width: 2px;
+  background: var(--signal-faint);
+  border-right: 1px solid var(--color-void);
+}
+
+.ctx-seg:last-child { border-right: none; }
+
+.ctx-seg:nth-child(2n) { background: var(--signal-dim); opacity: 0.35; }
+
+.ctx-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.ctx-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--grid);
+  outline: none;
+}
+
+.ctx-row:focus-visible { background: var(--color-glass-hover); }
+
+.ctx-row-label {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.ctx-row-chars {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+}
+
+.ctx-tok {
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 11px;
+}
+
+/* A measured count is live truth from the provider — signal. */
+.ctx-tok-measured { color: var(--signal); }
+
+.ctx-est {
+  color: var(--color-text-disabled);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.ctx-total {
+  border-top: 1px solid var(--line);
+  border-bottom: none;
+}
+
+.ctx-total .ctx-row-label { color: var(--color-text-primary); }
+
+.ctx-budget { border-bottom: none; }
+
+.ctx-budget-val {
+  grid-column: 2 / 4;
+  justify-self: end;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+/* Compressed regions — collapsed chamfered nodes carrying real refs. */
+.ctx-refs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ctx-ref { outline: none; }
+
+.ctx-ref:focus-visible { background: var(--line-hover); }
+
+.ctx-ref-in {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 10px;
+}
+
+.ctx-ref-id {
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.ctx-ref-kind {
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+}
+
+.ctx-ref-kept {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  justify-self: end;
+}
+
+.ctx-note {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+/* FIELD — the crystallized-memory graph. Monochrome throughout: rings,
+   links, and dots rest in the grayscale registers; signal marks exactly
+   one thing — the focused node (live attention, nothing else). */
+.ctx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The drawn field's box — every pixel the head leaves, resized live with the
+   panel; under the reasonable minimum the pane scrolls instead of crushing. */
+.ctx-field-stage {
+  flex: 1 1 auto;
+  min-height: 220px;
+}
+
+.ctx-field-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--color-void);
+  padding-bottom: 4px;
+}
+
+.ctx-field-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ctx-field-refresh {
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.ctx-field-refresh:hover { border-color: var(--line-hover); color: var(--color-text-secondary); }
+
+.ctx-field-refresh:focus-visible { outline: none; border-color: var(--color-border-focus); }
+
+.empty-state .ctx-field-refresh { margin-top: 10px; }
+
+.ctx-field-count {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.ctx-field-note {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+}
+
+.ctx-field-strip {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--grid);
+  padding-bottom: 6px;
+  min-height: 16px;
+}
+
+.ctx-field-strip-label {
+  color: var(--color-text-primary);
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-field-hint { color: var(--color-text-tertiary); }
+
+.ctx-field-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* the drag IS the pan — never a browser scroll gesture */
+}
+
+/* Hairline discipline under the scaling viewBox: strokes hold their screen
+   weight at any pane size or zoom — the field scales, the line does not. */
+.ctx-field-ring,
+.ctx-field-edge,
+.ctx-field-dot {
+  vector-effect: non-scaling-stroke;
+}
+
+.ctx-field-ring {
+  fill: none;
+  stroke: var(--line);
+  stroke-dasharray: 4 4;
+}
+
+.ctx-field-edge {
+  stroke: var(--line);
+  stroke-width: 0.6;
+}
+
+.ctx-field-node { outline: none; cursor: pointer; }
+
+.ctx-field-dot {
+  fill: var(--color-glass-light);
+  stroke: var(--line-hover);
+  stroke-width: 1;
+}
+
+.ctx-field-node:hover .ctx-field-dot { stroke: var(--color-text-secondary); }
+
+.ctx-field-dot.is-focused {
+  stroke: var(--signal);
+  fill: var(--signal-faint);
+}
+
+/* ————— FIELD depth pass: presence/community chips, lens dim, zoom ————— */
+
+.ctx-field-presences,
+.ctx-field-communities {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+}
+
+.ctx-field-chip-h {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-disabled);
+  margin-right: var(--space-1);
+}
+
+.ctx-chip {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 1px var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.ctx-chip:hover { color: var(--signal); border-color: var(--signal-dim); }
+.ctx-chip.is-on { color: var(--signal); border-color: var(--signal); }
+.ctx-chip.is-witness { border-color: var(--signal-dim); }
+.ctx-chip.is-contact { color: var(--color-text-tertiary); }
+
+.ctx-chip-n {
+  color: var(--color-text-disabled);
+  font-size: 9px;
+}
+
+.ctx-field-zoom {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.ctx-zoom-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  min-width: 22px;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.ctx-zoom-btn:hover { color: var(--signal); border-color: var(--signal-dim); }
+
+.ctx-field-lens-note { color: var(--signal); }
+
+/* The lens DIMS what it doesn't hold — the layout never reflows. */
+.ctx-field-dot.is-dim { opacity: 0.16; }
+.ctx-field-edge.is-dim { opacity: 0.08; }
+
+/* Panning: the field is a grabbable surface. */
+.ctx-field-svg { cursor: grab; touch-action: none; }
+.ctx-field-svg:active { cursor: grabbing; }

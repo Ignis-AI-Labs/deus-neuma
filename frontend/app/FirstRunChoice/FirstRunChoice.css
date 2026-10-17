@@ -1,0 +1,176 @@
+/* FirstRunChoice — the door. LINE & CYCLE: monochrome at rest, signal marks
+   the live thing, chamfers via .cham, never a border-radius. */
+
+.firstrun {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-void);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+.firstrun-inner {
+  width: 100%;
+  max-width: 72rem;
+  background: var(--color-surface);
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  padding: var(--space-10);
+}
+
+.firstrun-eyebrow {
+  color: var(--signal);
+  margin: 0 0 var(--space-3);
+}
+
+.firstrun-title {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-3xl);
+  color: var(--color-heading);
+  margin: 0 0 var(--space-4);
+}
+
+.firstrun-lede {
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-8);
+  max-width: 44rem;
+  line-height: 1.6;
+}
+
+.firstrun-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--space-5);
+}
+
+/* A path is a button, not a card with a button inside it: the whole target is
+   the choice, so a keyboard reaches it in one tab and a pointer cannot miss. */
+.firstrun-path {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  text-align: left;
+  padding: var(--space-6);
+  background: var(--color-glass);
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.firstrun-path:hover:not(:disabled),
+.firstrun-path:focus-visible {
+  background: var(--color-glass-hover);
+  border-color: var(--signal);
+  outline: none;
+}
+
+.firstrun-path:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.firstrun-path-tag {
+  color: var(--signal);
+}
+
+.firstrun-path-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-light);
+  color: var(--color-heading);
+}
+
+.firstrun-path-body {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* The precondition, stated on the face of the door rather than discovered
+   behind it — the whole point of this screen. */
+.firstrun-path-need {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  color: var(--color-text-tertiary);
+  border-top: var(--border-width-thin) solid var(--color-border-primary);
+}
+
+/* REHEARSE FIRST — a quieter third door under the two: the same ceremony,
+   nothing kept. Ink at rest; SIGNAL only on hover, like the paths. */
+.firstrun-rehearse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  text-align: left;
+  background: transparent;
+  border: var(--border-width-thin) dashed var(--color-border-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.firstrun-rehearse:hover:not(:disabled),
+.firstrun-rehearse:focus-visible {
+  background: var(--color-glass-hover);
+  border-color: var(--signal);
+  outline: none;
+}
+.firstrun-rehearse:disabled { opacity: 0.4; cursor: default; }
+.firstrun-rehearse-tag { color: var(--color-text-tertiary); }
+.firstrun-rehearse:hover:not(:disabled) .firstrun-rehearse-tag { color: var(--signal); }
+.firstrun-rehearse-body {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.firstrun-foot {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  margin: var(--space-8) 0 0;
+}
+
+/* THE FLIGHT CHECK — what this machine can actually hold. Informs the choice,
+   never gates it: `insufficient` uses --alert to be honest about the floor, but
+   the door stays clickable. */
+.firstrun-capacity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width-thin) solid var(--color-border-primary);
+}
+
+.firstrun-capacity-machine {
+  color: var(--color-text-tertiary);
+}
+
+.firstrun-capacity-headline {
+  color: var(--signal);
+}
+
+.firstrun-capacity.is-insufficient .firstrun-capacity-headline {
+  color: var(--alert);
+}
+
+.firstrun-capacity.is-cpu .firstrun-capacity-headline,
+.firstrun-capacity.is-unknown .firstrun-capacity-headline {
+  color: var(--color-text-secondary);
+}
+
+.firstrun-capacity-detail {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}

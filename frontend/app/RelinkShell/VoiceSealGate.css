@@ -1,0 +1,42 @@
+/* VoiceSealGate — the desk's first-seal notice (LINE & CYCLE) */
+.voice-seal-gate {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 70;
+}
+
+.voice-seal-card {
+  max-width: 620px;
+  width: calc(100% - var(--space-8));
+}
+
+.voice-seal-card .cham-in {
+  padding: var(--space-6);
+}
+
+.voice-seal-title {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--signal);
+  margin-bottom: var(--space-4);
+}
+
+.voice-seal-body {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.voice-seal-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}

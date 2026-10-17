@@ -1,0 +1,240 @@
+/* ExplorerPanel — the desk's persistent left rail (D6/D12). LINE & CYCLE:
+   chamfered head card, hairline column, monochrome at rest; SIGNAL only on
+   live interaction. The rail keeps the status strip (top) and the dock
+   (bottom) clear with the same 52/68 clearances the window bounds hold. */
+
+.xp {
+  /* The operator's width, carried as a custom property from the panel's own
+     persisted state; 300px is only where it starts. A fixed rail is a guess
+     about someone else's monitor, font size, and how deep their tree nests. */
+  flex: 0 0 var(--xp-width, 300px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 52px var(--space-2) 68px var(--space-2);
+  border-right: 1px solid var(--line);
+  background: var(--color-void);
+  overflow: hidden;
+  position: relative; /* the grip anchors to this edge */
+}
+
+/* THE GRIP — the rail's right edge, draggable. Two hairlines wide at rest so
+   it reads as the border it lives on; SIGNAL on hover/focus like every other
+   live interaction on the desk. */
+.xp-grip {
+  position: absolute;
+  top: 0;
+  right: -3px; /* straddles the border, so the target is the EDGE itself */
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 2;
+  touch-action: none; /* the browser must not steal the drag as a scroll */
+}
+
+.xp-grip::after {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
+  background: transparent;
+  transition: background var(--motion-fast, 120ms) ease;
+}
+
+.xp-grip:hover::after,
+.xp-grip:focus-visible::after,
+.xp.is-resizing .xp-grip::after {
+  background: var(--signal);
+}
+
+.xp-grip:focus-visible {
+  outline: none; /* the SIGNAL bar above IS the focus ring */
+}
+
+/* While dragging, the desk must not select text or fight the cursor. */
+.xp.is-resizing {
+  user-select: none;
+}
+
+/* Reduced motion: the grip still works, it just stops easing. */
+@media (prefers-reduced-motion: reduce) {
+  .xp-grip::after { transition: none; }
+}
+
+.xp.is-collapsed {
+  flex: 0 0 34px;
+  padding-left: 0;
+  padding-right: 0;
+  align-items: center;
+}
+
+/* Collapsed: the body stays MOUNTED (one-mount law D12) but hidden. */
+.xp.is-collapsed .xp-body {
+  display: none;
+}
+
+/* Collapsed: one vertical affordance — the rail names itself. */
+.xp-expand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  padding: var(--space-2) 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
+.xp-expand:hover {
+  color: var(--signal);
+}
+
+.xp-expand-word {
+  writing-mode: vertical-rl;
+}
+
+/* Head card — chamfered frame carrying the focus lens + actions. */
+.xp-head {
+  flex: 0 0 auto;
+  background: var(--line);
+  padding: 1px;
+}
+
+.xp-head-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-void);
+  padding: var(--space-2) var(--space-3);
+}
+
+.xp-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.xp-title {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+
+.xp-collapse {
+  background: transparent;
+  border: none;
+  padding: 0 var(--space-1);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
+.xp-collapse:hover {
+  color: var(--signal);
+}
+
+.xp-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.xp-kind {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+}
+
+.xp-name {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The focus name wears the repo's state (witness law): green = fully
+   committed, amber = uncommitted work, red = conflicted/broken. */
+.xp-name.is-clean { color: var(--git-added); }
+.xp-name.is-dirty { color: var(--git-modified); }
+.xp-name.is-conflicted { color: var(--git-conflicted); }
+
+.xp-sub {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.xp-none {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-disabled);
+}
+
+.xp-open,
+.xp-widen {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.xp-open:hover,
+.xp-widen:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.xp-widen {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xp-note {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--alert);
+  word-break: break-word;
+}
+
+/* The hosted FILES surface. In a rail this narrow the tree/editor split
+   stacks vertically instead of side-by-side. */
+.xp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+}
+
+.xp-body .files-main {
+  flex-direction: column;
+}
+
+.xp-body .files-tree {
+  flex: 1 1 50%;
+  border-right: none;
+  border-bottom: 1px solid var(--line);
+}

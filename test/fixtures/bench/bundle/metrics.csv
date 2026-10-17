@@ -1,0 +1,3 @@
+runId,comparisonId,arm,status,attempt,metric,value
+night-20260920t230631z-heartbeat-neuma-a1-20260920230831179,night-20260920t230631z-heartbeat,neuma,succeeded,1,"gsm8k/exact_match,strict-match",0.96
+night-20260920t230631z-heartbeat-neuma-a1-20260920230831179,night-20260920t230631z-heartbeat,neuma,succeeded,1,"gsm8k/exact_match,flexible-extract",0.96

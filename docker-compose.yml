@@ -1,0 +1,40 @@
+# Neuma — Docker Compose for self-hosted deployment
+# Usage:
+#   cp .env.example .env   # edit with your config
+#   docker compose up -d
+#   docker compose logs -f
+
+services:
+  neuma:
+    build: .
+    container_name: neuma
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3333}:3333"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      # Required vars validated at startup by backend/config.js:
+      # DNA_ENCRYPTION_KEY (must be set in production)
+      # AUTH_SECRET (must be set in production)
+    volumes:
+      # Persistent neuma data — survives container rebuilds
+      - neuma-workspaces:/app/workspaces
+      - neuma-vault:/app/vault
+      - neuma-data:/app/data
+      - neuma-uploads:/app/uploads
+      # VRM vessel models (optional — mount custom models)
+      # - ./models:/app/frontend/public/model
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3333/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start-period: 15s
+      retries: 3
+
+volumes:
+  neuma-workspaces:
+  neuma-vault:
+  neuma-data:
+  neuma-uploads:

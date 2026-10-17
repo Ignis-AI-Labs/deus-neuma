@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "kind": "benchmark-run",
+  "runId": "desk-2026-09-28t01-41-53-bare-a1-20260928014248563",
+  "comparisonId": "desk-2026-09-28t01-41-53",
+  "protocolSha256": "61ab7dee1a08133e62dc1fdf97c6745d9e6fdf60f4531cdb9a36bb481441e8f5",
+  "attempt": 1,
+  "arm": "bare",
+  "evidence": "development",
+  "approval": {
+    "by": "0x40566d43261849777aca96b26f4ec8c850e5dcae",
+    "at": "2026-09-28T01:42:48.528Z"
+  },
+  "suite": {
+    "id": "inspect-winogrande-8192",
+    "tier": "t2",
+    "adapter": "inspect",
+    "dimensions": [
+      "reasoning"
+    ],
+    "repository": "https://github.com/UKGovernmentBEIS/inspect_evals",
+    "revision": "b935c0e5cfa04710f016f925db75d8e81413e2cf",
+    "tasks": [
+      "winogrande"
+    ]
+  },
+  "subject": {
+    "modelId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "identity": {
+      "kind": "local-artifact",
+      "revision": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "mutable": false
+    },
+    "quantization": "Q8_K_P",
+    "tokenizer": "/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+    "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+    "route": {
+      "provider": "llama-server",
+      "dialect": "openai",
+      "endpointClass": "loopback"
+    }
+  },
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 8192,
+    "concurrency": 4,
+    "sampleLimit": 50,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 43200000,
+    "platformRules": 1,
+    "taskConfigSha256": "6fe7f30f8a384f04ec7e4d0b1b566317e2533b7451a25cc2cef92d05d31e6c54"
+  },
+  "harness": {
+    "profile": "bare-v1",
+    "neumaRevision": "5882585c8bdafbe5f4ae3df824e67c17ec4b495b",
+    "subjectCheckout": null,
+    "workingTreeDirty": false,
+    "identityLayersEnabled": false,
+    "identity": {
+      "mode": "none"
+    },
+    "laneId": null,
+    "referenceHarness": null
+  },
+  "environment": {
+    "platform": "linux",
+    "release": "7.2.7-200.fc44.x86_64",
+    "arch": "x64",
+    "node": "v24.13.1",
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 610.57.04"
+  },
+  "status": "succeeded",
+  "timing": {
+    "startedAt": "2026-09-28T01:42:48.563Z",
+    "finishedAt": "2026-09-28T01:43:53.613Z",
+    "durationMs": 65050
+  },
+  "metrics": [
+    {
+      "id": "winogrande/choice/accuracy",
+      "task": "winogrande",
+      "value": 0.96,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 50,
+      "source": "2026-09-28T01-42-54-00-00_winogrande_S2qyaPtH8fRv9SJQdkEwEt.json"
+    },
+    {
+      "id": "winogrande/choice/stderr",
+      "task": "winogrande",
+      "value": 0.027994168488950612,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": false,
+      "sampleCount": 50,
+      "source": "2026-09-28T01-42-54-00-00_winogrande_S2qyaPtH8fRv9SJQdkEwEt.json"
+    },
+    {
+      "id": "suite/mean_model_latency",
+      "task": "suite",
+      "value": 4.356876952179591,
+      "unit": "seconds",
+      "higherIsBetter": false,
+      "primary": false,
+      "sampleCount": 50,
+      "source": "inspect-model-events"
+    }
+  ],
+  "sampleSelection": {
+    "sha256": "c5c844dd68c2277280808d488fe00770d9d692a28039540addf8a2833c3d2a80",
+    "count": 50,
+    "measurement": "measured"
+  },
+  "efficiency": {
+    "promptTokens": 18510,
+    "completionTokens": 9519,
+    "requests": 50,
+    "toolCalls": 0,
+    "retries": 0,
+    "measurement": "measured",
+    "peakInFlight": 4,
+    "meanInFlight": 3.78,
+    "ttftMsP50": null,
+    "prefillMsP50": 287.961,
+    "decodeTokensPerSec": 48.43,
+    "cachedPromptTokens": 12512,
+    "timedRequests": 50,
+    "timingSource": "llama-server-timings"
+  },
+  "executions": [
+    {
+      "stage": "inspect-eval",
+      "command": "/workspace/repos/project-fuvofos/.slabs/e0e9c2b1a212f9ef33ce77162194999abc4204223809b158291cb3a8c3e9f852/src/.venv/bin/inspect",
+      "args": [
+        "eval",
+        "inspect_evals/winogrande",
+        "--model",
+        "openai-api/neuma//models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+        "--model-base-url",
+        "http://127.0.0.1:40767/v1",
+        "--log-dir",
+        "/workspace/repos/project-fuvofos/work/desk-2026-09-28t01-41-53-bare-a1-20260928014248563/raw",
+        "--log-format",
+        "json",
+        "--max-connections",
+        "4",
+        "--max-retries",
+        "0",
+        "--timeout",
+        "900",
+        "--temperature",
+        "0",
+        "--top-p",
+        "1",
+        "--max-tokens",
+        "8192",
+        "--seed",
+        "7",
+        "--display",
+        "none",
+        "--json",
+        "--limit",
+        "50"
+      ],
+      "cwd": "/workspace/repos/project-fuvofos/.slabs/e0e9c2b1a212f9ef33ce77162194999abc4204223809b158291cb3a8c3e9f852/src",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 64977,
+      "timedOut": false,
+      "aborted": false
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "manifest",
+      "path": "raw/manifest.json",
+      "sha256": "bc472f143d0bc25d47cdb5db62eb2226baf6b0e6c1286a550c439d4ba8fc235c",
+      "bytes": 2005
+    },
+    {
+      "kind": "stdout",
+      "path": "stdout/inspect-eval.log",
+      "sha256": "db73c84ab2ee03e60d1d29994796bf982b45897ce775eed6b1e032293c0cad88",
+      "bytes": 648
+    },
+    {
+      "kind": "stderr",
+      "path": "stderr/inspect-eval.log",
+      "sha256": "f448a488abccd898d6f2b3d9978a6a8d2b56bd5e96098a73150cfb0018f487fa",
+      "bytes": 885
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/2026-09-28T01-42-54-00-00_winogrande_S2qyaPtH8fRv9SJQdkEwEt.json",
+      "sha256": "dcc3ad8233d9fa5575d7c8061db2b1230dd69d001e93b2a3d4dbf86ff2fb9119",
+      "bytes": 1228931
+    },
+    {
+      "kind": "protocol-telemetry",
+      "path": "raw/protocol-telemetry.json",
+      "sha256": "4af0f5790cce4a8082d4041dfcc7569b36b371e4dc1ca745c6a08998f54f6488",
+      "bytes": 14947
+    }
+  ],
+  "failure": null
+}

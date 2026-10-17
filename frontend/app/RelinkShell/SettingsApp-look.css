@@ -1,0 +1,223 @@
+/* SettingsApp-look.css — extracted from SettingsApp.css (size law). THE LOOK + the level/board audio; imported after SettingsApp.css by BOTH SettingsApp.jsx and WitnessesApp.jsx. */
+/* ── THE LOOK — cosmetic control ──────────────────────────────────── */
+/* Four knob rows: label, a chamfer-less native swatch (the OS picker is a
+   dialog, not an in-page panel — the dropdown law is untouched), the hex
+   as data, a voice-register hint. */
+.settings-look-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+/* A knob group — the board reads as WHAT INFLUENCES WHAT at a glance. */
+.settings-look-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-look-group-h {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--color-heading);
+}
+
+.settings-look-group-note {
+  margin-left: var(--space-2);
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-style: italic;
+  font-size: var(--text-xs);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text-tertiary);
+}
+
+.settings-look-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settings-look-swatch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color var(--snap);
+}
+.settings-look-swatch:hover { border-color: var(--line-hover); }
+.settings-look-swatch::-webkit-color-swatch-wrapper { padding: 2px; }
+.settings-look-swatch::-webkit-color-swatch { border: none; }
+.settings-look-swatch::-moz-color-swatch { border: none; }
+
+.settings-look-hex {
+  flex: 0 0 96px;
+}
+
+.settings-look-hint {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* Preset shelf — each dress is a row: a four-chip strip + its name. */
+.settings-look-presets {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-look-presets li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-look-preset {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--snap);
+}
+
+.settings-look-strip {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.settings-look-chip {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--line);
+}
+
+.settings-look-name {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  transition: color var(--snap);
+}
+
+.settings-look-preset:hover .settings-look-name {
+  color: var(--color-text-secondary);
+}
+
+.settings-look-preset.is-on .settings-look-name {
+  color: var(--signal);
+}
+
+/* A destructive action reuses the data-register button, tinted alert. */
+.settings-set.is-danger {
+  color: var(--alert);
+}
+.settings-set.is-danger:hover:not(:disabled) {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+/* THE LEVEL — the dial stays reachable while sound is off (a witness may set
+   the level before giving the world its voice), but it reads as the quiet
+   thing it is until the switch is on. */
+.settings-vol {
+  align-items: center;
+}
+
+.settings-vol.is-quiet {
+  opacity: 0.55;
+}
+
+.settings-vol-dial {
+  width: 160px;
+  accent-color: var(--signal);
+}
+
+.settings-vol-value {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+  min-width: 4ch;
+}
+
+/* THE BOARD — every baked cue, playable, so a binding can be RATIFIED by ear
+   instead of by filename. Dense on purpose: 31 cues have to be scannable in
+   one look, or auditioning a whole soundscape becomes a scrolling chore. */
+.settings-board-host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.settings-board-host.is-quiet {
+  opacity: 0.55;
+}
+
+.settings-board-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-board-h {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.settings-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-1);
+}
+
+.settings-cue {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.settings-cue:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.settings-cue-len {
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+}
+
+.settings-cue:hover .settings-cue-len {
+  color: var(--signal);
+}
+

@@ -1,0 +1,14 @@
+/* AuthImage's two placeholders. They lived in GalleryApp.css, which only the
+   gallery imports — the AI-activity rail and the forge bench were drawing their
+   loading and broken states out of a stylesheet belonging to a window they have
+   nothing to do with. Both must hold the element's shape so a grid does not
+   jump as bytes land. */
+
+.authimg-loading,
+.authimg-missing {
+  display: block;
+  background: var(--color-bg, #000);
+  border: 1px solid var(--line);
+}
+
+.authimg-missing { border-color: var(--alert); }

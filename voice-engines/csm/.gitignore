@@ -1,0 +1,4 @@
+_weights/
+__pycache__/
+.venv/
+_build/

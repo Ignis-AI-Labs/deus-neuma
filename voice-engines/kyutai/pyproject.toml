@@ -1,0 +1,19 @@
+[project]
+name = "kyutai-sidecar"
+version = "0.1.0"
+description = "Local HTTP sidecar for Kyutai TTS 1.6B — true per-frame streaming TTS with CC0 preset + minted voices."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # moshi pinned exactly: the TTSGen inner loop this sidecar ports was proven
+    # against 0.2.13 on this rig (sesame-class-voice-0y39 / kyutai-engine-phase1-srex).
+    "moshi==0.2.13",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.5",
+    "torch>=2.4",
+    "numpy>=1.24",
+    "safetensors>=0.4",
+]
+
+[tool.uv]
+torch-backend = "cu121"

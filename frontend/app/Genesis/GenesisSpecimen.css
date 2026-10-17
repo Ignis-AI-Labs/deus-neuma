@@ -1,0 +1,73 @@
+/* GenesisSpecimen — the rehearsal chrome around GENESIS: a transport bar
+   and the cue log. Specimen furniture only — it never ships in the act. */
+
+.gs-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line);
+  background: var(--color-glass);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+.gs-tag { color: var(--alert-dim); letter-spacing: 0.22em; white-space: nowrap; }
+.gs-btn {
+  height: 32px;
+  min-width: 36px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.gs-btn:hover, .gs-btn.is-on { color: var(--signal); border-color: var(--signal-dim); }
+.gs-time { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-text-primary); }
+.gs-beatname { min-width: 120px; color: var(--signal); }
+
+.gs-scrub { position: relative; flex: 1 1 auto; height: 32px; display: flex; align-items: center; }
+.gs-range { width: 100%; accent-color: var(--signal); }
+.gs-beat {
+  position: absolute;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  margin-left: -4px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--line-hover);
+  transform: rotate(45deg); /* a junction diamond — FLOW GEOMETRY */
+  cursor: pointer;
+}
+.gs-beat.is-now { border-color: var(--signal); background: var(--signal-faint); }
+
+.gs-cues {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+.gs-label { letter-spacing: 0.22em; margin-bottom: var(--space-1); }
+.gs-cue b { color: var(--color-text-primary); font-weight: 400; }
+.gs-cue:first-of-type { color: var(--signal); animation: gs-cue-in 260ms var(--ease-snap) both; }
+.gs-cue:first-of-type b { color: var(--signal); }
+@keyframes gs-cue-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: none; }
+}

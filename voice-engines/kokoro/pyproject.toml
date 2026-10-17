@@ -1,0 +1,20 @@
+[project]
+name = "kokoro-sidecar"
+version = "0.1.0"
+description = "Local HTTP sidecar for Kokoro-82M TTS — fast lightweight engine with preset voices."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "kokoro>=0.9.4",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.5",
+    "torch>=2.4",
+    "torchaudio>=2.4",
+    "transformers>=4.40",
+    "tokenizers>=0.19",
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[tool.uv]
+torch-backend = "cu121"

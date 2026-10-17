@@ -1,0 +1,161 @@
+/* ArrivalVeil — the study's boot overlay (§00) productized as the desk's
+   session-opening veil. Chamfered shutters part on the diagonal; the screen
+   is monochrome until something is live — SIGNAL marks the open question,
+   SUCCESS the answered, ALERT the held. Reduced-motion: no veil at all. */
+
+.arrival {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-max);
+}
+
+/* The chamfered shutters — a diagonal split, not a curtain */
+.arrival-shutter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--color-void);
+  transition: transform 680ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.arrival-shutter-top {
+  top: 0;
+  height: 52%;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 40px), 0 100%);
+}
+.arrival-shutter-bottom {
+  bottom: 0;
+  height: 52%;
+  clip-path: polygon(0 40px, 100% 0, 100% 100%, 0 100%);
+}
+
+.arrival-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-void);
+  transition: opacity 200ms linear;
+}
+
+.arrival.is-done .arrival-stage,
+.arrival.is-skip .arrival-stage { opacity: 0; }
+.arrival.is-done .arrival-shutter-top { transform: translateY(-102%); }
+.arrival.is-done .arrival-shutter-bottom { transform: translateY(102%); }
+.arrival.is-skip .arrival-shutter { transition-duration: 240ms; }
+.arrival.is-skip .arrival-stage { transition-duration: 80ms; }
+.arrival.is-skip .arrival-shutter-top { transform: translateY(-102%); }
+.arrival.is-skip .arrival-shutter-bottom { transform: translateY(102%); }
+
+/* The line — the first mark, then it dies */
+.arrival-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72vw;
+  height: 1px;
+  transform: translate(-50%, -50%) scaleX(0);
+  background: var(--signal);
+  box-shadow: 0 0 16px var(--signal);
+  pointer-events: none;
+  animation: arrivalLine 900ms linear forwards;
+}
+/* The line SCALES from center (the motion law — never a width animation). */
+/* It rises as it draws — never on at full in one frame (the no-flash law). */
+@keyframes arrivalLine {
+  0% { transform: translate(-50%, -50%) scaleX(0); opacity: 0; }
+  25% { transform: translate(-50%, -50%) scaleX(0.6); opacity: 0.75; }
+  55% { transform: translate(-50%, -50%) scaleX(1); opacity: 0.75; }
+  100% { transform: translate(-50%, -50%) scaleX(1); opacity: 0; }
+}
+
+.arrival-seal {
+  margin-bottom: 30px;
+  opacity: 0;
+  animation: arrivalFade 400ms 460ms linear forwards;
+}
+@keyframes arrivalFade { to { opacity: 1; } }
+
+.arrival-word {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-extralight);
+  font-size: clamp(24px, 4vw, 40px);
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  color: var(--color-white);
+  min-height: 1.2em;
+  opacity: 0;
+  animation: arrivalFade 400ms 620ms linear forwards;
+}
+
+/* The staged self-test rows — data register */
+.arrival-rows { width: 264px; margin-top: 34px; }
+.arrival-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+}
+.arrival-row-k { color: var(--color-text-tertiary); }
+.arrival-row-s { color: var(--color-text-tertiary); }
+.arrival-row.is-checking .arrival-row-s { color: var(--signal); }
+.arrival-row.is-ok .arrival-row-s { color: var(--color-success); }
+.arrival-row.is-fresh .arrival-row-s { color: var(--color-text-secondary); }
+.arrival-row.is-held .arrival-row-s { color: var(--alert); }
+
+.arrival-hint {
+  margin-top: 42px;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  color: var(--color-text-disabled);
+}
+
+/* HOLDING — the arrival tells the truth and offers real actions */
+.arrival-holding { width: 340px; margin-top: 34px; text-align: center; }
+.arrival-holding-reason {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--alert);
+}
+.arrival-holding-detail {
+  margin-top: 10px;
+  font-family: var(--font-data);
+  font-size: 9px;
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+.arrival-holding-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.arrival-action {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.arrival-action:hover {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No veil at all — the desk appears as today */
+  .arrival { display: none; }
+}

@@ -1,0 +1,410 @@
+/* FloatingWindow — LINE & CYCLE window primitive.
+   A chamfered frame floating over the canvas grid, draggable by its bar,
+   resizable from every edge and corner, with an aero-style snap grid. */
+
+.fwin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: var(--z-raised);
+}
+
+/* The drag/resize interaction must not select text or lag behind the cursor.
+   A window takes its own GPU layer only WHILE it moves (2026-10-04): every
+   window promoted at all times — two of them full-size on a wide screen —
+   overflowed the GPU's tile budget and content stopped drawing. */
+.fwin.is-dragging {
+  user-select: none;
+  will-change: transform;
+}
+
+/* Wholly covered by a window above it (frame-registry isFrameOccluded):
+   nothing of it shows, so nothing of it is drawn. Its state stays mounted. */
+.fwin.is-occluded {
+  visibility: hidden;
+}
+
+/* THE SHADOW LIVES ON ITS OWN LAYER (2026-09-28 smoothness pass). It was a
+   `filter: drop-shadow` on the whole window, so every character a being
+   streamed re-rendered the window THROUGH the filter — measured: 109 → 172
+   frames over one streamed reply, typing p50 160 → 112ms, with it gone. Now
+   the filter wraps an empty copy of the chamfer that never changes, so its
+   result never needs redrawing. (The filter sits OUTSIDE the clip: a
+   clip-path on the same element would cut the shadow away.) */
+.fwin-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.55));
+  animation: fwin-materialize 140ms 200ms linear backwards;
+}
+.fwin-shadow-shape { display: block; width: 100%; height: 100%; padding: 0; }
+
+/* The focused window lifts and its hairline carries signal */
+.fwin.is-focused .fwin-shadow {
+  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.62));
+}
+
+.fwin.is-focused .fwin-frame {
+  background: var(--signal-dim);
+}
+
+/* ── Raphael entrance/exit choreography ──────────────────────────────
+   On open: a line of light draws across center, the panel unfolds from
+   it (two void shutters part from the line), its hairline flashes, a void
+   veil lifts off the body as one scanline passes down. On close: the
+   shutters shut on the line, the frame fades, and the light contracts to a
+   point (.is-closing). Runs once on
+   mount; replays when a window is restored (re-mounted).
+   THE MOTION LAW: every keyframe here moves or fades — transform and
+   opacity only, and only on OVERLAY layers (the line, the shutters, the
+   veil, the scan) — the panel and its body never animate, since an in-flow
+   transform re-lays out its subtree every frame. The old unfold animated
+   the line's width and the frame's scale: 25 layouts per open, measured
+   2026-09-25; this runs at 5 (test/e2e/motion-budget.spec.js). */
+
+.fwin-light {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 1px;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(-50%) scaleX(0);
+  background: var(--signal);
+  box-shadow: 0 0 14px var(--signal);
+  pointer-events: none;
+  z-index: 3;
+  animation: fwin-line 760ms linear forwards;
+}
+
+/* The frame materializes around the line once it spans — never an empty
+   box before the light has drawn. */
+.fwin-frame {
+  position: relative;
+  animation: fwin-materialize 140ms 200ms linear backwards;
+}
+/* The hairline's arrival beat: a signal layer beneath the void fill, so
+   only the 1px frame shows it; it fades out. */
+.fwin-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--signal);
+  opacity: 0;
+  pointer-events: none;
+  animation: fwin-arrive 380ms 480ms ease-in-out;
+}
+.fwin-inner { position: relative; z-index: 1; }
+
+/* The unfold: two void shutters, meeting at the line, part up and down to
+   open the panel (the boot's chamfered shutters, at window scale). Overlays
+   that scale — the panel itself never animates, so nothing re-lays out. */
+.fwin-inner::before,
+.fwin-inner::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  z-index: 6;
+  pointer-events: none;
+  background: var(--color-void);
+  transform: scaleY(0);
+  animation: fwin-shutter var(--dur-unfold) 220ms var(--ease-snap) backwards;
+}
+.fwin-inner::before { top: 0; transform-origin: top center; }
+.fwin-inner::after { bottom: 0; transform-origin: bottom center; }
+
+/* The body reads in behind the unfold: a void veil over it fades away while
+   one scanline passes down — the CRT reading the panel in. Both are overlay
+   layers (::before, ::after) so the body itself never animates: an in-flow
+   transform re-lays out its subtree every frame it plays. */
+.fwin-body { position: relative; }
+.fwin-body::before,
+.fwin-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.fwin-body::before {
+  z-index: 4;
+  background: var(--color-void);
+  animation: fwin-veil 300ms 480ms linear backwards;
+}
+.fwin-body::after {
+  z-index: 5;
+  background: linear-gradient(to bottom,
+    transparent 0%, var(--signal-faint) 46%, rgba(95, 233, 255, 0.55) 50%, transparent 51%);
+  transform: translateY(-100%);
+  animation: fwin-scan var(--dur-scan) 520ms linear;
+}
+
+/* MGS lock-on: four corner ticks snap onto the focused window. */
+.fwin-brackets {
+  position: absolute;
+  inset: -5px;
+  z-index: 4;
+  pointer-events: none;
+  --tick: 10px;
+  --tc: var(--signal);
+  background:
+    linear-gradient(var(--tc), var(--tc)) top left / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) top left / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) top right / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) top right / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) bottom left / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) bottom left / 1px var(--tick),
+    linear-gradient(var(--tc), var(--tc)) bottom right / var(--tick) 1px,
+    linear-gradient(var(--tc), var(--tc)) bottom right / 1px var(--tick);
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.025);
+  transition: opacity var(--dur-snap) linear, transform var(--dur-snap) var(--ease-snap);
+}
+.fwin.is-focused .fwin-brackets { opacity: 0.9; transform: scale(1); }
+.fwin.is-dragging .fwin-brackets,
+.fwin.is-leaving .fwin-brackets { opacity: 0; }
+
+.fwin.is-leaving {
+  pointer-events: none;
+}
+
+/* Minimize — an in-place window-shade: the body swallows up (grid row to
+   0fr) and the tab head stays where it is. See .fwin-inner / .fwin-body. */
+
+/* Close — a sever: the panel collapses to the line, then the line flashes
+   bright, snaps to a glowing point, and winks out. Gone from the viewport. */
+.fwin.is-closing .fwin-light {
+  animation: fwin-sever 400ms var(--ease-shutter) forwards;
+}
+
+.fwin.is-closing .fwin-inner::before,
+.fwin.is-closing .fwin-inner::after {
+  animation: fwin-shutter-close 210ms var(--ease-shutter) forwards;
+}
+.fwin.is-closing .fwin-frame,
+.fwin.is-closing .fwin-shadow {
+  animation: fwin-close 170ms 210ms linear forwards;
+}
+
+/* THE NO-FLASH LAW (utils/no-flash.js, Design note, 2026-10-04: every light here
+   rises over a beat — never on at full in one frame — and peaks softer. */
+@keyframes fwin-line {
+  0% { transform: translateY(-50%) scaleX(0); opacity: 0; }
+  24% { transform: translateY(-50%) scaleX(0.7); opacity: 0.7; }
+  34% { transform: translateY(-50%) scaleX(1); opacity: 0.7; }
+  64% { transform: translateY(-50%) scaleX(1); opacity: 0.7; }
+  100% { transform: translateY(-50%) scaleX(1); opacity: 0; }
+}
+
+@keyframes fwin-materialize {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fwin-shutter {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0); }
+}
+
+@keyframes fwin-arrive {
+  0% { opacity: 0; }
+  45% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+@keyframes fwin-veil {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fwin-scan {
+  0% { opacity: 1; transform: translateY(-100%); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(100%); }
+}
+
+/* Close: the shutters shut on the line, then the frame fades */
+@keyframes fwin-shutter-close {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes fwin-close {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Close: the line rises, holds through the collapse, then contracts to a
+   point at center and winks out */
+@keyframes fwin-sever {
+  0% { transform: translateY(-50%) scaleX(1); opacity: 0; }
+  30% { transform: translateY(-50%) scaleX(1); opacity: 0.7; }
+  55% { transform: translateY(-50%) scaleX(1); opacity: 0.7; }
+  100% { transform: translateY(-50%) scaleX(0.004); opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fwin-light,
+  .fwin-frame,
+  .fwin-shadow,
+  .fwin-inner::before,
+  .fwin-inner::after,
+  .fwin-frame::before,
+  .fwin-body::before,
+  .fwin-body::after,
+  .fwin.is-closing .fwin-light,
+  .fwin.is-closing .fwin-inner::before,
+  .fwin.is-closing .fwin-inner::after,
+  .fwin.is-closing .fwin-frame,
+  .fwin.is-closing .fwin-shadow {
+    animation: none;
+  }
+  .fwin-light { display: none; } /* no entrance plays, so no animationend unmounts it */
+  .fwin-inner { transition: none; }
+  .fwin-brackets { transition: none; }
+}
+
+/* .cham provides the 1px hairline; .cham-in the void fill */
+.fwin-frame {
+  width: 100%;
+  height: 100%;
+}
+
+/* Grid so the body can swallow to 0fr (the window-shade) while the tab head
+   (auto row) holds its place. */
+.fwin-inner {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  overflow: hidden;
+  transition: grid-template-rows 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fwin.is-collapsed .fwin-inner {
+  grid-template-rows: auto 0fr;
+}
+
+/* The swallow: animate the section height only during the toggle, so
+   resize stays instant. */
+.fwin.is-shading {
+  transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Title bar — the drag handle, data register */
+.fwin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.fwin.is-dragging .fwin-bar {
+  cursor: grabbing;
+}
+
+.fwin-bar-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fwin-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+
+.fwin-ctl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.fwin-ctl:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line);
+}
+
+.fwin-ctl-close:hover {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+/* Body — the hosted content; min-height:0 lets an inner scroll area work */
+.fwin-body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Resize handles — thin hit areas straddling the frame edges/corners */
+.fwin-rz {
+  position: absolute;
+  z-index: 2;
+}
+
+.fwin-rz-n { top: -3px; left: 10px; right: 10px; height: 8px; cursor: ns-resize; }
+.fwin-rz-s { bottom: -3px; left: 10px; right: 10px; height: 8px; cursor: ns-resize; }
+.fwin-rz-e { right: -3px; top: 10px; bottom: 10px; width: 8px; cursor: ew-resize; }
+.fwin-rz-w { left: -3px; top: 10px; bottom: 10px; width: 8px; cursor: ew-resize; }
+.fwin-rz-ne { top: -4px; right: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
+.fwin-rz-nw { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+.fwin-rz-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+.fwin-rz-sw { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
+
+/* Snap grid — drawn over the canvas while dragging */
+.fwin-snap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: var(--z-dropdown);
+  pointer-events: none;
+}
+
+.fwin-snap-line {
+  position: absolute;
+  background: var(--signal-faint);
+}
+
+.fwin-snap-v {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-0.5px);
+}
+
+.fwin-snap-h {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-0.5px);
+}
+
+.fwin-snap-cell {
+  position: absolute;
+  background: var(--signal-faint);
+  border: 1px solid var(--signal-dim);
+  box-shadow: inset 0 0 28px var(--signal-faint);
+  transition: left var(--snap), top var(--snap), width var(--snap), height var(--snap);
+}

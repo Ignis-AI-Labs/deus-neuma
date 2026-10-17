@@ -1,0 +1,160 @@
+/* FolderPicker contents — the readout head (count · filter · hidden) over
+   the rows. Rows are true-case names at reading size; hover and keyboard
+   focus lock MGS brackets on (kx-lock), each arrival cascades in under one
+   scanline (kx-cascade + kx-scan, the motion kernel). */
+
+.picker-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+.picker-listhead {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 48px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.picker-count {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-tertiary);
+}
+.picker-filter {
+  margin-left: auto;
+  flex: 0 1 220px;
+  min-width: 96px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-2);
+  background: var(--color-input-fill);
+  border: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  transition: border-color var(--snap);
+}
+.picker-filter:focus-within { border-color: var(--signal-dim); color: var(--signal); }
+.picker-filter-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+}
+.picker-toggle {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.picker-toggle:hover { color: var(--color-text-primary); border-color: var(--line-hover); }
+.picker-toggle.on { color: var(--signal); border-color: var(--signal-dim); }
+
+/* The list takes the remaining height and scrolls internally; min-height:0
+   lets it shrink so the footer (OPEN/CANCEL) is always pinned and clickable. */
+.picker-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2) 0;
+}
+.picker-rows { margin: 0; padding: 0 var(--space-3); list-style: none; }
+
+.picker-rowwrap { position: relative; }
+.picker-row {
+  --tick: 6px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.picker-row:hover,
+.picker-row:focus-visible { color: var(--color-text-primary); background: var(--color-glass-hover); outline: none; }
+.picker-glyph { flex: 0 0 auto; display: flex; color: var(--color-text-tertiary); transition: color var(--snap); }
+.picker-row:hover .picker-glyph,
+.picker-row:focus-visible .picker-glyph { color: var(--signal); }
+.picker-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker-chev { flex: 0 0 auto; display: flex; color: var(--color-text-disabled); transition: color var(--snap); }
+.picker-row:hover .picker-chev { color: var(--color-text-secondary); }
+/* Files (file-pick mode) read one notch quieter than the folders they sit among. */
+.picker-row.is-file { color: var(--color-text-tertiary); }
+.picker-rowwrap.is-hidden .picker-name { color: var(--color-text-tertiary); }
+
+/* OPEN without entering — surfaces on the row under the pointer or focus. */
+.picker-row-pick {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--space-3) + 28px);
+  height: 26px;
+  padding: 0 var(--space-3);
+  background: var(--color-void);
+  border: 1px solid var(--signal-dim);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: opacity var(--dur-snap) linear, background var(--snap);
+}
+.picker-rowwrap:hover .picker-row-pick,
+.picker-rowwrap:focus-within .picker-row-pick { opacity: 1; pointer-events: auto; }
+.picker-row-pick:hover { background: var(--signal-faint); }
+
+/* Empty / loading — one centered line in the data register, prose beneath. */
+.picker-note {
+  margin: 0;
+  padding: var(--space-10) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+.picker-note small {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  letter-spacing: 0;
+  color: var(--color-text-tertiary);
+}
+/* The unbounded wait breathes (LOADING doctrine): a segmented ring, turning. */
+.picker-note-ring {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  border: 1px dashed var(--line-hover);
+  border-top: 1px solid var(--signal);
+  animation: picker-turn 1.6s linear infinite;
+}
+@keyframes picker-turn {
+  to { transform: rotate(360deg); }
+}

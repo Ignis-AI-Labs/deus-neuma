@@ -1,0 +1,96 @@
+
+/* Slash palette — the installed skills library, summonable from "/".
+   Anchored above the input; monochrome at rest, SIGNAL marks the selection. */
+.relink-palette {
+  position: absolute;
+  left: var(--space-3);  /* flush with the input box's side margins */
+  right: var(--space-3);
+  bottom: calc(100% + 4px);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  max-height: 264px;
+  overflow-y: auto;
+  z-index: var(--z-sticky);
+}
+
+.relink-palette-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.relink-palette-row.is-sel {
+  border-left-color: var(--signal);
+  background: var(--color-glass-light);
+}
+
+.relink-palette-name {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-primary);
+  flex: 0 0 auto;
+}
+
+.relink-palette-row.is-sel .relink-palette-name {
+  color: var(--signal);
+}
+
+.relink-palette-desc {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Native commands are actions, not speech — the tag names their class so a
+   command reads apart from a skill (signal is reserved for live data). */
+.relink-palette-kind {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  padding: 0 var(--space-2);
+}
+
+.relink-palette-row.is-command.is-sel .relink-palette-kind {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+/* Cut the reply mid-stream — replaces send while a response is arriving */
+.relink-send--stop {
+  color: var(--signal-dim);
+}
+
+.relink-send--stop:hover {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+/* The urgent gear (council: interject NOW) — the open-hand green, beside
+   the quiet send. Rendered only when a surface passes onSendUrgent. */
+.relink-send--urgent {
+  color: var(--hand-open);
+}
+
+.relink-send--urgent:hover:not(:disabled) {
+  border-color: var(--hand-open);
+  background: var(--hand-open-tint);
+  color: var(--hand-open);
+}

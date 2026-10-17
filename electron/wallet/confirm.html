@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<!-- Locked down: this trusted window makes ZERO network calls and runs NO inline
+     script. Everything is local and same-origin so a signature confirmation can
+     neither leak over the wire, depend on connectivity, nor execute injected
+     markup (the view model carries attacker-controllable strings). -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'" />
+<title>NEUMA Wallet</title>
+<link rel="stylesheet" href="./confirm.css" />
+</head>
+<body>
+  <div class="titlebar">
+    <span class="mark">NEUMA <b>WALLET</b></span>
+    <span id="kindTag"></span>
+  </div>
+  <div class="stage">
+    <section class="notice" role="dialog" aria-modal="true" aria-labelledby="heading">
+      <div class="heading" id="heading"><span class="g">&#171;</span><span id="headingText">&#8230;</span><span class="g">&#187;</span></div>
+      <p class="intro" id="intro"></p>
+      <div class="fields" id="fields" hidden></div>
+      <div class="body" id="body" hidden></div>
+      <div class="warn" id="warn" hidden>
+        <div class="tag">&#171; WARNING &#187;</div>
+        <div class="txt" id="warnText"></div>
+      </div>
+      <div class="actions">
+        <button class="btn-reject" id="reject">Reject</button>
+        <button class="btn-confirm" id="confirm">Sign</button>
+      </div>
+    </section>
+  </div>
+  <script src="./confirm.js"></script>
+</body>
+</html>

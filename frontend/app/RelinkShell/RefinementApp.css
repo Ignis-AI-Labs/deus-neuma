@@ -1,0 +1,383 @@
+/* RefinementApp — LINE & CYCLE. Monochrome register of a being's refinement;
+   SIGNAL only where something is genuinely live: a bound adapter, a reached
+   milestone, the forge at work. Warnings use the alert register. */
+
+.refine {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.refine-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.refine-head-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.refine-head-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+.refine-head-value {
+  font-family: var(--font-voice);
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  letter-spacing: 0.04em;
+}
+
+.refine-head-facts {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+.refine-sep {
+  margin: 0 var(--space-2);
+  color: var(--line-hover);
+}
+
+.refine .is-live {
+  color: var(--signal);
+}
+
+.refine-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.refine-announce {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  border: 1px solid var(--line);
+}
+
+.refine-announce.is-warning {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+.refine-announce.is-notice {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.refine-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.refine-panel-title {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-1);
+}
+
+/* Evolution continuity: post-attunement next rite + post-verify lock-in */
+.refine-next-rite {
+  border: 1px solid var(--signal);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--signal) 6%, transparent);
+}
+
+.refine-locked {
+  border: 1px solid var(--signal);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--signal) 8%, transparent);
+}
+
+.refine-rite-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+}
+
+.refine-rite-steps li {
+  margin: 0;
+}
+
+.refine-milestone {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+}
+
+.refine-open,
+.refine-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.refine-guidance {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.refine-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.refine-field input,
+.refine-field textarea {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  padding: var(--space-2);
+  resize: vertical;
+}
+
+.refine-field input:focus,
+.refine-field textarea:focus {
+  outline: none;
+  border-color: var(--signal);
+}
+
+.refine-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.refine-action {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.refine-action:hover:not(:disabled) {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+
+.refine-action.is-primary:hover:not(:disabled) {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.refine-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.refine-stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.refine-stepper-item {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+}
+
+.refine-stepper-item.is-done {
+  color: var(--color-text-secondary);
+  border-color: var(--line-hover);
+}
+
+.refine-stepper-item.is-current {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.refine-training {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--signal);
+  overflow-wrap: anywhere;
+}
+
+.refine-preview {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.refine-preview li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-2);
+}
+
+.refine-preview-user {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.refine-preview-being {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.refine-abandon {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  padding: 0;
+  cursor: pointer;
+}
+
+.refine-abandon:hover:not(:disabled) {
+  color: var(--alert);
+}
+
+.refine-adapters,
+.refine-records {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.refine-adapter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+
+.refine-adapter-id {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.refine-adapter-base {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+.refine-dial {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.refine-dial input[type='range'] {
+  width: 120px;
+  accent-color: var(--signal);
+}
+
+.refine-dial-value {
+  color: var(--signal);
+  min-width: 4ch;
+}
+
+@media (max-width: 720px) {
+  .refine-adapter {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .refine-dial {
+    flex-basis: 100%;
+    margin-left: var(--space-0);
+  }
+}
+
+.refine-none {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.refine-record {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.refine-record-phase {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  padding: 1px var(--space-2);
+}
+
+.refine-record-phase.is-sealed {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.refine-record-when {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+
+.refine-record-summary {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

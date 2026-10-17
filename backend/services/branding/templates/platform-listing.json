@@ -1,0 +1,42 @@
+{
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "guest": {
+    "required": true,
+    "label": "the platform's own logo \u2014 drop it at brands/<brand>/guests/<slug>.svg (or .png) and pass --guest <slug>"
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the small mono line, e.g. NOW TRACKED or INDEXED"
+    },
+    "name": {
+      "required": true,
+      "max": 12,
+      "label": "the platform's name, as THEY write it \u2014 12: the mark took the right column at 440px, so the copy holds 128..960 and 12 characters at 100px is the ceiling (DefiLlama 9, CoinGecko 10, Messari 7)"
+    },
+    "index": {
+      "required": true,
+      "max": 24,
+      "label": "the readout row \u2014 what the platform tracks and where we sit, e.g. DEX TVL \u00b7 BASE. Facts only, no numbers the milestone ladder hasn't earned Maximum 24: the index stays in the left column before the guest mark."
+    },
+    "about": {
+      "required": false,
+      "max": 72,
+      "label": "one short line on what the listing means for us \u2014 plain words. Never a value claim, never a number. Optional: a listing without it renders without the line"
+    },
+    "reference": {
+      "required": false,
+      "max": 48,
+      "label": "the platform's own page for us, e.g. defillama.com/protocol/umbrae \u2014 the readout a reader copies to verify the listing, the scam guard applied to the index. VERIFY IT BEFORE IT SHIPS. Optional: a listing without a verified URL renders without the line, never with a placeholder Maximum 48: measured against both shipped brand fonts at the 34px reference floor. Use a shorter verified page URL or omit this optional field; never truncate a URL into a different address."
+    },
+    "support": {
+      "required": true,
+      "max": 72,
+      "label": "one line on what is now possible \u2014 never a claim on their behalf"
+    }
+  }
+}

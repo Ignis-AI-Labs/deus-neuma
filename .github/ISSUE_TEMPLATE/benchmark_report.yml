@@ -1,0 +1,24 @@
+name: Benchmark report
+description: A measurement from your hardware and model
+labels: [benchmark]
+body:
+  - type: input
+    id: gpu
+    attributes: { label: GPU and VRAM, placeholder: "RTX 3060 12 GB" }
+    validations: { required: true }
+  - type: input
+    id: model
+    attributes: { label: Model and quantization, placeholder: "Qwen3 14B Q4_K_M" }
+    validations: { required: true }
+  - type: input
+    id: server
+    attributes: { label: Serving, placeholder: "llama.cpp b6xxx / Ollama 0.x / LM Studio 0.x" }
+    validations: { required: true }
+  - type: dropdown
+    id: summon
+    attributes: { label: Rehearsal summoning, options: [Completed, Failed, Not tried] }
+    validations: { required: true }
+  - type: textarea
+    id: numbers
+    attributes: { label: What you measured, description: "Time to first word, tokens per second, anything that broke. Say how you measured it." }
+    validations: { required: true }

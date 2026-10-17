@@ -1,0 +1,109 @@
+{
+  "$comment": [
+    "One runnable benchmark, described once. Nothing here names a model, an",
+    "endpoint, or a lane \u2014 a cell is a QUESTION, and which car answers it is",
+    "chosen at run time.",
+    "",
+    "Shares one slab with ifeval, math500 and gsm8k-platinum: same upstream, same",
+    "revision, same recipe, so `bench pull --tier t1` clones the harness once."
+  ],
+  "schemaVersion": 1,
+  "id": "gsm8k",
+  "label": "GSM8K \u2014 grade-school math word problems, 8-shot chain of thought",
+  "tier": "t1",
+  "dimensions": [
+    "math",
+    "reasoning"
+  ],
+  "arms": [
+    "bare",
+    "platform",
+    "harness",
+    "silo",
+    "neuma"
+  ],
+  "adapter": {
+    "id": "lm-eval",
+    "module": "../../_adapters/lm-eval.mjs"
+  },
+  "upstream": {
+    "kind": "git",
+    "repository": "https://github.com/EleutherAI/lm-evaluation-harness",
+    "revision": "f4d4b3de3ee6741a7151a9fe74945ee515262f4c",
+    "workingDirectory": ".",
+    "license": "MIT"
+  },
+  "prepare": {
+    "python": "3.12",
+    "steps": [
+      {
+        "command": "uv",
+        "args": [
+          "venv",
+          "--allow-existing",
+          "--python",
+          "3.12",
+          ".venv"
+        ]
+      },
+      {
+        "command": "uv",
+        "args": [
+          "pip",
+          "install",
+          "--python",
+          ".venv/bin/python",
+          "-e",
+          ".[api]"
+        ]
+      },
+      {
+        "command": "uv",
+        "args": [
+          "pip",
+          "install",
+          "--python",
+          ".venv/bin/python",
+          "transformers==5.14.1"
+        ]
+      }
+    ],
+    "verify": {
+      "command": ".venv/bin/lm-eval",
+      "args": [
+        "--help"
+      ]
+    }
+  },
+  "executable": ".venv/bin/lm-eval",
+  "tasks": [
+    "gsm8k"
+  ],
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 768,
+    "concurrency": 1,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 7200000
+  },
+  "adapterConfig": {
+    "batchSize": 1,
+    "tokenizerBackend": "huggingface",
+    "transport": "chat-completions",
+    "applyChatTemplate": true,
+    "logSamples": true,
+    "tokenizedRequests": false
+  },
+  "cost": {
+    "wallclockSec": 2700,
+    "gpu": true,
+    "vramMiB": 34000,
+    "container": false,
+    "judge": null,
+    "diskBytes": 780000000,
+    "network": "clone-once",
+    "stack": []
+  }
+}

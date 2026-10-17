@@ -1,0 +1,52 @@
+/* LegalApp — the LEGAL window: the SECURITY window's grammar (SecurityApp.css
+   carries the head, strip, ledger rows, and detail) plus what law adds —
+   the seat, a matter's evidence lines, and the citations a reading rests on.
+   LINE & CYCLE: monochrome at rest; loud only where something owes action. */
+
+.legal-empty { color: var(--color-text-disabled); }
+
+.legal-seat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.legal-sec-head {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.legal-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.legal-seat-controls,
+.legal-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.legal-confirm .legal-note { flex: 1 1 100%; }
+.legal-danger:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
+
+.legal-pre { white-space: pre-line; }
+
+.legal-affected,
+.legal-citations {
+  margin: 0;
+  padding: 0 0 0 var(--space-3);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.legal-citations { border-left: 1px solid var(--signal-dim); }

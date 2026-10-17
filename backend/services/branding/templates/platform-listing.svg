@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Umbrae now tracked on {{data.name}}">
+  {{fontface}}
+  <defs>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+    <linearGradient id="plEdge" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="{{token.accentGlow}}"/>
+      <stop offset="46%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#plEdge)" opacity="0.45"/>
+
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <rect x="128" y="90" width="16" height="16"/>
+    <text x="168" y="112">{{data.eyebrow}}</text>
+  </g>
+
+  <!-- THE PLATFORM'S MARK, at the top of the card and never recoloured. A
+       platform-listing card is about US arriving on THEIR index, so their mark
+       leads and ours signs at the foot. Boxed in a fixed square with xMidYMid
+       meet: a platform logo is whatever aspect they publish, and a card that
+       stretched it to fill a slot would be publishing a distorted logo. 440px
+       on the RIGHT, the same column a token listing gives its mark. -->
+  <image href="{{guest.mark}}" x="1010" y="144" width="440" height="440"
+         preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- The platform's name, as THEY write it, at 100px. The 440px mark starting
+       at x=1010 leaves the copy 128..960 — an 832px column. 12 characters at
+       100px with displayTrack measures 827px inside it; 13 would not fit. A
+       platform-listing names a PLATFORM (DefiLlama 9, CoinGecko 10, Messari
+       7), so the 12-character ceiling holds. -->
+  <text x="128" y="400" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="100" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">{{data.name}}</text>
+
+  <!-- WHAT IT IS: one line on what the platform tracks — the index it now
+       carries us in. Mono, the readout row a trader scans. -->
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="42"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.accent}}">
+    <text x="128" y="500">{{data.index}}</text>
+  </g>
+
+  <!-- The guest ends at y=584; full-width copy starts below it, with
+       separate glyph rows before the unchanged footer at y=757. -->
+  <!-- ABOUT: one line on what the listing means for us — plain words, never a
+       value claim, never a number. The card carries the fact; the numbers wait
+       for their milestone. -->
+  <text x="128" y="632" font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}"
+        font-size="34" fill="{{token.muted}}">{{data.about}}</text>
+
+  <!-- REFERENCE: the platform's own page for us, the readout a reader copies to
+       verify the listing — the same standing as a token's contract address on a
+       listing card. The scam guard, applied to the index. Mono, dim, the
+       quietest line on the card. Optional: a listing without a verified URL
+       renders without it, never with a placeholder. -->
+  <text x="128" y="684" font-family="{{font.data}}" font-weight="{{font.labelWeight}}"
+        font-size="34" letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{data.reference}}</text>
+
+  <text x="128" y="736" font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}"
+        font-size="36" fill="{{token.muted}}">{{data.support}}</text>
+
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

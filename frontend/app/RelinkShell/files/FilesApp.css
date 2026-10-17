@@ -1,0 +1,226 @@
+/* FilesApp — LINE & CYCLE file explorer, tree-only (files open in their own
+   EDITOR windows). A monochrome tree; SIGNAL marks live controls. */
+
+.files {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.files-bar {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.files-toggle {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: 0 var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.files-toggle:hover,
+.files-toggle.on { color: var(--signal); border-color: var(--signal-dim); }
+
+/* The tree is the whole body now — the editor pane moved out into its own
+   per-file windows (EditorApp). */
+.files-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.files-tree {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--space-1) 0;
+}
+
+.files-treenote {
+  padding: var(--space-4) var(--space-3);
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--tracking-wide);
+}
+
+.files-rowwrap {
+  display: flex;
+  align-items: center;
+  /* shift-click means RANGE, never a text sweep across row labels */
+  user-select: none;
+}
+
+/* Selected rows — a standing state the eye must FIND at a glance (Founder
+   2026-08-16: an invisible selection reads as a dead click). The old
+   --color-glass fill was half-black composited onto the near-black rail —
+   imperceptible. Now: a light wash a step above hover, the signal-dim left
+   edge the desk's active rows wear (TodoApp convention), primary text. */
+.files-rowwrap.is-selected {
+  background: var(--color-glass-hover);
+  box-shadow: inset 2px 0 0 var(--signal-dim);
+}
+.files-rowwrap.is-selected .files-row { color: var(--color-text-primary); }
+
+/* THE DROP TARGET (the two-way bridge, Design note, 2026-07-28: the folder an OS
+   drag hovers over says so — signal edge, calm fill, never a shout. */
+.files-rowwrap.is-drop {
+  outline: 1px solid var(--signal);
+  outline-offset: -1px;
+  background: var(--color-glass);
+}
+
+.files-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: 3px var(--space-2) 3px 0;
+  cursor: pointer;
+}
+.files-row:hover { color: var(--color-text-primary); }
+
+.files-caret-slot {
+  flex: 0 0 12px;
+  display: flex;
+  justify-content: center;
+}
+.files-caret { transition: transform var(--snap); }
+.files-caret.is-open { transform: rotate(90deg); }
+
+.files-glyph {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-tertiary);
+}
+
+.files-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Git working-tree badges — one letter, colored by meaning (tokens only). */
+.files-git {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 0 var(--space-1);
+}
+.files-git.g-M { color: var(--git-modified); }
+.files-git.g-A { color: var(--git-added); }
+.files-git.g-U { color: var(--git-untracked); }
+.files-git.g-D { color: var(--git-deleted); }
+.files-git.g-C { color: var(--git-conflicted); }
+
+/* Git-ignored rows gray out (VS Code parity) — ignored is not a change, so
+   the whole row dims and never earns a badge. */
+.files-rowwrap.is-ignored { opacity: 0.42; }
+
+.files-rootx {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 var(--space-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--snap), color var(--snap);
+}
+.files-rowwrap:hover .files-rootx { opacity: 1; }
+.files-rootx:hover { color: var(--alert); }
+
+/* Per-row actions — revealed on row hover */
+.files-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: var(--space-1);
+}
+.files-act {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  padding: 3px 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--snap), color var(--snap);
+}
+.files-rowwrap:hover .files-act { opacity: 1; }
+.files-act:hover { color: var(--signal); }
+.files-act:last-of-type:hover { color: var(--alert); }
+
+/* Inline create/rename/delete bar — no native dialogs */
+.files-prompt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--color-glass-light);
+}
+.files-prompt-label {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.files-prompt-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--color-void, #000);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+}
+.files-prompt-input:focus { border-color: var(--signal-dim); outline: none; }
+.files-prompt-go,
+.files-prompt-x {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.files-prompt-go:hover { color: var(--signal); border-color: var(--signal-dim); }
+.files-prompt-x:hover { color: var(--color-text-primary); }
+
+/* The editor pane styles moved to EditorApp.css — files open in their own
+   windows now; the rail keeps the tree and this note strip only. */
+
+.files-note {
+  border-top: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+}

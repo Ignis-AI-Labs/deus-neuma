@@ -1,0 +1,43 @@
+/* StaleChunkNotice — a lazy surface whose chunk left the disk (the desk was
+   rebuilt underneath this window). ALERT head, plain words, one remedy. */
+
+.chunkfail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  max-width: 460px;
+}
+
+.chunkfail-head {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--alert);
+}
+
+.chunkfail-body {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.chunkfail-reload {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.chunkfail-reload:hover {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}

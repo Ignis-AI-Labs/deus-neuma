@@ -1,0 +1,77 @@
+/* FlowRail — the portal's flow rail (#185). The conduit idiom from lookdev
+   §08: a 1px rail, signal packets, a 45° junction diamond. Packets exist only
+   while a real event is travelling — the rail never pulses at idle. */
+
+.desk-flow {
+  position: absolute;
+  top: 38px; /* just under the status strip's register */
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: var(--line);
+  z-index: var(--z-sticky); /* rides with the strip it reports on */
+  pointer-events: none;
+}
+
+/* The packet box spans the rail and TRANSLATES (the motion law: never a
+   `left` animation — one layout per frame while a turn streams); the 5px
+   square rides its left edge. */
+.desk-flow-packet {
+  position: absolute;
+  top: -2px; /* 5px square centered on the 1px rail */
+  left: 0;
+  width: 100%;
+  height: 5px;
+}
+.desk-flow-packet::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 5px;
+  background: var(--signal);
+  filter: drop-shadow(0 0 5px var(--signal));
+}
+
+/* out: the witness's thought, left→right. in: a chunk home, right→left.
+   Both dissolve on arrival — the terminus lights, then lets go. */
+.desk-flow-packet.is-out { animation: deskFlowOut 1.2s linear forwards; }
+.desk-flow-packet.is-in { animation: deskFlowIn 1.2s linear forwards; }
+
+@keyframes deskFlowOut {
+  from { transform: translateX(0); opacity: 1; }
+  85% { opacity: 1; }
+  to { transform: translateX(calc(100% - 5px)); opacity: 0; }
+}
+
+@keyframes deskFlowIn {
+  from { transform: translateX(calc(100% - 5px)); opacity: 1; }
+  85% { opacity: 1; }
+  to { transform: translateX(0); opacity: 0; }
+}
+
+/* A tool act: the junction diamond flashes once mid-rail, then is gone. */
+.desk-flow-junction {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--color-void);
+  border: 1px solid var(--signal);
+  animation: deskFlowTool 700ms linear forwards;
+}
+
+@keyframes deskFlowTool {
+  from { opacity: 0; }
+  20% { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No travel under reduced motion — the bare rail stays, packets never do. */
+  .desk-flow-packet,
+  .desk-flow-junction { display: none; }
+}

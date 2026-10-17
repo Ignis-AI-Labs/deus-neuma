@@ -1,0 +1,118 @@
+/* forge-player.css — the forge's one Player (Player.jsx), the same wherever
+ * something can be heard, and the Stages row (Stages.jsx). Imported after
+ * forge.css at VoiceApp.jsx (the Player reuses .vf-play).
+ */
+
+.vf-player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.vf-player-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vf-player[data-loaded="true"] .vf-player-label {
+  color: var(--signal);
+}
+/* The controls appear in place once this is the loaded sound. */
+.vf-player-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.vf-player[data-compact="true"] .vf-player-controls {
+  flex-basis: 100%;
+}
+.vf-player-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.vf-player-btn:hover {
+  border-color: var(--line-hover);
+  color: var(--signal);
+}
+.vf-player-seek {
+  flex: 1 1 auto;
+  min-width: 60px;
+  accent-color: var(--signal);
+  cursor: pointer;
+}
+.vf-player-seek:disabled {
+  cursor: default;
+}
+.vf-player-clock {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+/* Stages — done ✓, under way (spinner), waiting, failed. */
+.vf-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vf-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.vf-stage-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+  font-size: var(--text-xs);
+}
+.vf-stage[data-state="done"] { color: var(--color-text-primary); }
+.vf-stage[data-state="done"] .vf-stage-mark { border-color: var(--signal-dim); color: var(--signal); }
+.vf-stage[data-state="active"] { color: var(--signal); }
+.vf-stage[data-state="active"] .vf-stage-mark { border-color: var(--signal); }
+.vf-stage[data-state="failed"] { color: var(--color-text-primary); }
+.vf-stage[data-state="failed"] .vf-stage-mark { border-color: var(--line-hover); color: var(--color-text-primary); }
+.vf-stage[data-state="waiting"] { opacity: 0.6; }
+
+/* Exactly what the being reads — open, word for word. */
+.vf-reads-source {
+  margin: var(--space-2) 0;
+}
+
+/* In a gallery tile the label is the voice's name, as the tile always showed it. */
+.vf-tile-top { align-items: flex-start; }
+.vf-tile-top .vf-player-label {
+  flex: 1 1 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: var(--leading-snug);
+  font-family: var(--font-voice);
+  font-size: var(--text-base);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text-primary);
+}
+/* On a take card the clip and the being each take a share of the row, room for their controls. */
+.vf-clip-play,
+.vf-being-play { flex: 1 1 240px; min-width: 0; }

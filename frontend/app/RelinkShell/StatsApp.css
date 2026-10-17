@@ -1,0 +1,290 @@
+/* StatsApp — LINE & CYCLE honest record. Objective counts + facts, no scores.
+   Plain values in the voice/data registers; provenance captions under each. */
+
+.rec {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Keep record text readable even when the shared data-label style loads last. */
+.rec .label-data {
+  font-size: var(--text-sm);
+}
+
+/* Identity header */
+.rec-id {
+  background: var(--color-glass-light);
+}
+.rec-id-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.rec-id-name {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+}
+.rec-id-line {
+  margin: 0;
+  font-size: var(--text-sm);
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.rec-id-essence {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+/* Sections */
+.rec-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.rec-h {
+  color: var(--color-heading);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+/* Substrate */
+.rec-sub {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.rec-sig {
+  color: var(--signal);
+}
+
+/* A measured number that no longer speaks for this machine — the ceiling was
+   taken on a different model than the one being served. Not SIGNAL: signal
+   means live and trustworthy, and this number is neither. */
+.rec-warn {
+  color: var(--color-warning, var(--color-text-primary));
+}
+.rec-line {
+  margin: 0;
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+/* The note that keeps each number honest */
+.rec-note {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-tertiary);
+}
+
+/* Parallel team ceiling — a rig fact, inside SUBSTRATE (reuses rec-* idioms) */
+.rec-cap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.08));
+}
+.rec-cap-detail {
+  margin-top: var(--space-1);
+}
+.rec-cap-detail summary {
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+}
+.rec-cap-detail summary:hover {
+  color: var(--signal);
+}
+.rec-cap-detail > .rec-line {
+  margin-top: var(--space-1);
+}
+
+/* Record grid */
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.rec-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+}
+.rec-stat-v {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+.rec-stat-l {
+  font-size: var(--text-sm);
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+.rec-stat-n {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+/* State — honestly pending */
+.rec-state {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.rec-state-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.rec-state-d {
+  color: var(--color-text-secondary);
+}
+.rec-state-v {
+  font-size: var(--text-sm);
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+/* Measured score + trend */
+.rec-state-meas {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.rec-state-score {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+.rec-state-trend {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  width: 1ch;
+  text-align: center;
+}
+.rec-trend-up { color: var(--signal); }
+.rec-trend-down { color: var(--alert); }
+.rec-trend-flat { color: var(--color-text-tertiary); }
+
+/* Run control */
+.rec-run-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.rec-btn {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.rec-btn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+.rec-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.rec-btn-go {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+.rec-meta {
+  font-size: var(--text-sm);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+/* Consent confirm — announcement register */
+.rec-confirm {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.rec-confirm-msg {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+.rec-confirm-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.rec-err {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: 0.12em;
+  color: var(--alert);
+}
+
+/* MEDITATION — the dream cycle */
+.rec-cadence {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.rec-chip {
+  padding: var(--space-1) var(--space-2);
+}
+.rec-chip-on {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+.rec-med-badge {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+}
+.rec-med-go { color: var(--signal); }
+.rec-med-calm { color: var(--color-text-secondary); }
+.rec-med-dim { color: var(--color-text-tertiary); }
+.rec-med-warn { color: var(--alert); }

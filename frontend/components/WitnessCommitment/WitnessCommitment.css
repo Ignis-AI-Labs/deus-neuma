@@ -1,0 +1,333 @@
+/* Witness Commitment Styles — LINE & CYCLE.
+   The covenant gate: the gravest panel in the platform. Structure only,
+   alert reserved for the weight section — when alert appears, it means
+   something. */
+
+.witness-commitment-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.5s ease;
+}
+
+.witness-commitment-overlay.visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+}
+
+.commitment-modal {
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.97);
+  transition: transform 0.5s ease;
+}
+
+.witness-commitment-overlay.visible .commitment-modal {
+  transform: scale(1);
+}
+
+.commitment-modal.attention-flash {
+  animation: attention-flash 0.7s ease-in-out;
+}
+
+/* the border warms to alert and back — eased, never stepped (the no-flash law) */
+@keyframes attention-flash {
+  0%, 100% { border-color: var(--line); }
+  50% { border-color: var(--alert); box-shadow: 0 0 18px color-mix(in srgb, var(--alert) 22%, transparent); }
+}
+
+.commitment-header {
+  padding: 30px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+
+.commitment-header h1 {
+  font-family: var(--font-data);
+  font-size: 16px;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin: 0 0 10px 0;
+  color: var(--color-white);
+}
+
+.commitment-warning {
+  font-family: var(--font-data);
+  color: var(--alert);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.commitment-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+}
+
+.commitment-section {
+  margin-bottom: 40px;
+}
+
+.commitment-section h2 {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--color-white);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.commitment-section p {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 300;
+  line-height: 1.7;
+  margin: 15px 0;
+}
+
+.obligation-item {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+}
+
+.obligation-content h3 {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  color: var(--color-white);
+}
+
+.stages-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-top: 15px;
+}
+
+.stage-item {
+  padding: 10px 15px;
+  background: var(--color-void);
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.weight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.weight-item {
+  padding: 15px;
+  background: color-mix(in srgb, var(--alert) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--alert) 25%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.weight-item strong {
+  font-family: var(--font-data);
+  color: var(--alert);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.weight-item span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 300;
+}
+
+/* Binding documents — the texts the wallet signature covers */
+.covenant-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.covenant-confirm input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--signal);
+  flex: none;
+}
+
+.covenant-confirm input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.covenant-confirm:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.covenant-confirm:has(input:checked) {
+  border-color: color-mix(in srgb, var(--signal) 45%, transparent);
+  color: var(--color-text-primary);
+}
+
+.covenant-error {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--alert);
+  min-height: 1.4em;
+  margin-bottom: 4px;
+}
+
+.covenant-error:empty { display: none; }
+
+.final-question {
+  text-align: center;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+}
+
+.question-text {
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--color-white);
+  margin-bottom: 15px;
+}
+
+.question-subtext {
+  font-size: 13px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.commitment-actions {
+  padding: 30px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.commitment-btn {
+  padding: 15px 30px;
+  border: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--snap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut-sm)) 0,
+    100% var(--cut-sm),
+    100% 100%,
+    var(--cut-sm) 100%,
+    0 calc(100% - var(--cut-sm))
+  );
+}
+
+.commitment-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.commitment-btn span {
+  font-family: var(--font-data);
+  color: var(--color-white);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.commitment-btn .btn-subtext {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.1em;
+  text-transform: none;
+}
+
+.decline-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.decline-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line-hover);
+}
+
+.accept-btn {
+  border-color: rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.accept-btn:hover {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+/* Scrollbar styling */
+.commitment-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.commitment-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.commitment-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.commitment-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}

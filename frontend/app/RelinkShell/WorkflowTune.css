@@ -1,0 +1,47 @@
+/* WorkflowTune — what governs a working run: its width and its clocks (#577). */
+.workflow-govern {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--text-xs);
+}
+.workflow-govern-label { color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.08em; }
+.workflow-govern-value { color: var(--color-text-primary); font-size: 10px; letter-spacing: 0.06em; }
+.workflow-govern-clock { color: var(--color-text-secondary); }
+.workflow-tune-btn {
+  padding: 1px 6px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.workflow-tune-btn:hover:not(:disabled) { color: var(--signal); }
+.workflow-tune-btn:disabled { color: var(--color-text-tertiary); cursor: default; }
+
+.workflow-clock { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2); padding-left: var(--space-4); }
+.workflow-clock-line { margin: 0; color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.06em; }
+.workflow-clock-line.is-passed { color: var(--alert); }
+
+.workflow-clock-editor {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+}
+.workflow-clock-field { display: flex; align-items: center; gap: var(--space-1); color: var(--color-text-tertiary); font-size: 10px; letter-spacing: 0.06em; }
+.workflow-clock-input {
+  padding: 1px 4px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+}
+.workflow-clock-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }

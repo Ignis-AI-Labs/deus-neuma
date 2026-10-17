@@ -1,0 +1,394 @@
+/* BenchApp — the BENCH window. LINE & CYCLE: monochrome at rest; --signal
+   marks what is live (serving up, a live daemon, a running window, a
+   plane-owned child), --alert only where something failed or waits on a dead
+   endpoint. The window frame already chamfers; the app root does not. */
+
+.bench {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.bench-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.bench-head-label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+.bench-head-state {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-disabled);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bench-head-state.is-signal { color: var(--signal); }
+
+.bench-error {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--alert);
+}
+
+.bench-tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.bench-tab {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.bench-tab:hover { color: var(--signal); border-color: var(--signal-dim); }
+.bench-tab.is-on { color: var(--signal); border-color: var(--signal-dim); }
+/* LIVE's dot — something runs on this machine (no-flash law: a slow breath, never a blink) */
+.bench-tab-dot { color: var(--signal); animation: bench-tab-breathe 2.4s ease-in-out infinite; }
+@keyframes bench-tab-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.bench-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bench-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.bench-sec-head {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+.bench-sub-head {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-disabled);
+}
+
+.bench-line {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.bench-line.is-signal { color: var(--signal); }
+.bench-line.is-alert { color: var(--alert); }
+
+.bench-row {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.bench-row.is-live { color: var(--signal); }
+.bench-row.is-loud { color: var(--alert); }
+.bench-dim { color: var(--color-text-disabled); }
+
+.bench-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.bench-table th {
+  text-align: left;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-disabled);
+  padding: 0 var(--space-2) var(--space-1) 0;
+  border-bottom: 1px solid var(--line);
+}
+.bench-table td {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.bench-table tr.is-loud td { color: var(--alert); }
+.bench-table tr.is-live td { color: var(--signal); }
+
+.bench-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.bench-btn:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); }
+.bench-btn:disabled { color: var(--color-text-disabled); cursor: default; }
+.bench-btn.is-on { color: var(--signal); border-color: var(--signal-dim); }
+.bench-btn.is-danger:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
+.bench-btn.is-signal-btn { color: var(--signal); border-color: var(--signal-dim); }
+
+.bench-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bench-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bench-confirm-notice {
+  flex: 1 1 100%;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.bench-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bench-field-label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-disabled);
+}
+.bench-fields-row {
+  display: flex;
+  gap: var(--space-3);
+}
+.bench-input {
+  width: 100%;
+  min-width: 0;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+  transition: border-color var(--snap);
+}
+.bench-input:focus { border-color: var(--signal-dim); }
+
+.bench-reports {
+  display: flex;
+  min-height: 0;
+  align-items: stretch;
+}
+.bench-rail {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-right: 1px solid var(--line);
+}
+.bench-rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+.bench-rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--snap), border-color var(--snap);
+}
+.bench-rail-item:hover { color: var(--signal); }
+.bench-rail-item.is-on { color: var(--signal); border-color: var(--signal-dim); }
+.bench-rail-id {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bench-rail-age {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+}
+.bench-report-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  overflow-y: auto;
+}
+.bench-art-tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+.bench-report-md {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.bench-pre {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.bench-argv {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--signal);
+  overflow-wrap: anywhere;
+}
+
+.bench-launch {
+  display: flex;
+  flex-direction: column;
+}
+
+/* RUN A BENCHMARK — the first-timer flow: the one-line tier legend with its
+   meanings fold, the dropdown picker, the plain-language arm rows, fine
+   control, the advanced toggle. (The tier-grouped row list is gone — 2026-09-25:
+   […]) */
+
+.bench-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.bench-legend-row {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+
+.bench-arm-list { display: flex; flex-direction: column; gap: 2px; }
+.bench-arm-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--snap);
+}
+.bench-arm-row:hover { border-color: var(--signal-dim); }
+.bench-arm-row.is-on { border-color: var(--signal-dim); }
+.bench-arm-name {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+}
+.bench-arm-row.is-on .bench-arm-name { color: var(--signal); }
+.bench-arm-id { color: var(--color-text-disabled); }
+.bench-arm-line {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.bench-tag {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  margin-left: var(--space-2);
+  white-space: nowrap;
+}
+.bench-tag.is-signal { color: var(--signal); border-color: var(--signal-dim); }
+
+.bench-fine {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.bench-adv-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+.bench-adv-toggle:hover { color: var(--signal); }
+
+
+/* The matched set's per-arm marks: ✓ clean, ✗ failed, … in flight, · pending,
+   — skipped. */
+.bench-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+.bench-mark { font-size: var(--text-xs); letter-spacing: 0.1em; }
+.bench-mark.is-live { color: var(--signal); }
+.bench-mark.is-loud { color: var(--alert); }
+.bench-mark.is-quiet { color: var(--color-text-disabled); }

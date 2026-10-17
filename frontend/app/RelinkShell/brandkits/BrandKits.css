@@ -1,0 +1,301 @@
+/* BrandKits — shell, header and rail.
+   Split by zone; the editors are in BrandKits-fields.css and the palette,
+   type, marks and preview in BrandKits-craft.css.
+
+   Every colour here is a token. This panel is the one place a BRAND's own hues
+   are shown at full strength, so the chrome around them must never compete with
+   what it displays — the rail and the header stay near-monochrome on purpose. */
+
+@import './BrandKits-fields.css';
+@import './BrandKits-craft.css';
+
+.bk {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.bk-body {
+  display: grid;
+  /* Three zones, and the EDITOR is the one that grows. A rail wide enough to
+     read and a preview wide enough to judge, with everything else going to the
+     middle — where the specimens and the colour bands actually live. */
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: var(--space-4, 16px);
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.bk.has-preview .bk-body {
+  grid-template-columns: 190px minmax(0, 1fr) minmax(300px, 380px);
+}
+
+/* --- header -------------------------------------------------------------- */
+
+.bk-head {
+  padding: var(--space-3, 12px);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.bk-head-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  flex-wrap: wrap;
+}
+
+.bk-switch { min-width: 200px; }
+
+.bk-head-facts {
+  color: var(--text-muted);
+  font-size: 10px;
+  margin-left: var(--space-2, 8px);
+}
+
+/* The pip pushes SAVE to the right edge, so the two read as one statement:
+   something changed, and here is what to do about it. */
+.bk-dirty {
+  margin-left: auto;
+  color: var(--accent-primary);
+  font-size: 10px;
+}
+
+.bk-new,
+.bk-save {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.bk-save { margin-left: auto; }
+.bk-dirty + .bk-save { margin-left: 0; }
+
+.bk-new:hover:not(:disabled),
+.bk-save:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.bk-save:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.bk-new:disabled,
+.bk-save:disabled { opacity: 0.4; cursor: default; }
+
+/* --- bands, notices, errors ---------------------------------------------- */
+
+.bk-band {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  flex-wrap: wrap;
+  margin: var(--space-2, 8px) 0 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--accent-primary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.bk-band-soft { border-color: var(--border-default); }
+
+.bk-band code {
+  font-size: 10px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.bk-band button {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bk-band button:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+
+.bk-note {
+  margin: var(--space-2, 8px) 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  max-width: 70ch;
+}
+
+.bk-notice { margin: var(--space-2, 8px) 0 0; color: var(--accent-primary); font-size: 11px; }
+.bk-error { margin: var(--space-2, 8px) 0 0; color: var(--accent-danger); font-size: 11px; line-height: 1.6; }
+.bk-empty { padding: var(--space-4, 16px); color: var(--text-muted); font-size: 12px; }
+
+/* --- the rail ------------------------------------------------------------ */
+
+.bk-rail-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border-subtle);
+  padding: var(--space-2, 8px) 0;
+}
+
+.bk-rail ul { list-style: none; margin: 0; padding: 0; }
+
+.bk-rail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  padding: 7px var(--space-3, 12px);
+  cursor: pointer;
+}
+
+.bk-rail-row:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.bk-rail-row.is-on {
+  border-left-color: var(--accent-primary);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.bk-rail-name { font-size: 10px; letter-spacing: 0.1em; }
+
+.bk-rail-n {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A finished section is quiet. The rail should draw the eye to what is LEFT,
+   which is the whole reason it replaced a separate "still needed" list. */
+.bk-rail-row.is-done .bk-rail-n { color: var(--accent-success); }
+.bk-rail-row.is-done .bk-rail-name { color: var(--text-muted); }
+
+.bk-rail-raw {
+  margin-top: var(--space-2, 8px);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3, 12px);
+}
+
+.bk-show-preview {
+  margin: var(--space-3, 12px);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.bk-show-preview:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+
+/* --- the verbatim refusal ------------------------------------------------ */
+
+.bk-report { margin-top: auto; padding: var(--space-3, 12px); }
+
+.bk-report-head {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.bk-report-head:hover { color: var(--text-primary); }
+
+.bk-report-text {
+  margin: var(--space-2, 8px) 0 0;
+  white-space: pre-wrap;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* --- the editor column --------------------------------------------------- */
+
+.bk-editor {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3, 12px) var(--space-4, 16px) var(--space-6, 32px);
+}
+
+.bk-section-head { margin-bottom: var(--space-4, 16px); }
+
+.bk-section-head h4 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text-primary);
+}
+
+.bk-section-n { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* --- the new-kit dialog -------------------------------------------------- */
+
+.bk-modal-veil {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  display: grid;
+  place-items: center;
+  z-index: 900;
+}
+
+.bk-modal { width: min(420px, 92vw); background: var(--bg-elevated); }
+.bk-modal .cham-in { padding: var(--space-4, 16px); }
+.bk-modal h4 { margin: 0 0 var(--space-2, 8px); font-size: 12px; letter-spacing: 0.14em; }
+
+.bk-modal-hint { margin: var(--space-2, 8px) 0 0; font-size: 10px; color: var(--text-muted); }
+.bk-modal-hint.is-bad { color: var(--accent-danger); }
+
+.bk-modal-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-4, 16px);
+}
+
+.bk-modal-acts button {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.bk-modal-acts button.is-go:not(:disabled) { border-color: var(--accent-primary); color: var(--text-primary); }
+.bk-modal-acts button:disabled { opacity: 0.4; cursor: default; }

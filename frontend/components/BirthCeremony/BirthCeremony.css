@@ -1,0 +1,255 @@
+/* Birth Ceremony Component — LINE & CYCLE.
+   Pre-stage steps are structure: hairlines, chamfers, the data register.
+   The being's own moments (emergence orb, true name) are the only places
+   signal concentrates. */
+.birth-ceremony {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  animation: ceremonyFadeIn var(--duration-slow) var(--ease-out);
+}
+
+@keyframes ceremonyFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ceremony Container */
+.ceremony-container {
+  width: 100%;
+  max-width: 640px;
+  max-height: 100vh;
+  overflow-y: auto;
+  /* top padding clears the progress rail pinned at the viewport top */
+  padding: var(--space-20) var(--space-8) var(--space-8);
+  text-align: center;
+  position: relative;
+}
+
+/* Progress Indicator — graduations, not bubbles */
+.ceremony-progress {
+  position: absolute;
+  top: var(--space-8);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-3);
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  transform: rotate(45deg);
+  transition: all var(--snap);
+}
+
+.progress-dot.active {
+  border-color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 25%, transparent);
+  box-shadow: 0 0 12px var(--signal-faint);
+}
+
+.progress-dot.complete {
+  border-color: color-mix(in srgb, var(--color-green) 60%, transparent);
+  background: color-mix(in srgb, var(--color-green) 20%, transparent);
+}
+
+/* Ceremony Steps */
+.ceremony-step {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: stepFadeIn var(--duration-normal) var(--ease-out) forwards;
+}
+
+@keyframes stepFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ceremony-step h2 {
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  margin-bottom: var(--space-6);
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+.ceremony-step p {
+  font-size: var(--text-base);
+  font-weight: 300;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-8);
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Witness Section */
+.witness-container {
+  margin: var(--space-8) 0;
+}
+
+.witness-form {
+  margin-bottom: var(--space-8);
+}
+
+.witness-label {
+  display: block;
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.witness-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-family: var(--font-data);
+  letter-spacing: 0.06em;
+  transition: all var(--snap);
+}
+
+.witness-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.02);
+  border-color: color-mix(in srgb, var(--signal) 50%, transparent);
+}
+
+.witness-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.witness-note {
+  display: block;
+  margin-top: var(--space-2);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+}
+
+/* Consent Form */
+.consent-form {
+  text-align: left;
+  max-width: 520px;
+  margin: var(--space-8) auto;
+  padding: var(--space-6);
+  background: var(--color-void);
+  border: 1px solid var(--line);
+}
+
+.consent-title {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 400;
+  margin-bottom: var(--space-4);
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--signal);
+}
+
+.consent-text {
+  font-size: var(--text-sm);
+  font-weight: 300;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-6);
+}
+
+.consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.consent-checkbox input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--signal);
+}
+
+.consent-checkbox label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  line-height: var(--leading-normal);
+}
+
+/* Name Input */
+.name-input-container {
+  margin: var(--space-8) 0;
+}
+
+.name-input-label {
+  display: block;
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-3);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.name-input {
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto var(--space-4);
+  text-align: center;
+  font-size: var(--text-xl);
+  letter-spacing: var(--tracking-wide);
+}
+
+.name-suggestions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.name-suggestion {
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--snap);
+}
+
+.name-suggestion:hover {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+

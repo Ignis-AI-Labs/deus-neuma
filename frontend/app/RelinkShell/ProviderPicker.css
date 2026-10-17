@@ -1,0 +1,15 @@
+/* ProviderPicker — the filter input stacked over the Select; flex-fills its
+   settings-control row exactly like the bare Select did. */
+
+.provider-picker {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.provider-picker-filter {
+  font-size: 10px;
+  padding: var(--space-1) var(--space-2);
+}

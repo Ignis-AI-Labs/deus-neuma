@@ -1,0 +1,21 @@
+[project]
+name = "zonos-sidecar"
+version = "0.1.0"
+description = "Local HTTP sidecar for Zonos v0.1 TTS — voice cloning with emotion control."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # Editable install works around an upstream packaging bug (zonos's pyproject
+    # uses include=["zonos"] which omits zonos.backbone and other subpackages).
+    "zonos @ file:///${PROJECT_ROOT}/../_source-zonos",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.5",
+    "torch>=2.4",
+    "torchaudio>=2.4",
+]
+
+[tool.uv]
+torch-backend = "cu121"
+
+[tool.uv.sources]
+zonos = { path = "../_source-zonos", editable = true }

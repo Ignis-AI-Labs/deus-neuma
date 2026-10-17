@@ -1,0 +1,34 @@
+// taskbar (ko) — 데스크의 작업 표시줄과 런처.
+
+export default Object.freeze({
+  aria: '작업 표시줄',
+  launcher: '런처 열기 (Ctrl+Space)',
+  search: '앱 검색…',
+  noMatch: '“{{q}}”와 일치하는 앱이 없습니다',
+  cats: Object.freeze({
+    beings: '존재',
+    work: '작업',
+    create: '창작',
+    reach: '확산',
+    know: '지식',
+    system: '시스템',
+    other: '기타',
+  }),
+  pin: '작업 표시줄에 고정',
+  unpin: '작업 표시줄에서 고정 해제',
+  newInstance: '새 {{app}}',
+  close: '닫기',
+  closeAll: '{{app}} 창 모두 닫기',
+  showNames: '이름 표시',
+  iconsOnly: '아이콘만',
+  position: '작업 표시줄 위치',
+  edges: Object.freeze({
+    bottom: '아래',
+    left: '왼쪽',
+    top: '위',
+  }),
+  newDesk: '새 데스크 창',
+  tray: '시스템',
+  pinned: '고정됨',
+  open: '열림',
+});

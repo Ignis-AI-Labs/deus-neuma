@@ -1,0 +1,28 @@
+{
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "the register of the line — OUR POSITION, WHAT WE BUILD FOR, A PRINCIPLE. 28, the shared eyebrow tier"
+    },
+    "lineOne": {
+      "required": true,
+      "max": 21,
+      "label": "the first line. ⚠️ CENTRE-ANCHORED, so a long line grows in BOTH directions and breaks the frame at each end. 21 MEASURED against the display face at 88px: Umbrae is the tighter brand and a wide 21-char line ends at 1429, 43px clear"
+    },
+    "lineTwo": {
+      "required": true,
+      "max": 21,
+      "label": "the second line. Required: a single centred line in a 900px frame reads as a mistake, not as restraint"
+    },
+    "lineThree": {
+      "required": false,
+      "max": 21,
+      "label": "the third, if the thought needs it. Optional — two lines is a position, three is a position with a turn in it, four would be a paragraph and belongs in the post text"
+    }
+  }
+}

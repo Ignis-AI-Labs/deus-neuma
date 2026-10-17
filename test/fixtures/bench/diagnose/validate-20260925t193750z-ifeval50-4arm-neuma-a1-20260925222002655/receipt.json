@@ -1,0 +1,53 @@
+{
+ "runId": "validate-20260925t193750z-ifeval50-4arm-neuma-a1-20260925222002655",
+ "comparisonId": "validate-20260925t193750z-ifeval50-4arm",
+ "arm": "neuma",
+ "attempt": 1,
+ "status": "succeeded",
+ "suite": {
+  "id": "ifeval-2048",
+  "adapter": "lm-eval"
+ },
+ "metrics": [
+  {
+   "id": "ifeval/prompt_level_strict_acc,none",
+   "task": "ifeval",
+   "value": 0.76,
+   "unit": "ratio",
+   "higherIsBetter": true,
+   "primary": true,
+   "sampleCount": 50,
+   "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-26T05-42-58.663360.json"
+  },
+  {
+   "id": "ifeval/inst_level_strict_acc,none",
+   "task": "ifeval",
+   "value": 0.7763157894736842,
+   "unit": "ratio",
+   "higherIsBetter": true,
+   "primary": true,
+   "sampleCount": 50,
+   "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-26T05-42-58.663360.json"
+  },
+  {
+   "id": "ifeval/prompt_level_loose_acc,none",
+   "task": "ifeval",
+   "value": 0.8,
+   "unit": "ratio",
+   "higherIsBetter": true,
+   "primary": false,
+   "sampleCount": 50,
+   "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-26T05-42-58.663360.json"
+  },
+  {
+   "id": "ifeval/inst_level_loose_acc,none",
+   "task": "ifeval",
+   "value": 0.8157894736842105,
+   "unit": "ratio",
+   "higherIsBetter": true,
+   "primary": false,
+   "sampleCount": 50,
+   "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-26T05-42-58.663360.json"
+  }
+ ]
+}

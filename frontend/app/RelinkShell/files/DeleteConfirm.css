@@ -1,0 +1,83 @@
+/* DeleteConfirm — the delete ask as a desk-level popup (FolderPicker overlay
+   pattern: body-portaled absolute overlay at the modal tier, dimmed glass,
+   centered cham dialog). The ALERT dresses what destroys; everything else
+   stays monochrome at rest. */
+
+.delconfirm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--color-glass);
+}
+
+.delconfirm {
+  --cut: 10px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - var(--space-8)));
+  display: flex;
+}
+
+.delconfirm-in {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.delconfirm-title {
+  margin: 0;
+  color: var(--alert);
+  letter-spacing: var(--tracking-wide);
+}
+
+.delconfirm-list {
+  margin: 0;
+  padding: 0 0 0 var(--space-3);
+  list-style: none;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.delconfirm-item { color: var(--color-text-secondary); padding: 2px 0; }
+.delconfirm-item.is-more { color: var(--color-text-tertiary); }
+
+.delconfirm-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The waiver chip silences a guard — the alert dresses it (files-noask law). */
+.delconfirm-noask {
+  margin-right: auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.delconfirm-noask:hover,
+.delconfirm-noask.is-on { color: var(--alert); border-color: var(--alert); }
+
+.delconfirm-go,
+.delconfirm-x {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+.delconfirm-go { color: var(--alert); border-color: var(--alert); }
+.delconfirm-x:hover { color: var(--color-text-primary); }

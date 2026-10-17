@@ -1,0 +1,153 @@
+/* StagedCeremonyScene — THE DISCLOSURE panel. Split from
+   StagedCeremonyScene.css under the 500-line law; imported right after the
+   base sheet (see BirthCeremony.js). Rules byte-identical to the original. */
+
+/* THE DISCLOSURE — what rides with the operator's words. Instrument register
+   throughout (this is data about the request, never ceremony speech), closed
+   at rest so it informs without presiding. */
+.ceremony-disclosure {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.disclosure-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-align: left;
+  text-transform: uppercase;
+  transition: color var(--snap);
+}
+
+.disclosure-toggle:hover,
+.disclosure-toggle:focus-visible {
+  color: var(--signal);
+  outline: none;
+}
+
+.disclosure-chevron {
+  flex: none;
+  transition: transform var(--snap);
+}
+
+.disclosure-toggle.is-open .disclosure-chevron {
+  transform: rotate(90deg);
+}
+
+.disclosure-title {
+  flex: none;
+}
+
+/* The count is the honest read: components, characters, and how many of them
+   are the operator's own. */
+.disclosure-summary {
+  flex: 1;
+  color: var(--signal-dim);
+  text-align: right;
+}
+
+.disclosure-body {
+  max-height: 340px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+
+.disclosure-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+
+.disclosure-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  width: 100%;
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-align: left;
+  transition: background var(--snap), color var(--snap);
+}
+
+.disclosure-row-head:hover,
+.disclosure-row-head:focus-visible {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+  outline: none;
+}
+
+.row-label {
+  flex: none;
+  min-width: 190px;
+  text-transform: uppercase;
+}
+
+/* Where the text came from — the answer to […] */
+.row-origin {
+  flex: 1;
+  color: color-mix(in srgb, var(--color-text-tertiary) 70%, transparent);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.row-chars {
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+/* The operator's own voice, and the line the ceremony adds to it — the two
+   rows the panel exists to tell apart. */
+.disclosure-row.is-mine .row-label { color: var(--signal); }
+.disclosure-row.is-appended .row-label { color: var(--alert); }
+
+.disclosure-row.is-open .disclosure-row-head {
+  color: var(--color-text-primary);
+}
+
+.row-text {
+  margin: 0;
+  padding: 4px 16px 16px;
+  max-height: 220px;
+  overflow-y: auto;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 11px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Request settings — sent, but carrying no prompt text, so they are shown
+   apart from the characters they are not part of. */
+.disclosure-parameters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 12px 16px;
+}
+
+.disclosure-parameter {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+.parameter-label { color: color-mix(in srgb, var(--color-text-tertiary) 70%, transparent); }
+.parameter-value { color: var(--color-text-secondary); }
+

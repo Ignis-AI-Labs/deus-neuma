@@ -1,0 +1,223 @@
+/* THE TASKBAR (Dock.jsx) and THE LAUNCHER (Launcher.jsx) — the desk navigates
+   like an operating system (docs/work/os-taskbar-launcher.md). One chamfered
+   bar along an edge of the desk: launcher · pinned apps · open apps · tray.
+   Monochrome at rest; a dim mark under an open app, SIGNAL under the focused
+   one — the same vocabulary the dock used. */
+
+.taskbar {
+  position: fixed;
+  z-index: var(--z-sticky);
+  pointer-events: none;
+  --taskbar-thick: 48px;
+}
+.taskbar.edge-bottom { left: 12px; right: 12px; bottom: 10px; }
+.taskbar.edge-top { left: 12px; right: 12px; top: 46px; }
+.taskbar.edge-left { left: 10px; top: 52px; bottom: 12px; width: var(--taskbar-thick); }
+
+/* The desk row makes room for a bar on the left or top by PADDING — a
+   positioned window's containing block starts at the padding edge's outside,
+   so window coordinates never move (use-window-frame.js setBarEdge). */
+html[data-taskbar-edge='left'] .relink-main { padding-left: calc(var(--taskbar-thick, 48px) + 20px); }
+html[data-taskbar-edge='top'] .relink-main { padding-top: 56px; }
+
+.taskbar-bar { position: relative; z-index: 1; pointer-events: auto; height: 100%; }
+.taskbar.edge-bottom .taskbar-bar,
+.taskbar.edge-top .taskbar-bar { height: var(--taskbar-thick); }
+
+.taskbar-in {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 0 var(--space-1);
+}
+.taskbar.edge-left .taskbar-in { flex-direction: column; padding: var(--space-1) 0; }
+
+.taskbar-apps,
+.taskbar-tray {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.taskbar.edge-left .taskbar-apps,
+.taskbar.edge-left .taskbar-tray { flex-direction: column; }
+.taskbar-apps { overflow: auto hidden; scrollbar-width: none; }
+.taskbar.edge-left .taskbar-apps { overflow: hidden auto; }
+.taskbar-apps::-webkit-scrollbar { display: none; }
+
+.taskbar-fill { flex: 1 1 auto; align-self: stretch; } /* the bar's empty stretch: right-click it for names + position */
+
+.taskbar-sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 24px;
+  margin: 0 var(--space-1);
+  background: var(--line);
+}
+.taskbar.edge-left .taskbar-sep { width: 24px; height: 1px; margin: var(--space-1) 0; }
+
+.taskbar-launcher,
+.taskbar-app {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 38px;
+  height: 38px;
+  padding: 0 var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.taskbar-launcher:hover,
+.taskbar-launcher.is-open { color: var(--signal); border-color: var(--signal-dim); }
+
+.taskbar-app:hover { color: var(--color-text-primary); border-color: var(--line); }
+.taskbar-app.is-open { color: var(--color-text-primary); }
+.taskbar-app.is-focused { color: var(--signal); background: var(--signal-faint); }
+.taskbar-app.is-dragging { opacity: 0.4; }
+
+.taskbar-app-icon { display: flex; width: 18px; height: 18px; align-items: center; justify-content: center; }
+.taskbar-app-icon svg { width: 18px; height: 18px; }
+
+.taskbar-app-label { font-size: 10px; letter-spacing: 0.14em; white-space: nowrap; color: inherit; }
+.taskbar.edge-left .taskbar-app-label { display: none; } /* a vertical bar stays narrow — names ride the hover */
+
+.taskbar-app-count {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 8px;
+  letter-spacing: 0;
+  color: var(--color-text-tertiary);
+}
+
+/* The activity mark: under the icon (a side bar: beside it). */
+.taskbar-app-dot {
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 2px;
+  height: 2px;
+  background: transparent;
+  transition: background var(--snap);
+}
+.taskbar.edge-left .taskbar-app-dot { left: 2px; right: auto; top: 30%; bottom: 30%; width: 2px; height: auto; }
+.taskbar-app.is-open .taskbar-app-dot { background: var(--line-hover); }
+.taskbar-app.is-focused .taskbar-app-dot { background: var(--signal); }
+
+.taskbar-clock {
+  padding: 0 var(--space-3);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.taskbar.edge-left .taskbar-clock { padding: var(--space-2) 0; font-size: 9px; letter-spacing: 0.04em; }
+
+/* The right-click menu — fixed at the pointer (Dock.jsx menuPlace). */
+.taskbar-menu { position: fixed; bottom: auto; z-index: 3; }
+.taskbar-menu-head {
+  padding: var(--space-1) var(--space-3);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+/* ── THE LAUNCHER ─────────────────────────────────────────────────────────── */
+
+.launcher {
+  position: absolute;
+  width: min(760px, calc(100vw - 48px));
+  z-index: 2;
+  pointer-events: auto;
+  filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.6));
+}
+.taskbar.edge-bottom .launcher { left: 0; bottom: calc(100% + 10px); }
+.taskbar.edge-top .launcher { left: 0; top: calc(100% + 10px); }
+.taskbar.edge-left .launcher { left: calc(100% + 10px); bottom: 0; }
+
+.launcher-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: min(72vh, 760px);
+  padding: var(--space-4);
+}
+
+.launcher-search {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.launcher-search:focus { border-color: var(--signal-dim); }
+
+.launcher-body { overflow: hidden auto; display: flex; flex-direction: column; gap: var(--space-4); }
+
+.launcher-section-head {
+  margin: 0 0 var(--space-2);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+.launcher-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 112px);
+  gap: var(--space-1);
+}
+
+.launcher-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.launcher-tile:hover,
+.launcher-tile:focus-visible { color: var(--color-text-primary); border-color: var(--line); }
+.launcher-tile.is-open { color: var(--color-text-primary); }
+.launcher-tile.is-focused { color: var(--signal); }
+.launcher-tile-icon { display: flex; width: 22px; height: 22px; align-items: center; justify-content: center; }
+.launcher-tile-icon svg { width: 22px; height: 22px; }
+.launcher-tile-label { font-size: 9px; letter-spacing: 0.14em; text-align: center; color: inherit; }
+/* a pinned app wears a small corner mark in the launcher */
+.launcher-tile.is-pinned::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 4px;
+  height: 4px;
+  background: var(--line-hover);
+}
+
+.launcher-empty { margin: 0; font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+.launcher-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taskbar-launcher, .taskbar-app, .launcher-tile { transition: none; }
+}

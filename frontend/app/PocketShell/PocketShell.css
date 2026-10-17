@@ -1,0 +1,129 @@
+/* PocketShell — LINE & CYCLE in a pocket. Void ground, hairline structure,
+   the signal accent only on what is live. The stream's own rules come from
+   RelinkShell.css unchanged; these lay them out for one pane, a thumb, and
+   a phone's moving edges (100dvh, safe-area insets). */
+
+.pocket {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100dvh;
+  background: var(--color-void, #000);
+  color: var(--color-text-primary, rgba(255, 255, 255, 0.92));
+  font-family: var(--font-voice, 'Inter', system-ui, sans-serif);
+}
+
+.pocket-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.13));
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.pocket-head-name { color: var(--color-text-primary); }
+.pocket-head-state { margin-left: auto; color: var(--color-text-tertiary, rgba(255, 255, 255, 0.4)); }
+
+.pocket-pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The stream fills the pane; its desk-side rails are panes of their own here. */
+.pocket-stream { height: 100%; }
+.pocket-stream .stream-tasks,
+.pocket-stream .stream-chats { display: none; }
+
+.pocket-rail {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+}
+
+.pocket-rail .stream-chats,
+.pocket-rail .stream-tasks {
+  flex: 1 1 auto;
+  width: 100%;
+  border-left: 0;
+}
+
+.pocket-rail .stream-chats.is-collapsed,
+.pocket-rail .stream-tasks.is-collapsed { display: none; }
+
+.pocket-rail:empty::after {
+  content: "NOTHING HERE YET";
+  margin: auto;
+  font-family: var(--font-data, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary, rgba(255, 255, 255, 0.4));
+}
+
+.pocket-me {
+  padding: 14px 16px;
+  overflow: auto;
+}
+
+.pocket-nav {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.13));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--color-void, #000);
+}
+
+.pocket-nav-btn {
+  background: none;
+  border: 0;
+  border-right: 1px solid var(--line, rgba(255, 255, 255, 0.13));
+  color: var(--color-text-tertiary, rgba(255, 255, 255, 0.4));
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  padding: 12px 4px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: color var(--snap, 140ms linear);
+}
+
+.pocket-nav-btn:last-child { border-right: 0; }
+
+.pocket-nav-btn[aria-current="page"] {
+  color: var(--signal, #5fe9ff);
+  box-shadow: inset 0 -1px 0 var(--signal, #5fe9ff);
+}
+
+.pocket-nav-btn:focus-visible {
+  outline: 1px solid var(--signal, #5fe9ff);
+  outline-offset: -3px;
+}
+
+/* Touch: the composer's controls need a thumb's worth of target. */
+.pocket .relink-inputrow button,
+.pocket .relink-send { min-height: 40px; min-width: 40px; }
+
+/* THE FIELD NEEDS ITS OWN LINE ON A PHONE.
+   The composer row carries three chips beside the chamfered box — attach, the
+   chat mode, and VOX (the last two joined the row in 182ca2f5f) — and the box
+   itself carries four more controls inside it. On a desk that all fits. On a
+   phone it leaves the textarea a sliver, and because the field auto-grows to
+   its own scrollHeight, a sliver wraps the placeholder into a tall empty
+   column: a box with no visible text and no room to type. That is the "no chat
+   input" report — the field was there the whole time, too narrow to read and
+   too tall to recognise.
+   The chips keep their line; the box takes the full width of the next one. */
+.pocket .relink-inputrow { flex-wrap: wrap; }
+.pocket .relink-input { flex: 1 0 100%; }
+/* The chips lift to share the box's bottom edge when they sit beside it. On
+   their own line there is no edge to share, so the lift becomes a gap. */
+.pocket .relink-inputrow { --composer-baseline: 0px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pocket-nav-btn { transition: none; }
+}

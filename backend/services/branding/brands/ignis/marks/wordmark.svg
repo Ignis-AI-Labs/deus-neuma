@@ -1,0 +1,21 @@
+<svg width="80" height="24" viewBox="0 0 80 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0.5" y="0.5" width="79" height="23" rx="3.5" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+
+  <!-- Text: IGNIS AI LABS -->
+  <text x="40" y="15"
+        font-family="monospace"
+        font-size="8"
+        font-weight="bold"
+        fill="rgba(255,255,255,0.7)"
+        text-anchor="middle"
+        letter-spacing="0.5">
+    IGNIS AI LABS
+  </text>
+
+  <!-- Corner accents -->
+  <path d="M1 4 L1 1 L4 1" stroke="rgba(34,211,238,0.5)" stroke-width="1" fill="none"/>
+  <path d="M79 4 L79 1 L76 1" stroke="rgba(34,211,238,0.5)" stroke-width="1" fill="none"/>
+  <path d="M1 20 L1 23 L4 23" stroke="rgba(34,211,238,0.3)" stroke-width="1" fill="none"/>
+  <path d="M79 20 L79 23 L76 23" stroke="rgba(34,211,238,0.3)" stroke-width="1" fill="none"/>
+</svg>

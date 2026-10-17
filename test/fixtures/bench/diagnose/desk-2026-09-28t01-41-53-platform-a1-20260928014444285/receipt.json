@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "kind": "benchmark-run",
+  "runId": "desk-2026-09-28t01-41-53-platform-a1-20260928014444285",
+  "comparisonId": "desk-2026-09-28t01-41-53",
+  "protocolSha256": "61ab7dee1a08133e62dc1fdf97c6745d9e6fdf60f4531cdb9a36bb481441e8f5",
+  "attempt": 1,
+  "arm": "platform",
+  "evidence": "development",
+  "approval": {
+    "by": "0x40566d43261849777aca96b26f4ec8c850e5dcae",
+    "at": "2026-09-28T01:44:44.247Z"
+  },
+  "suite": {
+    "id": "inspect-winogrande-8192",
+    "tier": "t2",
+    "adapter": "inspect",
+    "dimensions": [
+      "reasoning"
+    ],
+    "repository": "https://github.com/UKGovernmentBEIS/inspect_evals",
+    "revision": "b935c0e5cfa04710f016f925db75d8e81413e2cf",
+    "tasks": [
+      "winogrande"
+    ]
+  },
+  "subject": {
+    "modelId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "identity": {
+      "kind": "local-artifact",
+      "revision": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "mutable": false
+    },
+    "quantization": "Q8_K_P",
+    "tokenizer": "/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+    "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+    "route": {
+      "provider": "llama-server",
+      "dialect": "openai",
+      "endpointClass": "loopback"
+    }
+  },
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 8192,
+    "concurrency": 4,
+    "sampleLimit": 50,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 43200000,
+    "platformRules": 1,
+    "taskConfigSha256": "6fe7f30f8a384f04ec7e4d0b1b566317e2533b7451a25cc2cef92d05d31e6c54"
+  },
+  "harness": {
+    "profile": "platform-neutral-rules-v1",
+    "neumaRevision": "5882585c8bdafbe5f4ae3df824e67c17ec4b495b",
+    "subjectCheckout": {
+      "root": "/workspace/repos/project-batizus",
+      "revision": "55b85a81c6ea91a3ce7929caa411cf7e48e89133",
+      "dirty": true
+    },
+    "workingTreeDirty": false,
+    "identityLayersEnabled": false,
+    "identity": {
+      "mode": "none"
+    },
+    "laneId": null,
+    "referenceHarness": null
+  },
+  "environment": {
+    "platform": "linux",
+    "release": "7.2.7-200.fc44.x86_64",
+    "arch": "x64",
+    "node": "v24.13.1",
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 610.57.04"
+  },
+  "status": "succeeded",
+  "timing": {
+    "startedAt": "2026-09-28T01:44:44.285Z",
+    "finishedAt": "2026-09-28T01:45:56.537Z",
+    "durationMs": 72252
+  },
+  "metrics": [
+    {
+      "id": "winogrande/choice/accuracy",
+      "task": "winogrande",
+      "value": 0.96,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 50,
+      "source": "2026-09-28T01-44-50-00-00_winogrande_gmSpcFqdpfazzvYmVgm7oP.json"
+    },
+    {
+      "id": "winogrande/choice/stderr",
+      "task": "winogrande",
+      "value": 0.027994168488950612,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": false,
+      "sampleCount": 50,
+      "source": "2026-09-28T01-44-50-00-00_winogrande_gmSpcFqdpfazzvYmVgm7oP.json"
+    },
+    {
+      "id": "suite/mean_model_latency",
+      "task": "suite",
+      "value": 5.068919754318195,
+      "unit": "seconds",
+      "higherIsBetter": false,
+      "primary": false,
+      "sampleCount": 50,
+      "source": "inspect-model-events"
+    }
+  ],
+  "sampleSelection": {
+    "sha256": "c5c844dd68c2277280808d488fe00770d9d692a28039540addf8a2833c3d2a80",
+    "count": 50,
+    "measurement": "measured"
+  },
+  "efficiency": {
+    "promptTokens": 26960,
+    "completionTokens": 10918,
+    "requests": 50,
+    "toolCalls": 0,
+    "retries": 0,
+    "measurement": "measured",
+    "peakInFlight": 4,
+    "meanInFlight": 3.9,
+    "ttftMsP50": 327.36510900000576,
+    "prefillMsP50": 293.563,
+    "decodeTokensPerSec": 49.21,
+    "cachedPromptTokens": 20286,
+    "timedRequests": 50,
+    "timingSource": "client-stream"
+  },
+  "executions": [
+    {
+      "stage": "inspect-eval",
+      "command": "/workspace/repos/project-fuvofos/.slabs/e0e9c2b1a212f9ef33ce77162194999abc4204223809b158291cb3a8c3e9f852/src/.venv/bin/inspect",
+      "args": [
+        "eval",
+        "inspect_evals/winogrande",
+        "--model",
+        "openai-api/neuma//models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+        "--model-base-url",
+        "http://127.0.0.1:40283/v1",
+        "--log-dir",
+        "/workspace/repos/project-fuvofos/work/desk-2026-09-28t01-41-53-platform-a1-20260928014444285/raw",
+        "--log-format",
+        "json",
+        "--max-connections",
+        "4",
+        "--max-retries",
+        "0",
+        "--timeout",
+        "900",
+        "--temperature",
+        "0",
+        "--top-p",
+        "1",
+        "--max-tokens",
+        "8192",
+        "--seed",
+        "7",
+        "--display",
+        "none",
+        "--json",
+        "--limit",
+        "50"
+      ],
+      "cwd": "/workspace/repos/project-fuvofos/.slabs/e0e9c2b1a212f9ef33ce77162194999abc4204223809b158291cb3a8c3e9f852/src",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 71763,
+      "timedOut": false,
+      "aborted": false
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "manifest",
+      "path": "raw/manifest.json",
+      "sha256": "1f1867485c510a29cd1e492904c77c592a607b5cf97b0d398181b0e52a5cbd47",
+      "bytes": 2009
+    },
+    {
+      "kind": "stdout",
+      "path": "stdout/inspect-eval.log",
+      "sha256": "450778a77a05ed244bda60fc744b0cfde113ab54ec909f691a270818a415e48e",
+      "bytes": 656
+    },
+    {
+      "kind": "stderr",
+      "path": "stderr/inspect-eval.log",
+      "sha256": "b6e50d4905c0a123d6a2d4e80233aa6f4e1c0d2f1c18419b0e202543a8d71c81",
+      "bytes": 885
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/2026-09-28T01-44-50-00-00_winogrande_gmSpcFqdpfazzvYmVgm7oP.json",
+      "sha256": "57d962dfb2602f52ff8a4fd2b7557371c8955989e9d44ce1452260ad4efb1a0a",
+      "bytes": 1007469
+    },
+    {
+      "kind": "platform-telemetry",
+      "path": "raw/platform-telemetry.json",
+      "sha256": "cc5d8768ee753705ae8c867363cc679aed8fcaa79b66578c55339d5735e83261",
+      "bytes": 15060
+    }
+  ],
+  "failure": null
+}

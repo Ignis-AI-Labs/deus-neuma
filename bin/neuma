@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+// NEUMA CLI entry — operator-side. This shim stays trivial; the real dispatch
+// lives in cli/index.js so the binary and the dispatcher are not entangled.
+// Errors during load surface to stderr with a non-zero exit (an unloadable
+// dispatcher is a hard failure, not a silent one).
+//
+// impure (process IO).
+import('../cli/index.js').catch((err) => {
+  process.stderr.write(`neuma: failed to load CLI dispatcher: ${err?.message || err}\n`);
+  process.exit(1);
+});

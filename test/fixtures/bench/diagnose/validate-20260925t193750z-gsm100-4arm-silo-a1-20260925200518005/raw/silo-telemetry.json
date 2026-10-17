@@ -1,0 +1,77 @@
+{
+ "profile": "silo-prefix-v1",
+ "perRequest": [
+  {
+   "n": 4,
+   "finishReason": "stop",
+   "contentChars": 3,
+   "reasoningChars": 422,
+   "promptTokens": 3153,
+   "completionTokens": 131,
+   "durationMs": 2595
+  },
+  {
+   "n": 11,
+   "finishReason": "stop",
+   "contentChars": 162,
+   "reasoningChars": 1021,
+   "promptTokens": 2876,
+   "completionTokens": 368,
+   "durationMs": 5194
+  },
+  {
+   "n": 14,
+   "finishReason": "stop",
+   "contentChars": 411,
+   "reasoningChars": 1501,
+   "promptTokens": 3186,
+   "completionTokens": 660,
+   "durationMs": 9238
+  },
+  {
+   "n": 25,
+   "finishReason": "stop",
+   "contentChars": 97,
+   "reasoningChars": 497,
+   "promptTokens": 2751,
+   "completionTokens": 200,
+   "durationMs": 3393
+  },
+  {
+   "n": 86,
+   "finishReason": "stop",
+   "contentChars": 143,
+   "reasoningChars": 3317,
+   "promptTokens": 3142,
+   "completionTokens": 1070,
+   "durationMs": 14918
+  },
+  {
+   "n": 94,
+   "finishReason": "length",
+   "contentChars": 0,
+   "reasoningChars": 9188,
+   "promptTokens": 3115,
+   "completionTokens": 2568,
+   "durationMs": 35721
+  },
+  {
+   "n": 1,
+   "finishReason": "stop",
+   "contentChars": 108,
+   "reasoningChars": 561,
+   "promptTokens": 3015,
+   "completionTokens": 200,
+   "durationMs": 4369
+  },
+  {
+   "n": 2,
+   "finishReason": "stop",
+   "contentChars": 31,
+   "reasoningChars": 710,
+   "promptTokens": 3122,
+   "completionTokens": 190,
+   "durationMs": 3406
+  }
+ ]
+}

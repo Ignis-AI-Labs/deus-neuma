@@ -1,0 +1,1 @@
+{"at":"2026-09-21T03:19Z","event":"postmortem","downMs":173100000,"note":"server died and every fleet window closed endpoint-unavailable for ~2 days; no watcher checked serving; watchdog now owns this — written in the presence of the failure"}

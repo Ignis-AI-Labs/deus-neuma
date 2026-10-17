@@ -1,0 +1,25 @@
+.tool-chip.is-execution .tool-chip-summary {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.tool-chip.is-execution .tool-chip-head { align-items: flex-start; }
+.tool-chip.is-execution .tool-chip-toggle { flex-shrink: 0; }
+
+/* A filesystem act's path is a DOOR (path-menu.js): right-click raises its
+   menu. At rest it reads as the line it is; hover hints the door, and holding
+   Ctrl/⌘ lights every door in view (PathOpener's body.mod-open). */
+.tool-chip-path {
+  cursor: context-menu;
+  border-bottom: 1px dotted transparent;
+}
+.tool-chip-path:hover,
+.tool-chip-path:focus-visible {
+  border-bottom-color: var(--signal-dim);
+  outline: none;
+}
+body.mod-open .tool-chip-path {
+  cursor: pointer;
+  color: var(--signal);
+  border-bottom-color: var(--signal-dim);
+}

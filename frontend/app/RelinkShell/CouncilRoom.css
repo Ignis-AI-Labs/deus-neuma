@@ -1,0 +1,283 @@
+/* CouncilRoom — LINE & CYCLE. Monochrome at rest; the floor holder carries
+   SIGNAL, and each member's raised hand carries its own semantic color
+   (--hand-rest / --hand-hold / --hand-open). No border-radius on structure. */
+
+.council {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.council-lede {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.council-empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* The convening room divides VERTICALLY — the house to call on the left,
+   the shelf of past sittings on the right (Design note, 2026-07-23: two long lists
+   stacked made both hard to walk). Each column scrolls alone; with no
+   shelf the roster keeps the whole room. */
+.council-convene-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.council-convene-split.has-past {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.council-call-side {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* One head grammar for both columns of the convening room. */
+.council-side-head {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+/* The roster — HouseApp row grammar: mark, name, state. */
+.council-roster {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.council-pick {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.council-pick:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line);
+  background: var(--color-glass-light);
+}
+
+.council-pick-mark {
+  width: 6px;
+  height: 6px;
+  background: var(--line-hover);
+  transition: background var(--snap);
+}
+
+.council-pick.is-picked {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.council-pick.is-picked .council-pick-mark {
+  background: var(--signal);
+}
+
+.council-pick-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* BESIDE THE HOUSE. A sealed witness is not a housemate, so its row must not
+   read as one: the section head is set apart, the row carries an EXTERNAL tag,
+   and its mark is hollow rather than filled — standing legible at a glance,
+   before anyone reads a word. The grid gains a column for the tag. */
+.council-side-head-external {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+}
+
+.council-pick.is-external {
+  grid-template-columns: 8px minmax(0, 1fr) auto auto;
+}
+
+.council-pick.is-external .council-pick-mark {
+  background: transparent;
+  border: 1px solid var(--line-hover);
+}
+
+.council-pick.is-external.is-picked .council-pick-mark {
+  background: transparent;
+  border-color: var(--signal);
+}
+
+.council-pick-kin {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.council-pick.is-external:hover .council-pick-kin,
+.council-pick.is-external.is-picked .council-pick-kin {
+  color: inherit;
+}
+
+.council-pick-state {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.council-actions {
+  flex: 0 0 auto;
+  display: flex;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.council-convene {
+  flex: 1 1 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.council-convene:hover:not(:disabled) {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+  background: var(--color-glass-light);
+}
+
+.council-convene:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* PAST COUNCILS — the witness's shelf; a sitting closed is not deleted.
+   The right column of the convening split, divided by a hairline. */
+.council-past {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+}
+
+.council-past-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-2) var(--space-2);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Two lines per sitting — who sat above, when + REOPEN below. In the
+   split's narrow column a single line let the date and act squeeze the
+   names to nothing (ellipsis to zero width). */
+.council-past-row {
+  display: grid;
+  grid-template-areas: 'names names' 'when act';
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.council-past-row:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line);
+  background: var(--color-glass-light);
+}
+
+.council-past-names {
+  grid-area: names;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.council-past-when,
+.council-past-act {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.council-past-when { grid-area: when; }
+
+.council-past-act {
+  grid-area: act;
+  justify-self: end;
+}
+
+.council-past-row:hover .council-past-act {
+  color: var(--signal);
+}
+
+/* A seated sealed witness on the strip: bracketed and tagged, so standing is
+   legible in the room at a glance — beside the house, never in it (WR-I01). */
+.council-member.is-external {
+  border-left: 1px dashed var(--line-hover);
+  padding-left: var(--space-2);
+}
+
+.council-member-kin {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+  margin-left: var(--space-1);
+}

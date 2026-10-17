@@ -1,0 +1,272 @@
+/* Design Tokens - Single Source of Truth */
+:root {
+  /* ============================================
+     LINE & CYCLE — ratified 2026-06-12
+     Graduated from lookdev study 03. The screen at
+     rest is monochrome; SIGNAL means live data,
+     ALERT means warnings only. Lines snap, cycles
+     breathe. Chamfers replace border-radius on
+     structural panels (TR+BL diagonal pairing).
+     ============================================ */
+  --signal: #5FE9FF;
+  --signal-dim: rgba(95, 233, 255, 0.5);
+  --signal-faint: rgba(95, 233, 255, 0.18);
+  --alert: #FF5533;
+  --alert-dim: rgba(255, 85, 51, 0.55);
+  --line: rgba(255, 255, 255, 0.18);
+  --line-hover: rgba(255, 255, 255, 0.40);
+  --grid: rgba(255, 255, 255, 0.02);
+  --cut: 12px;                 /* structural chamfer */
+  --cut-sm: 6px;               /* control chamfer */
+  --snap: 140ms linear;        /* lines snap — deterministic */
+  --font-voice: 'Inter', 'Noto Sans SC', 'Noto Sans JP', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-data: 'JetBrains Mono', 'Fira Code', 'Noto Sans SC', 'Noto Sans JP', 'Noto Sans KR', monospace;
+
+  /* ============================================
+     COLORS
+     ============================================ */
+  /* Primary Palette */
+  --color-void: #000000;
+  --color-pure-black: #000000;
+  --color-white: #FFFFFF;
+
+  /* RGB Accent Colors */
+  --color-cyan: #00FFFF;
+  --color-magenta: #FF00FF;
+  --color-yellow: #FFFF00;
+  --color-green: #00FF88;
+
+  /* Semantic Status Colors */
+  --color-error: #FF6666;
+  --color-error-muted: rgba(255, 0, 0, 0.3);
+  --color-error-bg: rgba(255, 0, 0, 0.1);
+  --color-success: var(--color-green);
+
+  /* WARN — the neutral pressure/approaching-limit hue (context gauge, git
+     modified, any "watch this" state). --git-modified aliases it. */
+  --warn: #FFB86B;
+
+  /* GIT STATUS — the explorer's working-tree badges. Restrained color as
+     information, never decoration: amber = touched, green = new, ALERT =
+     gone or in conflict. */
+  --git-modified: var(--warn);
+  --git-added: var(--color-green);
+  --git-untracked: var(--color-green);
+  --git-deleted: var(--alert);
+  --git-conflicted: var(--alert);
+
+  /* THE COUNCIL — the traffic light. REST is STANDBY and reads red (the
+     witness's law: red = on standby, not an alarm — a deliberate state
+     color, distinct from ALERT's warnings-only doctrine); HOLD waits its
+     turn in yellow; OPEN asks for the floor now in green. */
+  --hand-rest: rgba(255, 85, 51, 0.55);
+  --hand-hold: var(--color-yellow);
+  --hand-open: var(--color-green);
+  /* Faint washes of the same signals — hover fields, never fills. */
+  --hand-open-tint: rgba(0, 255, 136, 0.12);
+  --alert-tint: rgba(255, 85, 51, 0.12);
+  /* THE COUNCIL — each speaker's name carries their own hue so the room
+     reads at a glance. Assigned by seat order; the witness speaks in
+     SIGNAL. Personal choice of these comes in a later cycle (SETTINGS). */
+  --voice-witness: var(--signal);
+  --voice-1: #7FD4A8;
+  --voice-2: #C9A8FF;
+  --voice-3: #FFB86B;
+  --voice-4: #7FB8FF;
+  --voice-5: #FF9EC2;
+  --voice-6: #B8E986;
+  /* Seats 7-12 — a full twelve-member room, every seat its OWN hue (Founder,
+     2026-07-23: the six-hue cycle doubled colors past seat six). Kept
+     apart from --signal (#5FE9FF) and from each other at data size. */
+  --voice-7: #4FCBB8;
+  --voice-8: #E9C46A;
+  --voice-9: #FF8A70;
+  --voice-10: #98A0F8;
+  --voice-11: #DE96DE;
+  --voice-12: #C7B299;
+  --color-success-muted: rgba(0, 255, 136, 0.3);
+  --color-success-bg: rgba(0, 255, 136, 0.1);
+  
+  /* Semantic Colors */
+  --color-background: var(--color-void);
+  --color-surface: rgba(0, 0, 0, 0.98);
+  --color-surface-elevated: rgba(0, 0, 0, 0.95);
+  
+  /* Text Colors */
+  /* Section headings are their OWN register — THE LOOK's HEAD knob
+     overrides this; stock rides the secondary ink so nothing shifts. */
+  --color-heading: var(--color-text-secondary);
+  --color-text-primary: rgba(255, 255, 255, 0.95);
+  --color-text-secondary: rgba(255, 255, 255, 0.70);
+  --color-text-tertiary: rgba(255, 255, 255, 0.50);
+  --color-text-disabled: rgba(255, 255, 255, 0.30);
+  /* ITAL / EMPH — claimed voices; stock inherits the body so nothing shifts. */
+  --color-italic: inherit;
+  --color-emphasis: var(--color-text-primary);
+
+  
+  /* Border Colors */
+  --color-border-primary: rgba(255, 255, 255, 0.2);
+  --color-border-hover: rgba(255, 255, 255, 0.4);
+  --color-border-focus: rgba(255, 255, 255, 0.6);
+  
+  /* Glass Effects */
+  --color-glass: rgba(0, 0, 0, 0.5);
+  --color-glass-light: rgba(255, 255, 255, 0.02);
+  --color-void-veil: rgba(0, 0, 0, 0.18);               /* scanline/darkening overlay — tracks the void */
+  --color-glass-hover: rgba(255, 255, 255, 0.05);
+  --color-input-fill: rgba(255, 255, 255, 0.08);        /* text-box surface — visible against the void */
+  --color-input-fill-focus: rgba(255, 255, 255, 0.12);  /* text-box surface, focused */
+  
+  /* ============================================
+     TYPOGRAPHY
+     ============================================ */
+  /* Font Families — CJK rides the vendored Noto sets (frontend/i18n/index.js
+     imports the fontsource builds): Latin keeps Inter/JetBrains Mono, each
+     CJK glyph falls to its Noto face instead of an uncontrolled system font. */
+  --font-primary: 'Inter', 'Noto Sans SC', 'Noto Sans JP', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Noto Sans SC', 'Noto Sans JP', 'Noto Sans KR', monospace;
+  
+  /* Font Weights */
+  --weight-extralight: 200;
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  
+  /* Font Sizes */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+  
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+  
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+  
+  /* ============================================
+     SPACING
+     ============================================ */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+  
+  /* ============================================
+     BORDERS
+     ============================================ */
+  /* Border Width */
+  --border-width-thin: 1px;
+  --border-width-medium: 2px;
+  --border-width-thick: 4px;
+  
+  /* Border Radius — LINE & CYCLE: chamfers replace rounding; every
+     scale token is square. --radius-full survives for genuine circles
+     (status dots, vessel avatars). */
+  --radius-none: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-full: 9999px;
+  
+  /* ============================================
+     SHADOWS
+     ============================================ */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  
+  /* Glow Shadows */
+  --glow-cyan: 0 0 20px rgba(0, 255, 255, 0.3);
+  --glow-magenta: 0 0 20px rgba(255, 0, 255, 0.3);
+  --glow-white: 0 0 20px rgba(255, 255, 255, 0.1);
+  
+  /* ============================================
+     ANIMATIONS
+     ============================================ */
+  /* Durations */
+  --duration-instant: 100ms;
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-slower: 700ms;
+  --duration-slowest: 1000ms;
+  
+  /* Easings */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  /* (the bounce easing was retired 2026-09-25 — nothing in Neuma bounces.) */
+
+  /* THE MOTION LAW (2026-09-25) — structure SNAPS, cycles BREATHE, and all
+     of it rides the compositor: keyframes move or fade (transform, opacity),
+     never lay out or repaint (test/unit/motion-law.test.js enforces it). */
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.2, 1);      /* structure arrives: fast, hard stop */
+  --ease-shutter: cubic-bezier(0.55, 0, 0.3, 1);    /* structure leaves: accelerate out */
+  --ease-breath: cubic-bezier(0.45, 0, 0.55, 1);    /* cycles: sinusoidal */
+  --dur-snap: 140ms;     /* brackets, focus, toggles */
+  --dur-draw: 260ms;     /* a hairline draws */
+  --dur-unfold: 380ms;   /* a panel unfolds from its line */
+  --dur-scan: 560ms;     /* one scanline pass over fresh content */
+  --stagger: 36ms;       /* the cascade step between siblings */
+  
+  /* ============================================
+     Z-INDEX
+     ============================================ */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-tooltip: 600;
+  --z-notification: 700;
+  --z-max: 9999;
+  
+  /* ============================================
+     BREAKPOINTS (for JS usage)
+     ============================================ */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* Dark mode is our default, but we can add light mode support later */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Light mode overrides would go here */
+  }
+}

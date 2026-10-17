@@ -1,0 +1,252 @@
+/* OutreachApps-card — THE CARD block split from OutreachApps.css; imported by OutreachApps.jsx AFTER the base (the base fold rules dim the card from outside — order matters). */
+/* THE CARD (#206 follow-up, Design note, 2026-07-27: […]). The chamfered frame CARRIES the tone — signal = a decision
+   is owed, alert = wants an eye, quiet line = history — so a whole lane reads
+   at a glance, each post in its own container. */
+.queue-card {
+  margin-bottom: var(--space-3);
+}
+
+.queue-card.is-await { background: var(--signal-dim); }
+.queue-card.is-live { background: var(--line-hover); }
+.queue-card.is-failed { background: var(--alert-dim); }
+/* is-done keeps .cham's own quiet hairline. */
+
+.queue-card-in {
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* THE PREVIEW — the post shown as the post it is: who speaks, the words as
+   they will read, and the platform's own measure underneath. */
+.queue-preview {
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.queue-preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.queue-preview-author { color: var(--color-text-secondary); }
+.queue-preview-via { color: var(--color-text-tertiary); }
+
+/* THE LINK BACK — a permalink wears its host's register at rest and takes
+   the signal only under the cursor: the operator's manual double-check of
+   the real post on X. */
+.queue-preview-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 120ms ease;
+}
+.queue-preview-link:hover { color: var(--signal); }
+
+/* The escalation read raising its voice — financial/legal/threat categories
+   read in the alert tone so the witness sees the ones that need care. */
+.queue-preview-via.is-alert { color: var(--alert); }
+
+.queue-preview-text {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.queue-preview-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.queue-preview-count {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+/* THE EXCHANGE — what was said TO the house, set above the drafted answer
+   on a reply card so the operator approves with eyes. Dimmer than the
+   draft: it is the field's words, not the house's. */
+.queue-reply-context {
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.queue-reply-context .queue-preview-text {
+  color: var(--color-text-secondary);
+}
+
+/* What would not fit is flagged, never hidden. */
+.queue-preview-count.is-over { color: var(--alert); }
+
+/* The attachments, as the attachments — a staged draft is decided with eyes:
+   the real thumbnail (its bytes fetched with auth behind the preview route),
+   the alt text in the data register beneath, and the honest marker when the
+   being described nothing — the same [NO ALT TEXT] flag the queue read
+   raises. */
+.queue-media {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.queue-media-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 180px;
+}
+
+.queue-media-thumb {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  display: block;
+}
+
+/* The thumbnail is a door, not a picture — clicking it hangs the staged
+   image full-size in the Lightbox for the operator's own eyes. The button
+   is a transparent wrapper: the thumb's own border and sizing carry the
+   look, the zoom-in cursor carries the promise. */
+.queue-media-zoom {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+}
+
+.queue-media-zoom:focus-visible { outline: 1px solid var(--signal); }
+
+.queue-media-alt {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.queue-media-alt.is-missing { color: var(--alert-dim); }
+
+/* A card whose brand has moved since it was drawn.
+   ⚠️ 12px, not the 9px its siblings use. This is the one line on the board an
+   operator MUST read before pressing APPROVE, and it is the reason the check
+   exists at all — a warning set below the legibility floor is a warning that
+   was written to be missed. The alt text beside it is a label; this is a
+   verdict. */
+.queue-media-kit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid currentColor;
+  overflow-wrap: anywhere;
+}
+
+.queue-media-kit.is-stale { color: var(--alert); }
+.queue-media-kit.is-unknown { color: var(--warn); }
+
+/* The reason, in the voice register — it is a sentence, not a label, and it
+   says WHAT moved so the operator can judge whether it matters to this post. */
+.queue-media-kit em {
+  font-family: var(--font-voice);
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+/* The identity cluster: channel · author and the standing chip, ATTACHED —
+   the old tag floated at the far right of the row, detached from the entry
+   it described. */
+.queue-entry-id {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The standing chip — data register, one tone per class of truth. */
+.queue-standing {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 1px var(--space-1);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.queue-standing.is-await {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.queue-standing.is-live {
+  color: var(--color-text-secondary);
+  border-color: var(--line);
+}
+
+.queue-standing.is-failed {
+  color: var(--alert);
+  border-color: var(--alert-dim);
+}
+
+.queue-standing.is-done {
+  color: var(--color-text-tertiary);
+  border-color: transparent;
+}
+
+/* The body keeps the voice register; the rhythm around it does the work. */
+.queue-entry-body {
+  margin: var(--space-2) 0;
+}
+
+/* One foot row, one baseline: the meta line left, the acts right. The
+   operator's eye travels identity → copy → when → what-you-can-do in one pass. */
+.queue-entry-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.queue-entry-meta {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+.queue-card.is-await .queue-entry-meta { color: var(--color-text-secondary); }
+.queue-card.is-failed .queue-entry-meta { color: var(--alert-dim); }
+
+.queue-entry-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+}

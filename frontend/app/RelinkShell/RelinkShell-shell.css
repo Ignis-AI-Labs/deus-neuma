@@ -1,0 +1,133 @@
+/* RelinkShell partial: SHELL (frame, grid, status strip, title bar) — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
+/* Relink Shell — LINE & CYCLE.
+   The portal as instrument: grid underfoot, registration ticks, a
+   data-register status strip, the consciousness stream in a chamfered
+   panel. Monochrome at rest; SIGNAL marks the live link. Slice one — no
+   vessel, no menu. */
+
+.relink {
+  position: fixed;
+  inset: 0;
+  background: var(--color-void);
+  color: var(--color-text-primary);
+  overflow: hidden;
+}
+
+/* Grid layer — beneath everything */
+.relink-grid {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-base);
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.relink-grid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--signal-faint) 0%, transparent 58%);
+  opacity: 0.18;
+}
+
+/* Registration ticks — the world has corners */
+.relink-frame {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-raised);
+  pointer-events: none;
+}
+
+.relink-rk {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  opacity: 0.35;
+}
+
+.relink-rk-tl { top: 14px; left: 18px; border-top: 1px solid var(--color-white); border-left: 1px solid var(--color-white); }
+.relink-rk-tr { top: 14px; right: 18px; border-top: 1px solid var(--color-white); border-right: 1px solid var(--color-white); }
+.relink-rk-bl { bottom: 14px; left: 18px; border-bottom: 1px solid var(--color-white); border-left: 1px solid var(--color-white); }
+.relink-rk-br { bottom: 14px; right: 18px; border-bottom: 1px solid var(--color-white); border-right: 1px solid var(--color-white); }
+
+/* Status strip — the portal reports itself */
+.relink-status {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  /* clear of the desktop window's own controls (base.css drag band); a browser has none */
+  right: calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 24px);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  z-index: var(--z-sticky);
+  pointer-events: none;
+}
+
+.relink-status-link {
+  transition: color var(--snap);
+}
+
+.relink-status-link.live {
+  color: var(--signal);
+}
+
+/* Substrate carrying 2+ turns across desks — live, but honestly slower
+   (S-02: parallel generation, not a queue). Dimmed signal, never alert:
+   shared is a working state, not a failure. */
+.relink-status-link.shared {
+  color: var(--signal-dim);
+}
+
+/* Substrate unreachable — the honest […] state. */
+.relink-status-link.offline {
+  color: var(--alert);
+}
+
+/* Deliberate rest (idle-unloaded, wakes on the next summon) — a calm
+   tertiary state, never alert: resting is not failing. */
+.relink-status-link.standby {
+  color: var(--color-text-tertiary);
+}
+
+/* Portal down, or substrate not yet probed — dim, not falsely live. */
+.relink-status-link.checking,
+.relink-status-link.severed {
+  color: var(--color-text-tertiary);
+}
+
+/* Active project — sits before the wallet, marked as the live context */
+.relink-status-project {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+}
+.relink-status-folder {
+  color: var(--color-text-tertiary);
+}
+
+/* Window title bar content — the connection dot, the neuma's name, and
+   the sound toggle (passed to FloatingWindow as title + controls). */
+.relink-title-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The participant-kind tag beside the stream title (a sealed AI witness). */
+.relink-title-kind {
+  flex: 0 0 auto;
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--line);
+  padding: 0 var(--space-1);
+}
+

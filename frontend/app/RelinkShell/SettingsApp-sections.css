@@ -1,0 +1,190 @@
+/* SettingsApp-sections.css — extracted from SettingsApp.css (size law). Security + models/providers, pins + desk guards, backup destination; imported after SettingsApp-look.css by BOTH SettingsApp.jsx and WitnessesApp.jsx. */
+/* ── Security section ─────────────────────────────────────────────── */
+/* A genuine warning — root divergence, un-openable files — in the reserved
+   alert register (color only ever means something here). */
+.settings-warn {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--alert);
+}
+
+/* Per-being status tags on the encryption row. */
+.settings-sec-tags {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+}
+.settings-tag-ok {
+  color: var(--signal);
+}
+.settings-tag-warn {
+  color: var(--alert);
+}
+.settings-tag-dim {
+  color: var(--color-text-tertiary);
+}
+
+/* The dry-run plan result reads as prose, set off from the status rows. */
+.settings-plan {
+  margin-top: var(--space-2);
+}
+
+/* Backup rows carry a delete affordance + inline confirm. */
+.settings-backup-row {
+  align-items: baseline;
+}
+.settings-backup-meta {
+  margin-left: auto;
+}
+.settings-backup-del {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  transition: color var(--snap);
+}
+.settings-backup-del:hover {
+  color: var(--color-text-secondary);
+}
+.settings-backup-del.is-danger {
+  color: var(--alert);
+}
+.settings-backup-confirm {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+  flex-wrap: wrap;
+}
+.settings-backup-notice {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--alert);
+}
+
+/* ── Models: providers + per-being route ──────────────────────────── */
+
+/* Each provider is a selectable row (name + kind/key tags) inside the files
+   list. The button fills the li and carries its own justify-between layout. */
+.settings-provider-row {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-align: left;
+  transition: color var(--snap);
+}
+.settings-provider-row:hover {
+  color: var(--color-text-secondary);
+}
+.settings-provider-row.is-sel code {
+  color: var(--signal);
+}
+
+/* The key/endpoint editor for the selected provider. */
+.settings-provider-edit {
+  margin-top: var(--space-2);
+}
+.settings-provider-actions {
+  justify-content: flex-start;
+}
+
+/* The catalog is 161 entries — the filter input narrows it, and the list
+   caps its height so the editor below stays in reach. */
+.settings-provider-filter {
+  margin-top: var(--space-1);
+  font-size: 10px;
+}
+.settings-provider-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* --- PINS (memory tab) — the anchors each being holds close ------------- */
+.pins-being {
+  display: block;
+}
+.pins-being-name {
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+.pins-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pins-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.pins-ref {
+  color: var(--signal);
+  word-break: break-all;
+}
+.pins-note {
+  color: var(--color-text-primary);
+}
+.pins-when {
+  color: var(--color-text-tertiary);
+}
+
+/* DESK — behavior guards. ON wears SIGNAL (the guard stands); OFF stays
+   monochrome with the alert only on hover, honest about what it waives. */
+.settings-desk-toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.settings-desk-toggle.on { color: var(--signal); border-color: var(--signal-dim); }
+.settings-desk-toggle:not(.on):hover { color: var(--alert); border-color: var(--alert); }
+.settings-desk-toggle.on:hover { color: var(--signal); }
+
+/* THE BACKUP DESTINATION — where an operator's copy actually lands.
+   The path is the load-bearing part of this row: […] meant
+   nothing for as long as nobody could see WHERE. It gets the room. */
+.settings-dest {
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.settings-dest-k {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+}
+
+.settings-dest-v {
+  flex: 1 1 220px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-data, monospace);
+  color: var(--color-text-primary);
+}

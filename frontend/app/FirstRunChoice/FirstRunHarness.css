@@ -1,0 +1,172 @@
+/* FirstRunHarness — the two roads (local · cloud) and the local pre-flight.
+   LINE & CYCLE: ink at rest, signal marks the chosen and the ready. */
+
+.harness-roads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.harness-road {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+  padding: var(--space-5);
+  background: var(--color-glass);
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.harness-road:hover,
+.harness-road:focus-visible {
+  background: var(--color-glass-hover);
+  border-color: var(--signal-dim);
+  outline: none;
+}
+
+.harness-road.is-chosen {
+  border-color: var(--signal);
+}
+
+.harness-road-tag {
+  color: var(--signal);
+}
+
+.harness-road-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-light);
+  color: var(--color-heading);
+}
+
+.harness-road-body {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.harness-local {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.harness-local-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  color: var(--color-text-tertiary);
+}
+
+.harness-recheck {
+  padding: var(--space-1) var(--space-3);
+}
+
+.harness-servers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.harness-server {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(6rem, auto) 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  background: transparent;
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.harness-server:disabled {
+  cursor: default;
+}
+
+.harness-server.is-ready:hover,
+.harness-server.is-ready:focus-visible {
+  background: var(--color-glass-hover);
+  outline: none;
+}
+
+.harness-server.is-chosen {
+  border-color: var(--signal);
+  color: var(--color-text-primary);
+}
+
+.harness-server-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: var(--border-width-thin) solid var(--color-text-tertiary);
+}
+
+.harness-server.is-ready .harness-server-dot {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+.harness-server.is-empty .harness-server-dot {
+  border-color: var(--signal-dim);
+}
+
+.harness-server-name {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+}
+
+.harness-server-at {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.harness-server-state {
+  color: var(--color-text-tertiary);
+}
+
+.harness-server.is-ready .harness-server-state {
+  color: var(--signal);
+}
+
+.harness-guide {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--border-width-thin) solid var(--signal-dim);
+}
+
+.harness-guide .label-data {
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.harness-guide p:not(.label-data) {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.harness-roads + .firstrun-witness-form:empty {
+  display: none;
+}
+
+/* FREE — give a server's memory back, beside its row (never inside the radio) */
+.harness-servers li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.harness-servers li > .harness-server { flex: 1 1 0; width: auto; min-width: 0; }
+.harness-server-free { flex: 0 0 auto; }
+.harness-server-note { flex-basis: 100%; margin: 0; color: var(--color-text-tertiary); }

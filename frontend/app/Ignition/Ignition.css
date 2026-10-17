@@ -1,0 +1,49 @@
+/* THE IGNITION (ignition-paint.js) — its specimen's chrome. The painted
+   frame carries the ignition itself; beneath it, a stand-in for the session
+   it opens onto. */
+.ign-beneath {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  font-family: var(--font-data);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.3em;
+}
+.ign-beneath small { font-size: 10px; letter-spacing: 0.24em; color: var(--color-text-tertiary); }
+.ign-layer { position: absolute; inset: 0; background: var(--color-void); }
+.ign-skip {
+  position: absolute;
+  right: clamp(24px, 4vw, 64px);
+  bottom: 72px;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+.ign-skip:hover, .ign-skip:focus-visible { color: var(--color-text-primary); }
+
+/* THE IGNITION in the product (Ignition.jsx): above the destination mounting
+   beneath it, where the boot rode; the skip said once, quietly. */
+.ign-film { z-index: 9600; }
+.ign-hint {
+  position: absolute;
+  right: clamp(24px, 4vw, 64px);
+  bottom: var(--space-6);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+/* the specimen's cue log sits below the panel's readouts */
+.ign-root .gs-cues { top: 64px; }

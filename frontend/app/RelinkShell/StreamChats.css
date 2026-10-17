@@ -1,0 +1,336 @@
+/* StreamChats — the stream's quick chat rail, beside the tasks rail. The same
+   register: chamfered frame, data labels, monochrome at rest, SIGNAL only on
+   the chat that is genuinely on screen. Its own stylesheet so the rail's look
+   never entangles with the shell's.
+
+   The stream-chat-title line (StreamChatTitle.jsx) also lives here: the two
+   surfaces are one workstream — what the stream says about its chats. */
+
+.stream-chat-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 2px var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.stream-chat-title-name {
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-chat-title-stamp {
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.stream-chats {
+  /* Wider than the tasks rail on purpose: this is a list you SCROLL and READ,
+     and at 220px with a long date the names truncated to five characters.
+     The extra 20px pays for the larger type below — a bigger name that fits
+     fewer characters would have traded readability for legibility. */
+  flex: 0 0 var(--stream-chats-w, 288px);
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--color-glass-light);
+  border-left: 1px solid var(--line);
+}
+
+.stream-chats-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  overflow-y: auto;
+}
+
+/* Collapsed: the spine, exactly the tasks rail's idiom. */
+.stream-chats.is-collapsed {
+  flex: 0 0 auto;
+  background: transparent;
+}
+
+.stream-chats-spine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-2) 4px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.stream-chats-spine:hover {
+  color: var(--color-text-secondary);
+  border-left-color: var(--line-hover);
+}
+
+.stream-chats-spine-word {
+  writing-mode: vertical-rl;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+}
+
+.stream-chats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.stream-chats-title {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+
+.stream-chats-fold {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.stream-chats-fold:hover { color: var(--color-text-secondary); }
+
+.stream-chats-new {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  padding: 3px var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.stream-chats-new:hover {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+}
+
+.stream-chats-new:disabled {
+  color: var(--color-text-disabled);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+/* The head's action row: the sitting forker and the naming door share it. */
+.stream-chats-actions {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.stream-chats-actions .stream-chats-new { align-self: auto; }
+.stream-chats-actions .stream-chats-new:first-child { flex: 1 1 auto; }
+.stream-chats-actions .stream-chats-new:last-child { flex: 0 0 auto; }
+
+/* Inline rename — the row swaps to it from the right-click menu. Rail-sized:
+   the same registers as ChatsApp's editor, compressed to this width. */
+.stream-chats-rename {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 2px 0;
+}
+
+.stream-chats-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--color-void, #000);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: 3px var(--space-2);
+}
+
+.stream-chats-rename-input:focus { border-color: var(--signal-dim); outline: none; }
+
+.stream-chats-rename-go,
+.stream-chats-rename-x {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  padding: 3px var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.stream-chats-rename-go:hover { color: var(--signal); border-color: var(--signal-dim); }
+.stream-chats-rename-x:hover { color: var(--color-text-primary); }
+
+/* The naming run's verdict line — what TITLE/AUTO-TITLE actually did. */
+.stream-chats-note {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+/* The search field. Only rendered once the list is long enough to need it. */
+.stream-chats-empty {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.stream-chats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+}
+
+.stream-chats-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  /* A row you scroll past dozens of needs a real target, not a 3px one — and
+     it should read at the TASKS rail's weight, so moving between the two rails
+     never feels like changing register (Design note, 2026-08-25. */
+  padding: 7px 4px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.stream-chats-row:hover { background: var(--color-glass-light); }
+
+.stream-chats-mark {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--color-text-tertiary);
+}
+
+.stream-chats-row.is-live { color: var(--signal); }
+.stream-chats-row.is-live .stream-chats-mark {
+  border-color: var(--signal);
+  background: var(--signal);
+}
+.stream-chats-row.is-live .stream-chats-label { color: var(--signal); }
+
+/* THE NAME IS WHAT YOU ARE SCANNING FOR. It gets the width the short stamp
+   gave back, and a size you can actually read down a long list — uppercase
+   mono at 12px carries the same weight on screen as the tasks rail's 14px
+   Inter, which is what makes the two rails feel like one surface. Still one
+   line with an ellipsis: uniform row heights are what a list you SCAN needs,
+   and the hover tip carries whatever the ellipsis eats. */
+.stream-chats-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: var(--tracking-wide);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-chats-stamp {
+  flex: 0 0 auto;
+  font-size: 10px;
+  /* Tabular figures so MM/DD/YY stamps line up down the column — a ragged
+     date column is what makes a long list feel unscannable. */
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* THE HOVER TIP — the whole name, for a rail too narrow to ever hold it.
+   Fixed, because the rail is a scroller that clips its own overflow: a tip
+   drawn inside it would be cut off for exactly the rows at the edges, which
+   is where a long list spends most of its time. Placed by the component. */
+.stream-chats-tip {
+  position: fixed;
+  z-index: 60;
+  max-width: 340px;
+  padding: 5px var(--space-2);
+  font-size: 11px;
+  line-height: 1.45;
+  letter-spacing: var(--tracking-wide);
+  text-transform: none; /* a chat's name is the operator's words, not a label */
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--line-hover);
+  overflow-wrap: anywhere;
+  pointer-events: none; /* never stands between the pointer and the row */
+}
+
+/* RIGHT-CLICK MENU — portalled to <body> (same reason the tip is: a
+   transformed ancestor would clip or mis-anchor it in place). */
+.stream-chats-ctx {
+  position: fixed;
+  z-index: var(--z-popover);
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-void, #000);
+  border: 1px solid var(--line-hover);
+  padding: var(--space-1);
+}
+
+.stream-chats-ctx-item {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+
+.stream-chats-ctx-item:hover:not(:disabled) { color: var(--signal); background: var(--color-glass-hover); }
+.stream-chats-ctx-item:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+
+.stream-chats-foot {
+  margin-top: auto;
+  display: flex;
+}
+
+.stream-chats-editor {
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.stream-chats-editor:hover { color: var(--color-text-secondary); }

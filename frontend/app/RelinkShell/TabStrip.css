@@ -1,0 +1,243 @@
+/* TabStrip — the desk's parallel sittings (session tabs).
+   LINE & CYCLE: hairline rules, monochrome at rest, SIGNAL only where
+   something is live. The strip is chrome, so it stays quiet: it must never
+   compete with the sitting it sits above. */
+
+.tabstrip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--line);
+  background: var(--color-void);
+}
+
+.tabstrip-rail {
+  display: flex;
+  align-items: stretch;
+  gap: 1px; /* a hairline between tabs, not a gutter */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabstrip-tab {
+  display: flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-bottom: none;
+  min-width: 0;
+}
+
+/* The focused sitting is the only one wearing SIGNAL — at a glance the strip
+   answers […] without being read. */
+.tabstrip-tab.is-on {
+  border-color: var(--line);
+  background: var(--color-glass);
+}
+
+.tabstrip-tab.is-on .tabstrip-name {
+  color: var(--color-text-primary);
+}
+
+.tabstrip-tab.is-on .tabstrip-mark {
+  color: var(--signal);
+}
+
+.tabstrip-face {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  min-width: 0;
+  max-width: 180px;
+}
+
+.tabstrip-face:hover .tabstrip-name {
+  color: var(--color-text-primary);
+}
+
+.tabstrip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The kind mark carries its own colour only when the tab is at rest; the
+   focused rule above overrides it to SIGNAL. */
+.tabstrip-mark {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+}
+
+.tabstrip-close {
+  background: transparent;
+  border: none;
+  padding: var(--space-1);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-fast, 120ms) ease;
+}
+
+/* The marks appear on approach — chrome that is always shouting is chrome you
+   stop seeing. They stay reachable by keyboard regardless. */
+.tabstrip-tab:hover .tabstrip-close,
+.tabstrip-close:focus-visible {
+  opacity: 1;
+}
+
+.tabstrip-close:hover {
+  color: var(--color-warning, var(--signal));
+}
+
+/* THE DRAG. The tab being carried dims; a CARET marks the place it would land.
+   Design note, 2026-08-30: […]
+
+   An inset edge on the hovered tab could not say that — it lights a THING when
+   the operator is asking about a PLACE, and it says the same thing whichever
+   half of the tab the cursor is on. The caret sits in the gap itself. */
+.tabstrip-tab.is-dragging {
+  opacity: 0.4;
+}
+
+/* The caret occupies real width, so the tabs part around it and the operator
+   sees the space the sitting is about to take. Margins are negative-then-
+   positive so the row's total width is unchanged: the strip must not reflow
+   under the cursor mid-drag, or the target moves as you aim at it. */
+.tabstrip-caret {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 2px;
+  margin: 0 -1px;
+  background: var(--signal);
+  border-radius: 1px;
+  /* Grows from the middle rather than blinking in — the movement reads as the
+     caret travelling between gaps instead of teleporting. */
+  animation: tabstrip-caret-in var(--motion-fast, 120ms) ease-out;
+  pointer-events: none;
+}
+
+@keyframes tabstrip-caret-in {
+  from { transform: scaleY(0.3); opacity: 0; }
+  to   { transform: scaleY(1);   opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabstrip-caret { animation: none; }
+}
+
+.tabstrip-tab[draggable='true'] .tabstrip-face {
+  cursor: grab;
+}
+
+.tabstrip-tab.is-dragging .tabstrip-face {
+  cursor: grabbing;
+}
+
+.tabstrip-open {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.tabstrip-new {
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.tabstrip-new:hover {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+/* A budget that is spent reads as spent — but the button still works, because
+   pressing it is how the operator LEARNS why. */
+.tabstrip-new[data-full='true'] {
+  opacity: 0.5;
+}
+
+.tabstrip-refusal {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  width: 100%;
+  padding: var(--space-1) 0 var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.tabstrip-refusal-word {
+  color: var(--color-warning, var(--signal));
+  flex: 0 0 auto;
+}
+
+/* The alternative is the point of the notice, so it is not dimmed. */
+.tabstrip-refusal-alt {
+  color: var(--color-text-primary);
+}
+
+.tabstrip-refusal-dismiss {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.tabstrip-refusal-dismiss:hover {
+  color: var(--signal);
+}
+
+/* The LIVE mark — this sitting is mid-turn. SIGNAL, and breathing: it is the
+   one place the strip must read as alive, above all on a background tab. */
+.tabstrip-live {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--signal);
+  animation: tabstrip-live-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes tabstrip-live-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* WHERE THIS SITTING IS WORKING — lavender separates the folder from the
+   identity, even when both labels contain the same name. It appears only on a
+   tab that chose its own ground, so most strips carry none of these at all and read exactly as they always did.
+   Separated by a hairline rather than a character: punctuation in a data label
+   reads as part of the name.
+
+   It truncates before the NAME does — who you are talking to outranks where
+   they are working, every time. */
+.tabstrip-ground {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 10ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: var(--space-1);
+  margin-left: var(--space-1);
+  border-left: 1px solid var(--color-border);
+  color: var(--tabstrip-ground-ink, #b9a2d0);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabstrip-close { transition: none; }
+  .tabstrip-live { animation: none; }
+}

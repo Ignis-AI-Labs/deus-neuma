@@ -1,0 +1,63 @@
+{
+  "size": {
+    "width": 1600,
+    "height": 900
+  },
+  "fields": {
+    "eyebrow": {
+      "required": true,
+      "max": 28,
+      "label": "what is being explained \u2014 HOW IT WORKS, THE SHORT VERSION. 28, the shared eyebrow tier"
+    },
+    "headline": {
+      "required": true,
+      "max": 24,
+      "label": "the thing itself, in a few words. 24 \u2014 the same budget stat's headline carries, because it is the same slot at the same size on the same frame"
+    },
+    "aLabel": {
+      "required": true,
+      "max": 14,
+      "label": "the first part's name. \u26a0\ufe0f FOURTEEN, not stat's sixteen \u2014 the label is drawn at 34px here where stat's captions are 30, and a size rise is PAID FOR IN CHARACTERS, never found. At 16 the third cell's label spanned 1056\u21921496 and broke the right margin by 24px."
+    },
+    "aOne": {
+      "required": true,
+      "max": 20,
+      "label": "the first part, line one. 20 MEASURED at 36px Inter \u2014 cells b and c are 416px wide, narrower than a at 448, so the middle column sets the budget for all three"
+    },
+    "aTwo": {
+      "required": false,
+      "max": 20,
+      "label": "the first part, line two, if it needs one"
+    },
+    "bLabel": {
+      "required": true,
+      "max": 14,
+      "label": "the second part's name"
+    },
+    "bOne": {
+      "required": true,
+      "max": 20,
+      "label": "the second part, line one"
+    },
+    "bTwo": {
+      "required": false,
+      "max": 20,
+      "label": "the second part, line two, if it needs one"
+    },
+    "cLabel": {
+      "required": true,
+      "max": 14,
+      "label": "the third part's name"
+    },
+    "cOne": {
+      "required": true,
+      "max": 20,
+      "label": "the third part, line one"
+    },
+    "cTwo": {
+      "required": false,
+      "max": 20,
+      "label": "the third part, line two, if it needs one. \u26a0\ufe0f All three cells are required \u2014 a two-part explanation leaves a column empty and the frame lopsided. If it only has two parts, it is not this card"
+    }
+  }
+}

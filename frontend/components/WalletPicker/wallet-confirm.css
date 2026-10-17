@@ -1,0 +1,145 @@
+/* WalletPicker — transaction confirmation modal + unlock-on-sign prompt.
+   Split from WalletPicker.css (SIZE-016); rules moved byte-for-byte —
+   the inline var(--x, fallback) defaults are load-bearing: EmbeddedWallet's
+   confirm UI consumes these classes outside the token scope. */
+
+/* --- Transaction confirmation modal --- */
+
+.wallet-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-void) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: var(--z-modal, 9999);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: walletPickerFadeIn var(--duration-fast, 150ms) var(--ease-out, ease-out);
+}
+
+.wallet-confirm-panel {
+  background: var(--color-surface, #0a0a0a);
+  border: var(--border-width-thin, 1px) solid var(--color-border-primary, rgba(255,255,255,0.12));
+  border-radius: var(--radius-xl, 16px);
+  width: 380px;
+  max-width: 90vw;
+  padding: var(--space-6, 24px);
+  animation: walletPickerSlideUp var(--duration-normal, 250ms) var(--ease-out, ease-out);
+}
+
+.wallet-confirm-header {
+  font-size: var(--text-lg, 18px);
+  font-weight: var(--weight-light, 300);
+  letter-spacing: var(--tracking-wider, 0.05em);
+  color: var(--color-text-primary, #fff);
+  margin-bottom: var(--space-5, 20px);
+}
+
+.wallet-confirm-body {
+  margin-bottom: var(--space-5, 20px);
+}
+
+.wallet-confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-2, 8px) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-white) 6%, transparent);
+}
+
+.wallet-confirm-label-text {
+  font-size: var(--text-sm, 14px);
+  color: var(--color-text-tertiary, rgba(255,255,255,0.4));
+  font-weight: var(--weight-light, 300);
+}
+
+.wallet-confirm-value {
+  font-size: var(--text-sm, 14px);
+  color: var(--color-text-primary, #fff);
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wallet-confirm-mono {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs, 12px);
+}
+
+.wallet-confirm-message {
+  padding: var(--space-4, 16px);
+  background: color-mix(in srgb, var(--color-white) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-white) 8%, transparent);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-sm, 14px);
+  color: var(--color-text-secondary, rgba(255,255,255,0.7));
+  font-family: var(--font-mono, monospace);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.wallet-confirm-actions {
+  display: flex;
+  gap: var(--space-3, 12px);
+}
+
+.wallet-confirm-btn {
+  flex: 1;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-sm, 14px);
+  font-weight: var(--weight-regular, 400);
+  font-family: var(--font-primary, Inter, sans-serif);
+  cursor: pointer;
+  transition: all var(--duration-fast, 150ms) var(--ease-in-out, ease-in-out);
+}
+
+.wallet-confirm-reject {
+  background: transparent;
+  border: var(--border-width-thin, 1px) solid var(--color-border-primary, rgba(255,255,255,0.12));
+  color: var(--color-text-secondary, rgba(255,255,255,0.7));
+}
+
+.wallet-confirm-reject:hover {
+  border-color: var(--color-error, #ff4444);
+  color: var(--color-error, #ff4444);
+}
+
+.wallet-confirm-approve {
+  background: transparent;
+  border: var(--border-width-thin, 1px) solid var(--line, rgba(255,255,255,0.18));
+  color: var(--color-text-primary, rgba(255,255,255,0.95));
+}
+
+.wallet-confirm-approve:hover {
+  border-color: var(--signal, #5FE9FF);
+  background: color-mix(in srgb, var(--signal) 8%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--signal) 15%, transparent);
+}
+
+/* Unlock-on-sign prompt — a locked wallet asked to sign collects its password
+   here, then the signature proceeds (native confirm in main still authorizes). */
+.wallet-unlock-input {
+  width: 100%;
+  margin-top: var(--space-4, 16px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  background: color-mix(in srgb, var(--color-white) 3%, transparent);
+  border: var(--border-width-thin, 1px) solid var(--color-border-primary, rgba(255,255,255,0.12));
+  border-radius: var(--radius-md, 8px);
+  color: var(--color-text-primary, #fff);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm, 14px);
+}
+.wallet-unlock-input:focus {
+  outline: none;
+  border-color: var(--signal, #5FE9FF);
+}
+.wallet-unlock-error {
+  margin-top: var(--space-3, 12px);
+  color: var(--color-error, #ff4444);
+  font-size: var(--text-xs, 12px);
+}

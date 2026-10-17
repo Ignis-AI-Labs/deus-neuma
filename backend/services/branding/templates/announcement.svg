@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="{{data.lineOne}} {{data.lineTwo}}">
+  {{fontface}}
+  <defs>
+    <linearGradient id="edge" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="{{token.accentGlow}}"/>
+      <stop offset="42%" stop-color="{{token.bg}}" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Design note, 2026-08-31: […] Same
+         mechanism launch uses — one blurred copy of the SAME glyphs beneath the
+         sharp ones, so the light comes off the letterforms rather than from a
+         shape drawn behind them. stdDeviation 14 and 0.5 opacity is the launch
+         card's restraint, not more. -->
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"/>
+    </filter>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="2" height="2" fill="{{token.ink}}" opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="{{token.bg}}"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect width="1600" height="900" fill="url(#edge)" opacity="0.5"/>
+
+  <!-- The outer bracket. Four corners only, never a closed box: a full frame
+       shrinks the card and reads as a border, four marks read as an instrument
+       sighting on something. Accent, so the frame belongs to the brand. -->
+  <g stroke="{{token.trim}}" stroke-width="2" opacity="0.5" fill="none">
+    <path d="M40 64 V40 H64"/>
+    <path d="M1536 40 H1560 V64"/>
+    <path d="M1560 836 V860 H1536"/>
+    <path d="M64 860 H40 V836"/>
+  </g>
+
+  <!-- THE MASK AS AN ICON, not a watermark. Design note, 2026-08-31: […]
+       1180px, positioned so the card's right edge falls on the mask's own
+       horizontal CENTRE (x = 1600 - width/2 = 1010) — so exactly the LEFT HALF
+       of the mark is on the card and the right half is off it.
+       The card's own viewBox clips, so the crop is exact and free — and a mark
+       the frame cuts reads as something the card was placed OVER, which is what
+       gives it weight. A fully-visible mark can only ever read as a badge.
+       Opacity stays low: it is large, not loud. The headline still wins. -->
+  <image href="{{mark.mask}}" x="1010" y="-140" width="1180" height="1180"
+         preserveAspectRatio="xMidYMid meet" opacity="0.16"/>
+
+  <g font-family="{{font.data}}" font-weight="{{font.labelWeight}}" font-size="46"
+     letter-spacing="{{font.labelTrack}}" fill="{{token.trimHot}}">
+    <rect x="128" y="168" width="16" height="16"/>
+    <text x="168" y="190">{{data.eyebrow}}</text>
+  </g>
+
+  <!-- TWO DECLARED LINES, not a wrapped paragraph. SVG has no auto-wrap, and a
+       renderer that guesses where to break a headline will one day break it in
+       the wrong place on a post that is already public. The writer decides. -->
+  <!-- 76px, not the 104px this card carried while its headline was untracked.
+       displayTrack adds a full 0.16em to EVERY character, so the same 24-char
+       line measures 1765px at 104px against a 1344px frame. Measured against the
+       vendored face, not eyeballed: 24 caps at 76px + 0.16em = 1290px. -->
+  <text x="128" y="392" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="82" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}"
+        opacity="0.5" filter="url(#softGlow)">{{data.lineOne}}</text>
+  <text x="128" y="392" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="82" letter-spacing="{{font.displayTrack}}" fill="{{token.ink}}">{{data.lineOne}}</text>
+  <text x="128" y="504" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="82" letter-spacing="{{font.displayTrack}}" fill="{{token.accent}}"
+        opacity="0.5" filter="url(#softGlow)">{{data.lineTwo}}</text>
+  <text x="128" y="504" font-family="{{font.display}}" font-weight="{{font.displayWeight}}"
+        font-size="82" letter-spacing="{{font.displayTrack}}" fill="{{token.accent}}">{{data.lineTwo}}</text>
+
+  <!-- The support line stays on VOICE. The display face is condensed and built
+       to be read at 100px; at 32px it turns into a squint. Headlines are drawn,
+       sentences are read, and they are not the same job. -->
+  <text x="128" y="600" font-family="{{font.voice}}" font-weight="{{font.voiceWeight}}"
+        font-size="38" fill="{{token.muted}}">{{data.support}}</text>
+
+  <line x1="128" y1="757" x2="1472" y2="757" stroke="{{token.hairline}}" stroke-width="1"/>
+  <image href="{{mark.wordmark}}" x="128" y="775" width="400" height="54"
+         preserveAspectRatio="xMinYMid meet"/>
+  <text x="1472" y="814" text-anchor="end" font-family="{{font.data}}"
+        font-weight="{{font.labelWeight}}" font-size="34"
+        letter-spacing="{{font.labelTrack}}" fill="{{token.gray}}">{{brand.handle}}</text>
+</svg>

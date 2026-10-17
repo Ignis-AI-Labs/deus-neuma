@@ -1,0 +1,42 @@
+/* The being's thinking, inside its panel (ceremony-thoughts.js). Quiet by
+   design: a data line that breathes while it thinks, the thoughts themselves
+   dim and apart from the speech, never mistaken for it. Rail pixels
+   (RiteCeremony.css --rite-u), 1px where the rite is absent. */
+.ceremony-thoughts { --tu: var(--rite-u, 1px); margin-bottom: calc(12 * var(--tu)); border-left: 1px solid var(--line); }
+.ceremony-thoughts[hidden] { display: none; }
+.thoughts-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(10 * var(--tu));
+  padding: calc(4 * var(--tu)) 0 calc(4 * var(--tu)) calc(10 * var(--tu));
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: calc(9 * var(--tu));
+  letter-spacing: 0.18em;
+  color: var(--signal-dim);
+  text-align: left;
+}
+.thoughts-toggle:hover, .thoughts-toggle:focus-visible { color: var(--signal); outline: none; }
+.thoughts-hint { flex: none; color: var(--color-text-tertiary); }
+/* a slow breath while thinking — eased, never a blink (the no-flash law) */
+.ceremony-thoughts:not(.is-settled) .thoughts-line { animation: thoughts-breath 2.4s ease-in-out infinite; }
+@keyframes thoughts-breath { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.thoughts-body {
+  max-height: 28vh;
+  overflow-y: auto;
+  margin: calc(4 * var(--tu)) 0 0;
+  padding: 0 calc(10 * var(--tu));
+  font-family: var(--font-voice);
+  font-size: calc(12 * var(--tu));
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--color-text-tertiary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.thoughts-body[hidden] { display: none; }

@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+# NEUMA CLI installer — slice 1.
+#
+# RULE 3: bash convention — snake_case (matches every system bash script on
+# the box) — documented deviation from AGENTS.md camelCase, mirroring the
+# convention in scripts/neuma-daemon.sh.
+
+set -euo pipefail
+
+# --- defaults ------------------------------------------------------------
+
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+MODIFY_PATH=1
+SRC_DIR=""
+RC_FILES=()
+
+# --- helpers -------------------------------------------------------------
+
+log()  { printf '  %s\n' "$*" >&2; }
+step() { printf '\n→ %s\n' "$*" >&2; }
+ok()   { printf '  \033[32mok\033[0m %s\n' "$*" >&2; }
+fail() { printf '\n\033[31mfail\033[0m %s\n' "$*" >&2; exit 1; }
+
+usage() {
+  cat >&2 <<'EOF'
+NEUMA CLI installer — slice 1.
+
+Usage:
+  bash install [--install-dir DIR] [--no-modify-path] [--from SRC]
+  bash install --help
+
+Flags:
+  --install-dir DIR   bin destination (default: $HOME/.local/bin)
+  --no-modify-path    don't touch ~/.zshrc / ~/.bashrc / ~/.profile
+  --from SRC          NEUMA repo root (default: $PWD if it looks like a
+                      checkout — package.json "name" must be "neuma")
+  -h, --help          this usage
+
+What it does (slice 1 scope):
+  1. Resolve source (--from / $PWD-as-NEUMA-checkout)
+  2. npm install --omit=dev --ignore-scripts (production deps, no
+     lifecycle scripts — supply-chain hardening)
+  3. chmod +x bin/neuma + symlink to $INSTALL_DIR/neuma
+  4. Append PATH export to ~/.zshrc / ~/.bashrc / ~/.profile when
+     $INSTALL_DIR isn't already on PATH (unless --no-modify-path)
+  5. Verify by running neuma --version against the symlinked binary
+
+What is NOT here (slice 2+):
+  - curl|bash auto-clone fallback (repo URL not yet stable; operator
+    clones manually + passes --from)
+  - prebuilt-binary download
+  - --version pinning
+  - Windows PowerShell port
+  - Auto-update (that's `neuma upgrade`)
+EOF
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || fail "$1 is required but not on PATH"
+}
+
+# A directory is a NEUMA checkout iff bin/neuma + cli/ + package.json all
+# exist AND package.json "name" is "neuma" (the actual package name).
+# Stronger sentinel than just path existence — sibling repos with the same
+# layout still need an exact name match. Path is passed via argv to node,
+# never interpolated into the JS source — removes a path-injection surface.
+looks_like_neuma() {
+  [ -d "$1" ] && [ -f "$1/bin/neuma" ] && [ -d "$1/cli" ] && [ -f "$1/package.json" ] || return 1
+  local name
+  name="$(node -e 'console.log(require(process.argv[1]+"/package.json").name||"")' "$1" 2>/dev/null || echo '')"
+  [ "$name" = "neuma" ]
+}
+
+# Read engines.node from package.json. Returns the literal string (e.g.
+# ">=18.0.0") or empty. Same argv-not-interpolation discipline.
+pkg_engines_node() {
+  node -e 'console.log(require(process.argv[1]+"/package.json").engines?.node||"")' "$1" 2>/dev/null || echo ''
+}
+
+# --- arg parse -----------------------------------------------------------
+
+# Require a value after value-taking flags. Without this, `--install-dir`
+# or `--from` as the last token leaves $2 unset; under `set -u` the script
+# dies with an opaque "$2: unbound variable" instead of a clean usage
+# error. RULE 3: validate at the system boundary.
+require_value() {
+  [ $# -ge 2 ] && [ -n "${2:-}" ] || {
+    printf 'install: %s requires a value\n\n' "$1" >&2
+    usage
+    exit 2
+  }
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --install-dir)       require_value "$@"; INSTALL_DIR="$2"; shift 2 ;;
+    --install-dir=*)     INSTALL_DIR="${1#*=}"; shift ;;
+    --no-modify-path)    MODIFY_PATH=0; shift ;;
+    --from)              require_value "$@"; SRC_DIR="$2"; shift 2 ;;
+    --from=*)            SRC_DIR="${1#*=}"; shift ;;
+    -h|--help)           usage; exit 0 ;;
+    *)
+      printf 'install: unknown option: %s\n\n' "$1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+# --- preflight -----------------------------------------------------------
+
+step "Preflight"
+require_cmd node
+require_cmd npm
+node_major="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$node_major" -lt 18 ]; then
+  fail "Node $node_major detected — NEUMA needs Node ≥18. Upgrade and re-run."
+fi
+# package.json declares engines.node; surface a hint if the detected
+# version is below the canonical floor (does not block — just informs).
+ok "Node $(node --version), npm $(npm --version)"
+
+# --- resolve source ------------------------------------------------------
+
+step "Resolving source"
+if [ -z "$SRC_DIR" ]; then
+  if looks_like_neuma "$PWD"; then
+    SRC_DIR="$PWD"
+    log "Using current directory: $SRC_DIR"
+  else
+    fail "Not a NEUMA checkout, and --from was not provided.
+  Run from a NEUMA repo root, or pass --from /path/to/neuma.
+  (slice 1 ships without curl|bash auto-clone; the repo URL isn't stable yet)"
+  fi
+else
+  looks_like_neuma "$SRC_DIR" || fail "$SRC_DIR doesn't look like a NEUMA checkout (need bin/neuma + cli/ + package.json with name=neuma)"
+  log "Using --from: $SRC_DIR"
+fi
+# Absolutize the source path so the symlink target is the canonical absolute
+# path, not whatever relative string the operator passed. Without this, a
+# `--from ./neuma` produces a symlink whose target is interpreted relative
+# to $INSTALL_DIR — broken on resolve.
+SRC_DIR="$(cd "$SRC_DIR" && pwd)"
+engines="$(pkg_engines_node "$SRC_DIR")"
+[ -n "$engines" ] && log "package.json engines.node: $engines (detected $(node --version) — check matches)"
+ok "Source ready"
+
+# --- npm install ---------------------------------------------------------
+
+step "Installing dependencies (npm install --omit=dev --ignore-scripts)"
+# --ignore-scripts blocks dependency lifecycle scripts (preinstall/install/
+# postinstall) — supply-chain hardening for an install path that may be
+# piped from curl. Production deps don't currently need lifecycle scripts;
+# if that changes, document the exception here. Capture npm's full output
+# and surface it ONLY on failure so the operator gets real diagnostic info
+# instead of advice to "remove --silent" they can't act on.
+if ! npm_out="$(cd "$SRC_DIR" && npm install --omit=dev --ignore-scripts 2>&1)"; then
+  fail "npm install failed:
+$npm_out"
+fi
+ok "Dependencies installed"
+
+# --- chmod + symlink -----------------------------------------------------
+
+step "Linking bin/neuma into $INSTALL_DIR"
+chmod +x "$SRC_DIR/bin/neuma"
+mkdir -p "$INSTALL_DIR"
+# Absolutize INSTALL_DIR for the same reason SRC_DIR was — a relative path
+# like './local-bin' would land in ~/.zshrc as 'export PATH=\"./local-bin:$PATH\"'
+# which is silently non-functional on the next shell session (PATH entries
+# must be absolute). Symmetric fix to R2.3.
+INSTALL_DIR="$(cd "$INSTALL_DIR" && pwd)"
+target="$INSTALL_DIR/neuma"
+if [ -e "$target" ] || [ -L "$target" ]; then
+  rm -f "$target"
+fi
+ln -s "$SRC_DIR/bin/neuma" "$target"
+ok "Symlink: $target → $SRC_DIR/bin/neuma"
+
+# --- PATH modification ---------------------------------------------------
+
+ensure_path_line() {
+  local rc="$1"
+  [ -f "$rc" ] || return 0
+  # Fixed-string match — no regex interpretation of $INSTALL_DIR.
+  if ! grep -qF "$INSTALL_DIR" "$rc"; then
+    printf '\n# Added by neuma installer (%s)\nexport PATH="%s:$PATH"\n' \
+      "$(date '+%Y-%m-%d')" "$INSTALL_DIR" >> "$rc"
+    log "Added PATH entry to $rc"
+    RC_FILES+=("$rc")
+  fi
+}
+
+if [ "$MODIFY_PATH" = "1" ]; then
+  step "Ensuring $INSTALL_DIR is on PATH"
+  case ":$PATH:" in
+    *":$INSTALL_DIR:"*) ok "Already on PATH for this shell" ;;
+    *)
+      ensure_path_line "$HOME/.zshrc"
+      ensure_path_line "$HOME/.bashrc"
+      ensure_path_line "$HOME/.profile"
+      [ ${#RC_FILES[@]} -gt 0 ] && \
+        log "Open a new shell or run: source ${RC_FILES[0]}"
+      ;;
+  esac
+else
+  log "Skipping PATH modification (--no-modify-path). Add this manually:"
+  log "    export PATH=\"$INSTALL_DIR:\$PATH\""
+fi
+
+# --- verify (AUTHORITATIVE) ----------------------------------------------
+
+step "Verifying"
+# No fallback on failure — a broken install MUST abort here, never reach
+# the "Install complete" line. RULE 0: the verify step must be honest.
+# Two probes: --version (cheap, version constant only) AND --help (loads
+# cli/ + yargs + every command's register* call). --help would catch a
+# MODULE_NOT_FOUND from a missing transitive dep that --ignore-scripts
+# might have silently broken — that's the gnosis we want here.
+if ! version_output="$("$target" --version 2>&1)"; then
+  fail "neuma --version probe failed: $version_output"
+fi
+ok "neuma --version: $version_output"
+if ! "$target" --help >/dev/null 2>&1; then
+  help_err="$("$target" --help 2>&1 || true)"
+  fail "neuma --help probe failed (cli/ may have failed to load): $help_err"
+fi
+ok "neuma --help loads cli/ + yargs cleanly"
+
+echo
+echo "Install complete. Try:"
+echo "  neuma             # status snapshot (daemon health + active being)"
+echo "  neuma --help      # full subcommand list"
+echo "  neuma summon <being>"
+echo "  neuma talk \"hello\""
+echo

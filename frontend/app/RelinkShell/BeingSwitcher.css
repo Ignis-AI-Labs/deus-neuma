@@ -1,0 +1,92 @@
+/* BeingSwitcher — the stream's door to the house roster. LINE & CYCLE:
+   mono data rows in a chamfered panel; --signal marks only the live being. */
+
+.being-switcher {
+  position: relative;
+  display: inline-flex;
+}
+
+.being-switcher-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 180px;
+}
+
+.being-switcher-pop-in {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) 0;
+}
+
+.being-switcher-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.being-switcher-row:hover {
+  color: var(--color-text-primary);
+  background: var(--signal-faint);
+}
+
+.being-switcher-row.active {
+  color: var(--signal);
+}
+
+.being-switcher-tag {
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+}
+
+/* The on-chain seat, quiet beside the name — present only once the house's
+   founding record stands. Fixed tertiary so it never outshouts the name,
+   even on the active (signal) row. */
+.being-switcher-title {
+  margin-left: var(--space-2);
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+}
+
+/* Section headers inside the popover — NEUMA, then WITNESSES. Clearly a
+   HEADING, never a clickable row: a step larger than the rows, the
+   heading register's own color, wider tracking, and no pointer. */
+.being-switcher-head {
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.24em;
+  color: var(--color-heading);
+  border-top: 1px solid var(--line);
+  cursor: default;
+  user-select: none;
+}
+
+.being-switcher-head:first-child {
+  border-top: none;
+}
+
+/* A witness row's trailing tags (vendor, lane state, ACTIVE). */
+.being-switcher-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* An unprovisioned lane reads in the alert register — the witness is
+   sealed but its lane is not up. */
+.being-switcher-tag.off {
+  color: var(--alert);
+}

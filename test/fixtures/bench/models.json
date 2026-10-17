@@ -1,0 +1,63 @@
+{
+  "$comment": [
+    "THE MODEL REGISTRY \u2014 this is what 'run it on the model of my choice' means.",
+    "",
+    "A receipt is worthless unless it names the EXACT weights that answered, so",
+    "every run still pins a model file and its sha256. What this file changes is",
+    "WHERE that pin comes from: looked up by key at authoring time instead of",
+    "typed into a hand-written manifest per model. Adding a model is one entry",
+    "here, not a new set of manifests.",
+    "",
+    "  sha256 / tokenizerSha256 may be null. `bench hash <key>` and",
+    "  `bench tokenizer <key>` compute and write them back. A publishable run",
+    "  refuses while they are null; a development run says so out loud.",
+    "",
+    "  servedId is what the server's /v1/models endpoint reports for these",
+    "  weights. It is what an identity arm compares a lane's live route against,",
+    "  and it is NOT always the filename.",
+    "Choose a model key per comparison. qwen3.8-27b is the original Q8_0 baseline; qwen3.8-27b-uncensored-hauhaucs is a separate artifact and result series. Never overwrite one with the other."
+  ],
+  "schemaVersion": 1,
+  "models": {
+    "qwen3.8-27b": {
+      "label": "Qwen3.8 27B Q8_0 \u2014 the house substrate",
+      "file": "/models/neuma/qwen3.8-27b-q8/qwen3.8-27B-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "servedId": "qwen3.8-27b",
+      "sha256": "f5c702d8820d36fb55985bb238fc83ee3a313e920f4b752a437c3a6a9e14e4c8",
+      "tokenizer": ".models/tokenizers/qwen3.8-27b",
+      "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+      "contextLength": 262144
+    },
+    "gemma-4-31b": {
+      "label": "Gemma 4 31B Q8_0 \u2014 the prior substrate, every historic run pins this",
+      "file": "/models/neuma/gemma-4-31b-q8/gemma-4-31B-it-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "servedId": "gemma-4-31b",
+      "sha256": "b2c838c7128f7b61858986333d4d8283104102b0cca13acdc2e6422e93292f67",
+      "tokenizer": null,
+      "tokenizerSha256": null,
+      "contextLength": 131072
+    },
+    "qwen3-30b-a3b-thinking": {
+      "label": "Qwen3 30B A3B Thinking 2507 Q8_0",
+      "file": "/models/neuma/qwen3-30b-a3b-thinking-2507-q8/Qwen3-30B-A3B-Thinking-2507-Q8_0.gguf",
+      "quantization": "Q8_0",
+      "servedId": "qwen3-30b-a3b-thinking-2507",
+      "sha256": null,
+      "tokenizer": null,
+      "tokenizerSha256": null,
+      "contextLength": 262144
+    },
+    "qwen3.8-27b-uncensored-hauhaucs": {
+      "label": "Qwen3.8 27B Uncensored HauhauCS Aggressive Q8_K_P",
+      "file": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "quantization": "Q8_K_P",
+      "servedId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "tokenizer": ".models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+      "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+      "contextLength": 262144
+    }
+  }
+}

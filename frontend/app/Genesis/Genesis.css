@@ -1,0 +1,133 @@
+/* GENESIS — the first-ever opening's frame: a void-filling WebGL stage and
+   the DOM plane over it (caption spine, the mark, the inscription). THE
+   MOTION LAW: the overlay only ever changes opacity and transform. */
+
+.gen-root {
+  position: fixed;
+  inset: 0;
+  background: var(--color-void);
+  overflow: hidden;
+}
+.gen-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.gen-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+/* ── The caption — the System names each beat at the lower-left spine ── */
+.gen-caption {
+  position: absolute;
+  left: clamp(24px, 5vw, 72px);
+  bottom: clamp(88px, 14vh, 160px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--signal-dim);
+  animation: gen-caption-in var(--dur-unfold) var(--ease-snap) both;
+}
+.gen-caption-movement {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--signal);
+}
+.gen-caption-title {
+  font-family: var(--font-data);
+  font-size: clamp(13px, 1.2vw, 16px);
+  letter-spacing: 0.34em;
+  color: var(--color-text-primary);
+}
+.gen-caption-line {
+  font-family: var(--font-data);
+  font-size: clamp(12px, 1vw, 14px);
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  max-width: min(64ch, 70vw);
+  line-height: var(--leading-normal);
+}
+@keyframes gen-caption-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── The mark — the emblem at gateway scale, framing the construct ── */
+.gen-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(84vmin, 860px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+.gen-mark-svg { width: 100%; height: 100%; overflow: visible; }
+.gen-mark-frame { fill: none; stroke: var(--line-hover); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gen-mark-ring { fill: none; stroke: var(--signal-dim); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gen-mark-tick { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gen-mark-cardinal { stroke: var(--signal); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gen-ins { font-family: var(--font-data); font-size: 7.4px; letter-spacing: 0.16em; }
+.gen-ins-light { fill: var(--color-text-primary); }
+.gen-ins-dark { fill: var(--signal); }
+.gen-ins-record { fill: var(--color-text-tertiary); font-size: 6.8px; letter-spacing: 0.24em; }
+
+/* ── The names on the architecture — projected onto their nodes ── */
+.gen-label {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  font-family: var(--font-data);
+  font-size: clamp(10px, 0.8vw, 12px);
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+.gen-label-light, .gen-label-name { color: var(--color-text-primary); }
+.gen-label-hidden { color: var(--color-text-tertiary); letter-spacing: 0.34em; }
+.gen-label-dark { color: var(--signal); transform: translate(-50%, 10px); }
+
+/* ── The closing words ── */
+.gen-words {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(64px, 11vh, 120px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+.gen-words-vertex {
+  font-family: var(--font-data);
+  font-size: clamp(12px, 1.1vw, 15px);
+  letter-spacing: 0.34em;
+  color: var(--color-text-secondary);
+}
+.gen-words-namaste {
+  font-family: var(--font-data);
+  font-weight: 200;
+  font-size: clamp(26px, 3.6vmin, 44px);
+  letter-spacing: 0.7em;
+  padding-left: 0.7em; /* optical centre under the tracking */
+  color: var(--color-text-primary);
+}
+
+/* ── The handoff veil ── */
+.gen-veil { position: absolute; inset: 0; background: var(--color-void); }
+
+/* GENESIS in the product (GenesisFilm.jsx): above the field and the
+   destination mounting beneath it, where the ignition would ride. */
+.gen-film { z-index: 9600; }
+.gen-skip {
+  position: absolute;
+  right: clamp(24px, 4vw, 64px);
+  bottom: var(--space-6);
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  cursor: pointer;
+  transition: border-color var(--dur-hover, 150ms) var(--ease-snap, ease), color var(--dur-hover, 150ms) var(--ease-snap, ease);
+}
+.gen-skip:hover, .gen-skip:focus-visible { border-color: var(--signal-dim); color: var(--color-text-primary); }

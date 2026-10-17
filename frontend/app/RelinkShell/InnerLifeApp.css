@@ -1,0 +1,38 @@
+/* INNER LIFE — rides the RECORD's plain rec-* styling (loaded via the shared
+   MeditationSection); only the gate rows and tripwire warning are its own. */
+
+.il .il-gate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin: var(--space-2, 8px) 0;
+}
+
+.il .il-gate-l {
+  min-width: 110px;
+  color: var(--text-dim, var(--text-secondary));
+}
+
+.il .il-gate-modes {
+  display: flex;
+  gap: var(--space-1, 4px);
+}
+
+.il .il-trip-warn {
+  color: var(--warn, #c96);
+}
+
+/* EXPRESSION — palette terms flow inline, each its own breath apart. */
+.il .il-term {
+  display: inline-block;
+  margin-right: var(--space-3, 12px);
+}
+
+.il .il-empty-note {
+  text-align: center;
+}
+
+.il .il-mode-explanation {
+  flex-basis: 100%;
+}

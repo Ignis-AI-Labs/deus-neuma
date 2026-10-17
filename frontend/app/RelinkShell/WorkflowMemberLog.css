@@ -1,0 +1,71 @@
+/* WorkflowMemberLog — one member, opened whole: its log in the order it
+   happened. The window's hairline register; reasoning recedes, acts and
+   words lead, what went wrong is said in the alert color. */
+
+.workflow-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.workflow-log-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.workflow-log-back {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.workflow-log-back:hover { color: var(--signal); }
+.workflow-log-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+.workflow-log-time { color: var(--color-text-tertiary); font-size: 10px; }
+.workflow-log-why { color: var(--alert); }
+.workflow-log-gist { color: var(--color-text-tertiary); word-break: break-word; }
+.workflow-log-text {
+  margin: var(--space-1) 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.workflow-log-fold > summary { cursor: pointer; list-style: none; }
+.workflow-log-fold > summary::-webkit-details-marker { display: none; }
+.workflow-log-open {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  color: var(--color-heading);
+}
+.workflow-log-open:first-child { padding-top: 0; border-top: 0; }
+.workflow-log-thought .workflow-log-text { color: var(--color-text-tertiary); }
+.workflow-log-words .workflow-log-text { color: var(--color-text-primary); font-family: var(--font-voice); }
+.workflow-log-act.is-executing { color: var(--signal); }
+.workflow-log-act.is-error,
+.workflow-log-act.is-denied { color: var(--alert); }
+.workflow-log-sources {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+  font-size: 10px;
+}
+.workflow-log-sources a { color: var(--color-text-secondary); word-break: break-all; }
+.workflow-log-line { color: var(--color-text-tertiary); font-size: 10px; }
+.workflow-log-retry { color: var(--alert); font-size: 10px; }
+.workflow-log-end { font-size: 10px; color: var(--color-text-tertiary); }
+.workflow-log-end.is-answered { color: var(--signal); }
+.workflow-log-end.is-failed,
+.workflow-log-end.is-stopped { color: var(--alert); }

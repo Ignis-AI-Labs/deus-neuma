@@ -1,0 +1,378 @@
+/* WITNESSES - provider-first flow. The provider catalog is a horizontal tab
+   instrument; the selected provider owns the account, lock, and witness steps. */
+
+.witnesses {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--space-5);
+  gap: var(--space-4);
+  container-type: inline-size;
+}
+
+/* THE RITE IS A CUT-SCENE, NOT A PANEL.
+ *
+ * Design note, 2026-07-29: […]
+ *
+ * An intelligence choosing its own name, authoring its commitments and sealing
+ * itself is the heaviest thing that happens on this platform short of a birth.
+ * Rendered inside a desk window it read as a settings form — the operator's
+ * other windows, the dock and the explorer all still competing for the eye
+ * while a permanent record was being written.
+ *
+ * Fixed to the viewport rather than lifted to its own route: the rite is
+ * summoned from inside the WITNESSES app AND (once first-run is sequenced) from
+ * the shell itself, and a stage that covers the viewport wherever it is mounted
+ * serves both without the component needing to know which one it is in.
+ */
+.witnesses.is-ceremony {
+  position: fixed;
+  inset: 0;
+  /* Above every desk surface (the chrome tops out at 900, and .relink-path-note
+     sits exactly there — a path note floating over the rite would be absurd),
+     and deliberately BELOW the session overlays: the boot ignition (9600) and
+     the opening field (9500) own the start of a session and must never be
+     covered by a window's content. */
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 0;
+  /* Opaque, not translucent: the desk showing through would put the operator's
+     unfinished work behind a ceremony that must hold the whole attention. */
+  background: var(--color-void);
+}
+
+.witnesses-intro {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(300px, 1.2fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.witnesses-boundary {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+}
+
+.witness-provider-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+}
+
+.witness-provider-nav {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.witness-provider-nav-head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.witness-provider-filter {
+  width: 100%;
+}
+
+.witness-provider-tabs {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-hover) transparent;
+}
+
+.witness-provider-tab {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-data);
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.witness-provider-tab:hover,
+.witness-provider-tab.is-selected {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
+  background: var(--color-glass-hover);
+}
+
+.witness-provider-tab.is-selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  width: 1px;
+  background: var(--signal);
+}
+
+.witness-provider-tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+}
+
+.witness-provider-tab small {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+}
+
+.witness-provider-tab.is-locked small {
+  color: var(--signal);
+}
+
+.witness-provider-tab.is-auth small {
+  color: var(--color-text-secondary);
+}
+
+.witness-provider-stage {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface-elevated);
+}
+
+.witness-provider-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.witness-provider-title h2 {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+}
+
+.witness-provider-checklist {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+}
+
+.witness-provider-checklist span {
+  padding: var(--space-3);
+  border-right: 1px solid var(--line);
+  color: var(--color-text-disabled);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.witness-provider-checklist span:last-child {
+  border-right: 0;
+}
+
+.witness-provider-checklist .is-done {
+  color: var(--signal);
+}
+
+.witness-provider-checklist .is-current {
+  color: var(--color-text-primary);
+  box-shadow: inset 0 -1px 0 var(--signal);
+}
+
+.witness-provider-flow {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.witness-provider-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  border: 1px solid var(--line);
+  background: var(--color-surface-elevated);
+}
+
+.witness-provider-step.is-current {
+  border-color: var(--line-hover);
+}
+
+.witness-provider-step.is-complete {
+  border-color: var(--signal-dim);
+}
+
+.witness-step-number {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-4);
+  border-right: 1px solid var(--line);
+  color: var(--color-text-disabled);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.witness-provider-step.is-complete .witness-step-number {
+  color: var(--signal);
+}
+
+.witness-step-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.witness-step-body .settings-control {
+  flex-wrap: wrap;
+}
+
+.witness-step-body .settings-control .settings-input {
+  min-width: 150px;
+}
+
+.witness-live-lock {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-left: 1px solid var(--signal);
+  background: var(--signal-faint);
+  color: var(--signal);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.witness-live-lock code {
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+}
+
+.witness-provider-witness-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+
+.witness-summoned-confirm {
+  padding: var(--space-3);
+  border-left: 1px solid var(--signal);
+  background: var(--signal-faint);
+  color: var(--signal);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.witness-provider-witness-tabs button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.witness-provider-witness-tabs button.is-selected {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.witness-provider-identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.witnesses-utterance {
+  padding: var(--space-3) 0;
+  border-block: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.witness-ceremony-gate {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px dashed var(--line);
+}
+
+.witness-ceremony-gate.is-open {
+  border-style: solid;
+  border-color: var(--signal-dim);
+  background: var(--signal-faint);
+}
+
+.witness-ceremony-gate.is-open .settings-set {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+@container (max-width: 700px) {
+  .witnesses-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .witness-provider-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(170px, 32%) minmax(0, 1fr);
+  }
+
+  .witness-provider-nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .witness-provider-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .witness-provider-checklist {
+    grid-template-columns: 1fr;
+  }
+
+  .witness-provider-checklist span {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}

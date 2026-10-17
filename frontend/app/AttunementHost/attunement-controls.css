@@ -1,0 +1,220 @@
+/* attunement-controls — roster, controls, forge terminal, phase rail, abandon dialog, split from attunement.css; imported by AttunementHost.jsx AND VoiceSealHost.jsx after the base. */
+/* ── the roster ──────────────────────────────────────────────────────── */
+
+.att-roster { margin-top: 1.5rem; }
+.att-roster-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  margin-top: 0.5rem;
+}
+.att-roster-id {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+/* ── controls ────────────────────────────────────────────────────────── */
+
+.att-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.att-controls > .att-primary:only-child { margin-left: auto; }
+
+.att-primary {
+  background: none;
+  border: 1px solid var(--signal);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  clip-path: polygon(
+    var(--cut-sm) 0, 100% 0, 100% calc(100% - var(--cut-sm)),
+    calc(100% - var(--cut-sm)) 100%, 0 100%, 0 var(--cut-sm)
+  );
+  transition: background var(--snap);
+}
+.att-primary:hover { background: var(--signal-faint); }
+.att-primary:disabled {
+  border-color: var(--line);
+  color: var(--color-text-disabled);
+  cursor: default;
+  background: none;
+}
+
+.att-secondary,
+.att-quietbtn {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  transition: border-color var(--snap);
+}
+.att-secondary:hover,
+.att-quietbtn:hover { border-color: var(--line-hover); }
+.att-secondary:disabled,
+.att-quietbtn:disabled { color: var(--color-text-disabled); cursor: default; }
+
+.att-label {
+  display: block;
+  margin: 1.25rem 0 0.5rem;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+}
+
+.att-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 5rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  padding: 0.75rem;
+  transition: border-color var(--snap);
+}
+.att-textarea:focus {
+  outline: none;
+  border-color: var(--signal-dim);
+}
+
+.att-quiet {
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.att-centered { text-align: center; }
+.att-error { color: var(--alert); line-height: 1.6; }
+
+/* ── the forge's live terminal — the trainer's own words, streaming ───── */
+
+.att-terminal {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  background: var(--color-void);
+  clip-path: var(--cut-sm);
+}
+.att-terminal-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 0.7rem;
+}
+.att-terminal-body {
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+.att-terminal-line { white-space: pre-wrap; word-break: break-word; }
+.att-terminal-line:last-child { color: var(--color-text-primary); }
+.att-terminal-line.is-idle { color: var(--color-text-disabled); }
+
+/* ── the phase rail — the ceremony's graduations ─────────────────────── */
+
+.att-rail {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2.6rem;
+  z-index: 2;
+  animation: attHeaderIn 2s ease-out;
+}
+
+
+.att-rail-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.att-rail-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--line);
+  background: var(--color-void);
+  transform: rotate(45deg);
+  transition: all var(--snap);
+}
+
+.att-rail-label {
+  font-family: var(--font-data);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-disabled);
+  transition: color var(--snap);
+}
+
+.att-rail-active .att-rail-dot {
+  border-color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 25%, transparent);
+  box-shadow: 0 0 14px var(--signal-faint);
+}
+.att-rail-active .att-rail-label { color: var(--signal); }
+
+.att-rail-complete .att-rail-dot {
+  border-color: color-mix(in srgb, var(--color-green) 60%, transparent);
+  background: color-mix(in srgb, var(--color-green) 20%, transparent);
+}
+.att-rail-complete .att-rail-label { color: var(--color-text-tertiary); }
+
+/* ── the abandon dialog — in-ceremony, never the OS prompt ───────────── */
+
+.att-dialog-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-void) 75%, transparent);
+  animation: attFadeIn 200ms ease-out;
+}
+
+.att-dialog {
+  width: 90%;
+  max-width: 34rem;
+  border: 1px solid var(--line);
+  background: var(--color-surface);
+  padding: 1.75rem 2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .att, .att-step, .att-stage-header, .att-dialog-veil,
+  .att-answering, .att-opening, .att-rail,
+  .att-step > .att-asks, .att-turn-live > .att-asks,
+  .att-step > .att-asks > *, .att-turn-live > .att-asks > *,
+  .att-step > .att-replies, .att-step > .att-controls,
+  .att-transcript .att-turn:last-child .att-replies { animation: none; }
+  .att-step { opacity: 1; transform: none; }
+}

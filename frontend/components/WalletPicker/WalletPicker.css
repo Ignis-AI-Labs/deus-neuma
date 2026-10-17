@@ -1,0 +1,295 @@
+/* WalletPicker — Wallet selection modal */
+
+.wallet-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-void) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: walletPickerFadeIn var(--duration-fast) var(--ease-out);
+}
+
+@keyframes walletPickerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.wallet-picker-panel {
+  background: var(--color-surface);
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  border-radius: var(--radius-xl);
+  width: 380px;
+  max-width: 90vw;
+  padding: var(--space-6);
+  animation: walletPickerSlideUp var(--duration-normal) var(--ease-out);
+}
+
+@keyframes walletPickerSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wallet-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.wallet-picker-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-light);
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-primary);
+}
+
+.wallet-picker-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  border-radius: var(--radius-full);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all var(--duration-fast) var(--ease-in-out);
+}
+
+.wallet-picker-close:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.wallet-picker-context {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-light);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-5);
+  line-height: var(--leading-relaxed);
+}
+
+.wallet-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.wallet-picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: transparent;
+  border: var(--border-width-thin) solid color-mix(in srgb, var(--color-white) 8%, transparent);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-in-out);
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-primary);
+}
+
+.wallet-picker-item:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-glass-hover);
+}
+
+.wallet-picker-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.wallet-picker-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.wallet-picker-icon-fallback {
+  font-size: var(--text-lg);
+  color: var(--color-text-tertiary);
+}
+
+.wallet-picker-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  color: var(--color-text-primary);
+}
+
+.wallet-picker-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-light);
+  line-height: var(--leading-relaxed);
+}
+
+/* --- Embedded wallet additions --- */
+
+.wallet-picker-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wallet-picker-address {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono, monospace);
+}
+
+.wallet-picker-create {
+  width: 100%;
+  padding: var(--space-4);
+  background: transparent;
+  border: var(--border-width-thin) solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-in-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.wallet-picker-create:hover {
+  border-color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 8%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--signal) 15%, transparent);
+}
+
+.wallet-picker-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.wallet-picker-divider::before,
+.wallet-picker-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-white) 8%, transparent);
+}
+
+.wallet-picker-divider span {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.wallet-picker-footnote {
+  text-align: center;
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.wallet-picker-footnote a {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wallet-picker-footnote a:hover {
+  color: var(--color-text-primary);
+}
+
+/* --- Password flow --- */
+
+.wallet-picker-password {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wallet-picker-password-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-white) 4%, transparent);
+  border: var(--border-width-thin) solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-in-out);
+  box-sizing: border-box;
+}
+
+.wallet-picker-password-input:focus {
+  border-color: var(--signal);
+}
+
+.wallet-picker-password-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.wallet-picker-remember {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wallet-picker-remember input {
+  accent-color: var(--signal);
+}
+
+
+.wallet-picker-error {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  min-height: 1em;
+}
+
+.wallet-picker-submit {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: var(--border-width-thin) solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-in-out);
+}
+
+.wallet-picker-submit:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+  background: var(--color-glass-hover);
+}
+
+.wallet-picker-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* MAKE A KEY FOR ME — the lightest way in, first and marked (Design note, 2026-10-14 */
+.wallet-picker-forme { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); border-color: var(--signal-dim); }
+.wallet-picker-forme-note { font-family: var(--font-data); font-size: 10px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }

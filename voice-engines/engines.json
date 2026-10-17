@@ -1,0 +1,731 @@
+{
+  "version": 2,
+  "description": "Voice engine manifest. Single source of truth for downloads, launcher, UI, and the voice tiers (light/standard/high -> engine + model). Read by voice-engines/_downloader/download.py (Python) and backend/services/voice/engine-registry.js (JS).",
+  "engines": {
+    "zonos": {
+      "id": "zonos",
+      "name": "Zonos v0.1",
+      "publisher": "Zyphra",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": ["en", "ja", "zh", "fr", "de"],
+      "capabilities": {
+        "cloning": true,
+        "emotion": true,
+        "streaming": true,
+        "minReferenceSeconds": 10
+      },
+      "requirements": {
+        "vramGb": 6,
+        "diskGb": 3.4,
+        "python": "3.12",
+        "gpu": "required",
+        "cuda": "12.1+"
+      },
+      "download": {
+        "method": "huggingface_snapshot",
+        "repo": "Zyphra/Zonos-v0.1-transformer",
+        "allowPatterns": ["*.safetensors", "*.json", "*.txt", "*.py"]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7860,
+        "healthPath": "/health",
+        "startModule": "voice-engines/zonos/server.py",
+        "vramGb": 6
+      },
+      "adapter": "zonos",
+      "validated": true,
+      "notes": "Primary recommended local engine. Apache-2.0 (commercial-safe). 44kHz output, emotion control, ~10s reference for cloning."
+    },
+    "kokoro": {
+      "id": "kokoro",
+      "name": "Kokoro-82M",
+      "publisher": "hexgrad",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": ["en"],
+      "capabilities": {
+        "cloning": false,
+        "emotion": false,
+        "streaming": true,
+        "presetVoices": true
+      },
+      "requirements": {
+        "vramGb": 1,
+        "diskGb": 0.4,
+        "python": "3.12",
+        "gpu": "optional"
+      },
+      "download": {
+        "method": "huggingface_snapshot",
+        "repo": "hexgrad/Kokoro-82M",
+        "allowPatterns": ["kokoro-v1_0.pth", "config.json", "voices/*.pt", "vocab.txt", "tokenizer.json"]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7861,
+        "healthPath": "/health",
+        "startModule": "voice-engines/kokoro/server.py",
+        "vramGb": 1
+      },
+      "adapter": "kokoro",
+      "validated": true,
+      "notes": "Fast CPU/GPU fallback. No cloning — preset voices only. Good low-resource default and offline companion."
+    },
+
+    "parler": {
+      "id": "parler",
+      "name": "Parler TTS Mini",
+      "publisher": "Hugging Face",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": ["en"],
+      "capabilities": {
+        "cloning": false,
+        "emotion": false,
+        "streaming": true,
+        "textDescription": true,
+        "seedDeterministic": true
+      },
+      "requirements": {
+        "vramGb": 4,
+        "diskGb": 1.7,
+        "python": "3.11",
+        "gpu": "required",
+        "cuda": "12.1+"
+      },
+      "download": {
+        "method": "huggingface_snapshot",
+        "repo": "parler-tts/parler-tts-mini-v1",
+        "allowPatterns": ["*.safetensors", "*.json", "*.txt", "*.model", "*.bin"]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7864,
+        "healthPath": "/health",
+        "startModule": "voice-engines/parler/server.py",
+        "vramGb": 4
+      },
+      "adapter": "parler",
+      "validated": true,
+      "notes": "Text-described voice design — synthesize a voice from a prose description. Apache-2.0. RETIRED to registered-unlisted (B-21, 2026-07-20): the adapter and PROVIDER_DEFAULTS stay registered so existing Parler voice DNAs still speak, but the forge accepts no new Parler sessions (ENGINE_MODES drops it, /engines hides it) — qwen3 VoiceDesign is its successor on the design path."
+    },
+    "f5-tts": {
+      "id": "f5-tts",
+      "name": "F5-TTS v1",
+      "publisher": "SWivid",
+      "license": "CC-BY-NC (model weights)",
+      "commercial": false,
+      "type": "local",
+      "languages": ["en", "zh"],
+      "capabilities": {
+        "cloning": true,
+        "emotion": false,
+        "streaming": true,
+        "minReferenceSeconds": 10
+      },
+      "requirements": {
+        "vramGb": 4,
+        "diskGb": 1.5,
+        "python": "3.11",
+        "gpu": "required",
+        "cuda": "12.1+"
+      },
+      "download": {
+        "method": "huggingface_snapshot",
+        "repo": "SWivid/F5-TTS",
+        "allowPatterns": ["model_*.pt", "*.json", "*.txt"]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7862,
+        "healthPath": "/health",
+        "startModule": "voice-engines/f5-tts/server.py",
+        "vramGb": 4
+      },
+      "adapter": "f5tts",
+      "validated": false,
+      "notes": "Beautiful quality but model weights are CC-BY-NC — NON-COMMIAL USE ONLY. Wire for testing; do NOT enable in any commercial distribution. Track for Apache retraining."
+    },
+    "cosyvoice": {
+      "id": "cosyvoice",
+      "name": "CosyVoice 2",
+      "publisher": "Alibaba",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": ["en", "zh", "ja", "ko"],
+      "capabilities": {
+        "cloning": true,
+        "emotion": true,
+        "streaming": true,
+        "minReferenceSeconds": 10
+      },
+      "requirements": {
+        "vramGb": 8,
+        "diskGb": 4.0,
+        "python": "3.10",
+        "gpu": "required",
+        "cuda": "12.1+"
+      },
+      "download": {
+        "method": "custom",
+        "instructions": "Manual clone — internal model structure changes per release. See voice-engines/cosyvoice/README.md."
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7863,
+        "healthPath": "/health",
+        "startModule": "voice-engines/cosyvoice/server.py",
+        "vramGb": 8
+      },
+      "adapter": "cosyvoice",
+      "validated": false,
+      "notes": "Strong Apache-2.0 alternative to Zonos with streaming-first design. Manual setup for now — TODO: automate download once HF mirror stabilises."
+    },
+    "whisper": {
+      "id": "whisper",
+      "name": "Speech to text (Nemotron live + Whisper large-v3)",
+      "publisher": "NVIDIA (live) / OpenAI + SYSTRAN (transcribe)",
+      "license": "NVIDIA Open Model License + MIT",
+      "commercial": true,
+      "type": "local",
+      "languages": ["multilingual"],
+      "capabilities": {
+        "transcription": true,
+        "streaming": true
+      },
+      "requirements": {
+        "vramGb": 2,
+        "diskGb": 5.8,
+        "python": "3.12",
+        "gpu": "optional"
+      },
+      "download": {
+        "method": "files",
+        "files": [
+          { "use": "transcribe", "repo": "Systran/faster-whisper-large-v3", "revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478", "path": "model.bin", "dest": "_models/whisper/model.bin", "sha256": "69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1", "bytes": 3087284237 },
+          { "use": "transcribe", "repo": "Systran/faster-whisper-large-v3", "revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478", "path": "config.json", "dest": "_models/whisper/config.json", "sha256": "a9306624f5ec14270a014b647e5c316b6e03a662c369758d1b90697a7b0655b9", "bytes": 2394 },
+          { "use": "transcribe", "repo": "Systran/faster-whisper-large-v3", "revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478", "path": "preprocessor_config.json", "dest": "_models/whisper/preprocessor_config.json", "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711", "bytes": 340 },
+          { "use": "transcribe", "repo": "Systran/faster-whisper-large-v3", "revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478", "path": "tokenizer.json", "dest": "_models/whisper/tokenizer.json", "sha256": "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca", "bytes": 2480617 },
+          { "use": "transcribe", "repo": "Systran/faster-whisper-large-v3", "revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478", "path": "vocabulary.json", "dest": "_models/whisper/vocabulary.json", "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1", "bytes": 1068114 },
+          { "use": "stream", "repo": "Systran/faster-whisper-base", "revision": "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66", "path": "model.bin", "sha256": "d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9", "bytes": 145217532 },
+          { "use": "stream", "repo": "Systran/faster-whisper-base", "revision": "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66", "path": "config.json", "sha256": "56a6d8110d311f19c8f0471e562832c7527f146b567275bfca59fcf7c184da9a", "bytes": 2309 },
+          { "use": "stream", "repo": "Systran/faster-whisper-base", "revision": "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66", "path": "tokenizer.json", "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab", "bytes": 2203239 },
+          { "use": "stream", "repo": "Systran/faster-whisper-base", "revision": "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66", "path": "vocabulary.txt", "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913", "bytes": 459861 },
+          { "use": "live", "repo": "nvidia/nemotron-speech-streaming-en-0.6b", "revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50", "path": "config.json", "dest": "_models/nemotron-streaming-en-0.6b/config.json", "sha256": "dffe850bc79ad2b0f8117804502b24d2c4a445aafbed4c1e40f8d78e0cb44065", "bytes": 1284 },
+          { "use": "live", "repo": "nvidia/nemotron-speech-streaming-en-0.6b", "revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50", "path": "generation_config.json", "dest": "_models/nemotron-streaming-en-0.6b/generation_config.json", "sha256": "6ce531b39df8046cc8dbbe29dc64458b72972011d4717e160e6efb2c1af198d1", "bytes": 192 },
+          { "use": "live", "repo": "nvidia/nemotron-speech-streaming-en-0.6b", "revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50", "path": "model.safetensors", "dest": "_models/nemotron-streaming-en-0.6b/model.safetensors", "sha256": "bddd8a7300826efd19cf7e01f1c7db8402bed6786fc4c7739632894f69c71473", "bytes": 2472413604 },
+          { "use": "live", "repo": "nvidia/nemotron-speech-streaming-en-0.6b", "revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50", "path": "processor_config.json", "dest": "_models/nemotron-streaming-en-0.6b/processor_config.json", "sha256": "cf35efc9abdd0963db7e96967f8a91d9c8243803b9f6bbd900aa936ee3ce42f3", "bytes": 525 },
+          { "use": "live", "repo": "nvidia/nemotron-speech-streaming-en-0.6b", "revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50", "path": "tokenizer.json", "dest": "_models/nemotron-streaming-en-0.6b/tokenizer.json", "sha256": "60dc0361763fa3cd62df60f34fca3e61134676a939967853931db5f3869b2db2", "bytes": 400216 },
+          { "use": "live", "repo": "nvidia/nemotron-speech-streaming-en-0.6b", "revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50", "path": "tokenizer_config.json", "dest": "_models/nemotron-streaming-en-0.6b/tokenizer_config.json", "sha256": "0665bee664daf39a155e5ee013bb1d885c58b4901994abc07b9a6b3904cce132", "bytes": 270 }
+        ]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7865,
+        "healthPath": "/health",
+        "startModule": "voice-engines/whisper/server.py",
+        "vramGb": 2,
+        "idleTtlMs": 1800000
+      },
+      "adapter": null,
+      "validated": false,
+      "notes": "Speech-to-text (the only STT engine — everything else here is TTS). One sidecar, pinned models loaded FROM DISK at startup (HF_HUB_OFFLINE; a missing file = /health phase failed naming it). WS /stream = NVIDIA Nemotron Speech Streaming EN 0.6B (the \"live\" files), on the GPU when it has 2 GB free (~1.3 GB used), else the CPU (NEMOTRON_DEVICE=cpu|cuda forces): cache-aware streaming, each chunk read once — words while you speak, the final ~0.1 s after the last word on the GPU, ~0.2 s on 8 idle CPU threads (measured 2026-10-07/09, docs/work/dictation-flow.md); serves live sittings AND hold-to-talk dictation (/dictate-ws). Verbatim by design (keeps \"uh\", repeats, spoken numbers); English only; ~3.5 GB RAM. POST /transcribe = the same Nemotron model (the forge's words, the dictation fallback) — ONE model loaded, never two (Design note, 2026-10-09; Whisper large-v3 loads only with WHISPER_TRANSCRIBE=whisper (other languages; GPU fp16 or CPU int8). \"stream\" = faster-whisper base, the fallback live lane (WHISPER_STREAM_ENGINE=base). 16kHz s16le PCM in, speech_started/partial/utterance out; Silero VAD from the ONNX in the faster-whisper wheel; ONE /stream client at a time; loopback-only fail-closed boot. Licences: Whisper MIT; Nemotron NVIDIA Open Model License (commercial use permitted)."
+    },
+    "kyutai": {
+      "id": "kyutai",
+      "name": "Kyutai TTS 1.6B",
+      "publisher": "Kyutai",
+      "license": "CC-BY-4.0 (weights); MIT (Python code)",
+      "commercial": true,
+      "type": "local",
+      "languages": [
+        "en",
+        "fr"
+      ],
+      "capabilities": {
+        "cloning": true,
+        "emotion": false,
+        "streaming": true,
+        "presetVoices": true,
+        "embeddingVoices": true
+      },
+      "requirements": {
+        "vramGb": 7,
+        "diskGb": 4,
+        "python": "3.12",
+        "gpu": "required",
+        "cuda": "12.1+"
+      },
+      "download": {
+        "method": "huggingface_snapshot",
+        "repo": "kyutai/tts-1.6b-en_fr",
+        "revision": "f65439609986c392cb12df63938abcc550c3fb15",
+        "allowPatterns": [
+          "dsm_tts_1e68beda@240.safetensors",
+          "tokenizer-e351c8d8-checkpoint125.safetensors",
+          "tokenizer_spm_8k_en_fr_audio.model",
+          "config.json"
+        ],
+        "extraRepos": [
+          {
+            "repo": "kyutai/tts-voices",
+            "revision": "323332d33f997de8394f24a193e1a76df720e01a",
+            "allowPatterns": [
+              "voice-donations/James.wav.1e68beda@240.safetensors",
+              "voice-donations/Hannah.wav.1e68beda@240.safetensors",
+              "voice-donations/Andrea.wav.1e68beda@240.safetensors",
+              "voice-donations/Antoni.wav.1e68beda@240.safetensors",
+              "voice-donations/Lara.wav.1e68beda@240.safetensors",
+              "voice-donations/Moses.wav.1e68beda@240.safetensors",
+              "voice-donations/Glenn.wav.1e68beda@240.safetensors",
+              "voice-donations/Blake.wav.1e68beda@240.safetensors"
+            ]
+          }
+        ]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7866,
+        "healthPath": "/health",
+        "startModule": "voice-engines/kyutai/server.py",
+        "vramGb": 7
+      },
+      "adapter": "kyutai",
+      "validated": false,
+      "notes": "Fastest local engine measured (sesame-class-voice-0y39 Wave-2: TTFB-audible 285 ms median, RTF 0.210, 6.2 GiB co-resident, true word-level streaming). CC-BY-4.0 weights: commercial use permitted WITH attribution (ship Kyutai credit + model-card link in distribution legal docs); moshi Python code is MIT. VOICE LIBRARY RULE: preset voices ship from voice-donations/ (CC0) or user-minted embeddings ONLY — expresso/* is CC-BY-NC (non-commercial), excluded at catalog-build time and refused by the sidecar allowlist. Download contract (kyutai-engine-phase1-srex S-2 spike; both repos pinned to the spike commits): the model repo is GATED — first fetch needs HF auth; the 4 pinned files are the COMPLETE load set (3.79 GiB). moshi loads them from the flat managed engine dir via explicit local-Path overrides — dir-as-repo-id raises HFValidationError, never do it. Voice embeddings are checkpoint-specific (suffix 1e68beda@240 from config.json model_id); the 8 curated CC0 donations (~250 KiB each) land under voice-donations/ in the same managed dir. n_q/temp are synthesis-time knobs, not registry fields. vramGb 7 = 6.2 GiB measured peak rounded up; diskGb 4 covers the 3.79 GiB model + voice set — verify at download. S-7 two-caller probe (kyutai-engine-phase1-srex wave-2, single global lock): caller B's first frame landed 285.3 ms after caller A's final frame, zero interleave — B waited 3719.4 ms behind a ~3.9 s turn. That head-of-line cost is the recorded evidence for the deferred NFR-8 LRU worker pool."
+    },
+    "qwen3": {
+      "id": "qwen3",
+      "name": "Qwen3-TTS 1.7B",
+      "publisher": "Qwen",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": [
+        "en",
+        "zh",
+        "ja",
+        "ko",
+        "de",
+        "fr",
+        "ru",
+        "pt",
+        "es",
+        "it"
+      ],
+      "capabilities": {
+        "cloning": true,
+        "emotion": false,
+        "streaming": false,
+        "designVoices": true,
+        "minReferenceSeconds": 1
+      },
+      "requirements": {
+        "vramGb": 9,
+        "diskGb": 9,
+        "python": "3.12",
+        "gpu": "required",
+        "cuda": "12.1+"
+      },
+      "download": {
+        "method": "huggingface_snapshot",
+        "repo": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        "revision": "fd4b254389122332181a7c3db7f27e918eec64e3",
+        "targetSubdir": "base",
+        "allowPatterns": [
+          "config.json",
+          "generation_config.json",
+          "merges.txt",
+          "model.safetensors",
+          "preprocessor_config.json",
+          "tokenizer_config.json",
+          "vocab.json",
+          "speech_tokenizer/config.json",
+          "speech_tokenizer/configuration.json",
+          "speech_tokenizer/model.safetensors",
+          "speech_tokenizer/preprocessor_config.json"
+        ],
+        "extraRepos": [
+          {
+            "repo": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+            "revision": "5ecdb67327fd37bb2e042aab12ff7391903235d3",
+            "targetSubdir": "voice-design",
+            "allowPatterns": [
+              "config.json",
+              "generation_config.json",
+              "merges.txt",
+              "model.safetensors",
+              "preprocessor_config.json",
+              "tokenizer_config.json",
+              "vocab.json",
+              "speech_tokenizer/config.json",
+              "speech_tokenizer/configuration.json",
+              "speech_tokenizer/model.safetensors",
+              "speech_tokenizer/preprocessor_config.json"
+            ]
+          }
+        ]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7867,
+        "healthPath": "/health",
+        "startModule": "voice-engines/qwen3/server.py",
+        "vramGb": 9
+      },
+      "adapter": "qwen3",
+      "validated": true,
+      "notes": "Two-checkpoint engine — Base (x-vector voice clone) + VoiceDesign (prose-described voice design) — BOTH loaded co-resident at startup: 8610 MiB measured (~8.6 GiB), inside the 16 GB budget with headroom; vramGb 9 rounds that up, diskGb 9 = 8.5 GB on disk for the two pinned snapshots. BATCH-ONLY: qwen-tts exposes no streaming path — full generation, then uniform 80 ms PCM chunks; first-audio TTFB scales ~0.05 s/char (design 0.0485, clone 0.0341 + ~0.8 s fixed, measured with llama-server co-resident), so turns must show GENERATING honestly, never a fake-live transport. Attention: sdpa is the CONFIRMED path — flash-attn absent on the rig (ImportError); real generations ran on sdpa on both checkpoints. Download layout: the two repos CANNOT share one flat dir (root filename collisions — config.json, model.safetensors), so each snapshots into its own managed subdir via targetSubdir (base/ + voice-design/), both pinned to the qwen3-engine-q3gh Wave-1 spike revs with the identical 11-file allow set. Clone is x-vector-only: the Base model serves NO preset voices (any voice id 400s fail-closed) and ref audio reaches the model only as a validated in-process (ndarray, sr) tuple — never as a path/URL string through qwen-tts's convenience loader (SSRF-shaped). Design mode REQUIRES an integer seed (0..2^31-1) — determinism is the design voice's identity. Language set from the model card (10 languages); Wave-1 generations proved English. validated:true flipped 2026-07-20 — the Wave-3 live suite passed 10/10 on the shipping path (engine-manager launch, clone+design renders, disconnect/watchdog/drain recoveries, 15/15 battery, clean shutdown), VoiceDesign determinism proven BITWISE across three renders, clone ECAPA 0.8032 vs the pre-registered 0.5 gate (margin 0.4876 vs 0.15)."
+    },
+    "csm": {
+      "id": "csm",
+      "name": "Sesame CSM",
+      "publisher": "Sesame AI Labs (CSM-1B)",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": [
+        "en"
+      ],
+      "capabilities": {
+        "cloning": true,
+        "emotion": false,
+        "streaming": true,
+        "context": true,
+        "minReferenceSeconds": 3,
+        "maxReferenceSeconds": 40
+      },
+      "requirements": {
+        "vramGb": 5.6,
+        "diskGb": 4.56,
+        "python": "3.12",
+        "gpu": "required",
+        "cuda": "12.8+"
+      },
+      "defaultModel": "csm-1b",
+      "models": {
+        "csm-1b": {
+          "name": "CSM-1B",
+          "dtype": "bf16",
+          "vramGb": 5.6,
+          "diskGb": 4.56,
+          "license": "Apache-2.0 weights; text tokenizer under the Llama 3.2 Community License (\"Built with Llama\"); Mimi codec CC-BY-4.0",
+          "defaultProfile": "full",
+          "profiles": {
+            "full": {
+              "dtype": "bf16",
+              "kvLen": 2048,
+              "vramGb": 5.7
+            },
+            "lean": {
+              "dtype": "int8",
+              "kvLen": 1024,
+              "vramGb": 2.5,
+              "settings": "int8 backbone + depth decoder, 1024-position window, Mimi bf16 with its encoder on the CPU, CPU weight prep, PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+            }
+          }
+        }
+      },
+      "download": {
+        "method": "files",
+        "files": [
+          {
+            "repo": "unsloth/csm-1b",
+            "revision": "39e8c756bec133ad7eb9ea1097c84a2bd891c949",
+            "path": "tokenizer.json",
+            "sha256": "80f511469b4aceda8c17ccafef2310eceeda9dd4589cf2c062bd0279eef5646d",
+            "bytes": 17209980
+          },
+          {
+            "repo": "kyutai/moshiko-pytorch-bf16",
+            "revision": "2bfc9ae6e89079a5cc7ed2a68436010d91a3d289",
+            "path": "tokenizer-e351c8d8-checkpoint125.safetensors",
+            "dest": "csm/_weights/mimi-tokenizer-e351c8d8-checkpoint125.safetensors",
+            "sha256": "09b782f0629851a271227fb9d36db65c041790365f11bbe5d3d59369cf863f50",
+            "bytes": 384644900
+          },
+          {
+            "repo": "unsloth/csm-1b",
+            "revision": "39e8c756bec133ad7eb9ea1097c84a2bd891c949",
+            "path": "model.safetensors",
+            "model": "csm-1b",
+            "sha256": "1c81da3653c0177283d17d0a94e8136e76429fcabed60ed336cea6abea6e81c3",
+            "bytes": 4153376052
+          }
+        ]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7868,
+        "healthPath": "/health",
+        "startModule": "voice-engines/csm/server.py",
+        "vramGb": 5.6,
+        "readyTimeoutMs": 900000,
+        "modelEnv": "CSM_MODEL",
+        "profileEnv": "CSM_PROFILE"
+      },
+      "adapter": "speak",
+      "protocol": "speak",
+      "validated": false,
+      "notes": "ONE VOICE engine for the Standard tier (csm-1b; High/MisoTTS 8B dropped by Design note, 2026-10-01 — CSM sounded better): streaming Sesame CSM with the conversation as context (docs/architecture/voice/speak-protocol.md). First-ever launch compiles the frame step (csm-1b ~2.5 min; cached under _models/csm/), hence the long readyTimeoutMs."
+    },
+    "chatterbox-nano": {
+      "id": "chatterbox-nano",
+      "name": "Chatterbox Nano",
+      "publisher": "Resemble AI",
+      "license": "MIT",
+      "commercial": true,
+      "type": "local",
+      "languages": [
+        "en"
+      ],
+      "capabilities": {
+        "cloning": true,
+        "emotion": false,
+        "streaming": true,
+        "context": false,
+        "minReferenceSeconds": 3,
+        "maxReferenceSeconds": 40
+      },
+      "requirements": {
+        "vramGb": 0,
+        "ramGb": 4.2,
+        "diskGb": 2.15,
+        "python": "3.11",
+        "gpu": "none"
+      },
+      "download": {
+        "method": "files",
+        "files": [
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "added_tokens.json",
+            "sha256": "72e4ab6acb0d9309ac3df4b526ae5fd80a2da5bc5ab7bb02d85096a374f69193",
+            "bytes": 418
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "conds.pt",
+            "sha256": "b1852099306fd6a7814eb9d0bd10186caba7249596cc23868f78a0eefbfa5033",
+            "bytes": 169454
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "merges.txt",
+            "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+            "bytes": 456318
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "s3gen_meanflow.safetensors",
+            "sha256": "d65cb687a2ed581ee6cc297e919ffefa63386944f42364ae13b78a594945514f",
+            "bytes": 1064875036
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "special_tokens_map.json",
+            "sha256": "92ba8063bf40aa163eadebbfe0de07c2aebe44cf0d4a9e8726580b0781fd2640",
+            "bytes": 470
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "t3_nano_v1.safetensors",
+            "sha256": "72b110185087d945dbdf54dee4e333848e1811bdd5fd6cb16ceb8da50006f0c9",
+            "bytes": 869899204
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "tokenizer_config.json",
+            "sha256": "bca16a2ac1ddbd78b8d6228f0031884cc74b6ea54b967d6f6d2ebae9ccde23e6",
+            "bytes": 3878
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "ve.safetensors",
+            "sha256": "f0921cab452fa278bc25cd23ffd59d36f816d7dc5181dd1bef9751a7fb61f63c",
+            "bytes": 5695784
+          },
+          {
+            "repo": "ResembleAI/chatterbox-nano",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+            "path": "vocab.json",
+            "sha256": "f6bd25a65e4e63ca31360e9fb11c7e4f9a391a78385d640acd814092dd6eee4f",
+            "bytes": 999186
+          },
+          {
+            "repo": "KitsuMate/chatterbox-nano-v2-onnx",
+            "revision": "851210533a5bcb4ad78e3ada6d527482dd1a31e7",
+            "path": "LICENSE",
+            "dest": "chatterbox-nano/_onnx/v2/LICENSE",
+            "sha256": "7d6744b52e52960d42c69b29b55b4b9e0b4656cf52569ab710093f7707f7a067",
+            "bytes": 1087
+          },
+          {
+            "repo": "KitsuMate/chatterbox-nano-v2-onnx",
+            "revision": "851210533a5bcb4ad78e3ada6d527482dd1a31e7",
+            "path": "onnx/language_model_int8_mixed.onnx",
+            "dest": "chatterbox-nano/_onnx/v2/onnx/language_model_int8_mixed.onnx",
+            "sha256": "b696535c92610ae4afa25b0415bbfa1ed5a5657ed480368b467f7f7e0ebb103d",
+            "bytes": 39357
+          },
+          {
+            "repo": "KitsuMate/chatterbox-nano-v2-onnx",
+            "revision": "851210533a5bcb4ad78e3ada6d527482dd1a31e7",
+            "path": "onnx/language_model_int8_mixed.onnx.data",
+            "dest": "chatterbox-nano/_onnx/v2/onnx/language_model_int8_mixed.onnx.data",
+            "sha256": "eb77afd17a69bce144bb26edfc6683bf7410f8a8002b1e3430c8a4a4e196e84d",
+            "bytes": 208307372
+          }
+        ]
+      },
+      "serve": {
+        "host": "127.0.0.1",
+        "port": 7869,
+        "healthPath": "/health",
+        "startModule": "voice-engines/chatterbox-nano/server.py",
+        "vramGb": 0,
+        "readyTimeoutMs": 180000
+      },
+      "adapter": "speak",
+      "protocol": "speak",
+      "validated": false,
+      "notes": "ONE VOICE Light tier: Chatterbox Nano streamed on the CPU alone (ONNX int8 LM by KitsuMate, MIT). Clones the same Voice DNA clip; ignores context. Streamed chunks carry no Perth watermark."
+    },
+    "cartesia": {
+      "id": "cartesia",
+      "name": "Cartesia Sonic",
+      "publisher": "Cartesia",
+      "license": "proprietary",
+      "commercial": true,
+      "type": "cloud",
+      "languages": ["en", "ja", "zh", "fr", "de", "es", "pt", "ko"],
+      "capabilities": {
+        "cloning": true,
+        "emotion": true,
+        "streaming": true,
+        "streamingLatencyMs": 135
+      },
+      "requirements": {
+        "apiKey": true,
+        "endpoint": "https://api.cartesia.ai"
+      },
+      "adapter": "cartesia",
+      "validated": true,
+      "notes": "Lowest latency cloud TTS (~135ms TTFA). SSM-based. Best for real-time companion feel. API key required."
+    },
+    "elevenlabs": {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "publisher": "ElevenLabs",
+      "license": "proprietary",
+      "commercial": true,
+      "type": "cloud",
+      "languages": ["en", "ja", "zh", "fr", "de", "es", "pt", "ko", "it", "nl", "tr", "pl", "ar", "ru"],
+      "capabilities": {
+        "cloning": true,
+        "emotion": true,
+        "streaming": true,
+        "streamingLatencyMs": 400,
+        "instantCloneSeconds": 10,
+        "professionalCloneMinutes": 30
+      },
+      "requirements": {
+        "apiKey": true,
+        "endpoint": "https://api.elevenlabs.io"
+      },
+      "adapter": "elevenlabs",
+      "validated": true,
+      "notes": "Gold-standard voice cloning. IVC = 1-5min sample, PVC = 30+min for studio-grade. Premium tier."
+    },
+    "hume": {
+      "id": "hume",
+      "name": "Hume Octave",
+      "publisher": "Hume AI",
+      "license": "proprietary",
+      "commercial": true,
+      "type": "cloud",
+      "languages": ["en"],
+      "capabilities": {
+        "cloning": true,
+        "emotion": true,
+        "streaming": true,
+        "streamingLatencyMs": 300
+      },
+      "requirements": {
+        "apiKey": true,
+        "endpoint": "https://api.hume.ai"
+      },
+      "adapter": "hume",
+      "validated": false,
+      "notes": "Empathic voice — models emotion in real time. Philosophically interesting for neuma. Wire once docs are verified."
+    },
+    "designer": {
+      "id": "designer",
+      "name": "VoxCPM2 voice designer",
+      "publisher": "OpenBMB",
+      "license": "Apache-2.0",
+      "commercial": true,
+      "type": "local",
+      "languages": ["en"],
+      "capabilities": { "design": true },
+      "requirements": { "gpu": "required", "cuda": "12.8+", "python": "3.12", "diskGb": 4.96 },
+      "download": { "method": "huggingface_snapshot", "repo": "openbmb/VoxCPM2", "revision": "32279effe8c19989596f05d353d1447f51d9e915" },
+      "serve": { "host": "127.0.0.1", "port": 7870, "healthPath": "/health", "startModule": "voice-engines/designer/server.py", "readyTimeoutMs": 300000 },
+      "adapter": null,
+      "protocol": "design",
+      "validated": false
+    }
+  },
+  "tiers": {
+    "light": {
+      "engine": "chatterbox-nano",
+      "device": "cpu",
+      "defaultProfile": "cpu",
+      "profiles": {
+        "cpu": {
+          "memMB": 0,
+          "ramMB": 4200,
+          "firstAudioMs": 432,
+          "rtf": 0.36,
+          "measured": "8 threads, Core Ultra 9 285K, no GPU: 4.2 GB RAM peak (docs/work/one-voice.md)"
+        }
+      }
+    },
+    "standard": {
+      "engine": "csm",
+      "model": "csm-1b",
+      "device": "cuda",
+      "defaultProfile": "full",
+      "profiles": {
+        "full": {
+          "memMB": 5726,
+          "allocatedMB": 4338,
+          "firstAudioMs": 56,
+          "rtf": 0.25,
+          "measured": "bf16, compiled, RTX PRO 6000 shared with the substrate: 5,726 MB process (docs/work/one-voice.md)"
+        },
+        "lean": {
+          "memMB": 2456,
+          "allocatedMB": 1440,
+          "firstAudioMs": 32,
+          "rtf": 0.114,
+          "measured": "int8 + lean + kv 1024 + Mimi bf16/encoder on CPU: 2,456 MB process, for 8 GB cards (docs/work/one-voice.md)"
+        }
+      }
+    }
+  }
+}

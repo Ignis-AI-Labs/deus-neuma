@@ -1,0 +1,33 @@
+{
+ "runId": "validate-20260925t193750z-gsm100-4arm-neuma-a1-20260925201418492",
+ "comparisonId": "validate-20260925t193750z-gsm100-4arm",
+ "arm": "neuma",
+ "attempt": 1,
+ "status": "succeeded",
+ "suite": {
+  "id": "gsm8k-2568",
+  "adapter": "lm-eval"
+ },
+ "metrics": [
+  {
+   "id": "gsm8k/exact_match,strict-match",
+   "task": "gsm8k",
+   "value": 0.99,
+   "unit": "ratio",
+   "higherIsBetter": true,
+   "primary": true,
+   "sampleCount": 100,
+   "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-26T03-31-42.275961.json"
+  },
+  {
+   "id": "gsm8k/exact_match,flexible-extract",
+   "task": "gsm8k",
+   "value": 0.99,
+   "unit": "ratio",
+   "higherIsBetter": true,
+   "primary": true,
+   "sampleCount": 100,
+   "source": "__models__HauhauCS__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF__Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf/results_2026-09-26T03-31-42.275961.json"
+  }
+ ]
+}

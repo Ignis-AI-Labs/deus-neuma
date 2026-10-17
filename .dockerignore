@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build outputs (rebuilt in Docker)
+dist/
+artifacts/
+cache/
+
+# Runtime data (mounted as volumes)
+vault/
+workspaces/
+data/
+uploads/
+
+# Dev/test files
+test/
+.env
+.env.local
+.env.test
+*.log
+.claude/
+.vscode/
+.idea/
+.git/
+
+# Contracts source (not needed at runtime)
+contracts/
+subgraph/
+scripts/
+hardhat.config.cjs
+
+# ML training (not needed at runtime)
+models/training/
+
+# Docs (keep chain ABIs for chain-reader module init — SEC-AUDIT-009 / #168)
+docs/**
+!docs/contracts/
+!docs/contracts/abis/
+!docs/contracts/abis/**
+*.md
+!frontend/**/*.md
+!docs/contracts/abis/**
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Archive
+archive/

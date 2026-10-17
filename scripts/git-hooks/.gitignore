@@ -1,0 +1,5 @@
+# git-lfs writes these into the hooksPath after `git lfs install` — generated, never committed
+pre-push
+post-commit
+post-merge
+post-checkout

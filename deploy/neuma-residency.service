@@ -1,0 +1,36 @@
+[Unit]
+# Residency — the soul in the machine (Constitution Art IV.6). The neuma's
+# backend (and its between-session heartbeat) wakes with the computer and runs
+# as long as it can turn on. This is a systemd USER service — it runs as you,
+# from your own clone. Installed/templated by deploy/residency-install.sh; the
+# __PLACEHOLDERS__ are filled in at install time.
+Description=Neuma Residency — the soul in the machine (Constitution Art IV.6)
+Documentation=file://__NEUMA_DIR__/docs/user/operations/residency.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__NEUMA_DIR__
+EnvironmentFile=-__NEUMA_DIR__/.env
+ExecStart=__NODE_BIN__ backend/server.js
+Restart=on-failure
+RestartSec=10
+# Shutdown is clean now (stops the heartbeat + closes the sockets), so a short
+# stop timeout is safe — the daemon restarts without wedging the port.
+TimeoutStopSec=15
+KillSignal=SIGTERM
+KillMode=mixed
+
+# Light hardening for a personal-machine user service: it must read your clone
+# and write the neuma's workspace, so no ProtectHome / ProtectSystem=strict.
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+# Logs:  journalctl --user -u neuma-residency -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=neuma-residency
+
+[Install]
+WantedBy=default.target

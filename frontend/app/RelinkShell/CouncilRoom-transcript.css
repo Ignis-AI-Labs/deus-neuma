@@ -1,0 +1,207 @@
+/* CouncilRoom-transcript.css — extracted from CouncilRoom.css (size law). The transcript; uses @keyframes council-considering from CouncilRoom-strip.css — imported last. */
+/* The transcript — voice register names, chunks revealing live. */
+.council-transcript {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.council-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.council-turn-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-voice);
+  /* --text-zoom: the transcript's Ctrl+scroll text zoom (use-text-zoom.js),
+     the same reading control as the one-on-one stream. */
+  font-size: calc(var(--text-base) * var(--text-zoom, 1));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  /* The hue is the speaker's own (inline, from the voice palette). */
+}
+
+/* WHEN the turn was spoken — a quiet clock beside the name (time alone
+   today, date joined on for another day's turn), so a witness reading
+   back a room they weren't in can track the conversation. */
+.council-turn-when {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
+}
+
+/* The active speaker's name carries a breathing mark while their words
+   stream — who is speaking reads at a glance, in the transcript as on
+   the strip. */
+.council-speaking-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.council-turn-speaking {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  animation: council-speaking 900ms ease-in-out infinite alternate;
+}
+
+@keyframes council-speaking {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+
+/* THE GROUNDS — one line per standing. The house ground and a cross-house
+   ground are not the same place, and the strip must never let them read as
+   one (Design note, 2026-07-26. */
+.council-grounds {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.council-ground {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  padding: var(--space-1) var(--space-4);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A tool act inline in the turn — one line of work exactly where the
+   words paused for it (the same in-flow chip as the one-on-one stream). */
+.council-tool {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-1) 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--line);
+}
+
+.council-tool-act {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+/* Acting: the chip breathes while the act is in flight. */
+.council-tool.is-acting .council-tool-act {
+  color: var(--color-text-secondary);
+  animation: council-considering 700ms ease-in-out infinite alternate;
+}
+
+.council-tool.is-refused .council-tool-act {
+  color: var(--alert);
+}
+
+/* Markdown flows inside the turn — the stream's own reading rhythm. */
+.council-turn-words {
+  font-family: var(--font-voice);
+  font-size: calc(var(--text-sm) * var(--text-zoom, 1));
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+
+.council-turn-words p { margin: 0 0 var(--space-2); }
+.council-turn-words p:last-child { margin-bottom: 0; }
+.council-turn-words ul, .council-turn-words ol { margin: 0 0 var(--space-2); padding-left: var(--space-5); }
+
+/* COPY on a settled turn — quiet until the turn is hovered. */
+.council-turn .relink-copy.council-turn-copy {
+  margin-left: var(--space-2);
+}
+
+.council-turn:hover .council-turn-copy,
+.council-turn-copy:focus-visible {
+  opacity: 1;
+}
+
+/* A file act's target — a real link into the editor: the witness clicks
+   the path a member touched and stands in the file. */
+.council-tool-path {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--line-hover);
+}
+
+.council-tool-path:hover {
+  color: var(--signal);
+  text-decoration-color: var(--signal);
+}
+
+/* A member's approval ask in the room's flow — the chip carries its own
+   grammar (ToolActionChip.css); the wrapper just gives it air. */
+.council-approval {
+  margin: var(--space-2) 0;
+}
+
+/* THE GAVEL's mark in the record — the witness called the room to order.
+   Centered and deliberately quiet: governance, not speech. */
+.council-order {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--warn);
+}
+
+.council-error {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--alert);
+}
+
+/* The round's verdict after the witness spoke — a quiet instrument line in
+   the flow: receipt made visible. REST stays muted (heard, chose quiet);
+   an answer that never landed (UNREAD / UNREACHABLE) speaks in the alert
+   color — a genuine fault line, never decoration. */
+.council-hands {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+.council-hands-head {
+  letter-spacing: 0.2em;
+  color: var(--color-text-secondary);
+}
+.council-hands-verdict[data-received='illegible'],
+.council-hands-verdict[data-received='unreachable'] {
+  color: var(--alert);
+}
+

@@ -1,0 +1,75 @@
+2026-09-21:10:21:02 WARNING  [config.evaluate_config:287] --limit SHOULD ONLY BE USED FOR TESTING. REAL METRICS SHOULD NOT BE COMPUTED USING LIMIT.
+2026-09-21:10:21:02 INFO     [config.evaluate_config:307] Using default fewshot_as_multiturn=True.
+2026-09-21:10:21:05 INFO     [_cli.run:388] Selected Tasks: ['gsm8k']
+2026-09-21:10:21:05 INFO     [evaluator:214] Setting random seed to 7 | Setting numpy seed to 7 | Setting torch manual seed to 7 | Setting fewshot manual seed to 7
+2026-09-21:10:21:05 WARNING  [evaluator:226] generation_kwargs: {'temperature': 0, 'top_p': 1} specified through cli, these settings will update set parameters in yaml tasks. Ensure 'do_sample=True' for non-greedy decoding!
+2026-09-21:10:21:05 INFO     [evaluator:239] Initializing local-chat-completions model, with arguments: {'model': '/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf', 'base_url': 'http://127.0.0.1:39623/v1/chat/completions', 'tokenizer': '/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs', 'tokenizer_backend': 'huggingface', 'num_concurrent': 1, 'seed': 7, 'max_gen_toks': 2568, 'max_retries': 0, 'timeout': 900}
+2026-09-21:10:21:05 INFO     [models.api_models:179] Using max length 2048 - 1
+2026-09-21:10:21:05 INFO     [models.api_models:182] Concurrent requests are disabled. To enable concurrent requests, set `num_concurrent` > 1.
+2026-09-21:10:21:05 INFO     [models.api_models:200] Using tokenizer huggingface
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+Using the latest cached version of the dataset since openai/gsm8k couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'main' at /workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/data/hf/datasets/openai___gsm8k/main/0.0.0/740312add88f781978c0658806c59bc2815b9866 (last modified on Wed Aug 26 02:27:44 2026).
+2026-09-21:10:21:06 INFO     [evaluator_utils:446] Selected tasks:
+2026-09-21:10:21:06 INFO     [evaluator_utils:480] Task: gsm8k (gsm8k/gsm8k.yaml)
+2026-09-21:10:21:06 INFO     [evaluator:314] gsm8k: Using gen_kwargs: {'until': ['Question:', '</s>', '<|im_end|>'], 'do_sample': False, 'temperature': 0, 'top_p': 1}
+2026-09-21:10:21:06 INFO     [api.task:312] Building contexts for gsm8k on rank 0...
+  0%|          | 0/25 [00:00<?, ?it/s]100%|██████████| 25/25 [00:00<00:00, 541.72it/s]
+2026-09-21:10:21:06 INFO     [evaluator:585] Running generate_until requests
+2026-09-21:10:21:06 INFO     [models.api_models:747] Tokenized requests are disabled. Context + generation length is not checked.
+Requesting API:   0%|          | 0/25 [00:00<?, ?it/s]Requesting API:   4%|▍         | 1/25 [00:16<06:33, 16.38s/it]Requesting API:   8%|▊         | 2/25 [00:26<04:47, 12.51s/it]Requesting API:  12%|█▏        | 3/25 [00:54<07:11, 19.62s/it]Requesting API:  16%|█▌        | 4/25 [01:07<05:56, 17.00s/it]Requesting API:  20%|██        | 5/25 [01:19<05:04, 15.24s/it]Requesting API:  24%|██▍       | 6/25 [01:38<05:16, 16.66s/it]Requesting API:  28%|██▊       | 7/25 [01:54<04:55, 16.40s/it]2026-09-21:10:24:53 WARNING  [models.api_models:481] API request failed with error message: {"error":{"message":"identity-bearing NEUMA benchmark request failed","type":"upstream_error"}}. Retrying...
+Traceback (most recent call last):
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/bin/lm-eval", line 10, in <module>
+    sys.exit(cli_evaluate())
+             ^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/__main__.py", line 10, in cli_evaluate
+    parser.execute(args)
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/_cli/harness.py", line 60, in execute
+    args.func(args)
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/_cli/run.py", line 391, in _execute
+    results = simple_evaluate(
+              ^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/utils.py", line 575, in _wrapper
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/evaluator.py", line 358, in simple_evaluate
+    results = evaluate(
+              ^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/utils.py", line 575, in _wrapper
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/evaluator.py", line 596, in evaluate
+    resps = getattr(lm, reqtype)(cloned_reqs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/models/api_models.py", line 770, in generate_until
+    outputs = retry(
+              ^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/tenacity/__init__.py", line 331, in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/tenacity/__init__.py", line 470, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/tenacity/__init__.py", line 371, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/tenacity/__init__.py", line 413, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/tenacity/__init__.py", line 184, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/tenacity/__init__.py", line 473, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/lm_eval/models/api_models.py", line 484, in model_call
+    response.raise_for_status()
+  File "/workspace/repos/project-fuvofos/.slabs/151dfbd048dd3b30607d5d4a66a751da94db8e107f2a1f82a6fa07e1b5d39ef6/src/.venv/lib64/python3.12/site-packages/requests/models.py", line 1167, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: http://127.0.0.1:39623/v1/chat/completions
+Requesting API:  28%|██▊       | 7/25 [03:47<09:43, 32.44s/it]

@@ -1,0 +1,90 @@
+{
+  "status": "completed-with-failures",
+  "pid": 2553918,
+  "startedAt": "2026-09-20T23:06:31.715Z",
+  "deadline": "2026-09-21T07:01:31.629Z",
+  "groups": [
+    {
+      "id": "heartbeat",
+      "status": "succeeded",
+      "attempts": [
+        {
+          "attempt": 1,
+          "code": 0,
+          "signal": null,
+          "reason": null,
+          "receiptIds": [
+            "night-20260920t230631z-heartbeat-neuma-a1-20260920230831179"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mmlu-pro",
+      "status": "failed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "code": 1,
+          "signal": null,
+          "reason": "evaluation",
+          "receiptIds": [
+            "night-20260920t230631z-mmlu-pro-bare-a1-20260920231719065"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hellaswag",
+      "status": "skipped-prerequisite",
+      "attempts": []
+    },
+    {
+      "id": "simpleqa",
+      "status": "skipped-prerequisite",
+      "attempts": []
+    },
+    {
+      "id": "bbh",
+      "status": "skipped-prerequisite",
+      "attempts": []
+    }
+  ],
+  "steps": [
+    {
+      "cell": "gsm8k-2568",
+      "arm": "neuma",
+      "limit": 25,
+      "maxSeconds": 3600,
+      "comparisonId": "night-20260920t230631z-heartbeat",
+      "attempt": 1,
+      "status": "succeeded",
+      "startedAt": "2026-09-20T23:07:32.306Z",
+      "code": 0,
+      "signal": null,
+      "testGuardRefused": false,
+      "finishedAt": "2026-09-20T23:15:31.258Z"
+    },
+    {
+      "cell": "inspect-mmlu-pro",
+      "arm": "bare",
+      "limit": 500,
+      "maxSeconds": 5400,
+      "comparisonId": "night-20260920t230631z-mmlu-pro",
+      "attempt": 1,
+      "status": "failed",
+      "startedAt": "2026-09-20T23:16:32.228Z",
+      "code": 1,
+      "signal": null,
+      "testGuardRefused": false,
+      "finishedAt": "2026-09-21T00:28:33.754Z"
+    }
+  ],
+  "serving": {
+    "pid": 769207,
+    "file": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "verifiedAt": "2026-09-20T23:15:31.740Z"
+  },
+  "unstartedGroups": [],
+  "finishedAt": "2026-09-21T00:28:34.183Z"
+}

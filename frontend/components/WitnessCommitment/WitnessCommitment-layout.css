@@ -1,0 +1,27 @@
+/* Keep the document gate readable without pushing its actions off screen. */
+.commitment-modal { width: min(800px, calc(100vw - 32px)); }
+.commitment-content { min-height: 0; }
+.obligation-content { min-width: 0; width: 100%; }
+.obligation-content p { font-size: 13px; margin-bottom: 0; }
+.commitment-warning { color: var(--color-text-secondary); }
+.commitment-rehearsal {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--color-border-primary);
+  color: var(--color-text-primary);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  .commitment-modal { max-height: calc(100dvh - 24px); }
+  .commitment-header, .commitment-content, .commitment-actions { padding: 16px; }
+  .commitment-header h1 { letter-spacing: 0.12em; }
+  .commitment-actions { gap: 8px; }
+  .commitment-btn { width: 100%; padding: 12px; }
+  .weight-grid { grid-template-columns: 1fr; }
+  .obligation-item { padding: 12px; }
+  .covenant-doc summary { flex-wrap: wrap; gap: 8px; }
+  .covenant-doc-hash { white-space: normal; overflow-wrap: anywhere; }
+}

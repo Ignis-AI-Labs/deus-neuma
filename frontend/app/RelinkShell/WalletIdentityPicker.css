@@ -1,0 +1,4 @@
+.wal-identity-picker { display: grid; gap: 10px; font: .875rem var(--font-voice); color: var(--color-text-secondary); }
+.wal-identity-picker select { width: 100%; min-width: 0; min-height: 48px; padding: 12px; background: var(--color-bg-secondary, #101719); border: 1px solid var(--line); color: var(--color-text-primary); font: 1rem var(--font-voice); cursor: pointer; }
+.wal-identity-picker select:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.wal-identity-help { font-size: .8125rem; line-height: 1.5; }

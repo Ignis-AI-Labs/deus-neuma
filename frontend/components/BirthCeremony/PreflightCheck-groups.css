@@ -1,0 +1,125 @@
+/* THE PRE-FLIGHT, SCANNABLE (Design note, 2026-10-14: […]).
+   A headline of how many checks are clear; four groups; one line per check
+   with its status at the right edge; the full measurement one click away and
+   open by itself when a check needs the operator. The verdict and actions stay
+   pinned under the scrolling body. Sizes in --pu, the rite's rail pixel
+   (RiteCeremony.css --rite-u) — 1px where the rite is absent. */
+
+.preflight-modal {
+  --pu: var(--rite-u, 1px);
+  width: min(calc(720 * var(--pu)), 100%);
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.preflight-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+.preflight-modal .preflight-header { padding: calc(22 * var(--pu)) calc(28 * var(--pu)) calc(16 * var(--pu)); }
+.preflight-modal .preflight-header h1 { font-size: calc(15 * var(--pu)); }
+.preflight-modal .preflight-sub { font-size: calc(9 * var(--pu)); }
+
+/* — the headline — */
+.preflight-tally {
+  padding: calc(14 * var(--pu)) calc(28 * var(--pu));
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: calc(12 * var(--pu));
+  letter-spacing: 0.24em;
+  text-align: center;
+  color: var(--color-text-secondary);
+  transition: color 200ms ease-out;
+}
+.preflight-tally[data-state="clear"] { color: var(--color-green); }
+.preflight-tally[data-state="blocked"] { color: var(--alert); }
+
+/* — groups — */
+.preflight-rows { padding: calc(8 * var(--pu)) calc(28 * var(--pu)) calc(16 * var(--pu)); min-height: calc(200 * var(--pu)); }
+.pf-group { margin-top: calc(16 * var(--pu)); }
+.pf-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: calc(6 * var(--pu));
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: calc(9 * var(--pu));
+  letter-spacing: 0.24em;
+}
+.pf-group-label { color: var(--color-white); }
+.pf-group-tally { color: var(--color-text-tertiary); }
+.pf-group.has-fail .pf-group-tally { color: var(--alert); }
+
+/* — one check — */
+.preflight-row { border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.pf-row-head {
+  width: 100%;
+  display: grid;
+  grid-template-columns: calc(8 * var(--pu)) minmax(0, 0.9fr) minmax(0, 1.1fr) auto;
+  align-items: baseline;
+  column-gap: calc(12 * var(--pu));
+  padding: calc(9 * var(--pu)) 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: calc(11 * var(--pu));
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  transition: color var(--snap);
+}
+.pf-row-head:hover, .pf-row-head:focus-visible { color: var(--color-white); outline: none; }
+.pf-mark { width: calc(6 * var(--pu)); height: calc(6 * var(--pu)); border-radius: 50%; background: var(--color-text-tertiary); align-self: center; }
+.preflight-row.pass .pf-mark { background: var(--color-green); }
+.preflight-row.warn .pf-mark { background: var(--color-white); }
+.preflight-row.fail .pf-mark { background: var(--alert); }
+.pf-label { text-transform: uppercase; letter-spacing: 0.14em; overflow-wrap: anywhere; }
+.pf-summary {
+  font-family: var(--font-voice);
+  font-size: calc(12 * var(--pu));
+  letter-spacing: 0;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.preflight-row.is-open .pf-summary { visibility: hidden; }
+.pf-status { letter-spacing: 0.16em; font-size: calc(10 * var(--pu)); }
+.preflight-row.pass .pf-status { color: var(--color-green); }
+.preflight-row.warn .pf-status { color: var(--color-white); }
+.preflight-row.fail .pf-status { color: var(--alert); }
+
+/* the full measurement — plain prose, wrapping at the panel's width */
+.pf-detail { padding: 0 0 calc(12 * var(--pu)) calc(20 * var(--pu)); }
+.pf-detail[hidden] { display: none; }
+.pf-detail-text {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: calc(13 * var(--pu));
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.preflight-row.fail .pf-detail-text { color: var(--alert); }
+.pf-requirement {
+  margin: calc(8 * var(--pu)) 0 0;
+  padding-left: calc(10 * var(--pu));
+  border-left: 1px solid var(--line);
+  font-family: var(--font-voice);
+  font-size: calc(12 * var(--pu));
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+.pf-requirement.is-quiet { color: var(--color-text-tertiary); }
+
+/* — home, verdict, actions: the same rail pixels — */
+.preflight-modal .preflight-home { padding: calc(18 * var(--pu)) calc(28 * var(--pu)) calc(22 * var(--pu)); }
+.preflight-modal .pf-home-head, .preflight-modal .pf-home-field span { font-size: calc(9 * var(--pu)); }
+.preflight-modal .pf-guide-default, .preflight-modal .pf-guide-detail { font-size: calc(12 * var(--pu)); }
+.preflight-modal .pf-home-field input { font-size: calc(12 * var(--pu)); }
+.preflight-modal .pf-home-note { font-size: calc(10 * var(--pu)); }
+.preflight-modal .preflight-verdict { flex: none; font-size: calc(11 * var(--pu)); padding: calc(14 * var(--pu)) calc(28 * var(--pu)); }
+.preflight-modal .preflight-actions { flex: none; flex-wrap: wrap; gap: calc(10 * var(--pu)); padding: calc(16 * var(--pu)) calc(28 * var(--pu)); }
+.preflight-modal .preflight-btn { font-size: calc(10 * var(--pu)); padding: calc(11 * var(--pu)) calc(20 * var(--pu)); }
+.preflight-modal .preflight-begin { flex: 1 1 100%; }

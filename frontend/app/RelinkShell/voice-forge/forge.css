@@ -1,0 +1,243 @@
+/* forge.css — the voice forge's frame: the standing line, the tier link, the
+ * named step rail, and the shared chips, notes and action rows. LINE & CYCLE:
+ * monochrome at rest; signal marks only what is live (the voice in force,
+ * the step in hand, a chosen or playing voice); alert only for a refusal or
+ * a warning. Legibility law (2026-09-07): working text 14px, metadata 12px,
+ * controls at least 36px tall.
+ */
+
+.vf-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.vf-header-top {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.vf-standing {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.vf-led {
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  flex-shrink: 0;
+  background: var(--line);
+}
+.vf-led[data-on="true"] {
+  background: var(--signal);
+  box-shadow: 0 0 6px var(--signal-dim);
+}
+
+.vf-line {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+}
+
+/* The rail: four named steps on one hairline; the step in hand lit, the
+   steps behind checked. */
+.vf-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.vf-rail-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-2) 0 0;
+  border-top: 2px solid transparent;
+  margin-top: -1px;
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.vf-rail-step[data-state="current"] {
+  border-top-color: var(--signal);
+  color: var(--signal);
+}
+.vf-rail-step[data-state="done"] {
+  color: var(--color-text-secondary);
+}
+
+.vf-rail-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  letter-spacing: 0;
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+}
+.vf-rail-step[data-state="current"] .vf-rail-mark {
+  border-color: var(--signal-dim);
+}
+
+.vf-rail-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.vf-lead {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+
+.vf-note {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+.vf-note-alert {
+  color: var(--alert);
+}
+
+/* A failure in place of the act that failed. */
+.vf-door-error {
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--alert);
+  font-size: var(--text-sm);
+}
+
+.vf-working,
+.vf-live {
+  margin: 0;
+  color: var(--signal);
+}
+
+.vf-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.vf-actions-start {
+  justify-content: flex-start;
+}
+.vf-actions .btn {
+  min-height: 40px;
+}
+
+.vf-chip {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  transition: border-color var(--snap), color var(--snap), background var(--snap);
+}
+.vf-chip:hover:not(:disabled) {
+  border-color: var(--line-hover);
+  color: var(--color-text-primary);
+}
+.vf-chip[aria-pressed="true"] {
+  border-color: var(--signal-dim);
+  background: var(--signal-faint);
+  color: var(--signal);
+}
+.vf-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ▶ — one square play control everywhere a voice can be heard. */
+.vf-play {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--line-hover);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  transition: border-color var(--snap), color var(--snap), background var(--snap);
+}
+.vf-play:hover {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+.vf-play[data-playing="true"] {
+  border-color: var(--signal-dim);
+  background: var(--signal-faint);
+  color: var(--signal);
+}
+.vf-play[data-loading="true"] {
+  color: var(--signal);
+  animation: vf-pulse 900ms var(--ease-in-out) infinite alternate;
+}
+@keyframes vf-pulse {
+  from { border-color: var(--line); }
+  to { border-color: var(--signal); }
+}
+
+.vf-textarea,
+.vf-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  resize: vertical;
+}
+.vf-textarea:focus,
+.vf-input:focus {
+  outline: none;
+  border-color: var(--signal-dim);
+}
+
+.vf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-play[data-loading="true"] { animation: none; }
+}

@@ -1,0 +1,100 @@
+/* PocketDreams — LINE & CYCLE. One wide target for a half-awake thumb; the
+   signal accent only while the mic is live. Light rises, never jumps (no-flash law). */
+
+.pocket-dreams {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.dream-record { margin-bottom: 18px; }
+
+.dream-record-btn {
+  width: 100%;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: none;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.13));
+  color: var(--color-text-primary, rgba(255, 255, 255, 0.92));
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: border-color 200ms ease-out, color 200ms ease-out;
+}
+
+.dream-record-btn:disabled { color: var(--color-text-tertiary, rgba(255, 255, 255, 0.4)); cursor: default; }
+
+.dream-record-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  transition: background-color 200ms ease-out, border-radius 200ms ease-out;
+}
+
+.dream-record-btn[data-recording="true"] {
+  border-color: var(--signal, #5fe9ff);
+  color: var(--signal, #5fe9ff);
+}
+
+.dream-record-btn[data-recording="true"] .dream-record-mark {
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.dream-record-btn:focus-visible { outline: 1px solid var(--signal, #5fe9ff); outline-offset: 3px; }
+
+.dream-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.62));
+}
+
+.dream-list { list-style: none; margin: 0; padding: 0; }
+
+.dream-item {
+  padding: 14px 0;
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.13));
+}
+
+.dream-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary, rgba(255, 255, 255, 0.4));
+}
+
+.dream-words {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dream-faint { color: var(--color-text-tertiary, rgba(255, 255, 255, 0.4)); }
+
+.dream-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+.dream-act {
+  min-height: 40px;
+  padding: 0 14px;
+  background: none;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.13));
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.62));
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.dream-act-delete { margin-left: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dream-record-btn, .dream-record-mark { transition: none; }
+}

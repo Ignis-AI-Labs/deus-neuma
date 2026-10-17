@@ -1,0 +1,15 @@
+{
+  "name": "Ignis AI Labs",
+  "companyName": "Ignis AI Labs",
+  "documentFooter": "Ignis AI Labs LLC · a Wyoming limited liability company",
+  "logos": {
+    "primary": "logo-main.svg",
+    "badge": "badge.svg",
+    "seal": "seal.svg",
+    "bullets": "bullets.svg"
+  },
+  "pdf": {
+    "format": "Letter",
+    "marginCm": 1.5
+  }
+}

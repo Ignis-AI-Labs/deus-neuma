@@ -1,0 +1,58 @@
+/* forge-invite.css — the one-click […] card. Floats above
+ * the composer like the dictation-setup prompt (.relink-inputrow is its
+ * positioned anchor), so it never moves the composer's controls.
+ */
+
+.vf-invite {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  width: min(420px, 90vw);
+  z-index: 30;
+  background: var(--color-background);
+  border: var(--border-width-thin) solid var(--line);
+}
+
+.vf-invite-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.vf-invite-line {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.vf-invite-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.vf-invite-later,
+.vf-invite-give {
+  height: 28px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wider);
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  transition: border-color var(--snap), color var(--snap);
+}
+
+.vf-invite-give {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+.vf-invite-later:hover {
+  color: var(--color-text-primary);
+}

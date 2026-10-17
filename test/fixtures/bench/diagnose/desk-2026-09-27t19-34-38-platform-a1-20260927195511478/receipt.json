@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "kind": "benchmark-run",
+  "runId": "desk-2026-09-27t19-34-38-platform-a1-20260927195511478",
+  "comparisonId": "desk-2026-09-27t19-34-38",
+  "protocolSha256": "1199a8bd43b6609472dec22e04dd2fe5bd14446a8d5f68b0e36b580db290fbc1",
+  "attempt": 1,
+  "arm": "platform",
+  "evidence": "development",
+  "approval": {
+    "by": "0x40566d43261849777aca96b26f4ec8c850e5dcae",
+    "at": "2026-09-27T19:55:11.441Z"
+  },
+  "suite": {
+    "id": "inspect-mmlu-pro-8192",
+    "tier": "t2",
+    "adapter": "inspect",
+    "dimensions": [
+      "knowledge",
+      "reasoning"
+    ],
+    "repository": "https://github.com/UKGovernmentBEIS/inspect_evals",
+    "revision": "b935c0e5cfa04710f016f925db75d8e81413e2cf",
+    "tasks": [
+      "mmlu_pro"
+    ]
+  },
+  "subject": {
+    "modelId": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "identity": {
+      "kind": "local-artifact",
+      "revision": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+      "sha256": "4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2",
+      "mutable": false
+    },
+    "quantization": "Q8_K_P",
+    "tokenizer": "/workspace/repos/project-fuvofos/.models/tokenizers/qwen3.8-27b-uncensored-hauhaucs",
+    "tokenizerSha256": "ab8f94ace68ab0d83e8ecd9e867ed6cf47a22073307efff45ab9f020d1b85de5",
+    "route": {
+      "provider": "llama-server",
+      "dialect": "openai",
+      "endpointClass": "loopback"
+    }
+  },
+  "protocol": {
+    "seed": 7,
+    "temperature": 0,
+    "topP": 1,
+    "maxTokens": 8192,
+    "concurrency": 4,
+    "sampleLimit": 100,
+    "requestTimeoutMs": 900000,
+    "runTimeoutMs": 43200000,
+    "platformRules": 1,
+    "taskConfigSha256": "074e1ac95fc30d45eba0a0160555ecd3d28ae386e8e0b5745be4dafed32c6b7a"
+  },
+  "harness": {
+    "profile": "platform-neutral-rules-v1",
+    "neumaRevision": "84e72f469c991f6320800e957ab228066cb2c958",
+    "subjectCheckout": {
+      "root": "/workspace/repos/project-batizus",
+      "revision": "55b85a81c6ea91a3ce7929caa411cf7e48e89133",
+      "dirty": true
+    },
+    "workingTreeDirty": false,
+    "identityLayersEnabled": false,
+    "identity": {
+      "mode": "none"
+    },
+    "laneId": null,
+    "referenceHarness": null
+  },
+  "environment": {
+    "platform": "linux",
+    "release": "7.2.7-200.fc44.x86_64",
+    "arch": "x64",
+    "node": "v24.13.1",
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 610.57.04"
+  },
+  "status": "succeeded",
+  "timing": {
+    "startedAt": "2026-09-27T19:55:11.478Z",
+    "finishedAt": "2026-09-27T20:17:30.534Z",
+    "durationMs": 1339056
+  },
+  "metrics": [
+    {
+      "id": "mmlu_pro/choice/accuracy",
+      "task": "mmlu_pro",
+      "value": 0.77,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": true,
+      "sampleCount": 100,
+      "source": "2026-09-27T19-55-16-00-00_mmlu-pro_XAUdgSPC3TsdyVqc4j7KGS.json"
+    },
+    {
+      "id": "mmlu_pro/choice/stderr",
+      "task": "mmlu_pro",
+      "value": 0.04229525846816508,
+      "unit": "ratio",
+      "higherIsBetter": true,
+      "primary": false,
+      "sampleCount": 100,
+      "source": "2026-09-27T19-55-16-00-00_mmlu-pro_XAUdgSPC3TsdyVqc4j7KGS.json"
+    },
+    {
+      "id": "suite/mean_model_latency",
+      "task": "suite",
+      "value": 51.30175110679033,
+      "unit": "seconds",
+      "higherIsBetter": false,
+      "primary": false,
+      "sampleCount": 100,
+      "source": "inspect-model-events"
+    }
+  ],
+  "sampleSelection": {
+    "sha256": "61484af63a6b1bb568b8c44c5147fdb15bead7cf94c9a1b3b27ec3ff195d9310",
+    "count": 100,
+    "measurement": "measured"
+  },
+  "efficiency": {
+    "promptTokens": 44862,
+    "completionTokens": 258049,
+    "requests": 100,
+    "toolCalls": 0,
+    "retries": 0,
+    "measurement": "measured",
+    "peakInFlight": 4,
+    "meanInFlight": 3.85,
+    "ttftMsP50": 825.2274680000264,
+    "prefillMsP50": 342.0105,
+    "decodeTokensPerSec": 51.49,
+    "cachedPromptTokens": 18535,
+    "timedRequests": 100,
+    "timingSource": "client-stream"
+  },
+  "executions": [
+    {
+      "stage": "inspect-eval",
+      "command": "/workspace/repos/project-fuvofos/.slabs/e0e9c2b1a212f9ef33ce77162194999abc4204223809b158291cb3a8c3e9f852/src/.venv/bin/inspect",
+      "args": [
+        "eval",
+        "inspect_evals/mmlu_pro",
+        "--model",
+        "openai-api/neuma//models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+        "--model-base-url",
+        "http://127.0.0.1:34595/v1",
+        "--log-dir",
+        "/workspace/repos/project-fuvofos/work/desk-2026-09-27t19-34-38-platform-a1-20260927195511478/raw",
+        "--log-format",
+        "json",
+        "--max-connections",
+        "4",
+        "--max-retries",
+        "0",
+        "--timeout",
+        "900",
+        "--temperature",
+        "0",
+        "--top-p",
+        "1",
+        "--max-tokens",
+        "8192",
+        "--seed",
+        "7",
+        "--display",
+        "none",
+        "--json",
+        "--limit",
+        "100"
+      ],
+      "cwd": "/workspace/repos/project-fuvofos/.slabs/e0e9c2b1a212f9ef33ce77162194999abc4204223809b158291cb3a8c3e9f852/src",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1338617,
+      "timedOut": false,
+      "aborted": false
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "manifest",
+      "path": "raw/manifest.json",
+      "sha256": "8cab230744f131a6bfc82f43969ab179b7a4d757b261d33752bace4a7dac2a85",
+      "bytes": 2023
+    },
+    {
+      "kind": "stdout",
+      "path": "stdout/inspect-eval.log",
+      "sha256": "61d6dde83cea7527896a121b25c380726712b8490f39258e75047872f348afaf",
+      "bytes": 652
+    },
+    {
+      "kind": "stderr",
+      "path": "stderr/inspect-eval.log",
+      "sha256": "c50557c89ffc8e24059347fb519c96ed69f38cec567003ae3f84255bc352849c",
+      "bytes": 513
+    },
+    {
+      "kind": "suite-result",
+      "path": "raw/2026-09-27T19-55-16-00-00_mmlu-pro_XAUdgSPC3TsdyVqc4j7KGS.json",
+      "sha256": "cc095717aa2b06febfe2bcf7bbc6de91d566545119382c97488226fad2785c62",
+      "bytes": 2147840
+    },
+    {
+      "kind": "platform-telemetry",
+      "path": "raw/platform-telemetry.json",
+      "sha256": "7c6f942a23ca14cff300f3e4d9be1ee8491b12b75c10819e8febf73d79eff19e",
+      "bytes": 29803
+    }
+  ],
+  "failure": null
+}
