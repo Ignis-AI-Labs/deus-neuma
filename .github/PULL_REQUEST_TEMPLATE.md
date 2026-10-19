@@ -1,3 +1,5 @@
+<!-- Pull requests go into `dev` (the default branch). `main` only takes release pull requests from `dev`. -->
+
 ## What this changes
 
 <!-- One change per pull request. Link the issue it closes: Fixes #123 -->

@@ -8,6 +8,33 @@ Thank you for helping. Neuma is early. The most valuable help right now is:
 3. **Bug reports** with steps to reproduce.
 4. **Fixes**, small and focused.
 
+## How changes flow
+
+Every change takes the same road, ours included:
+
+```
+your branch ──PR──▶ dev ──release PR──▶ main
+```
+
+- **`dev`** is the default branch and where all work lands. Branch from `dev`
+  and open your pull request **into `dev`**.
+- **`main`** is what has been released. It moves only by a release pull request
+  from `dev`, opened by the maintainers. A pull request into `main` from any
+  other branch is closed by CI.
+- **`sync`** carries the core team's changes from our internal tree. It reaches
+  `dev` by a pull request like yours; do not branch from it or target it.
+
+```bash
+git clone https://github.com/Ignis-AI-Labs/deus-neuma.git   # (or your fork)
+cd deus-neuma
+git switch dev
+git switch -c fix/short-description
+# … change, test, commit …
+git push -u origin fix/short-description                     # then open the PR into dev
+```
+
+Keep your branch current by merging or rebasing on `dev`, never on `main`.
+
 ## Before you open a pull request
 
 - **One change per pull request.** A fix and a refactor are two pull requests.
