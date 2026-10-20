@@ -242,7 +242,8 @@ router.put('/standby', requireInstallOwner, async (req, res) => {
   }
 });
 
-// THE SERVING FIT — how much of the GPU the mind may fill (Design note, 2026-10-20: […]). The pool is fitted at every ignition to this
+// THE SERVING FIT — how much of the GPU the mind may fill: up to 90% by default,
+// so a model uses what the card can give. The pool is fitted at every ignition to this
 // share; the reply carries the last fit (pool, planned and measured MiB).
 router.get('/fit', (req, res) => {
   const saved = readServingFit();

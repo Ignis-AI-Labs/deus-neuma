@@ -23,6 +23,7 @@ import { realpathSync } from 'fs';
 import path from 'path';
 import { neumaWorkspace } from '../../../core/index.js';
 import { SOVEREIGN_DIR_MODE } from '../../../core/workspace/sovereign-directory-modes.js';
+import { stampDisclosure } from './ai-disclosure.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ImageForge.Store');
@@ -190,9 +191,11 @@ export const collectOutputs = ({ outputDir, outputs, laneId, jobId, laneDir: lan
     const stored = `${imageId}${ext}`;
     try {
       copyFileSync(src, path.join(laneDir, stored));
+      // Said in the file itself, before it is hashed: this was made by AI (ai-disclosure.js).
+      const aiDisclosed = stampDisclosure(path.join(laneDir, stored), mime);
       const bytes = statSync(path.join(laneDir, stored)).size;
       const sha256 = createHash('sha256').update(readFileSync(path.join(laneDir, stored))).digest('hex');
-      const record = { imageId, laneId: lane, jobId, mime, bytes, sha256, createdAt: new Date().toISOString(), file: stored };
+      const record = { imageId, laneId: lane, jobId, mime, bytes, sha256, aiDisclosed, createdAt: new Date().toISOString(), file: stored };
       appendFileSync(path.join(laneDir, 'manifest.jsonl'), `${JSON.stringify(record)}\n`);
       // The RETURNED record also carries where it actually landed. Callers used
       // to rebuild that path themselves from `storeRoot()`, and when art moved

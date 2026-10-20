@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { ARMILLARY, cardinalOctahedron, dualCube, equatorSeed, nucleusPair } from '../../frontend/app/Armillary/armillary-geometry.js';
 import { restingSpinOf, armillaryOfIgnition, ARMILLARY_REST } from '../../frontend/app/Armillary/armillary-state.js';
-import { armillaryLayoutOf } from '../../frontend/app/Armillary/armillary-layout.js';
+import { armillaryLayoutOf, ARMILLARY_ROOM } from '../../frontend/app/Armillary/armillary-layout.js';
 import { energyAt, swellAt, ENERGY } from '../../frontend/app/Ignition/ignition-energy.js';
 import { ignitionAt, IGNITION } from '../../frontend/app/Ignition/ignition-timeline.js';
 
@@ -97,11 +97,22 @@ describe('its turn never jumps, and the ignition hands it over whole', () => {
 });
 
 describe('the layout keeps the ring off the name, and the threshold beneath it', () => {
-  it.each([[1600, 900], [1300, 830], [3449, 1345], [1024, 1366], [800, 600]])('%i × %i', (w, h) => {
+  it.each([[1600, 900], [1300, 830], [3449, 1345], [1024, 1366], [800, 600], [1280, 720], [1366, 768], [1280, 832], [1440, 900], [1920, 1080], [3840, 2160]])('%i × %i', (w, h) => {
     const L = armillaryLayoutOf(w, h);
     expect(L.mark).toBeLessThan(L.ring);
     expect(L.nameY - L.nameSize / 2).toBeGreaterThan(L.cy + L.ring + 12);
     expect(L.belowY).toBeGreaterThan(L.lineY);
-    expect(L.belowY + 90).toBeLessThan(h - 24); // the threshold and the strip both fit
+    // the threshold (entry + ENTER AS) and the strip both fit beneath the name
+    expect(L.belowY + ARMILLARY_ROOM.THRESHOLD + ARMILLARY_ROOM.FOOT).toBeLessThanOrEqual(h + 1e-9);
+    // and the ring never rises into the status strip
+    expect(L.cy - L.ring).toBeGreaterThanOrEqual(ARMILLARY_ROOM.TOP - 1e-9);
+  });
+
+  it('a tall frame keeps the resting composition untouched', () => {
+    for (const [w, h] of [[2560, 1440], [3840, 2160]]) {
+      const L = armillaryLayoutOf(w, h);
+      expect(L.unit).toBe(Math.min(w, h) * 0.3);
+      expect(L.cy).toBe(h / 2 - 0.24 * L.unit);
+    }
   });
 });

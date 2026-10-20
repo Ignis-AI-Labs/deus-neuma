@@ -98,7 +98,7 @@ export const PACK_MODELS = Object.freeze({
   // only two. Measured `sha256sum` 2026-08-27.
   'hale-anime-xl-1.9': Object.freeze({
     id: 'hale-anime-xl-1.9',
-    label: 'HaleAnimeXL IL v1.9',
+    label: 'NovaAnimeXL IL v1.9',
     ckptName: 'haleAnimeXL_ilV190.safetensors',
     sha256: 'fa486caafc330f133605d3c18b418d183812f14946631c6544bfb28730db6d6f',
     bytes: 6939105596,
@@ -243,13 +243,6 @@ export const PACK_LORAS = Object.freeze({
     loraName: 'AddMicroDetails_Illustrious_v6.safetensors',
     sha256: 'ce12af9c5e510a745618f76f1197c5776cd283e5dddd707fc0371afd940b4454',
     bytes: 228470756,
-  }),
-  'ill-detail-slider': Object.freeze({
-    id: 'ill-detail-slider',
-    label: 'StS Illustrious Detail Slider v1.0',
-    loraName: 'StS-Illustrious-Detail-Slider-v1.0.safetensors',
-    sha256: '2e7a68ec7e2eba5a07881e885e072213bbb1b03cbf881d852f0f85623ad99349',
-    bytes: 8789076,
   }),
   // Trained ON Anima (`ss_base_model_version: "anima"` in its own metadata), so
   // it is NOT interchangeable with the three above: DiT key grammar

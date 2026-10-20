@@ -7,7 +7,8 @@
  * impure electron-updater wiring is proven separately and for real by
  * scripts/prove-auto-update.mjs (an actual AppImage swaps to a newer build) and
  * scripts/prove-update-privacy.mjs (real Electron: the feed request carries no
- * per-install id) — a mocked autoUpdater would prove nothing about the thing being claimed.
+ * per-install id) and scripts/prove-update-signature.mjs (real Electron: nothing downloads unless
+ * the release key signed the feed) — a mocked autoUpdater would prove nothing about the thing being claimed.
  */
 import { describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
@@ -23,6 +24,7 @@ const {
   isLoopbackFeed,
   installForm,
   noticeFor,
+  unverifiedNoticeFor,
   trayUpdateEntry,
 } = require('../../electron/auto-update.cjs');
 
@@ -106,6 +108,12 @@ describe('noticeFor', () => {
     const n = noticeFor('notify', '0.1.18');
     expect(n.title).toContain('0.1.18');
     expect(n.body).toContain('downloads page');
+  });
+
+  it('an offer whose signature did not hold: available, not verified, nothing changed', () => {
+    const n = unverifiedNoticeFor('0.1.31');
+    expect(n.title).toBe('Deus Neuma 0.1.31 is available — it could not be verified');
+    expect(n.body).toBe('It was not downloaded, and nothing on this machine changed.');
   });
 });
 

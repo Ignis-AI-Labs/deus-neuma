@@ -44,6 +44,7 @@ import { alertOnNewCriticals, remindOpenCriticals } from './security-alerts.js';
 import { createLegacyMove, officeFile, settleLegacy } from '../house-office.js';
 import { houseKey } from '../staff/cos-designation.js';
 import { readServed } from '../house-served.js';
+import { installDeskHouse } from '../install-owner.js';
 import { createLogger } from '../logger.js';
 
 // The alert's old home: callers and tests that read it from here keep working.
@@ -335,18 +336,30 @@ export const securityTick = async (wallet, nowMs = Date.now(), runFn = () => run
   return runFn();
 };
 
+// impure — the install's own desk house, or null; a torn owner record never
+// costs the served houses their watch.
+const deskHouse = () => installDeskHouse().catch((err) => {
+  log.error('install owner unreadable — the desk house is not walked this tick', { error: err.message });
+  return null;
+});
+
 /**
  * The houses the watch walks: every house this process SERVES
  * (house-served.js — a house whose lanes this backend does not hold is
  * another desk's watch, and its alerts are never ours to raise), seated or
- * not — after the machine-wide records are placed, so a house whose office
- * still sat in data/settings keeps its history. impure.
+ * not — and the install's own desk house even before it holds a lane
+ * (install-owner.js: a fresh install before its first birth, and a
+ * platform-only or harness-only user who never summons, are watched too).
+ * Each house once. After the machine-wide records are placed, so a house
+ * whose office still sat in data/settings keeps its history. impure.
  * @returns {Promise<string[]>}
  */
 export const securityHouses = async () => {
   await csoDesignation.seatedHouses();
   await settleLegacy('security');
-  return [...(await readServed()).houses];
+  const served = (await readServed()).houses;
+  const desk = await deskHouse();
+  return desk && !served.includes(desk) ? [...served, desk] : [...served];
 };
 
 // impure — one pass over every watched house, each fail-soft: one house's

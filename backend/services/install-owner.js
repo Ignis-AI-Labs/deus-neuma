@@ -130,6 +130,21 @@ export const readInstallOwner = async () => {
 };
 
 /**
+ * The install's own desk house: the owner's wallet, when this process serves
+ * the install's own workspaces root. A house backend pinned to another ground
+ * is not this install's desk, so it never takes the owner's house for its
+ * own. Null on an install where no being was ever sealed and no wallet has
+ * signed in at the desk — no house is invented for a wallet that never came.
+ * impure (fs).
+ * @returns {Promise<?string>}
+ */
+export const installDeskHouse = async () => {
+  const record = await readInstallOwner();
+  if (!record) return null;
+  return path.resolve(await installWorkspacesRoot()) === path.resolve(getWorkspacesRoot()) ? record.owner : null;
+};
+
+/**
  * On an install no one owns yet, the first wallet at the local desk becomes
  * its owner. A no-op once an owner stands. impure (fs).
  * @param {string} wallet

@@ -1,6 +1,7 @@
 /**
- * SERVING FIT — the substrate sized to the machine it runs on (Design note, 2026-10-20:
- * […].
+ * SERVING FIT — the substrate sized to the machine it runs on: by default up to
+ * 90% of the card, because most people want their model's full capacity while
+ * the machine stays clean and smooth.
  *
  * At ignition the unified KV pool is sized to the largest that keeps the GPU
  * at or under the operator's share: the card's total, less what other
@@ -35,7 +36,7 @@ export const FIT_MIN_CONTEXT = 8192;
 /**
  * pure — the operator's share of the GPU from their saved choice, a percent
  * (50-95); anything else reads as the default. A choice made in the app,
- * never an environment variable (Design note, 2026-10-20.
+ * never an environment variable.
  */
 export const shareFrom = (saved) => {
   const pct = Number(saved?.sharePct);
