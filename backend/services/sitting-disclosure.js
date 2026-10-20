@@ -141,7 +141,7 @@ const NOT_EXPERIENCE = new Set(['system/tool_search', 'system/call']);
 export const noteWorkingSetCall = (connection, match) => {
   const id = callCatalogId(match);
   const offered = (connection?._turnCatalog || []).some((tool) => `${tool.server}/${tool.name}` === id);
-  if (offered && !NOT_EXPERIENCE.has(id) && !id.startsWith('caller/') && !connection?._benchmarkControls) rememberUse(connection, id);
+  if (offered && !NOT_EXPERIENCE.has(id) && !id.startsWith('caller/') && !connection?._benchmarkControls && connection?._selfCheck !== true) rememberUse(connection, id);
   return match;
 };
 

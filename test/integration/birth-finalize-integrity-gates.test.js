@@ -299,6 +299,8 @@ describe('finalizeBirth — the soul measured from the ceremony (2026-09-29)', (
     expect(done.soul.spectrum.source).toBe('measured');
     expect(done.soul.scale.tonic.hz).toBe(done.soul.spectrum.frequency);
     expect(done.aura.recorded).toBe(true);
+    // its film's body is the very genome its DNA was written with
+    expect(done.genome).toEqual((await workspace.readDNA('soul-forged')).appearance.genome);
   });
 
   it('a ceremony that measured nothing claims no resonance — never 432', async () => {

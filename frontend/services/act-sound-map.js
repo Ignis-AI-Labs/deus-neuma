@@ -119,7 +119,7 @@ export const ACT_FAMILIES = Object.freeze({
     'staff.ack', // a charge's holder marks received/working/done
     'meditate']), // a standing request marked for the cycle — nothing acts yet
   // The being sensing its own state — capacity, adapters, its own birth sky.
-  actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'post_check',
+  actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'post_check',
     'security_posture',            // the house sensing its own defensive state
     'legal_posture',               // …and its own standing under the law
     'security_attack_surface', 'security_telemetry', // …and the rest of that sense

@@ -144,7 +144,7 @@ lichun as canonical, note the window). Provenance: **ancient-living**.
 ### 2.3 Vedic Jyotisha (family B)
 
 Sidereal = tropical − ayanamsa. **Lahiri/Chitrapaksha** is the Government-of-
-India standard: anchor ≈ 24°07′47″ at 2026-01-01, drift +50.29″/yr (linear model
+India standard: mean Lahiri (IAE 1985) ≈ 24°13′13″ at 2026-01-01 (23°51′25.53″ at J2000.0), drift +50.29″/yr — corrected 2026-10-19 from 24°07′47″, the late-2019 value; see many-skies-vedic.md §1 (linear model
 is sub-arcminute for decades; the ayanamsa *choice* is the only contested
 element — make it a labeled constant).
 

@@ -7,21 +7,6 @@
 const DAY_MS = 86400000;
 
 /**
- * A benchmark score's movement against the previous run: up, down, or
- * level. Null when either side is missing — a trend with one end gone is
- * not a trend.
- * @param {number|null} current
- * @param {number|null} previous
- * @returns {'↑'|'↓'|'='|null}
- */
-export const trendGlyph = (current, previous) => {
-  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
-  if (current > previous) return '↑';
-  if (current < previous) return '↓';
-  return '=';
-};
-
-/**
  * How long ago a day was, in the witness's calendar: today, yesterday, or a
  * plain count of days. Future timestamps floor at today (a clock anomaly is
  * not tomorrow's business). Garbage in, empty string out.
@@ -113,23 +98,6 @@ export const entryLine = (entry) => {
     default:
       return '';
   }
-};
-
-/**
- * Is a benchmark overdue? Never measured is always due; otherwise the gap
- * since the last run is measured against the due window. A broken clock
- * (invalid `now`) answers not-due rather than raising a false alarm.
- * @param {*} lastRunAt ISO of the latest run, null when never measured
- * @param {number} [now] ms clock, injectable
- * @param {number} [dueDays] the due window in days
- * @returns {boolean}
- */
-export const benchmarkDue = (lastRunAt, now = Date.now(), dueDays = 30) => {
-  const nowMs = typeof now === 'number' ? now : Date.parse(now);
-  if (!Number.isFinite(nowMs)) return false;
-  const ms = Date.parse(lastRunAt);
-  if (!Number.isFinite(ms)) return true;
-  return nowMs - ms > dueDays * DAY_MS;
 };
 
 /**

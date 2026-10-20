@@ -1,0 +1,115 @@
+/* STATE — SELF-CHECK. Monochrome at rest: --alert marks a wrong answer and a
+   missing door, --signal only a change that cleared chance. */
+
+.sc-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sc-row {
+  border-bottom: 1px solid var(--line);
+}
+.sc-row-head {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 180ms ease;
+}
+.sc-row-head:disabled { cursor: default; }
+.sc-row-head:hover:not(:disabled) { background: var(--color-glass-light); }
+.sc-row-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sc-row-meaning {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+.sc-row-meas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.sc-row-range,
+.sc-row-effort {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+.sc-row-trend {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.sc-trend-up { color: var(--signal); }
+.sc-trend-down { color: var(--alert); }
+.sc-row-nodoor .sc-row-head { cursor: default; }
+.sc-row .sc-nodoor {
+  font-size: var(--text-sm);
+  letter-spacing: 0.16em;
+  color: var(--alert);
+  flex-shrink: 0;
+}
+
+.sc-items {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0 0 0 var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 1px solid var(--line);
+}
+.sc-item-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+.sc-item-v {
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  min-width: 11ch;
+}
+.sc-item-miss .sc-item-v { color: var(--alert); }
+.sc-item-q {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+.sc-item-body {
+  display: grid;
+  grid-template-columns: 13ch 1fr;
+  gap: 2px var(--space-2);
+  margin: var(--space-1) 0 0 calc(11ch + var(--space-2));
+  font-size: var(--text-xs);
+}
+.sc-item-body dt {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.sc-item-body dd {
+  margin: 0;
+  font-family: var(--font-voice);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

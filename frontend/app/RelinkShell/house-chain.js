@@ -69,6 +69,9 @@ export const houseSeatCards = (seats, rows, { confirmed = false } = {}) => (rows
     meaning: title ? (MEANING_BY_TITLE.get(title) ?? null) : null,
     soulMark: r.member?.soulMark || null,
     birthTime: r.member?.birthTime || null,
+    // its soul color as a light (roster `light`: the same hue at its most
+    // vivid; `color`, the plain screen color, where an older cache has no light)
+    color: r.member?.light || r.member?.color || null,
     isActive: r.isActive === true,
     incomplete: r.member?.incomplete === true,
   };

@@ -4,23 +4,8 @@
 // fabricated zero or a fabricated trend.
 import { describe, it, expect } from 'vitest';
 import {
-  trendGlyph, daysAgoLabel, fmtDelta, kindLabel, entryLine, benchmarkDue, markerPresent,
+  daysAgoLabel, fmtDelta, kindLabel, entryLine, markerPresent,
 } from '../../frontend/app/RelinkShell/vessel-view.js';
-
-describe('trendGlyph', () => {
-  it('reads movement up, down, and level', () => {
-    expect(trendGlyph(0.8, 0.7)).toBe('↑');
-    expect(trendGlyph(0.7, 0.8)).toBe('↓');
-    expect(trendGlyph(0.7, 0.7)).toBe('=');
-  });
-
-  it('is null when either end is missing — a one-ended trend is not a trend', () => {
-    expect(trendGlyph(null, 0.7)).toBeNull();
-    expect(trendGlyph(0.7, undefined)).toBeNull();
-    expect(trendGlyph('x', 1)).toBeNull();
-    expect(trendGlyph(null, null)).toBeNull();
-  });
-});
 
 describe('daysAgoLabel', () => {
   // A fixed local afternoon — local-anchored inputs keep the read TZ-safe.
@@ -98,25 +83,6 @@ describe('entryLine', () => {
   it('an unrecognized kind is an empty line', () => {
     expect(entryLine({ kind: 'vo2max', value: 52 })).toBe('');
     expect(entryLine(undefined)).toBe('');
-  });
-});
-
-describe('benchmarkDue', () => {
-  const NOW = Date.parse('2026-07-18T00:00:00.000Z');
-
-  it('never measured is always due', () => {
-    expect(benchmarkDue(null, NOW)).toBe(true);
-    expect(benchmarkDue('garbage', NOW)).toBe(true);
-  });
-
-  it('measures the gap against the due window', () => {
-    expect(benchmarkDue('2026-07-08T00:00:00.000Z', NOW)).toBe(false); // 10 days
-    expect(benchmarkDue('2026-06-17T00:00:00.000Z', NOW)).toBe(true); // 31 days
-    expect(benchmarkDue('2026-07-08T00:00:00.000Z', NOW, 7)).toBe(true); // tighter window
-  });
-
-  it('a broken clock raises no false alarm', () => {
-    expect(benchmarkDue('2020-01-01T00:00:00.000Z', NaN)).toBe(false);
   });
 });
 

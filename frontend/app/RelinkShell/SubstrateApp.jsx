@@ -19,7 +19,10 @@ import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { IgniteControl } from './IgniteControl.jsx';
 import { ParallelCeilingCard } from './ParallelCeilingCard.jsx';
+import { ServingFitCard } from './ServingFitCard.jsx';
+import { MachineCard } from './MachineCard.jsx';
 import { displayModelName } from '../../utils/model-name.js';
+import { asText } from '../../utils/as-text.js';
 
 const POLL_MS = 1500;
 
@@ -114,6 +117,8 @@ const SubstrateBody = () => {
       <div className="sub-body" ref={watch}>
         <EmptyState title="SUBSTRATE LENS UNAVAILABLE — NOT AUTHENTICATED OR BACKEND UNREACHABLE" />
         <div className="sub-grid">
+          <Panel title="MACHINE · THERMALS" span><MachineCard /></Panel>
+          <Panel title="GPU SHARE · CONTEXT POOL" span><ServingFitCard /></Panel>
           <Panel title="PARALLEL CAPACITY" span><ParallelCeilingCard /></Panel>
         </div>
       </div>
@@ -207,8 +212,9 @@ const SubstrateBody = () => {
           <ul className="sub-fail-list">
             {(failures || []).slice(0, 8).map((f, i) => (
               <li key={`${f.ts}-${i}`} className={`sub-fail is-${f.level}`}>
-                <span className="sub-fail-ctx label-data">{f.context}</span>
-                <span className="sub-fail-msg">{f.msg}</span>
+                {/* a failure row is TEXT, whatever the backend sent */}
+                <span className="sub-fail-ctx label-data">{asText(f.context)}</span>
+                <span className="sub-fail-msg">{asText(f.msg)}</span>
                 <span className="sub-fail-ts label-data">{(f.ts || '').slice(11, 19)}</span>
               </li>
             ))}
@@ -220,6 +226,8 @@ const SubstrateBody = () => {
             it — HERE because this is where the + TAB refusal sends the
             operator when the ceiling was measured on a different model
             (Design note, 2026-08-28: […]). The card is the RECORD window's own, unchanged. */}
+        <Panel title="MACHINE · THERMALS" span><MachineCard /></Panel>
+        <Panel title="GPU SHARE · CONTEXT POOL" span><ServingFitCard /></Panel>
         <Panel title="PARALLEL CAPACITY" span><ParallelCeilingCard /></Panel>
       </div>
     </div>

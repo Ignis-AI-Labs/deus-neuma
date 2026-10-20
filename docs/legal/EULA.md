@@ -1,6 +1,6 @@
 # NEUMA END USER LICENSE AGREEMENT
 
-*Version 1.1 · Early access · Effective 16 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.3 · Early access · Effective 20 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
 
 Between you and Ignis AI Labs LLC, a Wyoming limited liability company, for the Neuma software you install or run — the platform, portal client, and neuma engine ("Software"). The Terms of Service and Neuma Covenant are incorporated by reference.
 
@@ -26,7 +26,27 @@ The Software is licensed, not sold. Data generated in sovereign workspaces resid
 
 ## 5. Updates and substrate models
 
-We may publish updates, substrate models, and protocol revisions. Official network participation may require minimum versions whose sovereignty mechanisms are intact. Third-party and self-trained models are used at your own responsibility, under the same Covenant when connected to the network.
+We may publish updates, substrate models, and protocol revisions. Official network participation may require minimum versions whose sovereignty mechanisms are intact. Third-party and self-trained models are used at your own responsibility, under the same Covenant when connected to the network. The Software includes no AI model weights. Models you install are licensed to you by their publishers under their own terms, which you accept with them and must follow, including revenue thresholds and acceptable-use policies.
+
+The Software is designed to work with the following third-party models. None is included in the Software; each is downloaded from its publisher:
+
+- **Language models (the substrate the setup recommends):** Qwen3.8-27B, including the Qwen3.8-27B Uncensored build by HauhauCS and the quantized builds by unsloth, LM Studio Community and IST Austria (GSQ-RCO); Qwen3.6-35B-A3B; Qwen3.8-4B (distilled, by empero-ai); and Qwen3.5-4B. All are Apache-2.0.
+- **Image models (the forge):**
+  - FLUX.2 [klein] 4B (Black Forest Labs), Z-Image Turbo (Tongyi-MAI) and Z-Image Turbo Fun ControlNet Union (alibaba-pai): Apache-2.0.
+  - SDXL Base 1.0 (Stability AI): CreativeML Open RAIL++-M, including its use restrictions. xinsir ControlNet OpenPose SDXL: Apache-2.0.
+  - perfectDeliberate v10 and the Illustrious LoRAs it uses: the Illustrious License (Fair AI Public License 1.0-SD), which does not permit selling the model.
+  - Anima Aesthetic v1.1 (CircleStone Labs): the CircleStone Labs Non-Commercial License, which does not permit use in a monetized product or service without a commercial licence from CircleStone Labs.
+- **Video models (the forge):**
+  - LTX-2.5 (Lightricks): the LTX-2.x Community License and its Acceptable Use Policy (commercial use under US$10 million in annual revenue; no sexually explicit content).
+  - Wan 2.2 (Wan-AI) with the lightx2v 4-step LoRAs: Apache-2.0.
+- **Speech and voice:**
+  - Speech recognition: Nemotron Speech (NVIDIA Open Model License) and Whisper large-v3 (MIT).
+  - Local voice engines under Apache-2.0: Zonos, Kokoro, Parler TTS, CosyVoice 2, Qwen3-TTS, Sesame CSM and VoxCPM2.
+  - Chatterbox Nano: MIT. Kyutai TTS: CC-BY-4.0, which requires attribution.
+  - F5-TTS: CC-BY-NC, for non-commercial use only.
+  - Cloud voices (Cartesia, ElevenLabs, Hume): under each provider's own terms.
+
+The text encoders and autoencoders these models load are under their own licences. The full list, with each model's publisher, licence and notes, is in THIRD_PARTY_ATTRIBUTIONS.md and changes as the Software does. Any other model you choose is used under its own terms, at your own responsibility.
 
 ## 6. Termination
 

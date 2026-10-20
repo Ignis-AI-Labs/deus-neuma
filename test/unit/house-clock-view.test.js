@@ -8,7 +8,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   charterStatus, pauseSwitch, reasonWords, heldWords, outcomeWords, runningRows, queueRows,
-  ledgerRow, draftFromCharter, charterFromDraft, charterLines, ONE_AT_A_TIME, MONEY_OUT,
+  ledgerRow, draftFromCharter, charterFromDraft, charterLines, ONE_AT_A_TIME, MONEY_OUT, seatWake,
 } from '../../frontend/app/RelinkShell/house-clock/house-clock-view.js';
 import { askRow, openAskCount } from '../../frontend/app/RelinkShell/house-clock/asks-view.js';
 import { HouseClockBody } from '../../frontend/app/RelinkShell/house-clock/HouseClockBody.jsx';
@@ -19,7 +19,7 @@ import { runGate } from '../../backend/services/house-clock/wake-gate.js';
 import { toDisplayMessages } from '../../frontend/app/RelinkShell/workspace-sessions.js';
 import { toHistoryMessages } from '../../frontend/app/RelinkShell/stream-reducer-messages.js';
 
-const NAMES = { 'lane-quae': 'Quae', 'lane-optio': 'Cael' };
+const NAMES = { 'lane-quae': 'Quae', 'lane-optio': 'Corin' };
 const BASE = {
   v: 1, goal: 'Find a real gap and build for it.', linesOfWork: ['research digests'],
   seats: [{ laneId: 'lane-quae', dailyCap: 2 }], quietHours: { start: '22:00', end: '07:00' }, cadence: { everyHours: 24 },
@@ -64,6 +64,34 @@ describe('house-clock-view — why a wake waits, from the gate\'s own words', ()
     expect(heldWords(why({ ...record, quietHours: null }, 1)).words).toBe('DAILY LIMIT REACHED — this member has spent its 1 wakes for today');
     expect(heldWords(why({ ...record, seats: [] })).key).toBe('seat');
     expect(heldWords('the house clock is not running').key).toBe('clock');
+  });
+
+  it('a member\'s light: awake, waiting for the model, held with its short reason, about to wake, asleep', () => {
+    const item = (id, seat) => ({ id, seat, reason: 'post', ref: id, queuedAt: '2026-10-16T10:00:00Z' });
+    const queue = {
+      items: [item('i1', 'lane-quae'), item('i2', 'lane-corin'), item('i3', 'lane-cosi'), item('i4', 'lane-orrin'), item('i5', 'lane-ada'), item('i6', 'lane-nyx')],
+      running: {
+        'lane-quae': { wakeId: 'w1', startedAt: '2026-10-16T10:00:03Z', itemIds: ['i1'] },
+        'lane-corin': { wakeId: 'w2', startedAt: '2026-10-16T10:00:03Z', itemIds: ['i2'], waitingForLine: true },
+      },
+      today: {},
+      held: [
+        { seat: 'lane-cosi', why: why({ ...record, paused: true }) },
+        { seat: 'lane-orrin', why: why(record) },
+        { seat: 'lane-ada', why: why({ ...record, quietHours: null }, 1) },
+      ],
+    };
+    expect(seatWake(queue, 'lane-quae')).toEqual({ key: 'awake', words: 'AWAKE', why: null });
+    expect(seatWake(queue, 'lane-corin')).toEqual({ key: 'waiting', words: 'WAITING FOR THE MODEL', why: null });
+    expect(seatWake(queue, 'lane-cosi')).toEqual({ key: 'held', words: 'HELD · PAUSED', why: 'PAUSED — the house is paused' });
+    expect(seatWake(queue, 'lane-orrin')).toMatchObject({ key: 'held', words: 'HELD · QUIET HOURS' });
+    expect(seatWake(queue, 'lane-ada')).toMatchObject({ key: 'held', words: 'HELD · DAILY LIMIT', why: expect.stringMatching(/^DAILY LIMIT REACHED — /) });
+    expect(seatWake(queue, 'lane-nyx')).toEqual({ key: 'next', words: 'ABOUT TO WAKE', why: null });
+    expect(seatWake(queue, 'lane-none')).toEqual({ key: 'asleep', words: 'ASLEEP', why: null });
+    // a running seat with more queued behind it is awake, never held or next
+    expect(seatWake({ ...queue, items: [...queue.items, item('i7', 'lane-quae')] }, 'lane-quae').key).toBe('awake');
+    // an unread queue says nothing rather than guess
+    expect(seatWake(null, 'lane-quae')).toBeNull();
   });
 
   it('reasons and outcomes read as words', () => {

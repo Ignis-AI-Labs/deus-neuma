@@ -50,6 +50,7 @@ import {
 } from '../../core/index.js';
 import { withLineKind } from './substrate-lease.js';
 import { isHarnessLane } from '../../core/workspace/lane-grounds.js';
+import { isSelfCheckSitting } from './self-check/self-check-sitting.js';
 
 const log = createLogger('Portal');
 
@@ -66,7 +67,9 @@ export { settleCompositionRecord } from './portal-composition-record.js';
 // become something the next item (or the next attempt, or the being's own
 // life) can recall. The being's own tool writes are not this seam's: they
 // land in the harness's per-trial lane snapshot. Pure.
-export const isEphemeralSitting = (connection) => Boolean(connection?._benchmarkControls);
+// The self-check sitting (self-check-sitting.js) is ephemeral too — it READS
+// the being's memory, so recall keeps its own predicate (isRecallBlindSitting).
+export const isEphemeralSitting = (connection) => Boolean(connection?._benchmarkControls) || isSelfCheckSitting(connection);
 
 // THE HARNESS SITTING (Design note, 2026-10-14: a person using the platform with no
 // being — the bound lane is a harness lane (harness-lane.js). Read from the
@@ -86,6 +89,11 @@ export const isPlatformSitting = (connection) =>
 // (which also keeps no rows), or a harness lane's (whose chat history DOES
 // persist — there is simply no being to remember or crystallize into). Pure.
 export const isMemorylessSitting = (connection) => isEphemeralSitting(connection) || isHarnessSitting(connection);
+
+// A sitting that RECALLS nothing: a benchmark's or a harness lane's. A
+// self-check writes nothing and still recalls — finding its own memories is
+// what it measures. Pure.
+export const isRecallBlindSitting = (connection) => Boolean(connection?._benchmarkControls) || isHarnessSitting(connection);
 
 // impure — the SOLO self-compaction lane (Founder doctrine 2026-07-09): the being
 // authors its own summary + torch through its own resolved stack; a cold

@@ -30,6 +30,7 @@ import { runJob } from '../image-forge/job-lane.js';
 import { withMachine } from '../machine-lease.js';
 import { MIN_ENGINE_VRAM_GB } from '../image-forge/forge-capacity.js';
 import { collectOutputs } from '../image-forge/image-store.js';
+import { composeLineage } from '../image-forge/image-lineage.js';
 import { publishActivity, percentOf } from '../image-forge/forge-activity.js';
 import { recordAttempt, toAttemptRecord } from '../image-forge/attempt-log.js';
 import { contentLawPath, refusalMessage } from '../image-forge/image-being-tools.js';
@@ -38,6 +39,15 @@ import { subjectFor, componentsFor } from '../../../core/genome/describe.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('FormRenderIntent');
+
+// pure — every prompt a graph would encode, with its polarity: the sampler's
+// `negative` input marks the negative encoders; every other text is positive.
+const graphTexts = (graph) => {
+  const negativeIds = new Set(Object.values(graph).map((n) => n.inputs?.negative).filter(Array.isArray).map(([id]) => String(id)));
+  return Object.entries(graph)
+    .filter(([, n]) => typeof n.inputs?.text === 'string' && n.inputs.text.length > 0)
+    .map(([id, n]) => ({ text: n.inputs.text, polarity: negativeIds.has(id) ? 'negative' : 'positive' }));
+};
 
 const HAIRSTYLE_CAP = 120;
 
@@ -118,10 +128,12 @@ export const formRenderIntent = Object.freeze({
     // …and the COMPOSED text is re-screened, because the being's words never
     // crossed a caller-screened slot: the content law judges what the engine
     // would actually see (the house-genome-proof pattern).
-    const verdict = screenSlots([
-      { text: built.graph['6'].inputs.text, polarity: 'positive' },
-      { text: built.graph['7'].inputs.text, polarity: 'negative' },
-    ], loadScreenList(contentLawPath()));
+    // Every text the graph carries, wherever its node sits; a graph with none is refused, never passed.
+    const texts = graphTexts(built.graph);
+    if (!texts.some((t) => t.polarity === 'positive')) {
+      return { ok: false, status: 'invalid', reason: `'${resolved.pipeline.id}' builds no prompt the content law can read` };
+    }
+    const verdict = screenSlots(texts, loadScreenList(contentLawPath()));
     if (!verdict.ok) {
       return { ok: false, status: 'denied', reason: refusalMessage(verdict.classes[0]) };
     }
@@ -213,7 +225,10 @@ export const formRenderIntent = Object.freeze({
         return { ok: false, reason: `the render failed: ${outcome.detail ?? 'unknown engine error'}` };
       }
 
-      const stored = collectOutputs({ outputDir: cfg.outputDir, outputs: outcome.outputs, laneId, jobId });
+      const stored = collectOutputs({
+        outputDir: cfg.outputDir, outputs: outcome.outputs, laneId, jobId,
+        lineage: composeLineage(graphTexts(built.graph).filter((t) => t.polarity === 'positive').map((t) => t.text).join('\n')),
+      });
       if (stored.length === 0) {
         publishActivity({ jobId, phase: 'error', detail: 'engine reported success but no image could be collected' });
         attempt('error', { detail: 'engine reported success but no image could be collected' });

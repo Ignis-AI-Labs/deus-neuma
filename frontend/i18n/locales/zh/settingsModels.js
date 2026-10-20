@@ -24,6 +24,10 @@ export default Object.freeze({
     removeAria: '移除 {{path}}',
     pathAria: '模型文件夹路径',
     add: '添加',
+    engines: '允许的引擎',
+    confirmOff: '{{server}} 将不再从 {{path}} 加载模型——它从此文件夹提供的任何模型都将无法加载。',
+    turnOff: '关闭',
+    keep: '保持允许',
   }),
 
   providers: Object.freeze({

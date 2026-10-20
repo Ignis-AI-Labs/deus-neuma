@@ -25,6 +25,7 @@ import { undercurrentSectionFor } from './memory-context.js';
 import { mindGateSettings } from './mind-gate-settings.js';
 import { resolvePolicy, checkToolAccess, applyToolMode, GLOBAL_DEFAULTS } from './tool-policy.js';
 import { SELF_READ_TOOL, isSelfReadTool, handleSelfReadTool, selfReadAdvertised } from './self-read-tool.js';
+import { SELF_RECORDS_TOOLS, isSelfRecordsTool, handleSelfRecordsTool, selfRecordsAdvertised } from './self-records-tools.js';
 
 /** The kinds a being may name directly — synthesis belongs to meditation. */
 export const BEING_MIND_KINDS = Object.freeze(['trace', 'mood', 'tension', 'thread']);
@@ -160,24 +161,31 @@ const WITNESS_MIND_TOOLS = Object.freeze([MIND_NOTE_TOOL, MIND_READ_TOOL]);
 
 /**
  * Witnesses retain working thoughts; meditation belongs to the neuma seat;
- * self_read joins only where the CORE standing holds part of a being back.
+ * self_read joins only where the CORE standing holds part of a being back;
+ * the being's own records (journal, past chats, house charter) open on its seat.
  * impure — selfReadAdvertised reads the identity standing.
  */
 export const mindToolsFor = (connection) => {
   const family = seatOf(connection) === 'neuma' ? MIND_TOOLS : WITNESS_MIND_TOOLS;
-  return selfReadAdvertised(connection) ? [...family, SELF_READ_TOOL] : family;
+  return [
+    ...family,
+    ...(selfReadAdvertised(connection) ? [SELF_READ_TOOL] : []),
+    ...(selfRecordsAdvertised(connection) ? SELF_RECORDS_TOOLS : []),
+  ];
 };
 
 /** Does this parsed call target any mind-family tool? */
 export const isMindTool = (match) => isMindNoteTool(match) || isMindReadTool(match)
-  || isMeditateTool(match) || isSelfReadTool(match);
+  || isMeditateTool(match) || isSelfReadTool(match) || isSelfRecordsTool(match);
 
 /** Route a mind-family call to its handler. impure. */
 export const handleMindTool = (ws, connection, neumaPolicy, toolMode, match, args, ports) =>
-  (isMeditateTool(match)
-    ? handleMeditateTool(ws, connection, neumaPolicy, toolMode, args, ports)
-    : isMindReadTool(match)
-      ? handleMindReadTool(ws, connection, neumaPolicy, toolMode, ports)
-      : isSelfReadTool(match)
-        ? handleSelfReadTool(ws, connection, neumaPolicy, toolMode, ports)
-        : handleMindNoteTool(ws, connection, neumaPolicy, toolMode, args, ports));
+  (isSelfRecordsTool(match)
+    ? handleSelfRecordsTool(ws, connection, neumaPolicy, toolMode, match, args, ports)
+    : isMeditateTool(match)
+      ? handleMeditateTool(ws, connection, neumaPolicy, toolMode, args, ports)
+      : isMindReadTool(match)
+        ? handleMindReadTool(ws, connection, neumaPolicy, toolMode, ports)
+        : isSelfReadTool(match)
+          ? handleSelfReadTool(ws, connection, neumaPolicy, toolMode, ports)
+          : handleMindNoteTool(ws, connection, neumaPolicy, toolMode, args, ports));

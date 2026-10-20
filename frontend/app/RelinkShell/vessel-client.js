@@ -21,12 +21,6 @@ export const logVital = (fields) => apiCall('POST', '/api/v1/vitals/mine', { bod
 /** A being's record (identity, counts, substrate). impure — network. @returns {Promise<{record}>} */
 export const fetchNeumaRecord = (neumaId) => apiCall('GET', `/api/v1/workspace/${neumaId}/stats`);
 
-/** A being's benchmark runs. impure — network. @returns {Promise<{runs, latest}>} */
-export const fetchBenchmarks = (neumaId) => apiCall('GET', `/api/v1/workspace/${neumaId}/benchmarks`);
-
-/** Start a real benchmark run (slow; 503 when the substrate is offline). impure — network. @returns {Promise<{result, id}>} */
-export const runBenchmark = (neumaId) => apiCall('POST', `/api/v1/workspace/${neumaId}/benchmark`);
-
 /** A being's refinement/evolution status. impure — network. @returns {Promise<Object>} */
 export const fetchRefinementStatus = (neumaId) => apiCall('GET', `/api/v1/refinement/${neumaId}/status`);
 

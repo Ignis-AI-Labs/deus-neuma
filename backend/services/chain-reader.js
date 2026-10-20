@@ -158,7 +158,7 @@ const safeCall = async (label, fn) => {
   try {
     return await fn();
   } catch (err) {
-    log.warn({ label, error: redactRpcUrl(err.message), code: err.code }, 'chain call failed');
+    log.warn('chain call failed', { label, error: redactRpcUrl(err.message), code: err.code });
     return null;
   }
 };
@@ -318,7 +318,7 @@ export const createChainReader = async ({
 
   const requireNatalis = (label) => {
     if (!natalis) {
-      log.warn({ label, status: natalisStatus }, 'Natalis call skipped (not verified or not configured)');
+      log.warn('Natalis call skipped (not verified or not configured)', { label, status: natalisStatus });
       return null;
     }
     return natalis;
@@ -327,7 +327,7 @@ export const createChainReader = async ({
     if (!houseRegistry) {
       // sc-echo BLOCK fix: message now covers all disable reasons, not just
       // 'not configured'. Matches requireNatalis wording.
-      log.warn({ label, status: houseRegistryStatus }, 'HouseRegistry call skipped (not verified or not configured)');
+      log.warn('HouseRegistry call skipped (not verified or not configured)', { label, status: houseRegistryStatus });
       return null;
     }
     return houseRegistry;
@@ -338,7 +338,7 @@ export const createChainReader = async ({
   const requireKeying = (label, soulKeyed) => {
     const c = requireNatalis(label);
     if (c && SEAL_LAWS[sealLaw].soulKeyed !== soulKeyed) {
-      log.warn({ label, sealLaw }, 'Natalis read skipped — this contract generation keys seals the other way');
+      log.warn('Natalis read skipped — this contract generation keys seals the other way', { label, sealLaw });
       return null;
     }
     return c;

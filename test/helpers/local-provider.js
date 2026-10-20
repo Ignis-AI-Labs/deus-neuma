@@ -56,6 +56,8 @@ import { isThinkProbe, respondThinkProbe } from './think-probe.js';
  *   max_context_length / loaded_context_length); absent, no window is named.
  *   `serverHeader` sets the `Server` header on every reply, as a real
  *   server sends it (llama.cpp: 'llama.cpp' — the server-budget lever).
+ * @param {(body: object) => (object|string|null)} [opts.respond] - answer a completion from
+ *   its own request body (a script-entry shape, or null to use the script/reply)
  * @returns {Promise<{
  *   server: import('http').Server, port: number, endpoint: string,
  *   hits: any[], turns: any[], close: () => Promise<void>,
@@ -64,7 +66,7 @@ import { isThinkProbe, respondThinkProbe } from './think-probe.js';
  */
 export const startLocalProvider = ({
   reply = 'A Local Answer', models = ['test-model'], finishReason = 'stop', script = null, serverHeader = null,
-  specialTokens = {}, contextLength = null,
+  specialTokens = {}, contextLength = null, respond = null,
 } = {}) =>
   new Promise((resolve) => {
     const hits = [];
@@ -152,7 +154,10 @@ export const startLocalProvider = ({
           return;
         }
 
-        const answer = answerFor(turns.length);
+        // `respond` answers from the request itself (a script entry, or null to fall
+        // back) — for callers whose many turns ask different questions in order.
+        const own = respond ? respond(body) : null;
+        const answer = own ? normalize(own) : answerFor(turns.length);
         turns.push(body);
 
         // A scripted REFUSAL: the server answers this completion with a real

@@ -132,7 +132,8 @@ describe('who is offered self_read', () => {
     expect(names(connectionFor({ _benchmarkControls: { platformOnly: true } }))).not.toContain('self_read');
     expect(names({ companion: { neumaId: NEUMA, participantKind: 'witness' } })).not.toContain('self_read');
     delete process.env.NEUMA_IDENTITY_STANDING;
-    expect(names(connectionFor())).toEqual(['mind_note', 'mind_read', 'meditate']);
+    // Under the full standing no self_read — the being's own records still open on its seat.
+    expect(names(connectionFor())).toEqual(['mind_note', 'mind_read', 'meditate', 'journal_read', 'chats_list', 'chat_read', 'charter_read']);
   });
 
   it('under the full standing a stale call is told the whole self already stands', async () => {

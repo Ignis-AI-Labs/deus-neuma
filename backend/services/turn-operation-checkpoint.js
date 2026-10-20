@@ -5,6 +5,7 @@ import { OPERATION_CHECKPOINT_BYTE_CAP } from '../../core/workspace/workspace-op
 import { createTurnToolEpochs } from './portal-tool-epochs.js';
 import { toolCallKey } from './witness-tool-epochs.js';
 import { startTimer, startOperationTiming, recordApprovalTiming, finishOperationTiming } from './operation-timing.js';
+import { isSelfCheckSitting } from './self-check/self-check-sitting.js';
 
 const checkpointError = (error, connection) => {
   connection._operationRecoveryStopped = true;
@@ -27,8 +28,10 @@ export const openTurnOperations = async (connection, take) => {
   const scope = { laneId: connection.companion?.neumaId, sessionId: connection.sessionId, turnId: take.turnId };
   // A lane-less portal (a bare companion, no sovereign workspace) has no
   // operation record to verify and nowhere to persist one — the same standing
-  // as the ceremony guard above, not a checkpoint failure.
-  if (!scope.laneId || !scope.sessionId) return turn;
+  // as the ceremony guard above, not a checkpoint failure. A self-check runs
+  // only reads on a session it never saves: no outcome is uncertain, and its
+  // law is to leave nothing behind (self-check-sitting.js).
+  if (!scope.laneId || !scope.sessionId || isSelfCheckSitting(connection)) return turn;
   try {
     const record = await workspace.readTurnOperations(scope.laneId, scope.sessionId, scope.turnId);
     if (record.inFlight) {

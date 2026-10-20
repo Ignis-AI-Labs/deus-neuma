@@ -13,6 +13,7 @@
  */
 
 import { closedBookSplit } from './closed-book.js';
+import { selfCheckSplit } from './self-check/self-check-sitting.js';
 import { sanitizeImages } from './attachment-store.js';
 import { RESULTS_FOLLOW_UP } from './tool-exchange.js';
 import { toolCallKey, heldRepeatResult } from './witness-tool-epochs.js';
@@ -214,9 +215,13 @@ const inActOrder = (acts, parts) => {
 };
 
 export const processRoundActs = async (processToolCalls, ws, response, connection, acts, epochs) => {
-  // A closed-book sitting refuses anything that is not local (closed-book.js);
-  // outside one, nothing is refused and the round runs exactly as before.
-  const { allowed, refused } = closedBookSplit(connection, acts);
+  // A closed-book sitting refuses anything that is not local (closed-book.js),
+  // a self-check anything that is not a read of the being's own world
+  // (self-check-sitting.js); outside both, the round runs exactly as before.
+  const book = closedBookSplit(connection, acts);
+  const check = selfCheckSplit(connection, book.allowed);
+  const allowed = check.allowed;
+  const refused = [...book.refused, ...check.refused];
   const refusals = refused.map(({ result }) => result);
   if (refused.length > 0 && connection._benchmarkControls) {
     connection._benchmarkToolTrail = [...(connection._benchmarkToolTrail ?? []),

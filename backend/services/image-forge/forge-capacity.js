@@ -81,7 +81,7 @@ export const engineRamCeilingGb = (machine) => {
  * @returns {{engineGB: number|null, headroomGb: number,
  *   image: {ok: boolean, why: string}, video: {ok: boolean, why: string}}}
  */
-export const forgeCapacity = (machine) => {
+export const forgeCapacity = (machine, { videoRamGB = VIDEO_RAM_GB } = {}) => {
   const headroomGb = comfyHeadroomGb(machine);
   const vram = machine?.gpu?.vramGB;
   if (!Number.isFinite(vram)) {
@@ -99,7 +99,7 @@ export const forgeCapacity = (machine) => {
   let video;
   if (!roomOk) video = { ok: false, why: roomWhy };
   else if (!Number.isFinite(ram)) video = { ok: false, why: 'system memory cannot be read on this machine' };
-  else if (ram < VIDEO_RAM_GB) video = { ok: false, why: `needs ${VIDEO_RAM_GB} GB of free system memory for the engine, ${Math.max(0, ram)} GB can be spared` };
+  else if (ram < videoRamGB) video = { ok: false, why: `needs ${videoRamGB} GB of free system memory for the engine, ${Math.max(0, ram)} GB can be spared` };
   else video = { ok: true, why: `fits — while a clip renders, the mind thinks up to about 4x slower` };
   return { engineGB, headroomGb, image, video };
 };

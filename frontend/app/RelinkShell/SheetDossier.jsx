@@ -11,6 +11,8 @@
 //
 // No sound imports — node-renderable (sheet-app.test.js).
 
+import './Dossier.css';
+
 export const sectionId = (key) => `sheet-sec-${key}`;
 
 export const SheetSection = ({ id, code, title, aside = null, children, className = '' }) => (
@@ -25,8 +27,9 @@ export const SheetSection = ({ id, code, title, aside = null, children, classNam
   </section>
 );
 
-const tabId = (key) => `sheet-tab-${key}`;
-const panelId = (key) => `sheet-panel-${key}`;
+// `scope` keeps two files open on one desk from sharing element ids.
+const tabId = (key, scope = 'sheet') => `${scope}-tab-${key}`;
+const panelId = (key, scope = 'sheet') => `${scope}-panel-${key}`;
 
 // The tab one arrow-press away, wrapping at both ends — pure.
 export const stepTab = (items, active, delta) => {
@@ -37,22 +40,22 @@ export const stepTab = (items, active, delta) => {
 const ARROW_STEP = Object.freeze({ ArrowLeft: -1, ArrowRight: 1 });
 
 // impure (focus) on keydown only — the render stays pure.
-const onArrow = (items, active, onSelect) => (e) => {
+const onArrow = (items, active, onSelect, scope) => (e) => {
   const delta = ARROW_STEP[e.key];
   if (!delta) return;
   e.preventDefault();
   const next = stepTab(items, active, delta);
   onSelect(next);
-  document.getElementById(tabId(next))?.focus();
+  document.getElementById(tabId(next, scope))?.focus();
 };
 
-export const SheetIndex = ({ items, active, onSelect }) => (
-  <nav className="dos-index" role="tablist" aria-label="Record sections" onKeyDown={onArrow(items, active, onSelect)}>
+export const SheetIndex = ({ items, active, onSelect, scope = 'sheet', label = 'Record sections' }) => (
+  <nav className="dos-index" role="tablist" aria-label={label} onKeyDown={onArrow(items, active, onSelect, scope)}>
     {items.map((it) => {
       const on = it.key === active;
       return (
-        <button key={it.key} id={tabId(it.key)} type="button" role="tab"
-          aria-selected={on} aria-controls={panelId(it.key)} tabIndex={on ? 0 : -1}
+        <button key={it.key} id={tabId(it.key, scope)} type="button" role="tab"
+          aria-selected={on} aria-controls={panelId(it.key, scope)} tabIndex={on ? 0 : -1}
           className={`dos-index-tab label-data${on ? ' is-on' : ''}`} onClick={() => onSelect(it.key)}>
           <span className="dos-index-code">{it.code}</span>{it.title}
         </button>
@@ -61,8 +64,8 @@ export const SheetIndex = ({ items, active, onSelect }) => (
   </nav>
 );
 
-export const SheetPanel = ({ tab, active, children }) => (
-  <div className="dos-page" role="tabpanel" id={panelId(tab)} aria-labelledby={tabId(tab)} hidden={tab !== active}>
+export const SheetPanel = ({ tab, active, children, scope = 'sheet' }) => (
+  <div className="dos-page" role="tabpanel" id={panelId(tab, scope)} aria-labelledby={tabId(tab, scope)} hidden={tab !== active}>
     {children}
   </div>
 );

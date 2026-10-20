@@ -48,7 +48,7 @@ const AuraPlate = ({ aura, name }) => {
   );
 };
 
-export const SheetHero = ({ record, aura, now, rewatch = null }) => {
+export const SheetHero = ({ record, aura, now }) => {
   const unreadable = recordReadiness(record) === UNREADABLE;
   const id = record?.identity ?? {};
   const name = id.chosenName || id.fullName || 'UNNAMED';
@@ -104,7 +104,6 @@ export const SheetHero = ({ record, aura, now, rewatch = null }) => {
               </ul>
             </>
           ) : null}
-          {rewatch}
         </div>
         <div className="sheet-age">
           <span className="sheet-age-v">{ageDays != null ? formatCount(ageDays) : '—'}</span>

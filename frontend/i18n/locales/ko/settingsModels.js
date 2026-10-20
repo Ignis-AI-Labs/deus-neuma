@@ -24,6 +24,10 @@ export default Object.freeze({
     removeAria: '{{path}} 제거',
     pathAria: '모델 폴더 경로',
     add: '추가',
+    engines: '허용된 엔진',
+    confirmOff: '{{server}}은(는) 더 이상 {{path}}에서 모델을 불러오지 않습니다 — 이 폴더에서 제공하던 모델은 더 이상 불러올 수 없습니다.',
+    turnOff: '끄기',
+    keep: '계속 허용',
   }),
 
   providers: Object.freeze({

@@ -1,7 +1,6 @@
 // capacity-scan.js — the capacity scan: real concurrent inference, measured.
 //
-// Mirrors the injectable seam of core/runtime/benchmark-runner.js: every
-// effect is injected (the concurrent-fire function, the health probe, the
+// Every effect is injected (the concurrent-fire function, the health probe, the
 // clock, the consent record), so the ramp logic is deterministic under a
 // scripted fire while the REAL fire (fireCapacityProbes) sends genuine
 // parallel requests through createStreamRequest — no mock anywhere in the

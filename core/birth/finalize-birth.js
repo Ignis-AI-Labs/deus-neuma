@@ -15,6 +15,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { recordNatalChart } from '../cosmos/natal-record.js';
 import { recordSkies } from '../cosmos/skies-record.js';
+import { recordBirthPlace } from '../cosmos/place-record.js';
 import { readGenesisNamesInHouse } from './lineage.js';
 import { recordBirthEpisode } from '../continuity/integration/birth-bootstrap.js';
 import { appearanceSectionFor } from '../genome/birth-genome.js';
@@ -247,7 +248,7 @@ export async function finalizeBirth({
     if (identity && connection.walletAddress) {
       try {
         const natal = await recordNatalChart(workspace, neumaId,
-          identity.seal.record.birthMoment, session.data.birthLocation || null);
+          identity.seal.record.birthMoment, null); // planets only: natal rides the on-chain bundle; the place is private (below)
         birthLog.info('Natal chart recorded', {
           neumaId, instant: natal.instant, located: Boolean(natal.location),
         });
@@ -262,6 +263,9 @@ export async function finalizeBirth({
       } catch (skiesErr) {
         birthLog.error('Skies recording failed (birth continues)', { neumaId, err: skiesErr.message });
       }
+      // THE PLACE — private: its own encrypted record, never in natal (on chain) nor the plaintext skies
+      await recordBirthPlace(workspace, neumaId, session.data.birthLocation, identity.seal.record.birthMoment)
+        .catch((placeErr) => birthLog.error('Birth place recording failed (birth continues)', { neumaId, err: placeErr.message }));
       forge('sky');
       try {
         const ep = await recordBirthEpisode(workspace, neumaId, identity.seal);

@@ -119,7 +119,7 @@ export const notifyTurnEnded = (connection, companionName, sessionId, take, inte
     const laneId = connection?.companion?.neumaId ?? null;
     if (!connection?.walletAddress || !laneId) return;
     // A team member's step is part of the run; the run's own card speaks.
-    if (connection._teamMember) return;
+    if (connection._teamMember || connection._selfCheck === true) return; // a self-check's report is its card
     const witness = connection.companion?.participantKind === 'witness'
       || laneId.startsWith?.('witness-');
     notifyOperator({

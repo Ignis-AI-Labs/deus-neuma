@@ -26,6 +26,7 @@ import { MIN_ENGINE_VRAM_GB, forgeCapacity } from '../image-forge/forge-capacity
 import { probeMachine } from '../machine-probe.js';
 import { uploadImage } from '../image-forge/comfyui-client.js';
 import { collectOutputs, resolveImage } from '../image-forge/image-store.js';
+import { composeLineage, lineageFor } from '../image-forge/image-lineage.js';
 import { videoSight } from '../image-forge/video-sight.js';
 import { publishActivity, percentOf } from '../image-forge/forge-activity.js';
 import { recordAttempt, toAttemptRecord } from '../image-forge/attempt-log.js';
@@ -93,7 +94,7 @@ export const imageGenerateIntent = Object.freeze({
     if (source && !source.ok) return { ok: false, status: 'invalid', reason: source.reason };
     if (resolved.pipeline.kind === 'video') {
       // Said before any card: a machine that cannot hold the job is told so, never left to crash.
-      const fit = forgeCapacity(await probeMachine()).video;
+      const fit = forgeCapacity(await probeMachine(), { videoRamGB: resolved.pipeline.ramGB }).video;
       if (!fit.ok) return { ok: false, status: 'denied', reason: `this machine cannot render video: ${fit.why}` };
     }
     // The content-law screen runs HERE — a refused class is a standing-rule
@@ -106,6 +107,7 @@ export const imageGenerateIntent = Object.freeze({
       screenList: loadScreenList(contentLawPath()),
       fallbackSeed: 0,
       sourceImageName: source ? path.basename(source.path) : null,
+      sourceLineage: source ? lineageFor({ laneId: connection.companion?.neumaId, imageId: source.record?.imageId, file: source.path }) : undefined,
     });
     if (!built.ok) {
       return built.refusalClass
@@ -127,14 +129,16 @@ export const imageGenerateIntent = Object.freeze({
     const cfg = resolveComfyConfig(process.env);
     // A BARE uuid: the engine refuses any prompt_id that is not canonical.
     const jobId = randomUUID();
-    const build = (sourceImageName = null) => parameterize({
+    const build = (sourceImageName = null, sourceLineage = undefined) => parameterize({
       pipeline, model,
       args: slotArgs(args),
       jobId,
       screenList: loadScreenList(contentLawPath()),
       fallbackSeed: Math.floor(Math.random() * 4294967295),
       sourceImageName,
+      sourceLineage,
     });
+    let sourceLineage; // what made the source image (image-lineage.js); null = not recorded
     // A source pipeline is built once the engine has the image and names it.
     let built = pipeline.requiresSourceImage ? null : build();
     // The attempt is logged with its VERBATIM text at every terminal outcome.
@@ -166,11 +170,14 @@ export const imageGenerateIntent = Object.freeze({
         if (pipeline.requiresSourceImage) {
           const source = sourceFor(connection, pipeline, args?.image);
           if (!source.ok) return { ready, error: source.reason };
+          // One read: the bytes judged by their lineage are the bytes the engine gets.
+          const bytes = readFileSync(source.path);
+          sourceLineage = lineageFor({ laneId, imageId: source.record?.imageId, file: source.path, bytes });
           const uploaded = await uploadImage(cfg, {
-            bytes: readFileSync(source.path), filename: `${jobId}${path.extname(source.path)}`, mime: source.record?.mime || 'image/png',
+            bytes, filename: `${jobId}${path.extname(source.path)}`, mime: source.record?.mime || 'image/png',
           });
-          built = build(uploaded.name);
-          if (!built.ok) return { ready, error: built.error };
+          built = build(uploaded.name, sourceLineage);
+          if (!built.ok) return { ready, error: built.refusalClass ? refusalMessage(built.refusalClass) : built.error };
         }
         noteComfyActivity();
         emit({ tool, status: 'running', summary: `rendering — ${pipeline.label}` });
@@ -217,7 +224,10 @@ export const imageGenerateIntent = Object.freeze({
         return { ok: false, reason: `the render failed: ${outcome.detail ?? 'unknown engine error'}` };
       }
 
-      const stored = collectOutputs({ outputDir: cfg.outputDir, outputs: outcome.outputs, laneId, jobId });
+      const stored = collectOutputs({
+        outputDir: cfg.outputDir, outputs: outcome.outputs, laneId, jobId,
+        lineage: composeLineage(slotArgs(args).positive, pipeline.requiresSourceImage ? sourceLineage ?? null : undefined),
+      });
       if (stored.length === 0) {
         publishActivity({ jobId, phase: 'error', detail: 'engine reported success but no image could be collected' });
         attempt('error', { detail: 'engine reported success but no image could be collected' });

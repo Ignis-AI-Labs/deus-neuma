@@ -101,8 +101,8 @@ export const requestShellNetwork = async (connection, context, emit) => {
   }
   const decision = await requestToolApproval(connection, {
     tool: 'coding/shell_network', signal,
-    args: { laneId: state.laneId, note: 'Share host network, including local services; scrubbed environment' },
-    scope: `Host network for lane ${state.laneId}: ALLOW this binding, ALWAYS persisted; revoke in PERMISSIONS`,
+    args: { laneId: state.laneId, note: 'The internet, outward only: never this machine\'s own services or its home network; scrubbed environment' },
+    scope: `Internet (outward only) for lane ${state.laneId}: ALLOW this binding, ALWAYS persisted; revoke in PERMISSIONS`,
   });
   assertCurrent();
   if (decision === 'interrupted') throw interrupted();

@@ -144,6 +144,12 @@ export const refusalMessage = (refusalClass) => {
   if (refusalClass === 'list_unavailable' || refusalClass === 'screen_error') {
     return 'The content law could not be read, so nothing can be generated. Your operator needs to look at this.';
   }
+  if (refusalClass === 'source_unrecorded') {
+    return 'Refused: how that image was made is not on record, so it cannot be used for sexual content. Make a new still first and start from that one.';
+  }
+  if (String(refusalClass).startsWith('licence:')) {
+    return `Refused by this pipeline's model licence (${refusalClass.slice(8)}): the model's publisher forbids it, so this pipeline cannot make it. Do not rephrase and retry here.`;
+  }
   return `Refused by content law (${refusalClass}). This is a fixed boundary of the platform, not a setting — do not rephrase and retry.`;
 };
 

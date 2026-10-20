@@ -46,7 +46,28 @@ and `voice-engines/README.md`):
 | Kokoro-82M (hexgrad) | Apache-2.0 | shippable |
 | Parler TTS Mini | Apache-2.0 | shippable (registered, unlisted) |
 | Whisper large-v3 (SYSTRAN) | MIT | shippable |
+| Nemotron Speech (NVIDIA), live speech recognition | NVIDIA Open Model License | downloaded at setup, not bundled |
+| CosyVoice 2 (Alibaba) | Apache-2.0 | downloaded at setup, not bundled |
+| Qwen3-TTS 1.7B (Qwen) | Apache-2.0 | downloaded at setup, not bundled |
+| Sesame CSM-1B (Sesame AI Labs) | Apache-2.0 | downloaded at setup, not bundled |
+| Chatterbox Nano (Resemble AI) | MIT | downloaded at setup, not bundled |
+| VoxCPM2 voice designer (OpenBMB) | Apache-2.0 | downloaded at setup, not bundled |
+| Cartesia Sonic, ElevenLabs, Hume Octave | each provider's terms | cloud services, the operator's own account |
 | F5-TTS (SWivid) | CC-BY-NC (weights) | **never distributed — local testing only** |
+
+## Language models (the substrate the setup recommends — NOT shipped)
+
+The setup (`backend/services/substrate-setup.js`) recommends these by machine size; each is downloaded
+from its publisher's repository. Licences read from each Hugging Face model card on 2026-10-20.
+
+| Model | Repository | Licence | Notes |
+| --- | --- | --- | --- |
+| Qwen3.8-27B Uncensored (HauhauCS), Q8_K_P | HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF | Apache-2.0 | Fine-tune of Qwen/Qwen3.8-27B. |
+| Qwen3.8-27B (6-bit, 4-bit) | unsloth/Qwen3.8-27B-GGUF, lmstudio-community/Qwen3.8-27B-GGUF | Apache-2.0 | Quantized builds of Qwen/Qwen3.8-27B. |
+| Qwen3.8-27B (3.5-bit, 3-bit) | ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF | Apache-2.0 | IST Austria GSQ-RCO quantization. |
+| Qwen3.6-35B-A3B | lmstudio-community/Qwen3.6-35B-A3B-GGUF | Apache-2.0 | Mixture of experts, 3B active. |
+| Qwen3.8-4B (distilled) | empero-ai/Qwen3.8-4B-Distill-GGUF | Apache-2.0 | |
+| Qwen3.5-4B | lmstudio-community/Qwen3.5-4B-GGUF | Apache-2.0 | |
 
 ## Image & Video Forge (models the pack recognises — NOT shipped)
 
@@ -63,6 +84,8 @@ Licences read at their sources on 2026-10-20.
 | ComfyUI (engine) | Comfy-Org | GPL-3.0 | n/a | Separate program over HTTP; not bundled, not linked. |
 | comfy-kitchen (engine kernels) | Comfy-Org | Apache-2.0 | n/a | Installed with ComfyUI. |
 | LTX-2.5 22B distilled (video) | Lightricks | LTX-2.x Community License | Yes, under $10M annual revenue (all affiliates) | Gated download (accept on Hugging Face). Users must follow its Acceptable Use Policy (Attachment A: incl. no sexually explicit content; disclose machine-generated content; no competing product without a licence). Keep any watermark, metadata or provenance it applies. Text encoder Gemma 4: Apache-2.0. |
+| Wan 2.2 I2V A14B (video, fp8 repackage) + Wan 2.1 VAE | Wan-AI (Alibaba); repackaged by Comfy-Org | Apache-2.0 | Yes | Ungated. The publisher claims no rights over generated content and holds users accountable for their use of it. Silent clips. Text encoder umT5-XXL (Google): Apache-2.0. Adult content is allowed on this pipeline under the platform's content law; the hard lines are refused on every pipeline. |
+| Wan 2.2 Lightning 4-step LoRAs (lightx2v) | lightx2v | Apache-2.0 | Yes | Distillation LoRAs for the two Wan experts. |
 | FLUX.2 [klein] 4B + VAE | Black Forest Labs | Apache-2.0 | Yes | Not the 9B klein (non-commercial). |
 | Z-Image Turbo / Z-Image, Qwen3-4B encoder | Tongyi-MAI / Qwen | Apache-2.0 | Yes | `ae.safetensors` is the FLUX.1-schnell autoencoder (Apache-2.0). |
 | Z-Image Turbo Fun ControlNet Union | alibaba-pai | Apache-2.0 | Yes | |

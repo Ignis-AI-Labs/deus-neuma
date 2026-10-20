@@ -27,7 +27,9 @@ import { issuesForHouse, issuesForOwner } from '../services/house-issue-feed.js'
 import { createSharedSnapshot } from '../services/shared-snapshot.js';
 import { stopSupervised } from '../services/llama-server-supervisor.js';
 import { standbySettings } from '../services/standby-settings.js';
-import { DEFAULT_VRAM_SHARE, lastServingFit, readServingFit, saveServingShare } from '../services/serving-fit.js';
+import { lastServingFit, saveServingShare, servingFitStatus } from '../services/serving-fit.js';
+import { activeLaunchConfig } from '../services/supervisor-launch-config.js';
+import { readMachineThermals } from '../services/machine-thermals.js';
 import { createLogger } from '../services/logger.js';
 
 const router = Router();
@@ -245,9 +247,13 @@ router.put('/standby', requireInstallOwner, async (req, res) => {
 // THE SERVING FIT — how much of the GPU the mind may fill: up to 90% by default,
 // so a model uses what the card can give. The pool is fitted at every ignition to this
 // share; the reply carries the last fit (pool, planned and measured MiB).
-router.get('/fit', (req, res) => {
-  const saved = readServingFit();
-  res.json({ sharePct: saved.sharePct ?? Math.round(DEFAULT_VRAM_SHARE * 100), lastFit: lastServingFit() });
+router.get('/fit', async (req, res) => {
+  try {
+    res.json(await servingFitStatus(activeLaunchConfig(process.env)));
+  } catch (error) {
+    log.error('Serving fit status', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the serving fit' });
+  }
 });
 
 router.put('/fit', requireInstallOwner, (req, res) => {
@@ -257,6 +263,19 @@ router.put('/fit', requireInstallOwner, (req, res) => {
     return res.json({ sharePct, appliesAt: 'the next ignition', lastFit: lastServingFit() });
   } catch (error) {
     return res.status(400).json({ error: error.message });
+  }
+});
+
+// THE MACHINE — every thermal and tuning reading this machine offers (GPU, CPU,
+// memory, storage, cooling, rails), flagged against each chip's own limits.
+// Shared across concurrent readers so several open windows run one probe.
+const readMachine = createSharedSnapshot(readMachineThermals, 2000);
+router.get('/machine', async (req, res) => {
+  try {
+    res.json(await readMachine());
+  } catch (error) {
+    log.error('Machine read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the machine' });
   }
 });
 

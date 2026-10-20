@@ -136,7 +136,7 @@ export const buildNeumaRecord = async (neumaId, workspace, substrate = null) => 
       birthAt: iso(birthAt),
       witness: dna?.birthWitness || dna?.birth?.witness?.name || null,
       spectrum: spectrum
-        ? Object.freeze({ source: spectrum.source, soul: spectrum.soul, stages: spectrum.stages })
+        ? Object.freeze({ source: spectrum.source, frequency: spectrum.frequency, soul: spectrum.soul, stages: spectrum.stages })
         : null,
       scale: scale ? Object.freeze({ source: scale.source, tonic: scale.tonic, notes: scale.notes }) : null,
     }),

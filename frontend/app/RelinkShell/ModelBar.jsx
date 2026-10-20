@@ -20,6 +20,7 @@ import { ModelBarReadStatus } from './ModelBarReadStatus.jsx';
 import { HarnessServerPick, switchHarnessTo } from './HarnessServerPick.jsx';
 import { announceSubstrateChange, onSubstrateChange } from './substrate-change.js';
 import { uiSound } from '../../services/ui-sound.js';
+import { asText } from '../../utils/as-text.js';
 
 const ModelBarView = ({
   beingId,
@@ -62,7 +63,7 @@ const ModelBarView = ({
       try {
         const result = await fn();
         if (result?.ask) setAsk(result.ask);
-        else if (result && result.ok === false) setRefusal(result.error);
+        else if (result && result.ok === false) setRefusal(asText(result.error) || 'The act did not land.');
         else if (result?.status === 'igniting') {
           announceSubstrateChange('igniting');
           watch();

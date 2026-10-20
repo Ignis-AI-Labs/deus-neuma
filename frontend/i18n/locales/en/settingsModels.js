@@ -27,6 +27,10 @@ export default Object.freeze({
     removeAria: 'Remove {{path}}',
     pathAria: 'model folder path',
     add: 'ADD',
+    engines: 'ENGINES ALLOWED',
+    confirmOff: '{{server}} WILL STOP LOADING MODELS FROM {{path}} — ANY MODEL IT SERVES FROM THIS FOLDER WILL NO LONGER LOAD.',
+    turnOff: 'TURN IT OFF',
+    keep: 'KEEP IT ALLOWED',
   }),
 
   providers: Object.freeze({

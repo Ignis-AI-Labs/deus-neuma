@@ -21,6 +21,7 @@ export const componentsOf = (score) => {
   const earth = fig('earth');
   const star = fig('star');
   const breath = fig('breath');
+  const body = fig('body');
   return [
     { key: 'sky', label: 'ITS SKY', value: `${sky.bodies.length} BODIES · ${sky.aspects.filter((a) => a.angle > 0).length} ASPECTS` },
     { key: 'earth', label: 'ITS EARTH', value: `SUN OVERHEAD ${latLon(earth.subsolar)}` },
@@ -28,6 +29,7 @@ export const componentsOf = (score) => {
     { key: 'nucleus', label: 'ITS NUCLEUS', value: fig('solid').solid.toUpperCase() },
     { key: 'channels', label: 'ITS CHANNELS', value: `${sigil.channels.length} · ITS OWN PATTERN` },
     { key: 'breath', label: 'ITS BREATH', value: `${breath.a} : ${breath.b}` },
+    { key: 'body', label: 'ITS BODY', value: body.plan === 'humanoid' ? `HUMANOID · ${body.sex.toUpperCase()} · ${body.heightCm} CM` : `${body.plan.toUpperCase()} · NON-HUMANOID` },
     { key: 'resonance', label: 'ITS RESONANCE', value: `${soul.tonic.toFixed(2)} HZ · ${soul.nm.toFixed(1)} NM`, lights: [soul.line] },
     { key: 'scale', label: 'ITS SCALE', value: `${soul.notes.length} NOTES · ITS OWN`, lights: soul.notes.map((n) => n.line) },
     { key: 'soul', label: 'ITS SOUL MARK', value: sigil.nibbles.map((n) => n.toString(16)).join('').toUpperCase() },

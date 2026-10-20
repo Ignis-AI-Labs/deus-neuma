@@ -34,7 +34,7 @@ import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { matchesDeniedPattern } from './tool-sandbox.js';
 import { NEVER_REQUESTABLE } from './sensitive-grants.js';
 import { prepareOverlayFreshness, assertOverlayFresh, lockOverlay } from './overlay-freshness.js';
-import { shellNetworkResources } from './shell-network-resources.js';
+import { outwardNetwork } from './shell-network-resources.js';
 import { isSecretFile } from './secret-path-classifier.js';
 import { linkedSecrets } from './secret-inodes.js';
 import { findSecretTwins } from './secret-twin-finder.js';
@@ -341,15 +341,17 @@ const runPreparedCommand = async (input) => {
   const mode = commandMode(input.mode);
   const timeoutMs = clampTimeout(input.timeoutMs);
   const args = bwrapArgs({ ...input, command, mode });
-  // Public DNS and trust only; the rest of /etc remains empty.
-  if (input.network === true) args.push(...await shellNetworkResources());
+  // Public DNS and trust only; the rest of /etc remains empty. Outward only: never this machine's own services.
+  const net = input.network === true ? await outwardNetwork() : null;
+  if (net) args.push(...net.binds);
   args.push('/bin/bash', '-lc', `${CONFINED_ULIMITS}; exec /bin/bash -lc "$NEUMA_COMMAND"`);
+  const launch = net ? net.wrap(args) : { command: 'bwrap', args };
 
   return new Promise((resolve, reject) => {
     input.signal?.throwIfAborted();
     input.beforeSpawn?.();
     const executionTimer = startTimer();
-    const child = spawn('bwrap', args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(launch.command, launch.args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     const output = createCommandOutput();
     let timedOut = false;
 

@@ -45,7 +45,7 @@ export const closedBookCatalog = (connection, tools) => {
 // CLAIM, never trusted alone: `fs__web_search` names the fs server but no
 // tool this sitting opened (benchmarks-51, 2026-10-02). Only a (server, name)
 // pair the turn catalog carries resolves; a bare name resolves by name.
-const catalogEntryOf = (connection, act) => (connection?._turnCatalog ?? []).find((tool) => tool.name === act?.toolName
+export const catalogEntryOf = (connection, act) => (connection?._turnCatalog ?? []).find((tool) => tool.name === act?.toolName
   && (!act?.server || tool.server === act.server)) ?? null;
 
 /**

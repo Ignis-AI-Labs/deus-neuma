@@ -177,6 +177,39 @@ export const heldWords = (why, name = null) => {
   return { key: 'other', words: text.toUpperCase() };
 };
 
+// A held reason's short word, for the label on a member's card (heldWords keys).
+const HELD_SHORT = Object.freeze({
+  paused: 'PAUSED', unapproved: 'NOT APPROVED', quiet: 'QUIET HOURS', cap: 'DAILY LIMIT', seat: 'NOT A SEAT', clock: 'CLOCK STOPPED',
+});
+
+/**
+ * Where one seat stands in the house's wake, for its light on the member's
+ * card: AWAKE (its wake is working), WAITING FOR THE MODEL (started, its turn
+ * not yet given its place in the model line), HELD (queued work that may not
+ * run now, with the reason's short word), ABOUT TO WAKE (queued, free to run),
+ * ASLEEP (none of these). Null when the queue has not been read — an unknown
+ * state shows no label rather than a guessed one. Pure.
+ * @param {?{items: Object[], running: Object, held: Array<{seat: string, why: string}>}} queue
+ * @param {string} seat - the member's lane id
+ * @returns {?{key: 'awake'|'waiting'|'held'|'next'|'asleep', words: string, why: ?string}}
+ */
+export const seatWake = (queue, seat) => {
+  if (!queue) return null;
+  const run = queue.running?.[seat];
+  if (run) {
+    return run.waitingForLine === true
+      ? { key: 'waiting', words: 'WAITING FOR THE MODEL', why: null }
+      : { key: 'awake', words: 'AWAKE', why: null };
+  }
+  const held = (queue.held ?? []).find((h) => h.seat === seat);
+  if (held) {
+    const h = heldWords(held.why);
+    return { key: 'held', words: `HELD · ${HELD_SHORT[h.key] ?? 'WAITING'}`, why: h.words };
+  }
+  if ((queue.items ?? []).some((i) => i.seat === seat)) return { key: 'next', words: 'ABOUT TO WAKE', why: null };
+  return { key: 'asleep', words: 'ASLEEP', why: null };
+};
+
 /** The words for an item whose seat is awake: one wake at a time per seat. */
 export const ONE_AT_A_TIME = 'NEXT — this seat is awake now; one wake at a time';
 

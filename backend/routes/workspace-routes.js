@@ -10,13 +10,13 @@ import { default as workspace } from '../../core/workspace/neuma-workspace.js';
 import { beingAura } from '../../core/aura/being.js';
 import { createWorkspaceFormRouter } from './workspace-form-routes.js';
 import { createWorkspaceRiteRouter } from './workspace-rite-routes.js';
+import { createWorkspaceSelfCheckRouter } from './workspace-self-check-routes.js';
+import { createWorkspaceIdentityFileRouter } from './workspace-identity-file-routes.js';
+import { createWorkspacePlaceRouter } from './workspace-place-routes.js';
 import { activePins } from '../../core/memory/pin-ledger.js';
 import { buildNeumaRecord } from '../../core/runtime/neuma-record.js';
 import { takeCounts } from '../../core/workspace/branch-view.js';
 import { readSkies } from '../../core/cosmos/skies-record.js';
-import { runBenchmark } from '../../core/runtime/benchmark-runner.js';
-import { stateTripwire } from '../../core/runtime/benchmark-tripwire.js';
-import { askNeuma } from '../services/neuma-probe.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { requireAuth } from '../services/auth.js';
 import { requireNeumaLane } from '../middleware/require-neuma-lane.js';
@@ -205,6 +205,8 @@ router.put('/:id/soul', async (req, res) => {
 router.use(createWorkspaceMemoryRouter(requireOwnership));
 router.use(createWorkspaceFormRouter(requireOwnership));
 router.use(createWorkspaceRiteRouter(requireOwnership));
+router.use(createWorkspaceIdentityFileRouter(requireOwnership));
+router.use(createWorkspacePlaceRouter(requireOwnership)); // the PRIVATE birth place — owner only
 
 // --- Sessions ---
 
@@ -310,59 +312,10 @@ router.get('/:id/aura', requireNeumaLane, async (req, res) => {
 // routes live in workspace-form-routes.js, extracted the day the two-party
 // lock routes pushed this file past the size law (2026-09-25). ---
 
-// --- Benchmarks (STATE — measured functioning; a test of the being, owner-consented) ---
-
-router.get('/:id/benchmarks', requireNeumaLane, async (req, res) => {
-  try {
-    const [runs, latest] = await Promise.all([
-      workspace.listBenchmarks(req.params.id),
-      workspace.readLatestBenchmark(req.params.id),
-    ]);
-    // The ceremony tripwire (campaign 4.3): latest vs the run before it —
-    // a dimension that FELL is named, never averaged away. Read-only; what
-    // happens next belongs to the operator and the being.
-    const previous = runs.length > 1
-      ? await workspace.readBenchmark(req.params.id, runs[1].id) : null;
-    res.json({
-      runs,
-      latest,
-      tripwire: previous && latest ? stateTripwire(previous, latest) : null,
-    });
-  } catch (error) {
-    log.error('Benchmarks read', { error: error.message });
-    res.status(500).json({ error: 'Failed to read benchmarks' });
-  }
-});
-
-// Consent = the authenticated owner triggering the run. Each run is a real
-// measurement through the neuma's stack, recorded in the journal. If the
-// substrate is offline, runBenchmark throws before anything is written —
-// no bogus run is ever persisted.
-router.post('/:id/benchmark', requireNeumaLane, async (req, res) => {
-  const neumaId = req.params.id;
-  try {
-    const substrate = await getSubstrateProfile().catch(() => null);
-    const runAt = new Date().toISOString();
-    const result = await runBenchmark(neumaId, {
-      workspace,
-      ask: askNeuma,
-      substrate,
-      runAt,
-      consent: { by: req.walletAddress, at: runAt },
-    });
-    const id = await workspace.writeBenchmark(neumaId, result);
-    await workspace.addJournalEntry(neumaId, {
-      type: 'benchmark',
-      content: `STATE benchmark run — ${result.dimensions.map(d => `${d.label}: ${d.score == null ? 'n/a' : Math.round(d.score * 100) + '%'}`).join(', ')}`,
-      metadata: { id, consentBy: req.walletAddress },
-      significance: 0.7,
-    }).catch(() => {});
-    res.json({ result, id });
-  } catch (error) {
-    log.error('Benchmark run', { error: error.message });
-    res.status(503).json({ error: 'Could not complete the benchmark — the substrate may be offline. No run was recorded.' });
-  }
-});
+// --- Self-check (STATE — the being's own flight check over its components):
+// workspace-self-check-routes.js, which replaced the keyword-graded benchmark
+// (2026-10-19). ---
+router.use(createWorkspaceSelfCheckRouter(requireOwnership));
 
 // --- Skills ---
 

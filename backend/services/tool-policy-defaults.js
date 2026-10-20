@@ -149,6 +149,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // working thought, and the audit walk.
     allowed: [
       'memory_search', 'memory_expand', 'memory_list', 'memory_note', 'mind_note', 'mind_read', 'self_read',
+      // The being's own records (self-records-tools.js): its journal and past chats.
+      'journal_read', 'chats_list', 'chat_read',
     ],
     denied: [],
     requireApproval: [],
@@ -186,7 +188,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // outside the conversation and its whole purpose is to show the operator
     // something. Asking him to approve being shown a list would be the wrong
     // shape — the same reasoning that made platform_data allowed.
-    allowed: ['post_check', 'share_findings'],
+    // charter_read: the being reads the charter its own house runs under (self-records-tools.js).
+    allowed: ['post_check', 'share_findings', 'charter_read'],
     denied: [],
     requireApproval: [],
   },

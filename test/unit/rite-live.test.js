@@ -14,6 +14,8 @@ import { scoreOf } from '../../frontend/app/Summoning/summoning-score.js';
 import { rehearsalFilmOf } from '../../core/birth/rite-frames.js';
 import { HEART_BAND } from '../../core/birth/soul-resonance.js';
 import { beingAura } from '../../core/aura/being.js';
+import { filmInputsOf } from '../../core/birth/finalize-words.js';
+import { appearanceSectionFor } from '../../core/genome/birth-genome.js';
 
 const EPOCH = Date.parse('2026-09-30T10:30:00Z');
 const MOMENT = { utc: new Date(EPOCH).toISOString(), epochMs: EPOCH, zone: 'Asia/Jakarta', offsetMinutes: 420 };
@@ -59,17 +61,41 @@ describe('a live birth feeds the same rite', () => {
   it('a born being\'s film reads its birth:complete records — its own aura, its real genesis hash', () => {
     const { film } = wire();
     const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64) } };
-    const trueName = { fullName: 'Rivia Oka Aldmere', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
+    const trueName = { fullName: 'Rivia Oka Ostrel', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
     const aura = beingAura({ trueName, genesisSeal: seal, neumaId: 'rivia' });
-    const being = liveBeingOf({ ...film, rehearsal: false, trueName, genesisHash: seal.genesisHash, aura });
+    const { genome } = filmInputsOf({ seal, trueName }, film.soul, 'rivia');
+    const being = liveBeingOf({ ...film, rehearsal: false, trueName, genesisHash: seal.genesisHash, aura, genome });
     expect(being.rehearsal).toBe(false);
     expect(being.trueName.genesisHash).toBe(seal.genesisHash);
     expect(being.aura.seed).toBe(aura.seed);
+    expect(being.genome).toBe(genome);
+    expect(scoreOf(being).sections.find((s) => s.kind === 'body').figure.sex).toBe(genome.sex);
+  });
+
+  it('a born being\'s film carries the very body its DNA records — the same anchors, the same derivation', () => {
+    const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64) } };
+    const { genome } = filmInputsOf({ seal, trueName: null }, null, 'rivia');
+    const { genome: dna } = appearanceSectionFor({ soulPublicKey: seal.record.soulPublicKey, genesisHash: seal.genesisHash, momentSeed: seal.record.momentSeed, neumaId: 'rivia' });
+    expect(genome).toEqual(dna);
+    // no sealed anchor, no body — the film refuses rather than invent one
+    expect(filmInputsOf({ seal: null, trueName: null }, null, '').genome).toBeNull();
+  });
+
+  it('a rehearsal\'s body is a specimen derived from its art seed, never a born being\'s', () => {
+    const being = liveBeingOf(wire().film);
+    expect(being.genome.seed).toBe(wire().film.artSeed);
   });
 
   it('nothing can be filmed without its records — never a stand-in', () => {
     expect(liveBeingOf(null)).toBeNull();
     expect(liveBeingOf({ artSeed: 'x', epochMs: EPOCH, soul: null })).toBeNull();
+    const { film } = wire();
+    const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64) } };
+    const trueName = { fullName: 'Rivia Oka Ostrel', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
+    const aura = beingAura({ trueName, genesisSeal: seal, neumaId: 'rivia' });
+    const born = { ...film, rehearsal: false, trueName, genesisHash: seal.genesisHash, aura };
+    expect(liveBeingOf({ ...born, genome: filmInputsOf({ seal, trueName }, null, 'rivia').genome })).not.toBeNull();
+    expect(liveBeingOf({ ...born, genome: null })).toBeNull();
   });
 
   it('before its birth the film waits; at it, the film begins', () => {

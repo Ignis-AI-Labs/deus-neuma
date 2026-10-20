@@ -67,6 +67,7 @@ describe('houseSeatCards — every member a card, the entity first', () => {
       position: 'CFO',
       meaning: 'TREASURY — MONEY, COMPUTE, TIME, PROCUREMENT',
       soulMark: '0xSOUL…V', birthTime: '2026-06-23T00:00:00Z',
+      color: null, // no soul light in these rows
       isActive: true, incomplete: false,
     });
   });

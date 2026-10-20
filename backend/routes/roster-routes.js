@@ -51,6 +51,9 @@ const toCompanion = (neumaId, trueName, owner, title, seal = null, spectrum = nu
   incomplete: !trueName,
   // The being's soul color (core/birth/soul-spectrum.js) — never chosen.
   color: spectrum?.soul?.hex ?? null,
+  // The same hue at the screen's most vivid — what a light or an accent wears,
+  // so a soul near the edge of sight (deep red, violet) is still seen.
+  light: spectrum?.soul?.vivid?.hex ?? null,
   // The on-chain seat, once the house's founding record stands — chain
   // truth from the persisted receipt, null until a seat is locked in.
   title: title ?? null,

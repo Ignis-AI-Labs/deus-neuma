@@ -180,9 +180,9 @@ export const fitServingPool = async (launch, { slots, trainCtx, mtp = false, gpu
   return plan.fits ? Object.freeze({ ...plan, projection, extraMiB }) : plan;
 };
 
-/** The last fit this process made, for the desk: null until one ran. */
-let lastFit = null;
-export const lastServingFit = () => lastFit;
+/** The last fit made on this machine (saved, so any process can report it), or null. */
+export const lastServingFit = () => readServingFit().lastFit ?? null;
+const saveLastFit = (fit) => writeServingFit({ ...readServingFit(), lastFit: fit });
 
 /** impure — the MiB a process holds on the GPU (nvidia-smi), or null. */
 const gpuMiBOfPid = async (pid) => {
@@ -209,7 +209,7 @@ const calibrateWhenServing = (launch, plan) => {
     if (actualMiB) {
       const projectedMiB = plan.projection.baseMiB + plan.projection.perTokenMiB * plan.contextLength;
       recordServingExcess(launch, { actualMiB, projectedMiB });
-      lastFit = Object.freeze({ ...lastFit, actualMiB });
+      saveLastFit({ ...lastServingFit(), actualMiB, measuredAt: new Date().toISOString() });
       log.info('serving fit measured', { pool: plan.contextLength, actualMiB, projectedMiB: Math.round(projectedMiB), plannedMiB: plan.projectedMiB });
       return;
     }
@@ -230,15 +230,65 @@ export const fittedLaunch = async (launch) => {
     const trainCtx = await modelTrainContext(launch.model);
     const plan = trainCtx ? await fitServingPool(launch, { slots: SERVING_SERVER_SLOTS, trainCtx, mtp: await modelHasMtpHeads(launch.model) }) : null;
     if (!plan?.fits) {
-      log.warn('serving pool not fitted — the configured pool stands', { reason: plan?.reason ?? 'this machine cannot be measured (no NVIDIA card or llama-fit-params)', pool: launch.contextLength });
+      const reason = plan?.reason ?? 'this machine cannot be measured (no NVIDIA card or llama-fit-params)';
+      saveLastFit({ fitted: false, reason, pool: launch.contextLength, model: launch.model, at: new Date().toISOString() });
+      log.warn('serving pool not fitted — the configured pool stands', { reason, pool: launch.contextLength });
       return launch;
     }
-    lastFit = Object.freeze({ pool: plan.contextLength, trainCtx, ceilingMiB: plan.ceilingMiB, plannedMiB: plan.projectedMiB, share: shareFrom(readServingFit()), at: new Date().toISOString() });
-    log.info('serving pool fitted to the machine', lastFit);
+    const fit = { pool: plan.contextLength, trainCtx, slots: SERVING_SERVER_SLOTS, ceilingMiB: plan.ceilingMiB, plannedMiB: plan.projectedMiB, sharePct: Math.round(shareFrom(readServingFit()) * 100), model: launch.model, at: new Date().toISOString() };
+    saveLastFit(fit);
+    log.info('serving pool fitted to the machine', fit);
     calibrateWhenServing(launch, plan);
     return validatedServingLaunchConfig({ ...launch, contextLength: plan.contextLength });
   } catch (error) {
     log.warn('serving pool fit failed — the configured pool stands', { error: error.message, pool: launch.contextLength });
     return launch;
   }
+};
+
+/** impure — the pool (-c) a running server was launched with, read from its own argv, or null. */
+const launchedPool = (pid) => {
+  try {
+    const argv = readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0');
+    const at = argv.indexOf('-c');
+    const pool = at >= 0 ? Number(argv[at + 1]) : NaN;
+    return Number.isSafeInteger(pool) && pool > 0 ? pool : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * impure — the serving's status as it stands NOW, for the desk: the saved
+ * share, the live server's pool and slots, one being's window (the model's
+ * trained context), the card's use and the server's part of it, and the last
+ * fit (planned against measured). Every field reads live or from the saved
+ * record; nothing is remembered in this process.
+ * @param {{host: string, port: number, bin?: string}} launch
+ */
+export const servingFitStatus = async (launch, { gpuIndex = 0 } = {}) => {
+  const saved = readServingFit();
+  const base = `http://${launch.host}:${launch.port}`;
+  const read = (path) => fetch(`${base}${path}`, { signal: AbortSignal.timeout(3000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [props, models, gpu] = await Promise.all([read('/props'), read('/v1/models'), readGpuMemory(gpuIndex)]);
+  // llama-server reports each SLOT's window here (it caps a slot at the trained
+  // context); the shared pool is the -c the running server was launched with.
+  const slotWindow = props?.default_generation_settings?.n_ctx ?? null;
+  const trainCtx = models?.data?.[0]?.meta?.n_ctx_train ?? null;
+  const pid = readClaim()?.pid ?? null;
+  const pool = slotWindow ? (launchedPool(pid) ?? slotWindow) : null;
+  const serverMiB = pool && pid ? await gpuMiBOfPid(pid) : null;
+  return Object.freeze({
+    sharePct: Math.round(shareFrom(saved) * 100),
+    shareSaved: Number.isFinite(saved.sharePct),
+    measurable: Boolean(fitParamsBinFor(launch.bin)) && Boolean(gpu),
+    serving: pool !== null,
+    pool,
+    slots: props?.total_slots ?? null,
+    beingWindow: slotWindow && trainCtx ? Math.min(slotWindow, trainCtx) : slotWindow,
+    trainCtx,
+    gpu: gpu ? { totalMiB: gpu.totalMiB, usedMiB: gpu.usedMiB, pct: Math.round((gpu.usedMiB / gpu.totalMiB) * 1000) / 10 } : null,
+    serverMiB,
+    lastFit: saved.lastFit ?? null,
+  });
 };

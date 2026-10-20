@@ -155,6 +155,8 @@ export const READ_TOOLS = Object.freeze(new Set([
   // store, so observe mode holds them. memory_list only WALKS the record —
   // the audit lane stays open while the operator watches.
   'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
+  // Its own journal and past conversations are its own record too.
+  'journal_read', 'chats_list', 'chat_read',
   // A being reading its own skies is pure observation of a write-once record;
   // so is reading its own given body (the genome).
   'skies_read', 'genome_read',
@@ -199,6 +201,7 @@ export const READ_TOOLS = Object.freeze(new Set([
 export const OBSERVATION_TOOLS = Object.freeze(new Set([
   // The being's own record
   'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
+  'journal_read', 'chats_list', 'chat_read', 'charter_read',
   // vault reads retired (prompt + fs); vault mutations are intents only
   'skies_read', 'genome_read', 'post_check', 'refinement_sense', 'wallet_view',
   'flight_check', 'get_telemetry', 'get_view', 'inspect', 'sandbox_status', 'ground_git',

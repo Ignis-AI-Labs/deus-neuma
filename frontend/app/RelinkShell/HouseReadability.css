@@ -1,12 +1,8 @@
 /* Reading hierarchy is part of LINE & CYCLE: clear type, restrained rules, room to act. */
 .house { padding: 8px; gap: 8px; }
-.house .house-head { padding: 20px; gap: 12px; }
-.house .house-head-value { font-size: 1.75rem; }
-.house .house-head-facts, .house .house-lede, .house .house-ground-why,
+.house .house-ground-why,
 .house .house-ground-path, .house .house-ground-repos { font-size: .875rem; letter-spacing: .025em; line-height: 1.65; color: var(--color-text-secondary); }
-.house .house-head-label, .house .house-legend-head, .house .house-ground-head { font-size: .8125rem; letter-spacing: .08em; color: var(--color-text-secondary); }
-.house .house-lede { border: 0; padding: 0 20px 8px; }
-.house .house-legend { padding: 0 20px; }
+.house .house-ground-head { font-size: .8125rem; letter-spacing: .08em; color: var(--color-text-secondary); }
 .house .house-seats-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
 .house .house-seats-card { padding: 18px; gap: 10px; min-width: 0; background: var(--color-glass-light); }
 .house .house-seats-who { font-size: 1.25rem; line-height: 1.4; overflow-wrap: anywhere; padding-right: 54px; }
@@ -15,7 +11,7 @@
 .house .house-seats-foot { font-size: .75rem; line-height: 1.6; letter-spacing: .02em; color: var(--color-text-secondary); padding-top: 12px; overflow-wrap: anywhere; }
 .house .house-seats-state { font-size: .6875rem; letter-spacing: .05em; top: 22px; right: 16px; }
 .house .house-seats-acts { margin-top: 4px; gap: 10px; }
-.house .house-seats-act, .house .house-legend-view, .house .house-legend-fold,
+.house .house-seats-act,
 .house .house-ground-go, .house .house-ground-move { min-height: 36px; padding: 8px 12px; font-size: .8125rem; letter-spacing: .04em; color: var(--color-text-primary); }
 .house .house-seats-table { display: block; overflow-x: auto; }
 .house .house-seats-table th, .house .house-seats-table td { padding: 14px 12px; font-size: .875rem; letter-spacing: .02em; }
@@ -23,8 +19,7 @@
 .house .house-ground { margin: 0 20px; padding: 16px 0; }
 .house .house-ground-set { flex-wrap: wrap; gap: 10px; }
 .house .house-ground-input { min-width: 160px; font-size: .9375rem; min-height: 40px; }
-.house .house-actions { padding: 16px 20px; gap: 12px; flex-wrap: wrap; }
-.house .house-action, .house .house-summon { min-height: 44px; font-size: .875rem; letter-spacing: .04em; }
+.house .house-action { min-height: 44px; font-size: .875rem; letter-spacing: .04em; }
 .house-seat-reference { margin: 8px 20px; }
 .house-seat-status { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; font-size: .875rem; line-height: 1.5; color: var(--color-text-secondary); }
 .house-seat-status button { flex-shrink: 0; min-height: 40px; padding: 8px 12px; color: var(--signal); background: transparent; border: 1px solid var(--line); font: inherit; cursor: pointer; }
@@ -37,5 +32,4 @@
 .house .founding-legend-seatline, .house .founding-legend-tier { font-size: .8125rem; letter-spacing: .035em; line-height: 1.6; color: var(--color-text-secondary); }
 .house button:focus-visible, .house summary:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
 .house-seat-status { flex-wrap: wrap; }
-.house .house-head-name { flex-wrap: wrap; }
 .house .house-seats-meaning, .house .founding-legend-purpose, .house .founding-legend-meaning { text-transform: none; }

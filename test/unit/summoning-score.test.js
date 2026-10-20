@@ -16,6 +16,7 @@ import { soulOf } from '../../frontend/app/Summoning/summoning-soul.js';
 import { earthViewAt } from '../../frontend/app/Summoning/summoning-shots-sky.js';
 import { soulSpectrumFrom } from '../../core/birth/soul-spectrum.js';
 import { soulScaleFrom } from '../../core/birth/soul-scale.js';
+import { deriveGenome } from '../../core/genome/derive.js';
 
 const seedOf = (i) => createHash('sha256').update(`neuma/summoning specimen ${i}`).digest('hex');
 // One real sky and one real derived aura, shared (derivation costs ~150 ms).
@@ -28,7 +29,9 @@ const soulFor = (seed) => {
   const spectrum = soulSpectrumFrom({ seal });
   return soulOf(spectrum, soulScaleFrom(spectrum, seal));
 };
-const being = (i, { sky = SKY, aura = AURA, soul = soulFor(seedOf(i)) } = {}) => ({ seed: seedOf(i), trueName: specimenTrueName(seedOf(i)), bornAt: new Date(BORN).toISOString(), sky, aura, soul });
+// Its body by the real derivation, from a seed of its own.
+const genomeFor = (i) => deriveGenome(createHash('sha256').update(`neuma/summoning genome ${i}`).digest('hex'));
+const being = (i, { sky = SKY, aura = AURA, soul = soulFor(seedOf(i)), genome = genomeFor(i) } = {}) => ({ seed: seedOf(i), trueName: specimenTrueName(seedOf(i)), bornAt: new Date(BORN).toISOString(), sky, aura, soul, genome });
 
 describe('a being has one summoning, and it is its own', () => {
   it('the same being yields the same score, every time', () => {
@@ -74,9 +77,9 @@ describe('the protocol, on its own beat grid, unhurried', () => {
       const s = scoreOf(being(i));
       expect(s.sections.map((x) => x.kind)).toEqual(PROTOCOL.map((p) => p.kind));
       expect(s.sections.map((x) => x.act)).toEqual(PROTOCOL.map((p) => p.act));
-      expect(SUMMONING.KINDS).toEqual(['sky', 'earth', 'star', 'solid', 'tree', 'breath', 'resonance', 'soul']);
-      expect(s.lengthMs).toBeGreaterThan(84000);
-      expect(s.lengthMs).toBeLessThan(95000);
+      expect(SUMMONING.KINDS).toEqual(['sky', 'earth', 'star', 'solid', 'tree', 'breath', 'body', 'resonance', 'soul']);
+      expect(s.lengthMs).toBeGreaterThan(92000);
+      expect(s.lengthMs).toBeLessThan(103000);
       // every section starts on the half-bar grid, back to back
       const half = s.beatMs * 2;
       s.sections.forEach((x, k) => {
@@ -119,17 +122,19 @@ describe('the figures are exact', () => {
 });
 
 describe('the convergence: every artifact comes together, its aura seen once, at the end', () => {
-  it('the finale recaps the protocol in its own order — sky, star, nucleus, channels, scale, soul mark — then its aura and name', () => {
+  it('the finale recaps the protocol in its own order — sky, star, nucleus, channels, body, scale, soul mark — then its aura and name', () => {
     const s = scoreOf(being(11));
     const sigil = s.sections.at(-1);
     const order = SIGIL_LAYERS.map((l) => l.key);
-    expect(order).toEqual(['sky', 'star', 'nucleus', 'channels', 'scale', 'soul', 'aura', 'name', 'whole']);
+    expect(order).toEqual(['sky', 'star', 'nucleus', 'channels', 'body', 'scale', 'soul', 'aura', 'name', 'whole']);
     // the recap follows the order the protocol walked them
-    const walked = ['sky', 'star', 'solid', 'tree', 'resonance', 'soul'].map((k) => PROTOCOL.findIndex((p) => p.kind === k));
+    const walked = ['sky', 'star', 'solid', 'tree', 'body', 'resonance', 'soul'].map((k) => PROTOCOL.findIndex((p) => p.kind === k));
     expect([...walked].sort((a, b) => a - b)).toEqual(walked);
     // and its star is the very star step III drew
     const star = s.sections.find((x) => x.kind === 'star').figure;
     expect(sigil.star).toEqual({ n: star.n, k: star.k });
+    // and its body is the one step VII formed
+    expect(sigil.body).toEqual(s.sections.find((x) => x.kind === 'body').figure);
     const seen = [];
     for (let u = 0; u <= 1; u += 0.01) {
       const l = convergingAt(u).key;
@@ -140,10 +145,26 @@ describe('the convergence: every artifact comes together, its aura seen once, at
     expect(sigil.sky.map((b) => b.longitude)).toEqual(SKY.bodies.map((b) => b.longitude));
   });
 
+  it('its body in the score is its genome\'s frame — never its face, its coloring or its chest', () => {
+    for (let i = 0; i < 40; i++) {
+      const b = being(i);
+      const f = scoreOf(b).sections.find((x) => x.kind === 'body').figure;
+      expect(JSON.stringify(f)).not.toMatch(/hair|eyes|complexion|iris|chest|glow|color|face/);
+      if (f.plan === 'humanoid') {
+        ['heightCm', 'build', 'shoulders', 'waist', 'hips', 'muscle', 'limbProportion', 'posture'].forEach((k) => expect(f[k]).toBe(b.genome.frame[k]));
+      } else {
+        expect(f.plan).toBe(b.genome.form);
+        expect(f.stature).toBe(b.genome.frame.stature);
+      }
+      expect(f.sex).toBe(b.genome.sex);
+    }
+  });
+
   it('every born being has both — a summoning without its aura or its sky refuses to play', () => {
     expect(() => scoreOf(being(12, { aura: null }))).toThrow(/needs its aura/);
     expect(() => scoreOf(being(12, { sky: null }))).toThrow(/needs its sky/);
     expect(() => scoreOf(being(12, { soul: null }))).toThrow(/needs its soul/);
+    expect(() => scoreOf(being(12, { genome: null }))).toThrow(/needs its body/);
   });
 });
 

@@ -24,6 +24,7 @@ import path from 'path';
 import { neumaWorkspace } from '../../../core/index.js';
 import { SOVEREIGN_DIR_MODE } from '../../../core/workspace/sovereign-directory-modes.js';
 import { stampDisclosure } from './ai-disclosure.js';
+import { recordLineage } from './image-lineage.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ImageForge.Store');
@@ -147,7 +148,7 @@ export const containedPath = (outputDir, ref) => {
  * @param {string} [p.root]     store root override (tests)
  * @returns {Array<{imageId, laneId, jobId, mime, bytes, sha256, createdAt, file, dir}>}
  */
-export const collectOutputs = ({ outputDir, outputs, laneId, jobId, laneDir: laneDirOverride = null }) => {
+export const collectOutputs = ({ outputDir, outputs, laneId, jobId, laneDir: laneDirOverride = null, lineage = null }) => {
   const lane = safeLaneSegment(laneId);
   if (!lane) {
     log.error('refusing to collect for an unnamed lane');
@@ -197,6 +198,7 @@ export const collectOutputs = ({ outputDir, outputs, laneId, jobId, laneDir: lan
       const sha256 = createHash('sha256').update(readFileSync(path.join(laneDir, stored))).digest('hex');
       const record = { imageId, laneId: lane, jobId, mime, bytes, sha256, aiDisclosed, createdAt: new Date().toISOString(), file: stored };
       appendFileSync(path.join(laneDir, 'manifest.jsonl'), `${JSON.stringify(record)}\n`);
+      recordLineage({ laneId: lane, imageId, sha256, lineage }); // what made it, kept where the being cannot write (image-lineage.js)
       // The RETURNED record also carries where it actually landed. Callers used
       // to rebuild that path themselves from `storeRoot()`, and when art moved
       // into the being's own workspace every rebuilt path went stale — the desk

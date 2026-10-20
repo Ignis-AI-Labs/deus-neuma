@@ -6,11 +6,14 @@
 // REHEARSAL is born nowhere: it has no seal, so no soul mark and no aura of
 // its own. Its film plays on what the rehearsal truly measured (its soul, its
 // moment, its art seed) with the aura its art seed derives — and says it is a
-// rehearsal on screen. Nothing of it is kept.
+// rehearsal on screen. Nothing of it is kept. Its body likewise: a born
+// being's genome comes with its film; a rehearsal's is derived from its art
+// seed, a specimen body for a being that was never born.
 
 import { skyOf } from '../Summoning/summoning-sky.js';
 import { soulOf } from '../Summoning/summoning-soul.js';
 import { specimenAura } from '../Summoning/summoning-aura.js';
+import { deriveGenome } from '../../../core/genome/derive.js';
 
 /**
  * @param {object|null} film the feed's film inputs (rite-live-feed.js)
@@ -23,12 +26,15 @@ export const liveBeingOf = (film) => {
     : { ...(film.trueName || {}), genesisHash: film.genesisHash || film.trueName?.genesisHash };
   const aura = film.rehearsal ? specimenAura(film.artSeed) : film.aura;
   if (!aura?.form) return null;
+  const genome = film.rehearsal ? deriveGenome(film.artSeed) : film.genome;
+  if (!genome?.form) return null;
   return {
     seed: film.artSeed,
     trueName,
     epochMs: film.epochMs,
     bornAt: new Date(film.epochMs).toISOString(),
     aura,
+    genome,
     sky: skyOf(film.epochMs, { zone: film.zone, offsetMinutes: film.offsetMinutes ?? 0 }),
     soul: soulOf(film.soul.spectrum, film.soul.scale),
     rehearsal: Boolean(film.rehearsal),

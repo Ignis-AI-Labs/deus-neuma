@@ -54,7 +54,7 @@ import {
 } from './portal-llm-run.js';
 import {
   persistTurnPoint as _persistTurnPoint, persistExchange as _persistExchange,
-  crystallizeObservation, sendStreamError as _sendStreamError, isMemorylessSitting, isHarnessSitting, isPlatformSitting,
+  crystallizeObservation, sendStreamError as _sendStreamError, isMemorylessSitting, isRecallBlindSitting, isHarnessSitting, isPlatformSitting,
   settleCompositionRecord as _settleCompositionRecord,
 } from './portal-turn-persist.js';
 import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead, wireContextSections } from './portal-turn-prompt.js';
@@ -235,7 +235,7 @@ export const streamConsciousness = async (connection, message) => {
         // This turn's point is the LIVE ask — its row (persisted at turn start,
         // or a retry's on disk) and any earlier take stay out of the tail, or
         // the being reads its asking twice and anchors on the rejected answer.
-        take.turnId, isMemorylessSitting(connection) // a benchmark or harness sitting recalls no memory
+        take.turnId, isRecallBlindSitting(connection) // a benchmark or harness sitting recalls no memory
       ),
       _loadNeumaSovereignData(companion?.neumaId),
       // The operator's own list (OPERATOR LIST) + the human vessel's record

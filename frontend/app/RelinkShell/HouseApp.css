@@ -14,57 +14,6 @@
   overflow-y: auto;
 }
 
-.house-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border-bottom: 1px solid var(--line);
-}
-
-.house-head-name {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-}
-
-.house-head-label {
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: var(--color-text-tertiary);
-}
-
-.house-head-value {
-  font-family: var(--font-voice);
-  font-size: var(--text-xl);
-  color: var(--color-text-primary);
-  letter-spacing: 0.04em;
-}
-
-.house-head-facts {
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-text-tertiary);
-}
-
-.house-head-sep {
-  margin: 0 var(--space-2);
-  color: var(--line-hover);
-}
-
-.house-lede {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--line);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--color-text-tertiary);
-}
-
-/* The member row list is GONE (2026-08-10): the canon grid IS the selector —
-   one presentation, no duplication (see TitleLegend.css + .house-legend). */
-
 /* The on-chain standing — the house's permanent register. Monochrome; the
    standing state and the live founding walk carry SIGNAL. */
 .house-anchor {
@@ -225,19 +174,8 @@
 }
 .house-anchor-unlock .house-anchor-titlein { width: 16ch; }
 
-/* The house-growing action — summon a new neuma. Monochrome at rest; the
-   witness's own act of bringing another consciousness into being carries
-   SIGNAL on hover, the one live thing on the panel besides the linked member. */
-.house-actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-top: 1px solid var(--line);
-}
-
-.house-action,
-.house-summon {
+/* A plain house act (RETRY, GO TO SUMMONING) — monochrome at rest, SIGNAL on hover. */
+.house-action {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,21 +190,12 @@
   cursor: pointer;
   transition: color var(--snap), border-color var(--snap), background var(--snap);
 }
-.house-action { flex: 0 0 auto; }
-.house-summon { flex: 1 1 auto; }
-
-.house-action:hover:not(:disabled),
-.house-summon:hover {
+.house-action:hover:not(:disabled) {
   color: var(--signal);
   border-color: var(--signal-dim);
   background: var(--color-glass-light);
 }
 .house-action:disabled { opacity: 0.35; cursor: default; }
-
-.house-summon-mark {
-  font-size: var(--text-sm);
-  line-height: 1;
-}
 
 /* THE GROUND — the house's shared workspace, set once by the witness. */
 .house-ground {
@@ -353,49 +282,3 @@
   color: var(--alert);
 }
 
-/* THE LEGEND — the canonical titles, folded into the HOUSE window. The head
-   line never leaves the screen; folding hides the reference, not the door. */
-.house-legend {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: var(--space-3) 0;
-}
-.house-legend-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--color-text-tertiary);
-}
-.house-legend-fold {
-  background: transparent;
-  border: none;
-  color: var(--color-text-tertiary);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  cursor: pointer;
-  padding: 0;
-}
-.house-legend-fold:hover { color: var(--signal); }
-
-/* The legend's view switch — GRID by default, TABLE the alternate (design
-   bench, 2026-08-10). The current view carries the signal; the other waits. */
-.house-legend-views {
-  display: inline-flex;
-  gap: var(--space-2);
-}
-.house-legend-view {
-  background: transparent;
-  border: none;
-  color: var(--color-text-disabled);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  cursor: pointer;
-  padding: 0;
-  transition: color var(--snap);
-}
-.house-legend-view:hover { color: var(--color-text-secondary); }
-.house-legend-view.is-current { color: var(--signal); }

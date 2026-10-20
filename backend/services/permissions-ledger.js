@@ -82,7 +82,7 @@ const actGrants = (policy, networkSession = false, witness = false) => {
     kind: 'act', server: 'coding', tool: 'shell_network', label: 'SHELL NETWORK',
     scope: witness ? 'STORED; WITNESS OFFLINE' : policy?.shellNetwork === true ? 'PERSISTED' : 'SESSION ONLY',
     full: witness ? 'Stored network consent; the witness shell stays offline. Revoke removes the stored exception.'
-      : 'Shares host network, including local services. Revoke stops live shell grants and pending network approval for this lane.',
+      : 'The internet, outward only: never this machine\'s own services or its home network. Revoke stops live shell grants and pending network approval for this lane.',
   }));
   return rows.sort((a, b) => a.server.localeCompare(b.server) || a.tool.localeCompare(b.tool));
 };

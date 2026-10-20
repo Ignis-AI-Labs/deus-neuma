@@ -95,6 +95,15 @@ describe('forgeCapacity — what this machine can make', () => {
   });
 });
 
+describe('forgeCapacity — a video pipeline\'s own RAM need', () => {
+  test('a machine with room for LTX but not for Wan is told so, in numbers', () => {
+    const m = { gpu: card(48), mindGB: 17.3, mindSource: 'measured', ram: { totalGB: 62.7, availableGB: 30 } };
+    expect(forgeCapacity(m).video.ok).toBe(true);
+    expect(forgeCapacity(m, { videoRamGB: 40 }).video).toEqual({ ok: false, why: 'needs 40 GB of free system memory for the engine, 24 GB can be spared' });
+    expect(forgeCapacity({ ...m, ram: { totalGB: 125, availableGB: 80 } }, { videoRamGB: 40 }).video.ok).toBe(true);
+  });
+});
+
 describe('engineRamCeilingGb — the memory box the engine launches in', () => {
   test('this rig: what is spare now, after the machine keeps its reserve', () => {
     expect(engineRamCeilingGb(RIG)).toBe(Math.floor(99.2 - SYSTEM_RAM_RESERVE_GB));
