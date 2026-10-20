@@ -50,7 +50,7 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     });
     app.use('/api/v1/workspace', (await import('../../backend/routes/workspace-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send(`<script type="module">
       import { loadRecord, loadProtocolDeviations, loadBenchmarks } from '/frontend/app/RelinkShell/stats-client.js';
       import { listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict, autotitleChats }

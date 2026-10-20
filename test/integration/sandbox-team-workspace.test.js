@@ -8,7 +8,7 @@
  * against the byte budget. The proof a denied write did not run is the
  * unchanged disk; the proof of an allowed one is the bytes.
  *
- * THE ACT CHANNEL (Design note, 2026-10-10: the being's OWN lane/intents/ stays
+ * THE ACT CHANNEL (ruling, 2026-10-10): the being's OWN lane/intents/ stays
  * writable under confinement — filing an intent is how it acts, and the
  * intent sweep gates every act. A plan that took that away stalled a team's
  * sprint. Intent filings never spend the lane's 10-op cap either.

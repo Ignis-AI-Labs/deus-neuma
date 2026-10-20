@@ -3,7 +3,7 @@
 // legal watch (Design note, 2026-10-01: […]). Like the CSO seat, a single-holder position — it governs the
 // house's matters ledger and the legal acts, not a platform account.
 //
-// ONE SEAT PER HOUSE (Design note, 2026-10-16: `<realm>/<wallet>/house-clo.json`,
+// ONE SEAT PER HOUSE (ruling, 2026-10-16): `<realm>/<wallet>/house-clo.json`,
 // beside the house's charter (house-office-seat.js). The pre-2026-10-16
 // machine seat (data/settings/legal-clo.json, NEUMA_LEGAL_CLO_PATH override)
 // moves on first read to the house that owns its lane, or serves no house.

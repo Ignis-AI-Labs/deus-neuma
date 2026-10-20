@@ -16,7 +16,7 @@ import { ACCESS_REQUEST_TOOL } from './access-request-being-tools.js';
 import { SUBSTRATE_FACTS_TOOL } from './substrate-facts-being-tool.js';
 import { sweepBatchIntents } from './intents/intent-sweep.js';
 import { beingCodingToolsFor, callerTurnTail, disclosedNativeTools, stashBeingTurnCatalog, TOOL_DOORS } from './being-tool-surface.js';
-import { getConfig, getActiveModelCapabilities, getRouteCapabilities } from './llm-provider.js';
+import { getConfig, configFromRoute, getActiveModelCapabilities, getRouteCapabilities } from './llm-provider.js';
 import { resolveNeumaRoute, isSovereigntyRefusal } from './neuma-route-resolver.js';
 import { isSovereignProvider } from './provider-registry.js';
 import { resolveSittingPreset, benchmarkTurnPreset } from './llm-presets.js';
@@ -57,7 +57,10 @@ import {
   crystallizeObservation, sendStreamError as _sendStreamError, isMemorylessSitting, isHarnessSitting, isPlatformSitting,
   settleCompositionRecord as _settleCompositionRecord,
 } from './portal-turn-persist.js';
-import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn } from './portal-turn-prompt.js';
+import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead, wireContextSections } from './portal-turn-prompt.js';
+import { settleUnfinishedTurn } from './portal-turn-unfinished.js';
+import { refuseUnboundTurn, refuseRetryAttachments, takeTurnOrigin } from './portal-turn-guards.js';
+import { withShedSections } from './turn-envelope.js';
 
 const log = createLogger('Portal');
 
@@ -81,6 +84,10 @@ export const _extractMemoryMetadata = (memories) => {
 export const streamConsciousness = async (connection, message) => {
   const { ws, companion } = connection;
   const companionName = companion?.name || 'unknown';
+  // A watch's origin is this turn's alone, read once — a refusal below never leaves it for the next message.
+  const origin = takeTurnOrigin(connection);
+  if (refuseUnboundTurn(ws, companion, companionName)) return; // a refused bind leaves only a name: never the bare model under it
+  if (refuseRetryAttachments(ws, companionName, message)) return; // a retry is the RECORD's turn: new attachments would vanish
   // THE TAKES: a retry (consciousness:retry) runs the turn against the
   // RECORD — the point's persisted words and attachments, answered as a new
   // take of the SAME turn-point. The bubble is never the source of truth,
@@ -201,7 +208,7 @@ export const streamConsciousness = async (connection, message) => {
   // The point lands BEFORE the provider is asked (RETRY-ANYWHERE): every
   // check the turn must pass has passed, so a provider failure from here on
   // leaves a retryable point on disk — the ask never vanishes with the error.
-  if (!retryTurn) await _persistTurnPoint(connection, companion, sessionId, thought, images, docs, take);
+  if (!retryTurn) await _persistTurnPoint(connection, companion, sessionId, thought, images, docs, take, origin);
 
   // The operator may cut this turn short (consciousness:interrupt) — the
   // controller aborts the in-flight LLM stream; what already streamed stays.
@@ -225,9 +232,10 @@ export const streamConsciousness = async (connection, message) => {
         // Same space the turn's crystallization stamps (below) — recall and
         // write agree on scope (project chat reads back its own space + general).
         connection.space,
-        // The point persisted at turn start is the LIVE ask (RETRY-ANYWHERE) —
-        // kept out of the history tail or the being reads its asking twice.
-        take.userRecord ? take.turnId : null, isMemorylessSitting(connection) // a benchmark or harness sitting recalls no memory
+        // This turn's point is the LIVE ask — its row (persisted at turn start,
+        // or a retry's on disk) and any earlier take stay out of the tail, or
+        // the being reads its asking twice and anchors on the rejected answer.
+        take.turnId, isMemorylessSitting(connection) // a benchmark or harness sitting recalls no memory
       ),
       _loadNeumaSovereignData(companion?.neumaId),
       // The operator's own list (OPERATOR LIST) + the human vessel's record
@@ -291,11 +299,13 @@ export const streamConsciousness = async (connection, message) => {
     // it. Every argument is the former local the inline block consumed in
     // place, under its original name; the return is exactly the pair the rest
     // of the turn consumes. The prompt stays the exact join of sections.
-    const { promptSections, systemPrompt, cacheSplit, transcriptMessages, transcriptSection } = await assembleTurnPrompt({
+    // Documents compose before the assembly: the tail is sized against the turn that rides beside it.
+    const docsBlock = composeDocsBlock(docs, { window: turnCapabilities?.contextWindow, promptTokens: connection.lastMeasuredStanding?.promptTokens });
+    const { promptSections, systemPrompt, cacheSplit, transcriptMessages, transcriptSection, shed } = await assembleTurnPrompt({
       connection, companion, route, turnCapabilities, sessionId,
       dna, soul, trueName, memories, speaker, substrate, capacity, emanonCore,
       benchmark, taskLedger, assignedPlan, planRecord, witnessPlan, witnessVitals, voiceEntries,
-      _annotatedTools, skills, initialNativeTools, lazyToolSchemas,
+      _annotatedTools, skills, initialNativeTools, lazyToolSchemas, turnText: docsBlock ? `${thought}\n\n${docsBlock}` : thought,
     });
 
     // The turn's tool record opens BEFORE anything can emit — the operator's
@@ -334,7 +344,6 @@ export const streamConsciousness = async (connection, message) => {
     // kept out of the session RECORD's raw words (persisted separately as
     // `docs`) but IN the prompt. Documents stay turn-local. A bounded recent
     // image batch remains visible for follow-up questions without re-upload.
-    const docsBlock = composeDocsBlock(docs, { window: turnCapabilities?.contextWindow, promptTokens: connection.lastMeasuredStanding?.promptTokens });
     const turnWithDocs = docsBlock ? `${turnContent}\n\n${docsBlock}` : turnContent;
     const priorImages = await loadRecentImageMessages(companion?.neumaId, sessionId, images, turnCapabilities?.vision);
     const messages = [
@@ -349,6 +358,7 @@ export const streamConsciousness = async (connection, message) => {
     ];
     // The wire before round one never folds (the witness lane's wireHead law): history speech never.
     const wireHead = anchorVolatileAtTurn(messages, { connection, chatId: sessionId, turnId: take.turnId, window: turnCapabilities?.contextWindow }); // the local lane's tail rides the turn, said once (turn-context-carry.js)
+    composeLocalWireAhead(route ? configFromRoute(route, getConfig()) : getConfig(), messages); // so every gauge frame counts what rides
     const contextSections = Object.freeze([
       ...promptSections,
       ...(transcriptSection ? [transcriptSection] : []),
@@ -356,21 +366,18 @@ export const streamConsciousness = async (connection, message) => {
     ]);
     const contextTelemetry = await _contextTelemetry(route);
     const contextBudget = contextTelemetry.budget;
-    const contextScope = Object.freeze({
-      neumaId: companion?.neumaId,
-      sessionId,
-      route: contextTelemetry.route,
-    });
+    const contextScope = Object.freeze({ neumaId: companion?.neumaId, sessionId, route: contextTelemetry.route });
 
-    // First emission — the assembled request before inference. Counts only
-    // ride the wire; section text remains server-side.
-    _safeSend(ws, {
+    // First emission — the assembled request before inference, counted as the
+    // wire carries it. Counts only ride the wire; section text stays server-side.
+    // What the window could not hold rides both emissions (ids + estimates) — the operator is told.
+    _safeSend(ws, withShedSections({
       ...buildCompositionEvent({
-        sections: contextSections, usage: null, toolResults: [], budget: contextBudget,
+        sections: wireContextSections(contextSections, messages[0]), usage: null, toolResults: [], budget: contextBudget,
         degraded: memories.degraded || [],
       }),
       ...contextScope,
-    });
+    }, shed));
 
     // THE TOOL-ROUND LOOP (portal-turn-rounds.js, size-law breakdown
     // pressure valve): every argument is the former local the loop consumed
@@ -393,12 +400,12 @@ export const streamConsciousness = async (connection, message) => {
     // The turn's window anatomy rides the assistant record (counts only —
     // STANDING vs PEAK and the interrupt's carried reading live in
     // portal-turn-persist's settleCompositionRecord, Design note, 2026-08-31.
-    const compositionRecord = _settleCompositionRecord({
+    const compositionRecord = withShedSections(_settleCompositionRecord({
       connection, standingUsage, turnUsage, interrupted,
-      sections: [...contextSections, ...toolContextSections],
+      sections: [...wireContextSections(contextSections, messages[0]), ...toolContextSections],
       completionText: latestResponse, budget: contextBudget, scope: contextScope,
       degraded: memories.degraded, cacheTelemetry: standingCacheTelemetry,
-    });
+    }), shed);
     // A declaration is KEPT only for a being whose channel the operator
     // flipped (Campaign 6) — the strip already ran either way; only its
     // keeping is consented.
@@ -468,23 +475,8 @@ export const streamConsciousness = async (connection, message) => {
     if (interrupt.signal.reason !== QUEUED_ACTION_REASON) _notifyTurnEnded(connection, companionName, sessionId, take, interrupted);
 
   } catch (error) {
-    // An abort that lands between rounds (or before the provider answers)
-    // surfaces as a fetch AbortError — an interrupted turn, not a failure.
-    if (interrupt.signal.aborted) {
-      await _persistExchange(connection, thought, composeInterruptedRecord(fullResponse, interrupt.signal.reason), images, docs,
-        { target: { sessionId, companion } }, turnRecordFor(ws), take);
-      ws.send(JSON.stringify({
-        type: 'consciousness:complete',
-        companion: companionName,
-        sessionId,
-        turnId: take.turnId,
-        takeIndex: take.takeIndex,
-        metadata: { interrupted: true, queuedHandoff: interrupt.signal.reason === QUEUED_ACTION_REASON || undefined },
-      }));
-      if (interrupt.signal.reason !== QUEUED_ACTION_REASON) _notifyTurnEnded(connection, companionName, sessionId, take, true);
-      return;
-    }
-    _sendStreamError(ws, companionName, error, take, { harness: isHarnessSitting(connection) });
+    // Interrupted or failed, the record keeps what was said and done (portal-turn-unfinished.js).
+    await settleUnfinishedTurn({ connection, companionName, thought, fullResponse, images, docs, sessionId, companion, take, interrupt, error, route });
   } finally {
     // Detached, but bound to THIS turn before activeTurn is cleared (H1/H2).
     if (!connection._operationRecoveryStopped) sweepBatchIntents(connection, (event) => _sendToolEvent(ws, companion, event), {

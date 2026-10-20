@@ -13,10 +13,15 @@ export const MONEY_OUT = 'intents/wallet.send';
 
 /**
  * Where the charter stands, in plain words. Pure.
- * @param {?Object} charter - the stored record (or null when none was written)
- * @returns {{key: 'none'|'pending'|'approved'|'paused', words: string, detail: string}}
+ * @param {?Object|undefined} charter - the stored record; null when none was
+ *   written, undefined while the window has not read it (a failed read is
+ *   never "no charter")
+ * @returns {{key: 'unread'|'none'|'pending'|'approved'|'paused', words: string, detail: string}}
  */
 export const charterStatus = (charter) => {
+  if (charter === undefined) {
+    return { key: 'unread', words: 'CHARTER NOT READ YET', detail: 'The charter has not been read yet. Nothing here can change it until it is.' };
+  }
   if (!charter) {
     return { key: 'none', words: 'NO CHARTER', detail: 'Nothing wakes until you write a charter and approve it.' };
   }
@@ -44,13 +49,93 @@ export const charterStatus = (charter) => {
 };
 
 /**
+ * What the house lacks to do its work, beside the charter — said under the
+ * standing, never left for the operator to discover (2026-10-18: a house with
+ * no shared ground silently lost its board, its post and its charges). Said
+ * with no charter too: the header already says NO CHARTER, and these say what
+ * else is missing. Whether the charter seats the Optio waits for a charter; a
+ * reading not yet in says nothing. A model line of one slot is said too: the
+ * house's wakes then take turns with the operator's chat (substrate-line.js). Pure.
+ * @param {?Object} charter
+ * @param {?{ground: ?string, optio: ?string, lineSlots?: number}} readiness - GET /charter's readiness
+ * @returns {Array<{key: 'ground'|'optio'|'optio-seat'|'one-slot', words: string}>}
+ */
+export const readinessWarnings = (charter, readiness) => {
+  if (!readiness) return [];
+  const out = [];
+  if (!readiness.ground) {
+    out.push({ key: 'ground', words: 'NO HOUSE GROUND — the Optio cannot charge members, post, or keep the board. Set it in the HOUSE window (grounds).' });
+  }
+  if (!readiness.optio) {
+    out.push({ key: 'optio', words: 'NO OPTIO SEATED — the review cadence wakes no one, and team plans come to you.' });
+  } else if (charter && !(charter.seats ?? []).some((s) => s.laneId === readiness.optio)) {
+    out.push({ key: 'optio-seat', words: 'THE OPTIO HOLDS NO SEAT IN THIS CHARTER — the review cadence wakes no one until the charter seats them.' });
+  }
+  if (readiness.lineSlots === 1) {
+    out.push({ key: 'one-slot', words: 'ONE SLOT ON THE MODEL LINE — house wakes run one at a time and take turns with your chat, first come first served: a wake waits for a reply in progress, and your next message waits for a wake at work.' });
+  }
+  return out;
+};
+
+/**
+ * The words beside the Optio's own seat in the charter form: what the office
+ * does in house work (optio-review.js actRoute; the dispatch and the plans it
+ * may approve), and that the office is the member's own to accept — the desk
+ * records no yes from them, so the operator asks first.
+ */
+export const OPTIO_SEAT_NOTE = 'THE OPTIO — in house work it reviews the members\' gated acts the charter neither allows nor sends to you (CLEAR lets one go on, HOLD brings it to you), and assigns members their work: charges, and team plans inside this charter\'s limits when you let it approve them. The office is the member\'s own to accept: seat them in the CHIEF OF STAFF window once they have said yes — the desk does not ask them for you.';
+
+/**
+ * Whether the Optio's review cadence, as drafted, wakes her more times a day
+ * than her daily limit lets her — said at save, never refused: the limit
+ * still holds (wake-gate.js runGate), so a review past it waits for the next
+ * local day. Null when it fits, when no cadence is on, when the Optio holds
+ * no seat in the draft or none is seated, or while a number is half typed. Pure.
+ * @param {ReturnType<typeof draftFromCharter>} draft
+ * @param {?string} optio - the seated Optio's lane (GET /charter readiness)
+ * @param {Object<string,string>} names
+ * @returns {?string}
+ */
+export const cadenceCapWarning = (draft, optio, names) => {
+  const seat = optio ? draft?.seats?.[optio] : null;
+  const hours = Number(draft?.cadenceHours);
+  const cap = Number(seat?.cap);
+  if (!draft?.cadenceOn || !seat?.on || !(Number.isInteger(hours) && hours >= 1) || !(Number.isInteger(cap) && cap >= 1)) return null;
+  const reviews = Math.ceil(24 / hours);
+  if (reviews <= cap) return null;
+  const name = nameOf(names, optio).toUpperCase();
+  return `A REVIEW EVERY ${hours} HOURS WAKES ${name} UP TO ${reviews} TIMES A DAY — ${name}'S DAILY LIMIT IS ${cap}. Past it, a review waits for the next day, and every other wake of theirs counts against the same limit.`;
+};
+
+/**
  * The master switch's face: what pressing it does. Pure.
  * @param {?Object} charter
  * @returns {{label: 'PAUSE'|'RESUME', enabled: boolean, title: string}}
  */
-export const pauseSwitch = (charter) => (charter?.paused
-  ? { label: 'RESUME', enabled: true, title: 'Let the house wake itself again, inside the charter' }
-  : { label: 'PAUSE', enabled: Boolean(charter), title: charter ? 'Stop every new wake now' : 'There is no charter to pause yet' });
+export const pauseSwitch = (charter) => {
+  if (charter?.paused) return { label: 'RESUME', enabled: true, title: 'Let the house wake itself again, inside the charter' };
+  if (charter === undefined) return { label: 'PAUSE', enabled: false, title: 'The charter has not been read yet' };
+  return { label: 'PAUSE', enabled: Boolean(charter), title: charter ? 'Stop every new wake now' : 'There is no charter to pause yet' };
+};
+
+/**
+ * One poll's reads, settled one by one (Promise.allSettled): what each read
+ * that answered returned, by name, and the failed ones' own words joined —
+ * so one failed read never blanks the parts that did answer. Pure.
+ * @param {string[]} names - one per read, in order
+ * @param {Array<{status: 'fulfilled'|'rejected', value?: *, reason?: *}>} settled
+ * @returns {{read: Object<string, *>, error: ?string}}
+ */
+export const settleReads = (names, settled) => {
+  const read = {};
+  const failed = [];
+  names.forEach((name, i) => {
+    const s = settled[i];
+    if (s?.status === 'fulfilled') read[name] = s.value;
+    else failed.push(s?.reason?.message || `Could not read the ${name}.`);
+  });
+  return { read, error: failed.length ? failed.join(' · ') : null };
+};
 
 /** Why a seat woke, in plain words. Pure. */
 const REASONS = Object.freeze({
@@ -63,22 +148,30 @@ const REASONS = Object.freeze({
   'run-lost': 'a team run was cut off by a restart',
   'plan-review': 'a team plan to review',
   'plan-verdict': 'the Optio ruled on its plan',
+  'operator-answer': 'your answer to what it filed',
+  scheduled: 'its calendar said it was time',
+  'charge-due': 'a charge it holds came due',
 });
 
 /** @param {string} reason @returns {string} */
 export const reasonWords = (reason) => REASONS[reason] || String(reason || 'work').replace(/-/g, ' ');
 
 /**
- * Why a queued wake waits, from the server's own reason. Pure.
+ * Why a queued wake waits, from the server's own reason, naming the member the
+ * way the rest of the House Clock does — never its lane id. Pure.
  * @param {string} why - the queue's held reason (wake-gate.js runGate)
+ * @param {?string} [name] - the member's name
  * @returns {{key: string, words: string}}
  */
-export const heldWords = (why) => {
+export const heldWords = (why, name = null) => {
   const text = String(why || '');
   if (/paused/.test(text)) return { key: 'paused', words: 'PAUSED — the house is paused' };
   if (/unapproved|none/.test(text)) return { key: 'unapproved', words: 'NOT APPROVED — the charter waits for your approval' };
   if (/quiet hours/.test(text)) return { key: 'quiet', words: `QUIET HOURS — ${text.replace(/^quiet hours\s*/, '').replace(/[()]/g, '')}` };
-  if (/spent its/.test(text)) return { key: 'cap', words: `DAILY LIMIT REACHED — ${text}` };
+  if (/spent its/.test(text)) {
+    const cap = /spent its (\d+) wakes/.exec(text)?.[1];
+    return { key: 'cap', words: `DAILY LIMIT REACHED — ${name || 'this member'} has spent its ${cap ? `${cap} ` : ''}wakes for today` };
+  }
   if (/no longer a seat/.test(text)) return { key: 'seat', words: 'NOT A SEAT — the charter no longer lets it wake' };
   if (/not running/.test(text)) return { key: 'clock', words: 'THE HOUSE CLOCK IS NOT RUNNING' };
   return { key: 'other', words: text.toUpperCase() };
@@ -141,7 +234,7 @@ export const queueRows = (queue, names) => {
     .map((i) => {
       const wait = running[i.seat]
         ? { key: 'one-at-a-time', words: ONE_AT_A_TIME }
-        : held.has(i.seat) ? heldWords(held.get(i.seat)) : { key: 'ready', words: 'ABOUT TO WAKE' };
+        : held.has(i.seat) ? heldWords(held.get(i.seat), nameOf(names, i.seat)) : { key: 'ready', words: 'ABOUT TO WAKE' };
       return {
         key: i.id, seat: i.seat, name: nameOf(names, i.seat), reason: reasonWords(i.reason),
         ref: i.ref, queued: formatDateTime(i.queuedAt), wait,
@@ -170,27 +263,6 @@ export const ledgerRow = (row, names) => {
     note: row.note ?? row.error ?? null,
   };
 };
-
-/**
- * One ask a wake sent back to the operator. Pure.
- * @param {Object} ask - an asks.jsonl row (closed ones carry status 'closed')
- * @param {Object<string,string>} names
- */
-export const askRow = (ask, names) => ({
-  key: ask.id,
-  seat: ask.seat,
-  name: nameOf(names, ask.seat),
-  what: ask.kind === 'plan' ? `a team plan${ask.planId ? ` (${ask.planId})` : ''}` : ask.tool || 'an act',
-  scope: ask.scope ?? null,
-  why: ask.why || '',
-  at: formatDateTime(ask.at),
-  open: ask.status !== 'closed',
-  closed: ask.status === 'closed' ? `CLOSED ${formatDateTime(ask.closedAt)}${ask.closeNote ? ` — ${ask.closeNote}` : ''}` : null,
-  sessionId: ask.sessionId ?? null,
-});
-
-/** How many asks still wait on the operator. Pure. */
-export const openAskCount = (asks) => (asks ?? []).filter((a) => a.status !== 'closed').length;
 
 // pure — text area lines, trimmed, blanks dropped
 const lines = (text) => String(text ?? '').split('\n').map((l) => l.trim()).filter(Boolean);

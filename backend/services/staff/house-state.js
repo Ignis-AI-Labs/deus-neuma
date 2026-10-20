@@ -28,9 +28,14 @@ import { houseKey } from './cos-designation.js';
 import { listRuns } from '../team-run-store.js';
 import { listDispatches, OPEN_DISPATCH_STATUSES, TERMINAL_DISPATCH_STATUSES } from './dispatch-store.js';
 import { listEntries, OPEN_BOARD_STATUSES, BOARD_STALE_MS } from './board-store.js';
+import { wakeRows } from './wake-activity.js';
+import { readWakeQueue } from '../house-clock/wake-queue.js';
+import { seatName } from '../house-clock/wake-plan.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 
 const LIVE_TASK_STATUSES = new Set(['open', 'active']);
+// The drawer's list holds every open charge, and at least this many in all.
+const CHARGE_LIST_MIN = 10;
 
 // impure — one seat's open work, counts only (THE PRIVACY LAW above). Null
 // when the lane has no readable ledger — an absent reading is honest.
@@ -129,25 +134,46 @@ const failureFold = async (wallet) => {
     .map((e) => ({ id: e.id, channel: e.channelId ?? null, error: e.error ?? 'unknown failure', failedAt: e.failedAt ?? null }));
 };
 
+// impure — a row's name when the founding record gives none: the being's own
+// name from its DNA, read only for a lane this house's operator owns — a name
+// is never borrowed across houses. Null when the lane is not the house's.
+const ownName = async (wallet, laneId) => {
+  const house = houseKey(wallet);
+  const owner = await neumaWorkspace.readOwner(laneId).catch(() => null);
+  return house && houseKey(owner?.wallet) === house ? seatName(laneId) : null;
+};
+
 /**
  * WHO IS WORKING — the lean fold the desk's activity chip polls (Founder,
- * 2026-09-15: […]). One row per seat with live work, best status first: working >
- * received > dispatched > open. Drawer + board + roster names only — no
- * queue/git walks, this is polled. Fail-soft on every leg. impure.
+ * 2026-09-15: […]). One row per seat with live work, best status first: awake >
+ * working > waiting > received > dispatched > open. Drawer + board + the
+ * house clock's running wakes + roster names only — no git walks, this is
+ * polled. A wake runs under the charter with or without an Optio, so the
+ * wake leg reads even when no office is seated; the drawer and the board stay
+ * the office's. A being already listed for a charge keeps its one row, now
+ * reading awake (or waiting). Fail-soft on every leg. impure.
  * @param {string|null} wallet
  * @param {string|null} officerLane
  * @returns {Promise<Array<{neumaId: string, name: string|null, seat: string|null,
  *   status: string, task: string, since: string|null}>>}
  */
 export const houseActivity = async (wallet, officerLane) => {
-  if (!officerLane) return [];
-  const seat = await houseSeatFor(wallet, officerLane).catch(() => null);
-  const ground = await loadHouseWorkspace(wallet).catch(() => ({ root: null }));
-  const nameOf = (laneId) => seat?.roster.find((r) => r.neumaId === laneId)?.name ?? null;
+  const queue = wallet ? await readWakeQueue(wallet).catch(() => null) : null;
+  const awake = wakeRows(queue);
+  if (!officerLane && !awake.length) return [];
+  // The roster comes from the founding record holding the officer — or, with
+  // no office seated, the record holding the first awake seat.
+  const seat = await houseSeatFor(wallet, officerLane ?? awake[0].neumaId).catch(() => null);
+  const ground = officerLane ? await loadHouseWorkspace(wallet).catch(() => ({ root: null })) : { root: null };
+  // The record's name, unless it is only the lane id (house-titles.js falls back to it).
+  const nameOf = (laneId) => {
+    const name = seat?.roster.find((r) => r.neumaId === laneId)?.name;
+    return name && name !== laneId ? name : null;
+  };
   const titleOf = (laneId) => seat?.roster.find((r) => r.neumaId === laneId)?.title ?? null;
 
   const rows = [];
-  const drawer = await listDispatches(officerLane).catch(() => []);
+  const drawer = officerLane ? await listDispatches(officerLane).catch(() => []) : [];
   for (const d of drawer) {
     if (!OPEN_DISPATCH_STATUSES.includes(d.status)) continue;
     rows.push({
@@ -174,9 +200,17 @@ export const houseActivity = async (wallet, officerLane) => {
       });
     }
   }
-  const rank = { working: 0, received: 1, dispatched: 2, open: 3 };
-  return rows
-    .map((r) => ({ ...r, name: r.name ?? r.neumaId }))
+  for (const wake of awake) {
+    const listed = rows.find((r) => r.neumaId === wake.neumaId);
+    if (listed) {
+      listed.status = wake.status;
+      continue;
+    }
+    rows.push({ ...wake, name: nameOf(wake.neumaId), seat: titleOf(wake.neumaId) });
+  }
+  const rank = { awake: 0, working: 1, waiting: 2, received: 3, dispatched: 4, open: 5 };
+  const named = await Promise.all(rows.map(async (r) => ({ ...r, name: r.name ?? await ownName(wallet, r.neumaId) ?? r.neumaId })));
+  return named
     .sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9)
       || String(a.since ?? '').localeCompare(String(b.since ?? '')));
 };
@@ -193,6 +227,14 @@ export const computeHouseState = async ({ wallet = null, laneId = null } = {}) =
   const ground = await loadHouseWorkspace(wallet).catch(() => ({ root: null }));
   const drawer = await listDispatches(laneId).catch(() => []);
   const open = drawer.filter((d) => OPEN_DISPATCH_STATUSES.includes(d.status));
+  // Read over the WHOLE drawer: a newest-first slice let ten newer charges hide
+  // an older open one that is past due. Past due first, then every other open
+  // charge, then the closed ones as room allows.
+  const nowMs = Date.now();
+  const isPastDue = (d) => Boolean(d.dueAt) && Date.parse(d.dueAt) < nowMs;
+  const pastDue = open.filter(isPastDue);
+  const charges = [...pastDue, ...open.filter((d) => !isPastDue(d)), ...drawer.filter((d) => !OPEN_DISPATCH_STATUSES.includes(d.status))]
+    .slice(0, Math.max(open.length, CHARGE_LIST_MIN));
 
   const roster = await Promise.all((seat?.roster ?? [])
     .filter((r) => r.neumaId && r.neumaId !== laneId)
@@ -231,7 +273,7 @@ export const computeHouseState = async ({ wallet = null, laneId = null } = {}) =
     houseName: seat?.houseName ?? null,
     roster: rosterWithBoard,
     board: { open: board.open, stale: board.stale, entries: board.entries },
-    dispatches: { open: open.length, total: drawer.length, charges: drawer.slice(0, 10) },
+    dispatches: { open: open.length, pastDue: pastDue.length, total: drawer.length, charges },
     plan: plan ? { goal: plan.goal, approvedAt: plan.approvedAt ?? null, steps: plan.steps?.length ?? 0 } : null,
     runs: runs.slice(0, 5),
     queue,
@@ -297,7 +339,8 @@ export const formatHouseStateForBeing = (state, now = Date.now()) => {
   if (!state.dispatches.total) {
     lines.push('No charges filed yet — staff/dispatch files one.');
   } else {
-    lines.push(`${state.dispatches.open} open of ${state.dispatches.total} charge(s):`);
+    const pastDue = state.dispatches.pastDue ? ` — ${state.dispatches.pastDue} PAST DUE` : '';
+    lines.push(`${state.dispatches.open} open of ${state.dispatches.total} charge(s)${pastDue}:`);
     for (const d of state.dispatches.charges) {
       const age = daysAgo(d.filedAt, now);
       const ageText = age === null ? 'age unknown' : age === 0 ? 'today' : `${age}d ago`;
@@ -306,6 +349,8 @@ export const formatHouseStateForBeing = (state, now = Date.now()) => {
       const note = d.note ? ` · note: ${d.note}` : '';
       lines.push(`- [${d.id}] "${d.title}" → ${d.to} · dispatched ${ageText}${due}${closed}${note}`);
     }
+    const unlisted = state.dispatches.total - state.dispatches.charges.length;
+    if (unlisted > 0) lines.push(`- …and ${unlisted} older closed charge(s), not listed.`);
   }
 
   lines.push('', '### The standing plan of record');

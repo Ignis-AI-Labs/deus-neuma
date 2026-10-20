@@ -15,8 +15,9 @@
 //
 // The WRITER law: only the seated officer's lane (through the staff/*
 // intents) and the platform's own status sweep (the office's clerk, which
-// stamps lastCheckedAt) write here. A seat's reply is house post EVIDENCE —
-// it never moves a charge by itself.
+// stamps lastCheckedAt) write here — and a re-seat of the office, which
+// carries the open charges to the new officer (carryOpenCharges). A seat's
+// reply is house post EVIDENCE — it never moves a charge by itself.
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -158,9 +159,31 @@ const applyPatch = (record, patch) => {
   return next;
 };
 
+// impure — the board leg of every charge move, the ONE place the drawer and the
+// house board are kept mirrored (the office's own update and a seat's ack
+// alike): the linked entry takes the move through BOARD_STATUS_OF. Fails soft
+// — the board is a mirror, never the truth; the drawer stands even if the
+// ground is unreachable this once.
+const mirrorToBoard = async (charge, patch) => {
+  if (!charge.boardId || (patch.status === undefined && patch.note === undefined)) return;
+  try {
+    const { loadHouseWorkspace } = await import('../house-workspace.js');
+    const { root } = await loadHouseWorkspace(charge.by);
+    if (!root) return;
+    const { updateEntry, BOARD_STATUS_OF } = await import('./board-store.js');
+    await updateEntry(root, charge.boardId, {
+      ...(patch.status !== undefined ? { status: BOARD_STATUS_OF[patch.status] } : {}),
+      ...(patch.note !== undefined ? { note: patch.note } : {}),
+    });
+  } catch {
+    // the mirror's miss never costs the move
+  }
+};
+
 /**
  * Move one charge: a status transition and/or a note. impure (fs; tmp+rename).
- * Refuses a missing charge and an already-closed one.
+ * Refuses a missing charge and an already-closed one; the linked board entry
+ * moves with it (mirrorToBoard).
  * @param {string} laneId
  * @param {string} id
  * @param {{status?: string, note?: string}} patch
@@ -173,6 +196,7 @@ export const updateDispatch = async (laneId, id, patch) => {
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
   await fs.writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`);
   await fs.rename(tmp, file);
+  await mirrorToBoard(next, patch || {});
   return next;
 };
 
@@ -220,22 +244,7 @@ export const ackCharge = async (laneId, id, patch, by) => {
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
   await fs.writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`);
   await fs.rename(tmp, file);
-  if (next.boardId) {
-    try {
-      const { loadHouseWorkspace } = await import('../house-workspace.js');
-      const { root } = await loadHouseWorkspace(next.by);
-      if (root) {
-        const { updateEntry, BOARD_STATUS_OF } = await import('./board-store.js');
-        await updateEntry(root, next.boardId, {
-          ...(patch.status !== undefined ? { status: BOARD_STATUS_OF[patch.status] } : {}),
-          ...(patch.note !== undefined ? { note: patch.note } : {}),
-        });
-      }
-    } catch {
-      // The board leg is a mirror, never the truth — the drawer stands even
-      // if the ground is unreachable this once.
-    }
-  }
+  await mirrorToBoard(next, patch || {});
   return next;
 };
 
@@ -269,6 +278,45 @@ export const listDispatches = async (laneId) => {
     }
   }));
   return records.filter(Boolean).sort((a, b) => String(b.filedAt).localeCompare(String(a.filedAt)));
+};
+
+/**
+ * Re-home a house's OPEN charges to its newly seated officer. The drawer lives
+ * in the officer lane and every reader keys by the seated one, so a re-seat
+ * that moved nothing stranded the house's live work in silence. Every open
+ * charge this house (`by`) holds in any of its other lanes' drawers moves —
+ * id kept (the holder's ack names it), `from` the new office, `carriedFrom`
+ * the old — and no wake is signalled (the work is not new). Closed charges
+ * stay where they closed. A same-id record already in the new drawer is left
+ * in place and counted, never overwritten. impure (fs).
+ * @param {string} wallet - the house (its operator's wallet)
+ * @param {string} toLane - the newly seated officer lane
+ * @returns {Promise<{carried: number, left: number}>}
+ */
+export const carryOpenCharges = async (wallet, toLane) => {
+  const house = String(wallet || '').toLowerCase();
+  const tally = { carried: 0, left: 0 };
+  if (!house || !LANE_ID.test(String(toLane))) return tally;
+  for (const { neumaId } of await neumaWorkspace.listNeumaByOwner(wallet)) {
+    if (neumaId === toLane) continue;
+    for (const summary of await listDispatches(neumaId)) {
+      if (!OPEN_DISPATCH_STATUSES.includes(summary.status)) continue;
+      const charge = await readDispatch(neumaId, summary.id);
+      if (!charge || String(charge.by).toLowerCase() !== house) continue;
+      const moved = { ...charge, from: toLane, carriedFrom: charge.from };
+      await fs.mkdir(path.dirname(chargePath(toLane, charge.id)), { recursive: true });
+      try {
+        await fs.writeFile(chargePath(toLane, charge.id), `${JSON.stringify(moved, null, 2)}\n`, { flag: 'wx' });
+      } catch (err) {
+        if (err.code !== 'EEXIST') throw err;
+        tally.left += 1;
+        continue;
+      }
+      await fs.unlink(chargePath(neumaId, charge.id));
+      tally.carried += 1;
+    }
+  }
+  return tally;
 };
 
 /**

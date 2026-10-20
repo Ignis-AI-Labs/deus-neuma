@@ -83,7 +83,7 @@ export const addSensitiveGrant = (layer, tier, filePath) => {
 /**
  * Return a new policy layer with `filePath` no longer granted at `tier` — the
  * inverse of addSensitiveGrant, for the operator taking a standing grant back
- * (Design note, 2026-08-30. Pure; never mutates.
+ * (ruling, 2026-08-30). Pure; never mutates.
  *
  * EXACT MATCH ONLY, and that is deliberate. `sensitiveGrantCovers` matches by
  * PATTERN, so one grant can cover many files — but revoking is not the inverse

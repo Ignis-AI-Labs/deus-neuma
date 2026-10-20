@@ -1,5 +1,5 @@
 /**
- * queue_get BY THE POST (Design note, 2026-10-13: a being holding an X post's id or link reads
+ * queue_get BY THE POST (ruling, 2026-10-13): a being holding an X post's id or link reads
  * the house's record of it in one call — its own sent post, or the house's answer to
  * someone else's — instead of hunting the queue for an internal id.
  */

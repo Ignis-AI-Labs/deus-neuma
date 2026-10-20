@@ -45,14 +45,17 @@ Keep your branch current by merging or rebasing on `dev`, never on `main`.
   database, a real module). A test that passes against a fake has proven
   nothing.
 - **Files stay small.** A source file over 500 lines should be split.
-- **Run the checks:**
+- **Run the checks** (CI runs the same on every pull request):
   ```bash
   npm run lint
-  npx vitest run test/unit
+  npx vitest run --project suite test/unit   # the GPU-free lane, no model needed
   node scripts/secret-scan.mjs
   ```
-- **Never commit secrets, keys, personal paths or real beings' data.** CI
-  scans for them, and so do we.
+- **Never commit secrets, keys, personal paths or real beings' data.**
+  `npm install` turns on git hooks that check every commit and push for
+  secrets (`scripts/secret-gate.mjs`) and file size; CI scans every pull
+  request too. A refused commit is fixed by removing the value, never by
+  `--no-verify`.
 
 ## Words we use
 

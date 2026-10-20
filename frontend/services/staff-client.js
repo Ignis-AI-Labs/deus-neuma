@@ -50,7 +50,7 @@ export const clearCosSeat = async () =>
   staffCall('DELETE', '/seat', { errorPrefix: 'Could not clear the CoS seat' });
 
 /**
- * End the office's standing plan of record (Design note, 2026-10-10: the record retires, moved aside and
+ * End the office's standing plan of record (ruling, 2026-10-10): the record retires, moved aside and
  * never destroyed, and the live connection drops the plan and its workspace confinement now.
  * Refused while a team run is working on it.
  * @returns {Promise<{ended: true, name: (string|null)}>}

@@ -26,7 +26,8 @@
  * function maps it. Pure: no window manager, no React, no DOM.
  */
 
-import { KIND } from '../../../../core/runtime/notification-record.js';
+import { KIND, STANDING } from '../../../../core/runtime/notification-record.js';
+import { encodeStreamTransfer, openSittingActions } from '../stream-tab-transfer.js';
 
 /**
  * Where a record points.
@@ -81,9 +82,20 @@ export const notificationTarget = (record) => {
       return { appId: 'security', payload: null };
 
     // A house wake sent something back to the operator: the HOUSE CLOCK,
-    // where the ask stands beside the wake that filed it and its sitting.
-    case KIND.houseWake:
-      return { appId: 'houseclock', payload: ref.wakeId ? { wakeId: ref.wakeId, sessionId: ref.sessionId ?? null } : null };
+    // where the ask stands beside the wake that filed it and its sitting. A
+    // card about something filed for them — an ask, the Optio's packet — opens
+    // on the ASKS tab, where it is answered.
+    case KIND.houseWake: {
+      const tab = ref.askId || ref.packetAt ? 'asks' : null;
+      if (!ref.wakeId && !tab) return { appId: 'houseclock', payload: null };
+      return {
+        appId: 'houseclock',
+        payload: {
+          ...(ref.wakeId ? { wakeId: ref.wakeId, sessionId: ref.sessionId ?? null } : {}),
+          ...(tab ? { tab } : {}),
+        },
+      };
+    }
 
     // The legal watch's matters land in the LEGAL window — the Praetor's
     // office (the seat, the watch, the matters ledger).
@@ -111,6 +123,75 @@ export const notificationTarget = (record) => {
     case KIND.codeReload:
       return null;
 
+    default:
+      return null;
+  }
+};
+
+/**
+ * The window-manager actions a card's click dispatches, in order.
+ *
+ * The window manager carries ONE payload shape: a bounded string
+ * (normalizePayload in window-manager-reducer.js), and `OPEN` carries none.
+ * So a target's object payload never rides the dispatch; a sitting travels
+ * the way a torn-out tab does (stream-tab-transfer.js), in its own stream
+ * window seated on it. Instance 1 is the desk's own stream and never reads a
+ * payload, so when it is closed it is opened first and the sitting lands in
+ * a window of its own beside it (openSittingActions). Every other target
+ * opens (or raises) its app; the HOUSE CLOCK's tab rides house-clock-focus.js
+ * and every other app's item rides card-landing.js (cardLanding).
+ *
+ * Pure.
+ *
+ * @param {object} record
+ * @param {Array<{id: string}>} windows - the window manager's open windows
+ * @returns {object[]} empty when the card is not navigable
+ */
+export const cardOpenActions = (record, windows = []) => {
+  const target = notificationTarget(record);
+  if (!target) return [];
+  const sitting = target.appId === 'chat' ? target.payload : null;
+  const payload = sitting?.sessionId && sitting.neumaId
+    ? encodeStreamTransfer({
+      id: `card-${record.id}`,
+      kind: record.standing === STANDING.witness ? 'witness' : 'local',
+      neumaId: sitting.neumaId,
+      name: record.actor?.name ?? null,
+      sessionId: sitting.sessionId,
+      focus: null,
+    })
+    : null;
+  if (!payload) return [{ type: 'OPEN', id: target.appId }];
+  return openSittingActions(payload, windows);
+};
+
+/**
+ * The exact item a card lands on inside its app: the task in TASKS, the run in
+ * TEAMS and WORKFLOW, the image in the GALLERY. The window manager carries no
+ * object payload, so the item rides the app's own latch (card-landing.js)
+ * beside the OPEN. A task card lands on the lane of the being that settled it;
+ * TEAMS lists runs by their record id, which the card carries as `ref.record`.
+ *
+ * Pure.
+ *
+ * @param {object} record
+ * @returns {?{appId: string, item: object}} null when the card names no item
+ */
+export const cardLanding = (record) => {
+  const target = notificationTarget(record);
+  const ref = record?.ref && typeof record.ref === 'object' ? record.ref : {};
+  const named = (id) => typeof id === 'string' && id !== '';
+  switch (target?.appId) {
+    case 'todo': {
+      const ids = [ref.taskId, ref.assignedId].filter(named);
+      return ids.length ? { appId: 'todo', item: { scope: record.actor?.id ?? null, ids } } : null;
+    }
+    case 'teams':
+      return named(ref.record) ? { appId: 'teams', item: { recordId: ref.record } } : null;
+    case 'workflow':
+      return named(ref.runId) ? { appId: 'workflow', item: { runId: ref.runId } } : null;
+    case 'gallery':
+      return named(ref.imageId) ? { appId: 'gallery', item: { imageId: ref.imageId } } : null;
     default:
       return null;
   }

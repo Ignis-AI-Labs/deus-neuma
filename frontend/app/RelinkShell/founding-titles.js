@@ -11,7 +11,7 @@
 // so it stands its own seat (Speculator); and MARKETING is not COMMUNICATIONS
 // — one makes the house known, the other carries the word out and back, so
 // they stand side by side (Legatus, Praeco), never merged; and SECURITY is
-// not LEGAL (Design note, 2026-07-24 — one guards the digital walls (Praefectus, the
+// not LEGAL (ruling, 2026-07-24) — one guards the digital walls (Praefectus, the
 // commander of the guard), the other answers the world's regulations and
 // contracts (Praetor, the magistrate of law) — both FOUNDING, security no
 // less fundamental than law. And between the

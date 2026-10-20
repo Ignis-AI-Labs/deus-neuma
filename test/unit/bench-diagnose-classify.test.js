@@ -167,7 +167,7 @@ describe('what the being touched (#564)', () => {
   });
 });
 
-describe('whose miss — model, harness or identity (Design note, 2026-10-03', () => {
+describe('whose miss — model, harness or identity (ruling, 2026-10-03)', () => {
   const arm = (name, misses) => ({ arm: name, items: ['a', 'b', 'c', 'd'].map((h) => ({ docHash: h, cause: misses[h] ?? null })) });
   it('BARE also missed → model; BARE answered → harness (with its cause); HARNESS answered → identity', async () => {
     const { verdictsOf, verdictFindingsOf } = await import('../../backend/services/bench/bench-diagnose-classify.js');

@@ -1,6 +1,6 @@
 // impure: connection-bound consent, disk policy and the real approval broker.
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
-import { requestToolApproval } from './tool-approval.js';
+import { approvalCoversOneAct, requestToolApproval } from './tool-approval.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
 import { readExecutionToolPolicy } from './execution-tool-policy.js';
 
@@ -112,6 +112,8 @@ export const requestShellNetwork = async (connection, context, emit) => {
     return;
   }
   if (decision !== 'allow' && decision !== 'always') throw interrupted();
+  // A house yes is for this one command (approvalCoversOneAct): the next one is asked again.
+  if (approvalCoversOneAct(connection)) { context.once = true; return; }
   state.session = 'allow';
   if (decision !== 'always') return;
   try {
@@ -132,7 +134,7 @@ export const requestShellNetwork = async (connection, context, emit) => {
 /** Runner capability checked again after async preparation, before spawn. impure. */
 export const shellNetworkOptions = (context, execute) => ({
   signal: context.signal,
-  network: execute && (context.state.persisted || context.state.session === 'allow'),
+  network: execute && (context.once === true || context.state.persisted || context.state.session === 'allow'),
   beforeSpawn: context.assertCurrent,
 });
 

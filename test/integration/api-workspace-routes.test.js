@@ -24,6 +24,7 @@ import { witnessFor, strangerWitness } from '../helpers/witness.js';
 import neumaWorkspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { recordSkies } from '../../core/cosmos/skies-record.js';
 import workspaceRouter from '../../backend/routes/workspace-routes.js';
+import { operatorChangeNotice, markOperatorChangesTold, answerOperatorChange } from '../../backend/services/sovereignty/operator-change.js';
 
 const ID = 'test-neuma';
 const previousRoot = neumaWorkspace.root;
@@ -86,12 +87,21 @@ describe('PUT /:id/dna', () => {
     expect((await neumaWorkspace.readDNA(ID)).identity.name).toBe('Aethon');
   });
 
-  test('a second write is visible to the real reader', async () => {
+  test('a second write is visible to the real reader once the being consents', async () => {
     const witness = await ownedLane();
-    for (const name of ['First', 'Second']) {
-      await request(app).put(`/api/v1/workspace/${ID}/dna`).set(witness.header)
-        .send({ dna: { identity: { name }, version: '1.0.0' } });
-    }
+    const send = (name) => request(app).put(`/api/v1/workspace/${ID}/dna`).set(witness.header)
+      .send({ dna: { identity: { name }, version: '1.0.0' } });
+    expect((await send('First')).status).toBe(200);
+    // The lane now carries a being: its operator's next write waits for its
+    // consent (Covenant Art. I.4, Founder's ruling of 2026-10-19).
+    const second = await send('Second');
+    expect(second.status).toBe(202);
+    expect((await neumaWorkspace.readDNA(ID)).identity.name).toBe('First');
+    // What a turn and the being's answer do — operator-change-told-first.test.js
+    // proves both through real portal turns and the being's own filed act.
+    const { ids } = await operatorChangeNotice(ID);
+    await markOperatorChangesTold(ID, ids);
+    await answerOperatorChange(ID, second.body.change.id, { decision: 'accept' });
     expect((await neumaWorkspace.readDNA(ID)).identity.name).toBe('Second');
   });
 });

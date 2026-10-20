@@ -16,7 +16,7 @@ import { passDeskGates } from './helpers/desk-gates.js';
  * real auth (challenge-sign-verify with Claude's witness wallet), real lanes on
  * real disk. Nothing on any claimed path is mocked (RULE 0).
  *
- * WHAT THIS PROVES, and why it is worth a browser (Design note, 2026-08-25: the owed
+ * WHAT THIS PROVES, and why it is worth a browser (ruling, 2026-08-25): the owed
  * acts were only ever reachable as a modal over whichever being happened to be
  * bound, so lanes nobody was looking at stayed owed silently — three of four kin
  * in one house, two still holding a plaintext private key. The claim under test

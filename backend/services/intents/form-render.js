@@ -27,6 +27,8 @@ import { resolvePipeline, resolveModel } from '../image-forge/pack-registry.js';
 import { parameterize } from '../image-forge/parameterizer.js';
 import { loadScreenList, screenSlots } from '../image-forge/prompt-screen.js';
 import { runJob } from '../image-forge/job-lane.js';
+import { withMachine } from '../machine-lease.js';
+import { MIN_ENGINE_VRAM_GB } from '../image-forge/forge-capacity.js';
 import { collectOutputs } from '../image-forge/image-store.js';
 import { publishActivity, percentOf } from '../image-forge/forge-activity.js';
 import { recordAttempt, toAttemptRecord } from '../image-forge/attempt-log.js';
@@ -164,30 +166,41 @@ export const formRenderIntent = Object.freeze({
     });
 
     try {
-      const ready = await ensureComfyReady(cfg);
-      if (ready.state !== 'ready' && !ready.serving) {
+      // THE MACHINE LANE (machine-lease.js): the render waits for the machine to itself, and the
+      // house waits for the render — never two heavy things on the card at once.
+      const run = await withMachine({
+        label: `Image Forge — ${pipeline.label}`, needGB: MIN_ENGINE_VRAM_GB, signal,
+        onWait: ({ position }) => publishActivity({ jobId, phase: 'queued', detail: `waiting for the machine — place ${position}` }),
+      }, async () => {
+        const ready = await ensureComfyReady(cfg);
+        if (ready.state !== 'ready' && !ready.serving) return { ready };
+        noteComfyActivity();
+        emit({ tool, status: 'running', summary: `rendering — ${pipeline.label}` });
+        publishActivity({ jobId, phase: 'rendering', percent: null, detail: 'rendering' });
+
+        let lastFifth = -1;
+        const outcome = await runJob(cfg, {
+          graph: built.graph,
+          promptId: jobId,
+          signal,
+          onProgress: ({ value, max }) => {
+            publishActivity({ jobId, phase: 'rendering', percent: percentOf({ value, max }) });
+            const fifth = max > 0 ? Math.floor((value / max) * 5) : 0;
+            if (fifth === lastFifth) return;
+            lastFifth = fifth;
+            emit({ tool, status: 'running', summary: `rendering — ${Math.round((value / max) * 100)}%` });
+          },
+        });
+        noteComfyActivity();
+        return { ready, outcome };
+      });
+      if (!run.outcome) {
+        const { ready } = run;
         const detail = ready.lastError?.error || ready.install?.reason || `engine is ${ready.state}`;
         attempt('error', { detail: `engine unavailable: ${detail}` });
         return { ok: false, reason: `the image engine could not start: ${detail}` };
       }
-      noteComfyActivity();
-      emit({ tool, status: 'running', summary: `rendering — ${pipeline.label}` });
-      publishActivity({ jobId, phase: 'rendering', percent: null, detail: 'rendering' });
-
-      let lastFifth = -1;
-      const outcome = await runJob(cfg, {
-        graph: built.graph,
-        promptId: jobId,
-        signal,
-        onProgress: ({ value, max }) => {
-          publishActivity({ jobId, phase: 'rendering', percent: percentOf({ value, max }) });
-          const fifth = max > 0 ? Math.floor((value / max) * 5) : 0;
-          if (fifth === lastFifth) return;
-          lastFifth = fifth;
-          emit({ tool, status: 'running', summary: `rendering — ${Math.round((value / max) * 100)}%` });
-        },
-      });
-      noteComfyActivity();
+      const { outcome } = run;
 
       if (outcome.status === 'interrupted') {
         publishActivity({ jobId, phase: 'stopped', detail: 'the render was stopped' });

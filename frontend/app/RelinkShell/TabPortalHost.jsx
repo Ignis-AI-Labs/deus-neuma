@@ -54,7 +54,7 @@ const isBusy = (state) => Boolean(state?.thinking || state?.messages?.some((m) =
 const TabPortal = ({ tab, onActivity, onSession, onValue, onComposition }) => {
   // quiet: a tab's portal is background plumbing — it must never flash
   // "Portal established" (or any link status) across the desk's global badge
-  // on a mere tab switch (Design note, 2026-08-28.
+  // on a mere tab switch (ruling, 2026-08-28).
   const [wsService] = useState(() => new WebSocketService({ quiet: true }));
   const projects = useProjects();
 

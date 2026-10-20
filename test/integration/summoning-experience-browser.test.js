@@ -31,7 +31,7 @@ test('commitment is honest, read-gated and usable at desktop/mobile; later scree
       appType: 'custom', esbuild: { jsx: 'automatic' },
       resolve: { alias: { '/@kotodama': path.join(repo, 'core/kotodama') } },
       optimizeDeps: { entries: ['test/fixtures/summoning-experience.js'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     const app = express();
     app.use('/api/v1/covenant', covenantRouter);

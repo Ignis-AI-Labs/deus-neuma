@@ -80,14 +80,14 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       }
     });
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { include: ['ethers'] }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { include: ['ethers'] }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send(`<script type="module">
       import { fetchVessels } from "/frontend/app/RelinkShell/vessel/vessel-roster.js";
-      import { loadSealNetwork } from "/frontend/components/BirthCeremony/birth-seal-step.js";
+      import { loadSealNetwork, appendSealReceiptLink } from "/frontend/components/BirthCeremony/birth-seal-step.js";
       import { WitnessCommitment } from "/frontend/components/WitnessCommitment/WitnessCommitment.js";
       import { importEmbeddedWallet, getEmbeddedProvider } from "/frontend/services/EmbeddedWallet.js";
       import { getWalletService } from "/frontend/services/WalletGate.js";
-      Object.assign(window, { fetchVessels, loadSealNetwork, WitnessCommitment, importEmbeddedWallet, getEmbeddedProvider, getWalletService });
+      Object.assign(window, { fetchVessels, loadSealNetwork, appendSealReceiptLink, WitnessCommitment, importEmbeddedWallet, getEmbeddedProvider, getWalletService });
       window.expired = 0; window.accepted = 0;
       window.addEventListener("neuma:auth_expired", () => window.expired++);
       window.ready = true;
@@ -211,6 +211,24 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       return (result.text === 'UNKNOWN — PREFLIGHT DECIDES' && result.expired > beforeInvalid) ? result : RETRY;
     });
     expect(invalid.expired).toBe(beforeInvalid + 1);
+
+    // The ceremony's seal receipt names the explorer it links: an Ethereum
+    // seal opens Etherscan and says so, a Base seal says Basescan, and an
+    // unknown network gets no link at all. Real DOM, real function.
+    const receiptLink = (network) => drive(() => page.evaluate((net) => {
+      document.querySelectorAll('#seal-status').forEach((el) => el.remove());
+      const host = document.createElement('span');
+      host.id = 'seal-status';
+      document.body.append(host);
+      window.appendSealReceiptLink({ container: document.body }, { network: net, txHash: `0x${'ab'.repeat(32)}` });
+      const link = host.querySelector('.seal-explorer-link');
+      host.remove();
+      return link ? { href: link.href, text: link.textContent } : null;
+    }, network));
+    const sealTx = `0x${'ab'.repeat(32)}`;
+    expect(await receiptLink('ethereum')).toEqual({ href: `https://etherscan.io/tx/${sealTx}`, text: 'VIEW ON ETHERSCAN ↗' });
+    expect(await receiptLink('base')).toEqual({ href: `https://basescan.org/tx/${sealTx}`, text: 'VIEW ON BASESCAN ↗' });
+    expect(await receiptLink('polygon')).toBeNull();
 
     // Covenant fixture helpers — every one rebuilds only what a recycled
     // renderer could have wiped, then drives the real component.

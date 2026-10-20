@@ -37,6 +37,13 @@ export const setWakeSink = (fn) => { sink = typeof fn === 'function' ? fn : null
 export const runInWake = (wake, fn) => context.run({ depth: wake.depth ?? 0, wakeId: wake.wakeId ?? null }, fn);
 
 /**
+ * Run work that outlives the turn that started it (a team run, its watch)
+ * outside any wake: its signals, hours later, start a chain of their own
+ * rather than one link past the turn's.
+ */
+export const runOutsideWake = (fn) => context.exit(fn);
+
+/**
  * A seat has work. Fire-and-forget.
  * @param {{seat: string, reason: string, ref: string, detail?: Object}} signal
  */

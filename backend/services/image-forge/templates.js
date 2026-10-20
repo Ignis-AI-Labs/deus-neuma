@@ -10,7 +10,9 @@
  * gate the lane checks at startup.
  *
  * Node classes + input names VERIFIED against the pinned v0.28.0
- * NODE_CLASS_MAPPINGS in the spike; the drift validator is the live guard that
+ * NODE_CLASS_MAPPINGS in the spike, and again on v0.41.0 (2026-10-18:
+ * a live pack proof ran this validator on every pipeline against
+ * the live /object_info and rendered each); the drift validator is the guard that
  * they still hold on the installed build (fail-closed: any mismatch ⇒ the lane
  * is FAILED-named and tools are not advertised, NFR-5).
  */
@@ -382,6 +384,18 @@ export const buildZImage = (p) => {
  * @param {object} objectInfo the /object_info map
  * @returns {{ok: boolean, violations: string[]}}
  */
+// pure — v0.41's dynamic inputs name a nested setting `menu.setting` (a DynamicCombo option's
+// own input, e.g. ResizeImageMaskNode `resize_type.width`). Declared only when `menu` is a
+// declared dynamic combo AND one of its options declares `setting` — never a prefix wildcard.
+const nestedInputDeclared = (declared, key) => {
+  const dot = key.indexOf('.');
+  if (dot < 0) return false;
+  const [type, spec] = declared[key.slice(0, dot)] ?? [];
+  if (type !== 'COMFY_DYNAMICCOMBO_V3' || !Array.isArray(spec?.options)) return false;
+  const setting = key.slice(dot + 1);
+  return spec.options.some((o) => setting in { ...(o.inputs?.required || {}), ...(o.inputs?.optional || {}) });
+};
+
 export const validateGraphAgainstObjectInfo = (graph, objectInfo) => {
   const violations = [];
   if (!objectInfo || typeof objectInfo !== 'object' || Object.keys(objectInfo).length === 0) {
@@ -395,7 +409,7 @@ export const validateGraphAgainstObjectInfo = (graph, objectInfo) => {
     }
     const declared = { ...(decl.input?.required || {}), ...(decl.input?.optional || {}) };
     for (const key of Object.keys(node.inputs || {})) {
-      if (!(key in declared)) {
+      if (!(key in declared) && !nestedInputDeclared(declared, key)) {
         violations.push(`node ${nodeId} (${node.class_type}): input '${key}' is not a declared input on this build`);
       }
     }

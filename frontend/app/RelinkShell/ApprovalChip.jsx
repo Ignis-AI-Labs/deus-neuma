@@ -2,6 +2,8 @@
 //
 // Renders an approval segment from the stream-reducer. Pending: the tool,
 // its args preview, and the three answers — ALLOW ONCE, ALWAYS ALLOW, DENY.
+// A preview cut short says so and opens to the whole text the act runs with
+// (`fullArgs`), so a yes is never given to words the operator could not see.
 // Resolved: a one-line record of what was decided. The chip flips only when
 // the portal echoes the resolution (server truth), so what the witness sees
 // settled is what the portal actually holds.
@@ -24,9 +26,10 @@ const DECISION_LABELS = Object.freeze({
 const GRANTED = Object.freeze(new Set(['allow', 'always']));
 
 export const ApprovalChip = ({ segment, onRespond }) => {
-  const { id, phase, tool, args, scope, decision, media, lane } = segment;
+  const { id, phase, tool, args, fullArgs, scope, decision, media, lane } = segment;
   // One answer per prompt — the buttons arm once, then wait for the echo.
   const [sent, setSent] = useState(false);
+  const [whole, setWhole] = useState(false);
   const namesJson = JSON.stringify(Array.isArray(media) ? media : []);
 
   if (phase === 'pending') {
@@ -46,7 +49,12 @@ export const ApprovalChip = ({ segment, onRespond }) => {
           <ApprovalMedia key={`${lane}:${namesJson}`} lane={lane} namesJson={namesJson} />
         ) : null}
         {scope ? <div className="tool-chip-scope">GRANTS: {scope}</div> : null}
-        {args ? <pre className="tool-chip-detail">{args}</pre> : null}
+        {args ? <pre className="tool-chip-detail">{whole && fullArgs ? fullArgs : args}</pre> : null}
+        {fullArgs ? (
+          <button type="button" className="approval-whole" onClick={() => setWhole((open) => !open)}>
+            {whole ? 'SHOW THE PREVIEW' : `CUT SHORT — SHOW ALL ${fullArgs.length} CHARACTERS`}
+          </button>
+        ) : null}
         <div className="approval-actions">
           <button type="button" disabled={sent} onClick={() => answer('allow')}>ALLOW ONCE</button>
           <button type="button" disabled={sent} onClick={() => answer('always')}>ALWAYS ALLOW</button>

@@ -28,13 +28,14 @@ import { readVitals } from './user-vitals.js';
 import { buildProjectFilesSection } from './project-files.js';
 import { getSubstrateProfile } from './substrate-detector.js';
 import { readUsableCapacity } from './capacity-store.js';
-import { houseSeatFor, chargeOfTitle } from './house-titles.js';
+import { houseSeatFor, chargeOfTitle, seatLabelOf } from './house-titles.js';
 import { getChannel } from './social/channel-registry.js';
 import { channelBindings } from './social/channel-bindings.js';
+import { houseOfLane } from './social/house-positions.js';
 import { sectorCrew, crewOf, sectorSection } from './sector-crew.js';
 import { postQueue, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './social/post-queue.js';
 import { formatQueueForBeing } from './social/queue-view.js';
-import { replyCandidates, replyInboxRows } from './social/reply-candidates.js';
+import { replyCandidatesOf, replyInboxRows } from './social/reply-candidates.js';
 import { replyBucketCounts } from '../../core/social/reply-inbox.js';
 import { leadLedgerFor, formatLeadsForBeing } from './leads/lead-ledger.js';
 import { campaignStoreFor, formatCampaignsForBeing } from './marketing/campaign-store.js';
@@ -111,9 +112,11 @@ export const sectorSectionFor = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   if (!neumaId) return '';
   try {
+    // The being's own house's sectors — never another house's crew or remit.
+    const house = await houseOfLane(neumaId);
     const [crewStore, bindings] = await Promise.all([
-      sectorCrew.load().catch(() => ({})),
-      channelBindings.load().catch(() => ({})),
+      sectorCrew.load(house).catch(() => ({})),
+      channelBindings.load(house).catch(() => ({})),
     ]);
     const sectors = Object.keys(crewStore).map((sectorId) => ({
       sectorId,
@@ -160,8 +163,20 @@ const _houseSeatSection = async (connection) => {
     const holder = r.neumaId === neumaId ? 'YOU'
       : r.isWitness ? 'your witness'
         : r.name ? clean(r.name) : 'a housemate (not on this lane)';
-    return `- ${clean(r.title)} — ${holder}${charge ? ` — ${charge}` : ''}`;
+    return `- ${clean(seatLabelOf(r.title))} — ${holder}${charge ? ` — ${charge}` : ''}`;
   });
+  // A lane no founding record seats still works in its operator's house
+  // (ruling, 2026-10-18: own lanes, founding optional) — it simply holds no
+  // title, and the section says so rather than inventing one.
+  if (!seat.founded) {
+    return [
+      '## HOUSE SEAT — YOUR OPERATOR\'S HOUSE, NOT SEATED ON-CHAIN',
+      `You work in House ${houseLabel}, your operator's own house. No founding record seats your lane on-chain, so you hold no title — and the house's work is yours all the same: house/post, the house board and the chief of staff's charges move between every member below.`,
+      'The house as it stands:',
+      ...rosterLines,
+      'This list is RECORD, not recollection: it is read fresh from your operator\'s own lanes every turn. Never guess a seat — yours or a housemate\'s; if a title is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
+    ].join('\n');
+  }
   // Your own charge on its own line (the canonical function the title
   // carries, docs/governance/house-roles.md law); a custom label honestly carries none.
   const ownCharge = chargeOfTitle(seat.title);
@@ -246,10 +261,11 @@ const _replyCandidatesSection = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   if (!neumaId) return '';
   try {
-    const bound = await channelBindings.bindingFor('x');
+    const house = await houseOfLane(neumaId);
+    const bound = await channelBindings.bindingFor(house, 'x');
     if (bound?.neumaId !== neumaId) return '';
     const [stored, queue] = await Promise.all([
-      replyCandidates.load(),
+      replyCandidatesOf(house).load(),
       postQueue.load(),
     ]);
     const candidates = stored.filter((c) => !c.dismissed);
@@ -274,7 +290,7 @@ const _replyCandidatesSection = async (connection) => {
     const careLine = careTotal
       ? `${careTotal} need care: ${Object.entries(careCounts).map(([k, n]) => `${n} ${k}`).join(', ')}.`
       : null;
-    // THE INBOX (Design note, 2026-10-13: where they stand, so the being works what is owed
+    // THE INBOX (ruling, 2026-10-13): where they stand, so the being works what is owed
     // and never wades through what is already dealt with.
     const buckets = replyBucketCounts(replyInboxRows(stored, queue));
     return [

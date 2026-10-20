@@ -150,7 +150,7 @@ export const isUnmeteredApiPath = (p) => p === '/v1/gallery/file';
 /**
  * Hold-to-talk transcription. PURE. Operator-initiated, auth still gates
  * the route. Explorer + HUD polls share the 200/min bucket and were 429ing
- * this POST — Space held, mic opened, no words (Design note, 2026-08-17.
+ * this POST — Space held, mic opened, no words (ruling, 2026-08-17).
  */
 export const isVoiceTranscribePath = (method, p) =>
   String(method || '').toUpperCase() === 'POST' && p === '/v1/voice/transcribe';
@@ -159,7 +159,7 @@ export const isVoiceTranscribePath = (method, p) =>
  * Explorer live refresh. PURE. GET /list re-reads one dir after a save or
  * a watch frame; GET /events is the SSE ear. Both sat in the 200/min
  * bucket with HUD polls — a save announced, listDir 429'd, the tree
- * stayed stale (Design note, 2026-08-17. GET /roots serves an in-memory array —
+ * stayed stale (ruling, 2026-08-17). GET /roots serves an in-memory array —
  * no CPU, no spawn — and metering it let a mid-storm mount strand the
  * tree on LOADING (audit, 2026-09-02). Auth still gates all three.
  */

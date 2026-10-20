@@ -180,6 +180,21 @@ describe('the eye\'s cadence and its words (team-watch.js)', () => {
     expect(DEFAULT_CHECK_IN_MINUTES).toBe(60);
   });
 
+  it('a cadence has a floor: check-ins never come closer than a minute, from a plan or a tune', async () => {
+    const { normalizeCheckIn, CHECK_IN_MIN_MINUTES } = await import('../../backend/services/team-clock.js');
+    const { tuneRun } = await import('../../backend/services/team-run-tune.js');
+    expect(CHECK_IN_MIN_MINUTES).toBe(1);
+    for (const fast of [0.0001, '0.001', 0.5]) {
+      expect(() => normalizeCheckIn(fast)).toThrow(/at most once every 1 minute — name 1 or more minutes, or "none"/);
+    }
+    expect(normalizeCheckIn(1)).toBe(1);
+    const plan = { goal: 'g', steps: [{ id: 'build', member: 'Keir', task: 't' }] };
+    expect(() => normalizePlanArgs({ ...plan, checkIn: 0.0001 })).toThrow(/the plan's checkIn: check-ins come at most once/);
+    const entry = { board: [], checkIn: 60 };
+    expect(tuneRun(entry, { checkIn: 0.001 })).toMatchObject({ ok: false, reason: expect.stringMatching(/at most once every 1 minute/) });
+    expect(entry.checkIn).toBe(60);
+  });
+
   it('a check-in names what needs eyes: a clock that passed, a part gone quiet, a part that failed', async () => {
     const { checkInOf, QUIET_NAMED_MS } = await import('../../backend/services/team-watch.js');
     const now = Date.parse('2026-10-13T06:00:00Z');

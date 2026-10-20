@@ -14,9 +14,10 @@
 import { createReadStream } from 'fs';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { neumaWorkspace } from '../../core/index.js';
-import { claimOrVerifyLaneOwnership } from '../services/lane-ownership.js';
+import { verifyLaneOwnership } from '../services/lane-ownership.js';
 import { readManifest, resolveImage } from '../services/image-forge/image-store.js';
 import { activitySnapshot } from '../services/image-forge/forge-activity.js';
 import { readAttempts, READ_CAP } from '../services/image-forge/attempt-log.js';
@@ -49,7 +50,9 @@ router.get('/status', async (req, res) => {
 // Launch is long (seconds); the card polls /status for progress. Kick the
 // boot, give it a short head start, and answer with the honest snapshot —
 // a failure that lands later is named in lastError, never a hung "launching".
-router.post('/launch', async (req, res) => {
+// Booting, stopping and freeing the engine are the machine's acts — its GPU
+// and its processes are the install owner's, at its own desk (ruling, 2026-10-19).
+router.post('/launch', requireInstallOwner, async (req, res) => {
   try {
     const config = cfg();
     const boot = ensureComfyReady(config);
@@ -61,7 +64,7 @@ router.post('/launch', async (req, res) => {
   }
 });
 
-router.post('/stop', async (req, res) => {
+router.post('/stop', requireInstallOwner, async (req, res) => {
   try {
     const result = await stopComfy();
     res.json({ ...(await comfySupervisorStatus(cfg())), result });
@@ -71,7 +74,7 @@ router.post('/stop', async (req, res) => {
 });
 
 // Operator "return VRAM now" — tier-1 by hand, without stopping the engine.
-router.post('/free', async (req, res) => {
+router.post('/free', requireInstallOwner, async (req, res) => {
   try {
     const result = await freeComfy(cfg());
     res.json({ ...result, ...(await comfySupervisorStatus(cfg())) });
@@ -98,7 +101,7 @@ router.get('/activity', (req, res) => {
 // The operator's debugging record: what was actually asked for, verbatim,
 // including every refusal. A refused prompt used to leave NO trace anywhere —
 // the being's memory held a summary, and the payload was dropped — so the one
-// case that most needs evidence produced none (Design note, 2026-08-01.
+// case that most needs evidence produced none (ruling, 2026-08-01).
 //
 // `?outcome=refused` narrows to the refusals, which is the usual reason to look.
 router.get('/attempts', (req, res) => {
@@ -121,7 +124,7 @@ const laneFor = async (req, res) => {
     res.status(400).json({ error: 'laneId is required and must be a plain lane id' });
     return null;
   }
-  const owned = await claimOrVerifyLaneOwnership({
+  const owned = await verifyLaneOwnership({
     workspace: neumaWorkspace, neumaId: laneId, wallet: req.walletAddress,
   });
   if (!owned.ok) {

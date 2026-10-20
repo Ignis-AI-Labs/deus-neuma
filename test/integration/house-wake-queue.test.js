@@ -8,7 +8,8 @@
  * chat-watch.test.js stands a deliverer), so what the queue hands the turn is
  * exactly what is checked.
  */
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
+import { readFileSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
@@ -19,7 +20,7 @@ import {
   setWakeRunner, configureWakeQueue, pumpHouse, readWakeQueue, whenHouseIdle, enqueueWake,
 } from '../../backend/services/house-clock/wake-queue.js';
 import { readWakeLedger, clockDir, readAsks } from '../../backend/services/house-clock/wake-ledger.js';
-import { localDay } from '../../backend/services/house-clock/wake-gate.js';
+import { localDay, cadenceSlot } from '../../backend/services/house-clock/wake-gate.js';
 import { takeSignal, cadenceTick, lostRunsTick } from '../../backend/services/house-clock/house-clock.js';
 import { makePost, appendPost } from '../../backend/services/house-post.js';
 import { makeCharge, fileDispatch } from '../../backend/services/staff/dispatch-store.js';
@@ -28,6 +29,8 @@ import { startTeamRun } from '../../backend/services/team-run-start.js';
 import { createRun, updateRun } from '../../backend/services/team-run-store.js';
 import { wakePlanRoute } from '../../backend/services/house-clock/wake-plan.js';
 import neumaWorkspace, { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { readNotifications } from '../../backend/services/notification-store.js';
+import { KIND } from '../../core/runtime/notification-record.js';
 
 const until = async (check, ms = 5000) => {
   const end = Date.now() + ms;
@@ -62,23 +65,42 @@ describe('the house wakes for its own work — queue and triggers', () => {
     await whenHouseIdle(WALLET);
     setWakeSink(null);
     setWakeRunner(null);
-    configureWakeQueue({ settleMs: 3000 });
+    configureWakeQueue({ settleMs: 3000, retryMs: 60_000 });
     await office.teardown();
   });
 
   const post = (to, body, from = OPTIO) => appendPost(office.ground, makePost({ from, to, body, now: new Date().toISOString() }));
 
-  test('no charter, an unapproved one, or a paused one: a post wakes nobody', async () => {
+  test('no charter: a post wakes nobody; an unapproved or paused one holds it in view, and it runs on APPROVE / RESUME', async () => {
     await post(HOUSEMATE, 'Before any charter.');
-    const c = await writeCharter(WALLET, { goal: 'Pending.', seats: [{ laneId: HOUSEMATE, dailyCap: 2 }] }, { by: WALLET, ownedLanes: [HOUSEMATE] });
-    await post(HOUSEMATE, 'Charter written, not approved.');
-    await approveCharter(WALLET, { version: c.version, by: WALLET });
-    await setCharterPaused(WALLET, true);
-    await post(HOUSEMATE, 'Charter paused.');
     await new Promise((r) => setTimeout(r, 100));
     expect((await readWakeQueue(WALLET)).items).toEqual([]);
+    const c = await writeCharter(WALLET, { goal: 'Pending.', seats: [{ laneId: HOUSEMATE, dailyCap: 2 }] }, { by: WALLET, ownedLanes: [HOUSEMATE] });
+    const pending = await post(HOUSEMATE, 'Charter written, not approved.');
+    const held = async (why) => until(async () => {
+      const q = await readWakeQueue(WALLET);
+      return q.held.some((h) => h.seat === HOUSEMATE && h.why === why) ? q : null;
+    });
+    let q = await held('the charter is unapproved');
+    expect(q.items.map((i) => i.ref)).toEqual([pending.id]);
+    await new Promise((r) => setTimeout(r, 50));
     expect(ran).toEqual([]);
-    expect((await readWakeLedger(WALLET)).total).toBe(0);
+    await approveCharter(WALLET, { version: c.version, by: WALLET });
+    await pumpHouse(WALLET);
+    await whenHouseIdle(WALLET);
+    expect(ran.map((w) => w.items.map((i) => i.ref))).toEqual([[pending.id]]);
+    await setCharterPaused(WALLET, true);
+    const paused = await post(HOUSEMATE, 'Charter paused.');
+    q = await held('the charter is paused');
+    expect(q.items.map((i) => i.ref)).toEqual([paused.id]);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(ran).toHaveLength(1);
+    await setCharterPaused(WALLET, false);
+    await pumpHouse(WALLET);
+    await whenHouseIdle(WALLET);
+    expect(ran.map((w) => w.items.map((i) => i.ref))).toEqual([[pending.id], [paused.id]]);
+    // the post sent before any charter was never taken: it waits in the inbox for the seat's next turn
+    expect((await readWakeLedger(WALLET)).total).toBe(2);
   });
 
   test('a post to a chartered seat wakes it; a charge and its post are ONE wake; the row lands on the ledger', async () => {
@@ -179,6 +201,86 @@ describe('the house wakes for its own work — queue and triggers', () => {
     expect((await readWakeQueue(WALLET)).today).toEqual({ [HOUSEMATE]: 1 });
   });
 
+  test('a reused pid never wedges a seat: a wake from before this boot, or one whose pid now names a later process, is LOST; a living host keeps its wake', async () => {
+    await chartered();
+    setWakeRunner(null);
+    const before = await enqueueWake(WALLET, { seat: HOUSEMATE, reason: 'post', ref: 'before-boot' });
+    const reused = await enqueueWake(WALLET, { seat: OPTIO, reason: 'post', ref: 'pid-reused' });
+    const file = path.join(clockDir(WALLET), 'queue.json');
+    const state = JSON.parse(await fs.readFile(file, 'utf8'));
+    // pid 1 is alive (and not ours to signal: EPERM) — the shape of a dead backend's pid now held by a daemon
+    state.running[HOUSEMATE] = { wakeId: 'w-before-boot', startedAt: '2000-01-01T00:00:00.000Z', itemIds: [before.item.id], host: { pid: 1 } };
+    state.running[OPTIO] = { wakeId: 'w-pid-reused', startedAt: new Date().toISOString(), itemIds: [reused.item.id], host: { pid: 1, start: 'not-its-start' } };
+    // another backend, alive and mid-wake: its process and its start, as it recorded them (Linux /proc field 22)
+    const other = spawn('sleep', ['30']);
+    try {
+      const stat = readFileSync(`/proc/${other.pid}/stat`, 'utf8');
+      const start = stat.slice(stat.lastIndexOf(')') + 2).split(' ')[19];
+      state.running[BYSTANDER] = { wakeId: 'w-alive', startedAt: new Date().toISOString(), itemIds: [], host: { pid: other.pid, start } };
+      await fs.writeFile(file, JSON.stringify(state));
+      setWakeRunner(async (wake) => { ran.push(wake); return { outcome: 'done' }; });
+      await pumpHouse(WALLET);
+      await whenHouseIdle(WALLET);
+      const { rows } = await readWakeLedger(WALLET);
+      expect(rows.filter((r) => r.outcome === 'lost').map((r) => r.id).sort()).toEqual(['w-before-boot', 'w-pid-reused']);
+      expect(ran.map((w) => w.items[0].ref).sort()).toEqual(['before-boot', 'pid-reused']);
+      expect(Object.keys((await readWakeQueue(WALLET)).running)).toEqual([BYSTANDER]);
+    } finally {
+      other.kill();
+    }
+  });
+
+  test('a FAILED wake is tried again after a backoff, 3 attempts in all, counted once; the last raises ONE tray card', async () => {
+    await chartered();
+    configureWakeQueue({ retryMs: 1000 });
+    setWakeRunner(async (wake) => { ran.push(wake); return { outcome: 'failed', sessionId: `sitting-${ran.length}`, error: 'the model is down' }; });
+    const { item } = await enqueueWake(WALLET, { seat: HOUSEMATE, reason: 'post', ref: 'p-fail' });
+    const attempt = async (n) => {
+      const { rows } = await until(async () => { const l = await readWakeLedger(WALLET); return l.total >= n ? l : null; });
+      await whenHouseIdle(WALLET);
+      return rows[0];
+    };
+    const first = await attempt(1);
+    expect(first).toMatchObject({ outcome: 'failed', error: 'the model is down', ref: 'p-fail' });
+    expect(first.note).toMatch(/^attempt 1 of 3 failed — its work is tried again at \d\d:\d\d\. The error: the model is down$/);
+    // back on the queue with its attempt counted, held until its backoff passes — never hammered
+    let view = await readWakeQueue(WALLET);
+    expect(view.items).toEqual([expect.objectContaining({ id: item.id, attempts: 1 })]);
+    const retryAt = Date.parse(view.items[0].retryAt);
+    expect(retryAt - Date.parse(first.endedAt)).toBe(1000);
+    expect(view.held).toEqual([{ seat: HOUSEMATE, why: expect.stringMatching(/its last wake failed — tried again at \d\d:\d\d \(attempt 2 of 3\)/) }]);
+    expect((await pumpHouse(WALLET, retryAt - 1)).started).toEqual([]);
+    // the same work is not queued twice while it waits to be tried again
+    expect((await enqueueWake(WALLET, { seat: HOUSEMATE, reason: 'post', ref: 'p-fail' })).queued).toBe(false);
+    // the failed attempt is given back, as a lost one is: one piece of work counts once
+    expect(view.today).toEqual({ [HOUSEMATE]: 0 });
+    expect((await pumpHouse(WALLET, retryAt)).started).toHaveLength(1);
+    const second = await attempt(2);
+    expect(second.note).toMatch(/^attempt 2 of 3 failed — its work is tried again at/);
+    view = await readWakeQueue(WALLET);
+    // the backoff doubles for the last attempt
+    const lastAt = Date.parse(view.items[0].retryAt);
+    expect(lastAt - Date.parse(second.endedAt)).toBe(2000);
+    expect((await readNotifications(WALLET)).records.filter((n) => n.kind === KIND.houseWake)).toEqual([]);
+    expect((await pumpHouse(WALLET, lastAt)).started).toHaveLength(1);
+    const third = await attempt(3);
+    expect(third.note).toBe('attempt 3 of 3 failed — its work is not tried again; the operator is told. The error: the model is down');
+    expect(ran).toHaveLength(3);
+    view = await readWakeQueue(WALLET);
+    expect(view.items).toEqual([]);
+    expect(view.today).toEqual({ [HOUSEMATE]: 1 });
+    const cards = await until(async () => {
+      const c = (await readNotifications(WALLET)).records.filter((n) => n.kind === KIND.houseWake);
+      return c.length ? c : null;
+    });
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ actor: { id: HOUSEMATE }, ref: { wakeId: third.id, sessionId: 'sitting-3' } });
+    expect(cards[0].title).toBe(`${HOUSEMATE}'s wake failed 3 times — its work was not done`);
+    expect(cards[0].detail).toBe('Woken for: house post. Error: the model is down');
+    // done with: the same work never queues again
+    expect((await enqueueWake(WALLET, { seat: HOUSEMATE, reason: 'post', ref: 'p-fail' })).queued).toBe(false);
+  });
+
   test('a team run ending wakes its lead; its watch wakes the seated Optio', async () => {
     await chartered();
     setWakeRunner(null);
@@ -232,7 +334,8 @@ describe('the house wakes for its own work — queue and triggers', () => {
     const taken = await lostRunsTick(WALLET);
     expect(taken.map((t) => t.queued)).toEqual([true]);
     const items = (await readWakeQueue(WALLET)).items;
-    expect(items.filter((i) => i.reason === 'cadence').map((i) => i.seat)).toEqual([OPTIO, OPTIO]);
+    // the next window's review supersedes one still waiting: one review, the newest (2026-10-18)
+    expect(items.filter((i) => i.reason === 'cadence').map((i) => [i.seat, i.ref])).toEqual([[OPTIO, `every-24h-${cadenceSlot(now + 25 * 3_600_000, 24 * 3_600_000)}`]]);
     expect(items.find((i) => i.reason === 'run-lost')).toMatchObject({ seat: HOUSEMATE, ref: id });
   });
 

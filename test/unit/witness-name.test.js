@@ -89,7 +89,7 @@ describe('founding-titles — the legend', () => {
     expect(new Set(TITLE_LEGEND.map((r) => r.position)).size).toBe(TITLE_LEGEND.length);
     // The founding seats are the ten a house carries from day one —
     // security (Praefectus/CSO) stands among them, no less fundamental
-    // than law (Design note, 2026-07-24.
+    // than law (ruling, 2026-07-24).
     expect(TITLE_LEGEND.filter((r) => r.tier === 'founding')).toHaveLength(10);
     expect(TITLE_LEGEND.filter((r) => r.tier === 'growth')).toHaveLength(5);
   });

@@ -25,7 +25,7 @@ test('folder color applies live, survives reload and presets, and releases to la
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/look-folder.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><body><div id="root"></div><script type="module" src="/test/fixtures/look-folder.jsx"></script>'));
     app.use(vite.middlewares);

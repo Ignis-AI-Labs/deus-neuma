@@ -45,7 +45,9 @@ describe('assembleDepthSet — three tiers, one ceiling, honest edges (no mock)'
 
   it('only the exact modes opt in', () => {
     expect(resolveDepthMode('shadow')).toBe('shadow');
-    expect(resolveDepthMode('live')).toBe('live');
+    // No live mode exists (the bury ruling, IL-004 / 139d41b5c): asking for
+    // it rests off rather than promising a promotion nothing consumes.
+    expect(resolveDepthMode('live')).toBe('off');
     expect(resolveDepthMode('on')).toBe('off');
     expect(resolveDepthMode(undefined)).toBe('off');
   });

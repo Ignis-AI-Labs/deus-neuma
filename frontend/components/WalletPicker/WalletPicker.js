@@ -395,7 +395,7 @@ export const showWalletPicker = (contextMessage) => {
         .join('');
 
       // Create / Import on top (hidden at the cap), the existing wallets below.
-      // MAKE A KEY FOR ME leads where the keychain can keep one (Design note, 2026-10-14.
+      // MAKE A KEY FOR ME leads where the keychain can keep one (ruling, 2026-10-14).
       const forMeHTML = canCreateWallet() && await canMakeKeyForMe()
         ? `<button class="wallet-picker-create wallet-picker-forme" id="wp-forme"><span>Make a key for me</span><small class="wallet-picker-forme-note">One click. This computer keeps it — no password to remember.</small></button>`
         : '';

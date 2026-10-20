@@ -16,13 +16,15 @@ import { getSetupStatus } from '../services/substrate-setup.js';
 import { getAppConfig } from '../config.js';
 import { SEAL_NETWORKS } from '../services/natalis-seal.js';
 import { connectFilesystemServer } from '../services/mcp-filesystem.js';
-import { getWorkspacesRoot, setWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
+import { getWorkspacesRoot, getWitnessesRoot, setWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
+import { otherOwnedLanes } from '../services/root-tenants.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { loadWorkspaceSettings, saveWorkspaceSettings, isTempPath } from '../services/workspace-settings.js';
 import { probeProtocol, probeRecords, probeSealing, probeActing } from '../services/birth-flight.js';
 import { MIN_FREE_DISK_GB, freeGBAt } from '../services/storage-health.js';
 import {
   checkSubstrate, checkWorkspace, checkDisk, checkMemory, checkDnaKey,
-  checkCeremonyRoad, checkMcp, checkGpu, checkTrainer, flightRow,
+  checkCeremonyRoad, checkMcp, checkGpu, checkTrainer, checkForge, flightRow,
 } from './preflight-checks.js';
 import { computeAvailable, isAffordable, suggestedAllocationGB } from './preflight-allocation.js';
 
@@ -45,6 +47,7 @@ router.get('/', async (req, res) => {
       await checkMcp(),
       await checkGpu(),
       await checkTrainer(),
+      await checkForge(),
     ];
     const settings = await loadWorkspaceSettings();
 
@@ -94,10 +97,11 @@ router.get('/', async (req, res) => {
  * POST /workspace — the witness chooses the neuma's home and how much
  * space they can afford to allocate. Validated against the real disk
  * before anything is persisted. Auth required (SEC-AUDIT-002 / #161) —
- * mutates sovereign home and reconnects filesystem MCP.
+ * mutates sovereign home and reconnects filesystem MCP — and the install
+ * owner's alone, at this computer's own desk (install-owner.js).
  * Body: { root: string (absolute path), allocationGB: number }
  */
-router.post('/workspace', requireAuth, async (req, res) => {
+router.post('/workspace', requireAuth, requireInstallOwner, async (req, res) => {
   try {
     const { root, allocationGB } = req.body || {};
     if (typeof root !== 'string' || !path.isAbsolute(root)) {
@@ -109,6 +113,17 @@ router.post('/workspace', requireAuth, async (req, res) => {
     }
 
     const resolved = path.resolve(root);
+    // The workspaces root is every house's: moving it strands another house's
+    // beings (root-tenants.js).
+    const others = resolved === path.resolve(getWorkspacesRoot())
+      ? 0
+      : await otherOwnedLanes([getWorkspacesRoot(), getWitnessesRoot()], req.walletAddress);
+    if (others > 0) {
+      return res.status(409).json({
+        error: `The neuma home also holds ${others} lane(s) another house owns, and moving it would strand them. `
+          + 'It stays where it is while another house lives there.',
+      });
+    }
     // A home under the OS temp dir gets swept at reboot — the being's DNA,
     // soul, and memory with it. Boot already refuses to apply such a root,
     // so accepting it here would only persist a silent unrooting. Gated on

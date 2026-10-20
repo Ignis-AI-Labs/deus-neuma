@@ -22,6 +22,7 @@ import { mcpService } from '../../backend/services/mcp.js';
 import { createSandboxedCallTool } from '../../backend/services/tool-sandbox.js';
 import { checkToolAccess, resolvePolicy, GLOBAL_DEFAULTS } from '../../backend/services/tool-policy.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../..');
@@ -137,6 +138,9 @@ describe('AUDIT-W2-002 client MCP spawn arbitrary roots', () => {
   beforeEach(async () => {
     const auth = await fullAuth();
     token = auth.token;
+    // Spawning an MCP server is the install owner's act; this proves the
+    // spawn validation behind that gate, so the caller owns the install.
+    await makeInstallOwner(auth.address);
     tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'gnosis-mcp-root-'));
     const { default: router } = await import('../../backend/routes/mcp-routes.js');
     app = express();
@@ -170,7 +174,9 @@ describe('AUDIT-W2-003 package allowlist strips @spec', () => {
   let app, token;
 
   beforeEach(async () => {
-    token = (await fullAuth()).token;
+    const auth = await fullAuth();
+    token = auth.token;
+    await makeInstallOwner(auth.address); // the spawn gate stands behind the owner gate
     const { default: router } = await import('../../backend/routes/mcp-routes.js');
     app = express();
     app.use(express.json());

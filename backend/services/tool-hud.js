@@ -85,6 +85,11 @@ export const unwrapCall = (match) => {
   const at = id.indexOf('/');
   const server = at > 0 ? id.slice(0, at) : null;
   const toolName = at > 0 ? id.slice(at + 1) : id;
+  // the door naming the door is refused, never peeled again: a second unwrap
+  // downstream would run the inner call past every check that judged the door
+  if (isCallDoor({ server, toolName, tool: server ? `${server}/${toolName}` : toolName })) {
+    return Object.freeze({ ...match, server: 'system', toolName: 'call', tool: CALL_ID, _doorError: true });
+  }
   return Object.freeze({
     ...match,
     server,
@@ -137,10 +142,20 @@ const distance = (a, b) => {
  * @param {string} toolName the name it called (no server)
  * @param {Array<{server: string, name: string}>} catalog this turn's tools
  * @param {string|null} [server] the server it named, if any — its real tools are listed
+ * @param {Array<{name: string, fieldsForPrompt?: string, descriptionForPrompt?: string}>} [intents] this turn's intent types
  * @returns {string}
  */
-export const unknownToolHint = (toolName, catalog, server = null) => {
+export const unknownToolHint = (toolName, catalog, server = null, intents = []) => {
   const name = String(toolName || '').toLowerCase();
+  // an act the lane FILES, called as a tool (2026-10-17 flight: an Optio called "dispatch" for staff/dispatch)
+  const intent = (Array.isArray(intents) ? intents : []).find((t) => {
+    const id = String(t?.name || '').toLowerCase();
+    return id === `${String(server || '').toLowerCase()}/${name}` || id.split('/')[1] === name;
+  });
+  if (intent) {
+    return `${intent.name} is not a tool — it is an intent you FILE: write a JSON file into your intents folder (named in your Intents section) `
+      + `holding {"type": "${intent.name}"} and its fields ${intent.fieldsForPrompt || ''}. ${intent.descriptionForPrompt || ''}`.trim();
+  }
   const tools = (Array.isArray(catalog) ? catalog : []).filter((t) => t?.server && t?.name && t.server !== 'system');
   const family = server ? tools.filter((t) => t.server === server) : [];
   const same = tools.find((t) => t.name.toLowerCase() === name);
@@ -152,6 +167,24 @@ export const unknownToolHint = (toolName, catalog, server = null) => {
   const inFamily = !pick && family.length ? ` ${server}/ holds: ${family.map((t) => t.name).join(', ')}.` : '';
   return `No tool named ${toolName || '(none)'}.${pick ? ` Did you mean ${pick.server}/${pick.name}?` : ''}${inFamily} `
     + 'system/tool_search {"query": "what you need"} finds the right tool and its arguments.';
+};
+
+/**
+ * The answer to a call that never dispatches because the door itself refused
+ * it: arguments that would not read, or system/call naming system/call. Null
+ * for every call that may go on. Pure.
+ * @param {object} match an unwrapped call
+ * @returns {?object}
+ */
+export const doorRefusal = (match) => {
+  if (match?._argsError !== undefined) return unreadArgsResult(match.tool || match.toolName, match._argsError);
+  if (!match?._doorError) return null;
+  return Object.freeze({
+    tool: CALL_ID,
+    status: 'invalid',
+    error: 'system/call cannot call system/call, so nothing ran. '
+      + 'Send system/call once, naming the tool itself: {"tool": "fs/read", "args": {...}}.',
+  });
 };
 
 /**

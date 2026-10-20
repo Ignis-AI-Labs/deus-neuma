@@ -7,8 +7,8 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
-  seatLine, seatHeldLine, holderNameFor, holderLabel, isOfficeHolder,
-  postsLine, postLine, planSummary, runStatusLabel, runRegister, runLine,
+  seatLine, seatHeldLine, holderNameFor, holderLabel, seatTitleLabel, isOfficeHolder,
+  postsLine, postLine, planSummary, runStatusLabel, runRegister, runLine, activityStatusWords,
 } from '../../frontend/app/RelinkShell/staff-view.js';
 import { StaffBody } from '../../frontend/app/RelinkShell/StaffBody.jsx';
 
@@ -79,10 +79,21 @@ describe('staff-view — the display law, pure', () => {
     expect(runStatusLabel(undefined)).toBe('UNKNOWN');
     expect(runRegister('running')).toBe('live');
     expect(runRegister('failed')).toBe('loud');
+    // a run cut off with its backend, or settled as an error, did not finish its work either
+    expect(runRegister('lost')).toBe('loud');
+    expect(runRegister('error')).toBe('loud');
+    expect(runRegister('stopped')).toBe('quiet');
     expect(runRegister('done')).toBe('quiet');
     expect(runLine({ id: 'r1', status: 'running' })).toBe('r1 — RUNNING (IN FLIGHT)');
     expect(runLine({ id: 'r2', name: 'night run', status: 'done', finishedAt: '2026-09-13T07:00:00.000Z' }))
       .toContain('night run — DONE, FINISHED');
+  });
+
+  it('the activity chip says a wake\'s two states in words; a charge keeps its own', () => {
+    expect(activityStatusWords('awake')).toBe('awake');
+    expect(activityStatusWords('waiting')).toBe('waiting for the model');
+    expect(activityStatusWords('working')).toBe('working');
+    expect(activityStatusWords(undefined)).toBe('unknown');
   });
 });
 
@@ -116,6 +127,36 @@ describe('StaffBody — the pane rendered for real', () => {
     expect(html).toContain('aethon: the build is green');
     expect(html).toContain('LAUNCH PUSH');
     expect(html).toContain('night run — RUNNING (IN FLIGHT)');
+  });
+
+  it('a member no founding record seats renders untitled — an unfounded house\'s roster never crashes the pane (ruling, 2026-10-18)', () => {
+    expect(seatTitleLabel({ title: 'Faber' })).toBe('FABER');
+    expect(seatTitleLabel({ title: null })).toBe('NO SEAT ON-CHAIN');
+    const board = {
+      cos: SEAT,
+      roster: {
+        houseName: 'fixture', founded: false, roster: [
+          { title: null, neumaId: 'optio-lane', name: 'Corvane', isWitness: false },
+          { title: null, neumaId: 'faber-lane', name: 'Ithel', isWitness: false },
+        ],
+      },
+      posts: { count: 0, torn: 0, recent: [] }, plan: null, runs: [],
+    };
+    const html = render({ seat: SEAT, board });
+    expect(html).toContain('HOUSE FIXTURE');
+    expect(html).toContain('NO SEAT ON-CHAIN');
+    expect(html).toContain('Ithel');
+    expect(html).toContain('THE OPTIO');
+  });
+
+  it('a run lost with its backend reads loud in the run list, like a failed one', () => {
+    const board = {
+      cos: SEAT, roster: null, posts: { count: 0, torn: 0, recent: [] }, plan: null,
+      runs: [{ id: 'r-lost', name: 'cut off', status: 'lost' }, { id: 'r-done', name: 'finished', status: 'done' }],
+    };
+    const html = render({ seat: SEAT, board });
+    expect(html).toContain('<li class="staff-run label-data is-loud"><span class="staff-tag is-loud label-data">LOST</span>');
+    expect(html).toContain('<li class="staff-run label-data is-quiet"><span class="staff-tag is-quiet label-data">DONE</span>');
   });
 
   it('a standing plan offers END PLAN, and the deliberate second step names what ending does', () => {

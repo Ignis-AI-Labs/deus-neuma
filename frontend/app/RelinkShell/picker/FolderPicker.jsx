@@ -105,7 +105,7 @@ export const FolderPicker = ({ initialPath, onPick, onCancel, pickFile = false, 
     }
   };
 
-  // --- Right-click while browsing (Design note, 2026-07-24. Rows carry their own
+  // --- Right-click while browsing (ruling, 2026-07-24). Rows carry their own
   // menu; the list's empty space carries the CURRENT folder's. Pinning writes
   // the same witness shelf the Explorer shows — the rail hears the event live.
   const [ctx, setCtx] = useState(null); // { at:{x,y}, entry, items }

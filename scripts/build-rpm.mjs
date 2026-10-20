@@ -20,6 +20,7 @@ import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, rea
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { menuEntry } from './linux-menu-entry.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const UNPACKED = join(ROOT, 'release', 'linux-unpacked');
@@ -41,23 +42,14 @@ const REQUIRES = [
   'mesa-libgbm', 'libdrm',
 ];
 
-const desktop = `[Desktop Entry]
-Type=Application
-Name=NEUMA
-Comment=${pkg.description}
-Exec=neuma %U
-Icon=neuma
-Categories=Utility;
-Terminal=false
-StartupWMClass=NEUMA
-`;
+const desktop = menuEntry(pkg.description);
 
 const spec = `Name: neuma
 Version: ${pkg.version}
 Release: 1%{?dist}
 Summary: ${pkg.description}
-License: BUSL-1.1
-URL: https://github.com/Ignis-AI-Labs/deus-neuma
+License: ${pkg.license}
+URL: ${pkg.homepage}
 Vendor: Ignis AI Labs LLC
 Packager: Ignis AI Labs LLC <legal@ignislabs.ai>
 AutoReqProv: no

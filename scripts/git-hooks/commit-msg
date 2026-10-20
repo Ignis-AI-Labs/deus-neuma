@@ -1,0 +1,4 @@
+#!/bin/sh
+# commit-msg — the SECRET GATE over the message itself: a key pasted into a
+# commit message is as public as one in a file (scripts/secret-gate.mjs).
+exec node "$(cd "$(dirname "$0")" && pwd)/../secret-gate.mjs" --message "$1"

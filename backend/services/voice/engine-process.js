@@ -10,6 +10,7 @@ import { existsSync, statSync, mkdirSync, openSync, closeSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { helperEnvironment } from '../agent-terminal-environment.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(__filename), '..', '..', '..');
@@ -59,6 +60,25 @@ export const engineReadiness = ({ uvAvailable, downloaded }) => {
  */
 export const envIdOf = (engineId) => engineId.toUpperCase().replace(/[^A-Z0-9]/g, '_');
 
+// The names a sidecar, its `uv` and the downloader read: the engine's own
+// knobs (${ID}_*, plus the two legacy prefixes and the cross-named nano and
+// nemotron ones its server.py documents), the GPU and model-cache settings
+// and the HF credential. Everything else of the backend's env — its secrets
+// first — stays out (helperEnvironment).
+const VOICE_RUNTIME_KEY = /^(CUDA_|NVIDIA_|HF_|HUGGINGFACE_|PYTORCH_|TORCH_|OMP_|MKL_|UV_|PHONEMIZER_|NANO_|NEMOTRON_|ZONOS_|KOKORO_|LD_LIBRARY_PATH$)/;
+
+/**
+ * The environment a voice helper starts with. Pure.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} engineId
+ * @param {string} [platform]
+ * @returns {Record<string, string>}
+ */
+export const voiceHelperEnvironment = (env, engineId, platform = process.platform) => {
+  const own = `${envIdOf(engineId)}_`;
+  return helperEnvironment(env, platform, (key) => key.startsWith(own) || VOICE_RUNTIME_KEY.test(key));
+};
+
 // pure — the sidecar's uv project dir and entry script: serve.startModule when the
 // manifest declares one (repo-relative), else the voice-engines/<id>/server.py convention
 const entryOf = (engineId, startModule) => {
@@ -81,14 +101,14 @@ export const spawnEngineProcess = (engineId, host, port, { startModule, extraEnv
   // engines derive from the engine id (envIdOf). extraEnv carries per-launch
   // choices such as the model a multi-model engine serves (CSM_MODEL).
   // Temp files go to DISK beside the models: /tmp can be tmpfs (RAM), and a
-  // sidecar's scratch audio there is memory held for nothing (Design note, 2026-10-01.
+  // sidecar's scratch audio there is memory held for nothing (ruling, 2026-10-01).
   // torch's default compile cache lives under TMPDIR, so it follows to disk too
   // (csm pins its own under _models/csm/torchinductor).
   const envId = envIdOf(engineId);
   const scratch = path.join(REPO_ROOT, 'voice-engines', '_tmp', engineId);
   mkdirSync(scratch, { recursive: true });
   const env = {
-    ...process.env,
+    ...voiceHelperEnvironment(process.env, engineId),
     TMPDIR: scratch, TEMP: scratch, TMP: scratch,
     ZONOS_HOST: host, ZONOS_PORT: String(port),
     KOKORO_HOST: host, KOKORO_PORT: String(port),
@@ -199,6 +219,7 @@ export const syncEngineVenv = (engineId, startModule) =>
     const { projectDir } = entryOf(engineId, startModule);
     const proc = spawn(uvBin(), ['sync', '--project', projectDir], {
       cwd: projectDir,
+      env: voiceHelperEnvironment(process.env, engineId),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stderr = '';

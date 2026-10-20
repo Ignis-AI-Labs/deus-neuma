@@ -14,6 +14,8 @@
  *                 reason} — shape law ('invalid') + standing rules ('denied'),
  *                 BEFORE the operator's card
  *   summarize(payload) → string — the one line the card stakes the yes on
+ *   cardArgs(value) → object — optional: what the card shows when the
+ *                 filed fields alone would not show the act (a run's code)
  *   execute(value, {connection, signal}) → {ok:true, detail} | {ok:false,
  *                 reason}
  *   availableFor({laneId, connection}) → null | {channels?: string[]} —
@@ -35,6 +37,7 @@ import { imageGenerateIntent } from './image-generate.js';
 import { formRenderIntent } from './form-render.js';
 import { formChampionIntent } from './form-champion.js';
 import { housePostIntent } from './house-post.js';
+import { houseReviewPacketIntent } from './house-review-packet.js';
 import { kspCommandIntent } from './ksp-command.js';
 import { voiceSealIntent, voiceClaimIntent } from './voice-rites.js';
 import { speechAcceptIntent, speechAnotherIntent } from './speech-accept.js';
@@ -45,8 +48,9 @@ import { teamTuneIntent } from './team-tune.js';
 import { staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent } from './staff-acts.js';
 import { boardAddIntent, boardUpdateIntent } from './board-acts.js';
 import { sovereigntyProposeIntent } from './sovereignty-propose.js';
+import { sovereigntyConsentIntent } from './sovereignty-consent.js';
 import { vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent } from './vault-acts.js';
-import { taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent } from './task-acts.js';
+import { taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent } from './task-acts.js';
 import { leadAddIntent, leadTouchIntent } from './lead-acts.js';
 import { campaignCreateIntent, campaignUpdateIntent } from './campaign-acts.js';
 import { marketingPlanIntent } from './marketing-plan.js';
@@ -58,16 +62,16 @@ import {
 const TYPES = new Map(
   [
     socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, emailSendIntent, walletSendIntent,
-    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, kspCommandIntent,
+    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
     speechAcceptIntent, speechAnotherIntent,
-    teamRunIntent, teamWorkspaceRunIntent, teamPostIntent, teamTuneIntent, sovereigntyProposeIntent,
+    teamRunIntent, teamWorkspaceRunIntent, teamPostIntent, teamTuneIntent, sovereigntyProposeIntent, sovereigntyConsentIntent,
     staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent,
     boardAddIntent, boardUpdateIntent,
     // Stage 3 batch 4 — the state-shaped tools as filed acts.
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
-    taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent,
+    taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
     campaignCreateIntent, campaignUpdateIntent,
     marketingPlanIntent,

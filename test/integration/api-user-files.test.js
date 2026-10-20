@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * Integration tests for the user-files browse + recents API. The browse
@@ -31,6 +32,7 @@ describe('User files browse + recents API', () => {
     // per module instance; a stale import 401s honestly).
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
     // The REAL settings module through its own per-call door (#390 tranche 3).
     process.env.NEUMA_FILES_SETTINGS_PATH = path.join(
       await createTempDir('files-settings'), 'user-files.json');
@@ -114,7 +116,7 @@ describe('User files browse + recents API', () => {
   });
 });
 
-// THE TWO-WAY BRIDGE (Design note, 2026-07-28 — upload and raw over the REAL app,
+// THE TWO-WAY BRIDGE (ruling, 2026-07-28) — upload and raw over the REAL app,
 // REAL tmp roots, real disk. Auth is REAL (RULE 0).
 describe('User files bridge — /upload + /raw', () => {
   let app;
@@ -127,6 +129,7 @@ describe('User files bridge — /upload + /raw', () => {
 
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
     // The REAL settings module through its own per-call door (#390 tranche 3).
     process.env.NEUMA_FILES_SETTINGS_PATH = path.join(
       await createTempDir('files-settings'), 'user-files.json');
@@ -243,6 +246,7 @@ describe('User files conditional write — PUT /write (#235)', () => {
 
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
     // The REAL settings module through its own per-call door (#390 tranche 3).
     process.env.NEUMA_FILES_SETTINGS_PATH = path.join(
       await createTempDir('files-settings'), 'user-files.json');

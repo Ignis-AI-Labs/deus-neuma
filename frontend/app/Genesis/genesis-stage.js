@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { tokenHex, mixHex, lumaOf, glowTexture, fitToCanvas } from '../BootIgnition/stage-palette.js';
 import { GENESIS } from './genesis-geometry.js';
 import { FOV_DEG } from './genesis-camera.js';
-import { genesisShared, penMaterial, strokeGeometry, setPen as set } from './genesis-shaders.js';
+import { genesisShared, penMaterial, markMaterial, strokeGeometry, setPen as set } from './genesis-shaders.js';
 import { fieldFigures, drawingFigures, constructFigures } from './genesis-figures.js';
 import { emanonFigures } from './genesis-figures-emanon.js';
 
@@ -42,7 +42,14 @@ export const createGenesisStage = (canvas, { turn }) => {
     parent.add(lines);
     return { lines, m: material.uniforms };
   };
-  const kit = { scene, palette, pen, set, own, blending };
+  // a mark on every vertex of a solid, sized in device pixels
+  const mark = (vertices, { color, shape, parent }) => {
+    const material = own(markMaterial(shared, { color, shape, blending }));
+    const points = new THREE.Points(own(new THREE.BufferGeometry().setFromPoints(vertices.map((v) => new THREE.Vector3(v.x, v.y, v.z)))), material);
+    parent.add(points);
+    return { points, m: material.uniforms, dpr: () => renderer.getPixelRatio() };
+  };
+  const kit = { scene, palette, pen, mark, set, own, blending };
 
   const field = fieldFigures(kit);
   const drawing = drawingFigures(kit);

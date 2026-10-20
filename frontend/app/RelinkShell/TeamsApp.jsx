@@ -25,6 +25,7 @@ import { OneShotTrialsPanel } from './OneShotTrialsPanel.jsx';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { playSound } from '../../services/sound-engine.js';
+import { onCardLanding, takeCardLanding } from './card-landing.js';
 
 const TeamsIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -42,6 +43,14 @@ const newStep = (neumaId) => ({
   done: '',
   needs: [],
 });
+
+// pure — the PAST RUNS rows: the newest six, plus the run a tray card landed
+// on when it is older than those.
+export const pastRunsShown = (runs, landedId, limit = 6) => {
+  const head = runs.slice(0, limit);
+  const landed = landedId && !head.some((r) => r.id === landedId) ? runs.find((r) => r.id === landedId) : null;
+  return landed ? [...head, landed] : head;
+};
 
 const TeamsBody = () => {
   const [roster] = useBirthRefresh(getRoster);
@@ -63,6 +72,10 @@ const TeamsBody = () => {
   const [runError, setRunError] = useState(null);
   const [runMeta, setRunMeta] = useState(null);
   const [pastRuns, setPastRuns] = useState([]);
+  // A tray card names its run (card-landing.js): latched for a window it opens,
+  // announced to an open one; its PAST RUNS row is marked and brought into view.
+  const [landedRun, setLandedRun] = useState(() => takeCardLanding('teams')?.recordId ?? null);
+  const landedRef = useRef(null);
   const runningRef = useRef(false);
 
   const refreshPastRuns = () => { listRuns().then((r) => { if (r.ok) setPastRuns(r.runs); }); };
@@ -71,6 +84,13 @@ const TeamsBody = () => {
     loadCapacity().then(setCapacity); // null on failure — an honest unknown
     refreshPastRuns();
   }, []);
+  useEffect(() => onCardLanding('teams', (item) => {
+    if (!item?.recordId) return;
+    setLandedRun(item.recordId);
+    setView('compose');
+    refreshPastRuns();
+  }), []);
+  useEffect(() => { landedRef.current?.scrollIntoView?.({ block: 'nearest' }); }, [landedRun, pastRuns]);
 
   const banner = capacity === undefined
     ? { line: 'READING SUBSTRATE…', stale: false }
@@ -370,8 +390,9 @@ const TeamsBody = () => {
         <section className="teams-past">
           <h3 className="teams-results-h label-data">PAST RUNS</h3>
           <ul className="teams-past-list">
-            {pastRuns.slice(0, 6).map((r) => (
-              <li key={r.id} className="teams-past-row">
+            {pastRunsShown(pastRuns, landedRun).map((r) => (
+              <li key={r.id} className={`teams-past-row${r.id === landedRun ? ' is-landed' : ''}`}
+                ref={r.id === landedRun ? landedRef : null} aria-current={r.id === landedRun ? 'true' : undefined}>
                 <span className="teams-past-name label-data">{(r.name || 'RUN').toUpperCase()}</span>
                 <span className={`teams-past-state label-data is-${r.status}`}>{r.status.toUpperCase()}</span>
                 <span className="teams-past-meta label-data">{r.completed}/{r.steps} PARTS</span>

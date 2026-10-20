@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * ensure-native-abi.mjs — keep the ABI-bound native addons matched to the runtime
- * that is about to load them (better-sqlite3 and node-pty; onnxruntime-node ships
- * ABI-stable prebuilds and needs no rebuild).
+ * that is about to load them (better-sqlite3 and node-pty).
  *
  * WHY: a native addon is compiled for one Node ABI. `npm install` builds for
  * system Node, but the Electron app spawns the backend under Electron's bundled
@@ -30,7 +29,7 @@ if (target !== 'node' && target !== 'electron') {
 }
 
 const root = process.cwd();
-// ABI-bound native addons this repo carries (onnxruntime-node is ABI-stable).
+// ABI-bound native addons this repo carries.
 const NATIVE = ['better-sqlite3', 'node-pty'];
 // Marker lives in node_modules (already gitignored, per-machine, wiped by a fresh
 // install). Absent marker → assume `node`, since that is what `npm install` builds.

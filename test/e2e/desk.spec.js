@@ -247,7 +247,7 @@ test('SWITCHER: an on-chain seat stands beside the name once the founding record
   await fs.promises.writeFile(sealPath, JSON.stringify({ soulAddress }));
   await fs.promises.writeFile(recordPath, JSON.stringify({
     schema: 'neuma-house-founding/1', houseName: 'E2eHouse', houseId: '0x1',
-    network: 'base', members: [{ address: soulAddress, kind: 1, title: 'Quaestor' }],
+    network: 'base', members: [{ address: addr, kind: 0, title: 'Rector' }, { address: soulAddress, kind: 1, title: 'Quaestor' }],
   }));
   try {
     // The switcher stands only when the cached roster holds two beings —

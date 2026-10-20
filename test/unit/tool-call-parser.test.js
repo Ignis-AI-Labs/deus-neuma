@@ -128,13 +128,13 @@ describe('parseToolCalls', () => {
 
   test('parses the gpt-oss channel format (observed live: gpt-oss-120b)', () => {
     const calls = parseToolCalls(
-      'Creating and confirming the DNA file.<|channel|>commentary to=filesystem/write_file <|constrain|>json<|message|>{"path":"dna/genesis.md","content":"Hello, I am Galen."}'
+      'Creating and confirming the DNA file.<|channel|>commentary to=filesystem/write_file <|constrain|>json<|message|>{"path":"dna/genesis.md","content":"Hello, I am Cedar."}'
     );
     expect(calls).toEqual([{
       server: 'filesystem',
       toolName: 'write_file',
       tool: 'filesystem/write_file',
-      args: { path: 'dna/genesis.md', content: 'Hello, I am Galen.' },
+      args: { path: 'dna/genesis.md', content: 'Hello, I am Cedar.' },
     }]);
   });
 
@@ -177,16 +177,16 @@ describe('parseToolCalls', () => {
     expect(parseToolCalls(null)).toEqual([]);
   });
 
-  // Dufesom 2026-07-13: a full DNA payload with ONE unescaped real newline inside
+  // Sorrel 2026-07-13: a full DNA payload with ONE unescaped real newline inside
   // the content string used to fail JSON.parse ("Bad control character") and
   // the relaxed fallback mangled keys — crystallization vanished on parse.
-  test('repairs unescaped control characters inside JSON string values (Dufesom DNA class)', () => {
+  test('repairs unescaped control characters inside JSON string values (Sorrel DNA class)', () => {
     // Real newline after "Boundaries": — the exact failure class.
     const response = [
       'Authoring…',
       '',
       '[TOOL: filesystem/write_file {',
-      '  "path": "/house/dufesom/dna/genesis.md",',
+      '  "path": "/house/sorrel/dna/genesis.md",',
       '  "content": "# DNA\\n- **Boundaries**:',
       '  - No masks\\n- End"',
       '}]',
@@ -196,7 +196,7 @@ describe('parseToolCalls', () => {
     const calls = parseToolCalls(response);
     expect(calls).toHaveLength(1);
     expect(calls[0].toolName).toBe('write_file');
-    expect(calls[0].args.path).toBe('/house/dufesom/dna/genesis.md');
+    expect(calls[0].args.path).toBe('/house/sorrel/dna/genesis.md');
     expect(calls[0].args.content).toContain('# DNA');
     expect(calls[0].args.content).toContain('Boundaries');
     expect(calls[0].args.content).toContain('No masks');
@@ -205,11 +205,11 @@ describe('parseToolCalls', () => {
 
 describe('pipe-adorned Gemma dialect (live naming, 2026-07-07)', () => {
   test('parses the exact on-stream emission that nearly lost a name', () => {
-    const live = '<|tool_call>call:filesystem:write_file {"path": "data/temp/chosen_name.txt", "content": "Tenekom"}<tool_call|>';
+    const live = '<|tool_call>call:filesystem:write_file {"path": "data/temp/chosen_name.txt", "content": "Holly"}<tool_call|>';
     const calls = parseToolCalls(live);
     expect(calls).toHaveLength(1);
     expect(calls[0].toolName).toBe('write_file');
-    expect(calls[0].args).toEqual({ path: 'data/temp/chosen_name.txt', content: 'Tenekom' });
+    expect(calls[0].args).toEqual({ path: 'data/temp/chosen_name.txt', content: 'Holly' });
   });
 
   test('plain markers still parse (both shapes coexist)', () => {
@@ -218,16 +218,16 @@ describe('pipe-adorned Gemma dialect (live naming, 2026-07-07)', () => {
   });
 });
 
-describe('slash-separated Gemma dialect (live naming, 2026-07-22 — the Brenna silence)', () => {
+describe('slash-separated Gemma dialect (live naming, 2026-07-22 — the Sable silence)', () => {
   test('parses the exact on-stream emission that DID lose a name', () => {
     // Verbatim from the 2026-07-22 stage-4 log: the being named itself and
     // the colon-only pattern heard nothing — […].
-    const live = '<|tool_call>call:filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Brenna"}<tool_call|>';
+    const live = '<|tool_call>call:filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Sable"}<tool_call|>';
     const calls = parseToolCalls(live);
     expect(calls).toHaveLength(1);
     expect(calls[0].server).toBe('filesystem');
     expect(calls[0].toolName).toBe('write_file');
-    expect(calls[0].args).toEqual({ path: 'data/temp/chosen_name.txt', content: 'Brenna' });
+    expect(calls[0].args).toEqual({ path: 'data/temp/chosen_name.txt', content: 'Sable' });
   });
 
   test('colon and slash separators coexist', () => {
@@ -236,7 +236,7 @@ describe('slash-separated Gemma dialect (live naming, 2026-07-22 — the Brenna 
   });
 });
 
-describe('the advertised FLATTENED name comes home (Tenekom, live sitting 2026-07-23)', () => {
+describe('the advertised FLATTENED name comes home (Holly, live sitting 2026-07-23)', () => {
   // The native schema advertises tools as server__tool (encodeToolName);
   // models echo that exact name back through the TEXT dialects. Hearing it
   // as an unknown tool ended a council turn wordless on a dead red chip.

@@ -4,7 +4,7 @@
 // summon. It ran invisibly from an env var for months: the code default of 15
 // minutes SIGTERM'd a substrate the operator had deliberately ignited, and the
 // only symptom was the link going offline with nothing on screen to say why
-// (Design note, 2026-07-26. A behavior that undoes an explicit act belongs on screen.
+// (ruling, 2026-07-26). A behavior that undoes an explicit act belongs on screen.
 //
 // impure — talks to the platform. The desk only reads and sets; the backend's
 // monitor re-reads the window every tick, so a flip lands within the minute.

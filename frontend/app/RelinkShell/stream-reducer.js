@@ -147,7 +147,7 @@ export const reducer = (state, action) => {
     case 'WATCH_FIRED':
       return pushMessage(state, 'watch', action.text, [], action.at);
 
-    // THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16 — held-word.js.
+    // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
     case 'QUEUE_CLEAR':
     case 'QUEUE_EDIT':
@@ -257,9 +257,11 @@ export const reducer = (state, action) => {
       // retry note — the outcome is known, the wait is over.
       const next = pushMessage(retireProviderRetry(state), 'error', action.text, undefined, action.at);
       const turnId = typeof action.turnId === 'string' && action.turnId ? action.turnId : null;
-      if (!turnId) return next;
+      // What actually failed, in the provider's own words, rides under the bubble.
+      const reason = typeof action.reason === 'string' && action.reason && !String(action.text).includes(action.reason) ? action.reason : null;
+      if (!turnId && !reason) return next;
       const messages = next.messages.slice();
-      messages[messages.length - 1] = { ...messages[messages.length - 1], turnId };
+      messages[messages.length - 1] = { ...messages[messages.length - 1], ...(turnId ? { turnId } : {}), ...(reason ? { reason } : {}) };
       return { ...next, messages };
     }
 

@@ -32,6 +32,14 @@ const { buildOAuth1Header } = await import(path.join(REPO, 'backend/services/soc
 const { normalizeInstanceUrl } = await import(path.join(REPO, 'backend/services/social/mastodon-poster.js'));
 const { readLinkedInIdentity, linkedinExpiryNote } = await import(path.join(REPO, 'backend/services/social/linkedin-poster.js'));
 
+// Keys are per HOUSE (backend/services/social/house-positions.js): name the
+// house whose keys this proves.
+const HOUSE = process.env.NEUMA_HOUSE_WALLET;
+if (!/^0x[0-9a-fA-F]{40}$/.test(HOUSE || '')) {
+  console.error('set NEUMA_HOUSE_WALLET=<your house wallet 0x…> — account keys are kept per house');
+  process.exit(1);
+}
+
 // Per-channel read-only identity probes — each answers […] without publishing anything.
 const PROBES = {
   x: async (c) => {
@@ -110,7 +118,7 @@ const postIdx = process.argv.indexOf('--post');
 if (postIdx === -1) {
   let configured = 0;
   for (const channel of CHANNEL_CATALOG) {
-    const creds = await resolveChannelCredential(channel.id);
+    const creds = await resolveChannelCredential(HOUSE, channel.id);
     if (!creds) {
       console.log(`${channel.id.padEnd(9)} — not configured (fields: ${channel.fields.map((f) => f.env).join(', ')})`);
       continue;
@@ -135,7 +143,7 @@ if (!poster || !text) {
   console.error('usage: node scripts/social-channels-verify.mjs --post <x|telegram|discord|mastodon|bluesky|facebook|linkedin> "your text"');
   process.exit(1);
 }
-const creds = await resolveChannelCredential(channelId);
+const creds = await resolveChannelCredential(HOUSE, channelId);
 if (!creds) {
   console.error(`${channelId} is not configured — fill its fields in .env or Settings > Social Channels first.`);
   process.exit(1);

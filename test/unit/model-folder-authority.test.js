@@ -1,6 +1,6 @@
 /**
  * The folder law — the folder the operator chose IS the authorization
- * (Design note, 2026-08-28. Pure law with real inputs; the store on real fs via its
+ * (ruling, 2026-08-28). Pure law with real inputs; the store on real fs via its
  * own isolation door (NEUMA_MODEL_FOLDERS_PATH). No mock anywhere (RULE 0).
  */
 import { describe, expect, test } from 'vitest';

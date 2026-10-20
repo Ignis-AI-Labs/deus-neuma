@@ -6,6 +6,7 @@
 
 import { clearShellNetwork } from '../services/shell-network-grants.js';
 import { clearLaneRuntime } from './portal-binding-state.js';
+import { isolatePortalForBirth } from '../../core/birth/ceremony-write.js';
 // Active connections map
 const connections = new Map();
 
@@ -145,6 +146,14 @@ export const clearLaneBinding = (connection) => {
   connection._grantedWriteRoots = [];
   connection._pathGrantsHydrated = false;
   clearSessionRuntime(connection);
+};
+
+// A ceremony opens on a clean socket: the prior being's ALWAYS grants,
+// sensitive grants, plan and catalog never reach the newborn's stage calls,
+// then the ceremony's own isolation drops its companion and write reach.
+export const isolateForBirth = (connection) => {
+  clearLaneBinding(connection);
+  return isolatePortalForBirth(connection);
 };
 
 // Expose connections for portal status endpoint

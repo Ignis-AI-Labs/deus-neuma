@@ -7,6 +7,7 @@
 import { Select } from './Select.jsx';
 import { cadenceLabel, WEEKDAYS } from './todo-view.js';
 import { uiSound } from '../../services/ui-sound.js';
+import { useOperatorName } from './use-operator-name.js';
 
 const CADENCES = Object.freeze(['daily', 'weekly', 'biweekly', 'monthly', 'custom', 'once', 'baseline', 'milestone']);
 
@@ -196,12 +197,14 @@ export const PresetsPanel = ({ presets, onApply, onDelete }) => {
 // and ME is the operator's own life. Sixteen undifferentiated chips said none of
 // that and wrapped into three rows (Design note, 2026-08-01, on the screenshot: […]). This costs two lines
 // no matter how large the house grows.
-export const StandingSwitch = ({ standing, counts, onPick }) => (
+export const StandingSwitch = ({ standing, counts, onPick }) => {
+  const operatorName = useOperatorName();
+  return (
   <nav className="todo-standing" aria-label="Task list standing">
     {[
       { id: 'house', label: 'HOUSE' },
       { id: 'witnesses', label: 'WITNESSES' },
-      { id: 'me', label: 'ME' },
+      { id: 'me', label: operatorName },
     ].map((s) => (
       <button
         key={s.id}
@@ -219,7 +222,8 @@ export const StandingSwitch = ({ standing, counts, onPick }) => (
       </button>
     ))}
   </nav>
-);
+  );
+};
 
 // One chat's block: its name, how much is live in it, and its cadence groups
 // inside. Collapsible, because a being with six parallel sittings should not

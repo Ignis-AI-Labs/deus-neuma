@@ -11,6 +11,8 @@
  *      request body as real chat messages — ALL of it, oldest first, roles
  *      intact — well past the old 40-row / 32K-char / ~12K-token keyhole.
  *      The system prompt carries no "Recent conversation" block (never twice).
+ *      On this local wire each ask rides behind the harness's own context
+ *      block (85730874c, #539), kept in history as sent (895994add).
  *   2. SMALL WINDOW (8,192 tokens): the same session sheds OLDEST-first
  *      within the budget the window's truth leaves after the assembled
  *      sections — newest kept, total within budget, wire well-formed.
@@ -35,6 +37,7 @@ import { getConfig, setConfig, _expireCapsCache } from '../../backend/services/l
 import { estimateTokens } from '../../backend/services/context-budget.js';
 import { sessionTailBudgetFor } from '../../backend/services/envelope-budget.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 
 const NEUMA_ID = 'transcriptecho';
 const MODEL = 'test-model';
@@ -76,6 +79,16 @@ let reportedCachedTokens;
 let sessionId;
 
 const sse = (text) => `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`;
+
+// The local wire's current turn (85730874c, #539): the harness's per-turn
+// block, then the operator's words exactly as sent. Returns the block.
+const HARNESS_BLOCK_END = '\n</harness-context>\n\n';
+const harnessBlockOf = (message, ask) => {
+  expect(message.role).toBe('user');
+  expect(message.content.startsWith('<harness-context>\n')).toBe(true);
+  expect(message.content.endsWith(`${HARNESS_BLOCK_END}${ask}`)).toBe(true);
+  return message.content.slice(0, -ask.length);
+};
 
 const openPortal = async (url, token) => {
   ws = new WebSocket(`${url}/?token=${encodeURIComponent(token)}`);
@@ -170,6 +183,9 @@ beforeAll(async () => {
       res.writeHead(404); res.end(); return;
     }
     let raw = '';
+    // Decode as UTF-8 across chunk boundaries: a large body can split a
+    // multibyte character (the em dashes in these rows) between two chunks.
+    req.setEncoding('utf8');
     req.on('data', (chunk) => { raw += chunk; });
     req.on('end', () => {
       const body = JSON.parse(raw);
@@ -209,6 +225,8 @@ beforeAll(async () => {
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
   const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+  // The being's lane is this wallet's, as a birth leaves it: a bind verifies, it never claims.
+  await claimOwner(house, NEUMA_ID, keypair.address);
   await openPortal(`ws://127.0.0.1:${portalServer.address().port}`, token);
 }, 30000);
 
@@ -253,7 +271,7 @@ describe('Stage A — the transcript rides the wire as real chat messages', () =
     const body = capturedBodies.at(-1);
     // THE WIRE SHAPE: [system, ...transcript (oldest first), current turn].
     expect(body.messages[0].role).toBe('system');
-    expect(body.messages.at(-1)).toEqual({ role: 'user', content: Q2 });
+    harnessBlockOf(body.messages.at(-1), Q2);
     const transcript = body.messages.slice(1, -1);
 
     // The system prompt carries NO transcript — the words ride once, as messages.
@@ -280,18 +298,30 @@ describe('Stage A — the transcript rides the wire as real chat messages', () =
       expect(transcript[i].content).toContain(expected[i].text);
     }
 
-    // The conversation clock crossed the move: the oldest kept message opens
-    // with its day marker and clock, inside the message — no fake messages.
-    expect(transcript[0].content).toMatch(/^— .+ —\n\(\d{2}:\d{2} [AP]M\) /);
+    // The conversation clock crossed the move, inside the messages — no fake
+    // messages. The oldest ask went back exactly as sent: its clock rides its
+    // own block's PRESENT MOMENT (895994add). A row with no block opens with
+    // its clock.
+    expect(harnessBlockOf(transcript[0], Q1)).toMatch(/## Present Moment\n.+, \d{4}, \d{1,2}:\d{2} [AP]M/);
+    expect(transcript[2].content).toMatch(/^(— .+ —\n)?\(\d{2}:\d{2} [AP]M\) /);
 
     // The transcript counts as context: the gauge's composition event carries
-    // it as its own section, sized to what the wire actually carried.
+    // it as its own section, sized to the conversation's rows as the record
+    // renders them. An earlier ask's harness block (895994add) is that turn's
+    // context, not conversation, so the section is the wire's rows without
+    // those blocks, plus the clock stamp each restored ask now carries in its
+    // block's PRESENT MOMENT instead.
     const composition = second.frames.find((f) => f.type === 'context:composition');
     const transcriptSection = composition.sections.find((s) => s.id === 'recentConversation');
     expect(transcriptSection).toBeTruthy();
-    expect(transcriptSection.chars).toBe(
-      transcript.map((m) => `${m.role}: ${m.content}`).join('\n\n').length,
-    );
+    const wireChars = transcript.map((m) => `${m.role}: ${m.content}`).join('\n\n').length;
+    const restoredBlockChars = transcript
+      .filter((m) => m.content.startsWith('<harness-context>\n'))
+      .reduce((n, m) => n + m.content.indexOf(HARNESS_BLOCK_END) + HARNESS_BLOCK_END.length, 0);
+    expect(restoredBlockChars).toBeGreaterThan(0);
+    const stampChars = transcriptSection.chars - (wireChars - restoredBlockChars);
+    expect(stampChars).toBeGreaterThan(0);
+    expect(stampChars).toBeLessThanOrEqual('— Wednesday, September 30, 2026 —\n(12:00 AM) '.length);
     expect(transcriptSection.chars).toBeGreaterThan(OLD_CHAR_CAP);
   });
 
@@ -309,12 +339,13 @@ describe('Stage A — the transcript rides the wire as real chat messages', () =
 
     const body = capturedBodies.at(-1);
     expect(body.messages[0].role).toBe('system');
-    expect(body.messages.at(-1)).toEqual({ role: 'user', content: Q3 });
+    const block = harnessBlockOf(body.messages.at(-1), Q3);
     const transcript = body.messages.slice(1, -1);
 
     // The budget the window's truth leaves: window − reserve − completion
-    // floor − the sections the wire actually carried, through the REAL law.
-    const otherSectionTokens = estimateTokens(body.messages[0].content);
+    // floor − the sections the wire actually carried (the system prompt and
+    // this turn's harness block), through the REAL law.
+    const otherSectionTokens = estimateTokens(body.messages[0].content) + estimateTokens(block);
     const budget = sessionTailBudgetFor({ contextWindow: SMALL_WINDOW, otherSectionTokens });
     const transcriptChars = transcript.reduce((sum, m) => sum + m.content.length, 0);
     // The seeded history (~96K chars) overflows this budget by ~5× — shedding

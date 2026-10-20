@@ -50,6 +50,10 @@ import { isThinkProbe, respondThinkProbe } from './think-probe.js';
  *   type}} — `errorMessage` / `errorType`, invalid_request_error by default).
  *   `specialTokens` (piece -> id) is the vocabulary's special tokens, as
  *   POST /tokenize reports them (llama.cpp's shape; parse_special honored).
+ *   An entry's `drop` tears the stream down after its speech chunks — no
+ *   finish, no [DONE]: the shape of a provider that died mid-answer.
+ *   `contextLength` is the window GET /models reports (LM Studio's
+ *   max_context_length / loaded_context_length); absent, no window is named.
  *   `serverHeader` sets the `Server` header on every reply, as a real
  *   server sends it (llama.cpp: 'llama.cpp' — the server-budget lever).
  * @returns {Promise<{
@@ -60,7 +64,7 @@ import { isThinkProbe, respondThinkProbe } from './think-probe.js';
  */
 export const startLocalProvider = ({
   reply = 'A Local Answer', models = ['test-model'], finishReason = 'stop', script = null, serverHeader = null,
-  specialTokens = {},
+  specialTokens = {}, contextLength = null,
 } = {}) =>
   new Promise((resolve) => {
     const hits = [];
@@ -78,7 +82,7 @@ export const startLocalProvider = ({
           status: Number.isInteger(entry.status) ? entry.status : null,
           errorMessage: entry.errorMessage || 'the server refused this request',
           errorType: entry.errorType || 'invalid_request_error',
-          delayMs: Number.isFinite(entry.delayMs) ? entry.delayMs : 0 }
+          delayMs: Number.isFinite(entry.delayMs) ? entry.delayMs : 0, drop: entry.drop === true }
         : { chunks: Array.isArray(entry) ? entry : [entry], reasoning: [], toolCalls: [], finishReason, delayMs: 0 });
     let scripted = Array.isArray(script) && script.length ? script.map(normalize) : null;
     const answerFor = (index) => (scripted
@@ -102,7 +106,11 @@ export const startLocalProvider = ({
       if (req.method === 'GET') {
         hits.push({ method: 'GET', url: req.url });
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ data: models.map((id) => ({ id })) }));
+        // `contextLength`: the window the model list reports, the way LM Studio's
+        // /api/v0/models does — absent, the caller runs on assumed caps.
+        res.end(JSON.stringify({ data: models.map((id) => (contextLength
+          ? { id, type: 'llm', max_context_length: contextLength, loaded_context_length: contextLength }
+          : { id })) }));
         return;
       }
 
@@ -195,6 +203,13 @@ export const startLocalProvider = ({
         }
         for (const piece of answer.chunks) {
           res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`);
+        }
+        // `drop`: the stream dies mid-answer — the speech arrived, the end
+        // never does (the connection is torn down once the words are flushed).
+        if (answer.drop) {
+          await new Promise((r) => { res.write(':\n\n', r); });
+          res.destroy();
+          return;
         }
         // Native function calls arrive AFTER the narration, as the OpenAI wire
         // really streams them: id and the COMPLETE function name on the first

@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import dotenv from 'dotenv';
 import { Wallet } from 'ethers';
 
 /** Isolated real inference routes with an offline engine; no completion substitute. Impure. */
@@ -28,11 +27,8 @@ export const mountRecoveryRoutes = async (app, root, url) => {
     }
   };
   try {
-    const witnessEnv = process.env.NEUMA_WITNESS_ENV;
-    if (!witnessEnv) throw new Error('Set NEUMA_WITNESS_ENV to your own sealed witness env for this authenticated browser proof.');
-    const secrets = dotenv.parse(await fs.readFile(witnessEnv));
-    const privateKey = Object.entries(secrets).find(([key]) => /_PRIVATE_KEY$/.test(key))?.[1];
-    const wallet = new Wallet(privateKey);
+    // A fresh operator wallet, signed for real: the proof owns its own identity.
+    const wallet = Wallet.createRandom();
     const { generateChallenge, verifySignature, createSessionToken } = await import('../../backend/services/auth.js');
     const challenge = generateChallenge(wallet.address);
     const verified = verifySignature(wallet.address, challenge, await wallet.signMessage(challenge));

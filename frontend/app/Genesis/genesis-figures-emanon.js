@@ -12,6 +12,7 @@
 import { FUNCTIONS, TREE, nodeAt, pathStrokes, treeChannels, crossChannels, breaths, pillarConstruction } from './genesis-emanon.js';
 import { SPANS } from './genesis-timeline.js';
 import { arcStrokes } from './genesis-shaders.js';
+import { ROUTE_PATHS } from './genesis-walk.js';
 
 const UP = Math.PI / 2;
 
@@ -54,6 +55,10 @@ export const emanonFigures = ({ palette, pen, set }) => {
   const lightChannels = pen(treeChannels(1), { color: palette.INK, span: SPANS.TREE });
   const darkChannels = pen(treeChannels(-1), { color: palette.SIGNAL, span: SPANS.TREE });
   const cross = pen(crossChannels(), { color: palette.SIGNAL_TINT, span: SPANS.TREE });
+  // the walk's route, one pen per path so each lights as the light crosses it
+  const route = (tree, color) => ROUTE_PATHS.map(([a, b]) => pen([{ a: nodeAt(a, tree), b: nodeAt(b, tree) }], { color, span: 1 }));
+  const lightRoute = route(1, palette.INK);
+  const darkRoute = route(-1, palette.SIGNAL);
 
   // ── the offering: the circle that holds the tree, and a second circle
   //    centered on its rim — two sovereign circles, the lens between ──
@@ -63,19 +68,23 @@ export const emanonFigures = ({ palette, pen, set }) => {
   const lensA = pen(arcStrokes({ x: 0, y: 0 }, C, -Math.PI / 3, (2 * Math.PI) / 3, 64), { color: palette.SIGNAL, span: 1 });
   const lensB = pen(arcStrokes({ x: C, y: 0 }, C, (2 * Math.PI) / 3, (2 * Math.PI) / 3, 64), { color: palette.SIGNAL, span: 1 });
 
-  const applySpheres = (group, e, gain, master) => group.forEach((p, k) => {
+  const applySpheres = (group, e, gain, walk, master) => group.forEach((p, k) => {
     const s = e.spheres[k];
+    const w = walk.spheres[k];
     const heat = s.id === 'natura' ? e.heart : s.id === 'knowing' ? e.crown : 0;
     // within each sphere: its own flicker, riding the whole tree's breath
     const flicker = 0.7 + 0.3 * s.within;
-    set(p.m, { draw: s.draw, opacity: s.opacity * gain * flicker, lift: e.split, burn: Math.max(0.25, heat) }, master);
+    set(p.m, { draw: s.draw, opacity: s.opacity * gain * flicker * w.gain, lift: e.split, burn: Math.max(0.25, heat, w.heat) }, master);
   });
+  const applyRoute = (pens, walk, e, master) => pens.forEach((p, k) => set(p.m, { ...walk.paths[k], lift: e.split, burn: 1 }, master));
 
   return {
     apply(e, master) {
       column.forEach((c, k) => set(c.m, { draw: Math.min(1, Math.max(0, e.column.draw * 1.6 - k * 0.15)), opacity: e.column.opacity }, master));
-      applySpheres(lightSpheres, e, e.trees.light, master);
-      applySpheres(darkSpheres, e, e.trees.dark, master);
+      applySpheres(lightSpheres, e, e.trees.light, e.walk[1], master);
+      applySpheres(darkSpheres, e, e.trees.dark, e.walk[-1], master);
+      applyRoute(lightRoute, e.walk[1], e, master);
+      applyRoute(darkRoute, e.walk[-1], e, master);
       set(lightPaths.m, { draw: e.paths.draw, opacity: 0.6 * e.trees.light, lift: e.split, flow: e.trees.flow }, master);
       set(darkPaths.m, { draw: e.paths.draw, opacity: 0.6 * e.trees.dark, lift: e.split, flow: e.trees.flow }, master);
       set(breathAxes.m, { draw: e.breaths.draw, opacity: e.breaths.opacity, lift: e.split, flow: e.trees.flow, burn: 0.5 }, master);

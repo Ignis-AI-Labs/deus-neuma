@@ -16,6 +16,7 @@ import neumaWorkspace, { setWorkspacesRoot } from '../../core/workspace/neuma-wo
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { dispatchPlatformTool } from '../../backend/services/portal-tool-dispatch.js';
 import { beingCodingToolsFor, stashBeingTurnCatalog } from '../../backend/services/being-tool-surface.js';
+import { shellNetworkSessionHeld } from '../../backend/services/shell-network-grants.js';
 import {
   ensureWitnessCodingSandbox,
   runWitnessCommand,
@@ -119,8 +120,11 @@ describe('the shell network gate — real bwrap, real listener, real card', () =
       expect(result.status).toBe('ok');
       expect(String(result.content)).toContain('NETWORK-PROOF');
       const request = await untilFrame((f) => f.type === 'tool:approval_request' && f.tool === 'coding/shell_network');
-      expect(request.scope).toContain('network access for the coding shell');
-      expect(connection._shellNetwork).toBe(true);
+      // Since a437e530f the consent lives in shell-network-grants.js's own
+      // binding-keyed state, not on connection flags; the session hold is read
+      // through the same seam the PERMISSIONS ledger reads.
+      expect(request.scope).toContain(`Host network for lane ${LANE}`);
+      expect(shellNetworkSessionHeld(LANE)).toBe(true);
       expect((await neumaWorkspace.readToolPolicy(LANE))?.shellNetwork).toBeUndefined();
     }, 60_000);
 
@@ -156,7 +160,7 @@ describe('the shell network gate — real bwrap, real listener, real card', () =
     test('deny runs offline and never re-asks within the session', async () => {
       decide = (frame) => (frame.tool === 'coding/shell_network' ? 'deny' : 'allow');
       const first = await dispatch(match(PROBE(listenerPort)));
-      expect(connection._shellNetworkDenied).toBe(true);
+      expect(shellNetworkSessionHeld(LANE)).toBe(false);
       expect(first.status).not.toBe('ok');
       const cardsBefore = frames.filter((f) => f.type === 'tool:approval_request' && f.tool === 'coding/shell_network').length;
       expect(cardsBefore).toBe(1);

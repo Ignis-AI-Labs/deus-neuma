@@ -14,7 +14,7 @@
 // nothing from the stream. THE RITE is not — the being answers it through its
 // OWN conduit, so it can only ever be carried for the BOUND being.
 //
-// ── BIND TO SEAL IS A BUTTON (Design note, 2026-08-29 ──────────────────────────────
+// ── BIND TO SEAL IS A BUTTON (ruling, 2026-08-29) ──────────────────────────────
 // […]
 //
 // It was a bare label, on the reasoning above — and that reasoning was right

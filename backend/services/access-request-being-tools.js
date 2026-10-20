@@ -1,4 +1,4 @@
-// The sensitive-access REQUEST flow (Design note, 2026-08-18: a being asks for READ
+// The sensitive-access REQUEST flow (ruling, 2026-08-18): a being asks for READ
 // or EDIT access to a masked path — two different grants, one operator card.
 //
 //   request_file_access {path, tier: 'read'|'edit', reason}

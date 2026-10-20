@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   getMoneyInTotals, getMoneyInLedger, getMoneyInWatch, scanMoneyIn, declareReceiveAddress, removeReceiveAddress,
 } from '../../../services/money-in-client.js';
-import { periodStarts } from './money-in-view.js';
+import { periodStarts, scanNote } from './money-in-view.js';
 
 const RECEIPTS_SHOWN = 10;
 const EMPTY_ADDR = Object.freeze({ address: '', label: '', member: '' });
@@ -58,7 +58,7 @@ export const useMoneyIn = (open) => {
   return {
     money, addr, moneyBusy: busy,
     onAddr: (field, value) => setAddr((a) => ({ ...a, [field]: value })),
-    onScan: () => act(scanMoneyIn, (r) => `SCANNED — ${r.appended} NEW RECEIPT${r.appended === 1 ? '' : 'S'}`),
+    onScan: () => act(scanMoneyIn, scanNote),
     onDeclare: async () => {
       const ok = await act(() => declareReceiveAddress(addr.address.trim(), { label: addr.label.trim(), member: addr.member || null }),
         () => 'ADDRESS DECLARED — IT IS WATCHED FROM THE NEXT SCAN');

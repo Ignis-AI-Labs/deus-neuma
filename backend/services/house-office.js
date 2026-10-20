@@ -101,7 +101,7 @@ export const createHouseStore = ({ office, name, legacyPath, legacySeatPath, cre
   return async (wallet) => {
     const file = officeFile(wallet, office, name);
     await moveLegacy();
-    if (!stores.has(file)) stores.set(file, create({ path: () => file }));
+    if (!stores.has(file)) stores.set(file, create({ path: () => file, wallet }));
     return stores.get(file);
   };
 };

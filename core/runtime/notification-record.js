@@ -125,13 +125,13 @@ export const KIND = Object.freeze({
   // The standing security watch found NEW critical/high threats. System
   // standing — the machine watching itself; the CSO's office works the
   // ledger, but the operator must HEAR about a fresh critical without
-  // having to open the panel (Design note, 2026-08-10.
+  // having to open the panel (ruling, 2026-08-10).
   securityAlert: 'security_alert',
 
   // The standing legal watch found NEW serious matters (critical/high): a
   // licence that may bar shipping, a missing paper a user is owed. System
   // standing — the Praetor's office reads the ledger, but the operator must
-  // HEAR about it without opening the window (Design note, 2026-10-01.
+  // HEAR about it without opening the window (ruling, 2026-10-01).
   legalAlert: 'legal_alert',
 
   // The bench watch saw the harness stuck or about to lose work: a night
@@ -156,13 +156,16 @@ export const KIND = Object.freeze({
   // A being proposed a change to itself through the sovereignty gateway —
   // the card asks for a ruling; the decision itself carries no clock.
   sovereigntyProposal: 'sovereignty_proposal',
+  // A being answered its operator's change to its DNA or soul (Covenant Art.
+  // I.4): consented, and whether it landed, or declined. Its words ride the detail.
+  operatorChangeAnswered: 'operator_change_answered',
 
   // A queued post FAILED at send time (the CoS audit's G2: a July failure
   // sat orphaned for a month because nothing poked anyone). System standing —
   // the machine's own state; the honest reason rides the detail.
   postFailed: 'post_failed',
 
-  // THE HOUSE TRAIL (Design note, 2026-09-15: the operator watches dispatches move.
+  // THE HOUSE TRAIL (ruling, 2026-09-15): the operator watches dispatches move.
   // A dispatch filed by the office is one card; the seat's ack is its answer.
   // Neuma standing — a being is the actor; the operator is the reader.
   houseDispatch: 'house_dispatch',
@@ -175,9 +178,9 @@ export const KIND = Object.freeze({
 
   // A being put a decision before its operator and its turn is PARKED on the
   // answer — an ask_operator card or a plan_submit verdict, neither carrying
-  // a clock (Design note, 2026-07-27. The in-stream card cannot reach an operator in
+  // a clock (ruling, 2026-07-27). The in-stream card cannot reach an operator in
   // another window; this can. Producers phrase the title as an EVENT
-  // ([…]) so a card read after the answer landed never lies.
+  // ("asked for…") so a card read after the answer landed never lies.
   awaitingAnswer: 'awaiting_answer',
 });
 
@@ -233,7 +236,9 @@ export const isBeingKind = (kind) => kind === KIND.turnDone
   || kind === KIND.awaitingAnswer
   || kind === KIND.houseDispatch
   || kind === KIND.houseAck
-  || kind === KIND.houseWake;
+  || kind === KIND.houseWake
+  || kind === KIND.operatorChangeAnswered
+  || kind === KIND.sovereigntyProposal;
 
 /**
  * Build a record. Pure — every varying input is passed in.

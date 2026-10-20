@@ -153,8 +153,17 @@ const _readLine = (line, provider) => {
     if (provider === 'anthropic') {
       if (parsed.type === 'message_stop') return { done: true };
       if (parsed.type === 'message_start') {
+        // Anthropic splits the prompt three ways: input_tokens is only the
+        // UNCACHED part; cache reads and cache writes are counted beside it.
+        // The prompt the window holds is all three — the compaction boundary
+        // reads this number, and the uncached part alone never reached it.
+        const counted = [
+          parsed.message?.usage?.input_tokens,
+          parsed.message?.usage?.cache_read_input_tokens,
+          parsed.message?.usage?.cache_creation_input_tokens,
+        ].filter(Number.isFinite);
         const usage = readPartialStreamUsage({
-          promptTokens: parsed.message?.usage?.input_tokens,
+          promptTokens: counted.length ? counted.reduce((sum, n) => sum + n, 0) : undefined,
           cachedPromptTokens: parsed.message?.usage?.cache_read_input_tokens,
         });
         return {

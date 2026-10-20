@@ -63,7 +63,7 @@ export const CompositionView = ({ composition }) => {
     );
   }
 
-  const { sections, totals, budget, toolResults, usage, degraded } = composition;
+  const { sections, totals, budget, toolResults, usage, degraded, shed } = composition;
   const used = Number.isFinite(usage?.usedTokens)
     ? { tokens: usage.usedTokens, tokenSource: usage.source }
     : totals;
@@ -115,6 +115,13 @@ export const CompositionView = ({ composition }) => {
           <div className="ctx-row ctx-degraded" tabIndex={0} aria-label={`context degraded — ${degraded.join(', ')} unavailable this turn`}>
             <span className="ctx-row-label label-data">DEGRADED</span>
             <span className="ctx-budget-val label-data">{degraded.join(', ').toUpperCase()} · FAILED SOFT THIS TURN</span>
+          </div>
+        ) : null}
+        {/* What the shed ladder cut this turn — the window could not hold it, and the operator is told. */}
+        {Array.isArray(shed) && shed.length > 0 ? (
+          <div className="ctx-row ctx-degraded" tabIndex={0} aria-label={`shed this turn — ${shed.map((s) => s.id).join(', ')} did not fit the window`}>
+            <span className="ctx-row-label label-data">SHED</span>
+            <span className="ctx-budget-val label-data">{shed.map((s) => `${s.id} ~${formatCount(s.tokens)}`).join(', ').toUpperCase()} · THE WINDOW COULD NOT HOLD THEM</span>
           </div>
         ) : null}
       </div>

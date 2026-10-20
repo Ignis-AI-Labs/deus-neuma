@@ -141,7 +141,7 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
       </div>
       <div className="settings-control">
         {seed?.kind === 'reply' ? (
-          // A reply cannot be given a slot (Design note, 2026-08-06. The field is
+          // A reply cannot be given a slot (ruling, 2026-08-06). The field is
           // absent AND stage() forces the update's scheduledFor to null —
           // the seed alone is not enough, because `when` state survives the
           // field's absence.

@@ -15,7 +15,7 @@ import { frameUntrustedContent } from '../untrusted-content.js';
 // The DEAD standings — copy the operator dropped completely (Design note, 2026-07-27:
 // […]).
 // Out of every ordinary read. Reachable only when the caller NAMES the status
-// (Design note, 2026-08-03: an audit that cannot see killed copy rewrites into it.
+// (ruling, 2026-08-03): an audit that cannot see killed copy rewrites into it.
 export const DEAD_FOR_BEING = Object.freeze(['withdrawn', 'rejected']);
 
 // The exact status argument that reads BOTH dead standings back. Derived from
@@ -98,7 +98,7 @@ const _threadMark = (e, { byId, children }) => {
 
 const _slotMark = (e) => {
   if (_kindOf(e) === 'self-reply') return '· no slot of its own';
-  // A reply rides no calendar (Design note, 2026-08-06 — printing […]
+  // A reply rides no calendar (ruling, 2026-08-06) — printing "unscheduled"
   // beside one reads as a draft awaiting a slot, when its whole law is that
   // approval itself sends it.
   if (_kindOf(e) === 'reply') return '· sends on approval';

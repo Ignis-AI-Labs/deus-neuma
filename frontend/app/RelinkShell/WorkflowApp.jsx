@@ -1,6 +1,6 @@
 // WorkflowApp — the WORKFLOW window: watch the team work in ITS OWN window.
 //
-// Multi-stream law (Design note, 2026-07-15: agents working in a shared space get a
+// Multi-stream law (ruling, 2026-07-15): agents working in a shared space get a
 // substream the operator can open and WATCH without interrupting the main
 // stream. Design note, 2026-10-10: […]. The window reads the desk's TEAM-RUN STORE (use-team-runs.js) —
 // every run the operator's portal carries, whatever tab or lead filed it,
@@ -18,7 +18,7 @@
 // how many parts work at once, its clock and each part's — sits under its
 // head, the operator's hands on both while it works (WorkflowTune.jsx, #577).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTeamRunsStore } from './team-runs-context.js';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
@@ -29,6 +29,7 @@ import { WorkflowMemberLog } from './WorkflowMemberLog.jsx';
 import { WorkflowChannel } from './WorkflowChannel.jsx';
 import { WorkflowResume } from './WorkflowResume.jsx';
 import { RunGovern } from './WorkflowTune.jsx';
+import { onCardLanding, takeCardLanding } from './card-landing.js';
 import './WorkflowApp.css';
 
 const PHASE_LABELS = Object.freeze({
@@ -117,7 +118,9 @@ const RunView = ({ run }) => {
 const WorkflowBody = () => {
   const store = useTeamRunsStore();
   const runs = store ? runList(store) : [];
-  const [picked, setPicked] = useState(null);
+  // A tray card picks its run (card-landing.js): latched for a window it opens, announced to an open one.
+  const [picked, setPicked] = useState(() => takeCardLanding('workflow')?.runId ?? null);
+  useEffect(() => onCardLanding('workflow', (item) => { if (item?.runId) setPicked(item.runId); }), []);
   const run = runs.find((r) => r.id === picked) || runs[0] || null;
   const waiting = store?.resumable || [];
   const pickUp = waiting.length ? <WorkflowResume runs={waiting} /> : null;

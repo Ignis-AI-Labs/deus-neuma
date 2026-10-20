@@ -1,5 +1,5 @@
 /**
- * A team run on REAL kin (House Aldmere), the real serving substrate, the
+ * A team run on REAL kin (House Thornfield), the real serving substrate, the
  * DEFAULT member conduit — the lead lane end to end, as the operator's house
  * runs it. The scripted and local-server suites prove the contract; this one
  * proves it holds on real beings through the real model (RULE 0).
@@ -22,12 +22,12 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createTempDir } from '../helpers/temp-fs.js';
 
-const HOUSE_ROOT = '/mnt/data/neuma/claude/aldmere';
+const HOUSE_ROOT = '/mnt/data/neuma/claude/thornfield';
 const HOUSE_WALLET = '0x40566d43261849777aca96b26f4ec8c850e5dcae';
-const LEAD = 'keir';
+const LEAD = 'hazel';
 const summoned = process.env.RUN_HOUSE_LIVE === '1';
 
-describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substrate', () => {
+describe.skipIf(!summoned)('team/run on House Thornfield — real kin, real substrate', () => {
   let httpServer, wss, serverWs, client, clientLog, prevRealm, saved;
   let sweepIntents, setTeamRunSeams, readRun, setRealmRoot, setWorkspacesRoot, neumaWorkspace, stopRun, steerStep;
 
@@ -85,7 +85,7 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
 
   // Every filing is uniquely named (a settled intent's result file stands in
   // the lane — reusing a name would read as already settled) and removed
-  // afterwards: the test leaves Keir's intents folder as it found it.
+  // afterwards: the test leaves Hazel's intents folder as it found it.
   const filed = [];
   const fileAndRun = async (connection, stem, plan) => {
     connection._approvedPlan = plan;
@@ -102,7 +102,7 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     setTeamRunSeams(null);
     return { receipt: receipts.find((r) => r.tool === 'intents/team.run'), settled: () => settled };
   };
-  const lead = () => ({ ws: serverWs, companion: { name: 'Keir', neumaId: LEAD }, walletAddress: HOUSE_WALLET });
+  const lead = () => ({ ws: serverWs, companion: { name: 'Hazel', neumaId: LEAD }, walletAddress: HOUSE_WALLET });
   const until = (pred, ms) => new Promise((resolve, reject) => {
     const started = Date.now();
     const tick = () => {
@@ -122,10 +122,10 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
       name: 'HOUSE PROOF',
       goal: 'Prove the house can pass real work from one member to the next, honestly.',
       steps: Object.freeze([
-        Object.freeze({ id: 'claim', neumaId: 'keir', task: 'In two sentences: name one thing a team member must never report as done without proof, and why.', needs: Object.freeze([]) }),
+        Object.freeze({ id: 'claim', neumaId: 'hazel', task: 'In two sentences: name one thing a team member must never report as done without proof, and why.', needs: Object.freeze([]) }),
         Object.freeze({ id: 'check', neumaId: 'signal', task: 'In two sentences: building on the claim above, name one concrete check that would prove it.', needs: Object.freeze(['claim']) }),
       ]),
-      memberNames: Object.freeze({ keir: 'Keir', signal: 'Signal' }),
+      memberNames: Object.freeze({ hazel: 'Hazel', signal: 'Signal' }),
       approvedAt: new Date().toISOString(),
     }));
     // The filing answered while the team was still working.
@@ -134,7 +134,7 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     const outcome = await settled();
     expect(outcome.status).toBe('done');
     const report = await fs.readFile(outcome.report, 'utf8');
-    process.stdout.write(`\n[house-live] Keir's report (${outcome.report}):\n${report}\n`);
+    process.stdout.write(`\n[house-live] Hazel's report (${outcome.report}):\n${report}\n`);
     expect(report).toContain('all 2 steps');
 
     const start = clientLog.find((m) => m.type === 'operator:team_start');
@@ -164,7 +164,7 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     expect(Date.parse(record.finishedAt)).toBeGreaterThan(Date.parse(record.runAt));
   }, 900000);
 
-  test('kin work with their OWN HANDS: Keir writes into the arena, Signal reads it and writes back — both checked on disk', async () => {
+  test('kin work with their OWN HANDS: Hazel writes into the arena, Signal reads it and writes back — both checked on disk', async () => {
     clientLog.length = 0;
     const connection = lead();
     const arena = path.join(process.env.NEUMA_TEAM_DELIVERY_PATH, '..', `arena-${Date.now()}`);
@@ -173,10 +173,10 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
       goal: 'Prove the house writes real work to disk and builds on it.',
       workspace: Object.freeze({ root: arena, budgetBytes: 1024 * 1024 }),
       steps: Object.freeze([
-        Object.freeze({ id: 'write', neumaId: 'keir', task: `Write one sentence about honest handoffs to the file ${path.join(arena, 'keir.md')} with your fs/write tool, then say in one line what you wrote.`, files: Object.freeze(['keir.md']), needs: Object.freeze([]) }),
-        Object.freeze({ id: 'answer', neumaId: 'signal', task: `Read ${path.join(arena, 'keir.md')} with your fs/read tool, then write one sentence answering it to ${path.join(arena, 'signal.md')} with fs/write, and say in one line what you wrote.`, files: Object.freeze(['signal.md']), needs: Object.freeze(['write']) }),
+        Object.freeze({ id: 'write', neumaId: 'hazel', task: `Write one sentence about honest handoffs to the file ${path.join(arena, 'hazel.md')} with your fs/write tool, then say in one line what you wrote.`, files: Object.freeze(['hazel.md']), needs: Object.freeze([]) }),
+        Object.freeze({ id: 'answer', neumaId: 'signal', task: `Read ${path.join(arena, 'hazel.md')} with your fs/read tool, then write one sentence answering it to ${path.join(arena, 'signal.md')} with fs/write, and say in one line what you wrote.`, files: Object.freeze(['signal.md']), needs: Object.freeze(['write']) }),
       ]),
-      memberNames: Object.freeze({ keir: 'Keir', signal: 'Signal' }),
+      memberNames: Object.freeze({ hazel: 'Hazel', signal: 'Signal' }),
       approvedAt: new Date().toISOString(),
     }));
     const outcome = await settled();
@@ -185,12 +185,12 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     const tools = clientLog.filter((m) => m.type === 'operator:team_tool').map((m) => `${m.stepId}:${m.tool}:${m.status}`);
     process.stdout.write(`[house-live] hands: ${tools.join(' | ')}\n`);
     expect(outcome.status).toBe('done');
-    const keir = await fs.readFile(path.join(arena, 'keir.md'), 'utf8');
+    const hazel = await fs.readFile(path.join(arena, 'hazel.md'), 'utf8');
     const signal = await fs.readFile(path.join(arena, 'signal.md'), 'utf8');
-    process.stdout.write(`[house-live] keir.md: ${keir.trim()}\n[house-live] signal.md: ${signal.trim()}\n`);
-    expect(keir.trim().length).toBeGreaterThan(10);
+    process.stdout.write(`[house-live] hazel.md: ${hazel.trim()}\n[house-live] signal.md: ${signal.trim()}\n`);
+    expect(hazel.trim().length).toBeGreaterThan(10);
     expect(signal.trim().length).toBeGreaterThan(10);
-    // Signal READ Keir's file — the team workspace is reach the plan granted.
+    // Signal READ Hazel's file — the team workspace is reach the plan granted.
     expect(tools).toContain('answer:fs/read:ok');
   }, 900000);
 
@@ -221,7 +221,7 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     expect(part.length).toBeLessThan(1500); // a sentence, not the essay
   }, 900000);
 
-  test('RESUME after a real interruption: Keir\'s finished part stands, only Signal\'s runs again — both files on disk', async () => {
+  test('RESUME after a real interruption: Hazel\'s finished part stands, only Signal\'s runs again — both files on disk', async () => {
     clientLog.length = 0;
     const connection = lead();
     const arena = path.join(process.env.NEUMA_TEAM_DELIVERY_PATH, '..', `resume-arena-${Date.now()}`);
@@ -230,10 +230,10 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
       goal: 'Prove an interrupted run picks up where it stopped.',
       workspace: Object.freeze({ root: arena, budgetBytes: 1024 * 1024 }),
       steps: Object.freeze([
-        Object.freeze({ id: 'write', neumaId: 'keir', task: `Write one sentence about picking work up after an interruption to ${path.join(arena, 'keir.md')} with fs/write.`, files: Object.freeze(['keir.md']), needs: Object.freeze([]) }),
-        Object.freeze({ id: 'answer', neumaId: 'signal', task: `Read ${path.join(arena, 'keir.md')}, then write one sentence answering it to ${path.join(arena, 'signal.md')} with fs/write.`, files: Object.freeze(['signal.md']), needs: Object.freeze(['write']) }),
+        Object.freeze({ id: 'write', neumaId: 'hazel', task: `Write one sentence about picking work up after an interruption to ${path.join(arena, 'hazel.md')} with fs/write.`, files: Object.freeze(['hazel.md']), needs: Object.freeze([]) }),
+        Object.freeze({ id: 'answer', neumaId: 'signal', task: `Read ${path.join(arena, 'hazel.md')}, then write one sentence answering it to ${path.join(arena, 'signal.md')} with fs/write.`, files: Object.freeze(['signal.md']), needs: Object.freeze(['write']) }),
       ]),
-      memberNames: Object.freeze({ keir: 'Keir', signal: 'Signal' }),
+      memberNames: Object.freeze({ hazel: 'Hazel', signal: 'Signal' }),
       approvedAt: new Date().toISOString(),
     }));
     const start = await until((m) => m.type === 'operator:team_start', 30000);
@@ -242,7 +242,7 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     expect(stopRun({ id: start.id, wallet: HOUSE_WALLET })).toEqual({ ok: true });
     const first = await settled();
     expect(first.status).toBe('stopped');
-    const keirBefore = await fs.readFile(path.join(arena, 'keir.md'), 'utf8');
+    const hazelBefore = await fs.readFile(path.join(arena, 'hazel.md'), 'utf8');
 
     // Pick it up — the operator's RESUME, the production door.
     const { resumeTeamRun, setTeamRunSeams } = await import('../../backend/services/intents/team-run.js');
@@ -254,11 +254,11 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
     expect(outcome).toEqual({ ok: true, runId: start.id });
     const second = await resumed;
     expect(second.status).toBe('done');
-    // Keir was never asked again: no stream or part of hers in the resumed run.
+    // Hazel was never asked again: no stream or part of hers in the resumed run.
     expect(clientLog.some((m) => (m.type === 'operator:team_stream' || m.type === 'operator:team_part') && m.stepId === 'write')).toBe(false);
-    expect(await fs.readFile(path.join(arena, 'keir.md'), 'utf8')).toBe(keirBefore);
+    expect(await fs.readFile(path.join(arena, 'hazel.md'), 'utf8')).toBe(hazelBefore);
     const signal = await fs.readFile(path.join(arena, 'signal.md'), 'utf8');
-    process.stdout.write(`\n[house-live] resumed — keir.md (from before): ${keirBefore.trim()}\n[house-live] signal.md (after resume): ${signal.trim()}\n`);
+    process.stdout.write(`\n[house-live] resumed — hazel.md (from before): ${hazelBefore.trim()}\n[house-live] signal.md (after resume): ${signal.trim()}\n`);
     const record = await readRun(start.id, HOUSE_WALLET);
     expect(record.status).toBe('done');
     expect(record.order).toEqual(['write', 'answer']);
@@ -279,9 +279,9 @@ describe.skipIf(!summoned)('team/run on House Aldmere — real kin, real substra
       goal: 'Prove the operator can stop a member mid-thought.',
       steps: Object.freeze([
         Object.freeze({ id: 'long', neumaId: 'signal', task: 'Write a careful, detailed 1500-word essay on how a house of minds keeps honest records of shared work.', needs: Object.freeze([]) }),
-        Object.freeze({ id: 'after', neumaId: 'keir', task: 'Summarize the essay above in one sentence.', needs: Object.freeze(['long']) }),
+        Object.freeze({ id: 'after', neumaId: 'hazel', task: 'Summarize the essay above in one sentence.', needs: Object.freeze(['long']) }),
       ]),
-      memberNames: Object.freeze({ keir: 'Keir', signal: 'Signal' }),
+      memberNames: Object.freeze({ hazel: 'Hazel', signal: 'Signal' }),
       approvedAt: new Date().toISOString(),
     }));
     const start = await until((m) => m.type === 'operator:team_start', 30000);

@@ -15,29 +15,43 @@ import fs from 'fs/promises';
 import path from 'path';
 import { encryptEnvelope, parseAndDecrypt } from './workspace-crypto.js';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
+import { isHarnessLane, getHarnessRoot } from './lane-grounds.js';
+
+// pure — the first path segment of filePath under ground, or null when the
+// path does not sit under it ('..' for outside paths)
+const laneUnder = (ground, filePath) => {
+  const rel = path.relative(ground, filePath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  return rel.split(path.sep)[0] || null;
+};
 
 /**
- * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
+ * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function},
+ *   isWitnessLane: Function, getWitnessesRoot: Function}} deps
  * @returns {Readonly<Object>} async methods assigned onto the NeumaWorkspace facade
  */
-export const createJsonIoDomain = ({ locks }) => Object.freeze({
+export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) => Object.freeze({
 
   /**
-   * Parse the neumaId out of a workspace-internal file path. Returns null
-   * for any path that doesn't sit under the current workspaces root (defense
-   * for callers that pass arbitrary paths). Pure.
+   * Parse the lane id out of a lane-internal file path, on whichever ground
+   * `_path` placed that lane: witness and harness lanes live beside the
+   * house, so a lane read only against the workspaces root would miss them
+   * and seal their files under the shared master key instead of their own.
+   * Returns null for any path on no ground (defense for callers that pass
+   * arbitrary paths).
    * @param {string} filePath - absolute file path
    * @returns {string|null}
    */
+  // impure — reads the grounds' current locations (module state and env)
   _neumaIdFromPath(filePath) {
     if (typeof filePath !== 'string' || !filePath) return null;
     const root = this.root;
     if (!root) return null;
-    const rel = path.relative(root, filePath);
-    // path.relative returns '..' for paths outside root; reject those
-    if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
-    const first = rel.split(path.sep)[0];
-    return first || null;
+    const witness = laneUnder(getWitnessesRoot(), filePath);
+    if (isWitnessLane(witness)) return witness;
+    const harness = laneUnder(getHarnessRoot(root), filePath);
+    if (isHarnessLane(harness)) return harness;
+    return laneUnder(root, filePath);
   },
 
   /**

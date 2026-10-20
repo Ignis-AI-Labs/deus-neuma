@@ -21,17 +21,25 @@
 //
 // Membership is a governance record, not a secret — same posture as
 // channel-bindings.js (0700 dir / 0600 file, atomic rename), because it names
-// beings and shares the settings directory with the sealed credential stores.
+// beings and sits beside the sealed credential stores.
+//
+// ONE ROSTER PER HOUSE (social/house-positions.js): a house's sectors are its
+// own, in its operator's realm dir, and only its operator seats a lane on
+// them — a lane that operator owns (a neuma, or a witness lane it
+// manifested). A remit rides the member's prompt, so a remit another house
+// wrote must never reach it.
 
 import fs from 'fs/promises';
 import { join, dirname } from 'path';
 import { getSettingsDir } from './data-root.js';
 import { createWriteChain } from './write-chain.js';
+import { houseKey } from './staff/cos-designation.js';
+import { housePositionFile, houseOfLane } from './social/house-positions.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'sector-crew.json');
 
-// Overridable per call (not at import) so tests exercising the real disk path
-// never touch the operator's live crews.
+// The machine record of the crews written before they moved into the houses.
+// Overridable per call (not at import) so tests never read the operator's.
 export const sectorCrewPath = () => process.env.NEUMA_SECTOR_CREW_PATH || DEFAULT_PATH;
 
 // Lane ids for both kinds: a neuma's id and a witness lane
@@ -230,23 +238,24 @@ export const sectorSection = (sectors, selfNeumaId, nameOf = () => null) => {
 };
 
 /**
- * @param {{ path?: string|(() => string) }} [opts]
+ * @param {{ path?: string|(() => string), seed?: () => Promise<Object> }} [opts]
+ *   seed is what a file that was never written reads as
  */
-export const createSectorCrew = ({ path = sectorCrewPath } = {}) => {
+export const createSectorCrew = ({ path = sectorCrewPath, seed = async () => ({}) } = {}) => {
   const target = () => (typeof path === 'function' ? path() : path);
   // Serialize mutations so two concurrent adds can't interleave read+write and
   // drop one member (channel-bindings.js law).
   const serialize = createWriteChain();
 
-  // impure — a missing file means "no crews yet"; an unparseable one is
-  // SURFACED, never collapsed to {} (that would silently empty every crew on
-  // the next save).
+  // impure — a missing file reads as its seed ("no crews yet" unless a
+  // machine record names this house); an unparseable one is SURFACED, never
+  // collapsed to {} (that would silently empty every crew on the next save).
   const load = async () => {
     let raw;
     try {
       raw = await fs.readFile(target(), 'utf8');
     } catch (err) {
-      if (err.code === 'ENOENT') return {};
+      if (err.code === 'ENOENT') return seed();
       throw err;
     }
     const parsed = JSON.parse(raw);
@@ -294,5 +303,50 @@ export const createSectorCrew = ({ path = sectorCrewPath } = {}) => {
   };
 };
 
+// impure — the machine record's members whose lanes this house owns: a crew
+// record names no house itself, so each member is read only by its lane's
+// owner (the only house the route ever let seat it).
+const legacyCrewOf = async (legacy, key) => {
+  const store = await legacy.load();
+  const out = {};
+  for (const sectorId of Object.keys(store)) {
+    const members = [];
+    for (const member of crewOf(store, sectorId)) {
+      if ((await houseOfLane(member.neumaId)) === key) members.push(member);
+    }
+    if (members.length) out[sectorId] = { members };
+  }
+  return out;
+};
+
+/**
+ * Each house's own crews: `<realm>/<wallet>/sector-crew.json`. Every method
+ * takes the house's wallet first; a caller with no house reads no crew and
+ * cannot seat one.
+ * @param {{legacyPath?: () => string}} [opts]
+ */
+export const createHouseCrew = ({ legacyPath = sectorCrewPath } = {}) => {
+  const legacy = createSectorCrew({ path: legacyPath });
+  const stores = new Map();
+  const storeOf = (wallet) => {
+    const key = houseKey(wallet);
+    const file = housePositionFile(key, 'sector-crew.json');
+    if (!stores.has(file)) stores.set(file, createSectorCrew({ path: file, seed: () => legacyCrewOf(legacy, key) }));
+    return stores.get(file);
+  };
+  const load = (wallet) => (houseKey(wallet) ? storeOf(wallet).load() : Promise.resolve({}));
+  return {
+    load,
+    /** The sector's crew in this house. impure. */
+    async crewFor(wallet, sectorId) {
+      return crewOf(await load(wallet), sectorId);
+    },
+    /** Add (or re-remit) a member of this house's sector. impure. */
+    add: (wallet, sectorId, member) => storeOf(wallet).add(sectorId, member),
+    /** Release a member of this house's sector. impure. */
+    remove: (wallet, sectorId, neumaId) => storeOf(wallet).remove(sectorId, neumaId),
+  };
+};
+
 // The one instance the routes and the portal share.
-export const sectorCrew = createSectorCrew();
+export const sectorCrew = createHouseCrew();

@@ -30,6 +30,7 @@ export default Object.freeze({
     skillsTitle: '技艺',
     sovereignty: '主权',
     staff: '参谋长',
+    houseclock: 'HOUSE 时钟',
     substrate: '基底',
     teams: '团队',
     terminal: '终端',

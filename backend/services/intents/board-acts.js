@@ -15,6 +15,7 @@ import { cosDesignation } from '../staff/cos-designation.js';
 import { loadHouseWorkspace } from '../house-workspace.js';
 import { houseSeatFor } from '../house-titles.js';
 import { makeEntry, fileEntry, readEntry, updateEntry, BOARD_STATUSES } from '../staff/board-store.js';
+import { listDispatches } from '../staff/dispatch-store.js';
 
 // impure — the three standing facts a board act rides on: the house ground,
 // the filer's sealed seat, and (for moves) whether the filer holds the Optio
@@ -29,7 +30,17 @@ const boardContext = async (connection) => {
     cosDesignation.getOfficer(wallet).catch(() => null),
   ]);
   if (!root || !seat) return null;
-  return { root, seat, neumaId, wallet, isOfficer: officer?.laneId === neumaId };
+  return { root, seat, neumaId, wallet, officerLane: officer?.laneId ?? null, isOfficer: officer?.laneId === neumaId };
+};
+
+// impure — the office's charge this board entry mirrors, or null. A dispatched
+// entry's status and note are the CHARGE's: they move through the drawer
+// (dispatch-store.js mirrorToBoard), never on the board alone, or the two
+// disagree. An unreadable drawer reads as no charge (the board act stands).
+const chargeOfEntry = async (officerLane, entryId) => {
+  if (!officerLane) return null;
+  const drawer = await listDispatches(officerLane).catch(() => []);
+  return drawer.find((c) => c.boardId === entryId) ?? null;
 };
 
 const contextRefusal = { ok: false, status: 'denied', reason: 'the house board is not open here — it needs a sealed seat and the house\'s shared ground (your operator sets the ground)' };
@@ -96,6 +107,14 @@ export const boardUpdateIntent = Object.freeze({
     }
     if (payload?.status === undefined && payload?.blockedBy === undefined && payload?.note === undefined) {
       return { ok: false, status: 'invalid', reason: 'a board update moves something — carry {status}, {blockedBy}, {note}, or several' };
+    }
+    const charge = (payload?.status !== undefined || payload?.note !== undefined)
+      ? await chargeOfEntry(context.officerLane, id) : null;
+    if (charge) {
+      const how = context.isOfficer
+        ? `move the charge instead (staff/dispatch-update {id: "${charge.id}"})`
+        : `ack the charge instead (staff/ack {id: "${charge.id}", status})`;
+      return { ok: false, status: 'invalid', reason: `entry '${id}' carries the office's charge [${charge.id}] — ${how}; the board moves with it` };
     }
     return { ok: true, value: { root: context.root, id, status: payload?.status, blockedBy: payload?.blockedBy, note: payload?.note } };
   },

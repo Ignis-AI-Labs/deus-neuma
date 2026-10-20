@@ -42,6 +42,7 @@ import {
   validatePath, writeFileContent,
 } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
 import { runningAs } from './native-fs-roots.js';
+import { checkPathAccess, secretLinkReason } from './sandbox-path-policy.js';
 
 // The organ matches directory_tree excludes with the SAME minimatch the
 // package's own search path uses — resolved from the package's dependency
@@ -262,7 +263,7 @@ const moveFile = async (args) => {
 const copyFile = async (args) => {
   const validSource = await validatePath(args.source);
   const validDest = await validatePath(args.destination);
-  await fs.cp(validSource, validDest, { recursive: true, errorOnExist: true, force: false });
+  await fs.cp(validSource, validDest, { recursive: true, errorOnExist: true, force: false, filter: (src) => !secretLinkReason(src) });
   return said(`Successfully copied ${args.source} to ${args.destination}`);
 };
 
@@ -275,12 +276,22 @@ const copyFile = async (args) => {
 // default excludes.
 const NAME_SEARCH = Object.freeze({ MAX_ENTRIES: 50000, MAX_RESULTS: 200 });
 
+// pure — the sandbox judged only a search's root; a walk judges every entry,
+// as named and as resolved, by the same deny law, so a secret is never read
+// or listed. node_modules is denied as noise, not secret: excludePatterns opens it.
+const withheldByPolicy = (...paths) => paths.some((p) => {
+  const verdict = checkPathAccess(p);
+  return !verdict.allowed && verdict.deniedPattern !== 'node_modules/';
+});
+const withheldNote = (n) => `[${n} path(s) withheld by the secret-path policy — never read or listed]`;
+
 const searchFiles = async (args) => {
   const rootPath = await validatePath(args.path);
   const pattern = nameSearchGlob(args.pattern);
   const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
   const results = [];
   let walked = 0;
+  let withheld = 0;
   let stopped = null;
   const walk = async (dir) => {
     const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -293,6 +304,7 @@ const searchFiles = async (args) => {
       if (isExcluded(relativePath, excludePatterns)) continue;
       let validPath;
       try { validPath = await validatePath(fullPath); } catch { continue; }
+      if (withheldByPolicy(...new Set([fullPath, validPath]))) { withheld += 1; continue; }
       if (minimatch(relativePath, pattern, { dot: true })) {
         results.push(fullPath);
         if (results.length >= NAME_SEARCH.MAX_RESULTS) { stopped = 'results'; return; }
@@ -304,6 +316,7 @@ const searchFiles = async (args) => {
   const notes = [];
   if (stopped === 'results') notes.push(`[stopped at ${NAME_SEARCH.MAX_RESULTS} matches — narrow the pattern or the path]`);
   if (stopped === 'entries') notes.push(`[stopped after walking ${NAME_SEARCH.MAX_ENTRIES} entries — search a narrower directory]`);
+  if (withheld > 0) notes.push(withheldNote(withheld));
   if (excludePatterns.length > 0) {
     notes.push(`[excluded from this walk: ${excludePatterns.join(', ')} — pass excludePatterns: [] to search them]`);
   }
@@ -352,6 +365,7 @@ const searchContent = async (args) => {
   const maxResults = Math.min(Math.max(1, Math.trunc(args.maxResults) || CONTENT_SEARCH.DEFAULT_MAX_RESULTS), CONTENT_SEARCH.RESULT_CEILING);
   const hits = [];
   let oversize = 0;
+  let withheld = 0;
   let scanned = 0;
   let stopped = null;
 
@@ -384,6 +398,7 @@ const searchContent = async (args) => {
       // the name search skips it.
       let validPath;
       try { validPath = await validatePath(fullPath); } catch { continue; }
+      if (withheldByPolicy(...new Set([fullPath, validPath]))) { withheld += 1; continue; }
       if (entry.isDirectory()) { await walk(validPath); continue; }
       if (!entry.isFile()) continue;
       if (args.filePattern && !minimatch(relativePath, args.filePattern, { dot: true })
@@ -399,6 +414,7 @@ const searchContent = async (args) => {
   if (stopped === 'results') notes.push(`[stopped at ${maxResults} matching lines — narrow the pattern or raise maxResults]`);
   if (stopped === 'files') notes.push(`[stopped after scanning ${CONTENT_SEARCH.MAX_FILES} files — search a narrower directory]`);
   if (oversize > 0) notes.push(`[skipped ${oversize} file(s) over ${formatSize(CONTENT_SEARCH.MAX_FILE_BYTES)}]`);
+  if (withheld > 0) notes.push(withheldNote(withheld));
   if (excludePatterns.length > 0) {
     notes.push(`[excluded from this walk: ${excludePatterns.join(', ')} — an excluded folder is not empty; it was skipped by search policy]`);
   }
@@ -460,7 +476,7 @@ export const nativeFilesystemClient = Object.freeze({
       if (/Access denied/i.test(raw) && /outside allowed/i.test(raw)) {
         return refused(`${raw} — the path exists or not, you may not reach it from this ground. This is a grant wall, not an empty folder.`);
       }
-      // THE THIRD WALL (Design note, 2026-08-30. The two above are the platform's own
+      // THE THIRD WALL (ruling, 2026-08-30). The two above are the platform's own
       // and can be appealed to the operator; this one cannot. A being watching
       // `/root/Downloads` fail with a bare EACCES re-listed its roots, saw the
       // folder still granted, and tried the same path again — reasonable both

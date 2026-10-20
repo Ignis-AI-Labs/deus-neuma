@@ -8,6 +8,8 @@
  *   - cloud metadata / link-local  (169.254.*, fe80::/10)
  *   - loopback                     (127.*, ::1)  — except explicit localhost
  *   - RFC-1918 / ULA private ranges (10.*, 192.168.*, 172.16–31.*, fc00::/7)
+ *   - the rest of RFC 6890 special space (100.64/10 CGNAT and tailnets,
+ *     0/8, 198.18/15, multicast, 240/4) and its NAT64 / 6to4 / mapped forms
  * checked on the literal host AND on every DNS-resolved address, so a hostname
  * that resolves to a private IP (DNS rebinding) is refused too.
  *
@@ -16,47 +18,20 @@
  */
 import { promises as dns } from 'dns';
 import { stripBrackets, isIpLiteral } from './host-guard-common.js';
+import { isSpecialAddress } from './special-address-space.js';
 
 /**
- * True when a host string is a loopback, link-local, or RFC-1918/ULA private
- * address. Operates on the literal host (pure) — used both directly and on each
- * DNS-resolved address.
+ * True when a host string is an IP address, in any spelling, in special-
+ * purpose space: loopback, link-local, RFC-1918/ULA private, shared CGNAT,
+ * benchmarking, multicast, reserved, and every IPv4-mapped, NAT64 or 6to4
+ * embedding of those (special-address-space.js). A DNS name is never private
+ * by its text. Pure — used both directly and on each DNS-resolved address.
  * @param {string} host
  * @returns {boolean}
  */
-
-// Decode an IPv4-mapped IPv6 address to its embedded IPv4. WHATWG URL parsing
-// canonicalizes `::ffff:1.2.3.4` to the hex form `::ffff:a9fe:a9fe`, so both the
-// dotted and hex spellings must be recognized — otherwise the mapped form is a
-// wide-open SSRF bypass into metadata/private space.
-const mappedToV4 = (h) => {
-  const dotted = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(h);
-  if (dotted) return dotted[1];
-  const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(h);
-  if (hex) {
-    const hi = parseInt(hex[1], 16);
-    const lo = parseInt(hex[2], 16);
-    return `${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`;
-  }
-  return null;
-};
-
 export const isPrivateHost = (host) => {
   if (typeof host !== 'string' || host.length === 0) return false;
-  const h = stripBrackets(host.toLowerCase());
-  const v4 = mappedToV4(h);
-  if (v4) return isPrivateHost(v4);
-  const isV6 = h.includes(':');
-  return (
-    h === '0.0.0.0' || h === '::1' ||
-    h.startsWith('127.') || h.startsWith('169.254.') ||
-    h.startsWith('10.') || h.startsWith('192.168.') ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
-    // IPv6 link-local (fe80::/10) + ULA (fc00::/7) — only when the host is an
-    // actual IPv6 literal, so public domains like fcc.gov / fdroid.org aren't
-    // falsely refused by a bare 2-char prefix match.
-    (isV6 && (h.startsWith('fe80:') || h.startsWith('fc') || h.startsWith('fd')))
-  );
+  return isSpecialAddress(stripBrackets(host.toLowerCase()));
 };
 
 const isLocalhost = (host) => {

@@ -80,7 +80,7 @@ describe('buildComfyArgs — the frozen §3.1 launch line', () => {
       '/opt/forge/app/main.py',
       '--port', '8190',
       '--disable-all-custom-nodes',
-      '--disable-api-nodes',
+      '--offline',
       '--disable-metadata',
       '--output-directory', '/data/out',
       '--temp-directory', fullCfg.tempDir,

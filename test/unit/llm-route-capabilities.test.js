@@ -103,7 +103,7 @@ describe('getRouteCapabilities cache', () => {
   });
 
   test('a windowless probe inherits the route\'s last GOOD runtime window — no flap to a static rung (D6)', async () => {
-    // The failure this pins (Design note, 2026-08-31: a flapping probe fell past the
+    // The failure this pins (ruling, 2026-08-31): a flapping probe fell past the
     // registry to name inference for a turn, swinging the tools block
     // ~27K↔~1.5K and arming the shed ladder against a phantom small window.
     _resetCapsCache();

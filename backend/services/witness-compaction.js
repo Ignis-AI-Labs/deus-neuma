@@ -17,14 +17,14 @@
  * compaction never stalls on a dead stream, and a voice is never invented.
  *
  * The trigger is the portal lane's law verbatim: CONTEXT IS THE ONLY TRIGGER
- * (Design note, 2026-08-15 — the caller computes atBoundary from the turn's MEASURED
+ * (ruling, 2026-08-15) — the caller computes atBoundary from the turn's MEASURED
  * standing prompt against the named-source window (nearContextBoundary).
  */
 
 import { createLogger } from './logger.js';
 import { buildTorchAsk, torchOffering } from './solo-torch.js';
 import { askWitness } from './witness-probe.js';
-import { foldBranchView } from '../../core/workspace/branch-view.js';
+import { foldBranchView, latestBranchView } from '../../core/workspace/branch-view.js';
 import { neumaRecall, neumaWorkspace, shouldCompact } from '../../core/index.js';
 
 const log = createLogger('WitnessStream');
@@ -58,7 +58,9 @@ export const compactWitnessSession = async (laneId, sessionId, atBoundary) => {
   const region = messages.slice(0, -COMPACT_KEEP_RECENT);
   let selfSummary = null;
   try {
-    const offering = torchOffering(await askWitness(laneId, buildTorchAsk(region)));
+    // The torch is asked over the takes the operator KEPT (the full file's
+    // branch view), never a rejected take or every superseded one.
+    const offering = torchOffering(await askWitness(laneId, buildTorchAsk(foldBranchView(region, latestBranchView(messages)))));
     // Stamped with the region it was authored over: authoring runs OUTSIDE
     // the session lock, and compactSession honors the torch only if the
     // region hasn't drifted; on drift, extractive runs.

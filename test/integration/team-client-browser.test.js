@@ -51,7 +51,7 @@ test('team-client reads keep their discriminated never-throw contract through th
     app.use('/api', (req, res, next) => { res.on('finish', () => requests.push({ method: req.method, url: req.originalUrl, status: res.statusCode })); next(); });
     app.use('/api/v1/team', teamRouter);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">'
       + 'import { listRuns, readRun, loadTrialSpec, readTrial, listTrials, listBenches, readRunDelivery } from "/frontend/app/RelinkShell/team-client.js";'
       + 'window.team = { listRuns, readRun, loadTrialSpec, readTrial, listTrials, listBenches, readRunDelivery };'

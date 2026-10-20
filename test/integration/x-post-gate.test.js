@@ -22,6 +22,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { channelBindings } from '../../backend/services/social/channel-bindings.js';
+import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
 const NEUMA_ID = 'postgateecho';
@@ -29,7 +30,7 @@ const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET']
 const SOCIAL_PATHS = ['NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH'];
 
 describe('social/post intent gate (real WS + real policy cascade, gnosis)', () => {
-  let house, origRoot, httpServer, wss, serverWs, client, port, intentsDir;
+  let house, origRoot, httpServer, wss, serverWs, client, port, intentsDir, positionHouse;
   let clientLog;
   let decide = null; // armed per test — the operator's chip answer
   const savedEnv = {};
@@ -79,10 +80,12 @@ describe('social/post intent gate (real WS + real policy cascade, gnosis)', () =
     for (const k of SOCIAL_PATHS) { savedEnv[k] = process.env[k]; }
     process.env.NEUMA_SOCIAL_BINDINGS_PATH = `${house}/social-channel-bindings.json`;
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: '0xTestWitness' });
+    positionHouse = usePositionHouse(house);
+    await channelBindings.bind(POSITION_HOUSE, 'x', { neumaId: NEUMA_ID });
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
+    await ownLane(NEUMA_ID);
     intentsDir = path.join(workspace.pathFor(NEUMA_ID), 'intents');
 
     httpServer = createServer();
@@ -122,6 +125,7 @@ describe('social/post intent gate (real WS + real policy cascade, gnosis)', () =
     wss?.close();
     httpServer?.close();
     setWorkspacesRoot(origRoot);
+    positionHouse?.restore();
     await fs.rm(house, { recursive: true, force: true });
   });
 
@@ -209,7 +213,7 @@ describe('social/post intent gate (real WS + real policy cascade, gnosis)', () =
 
     // The operator releases the channel; no socket is reopened. If the binding
     // were cached at socket open, the former holder could keep speaking.
-    await channelBindings.unbind('x');
+    await channelBindings.unbind(POSITION_HOUSE, 'x');
     await fileIntent('after-release', { type: 'social/post', channel: 'x', text: 'after release' });
     const released = await sweep(connection, 'auto');
     expect(released[0].status).toBe('denied');
@@ -220,7 +224,7 @@ describe('social/post intent gate (real WS + real policy cascade, gnosis)', () =
     // AUTO's protocol guard (182ca2f5f): outward speech pauses on the
     // operator's card even in AUTO — the rebound holder is ASKED first, and
     // only past the card does the honest no-credentials outcome answer.
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: '0xTestWitness' });
+    await channelBindings.bind(POSITION_HOUSE, 'x', { neumaId: NEUMA_ID });
     await fileIntent('after-rebind', { type: 'social/post', channel: 'x', text: 'after rebind' });
     decide = () => 'allow';
     const restored = await sweep(connection, 'auto');

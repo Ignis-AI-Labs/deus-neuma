@@ -28,7 +28,7 @@ const records = new WeakMap(); // ws → Array<{tool,status,summary,detail,mark}
 const marks = new WeakMap(); // ws → chars of this turn's answer already written
 // THE THOUGHT TRAIL lives in the same record: the turn's reasoning stretches,
 // each marked with the speech written when it happened — the acts' own law,
-// so a resumed chat rebuilds the bubbles where they streamed (Design note, 2026-08-27.
+// so a resumed chat rebuilds the bubbles where they streamed (ruling, 2026-08-27).
 const thoughts = new WeakMap(); // ws → Array<{text, mark}>
 
 /**

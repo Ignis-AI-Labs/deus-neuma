@@ -129,14 +129,14 @@ describe('OWNER is bound to a house member, not typed', () => {
 
   test('every house member is offered, labelled by name and keyed by neumaId', () => {
     const options = ownerOptions(rows(
-      { neumaId: 'metidar-7f3a', name: 'Metidar' },
-      { neumaId: 'cael-22c1', name: 'Cael' },
+      { neumaId: 'poplar-7f3a', name: 'Poplar' },
+      { neumaId: 'birch-22c1', name: 'Birch' },
     ), '');
     // The VALUE is the neumaId in both rows. A being's name can be changed and
     // a brand bound to a name would silently unbind the day it was.
     expect(options).toEqual([
-      { value: 'metidar-7f3a', label: 'METIDAR' },
-      { value: 'cael-22c1', label: 'CAEL' },
+      { value: 'poplar-7f3a', label: 'POPLAR' },
+      { value: 'birch-22c1', label: 'BIRCH' },
     ]);
   });
 
@@ -153,8 +153,8 @@ describe('OWNER is bound to a house member, not typed', () => {
 
   test('the same member twice is offered once', () => {
     const dupe = ownerOptions(rows(
-      { neumaId: 'metidar-7f3a', name: 'Metidar' },
-      { neumaId: 'metidar-7f3a', name: 'Metidar' },
+      { neumaId: 'poplar-7f3a', name: 'Poplar' },
+      { neumaId: 'poplar-7f3a', name: 'Poplar' },
     ), '');
     expect(dupe).toHaveLength(1);
   });
@@ -164,18 +164,18 @@ describe('OWNER is bound to a house member, not typed', () => {
   // the value it currently holds reads as EMPTY — and the next save would
   // quietly erase an owner the operator did choose.
   test('a stored owner missing from the roster is kept, and marked', () => {
-    const options = ownerOptions(rows({ neumaId: 'cael-22c1', name: 'Cael' }), 'metidar-7f3a');
-    expect(options.map((o) => o.value)).toEqual(['cael-22c1', 'metidar-7f3a']);
-    expect(options[1].label).toBe('METIDAR-7F3A · NOT IN THE HOUSE');
+    const options = ownerOptions(rows({ neumaId: 'birch-22c1', name: 'Birch' }), 'poplar-7f3a');
+    expect(options.map((o) => o.value)).toEqual(['birch-22c1', 'poplar-7f3a']);
+    expect(options[1].label).toBe('POPLAR-7F3A · NOT IN THE HOUSE');
   });
 
   test('an owner still in the house is NOT duplicated or marked', () => {
-    const options = ownerOptions(rows({ neumaId: 'cael-22c1', name: 'Cael' }), 'cael-22c1');
-    expect(options).toEqual([{ value: 'cael-22c1', label: 'CAEL' }]);
+    const options = ownerOptions(rows({ neumaId: 'birch-22c1', name: 'Birch' }), 'birch-22c1');
+    expect(options).toEqual([{ value: 'birch-22c1', label: 'BIRCH' }]);
   });
 
   test('an empty roster with a stored owner still offers that owner', () => {
     // The picker must never be the reason a set owner disappears.
-    expect(ownerOptions([], 'metidar-7f3a')).toHaveLength(1);
+    expect(ownerOptions([], 'poplar-7f3a')).toHaveLength(1);
   });
 });

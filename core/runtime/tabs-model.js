@@ -398,9 +398,9 @@ export const focusedComposition = (focusedId, byTab, anchor = null) => {
 /**
  * Pure — the shape that goes to disk, and the shape that comes back.
  *
- * `sessionId` is KEPT (Design note, 2026-08-02: a tab that forgets its sitting cannot
+ * `sessionId` is KEPT (ruling, 2026-08-02): a tab that forgets its sitting cannot
  * return the operator to it, and — because `focusPlan` reads a null id as
- * […] — would mint a fresh chat over it instead. Carrying the id
+ * "never spoken" — would mint a fresh chat over it instead. Carrying the id
  * does not bind anything; see the RESTART note at the top of this file.
  */
 export const serializeTabs = (state) => ({

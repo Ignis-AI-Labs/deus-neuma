@@ -2,7 +2,7 @@
 //
 // Launched from the Start menu (dock:false, so it isn't a dock app icon).
 // The window is TABBED — the one giant scroll made it impossible to find
-// anything (Design note, 2026-07-23: GENERAL (account, desk, sound, realm, press,
+// anything (ruling, 2026-07-23): GENERAL (account, desk, sound, realm, press,
 // hotkeys),
 // LOOK (the cosmetic dress — colors + presets), MODELS (inference,
 // providers, per-being routes), API (every outward key: channel keys,

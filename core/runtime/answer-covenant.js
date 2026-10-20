@@ -19,7 +19,7 @@
  * place of the list, is not sovereignty — it is the question going unanswered
  * while its cost lands on someone else.
  *
- * EXACT OUTPUT (Design note, 2026-09-26, the fifth sentence. The 8192 IFEval set
+ * EXACT OUTPUT (ruling, 2026-09-26), the fifth sentence. The 8192 IFEval set
  * showed the being answering the task, then adding to it — […], […], word counts — and every
  * addition broke the instruction it followed: a capital in an all-lowercase
  * answer, a comma under no-commas, the forbidden words named, a paragraph too
@@ -75,7 +75,7 @@ export const CLOSING_WITH_COVENANT =
  * GENERAL BY CONSTRUCTION: any stated or demonstrated format, any task — never
  * a named benchmark, never a named marker. It is also NOT in the production
  * covenant: until the matched runs prove it, it rides the benchmark arms only
- * (Design note, 2026-09-11. If it proves out, joining CLOSING_WITH_COVENANT is its own
+ * (ruling, 2026-09-11). If it proves out, joining CLOSING_WITH_COVENANT is its own
  * operator decision.
  * @type {string}
  */

@@ -36,7 +36,7 @@ test('the bounded shell holds 768 real files open concurrently and retains its o
     expect(result.exitCode, result.stdout + result.stderr).toBe(0);
     expect(JSON.parse(await fs.readFile(path.join(shell.workspace, 'scan-result.json'), 'utf8'))).toEqual({ opened: 768 });
     const limits = await runWitnessCommand({ ...shell, mode: 'inspect', command:
-      'test "$(ulimit -Sn)" = 4096 && test "$(ulimit -Hn)" = 4096 && test "$(ulimit -t)" = 120 && test "$(ulimit -u)" = 256 && test "$(ulimit -f)" = 1048576' });
+      'test "$(ulimit -Sn)" = 4096 && test "$(ulimit -Hn)" = 4096 && test "$(ulimit -t)" = 120 && test "$(ulimit -u)" = 4096 && test "$(ulimit -f)" = 1048576' });
     expect(limits.exitCode, limits.stderr).toBe(0);
     await expect(fs.stat(path.join(ground, 'files'))).rejects.toMatchObject({ code: 'ENOENT' });
   } finally {

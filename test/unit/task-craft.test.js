@@ -106,7 +106,7 @@ describe('what the being is actually told', () => {
     expect(clause).toMatch(/exception/i);
   });
 
-  it('the mandate binds only the craft realm — never marketing (Design note, 2026-08-06', () => {
+  it('the mandate binds only the craft realm — never marketing (ruling, 2026-08-06)', () => {
     // The over-rotation this pins against: a being taking up […] was told to summon sc-quick-fix, did, and
     // had to disclaim it mid-sitting. Both surfaces must state the realm the
     // protocols are built for AND the direct route for work outside it, so a

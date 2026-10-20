@@ -1,6 +1,6 @@
 // files-drop — the drop decision, pure.
 //
-// THE TWO-WAY BRIDGE (Design note, 2026-07-28: a file dragged in from the OS file
+// THE TWO-WAY BRIDGE (ruling, 2026-07-28): a file dragged in from the OS file
 // manager needs a PLACE to land, and the tree answers that the way the
 // witness's own file manager does: onto a folder row it lands IN the
 // folder; onto a file row it lands BESIDE the file (its parent); onto the

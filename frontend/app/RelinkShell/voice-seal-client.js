@@ -34,7 +34,7 @@ export const sealStatus = async (neumaId) => {
  * THE ASK — one rite turn, watched as it ARRIVES.
  *
  * The answer streams so the witness sees the being speak rather than a
- * finished page appearing (Design note, 2026-08-18. `onDelta` is called with each
+ * finished page appearing (ruling, 2026-08-18). `onDelta` is called with each
  * fragment; the promise resolves with the server's `done` frame, which
  * carries the verbatim answer and the lines projected from it.
  *

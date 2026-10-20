@@ -12,7 +12,7 @@
 
 import { escapeHTML } from '../../utils/sanitize.js';
 import { apiCall } from '../../utils/http.js';
-import { explorerTxUrl } from '../../utils/explorer.js';
+import { explorerName, explorerTxUrl } from '../../utils/explorer.js';
 import {
   deskWallet, ensureWalletNetwork, signSealPayload, broadcastSealTx,
 } from './onchain-seal-flow.js';
@@ -153,7 +153,7 @@ export const appendSealReceiptLink = (ceremony, { network, txHash }, hostSelecto
   link.href = url;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = 'VIEW ON BASESCAN ↗';
+  link.textContent = `VIEW ON ${explorerName(network)} ↗`;
   host.append(' ', link);
 };
 

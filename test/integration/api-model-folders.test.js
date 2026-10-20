@@ -7,6 +7,7 @@ import express from 'express';
 import request from 'supertest';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 describe('Model folders API — the folder law', () => {
   let app, witness, savedPath, savedDirs, savedModel;
@@ -25,6 +26,7 @@ describe('Model folders API — the folder law', () => {
 
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
 
     const { default: router } = await import('../../backend/routes/model-folder-routes.js');
     app = express();

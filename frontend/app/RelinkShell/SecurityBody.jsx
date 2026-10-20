@@ -8,7 +8,7 @@ import { formatDateTime } from '../../utils/format.js';
 import { EmptyState } from './empty-state.jsx';
 import {
   THREAT_STATUSES, THREAT_LAYERS,
-  severityLoud, statusOwes, statusLabel, postureCountsLine, runLine, seatLine, hostLine,
+  severityLoud, statusOwes, statusLabel, reportLabel, reportActor, evidenceLine, postureCountsLine, runLine, seatLine, hostLine,
 } from './security-view.js';
 
 export const SecurityIcon = () => (
@@ -37,7 +37,7 @@ const FilterChips = ({ label, values, current, onPick }) => (
 );
 
 // THE REPORT — one threat whole, and the office's verdicts in order.
-const ThreatDetail = ({ threat, onClose }) => {
+const ThreatDetail = ({ threat, onClose, onReopen, busy }) => {
   const reports = threat.history?.length ? threat.history : (threat.assessment ? [{
     status: threat.status, assessment: threat.assessment,
     assessedBy: threat.assessedBy, assessedAt: threat.assessedAt, githubIssue: threat.githubIssue,
@@ -49,10 +49,17 @@ const ThreatDetail = ({ threat, onClose }) => {
         <span className={`sec-tag label-data ${severityLoud(threat.severity) ? 'is-loud' : ''}`}>{String(threat.severity).toUpperCase()}</span>
         <span className={`sec-tag label-data ${statusOwes(threat.status) ? 'is-loud' : ''}`}>{statusLabel(threat.status)}</span>
         <span className="sec-detail-where label-data">{threat.layer}{threat.repo ? ` / ${threat.repo}` : ''}</span>
+        {threat.status !== 'new' ? (
+          <button type="button" className="sec-detail-close label-data" onClick={onReopen} disabled={busy}>REOPEN</button>
+        ) : null}
         <button type="button" className="sec-detail-close label-data" onClick={onClose}>CLOSE</button>
       </div>
       <p className="sec-detail-title">{threat.title}</p>
       {threat.summary ? <p className="sec-detail-summary">{threat.summary}</p> : null}
+      {threat.remedy ? <p className="sec-detail-summary sec-detail-remedy"><span className="label-data">REMEDY — </span>{threat.remedy}</p> : null}
+      {threat.status === 'mitigated' && threat.verifiedAt ? (
+        <p className="sec-detail-line sec-detail-verified label-data">VERIFIED BY THE WATCH {formatDateTime(threat.verifiedAt)}</p>
+      ) : null}
       {threat.affected?.length ? (
         <p className="sec-detail-line label-data">AFFECTED — {threat.affected.map((a) => `${a.package}@${a.version}`).join(', ')}</p>
       ) : null}
@@ -73,11 +80,12 @@ const ThreatDetail = ({ threat, onClose }) => {
           {reports.map((h, i) => (
             <li key={`${h.assessedAt}-${i}`} className="sec-report">
               <p className="sec-report-head label-data">
-                <span className={`sec-tag label-data ${statusOwes(h.status) ? 'is-loud' : ''}`}>{statusLabel(h.status)}</span>
-                {h.assessedBy ? ` BY ${String(h.assessedBy).toUpperCase()}` : ''} · {formatDateTime(h.assessedAt)}
+                <span className={`sec-tag label-data ${statusOwes(h.status) ? 'is-loud' : ''}`}>{reportLabel(h)}</span>
+                {reportActor(h.assessedBy) ? ` BY ${reportActor(h.assessedBy)}` : ''} · {formatDateTime(h.assessedAt)}
                 {h.githubIssue ? ' · ISSUE FILED' : ''}
               </p>
               <p className="sec-report-body">{h.assessment}</p>
+              {evidenceLine(h.evidence) ? <p className="sec-detail-line sec-report-why label-data">WHY — {evidenceLine(h.evidence)}</p> : null}
             </li>
           ))}
         </ul>
@@ -88,7 +96,7 @@ const ThreatDetail = ({ threat, onClose }) => {
 
 export const SecurityBody = ({
   posture, scan, watch, entries, detail, busy, error,
-  onPickThreat, onCloseDetail, onRunScan,
+  onPickThreat, onCloseDetail, onRunScan, onReopenThreat,
   statusFilter, layerFilter, repoFilter, onStatus, onLayer, onRepo,
 }) => (
   <div className="sec">
@@ -144,7 +152,7 @@ export const SecurityBody = ({
           ))}
         </ul>
       )}
-      {detail ? <ThreatDetail threat={detail} onClose={onCloseDetail} /> : null}
+      {detail ? <ThreatDetail threat={detail} onClose={onCloseDetail} onReopen={onReopenThreat} busy={busy} /> : null}
     </section>
 
     <section className="sec-watch">

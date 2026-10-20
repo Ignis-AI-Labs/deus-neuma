@@ -104,7 +104,7 @@ export const useCouncilStream = (wsService, { focus = null, projects = null } = 
     // ROOM (only council-surfaced asks; the one-on-one stream owns its own).
     const onApprovalAsk = (d) => {
       if (d.surface !== 'council') return;
-      safe({ type: 'APPROVAL_ASK', id: d.id, tool: d.tool, args: d.args, scope: d.scope });
+      safe({ type: 'APPROVAL_ASK', id: d.id, tool: d.tool, args: d.args, fullArgs: d.fullArgs || '', scope: d.scope });
     };
     const onApprovalSettled = (d) => safe({ type: 'APPROVAL_SETTLED', id: d.id, decision: d.decision });
     const onError = (d) => safe({ type: 'ERROR', code: d.code, message: d.message });

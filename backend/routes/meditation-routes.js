@@ -14,6 +14,8 @@ import { meditationSchedulerStatus, abortMeditationForLane } from '../services/m
 import { readPosture } from '../services/meditation/substrate-posture.js';
 import { runMeditation } from '../services/meditation/meditation-cycle.js';
 import { localTurnSnapshot } from './portal-routes.js';
+import { ownedLanes } from '../services/house-deadlines.js';
+import { meditationViewFor } from '../services/meditation/meditation-house-view.js';
 
 const router = express.Router();
 const log = createLogger('MeditationRoutes');
@@ -23,11 +25,13 @@ router.use(requireAuth);
 // GET / — settings + per-lane state + the scheduler's live posture.
 router.get('/', async (req, res) => {
   try {
-    const [settings, state] = await Promise.all([
+    const [settings, state, lanes] = await Promise.all([
       meditationSettings.read(),
       readMeditationState(),
+      ownedLanes(req.walletAddress),
     ]);
-    res.json({ settings, state, scheduler: meditationSchedulerStatus() });
+    const owned = new Set(lanes.map((l) => l.laneId));
+    res.json(meditationViewFor(owned, { settings, state, scheduler: meditationSchedulerStatus() }));
   } catch (error) {
     // A corrupt state file is LOUD here too — never rendered as "never ran".
     log.error('meditation state read failed', { error: error.message });

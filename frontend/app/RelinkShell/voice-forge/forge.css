@@ -182,6 +182,7 @@
 
 /* ▶ — one square play control everywhere a voice can be heard. */
 .vf-play {
+  position: relative;
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
@@ -206,11 +207,22 @@
 }
 .vf-play[data-loading="true"] {
   color: var(--signal);
+}
+/* The loading pulse is a signal-coloured border laid over the button and
+   faded by opacity alone — a border-color keyframe repaints every frame
+   (the motion law, test/unit/motion-law.test.js). */
+.vf-play[data-loading="true"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--signal);
+  pointer-events: none;
+  opacity: 0;
   animation: vf-pulse 900ms var(--ease-in-out) infinite alternate;
 }
 @keyframes vf-pulse {
-  from { border-color: var(--line); }
-  to { border-color: var(--signal); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .vf-textarea,

@@ -141,7 +141,7 @@ describe('the Undercurrent — record without lesson (no mock)', () => {
     expect(await undercurrentSectionFor({ companion: {} })).toBe('');
   });
 
-  // PULLED, NEVER PUSHED (Design note, 2026-10-08: the undercurrent reaches the being
+  // PULLED, NEVER PUSHED (ruling, 2026-10-08): the undercurrent reaches the being
   // only through mind_read; no turn envelope carries it.
   const readMind = async () => {
     const events = [];

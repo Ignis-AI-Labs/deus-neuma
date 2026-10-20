@@ -11,6 +11,8 @@
  * the `addedAt` timestamp is passed in by the caller so these stay deterministic.
  */
 
+import { parseEther } from 'ethers';
+
 const normalize = (address) =>
   typeof address === 'string' ? address.toLowerCase() : '';
 
@@ -78,10 +80,22 @@ export const removeEntry = (allowlist, address) => {
  * @param {number|string} valueEth transfer value, in ETH
  */
 export const requiresApproval = (thresholdEth, valueEth) => {
-  const t = Number(thresholdEth);
-  const v = Number(valueEth);
-  if (!Number.isFinite(t) || t < 0) return true;
+  const t = toWei(thresholdEth);
+  const v = toWei(valueEth);
+  if (t === null || t < 0n || v === null) return true;
   return !(v <= t);
+};
+
+// One parse for every spend decision: wei, exactly as the send moves it
+// (ethers.parseEther). A float compare let "0.050000000000000001" pass a 0.05
+// threshold and send one wei over it. A value parseEther refuses (including
+// exponent forms) is null, and null always needs approval.
+const toWei = (eth) => {
+  try {
+    return parseEther(String(eth));
+  } catch {
+    return null;
+  }
 };
 
 /**

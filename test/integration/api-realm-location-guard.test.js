@@ -3,6 +3,7 @@ import request from 'supertest';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * POST /api/v1/user/realm/location — the relocation guard at the wire.
@@ -27,6 +28,7 @@ describe('Realm relocation guard (user realm routes)', () => {
     // no workspace is exactly the right shape.
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
 
     settingsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'realm-location-guard-'));
     process.env.NEUMA_REALM_SETTINGS_PATH = path.join(settingsDir, 'user-realm.json');

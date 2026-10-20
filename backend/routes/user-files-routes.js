@@ -18,6 +18,8 @@ import { readGitStatus } from '../services/git-status.js';
 import { saveFileSettings } from '../services/user-files-settings.js';
 import { browseDir, listDrives, createDirIn } from '../services/fs-browse.js';
 import { recordRecent, listRecents } from '../services/user-recents.js';
+import { explorerWalls } from '../services/explorer-walls.js';
+import { explorerGround } from '../services/explorer-ground.js';
 
 const router = express.Router();
 const log = createLogger('UserFiles');
@@ -41,6 +43,10 @@ export const mapLaneQueryToken = (req, res, next) => {
 };
 router.use(mapLaneQueryToken);
 router.use(requireAuth);
+// Secrets and another house's data are never served or written (explorer-walls.js).
+router.use(explorerWalls);
+// The whole machine is its owner's; a guest reaches its own house (explorer-ground.js).
+router.use(explorerGround);
 
 // GET /roots — the folders the witness has opened
 router.get('/roots', (req, res) => {
@@ -116,11 +122,14 @@ router.delete('/roots', async (req, res) => {
 // the first subscriber starts them, the last one leaving stops them, so a
 // closed desk costs no inotify handles and a test importing this router
 // watches nothing.
-const sseClients = new Set();
+// Each listener keeps what it may hear: everything for the owner, its own
+// house's paths for a guest (explorer-ground.js sets req.explorerKeep).
+const sseClients = new Map();
 const deliverFrame = (frame) => {
-  const data = `data: ${JSON.stringify(frame)}\n\n`;
-  for (const client of sseClients) {
-    try { client.write(data); } catch { /* a dying stream must not break the loop */ }
+  for (const [client, keep] of sseClients) {
+    const shown = keep ? { ...frame, paths: frame.paths.filter(keep), bulk: frame.bulk.filter(keep) } : frame;
+    if (keep && shown.paths.length === 0 && shown.bulk.length === 0) continue;
+    try { client.write(`data: ${JSON.stringify(shown)}\n\n`); } catch { /* a dying stream must not break the loop */ }
   }
 };
 
@@ -131,7 +140,7 @@ router.get('/events', (req, res) => {
     Connection: 'keep-alive',
   });
   res.write(': live\n\n'); // opens the stream through any buffering proxy
-  sseClients.add(res);
+  sseClients.set(res, req.explorerKeep ?? null);
   if (sseClients.size === 1) startFilesWatchers(getRoots(), deliverFrame);
   req.on('close', () => {
     sseClients.delete(res);
@@ -316,7 +325,7 @@ const fsErr = (res, log, label, error) => {
   return res.status(400).json({ error: error.message });
 };
 
-// THE TWO-WAY BRIDGE (Design note, 2026-07-28: drag files from the OS file manager
+// THE TWO-WAY BRIDGE (ruling, 2026-07-28): drag files from the OS file manager
 // into the Explorer, and back out — both ways inside the open roots, never
 // past them.
 

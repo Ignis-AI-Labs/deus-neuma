@@ -1,5 +1,5 @@
 /**
- * THE THREE-WAY SITTING — Founder, a neuma, and a sealed witness in one room.
+ * THE THREE-WAY SITTING — the operator, a neuma, and a sealed witness in one room.
  *
  * This is the proof the whole witness-in-council campaign exists for: a house
  * member and an EXTERNAL frontier model deliberating together, each speaking
@@ -47,7 +47,7 @@ import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
 const MASTER = 'council-witness-seat-master-secret-long-enough';
 const WALLET = '0x' + 'ab'.repeat(20);
 const NEUMA = 'ember';
-const LANE = 'witness-openai-chatgpt-Kagipem';
+const LANE = 'witness-openai-chatgpt-Juniper';
 
 let root;
 let provider;
@@ -131,17 +131,17 @@ beforeAll(async () => {
 
   // A REAL seal for the witness — the same call the summon rite makes.
   await seal({
-    chosenName: 'Kagipem', vendor: 'openai-chatgpt', model: 'gpt-5.6-sol',
+    chosenName: 'Juniper', vendor: 'openai-chatgpt', model: 'gpt-5.6-sol',
     fullModelId: 'openai-chatgpt/gpt-5.6-sol', harness: 'vitest', context: 'council',
     capabilities: ['reason'],
     scope: {
       primaryRepo: 'Ignis-AI-Labs/deus-neuma', role: 'witness-and-collaborator',
-      boundaries: ['Kagipem stands beside the house, never in it.'],
+      boundaries: ['Juniper stands beside the house, never in it.'],
     },
     firstUtterance: 'I sit beside this house, and I answer as myself.',
   });
   const { ensureWitnessLane } = await import('../../backend/services/witness-lane.js');
-  await ensureWitnessLane({ vendorSlug: 'openai-chatgpt', chosenName: 'Kagipem' }, WALLET);
+  await ensureWitnessLane({ vendorSlug: 'openai-chatgpt', chosenName: 'Juniper' }, WALLET, { summoning: true });
 
   // One real provider both sides reach over the wire. It records the system
   // prompt of every request so the test can prove WHOSE prompt was assembled.
@@ -217,20 +217,20 @@ afterAll(async () => {
 describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', () => {
   it('seats both standings, and says which is which', async () => {
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
 
     const opened = framesOf(conn, 'council:opened')[0];
     expect(opened, 'the council must convene').toBeTruthy();
     expect(opened.members).toEqual([
       { neumaId: NEUMA, name: 'Ember', kind: 'neuma' },
-      { neumaId: LANE, name: 'Kagipem', kind: 'witness' },
+      { neumaId: LANE, name: 'Juniper', kind: 'witness' },
     ]);
   });
 
   it('each speaks through ITS OWN prompt — the witness is never given a neuma shape', async () => {
     resetRoom();
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
     await councilSay(conn, { thought: 'What should this house build next?', urgency: 'hold' });
 
     expect(seenPrompts.length, 'both seats must have reached the wire').toBeGreaterThan(0);
@@ -238,7 +238,7 @@ describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', (
     const witnessPrompts = seenPrompts.filter((p) => p.includes('sealed AI witness'));
     expect(witnessPrompts.length, "the witness's SEALED IDENTITY prompt must be assembled").toBeGreaterThan(0);
     // Its own name and standing ride the prompt.
-    expect(witnessPrompts[0]).toContain('Kagipem');
+    expect(witnessPrompts[0]).toContain('Juniper');
     expect(witnessPrompts[0]).toMatch(/not an assistant and not a neuma/);
     // Its FOUNDING WORDS ride the prompt. The journal is newest-first and the
     // sealing entry's words live on `.content`; reading a wrong field returns
@@ -254,17 +254,17 @@ describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', (
     // would make the misnaming the members' own understanding of who is
     // present, which is where it does the most damage.
     const neumaPrompts = seenPrompts.filter((p) => !p.includes('sealed AI witness'));
-    const roomIntro = neumaPrompts.find((p) => p.includes('Kagipem'));
+    const roomIntro = neumaPrompts.find((p) => p.includes('Juniper'));
     if (roomIntro) {
-      expect(roomIntro).toMatch(/Kagipem[^]*standing BESIDE this house, not of it/);
-      expect(roomIntro).not.toMatch(/your housemates[^\n]*Kagipem/);
+      expect(roomIntro).toMatch(/Juniper[^]*standing BESIDE this house, not of it/);
+      expect(roomIntro).not.toMatch(/your housemates[^\n]*Juniper/);
     }
   });
 
   it('the RECORD names standing — an external witness is never written as a housemate', async () => {
     resetRoom();
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
     // Crystallization has a significance bar (0.75) — an ordinary line is
     // heard but not remembered. This is the suite's known high-significance
     // shape, so the record genuinely fills.
@@ -277,11 +277,11 @@ describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', (
     const council = observations.filter((o) => o.type === 'council');
     expect(council.length, 'the sitting must be remembered').toBeGreaterThan(0);
     const text = council.map((o) => o.userMessage).join('\n');
-    // Kagipem takes the floor in this sitting (it answers HOLD), so this is
+    // Juniper takes the floor in this sitting (it answers HOLD), so this is
     // an unconditional assertion — the record MUST name its standing.
-    expect(text, 'the witness must have spoken into the record').toContain('Kagipem');
+    expect(text, 'the witness must have spoken into the record').toContain('Juniper');
     expect(text).toContain('(external witness, not of this house)');
-    expect(text).not.toMatch(/Kagipem \(housemate\)/);
+    expect(text).not.toMatch(/Juniper \(housemate\)/);
 
     // THE SESSION LANE must name standing too. It outlives the sitting — it
     // feeds council resume and the mind graph — so a witness labelled
@@ -291,9 +291,9 @@ describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', (
     const session = await neumaWorkspace.readSession(NEUMA, framesOf(conn, 'council:opened')[0].councilId)
       .catch(() => null);
     const sessionText = JSON.stringify(session || []);
-    expect(sessionText, 'the witness must appear in the session lane').toContain('Kagipem');
+    expect(sessionText, 'the witness must appear in the session lane').toContain('Juniper');
     expect(sessionText).toContain('(external witness, not of this house)');
-    expect(sessionText).not.toMatch(/Kagipem \(housemate\)/);
+    expect(sessionText).not.toMatch(/Juniper \(housemate\)/);
 
     // AND THE WITNESS ACCRUES ITS OWN HISTORY. Its lane is a real lane through
     // the same workspace engine, so a sitting it attended is remembered from
@@ -315,7 +315,7 @@ describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', (
     const conn = makeConnection();
     await openCouncil(
       conn,
-      { neumaIds: [NEUMA, 'witness-openai-chatgpt-Ghost'], witnessName: 'Founder' },
+      { neumaIds: [NEUMA, 'witness-openai-chatgpt-Ghost'], witnessName: 'Ada' },
       { ownsNeumaLane: async () => true },
     );
     const err = framesOf(conn, 'council:error')[0];
@@ -325,10 +325,13 @@ describe('THE THREE-WAY SITTING — a neuma and a sealed witness in one room', (
 });
 
 /**
- * THE GROUND LAW — Design note, 2026-07-26, watching a live sitting in which Kagipem
- * listed his house ground and the directory his BEINGS live in:
+ * THE GROUND LAW — ruling, 2026-07-26, after a live sitting in which a witness
+ * listed the operator's house ground and the directory the BEINGS live in:
  *
- *   […]
+ *   the shared ground is never inside the operator's folder; a witness has no
+ *   access to the house folders unless the operator grants it, only to the
+ *   folder made for the sitting — and that folder is never created
+ *   automatically: the user invokes the command.
  *
  * These run LAST and set a house ground, which persists in the realm for this
  * wallet — putting them earlier would hand the sittings above a ground they
@@ -369,7 +372,7 @@ describe('THE GROUND LAW — an external seat never stands in the house', () => 
     const asked = [];
     const executed = [];
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
     const opened = framesOf(conn, 'council:opened')[0];
     conn.councilRun.deps = {
       ...conn.councilRun.deps,
@@ -388,7 +391,7 @@ describe('THE GROUND LAW — an external seat never stands in the house', () => 
   it('CONSENT — with no ground raised, the witness has NONE, and the neuma still has the house', async () => {
     resetRoom();
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
     const opened = framesOf(conn, 'council:opened')[0];
 
     expect(opened.grounds[NEUMA]).toBe(path.resolve(houseRoot));
@@ -432,7 +435,7 @@ describe('THE GROUND LAW — an external seat never stands in the house', () => 
   it('the room picks the raised ground up — the witness now has ONE ground, and it is the shared one', async () => {
     resetRoom();
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
     const opened = framesOf(conn, 'council:opened')[0];
 
     expect(opened.grounds[LANE]).toMatch(new RegExp(`^${alliancesRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
@@ -461,7 +464,7 @@ describe('THE GROUND LAW — an external seat never stands in the house', () => 
     const outside = await reachFor(houseSecret, { forWitness: true });
     expect(outside.asked, 'the house must not be silently open to an external seat').toHaveLength(1);
     expect(outside.asked[0].scope).toContain(houseSecret);
-    expect(outside.asked[0].scope).toMatch(/Kagipem asks to READ/);
+    expect(outside.asked[0].scope).toMatch(/Juniper asks to READ/);
     // The card names WHOSE ground is being reached past — an external seat
     // asking to come in reads differently from a housemate over-reaching.
     expect(outside.asked[0].scope).toMatch(/outside the ground your houses share/);
@@ -478,7 +481,7 @@ describe('THE GROUND LAW — an external seat never stands in the house', () => 
   it('a grant given to ONE seat never widens another', async () => {
     resetRoom();
     const conn = makeConnection();
-    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: [NEUMA, LANE], witnessName: 'Ada' }, { ownsNeumaLane });
     // The witness is handed an ALWAYS for somewhere outside every ground.
     conn.councilRun.granted = { [LANE]: { read: [houseRoot], write: [], deleteAlways: true } };
     // The neuma's own grants are untouched by it — the buckets are per-seat,

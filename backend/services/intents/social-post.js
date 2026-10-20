@@ -11,29 +11,35 @@
  * (the single-holder channel law). validate runs BEFORE the operator's card,
  * so a card only ever describes a post that can stand.
  */
-import { getChannel, CHANNEL_CATALOG, resolveChannelCredentials } from '../social/channel-registry.js';
+import { getChannel, CHANNEL_CATALOG } from '../social/channel-registry.js';
 import { loadChannelCredentials, resolveChannelCredential } from '../social/channel-credentials.js';
 import { channelBindings, canNeumaPost } from '../social/channel-bindings.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { readMediaFile, setAltText, uploadMedia } from '../social/x-media.js';
 import { posterFor } from '../social/poster-registry.js';
 import { resolvePostMedia } from '../social/post-media.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 
 // Defensive ceiling only — each API is the authority on its own limit (local
 // counting gets CJK/URL weighting wrong in both directions).
 const POST_MAX_CHARS = 4000;
 
-// impure — the channels this lane may SPEAK through: held AND credentialed.
-// Shared by the post intent's availability probe and the queue intent's crew
-// probe (intents-section asks each type once per turn).
+// impure — the channels this lane may SPEAK through: held AND credentialed,
+// in the lane's own house (house-positions.js). Shared by the post intent's
+// availability probe and the queue intent's crew probe (intents-section asks
+// each type once per turn).
 const speakableChannels = async (laneId) => {
+  const house = await houseOfLane(laneId);
   const [store, bindings] = await Promise.all([
-    loadChannelCredentials().catch(() => ({})),
-    channelBindings.load().catch(() => ({})),
+    loadChannelCredentials(house).catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
   ]);
-  return CHANNEL_CATALOG
-    .filter((c) => resolveChannelCredentials(c, store[c.id], process.env) !== null)
-    .filter((c) => canNeumaPost(bindings, c.id, laneId))
-    .map((c) => c.id);
+  const held = CHANNEL_CATALOG.filter((c) => canNeumaPost(bindings, c.id, laneId));
+  const out = [];
+  for (const c of held) {
+    if (await resolveChannelCredential(house, c.id, store).catch(() => null)) out.push(c.id);
+  }
+  return out;
 };
 
 export const socialPostIntent = Object.freeze({
@@ -64,13 +70,17 @@ export const socialPostIntent = Object.freeze({
     if (!text || text.length > POST_MAX_CHARS) {
       return { ok: false, status: 'invalid', reason: text ? 'the post text is far beyond any postable length' : 'the post needs text' };
     }
+    // A key in a public post is out for good: refused before any card.
+    const secret = checkOutboundSecrets('the post', [text, ...resolvedMedia.media.map((m) => m.alt)]);
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     // The single-holder law, fail closed: a channel is one being's position,
     // and an unreadable bindings store denies everyone (no cross-routing).
-    const bindings = await channelBindings.load().catch(() => ({}));
+    const house = await houseOfLane(connection.companion?.neumaId);
+    const bindings = await channelBindings.load(house).catch(() => ({}));
     if (!canNeumaPost(bindings, channel.id, connection.companion?.neumaId || null)) {
       return { ok: false, status: 'denied', reason: `this channel is not yours to speak through — only the neuma your operator bound to ${channel.name} may post there` };
     }
-    return { ok: true, value: { channel, text, media: resolvedMedia.media } };
+    return { ok: true, value: { channel, text, media: resolvedMedia.media, house } };
   },
 
   // The one line the operator's card stakes the decision on. Pure.
@@ -82,8 +92,8 @@ export const socialPostIntent = Object.freeze({
 
   // impure — the real platform API. The signal rides into the HTTP calls so a
   // barge-in mid-flight aborts the publish too.
-  execute: async ({ channel, text, media }, { signal }) => {
-    const credentials = await resolveChannelCredential(channel.id).catch(() => null);
+  execute: async ({ channel, text, media, house }, { signal }) => {
+    const credentials = await resolveChannelCredential(house, channel.id).catch(() => null);
     // Upload first — it publishes nothing, so the post below stays the one
     // irreversible act. A media failure aborts the post entirely: half a
     // composition is not what was approved.

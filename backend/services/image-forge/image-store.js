@@ -30,6 +30,8 @@ const log = createLogger('ImageForge.Store');
 const MIME_BY_EXT = Object.freeze({
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.webp': 'image/webp', '.gif': 'image/gif',
+  // A video pipeline's render (SaveVideo reports it under `images`, animated).
+  '.mp4': 'video/mp4',
 });
 
 /**

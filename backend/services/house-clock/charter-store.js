@@ -22,6 +22,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { walletDir, writeJsonAtomic } from '../user-realm.js';
 import { createWriteChain } from '../write-chain.js';
+import { GLOBAL_DEFAULTS } from '../tool-policy-defaults.js';
+import { intentTypes } from '../intents/registry.js';
 import { normalizeCharter } from './charter-shape.js';
 
 const fileOf = (wallet) => path.join(walletDir(wallet), 'house-charter.json');
@@ -63,6 +65,14 @@ export const readCharter = async (wallet) => {
 
 const now = () => new Date().toISOString();
 
+// pure — the act ids a charter may name, in the id space the house matches them in (`server/tool`, as
+// protocol-guard.js holdForWake and optio-review.js actRoute read them): every row of the policy
+// defaults, and every registered intent as intents/<policyTool>
+const knownActIds = () => new Set([
+  ...Object.entries(GLOBAL_DEFAULTS).flatMap(([server, row]) => [...row.allowed, ...row.denied, ...row.requireApproval].map((tool) => `${server}/${tool}`)),
+  ...intentTypes().map((t) => `intents/${t.policyTool}`),
+]);
+
 /**
  * Write the charter: a new version, pending the operator's approval. impure.
  * @param {string} wallet - the house
@@ -73,7 +83,7 @@ const now = () => new Date().toISOString();
 export const writeCharter = (wallet, input, { by, ownedLanes }) => serialize(async () => {
   let fields;
   try {
-    fields = normalizeCharter(input, { ownedLanes });
+    fields = normalizeCharter(input, { ownedLanes, knownActs: knownActIds() });
   } catch (err) {
     throw new CharterError(err.message);
   }

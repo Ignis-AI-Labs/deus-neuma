@@ -13,7 +13,8 @@
  *  - a house post wakes its seat: its own sitting on its lane, the opening
  *    row marked origin 'wake' and naming itself the platform's, the wake on
  *    the ledger with that sitting;
- *  - a paused charter wakes nobody — no request reaches the model;
+ *  - a paused charter wakes nobody — no request reaches the model — and its
+ *    work, held, runs on RESUME;
  *  - a team plan inside the charter's delegation goes to the Optio, whose
  *    verdict becomes the lead's plan of record (approvedBy optio) through the
  *    dispatch gate, and the lead is woken with it;
@@ -30,7 +31,7 @@ import { setConfig } from '../../backend/services/llm-provider.js';
 import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.js';
 import { writeCharter, approveCharter, setCharterPaused } from '../../backend/services/house-clock/charter-store.js';
 import { setWakeSink } from '../../backend/services/house-clock/wake-signal.js';
-import { setWakeRunner, configureWakeQueue, whenHouseIdle, readWakeQueue } from '../../backend/services/house-clock/wake-queue.js';
+import { setWakeRunner, configureWakeQueue, whenHouseIdle, readWakeQueue, pumpHouse } from '../../backend/services/house-clock/wake-queue.js';
 import { readWakeLedger, readAsks } from '../../backend/services/house-clock/wake-ledger.js';
 import { readWakePlan } from '../../backend/services/house-clock/wake-plan.js';
 import { takeSignal } from '../../backend/services/house-clock/house-clock.js';
@@ -149,8 +150,8 @@ describe('a seat wakes for its own work — the real turn', () => {
     busy.slice(1).forEach((b) => b.release());
   }, 60000);
 
-  test('a paused charter wakes nobody: no request reaches the model, no sitting is opened', async () => {
-    await serve([{ reply: 'should never be asked' }]);
+  test('a paused charter wakes nobody: no request reaches the model, no sitting is opened; the work is held and runs on RESUME', async () => {
+    await serve([{ reply: 'Read the post that waited out the pause.' }]);
     await charter();
     await setCharterPaused(WALLET, true);
     const before = await neumaWorkspace.listSessions(HOUSEMATE).catch(() => []);
@@ -158,9 +159,17 @@ describe('a seat wakes for its own work — the real turn', () => {
     await new Promise((r) => setTimeout(r, 300));
     await whenHouseIdle(WALLET);
     expect(provider.turns).toHaveLength(0);
-    expect((await readWakeQueue(WALLET)).items).toEqual([]);
+    const held = await readWakeQueue(WALLET);
+    expect(held.items.map((i) => [i.seat, i.reason])).toEqual([[HOUSEMATE, 'post']]);
+    expect(held.held).toEqual([{ seat: HOUSEMATE, why: 'the charter is paused' }]);
     expect((await readWakeLedger(WALLET)).total).toBe(0);
     expect(await neumaWorkspace.listSessions(HOUSEMATE).catch(() => [])).toEqual(before);
+    await setCharterPaused(WALLET, false);
+    // the queue moves (the clock's next tick, or the enqueue's own pump still pending)
+    await pumpHouse(WALLET);
+    const [row] = await ledgerRows(1);
+    expect(row).toMatchObject({ seat: HOUSEMATE, reason: 'post', outcome: 'done' });
+    expect(provider.turns).toHaveLength(1);
   }, 60000);
 
   test('a plan inside the delegation goes to the Optio; its yes becomes the lead\'s plan of record and the lead is woken with it', async () => {
@@ -212,7 +221,8 @@ describe('a seat wakes for its own work — the real turn', () => {
       { reply: call('web/web_search', { query: 'research digest market gap' }) },
       { reply: 'I could not pay the supplier or search; both wait on my operator.' },
     ]);
-    await charter();
+    // The charter sends web search to the operator (otherwise the seated Optio would review it — house-optio-review.test.js).
+    await charter({ escalate: ['web/web_search'] });
     await post(HOUSEMATE, 'Pay the supplier and research the gap.');
     const [row] = await ledgerRows(1);
     expect(row.outcome).toBe('escalated');

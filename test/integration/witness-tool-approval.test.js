@@ -168,7 +168,7 @@ describe('witness coding tool policy and approval', () => {
       expect(write[0].status).toBe('ok');
       expect(await fs.readFile(laneFile, 'utf8')).toBe('witness lane only\n');
 
-      // THE FOCUS GROUND (Design note, 2026-07-26: outside the lane is no longer a
+      // THE FOCUS GROUND (ruling, 2026-07-26): outside the lane is no longer a
       // flat wall — it is the SAME card a neuma gets, naming the exact
       // directory a yes would open. With the operator refusing, nothing lands.
       decide = () => 'deny';

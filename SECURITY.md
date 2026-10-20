@@ -15,6 +15,11 @@ Include what you found, how to reproduce it, and its impact. We will reply
 within 3 working days and keep you informed until it is fixed. With your
 permission, we will credit you.
 
+## Supported versions
+
+Neuma is in early access: fixes ship in the next release, and only the
+latest release is supported. There are no long-term support versions yet.
+
 ## In scope
 
 - The desktop app, the backend, the CLI and the build pipeline in this

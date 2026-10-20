@@ -216,11 +216,11 @@ describe('Remaining register items', () => {
     expect(compose).not.toMatch(/HOST\s*[:=]\s*['"]?0\.0\.0\.0/);
   });
 
-  test('W3-011: package.json has caret ranges on runtime security surface', () => {
+  test('W3-011: runtime security surface is pinned exact, no caret ranges (fixed)', () => {
     const pkg = JSON.parse(readFileSync(path.join(REPO, 'package.json'), 'utf8'));
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
     const carets = ['express', 'ws', 'ethers', 'multer'].filter((n) => String(deps[n] || '').startsWith('^'));
-    expect(carets.length).toBeGreaterThan(0);
+    expect(carets).toEqual([]);
   });
 
   test('W1-006: ownership compare is case-insensitive wherever it is made', () => {

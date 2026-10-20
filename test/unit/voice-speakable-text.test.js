@@ -1,6 +1,6 @@
 // speakable-text — markdown is for the eye, not the mouth.
 //
-// THE BUG (Design note, 2026-08-01: […]
+// THE BUG (ruling, 2026-08-01): […]
 //
 // Measured against the real Kokoro sidecar before the fix:
 //   "That is important."     1092 ms

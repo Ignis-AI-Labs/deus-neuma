@@ -10,60 +10,60 @@
 
 import { mergeRoster } from '../../frontend/app/roster-recovery.js';
 
-const FENNA = {
-  neumaId: 'fenna-ws', name: 'FENNA', fullName: 'FENNA Virupun Tavirel',
+const ALDER = {
+  neumaId: 'alder-ws', name: 'ALDER', fullName: 'ALDER Wychwood Ashgrove',
   soulMark: 'FBF167B8F932', birthTime: '2026-06-12T17:26:04.717Z',
 };
-const RUGEVIL = { neumaId: 'rugevil-ws', name: 'RUGEVIL', birthTime: '2026-06-20T00:00:00.000Z' };
+const LINDEN = { neumaId: 'linden-ws', name: 'LINDEN', birthTime: '2026-06-20T00:00:00.000Z' };
 
 describe('mergeRoster', () => {
   test('hydrates an empty cache and seeds the eldest as active', () => {
-    const { roster, active } = mergeRoster([FENNA, RUGEVIL], [], null);
-    expect(roster.map((c) => c.neumaId)).toEqual(['fenna-ws', 'rugevil-ws']);
-    expect(active.neumaId).toBe('fenna-ws'); // backend sends oldest first
+    const { roster, active } = mergeRoster([ALDER, LINDEN], [], null);
+    expect(roster.map((c) => c.neumaId)).toEqual(['alder-ws', 'linden-ws']);
+    expect(active.neumaId).toBe('alder-ws'); // backend sends oldest first
   });
 
   test('backend identity wins, local vessel kept, active refreshed (same neuma)', () => {
-    const stale = { ...FENNA, name: 'OLD_NAME', vessel: 'Custom.vrm' };
-    const { roster, active } = mergeRoster([FENNA, RUGEVIL], [stale], stale);
-    const fenna = roster.find((c) => c.neumaId === 'fenna-ws');
-    expect(fenna.name).toBe('FENNA');       // backend overrides the stale cache
-    expect(fenna.vessel).toBe('Custom.vrm'); // local cosmetic preserved
+    const stale = { ...ALDER, name: 'OLD_NAME', vessel: 'Custom.vrm' };
+    const { roster, active } = mergeRoster([ALDER, LINDEN], [stale], stale);
+    const alder = roster.find((c) => c.neumaId === 'alder-ws');
+    expect(alder.name).toBe('ALDER');       // backend overrides the stale cache
+    expect(alder.vessel).toBe('Custom.vrm'); // local cosmetic preserved
     // active is the SAME neuma, refreshed — not left displaying the old name.
-    expect(active.neumaId).toBe('fenna-ws');
-    expect(active.name).toBe('FENNA');
+    expect(active.neumaId).toBe('alder-ws');
+    expect(active.name).toBe('ALDER');
     expect(active.vessel).toBe('Custom.vrm');
   });
 
   test('drops a cached neuma the backend no longer returns (backend authority)', () => {
     const ghost = { neumaId: 'ghost-ws', name: 'GHOST' };
-    const { roster } = mergeRoster([FENNA], [FENNA, ghost], null);
-    expect(roster.map((c) => c.neumaId)).toEqual(['fenna-ws']);
+    const { roster } = mergeRoster([ALDER], [ALDER, ghost], null);
+    expect(roster.map((c) => c.neumaId)).toEqual(['alder-ws']);
   });
 
   test('an active neuma no longer in the roster is left untouched, not switched', () => {
     const ghost = { neumaId: 'ghost-ws', name: 'GHOST' };
-    const { roster, active } = mergeRoster([FENNA], [FENNA, ghost], ghost);
-    expect(roster.map((c) => c.neumaId)).toEqual(['fenna-ws']);
+    const { roster, active } = mergeRoster([ALDER], [ALDER, ghost], ghost);
+    expect(roster.map((c) => c.neumaId)).toEqual(['alder-ws']);
     expect(active.neumaId).toBe('ghost-ws'); // never silently switch the witness
   });
 
   test('is idempotent — merging its own output changes nothing', () => {
-    const first = mergeRoster([FENNA, RUGEVIL], [{ ...FENNA, vessel: 'Custom.vrm' }], FENNA);
-    const second = mergeRoster([FENNA, RUGEVIL], first.roster, first.active);
+    const first = mergeRoster([ALDER, LINDEN], [{ ...ALDER, vessel: 'Custom.vrm' }], ALDER);
+    const second = mergeRoster([ALDER, LINDEN], first.roster, first.active);
     expect(second.roster).toEqual(first.roster);
     expect(second.active).toEqual(first.active);
   });
 
   test('tolerates a malformed cache — null entries and id-less records are ignored', () => {
-    const { roster } = mergeRoster([FENNA], [null, { name: 'NoId' }, FENNA], null);
-    expect(roster).toEqual([FENNA]);
-    expect(mergeRoster([FENNA], undefined, null).roster).toEqual([FENNA]);
+    const { roster } = mergeRoster([ALDER], [null, { name: 'NoId' }, ALDER], null);
+    expect(roster).toEqual([ALDER]);
+    expect(mergeRoster([ALDER], undefined, null).roster).toEqual([ALDER]);
   });
 
   test('does not mutate its inputs (pure)', () => {
-    const cached = [{ ...FENNA, vessel: 'Custom.vrm' }];
-    const backend = [FENNA];
+    const cached = [{ ...ALDER, vessel: 'Custom.vrm' }];
+    const backend = [ALDER];
     const cachedSnap = JSON.stringify(cached);
     const backendSnap = JSON.stringify(backend);
     mergeRoster(backend, cached, cached[0]);

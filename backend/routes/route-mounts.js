@@ -84,6 +84,8 @@ import refineRouter from './refine-routes.js';
 import voiceEngineRouter from './voice-engine-routes.js';
 import voiceForgeRouter from './voice-forge-routes.js';
 import routingRouter from './routing-routes.js';
+import installOwnerRouter from './install-owner-routes.js';
+import laneClaimRouter from './lane-claim-routes.js';
 import witnessRouter from './witness-routes.js';
 import harnessRouter from './harness-routes.js';
 import neumaRouteRouter from './neuma-route-routes.js';
@@ -197,13 +199,18 @@ export const mountApiRoutes = (app) => {
 
   // The running version + changelog as DATA — public and observable like the
   // invariants, so every party (the desk, every being, any caller) can review
-  // what the house runs (Design note, 2026-09-23.
+  // what the house runs (ruling, 2026-09-23).
   app.use('/api/v1/version', versionRouter);
 
   // Public liveness — MUST be mounted before the blanket-requireAuth routers at
   // bare /api/v1 below, or they 401 it (the Electron shell readiness check and the
   // Docker HEALTHCHECK both rely on a public 200 here).
   app.use('/api/v1/health', healthRouter);
+  // The ICS subscribe feed is TOKEN-authed (calendar-share.js) — a calendar
+  // app carries no session — so it too stands before every blanket-requireAuth
+  // router (memoryRouter at bare /api/v1, taskRouter at /api/v1/tasks): mounted
+  // after them it answered 401 to every subscriber on the real server.
+  app.use('/api/v1/tasks', calendarFeedRouter);
 
   // Auth-protected routes (order no longer matters among these)
   app.use('/api/v1/mcp', mcpRouter);
@@ -223,9 +230,6 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/user/files', userFilesRouter);
   app.use('/api/v1/user/projects', userProjectsRouter);
   app.use('/api/v1/tasks', taskRouter);
-  // The ICS subscribe feed — TOKEN-authed (calendar-share.js), mounted on its
-  // own router so the blanket requireAuth above never stands in front of it.
-  app.use('/api/v1/tasks', calendarFeedRouter);
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);
   app.use('/api/v1/web', webRouter);
@@ -248,6 +252,10 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/attunement', attunementRouter);
   app.use('/api/v1/remia', remiaRouter);
   app.use('/api/v1/routing', routingRouter);
+  // Who owns this computer, and the owner's co-owners (install-owner.js).
+  app.use('/api/v1/install-owner', installOwnerRouter);
+  // The deliberate claim of an unclaimed lane: seal-matched, or the owner's adoption.
+  app.use('/api/v1/lanes', laneClaimRouter);
   // Sealed AI witnesses — the management surface (seal/lane/route status + live
   // route probe). Router-level requireAuth inside; masked output only.
   app.use('/api/v1/witnesses', witnessRouter);

@@ -18,7 +18,39 @@ export const statusOwes = (status) => status === 'new' || status === 'confirmed'
 /** pure — "needs_operator" → "NEEDS OPERATOR". */
 export const statusLabel = (status) => (status || '').replace(/_/g, ' ').toUpperCase();
 
-const SEVERITY_ORDER = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
+// What a row's event says happened, where the status alone would mislead: an
+// overturn's own status is `new` (it would read as a fresh find), a proof and
+// a filed fix leave the status as it was.
+const EVENT_LABELS = Object.freeze({ reopened: 'REOPENED', verified: 'VERIFIED', 'fix-filed': 'FIX FILED' });
+
+// pure — what one report row says happened.
+export const reportLabel = (row) => EVENT_LABELS[row?.event] || statusLabel(row?.status);
+
+/**
+ * pure — the measured grounds a verdict carries, as one line: each affected
+ * package's exposure class and the dependency that pulls it in. null when the
+ * verdict carries none.
+ * @param {{contexts?: Array<object>, error?: string}|null|undefined} evidence
+ */
+export const evidenceLine = (evidence) => {
+  if (!evidence) return null;
+  if (evidence.error) return `ATTACK SURFACE NOT MAPPED — ${evidence.error}`;
+  const parts = (evidence.contexts || []).map((c) => `${c.package}@${c.version}: ${String(c.exposure).replace(/_/g, ' ')}`
+    + `${c.roots?.length ? ` (via ${c.roots.join(', ')})` : ''} · ${c.importers} importer(s) · ${c.routes} route(s)`);
+  return parts.length ? parts.join(' — ') : null;
+};
+
+// pure — who wrote a report row, as the desk names people: the operator by
+// role and short wallet (`operator:0x…` raw is a 49-character shout); a lane
+// id or `watch` as itself. null when nobody is recorded.
+export const reportActor = (by) => {
+  if (!by) return null;
+  const operator = /^operator:(0x[0-9a-fA-F]{40})$/.exec(String(by));
+  if (operator) return `THE OPERATOR ${operator[1].slice(0, 6)}…${operator[1].slice(-4)}`.toUpperCase();
+  return String(by).toUpperCase();
+};
+
+const SEVERITY_ORDER =Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 const STATUS_ORDER = Object.freeze(['new', 'confirmed', 'needs_operator', 'mitigated', 'not_affected']);
 
 /**

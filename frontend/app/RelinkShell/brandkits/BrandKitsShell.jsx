@@ -67,6 +67,7 @@ export const BrandKitsShell = () => {
           onNew={() => setNaming(true)}
           onSave={kit.save}
           onGround={(root) => kit.setNotice(`House ground set to ${root}.`)}
+          onRetryGround={() => kit.readGround()}
         />
 
         {!kit.open ? (

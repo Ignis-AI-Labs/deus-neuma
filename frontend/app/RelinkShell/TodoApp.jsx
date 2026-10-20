@@ -13,7 +13,7 @@
 // TodoAppPanels.jsx, and every state read / subscription / mutation in the
 // use-todos.js hook. This file keeps the row renderer and the JSX.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './TodoApp.css';
 import './TodoApp-rows.css';
 import './TodoApp-steps.css';
@@ -43,7 +43,7 @@ const TodoIcon = () => (
 const TodoBody = () => {
   // TWO REGISTERS of one house surface: the LISTS (per-standing CRUD) and
   // the CALENDAR — the whole house's deadlines on the shared month grid,
-  // filterable to ME / HOUSE / WITNESSES / one lane (Design note, 2026-09-20.
+  // filterable to ME / HOUSE / WITNESSES / one lane (ruling, 2026-09-20).
   const [mode, setMode] = useState('lists');
   const switchMode = (next) => { uiSound('tick'); setMode(next); };
   const {
@@ -58,11 +58,18 @@ const TodoBody = () => {
     effectiveScope, isMe, scopeRow, scopeName, standing, standingCounts,
     houseRows, witnessRows, pickStanding, selectScope,
     chatTarget, setChatTarget, chatOptions, chatSections, foldedChats, setFoldedChats,
-    settledList, own, ownEmpty, today,
+    settledList, own, ownEmpty, today, landedIds,
     patchTask, toggleSteps, askConfirm, askToggleSub, confirmToggleSub,
     removeSub, onAddSub, saveTaskAsPreset, togglePresets, applyPresetById,
     removePresetById, onSubmit,
   } = useTodos();
+  // A tray card's task (use-todos landedIds) is marked on its row; the window
+  // shows the lists and brings the first marked row into view.
+  const rootRef = useRef(null);
+  useEffect(() => { if (landedIds.length) setMode('lists'); }, [landedIds]);
+  useEffect(() => {
+    if (landedIds.length) rootRef.current?.querySelector('.todo-item.is-landed')?.scrollIntoView?.({ block: 'nearest' });
+  }, [landedIds, plan, ledger, showSettled]);
 
   const renderRow = (task, settled) => {
     // Baseline work is standing: no done state, so the title is not a toggle.
@@ -74,7 +81,7 @@ const TodoBody = () => {
       patchTask(task.id, { status });
     };
     return (
-      <li key={task.id} className={`todo-item${settled ? ' is-settled' : ''}`}>
+      <li key={task.id} className={`todo-item${settled ? ' is-settled' : ''}${landedIds.includes(task.id) ? ' is-landed' : ''}`}>
         <div className="todo-item-line">
           {!settled ? (
             <button
@@ -159,7 +166,7 @@ const TodoBody = () => {
   };
 
   return (
-    <div className="todo">
+    <div ref={rootRef} className={`todo${mode === 'calendar' ? ' is-calendar' : ''}`}>
       <div className="todo-standing" role="group" aria-label="Tasks register">
         {[
           { id: 'lists', label: 'LISTS' },
@@ -177,7 +184,7 @@ const TodoBody = () => {
         ))}
       </div>
       {mode === 'calendar' ? (
-        <TodoCalendarRegister />
+        <TodoCalendarRegister onOpenList={(laneId) => { selectScope(laneId); switchMode('lists'); }} />
       ) : (
       <>
       <StandingSwitch standing={standing} counts={standingCounts} onPick={pickStanding} />
@@ -197,7 +204,7 @@ const TodoBody = () => {
           ? 'YOUR NEUMA SEE THIS LIST WHEN YOU PORTAL — THEY CAN HELP CARRY IT'
           : `RIDES ${scopeName}'S STANDING WORK NEXT TURN${scopeRow?.kind === 'witness' ? ' — A SEALED WITNESS, BESIDE THE HOUSE' : ''}`}
       </p>
-      {/* WHICH WORK TO TAKE FIRST is the operator's own call (Design note, 2026-08-03.
+      {/* WHICH WORK TO TAKE FIRST is the operator's own call (ruling, 2026-08-03).
           The same stored choice the stream rail reads, so the two surfaces can
           never disagree about an order you only set once. */}
       <div className="todo-order" role="group" aria-label="Order">
@@ -372,14 +379,14 @@ const TodoBody = () => {
                 <>
                   {own.live.length > 0 ? (
                     <ul className="todo-list">
-                      {own.live.map((task) => <LedgerRow key={task.id} task={task} settled={false} />)}
+                      {own.live.map((task) => <LedgerRow key={task.id} task={task} settled={false} landed={landedIds.includes(task.id)} />)}
                     </ul>
                   ) : null}
                   {own.settled.length > 0 ? (
                     <>
                       <p className="todo-own-divider label-data">RECENTLY SETTLED</p>
                       <ul className="todo-list">
-                        {own.settled.map((task) => <LedgerRow key={task.id} task={task} settled />)}
+                        {own.settled.map((task) => <LedgerRow key={task.id} task={task} settled landed={landedIds.includes(task.id)} />)}
                       </ul>
                     </>
                   ) : null}

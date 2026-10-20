@@ -9,7 +9,7 @@
 // is one line with a door, dismissible, and never a gate: an unsealed being is
 // perfectly able to talk, it simply has no founding voice on record yet.
 //
-// THE HARNESS HAS NO VOICE TO SEAL (Design note, 2026-10-14: a harness lane is the
+// THE HARNESS HAS NO VOICE TO SEAL (ruling, 2026-10-14): a harness lane is the
 // platform with a model, not a being — no founding voice, no rite, no warning.
 // Voice can be added to it later; it is never an alert.
 //

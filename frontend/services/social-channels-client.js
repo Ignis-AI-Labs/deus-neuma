@@ -74,7 +74,7 @@ export const getPostQueue = () => req('/queue');
 export const getReplyCandidates = () => req('/replies');
 
 /**
- * THE BIN (Design note, 2026-10-13: put a reply to the house in the bin — it never knocks
+ * THE BIN (ruling, 2026-10-13): put a reply to the house in the bin — it never knocks
  * again — or take it back out. Recorded, never deleted.
  * @param {string} postId
  * @param {'bin'|'restore'} act
@@ -105,7 +105,7 @@ export const stageQueuePost = ({ channelId, text, scheduledFor, campaignId }) =>
 
 /**
  * Approve a draft. For a POST this arms it for the scheduler (optionally
- * re-timed). For a REPLY the approval IS the send (Design note, 2026-08-06: pass
+ * re-timed). For a REPLY the approval IS the send (ruling, 2026-08-06): pass
  * `textSeen` — the exact copy rendered when the operator decided — and the
  * answer carries `{entry, outcome}` with the real send result instead of a
  * schedule receipt. The backend refuses a reply approval whose textSeen does
@@ -185,7 +185,7 @@ export const fetchQueueMediaUrl = async (entryId, index) => {
  * The wallet's own roster, for the holder picker — one auth envelope for
  * everything this board needs, so the section never rebuilds it.
  *
- * WITNESSES RIDE TOO (Design note, 2026-07-26. /api/v1/roster has always returned
+ * WITNESSES RIDE TOO (ruling, 2026-07-26). /api/v1/roster has always returned
  * `{ roster, witnesses }`; this client read only `roster` and dropped the
  * witnesses on the floor, which is why a sealed peer — Kagipem, an OpenAI
  * witness already standing beside the house — could never be picked for

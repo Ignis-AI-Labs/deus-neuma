@@ -51,7 +51,7 @@ export const memberFor = (tab) => (
 // the chair moves the FOCUSED tab — never any other.
 export const StreamTabs = () => {
   // WHICH stream window this strip is. Rides on every drag so a drop in another
-  // stream reads as a TRANSFER rather than a tear-out (Design note, 2026-08-30.
+  // stream reads as a TRANSFER rather than a tear-out (ruling, 2026-08-30).
   const stripWindowId = useStripWindowId();
   const tabs = useTabs();
   const windows = useWindows();

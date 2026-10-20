@@ -221,7 +221,7 @@ test('the bar names the model the being actually rides, and offers the others', 
 });
 
 test('the three sampling-mode buttons are GONE from the composer', async ({ page }) => {
-  // They moved to Settings › INFERENCE (Design note, 2026-07-26. The old bar must not
+  // They moved to Settings › INFERENCE (ruling, 2026-07-26). The old bar must not
   // linger anywhere above the field.
   await expect(page.locator('.relink-presets')).toHaveCount(0);
   await expect(page.locator('.relink-preset')).toHaveCount(0);

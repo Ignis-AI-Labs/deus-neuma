@@ -19,7 +19,10 @@ let portal;
 let http;
 beforeEach(async () => {
   git = await createHarnessGitKit();
-  portal = await createHarnessTurnKit('harness-git-fixture');
+  // Not `harness-…`: since 261ea463a that prefix is the harness ground's own
+  // (a lane with no being, beside the house), and a house permissions revoke
+  // never sees one. This proof is about a being's lane.
+  portal = await createHarnessTurnKit('git-consent-fixture');
   portal.connection.toolWorkspace = git.ground;
   portal.connection._turnSandbox = { sourceRoot: git.ground };
 });

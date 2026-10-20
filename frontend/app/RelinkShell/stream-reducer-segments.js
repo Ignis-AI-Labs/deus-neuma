@@ -177,7 +177,7 @@ export const segmentHandlers = Object.freeze({
         sources: Array.isArray(sources) ? sources : (i !== -1 ? segments[i].sources || [] : []),
         // What the being MADE, carried to the chip so a render is visible
         // where the work happened — the stream — without a trip to the
-        // gallery (Design note, 2026-08-01. Dropped here until now, which is why a
+        // gallery (ruling, 2026-08-01). Dropped here until now, which is why a
         // generated image existed everywhere except the conversation.
         images: Array.isArray(images) ? images : (i !== -1 ? segments[i].images || [] : []),
         // A list the being HANDED the operator — the curated answer, not the

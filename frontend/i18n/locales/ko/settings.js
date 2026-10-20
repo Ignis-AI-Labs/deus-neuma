@@ -17,6 +17,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: '언어',
     note: '이 데스크가 사용하는 언어——레이블, 설정, 번역이 완료된 모든 화면. 카탈로그가 승인되는 대로 더 많은 언어가 추가됩니다.',
+    preview: '미리보기 (미완성)',
   }),
 
   account: Object.freeze({

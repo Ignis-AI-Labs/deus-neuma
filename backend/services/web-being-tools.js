@@ -36,6 +36,7 @@ import { fetchWebPage } from './web-fetch.js';
 import { searchWeb, searchImages } from './web-search.js';
 import { frameUntrustedContent } from './untrusted-content.js';
 import { createLogger } from './logger.js';
+import { recordAct } from './act-ledger.js';
 
 const log = createLogger('WebTools');
 
@@ -210,6 +211,13 @@ export const renderPage = (page, retrievedAt = null) => {
 const journalWebCall = async (connection, tool, detail, status) => {
   const neumaId = connection?.companion?.neumaId;
   if (!neumaId) return;
+  // The OPERATOR's copy too (SEC-035): what a being read from the web is never answered only by
+  // its own journal — the act ledger carries the tool, the query or address, and how it went
+  // (2026-10-18: a run's findings claimed live-opened sources the operator's record could not check).
+  await recordAct({
+    laneId: neumaId, name: connection.companion?.name || null, tool, scope: detail,
+    decision: 'auto', status: status === 'ok' ? 'success' : 'error',
+  });
   try {
     await neumaWorkspace.addJournalEntry(neumaId, {
       type: 'tool_call',

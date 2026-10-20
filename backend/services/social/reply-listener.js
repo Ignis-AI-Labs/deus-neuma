@@ -16,15 +16,15 @@
 // stops the server. Never throws: a broken read is logged and the next tick
 // tries again. A 429 is a real answer — back off one tick, log once.
 //
-// ONLY THE HOUSE THAT HOLDS X (house-served.js, Design note, 2026-10-16: two desks
-// share one binding store, so a tick reads only when X's holder is a lane of
-// a house this backend serves — the house that bound it — and the other
-// desk's listener stands aside.
+// ONLY A HOUSE THAT HOLDS X (house-served.js, Design note, 2026-10-16: each house
+// keeps its own binding and keys (house-positions.js), so a tick reads, with
+// that house's own keys, for each house this backend serves whose X holder
+// is one of its lanes here — and the other desk's houses stand aside.
 
 import { readXListings, isReplyToUs, isVerifiedAuthor } from './x-reader.js';
-import { replyCandidates, categorizeCandidate, assessSubstance } from './reply-candidates.js';
+import { replyCandidatesOf, categorizeCandidate, assessSubstance } from './reply-candidates.js';
 import { channelBindings } from './channel-bindings.js';
-import { servesLane } from '../house-served.js';
+import { readServed, laneHouse } from '../house-served.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ReplyListener');
@@ -69,7 +69,7 @@ const candidateFromMention = (tweet, author) => ({
 });
 
 /**
- * ONE CANDIDATE PIPELINE (Design note, 2026-07-28: the mentions-read → candidate
+ * ONE CANDIDATE PIPELINE (ruling, 2026-07-28): the mentions-read → candidate
  * upsert the listener tick AND a being-driven read_x share, so a reply the
  * being just read is answerable immediately — no ten-minute tick wait. The
  * our-posts-only law is enforced here, at the very first gate: what is not a
@@ -77,16 +77,17 @@ const candidateFromMention = (tweet, author) => ({
  * ever answer it. impure — disk.
  * @param {{tweets?: Array, users?: Array, me?: object|null}} read the mentions
  *   read's payload
+ * @param {string} house - the operator wallet whose account was read: its replies land in its own record
  * @returns {Promise<{landed: number}>}
  */
-export const materializeReplyCandidates = async ({ tweets, users, me } = {}) => {
+export const materializeReplyCandidates = async ({ tweets, users, me } = {}, house) => {
   const myId = me?.id;
   if (!myId) return { landed: 0 };
   const userById = Object.fromEntries((users || []).map((u) => [u.id, u]));
   let landed = 0;
   for (const tweet of tweets || []) {
     if (!isReplyToUs(tweet, myId)) continue;
-    const { added } = await replyCandidates.add(candidateFromMention(tweet, userById[tweet.author_id] || null));
+    const { added } = await replyCandidatesOf(house).add(candidateFromMention(tweet, userById[tweet.author_id] || null));
     if (added) landed += 1;
   }
   return { landed };
@@ -107,13 +108,37 @@ export const replyListenerTick = async () => {
     backoffNextTick = false;
     return { ok: true, skipped: 'backing off after a rate limit', landed: 0 };
   }
-  const holder = (await channelBindings.load().catch(() => ({}))).x;
-  if (!holder?.neumaId || !(await servesLane(holder.neumaId, holder.boundBy))) {
+  let served;
+  try {
+    served = await readServed();
+  } catch (err) {
+    log.warn('reply listener could not read the houses it serves', { error: err.message });
+    return { ok: false, detail: err.message };
+  }
+  const houses = [];
+  for (const house of served.houses) {
+    const holder = await channelBindings.bindingFor(house, 'x').catch(() => null);
+    if (holder?.neumaId && laneHouse(served, holder.neumaId, house)) houses.push(house);
+  }
+  if (!houses.length) {
     return { ok: true, skipped: 'X is not held by a house this backend serves', landed: 0 };
   }
+  let landed = 0;
+  let seen = 0;
+  for (const house of houses) {
+    const one = await listenFor(house);
+    if (!one.ok) return one;
+    landed += one.landed;
+    seen += one.seen;
+  }
+  return { ok: true, landed, seen };
+};
+
+// impure — one house's mentions read with its own keys, its replies landed.
+const listenFor = async (house) => {
   let read;
   try {
-    read = await readXListings({ kind: 'mentions', limit: 25 });
+    read = await readXListings({ kind: 'mentions', limit: 25, wallet: house });
   } catch (err) {
     log.warn('reply listener read threw', { error: err.message });
     return { ok: false, detail: err.message };
@@ -137,7 +162,7 @@ export const replyListenerTick = async () => {
     return { ok: false, status: read.status, detail: read.detail };
   }
   const { tweets, users, me } = read.data;
-  const { landed } = await materializeReplyCandidates({ tweets, users, me });
+  const { landed } = await materializeReplyCandidates({ tweets, users, me }, house);
   if (!me?.id) return { ok: false, detail: 'the account lookup returned no id' };
   if (landed > 0) log.info('reply candidates landed', { landed, seen: tweets.length });
   return { ok: true, landed, seen: tweets.length };

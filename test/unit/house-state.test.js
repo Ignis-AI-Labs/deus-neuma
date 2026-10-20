@@ -14,6 +14,7 @@ import { loadHouseWorkspace } from '../../backend/services/house-workspace.js';
 import { makePost, appendPost } from '../../backend/services/house-post.js';
 import { fileDispatch } from '../../backend/services/staff/dispatch-store.js';
 import { computeHouseState, formatHouseStateForBeing } from '../../backend/services/staff/house-state.js';
+import { cosBriefingSection } from '../../backend/services/staff/cos-briefing.js';
 import { officeFile } from '../../backend/services/house-office.js';
 import { WALLET, OPTIO, HOUSEMATE, BYSTANDER, createStaffOfficeFixture } from '../helpers/staff-office-fixture.js';
 
@@ -110,5 +111,29 @@ describe('formatHouseStateForBeing — the office reads its house', () => {
     expect(text).toContain('1 open of 1 charge(s)');
     expect(text).toContain('"Draft the ledger report"');
     expect(text).toContain('dispatched 2d ago');
+  });
+});
+
+describe('the drawer read whole — an older past-due charge never drops out', () => {
+  test('one old open charge past due, twelve newer closed ones: house_state and the briefing both carry it', async () => {
+    const old = await seedCharge({
+      id: '2026-09-01T04-00-00-000Z', filedAt: '2026-09-01T04:00:00.000Z', dueAt: '2026-09-02T04:00:00.000Z', title: 'The old ledger',
+    });
+    for (let n = 10; n < 22; n += 1) {
+      await seedCharge({ id: `2026-09-${n}T04-00-00-000Z`, filedAt: `2026-09-${n}T04:00:00.000Z`, status: 'done', title: `Closed ${n}` });
+    }
+
+    const state = await computeHouseState({ wallet: WALLET, laneId: OPTIO });
+    expect(state.dispatches).toMatchObject({ open: 1, pastDue: 1, total: 13 });
+    expect(state.dispatches.charges[0].id).toBe(old.id);
+    const text = formatHouseStateForBeing(state, Date.parse('2026-09-25T04:00:00.000Z'));
+    expect(text).toContain('1 open of 13 charge(s) — 1 PAST DUE');
+    expect(text).toContain('"The old ledger"');
+    expect(text).toContain('…and 3 older closed charge(s), not listed.');
+
+    const briefing = await cosBriefingSection({ companion: { neumaId: OPTIO }, walletAddress: WALLET });
+    expect(briefing).toContain(`[${old.id}] "The old ledger"`);
+    expect(briefing).toContain('…and 8 more — house_state lists every open one.');
+    expect(briefing).toContain('1 charge(s) PAST DUE');
   });
 });

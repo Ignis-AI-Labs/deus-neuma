@@ -81,16 +81,33 @@ export async function adoptLandedGenesis(session, persist) {
 }
 
 /**
+ * Whether this wallet may find, resume or withdraw a summoning: the wallet
+ * that opened it. A checkpoint from before ceremonies recorded their wallet
+ * carries none; it is open only when the caller says so (`unrecordedOpen` —
+ * the backend grants it to the install's owner, never to a guest house, which
+ * could otherwise resume and claim another house's old summoning). Pure.
+ * @param {object|null} session - Active or checkpointed session
+ * @param {string|null|undefined} walletAddress - The connection's signed-in wallet
+ * @param {{unrecordedOpen?: boolean}} [opts]
+ * @returns {boolean}
+ */
+export const heldByWitness = (session, walletAddress, { unrecordedOpen = false } = {}) => (session?.witnessWallet
+  ? typeof walletAddress === 'string' && session.witnessWallet.toLowerCase() === walletAddress.toLowerCase()
+  : unrecordedOpen);
+
+/**
  * List interrupted REAL ceremonies whose checkpoints are still live —
  * the […] discovery the relaunch
- * flow needs. Rehearsals, completed ceremonies, and expired checkpoints
- * are excluded. Read-only: never mutates or deletes checkpoint files.
+ * flow needs. Rehearsals, completed ceremonies, expired checkpoints, and
+ * ceremonies another wallet opened are excluded. Read-only: never mutates or
+ * deletes checkpoint files.
  * // impure — scans the ceremony scratch dir.
+ * @param {string|null|undefined} walletAddress - The asking connection's signed-in wallet
  * @returns {Promise<Array<{sessionId:string, witnessName:string, chosenName:string|null,
  *   neumaId:string|null, currentStage:number, resumeStage:number|null,
  *   startTime:number, persistedAt:number}>>} newest first
  */
-export async function listInterruptedSessions() {
+export async function listInterruptedSessions(walletAddress, opts = {}) {
   const checkpoints = await listSessionCheckpoints();
   const interrupted = [];
   for (const { sessionId, session } of checkpoints) {
@@ -98,6 +115,7 @@ export async function listInterruptedSessions() {
     // Only ceremonies opened through the real app are offered — unmarked
     // checkpoints are test-suite/script debris, never a standing summoning.
     if (session.origin !== 'portal') continue;
+    if (!heldByWitness(session, walletAddress, opts)) continue;
     const at = session.persistedAt || session.startTime || 0;
     if (isSessionExpired(session, Date.now())) continue;
     const resumeStage = resumeStageFor(session);

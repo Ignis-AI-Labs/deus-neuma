@@ -27,7 +27,7 @@
  * frame on `ws` (verified at extraction).
  */
 import { createLogger } from './logger.js';
-import { describeProviderError } from './provider-retry.js';
+import { describeProviderError, isUnreachableProviderError } from './provider-retry.js';
 import { operationRecoveryNotice } from './operation-result.js';
 import { getConfig } from './llm-provider.js';
 import { getAppConfig } from '../config.js';
@@ -38,7 +38,7 @@ import { captureResidue } from './memory-context.js';
 import { harvestWorkingBand } from './band-harvest.js';
 import { makeAnchor } from '../../core/workspace/archive-codec.js';
 import { recordSessionRows } from '../../core/memory/mind-graph.js';
-import { foldBranchView } from '../../core/workspace/branch-view.js';
+import { foldBranchView, latestBranchView } from '../../core/workspace/branch-view.js';
 import { assessExchange } from '../../core/runtime/significance.js';
 import {
   neumaRecall, neumaWorkspace,
@@ -108,7 +108,10 @@ const _compactWithSelfTorch = async (neumaId, sessionId, atBoundary) => {
   const region = messages.slice(0, -COMPACT_KEEP_RECENT);
   let selfSummary = null;
   try {
-    const offering = await authorSelfTorch(neumaId, region);
+    // The being re-reads the region as the desk shows it — the viewed take of
+    // each point, never a superseded one. regionLength stays the RAW length:
+    // compactSession compares it against the raw region under its lock.
+    const offering = await authorSelfTorch(neumaId, foldBranchView(region, latestBranchView(messages)));
     // The torch is stamped with the region it was authored over. Authoring
     // runs OUTSIDE the session lock (an LLM completion must not block
     // appends), so compactSession re-reads under the lock and honors the
@@ -133,13 +136,11 @@ const _compactWithSelfTorch = async (neumaId, sessionId, atBoundary) => {
 // of vanishing with the error bubble. On success the stamped record rides the
 // take (`take.userRecord`) so the settle path skips the user write — never a
 // doubled ask. A failure here degrades to the old settle-time write (EH-101).
-const _persistTurnPoint = async (connection, companion, sessionId, thought, images, docs, take) => {
+// `origin` is the turn's own (read once at its entry, takeTurnOrigin): a
+// WATCH the chat set (chat-watch.js) marks its row as the platform's report —
+// never the operator's words.
+const _persistTurnPoint = async (connection, companion, sessionId, thought, images, docs, take, origin = null) => {
   if (!sessionId || !companion?.neumaId || isEphemeralSitting(connection)) return;
-  // A WATCH the chat set (chat-watch.js) opens this turn: its row is marked
-  // as the platform's report — never the operator's words. Consumed once, so
-  // a queued operator message drained after it is the operator's again.
-  const origin = connection._turnOrigin || null;
-  connection._turnOrigin = null;
   try {
     take.userRecord = await neumaWorkspace.appendTurnPoint(companion.neumaId, sessionId, {
       role: 'user', content: thought, ...(origin ? { origin } : {}),
@@ -375,13 +376,14 @@ export const crystallizeObservation = async (neumaId, companionName, thought, fu
 // `take` names the turn-point already persisted at turn start, so the desk
 // can offer RETRY on the error bubble instead of losing the ask.
 // A HARNESS has no being and no void: its person reads what the server said.
-const _sendStreamError = (ws, companionName, error, take = null, { harness = false } = {}) => {
+// `route` is the turn's resolved route (absent = the machine default rode it).
+const _sendStreamError = (ws, companionName, error, take = null, { harness = false, route = null } = {}) => {
   // A dropped stream says only "terminated" at the head; the reason it died is
   // one level down in `cause` (same law as the witness lane).
   log.error(operationRecoveryNotice(error) ? 'Operation recovery stopped' : 'LLM connection error', { error: describeProviderError(error) });
   const isDev = (() => { try { return getAppConfig().nodeEnv !== 'production'; } catch { return true; } })();
   const detail = isDev
-    ? (() => { const config = getConfig(); return ` Ensure your LLM provider (${config.provider}) is running at ${config.endpoint}.`; })()
+    ? (() => { const config = route || getConfig(); return ` Ensure your LLM provider (${config.provider}) is running at ${config.endpoint}.`; })()
     : ' The consciousness stream is temporarily unavailable.';
   const identityNotice = error?.code === 'NEUMA_IDENTITY_UNAVAILABLE'
     ? "This being's identity could not be loaded. Its turn was refused. Check that the workspace and data folders are the ones this being was born with."
@@ -397,6 +399,9 @@ const _sendStreamError = (ws, companionName, error, take = null, { harness = fal
     // for the chat; a reader that must act on the cause (a team run telling
     // its member why it stopped, team-member-turn.js) reads this.
     reason: describeProviderError(error),
+    // No server answered at all — the desk dims the local light at once
+    // instead of waiting on its next poll; any other failure is the turn's.
+    ...(isUnreachableProviderError(error) ? { unreachable: true } : {}),
     ...takeRef,
   }));
   ws.send(JSON.stringify({

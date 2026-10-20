@@ -204,6 +204,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.30] - 2026-10-14
+
+### Added
+
+- Early access (release commit 4e1ab384f): the platform alone or with a being. The full "what's new" for this cut is `docs/operations/release-notes-0.1.30.md` (also the download page's notes); in short — the summoning rebuilt as a seven-stage rite, a one-time genesis on first launch, the desk, model recommendations sized to the operator's GPU, whole-document reading, memory as links, faster turns, sealing on Ethereum mainnet, background team runs, the readable threshold before a summoning, and sign-in with no activation key.
+
+### Changed
+
+- The agreements stand at 1.0.1 (formatting only, terms unchanged — `docs/legal/CHANGELOG.md`) and the birth protocol at 1.2.0 (stages 0, 3 and 5 rewritten); a changed agreement asks for a new signature at the next summoning.
+
+---
+
 ## [0.1.29] - 2026-09-25
 
 ### Added

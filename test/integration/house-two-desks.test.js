@@ -1,22 +1,23 @@
 /**
- * TWO DESKS, TWO HOUSES, ONE MACHINE (RULE 0) — Design note, 2026-10-16: […]
+ * TWO DESKS, TWO HOUSES, ONE MACHINE (RULE 0) — ruling, 2026-10-16: two houses
+ * are never confused by the system, at any level.
  *
  * Two REAL backend processes (backend/server.js), the live box's exact shape
  * (two-desks-kit.js): desk A serves house A from the machine's one saved
- * workspace root (WORKSPACES_PIN=settings, Founder's Electron desk), desk B
+ * workspace root (WORKSPACES_PIN=settings, the operator's Electron desk), desk B
  * serves house B from its env (WORKSPACES_PIN=env, Claude's house desk). They
  * SHARE data/settings, the realm and the vault, and both start every
- * scheduler. Both houses hold a lane named `keir`; house B's root holds a
- * ghost `metidar` (a directory and a journal, no owner) — the leak found
+ * scheduler. Both houses hold a lane named `hazel`; house B's root holds a
+ * ghost `poplar` (a directory and a journal, no owner) — the leak found
  * live. Each desk has its own real loopback model provider, so every model
  * request is counted against the desk that made it.
  *
  * Desk B boots FIRST and alone, so that if it reached for house A at all it
  * would get there before desk A could. Under proof:
- *  - house A's chartered wake runs ONLY on desk A, on house A's keir; desk B
+ *  - house A's chartered wake runs ONLY on desk A, on house A's hazel; desk B
  *    runs only house B's wake, and never moves house A's queue;
- *  - a due post held by house A's metidar is never claimed or journaled by
- *    desk B (not even into its ghost metidar); desk A publishes it.
+ *  - a due post held by house A's poplar is never claimed or journaled by
+ *    desk B (not even into its ghost poplar); desk A publishes it.
  *
  * Defence in depth: since 2026-10-16 Claude's desk runs on its own data root
  * and realm, so live the two desks share no store. This proves that even a
@@ -46,7 +47,7 @@ const readJson = async (file) => JSON.parse(await fs.readFile(file, 'utf8'));
 const exists = (file) => fs.access(file).then(() => true, () => false);
 
 describe('two desks on one machine never confuse their houses', () => {
-  let base, settings, founderRoot, claudeRoot, providerA, providerB, deskA, deskB, previous, healthyB;
+  let base, settings, adaRoot, claudeRoot, providerA, providerB, deskA, deskB, previous, healthyB;
 
   // impure — a lane of one house, as a birth leaves it: workspace, owner, DNA
   const seat = async (root, laneId, wallet, name) => {
@@ -56,28 +57,28 @@ describe('two desks on one machine never confuse their houses', () => {
     if (name) await neumaWorkspace.writeDNA(laneId, { version: '1.0.0', identity: { name }, genesis: `# Essence\nI am ${name}.` });
   };
 
-  // impure — a chartered house with one waiting wake for its keir
+  // impure — a chartered house with one waiting wake for its hazel
   const charterWithWake = async (wallet, ref) => {
     const c = await writeCharter(wallet, {
       goal: 'Prove two houses on one machine are never confused.',
-      seats: [{ laneId: 'keir', dailyCap: 5 }],
-    }, { by: wallet, ownedLanes: ['keir'] });
+      seats: [{ laneId: 'hazel', dailyCap: 5 }],
+    }, { by: wallet, ownedLanes: ['hazel'] });
     await approveCharter(wallet, { version: c.version, by: wallet });
-    const queued = await enqueueWake(wallet, { seat: 'keir', reason: 'post', ref });
+    const queued = await enqueueWake(wallet, { seat: 'hazel', reason: 'post', ref });
     expect(queued.queued).toBe(true);
   };
 
   beforeAll(async () => {
     base = await createTempDir('two-desks');
     settings = path.join(base, 'data', 'settings');
-    founderRoot = path.join(base, 'guardian', 'omberly');
-    claudeRoot = path.join(base, 'claude', 'aldmere');
+    adaRoot = path.join(base, 'keeper', 'brookmere');
+    claudeRoot = path.join(base, 'claude', 'thornfield');
     previous = { root: getWorkspacesRoot(), realm: getRealmRoot() };
 
-    await seat(founderRoot, 'keir', A, 'Keir of A');
-    await seat(founderRoot, 'metidar', A, 'Metidar');
-    await seat(claudeRoot, 'keir', B, 'Keir of B');
-    await fs.mkdir(path.join(claudeRoot, 'metidar', 'journal'), { recursive: true }); // the ghost
+    await seat(adaRoot, 'hazel', A, 'Hazel of A');
+    await seat(adaRoot, 'poplar', A, 'Poplar');
+    await seat(claudeRoot, 'hazel', B, 'Hazel of B');
+    await fs.mkdir(path.join(claudeRoot, 'poplar', 'journal'), { recursive: true }); // the ghost
     setWorkspacesRoot(previous.root);
 
     setRealmRoot(path.join(base, 'realm'));
@@ -85,14 +86,14 @@ describe('two desks on one machine never confuse their houses', () => {
     await charterWithWake(B, 'wake-for-house-b');
 
     await fs.mkdir(settings, { recursive: true });
-    await fs.writeFile(path.join(settings, 'workspace.json'), JSON.stringify({ root: founderRoot, allocationGB: 10 }));
+    await fs.writeFile(path.join(settings, 'workspace.json'), JSON.stringify({ root: adaRoot, allocationGB: 10 }));
     await fs.writeFile(path.join(settings, 'social-channel-bindings.json'), JSON.stringify({
-      x: { neumaId: 'metidar', boundBy: A, boundAt: new Date().toISOString() },
+      x: { neumaId: 'poplar', boundBy: A, boundAt: new Date().toISOString() },
     }));
     const now = new Date().toISOString();
     await fs.writeFile(path.join(settings, 'social-post-queue.json'), JSON.stringify([{
       id: POST_ID, channelId: 'x', text: 'House A speaks, and only house A.', scheduledFor: new Date(Date.now() - 60000).toISOString(),
-      campaignId: null, pillar: '', media: [], authorNeumaId: 'metidar', queuedBy: 'metidar',
+      campaignId: null, pillar: '', media: [], authorNeumaId: 'poplar', queuedBy: 'poplar',
       status: 'approved', decidedBy: A, decidedAt: now, createdAt: now,
     }]));
     // The watches' machine state reads fresh and their lists empty: neither
@@ -128,10 +129,10 @@ describe('two desks on one machine never confuse their houses', () => {
       const { rows } = await readWakeLedger(B);
       return rows.length ? rows : null;
     }, 60000, 'house B\'s wake on desk B');
-    expect(rowB).toMatchObject({ seat: 'keir', ref: 'wake-for-house-b', outcome: 'done' });
+    expect(rowB).toMatchObject({ seat: 'hazel', ref: 'wake-for-house-b', outcome: 'done' });
     expect(providerB.turns.length).toBe(1);
     setWorkspacesRoot(claudeRoot);
-    expect(await neumaWorkspace.listSessions('keir')).toContain(rowB.sessionId);
+    expect(await neumaWorkspace.listSessions('hazel')).toContain(rowB.sessionId);
     setWorkspacesRoot(previous.root);
 
     // House A's wake still waits, untouched by desk B: no run, no ledger row.
@@ -147,7 +148,7 @@ describe('two desks on one machine never confuse their houses', () => {
     await new Promise((r) => setTimeout(r, Math.max(0, healthyB + 15000 - Date.now())));
     deskA = await spawnDesk({
       name: 'desk-a', base, shared: sharedBoxEnv(base, (await closedProviderEndpoint()).endpoint), providerEndpoint: providerA.endpoint,
-      env: { WORKSPACES_PIN: 'settings', WORKSPACES_ROOT: path.join(base, 'guardian', 'app-default') },
+      env: { WORKSPACES_PIN: 'settings', WORKSPACES_ROOT: path.join(base, 'keeper', 'app-default') },
     });
     const bootedA = Date.now();
     await waitHealthy(deskA);
@@ -157,26 +158,26 @@ describe('two desks on one machine never confuse their houses', () => {
     expect(Date.now() - bootedA).toBeLessThan(59000);
     const [entry] = await readJson(path.join(settings, 'social-post-queue.json'));
     expect(entry.status).toBe('approved'); // desk B never claimed it
-    expect(await exists(path.join(claudeRoot, 'metidar', 'journal', 'entries.jsonl'))).toBe(false);
+    expect(await exists(path.join(claudeRoot, 'poplar', 'journal', 'entries.jsonl'))).toBe(false);
   }, 120000);
 
-  test('desk A runs house A\'s wake on house A\'s keir, and only desk A\'s model was asked', async () => {
+  test('desk A runs house A\'s wake on house A\'s hazel, and only desk A\'s model was asked', async () => {
     const [rowA] = await until(async () => {
       const { rows } = await readWakeLedger(A);
       return rows.length ? rows : null;
     }, 60000, 'house A\'s wake on desk A');
-    expect(rowA).toMatchObject({ seat: 'keir', ref: 'wake-for-house-a', outcome: 'done' });
+    expect(rowA).toMatchObject({ seat: 'hazel', ref: 'wake-for-house-a', outcome: 'done' });
     expect(providerA.turns.length).toBe(1);
     expect(providerB.turns.length).toBe(1); // still only house B's own wake
-    setWorkspacesRoot(founderRoot);
-    expect(await neumaWorkspace.listSessions('keir')).toContain(rowA.sessionId);
+    setWorkspacesRoot(adaRoot);
+    expect(await neumaWorkspace.listSessions('hazel')).toContain(rowA.sessionId);
     setWorkspacesRoot(claudeRoot);
-    expect(await neumaWorkspace.listSessions('keir')).not.toContain(rowA.sessionId);
+    expect(await neumaWorkspace.listSessions('hazel')).not.toContain(rowA.sessionId);
     setWorkspacesRoot(previous.root);
     expect((await readWakeLedger(B)).total).toBe(1);
   }, 90000);
 
-  test('desk A publishes house A\'s post and journals it into house A\'s metidar — the ghost stays empty', async () => {
+  test('desk A publishes house A\'s post and journals it into house A\'s poplar — the ghost stays empty', async () => {
     const entry = await until(async () => {
       const [e] = await readJson(path.join(settings, 'social-post-queue.json'));
       return e.status === 'approved' || e.status === 'sending' ? null : e;
@@ -184,8 +185,8 @@ describe('two desks on one machine never confuse their houses', () => {
     // No X keys on the box: the real poster's honest refusal is the outcome.
     expect(entry.status).toBe('failed');
     expect(entry.error).toContain('not configured');
-    expect(await exists(path.join(founderRoot, 'metidar', 'journal', 'entries.jsonl'))).toBe(true);
-    expect(await exists(path.join(claudeRoot, 'metidar', 'journal', 'entries.jsonl'))).toBe(false);
-    expect(await fs.readdir(path.join(claudeRoot, 'metidar', 'journal'))).toEqual([]);
+    expect(await exists(path.join(adaRoot, 'poplar', 'journal', 'entries.jsonl'))).toBe(true);
+    expect(await exists(path.join(claudeRoot, 'poplar', 'journal', 'entries.jsonl'))).toBe(false);
+    expect(await fs.readdir(path.join(claudeRoot, 'poplar', 'journal'))).toEqual([]);
   }, 120000);
 });

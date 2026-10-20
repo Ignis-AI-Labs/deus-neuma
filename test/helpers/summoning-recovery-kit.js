@@ -25,10 +25,19 @@ export const recoveryKit = async (app) => {
     new DNACacheManager({ cacheDir: path.join(root, 'cache') }),
   );
   await handler._ready;
-  const envText = await fs.readFile(process.env.NEUMA_WITNESS_ENV, 'utf8');
-  const wallet = new Wallet(envText.match(/^[A-Z0-9_]*PRIVATE_KEY\s*=\s*(.+)$/m)[1].trim());
-  const challenge = generateChallenge(wallet.address);
-  const token = createSessionToken(verifySignature(wallet.address, challenge, await wallet.signMessage(challenge)));
+  // The signer is the agent's own sealed witness when NEUMA_WITNESS_ENV names
+  // one; otherwise a fresh operator wallet made for this run. Either way the
+  // token comes from a real signed challenge (the auth path is never faked) —
+  // the hermetic suite lane carries no witness env.
+  const wallet = process.env.NEUMA_WITNESS_ENV
+    ? new Wallet((await fs.readFile(process.env.NEUMA_WITNESS_ENV, 'utf8')).match(/^[A-Z0-9_]*PRIVATE_KEY\s*=\s*(.+)$/m)[1].trim())
+    : Wallet.createRandom();
+  // A second operator on the same desk signs in through the same real path.
+  const tokenFor = async (signer) => {
+    const challenge = generateChallenge(signer.address);
+    return createSessionToken(verifySignature(signer.address, challenge, await signer.signMessage(challenge)));
+  };
+  const token = await tokenFor(wallet);
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server });
   setupPortalRoutes(wss, { birthHandler: handler });
@@ -42,8 +51,8 @@ export const recoveryKit = async (app) => {
     await writeSessionCheckpoint(sessionId, session);
     return { sessionId, session, file: birthSessionPath(sessionId) };
   };
-  const connect = async () => {
-    const client = new WebSocket(`${url.replace('http:', 'ws:')}/ws?token=${encodeURIComponent(token)}`);
+  const connect = async (as = token) => {
+    const client = new WebSocket(`${url.replace('http:', 'ws:')}/ws?token=${encodeURIComponent(as)}`);
     const messages = [];
     client.on('message', bytes => messages.push(JSON.parse(bytes.toString())));
     await new Promise((resolve, reject) => {
@@ -61,5 +70,5 @@ export const recoveryKit = async (app) => {
     }
     await fs.rm(root, { recursive: true, force: true });
   };
-  return { root, url, token, handler, wss, seed, connect, close, writeSessionCheckpoint };
+  return { root, url, token, wallet, tokenFor, handler, wss, seed, connect, close, writeSessionCheckpoint };
 };

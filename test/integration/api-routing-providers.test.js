@@ -11,6 +11,7 @@ import path from 'path';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { PROVIDER_CATALOG } from '../../backend/services/provider-registry.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_KEYS = [...new Set(PROVIDER_CATALOG.map((e) => e.keyEnv).filter(Boolean))];
 let app;
@@ -43,6 +44,7 @@ beforeEach(async () => {
   // This router carries no neuma lane (global provider admin) — a real
   // session that claims no workspace is exactly the right shape.
   witness = strangerWitness();
+  await makeInstallOwner(witness.address);
 
   const { default: router } = await import('../../backend/routes/routing-routes.js');
   app = express();

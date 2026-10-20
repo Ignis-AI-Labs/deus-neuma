@@ -23,7 +23,7 @@ beforeAll(async () => {
     </script>`));
   vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
     cacheDir: path.join(root, 'vite'), appType: 'custom',
-    server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
   app.use(vite.middlewares);
   server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

@@ -8,6 +8,7 @@ import {
 } from '../../backend/services/email/email-being-tools.js';
 import { setEmailCredential } from '../../backend/services/email/email-credentials.js';
 import { emailBinding } from '../../backend/services/email/email-binding.js';
+import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { frameUntrustedContent } from '../../backend/services/untrusted-content.js';
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
@@ -29,6 +30,7 @@ const ENV = [
 ];
 const savedEnv = {};
 let dir;
+let position;
 
 // A local port that answers nothing: opened once to learn a free port, then
 // closed — connecting to it is a REAL, instantly-refused socket attempt.
@@ -42,7 +44,7 @@ const closedPort = () => new Promise((resolve) => {
 
 const makeRig = async ({ neumaId = 'unitprobe', bound = true, configured = true, port = '1' } = {}) => {
   if (configured) {
-    await setEmailCredential({
+    await setEmailCredential(POSITION_HOUSE, {
       address: 'probe@example.com',
       username: 'probe@example.com',
       password: 'app-pass',
@@ -52,7 +54,9 @@ const makeRig = async ({ neumaId = 'unitprobe', bound = true, configured = true,
       imapPort: port,
     });
   }
-  if (bound && neumaId) await emailBinding.bind('email', { neumaId, boundBy: '0xwitness' });
+  // The mailbox is the house's own: the rig's lane is the house's lane.
+  if (neumaId) await ownLane(neumaId);
+  if (bound && neumaId) await emailBinding.bind(POSITION_HOUSE, 'email', { neumaId });
   const sent = [];
   const events = [];
   const ws = { readyState: 1, OPEN: 1, send: (s) => sent.push(JSON.parse(s)) };
@@ -85,9 +89,11 @@ beforeEach(() => {
   process.env.NEUMA_EMAIL_CREDENTIALS_PATH = path.join(dir, 'credentials.json');
   process.env.NEUMA_EMAIL_BINDING_PATH = path.join(dir, 'binding.json');
   process.env.WORKSPACES_ROOT = dir; // journal writes land in the test rig
+  position = usePositionHouse(dir);
 });
 
 afterEach(() => {
+  position.restore();
   for (const k of ENV) {
     if (savedEnv[k] === undefined) delete process.env[k];
     else process.env[k] = savedEnv[k];
@@ -117,8 +123,8 @@ describe('emailToolsFor — the advertisement gate', () => {
   test('binding without credentials (and credentials without binding) advertise nothing', async () => {
     await makeRig({ configured: false });
     expect(await emailToolsFor('unitprobe')).toEqual([]);
-    await setEmailCredential({ address: 'a@b.co', username: 'a@b.co', password: 'p' });
-    await emailBinding.unbind('email');
+    await setEmailCredential(POSITION_HOUSE, { address: 'a@b.co', username: 'a@b.co', password: 'p' });
+    await emailBinding.unbind(POSITION_HOUSE, 'email');
     expect(await emailToolsFor('unitprobe')).toEqual([]);
   });
 });
@@ -126,7 +132,7 @@ describe('emailToolsFor — the advertisement gate', () => {
 describe('email/send INTENT — the gates', () => {
   test('the position gate refuses a non-holder BEFORE any operator card', async () => {
     const rig = await makeRig({ neumaId: 'intruder', bound: false });
-    await emailBinding.bind('email', { neumaId: 'the-holder', boundBy: '0xwitness' });
+    await emailBinding.bind(POSITION_HOUSE, 'email', { neumaId: 'the-holder' });
     await fileSendIntent('intruder', 'not-mine', { to: 'a@b.co', subject: 's', text: 't' });
     const receipts = await sweepFor(rig, { mode: 'auto' });
     expect(receipts[0].status).toBe('denied');
@@ -136,7 +142,7 @@ describe('email/send INTENT — the gates', () => {
 
   test('an unbind takes effect at filing time — the gate re-reads, never caches', async () => {
     const rig = await makeRig();
-    await emailBinding.unbind('email');
+    await emailBinding.unbind(POSITION_HOUSE, 'email');
     await fileSendIntent('unitprobe', 'unbound', { to: 'a@b.co', subject: 's', text: 't' });
     const receipts = await sweepFor(rig, { mode: 'auto' });
     expect(receipts[0].status).toBe('denied');
@@ -150,7 +156,7 @@ describe('email/send INTENT — the gates', () => {
     expect(refused[0].status).toBe('denied');
     expect(refused[0].error).toMatch(/not configured/);
 
-    await setEmailCredential({ address: 'a@b.co', username: 'a@b.co', password: 'p' });
+    await setEmailCredential(POSITION_HOUSE, { address: 'a@b.co', username: 'a@b.co', password: 'p' });
     await fileSendIntent('unitprobe', 'policy-no', { to: 'a@b.co', subject: 's', text: 't' });
     const denied = await sweepFor(rig, { policy: { intents: { denied: ['email.send'] } }, mode: 'auto' });
     expect(denied[0].status).toBe('denied');

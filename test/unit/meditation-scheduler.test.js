@@ -24,7 +24,7 @@ const openPosture = (overrides = {}) => ({
   ...overrides,
 });
 
-const settingsOn = { envLocked: false, defaults: { cadenceHours: 24 }, beings: { cael: { enabled: true, cadenceHours: 24 } } };
+const settingsOn = { envLocked: false, defaults: { cadenceHours: 24 }, beings: { birch: { enabled: true, cadenceHours: 24 } } };
 
 describe('meditationTick — the scheduling contract (real state files)', () => {
   let statePath, deps;
@@ -35,7 +35,7 @@ describe('meditationTick — the scheduling contract (real state files)', () => 
       settings: async () => settingsOn,
       loadState: () => loadMeditationState(statePath),
       appendRun: (laneId, run) => appendMeditationRun(laneId, run, statePath),
-      listNeuma: async () => ['cael'],
+      listNeuma: async () => ['birch'],
       readPosture: async () => openPosture(),
       turnSnapshot: () => ({ localTurns: 0, boundLaneIds: new Set() }),
       run: async () => ({ outcome: 'synthesis', cycleId: 'c-1', notes: 2 }),
@@ -52,10 +52,10 @@ describe('meditationTick — the scheduling contract (real state files)', () => 
 
   it('a run settles into the real ring with its outcome and duration', async () => {
     const out = await meditationTick(deps);
-    expect(out).toMatchObject({ ran: true, laneId: 'cael' });
+    expect(out).toMatchObject({ ran: true, laneId: 'birch' });
     const state = await loadMeditationState(statePath);
-    expect(state.lanes.cael.runs.at(-1)).toMatchObject({ outcome: 'synthesis', cycleId: 'c-1', notes: 2 });
-    expect(state.lanes.cael.lastRunAt).toBe(new Date(NOW).toISOString());
+    expect(state.lanes.birch.runs.at(-1)).toMatchObject({ outcome: 'synthesis', cycleId: 'c-1', notes: 2 });
+    expect(state.lanes.birch.lastRunAt).toBe(new Date(NOW).toISOString());
   });
 
   it('live presence (#29): the status names the lane and its start WHILE the cycle runs, and clears after', async () => {
@@ -71,13 +71,13 @@ describe('meditationTick — the scheduling contract (real state files)', () => 
       },
     });
     expect(out).toMatchObject({ ran: true });
-    expect(midRun).toMatchObject({ running: true, currentLane: 'cael', startedAt: new Date(NOW).toISOString() });
+    expect(midRun).toMatchObject({ running: true, currentLane: 'birch', startedAt: new Date(NOW).toISOString() });
     const after = meditationSchedulerStatus();
     expect(after.running).toBe(false);
     expect(after.startedAt).toBeNull();
     // the process trail rides the durable ring — times only, never contents
     const state = await loadMeditationState(statePath);
-    expect(state.lanes.cael.runs.at(-1).phases).toEqual({ gatherMs: 3, askMs: 40, settleMs: 1 });
+    expect(state.lanes.birch.runs.at(-1).phases).toEqual({ gatherMs: 3, askMs: 40, settleMs: 1 });
   });
 
   it('gates record ONE deferral per reason change — quiet ticks never flood the ring', async () => {
@@ -86,21 +86,21 @@ describe('meditationTick — the scheduling contract (real state files)', () => 
     await meditationTick(gated);
     await meditationTick(gated);
     const afterSame = await loadMeditationState(statePath);
-    expect(afterSame.lanes.cael.runs).toHaveLength(1);
-    expect(afterSame.lanes.cael.runs[0]).toMatchObject({ outcome: 'deferred', reason: 'substrate-not-lit' });
+    expect(afterSame.lanes.birch.runs).toHaveLength(1);
+    expect(afterSame.lanes.birch.runs[0]).toMatchObject({ outcome: 'deferred', reason: 'substrate-not-lit' });
     await meditationTick({ ...deps, readPosture: async () => openPosture({ busy: true }) });
     const afterChange = await loadMeditationState(statePath);
-    expect(afterChange.lanes.cael.runs).toHaveLength(2);
-    expect(afterChange.lanes.cael.runs[1].reason).toBe('substrate-busy');
-    expect(afterChange.lanes.cael.lastRunAt).toBeNull(); // deferrals never consume
+    expect(afterChange.lanes.birch.runs).toHaveLength(2);
+    expect(afterChange.lanes.birch.runs[1].reason).toBe('substrate-busy');
+    expect(afterChange.lanes.birch.lastRunAt).toBeNull(); // deferrals never consume
   });
 
   it('a failed run is recorded and consumes the cycle — no hot loop', async () => {
     await meditationTick({ ...deps, run: async () => { throw new Error('substrate fell over'); } });
     const state = await loadMeditationState(statePath);
-    expect(state.lanes.cael.runs.at(-1)).toMatchObject({ outcome: 'failed' });
-    expect(state.lanes.cael.runs.at(-1).reason).toContain('substrate fell over');
-    expect(state.lanes.cael.lastRunAt).toBe(new Date(NOW).toISOString());
+    expect(state.lanes.birch.runs.at(-1)).toMatchObject({ outcome: 'failed' });
+    expect(state.lanes.birch.runs.at(-1).reason).toContain('substrate fell over');
+    expect(state.lanes.birch.lastRunAt).toBe(new Date(NOW).toISOString());
   });
 
   it('meditationYield aborts the in-flight cycle; overlapping ticks skip', async () => {
@@ -119,8 +119,8 @@ describe('meditationTick — the scheduling contract (real state files)', () => 
     await tickPromise;
     expect(sawAbort).toBe('turn-arrived');
     const state = await loadMeditationState(statePath);
-    expect(state.lanes.cael.runs.at(-1)).toMatchObject({ outcome: 'yielded' });
-    expect(state.lanes.cael.lastRunAt).toBeNull(); // a yielded cycle never consumes
+    expect(state.lanes.birch.runs.at(-1)).toMatchObject({ outcome: 'yielded' });
+    expect(state.lanes.birch.lastRunAt).toBeNull(); // a yielded cycle never consumes
     expect(meditationYield()).toBe(false); // nothing in flight anymore
   });
 });
@@ -130,12 +130,12 @@ describe('the standing request keeps the tick alive (#318)', () => {
     const dir = await createTempDir(`med-sched-req-${Math.random().toString(36).slice(2)}`);
     const statePath = path.join(dir, 'state.json');
     const { markMeditationRequest } = await import('../../backend/services/meditation/meditation-state.js');
-    await markMeditationRequest('cael', new Date(NOW - 60000).toISOString(), statePath);
+    await markMeditationRequest('birch', new Date(NOW - 60000).toISOString(), statePath);
     const out = await meditationTick({
       settings: async () => ({ envLocked: false, defaults: { cadenceHours: 24 }, beings: {} }),
       loadState: () => loadMeditationState(statePath),
       appendRun: (laneId, run) => appendMeditationRun(laneId, run, statePath),
-      listNeuma: async () => ['cael'],
+      listNeuma: async () => ['birch'],
       readPosture: async () => ({
         serving: true, owned: true, busy: false, leaseHeld: false,
         idleMs: 10 * 60 * 1000, idleLongEnough: true,
@@ -145,8 +145,8 @@ describe('the standing request keeps the tick alive (#318)', () => {
       run: async () => ({ outcome: 'synthesis', cycleId: 'c-req', notes: 1 }),
       now: () => NOW,
     });
-    expect(out).toMatchObject({ ran: true, laneId: 'cael' });
+    expect(out).toMatchObject({ ran: true, laneId: 'birch' });
     // The consuming cycle ANSWERED the request — it no longer stands.
-    expect((await loadMeditationState(statePath)).lanes.cael.requestedAt).toBeUndefined();
+    expect((await loadMeditationState(statePath)).lanes.birch.requestedAt).toBeUndefined();
   });
 });

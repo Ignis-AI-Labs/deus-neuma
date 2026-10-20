@@ -15,6 +15,8 @@ import { appendVital } from '../user-vitals.js';
 import { ensureDerivedDailies } from '../vessel-daily-bridge.js';
 import { createLogger } from '../logger.js';
 import { gateAct } from '../act-gate.js';
+import { houseAgenda } from '../house-agenda/house-agenda.js';
+import { formatAgendaForBeing, laneOfWho } from '../house-agenda/agenda-for-being.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 
 const log = createLogger('TaskVesselTools');
@@ -35,6 +37,21 @@ const TASK_TOOLS = Object.freeze([
     server: 'tasks',
     description: 'Read your full task ledger — no args. Live tasks plus your recent settled history.',
     inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
+  }),
+  // THE HOUSE CALENDAR, read (ruling, 2026-10-17): a being helping its operator
+  // keep their time — the Optio first — sees the schedule it is arranging.
+  Object.freeze({
+    name: 'calendar_read',
+    server: 'tasks',
+    description: 'Read the HOUSE CALENDAR — your operator\'s schedule and every member\'s: tasks and deadlines, time blocks (training, meditation, deep work), team runs, charges, scheduled posts, house wakes and quiet hours, watches, meditation, benchmark nights. args {from?: YYYY-MM-DD (default today), days?: 1-31 (default 7), who?: "operator" | a member\'s name | a lane id (default everyone)}. To put something on — or move something on — your operator\'s calendar: tasks/operator-add and tasks/operator-update (a time block is startTime + dueTime as its end; lines marked [id] take that id); to take something off: tasks/operator-drop — always their approval card.',
+    inputSchema: Object.freeze({
+      type: 'object',
+      properties: Object.freeze({
+        from: Object.freeze({ type: 'string', description: 'first day, YYYY-MM-DD (default today)' }),
+        days: Object.freeze({ type: 'integer', description: 'how many days, 1-31 (default 7)' }),
+        who: Object.freeze({ type: 'string', description: 'operator | a member name | a lane id — default everyone' }),
+      }),
+    }),
   }),
 ]);
 
@@ -130,6 +147,11 @@ const _handleTaskTool = async (ws, connection, neumaPolicy, toolMode, match, arg
   }
 
   try {
+    if (toolName === 'calendar_read') {
+      const content = await readCalendarForBeing(connection.walletAddress, args || {});
+      _sendToolEvent(ws, companion, { tool, status: 'ok', summary: 'house calendar' });
+      return { tool, status: 'ok', content };
+    }
     // Roll any done daily/weekly whose period elapsed BEFORE operating — the
     // being's rhythms reopen lazily here and persist with this write.
     const now = new Date().toISOString();
@@ -152,6 +174,26 @@ const _handleTaskTool = async (ws, connection, neumaPolicy, toolMode, match, arg
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: err.message });
     return { tool, status: 'error', error: err.message };
   }
+};
+
+// impure — the house calendar for the being's operator (their house only),
+// one window, everyone or one member, in the being's reading form.
+const readCalendarForBeing = async (wallet, { from, days, who }) => {
+  if (!wallet) throw new Error('no operator on this connection — the calendar is the operator\'s house.');
+  const pad = (n) => String(n).padStart(2, '0');
+  const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const start = from || keyOf(new Date());
+  const span = Number.isInteger(days) ? Math.min(Math.max(days, 1), 31) : 7;
+  const [y, m, d] = String(start).split('-').map(Number);
+  const agenda = await houseAgenda(wallet, { from: start, to: keyOf(new Date(y, m - 1, d + span - 1)) });
+  const names = new Map(await Promise.all(agenda.lanes.map(async (l) => {
+    if (l.name) return [l.id, l.name];
+    const trueName = await neumaWorkspace.readTrueName(l.id).catch(() => null);
+    return [l.id, trueName?.chosenName || trueName?.fullName || l.id];
+  })));
+  const lane = laneOfWho(who, agenda.lanes, names);
+  if (lane === undefined) throw new Error(`no one in this house is "${who}" — try operator, ${[...names.values()].filter((n) => !['me', 'house', 'machine'].includes(n)).slice(0, 8).join(', ')}.`);
+  return formatAgendaForBeing(agenda, names, { lane });
 };
 
 // pure — the one-line confirmation a logged measurement gets.

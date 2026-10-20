@@ -23,7 +23,7 @@ import './WalletReadability.css';
 import { WalletIdentityPicker } from './WalletIdentityPicker.jsx';
 import {
   loadWallet, loadWitnessWallet, loadAddressWallet, loadAllowlist,
-  loadThreshold, loadPendingSpends, listMyWallets, networkStatus,
+  loadThreshold, loadPendingSpends, listMyWallets, networkStatus, WALLET_NETWORKS,
 } from './wallet-client.js';
 import { trimEth } from './wallet-tx.js';
 import { explorerAddressUrl } from './wallet-receipt.js';
@@ -43,6 +43,8 @@ import { useCopyAddress } from './use-copy-address.js';
 import { SendLayer } from './WalletAppSend.jsx';
 import { NeumaSettings, WitnessSettings } from './WalletAppSettings.jsx';
 import { MeSettings } from './WalletAppMeSettings.jsx';
+import { operatorLabel } from './use-operator-name.js';
+import { getWitnessName } from './witness-name.js';
 
 // --- Identities (the house roster) ---
 
@@ -86,7 +88,7 @@ const buildIdentities = () => {
   // The cached ledger comes last: a witness that just stood is already on the
   // rail from the line above, even if the roster cache has not caught up yet.
   (getWitnesses() || []).forEach(pushWitness);
-  return [{ kind: 'me', label: 'ME' }, ...neuma, ...witnesses];
+  return [{ kind: 'me', label: operatorLabel(getWitnessName()) }, ...neuma, ...witnesses];
 };
 
 // --- Icons (LINE & CYCLE: custom SVG only, never emoji) ---
@@ -127,6 +129,8 @@ const RefreshIcon = () => (
 
 // --- Identity rail + balance header + home ---
 
+const networkLabel = (key) => (WALLET_NETWORKS.find((n) => n.key === key)?.label || String(key || '')).toUpperCase();
+
 export const BalanceHeader = ({ identity, wallet, portfolio, onRefresh, refreshing }) => {
   const loading = wallet === undefined;
   const addr = wallet && wallet.address;
@@ -136,6 +140,10 @@ export const BalanceHeader = ({ identity, wallet, portfolio, onRefresh, refreshi
   useSettled((settled) => {
     networkStatus().then((s) => { if (!settled()) setNetKey(s.network.key); });
   }, []);
+
+  // A neuma wallet names the network its balance was read on, which can differ
+  // from the desk's selection; every other identity is read on the selection.
+  const readOn = (wallet && wallet.network) || netKey;
 
   const usdTotal = portfolio ? portfolio.usdTotal : null;
   const change = portfolio ? portfolio.change24h : null;
@@ -164,13 +172,16 @@ export const BalanceHeader = ({ identity, wallet, portfolio, onRefresh, refreshi
       {usdTotal != null && bal != null ? (
         <span className="wal-head-native label-data">{trimEth(Number(bal))} ETH</span>
       ) : null}
+      {wallet && wallet.network ? (
+        <span className="wal-head-native label-data">READ ON {networkLabel(wallet.network)}</span>
+      ) : null}
       {addr ? (
         <div className="wal-head-row">
           <button className="wal-head-addr" onClick={copy} title="Copy full address" aria-label="Copy full wallet address">
             {formatAddress(addr, { start: 10, end: 8 })}
             <span className="wal-copy-hint label-data">{copied ? 'COPIED' : 'COPY'}</span>
           </button>
-          <a className="wal-head-scan label-data" href={explorerAddressUrl(netKey, addr)}
+          <a className="wal-head-scan label-data" href={explorerAddressUrl(readOn, addr)}
             target="_blank" rel="noreferrer" title="Every transaction this wallet ever made">
             HISTORY ↗
           </a>
@@ -306,6 +317,7 @@ const WalletBody = () => {
     try {
       let addr = null;
       let balanceEth = null;
+      let readTokens = true;
       if (witnessLaneId) {
         // A sealed AI witness's wallet: address from the shared seal-ledger
         // read, balance through the same bare-address RPC read the ME tab
@@ -325,14 +337,18 @@ const WalletBody = () => {
         addr = you && you.address ? you.address : null;
         balanceEth = you && you.balance != null ? you.balance : null;
       } else {
-        const [w, a, t, p] = await Promise.all([
-          loadWallet(neumaId), loadAllowlist(neumaId), loadThreshold(neumaId), loadPendingSpends(neumaId),
+        const [w, a, t, p, net] = await Promise.all([
+          loadWallet(neumaId), loadAllowlist(neumaId), loadThreshold(neumaId), loadPendingSpends(neumaId), networkStatus(),
         ]);
         setWallet(w); setEntries(a); setThresholdState(t); setPending(p);
         addr = w && w.address ? w.address : null;
         balanceEth = w && w.balance != null ? w.balance : null;
+        if (addr && balanceEth == null) setError(`Could not read this wallet's balance on ${networkLabel(w.network)} — tap REFRESH to try again.`);
+        // Tokens are read through the desk's own RPC, so they belong beside a
+        // balance only when that balance was read on the same network.
+        readTokens = !w?.network || w.network === net.network.key;
       }
-      const pf = addr ? await buildWalletPortfolio(addr, balanceEth) : null;
+      const pf = addr ? await buildWalletPortfolio(addr, balanceEth, { tokens: readTokens }) : null;
       if (reqRef.current === myReq) setPortfolio(pf);
     } catch (e) {
       if (reqRef.current !== myReq) return;

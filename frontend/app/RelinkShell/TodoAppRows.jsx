@@ -4,7 +4,7 @@
 // under the 500-line law.
 
 import {
-  cadenceLabel, isOverdue, resetHint, customDaysLabel, ledgerKind, shortDate, subtaskProgress,
+  cadenceLabel, isOverdue, resetHint, customDaysLabel, ledgerKind, shortDate, subtaskProgress, timeLabel,
 } from './todo-view.js';
 import { sizeLabel } from '../../../core/tasks/task-order.js';
 
@@ -34,8 +34,9 @@ export const RowBody = ({ task, today, settled }) => {
         <span className="todo-row-title">{task.title}</span>
         {task.detail ? <span className="todo-row-detail">{task.detail}</span> : null}
       </span>
-      {progress.total > 0 || meta || sizeLabel(task) || task.vessel ? (
+      {progress.total > 0 || meta || sizeLabel(task) || task.vessel || (!settled && timeLabel(task)) ? (
         <span className="todo-row-side">
+          {!settled && timeLabel(task) ? <span className="todo-row-tag label-data">{timeLabel(task)}</span> : null}
           {progress.total > 0 ? (
             <span className="todo-row-progress label-data">{progress.open}/{progress.total}</span>
           ) : null}
@@ -64,13 +65,13 @@ const LedgerCheck = ({ status }) => (
 // One of the being's own self-taken tasks — read-only: self-authorship is
 // theirs, never the operator's to settle.
 //
-// PARITY WITH THE STREAM RAIL (Design note, 2026-08-03. This row used to read the raw
+// PARITY WITH THE STREAM RAIL (ruling, 2026-08-03). This row used to read the raw
 // status while the rail read derived state, so the same task described itself
 // two different ways depending on which surface you happened to be looking at.
 // It now speaks the one vocabulary: WORKING NOW, INTERRUPTED, the size, the act
 // count, and what it is still waiting on.
-export const LedgerRow = ({ task, settled }) => (
-  <li className={`todo-item${settled ? ' is-settled' : ''}${task.blockers?.length ? ' is-blocked' : ''}`}>
+export const LedgerRow = ({ task, settled, landed = false }) => (
+  <li className={`todo-item${settled ? ' is-settled' : ''}${task.blockers?.length ? ' is-blocked' : ''}${landed ? ' is-landed' : ''}`}>
     <div className="todo-row cham is-standing">
       <span className="todo-row-in cham-in">
         <LedgerCheck status={task.status} />

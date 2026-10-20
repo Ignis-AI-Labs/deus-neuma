@@ -36,12 +36,16 @@ const serialize = createWriteChain();
  * An oauth patch REPLACES the entry (sign-in); a non-empty apiKey patch
  * replaces it back (sign into a plain key); an endpoint-only patch merges
  * onto whichever shape is present. An empty-string apiKey clears the key.
+ * A stored secret belongs to the endpoint it was stored for: a patch that
+ * moves the effective endpoint without bringing a key leaves the secret
+ * behind (the new endpoint must bring its own key).
  * Returns null when the merged entry holds nothing worth persisting.
  * @param {Object|undefined} existing
  * @param {Object} patch
+ * @param {string|null} [catalogEndpoint] the provider's catalog default
  * @returns {Object|null}
  */
-export const mergeCredential = (existing, patch) => {
+export const mergeCredential = (existing, patch, catalogEndpoint = null) => {
   if (patch?.type === 'oauth') {
     if (typeof patch.access !== 'string' || patch.access.length === 0) return null;
     return {
@@ -67,6 +71,10 @@ export const mergeCredential = (existing, patch) => {
   if (patch?.endpoint !== undefined) {
     if (typeof patch.endpoint === 'string' && patch.endpoint.length > 0) next.endpoint = patch.endpoint;
     else delete next.endpoint;
+  }
+  const catalog = { endpoint: catalogEndpoint };
+  if (resolveEndpoint(next, catalog) !== resolveEndpoint(existing, catalog)) {
+    return next.endpoint ? { endpoint: next.endpoint } : null;
   }
   return (next.apiKey || next.access || next.endpoint) ? next : null;
 };
@@ -96,8 +104,37 @@ export const resolveEndpoint = (storeEntry, entry) =>
 export const computeCredentialState = (entry, storeEntry, envKeyValue) => {
   const storedKey = storeEntry?.type === 'oauth' ? storeEntry.access : storeEntry?.apiKey;
   const hasStored = typeof storedKey === 'string' && storedKey.length > 0;
-  const hasEnv = typeof envKeyValue === 'string' && envKeyValue.length > 0;
-  return Object.freeze({ keyPresent: hasStored || hasEnv, endpoint: resolveEndpoint(storeEntry, entry) });
+  const endpoint = resolveEndpoint(storeEntry, entry);
+  const hasEnv = typeof envKeyValue === 'string' && envKeyValue.length > 0 && envKeyApplies(entry, endpoint);
+  return Object.freeze({ keyPresent: hasStored || hasEnv, endpoint });
+};
+
+/**
+ * The .env key was issued for the catalog's own endpoint, so it rides only
+ * there — never to a base URL stored over it (pure).
+ * @param {import('./provider-registry.js').ProviderEntry} entry
+ * @param {string|null} endpoint the effective endpoint
+ * @returns {boolean}
+ */
+const envKeyApplies = (entry, endpoint) => endpoint === (entry?.endpoint ?? null);
+
+/**
+ * Pair a request's endpoint and key with the stored credential (pure). A
+ * stored key is only ever sent to the endpoint it was stored for: a request
+ * naming any other endpoint is answered with the key it brought, or none.
+ * @param {{apiKey: string, endpoint: (string|null), accountId?: (string|null)}} stored
+ * @param {{endpoint?: string, apiKey?: string}|undefined} body
+ * @returns {{endpoint: (string|null), apiKey: string, accountId: (string|null), storedEndpoint: boolean}}
+ */
+export const pairRequestCredential = (stored, body) => {
+  const endpoint = body?.endpoint || stored.endpoint || null;
+  const storedEndpoint = endpoint === stored.endpoint;
+  return Object.freeze({
+    endpoint,
+    apiKey: body?.apiKey || (storedEndpoint ? stored.apiKey : '') || '',
+    accountId: storedEndpoint ? (stored.accountId ?? null) : null,
+    storedEndpoint,
+  });
 };
 
 /**
@@ -136,7 +173,7 @@ export const setCredential = async (providerId, patch) => {
   if (!entry) throw new Error(`Unknown provider: ${providerId}`);   // reject before queuing
   return serialize(async () => {
     const store = await loadCredentials();
-    const merged = mergeCredential(store[providerId], patch || {});
+    const merged = mergeCredential(store[providerId], patch || {}, entry.endpoint ?? null);
     if (merged) store[providerId] = merged;
     else delete store[providerId];
     await saveCredentials(store);
@@ -177,9 +214,10 @@ export const resolveCredential = async (providerId, store) => {
       accountId: storeEntry.accountId || null,
     };
   }
-  const envKey = entry.keyEnv ? process.env[entry.keyEnv] : undefined;
+  const endpoint = resolveEndpoint(storeEntry, entry);
+  const envKey = entry.keyEnv && envKeyApplies(entry, endpoint) ? process.env[entry.keyEnv] : undefined;
   const apiKey = (storeEntry?.apiKey) || (envKey && envKey.length ? envKey : '') || '';
-  return { apiKey, endpoint: resolveEndpoint(storeEntry, entry) };
+  return { apiKey, endpoint };
 };
 
 /**

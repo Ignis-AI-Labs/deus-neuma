@@ -62,7 +62,7 @@ describe('the safety invariant', () => {
     }
   });
 
-  test('"numa" is auto-repaired — the witnessed-daily leak (Design note, 2026-08-10', () => {
+  test('"numa" is auto-repaired — the witnessed-daily leak (ruling, 2026-08-10)', () => {
     expect(ALWAYS_CONFUSED.numa).toBe('neuma');
     expect(SUGGESTED_CONFUSIONS).not.toHaveProperty('numa');
     // Case follows sentence position, the platform/being distinction held:

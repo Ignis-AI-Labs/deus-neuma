@@ -355,8 +355,12 @@ const _handlePlanSubmit = async (connection, args, opts = {}) => {
     // The approval becomes durable HERE: the record to the workspace (it
     // survives relink and rides the PLAN OF RECORD prompt section every
     // turn), the LEAD's own steps onto its ledger — when tasks are formed.
+    // Only the operator's own card says yes on this road (a wake's route never
+    // approves here): the yes is stamped theirs, and the dispatch gate honours it
+    // as it honours their yes in the house clock (ruled 2026-10-19: […]).
     const { note } = await persistApprovedPlan(connection, plan, roster, {
       approvedAt: connection._approvedPlan.approvedAt,
+      ...(connection._planRoute ? {} : { approvedBy: { kind: 'operator', via: 'chat' } }),
     });
     const label = plan.name ? `"${plan.name}"` : 'you submitted';
     return {

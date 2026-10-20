@@ -26,19 +26,21 @@
  * the journal's current end as the baseline — booting does not replay
  * history.
  *
- * Card addressing mirrors the security watch's doctrine: the card goes to
- * the operator wallet (env override, else the wallet that claimed a lane on
- * this box); with no address the journal still holds the record and the
- * watch logs the skip.
+ * Card addressing: the card goes to the operator whose run it is — the
+ * wallet that issued the live night's pass, else the wallet whose matched set
+ * runs now, else NEUMA_BENCH_OPERATOR_WALLET. With no address the journal
+ * still holds the record and the watch logs the skip. Never the first lane
+ * owner a directory scan finds: on a box with two houses that was the other
+ * house's tray (houses are never confused).
  */
 
 import { mkdir, appendFile, readFile, readdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { harnessRoot, available, resolveInside, benchWatchJournalPath } from './bench-paths.js';
 import { readLatestNightStatus, probeServing, probeGpu } from './bench-status.js';
+import { liveChainWallet } from './bench-matched.js';
 import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
-import { getWorkspacesRoot } from '../../../core/index.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('Bench');
@@ -54,34 +56,44 @@ let incidentOffset = null; // null = baseline not yet adopted
 const activeConditions = new Set();
 
 /**
- * The operator's wallet for the tray card: NEUMA_BENCH_OPERATOR_WALLET, else
- * the wallet recorded on any claimed lane in the workspaces root (a
- * single-operator box claims every lane with the same wallet), else null.
+ * The wallet that issued the live night's pass (the harness's own
+ * .night-passes records; a pass names its night by logPrefix), or null.
+ * @param {string} root
+ * @param {?object} night - the latest night status (bench-status.js)
  * @returns {Promise<?string>}
  */
-// impure (env read + workspace scan)
-const resolveOperatorWallet = async () => {
-  if (process.env.NEUMA_BENCH_OPERATOR_WALLET) return process.env.NEUMA_BENCH_OPERATOR_WALLET;
-  try {
-    const lanes = await readdir(getWorkspacesRoot(), { withFileTypes: true });
-    for (const lane of lanes) {
-      if (!lane.isDirectory()) continue;
-      try {
-        const owner = JSON.parse(await readFile(join(getWorkspacesRoot(), lane.name, 'owner.json'), 'utf8'));
-        if (typeof owner?.wallet === 'string' && owner.wallet) return owner.wallet;
-      } catch { /* unclaimed or unreadable lane — keep looking */ }
-    }
-  } catch { /* no workspaces root at all */ }
+// impure (reads the harness's pass records)
+const nightIssuer = async (root, night) => {
+  if (!night || night.finishedAt) return null;
+  const prefix = String(night.file).replace(/-status\.json$/, '');
+  let names;
+  try { names = await readdir(resolveInside(root, '.night-passes')); } catch { return null; }
+  for (const name of names.filter((n) => n.endsWith('.json'))) {
+    try {
+      const pass = JSON.parse(await readFile(resolveInside(root, '.night-passes', name), 'utf8'));
+      if (pass?.logPrefix === prefix && typeof pass.issuedBy === 'string' && pass.issuedBy) return pass.issuedBy;
+    } catch { /* a pass mid-rename or unreadable — keep looking */ }
+  }
   return null;
 };
+
+/**
+ * The tray card's address: the live night's issuer, else the live set's
+ * launcher, else NEUMA_BENCH_OPERATOR_WALLET, else null (journal only).
+ * @returns {Promise<?string>}
+ */
+// impure (pass records, the live chain, env)
+const resolveOperatorWallet = async (root, night) =>
+  (await nightIssuer(root, night)) ?? liveChainWallet() ?? (process.env.NEUMA_BENCH_OPERATOR_WALLET || null);
 
 /**
  * Record one fire: journal row + tray card. Never throws — the watch's
  * record must never depend on a card (the bus itself already never throws).
  * @param {{condition: string, severity: string, title: string, detail: string, ref?: object}} fire
+ * @param {?string} wallet - the card's address (resolveOperatorWallet), or null
  */
 // impure (journal append + notification)
-const recordFire = async ({ condition, severity, title, detail, ref = {} }) => {
+const recordFire = async ({ condition, severity, title, detail, ref = {} }, wallet) => {
   const row = { at: new Date().toISOString(), source: 'bench-watch', condition, severity, detail, ...ref };
   try {
     const journal = benchWatchJournalPath();
@@ -90,7 +102,6 @@ const recordFire = async ({ condition, severity, title, detail, ref = {} }) => {
   } catch (err) {
     log.error('bench watch journal append failed', { condition, error: err.message });
   }
-  const wallet = await resolveOperatorWallet();
   if (!wallet) {
     log.info('bench alert has no address — the journal holds the record', { condition });
     return;
@@ -242,8 +253,9 @@ export const benchWatchTick = (nowMs = Date.now()) => {
       fires.push(judgeIncidentRow(row));
     }
 
+    const wallet = fires.length ? await resolveOperatorWallet(root, night) : null;
     for (const fire of fires) {
-      await recordFire(fire);
+      await recordFire(fire, wallet);
       log.warn('bench watch fired', { condition: fire.condition, severity: fire.severity, detail: fire.detail });
     }
     return fires;

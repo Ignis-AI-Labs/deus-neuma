@@ -16,10 +16,10 @@ import { standingOf } from '../../frontend/app/RelinkShell/WorkflowMember.jsx';
 import { LogList } from '../../frontend/app/RelinkShell/WorkflowMemberLog.jsx';
 
 const BOARD = [
-  { id: 'v1', neumaId: 'zezebur', member: 'Zezebur', state: 'working', status: null },
-  { id: 'v2', neumaId: 'kisonam', member: 'Kisonam', state: 'working', status: null },
+  { id: 'v1', neumaId: 'laurel', member: 'Laurel', state: 'working', status: null },
+  { id: 'v2', neumaId: 'teasel', member: 'Teasel', state: 'working', status: null },
 ];
-const START = { type: 'operator:team_start', id: 'run-9', background: true, lead: 'Zezebur', laneId: 'zezebur', name: 'GAP SPRINT', goal: 'Validate the gaps.', board: BOARD };
+const START = { type: 'operator:team_start', id: 'run-9', background: true, lead: 'Laurel', laneId: 'laurel', name: 'GAP SPRINT', goal: 'Validate the gaps.', board: BOARD };
 const frames = (list) => list.reduce((state, f) => teamRunsReducer(state, { ...f, type: TEAM_RUN_FRAMES[f.type] }), initialTeamRuns);
 const render = (state) => renderToStaticMarkup(
   createElement(TeamRunsContext.Provider, { value: createTeamRunsStore(state) }, createElement(workflowApp.Body)),
@@ -27,8 +27,8 @@ const render = (state) => renderToStaticMarkup(
 
 describe('the store follows each member\'s standing', () => {
   it('a place in line is held until the member works again; a retry until it acts; a settled run holds neither', () => {
-    const waiting = frames([START, { type: 'operator:team_line', id: 'run-9', stepId: 'v1', state: 'waiting', position: 2, ahead: ['Keir', 'Kisonam (team)'] }]);
-    expect(waiting.runs['run-9'].lines.v1).toEqual({ state: 'waiting', position: 2, ahead: ['Keir', 'Kisonam (team)'] });
+    const waiting = frames([START, { type: 'operator:team_line', id: 'run-9', stepId: 'v1', state: 'waiting', position: 2, ahead: ['Hazel', 'Teasel (team)'] }]);
+    expect(waiting.runs['run-9'].lines.v1).toEqual({ state: 'waiting', position: 2, ahead: ['Hazel', 'Teasel (team)'] });
 
     const retry = { type: 'operator:team_retry', id: 'run-9', stepId: 'v1', kind: 'failed', why: 'the answer stream ended early', inMs: 60000, at: 't1' };
     const stopped = frames([START, retry]);
@@ -49,7 +49,7 @@ describe('the store follows each member\'s standing', () => {
 
 describe('the WORKFLOW window says where each member stands', () => {
   it('waiting its turn, stopped short and about to be continued, sent back to finish — or nothing when it simply works', () => {
-    expect(standingOf({ state: 'waiting', position: 2, ahead: ['Keir'] }, null)).toBe('WAITING ITS TURN FOR THE MODEL (2 IN LINE) — BEHIND Keir');
+    expect(standingOf({ state: 'waiting', position: 2, ahead: ['Hazel'] }, null)).toBe('WAITING ITS TURN FOR THE MODEL (2 IN LINE) — BEHIND Hazel');
     expect(standingOf(null, { kind: 'failed', why: 'the answer stream ended early', inMs: 60000 }))
       .toBe('STOPPED SHORT — the answer stream ended early. THE RUN CONTINUES IT IN 60s, WHERE IT STOPPED.');
     expect(standingOf(null, { kind: 'unfinished', why: 'it carried no work product — only a sign-off' }))
@@ -60,10 +60,10 @@ describe('the WORKFLOW window says where each member stands', () => {
   it('a live run shows the standing, the act\'s reason, and OPEN LOG on every member that has begun', () => {
     const html = render(frames([
       START,
-      { type: 'operator:team_line', id: 'run-9', stepId: 'v2', state: 'waiting', position: 1, ahead: ['Zezebur (team)'] },
+      { type: 'operator:team_line', id: 'run-9', stepId: 'v2', state: 'waiting', position: 1, ahead: ['Laurel (team)'] },
       { type: 'operator:team_tool', id: 'run-9', stepId: 'v1', tool: 'web/web_fetch', status: 'error', summary: 'web_fetch — failed', detail: 'HTTP 403 from www.reddit.com' },
     ]));
-    expect(html).toContain('WAITING ITS TURN FOR THE MODEL (1 IN LINE) — BEHIND Zezebur (team)');
+    expect(html).toContain('WAITING ITS TURN FOR THE MODEL (1 IN LINE) — BEHIND Laurel (team)');
     expect(html).toContain('web_fetch — failed');
     expect(html).toContain(' — HTTP 403 from www.reddit.com');
     expect(html.match(/OPEN LOG/g)).toHaveLength(2);
@@ -74,18 +74,18 @@ describe('the TEAM CHANNEL — what the team tells each other, on the operator\'
   const post = (n, from, to, text) => ({ type: 'operator:team_message', id: 'run-9', n, at: `2026-10-12T16:0${n}:00.000Z`, from, fromStep: null, to, toStep: null, text });
 
   it('posts land once, in order — a frame heard twice is one post', () => {
-    const store = frames([START, post(1, 'Zezebur (v1)', 'Kisonam', 'The offer is $499 flat.'), post(1, 'Zezebur (v1)', 'Kisonam', 'The offer is $499 flat.'), post(2, 'your operator', 'everyone', 'Datadog first.')]);
-    expect(store.runs['run-9'].channel.map((m) => [m.n, m.from, m.to])).toEqual([[1, 'Zezebur (v1)', 'Kisonam'], [2, 'your operator', 'everyone']]);
+    const store = frames([START, post(1, 'Laurel (v1)', 'Teasel', 'The offer is $499 flat.'), post(1, 'Laurel (v1)', 'Teasel', 'The offer is $499 flat.'), post(2, 'your operator', 'everyone', 'Datadog first.')]);
+    expect(store.runs['run-9'].channel.map((m) => [m.n, m.from, m.to])).toEqual([[1, 'Laurel (v1)', 'Teasel'], [2, 'your operator', 'everyone']]);
   });
 
   it('the window shows who told whom what — the operator\'s own posts as YOU — and offers the operator\'s word while the team works', () => {
-    const html = render(frames([START, post(1, 'Zezebur (v1)', 'Kisonam', 'The offer is $499 flat.'), post(2, 'your operator', 'everyone', 'Datadog first.')]));
+    const html = render(frames([START, post(1, 'Laurel (v1)', 'Teasel', 'The offer is $499 flat.'), post(2, 'your operator', 'everyone', 'Datadog first.')]));
     expect(html).toContain('TEAM CHANNEL — WHAT THEY TELL EACH OTHER');
-    expect(html).toContain('Zezebur (v1) → KISONAM');
+    expect(html).toContain('Laurel (v1) → TEASEL');
     expect(html).toContain('The offer is $499 flat.');
     expect(html).toContain('YOU → EVERYONE');
     expect(html).toContain('POST TO THE TEAM');
-    expect(html).toContain('TO KISONAM (v2)');
+    expect(html).toContain('TO TEASEL (v2)');
   });
 });
 
@@ -93,7 +93,7 @@ describe('a member\'s whole log reads in the order it happened', () => {
   const at = (s) => `2026-10-12T15:${s}.000Z`;
   const LOG = [
     { at: at('09:10'), kind: 'open', how: 'brief', why: null, text: 'Your part: validate G2.' },
-    { at: at('09:12'), kind: 'line', state: 'waiting', position: 2, ahead: ['Keir'] },
+    { at: at('09:12'), kind: 'line', state: 'waiting', position: 2, ahead: ['Hazel'] },
     { at: at('09:20'), kind: 'line', state: 'running' },
     { at: at('09:21'), kind: 'thought', text: 'Let me search the threads ' },
     { at: at('09:23'), kind: 'thought', text: 'where buyers complain.' },
@@ -111,7 +111,7 @@ describe('a member\'s whole log reads in the order it happened', () => {
     const html = renderToStaticMarkup(createElement(LogList, { entries: LOG, working: false }));
     expect(html).toContain('ATTEMPT 1 · BRIEFED');
     expect(html).toContain('ATTEMPT 2 · CONTINUED — IT HAD STOPPED SHORT');
-    expect(html).toContain('WAITING ITS TURN FOR THE MODEL — 2 IN LINE (BEHIND Keir)');
+    expect(html).toContain('WAITING ITS TURN FOR THE MODEL — 2 IN LINE (BEHIND Hazel)');
     expect(html).toContain('Let me search the threads where buyers complain.');
     expect(html).toContain('href="https://example.org/t/1"');
     expect(html).toContain('WHY');

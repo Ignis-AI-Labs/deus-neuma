@@ -43,7 +43,7 @@ test('forge client grades real image records and preserves ownership/auth bounda
     app.use('/api/v1/image-forge', (await import('../../backend/routes/image-forge-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as client from "/frontend/services/image-forge-client.js"; window.client=client; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app);

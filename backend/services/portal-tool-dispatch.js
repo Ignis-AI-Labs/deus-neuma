@@ -389,7 +389,7 @@ export const dispatchPlatformTool = async (match, ctx) => {
     }
 
     if (isPlatformFeedTool(match)) {
-      results.push(await handlePlatformFeedTool(ws, connection, match, args, { sendToolEvent: _sendToolEvent }));
+      results.push(await handlePlatformFeedTool(ws, connection, match, args, { sendToolEvent: _sendToolEvent, lanePolicy: neumaPolicy, mode: toolMode }));
       break dispatch;
     }
 

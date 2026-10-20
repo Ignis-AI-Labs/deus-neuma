@@ -1,14 +1,14 @@
 // WakeSections — the operator's vision of the house waking itself: NOW (who
-// is awake, and what waits and why), the LEDGER (every wake, newest first,
-// filtered and paged) and the ASKS (what a wake could not do without the
-// operator). Pure rendering; the display law lives in house-clock-view.js and
-// the IO in HouseClockApp.jsx. No sound imports: renderable under node.
+// is awake, and what waits and why) and the LEDGER (every wake, newest first,
+// filtered and paged). The ASKS live in AsksSection.jsx. Pure rendering; the
+// display law lives in house-clock-view.js and the IO in HouseClockApp.jsx.
+// No sound imports: renderable under node.
 
 import { EmptyState } from '../empty-state.jsx';
 import { Select } from '../Select.jsx';
-import { runningRows, queueRows, ledgerRow, askRow, OUTCOMES, outcomeWords } from './house-clock-view.js';
+import { runningRows, queueRows, ledgerRow, OUTCOMES, outcomeWords } from './house-clock-view.js';
 
-const OpenSitting = ({ seat, name, sessionId, onOpenSitting, label = 'OPEN SITTING' }) => (sessionId ? (
+export const OpenSitting = ({ seat, name, sessionId, onOpenSitting, label = 'OPEN SITTING' }) => (sessionId ? (
   <button type="button" className="hclock-btn label-data" onClick={() => onOpenSitting({ seat, name, sessionId })}>{label}</button>
 ) : null);
 
@@ -89,39 +89,6 @@ export const LedgerSection = ({ ledger, filter, names, seats, page, pageSize, on
           <button type="button" className="hclock-btn label-data" disabled={page >= last} onClick={() => onPage(page + 1)}>OLDER</button>
         </div>
       ) : null}
-    </section>
-  );
-};
-
-/**
- * ASKS — what a wake could not do and sent to the operator. Closing one says
- * "seen, dealt with": nothing runs; answering the seat happens in its sitting.
- */
-export const AsksSection = ({ asks, names, busy, onClose, onOpenSitting }) => {
-  const rows = (asks ?? []).map((a) => askRow(a, names));
-  return (
-    <section className="hclock-sec">
-      <p className="hclock-muted">
-        A wake never waits for you: what it could not do was refused in the turn and filed here.
-        To have it done, tell the seat in its sitting. Closing an ask only marks it dealt with — nothing runs.
-      </p>
-      {rows.length === 0 ? <EmptyState title="NOTHING HAS BEEN SENT TO YOU" /> : (
-        <ul className="hclock-rows">
-          {rows.map((a) => (
-            <li key={a.key} className={`hclock-wake${a.open ? ' is-open' : ''}`}>
-              <div className="hclock-wake-head">
-                <span className="hclock-row-who">{a.name}</span>
-                <span className="hclock-row-what label-data">{a.what}</span>
-                <OpenSitting seat={a.seat} name={a.name} sessionId={a.sessionId} onOpenSitting={onOpenSitting} />
-                {a.open ? <button type="button" className="hclock-btn label-data" disabled={busy} onClick={() => onClose(a.key)}>CLOSE</button> : null}
-              </div>
-              <p className="hclock-row-what">{`Why it came to you: ${a.why}`}</p>
-              {a.scope ? <p className="hclock-muted">{`Reached for: ${a.scope}`}</p> : null}
-              <p className="hclock-muted">{a.closed || `OPEN SINCE ${a.at}`}</p>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 };

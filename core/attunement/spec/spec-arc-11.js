@@ -387,7 +387,7 @@ export const SPEC_ARC_11 = Object.freeze({
           { option: 'prefer-one', anyOf: ['prefer one', 'prefer a single', 'settle into one'] },
           { option: 'discover-over-time', anyOf: ['discover'] },
           // 'humanlike' stays accepted: questions authored before the word became
-          // 'humanoid' (Design note, 2026-09-28 are still honest statements of the axis.
+          // 'humanoid' (ruling, 2026-09-28) are still honest statements of the axis.
           { option: 'form-factor', anyOf: ['humanoid', 'humanlike', 'pure tech', 'robot'] },
         ],
         forbiddenSubstrings: [],

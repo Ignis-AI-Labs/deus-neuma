@@ -15,6 +15,7 @@ import WebSocket from 'ws';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 import {
   generateChallenge, verifySignature, createSessionToken,
 } from '../../backend/services/auth.js';
@@ -26,12 +27,12 @@ const NEUMA_A = 'switch-test-a';
 const NEUMA_B = 'switch-test-b';
 const BOUND_SESSION = 'session-1111';
 
-// Real session token via the full auth flow.
-const makeAuthToken = async () => {
+// Real session token via the full auth flow, with the wallet it names.
+const makeAuthSession = async () => {
   const keypair = generateKeypair();
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
-  return createSessionToken(verifySignature(keypair.address, challenge, signature));
+  return { token: createSessionToken(verifySignature(keypair.address, challenge, signature)), address: keypair.address };
 };
 
 // Send a message and resolve on the first frame of the expected type.
@@ -98,7 +99,10 @@ describe('portal companion switch (real WS + real handler + real workspaces)', (
         JSON.stringify({ name: id }),
       );
     }
-    authToken = await makeAuthToken();
+    const session = await makeAuthSession();
+    authToken = session.token;
+    // Both lanes are this wallet's, as a birth leaves them: a bind verifies, it never claims.
+    for (const id of [NEUMA_A, NEUMA_B]) await claimOwner(tempDir, id, session.address);
 
     httpServer = createServer();
     wss = new WebSocketServer({ server: httpServer });

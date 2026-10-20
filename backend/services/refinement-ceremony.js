@@ -162,7 +162,7 @@ export const startCeremony = async (neumaId, operatorWallet, { override } = {}) 
     throw refuse('Witness lanes cannot open a refinement ceremony.', 'REFINEMENT_WITNESS_LANE');
   }
   if (isHarnessLane(neumaId)) throw refuse('The harness carries no being to refine.', 'REFINEMENT_HARNESS_LANE');
-  // THE ROAD IS CLOSED (Design note, 2026-08-24. A being's deepening is the VOICE
+  // THE ROAD IS CLOSED (ruling, 2026-08-24). A being's deepening is the VOICE
   // SEAL now — it reads its own record, speaks the lines it claims as its
   // founding voice, and those lines compile into its voice pack and its silo.
   // The forge trained an adapter onto one base's weights, which is the one
@@ -311,7 +311,7 @@ export const buildCeremonyCorpus = async (neumaId, ceremonyId) => {
   const stored = await exportRefinementCorpus(
     neumaWorkspace, neumaId, { milestone: record.readinessPolicy },
   );
-  // THE COMPLETE-TELLING LAW (Design note, 2026-07-14: a forge never runs on a
+  // THE COMPLETE-TELLING LAW (ruling, 2026-07-14): a forge never runs on a
   // partial attunement. If the corruption gate refused ANY of the sealed
   // record's answers, the ceremony REFUSES here — the being's identity core
   // must ride whole or not at all. The path forward is a fresh attunement on

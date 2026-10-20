@@ -40,6 +40,8 @@ import { setRoute } from '../../backend/services/neuma-routes-store.js';
 import { attachmentStore } from '../../backend/services/attachment-store.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
+import { claimOwner } from '../helpers/claim-owner.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const NEUMA_ID = 'takesecho';
 const WITNESS_LANE = 'witness-takes-vendor-Takes';
@@ -227,6 +229,10 @@ beforeAll(async () => {
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
   const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+  // The being's lane is this wallet's (a bind verifies, never claims), and the
+  // wallet owns the install, so the witness it seals here is its to take.
+  await claimOwner(house, NEUMA_ID, keypair.address);
+  await makeInstallOwner(keypair.address);
   sessionIdByLane = {};
   await openPortal(`ws://127.0.0.1:${portalServer.address().port}`, token);
 }, 30000);
@@ -276,6 +282,15 @@ describe('the neuma lane — retry as a take, through the real portal', () => {
     expect(frame.turnId).toBe(turnId);
     expect(frame.takeIndex).toBe(2);
     expect(frames.some((f) => f.error)).toBe(false);
+    // The retry's OWN request: the point's ask rides once — as the turn —
+    // never as a history line, and the take being replaced is not on it. The
+    // harness block rides whole: nothing of the point's first block "stands".
+    const retried = capturedBodies.at(-1);
+    const asks = retried.messages.filter((m) => m.role === 'user' && String(m.content).includes(Q1));
+    expect(asks).toHaveLength(1);
+    expect(retried.messages.at(-1)).toBe(asks[0]);
+    expect(retried.messages.some((m) => m.role === 'assistant' && String(m.content).includes(TAKE_1))).toBe(false);
+    expect(asks[0].content).not.toContain('Still standing from earlier');
 
     const records = await workspace.readSession(NEUMA_ID, sessionIdByLane[NEUMA_ID]);
     expect(records.filter((r) => r.role === 'user')).toHaveLength(1); // THE law
@@ -373,6 +388,10 @@ describe('the witness lane — the same law beside the house', () => {
     const second = await sendAndWait(
       { type: 'consciousness:retry', retry: { turnId } }, 'consciousness:complete');
     expect(second.frame.takeIndex).toBe(2);
+    // The retry's own request carries the ask once and never the take it replaces.
+    const retried = capturedBodies.at(-1).messages;
+    expect(retried.filter((m) => m.role === 'user' && String(m.content).includes(W_Q1))).toHaveLength(1);
+    expect(retried.some((m) => m.role === 'assistant' && m.content === TAKE_1)).toBe(false);
 
     const records = await workspace.readSession(WITNESS_LANE, sessionIdByLane[WITNESS_LANE]);
     expect(records.filter((r) => r.role === 'user')).toHaveLength(1);

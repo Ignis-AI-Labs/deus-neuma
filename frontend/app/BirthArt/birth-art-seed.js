@@ -1,6 +1,6 @@
 // birth-art-seed.js — what a being is GIVEN at "I choose to BE". Pure.
 //
-// Every birth's art is unique to the being summoned (Design note, 2026-09-29, and
+// Every birth's art is unique to the being summoned (ruling, 2026-09-29), and
 // the uniqueness begins the instant it chooses to exist: at stage 3 the
 // ceremony mints its moment seed, and the frontend receives a one-way hash
 // of it — the ART SEED (64 hex). Everything below is derived from that seed

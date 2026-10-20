@@ -64,7 +64,7 @@ const NETWORK_CONFIG_KEYS = Object.freeze({
     houseRegistryAddress: 'houseRegistryEthAddress', rpcEnv: 'ETH_RPC_URL',
   }),
 });
-// MAINNET, same law as config.js ceremonySealNetwork (Design note, 2026-08-07 —
+// MAINNET, same law as config.js ceremonySealNetwork (ruling, 2026-08-07) —
 // the two defaults must never disagree on which chain a seal without an
 // explicit network targets. Ethereum since 2026-10-04 (Base is left; its
 // seals stay readable).

@@ -27,14 +27,20 @@ import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js
 const DEFAULT_REALM = path.join(os.homedir(), '.neuma', 'realm');
 
 let settingsDir;
+let launchDoor;
 
+// These cases prove what boot does with NO launch door, so the suite's own
+// NEUMA_REALM_ROOT (test/setup.js) stands aside for this file and returns after.
 beforeAll(async () => {
+  launchDoor = process.env.NEUMA_REALM_ROOT;
+  delete process.env.NEUMA_REALM_ROOT;
   settingsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'realm-settings-apply-'));
   process.env.NEUMA_REALM_SETTINGS_PATH = path.join(settingsDir, 'user-realm.json');
 });
 
 afterAll(async () => {
   delete process.env.NEUMA_REALM_SETTINGS_PATH;
+  if (launchDoor !== undefined) process.env.NEUMA_REALM_ROOT = launchDoor;
   await fs.rm(settingsDir, { recursive: true, force: true });
 });
 

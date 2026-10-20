@@ -17,6 +17,7 @@
 import express from 'express';
 import { stat } from 'node:fs/promises';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { harnessRoot, available, resolveInside, benchWatchJournalPath } from '../services/bench/bench-paths.js';
 import { getBenchStatus, readLatestNightStatus, readServingIncidents, readJsonlTail } from '../services/bench/bench-status.js';
 import { listBundles, readBundleArtifact, readScoreboard, listRuns } from '../services/bench/bench-reports.js';
@@ -271,7 +272,7 @@ router.get('/chain/report', async (req, res) => {
 
 // Preflight a (cell, arm, model) triple — the harness's own gate, short verb.
 // Identity arms carry their --lane/--workspace-root through the same body.
-router.post('/preflight', async (req, res) => {
+router.post('/preflight', requireInstallOwner, async (req, res) => {
   const { cell, arm, model, lane, workspaceRoot } = req.body ?? {};
   const result = await launch('preflight-cell', { cell, arm, model, lane, workspaceRoot }, req.walletAddress);
   if (!result.ok) return mapPlaneResult(res, result);
@@ -284,9 +285,10 @@ router.post('/preflight', async (req, res) => {
   });
 });
 
-// Launch a catalog verb. requireAuth already gates WHO; the catalog validates
-// WHAT — validated params only ever reach argv through buildArgs.
-router.post('/launch', async (req, res) => {
+// Launch a catalog verb. The install owner is WHO (the plane spawns the
+// machine's processes and holds its GPU); the catalog validates WHAT —
+// validated params only ever reach argv through buildArgs.
+router.post('/launch', requireInstallOwner, async (req, res) => {
   const { verb, params } = req.body ?? {};
   log.info('bench launch requested', { verb, wallet: req.walletAddress });
   const result = await launch(verb, params ?? {}, req.walletAddress);
@@ -296,15 +298,16 @@ router.post('/launch', async (req, res) => {
 // The recovery console: relight serving by standing the daemons back up.
 // 409 BENCH_SERVING_HEALTHY when the endpoint answers, 409 BENCH_DAEMON_RUNNING
 // when the watchdog or swapper already stands (relight is their office).
-router.post('/relight', async (req, res) => {
+router.post('/relight', requireInstallOwner, async (req, res) => {
   const { model } = req.body ?? {};
   log.info('bench relight requested', { model, wallet: req.walletAddress });
   const result = await launch('relight-serving', { model }, req.walletAddress);
   return mapPlaneResult(res, result);
 });
 
-// SIGTERM the plane-owned long children (404 when the plane owns none).
-router.post('/stop', async (req, res) => {
+// SIGTERM the plane-owned long children (404 when the plane owns none) —
+// the machine's processes, so the install owner's act.
+router.post('/stop', requireInstallOwner, async (req, res) => {
   log.info('bench stop requested', { wallet: req.walletAddress });
   const result = await stopOwned();
   return mapPlaneResult(res, result);
@@ -315,7 +318,7 @@ router.post('/stop', async (req, res) => {
 // Start a run. 202 with the run id; 409 BENCH_PROOF_RUNNING when one is in
 // flight; 409 BENCH_RIG_LOCKED / BENCH_PLANE_BUSY while a benchmark runs;
 // 409 BENCH_NOT_SERVING when no model answers (load one first).
-router.post('/proof-run', async (req, res) => {
+router.post('/proof-run', requireInstallOwner, async (req, res) => {
   log.info('bench proof run requested', { wallet: req.walletAddress });
   // The plane's own long child may not have taken the rig lock yet (the
   // spawn precedes the harness's lock), so the plane answers for it here.

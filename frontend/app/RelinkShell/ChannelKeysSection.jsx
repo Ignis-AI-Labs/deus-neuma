@@ -14,7 +14,7 @@ import {
   getChannelBoard, setChannelCredentials, clearChannelCredentials, getFlightTests,
 } from '../../services/social-channels-client.js';
 
-// THE FLIGHT LINE (Design note, 2026-07-28: a key being SET is a claim; the flight
+// THE FLIGHT LINE (ruling, 2026-07-28): a key being SET is a claim; the flight
 // test is the proof — the platform accepted it, answered, named the account.
 // PROVEN with the account, FAILING with the honest reason, unconfigured
 // said as nothing-to-prove (never an error).

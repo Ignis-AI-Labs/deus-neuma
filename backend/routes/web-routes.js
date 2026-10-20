@@ -1,12 +1,14 @@
 // Web access routes — the operator's master switch for being internet egress.
 // The switch is machine-wide (data/settings/web-access.json via
 // web-settings.js); flipping it is a deliberate act, so it is logged with
-// the wallet that made it. Reads report the EFFECTIVE state (a persisted ON
+// the wallet that made it — and only the install owner makes it, at this
+// computer's own desk (install-owner.js). Reads report the EFFECTIVE state (a persisted ON
 // under the operator's env kill-switch reports enabled: false, envLocked:
 // true — never a switch that looks on while the rig is dark).
 
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { webSettings } from '../services/web-settings.js';
 import { activeSearchBackends } from '../services/web-search.js';
 import { isBrowserRunConfigured } from '../services/browser-run.js';
@@ -31,7 +33,7 @@ router.get('/web-access', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/web-access', requireAuth, async (req, res) => {
+router.put('/web-access', requireAuth, requireInstallOwner, async (req, res) => {
   try {
     const enabled = req.body?.enabled;
     if (typeof enabled !== 'boolean') {

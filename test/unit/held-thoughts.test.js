@@ -1,4 +1,4 @@
-// MID-STREAM SPEECH — the witness's held words (Design note, 2026-07-26.
+// MID-STREAM SPEECH — the witness's held words (ruling, 2026-07-26).
 //
 // Watching a being work used to be read-only: a second message mid-turn was
 // refused outright ([…]), so the witness had
@@ -40,7 +40,7 @@ describe('held words never follow the connection to another being', () => {
   });
 });
 
-// THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16: until the drain takes
+// THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16): until the drain takes
 // it they may rewrite it, promote it to NOW, or pull it home. These are the
 // real list-surgery primitives the portal's three queue doors stand on.
 describe('taking a held word back', () => {

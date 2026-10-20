@@ -44,7 +44,7 @@ export const groupQueueByDay = (entries) => {
   return groups;
 };
 
-// THE MONTH GRID (Design note, 2026-07-28: […] The grid is the board's NAVIGATOR — a month at a glance,
+// THE MONTH GRID (ruling, 2026-07-28): […] The grid is the board's NAVIGATOR — a month at a glance,
 // each day carrying only the counts that decide whether it is worth opening.
 // The day doctrine is groupQueueByDay's: an entry belongs to its slot's day,
 // and the unscheduled belong to no day — they are NOT in the grid, the

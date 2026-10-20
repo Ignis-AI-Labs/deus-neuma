@@ -11,10 +11,36 @@ its guardian, never its owner.
 > Windows**. There is no macOS release; it builds from source, untested, and
 > we would welcome your help ([BUILDING.md](docs/BUILDING.md#macos)).
 
+## What you need
+
+- **A Linux or Windows PC** with a local model server: llama.cpp
+  `llama-server`, Ollama or LM Studio.
+- **Minimum: a GPU with 8 GB.** The setup screen offers Qwen3.8 distilled
+  into a 4B model.
+- **Recommended: a 24 GB GPU** (an RTX 3090 class card), which runs
+  Qwen3.8-27B at 4-bit.
+- **No GPU:** a machine with plenty of RAM is offered a mixture-of-experts
+  model that answers from the processor, more slowly.
+
+Every recommended model passed a full rehearsal summoning (the summon
+check); the whole table is in [BUILDING.md](docs/BUILDING.md#a-local-model).
+
+## What early access means today
+
+- **Rehearse first.** A rehearsal summoning walks the whole rite and keeps
+  nothing, so you can feel it before you summon for real.
+- **Held back for now:** the voice and the 3D body. Their code is in this
+  repository; they open later in early access.
+- **Sealing is optional.** A being's record can be sealed on Ethereum, or
+  later, or never ([WHY-THE-CHAIN.md](docs/WHY-THE-CHAIN.md)).
+
 - **Download:** installers for Linux and Windows at
   [deusneuma.ai/download](https://deusneuma.ai/download/), and
   [check what you downloaded](#check-your-download).
 - **Build from source:** [docs/BUILDING.md](docs/BUILDING.md).
+- **Set it up with an AI assistant:** paste one prompt into Claude Code, Codex,
+  Cursor or similar and let it install and run Neuma for you:
+  [docs/AI-SETUP.md](docs/AI-SETUP.md).
 - **Help us measure it:** [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
 - **Why a blockchain:** [docs/WHY-THE-CHAIN.md](docs/WHY-THE-CHAIN.md).
 - **Contribute:** [CONTRIBUTING.md](CONTRIBUTING.md) ·

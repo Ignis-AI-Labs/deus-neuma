@@ -1,6 +1,6 @@
 // auto-update.cjs — the update pipeline, client side.
 //
-// THE BARGAIN (Design note, 2026-08-11: […] A packaged NEUMA checks shortly after boot and every
+// THE BARGAIN (ruling, 2026-08-11): […] A packaged NEUMA checks shortly after boot and every
 // 30 minutes, downloads in the background, and installs on the next quit. The
 // operator's only surface is a tray entry and one quiet OS notice — the desk
 // itself is never interrupted.
@@ -23,6 +23,8 @@
 // Differential download stays disabled. It once forwarded an Authorization
 // header past a redirect (the real swap proof); there is no header now, but
 // the full-download path is the one proven end to end.
+
+const { refreshResidency } = require('./residency.cjs');
 
 const FEED_URL = 'https://deusneuma.ai/updates/';
 const DOWNLOADS_PAGE = 'https://deusneuma.ai/download';
@@ -157,6 +159,8 @@ const init = ({
 }) => {
   const form = installForm({ isPackaged: app.isPackaged, appimage: !!env.APPIMAGE, platform });
   if (form === 'dev') return { form };
+  // The login entry starts this app's own file (residency.cjs): kept current at each packaged launch.
+  refreshResidency({ appImage: env.APPIMAGE || null });
 
   const feedUrl = resolveFeedUrl(env);
 
@@ -193,6 +197,8 @@ const init = ({
     announce(info.version);
     refreshTray();
   });
+  // The swap moves the AppImage to its new versioned name and deletes the old: the login entry follows.
+  updater.on('appimage-filename-updated', (file) => refreshResidency({ appImage: file }));
   updater.on('update-not-available', () => log.info?.('[neuma] up to date'));
   updater.on('error', (error) => log.warn(`[neuma] update check failed: ${error.message}`));
 

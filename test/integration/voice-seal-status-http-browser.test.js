@@ -25,7 +25,7 @@ test('voice-seal status reports invalid auth and preserves ownership refusals wi
     app.use('/api', (req, res, next) => { res.on('finish', () => requests.push({ method: req.method, status: res.statusCode })); next(); });
     app.use('/api/v1/voice-seal', (await import('../../backend/routes/voice-seal-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import {sealStatus} from "/frontend/app/RelinkShell/voice-seal-client.js"; window.read=sealStatus; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares); server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

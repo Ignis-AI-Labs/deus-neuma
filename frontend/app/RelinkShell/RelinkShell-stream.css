@@ -264,6 +264,15 @@
   opacity: 0.7;
 }
 
+/* What actually failed, in the provider's own words — under a failure's
+   bubble, quiet: the bubble says the turn failed, this says why. */
+.relink-msg-reason {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
 .relink-msg-body {
   font-family: var(--font-voice);
   font-weight: var(--weight-light);

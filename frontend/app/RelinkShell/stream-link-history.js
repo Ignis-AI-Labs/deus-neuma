@@ -9,7 +9,7 @@
 //     stamp turnStartedRef; a thought fired in this window waits on the gate
 //     (stream-actions.js) instead of skipping the resume bind and forking the
 //     session server-side.
-//   FAIL LOUD, NEVER FORK (Design note, 2026-08-31: a failed load used to read as an
+//   FAIL LOUD, NEVER FORK (ruling, 2026-08-31): a failed load used to read as an
 //     empty chat, and the next send minted a forked session over an intact
 //     one. Warn, retry ONCE inside the gate (a gated send simply waits out
 //     the retry), and only then set historyFailedRef — stream-actions holds

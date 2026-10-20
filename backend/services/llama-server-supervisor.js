@@ -3,6 +3,7 @@
  * immutable launch attestation. Planning stays pure; process work is impure.
  */
 import { existsSync, mkdirSync, openSync, closeSync } from 'fs';
+import { fittedLaunch } from './serving-fit.js';
 import path from 'path';
 import { createLogger } from './logger.js';
 import {
@@ -32,8 +33,8 @@ import {
 } from './serving-launch-config.js';
 import { activeServedModelKey, expireServedTruth, isServing, liveServedKey } from './served-model-truth.js';
 import {
-  launchReady, missingPrerequisites, projectSupervisorFailure,
-  RELIGHT_WINDOW_MS, shouldRelight, withDiscoveredProjector,
+  heldPortFailure, launchReady, missingPrerequisites, projectSupervisorFailure,
+  refusedBootCode, RELIGHT_WINDOW_MS, shouldRelight, withDiscoveredProjector,
 } from './supervisor-launch-config.js';
 
 // The read-only truth channel lives in served-model-truth.js (CQ-036 seam:
@@ -151,6 +152,7 @@ export const startSupervised = async (config, { waitMs = DEFAULT_START_WAIT_MS }
     lastError = { code: 'launch-not-ready', error: error.message, at: new Date().toISOString() };
     throw error;
   }
+  lastError = null; // a boot reports only its own failure — never the last boot's
   bootPromise = (async () => {
     let prepared = null;
     let gpuAuthority = null;
@@ -158,13 +160,13 @@ export const startSupervised = async (config, { waitMs = DEFAULT_START_WAIT_MS }
     try {
       operation = createRefinementProcessOperation({ timeoutMs: 5 * 60_000 });
       // Avoid hashing and staging a model when this endpoint already serves.
-      if (await isServing(requestedLaunch.port, requestedLaunch.host)) {
-        return { status: 'already-serving' };
-      }
+      if (await isServing(requestedLaunch.port, requestedLaunch.host)) return { status: 'already-serving' };
+      const held = await heldPortFailure(requestedLaunch);
+      if (held) { lastError = held; throw new Error(held.error); }
       // Base-only carries no SOURCE authority; the operation rides for staging.
       const sourceAuthority = requestedLaunch.servingModel === null
         ? null : await openRefinementSourceAuthority({ operation });
-      prepared = await prepareServingArtifacts(requestedLaunch, { sourceAuthority, operation });
+      prepared = await prepareServingArtifacts(await fittedLaunch(requestedLaunch), { sourceAuthority, operation });
       gpuAuthority = await captureServingGpuDeviceAuthority(operation);
       return await bootToHealthy({
         prepared,
@@ -178,7 +180,7 @@ export const startSupervised = async (config, { waitMs = DEFAULT_START_WAIT_MS }
       // The pre-health corridor used to fail only into fire-and-observe's .catch — the desk saw
       // nothing igniting, nothing failed (2026-08-15). bootToHealthy's records keep their code.
       if (lastError?.error !== error.message) {
-        lastError = { code: 'launch-refused', error: error.message, at: new Date().toISOString() };
+        lastError = { code: refusedBootCode(error), error: error.message, at: new Date().toISOString() };
       }
       const closers = [
         ...(prepared ? [() => releasePreparedServingArtifacts(prepared)] : []),
@@ -269,7 +271,12 @@ const bootToHealthy = async ({
       child = null;
       clearClaim(owner.pid);
     }
-    if (code || signal) {
+    const now = Date.now();
+    const deliberate = !current.allowRelight
+      || deliberateStop
+      || freshStopIntent(now);
+    // A stop NEUMA meant (standby, a reload, the operator) is not a failure.
+    if ((code || signal) && !deliberate) {
       lastError = {
         code: 'process-exited',
         error: `llama-server exited (code ${code}, signal ${signal}) — its last words: ${serverLogPath()}.prev`,
@@ -277,10 +284,6 @@ const bootToHealthy = async ({
       };
     }
     if (!ours) return;
-    const now = Date.now();
-    const deliberate = !current.allowRelight
-      || deliberateStop
-      || freshStopIntent(now);
     if (!shouldRelight({ deliberate, recent: relightTimes, now })) {
       if (!deliberate) {
         log.error('substrate crash-looping — standing down; read its last words', {
@@ -485,6 +488,7 @@ export const supervisorStatus = async (config) => {
     // the daemon asks, else the forge starves beside its own model server.
     owned: ownedByNeuma({ inProcess: Boolean(child), claim: readClaim(), port: cfg.port }),
     port: cfg.port,
+    booting: Boolean(bootPromise),
     startedAt: child?.startedAt ?? null,
     launch: launchReady(cfg),
     lastError: projectSupervisorFailure(lastError),

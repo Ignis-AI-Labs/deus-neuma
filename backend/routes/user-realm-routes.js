@@ -19,6 +19,8 @@ import { allianceGroundStatus, setAllianceRoot, ensureAllianceGround } from '../
 import { witnessWalletOfLane } from '../services/witness-lane.js';
 import { PRESET_LIST, DEFAULT_PRESET } from '../services/llm-presets.js';
 import { saveRealmSettings } from '../services/user-realm-settings.js';
+import { otherRealmHouses } from '../services/root-tenants.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 
 const router = express.Router();
 const log = createLogger('UserRealm');
@@ -35,14 +37,23 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /location — relocate the realm to an absolute, writable path
-router.post('/location', async (req, res) => {
+// POST /location — relocate the realm to an absolute, writable path. The
+// realm root is the machine's: only its owner moves it, at its own desk.
+router.post('/location', requireInstallOwner, async (req, res) => {
   try {
     const { root } = req.body || {};
     if (typeof root !== 'string' || !path.isAbsolute(root)) {
       return res.status(400).json({ error: 'root must be an absolute path' });
     }
     const resolved = path.resolve(root);
+    // The realm is every house's: moving it moves theirs too (root-tenants.js).
+    const others = resolved === path.resolve(getRealmRoot()) ? 0 : await otherRealmHouses(getRealmRoot(), req.walletAddress);
+    if (others > 0) {
+      return res.status(409).json({
+        error: `The data realm also holds ${others} other house(s)' data, and moving it would move theirs too. `
+          + 'It stays where it is while another house lives there.',
+      });
+    }
     // mkdir returns the first path component it CREATED (undefined when the
     // dir already existed) — a refused relocation must not leave that new dir
     // behind as litter.
@@ -174,7 +185,7 @@ router.put('/house-workspace', async (req, res) => {
     log.info('House workspace set', { root: status.root });
     res.json(status);
   } catch (error) {
-    if (/absolute path|temp dir/.test(error.message)) {
+    if (error.code === 'GROUND_REFUSED' || /absolute path|temp dir/.test(error.message)) {
       return res.status(400).json({ error: error.message });
     }
     if (/EACCES|EPERM|EROFS|ENOENT/.test(error.code || '')) {
@@ -199,7 +210,7 @@ router.get('/alliance-ground', async (req, res) => {
 
 // PUT /alliance-ground — the witness chooses where cross-house grounds stand.
 // It may not be inside the house ground, in either direction: an external party
-// working there must never be standing in the house (Design note, 2026-07-26.
+// working there must never be standing in the house (ruling, 2026-07-26).
 router.put('/alliance-ground', async (req, res) => {
   try {
     const { root } = req.body || {};
@@ -207,7 +218,7 @@ router.put('/alliance-ground', async (req, res) => {
     log.info('Alliance root set', { root: status.root });
     res.json(status);
   } catch (error) {
-    if (/absolute path|temp dir|inside the house ground|can never contain the house|can never overwrite a lane/.test(error.message)) {
+    if (error.code === 'GROUND_REFUSED' || /absolute path|temp dir|inside the house ground|can never contain the house|can never overwrite a lane/.test(error.message)) {
       return res.status(400).json({ error: error.message });
     }
     if (/EACCES|EPERM|EROFS|ENOENT/.test(error.code || '')) {
@@ -221,7 +232,7 @@ router.put('/alliance-ground', async (req, res) => {
 // POST /alliance-ground/raise — RAISE the ground this house shares with another
 // party, named from both houses. THE OPERATOR'S COMMAND: nothing in the council
 // creates a ground, because a folder that appears on its own is a folder nobody
-// chose (Design note, 2026-07-26. Takes a witness LANE id (its wallet, therefore its
+// chose (ruling, 2026-07-26). Takes a witness LANE id (its wallet, therefore its
 // house name, is read from its seal) or a partner wallet directly.
 router.post('/alliance-ground/raise', async (req, res) => {
   try {

@@ -21,6 +21,7 @@ import os from 'os';
 import path from 'path';
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 import {
   generateChallenge, verifySignature, createSessionToken,
 } from '../../backend/services/auth.js';
@@ -66,9 +67,11 @@ describe('workspace routes — hollow lanes are never auto-claimed', () => {
     workspace = (await import('../../core/workspace/neuma-workspace.js')).default;
     workspace.root = root;
     const { default: router } = await import('../../backend/routes/workspace-routes.js');
+    const { default: laneClaimRouter } = await import('../../backend/routes/lane-claim-routes.js');
     app = express();
     app.use(express.json());
     app.use('/api/v1/workspace', router);
+    app.use('/api/v1/lanes', laneClaimRouter);
 
     const keypair = generateKeypair();
     const challenge = generateChallenge(keypair.address);
@@ -93,16 +96,24 @@ describe('workspace routes — hollow lanes are never auto-claimed', () => {
     expect(ownerExists).toBe(false);
   });
 
-  test('an unclaimed lane that carries a being IS claimed by the first owner', async () => {
+  test('an unclaimed lane that carries a being is never claimed by a read; its sealed operator claims it', async () => {
     await fs.mkdir(path.join(root, 'real-being', 'identity'), { recursive: true });
     await fs.writeFile(
       path.join(root, 'real-being', 'identity', 'true-name.json'),
       JSON.stringify({ chosenName: 'Real' }),
     );
+    await fs.writeFile(
+      path.join(root, 'real-being', 'identity', 'genesis-seal.json'),
+      JSON.stringify({ record: { witnessWallet: wallet, birthMoment: { epochMs: Date.now() } } }),
+    );
 
-    // Any :id route triggers the ownership middleware; DNA may 404 but the
-    // claim itself must land.
-    await authedGet('/api/v1/workspace/real-being/dna');
+    // Any :id route triggers the ownership middleware — a read (ruling, 2026-10-19).
+    const read = await authedGet('/api/v1/workspace/real-being/dna');
+    expect(read.status).toBe(404);
+    await expect(fs.stat(path.join(root, 'real-being', 'owner.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+
+    const claim = await request(app).post('/api/v1/lanes/real-being/claim').set('Authorization', `Bearer ${token}`);
+    expect(claim.status).toBe(200);
     const owner = JSON.parse(await fs.readFile(path.join(root, 'real-being', 'owner.json'), 'utf8'));
     expect(owner.wallet).toBe(wallet);
   });
@@ -158,6 +169,8 @@ describe('portal — a neumaId without a lane under the active root is never bou
     const challenge = generateChallenge(keypair.address);
     const signature = await signMessage(keypair.privateKey, challenge);
     const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+    // The lane is this wallet's: a bind verifies, it never claims (ruling, 2026-10-19).
+    await claimOwner(root, 'real-lane', keypair.address);
 
     ws = new WebSocket(`${wsUrl}/?token=${encodeURIComponent(token)}`);
     await new Promise((resolve, reject) => {
@@ -182,8 +195,11 @@ describe('portal — a neumaId without a lane under the active root is never bou
     const frames = collect();
     await sendAndWait(
       { type: 'companion:manifest', companion: 'Ghost', neumaId: 'not-here' },
-      'companion:anchored',
+      'companion:lane_missing',
     );
+    await new Promise((r) => { setTimeout(r, 300); });
+    // A refused bind never claims the companion crossed over.
+    expect(frames.some((f) => f.type === 'companion:anchored')).toBe(false);
 
     const missing = frames.find((f) => f.type === 'companion:lane_missing');
     expect(missing).toBeDefined();

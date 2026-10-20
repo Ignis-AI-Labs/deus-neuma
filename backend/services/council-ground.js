@@ -29,7 +29,7 @@ const log = createLogger('Council');
  * impure — reads the house record and (for externals) the sealed wallet.
  */
 const groundFor = async (wallet, member, focusGround = null) => {
-  // THE FOCUS GROUND (Design note, 2026-07-26 — the folder standing open in the
+  // THE FOCUS GROUND (ruling, 2026-07-26) — the folder standing open in the
   // operator's Explorer is the ground the room works on, for EVERY seat.
   // It supersedes both fallbacks below: the house workspace a housemate used
   // to get, and the raised cross-house ground an external seat used to need.

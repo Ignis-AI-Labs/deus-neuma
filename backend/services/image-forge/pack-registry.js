@@ -22,12 +22,15 @@
  */
 import { buildFormPipelines } from './form-registry.js';
 import { buildFlux2Pipelines } from './pipelines-flux2.js';
+import { buildVideoPipelines, VIDEO_MODELS } from './pipelines-video.js';
 
-/** The engine build this pack is authored against (spike-verified, pinned). */
+/** The engine build this pack is authored against (pinned): always the newest release, moved
+ *  only after a live pack proof renders every pipeline on the old and new builds and
+ *  they match (v0.28.0 → v0.41.0: mean abs diff 0.2-3.5/255). */
 export const ENGINE_PIN = Object.freeze({
   repo: 'Comfy-Org/ComfyUI',
-  tag: 'v0.28.0',
-  sha: '700821e1364eaab0e8f21c538a2131719fec57bf',
+  tag: 'v0.41.0',
+  sha: '98cc0bf84b7cb1383654c5b402e7612d875d6d22',
 });
 
 /**
@@ -213,6 +216,7 @@ export const PACK_MODELS = Object.freeze({
       vae: Object.freeze({ sha256: 'd64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5', bytes: 336213556 }),
     }),
   }),
+  ...VIDEO_MODELS,
 });
 
 /**
@@ -365,9 +369,11 @@ const STILL_PIPELINES = Object.freeze({
 const FORM_PIPELINES = buildFormPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 // FLUX.2 klein + the controlled Z-Image lane (`pipelines-flux2.js`), same one-way hand-in.
 const FLUX2_PIPELINES = buildFlux2Pipelines(PROMPT_SLOTS, SAMPLER_SLOTS, SIZE_SLOTS);
+// Video with sound (`pipelines-video.js`), same one-way hand-in.
+const VIDEO_PIPELINES = buildVideoPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 
 /** The whole manifest, frozen once. */
-export const PIPELINES = Object.freeze({ ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES });
+export const PIPELINES = Object.freeze({ ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES, ...VIDEO_PIPELINES });
 
 /** The pipeline a caller gets when it names none. */
 export const DEFAULT_PIPELINE_ID = 'still.sdxl.txt2img';

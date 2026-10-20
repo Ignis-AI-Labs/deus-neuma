@@ -38,6 +38,8 @@ export const CLOCK_WRAP_REASON = 'its clock ran out — wrap up';
 export const CLOCK_STOP_REASON = 'its clock ran out — stop';
 /** Minutes between a working run's check-ins when nobody named a cadence (team-watch.js). */
 export const DEFAULT_CHECK_IN_MINUTES = 60;
+/** The closest check-ins may come: each one is a card, a post into the Optio's inbox and a queued wake. */
+export const CHECK_IN_MIN_MINUTES = 1;
 
 const NONE_WORDS = new Set([NO_CLOCK, 'off', 'no clock', 'no']);
 const ACTION_WORDS = Object.freeze({
@@ -130,7 +132,9 @@ export const normalizeClock = (raw, where = 'the clock') => {
 export const normalizeCheckIn = (raw, where = 'checkIn') => {
   if (raw == null || raw === '') return null;
   if (raw === 0 || raw === '0' || (typeof raw === 'string' && NONE_WORDS.has(raw.trim().toLowerCase()))) return 0;
-  return parseMinutes(raw, `${where} (minutes between check-ins, or "none")`);
+  const minutes = parseMinutes(raw, `${where} (minutes between check-ins, or "none")`);
+  if (minutes < CHECK_IN_MIN_MINUTES) throw new Error(`${where}: check-ins come at most once every ${CHECK_IN_MIN_MINUTES} minute — name ${CHECK_IN_MIN_MINUTES} or more minutes, or "none".`);
+  return minutes;
 };
 
 /**

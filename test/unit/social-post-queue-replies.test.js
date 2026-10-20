@@ -39,7 +39,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// THE REPLY KIND (Design note, 2026-07-28: the queue carries answers to replies on
+// THE REPLY KIND (ruling, 2026-07-28): the queue carries answers to replies on
 // the house's own posts — bounded linkage, whitelisted fields, an expiry,
 // one live answer per target, and the cap counted from the queue itself per
 // (person, conversation) — Founder's second call the same day. Real disk, real

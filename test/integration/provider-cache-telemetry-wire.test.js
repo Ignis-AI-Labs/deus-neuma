@@ -169,7 +169,9 @@ describe('provider cache telemetry over the real HTTP streaming boundary', () =>
     const result = await runRoute(routeFor(base, 'anthropic'));
 
     expect(result.answer).toBe('ANTHROPIC');
-    expect(result.usage).toEqual({ promptTokens: 40, completionTokens: 4 });
+    // Anthropic's input_tokens is only the uncached part; the prompt is it
+    // plus the cache read (181f4b020), so 40 + 25.
+    expect(result.usage).toEqual({ promptTokens: 65, completionTokens: 4 });
     expect(result.telemetry).toMatchObject({
       cachedPromptTokens: 25,
       providerPrefillDurationMilliseconds: null,

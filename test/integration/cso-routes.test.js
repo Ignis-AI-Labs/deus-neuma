@@ -9,7 +9,7 @@
  * is pre-seeded at a one-package tmp repo, so the run makes ONE real OSV
  * call plus the real host/house probes.
  *
- * Every route reads the SIGNED-IN OPERATOR'S HOUSE (Design note, 2026-10-16: a
+ * Every route reads the SIGNED-IN OPERATOR'S HOUSE (ruling, 2026-10-16): a
  * second operator never reads, clears or scans the first's office.
  */
 import express from 'express';

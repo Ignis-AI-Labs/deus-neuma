@@ -7,10 +7,12 @@
 // auto-update.cjs: the main process is a singleton, and the window state the
 // tray needs arrives through initTray from the desk-windows factory surface.
 
-const { app, Menu, Tray, dialog, nativeImage } = require('electron');
+const { app, Menu, Tray, dialog, nativeImage, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const autoUpdate = require('./auto-update.cjs');
+const { revealBackendLog } = require('./backend-log.cjs');
+const { trayMenuTemplate } = require('./tray-menu.cjs');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -73,15 +75,13 @@ const announceStillRunning = () => {
 };
 
 // The menu is REBUILT to change (Electron menus are immutable); trayItems() is [] until an update waits.
-const buildTrayMenu = () => Menu.buildFromTemplate([
-  {
-    label: 'OPEN DEUS NEUMA',
-    click: () => { if (!focusLiveDesk()) createWindow().catch((err) => dialog.showErrorBox('Deus Neuma', `Could not open a desk.\n\n${err.message}`)); },
-  },
-  { type: 'separator' },
-  ...autoUpdate.trayItems(),
-  { label: 'QUIT DEUS NEUMA', click: () => { app.isQuitting = true; app.quit(); } },
-]);
+// The log item is packaged-only, like the Help menu's: only there does the file exist.
+const buildTrayMenu = () => Menu.buildFromTemplate(trayMenuTemplate({
+  open: () => { if (!focusLiveDesk()) createWindow().catch((err) => dialog.showErrorBox('Deus Neuma', `Could not open a desk.\n\n${err.message}`)); },
+  showLogs: app.isPackaged ? () => revealBackendLog(shell, app.getPath('home')) : null,
+  updateItems: autoUpdate.trayItems(),
+  quit: () => { app.isQuitting = true; app.quit(); },
+}));
 
 const rebuildTrayMenu = () => { if (tray) tray.setContextMenu(buildTrayMenu()); };
 

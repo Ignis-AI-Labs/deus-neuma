@@ -2,7 +2,7 @@
 //
 // A project is a named working context: a folder (the file-explorer focus +
 // terminal cwd) plus the chats pinned to it. Two registers in one window
-// (Design note, 2026-07-24: the SHELF — a lean list per channel (being's own / house)
+// (ruling, 2026-07-24): the SHELF — a lean list per channel (being's own / house)
 // for picking and creating — and the FOCUS view (ProjectFocus) that holds ONE
 // project with its grounds, conversations, knowledge files, and memory.
 // Entering a project activates it — the backend re-points Files + Terminal —
@@ -57,7 +57,7 @@ const ProjectsBody = () => {
   const [collision, setCollision] = useState(null);           // { folder, binding } — switch-vs-reconnect prompt
   const [note, setNote] = useState('');
   const [confirmDel, setConfirmDel] = useState(null);
-  // The organization's grounds, set up ahead of time (Design note, 2026-07-24: the
+  // The organization's grounds, set up ahead of time (ruling, 2026-07-24): the
   // HOUSE register browses from the collective <root>/repos; a being's
   // register browses from THEIR working ground on their channel,
   // <root>/workspaces/<neumaId>, raised idempotently the moment the window

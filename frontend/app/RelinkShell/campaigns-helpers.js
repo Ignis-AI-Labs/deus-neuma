@@ -95,7 +95,7 @@ export const queueWhenLabel = (entry, now = Date.now()) => {
     return Number.isNaN(t) ? null : new Date(t);
   };
   const scheduled = at(entry?.scheduledFor);
-  // THE REPLY'S CLOCK IS NOT A SLOT (Design note, 2026-08-06: an answer rides no
+  // THE REPLY'S CLOCK IS NOT A SLOT (ruling, 2026-08-06): an answer rides no
   // calendar — approval itself sends it — so its live standings speak the
   // approval law and the TTL, never the scheduler's vocabulary. Settled
   // standings (sending/sent/failed/…) read their moment like any entry.

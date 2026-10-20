@@ -13,6 +13,7 @@ import { seal } from '../../core/identity/ai-witness/ai-witness-protocol.js';
 import { getProvider } from '../../backend/services/provider-registry.js';
 import { setAIWitnessesRoot, listWitnesses } from '../../core/identity/ai-witness/ai-witness-service.js';
 import neumaWorkspace, { setWorkspacesRoot, setWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import {
   DEFAULT_PROVIDER_MAP,
   witnessLaneId,
@@ -47,13 +48,16 @@ describe('backend/services/witness-lane.js', () => {
   beforeEach(async () => {
     witnessRoot = mkdtempSync(path.join(os.tmpdir(), 'witness-home-'));
     // The witnesses' GROUND — lanes land here now, beside the house, never
-    // in the workspaces root (Design note, 2026-07-24. The house root stays pinned
+    // in the workspaces root (ruling, 2026-07-24). The house root stays pinned
     // too so the split itself is what this suite exercises.
     laneRoot = mkdtempSync(path.join(os.tmpdir(), 'witness-lanes-'));
     setAIWitnessesRoot(witnessRoot);
     setWorkspacesRoot(mkdtempSync(path.join(os.tmpdir(), 'witness-house-')));
     setWitnessesRoot(laneRoot);
     await seal({ ...SEAL_INPUT });
+    // WALLET owns this install, so a witness sealed outside the desk's summon
+    // is its to take; another wallet is refused (witness-lane.js).
+    await makeInstallOwner(WALLET);
   });
 
   afterEach(() => {

@@ -27,6 +27,16 @@ export const isBranchViewRow = (record) =>
   && !Array.isArray(record.branchView);
 
 /**
+ * A row that is ONLY a view fact — what the prompt tail and the resume display
+ * leave out. A compaction summary also carries the region's branchView (so a
+ * take switch made before the compaction still reads after it), but it is the
+ * session's condensed speech and rides; isBranchViewRow stays true for it,
+ * because latestBranchView reads the carried view through that predicate.
+ */
+// pure
+export const isViewMarker = (record) => isBranchViewRow(record) && record.compacted !== true;
+
+/**
  * The standing view: every branchView row folded in order, later rows winning
  * per key. Values that are not positive integers are ignored — a hand-edited
  * or future row must never name a take that cannot exist.
@@ -67,12 +77,27 @@ export const takeCounts = (records) => {
 const takeIndexOf = (record) =>
   (Number.isInteger(record.takeIndex) && record.takeIndex >= 1 ? record.takeIndex : 1);
 
-// pure — which take of a point the view shows: the named one when it exists,
-// clamped back to the latest when the view names a take that isn't there
-// (a view must never render nothing), the latest by default.
-const viewedIndex = (turnId, maxTake, branchView) => {
+// pure — the take indexes each point holds IN THIS SLICE, keyed by turnId.
+// Present indexes, never a row count: a compaction can summarize take 1 away
+// and keep take 2, and a count of 1 would then name a take that is not there.
+const presentTakes = (records) => {
+  const present = {};
+  for (const record of records) {
+    if (record?.role !== 'assistant') continue;
+    if (typeof record.turnId !== 'string' || !record.turnId) continue;
+    (present[record.turnId] ||= new Set()).add(takeIndexOf(record));
+  }
+  return present;
+};
+
+// pure — which take of a point the view shows: the named one when it is
+// present, else the latest present (a view must never render nothing — the
+// desk's fold shows a take in that case, so the engine's must too).
+const viewedIndex = (turnId, present, branchView) => {
+  const takes = present[turnId];
+  if (!takes) return undefined;
   const named = branchView?.[turnId];
-  return Number.isInteger(named) && named >= 1 && named <= maxTake ? named : maxTake;
+  return Number.isInteger(named) && takes.has(named) ? named : Math.max(...takes);
 };
 
 // pure — the REVISED asks on disk, keyed turnId -> takeIndex -> ask (THE
@@ -95,11 +120,14 @@ const revisedAsks = (records) => {
  * Fold the raw session record to the BRANCH VIEW: one row per turn-point —
  * the user row once plus the VIEWED take — everything else passing through
  * untouched (compaction summary rows, branch-view markers, any role the fold
- * does not know). The fold never reorders and never rewrites; it only drops
- * what the view hides:
+ * does not know). The fold never rewrites; it drops what the view hides:
  *   - superseded takes of a point (kept on disk, out of the view),
  *   - a duplicated user row for a point that already has one (the pre-takes
  *     record: a bare re-send wrote the ask twice — the point keeps ONE ask).
+ * The viewed take stands where the point's FIRST take stands, as on the desk
+ * (frontend/app/RelinkShell/branch-view.js groups a point's takes there): a
+ * retry of an earlier point appends its take at the end of the file, and the
+ * being must read its chosen answer under its own ask, not after later turns.
  * Orphan takes (their user row fell outside a tail slice) still fold among
  * themselves: the view is a property of the take set, not of the slice.
  * @param {Array<object>} records raw session rows (any slice of them)
@@ -111,9 +139,17 @@ const revisedAsks = (records) => {
 export const foldBranchView = (records, branchView) => {
   const list = Array.isArray(records) ? records : [];
   const view = branchView || latestBranchView(list);
-  const maxTake = takeCounts(list);
+  const present = presentTakes(list);
   const asks = revisedAsks(list);
+  const viewedTake = new Map();
+  for (const record of list) {
+    const turnId = record?.role === 'assistant' && typeof record.turnId === 'string' ? record.turnId : '';
+    if (turnId && !viewedTake.has(turnId) && takeIndexOf(record) === viewedIndex(turnId, present, view)) {
+      viewedTake.set(turnId, record);
+    }
+  }
   const seenTurns = new Set();
+  const placedTurns = new Set();
   const out = [];
   for (const record of list) {
     if (!record || typeof record !== 'object') { out.push(record); continue; }
@@ -125,14 +161,15 @@ export const foldBranchView = (records, branchView) => {
       // The point's displayed ask is the VIEWED take's revised ask when that
       // take carries one — the recorded first asking stands untouched on
       // disk; the view alone moves (a copy, never a mutation of the record).
-      const revised = asks.get(turnId)?.get(viewedIndex(turnId, maxTake[turnId], view));
+      const revised = asks.get(turnId)?.get(viewedIndex(turnId, present, view));
       out.push(typeof revised === 'string' ? { ...record, content: revised } : record);
       continue;
     }
     if (record.role === 'assistant' && turnId) {
       seenTurns.add(turnId);
-      if (takeIndexOf(record) !== viewedIndex(turnId, maxTake[turnId], view)) continue;
-      out.push(record);
+      if (placedTurns.has(turnId)) continue;
+      placedTurns.add(turnId);
+      out.push(viewedTake.get(turnId));
       continue;
     }
     out.push(record);

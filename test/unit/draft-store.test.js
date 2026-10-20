@@ -8,36 +8,36 @@
 import { describe, it, expect } from 'vitest';
 import { draftKeyFor, nextDrafts, DRAFT_UNBOUND } from '../../frontend/app/windowing/window-storage.js';
 
-const A = 'kagipem:session-1754000000001';
-const B = 'rugevil:session-1754000000002';
+const A = 'juniper:session-1754000000001';
+const B = 'linden:session-1754000000002';
 
 describe('which chat a draft belongs to', () => {
   it('keys by BEING and SITTING, so two chats never share one', () => {
-    expect(draftKeyFor('kagipem', 'session-1754000000001')).toBe(A);
-    expect(draftKeyFor('kagipem', 'session-1754000000001'))
-      .not.toBe(draftKeyFor('kagipem', 'session-1754000000002'));
-    expect(draftKeyFor('kagipem', 'session-1')).not.toBe(draftKeyFor('rugevil', 'session-1'));
+    expect(draftKeyFor('juniper', 'session-1754000000001')).toBe(A);
+    expect(draftKeyFor('juniper', 'session-1754000000001'))
+      .not.toBe(draftKeyFor('juniper', 'session-1754000000002'));
+    expect(draftKeyFor('juniper', 'session-1')).not.toBe(draftKeyFor('linden', 'session-1'));
   });
 
   it('gives a chat that has not minted a session somewhere to draft', () => {
     // Text typed before the first message must survive a reload too, so an
     // unbound chat drafts into its own bucket rather than nowhere.
-    expect(draftKeyFor('kagipem', null)).toBe(`kagipem:${DRAFT_UNBOUND}`);
-    expect(draftKeyFor('kagipem', '')).toBe(`kagipem:${DRAFT_UNBOUND}`);
+    expect(draftKeyFor('juniper', null)).toBe(`juniper:${DRAFT_UNBOUND}`);
+    expect(draftKeyFor('juniper', '')).toBe(`juniper:${DRAFT_UNBOUND}`);
   });
 
   it('two chats that have not spoken yet do not share one bucket', () => {
     // The composer scopes an unbound chat by its TAB. Without that, opening two
     // fresh tabs on the same being and typing in one would put those words in
     // the other's composer — they would key to the same `<being>:__unbound__`.
-    const one = draftKeyFor('kagipem#tab-1', null);
-    const two = draftKeyFor('kagipem#tab-2', null);
+    const one = draftKeyFor('juniper#tab-1', null);
+    const two = draftKeyFor('juniper#tab-2', null);
     expect(one).not.toBe(two);
-    expect(one).toBe(`kagipem#tab-1:${DRAFT_UNBOUND}`);
+    expect(one).toBe(`juniper#tab-1:${DRAFT_UNBOUND}`);
     // Once a sitting exists it is the identity, and the tab drops out of the key
     // — the same chat torn into another window keeps its unsent words.
-    expect(draftKeyFor('kagipem', 'session-1754000000001'))
-      .toBe(draftKeyFor('kagipem', 'session-1754000000001'));
+    expect(draftKeyFor('juniper', 'session-1754000000001'))
+      .toBe(draftKeyFor('juniper', 'session-1754000000001'));
   });
 
   it('no being means no chat to draft into', () => {
@@ -49,8 +49,8 @@ describe('which chat a draft belongs to', () => {
 
 describe('what one edit does to the draft map', () => {
   it('keeps the text under its own chat, leaving the others alone', () => {
-    const next = nextDrafts({ [B]: 'for rugevil' }, A, 'for kagipem');
-    expect(next).toEqual({ [B]: 'for rugevil', [A]: 'for kagipem' });
+    const next = nextDrafts({ [B]: 'for linden' }, A, 'for juniper');
+    expect(next).toEqual({ [B]: 'for linden', [A]: 'for juniper' });
   });
 
   it('SENDING LEAVES NOTHING BEHIND — empty text removes the entry', () => {

@@ -124,7 +124,7 @@ operator; this inventory is the office's map of what a new threat can bite.
 
 - This repo (neuma): the platform backend, the neuma engine, the desk, the
   CLI. Full dependency tree incl. native modules (better-sqlite3, node-pty,
-  onnxruntime-node, electron) — native CVEs ride the same OSV feed.
+  electron) — native CVEs ride the same OSV feed.
 - unavis-site (separate repo, formerly kenorie — the hosted web/social layer):
   dependencies swept like ours.
 - evm-contracts (separate repo): EVERY Ignis smart contract, by platform —

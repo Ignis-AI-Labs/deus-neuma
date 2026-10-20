@@ -15,6 +15,7 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import WebSocket from 'ws';
 import { createLogger } from './../logger.js';
+import { helperEnvironment } from '../agent-terminal-environment.js';
 
 const log = createLogger('DocPress.Chromium');
 
@@ -77,6 +78,19 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, guard]).finally(() => clearTimeout(timer));
 }
 
+// The press renders text a being wrote; its browser needs a home, a path, a
+// locale and its font config, never the backend's secrets.
+const PRESS_RUNTIME_KEY = /^(FONTCONFIG_|LC_|LANGUAGE$)/;
+
+/**
+ * The environment the press's Chromium starts with. Pure; the input is never mutated.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} [platform]
+ * @returns {Record<string, string>}
+ */
+export const pressEnvironment = (env, platform = process.platform) =>
+  helperEnvironment(env, platform, (key) => PRESS_RUNTIME_KEY.test(key));
+
 function launchChromium(executable, profileDir) {
   const args = [
     ...(executable.includes('headless_shell') ? [] : ['--headless=new']),
@@ -89,7 +103,7 @@ function launchChromium(executable, profileDir) {
     '--mute-audio',
     'about:blank'
   ];
-  const child = spawn(executable, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(executable, args, { env: pressEnvironment(process.env), stdio: ['ignore', 'ignore', 'pipe'] });
   const wsUrl = new Promise((resolve, reject) => {
     let stderrTail = '';
     const timer = setTimeout(
@@ -127,6 +141,7 @@ function openSocket(url) {
 function createCdpClient(socket) {
   const pending = new Map();
   const eventWaiters = new Set();
+  const listeners = new Set();
   let nextId = 1;
 
   socket.on('message', (raw) => {
@@ -139,6 +154,9 @@ function createCdpClient(socket) {
       return;
     }
     if (msg.method) {
+      for (const listener of listeners) {
+        if (listener.method === msg.method && listener.sessionId === msg.sessionId) listener.handle(msg.params);
+      }
       for (const waiter of [...eventWaiters]) {
         if (waiter.method === msg.method && (!waiter.sessionId || waiter.sessionId === msg.sessionId)) {
           eventWaiters.delete(waiter);
@@ -164,8 +182,40 @@ function createCdpClient(socket) {
       `CDP event ${method}`
     );
 
-  return { send, waitForEvent };
+  const on = (method, sessionId, handle) => listeners.add({ method, sessionId, handle });
+
+  return { send, waitForEvent, on };
 }
+
+// pure — may the press page load this URL? Only its own document and inline
+// data. A pressed body may carry raw HTML, and a file:// page would otherwise
+// pull any file the backend can read into the PDF (an iframe, an img by path)
+// for the being to read back; http(s) would reach loopback services the same
+// way (audit 2026-10-19). Every brand asset is already inlined as data:.
+export const pressMayLoad = (url, documentUrl) => url === documentUrl || /^(data|blob):/i.test(url);
+
+// The Fetch filter above never sees a WebSocket, and a script in a pressed
+// body opened one to a loopback service and printed its reply into the PDF
+// (recheck 2026-10-20, §7). The press needs no script at all — charts are
+// SVG, assets are data: — so the page runs none, and its policy forbids every
+// connection besides. Two layers: the CDP switch holds even if a body breaks
+// out of the head, the policy holds even if the switch is ever lost.
+const PRESS_CONTENT_POLICY = "default-src 'none'; img-src data:; style-src 'unsafe-inline' data:; font-src data:";
+const POLICY_META = `<meta http-equiv="Content-Security-Policy" content="${PRESS_CONTENT_POLICY}">`;
+
+/**
+ * pure — the document with the press policy as its first element. A meta
+ * before <html> opens the head itself, so the policy precedes anything the
+ * body could carry; after the doctype, so standards mode is kept.
+ * @param {string} html
+ * @returns {string}
+ */
+export const withPressPolicy = (html) => {
+  const doctype = /^\s*<!doctype[^>]*>/i.exec(html);
+  return doctype
+    ? `${doctype[0]}${POLICY_META}${html.slice(doctype[0].length)}`
+    : `${POLICY_META}${html}`;
+};
 
 /**
  * Renders HTML to PDF bytes through a real Chromium print pipeline. // impure
@@ -187,7 +237,7 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
 
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'doc-press-'));
   const htmlPath = path.join(workDir, 'document.html');
-  await fs.writeFile(htmlPath, html, 'utf8');
+  await fs.writeFile(htmlPath, withPressPolicy(html), 'utf8');
 
   const { child, wsUrl } = launchChromium(executable, path.join(workDir, 'profile'));
   let socket = null;
@@ -198,9 +248,20 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
     const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
     await cdp.send('Page.enable', {}, sessionId);
+    await cdp.send('Emulation.setScriptExecutionDisabled', { value: true }, sessionId);
+
+    const documentUrl = pathToFileURL(htmlPath).href;
+    cdp.on('Fetch.requestPaused', sessionId, ({ requestId, request }) => {
+      const allowed = pressMayLoad(request.url, documentUrl);
+      if (!allowed) log.info('press page load blocked', { scheme: request.url.split(':')[0] });
+      cdp.send(allowed ? 'Fetch.continueRequest' : 'Fetch.failRequest',
+        allowed ? { requestId } : { requestId, errorReason: 'BlockedByClient' }, sessionId)
+        .catch((err) => log.warn('press request verdict not delivered', { err: err.message }));
+    });
+    await cdp.send('Fetch.enable', { patterns: [{ urlPattern: '*' }] }, sessionId);
 
     const loaded = cdp.waitForEvent('Page.loadEventFired', sessionId, RENDER_TIMEOUT_MS);
-    await cdp.send('Page.navigate', { url: pathToFileURL(htmlPath).href }, sessionId);
+    await cdp.send('Page.navigate', { url: documentUrl }, sessionId);
     await loaded;
 
     const { data } = await withTimeout(

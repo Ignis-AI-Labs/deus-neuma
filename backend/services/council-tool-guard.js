@@ -141,6 +141,7 @@ export const runHouseTool = async (connection, run, member, turnId, call, deps) 
       scope,
       surface: 'council',
       signal: run.activeAbort?.signal,
+      lane: { laneId: member.neumaId, name: member.name },
     });
     if (decision !== 'allow' && decision !== 'always') {
       const why = decision === 'deny' ? 'the operator denied it'

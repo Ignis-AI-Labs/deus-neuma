@@ -52,24 +52,25 @@ export const captureIntentContext = (source, origin = {}) => {
       && source.companion?.neumaId === companion.neumaId
       && source.sessionId === sessionId && source.walletAddress === walletAddress
       && (!source.activeTurn || source.activeTurn.signal === originalSignal)
-      && (!source.turnPromise || source.turnPromise === turnPromise)
-      && (!source.ws || source.ws.readyState === source.ws.OPEN);
+      && (!source.turnPromise || source.turnPromise === turnPromise);
     if (!valid && !controller.signal.aborted) controller.abort();
     return valid;
   };
   // Clearing activeTurn at turn end is ordinary; replacement/rebind is not.
   // The broker otherwise has no wakeup when a detached task loses its binding.
+  // A CLOSED PORTAL is not an invalid binding: the turn goes on, and a card the
+  // operator saw is parked and answered when they come back (tool-approval.js)
+  // — an intent's card as much as a tool's. Only an unseen card fails here
+  // (intent-sweep.js leaves its intent pending).
   const watch = setInterval(current, 25);
   watch.unref?.();
-  const close = () => controller.abort();
-  source.ws?.once?.('close', close);
   return {
     connection, signal, current,
     syncPolicy: (server, tool) => {
       if (current()) source._sessionToolPolicy = addAllowedTool(source._sessionToolPolicy, server, tool);
     },
     release: () => {
-      clearInterval(watch); source.ws?.off?.('close', close);
+      clearInterval(watch);
       pending.delete(controller);
       if (!pending.size) pendingContexts.delete(source);
     },

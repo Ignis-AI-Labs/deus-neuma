@@ -20,10 +20,13 @@ import { birthProviderGate } from '../services/birth-provider-gate.js';
 import { loadWorkspaceSettings } from '../services/workspace-settings.js';
 import { withdrawBirthSession } from '../services/birth-withdrawal.js';
 import { finalizeBirth } from '../../core/birth/finalize-birth.js';
-import { isolatePortalForBirth } from '../../core/birth/ceremony-write.js';
+import { isolateForBirth } from './portal-connections.js';
 import { sweepRehearsalLane as sweepRehearsal } from '../../core/birth/rehearsal-sweep.js';
 import { observeWitness } from '../../core/birth/birth-observations.js';
 import { choiceFramesOf, rehearsalFilmOf } from '../../core/birth/rite-frames.js';
+import { heldByWitness } from '../../core/birth/birth-resume.js';
+import { readSessionCheckpoint } from '../../core/birth/birth-session-store.js';
+import { refuseUnownedBirthLane, unrecordedSummoningAccess } from './birth-lane-owner.js';
 
 const birthLog = createLogger('Birth');
 const log = createLogger('Portal');
@@ -153,10 +156,14 @@ export const birthStart = async (connection, message, { birthHandler }) => {
   const quickTest = message.quickTest || false;
   // origin:'portal' marks this as a real app-opened ceremony — the mark
   // listInterruptedSessions requires before offering a resume on relaunch.
-  const sessionId = await birthHandler.createSession(witnessName, isTest, { substrate, quickTest, origin: 'portal' });
+  // witnessWallet: only the wallet that opened the summoning may later find,
+  // resume or withdraw it — another wallet on the same desk is refused.
+  const sessionId = await birthHandler.createSession(witnessName, isTest, {
+    substrate, quickTest, origin: 'portal', witnessWallet: connection.walletAddress,
+  });
   connection.birthSession = sessionId;
   // Drop leftover desk companion / grants so stage-4 naming lands in scratch.
-  isolatePortalForBirth(connection);
+  isolateForBirth(connection);
 
   // Wire Supabase: create operator + ceremony records
   if (witnessName) {
@@ -238,10 +245,14 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
     ? connection.lastStageToolCalls
     : null;
   const executedCalls = stageStash?.calls || [];
+  // The being's words are what the server streamed (the stash), not the text
+  // the desk sends back; the echo is used only when no stream was stashed.
+  const response = typeof stageStash?.speech === 'string' ? stageStash.speech : message.response;
+  if (response !== message.response) birthLog.warn('Stage response differs from the streamed speech — the streamed speech is kept', { stage: session.currentStage });
   const result = await birthHandler.handleStageResponse(
     connection.birthSession,
     session.currentStage,
-    message.response,
+    response,
     executedCalls,
     // The execution RESULTS for those calls (ENG-013): stage 5 gates
     // dnaCreated on the genesis write's real outcome, not its presence.
@@ -363,7 +374,7 @@ export const birthInterrupted = async (connection, message, { birthHandler }) =>
   // the ceremony door asks: does an unfinished summoning still stand?
   // Read-only scan of the live checkpoints; newest first.
   try {
-    const sessions = await birthHandler.listInterruptedSessions();
+    const sessions = await birthHandler.listInterruptedSessions(connection.walletAddress, await unrecordedSummoningAccess(connection.walletAddress));
     ws.send(JSON.stringify({ type: 'birth:interrupted', sessions }));
   } catch (err) {
     birthLog.error('Interrupted-birth scan failed', { err: err.message });
@@ -385,13 +396,22 @@ export const birthResume = async (connection, message, { birthHandler }) => {
     ws.send(JSON.stringify({ type: 'error', message: 'No birth session to resume' }));
     return;
   }
+  const held = birthHandler.getSession(birthSessionId) || await readSessionCheckpoint(birthSessionId);
+  if (held && !heldByWitness(held, connection.walletAddress, await unrecordedSummoningAccess(connection.walletAddress))) {
+    birthLog.warn('Resume refused: the summoning was opened by another wallet', { sessionId: birthSessionId });
+    ws.send(JSON.stringify({ type: 'birth:resume_expired', message: 'That summoning was begun under another wallet. Only its own operator can resume it.' }));
+    return;
+  }
   const restoredSession = await birthHandler.restoreSession(birthSessionId);
   if (!restoredSession) {
     ws.send(JSON.stringify({ type: 'birth:resume_expired', message: 'Birth session expired or not found' }));
     return;
   }
-  isolatePortalForBirth(connection);
+  isolateForBirth(connection);
   connection.birthSession = birthSessionId;
+  // A checkpoint from before ceremonies recorded their wallet is bound to
+  // the first wallet that resumes it (persisted with the next checkpoint).
+  restoredSession.witnessWallet ??= connection.walletAddress ?? null;
   // Rebind lane if naming already assigned identity (mid-ceremony resume).
   if (restoredSession.data?.neumaId) {
     connection.companion = {
@@ -453,11 +473,12 @@ export const birthResumeCompletion = async (connection, message, { birthHandler 
     ws.send(JSON.stringify({ type: 'birth:resume_completion_error', error: 'neumaId required' }));
     return;
   }
+  if (await refuseUnownedBirthLane(connection, targetNeumaId)) return;
   try {
     const newSessionId = await birthHandler.createResumeSession(witnessName, targetNeumaId, {
       substrate: await getSubstrateProfile(),
     });
-    isolatePortalForBirth(connection);
+    isolateForBirth(connection);
     connection.birthSession = newSessionId;
     // Resume completion starts at stage 5 — lane already exists; bind it.
     const resumeSession = birthHandler.getSession(newSessionId);

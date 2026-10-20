@@ -36,7 +36,7 @@ export const ACT_FAMILIES = Object.freeze({
   // Looking at what EXISTS — a spread rather than a single thing.
   actList: Object.freeze([
     'list', 'list_directory', 'list_directory_with_sizes', 'memory_list', 'vault_list',
-    'task_list', 'queue_list', 'replies_list', 'campaign_list', 'lead_list', 'media_library',
+    'task_list', 'calendar_read', 'queue_list', 'replies_list', 'campaign_list', 'lead_list', 'media_library',
     'list_pipelines', 'check_email_inbox', 'security_threats_list', 'legal_matters_list',
     // Whole-state reads: the posting pipeline, the house, the shared board —
     // a spread of what exists, one call each (FE-167).
@@ -57,6 +57,7 @@ export const ACT_FAMILIES = Object.freeze({
     'memory.supersede', 'memory.merge', 'campaigns.update', 'tasks.update', 'tasks.focus', 'tasks.take',
     'security.escalate', // an existing record's standing changes — not a small mark
     'tasks.operator-update', 'staff.dispatch-update', 'board.update',
+    'team.tune', // a working run's width and clocks change — the run already existed
   ]),
   // Bringing something into being on disk.
   actWrite: Object.freeze([
@@ -75,13 +76,14 @@ export const ACT_FAMILIES = Object.freeze({
     'marketing.plan', 'board.add', // a plan authored, a task put on the board
     'legal.file', // research entered on the record — a new matter
     'share_findings', // a list handed to the operator — a new artifact on the desk, nothing leaves
+    'house.review-packet', // the Optio's packet for the operator — the same shape: a new artifact, nothing leaves
   ]),
   // Same thing, different place or name.
   actMove: Object.freeze(['move_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
   // Taking something away. Rare and consequential — it gets its own voice so
   // it is never mistaken for a write.
   actDelete: Object.freeze([
-    'delete_file', 'vault_archive', 'memory_archive', 'memory_retract', 'queue_cancel',
+    'delete_file', 'vault_archive', 'memory_archive', 'memory_retract', 'queue_cancel', 'tasks.operator-drop',
     'vault.archive', 'memory.archive', 'memory.retract',
   ]),
   // Running code. The operator hears their machine being used.
@@ -106,12 +108,14 @@ export const ACT_FAMILIES = Object.freeze({
   // arrive by their policy names: a post is speech, a spend is a send, mail
   // is mail, word to a housemate is word leaving the lane.
   actSend: Object.freeze(['house.post', 'vault_publish', 'social.post', 'email.send', 'wallet.send', 'vault.publish',
-    'staff.dispatch']), // a charge sent to a housemate — word leaving the lane
+    'staff.dispatch', // a charge sent to a housemate — word leaving the lane
+    'team.post']), // word to a teammate — word leaving the lane, house.post narrowed to one run
   // Making an artifact — an image, a document.
   actForge: Object.freeze(['image.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
   // A mark on a ledger: noted, pinned, touched, proposed. Small by design.
   actMark: Object.freeze(['memory_pin', 'memory_unpin', 'lead_touch', 'memory.pin', 'memory.unpin', 'leads.touch', 'refinement.dial',
     'sovereignty.propose', // a filing that ends at "submitted" — the card is the act
+    'sovereignty.consent', // the being's recorded answer to its operator's change
     'staff.ack', // a charge's holder marks received/working/done
     'meditate']), // a standing request marked for the cycle — nothing acts yet
   // The being sensing its own state — capacity, adapters, its own birth sky.

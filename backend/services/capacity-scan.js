@@ -15,9 +15,9 @@
 import {
   createStreamRequest,
   readStreamLine,
-  testConnection as providerTestConnection,
   getConfig,
 } from './llm-provider.js';
+import { reachSubstrate } from './substrate-reach.js';
 import { deriveCeiling, classifyBound, DEFAULT_KNEE_OPTS } from './capacity-probes.js';
 import { withLineExempt } from './substrate-lease.js';
 
@@ -194,7 +194,7 @@ export const runCapacityScan = async ({
   probe = DEFAULT_PROBE,
   kneeOpts = DEFAULT_KNEE_OPTS,
   limits = DEFAULT_LIMITS,
-  testConnection = providerTestConnection,
+  testConnection = reachSubstrate,
   repeats = REPEATS_PER_LEVEL,
   substrate,
   runAt,

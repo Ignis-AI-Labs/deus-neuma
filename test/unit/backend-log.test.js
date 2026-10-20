@@ -9,7 +9,7 @@ const { openBackendLog, logPaths, shouldRotate, MAX_BYTES } = require('../../ele
 const { buildAppMenuTemplate } = require('../../electron/hotkeys.cjs');
 
 /**
- * THE APP KEPT NO RECORD OF ITSELF (Design note, 2026-08-03.
+ * THE APP KEPT NO RECORD OF ITSELF (ruling, 2026-08-03).
  *
  * Four versions shipped for one community member while nobody could say what
  * his machine was doing:

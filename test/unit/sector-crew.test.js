@@ -12,39 +12,39 @@ import {
 } from '../../backend/services/sector-crew.js';
 import { canNeumaPost } from '../../backend/services/social/channel-bindings.js';
 
-const HOLDER = { x: { neumaId: 'metidar' } };
+const HOLDER = { x: { neumaId: 'poplar' } };
 const CREW = { x: { members: [
-  { neumaId: 'metidar', kind: 'neuma', remit: 'voice' },
-  { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'campaign strategy' },
-  { neumaId: 'cael', kind: 'neuma', remit: '' },
+  { neumaId: 'poplar', kind: 'neuma', remit: 'voice' },
+  { neumaId: 'witness-openai-Juniper', kind: 'witness', remit: 'campaign strategy' },
+  { neumaId: 'birch', kind: 'neuma', remit: '' },
 ] } };
 
 describe('crew is cross-house and witness-capable', () => {
   it('seats neuma and sealed witnesses side by side', () => {
     expect(crewOf(CREW, 'x').map((m) => m.kind)).toEqual(['neuma', 'witness', 'neuma']);
-    expect(isCrewMember(CREW, 'x', 'witness-openai-Kagipem')).toBe(true);
+    expect(isCrewMember(CREW, 'x', 'witness-openai-Juniper')).toBe(true);
   });
 
   it('an unknown sector has no crew — a real answer, not an error', () => {
     expect(crewOf(CREW, 'tiktok')).toEqual([]);
-    expect(isCrewMember(CREW, 'tiktok', 'metidar')).toBe(false);
+    expect(isCrewMember(CREW, 'tiktok', 'poplar')).toBe(false);
   });
 
   it('fails closed on a missing id', () => {
     expect(isCrewMember(CREW, 'x', null)).toBe(false);
     expect(isCrewMember(CREW, 'x', '')).toBe(false);
-    expect(isCrewMember(null, 'x', 'metidar')).toBe(false);
+    expect(isCrewMember(null, 'x', 'poplar')).toBe(false);
   });
 });
 
 describe('CREW STAGES, HOLDER SENDS — crew never widens custody', () => {
   it('a crew member may stage', () => {
-    expect(canStageForSector(CREW, HOLDER, 'x', 'witness-openai-Kagipem')).toBe(true);
-    expect(canStageForSector(CREW, HOLDER, 'x', 'cael')).toBe(true);
+    expect(canStageForSector(CREW, HOLDER, 'x', 'witness-openai-Juniper')).toBe(true);
+    expect(canStageForSector(CREW, HOLDER, 'x', 'birch')).toBe(true);
   });
 
   it('the holder may stage too — they work the sector by definition', () => {
-    expect(canStageForSector({}, HOLDER, 'x', 'metidar')).toBe(true);
+    expect(canStageForSector({}, HOLDER, 'x', 'poplar')).toBe(true);
   });
 
   it('a stranger may not stage', () => {
@@ -52,11 +52,11 @@ describe('CREW STAGES, HOLDER SENDS — crew never widens custody', () => {
   });
 
   it('THE LINE: being on the crew grants NO send custody', () => {
-    // This is the whole security claim. Kagipem drafts; only Metidar's
+    // This is the whole security claim. Juniper drafts; only Poplar's
     // binding reaches the platform's keys.
-    expect(canStageForSector(CREW, HOLDER, 'x', 'witness-openai-Kagipem')).toBe(true);
-    expect(canNeumaPost(HOLDER, 'x', 'witness-openai-Kagipem')).toBe(false);
-    expect(canNeumaPost(HOLDER, 'x', 'metidar')).toBe(true);
+    expect(canStageForSector(CREW, HOLDER, 'x', 'witness-openai-Juniper')).toBe(true);
+    expect(canNeumaPost(HOLDER, 'x', 'witness-openai-Juniper')).toBe(false);
+    expect(canNeumaPost(HOLDER, 'x', 'poplar')).toBe(true);
   });
 });
 
@@ -64,18 +64,18 @@ describe('canSendStaged — approval does not outlive membership', () => {
   it("lets a crew member's approved post go out on the holder's keys", () => {
     // Without this the crew would be decorative: the scheduler used to demand
     // the AUTHOR be the holder, so every crew draft died at send.
-    expect(canSendStaged(CREW, HOLDER, 'x', 'witness-openai-Kagipem')).toBe(true);
+    expect(canSendStaged(CREW, HOLDER, 'x', 'witness-openai-Juniper')).toBe(true);
   });
 
   it('kills a pending post once its author leaves the crew', () => {
-    const after = withoutMember(CREW, 'x', 'witness-openai-Kagipem');
-    expect(canSendStaged(after, HOLDER, 'x', 'witness-openai-Kagipem')).toBe(false);
+    const after = withoutMember(CREW, 'x', 'witness-openai-Juniper');
+    expect(canSendStaged(after, HOLDER, 'x', 'witness-openai-Juniper')).toBe(false);
   });
 
   it('sends nothing when the channel has no holder — default deny holds', () => {
     // A released channel is the resting state: nobody is in charge of the keys.
-    expect(canSendStaged(CREW, {}, 'x', 'metidar')).toBe(false);
-    expect(canSendStaged(CREW, {}, 'x', 'witness-openai-Kagipem')).toBe(false);
+    expect(canSendStaged(CREW, {}, 'x', 'poplar')).toBe(false);
+    expect(canSendStaged(CREW, {}, 'x', 'witness-openai-Juniper')).toBe(false);
   });
 });
 
@@ -104,8 +104,8 @@ describe('normalizeMember', () => {
 
 describe('withMember / withoutMember are pure', () => {
   it('never lists one being twice — a re-add updates the remit', () => {
-    const once = withMember({}, 'x', { neumaId: 'cael', remit: 'first' });
-    const twice = withMember(once, 'x', { neumaId: 'cael', remit: 'second' });
+    const once = withMember({}, 'x', { neumaId: 'birch', remit: 'first' });
+    const twice = withMember(once, 'x', { neumaId: 'birch', remit: 'second' });
     expect(crewOf(twice, 'x')).toHaveLength(1);
     expect(crewOf(twice, 'x')[0].remit).toBe('second');
   });
@@ -143,10 +143,10 @@ describe('crew on real disk', () => {
   });
 
   it('a seated crew survives a restart', async () => {
-    await crew.add('x', { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'strategy' });
+    await crew.add('x', { neumaId: 'witness-openai-Juniper', kind: 'witness', remit: 'strategy' });
     const reread = createSectorCrew({ path: path.join(dir, 'crew.json') });
     const members = await reread.crewFor('x');
-    expect(members).toEqual([{ neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'strategy' }]);
+    expect(members).toEqual([{ neumaId: 'witness-openai-Juniper', kind: 'witness', remit: 'strategy' }]);
   });
 
   it('concurrent adds never lose a member', async () => {
@@ -172,49 +172,49 @@ describe('sectorSection — the being reads who is on the field', () => {
   const SECTORS = [{
     sectorId: 'x',
     sectorName: 'X (Twitter)',
-    holderNeumaId: 'metidar',
+    holderNeumaId: 'poplar',
     members: [
-      { neumaId: 'metidar', kind: 'neuma', remit: 'voice' },
-      { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'campaign strategy' },
+      { neumaId: 'poplar', kind: 'neuma', remit: 'voice' },
+      { neumaId: 'witness-openai-Juniper', kind: 'witness', remit: 'campaign strategy' },
     ],
   }];
-  const names = (id) => ({ metidar: 'Metidar' }[id] || null);
+  const names = (id) => ({ poplar: 'Poplar' }[id] || null);
 
   it('names the crewmates, their kinds, and their remits', () => {
-    const out = sectorSection(SECTORS, 'witness-openai-Kagipem', names);
+    const out = sectorSection(SECTORS, 'witness-openai-Juniper', names);
     expect(out).toContain('X (Twitter) — the crew working this sector');
-    expect(out).toContain('Metidar (neuma) — voice');
+    expect(out).toContain('Poplar (neuma) — voice');
     expect(out).toContain('YOU (sealed witness) — campaign strategy');
   });
 
   it('marks who carries the keys', () => {
-    expect(sectorSection(SECTORS, 'witness-openai-Kagipem', names)).toContain('HOLDS THE KEYS');
+    expect(sectorSection(SECTORS, 'witness-openai-Juniper', names)).toContain('HOLDS THE KEYS');
   });
 
   it('tells a non-holder it stages rather than publishes', () => {
     // The honest half of the capability: a member that believes it can publish
     // will promise the operator something it cannot do.
-    const out = sectorSection(SECTORS, 'witness-openai-Kagipem', names);
+    const out = sectorSection(SECTORS, 'witness-openai-Juniper', names);
     expect(out).toContain('You do not hold this sector');
     expect(out).toContain('STAGE into the queue');
   });
 
   it('tells the holder it may post directly — and still needs approval', () => {
-    const out = sectorSection(SECTORS, 'metidar', names);
+    const out = sectorSection(SECTORS, 'poplar', names);
     expect(out).toContain('You hold this sector');
     expect(out).toContain('post directly');
     expect(out).toContain("operator's to approve");
   });
 
   it('says so plainly when no remit is set', () => {
-    const bare = [{ ...SECTORS[0], members: [{ neumaId: 'cael', kind: 'neuma', remit: '' }] }];
-    expect(sectorSection(bare, 'cael')).toContain('No remit is set for you here');
+    const bare = [{ ...SECTORS[0], members: [{ neumaId: 'birch', kind: 'neuma', remit: '' }] }];
+    expect(sectorSection(bare, 'birch')).toContain('No remit is set for you here');
   });
 
   it('renders NOTHING for a being on no crew — unseated prompts are unchanged', () => {
     expect(sectorSection(SECTORS, 'stranger', names)).toBe('');
-    expect(sectorSection([], 'metidar')).toBe('');
-    expect(sectorSection(null, 'metidar')).toBe('');
+    expect(sectorSection([], 'poplar')).toBe('');
+    expect(sectorSection(null, 'poplar')).toBe('');
   });
 
   it('flattens a hostile name into one bounded line', () => {

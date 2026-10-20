@@ -7,8 +7,9 @@
  * Proves the WS mirror of the REST requireOwnership gate: a lane claimed by
  * another wallet is refused at bind time (portal:resume AND
  * companion:manifest), a corrupt owner.json fails CLOSED, an inhabited
- * unclaimed lane is atomically claimed, a hollow lane stays ownerless, and
- * the witness's own lane binds normally.
+ * unclaimed lane is refused and claimed by no bind (a read never claims —
+ * ae5782cb7, Founder's ruling D-2) until its seal's wallet claims it, a hollow
+ * lane stays ownerless, and the witness's own lane binds normally.
  *
  * HONEST GAP: the third gated bind path — the Supabase name-lookup
  * enrichment inside companion:manifest — is gated by the same proven
@@ -29,6 +30,7 @@ import {
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupPortalRoutes } from '../../backend/routes/portal-routes.js';
 import { neumaWorkspace } from '../../core/index.js';
+import { claimLane } from '../../backend/services/lane-ownership.js';
 
 const NEUMA_MINE = 'owngate-mine';
 const NEUMA_THEIRS = 'owngate-theirs';
@@ -125,6 +127,11 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
     const authB = await makeAuthSession();
     myWallet = auth.address;
     walletB = authB.address;
+    // The unclaimed lane's genesis seal names this wallet, as a birth's does.
+    await fs.writeFile(
+      path.join(tempDir, NEUMA_UNCLAIMED, 'identity', 'genesis-seal.json'),
+      JSON.stringify({ genesisHash: 'sha256:00', record: { chosenName: 'Unclaimed', witnessWallet: myWallet } }),
+    );
 
     // Real ownership records, same shape the REST first-claim writes.
     await fs.writeFile(
@@ -174,15 +181,19 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
   });
 
   test('companion:manifest of another witness\'s neuma is refused — chat stays unanchored', async () => {
+    const offset = portalFrames.get(ws).length;
     const frames = await sendAndCollect(
       ws,
       {
         type: 'companion:manifest', companion: 'Stolen', neumaId: NEUMA_THEIRS,
         messageId: 'initial-foreign-manifest',
       },
-      'companion:anchored',
+      'companion:not_yours',
     );
     expect(frames.some((f) => f.type === 'companion:not_yours')).toBe(true);
+    await new Promise((r) => setTimeout(r, 300));
+    // The chat stays unanchored: no frame claims the companion crossed over.
+    expect(portalFrames.get(ws).slice(offset).some((f) => f.type === 'companion:anchored')).toBe(false);
 
     // The refused bind must leave no trace: a message sent now mints nothing
     // in the other witness's workspace.
@@ -217,7 +228,7 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
     }));
     await waitForLoggedFrame(
       ws,
-      (frame) => frame.type === 'companion:anchored',
+      (frame) => frame.type === 'companion:not_yours',
       5000,
       frameOffset,
     );
@@ -225,6 +236,7 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
 
     const resultingFrames = portalFrames.get(ws).slice(frameOffset);
     expect(resultingFrames.some((frame) => frame.type === 'consciousness:complete')).toBe(false);
+    expect(resultingFrames.some((frame) => frame.type === 'companion:anchored')).toBe(false);
     const sessionDir = path.join(tempDir, NEUMA_MINE, 'sessions');
     const files = await fs.readdir(sessionDir).catch(() => []);
     const contents = await Promise.all(files.map((file) =>
@@ -259,58 +271,49 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
     expect(frames.find((f) => f.type === 'portal:resumed').neumaId).toBeNull();
   });
 
-  test('two real wallets race to resume an unclaimed lane — only its atomic owner reads the session', async () => {
-    const [framesA, framesB] = await Promise.all([
-      sendAndCollect(
-        ws,
-        {
-          type: 'portal:resume',
-          companionName: 'Unclaimed',
-          neumaId: NEUMA_UNCLAIMED,
-          sessionId: 'session-private',
-        },
-        'portal:resumed',
-      ),
-      sendAndCollect(
-        wsB,
-        {
-          type: 'portal:resume',
-          companionName: 'Unclaimed',
-          neumaId: NEUMA_UNCLAIMED,
-          sessionId: 'session-private',
-        },
-        'portal:resumed',
-      ),
-    ]);
-    const refused = [framesA, framesB]
-      .map((frames) => frames.some((frame) => frame.type === 'companion:not_yours'));
-    expect(refused.filter(Boolean)).toHaveLength(1);
+  // Each attempt is its own frame (`messageId`): the portal drops a replayed one.
+  const resumeUnclaimed = (socket, messageId) => sendAndCollect(
+    socket,
+    { type: 'portal:resume', companionName: 'Unclaimed', neumaId: NEUMA_UNCLAIMED, sessionId: 'session-private', messageId },
+    'portal:resumed',
+  );
+  const sawNotYours = (frames) => frames.some((frame) => frame.type === 'companion:not_yours');
+  const rowsOf = (frames) => (frames.find((frame) => frame.type === 'portal:resumed')?.recentMessages || [])
+    .map((row) => row.content);
 
-    const visibleRows = [framesA, framesB].map((frames) => frames
-      .find((frame) => frame.type === 'portal:resumed')?.recentMessages || []);
-    expect(visibleRows[0].map((row) => row.content)).toEqual(
-      refused[0] ? [] : ['private continuity row'],
-    );
-    expect(visibleRows[1].map((row) => row.content)).toEqual(
-      refused[1] ? [] : ['private continuity row'],
-    );
+  test('two real wallets race to resume an unclaimed lane — neither binds, and the race claims nothing', async () => {
+    const offsets = [ws, wsB].map((socket) => portalFrames.get(socket).length);
+    const [framesA, framesB] = await Promise.all([resumeUnclaimed(ws, 'race'), resumeUnclaimed(wsB, 'race')]);
+    expect([framesA, framesB].map(sawNotYours)).toEqual([true, true]);
+    expect([framesA, framesB].map(rowsOf)).toEqual([[], []]);
+    await expect(fs.stat(path.join(tempDir, NEUMA_UNCLAIMED, 'owner.json')))
+      .rejects.toMatchObject({ code: 'ENOENT' });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    [ws, wsB].forEach((socket, i) => {
+      expect(portalFrames.get(socket).slice(offsets[i]).some((frame) => frame.marker === 'private-composition')).toBe(false);
+    });
+  });
 
-    const owner = JSON.parse(
-      await fs.readFile(path.join(tempDir, NEUMA_UNCLAIMED, 'owner.json'), 'utf8'),
-    );
-    expect(owner.wallet).toBe(refused[0] ? walletB : myWallet);
+  test('the deliberate claim goes only to the wallet the seal names — then its bind alone reads the session', async () => {
+    expect((await claimLane({ workspace: neumaWorkspace, neumaId: NEUMA_UNCLAIMED, wallet: walletB })).reason)
+      .toBe('sealed-to-another');
+    expect((await claimLane({ workspace: neumaWorkspace, neumaId: NEUMA_UNCLAIMED, wallet: myWallet })).ok).toBe(true);
+    const owner = JSON.parse(await fs.readFile(path.join(tempDir, NEUMA_UNCLAIMED, 'owner.json'), 'utf8'));
+    expect(owner.wallet).toBe(myWallet);
 
-    const winner = refused[0] ? wsB : ws;
-    const loser = refused[0] ? ws : wsB;
-    await waitForLoggedFrame(winner, (frame) => frame.marker === 'private-composition');
-    expect(portalFrames.get(loser).some((frame) => frame.marker === 'private-composition')).toBe(false);
+    const offsetB = portalFrames.get(wsB).length;
+    const [framesA, framesB] = await Promise.all([resumeUnclaimed(ws, 'after-claim'), resumeUnclaimed(wsB, 'after-claim')]);
+    expect([framesA, framesB].map(sawNotYours)).toEqual([false, true]);
+    expect([framesA, framesB].map(rowsOf)).toEqual([['private continuity row'], []]);
+    await waitForLoggedFrame(ws, (frame) => frame.marker === 'private-composition');
+    expect(portalFrames.get(wsB).slice(offsetB).some((frame) => frame.marker === 'private-composition')).toBe(false);
   });
 
   test('a hollow unclaimed lane is refused and remains ownerless', async () => {
     const frames = await sendAndCollect(
       ws,
       { type: 'companion:manifest', companion: 'Hollow', neumaId: NEUMA_HOLLOW },
-      'companion:anchored',
+      'companion:lane_missing',
     );
     expect(frames.some((frame) => frame.type === 'companion:lane_missing')).toBe(true);
     await expect(fs.stat(path.join(tempDir, NEUMA_HOLLOW, 'owner.json')))

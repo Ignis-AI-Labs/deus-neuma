@@ -24,8 +24,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
 import { getItems, getRoots, addRoot, removeRoot, fileSrc } from '../../../services/gallery-client.js';
 import {
-  applyView, groupByDay, readableBytes, itemKey, neighborOf, positionOf, KINDS, SORTS,
+  applyView, groupByDay, readableBytes, itemKey, itemOfImage, neighborOf, positionOf, KINDS, SORTS,
 } from './gallery-view.js';
+import { onCardLanding, takeCardLanding } from '../card-landing.js';
 import { AppTitle } from '../app-title.jsx';
 import { Viewer, markMissing, clearMissing } from './Viewer.jsx';
 import './GalleryApp.css';
@@ -101,6 +102,21 @@ const GalleryBody = () => {
     load();
     return () => { alive.current = false; };
   }, []);
+
+  // A tray card names its render (card-landing.js): latched for a window it
+  // opens, announced to an open one (which re-reads, the render being new).
+  // The viewer opens on it, in the unfiltered view, once the scan holds it.
+  const [landing, setLanding] = useState(() => takeCardLanding('gallery')?.imageId ?? null);
+  useEffect(() => onCardLanding('gallery', (item) => {
+    if (item?.imageId) { setLanding(item.imageId); load(); }
+  }), []);
+  useEffect(() => {
+    const hit = landing ? itemOfImage(items, landing) : null;
+    if (!hit) return;
+    setView((v) => ({ ...v, kind: 'all', rootId: null, query: '' }));
+    setOpen(hit);
+    setLanding(null);
+  }, [items, landing]);
 
   const { items: shown, counts } = useMemo(() => applyView(items, view), [items, view]);
   const days = useMemo(() => groupByDay(shown), [shown]);

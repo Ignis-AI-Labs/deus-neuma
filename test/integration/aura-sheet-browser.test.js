@@ -55,7 +55,7 @@ test('the real sheet draws distinct auras and preserves pixels after reload and 
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/record-sheet.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><body style="margin:0;background:#020b0e;color:#bbced2"><div id="root"></div><script type="module" src="/test/fixtures/record-sheet.jsx"></script>'));
     app.use(vite.middlewares);

@@ -14,8 +14,10 @@ import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 import {
   armWatch, fireWatches, pendingFor, armedWatches, claimWatch, offerPending, setWatchDeliverer, __resetWatches,
 } from '../../backend/services/chat-watch.js';
+import { settleLostChains } from '../../backend/services/bench/bench-matched.js';
 
 const before = process.env.NEUMA_DATA_ROOT;
+const beforeHarness = process.env.NEUMA_BENCH_HARNESS_PATH;
 const W = '0xABCDEF0000000000000000000000000000000001';
 const chat = { wallet: W, laneId: 'harness-1234abcd', sessionId: 'session-1' };
 let offered;
@@ -29,6 +31,7 @@ beforeEach(() => {
 afterAll(() => {
   setWatchDeliverer(null);
   if (before === undefined) delete process.env.NEUMA_DATA_ROOT; else process.env.NEUMA_DATA_ROOT = before;
+  if (beforeHarness === undefined) delete process.env.NEUMA_BENCH_HARNESS_PATH; else process.env.NEUMA_BENCH_HARNESS_PATH = beforeHarness;
 });
 
 describe('a chat sets a watch; the watched thing ends; the chat is told', () => {
@@ -73,5 +76,23 @@ describe('a chat sets a watch; the watched thing ends; the chat is told', () => 
     expect((await armedWatches()).map((w) => w.ref)).toEqual(['desk-1']);
     const file = path.join(process.env.NEUMA_DATA_ROOT, 'watches', 'watches.json');
     expect(JSON.parse(fs.readFileSync(file, 'utf8')).watches).toHaveLength(1);
+  });
+
+  test('a set the last process ran is lost on restart: at boot its chat is told so, honestly; this process\'s own watches stay armed', async () => {
+    // the previous process's registry, as it left it on disk: a bench watch armed before this process started
+    process.env.NEUMA_BENCH_HARNESS_PATH = fs.mkdtempSync(path.join(os.tmpdir(), 'chat-watch-harness-')); // no runs sealed
+    const old = { id: 'w-old', ...chat, wallet: W.toLowerCase(), kind: 'bench', ref: 'desk-old', label: 'The benchmark you launched (smoke)', armedAt: new Date(Date.now() - process.uptime() * 1000 - 60_000).toISOString() };
+    fs.mkdirSync(path.join(process.env.NEUMA_DATA_ROOT, 'watches'), { recursive: true });
+    fs.writeFileSync(path.join(process.env.NEUMA_DATA_ROOT, 'watches', 'watches.json'), JSON.stringify({ watches: [old] }));
+    __resetWatches(); // the restart
+    const mine = await armWatch({ ...chat, kind: 'bench', ref: 'desk-new', label: 'L' }); // this process's own chain watches this
+    expect(await settleLostChains()).toBe(1);
+    const [held] = await pendingFor(chat);
+    expect(held.id).toBe('w-old');
+    expect(held.report).toContain('the desk restarted while it ran (comparison desk-old)');
+    expect(held.report).toContain('No arm sealed before the restart.');
+    expect(offered.map((w) => w.id)).toEqual(['w-old']); // handed to the deliverer at once
+    expect((await armedWatches()).map((w) => w.id)).toEqual([mine.id]);
+    expect(await settleLostChains()).toBe(0); // fired once, never twice
   });
 });

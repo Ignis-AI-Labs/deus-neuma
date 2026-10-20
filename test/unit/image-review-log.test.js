@@ -109,7 +109,7 @@ describe('the log — a real file', () => {
   });
 
   test('BOTH standings survive on the same image, neither overwriting', () => {
-    // The whole architecture in one assertion (Design note, 2026-08-05: his grade is
+    // The whole architecture in one assertion (ruling, 2026-08-05): his grade is
     // input the being weighs, not a correction applied over its judgment.
     recordReview(toReviewRecord({
       imageId: 'img-1', by: 'being', author: 'Fenna', matches: 'yes', verdict: 'keep',

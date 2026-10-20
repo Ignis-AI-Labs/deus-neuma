@@ -282,6 +282,18 @@ describe('notificationTarget', () => {
     expect(notificationTarget(card('t', { kind: KIND.benchAlert }))).toEqual({ appId: 'bench', payload: null });
   });
 
+  test('a house-wake card about something filed for the operator opens the HOUSE CLOCK on its ASKS tab', () => {
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: { sessionId: 's1', wakeId: 'w1', askId: 'a1' } })))
+      .toEqual({ appId: 'houseclock', payload: { wakeId: 'w1', sessionId: 's1', tab: 'asks' } });
+    // the Optio's review packet names no wake
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: { packetAt: '2026-10-18T10:00:00.000Z' } })))
+      .toEqual({ appId: 'houseclock', payload: { tab: 'asks' } });
+    // a card about the wake itself (its work failed) names the wake, no tab
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: { wakeId: 'w2' } })))
+      .toEqual({ appId: 'houseclock', payload: { wakeId: 'w2', sessionId: null } });
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: {} }))).toEqual({ appId: 'houseclock', payload: null });
+  });
+
   test('a disk warning lands where the operator can act on it', () => {
     expect(notificationTarget(card('t', { kind: KIND.storageWarning })).appId).toBe('substrate');
   });

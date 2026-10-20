@@ -3,7 +3,7 @@
 // same bytes eth_getTransactionByHash / eth_getTransactionReceipt return.
 
 import { describe, it, expect } from 'vitest';
-import { buildTxBreakdown, explorerTxUrl, explorerAddressUrl } from '../../frontend/app/RelinkShell/wallet-receipt.js';
+import { buildTxBreakdown, explorerTxUrl, explorerAddressUrl, explorerName } from '../../frontend/app/RelinkShell/wallet-receipt.js';
 
 const HASH = '0x' + 'ab'.repeat(32);
 const FROM = '0x' + 'a1'.repeat(20);
@@ -86,5 +86,19 @@ describe('explorerAddressUrl', () => {
     expect(explorerAddressUrl('base', FROM)).toBe(`https://basescan.org/address/${FROM}`);
     expect(explorerAddressUrl('base-sepolia', FROM)).toBe(`https://sepolia.basescan.org/address/${FROM}`);
     expect(explorerAddressUrl(null, FROM)).toBe(`https://basescan.org/address/${FROM}`);
+  });
+});
+
+describe('Ethereum links go to Etherscan, named as Etherscan', () => {
+  it('an Ethereum hash or address never lands on Basescan', () => {
+    expect(explorerTxUrl('ethereum', HASH)).toBe(`https://etherscan.io/tx/${HASH}`);
+    expect(explorerTxUrl('ethereum-sepolia', HASH)).toBe(`https://sepolia.etherscan.io/tx/${HASH}`);
+    expect(explorerAddressUrl('ethereum', FROM)).toBe(`https://etherscan.io/address/${FROM}`);
+  });
+  it('the link text names the explorer the link opens', () => {
+    expect(explorerName('ethereum')).toBe('ETHERSCAN');
+    expect(explorerName('ethereum-sepolia')).toBe('ETHERSCAN');
+    expect(explorerName('base')).toBe('BASESCAN');
+    expect(explorerName(undefined)).toBe('BASESCAN'); // the same fallback as the link
   });
 });

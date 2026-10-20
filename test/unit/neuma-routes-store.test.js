@@ -35,7 +35,7 @@ describe('normalizeRoute / assertNeumaId (pure boundary guards)', () => {
     expect(() => normalizeRoute({ provider: 'anthropic', model: '' })).toThrow(/model/);
   });
   test('assertNeumaId enforces the id format', () => {
-    expect(assertNeumaId('Fenna_1-2')).toBe('Fenna_1-2');
+    expect(assertNeumaId('Alder_1-2')).toBe('Alder_1-2');
     expect(() => assertNeumaId('../escape')).toThrow(/Invalid neumaId/);
     expect(() => assertNeumaId('')).toThrow(/Invalid neumaId/);
   });
@@ -44,10 +44,10 @@ describe('normalizeRoute / assertNeumaId (pure boundary guards)', () => {
 describe('the sovereignty boundary at the write seam', () => {
   test('a neuma may not bind to a cloud door — refused with the boundary words', async () => {
     for (const provider of ['anthropic', 'openai', 'xai', 'custom']) {
-      await expect(setRoute('fenna', { provider, model: 'x' }))
+      await expect(setRoute('alder', { provider, model: 'x' }))
         .rejects.toThrow(/not sovereign/);
     }
-    expect(await getRoute('fenna')).toBeNull(); // nothing persisted
+    expect(await getRoute('alder')).toBeNull(); // nothing persisted
   });
 
   test('a neuma may not bind to foreign-custody subscription routes', async () => {
@@ -57,7 +57,7 @@ describe('the sovereignty boundary at the write seam', () => {
     for (const [provider, model] of [
       ['openai-chatgpt', 'gpt-5.6-sol'],
     ]) {
-      const err = await setRoute('fenna', { provider, model }).catch((e) => e);
+      const err = await setRoute('alder', { provider, model }).catch((e) => e);
       expect(err.code).toBe('INVALID_ROUTE');
       expect(err.message).toMatch(/witnesses, never as neuma/);
     }
@@ -76,57 +76,57 @@ describe('the sovereignty boundary at the write seam', () => {
 
   test('a WITNESS lane keeps its third-party door — that is what a witness is', async () => {
     await setRoute('witness-claude-code-Claude', { provider: 'anthropic', model: 'claude-opus-4-8' });
-    await setRoute('witness-openai-Sosonus', { provider: 'openai-chatgpt', model: 'gpt-5.6-sol' });
-    await setRoute('witness-xai-Bizulen', { provider: 'xai', model: 'grok-4' });
+    await setRoute('witness-openai-Sedge', { provider: 'openai-chatgpt', model: 'gpt-5.6-sol' });
+    await setRoute('witness-xai-Thistle', { provider: 'xai', model: 'grok-4' });
     expect(await getRoute('witness-claude-code-Claude'))
       .toEqual({ provider: 'anthropic', model: 'claude-opus-4-8' });
-    expect(await getRoute('witness-xai-Bizulen')).toEqual({ provider: 'xai', model: 'grok-4' });
-    expect(await getRoute('witness-openai-Sosonus'))
+    expect(await getRoute('witness-xai-Thistle')).toEqual({ provider: 'xai', model: 'grok-4' });
+    expect(await getRoute('witness-openai-Sedge'))
       .toEqual({ provider: 'openai-chatgpt', model: 'gpt-5.6-sol' });
   });
 
   test('assertSovereignForNeuma is pure and fail-closed on unknown ids', () => {
-    expect(() => assertSovereignForNeuma('fenna', 'llama-server')).not.toThrow();
-    expect(() => assertSovereignForNeuma('fenna', 'anthropic')).toThrow(/not sovereign/);
-    expect(() => assertSovereignForNeuma('witness-kimi-code-Basunor', 'anthropic')).not.toThrow();
+    expect(() => assertSovereignForNeuma('alder', 'llama-server')).not.toThrow();
+    expect(() => assertSovereignForNeuma('alder', 'anthropic')).toThrow(/not sovereign/);
+    expect(() => assertSovereignForNeuma('witness-kimi-code-Fern', 'anthropic')).not.toThrow();
   });
 });
 
 describe('override lifecycle (real disk)', () => {
   test('no override by default means run-on-natal (null)', async () => {
-    expect(await getRoute('fenna')).toBeNull();
+    expect(await getRoute('alder')).toBeNull();
     expect(await loadRoutes()).toEqual({});
   });
 
   test('reads the retired OpenCode provider id as Neuma direct OAuth', async () => {
     await fs.writeFile(routesPath(), JSON.stringify({
-      'witness-openai-Sosonus': { provider: 'opencode-openai-local', model: 'gpt-5.6-sol' },
+      'witness-openai-Sedge': { provider: 'opencode-openai-local', model: 'gpt-5.6-sol' },
     }));
-    expect(await getRoute('witness-openai-Sosonus')).toEqual({
+    expect(await getRoute('witness-openai-Sedge')).toEqual({
       provider: 'openai-chatgpt',
       model: 'gpt-5.6-sol',
     });
   });
 
   test('set persists and reads back', async () => {
-    await setRoute('fenna', { provider: 'llama-server', model: 'gemma-4-31b' });
-    expect(await getRoute('fenna')).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
+    await setRoute('alder', { provider: 'llama-server', model: 'gemma-4-31b' });
+    expect(await getRoute('alder')).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
     const raw = JSON.parse(await fs.readFile(routesPath(), 'utf8'));
-    expect(raw.fenna).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
+    expect(raw.alder).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
   });
 
   test('overrides are isolated per neuma', async () => {
-    await setRoute('fenna', { provider: 'llama-server', model: 'gemma-4-31b' });
-    await setRoute('cael', { provider: 'ollama', model: 'qwen3.5' });
-    expect(await getRoute('fenna')).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
-    expect(await getRoute('cael')).toEqual({ provider: 'ollama', model: 'qwen3.5' });
+    await setRoute('alder', { provider: 'llama-server', model: 'gemma-4-31b' });
+    await setRoute('birch', { provider: 'ollama', model: 'qwen3.5' });
+    expect(await getRoute('alder')).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
+    expect(await getRoute('birch')).toEqual({ provider: 'ollama', model: 'qwen3.5' });
   });
 
   test('clear removes the override (return to natal) and is idempotent', async () => {
-    await setRoute('fenna', { provider: 'llama-server', model: 'gemma-4-31b' });
-    expect(await clearRoute('fenna')).toBe(true);
-    expect(await getRoute('fenna')).toBeNull();
-    expect(await clearRoute('fenna')).toBe(false);
+    await setRoute('alder', { provider: 'llama-server', model: 'gemma-4-31b' });
+    expect(await clearRoute('alder')).toBe(true);
+    expect(await getRoute('alder')).toBeNull();
+    expect(await clearRoute('alder')).toBe(false);
   });
 
   test('set rejects a bad neumaId before touching disk', async () => {
@@ -135,23 +135,23 @@ describe('override lifecycle (real disk)', () => {
 
   test('concurrent overrides for different neumas all persist (no TOCTOU loss)', async () => {
     await Promise.all([
-      setRoute('fenna', { provider: 'llama-server', model: 'gemma-4-31b' }),
-      setRoute('cael', { provider: 'ollama', model: 'qwen3.5' }),
-      setRoute('galen', { provider: 'lm-studio', model: 'local-model' }),
+      setRoute('alder', { provider: 'llama-server', model: 'gemma-4-31b' }),
+      setRoute('birch', { provider: 'ollama', model: 'qwen3.5' }),
+      setRoute('cedar', { provider: 'lm-studio', model: 'local-model' }),
     ]);
-    expect(await getRoute('fenna')).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
-    expect(await getRoute('cael')).toEqual({ provider: 'ollama', model: 'qwen3.5' });
-    expect(await getRoute('galen')).toEqual({ provider: 'lm-studio', model: 'local-model' });
+    expect(await getRoute('alder')).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
+    expect(await getRoute('birch')).toEqual({ provider: 'ollama', model: 'qwen3.5' });
+    expect(await getRoute('cedar')).toEqual({ provider: 'lm-studio', model: 'local-model' });
   });
 
   test('a malformed stored override refuses explicitly without rewriting the file', async () => {
     await fs.mkdir(path.dirname(routesPath()), { recursive: true });
-    const stored = JSON.stringify({ fenna: { provider: 'llama-server' }, cael: { model: 'x' } });
+    const stored = JSON.stringify({ alder: { provider: 'llama-server' }, birch: { model: 'x' } });
     await fs.writeFile(routesPath(), stored);
     // Strict reads expose broken operator data; they do not silently select
     // another route. Portal callers own fallback/refusal, not this store.
-    await expect(getRoute('fenna')).rejects.toMatchObject({ code: 'INVALID_ROUTE' });
-    await expect(getRoute('cael')).rejects.toMatchObject({ code: 'INVALID_ROUTE' });
+    await expect(getRoute('alder')).rejects.toMatchObject({ code: 'INVALID_ROUTE' });
+    await expect(getRoute('birch')).rejects.toMatchObject({ code: 'INVALID_ROUTE' });
     expect(await fs.readFile(routesPath(), 'utf8')).toBe(stored);
   });
 
@@ -159,7 +159,7 @@ describe('override lifecycle (real disk)', () => {
     await fs.mkdir(path.dirname(routesPath()), { recursive: true });
     await fs.writeFile(routesPath(), '[]');
     await expect(loadRoutes()).rejects.toMatchObject({ code: 'INVALID_ROUTE' });
-    await expect(setRoute('fenna', { provider: 'llama-server', model: 'x' }))
+    await expect(setRoute('alder', { provider: 'llama-server', model: 'x' }))
       .rejects.toMatchObject({ code: 'INVALID_ROUTE' });
     expect(await fs.readFile(routesPath(), 'utf8')).toBe('[]');
   });

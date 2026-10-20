@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import http from 'http';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * Integration tests for the substrate capacity routes (non-:id, rig-level).
@@ -33,6 +34,7 @@ describe('Substrate capacity routes', () => {
     // This router carries no neuma lane — a real session that claims no
     // workspace is exactly the right shape.
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
 
     ({ setConfig } = await import('../../backend/services/llm-provider.js'));
     // A local provider at a dead port: scannable, but genuinely unreachable.

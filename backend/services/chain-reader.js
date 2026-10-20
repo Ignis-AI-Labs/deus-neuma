@@ -63,6 +63,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ethers } from 'ethers';
 import { createLogger } from './logger.js';
+import { redactRpcUrl } from './chain/chain-registry.js';
 import { verifyNatalisIdentity, verifyHouseRegistryImpl } from './chain-verify.js';
 import { SEAL_LAWS, NATALIS_LAW_BY_CODEHASH } from './seal-law.js';
 
@@ -124,7 +125,7 @@ const probeWithTimeout = (provider, address, timeoutMs, verify = verifyNatalisId
   );
   verify(provider, address).then(
     (v) => { clearTimeout(timer); done(v); },
-    (err) => { clearTimeout(timer); done({ ok: false, reason: 'rpc-error', error: err.message }); },
+    (err) => { clearTimeout(timer); done({ ok: false, reason: 'rpc-error', error: redactRpcUrl(err.message) }); },
   );
 });
 
@@ -157,7 +158,7 @@ const safeCall = async (label, fn) => {
   try {
     return await fn();
   } catch (err) {
-    log.warn({ label, error: err.message, code: err.code }, 'chain call failed');
+    log.warn({ label, error: redactRpcUrl(err.message), code: err.code }, 'chain call failed');
     return null;
   }
 };

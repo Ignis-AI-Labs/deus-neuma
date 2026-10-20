@@ -1,4 +1,4 @@
-// Any public post can be answered (Design note, 2026-10-12 — its id read from what an operator pastes,
+// Any public post can be answered (ruling, 2026-10-12) — its id read from what an operator pastes,
 // and its linkage taken from X's own answer. Pure.
 import { describe, expect, it } from 'vitest';
 import { postIdFrom, replyTargetFrom } from '../../backend/services/social/x-reader.js';

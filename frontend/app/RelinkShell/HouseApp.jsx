@@ -54,9 +54,8 @@ const HouseGround = () => {
   const [draft, setDraft] = useState('');
   const [note, setNote] = useState('');
 
-  useSettled((settled) => {
-    getHouseWorkspace().then((g) => { if (!settled()) setGround(g); });
-  }, []);
+  const read = (settled = () => false) => getHouseWorkspace().then((g) => { if (!settled()) setGround(g); });
+  useSettled((settled) => { read(settled); }, []);
 
   const saveRoot = async (root) => {
     uiSound('activate');
@@ -74,6 +73,18 @@ const HouseGround = () => {
   };
 
   if (ground === null) return null;
+  // A read that failed is not "no ground set": no SET form over a ground that may stand.
+  if (ground.unread) {
+    return (
+      <section className="house-ground">
+        <p className="house-ground-head label-data">HOUSE WORKSPACE</p>
+        <p className="house-ground-note label-data" role="alert">{`COULD NOT READ THE GROUND — ${ground.unread}`}</p>
+        <button type="button" className="house-ground-go label-data" onClick={() => { uiSound('open'); setGround(null); read(); }}>
+          RETRY
+        </button>
+      </section>
+    );
+  }
   return (
     <section className="house-ground">
       <p className="house-ground-head label-data">

@@ -8,7 +8,7 @@
 //   • An app PRESENT in the registry but not named here still renders, appended
 //     to a trailing group — so a newly-registered app is never silently hidden.
 //
-// ── THE ORDERING LAW (Design note, 2026-08-25 ──────────────────────────────────────
+// ── THE ORDERING LAW (ruling, 2026-08-25) ──────────────────────────────────────
 // […]
 //
 // WORKSPACE had grown to 13 rows — more than double every other section — and a
@@ -73,7 +73,7 @@ export const DOCK_GROUPS = Object.freeze([
   //           work or watch — it says what the house IS, not what it does
   // 'comfyui' is THE IMAGE FORGE workbench (FR-37) — the witness went looking
   // for it under WORKSPACE, so that is where it lives (CHANGE-2); the GALLERY is
-  // its OWN window, not a pane inside COMFY (Design note, 2026-08-01: renders are only
+  // its OWN window, not a pane inside COMFY (ruling, 2026-08-01): renders are only
   // one source — it reads ComfyUI's output by default plus any folder the
   // operator adds, images and video alike.
   // CHATS lives here, not in KNOWLEDGE (Design note, 2026-07-27: […]). KNOWLEDGE is what you CONSULT

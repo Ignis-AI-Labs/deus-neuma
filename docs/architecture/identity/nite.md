@@ -13,11 +13,14 @@ bet, and it is why the forge was retired on 2026-08-24
 > **This file is generated against real imports, not memory.**
 > `node scripts/map-nite.mjs` prints the live map.
 > `node scripts/map-nite.mjs --check` fails if this document has drifted from it.
-> Re-measured 2026-10-08: **143 files**, 28,138 lines, **22 engine**,
+> Re-measured 2026-10-19: **254 files**, 46,317 lines, **22 engine**,
 > **3 retired** — and all 3 of those arrive through the SERVING chain. The
-> identity door carries **zero** retired forge. (2026-09-30 it read 139 files,
-> 21 engine; 2026-08-26, after the size-law extractions, 122 files, 20 engine,
-> 8 retired.)
+> identity door carries **zero** retired forge. The engine did not grow: the
+> 111 new files all enter through `llm-provider.js` (ring 2) — 84 behind
+> `think-shape-store.js` (49d07fb6d, which reaches `user-realm.js`), 22 behind
+> `machine-lease.js` (4d2811f2d), the rest one or two each. (2026-10-08 it read
+> 143 files, 28,138 lines; 2026-09-30, 139 files, 21 engine; 2026-08-26, after
+> the size-law extractions, 122 files, 20 engine, 8 retired.)
 
 ---
 

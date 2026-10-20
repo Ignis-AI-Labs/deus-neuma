@@ -19,6 +19,7 @@ import {
   buildBenchFixtureTree, FIXTURE_NIGHT_STAMP, FIXTURE_BUNDLE_ID, FIXTURE_PLAN_NAME,
 } from '../helpers/bench-fixture-tree.js';
 import { useTempRealm } from '../helpers/temp-realm.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV = [
   'NEUMA_BENCH_HARNESS_PATH', 'NEUMA_BENCH_SERVING_URL', 'NEUMA_BENCH_WATCH_PATH',
@@ -64,6 +65,8 @@ describe('Bench routes (/api/v1/bench)', () => {
     // auth.js instance the router will verify against.
     const { witnessFor } = await import('../helpers/witness.js');
     witness = await witnessFor(process.env.WORKSPACES_ROOT, 'benchlane');
+    // The bench plane runs the machine's processes: its launches are the install owner's.
+    await makeInstallOwner(witness.address);
   });
 
   afterEach(() => {

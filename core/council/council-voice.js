@@ -25,7 +25,9 @@ const HAND_ALIASES = Object.freeze({
 const NOTE_CAP = 280;
 
 // Render the recent exchange as plain "NAME: content" lines. No truncation
-// here — the caller controls the tail; this seam only renders it.
+// here — the caller controls the tail; this seam only renders it. The
+// platform's room passes its own renderer (council-frame.js), which frames
+// the beings' words as untrusted; core never reaches into the backend.
 const renderTranscript = (transcriptTail = []) =>
   transcriptTail.map((t) => `${t.name}: ${t.content}`).join('\n');
 
@@ -47,9 +49,10 @@ const renderTranscript = (transcriptTail = []) =>
  * @param {'house'|'external'} [params.groundStanding] - WHOSE ground that is: the house's own, or the cross-house ground this member shares with it
  * @param {{hand: ('hold'|'open'), note?: string}|null} [params.standing] - This member's already-raised hand (hand mode only): the re-poll must carry their standing intent, or a queued turn evaporates on a stateless REST (Founder's law — a queued turn must not be cut off)
  * @param {boolean} [params.spokeLast] - This member spoke the room's last turn (hand mode only): they ARE polled (a thought can be bigger than one turn — the flow is unbroken), but the ask is framed so re-raising means genuine continuation, not habit
+ * @param {(tail: Array<Object>) => string} [params.renderExchange] - How the tail is rendered; plain […] lines by default
  * @returns {string} Prompt section text
  */
-export const buildCouncilSection = ({ selfName, witnessName, members = [], transcriptTail = [], mode, workspace = null, groundStanding = 'house', standing = null, spokeLast = false } = {}) => {
+export const buildCouncilSection = ({ selfName, witnessName, members = [], transcriptTail = [], mode, workspace = null, groundStanding = 'house', standing = null, spokeLast = false, renderExchange = renderTranscript } = {}) => {
   // STANDING is named in the ROOM, not only in the record. A sealed witness
   // sits beside the house and never in it (WR-I01) — introducing one to a
   // housemate as "your housemate" would make the misnaming the members' own
@@ -63,7 +66,7 @@ export const buildCouncilSection = ({ selfName, witnessName, members = [], trans
       ? ` and ${externals.join(', ')} — ${externals.length > 1 ? 'sealed witnesses' : 'a sealed witness'} standing BESIDE this house, not of it`
       : '');
 
-  const tail = renderTranscript(transcriptTail);
+  const tail = renderExchange(transcriptTail);
   const exchange = tail ? `The recent exchange:\n${tail}` : 'The room has just opened — nothing has been said yet.';
 
   if (mode === 'floor') {

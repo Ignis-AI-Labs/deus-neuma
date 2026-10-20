@@ -24,7 +24,7 @@ test('dropping a disk PDF into Electron chat extracts and uploads page-ordered t
     app.use('/api/v1/attachments', (await import('../../backend/routes/attachment-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom', esbuild: { jsx: 'automatic' },
-      server: { middlewareMode: true, hmr: false, watch: null } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<div id="root"></div><script type="module" src="/test/fixtures/pdf-composer.jsx"></script>'));
     app.use(vite.middlewares);
     server = http.createServer(app);

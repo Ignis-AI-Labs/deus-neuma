@@ -52,7 +52,7 @@ const TOOL_VERBS = Object.freeze({
   search_files: 'searched', search_content: 'grepped', search: 'searched',
 });
 
-// THE EVENT DESCRIBES ITSELF (Design note, 2026-10-03: […] The chip's line is built from the act's own data: what it
+// THE EVENT DESCRIBES ITSELF (ruling, 2026-10-03): […] The chip's line is built from the act's own data: what it
 // was given and what came back. The being never spends context narrating it.
 const TARGET_KEYS = Object.freeze(['path', 'url', 'query', 'name', 'command', 'cmd', 'code', 'pattern', 'key', 'id', 'recipient', 'to']);
 const oneLine = (value, max) => {

@@ -24,11 +24,11 @@
  * unconditional verdict claim is the one this file exists to defend (an
  * unaffordable allocation BLOCKS). The […] claim is
  * stated as a relationship to the real rows, so a rig without a GPU reports
- * the truth instead of a false red. On this rig all thirteen rows pass, so
+ * the truth instead of a false red. On this rig all fourteen rows pass, so
  * the ready branch is genuinely exercised here.
  *
  * THE COST, stated plainly: ~30s for the file, against ~1s stubbed. That is
- * what thirteen real probes of a real machine cost — a real generation over a
+ * what fourteen real probes of a real machine cost — a real generation over a
  * real socket, real MCP tool calls that really write and read back, real disk
  * and trainer inspection. It is the price of the row meaning anything, and it
  * is paid per GET, which is why the timeouts below are generous. Nothing is
@@ -245,7 +245,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     expect(res.body.verdict).toBe('ready');
   }, 120000);
 
-  test('every row is a real measurement — thirteen of them, none stubbed', async () => {
+  test('every row is a real measurement — fourteen of them, none stubbed', async () => {
     // The property the old file destroyed. Each row names a real probe of this
     // machine; a row that silently vanished (or a probe that never ran) is a
     // hole in the launch gate, and the endpoint would still answer 200.
@@ -255,7 +255,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     const ids = res.body.checks.map((c) => c.id);
     expect(ids).toEqual(expect.arrayContaining([
       'substrate', 'acting', 'workspace', 'ceremonyRoad', 'records',
-      'protocol', 'sealing', 'disk', 'memory', 'dnaKey', 'mcp', 'gpu', 'trainer',
+      'protocol', 'sealing', 'disk', 'memory', 'dnaKey', 'mcp', 'gpu', 'trainer', 'forge',
     ]));
     for (const check of res.body.checks) {
       expect(check.status).toMatch(/^(pass|warn|fail)$/);

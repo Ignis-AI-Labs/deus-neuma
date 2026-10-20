@@ -13,6 +13,10 @@
   flex-direction: column;
   gap: var(--space-5);
 }
+/* CALENDAR — the calendar takes the window's whole height and scrolls inside
+   itself (HouseCalendar.css); the window scrolls only once it is too short
+   for the calendar's floor */
+.todo.is-calendar { gap: var(--space-3); padding: var(--space-4) var(--space-5); }
 
 /* THE STANDING SWITCH — three standings, not one wall of chips.
    A neuma lives in the HOUSE; a sealed witness stands BESIDE it

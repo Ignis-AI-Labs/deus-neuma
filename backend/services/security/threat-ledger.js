@@ -11,10 +11,14 @@
 // the same house and a lost update here is a threat nobody is watching.
 //
 // Dedup law: a finding is identified by (source, externalId, repo). A re-scan
-// that sees the same finding again REFRESHES it (lastSeenAt, and it reopens
-// only if it was never assessed) — it never duplicates it. An entry the
-// latest scan no longer surfaces keeps its record (the ledger is history);
-// only `new`-state counts move.
+// that sees the same finding again REFRESHES it — lastSeenAt, and its
+// severity, title, summary and affected set — and never duplicates it. The
+// watch's own transitions (close what a whole scan no longer sees, reopen
+// what it closed and sees again, verify or reopen what someone CLAIMED
+// mitigated) live in threat-lifecycle.js; an entry is never deleted (the
+// ledger is history). Every finding carries a `remedy` — how it is fixed —
+// set by its probe or, failing that, by threat-remedy.js, and refreshed like
+// its summary.
 
 import fs from 'fs/promises';
 import { join, dirname } from 'path';
@@ -26,6 +30,10 @@ import { journalAssessment } from './assessment-journal.js';
 import { createWriteChain } from '../write-chain.js';
 import { createHouseStore } from '../house-office.js';
 import { legacyCsoPath } from './cso-designation.js';
+import {
+  SUMMARY_MAX, REMEDY_MAX, refreshSeen, settleVanished, verifyVanishedClaims, reopenEntry, noteFixFiled, scopeKey,
+} from './threat-lifecycle.js';
+import { remedyFor } from './threat-remedy.js';
 
 const log = createLogger('ThreatLedger');
 
@@ -37,13 +45,14 @@ const legacyThreatsPath = () =>
   process.env.NEUMA_SECURITY_THREATS_PATH || DEFAULT_LEGACY_PATH;
 
 export const THREAT_LAYERS = Object.freeze(['software', 'hardware', 'house']);
-export const THREAT_SOURCES = Object.freeze(['osv', 'secret-sweep', 'host-probe', 'house-probe', 'manual']);
+// `injection` rows are sightings filed by the turn (injection-sightings.js),
+// never by a scan: no scan scope names them, so the watch never closes one.
+export const THREAT_SOURCES = Object.freeze(['osv', 'secret-sweep', 'host-probe', 'house-probe', 'manual', 'injection', 'self-check']);
 export const THREAT_STATUSES = Object.freeze(['new', 'not_affected', 'confirmed', 'mitigated', 'needs_operator']);
 export const THREAT_SEVERITIES = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 
 const ENTRY_ID_PREFIX = 'th_';
 const ASSESSMENT_MAX = 4000;
-const SUMMARY_MAX = 2000;
 
 // pure — the identity a finding is deduplicated on.
 export const threatKey = ({ source, externalId, repo }) =>
@@ -96,14 +105,20 @@ const validateVerdict = (verdict) => {
 // reasoning it replaced, and the office could never show its work).
 // Runs inside the mutate lock; entries written before history existed are
 // tolerated (their past verdicts are simply not recoverable).
+// `verdict.evidenceById` carries what was measured for each entry when the
+// verdict was given (the attack surface behind a not_affected) — it stands
+// beside the verdict, top-level and in the history row.
 const applyVerdict = (entry, verdict) => {
   const at = new Date().toISOString();
+  const evidence = verdict.evidenceById?.[entry.id] || null;
   entry.status = verdict.status;
   entry.assessment = String(verdict.assessment).slice(0, ASSESSMENT_MAX);
   if (Array.isArray(verdict.surfaces)) entry.surfaces = verdict.surfaces;
   entry.assessedAt = at;
   entry.assessedBy = typeof verdict.assessedBy === 'string' ? verdict.assessedBy : null;
   if (typeof verdict.githubIssue === 'string' && verdict.githubIssue) entry.githubIssue = verdict.githubIssue;
+  if (evidence) entry.evidence = evidence;
+  else delete entry.evidence;
   entry.history = [...(Array.isArray(entry.history) ? entry.history : []), {
     status: entry.status,
     assessment: entry.assessment,
@@ -111,6 +126,7 @@ const applyVerdict = (entry, verdict) => {
     assessedBy: entry.assessedBy,
     assessedAt: at,
     githubIssue: entry.githubIssue,
+    ...(evidence ? { evidence } : {}),
   }];
 };
 
@@ -180,28 +196,50 @@ export const createThreatLedger = ({ path, journal = null }) => {
 
     /**
      * Ingest a scan's findings: new findings enter as `new`; re-seen findings
-     * refresh `lastSeenAt` (assessed verdicts stand — a scanner never reopens
-     * a settled threat). impure.
+     * refresh (threat-lifecycle refreshSeen — a watch-closed one reopens, and
+     * so does a claimed `mitigated` a whole scope still sees). Then every OPEN
+     * entry of a scope in `scanned` that this scan did not surface is settled
+     * by the watch, and every claimed `mitigated` it did not surface is
+     * verified. impure.
      * @param {Array<Object>} findings validated threat shapes (no id/status yet)
-     * @returns {Promise<{added: Array<Object>, seen: number}>}
+     * @param {{scanned?: Array<{source: string, repo?: string|null}>}} [opts]
+     *   scanned — the (source, repo-or-host) scopes this scan read WHOLE; a
+     *   scope that errored or ran partial must be left out, so it closes nothing
+     * @returns {Promise<{added: Array<Object>, seen: number, closed: Array<Object>, reopened: Array<Object>, escalated: Array<Object>, verified: Array<Object>}>}
      */
-    ingest(findings) {
+    ingest(findings, { scanned = [] } = {}) {
       if (!Array.isArray(findings)) return Promise.reject(new Error('ingest needs an array of findings'));
+      if (!Array.isArray(scanned)) return Promise.reject(new Error('ingest scanned scopes must be an array'));
       return mutate(async (entries) => {
         const now = new Date().toISOString();
+        const whole = new Set(scanned.map(scopeKey));
         const index = new Map(entries.map((e, i) => [threatKey(e), i]));
+        const seenKeys = new Set();
         const added = [];
+        const reopened = [];
+        const escalated = [];
+        const verified = [];
         let seen = 0;
-        for (const finding of findings) {
-          const invalid = validateThreat(finding);
+        for (const raw of findings) {
+          const invalid = validateThreat(raw);
           if (invalid) throw new Error(`threat-ledger: ${invalid}`);
+          const finding = raw.remedy ? raw : { ...raw, remedy: remedyFor(raw) };
           const key = threatKey(finding);
           const at = index.get(key);
           if (at !== undefined) {
-            entries[at].lastSeenAt = now;
-            seen += 1;
+            // A finding twice in one batch refreshes once and never rows
+            // twice — the in-batch copy of a NEW finding lands here too.
+            if (!seenKeys.has(key)) {
+              const moved = refreshSeen(entries[at], finding, now, { whole: whole.has(scopeKey(finding)) });
+              if (moved.reopened) reopened.push(entries[at]);
+              if (moved.escalated) escalated.push(entries[at]);
+              if (moved.verified) verified.push(entries[at]);
+              seen += 1;
+            }
+            seenKeys.add(key);
             continue;
           }
+          seenKeys.add(key);
           const entry = {
             id: `${ENTRY_ID_PREFIX}${randomUUID()}`,
             layer: finding.layer,
@@ -211,8 +249,11 @@ export const createThreatLedger = ({ path, journal = null }) => {
             title: finding.title.trim(),
             severity: finding.severity || 'unknown',
             summary: String(finding.summary || '').slice(0, SUMMARY_MAX),
+            remedy: String(finding.remedy || '').slice(0, REMEDY_MAX),
             affected: Array.isArray(finding.affected) ? finding.affected : [],
             surfaces: Array.isArray(finding.surfaces) ? finding.surfaces : [],
+            // OSV only: does the hit reach a user's machine, or only the build?
+            shipped: typeof finding.shipped === 'boolean' ? finding.shipped : null,
             status: 'new',
             assessment: null,
             history: [],
@@ -221,13 +262,67 @@ export const createThreatLedger = ({ path, journal = null }) => {
             lastSeenAt: now,
             assessedAt: null,
             assessedBy: null,
+            verifiedAt: null,
             githubIssue: null,
           };
           index.set(key, entries.length);
           entries.push(entry);
           added.push(entry);
         }
-        return { added, seen };
+        const vanishing = { scanned: whole, seenKeys, keyOf: threatKey, at: now };
+        const closed = settleVanished(entries, vanishing);
+        verified.push(...verifyVanishedClaims(entries, vanishing));
+        return { added, seen, closed, reopened, escalated, verified };
+      });
+    },
+
+    /**
+     * The operator's overturn: move any settled entry back to `new`, the
+     * overturned verdict kept in its history. impure.
+     * @param {string} id full id or an unambiguous prefix
+     * @param {{by: string, note?: string}} opts by — who reopened it
+     * @returns {Promise<{ok: boolean, entry?: Object, error?: string}>}
+     */
+    reopen(id, { by, note } = {}) {
+      if (typeof by !== 'string' || !by.trim()) return Promise.reject(new Error('reopen needs who reopened it (by)'));
+      const reason = typeof note === 'string' && note.trim() ? note.trim().slice(0, ASSESSMENT_MAX) : 'reopened by the operator';
+      return mutate(async (entries) => {
+        const hits = entries.filter((e) => e.id === id || e.id.startsWith(id));
+        if (hits.length === 0) return { ok: false, error: 'no such threat' };
+        if (hits.length > 1) return { ok: false, error: `ambiguous id — ${hits.length} entries match` };
+        const entry = hits[0];
+        if (entry.status === 'new') return { ok: false, error: 'the threat is already new' };
+        reopenEntry(entry, { by: by.trim(), note: reason, at: new Date().toISOString() });
+        return { ok: true, entry };
+      });
+    },
+
+    /**
+     * Stamp the entries a card just told the operator about, so the reminder
+     * cadence counts from the last card. Unknown ids are skipped. impure.
+     * @param {string[]} ids full ids
+     * @param {string} at ISO time of the card
+     */
+    markAlerted(ids, at) {
+      const wanted = new Set(ids);
+      return mutate(async (entries) => {
+        for (const entry of entries) if (wanted.has(entry.id)) entry.alertedAt = at;
+      });
+    },
+
+    /**
+     * Record that the fix for one entry was handed to the operator's task
+     * list. impure.
+     * @param {string} id full id
+     * @param {{by: string, title: string}} filed by — the lane that filed it; title — the task's
+     * @returns {Promise<{ok: boolean, entry?: Object, error?: string}>}
+     */
+    noteFixFiled(id, { by, title }) {
+      return mutate(async (entries) => {
+        const entry = entries.find((e) => e.id === id);
+        if (!entry) return { ok: false, error: 'no such threat' };
+        noteFixFiled(entry, { by, title, at: new Date().toISOString() });
+        return { ok: true, entry };
       });
     },
 

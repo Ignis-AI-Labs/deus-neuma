@@ -2,6 +2,8 @@
 import fs from 'node:fs/promises';
 import { readSessionCheckpoint, birthSessionPath } from '../../core/birth/birth-session-store.js';
 import { withdrawalDecision } from '../../core/birth/operator-sovereignty.js';
+import { heldByWitness } from '../../core/birth/birth-resume.js';
+import { unrecordedSummoningAccess } from '../routes/birth-lane-owner.js';
 
 /** Resolve commitment before cleanup, echo the request identity. // impure */
 export const withdrawBirthSession = async (connection, message, { birthHandler }) => {
@@ -20,6 +22,10 @@ export const withdrawBirthSession = async (connection, message, { birthHandler }
   if (!session?.data || typeof session.data !== 'object'
       || typeof session.isTest !== 'boolean' || !Number.isInteger(session.currentStage)) {
     refuse('unavailable', 'The existing checkpoint could not be read. Nothing was withdrawn.');
+    return;
+  }
+  if (!heldByWitness(session, connection.walletAddress, await unrecordedSummoningAccess(connection.walletAddress))) {
+    refuse('unavailable', 'This summoning was begun under another wallet. Nothing was withdrawn.');
     return;
   }
   const decision = withdrawalDecision(session);

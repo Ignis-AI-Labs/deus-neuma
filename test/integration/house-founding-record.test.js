@@ -25,7 +25,7 @@ import {
 } from '../../backend/services/house-founding-flow.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { setRealmRoot, walletDir } from '../../backend/services/user-realm.js';
-import { loadHouseWorkspace } from '../../backend/services/house-workspace.js';
+import { defaultHouseGround, loadHouseWorkspace } from '../../backend/services/house-workspace.js';
 import { shouldRunChainTests, resolveBaseSepoliaRpc } from '../helpers/chain-optin.js';
 import {
   WITNESS, BEING_A, SEPOLIA_REGISTRY,
@@ -156,7 +156,7 @@ describe('writeFoundingRecord — the record never pollutes the lanes', () => {
   });
 });
 
-describe('writeFoundingRecord — registration locks the WHOLE organization in (Design note, 2026-07-24', () => {
+describe('writeFoundingRecord — registration locks the WHOLE organization in (ruling, 2026-07-24)', () => {
   let realm;
   let priorSettingsPath;
   const FOUNDER = '0xAb01000000000000000000000000000000000001';
@@ -190,13 +190,26 @@ describe('writeFoundingRecord — registration locks the WHOLE organization in (
     await writeFoundingRecord(recordFor(FOUNDER));
     const { root: ground } = await loadHouseWorkspace(FOUNDER);
     expect(ground).toBeTruthy();
-    expect(path.basename(ground)).toBe('house');
+    expect(ground).toBe(defaultHouseGround(root, FOUNDER));
+    expect(path.basename(ground)).toBe(`house.${FOUNDER.toLowerCase()}`);
     expect(existsSync(path.join(ground, 'repos'))).toBe(true);
     expect(existsSync(path.join(ground, 'post'))).toBe(true);
     // The raised ground NEVER walks into lane discovery as a phantom being
     // — it wears the sovereignty-boundary marker (GPT sol r2 High).
-    expect(await neumaWorkspace.listNeuma()).not.toContain('house');
-    expect((await neumaWorkspace.listNeumaByOwner(FOUNDER)).map((n) => n.neumaId)).not.toContain('house');
+    expect(await neumaWorkspace.listNeuma()).not.toContain(path.basename(ground));
+    expect((await neumaWorkspace.listNeumaByOwner(FOUNDER)).map((n) => n.neumaId)).not.toContain(path.basename(ground));
+  });
+
+  it('a SECOND house founded on this install raises its own ground, never the first house\'s', async () => {
+    const SECOND = '0xAb04000000000000000000000000000000000004';
+    await writeFoundingRecord(recordFor(FOUNDER));
+    await writeFoundingRecord(recordFor(SECOND));
+    const first = (await loadHouseWorkspace(FOUNDER)).root;
+    const second = (await loadHouseWorkspace(SECOND)).root;
+    expect(first && second).toBeTruthy();
+    expect(second).not.toBe(first);
+    expect(second.startsWith(first + path.sep) || first.startsWith(second + path.sep)).toBe(false);
+    expect(existsSync(path.join(second, 'post'))).toBe(true);
   });
 
   it('a ground the witness ALREADY chose is never moved by founding', async () => {
@@ -212,11 +225,12 @@ describe('writeFoundingRecord — registration locks the WHOLE organization in (
   it('the receipt STANDS even when the ground cannot be raised — the chain already spoke', async () => {
     // A FILE squatting where the default ground would rise: mkdir fails,
     // ensureHouseGround throws, and the catch must hold the receipt whole.
-    writeFileSync(path.join(root, 'house'), 'not-a-directory');
+    const squat = defaultHouseGround(root, FOUNDER);
+    writeFileSync(squat, 'not-a-directory');
     const filePath = await writeFoundingRecord(recordFor(FOUNDER));
     expect(existsSync(filePath)).toBe(true);
     expect((await loadHouseWorkspace(FOUNDER)).root).toBeNull();
-    rmSync(path.join(root, 'house'), { force: true });
+    rmSync(squat, { force: true });
   });
 
   it('a BEING\'S LANE can never become the ground — the marker never overwrites a life (GPT sol r3)', async () => {

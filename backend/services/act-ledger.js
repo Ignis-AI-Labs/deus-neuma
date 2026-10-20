@@ -166,6 +166,8 @@ export const recordAct = async (act) => {
       // the args do; otherwise it is drawn from the naming slots.
       scope: act.scope !== undefined ? act.scope : scopeOf(act.args),
       decision: act.decision || 'unknown',
+      // Who said yes, when a house's own reviewer did (the Optio's review).
+      ...(act.approvedBy ? { approvedBy: act.approvedBy } : {}),
       status: act.status || 'ok',
     })}\n`;
     await mkdir(actsRoot(), { recursive: true });

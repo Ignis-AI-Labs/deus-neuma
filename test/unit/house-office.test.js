@@ -1,7 +1,8 @@
 /**
  * THE HOUSE OFFICES — seats and the legacy move, on REAL tmp disk, no double
  * anywhere (RULE 0). Two houses on one machine with the same lane id in
- * both (Design note, 2026-10-16: […]).
+ * both (ruling, 2026-10-16: two houses are never confused by the system, at
+ * any level).
  *
  * Proven: each house seats its own CSO/CLO/CMO and never sees the other's;
  * a house seats only its own lane; the machine-wide seat and office data

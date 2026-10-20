@@ -1,0 +1,107 @@
+/* HouseCalendar-rail.css — whose calendar is in view, as one vertical
+   instrument on instrument paper (the folder picker's rail idiom): EVERYONE,
+   then the standings. Each item reads its name over what is next for it; a
+   focused person carries the signal bar and a signal name. */
+
+.hcal-rail {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-4);
+  background-color: var(--color-glass-light);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.hcal-railsec { margin-top: var(--space-3); }
+.hcal-railhead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+.hcal-railhead-rule { flex: 1 1 auto; height: 1px; background: var(--line); }
+.hcal-railhead-count { font-variant-numeric: tabular-nums; letter-spacing: 0.1em; }
+
+.hcal-raillist { margin: 0; padding: 0; list-style: none; }
+.hcal-railitem {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.hcal-railitem .hcal-dot { margin-top: 5px; }
+.hcal-railitem:hover { background: var(--color-glass-hover); }
+.hcal-railitem:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--signal-dim); }
+.hcal-railitem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 2px;
+  background: var(--signal);
+  opacity: 0;
+  transform: scaleY(0);
+  transition: opacity var(--dur-snap) linear, transform var(--dur-snap) var(--ease-snap);
+}
+.hcal-railitem.is-active { background: var(--color-glass-hover); }
+.hcal-railitem.is-active::before { opacity: 1; transform: scaleY(1); }
+.hcal-railitem.is-active .hcal-railname { color: var(--signal); }
+
+.hcal-railtext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hcal-railname {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hcal-railsub {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hcal-railcount {
+  flex: 0 0 auto;
+  min-width: 2ch;
+  padding-top: 2px;
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--color-text-secondary);
+}
+/* a person with nothing in view steps back — still one click from focus */
+.hcal-railitem.is-quiet .hcal-railname { color: var(--color-text-secondary); }
+.hcal-railitem.is-quiet .hcal-railcount { color: var(--color-text-tertiary); }
+
+.hcal-railitem.is-everyone { min-height: 52px; border-bottom: 1px solid var(--line); }
+.hcal-railitem.is-everyone .hcal-railname { letter-spacing: 0.22em; font-size: 12px; }
+
+@container hcal (max-width: 760px) {
+  .hcal-rail { max-height: 200px; }
+}

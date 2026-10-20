@@ -71,7 +71,7 @@ export const FloatingWindow = ({
 
   // The line of light lives only while it animates. Left in the tree at rest
   // (transparent, glowing), focus swapping the window's drop-shadow filter
-  // re-rastered it into a hairline across the window (Design note, 2026-09-26. The
+  // re-rastered it into a hairline across the window (ruling, 2026-09-26). The
   // entrance ends it; the close mounts it again for the sever.
   const [lit, setLit] = useState(true);
 

@@ -1,7 +1,7 @@
 // ContractLine — the exact contract a signature binds, stated in FULL and
 // REVIEWABLE: the address is a live road to the network's explorer, so
 // anyone can read the contract before they sign anything against it.
-// Platform doctrine (Design note, 2026-07-16: wherever this platform touches an
+// Platform doctrine (ruling, 2026-07-16): wherever this platform touches an
 // on-chain contract, the user SEES its full address — never shortened,
 // never implied — and can click through to the chain's own record. Verify
 // any address against docs/contracts/deployments/.

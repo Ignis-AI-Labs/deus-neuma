@@ -27,10 +27,12 @@ const PLAN_DIR = await fs.mkdtemp(path.join(os.tmpdir(), 'plan-intent-'));
 const PLAN_PATH = path.join(PLAN_DIR, 'weekly-plan.json');
 const CMO_PATH = path.join(PLAN_DIR, 'cmo.json');
 const QUEUE_PATH = path.join(PLAN_DIR, 'queue.json');
+const DATA_ROOT = path.join(PLAN_DIR, 'data');
 const overrides = {
   NEUMA_WEEKLY_PLAN_PATH: PLAN_PATH,
   NEUMA_CMO_PATH: CMO_PATH,
   NEUMA_SOCIAL_POST_QUEUE_PATH: QUEUE_PATH,
+  NEUMA_DATA_ROOT: DATA_ROOT,
 };
 const savedEnv = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
 const savedRoot = getWorkspacesRoot();
@@ -123,11 +125,17 @@ describe('marketing/plan — author, approve, lock; and the standing surface', (
   });
 
   test('(c2) pipeline_state names the REAL algorithm clones on this machine', async () => {
+    // The sync receipt lives under the data root, and the suite's data root is
+    // its own (9ed812b43) — so the receipt is written here, in the shape
+    // scripts/x-algorithm-sync.mjs writes it, and read back through the real path.
+    const syncedAt = '2026-10-19T08:00:00.000Z';
+    await fs.mkdir(DATA_ROOT, { recursive: true });
+    await fs.writeFile(path.join(DATA_ROOT, 'x-algorithm-sync.json'), JSON.stringify({ syncedAt }));
     const state = await computePipelineState({ laneId: CMO_LANE, wallet: null });
     expect(state.algorithm.ranking.cloned).toBe(true);
     expect(state.algorithm.ml.cloned).toBe(true);
     expect(state.algorithm.ranking.head).toMatch(/^[0-9a-f]{7,}$/);
-    expect(state.algorithm.lastSynced).toBeTruthy();
+    expect(state.algorithm.lastSynced).toBe(syncedAt);
   });
 
   test('next scheduled is the earliest eligible future entry, independent of insertion order', async () => {

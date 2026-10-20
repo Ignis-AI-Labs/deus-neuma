@@ -29,12 +29,25 @@ test('a failed first speech frame remains attached to its persisted turn in the 
   expect(frame.take).toEqual({ turnId: 'failed', takeIndex: 1 });
 });
 
-test('only attributed witness failures affect the route and local failures affect only local status', () => {
+test('only attributed failures move a light: a witness route by its provider, the local model by unreachable', () => {
   expect(speechActions({ error: true, provider: 'vendor' }, { seen: true, witness: true }).health)
     .toEqual({ type: 'ROUTE', live: false, provider: 'vendor' });
   expect(speechActions({ error: true }, { seen: true, witness: true }).health).toBeNull();
-  expect(speechActions({ error: true }, { seen: true, witness: false }).health)
+  expect(speechActions({ error: true, unreachable: true }, { seen: true, witness: false }).health)
     .toEqual({ type: 'LOCAL', reachable: false, standby: false });
+  // A refusal, an overflow, a bad key: the turn failed, the local model did not vanish.
+  expect(speechActions({ error: true, reason: 'context length exceeded' }, { seen: true, witness: false }).health).toBeNull();
+});
+
+test('the failure carries the reason the frame named, and the desk shows it under the bubble', () => {
+  const frame = speechActions({ turnId: 'p1', takeIndex: 1, error: true, content: '[Connection to the void disrupted]', reason: 'context length exceeded' },
+    { seen: true, witness: false });
+  expect(frame.failure).toMatchObject({ type: 'ERROR', reason: 'context length exceeded', turnId: 'p1' });
+  const state = run([{ type: 'USER_SENT', text: 'Question' }, frame.failure]);
+  expect(state.messages.at(-1)).toMatchObject({ role: 'error', reason: 'context length exceeded', turnId: 'p1' });
+  // A reason the bubble already says is never repeated beneath it.
+  const said = speechActions({ error: true, content: 'The model server did not answer: refused', reason: 'refused' }, { seen: true, witness: false });
+  expect(run([said.failure]).messages.at(-1).reason).toBeUndefined();
 });
 
 test('later speech updates the take without repeating first-frame stamp, start or health actions', () => {

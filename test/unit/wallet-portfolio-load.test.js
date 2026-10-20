@@ -177,6 +177,16 @@ describe('buildWalletPortfolio', () => {
     expect(pf.usdTotal).toBeNull(); // nothing priced → no fabricated $0
   });
 
+  it('tokens: false reads no tokens at all - a balance from another network gets no token rows from this one', async () => {
+    const buildWalletPortfolio = await withWorld({
+      balances: { [USDC.address]: 100000000n },
+      prices: { ethereum: { usd: 2000, change24h: 0 }, 'usd-coin': { usd: 1, change24h: 0 } },
+    });
+    const pf = await buildWalletPortfolio(OWNER, '0.5', { tokens: false });
+    expect(pf.rows.map((r) => r.symbol)).toEqual(['ETH']);
+    expect(node.calls.filter((c) => c.method === 'eth_call')).toHaveLength(0);
+  });
+
   it('survives the chain really breaking: RPC down still yields the ETH row', async () => {
     const buildWalletPortfolio = await withWorld({
       prices: { ethereum: { usd: 2000, change24h: 0 } },

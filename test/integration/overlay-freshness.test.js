@@ -149,7 +149,7 @@ describe('asar poisoning (CQ-907)', () => {
     const asarKey = 'electron/dist/resources/default_app.asar';
     expect(Object.keys(rows).filter((key) => key.startsWith(asarKey))).toEqual([asarKey]);
     expect(rows[asarKey]).not.toContain('undefined');
-    expect(rows[asarKey].split(':')[3]).toBe('108953'); // the real file size
+    expect(rows[asarKey].split(':')[3]).toBe(String((await fs.stat(REAL_ASAR)).size)); // the real file size
   });
 
   // The exact reproduction of the live loop: TWO separate Electron processes (two

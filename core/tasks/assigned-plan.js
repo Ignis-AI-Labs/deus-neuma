@@ -181,7 +181,19 @@ export const normalizeDays = (days) => {
  * Validate and normalize operator-authored fields. Throws the correction on
  * any malformed part. Pure.
  */
-const _normalizeFields = ({ title, detail, cadence, dueDate, dueTime, days, chatId, size, vessel }, { requireTitle, requireCadence }) => {
+// The rhythms a TIME of day belongs on: a daily by 18:00, the custom days'
+// block at 17:00 — never biweekly/monthly/baseline, which carry their own period.
+const TIMED = Object.freeze(['daily', 'weekly', 'once', 'milestone', 'custom']);
+const TIMED_WORDS = 'daily, weekly, custom-day, one-shot, or milestone work';
+// A START time makes the task a BLOCK on the calendar (start → its due time
+// as the end): "training 17:00–18:15". The end is required, and comes after.
+const _checkBlock = (startTime, dueTime) => {
+  if (!startTime) return;
+  if (!dueTime) throw _correction('a start time makes a block, and a block needs its end — give dueTime (HH:MM) as when it ends.');
+  if (startTime >= dueTime) throw _correction('a block must end after it starts — startTime comes before dueTime, within one day.');
+};
+
+const _normalizeFields = ({ title, detail, cadence, dueDate, dueTime, startTime, days, chatId, size, vessel }, { requireTitle, requireCadence }) => {
   const out = {};
   // Same four sizes the being's own ledger speaks (core/tasks/task-order.js).
   // ONE vocabulary across both lists, because the TASKS window orders them
@@ -226,6 +238,11 @@ const _normalizeFields = ({ title, detail, cadence, dueDate, dueTime, days, chat
   } else if (dueTime === null) {
     out.dueTime = null; // explicit null clears the due time
   }
+  if (startTime !== undefined && startTime !== null) {
+    out.startTime = normalizeDueTime(startTime); // strict HH:MM local — when the block begins
+  } else if (startTime === null) {
+    out.startTime = null; // explicit null clears the start (the task is a deadline again)
+  }
   return out;
 };
 
@@ -238,17 +255,18 @@ const _normalizeFields = ({ title, detail, cadence, dueDate, dueTime, days, chat
  */
 export const addAssigned = (plan, args, { id, now }) => {
   const fields = _normalizeFields(args || {}, { requireTitle: true, requireCadence: true });
-  // THE DEADLINE GATES (Design note, 2026-09-20: a DATE pins an instance's day —
+  // THE DEADLINE GATES (ruling, 2026-09-20): a DATE pins an instance's day —
   // milestones and one-shots, the cadences that happen once; a TIME marks
-  // when within the day a recurring task is owed ([…]). Putting a
+  // when within the day a recurring task is owed ("by 18:00"). Putting a
   // due date on a recurring rhythm would be ambiguous — every instance or
   // just the first? — so the store refuses rather than guesses.
   if (fields.dueDate && !['milestone', 'once'].includes(fields.cadence)) {
     throw _correction('a due date only makes sense on a milestone or a one-shot — recurring work carries its own rhythm.');
   }
-  if (fields.dueTime && !['daily', 'weekly', 'once', 'milestone'].includes(fields.cadence)) {
-    throw _correction('a due time only makes sense on daily, weekly, one-shot, or milestone work — the other rhythms carry their own period.');
+  if ((fields.dueTime || fields.startTime) && !TIMED.includes(fields.cadence)) {
+    throw _correction(`a time of day only makes sense on ${TIMED_WORDS} — the other rhythms carry their own period.`);
   }
+  _checkBlock(fields.startTime, fields.dueTime);
   if (fields.cadence === 'custom' && !fields.days) {
     throw _correction('a custom cadence needs its days — which weekdays the task runs (0 = Sunday … 6 = Saturday).');
   }
@@ -274,6 +292,7 @@ export const addAssigned = (plan, args, { id, now }) => {
     status: 'open',
     ...(fields.dueDate ? { dueDate: fields.dueDate } : {}),
     ...(fields.dueTime ? { dueTime: fields.dueTime } : {}),
+    ...(fields.startTime ? { startTime: fields.startTime } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -341,11 +360,27 @@ export const updateAssigned = (plan, args, { now }) => {
   }
   if (fields.dueTime !== undefined) {
     const effectiveCadence = patch.cadence ?? prev.cadence;
-    if (fields.dueTime !== null && !['daily', 'weekly', 'once', 'milestone'].includes(effectiveCadence)) {
-      throw _correction('a due time only makes sense on daily, weekly, one-shot, or milestone work — the other rhythms carry their own period.');
+    if (fields.dueTime !== null && !TIMED.includes(effectiveCadence)) {
+      throw _correction(`a time of day only makes sense on ${TIMED_WORDS} — the other rhythms carry their own period.`);
     }
     if (fields.dueTime === null) patch.clearDueTime = true;
     else patch.dueTime = fields.dueTime;
+  }
+  if (fields.startTime !== undefined) {
+    const effectiveCadence = patch.cadence ?? prev.cadence;
+    if (fields.startTime !== null && !TIMED.includes(effectiveCadence)) {
+      throw _correction(`a time of day only makes sense on ${TIMED_WORDS} — the other rhythms carry their own period.`);
+    }
+    if (fields.startTime === null) patch.clearStartTime = true;
+    else patch.startTime = fields.startTime;
+  }
+  // the block the update leaves, start against end, whichever side moved
+  if (fields.startTime !== undefined || fields.dueTime !== undefined) {
+    const start = patch.clearStartTime ? null : (patch.startTime ?? prev.startTime);
+    const end = patch.clearDueTime ? null : (patch.dueTime ?? prev.dueTime);
+    // a start set now must have its end; an end cleared under a standing
+    // start releases the block whole (the start goes with it below)
+    if (fields.startTime !== undefined ? start : (start && end)) _checkBlock(start, end);
   }
   if (fields.chatId !== undefined) {
     if (fields.chatId === null) patch.clearChat = true; // → stands in every chat
@@ -370,14 +405,15 @@ export const updateAssigned = (plan, args, { now }) => {
       throw _correction(`this list already holds ${ASSIGNED_MAX_LIVE} open tasks — settle or drop one before reopening this.`);
     }
   }
-  const { clearDetail, clearDueDate, clearDueTime, clearChat, clearSize, clearVessel, ...rest } = patch;
+  const { clearDetail, clearDueDate, clearDueTime, clearStartTime, clearChat, clearSize, clearVessel, ...rest } = patch;
   const task = { ...prev, ...rest, updatedAt: now };
   if (clearChat) delete task.chatId;
   if (clearSize) delete task.size;
   if (clearVessel) delete task.vessel;
   if (clearDetail) delete task.detail;
   if (clearDueDate || (patch.cadence && !['milestone', 'once'].includes(patch.cadence))) delete task.dueDate;
-  if (clearDueTime || (patch.cadence && !['daily', 'weekly', 'once', 'milestone'].includes(patch.cadence))) delete task.dueTime;
+  if (clearDueTime || (patch.cadence && !TIMED.includes(patch.cadence))) delete task.dueTime;
+  if (clearStartTime || !task.dueTime) delete task.startTime;
   if (patch.cadence && patch.cadence !== 'custom') delete task.days;
   if (patch.status === 'done') task.completedAt = now;
   const next = [...tasks];

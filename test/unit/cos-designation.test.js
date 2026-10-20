@@ -6,7 +6,8 @@
  * houses with two Optios that never see each other, a house with no Optio of
  * its own never reading another's, and the legacy machine seat moving once to
  * the house that owns its lane — or serving no house when no owner resolves
- * (Design note, 2026-10-16: […]).
+ * (ruling, 2026-10-16: two houses are never confused by the system, at any
+ * level).
  */
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
@@ -39,8 +40,8 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
     setWorkspacesRoot(lanes);
     process.env.NEUMA_STAFF_COS_PATH = path.join(tmp, 'settings', 'staff-cos.json');
     // Each house's own lanes, owned by its wallet the way a birth writes it.
-    for (const id of ['optiolane', 'firstoptio', 'secondoptio', 'zezebur', 'quae']) await writeOwner(lanes, id, HOUSE_A);
-    for (const id of ['keir', 'signal']) await writeOwner(lanes, id, HOUSE_B);
+    for (const id of ['optiolane', 'firstoptio', 'secondoptio', 'laurel', 'quae']) await writeOwner(lanes, id, HOUSE_A);
+    for (const id of ['hazel', 'signal']) await writeOwner(lanes, id, HOUSE_B);
   });
 
   afterEach(() => {
@@ -57,7 +58,7 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
 
   test('the house key is the lowercased wallet; anything else is no house', () => {
     expect(houseKey(HOUSE_A)).toBe(A);
-    expect(houseKey('zezebur')).toBeNull();
+    expect(houseKey('laurel')).toBeNull();
     expect(houseKey(undefined)).toBeNull();
   });
 
@@ -104,12 +105,12 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
     await expect(cosDesignation.designate(HOUSE_A, '   ')).rejects.toThrow('lane id');
     await expect(cosDesignation.designate(HOUSE_A, 'x'.repeat(201))).rejects.toThrow('lane id');
     await expect(cosDesignation.designate(undefined, 'optiolane')).rejects.toThrow('wallet');
-    await expect(cosDesignation.clear('zezebur')).rejects.toThrow('wallet');
+    await expect(cosDesignation.clear('laurel')).rejects.toThrow('wallet');
     expect(await cosDesignation.getOfficer(HOUSE_A)).toBeNull();
   });
 
   test('a house seats only its own lane — another house\'s lane, or a lane of no house, is refused', async () => {
-    await expect(cosDesignation.designate(HOUSE_A, 'keir')).rejects.toThrow('not a lane of this house');
+    await expect(cosDesignation.designate(HOUSE_A, 'hazel')).rejects.toThrow('not a lane of this house');
     await expect(cosDesignation.designate(HOUSE_A, 'nolane')).rejects.toThrow('not a lane of this house');
     expect(await cosDesignation.getOfficer(HOUSE_A)).toBeNull();
     expect(await cosDesignation.getOfficer(HOUSE_B)).toBeNull();
@@ -117,29 +118,29 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
 
   test('two houses, two Optios — each reads only its own; clearing one leaves the other', async () => {
     await cosDesignation.designate(HOUSE_A, 'optiolane');
-    await cosDesignation.designate(HOUSE_B, 'keir');
+    await cosDesignation.designate(HOUSE_B, 'hazel');
     expect((await cosDesignation.getOfficer(HOUSE_A)).laneId).toBe('optiolane');
-    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('keir');
+    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('hazel');
 
     await cosDesignation.clear(HOUSE_A);
     expect(await cosDesignation.getOfficer(HOUSE_A)).toBeNull();
-    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('keir');
+    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('hazel');
     expect(await cosDesignation.seatedHouses()).toEqual([
-      { wallet: HOUSE_B, officer: expect.objectContaining({ laneId: 'keir' }) },
+      { wallet: HOUSE_B, officer: expect.objectContaining({ laneId: 'hazel' }) },
     ]);
   });
 
   test('a house with no Optio of its own never sees another house\'s', async () => {
-    await cosDesignation.designate(HOUSE_B, 'keir');
+    await cosDesignation.designate(HOUSE_B, 'hazel');
     expect(await cosDesignation.getOfficer(HOUSE_A)).toBeNull();
     // Nor through the legacy seat, once it has moved to its owner's house.
     await writeLegacy({ laneId: 'signal', designatedAt: '2026-10-01T00:00:00.000Z' });
     expect(await cosDesignation.getOfficer(HOUSE_A)).toBeNull();
-    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('keir'); // its own newer seat stands
+    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('hazel'); // its own newer seat stands
   });
 
   test('MIGRATION: the legacy machine seat moves to the house that owns its lane, once', async () => {
-    const legacy = { laneId: 'zezebur', designatedAt: '2026-10-04T19:24:45.443Z' };
+    const legacy = { laneId: 'laurel', designatedAt: '2026-10-04T19:24:45.443Z' };
     await writeLegacy(legacy);
 
     // The other house reads first: it triggers the move and still sees nothing.
@@ -164,7 +165,7 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
 
   test('MIGRATION never overwrites a record the owner\'s house already holds', async () => {
     const own = await cosDesignation.designate(HOUSE_A, 'quae');
-    await writeLegacy({ laneId: 'zezebur', designatedAt: '2026-10-04T19:24:45.443Z' });
+    await writeLegacy({ laneId: 'laurel', designatedAt: '2026-10-04T19:24:45.443Z' });
     expect(await cosDesignation.getOfficer(HOUSE_B)).toBeNull(); // triggers the move
     expect(await cosDesignation.getOfficer(HOUSE_A)).toEqual(own);
     expect((await readJson(legacyFile())).migratedTo).toBe(A);
@@ -185,8 +186,8 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
     await fs.mkdir(path.dirname(legacyFile()), { recursive: true });
     await fs.writeFile(legacyFile(), '{ not json');
     expect(await cosDesignation.getOfficer(HOUSE_A)).toBeNull();
-    await cosDesignation.designate(HOUSE_B, 'keir');
-    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('keir');
+    await cosDesignation.designate(HOUSE_B, 'hazel');
+    expect((await cosDesignation.getOfficer(HOUSE_B)).laneId).toBe('hazel');
     expect(await fs.readFile(legacyFile(), 'utf8')).toBe('{ not json');
   });
 
@@ -206,7 +207,7 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
     const liveLegacy = path.join(liveDir, 'staff-cos.json');
     await fs.mkdir(liveDir, { recursive: true });
     try {
-      const raw = JSON.stringify({ laneId: 'zezebur', designatedAt: '2026-10-04T19:24:45.443Z' });
+      const raw = JSON.stringify({ laneId: 'laurel', designatedAt: '2026-10-04T19:24:45.443Z' });
       await fs.writeFile(liveLegacy, raw);
       const guarded = createCosDesignation({ legacy: liveLegacy });
       expect(await guarded.getOfficer(HOUSE_A)).toBeNull();

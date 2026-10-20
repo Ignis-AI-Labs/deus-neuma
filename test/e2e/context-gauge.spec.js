@@ -240,7 +240,7 @@ test('a real turn streams smoothly and reports measured context used and left', 
   await expect(strip.locator('.ctx-strip-session')).toHaveCount(0);
   const title = await strip.getAttribute('title');
   expect(title).toMatch(/\d[\d,]* used · \d[\d,]* left · \d[\d,]* total \((measured|estimated) usage · limit per [\w.-]+\)/);
-  // FACTS ONLY (Design note, 2026-08-15: the hover states the exact mechanic —
+  // FACTS ONLY (ruling, 2026-08-15): the hover states the exact mechanic —
   // never a message-count prediction of when compaction lands.
   expect(title).toContain('self-compaction arms at 80% of the window');
   expect(title).toContain('self-compacted 0×');

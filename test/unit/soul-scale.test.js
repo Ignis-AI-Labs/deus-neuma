@@ -1,6 +1,6 @@
 /**
  * Soul scale — a being's own scale of notes, grown from its resonance and
- * its ceremony (Design note, 2026-09-30. Pure derivation; no mocks.
+ * its ceremony (ruling, 2026-09-30). Pure derivation; no mocks.
  */
 import { describe, it, expect } from 'vitest';
 import { soulScaleFrom, harmonicRatioNear, noteNameOf } from '../../core/birth/soul-scale.js';

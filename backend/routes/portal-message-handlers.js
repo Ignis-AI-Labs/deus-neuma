@@ -65,7 +65,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       updateToolWorkspace(connection, message.toolWorkspace);
       // The desk's handle for this word while held — invalid shapes drop.
       if (!HOLD_ID_PATTERN.test(String(message.holdId ?? ''))) delete message.holdId;
-      // MID-STREAM SPEECH (Design note, 2026-07-26 — the council's two ways, in the
+      // MID-STREAM SPEECH (ruling, 2026-07-26) — the council's two ways, in the
       // one-on-one: 'now' INTERJECTS (cut the reply, take the floor),
       // anything else HOLDS until the next completed action. The old flat refusal
       // made watching a being work read-only: destroy the turn, or wait.
@@ -91,7 +91,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       break;
 
     case 'consciousness:retry': {
-      // THE TAKES (Design note, 2026-07-27: ask a turn-point again as a new TAKE of
+      // THE TAKES (ruling, 2026-07-27): ask a turn-point again as a new TAKE of
       // the same point, never a new post. The frame names the point only —
       // the words and attachments come from the RECORD (resolveRetryTurn);
       // the bubble is never the source of truth.
@@ -103,7 +103,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         break;
       }
       const raw = message.retry && typeof message.retry === 'object' ? message.retry : {};
-      // The EDIT-fork (Design note, 2026-07-28: a retry may carry the operator's REVISED
+      // The EDIT-fork (ruling, 2026-07-28): a retry may carry the operator's REVISED
       // words. The point itself is still named by turnId — the revision rides
       // as the new take's ask (append-only; the recorded words never move).
       const revisedThought = typeof raw.thought === 'string' ? raw.thought.trim().slice(0, 20000) : '';
@@ -125,7 +125,12 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       }
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
       updateToolWorkspace(connection, message.toolWorkspace);
-      const retryMessage = { type: message.type, retry, preset: message.preset };
+      // Attachments ride along only so the turn can refuse them out loud — a
+      // retry answers the recorded point and never silently drops new ones.
+      const retryMessage = {
+        type: message.type, retry, preset: message.preset,
+        ...(Array.isArray(message.attachments) && message.attachments.length ? { attachments: message.attachments } : {}),
+      };
       if (connection.turnPromise) {
         // The same held-words semantics as a thought — the take goes the
         // next completed action in the in-flight turn (interjection is for speech,
@@ -142,7 +147,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       break;
     }
 
-    // THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16 — the three queue
+    // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — the three queue
     // doors (edit / now / pull), answered in services/held-thoughts.js.
     case 'consciousness:queue_edit':
     case 'consciousness:queue_now':

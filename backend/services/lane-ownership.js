@@ -44,45 +44,85 @@ const laneExists = async (laneRoot) => {
   }
 };
 
+// impure — the lane's root, or null when the engine refuses the id
+const laneRootOf = (workspace, neumaId) => {
+  try {
+    return workspace.pathFor(neumaId);
+  } catch {
+    return null;
+  }
+};
+
 /**
- * Atomically claim an inhabited lane or verify its existing wallet owner.
+ * Verify a lane's wallet owner. A READ NEVER CLAIMS (ruling, 2026-10-19): a lane
+ * no wallet has claimed answers 'unclaimed' and nothing is written — its
+ * operator claims it deliberately (claimLane).
  *
  * @param {{ workspace: object, neumaId: string, wallet: string }} input
  * @returns {Promise<Readonly<{ ok: boolean, reason: string|null, error: Error|null }>>}
+ *   reason: 'not-owner' | 'unclaimed' | 'not-found' (missing or hollow) | 'corrupt' | 'error'
  */
-// impure — reads and may create owner.json on the real workspace filesystem.
-export const claimOrVerifyLaneOwnership = async ({ workspace, neumaId, wallet }) => {
+// impure — reads owner.json and the lane's identity markers.
+export const verifyLaneOwnership = async ({ workspace, neumaId, wallet }) => {
   if (typeof wallet !== 'string' || wallet.trim() === '') return outcome(false, 'error');
+  const laneRoot = laneRootOf(workspace, neumaId);
+  if (!laneRoot) return outcome(false, 'not-found');
 
-  let laneRoot;
-  try {
-    laneRoot = workspace.pathFor(neumaId);
-  } catch {
-    return outcome(false, 'not-found');
-  }
-
-  const ownerPath = path.join(laneRoot, 'owner.json');
-  const existing = await readOwner(ownerPath, wallet);
+  const existing = await readOwner(path.join(laneRoot, 'owner.json'), wallet);
   if (existing.reason !== 'unclaimed') return existing;
-
   try {
-    if (!(await laneExists(laneRoot)) || !(await carriesBeing(laneRoot))) {
-      return outcome(false, 'not-found');
-    }
+    return (await laneExists(laneRoot)) && (await carriesBeing(laneRoot))
+      ? outcome(false, 'unclaimed')
+      : outcome(false, 'not-found');
   } catch (err) {
     return outcome(false, 'error', err);
   }
+};
 
+// impure — the operator wallet the lane's genesis seal names, null when
+// unsealed; a seal that cannot be read is an error, never "unsealed".
+const sealedWallet = async (laneRoot) => {
+  let raw;
   try {
-    await fs.writeFile(
-      ownerPath,
-      JSON.stringify({ wallet, claimedAt: Date.now() }),
-      { flag: 'wx' },
-    );
+    raw = await fs.readFile(path.join(laneRoot, 'identity', 'genesis-seal.json'), 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+  const wallet = JSON.parse(raw)?.record?.witnessWallet;
+  if (typeof wallet !== 'string' || !wallet.trim()) throw new Error('genesis seal names no operator wallet');
+  return wallet.toLowerCase();
+};
+
+/**
+ * Claim an inhabited, unclaimed lane — deliberately, never on a read. A lane
+ * belongs to the wallet its genesis seal names; a lane with no seal is adopted
+ * only by the install owner (the caller has checked that and says so with
+ * `adopt`). The `wx` write means two claims racing cannot both land.
+ *
+ * @param {{ workspace: object, neumaId: string, wallet: string, adopt?: boolean }} input
+ * @returns {Promise<Readonly<{ ok: boolean, reason: string|null, error: Error|null }>>}
+ *   reason: 'sealed-to-another' | 'unsealed' (needs the install owner) | any verify reason
+ */
+// impure — reads the seal and may create owner.json.
+export const claimLane = async ({ workspace, neumaId, wallet, adopt = false }) => {
+  const verified = await verifyLaneOwnership({ workspace, neumaId, wallet });
+  if (verified.reason !== 'unclaimed') return verified;
+  const laneRoot = laneRootOf(workspace, neumaId);
+  try {
+    const sealedTo = await sealedWallet(laneRoot);
+    if (sealedTo && sealedTo !== wallet.toLowerCase()) return outcome(false, 'sealed-to-another');
+    if (!sealedTo && !adopt) return outcome(false, 'unsealed');
+  } catch (err) {
+    return outcome(false, err instanceof SyntaxError ? 'corrupt' : 'error', err);
+  }
+  const ownerPath = path.join(laneRoot, 'owner.json');
+  try {
+    await fs.writeFile(ownerPath, JSON.stringify({ wallet: wallet.toLowerCase(), claimedAt: Date.now() }), { flag: 'wx' });
     return outcome(true);
   } catch (err) {
     if (err.code === 'EEXIST') return readOwner(ownerPath, wallet);
-    return outcome(false, err instanceof SyntaxError ? 'corrupt' : 'error', err);
+    return outcome(false, 'error', err);
   }
 };
 

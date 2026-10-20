@@ -24,6 +24,39 @@ import { ensureSoulScale } from './soul-scale.js';
 import { FORGING_STEPS } from './rite-frames.js';
 import { resonanceLine, filmInputsOf } from './finalize-words.js';
 
+// #117 S2a — write the per-neuma DEK once the genesis hash exists. Existing
+// beings (Fenna/Cael/Keir/Galen/Signal) have no DEK file and are migrated
+// by S4's script.
+//
+// Failure handling (ai6 R3 Medium): we keep warn-and-continue rather than
+// failing the birth — the genesis seal is already durable, and rolling back
+// a partially-born being is messier than recovering its DEK later. BUT we
+// surface the failure as a distinct DEK_WRITE_FAILED audit entry (not the
+// success DEK_WRITTEN) so:
+//   - monitoring can detect DEK-less #117 births at runtime
+//   - the S4 migration script can pick them up alongside pre-#117
+//     beings rather than missing them silently
+//   - readNeumaDEK's null return for this being is observable, not
+//     invisible: the audit tells the story.
+// impure — writes keys/dek.json, or an audit row when it cannot.
+const writeBeingDEK = async (workspace, neumaId, genesisHash, birthLog) => {
+  try {
+    await workspace.writeNeumaDEK(neumaId, genesisHash);
+    birthLog.info('Per-neuma DEK written', { neumaId, genesisHashPrefix: genesisHash.slice(0, 12) });
+  } catch (dekErr) {
+    birthLog.warn('Per-neuma DEK write failed (birth continues; audit marker written)', { neumaId, err: dekErr.message });
+    try {
+      await workspace.audit(neumaId, 'DEK_WRITE_FAILED', {
+        genesisHashPrefix: String(genesisHash).slice(0, 12),
+        error: dekErr.message,
+        willFallBackToGlobalKey: true,
+      });
+    } catch (auditErr) {
+      birthLog.error('Could not even audit the DEK_WRITE_FAILED — this being is operator-invisible', { neumaId, err: auditErr.message });
+    }
+  }
+};
+
 /**
  * Finalize a birth ceremony — fresh OR resume, decided by session.isResume.
  *
@@ -108,6 +141,9 @@ export async function finalizeBirth({
         throw new Error('retry_identity_foreign: the sealed identity in this lane belongs to another witness');
       }
       identity = { seal, trueName: existingTrueName };
+      // The attempt that forged the seal may have died before its DEK write;
+      // a DEK is written once, so only a missing one is written here.
+      if (!(await workspace.readNeumaDEK(neumaId))) await writeBeingDEK(workspace, neumaId, seal.genesisHash, birthLog);
       ['keys', 'genesis-seal', 'true-name'].forEach(forge);
       trueName = existingTrueName;
       keypairAddress = card.address;
@@ -115,6 +151,12 @@ export async function finalizeBirth({
         neumaId, fullName: existingTrueName.fullName, genesisHash: seal.genesisHash?.slice(0, 12),
       });
     } else {
+      // A seal file that exists but cannot be read is an identity on disk
+      // that cannot be trusted — never a lane to forge a second one over.
+      const sealFile = path.join(workspace.root, neumaId, 'identity', 'genesis-seal.json');
+      if (await fs.access(sealFile).then(() => true, () => false)) {
+        throw new Error('retry_identity_unreadable: identity/genesis-seal.json exists but cannot be read — refusing to forge over it');
+      }
       // FRESH BIRTH. The being's own lane is excluded from the count: a
       // retry after a failure past the owner claim must not number it twice.
       const birthCycle = connection.walletAddress
@@ -180,47 +222,22 @@ export async function finalizeBirth({
         });
         identity = forged;
         trueName = forged.trueName;
+        // The seal is the commit point: a retry adopts whatever identity
+        // a seal on disk names. So the true name lands FIRST and the seal
+        // LAST, each crash-atomic — a seal on disk always has its name, and
+        // never reads torn (a torn seal read as none, and minted a second
+        // keypair over the first).
         const identityDir = path.join(workspace.root, neumaId, 'identity');
-        await fs.mkdir(identityDir, { recursive: true });
-        await fs.writeFile(path.join(identityDir, 'genesis-seal.json'),
+        await workspace._writeFileAtomic(path.join(identityDir, 'true-name.json'),
+          JSON.stringify(forged.trueName, null, 2));
+        await workspace._writeFileAtomic(path.join(identityDir, 'genesis-seal.json'),
           JSON.stringify({ genesisHash: forged.seal.genesisHash, record: forged.seal.record }, null, 2));
         forge('genesis-seal');
-        await fs.writeFile(path.join(identityDir, 'true-name.json'),
-          JSON.stringify(forged.trueName, null, 2));
         forge('true-name');
         birthLog.info('Genetic identity forged', {
           fullName: trueName.fullName, genesisHash: forged.seal.genesisHash.slice(0, 12), birthCycle,
         });
-        // #117 S2a — write the per-neuma DEK now that the genesis hash exists.
-        // The DEK file is just an artifact for new beings; IO doesn't use it
-        // yet (lands in S2b). Existing beings (Fenna/Cael/Keir/Galen/Signal)
-        // have no DEK file and are migrated by S4's script.
-        //
-        // Failure handling (ai6 R3 Medium): we keep warn-and-continue rather
-        // than failing the birth — the genesis seal is already durable, and
-        // rolling back a partially-born being is messier than recovering its
-        // DEK later. BUT we surface the failure as a distinct DEK_WRITE_FAILED
-        // audit entry (not the success DEK_WRITTEN) so:
-        //   - monitoring can detect DEK-less #117 births at runtime
-        //   - the S4 migration script can pick them up alongside pre-#117
-        //     beings rather than missing them silently
-        //   - readNeumaDEK's null return for this being is observable, not
-        //     invisible: the audit tells the story.
-        try {
-          await workspace.writeNeumaDEK(neumaId, forged.seal.genesisHash);
-          birthLog.info('Per-neuma DEK written', { neumaId, genesisHashPrefix: forged.seal.genesisHash.slice(0, 12) });
-        } catch (dekErr) {
-          birthLog.warn('Per-neuma DEK write failed (birth continues; audit marker written)', { neumaId, err: dekErr.message });
-          try {
-            await workspace.audit(neumaId, 'DEK_WRITE_FAILED', {
-              genesisHashPrefix: forged.seal.genesisHash.slice(0, 12),
-              error: dekErr.message,
-              willFallBackToGlobalKey: true,
-            });
-          } catch (auditErr) {
-            birthLog.error('Could not even audit the DEK_WRITE_FAILED — this being is operator-invisible', { neumaId, err: auditErr.message });
-          }
-        }
+        await writeBeingDEK(workspace, neumaId, forged.seal.genesisHash, birthLog);
       } else {
         birthLog.warn('No witness wallet on connection — genesis seal skipped');
       }

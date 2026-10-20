@@ -6,7 +6,7 @@
 // motion is opacity and transform.
 
 import { GATEWAY_SEAL, chamferedSquarePoints, ringGraduations } from '../../utils/emblem-geometry.js';
-import { project } from './genesis-camera.js';
+import { layoutLabels, glyphsAt, labelFont } from './genesis-labels.js';
 import { INSCRIPTIONS } from './genesis-state-emanon.js';
 import './Genesis.css';
 
@@ -39,26 +39,32 @@ const FullRing = ({ href, r, cls, text, progress }) => {
 };
 
 /**
- * @param {{ scene: ReturnType<import('./genesis-state.js').sceneAt>, inscription: string, aspect: number }} props
+ * @param {{ scene: ReturnType<import('./genesis-state.js').sceneAt>, inscription: string, size: {w: number, h: number} }} props
  */
-export const GenesisOverlay = ({ scene, inscription, aspect }) => {
+export const GenesisOverlay = ({ scene, inscription, size }) => {
   const { caption, emanon, camera } = scene;
   const o = emanon.offering;
+  // the names stand where genesis-labels.js placed them, beside their spheres
+  const names = layoutLabels(emanon.labels, glyphsAt(emanon, camera, size), camera, size, caption);
+  const font = labelFont(size.w);
   return (
     <div className="gen-overlay" aria-live="polite">
-      {emanon.labels.filter((l) => l.opacity > 0.01).map((l) => {
-        const p = project(l.at, camera, aspect);
-        if (!p.ahead) return null;
-        return (
-          <span
-            key={`${l.kind}-${l.text}`}
-            className={`gen-label gen-label-${l.kind}`}
-            style={{ left: `${p.x}%`, top: `${p.y}%`, opacity: l.opacity }}
-          >
-            {l.text}
-          </span>
-        );
-      })}
+      <svg className="gen-leaders" width={size.w} height={size.h} aria-hidden="true">
+        {names.filter((n) => n.leader).map((n) => {
+          const toX = n.x + n.w < n.anchor.x ? n.x + n.w : n.x > n.anchor.x ? n.x : n.anchor.x;
+          const toY = n.y + n.h < n.anchor.y ? n.y + n.h : n.y > n.anchor.y ? n.y : n.y + n.h / 2;
+          return <line key={n.key} x1={n.anchor.x} y1={n.anchor.y} x2={toX} y2={toY} className={`gen-leader gen-leader-${n.kind}`} style={{ opacity: n.opacity * 0.6 }} />;
+        })}
+      </svg>
+      {names.map((n) => (
+        <span
+          key={n.key}
+          className={`gen-label gen-label-${n.kind}`}
+          style={{ left: `${n.x}px`, top: `${n.y}px`, fontSize: `${font}px`, opacity: n.opacity }}
+        >
+          {n.text}
+        </span>
+      ))}
 
       <div className="gen-mark" style={{ opacity: o.mark }} aria-hidden={o.mark === 0}>
         <svg viewBox="0 0 400 400" className="gen-mark-svg">

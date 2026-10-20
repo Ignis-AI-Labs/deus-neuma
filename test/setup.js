@@ -1,6 +1,33 @@
 import fs from 'fs/promises';
+import { mkdtempSync, rmSync } from 'fs';
+import { createRequire } from 'module';
 import path from 'path';
 import os from 'os';
+
+// THE OPERATOR'S .env NEVER REACHES THE HERMETIC SUITE. The `natural` package
+// (core/memory/neuma-recall.js, reached through core/index.js by most backend
+// tests) runs require('dotenv').config() at load time in its storage
+// adapters (natural/lib/natural/util/storage/{Postgres,MongoDB,Redis,
+// Memcached}.js). dotenv reads process.cwd()/.env — the repo root under
+// vitest — so on a working rig every test that touched core quietly booted
+// the developer's real machine config (LLAMA_SERVER_MODEL, CHAIN_ID, RPC
+// URLs, OLLAMA_URL, ...), and the same files passed on a fresh clone and
+// failed on the operator's box. Loading those adapters once here, from an
+// empty directory, makes their dotenv call read nothing; the CJS cache then
+// serves the already-loaded modules to every later import. The live lane
+// still boots the real config on purpose (test/helpers/live-machine-config.js
+// calls dotenv itself).
+{
+  const here = process.cwd();
+  const empty = mkdtempSync(path.join(os.tmpdir(), 'neuma-no-dotenv-'));
+  try {
+    process.chdir(empty);
+    createRequire(import.meta.url)('natural/lib/natural/util/storage');
+  } finally {
+    process.chdir(here);
+    rmSync(empty, { recursive: true, force: true });
+  }
+}
 
 // Set test environment
 process.env.NODE_ENV = 'test';
@@ -55,6 +82,28 @@ if (!process.env.NEUMA_CHAT_TOOLS_PATH) {
 // The served model's kept reasoning shape (think-shape-store.js) — never the machine's.
 if (!process.env.NEUMA_THINK_SHAPES_PATH) {
   process.env.NEUMA_THINK_SHAPES_PATH = path.join(TEST_TEMP_DIR, 'think-shapes.json');
+}
+
+// THE OPERATOR'S REALM AND DATA ARE NEVER A TEST'S TO WRITE. Without these
+// doors the realm defaulted to ~/.kenorie/realm and the data root to the
+// repo's data/ — the live desk's own stores — and about twenty modules
+// capture their settings dir at import. Suites wrote there: 1600+ wallet dirs
+// and test-named chats in the realm (audit 3 E7, 2026-10-19) and the desk's
+// provider choice (data/settings-store/llm-provider.json) overwritten. The
+// doors are read at import, so they are set here, before any test file loads;
+// a test that names its own root still wins.
+const ISOLATION_DOORS = Object.freeze({
+  NEUMA_REALM_ROOT: 'realm',
+  NEUMA_DATA_ROOT: 'data',
+  NEUMA_PROVIDER_CHOICE_PATH: path.join('data', 'settings-store', 'llm-provider.json'),
+  NEUMA_VAULT_ROOT: 'vault',
+  NEUMA_ROOT_LOCK_PATH: 'root-lock.json',
+  NEUMA_SECRETS_FILE: 'secrets.json',
+  NEUMA_SKILLS_ROOT: 'skills',
+  NEUMA_VOICE_DATA_ROOT: 'voice',
+});
+for (const [door, relative] of Object.entries(ISOLATION_DOORS)) {
+  if (!process.env[door]) process.env[door] = path.join(TEST_TEMP_DIR, relative);
 }
 
 beforeAll(async () => {

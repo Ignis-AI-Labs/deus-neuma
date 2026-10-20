@@ -1,6 +1,7 @@
 /**
- * THE QUEUE READ LAYER (RULE 0) — Design note, 2026-08-03, relaying the CMO lane:
- * […]
+ * THE QUEUE READ LAYER (RULE 0) — reported 2026-08-03 by the CMO lane: it had
+ * the tools to fix the posts but no read access to enumerate the whole month —
+ * the endpoint returned 30 entries and only a count of the other 170.
  *
  * Everything here runs for real: the REAL queue store on real temp disk, the
  * REAL social handler, the REAL policy cascade, and a REAL WebSocket pair.
@@ -25,7 +26,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
   const connection = () => ({
     ws: serverWs,
     toolMode: 'auto', // lifts the chip; the cascade itself is real
-    companion: { name: 'Kagipem', neumaId: LANE },
+    companion: { name: 'Juniper', neumaId: LANE },
   });
 
   const call = (toolName, args = {}) =>
@@ -149,7 +150,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
       // and the duplicate check the verbatim text exists for was blind.
       for (let i = 0; i < 31; i += 1) await stage(`draft ${i}`);
       const old = await stage('the line that already went out');
-      await postQueue.approve(old.id, { decidedBy: 'Founder' });
+      await postQueue.approve(old.id, { decidedBy: 'Ada' });
       await postQueue.claimForSend(old.id);
       await postQueue.recordOutcome(old.id, { ok: true, id: '1948800000000000003' });
 
@@ -226,7 +227,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
     test('several statuses at once, comma-separated the way a being writes them', async () => {
       const a = await stage('awaiting a decision');
       const b = await stage('decided');
-      await postQueue.approve(b.id, { decidedBy: 'Founder' });
+      await postQueue.approve(b.id, { decidedBy: 'Ada' });
 
       const result = await call('queue_list', { status: 'draft,approved' });
       expect(idsIn(result.content).sort()).toEqual([a.id, b.id].sort());
@@ -234,17 +235,17 @@ describe('the queue read layer — a being can enumerate the whole month, not on
 
     test('withdrawn copy stays out by default and opens only when it is named', async () => {
       const dropped = await stage('copy the operator killed');
-      await postQueue.withdraw(dropped.id, { withdrawnBy: 'Founder', reason: 'superseded' });
+      await postQueue.withdraw(dropped.id, { withdrawnBy: 'Ada', reason: 'superseded' });
 
       const bare = await call('queue_list');
       expect(bare.content).not.toContain('copy the operator killed');
       expect(bare.content).toContain("read them with status:'withdrawn,rejected'");
 
-      // Design note, 2026-08-03: reachable on explicit opt-in, so an audit does not
+      // Ruling, 2026-08-03: reachable on explicit opt-in, so an audit does not
       // rewrite a post into copy that was already dropped.
       const named = await call('queue_list', { status: 'withdrawn' });
       expect(named.content).toContain('copy the operator killed');
-      expect(named.content).toContain('withdrawn by Founder (superseded)');
+      expect(named.content).toContain('withdrawn by Ada (superseded)');
     });
 
     test('the dead-copy hint names a key that actually reads BOTH dead standings', async () => {
@@ -253,8 +254,8 @@ describe('the queue read layer — a being can enumerate the whole month, not on
       // being that followed it would never see a post the operator DECLINED.
       const pulled = await stage('copy that was withdrawn');
       const declined = await stage('copy the operator declined');
-      await postQueue.withdraw(pulled.id, { withdrawnBy: 'Founder' });
-      await postQueue.reject(declined.id, { decidedBy: 'Founder' });
+      await postQueue.withdraw(pulled.id, { withdrawnBy: 'Ada' });
+      await postQueue.reject(declined.id, { decidedBy: 'Ada' });
       await stage('a live line so the header renders');
 
       const bare = await call('queue_list');
@@ -340,7 +341,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
     test('a follow-up under a parent that can never publish stands in no window', async () => {
       const parent = await stage('a parent about to be pulled', { scheduledFor: '2026-08-10T14:00:00Z' });
       const child = await stage('its orphaned follow-up', { kind: 'self-reply', thread: { parentId: parent.id } });
-      await postQueue.withdraw(parent.id, { withdrawnBy: 'Founder' });
+      await postQueue.withdraw(parent.id, { withdrawnBy: 'Ada' });
 
       const august = await call('queue_list', { from: '2026-08-01T00:00:00Z', to: '2026-08-31T23:59:59Z' });
       // The parent is dead copy (out by default); the child can never publish,
@@ -363,7 +364,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
     test('a follow-up whose parent died says plainly that it can never publish', async () => {
       const parent = await stage('a parent that gets pulled');
       const child = await stage('the follow-up left behind', { kind: 'self-reply', thread: { parentId: parent.id } });
-      await postQueue.withdraw(parent.id, { withdrawnBy: 'Founder' });
+      await postQueue.withdraw(parent.id, { withdrawnBy: 'Ada' });
 
       const result = await call('queue_list');
       const line = result.content.split('\n').find((l) => l.startsWith(`[${child.id}]`));
@@ -411,13 +412,13 @@ describe('the queue read layer — a being can enumerate the whole month, not on
 
     test('the revision trail shows what the copy WAS, which no list line can carry', async () => {
       const staged = await stage('the first wording');
-      await postQueue.update(staged.id, { text: 'the second wording' }, { by: 'Kagipem' });
+      await postQueue.update(staged.id, { text: 'the second wording' }, { by: 'Juniper' });
 
       const result = await call('queue_get', { id: staged.id });
       expect(result.content).toContain('the second wording');
       expect(result.content).toContain('REVISIONS (1');
       expect(result.content).toContain('was: "the first wording"');
-      expect(result.content).toContain('by Kagipem');
+      expect(result.content).toContain('by Juniper');
     });
 
     test('the whole thread comes with it, in publish order, with this one marked', async () => {

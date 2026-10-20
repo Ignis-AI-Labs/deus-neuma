@@ -88,7 +88,7 @@ const bundleFor = (silo, seat, witness, standing) => {
   const identity = silo.layers.identity || {};
   const voice = silo.layers.voice || {};
   // The pack is the being's voice as accretive sovereign data — the LoRA's
-  // replacement (Design note, 2026-08-18. It rides EXTENDED, so on a suffocating
+  // replacement (ruling, 2026-08-18). It rides EXTENDED, so on a suffocating
   // window the voice sheds before CORE identity does.
   const voiceEntries = Array.isArray(voice.pack) ? voice.pack : (voice.pack?.entries || []);
   if (seat === 'witness') {

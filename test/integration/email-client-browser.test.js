@@ -12,6 +12,7 @@ import { chromium } from '@playwright/test';
 import { expect, test } from 'vitest';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { fullAuth, writeOwner } from '../helpers/audit-auth.js';
+import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 
 test('email client uses real authenticated routes, sealed storage and shared error handling', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'email-client-browser-'));
@@ -19,6 +20,7 @@ test('email client uses real authenticated routes, sealed storage and shared err
     'EMAIL_ADDRESS', 'EMAIL_USERNAME', 'EMAIL_PASSWORD', 'EMAIL_SMTP_HOST', 'EMAIL_SMTP_PORT', 'EMAIL_IMAP_HOST', 'EMAIL_IMAP_PORT'];
   const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   const oldRoot = getWorkspacesRoot();
+  const oldRealm = getRealmRoot();
   let browser; let server; let vite;
   try {
     for (const key of keys) delete process.env[key];
@@ -26,6 +28,8 @@ test('email client uses real authenticated routes, sealed storage and shared err
     process.env.NEUMA_EMAIL_CREDENTIALS_PATH = path.join(root, 'credentials.json');
     process.env.NEUMA_EMAIL_BINDING_PATH = path.join(root, 'binding.json');
     setWorkspacesRoot(path.join(root, 'lanes'));
+    // The mailbox is the caller's house's own, kept in its realm dir — tmp.
+    setRealmRoot(path.join(root, 'realm'));
     const auth = await fullAuth();
     await workspace.create('email-control');
     await writeOwner(workspace.root, 'email-control', auth.address);
@@ -34,7 +38,7 @@ test('email client uses real authenticated routes, sealed storage and shared err
     app.use('/api/v1/email', (await import('../../backend/routes/email-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as client from "/frontend/services/email-client.js"; import {apiCall} from "/frontend/utils/http.js"; window.client=client; window.apiCall=apiCall; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app);
@@ -56,7 +60,7 @@ test('email client uses real authenticated routes, sealed storage and shared err
     const set = await invoke('setEmailCredentials', fields);
     expect(set.result.configured).toBe(true);
     expect(JSON.stringify(set.result)).not.toContain(fields.password);
-    const raw = await fs.readFile(process.env.NEUMA_EMAIL_CREDENTIALS_PATH, 'utf8');
+    const raw = await fs.readFile(path.join(root, 'realm', auth.address.toLowerCase(), 'email-credentials.json'), 'utf8');
     expect(raw).not.toContain(fields.password);
     expect(JSON.parse(raw)).toHaveProperty('ct');
     expect((await invoke('getEmailBoard')).result.account.configured).toBe(true);
@@ -80,6 +84,7 @@ test('email client uses real authenticated routes, sealed storage and shared err
     if (server?.listening) await new Promise((resolve) => server.close(resolve));
     await vite?.close();
     setWorkspacesRoot(oldRoot);
+    setRealmRoot(oldRealm);
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }

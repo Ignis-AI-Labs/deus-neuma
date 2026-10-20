@@ -44,13 +44,13 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
       channelId: 'x', text, scheduledFor: '2999-01-01T09:00:00Z',
       campaignId: 'launch', pillar: 'build', authorNeumaId: LANE,
     });
-    await postQueue.approve(staged.id, { decidedBy: 'Founder' });
+    await postQueue.approve(staged.id, { decidedBy: 'Ada' });
     return staged.id;
   };
 
   test('THE RESET — new words on an approved post return it to draft, and the old words survive in revisions', async () => {
     const id = await stageApproved();
-    const result = await postQueue.update(id, { text: 'the corrected line' }, { by: 'Founder' });
+    const result = await postQueue.update(id, { text: 'the corrected line' }, { by: 'Ada' });
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
@@ -58,11 +58,11 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     expect(entry.status).toBe('draft');          // the decision renews
     expect(entry.decidedBy).toBeUndefined();     // not rewritten — cleared
     expect(entry.decidedAt).toBeUndefined();
-    expect(entry.updatedBy).toBe('Founder');
+    expect(entry.updatedBy).toBe('Ada');
     expect(entry.updatedAt).toBeTruthy();
     // The revision carries what the copy WAS — never just what it became.
     expect(entry.revisions).toHaveLength(1);
-    expect(entry.revisions[0].by).toBe('Founder');
+    expect(entry.revisions[0].by).toBe('Ada');
     expect(entry.revisions[0].at).toBe(entry.updatedAt);
     expect(entry.revisions[0].changed).toEqual({ text: 'the approved line' });
     // Untouched fields ride through unchanged.
@@ -74,12 +74,12 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
   test('THE PRESERVATION — a schedule-only edit on an approved post keeps the approval', async () => {
     const id = await stageApproved();
     const result = await postQueue.update(id,
-      { scheduledFor: '2999-02-02T10:00:00Z' }, { by: 'Founder' });
+      { scheduledFor: '2999-02-02T10:00:00Z' }, { by: 'Ada' });
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
     expect(entry.status).toBe('approved');       // the words didn't move
-    expect(entry.decidedBy).toBe('Founder');
+    expect(entry.decidedBy).toBe('Ada');
     expect(entry.decidedAt).toBeTruthy();
     expect(entry.scheduledFor).toBe('2999-02-02T10:00:00Z');
     expect(entry.revisions[0].changed).toEqual({ scheduledFor: '2999-01-01T09:00:00Z' });
@@ -87,7 +87,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
 
   test('bookkeeping (campaignId/pillar) never resets an approval either — they are not the approved words', async () => {
     const id = await stageApproved();
-    const result = await postQueue.update(id, { campaignId: 'evergreen', pillar: 'craft' }, { by: 'Founder' });
+    const result = await postQueue.update(id, { campaignId: 'evergreen', pillar: 'craft' }, { by: 'Ada' });
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
@@ -100,7 +100,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
   test('a media change on an approved post resets — the operator approved different images', async () => {
     const id = await stageApproved();
     const result = await postQueue.update(id,
-      { media: [{ path: '/tmp/chart.png', alt: 'the chart' }] }, { by: 'Founder' });
+      { media: [{ path: '/tmp/chart.png', alt: 'the chart' }] }, { by: 'Ada' });
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
@@ -124,21 +124,21 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
 
   test('sending, sent, rejected and withdrawn refuse honestly — locked in flight, history when settled', async () => {
     const sending = await postQueue.add({ channelId: 'x', text: 'going out', authorNeumaId: LANE });
-    await postQueue.approve(sending.id, { decidedBy: 'Founder' });
+    await postQueue.approve(sending.id, { decidedBy: 'Ada' });
     await postQueue.claimForSend(sending.id);
     const sent = await postQueue.add({ channelId: 'x', text: 'went out', authorNeumaId: LANE });
-    await postQueue.approve(sent.id, { decidedBy: 'Founder' });
+    await postQueue.approve(sent.id, { decidedBy: 'Ada' });
     await postQueue.claimForSend(sent.id);
     await postQueue.recordOutcome(sent.id, { ok: true, id: '1948800000000000009' });
     const rejected = await postQueue.add({ channelId: 'x', text: 'declined', authorNeumaId: LANE });
-    await postQueue.reject(rejected.id, { decidedBy: 'Founder' });
+    await postQueue.reject(rejected.id, { decidedBy: 'Ada' });
     const withdrawn = await postQueue.add({ channelId: 'x', text: 'pulled', authorNeumaId: LANE });
-    await postQueue.withdraw(withdrawn.id, { withdrawnBy: 'Founder' });
+    await postQueue.withdraw(withdrawn.id, { withdrawnBy: 'Ada' });
 
     for (const [id, standing] of [
       [sending.id, 'sending'], [sent.id, 'sent'], [rejected.id, 'rejected'], [withdrawn.id, 'withdrawn'],
     ]) {
-      const result = await postQueue.update(id, { text: 'a rewrite' }, { by: 'Founder' });
+      const result = await postQueue.update(id, { text: 'a rewrite' }, { by: 'Ada' });
       expect(result.ok).toBe(false);
       expect(result.error).toBe(`cannot act on a ${standing} post`);
     }
@@ -147,26 +147,26 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     expect(entries.map((e) => e.text)).toEqual(['going out', 'went out', 'declined', 'pulled']);
     expect(entries.every((e) => !e.revisions)).toBe(true);
 
-    const missing = await postQueue.update('nosuchid00000000', { text: 'x' }, { by: 'Founder' });
+    const missing = await postQueue.update('nosuchid00000000', { text: 'x' }, { by: 'Ada' });
     expect(missing).toEqual({ ok: false, error: 'no such queued post' });
   });
 
   test('the patch validates through the same law as a staged draft', async () => {
     const staged = await postQueue.add({ channelId: 'x', text: 'standing copy', authorNeumaId: LANE });
 
-    const badTime = await postQueue.update(staged.id, { scheduledFor: 'next tuesday-ish' }, { by: 'Founder' });
+    const badTime = await postQueue.update(staged.id, { scheduledFor: 'next tuesday-ish' }, { by: 'Ada' });
     expect(badTime.ok).toBe(false);
     expect(badTime.error).toContain('ISO-8601');
 
-    const emptyText = await postQueue.update(staged.id, { text: '   ' }, { by: 'Founder' });
+    const emptyText = await postQueue.update(staged.id, { text: '   ' }, { by: 'Ada' });
     expect(emptyText.ok).toBe(false);
     expect(emptyText.error).toContain('needs text');
 
-    const badMedia = await postQueue.update(staged.id, { media: 'not-a-list' }, { by: 'Founder' });
+    const badMedia = await postQueue.update(staged.id, { media: 'not-a-list' }, { by: 'Ada' });
     expect(badMedia.ok).toBe(false);
     expect(badMedia.error).toContain('media must be a list');
 
-    const pathless = await postQueue.update(staged.id, { media: [{ alt: 'no path' }] }, { by: 'Founder' });
+    const pathless = await postQueue.update(staged.id, { media: [{ alt: 'no path' }] }, { by: 'Ada' });
     expect(pathless.ok).toBe(false);
     expect(pathless.error).toContain('needs a path');
 
@@ -179,7 +179,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
   test('unknown patch fields are dropped, never persisted onto the governance record', async () => {
     const staged = await postQueue.add({ channelId: 'x', text: 'clean copy', authorNeumaId: LANE });
     const result = await postQueue.update(staged.id,
-      { text: 'still clean', hacker: 'smuggled', status: 'approved' }, { by: 'Founder' });
+      { text: 'still clean', hacker: 'smuggled', status: 'approved' }, { by: 'Ada' });
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
@@ -191,11 +191,11 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
   test('an empty patch and a no-op patch refuse — an edit that changes nothing is not an edit', async () => {
     const staged = await postQueue.add({ channelId: 'x', text: 'same words', authorNeumaId: LANE });
 
-    const empty = await postQueue.update(staged.id, {}, { by: 'Founder' });
+    const empty = await postQueue.update(staged.id, {}, { by: 'Ada' });
     expect(empty.ok).toBe(false);
     expect(empty.error).toContain('no editable field');
 
-    const noop = await postQueue.update(staged.id, { text: '  same words  ' }, { by: 'Founder' });
+    const noop = await postQueue.update(staged.id, { text: '  same words  ' }, { by: 'Ada' });
     expect(noop.ok).toBe(false);
     expect(noop.error).toBe('the patch changes nothing');
 
@@ -215,12 +215,12 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     // LAW CHANGE (2026-07-28): media rides a reply like any post — and new
     // images on an APPROVED answer renew the decision, back to draft.
     const media = await postQueue.update(staged.id,
-      { media: [{ path: '/tmp/x.png', alt: 'x' }] }, { by: 'Founder' });
+      { media: [{ path: '/tmp/x.png', alt: 'x' }] }, { by: 'Ada' });
     expect(media.ok).toBe(true);
     expect(media.entry.status).toBe('draft');
     expect(media.entry.media).toEqual([{ path: '/tmp/x.png', alt: 'x' }]);
 
-    const edited = await postQueue.update(staged.id, { text: 'a warmer answer' }, { by: 'Founder' });
+    const edited = await postQueue.update(staged.id, { text: 'a warmer answer' }, { by: 'Ada' });
     expect(edited.ok).toBe(true);
     const [entry] = await postQueue.load();
     expect(entry.text).toBe('a warmer answer');
@@ -256,7 +256,7 @@ describe('the pure decisions behind the edit (real inputs, real outputs)', () =>
   const entry = {
     id: 'abc', channelId: 'x', text: 'the approved line', scheduledFor: '2999-01-01T09:00:00Z',
     campaignId: 'launch', pillar: 'build', media: [], status: 'approved',
-    decidedBy: 'Founder', decidedAt: '2026-07-28T00:00:00Z',
+    decidedBy: 'Ada', decidedAt: '2026-07-28T00:00:00Z',
   };
 
   test('normalizePatch whitelists and normalizes to the stored shape', () => {

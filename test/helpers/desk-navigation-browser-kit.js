@@ -116,7 +116,9 @@ export const createDeskBrowserKit = async () => {
     cacheDir: path.join(tmp, 'vite-cache'), appType: 'custom',
     esbuild: { jsx: 'automatic' },
     optimizeDeps: { entries: ['test/helpers/desk-navigation-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    // No HMR socket; the client dials a port the browser refuses — hmr:false still
+    // aimed it at :24678, where any other Vite on the box answers and the page reloads.
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (req, res) => res.type('html').send(
     '<!doctype html><div id="root"></div><script type="module" src="/test/helpers/desk-navigation-page.jsx"></script>',

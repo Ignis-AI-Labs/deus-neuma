@@ -50,8 +50,8 @@ describe('leadsByStatus (pure)', () => {
 describe('formatLeadsForBeing (pure)', () => {
   const lead = (over = {}) => ({
     id: 'abcdef0123456789', name: 'Ada', contact: '@ada', channelId: 'x',
-    status: 'contacted', ownerNeumaId: 'keir',
-    touches: [{ at: 't', by: 'keir', note: 'first thread sent' }],
+    status: 'contacted', ownerNeumaId: 'hazel',
+    touches: [{ at: 't', by: 'hazel', note: 'first thread sent' }],
     ...over,
   });
 
@@ -61,7 +61,7 @@ describe('formatLeadsForBeing (pure)', () => {
 
   test('a line carries id prefix, who, status, lane, holder, and the last note', () => {
     const out = formatLeadsForBeing([lead()]);
-    expect(out).toContain('[abcdef01] Ada (@ada) — contacted via x held by keir');
+    expect(out).toContain('[abcdef01] Ada (@ada) — contacted via x held by hazel');
     expect(out).toContain('last: first thread sent');
   });
 
@@ -114,27 +114,27 @@ describe('lead ledger store (real disk)', () => {
   test('a touch moves fields and status as ONE appended history entry', async () => {
     const lead = await ledger.add({ name: 'Ada', addedBy: '0xW' });
     const result = await ledger.touch(lead.id, {
-      status: 'contacted', note: 'sent the first thread', ownerNeumaId: 'keir', by: 'keir',
+      status: 'contacted', note: 'sent the first thread', ownerNeumaId: 'hazel', by: 'hazel',
     });
     expect(result.ok).toBe(true);
     expect(result.lead.status).toBe('contacted');
-    expect(result.lead.ownerNeumaId).toBe('keir');
+    expect(result.lead.ownerNeumaId).toBe('hazel');
     expect(result.lead.touches).toHaveLength(2);
-    expect(result.lead.touches[1]).toMatchObject({ by: 'keir', status: 'contacted', note: 'sent the first thread' });
+    expect(result.lead.touches[1]).toMatchObject({ by: 'hazel', status: 'contacted', note: 'sent the first thread' });
     expect(Date.parse(result.lead.updatedAt)).toBeGreaterThanOrEqual(Date.parse(result.lead.createdAt));
   });
 
   test('an ownership handoff is history — every reassignment leaves its trace', async () => {
-    const lead = await ledger.add({ name: 'Ada', ownerNeumaId: 'keir', addedBy: '0xW' });
-    expect(lead.touches[0].ownerTo).toBe('keir'); // the first holder is on the record too
+    const lead = await ledger.add({ name: 'Ada', ownerNeumaId: 'hazel', addedBy: '0xW' });
+    expect(lead.touches[0].ownerTo).toBe('hazel'); // the first holder is on the record too
 
-    const handoff = await ledger.touch(lead.id, { ownerNeumaId: 'galen', by: '0xW' });
-    expect(handoff.lead.ownerNeumaId).toBe('galen');
-    expect(handoff.lead.touches[1]).toMatchObject({ ownerFrom: 'keir', ownerTo: 'galen' });
+    const handoff = await ledger.touch(lead.id, { ownerNeumaId: 'cedar', by: '0xW' });
+    expect(handoff.lead.ownerNeumaId).toBe('cedar');
+    expect(handoff.lead.touches[1]).toMatchObject({ ownerFrom: 'hazel', ownerTo: 'cedar' });
 
     const released = await ledger.touch(lead.id, { ownerNeumaId: '', by: '0xW' });
     expect(released.lead.ownerNeumaId).toBeNull();
-    expect(released.lead.touches[2]).toMatchObject({ ownerFrom: 'galen', ownerTo: null });
+    expect(released.lead.touches[2]).toMatchObject({ ownerFrom: 'cedar', ownerTo: null });
 
     // A touch that does not move ownership records no owner fields at all.
     const note = await ledger.touch(lead.id, { note: 'still theirs', by: '0xW' });
@@ -176,8 +176,8 @@ describe('lead ledger store (real disk)', () => {
   test('concurrent touches both land — serialized, never clobbered', async () => {
     const lead = await ledger.add({ name: 'Ada', addedBy: '0xW' });
     await Promise.all([
-      ledger.touch(lead.id, { note: 'first touch', by: 'keir' }),
-      ledger.touch(lead.id, { note: 'second touch', by: 'galen' }),
+      ledger.touch(lead.id, { note: 'first touch', by: 'hazel' }),
+      ledger.touch(lead.id, { note: 'second touch', by: 'cedar' }),
     ]);
     const [stored] = await ledger.load();
     expect(stored.touches).toHaveLength(3);

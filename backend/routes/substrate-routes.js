@@ -4,8 +4,9 @@
  * The capacity scan measures the SUBSTRATE (rig + model server), so these
  * routes are deliberately non-:id and mount on a fresh router: there is no
  * workspace to own, and requireOwnership must not apply. Any authenticated
- * wallet may read or trigger — a rig fact has no owner, and inventing one
- * would be a lie the honesty doctrine forbids.
+ * wallet may read — a rig fact has no owner, and inventing one would be a lie
+ * the honesty doctrine forbids. Acting on the rig (a scan's load, an unload,
+ * the standby switch) is the install owner's, at its own desk.
  *
  * GET  /capacity — { runs, latest, current, measurable } (scan history, newest
  *                  first; `current` = the model LOADED RIGHT NOW + its loaded
@@ -16,14 +17,17 @@
  */
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner, machineStanding } from '../services/install-owner.js';
 import { getActiveModelCapabilities } from '../services/llm-provider.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { runCapacityScan, isScannableProvider, ScanAborted } from '../services/capacity-scan.js';
 import { writeCapacity, listCapacity, readUsableCapacity } from '../services/capacity-store.js';
 import { getSubstrateTelemetry } from '../services/substrate-telemetry.js';
+import { issuesForHouse, issuesForOwner } from '../services/house-issue-feed.js';
 import { createSharedSnapshot } from '../services/shared-snapshot.js';
 import { stopSupervised } from '../services/llama-server-supervisor.js';
 import { standbySettings } from '../services/standby-settings.js';
+import { DEFAULT_VRAM_SHARE, lastServingFit, readServingFit, saveServingShare } from '../services/serving-fit.js';
 import { createLogger } from '../services/logger.js';
 
 const router = Router();
@@ -91,12 +95,12 @@ let scanInflight = false;
 // THE IN-FLIGHT SCAN, VISIBLE. `scanInflight` was a private boolean: the panel
 // showed "MEASURING" from its own local state, so reopening the window — or
 // simply not being the tab that started it — showed nothing at all, and a
-// wedged scan looked exactly like a working one (Design note, 2026-08-29. The GET now
+// wedged scan looked exactly like a working one (ruling, 2026-08-29). The GET now
 // answers with the live progress, so the truth survives a refresh.
 let scanProgress = null;
 let scanStartedAt = null;
 
-router.post('/capacity', async (req, res) => {
+router.post('/capacity', requireInstallOwner, async (req, res) => {
   if (!isScannableProvider()) {
     return res.status(400).json({
       error: 'Capacity is not measurable on a remote provider — there is no local concurrency to observe.',
@@ -175,9 +179,15 @@ router.post('/capacity', async (req, res) => {
 // Every open lens, every desk, shares one read per 1.2 s: each read spawns
 // nvidia-smi twice and probes the model server three times (shared-snapshot.js).
 const readTelemetry = createSharedSnapshot(getSubstrateTelemetry, 1200);
+// The failures feed is the process's, the reader is one house: another
+// house's rows are withheld and counted, except for the install owner and its
+// co-owners, who read the whole feed (house-issue-feed.js).
 router.get('/telemetry', async (req, res) => {
   try {
-    res.json(await readTelemetry());
+    const telemetry = await readTelemetry();
+    const owner = ['owner', 'co-owner'].includes(await machineStanding(req));
+    const feed = owner ? issuesForOwner(telemetry.failures) : await issuesForHouse(telemetry.failures, req.walletAddress);
+    res.json({ ...telemetry, failures: feed.rows, failuresWithheld: feed.withheld });
   } catch (error) {
     log.error('Telemetry read', { error: error.message });
     res.status(500).json({ error: 'Failed to read substrate telemetry' });
@@ -187,7 +197,7 @@ router.get('/telemetry', async (req, res) => {
 // Unload the backend-supervised substrate now, returning its VRAM — the manual
 // counterpart to idle-unload. Refuses (no-op) a substrate NEUMA does not own.
 // The next summon reloads it (createStreamRequest → ensureServing).
-router.post('/unload', async (req, res) => {
+router.post('/unload', requireInstallOwner, async (req, res) => {
   try {
     const result = await stopSupervised();
     log.info('Substrate unload requested', { status: result.status });
@@ -210,7 +220,7 @@ router.get('/standby', async (req, res) => {
   }
 });
 
-router.put('/standby', async (req, res) => {
+router.put('/standby', requireInstallOwner, async (req, res) => {
   const { enabled, idleMinutes } = req.body || {};
   if (typeof enabled !== 'boolean') {
     return res.status(400).json({ error: 'enabled must be true or false' });
@@ -229,6 +239,23 @@ router.put('/standby', async (req, res) => {
     const locked = /held off by SUBSTRATE_IDLE_MINUTES/.test(error.message);
     if (!locked) log.error('Standby write', { error: error.message });
     return res.status(locked ? 409 : 500).json({ error: error.message });
+  }
+});
+
+// THE SERVING FIT — how much of the GPU the mind may fill (Design note, 2026-10-20: […]). The pool is fitted at every ignition to this
+// share; the reply carries the last fit (pool, planned and measured MiB).
+router.get('/fit', (req, res) => {
+  const saved = readServingFit();
+  res.json({ sharePct: saved.sharePct ?? Math.round(DEFAULT_VRAM_SHARE * 100), lastFit: lastServingFit() });
+});
+
+router.put('/fit', requireInstallOwner, (req, res) => {
+  try {
+    const sharePct = saveServingShare(req.body?.sharePct);
+    log.info('Serving share set', { sharePct });
+    return res.json({ sharePct, appliesAt: 'the next ignition', lastFit: lastServingFit() });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
 });
 

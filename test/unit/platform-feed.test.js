@@ -293,10 +293,11 @@ describe('the read client can only ever read the platform', () => {
 });
 
 describe('the read and the tool — against a real server, not a stub', () => {
-  let server; let prior; let mode = 'ok';
+  let server; let prior; let mode = 'ok'; let requests = 0;
 
   beforeAll(async () => {
     server = http.createServer((req, res) => {
+      requests += 1;
       if (mode === 'down') { res.writeHead(503); return res.end('{}'); }
       const body = req.url.startsWith('/api/platform/stats') ? LIVE_PLATFORM
         : req.url.startsWith('/api/base/damm/stats') ? LIVE_TOKEN
@@ -318,12 +319,37 @@ describe('the read and the tool — against a real server, not a stub', () => {
   });
 
   const connection = { companion: { neumaId: 'test-being', name: 'Test' } };
-  const call = (args) => {
+  const call = (args, gate = {}) => {
     const events = [];
-    const ports = { sendToolEvent: (_ws, _c, e) => events.push(e) };
+    const ports = { sendToolEvent: (_ws, _c, e) => events.push(e), ...gate };
     return handlePlatformFeedTool(null, connection, { tool: 'platform/platform_data' }, args, ports)
       .then((result) => ({ result, events }));
   };
+
+  // Audit C3 (2026-10-19): the read never crossed the ACTS gate, so observe
+  // mode and a lane's deny row were ignored and the request left anyway.
+  test('observe mode holds the read: denied, and no request leaves', async () => {
+    const before = requests;
+    const { result, events } = await call({}, { mode: 'observe' });
+    expect(result).toMatchObject({ tool: 'platform/platform_data', status: 'denied' });
+    expect(events[0].status).toBe('denied');
+    expect(requests).toBe(before);
+  });
+
+  test('a lane deny row refuses the read before any request leaves', async () => {
+    const before = requests;
+    const lanePolicy = { platform: { allowed: [], denied: ['platform_data'], requireApproval: [] } };
+    const { result } = await call({ feed: 'token' }, { mode: 'ask', lanePolicy });
+    expect(result).toMatchObject({ tool: 'platform/platform_data', status: 'denied' });
+    expect(requests).toBe(before);
+  });
+
+  test('ask mode with the default policy still reads', async () => {
+    const before = requests;
+    const { result } = await call({ feed: 'token' }, { mode: 'ask', lanePolicy: null });
+    expect(result.status).toBe('ok');
+    expect(requests).toBe(before + 1);
+  });
 
   test('a live read returns the real shape', async () => {
     const out = await readPlatformFeed('/api/platform/stats');

@@ -28,6 +28,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { witnessFor, strangerWitness } from '../helpers/witness.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import neumaWorkspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { mcpService } from '../../backend/services/mcp.js';
 import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.js';
@@ -45,6 +46,8 @@ beforeAll(async () => {
   await neumaWorkspace.create(NEUMA_ID);
   laneDir = neumaWorkspace.pathFor(NEUMA_ID);
   witness = await witnessFor(wsRoot, NEUMA_ID);
+  // Adding or dropping an MCP server is the install owner's act; the witness owns this install.
+  await makeInstallOwner(witness.address);
 
   // The platform's own filesystem organ — in-process, never a spawned child.
   // Production stands it at boot; a test that wants the real fs path has to
@@ -323,4 +326,48 @@ describe('POST /disconnect-all', () => {
     expect(res.status).toBe(200);
     expect(mcpService.clients.has('sweep-me')).toBe(false);
   }, SPAWN_MS);
+});
+
+// Spawning or dropping an MCP server changes the whole machine, so a guest
+// house — a real wallet with a real session that does not own this install —
+// is refused by the real owner gate before any process moves (security seat
+// G12). Without the gate every call below would spawn or kill a real child.
+describe('MCP server changes are the install owner\'s act', () => {
+  const FS_ARGS = () => ['-y', '@modelcontextprotocol/server-filesystem', laneDir];
+
+  test('a guest cannot spawn a server by any door — 403, nothing spawned', async () => {
+    const guest = strangerWitness();
+    const tries = [
+      ['/api/v1/mcp/connect', { name: 'guest-fs', command: 'npx', args: FS_ARGS() }],
+      ['/api/v1/mcp/custom', { name: 'guest-fs', command: 'npx', args: FS_ARGS() }],
+      ['/api/v1/mcp/servers/guest-fs/connect', { command: 'npx', args: FS_ARGS() }],
+    ];
+    for (const [url, body] of tries) {
+      const res = await request(app).post(url).set(guest.header).send(body);
+      expect(res.status, url).toBe(403);
+      expect(res.body.code, url).toBe('INSTALL_OWNER_ONLY');
+      expect(mcpService.clients.has('guest-fs'), url).toBe(false);
+    }
+  });
+
+  test('a guest cannot drop the owner\'s server — 403, the child stays up', async () => {
+    const opened = await post('/api/v1/mcp/custom').send({ name: 'owner-fs', command: 'npx', args: FS_ARGS() });
+    expect(opened.status).toBe(200);
+    const guest = strangerWitness();
+    try {
+      for (const url of ['/api/v1/mcp/disconnect/owner-fs', '/api/v1/mcp/servers/owner-fs/disconnect', '/api/v1/mcp/disconnect-all']) {
+        const res = await request(app).post(url).set(guest.header).send();
+        expect(res.status, url).toBe(403);
+        expect(res.body.code, url).toBe('INSTALL_OWNER_ONLY');
+        expect(mcpService.clients.has('owner-fs'), url).toBe(true);
+      }
+    } finally {
+      await mcpService.disconnect('owner-fs');
+    }
+  }, SPAWN_MS);
+
+  test('reading the catalog stays open to a guest', async () => {
+    const res = await request(app).get('/api/v1/mcp/servers').set(strangerWitness().header);
+    expect(res.status).toBe(200);
+  });
 });

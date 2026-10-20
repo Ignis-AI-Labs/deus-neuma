@@ -143,7 +143,7 @@ describe('neuma agent — real neuma turn entry', () => {
     expect(failure?.stderr).toContain(`${LANE_ID} · neuma seat`);
   }, 30_000);
 
-  // THE HARNESS ARM (Design note, 2026-09-29: --platform-only is benchmark-gated, and a
+  // THE HARNESS ARM (ruling, 2026-09-29): --platform-only is benchmark-gated, and a
   // declared sitting's receipt says identity layers are OFF — even on this
   // identity-gate refusal, the receipt written on every exit carries it.
   test('--platform-only is refused outside a benchmark sitting and declares identity off in the receipt', async () => {
@@ -275,8 +275,8 @@ describe('neuma agent — real neuma turn entry', () => {
     expect(serial.benchmark.sampling.parallelToolCalls).toBeUndefined();
   }, 60_000);
 
-  // VISION-PROOF (Design note, 2026-10-16: the relay's image item rides the portal's
-  // attachment path. Redeemed for real (a lost id reads […]), it reaches
+  // VISION-PROOF (ruling, 2026-10-16): the relay's image item rides the portal's
+  // attachment path. Redeemed for real (a lost id reads "expired"), it reaches
   // the vision gate; the repo's .env names a seeing substrate, so the proof
   // pins the machine default to a model with no sight.
   test('a transcript image reaches the portal\'s vision gate, and a blind route refuses it out loud', async () => {

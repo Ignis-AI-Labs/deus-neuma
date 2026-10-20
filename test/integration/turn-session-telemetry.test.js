@@ -50,6 +50,7 @@ test('a gather without current session records never inherits old bookkeeping', 
   const previous = { compaction: { compactionCount: 99 }, relevantMemories: 'retained context' };
   const result = await gatherMemoryContext('hello', null, previous, null, null);
   expect(result).not.toHaveProperty('compaction');
-  expect(result.relevantMemories).toBe('retained context');
+  // A client-sent memoryContext never plants a memory lane: only the store's own recall rides.
+  expect(result).not.toHaveProperty('relevantMemories');
   expect(previous.compaction.compactionCount).toBe(99);
 });

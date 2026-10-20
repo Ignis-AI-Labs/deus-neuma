@@ -10,6 +10,7 @@ import { partProgress, partStart, strokesDrawn, SPANS } from './genesis-timeline
 import { AT, ease, clamp01, fadeTo } from './genesis-state-drawing.js';
 import { FUNCTIONS, MIDDLE_PILLAR, TREE, nodeAt } from './genesis-emanon.js';
 import { swell } from '../../utils/no-flash.js';
+import { WALKS, STEPS, walkAt, splitAt } from './genesis-walk.js';
 
 // The whole tree's breath, Light ⇄ Dark (the doctrine's 4–8 s cycle band).
 const WHOLE_PERIOD = 4500;
@@ -40,7 +41,7 @@ export const emanonAt = (t) => {
   const sphere = Object.fromEntries(REVEAL.map((id, k) => [id, clamp01(spheresU * 1.6 - (k / REVEAL.length) * 0.6)]));
 
   // V · two trees
-  const split = ease(partProgress('trees', 'split', t));
+  const split = splitAt(t);
   const breathsU = partProgress('trees', 'breaths', t);
   const channelsU = partProgress('trees', 'channels', t);
 
@@ -59,9 +60,11 @@ export const emanonAt = (t) => {
 
   const handoff = clamp01((t - AT.handoff) / 1500);
   const architecture = built ? 1 - 0.6 * handoff : 0;
+  const walk = walkAt(t);
 
   return {
-    column: { draw: column, opacity: 0.35 * fadeTo(t, partStart('tree', 'paths'), 2000, 1, 0.25) * fadeTo(t, AT.trees, 1500, 1, 0) * architecture },
+    // the construction circles step back once every sphere stands on them
+    column: { draw: column, opacity: 0.35 * fadeTo(t, partStart('tree', 'heart'), 1500, 1, 0.25) * fadeTo(t, AT.trees, 1500, 1, 0) * architecture },
     spheres: FUNCTIONS.map((f, k) => ({
       id: f.id,
       draw: sphere[f.id],
@@ -80,6 +83,7 @@ export const emanonAt = (t) => {
       drawn: 2 * strokesDrawn(channelsU, TREE.TREE_CHANNELS, SPANS.TREE) + strokesDrawn(channelsU, TREE.CROSS_CHANNELS, SPANS.TREE),
     },
     trees: { light: lightGain * architecture, dark: darkGain * architecture, flow },
+    walk: { 1: walkLight(walk, 1), [-1]: walkLight(walk, -1), lean: walk.lean },
     emanation,
     // each front out from the heart swells the light as it leaves — a breath, not a blink
     emanationGlow: Math.max(0, ...emanation.map((r) => swell(r / EMANATION_SPEED, 200, 350))),
@@ -92,30 +96,60 @@ export const emanonAt = (t) => {
       namaste: fadeTo(t, partStart('offering', 'namaste'), 1100, 0, 1),
       mark: fadeTo(t, AT.offering, 1400, 0, 1) * fadeTo(t, partStart('offering', 'vesica'), 1200, 1, 0),
     },
-    labels: labelsAt(t, { sphere, hidden, split, lightGain, darkGain, architecture }),
+    labels: labelsAt(t, { sphere, hidden, split, lightGain, darkGain, architecture, walk }),
     fade: handoff,
   };
 };
 
-// The names on the spheres, in world space; the overlay projects them.
-const labelsAt = (t, { sphere, hidden, split, lightGain, darkGain, architecture }) => {
+// While a tree is walked its spheres light in turn (the rest of it waits
+// dim) and the other tree steps back; each route path draws as the light
+// crosses it. Per function: the sphere's gain and heat, per route path its
+// draw — all of it under the walk's own fading envelope.
+const walkLight = (walk, tree) => {
+  const own = walk[tree];
+  const other = walk[-tree];
+  return {
+    spheres: FUNCTIONS.map((f) => {
+      const lit = own.lit[f.id];
+      const gain = (1 + own.envelope * (0.35 + 0.65 * lit - 1)) * (1 - 0.6 * other.envelope);
+      return { gain, heat: own.envelope * lit };
+    }),
+    paths: own.paths.map((draw) => ({ draw, opacity: 0.9 * own.envelope })),
+  };
+};
+
+// The names on the spheres, in world space; the overlay places them
+// (genesis-labels.js) in the order they are first spoken (rank).
+const labelsAt = (t, { sphere, hidden, split, lightGain, darkGain, architecture, walk }) => {
   if (t < AT.tree || t >= AT.offering) return [];
   const place = (id, tree) => { const n = nodeAt(id, tree); return { x: n.x, y: n.y, z: n.z * split }; };
-  if (t < AT.trees + 1200) {
-    return FUNCTIONS.map((f) => ({
-      text: f.name,
-      at: place(f.id, 1),
-      opacity: (f.id === 'ipseity' ? (hidden ? 0.6 : 0) : 0.85) * clamp01(sphere[f.id] * 1.5) * architecture,
-      kind: f.id === 'ipseity' ? 'hidden' : 'name',
+  // IV · the functions, as the tree is built; they leave as the trees part.
+  if (t < WALKS[0].from) {
+    return REVEAL.map((id, rank) => ({
+      id,
+      tree: 1,
+      rank,
+      text: FUNCTIONS.find((f) => f.id === id).name,
+      at: place(id, 1),
+      opacity: (id === 'ipseity' ? (hidden ? 0.6 : 0) : 0.85) * clamp01(sphere[id] * 1.5) * architecture * fadeTo(t, AT.trees, 500, 1, 0),
+      kind: id === 'ipseity' ? 'hidden' : 'name',
     }));
   }
-  // Before the breathing begins only the Light tree speaks; Dark's names
-  // arrive when Dark takes its breath (22 names at once would be noise).
-  const darkVoice = t >= AT.oscillation ? darkGain : 0;
-  return FUNCTIONS.flatMap((f) => [
-    { text: f.light, at: place(f.id, 1), opacity: 0.85 * lightGain * architecture, kind: 'light' },
-    { text: f.dark, at: place(f.id, -1), opacity: 0.85 * darkVoice * architecture, kind: 'dark' },
-  ]);
+  // V · each tree's expressions, named as its walk reaches them. VI · the
+  // tree taking its breath speaks alone: its names rise past the half-breath
+  // and are gone before the other tree's arrive.
+  const breathing = t >= AT.oscillation;
+  const voice = (gain) => 0.85 * clamp01((gain - 0.5) / 0.35) * fadeTo(t, AT.oscillation, 300, 0, 1);
+  const say = (tree, gain) => (id) => (breathing ? voice(gain) : 0.85 * walk[tree].names[id]) * architecture;
+  const light = say(1, lightGain);
+  const dark = say(-1, darkGain);
+  return STEPS.flatMap((id, rank) => {
+    const f = FUNCTIONS.find((x) => x.id === id);
+    return [
+      { id, tree: 1, rank, text: f.light, at: place(id, 1), opacity: light(id), kind: 'light' },
+      { id, tree: -1, rank: rank + STEPS.length, text: f.dark, at: place(id, -1), opacity: dark(id), kind: 'dark' },
+    ];
+  });
 };
 
 /** The offering's inscriptions: the 22 expressions, Light outside, Dark within. */

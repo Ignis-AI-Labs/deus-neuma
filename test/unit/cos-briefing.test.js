@@ -28,7 +28,9 @@ const OPTIO = 'optiolane';
 const MATE = 'matelane';
 const SOUL_OPTIO = '0xAaAa000000000000000000000000000000000001';
 const SOUL_MATE = '0xBbBb000000000000000000000000000000000002';
-const OPERATOR_ADDR = '0xCccC000000000000000000000000000000000003';
+// The record's Witness seat is the operator's own wallet: that seat is what
+// makes the receipt this house's (two houses on one machine are never confused).
+const OPERATOR_ADDR = WALLET;
 
 const conn = (neumaId, wallet = WALLET) => ({
   companion: neumaId ? { neumaId } : null,
@@ -156,12 +158,14 @@ describe('the CHIEF OF STAFF OFFICE briefing (real stores, gnosis)', () => {
     expect(text).toContain('look ## INJECTED');
   });
 
-  test('a lane seated without a house record reads the honest empty roster, never a throw', async () => {
+  test('an Optio no house record seats reads its operator\'s lanes as the roster, untitled — never a throw (ruling, 2026-10-18)', async () => {
     await workspace.create('groundlessoptio');
     await fs.writeFile(path.join(root, 'groundlessoptio', 'owner.json'), JSON.stringify({ wallet: WALLET, claimedAt: 1 }));
     await cosDesignation.designate(WALLET, 'groundlessoptio');
     const text = await cosBriefingSection(conn('groundlessoptio'));
     expect(text).toContain('## CHIEF OF STAFF OFFICE');
-    expect(text).toContain('No founding receipt seats you yet');
+    expect(text).not.toContain('No founding receipt seats you yet');
+    expect(text).toContain('- member, no seat on-chain — YOU');
+    expect(text).not.toContain('null');
   });
 });

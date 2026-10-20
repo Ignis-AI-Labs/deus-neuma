@@ -91,7 +91,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${house}/social-post-queue.json`;
     process.env.NEUMA_SECTOR_CREW_PATH = `${house}/sector-crew.json`;
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: auth.address });
+    await channelBindings.bind(auth.address, 'x', { neumaId: NEUMA_ID });
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
@@ -143,7 +143,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
   test('ADVERTISING — the bound holder sees the edit and reply lanes; posting and staging are intents now', async () => {
     const tools = await _postToolsFor(NEUMA_ID);
     // The reply lane's tools ride with the holder: the answer, the thread
-    // draft, and the do-not-engage mark (Design note, 2026-07-28. post_to_x and
+    // draft, and the do-not-engage mark (ruling, 2026-07-28). post_to_x and
     // queue_post_to_x are GONE — consequential acts are filed as intents.
     expect(tools.map((t) => t.name)).toEqual([
       'queue_update_to_x', 'queue_bulk_update_to_x', 'queue_reply_to_x', 'queue_self_reply_to_x', 'reply_dismiss_to_x',
@@ -214,11 +214,13 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
   }, 30000);
 
   test('THE CREW STAGES — a non-holder the operator seated may fill the calendar', async () => {
-    // The point of the sector crew (Design note, 2026-07-26: a sealed witness on the
+    // The point of the sector crew (ruling, 2026-07-26): a sealed witness on the
     // X crew drafts campaigns even though another being holds the keys.
     // Custody is untouched — this being still cannot POST, only stage.
     const { sectorCrew } = await import('../../backend/services/sector-crew.js');
-    await sectorCrew.add('x', { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'campaigns' });
+    // The crew is the house's own: its operator seats a witness lane it manifested.
+    await writeOwner(path.join(house, 'witnesses'), 'witness-openai-Kagipem', auth.address);
+    await sectorCrew.add(auth.address, 'x', { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'campaigns' });
 
     const connection = freshConnection({
       companion: { name: 'Kagipem', neumaId: 'witness-openai-Kagipem' },
@@ -241,7 +243,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
       .toEqual(['queue_update_to_x', 'queue_bulk_update_to_x', 'queue_self_reply_to_x']);
 
     for (const e of entries) await postQueue.remove(e.id);
-    await sectorCrew.remove('x', 'witness-openai-Kagipem');
+    await sectorCrew.remove(auth.address, 'x', 'witness-openai-Kagipem');
   }, 30000);
 
   test('CALL-TIME BINDING — releasing the channel refuses the former holder on the very next filing', async () => {
@@ -250,13 +252,13 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     clientLog.length = 0;
     decide = null;
 
-    await channelBindings.unbind('x');
+    await channelBindings.unbind(auth.address, 'x');
     await fileIntent('after-release', { type: 'social/queue', channel: 'x', text: 'after release' });
     const released = await sweep(connection, 'auto');
     expect(released[0].status).toBe('denied');
     expect(released[0].error).toContain('not on the X (Twitter) crew');
 
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: auth.address });
+    await channelBindings.bind(auth.address, 'x', { neumaId: NEUMA_ID });
     await fileIntent('after-rebind', { type: 'social/queue', channel: 'x', text: 'after rebind' });
     // The board is the gate now (posting-pipeline-v2): AUTO stages the
     // rebound holder's draft with NO card — the old stage-time card is gone.

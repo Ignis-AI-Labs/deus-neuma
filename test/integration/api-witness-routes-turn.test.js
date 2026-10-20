@@ -121,7 +121,7 @@ describe('witness portal turn (real SSE provider, real lane)', () => {
   });
 
   test('a failed provider turn leaves the point on disk (zero takes), the refusal names it, and the retry heals it', async () => {
-    // RETRY-ANYWHERE (Design note, 2026-07-28: the ask must SURVIVE the failure. A
+    // RETRY-ANYWHERE (ruling, 2026-07-28): the ask must SURVIVE the failure. A
     // real closed door (127.0.0.1:1) answers the real fetch with a real
     // ECONNREFUSED — the failure path is exercised for real, nothing stubbed.
     await setCredential('custom', { endpoint: 'http://127.0.0.1:1/v1' });

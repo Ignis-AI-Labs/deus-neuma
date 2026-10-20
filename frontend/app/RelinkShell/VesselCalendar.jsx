@@ -27,26 +27,7 @@ import {
   vesselDayOfEntry, vesselCountSpec, vesselCountLanes, dayView,
   missingDailies, lastSessionTitle, backfillNoonIso, isRestored,
 } from './vessel-calendar.js';
-import './OutreachApps.css'; // the domain-free .qcal-* month-grid block (F4)
-
-const WEEKDAYS = Object.freeze(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
-
-// One count as its letter; zero prints nothing — a quiet day stays quiet.
-const Count = ({ n, tone, letter }) => (
-  n > 0 ? <span className={`qcal-n is-${tone}`}>{letter}{n}</span> : null
-);
-
-// The cell's spoken form — the letters are colour-coded, so a screen reader
-// gets the same counts in words.
-const cellLabel = (cell) => {
-  const day = new Date(`${cell.key}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
-  const parts = vesselCountLanes
-    .filter((lane) => cell.counts[lane.key] > 0)
-    .map((lane) => lane.label(cell.counts[lane.key]));
-  return `${day} — ${parts.length ? parts.join(', ') : 'nothing logged'}. Show this day.`;
-};
+import { MonthCalendar } from './MonthCalendar.jsx';
 
 // One exercise as a readable run: […].
 const exerciseLine = (ex) => {
@@ -187,54 +168,24 @@ export const VesselCalendar = ({ reloadSignal = 0 }) => {
   }
 
   const todayKey = dayKeyOf(new Date());
-  const monthLabel = new Date(ym.year, ym.monthIndex, 1)
-    .toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-    .toUpperCase();
-
   return (
     <section className="vl-sec">
       <h3 className="vl-h label-data">CALENDAR</h3>
       {entries === null ? (
         <p className="vl-unreadable label-data">CALENDAR UNREADABLE</p>
       ) : dayKey === null ? (
-        <div className="qcal">
-          <div className="qcal-head">
-            <button type="button" className="vl-chip" aria-label="Previous month"
-              onClick={() => shiftMonth(-1)}>‹</button>
-            <span className="label-data qcal-month" aria-live="polite">{monthLabel}</span>
-            <button type="button" className="vl-chip" aria-label="Next month"
-              onClick={() => shiftMonth(1)}>›</button>
-            <button type="button" className="vl-chip" onClick={goToday}>TODAY</button>
-          </div>
-          <div className="qcal-weekdays" aria-hidden="true">
-            {WEEKDAYS.map((d) => <span key={d} className="qcal-weekday">{d}</span>)}
-          </div>
-          <div className="qcal-grid">
-            {buildMonthGrid(ym.year, ym.monthIndex, entries, {
-              dayKeyOfEntry: vesselDayOfEntry, countSpec: vesselCountSpec,
-            }).flat().map((cell, i) => (
-              cell.date === null ? (
-                // Padding keeps the grid 6×7 — a blank seat, never a day.
-                <span key={`pad-${i}`} className="qcal-cell is-pad" aria-hidden="true" />
-              ) : (
-                <button
-                  key={cell.key}
-                  type="button"
-                  className={`qcal-cell${cell.today ? ' is-today' : ''}`}
-                  aria-label={cellLabel(cell)}
-                  onClick={() => pick(cell.key)}
-                >
-                  <span className="qcal-day">{cell.date}</span>
-                  <span className="qcal-counts">
-                    {vesselCountLanes.map((lane) => (
-                      <Count key={lane.key} n={cell.counts[lane.key]} tone={lane.tone} letter={lane.letter} />
-                    ))}
-                  </span>
-                </button>
-              )
-            ))}
-          </div>
-        </div>
+        <MonthCalendar
+          year={ym.year}
+          monthIndex={ym.monthIndex}
+          weeks={buildMonthGrid(ym.year, ym.monthIndex, entries, { dayKeyOfEntry: vesselDayOfEntry, countSpec: vesselCountSpec })}
+          countLanes={vesselCountLanes}
+          onPick={pick}
+          onPrevMonth={() => shiftMonth(-1)}
+          onNextMonth={() => shiftMonth(1)}
+          onToday={goToday}
+          navClass="vl-chip"
+          emptyLabel="nothing logged"
+        />
       ) : (
         <VesselDay
           dayKey={dayKey}

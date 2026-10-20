@@ -55,8 +55,10 @@ describe('task tools — the being\'s own working list through the real gate', (
     return receipts[0];
   };
 
-  it('advertises the READ alone — the four acts left with the catalog cut', () => {
-    expect(TASK_TOOLS.map((t) => t.name)).toEqual(['task_list']);
+  it('advertises READS alone — the four acts left with the catalog cut', () => {
+    // the two reads: the being's own ledger, and the house calendar
+    expect(TASK_TOOLS.map((t) => t.name)).toEqual(['task_list', 'calendar_read']);
+    expect(_isTaskTool({ tool: 'tasks/calendar_read' })).toBe(true);
     expect(_isTaskTool({ tool: 'tasks/task_list' })).toBe(true);
     expect(_isTaskTool({ toolName: 'write_file' })).toBe(false);
 

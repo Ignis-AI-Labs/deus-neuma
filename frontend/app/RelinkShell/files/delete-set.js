@@ -1,6 +1,6 @@
 // delete-set — which paths one delete gesture takes, pure.
 //
-// File-manager grammar (Design note, 2026-08-16: a delete gesture on a row INSIDE
+// File-manager grammar (ruling, 2026-08-16): a delete gesture on a row INSIDE
 // the standing multi-selection takes the WHOLE selection; on a row outside
 // it, just that row. Open roots never delete (the tree's standing law — a
 // root closes, it is not destroyed), and a path whose ancestor is already in

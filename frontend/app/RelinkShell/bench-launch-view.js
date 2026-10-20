@@ -21,7 +21,7 @@ export const isIdentityArm = (arm) => IDENTITY_ARMS.includes(arm);
 
 /**
  * Arms seated on a lane: the identity arms plus HARNESS — the platform agent
- * with identity off (Design note, 2026-09-29, which borrows a lane's workspace and
+ * with identity off (ruling, 2026-09-29), which borrows a lane's workspace and
  * tools but sends none of its identity. On these the LAUNCH panel owes a lane.
  */
 export const LANE_ARMS = Object.freeze(['harness', ...IDENTITY_ARMS]);
@@ -53,10 +53,10 @@ export const tierLegendFor = (tier) =>
 /**
  * The arm list in plain language — how the benchmark should run. The arm id
  * rides small in the render; the DEFAULT mark is bare's. Names people
- * already understand (Design note, 2026-09-25: BARE MODEL · PLATFORM WIRE · HARNESS ·
+ * already understand (ruling, 2026-09-25): BARE MODEL · PLATFORM WIRE · HARNESS ·
  * SILO · FULL BEING — and SILO says it tests NITE, the identity engine.
  * HARNESS is the platform agent with identity off; the single-reply wire once
- * called PURE HARNESS is PLATFORM WIRE (Design note, 2026-09-29.
+ * called PURE HARNESS is PLATFORM WIRE (ruling, 2026-09-29).
  *
  * THREE CORE ARMS (Design note, 2026-09-29: […]). PLATFORM WIRE and SILO stay available as
  * DIAGNOSTIC arms — for debugging a specific layer, never the headline.

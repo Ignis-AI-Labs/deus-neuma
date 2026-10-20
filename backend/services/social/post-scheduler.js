@@ -26,14 +26,15 @@ import { resolveChannelCredential } from './channel-credentials.js';
 import { posterFor } from './poster-registry.js';
 import { getChannel } from './channel-registry.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
-import { readServed, servedWallet, laneHouse, houseWallet, servesLane } from '../house-served.js';
+import { readServed, houseWallet, servesLane } from '../house-served.js';
+import { queueEntryHouse } from './queue-house.js';
 import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('PostScheduler');
 
-const TICK_MS = 60 * 1000;
+export const TICK_MS = 60 * 1000;
 
 // THE LEASE. A claimed send has this long to land an outcome before the
 // reconciler treats it as lost mid-flight (process died, or the poster threw
@@ -44,6 +45,10 @@ const SEND_LEASE_MS = 15 * 60 * 1000;
 // An approved post this far past its slot is overdue — logged, loudly, once
 // per tick (the board's OVERDUE meta tells the same story on the desk).
 const OVERDUE_GRACE_MS = 10 * 60 * 1000;
+
+// pure — the house a queue entry speaks for: the wallet that approved (or
+// staged) it, as queue-house.js names it.
+const entryHouse = (entry) => houseWallet(entry.decidedBy) ?? houseWallet(entry.queuedBy);
 
 // pure — the shape a text match is judged on: whitespace collapsed, capped.
 // X can re-wrap copy; the first 120 chars of collapsed text is the honest
@@ -62,8 +67,15 @@ const normalizeText = (text) => String(text || '').replace(/\s+/g, ' ').trim().s
 const reconcileStuckSends = async (entries, nowMs) => {
   const stuck = entries.filter((e) => e.status === 'sending'
     && nowMs - Date.parse(e.sendingAt || e.decidedAt || e.createdAt || 0) > SEND_LEASE_MS);
-  if (!stuck.length) return;
-  const recent = await readXListings({ kind: 'recent', limit: 25 }).catch(() => null);
+  // Each house's sends are judged against its OWN account's live posts.
+  for (const house of new Set(stuck.map(entryHouse))) {
+    await reconcileHouseSends(house, stuck.filter((e) => entryHouse(e) === house));
+  }
+};
+
+// impure — one house's lost sends, settled against that house's live posts.
+const reconcileHouseSends = async (house, stuck) => {
+  const recent = await readXListings({ kind: 'recent', limit: 25, wallet: house }).catch(() => null);
   if (!recent?.ok) {
     log.warn('stuck-send reconciliation deferred — the live read failed', {
       count: stuck.length, detail: recent?.detail || 'no answer',
@@ -88,14 +100,6 @@ const reconcileStuckSends = async (entries, nowMs) => {
   }
 };
 
-// pure — the house a queue entry belongs to on this backend, or null when it
-// is not served here: the wallet that approved (or staged) it names the house,
-// and an author's lane must be that house's lane on this backend's grounds.
-const entryHouse = (served, entry) => {
-  const named = houseWallet(entry.decidedBy) ?? houseWallet(entry.queuedBy);
-  if (entry.authorNeumaId) return laneHouse(served, entry.authorNeumaId, named);
-  return servedWallet(served, named) ? named : null;
-};
 
 // impure — the author's outward speech is part of their record; non-blocking.
 // The record says WHAT went out (a reply is not a post) and, when a decision
@@ -190,18 +194,21 @@ const uploadEntryMedia = async (credentials, entry) => {
 };
 
 export const publishEntry = async (entry) => {
+  // THE HOUSE the entry speaks for: its holder, its crew and its keys are
+  // that house's own, never another's (social/house-positions.js).
+  const house = entryHouse(entry);
   // The binding law holds at SEND time. A witness-authored post (no
   // authorNeumaId) is the witness's own speech and needs no binding.
   if (entry.authorNeumaId) {
-    // THE SEND LAW under the crew model (Design note, 2026-07-26: a crew member drafts,
+    // THE SEND LAW under the crew model (ruling, 2026-07-26): a crew member drafts,
     // the operator approves by hand, and the post leaves on the HOLDER's keys.
     // So the author need not be the holder — but the channel must still HAVE
     // one, and the author must still be on the crew. Removing someone from the
     // sector therefore kills their pending posts, exactly as unbinding used to:
     // approval does not outlive membership.
     const [bound, crewStore] = await Promise.all([
-      channelBindings.load().catch(() => ({})),
-      sectorCrew.load().catch(() => ({})),
+      channelBindings.load(house).catch(() => ({})),
+      sectorCrew.load(house).catch(() => ({})),
     ]);
     if (!canSendStaged(crewStore, bound, entry.channelId, entry.authorNeumaId)) {
       const outcome = { ok: false, detail: 'the author is no longer on this channel\'s crew, or the channel has no holder — approval does not outlive membership' };
@@ -211,7 +218,7 @@ export const publishEntry = async (entry) => {
     }
   }
 
-  const credentials = await resolveChannelCredential(entry.channelId).catch(() => null);
+  const credentials = await resolveChannelCredential(house, entry.channelId).catch(() => null);
   const post = posterFor(entry.channelId);
   // A null credential needs no guard here: every poster and every reader
   // answers a missing credential with its own NAMED `{ok:false}` refusal
@@ -236,7 +243,7 @@ export const publishEntry = async (entry) => {
     }
     // The parent's LIVE post must still stand — same doctrine as the reply
     // lane's target check: a deleted parent is not answered by a fallback.
-    const standing = await readXPost(parent.postId);
+    const standing = await readXPost(parent.postId, { wallet: house });
     if (!standing.ok) {
       const outcome = { ok: false, detail: `the parent's post no longer stands (${standing.detail}) — the thread post stays in the record, unsent` };
       await postQueue.recordOutcome(entry.id, outcome);
@@ -247,14 +254,14 @@ export const publishEntry = async (entry) => {
     threadReplyToId = parent.postId;
   }
 
-  // THE REPLY SEND LAW (Design note, 2026-07-28: a reply re-checks the world at send
+  // THE REPLY SEND LAW (ruling, 2026-07-28): a reply re-checks the world at send
   // time, same doctrine as the binding re-check above. The target post must
   // still stand — a vanished target fails the send honestly, never a
   // fallback post — and the per-conversation cap must still hold, counted
   // from the queue RIGHT NOW with this entry counting itself (approval did
   // not pre-authorize over-engagement).
   if (entry.kind === 'reply' && entry.reply?.toPostId) {
-    const target = await readXPost(entry.reply.toPostId);
+    const target = await readXPost(entry.reply.toPostId, { wallet: house });
     if (!target.ok) {
       const outcome = { ok: false, detail: `the reply's target post no longer stands (${target.detail}) — the answer stays in the record, unsent` };
       await postQueue.recordOutcome(entry.id, outcome);
@@ -313,7 +320,7 @@ export const publishEntry = async (entry) => {
   // and warm from the lane's other reads; a failed lookup never blocks a
   // real publish — postedAs is simply absent, never invented.
   if (outcome.ok && entry.channelId === 'x') {
-    const account = await readXAccount().catch(() => null);
+    const account = await readXAccount({ wallet: house }).catch(() => null);
     if (account) outcome.postedAs = account;
   }
 
@@ -343,7 +350,7 @@ export const schedulerTick = async (nowMs = Date.now()) => {
     log.error('post queue unreadable — holding all publishes', { error: err.message });
     return [];
   }
-  const ours = (entry) => Boolean(entryHouse(served, entry));
+  const ours = (entry) => Boolean(queueEntryHouse(served, entry));
   await reconcileStuckSends(entries.filter(ours), nowMs);
   // THE EXPIRY SWEEP, its own pass (Design note, 2026-08-06, with the reply-clock
   // law): the scheduler no longer sends replies — approval does — but the

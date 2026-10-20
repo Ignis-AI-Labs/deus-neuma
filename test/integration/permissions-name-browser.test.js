@@ -9,6 +9,8 @@ import { createServer } from 'vite';
 import { chromium } from '@playwright/test';
 import { expect, test } from 'vitest';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { setHarnessRoot } from '../../core/workspace/lane-grounds.js';
+import { harnessLaneId } from '../../backend/services/harness-lane.js';
 import permissionsRoutes from '../../backend/routes/permissions-routes.js';
 import { fullAuth, writeOwner } from '../helpers/audit-auth.js';
 
@@ -46,6 +48,14 @@ test('ALL BEINGS renders true-name text, including unreadable lanes, and revoke 
       await workspace.writeToolPolicy(id, { web: { allowed: ['web_search'] } });
     }
     await fs.writeFile(path.join(workspace.pathFor('permission-unreadable'), 'config', 'tool-policy.json'), '{broken');
+    // The wallet's harness lane, on its own ground: its grant is listed under
+    // the harness's own name, never a being's.
+    setHarnessRoot(path.join(root, 'harness'));
+    const harness = harnessLaneId(auth.address);
+    await workspace.create(harness);
+    await fs.writeFile(path.join(workspace.pathFor(harness), 'owner.json'), JSON.stringify({ wallet: auth.address, claimedAt: 1 }));
+    await workspace.writeNeumaDEK(harness, 'b'.repeat(64));
+    await workspace.writeToolPolicy(harness, { web: { allowed: ['web_search'] } });
     const app = express();
     app.use(express.json());
     app.use('/api/v1/permissions', permissionsRoutes);
@@ -53,7 +63,7 @@ test('ALL BEINGS renders true-name text, including unreadable lanes, and revoke 
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/permissions-name.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><div id="root"></div><script type="module" src="/test/fixtures/permissions-name.jsx"></script>'));
     app.use(vite.middlewares);
@@ -74,12 +84,13 @@ test('ALL BEINGS renders true-name text, including unreadable lanes, and revoke 
     await page.getByRole('button', { name: 'THIS BEING', exact: true }).click();
     await expect.poll(async () => errors.length ? errors
       : (await page.locator('.perm-beinghead').allTextContents()).sort(), { timeout: 5000 })
-      .toEqual(cases.map(([, , name], index) => name + (index === 4 ? '' : '1')).sort());
+      .toEqual([...cases.map(([, , name], index) => name + (index === 4 ? '' : '1')), 'HARNESS1'].sort());
     expect(await page.locator('.perm-unreadable').last().textContent()).toContain('COULD NOT BE READ');
 
     const headers = { Authorization: `Bearer ${auth.token}` };
     const house = await fetch(`${origin}/api/v1/permissions`, { headers }).then((res) => res.json());
-    expect(house.beings.map(({ name }) => name).sort()).toEqual(cases.map(([, , name]) => name).sort());
+    expect(house.beings.map(({ name }) => name).sort()).toEqual([...cases.map(([, , name]) => name), 'HARNESS'].sort());
+    expect(house.beings.find(({ neumaId }) => neumaId === harness).kind).toBe('harness');
     for (const [id, , name] of cases) {
       const response = await fetch(`${origin}/api/v1/permissions/${id}`, { headers });
       expect(response.status).toBe(200);
@@ -92,6 +103,10 @@ test('ALL BEINGS renders true-name text, including unreadable lanes, and revoke 
     expect((await (await revoked).json()).record.name).toBe('Chosen Reader');
     await expect.poll(async () => (await workspace.readToolPolicy('permission-chosen')).web.allowed).toEqual([]);
     await first.getByText('NOTHING STANDING — every act still asks.', { exact: true }).waitFor();
+    const harnessBlock = page.locator('.perm-being').filter({ hasText: 'HARNESS' });
+    await harnessBlock.getByRole('button', { name: 'REVOKE', exact: true }).click();
+    await harnessBlock.getByRole('button', { name: 'TAKE IT BACK', exact: true }).click();
+    await expect.poll(async () => (await workspace.readToolPolicy(harness)).web.allowed).toEqual([]);
     const outsider = await fullAuth();
     expect((await fetch(`${origin}/api/v1/permissions/permission-chosen`, {
       headers: { Authorization: `Bearer ${outsider.token}` },
@@ -103,6 +118,7 @@ test('ALL BEINGS renders true-name text, including unreadable lanes, and revoke 
     if (server?.listening) await new Promise((resolve) => server.close(resolve));
     await vite?.close();
     setWorkspacesRoot(oldRoot);
+    setHarnessRoot(null);
     if (oldData === undefined) delete process.env.NEUMA_DATA_ROOT; else process.env.NEUMA_DATA_ROOT = oldData;
     await fs.rm(root, { recursive: true, force: true });
   }

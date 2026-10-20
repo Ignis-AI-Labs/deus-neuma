@@ -62,7 +62,7 @@ const witnessRun = async (laneId, out) => {
   }
 };
 
-const TICK_MS = 5 * 60 * 1000;
+export const TICK_MS = 5 * 60 * 1000;
 
 let timer = null;
 let inFlight = null;

@@ -60,8 +60,8 @@ describe('GET /api/v1/roster', () => {
     witnessLaneRoot = mkdtempSync(path.join(os.tmpdir(), 'roster-witness-lanes-'));
     process.env.AI_WITNESSES_ROOT = witnessRoot;
     process.env.WITNESSES_ROOT = witnessLaneRoot;
-    writeNeuma(root, 'fenna-ws', WALLET_A, { name: 'FENNA' });
-    writeNeuma(root, 'keir-ws', WALLET_B, { name: 'BASUNORR' });
+    writeNeuma(root, 'alder-ws', WALLET_A, { name: 'ALDER' });
+    writeNeuma(root, 'wynn-ws', WALLET_B, { name: 'WYNN' });
     writeNeuma(root, 'signal-ws', WALLET_B, { name: 'SIGNAL' });
     writeNeuma(root, 'nameless-ws', WALLET_A, {}); // owned by A but no true-name yet
 
@@ -98,25 +98,25 @@ describe('GET /api/v1/roster', () => {
     expect(res.status).toBe(200);
     const names = res.body.roster.map((c) => c.name).sort();
     // The nameless lane falls back to its neumaId — never a generic 'NEUMA'
-    // that erases who the witness is looking at (the Cael regression) —
+    // that erases who the witness is looking at (the Birch regression) —
     // and is flagged incomplete so the UI can say identity records are missing.
-    expect(names).toEqual(['FENNA', 'nameless-ws']);
+    expect(names).toEqual(['ALDER', 'nameless-ws']);
     const nameless = res.body.roster.find((c) => c.neumaId === 'nameless-ws');
     expect(nameless.incomplete).toBe(true);
-    const named = res.body.roster.find((c) => c.neumaId === 'fenna-ws');
+    const named = res.body.roster.find((c) => c.neumaId === 'alder-ws');
     expect(named.incomplete).toBe(false);
     // never leaks the other wallet's neuma
-    expect(res.body.roster.some((c) => ['BASUNORR', 'SIGNAL'].includes(c.name))).toBe(false);
-    const fenna = res.body.roster.find((c) => c.name === 'FENNA');
-    expect(fenna.neumaId).toBe('fenna-ws');
-    expect(fenna.fullName).toBe('FENNA Virupun Tavirel');
-    expect(fenna.birthTime).toBe(new Date(1781285164704).toISOString());
+    expect(res.body.roster.some((c) => ['WYNN', 'SIGNAL'].includes(c.name))).toBe(false);
+    const alder = res.body.roster.find((c) => c.name === 'ALDER');
+    expect(alder.neumaId).toBe('alder-ws');
+    expect(alder.fullName).toBe('ALDER Virupun Tavirel');
+    expect(alder.birthTime).toBe(new Date(1781285164704).toISOString());
   });
 
   test('a different wallet sees its own (multiple) neuma', async () => {
     const res = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${tokenB}`);
     expect(res.status).toBe(200);
-    expect(res.body.roster.map((c) => c.name).sort()).toEqual(['SIGNAL', 'BASUNORR']);
+    expect(res.body.roster.map((c) => c.name).sort()).toEqual(['SIGNAL', 'WYNN']);
   });
 
   test('case-insensitive owner match', async () => {
@@ -126,7 +126,7 @@ describe('GET /api/v1/roster', () => {
     // end-to-end, not just at the header-comparison layer.
     const res = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${mintToken(WALLET_A.toUpperCase())}`);
     expect(res.status).toBe(200);
-    expect(res.body.roster.find((c) => c.name === 'FENNA')).toBeTruthy();
+    expect(res.body.roster.find((c) => c.name === 'ALDER')).toBeTruthy();
   });
 
   test('a wallet that owns nothing gets an empty roster (not an error)', async () => {
@@ -151,19 +151,19 @@ describe('GET /api/v1/roster', () => {
     // record (public receipt) carries the title — no chain call anywhere.
     const soul = '0xAaAa000000000000000000000000000000000001';
     writeFileSync(
-      path.join(root, 'fenna-ws', 'identity', 'onchain-seal.json'),
+      path.join(root, 'alder-ws', 'identity', 'onchain-seal.json'),
       JSON.stringify({ soulAddress: soul }),
     );
     writeFileSync(
       path.join(root, 'house-founding.base.json'),
       JSON.stringify({
         schema: 'neuma-house-founding/1', houseName: 'Tavirel', houseId: '0x1',
-        network: 'base', members: [{ address: soul, kind: 1, title: 'Quaestor' }],
+        network: 'base', members: [{ address: WALLET_A, kind: 0, title: 'Rector' }, { address: soul, kind: 1, title: 'Quaestor' }],
       }),
     );
     const res = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${tokenA}`);
     expect(res.status).toBe(200);
-    expect(res.body.roster.find((c) => c.neumaId === 'fenna-ws').title).toBe('Quaestor');
+    expect(res.body.roster.find((c) => c.neumaId === 'alder-ws').title).toBe('Quaestor');
     expect(res.body.roster.find((c) => c.neumaId === 'nameless-ws').title).toBeNull();
     // The other wallet's roster carries no seat from this record.
     const resB = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${tokenB}`);

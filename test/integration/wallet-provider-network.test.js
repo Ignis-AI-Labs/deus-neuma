@@ -30,7 +30,7 @@ test('embedded provider uses selected browser network and real custom RPC withou
     });
     vite = await createServer({ configFile: false,
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(temp, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null },
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     vite.middlewares.use((req, res, next) => {
       if (req.url !== '/') return next();

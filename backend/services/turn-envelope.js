@@ -100,3 +100,15 @@ export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null,
   }
   return allocation.sections;
 };
+
+/**
+ * Pure — a composition event carrying what the shed ladder cut this turn
+ * (ids and token estimates only, never text), so the desk can say so. An
+ * event is returned untouched when nothing shed.
+ * @param {Object} event a context:composition event
+ * @param {ReadonlyArray<{id: string, tokens: number}>} shed the ladder's verdict
+ * @returns {Object}
+ */
+export const withShedSections = (event, shed) => (Array.isArray(shed) && shed.length > 0
+  ? Object.freeze({ ...event, shed })
+  : event);

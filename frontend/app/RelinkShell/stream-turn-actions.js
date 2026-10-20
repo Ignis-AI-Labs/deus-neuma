@@ -8,20 +8,28 @@ export const thinkingActions = (data, currentTake, at) => {
   ];
 };
 
-/** Pure speech decisions; stamp/start precede the host's error-flush boundary. */
+/**
+ * Pure speech decisions; stamp/start precede the host's error-flush boundary.
+ * A failure moves a light only when the frame attributes it: a witness's
+ * route names its provider, the local model's says `unreachable` — a refusal,
+ * an overflow or a key error is the turn's failure, never the server's absence.
+ */
 export const speechActions = (data, { seen, witness }) => {
   const first = !seen;
   const error = Boolean(data.error);
   const health = error
     ? (witness ? (data.provider ? { type: 'ROUTE', live: false, provider: data.provider } : null)
-      : { type: 'LOCAL', reachable: false, standby: false })
+      : (data.unreachable === true ? { type: 'LOCAL', reachable: false, standby: false } : null))
     : (first ? (witness ? { type: 'ROUTE', live: true } : { type: 'LOCAL', reachable: true, standby: false }) : null);
   return {
     first, error, health,
     take: data.turnId ? { turnId: data.turnId, takeIndex: data.takeIndex } : null,
     stamp: data.turnId && first ? { type: 'TURN_STAMP', turnId: data.turnId } : null,
     start: first ? { type: 'STREAM' } : null,
-    failure: error ? { type: 'ERROR', text: data.content || data.thought || 'Connection disrupted', turnId: data.turnId } : null,
+    failure: error ? {
+      type: 'ERROR', text: data.content || data.thought || 'Connection disrupted', turnId: data.turnId,
+      ...(typeof data.reason === 'string' && data.reason ? { reason: data.reason } : {}),
+    } : null,
     content: data.content || data.thought || data.chunk || '',
   };
 };

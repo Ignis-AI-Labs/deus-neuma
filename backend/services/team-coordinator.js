@@ -94,6 +94,12 @@ export const resolveTeamCapacity = async ({ getProfile = getSubstrateProfile } =
  * @property {string[]} [needs] - ids of steps whose outputs this step depends on
  */
 
+// A step id names files the platform writes (the team room's part, the part's
+// work log), so it is the part log's own id rule (workspace-sessions.js).
+const STEP_ID = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/;
+/** Whether a step id is safe to name a file with. Pure. */
+export const isStepId = (id) => typeof id === 'string' && STEP_ID.test(id) && !id.includes('..');
+
 // pure — reject a plan that could never run correctly, before any neuma is
 // asked to do anything. A malformed team is a coordination bug, not a result.
 /**
@@ -107,6 +113,7 @@ export const validatePlan = (steps) => {
   const ids = new Set();
   for (const step of steps) {
     if (!step || typeof step.id !== 'string' || !step.id) throw new Error('every step needs an id');
+    if (!isStepId(step.id)) throw new Error(`step id ${JSON.stringify(step.id.slice(0, 40))} must be letters, digits, ".", "_" or "-"`);
     if (ids.has(step.id)) throw new Error(`duplicate step id: ${step.id}`);
     if (typeof step.neumaId !== 'string' || !step.neumaId) throw new Error(`step ${step.id} has no neumaId`);
     if (step.role != null && (typeof step.role !== 'string' || !step.role.trim())) {

@@ -19,9 +19,10 @@ import {
   QUEUE_VIEWS, QUEUE_ORDERS, QUEUE_KINDS, PAGE_DEFAULT, PAGE_MAX,
 } from '../social/queue-view.js';
 import { DEAD_FOR_BEING } from '../social/queue-render.js';
-import { replyCandidates, replyDisposition } from '../social/reply-candidates.js';
+import { replyCandidatesOf, replyDisposition } from '../social/reply-candidates.js';
 import { materializeReplyCandidates } from '../social/reply-listener.js';
 import { readXMe, readXListings, formatXReadForBeing, renderXListing, postIdFrom } from '../social/x-reader.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { REPLIES_LIST_TOOL, readReplyInbox } from './reply-inbox-tool.js';
@@ -277,7 +278,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
 
   if (toolName === 'replies_list') {
     try {
-      const read = await readReplyInbox(args);
+      const read = await readReplyInbox(args, await houseOfLane(companion?.neumaId));
       if (!read.ok) {
         _sendToolEvent(ws, companion, { tool, status: 'error', summary: 'replies_list — invalid args', detail: read.error });
         return { tool, status: 'error', error: read.error };
@@ -353,15 +354,17 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   // may FETCH more than this — the renderer hands over exactly this many.
   const limit = Math.min(25, Math.max(1, Math.floor(Number(args?.limit)) || 10));
   const signal = connection.activeTurn?.signal;
+  // The being's own house's X account, read with that house's keys.
+  const wallet = await houseOfLane(companion?.neumaId);
   const outcome = what === 'me'
-    ? await readXMe({ signal })
-    : await readXListings({ kind: what, limit, signal });
+    ? await readXMe({ signal, wallet })
+    : await readXListings({ kind: what, limit, signal, wallet });
 
-  // ONE CANDIDATE PIPELINE (Design note, 2026-07-28: a being-driven mentions read
+  // ONE CANDIDATE PIPELINE (ruling, 2026-07-28): a being-driven mentions read
   // lands candidates through the exact path the listener tick runs, so a
   // reply the being just read is answerable immediately — no tick wait.
   if (outcome.ok && what === 'mentions') {
-    await materializeReplyCandidates(outcome.data).catch((err) => log.warn('read_x candidate materialization failed', { error: err.message }));
+    await materializeReplyCandidates(outcome.data, wallet).catch((err) => log.warn('read_x candidate materialization failed', { error: err.message }));
   }
 
   // The identifiers the being names a target with. The house's own postIds
@@ -372,7 +375,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   if (outcome.ok && what !== 'me') {
     const [queueEntries, candidateRows] = await Promise.all([
       postQueue.load().catch(() => []),
-      what === 'mentions' ? replyCandidates.load().catch(() => []) : [],
+      what === 'mentions' ? replyCandidatesOf(wallet).load().catch(() => []) : [],
     ]);
     // Every post the house sent, linked to the queue entry it went out as.
     const queueIds = Object.fromEntries((queueEntries || [])

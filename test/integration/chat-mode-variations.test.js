@@ -58,6 +58,7 @@ const GOOD_PRESENT = Object.freeze({
 const HARD_GATES = Object.freeze([
   ['filesystem', 'delete_file'],
   ['coding', 'execute'],
+  ['intents', 'team.workspace-run'],
   ['intents', 'social.post'],
   ['intents', 'email.send'],
   ['intents', 'wallet.send'],
@@ -107,7 +108,9 @@ describe('chat mode variations (real socket, real dispatcher, gnosis)', () => {
     bindingsFile = path.join(house, 'social-channel-bindings.json');
     prevBindingsEnv = process.env.NEUMA_SOCIAL_BINDINGS_PATH;
     process.env.NEUMA_SOCIAL_BINDINGS_PATH = bindingsFile;
-    await fs.writeFile(bindingsFile, JSON.stringify({ mastodon: { neumaId: 'aethon' } }));
+    // The lane is the house's own, and the house bound it (house-positions.js).
+    await fs.writeFile(path.join(house, 'aethon', 'owner.json'), JSON.stringify({ wallet: WITNESS }));
+    await fs.writeFile(bindingsFile, JSON.stringify({ mastodon: { neumaId: 'aethon', boundBy: WITNESS } }));
     // The lane's config writes (tool policy, spend allowlist) are encrypted at
     // rest — the test key the other suites use, saved and restored.
     prevDnaKey = process.env.DNA_ENCRYPTION_KEY;

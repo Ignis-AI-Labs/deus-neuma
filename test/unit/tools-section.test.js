@@ -145,6 +145,13 @@ describe('buildIntentsSection — the settlement teaching (2026-09-02 context-ec
     const section = buildIntentsSection(TYPES, '/lane/intents');
     expect(section).toContain('a JSON file at /lane/intents/<a-unique-name>.json holding {"type": "<one of the types below>", …its fields}');
   });
+
+  test('a wire with no search door carries each contract inline, never sending the being to tool_search (2026-10-18 flight)', () => {
+    const section = buildIntentsSection(TYPES, '/lane/intents', { searchable: false });
+    expect(section).toContain('- social/queue (channels: x) {channel, text} — Stage a post.');
+    expect(section).not.toContain('tool_search');
+    expect(buildIntentsSection(TYPES, '/lane/intents')).toContain('call system/tool_search with its exact name');
+  });
 });
 
 describe('the intent lines load on demand — names by family (2026-10-04 → 2026-10-14)', () => {

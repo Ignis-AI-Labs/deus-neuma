@@ -75,16 +75,25 @@ export const latestTorch = (messages) => {
 // pure — the message list a being authors its torch over: the compactable
 // region replayed as its own conversation (real user/assistant string turns
 // only — system entries and tool rounds are machinery, not the being's
-// exchange), with the torch ask as the final turn.
+// exchange), with the torch ask as the final turn. A region that opens on an
+// EARLIER compaction's summary replays it first, in the being's own voice
+// with its torch, so the new summary is written with what came before it in
+// view — otherwise the second compaction erased the first one's words.
 /**
- * @param {Array<{role: string, content: string}>} region
+ * @param {Array<{role: string, content: string, compacted?: boolean, torch?: string}>} region
+ *   the compactable messages, already folded to the viewed takes
  * @returns {Array<{role: string, content: string}>}
  */
 export const buildTorchAsk = (region) => {
-  const replay = (Array.isArray(region) ? region : [])
+  const rows = Array.isArray(region) ? region : [];
+  const prior = rows.findLast((m) => m?.compacted === true && typeof m.content === 'string' && m.content);
+  const carried = prior
+    ? [{ role: 'assistant', content: typeof prior.torch === 'string' && prior.torch.trim() ? `${prior.content}\n\nTORCH:\n${prior.torch}` : prior.content }]
+    : [];
+  const replay = rows
     .filter((m) => (m?.role === 'user' || m?.role === 'assistant') && typeof m.content === 'string' && m.content)
     .map((m) => ({ role: m.role, content: m.content }));
-  return [...replay, { role: 'user', content: SOLO_TORCH_ASK }];
+  return [...carried, ...replay, { role: 'user', content: SOLO_TORCH_ASK }];
 };
 
 // pure — what a reply offers: the being's summary + torch, both verbatim, or

@@ -15,12 +15,13 @@
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
-const { app, BrowserWindow, Notification, dialog, shell } = require('electron');
+const { app, BrowserWindow, Notification, dialog, shell, session } = require('electron');
 const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
 const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
+const { guardAppSessions } = require('./permission-guard.cjs');
 
 const deskWindows = createDeskWindows({
   getOrigin,
@@ -33,8 +34,9 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', () => {
     // A second launch means "another desk", not […] (VS Code
-    // behavior) — carried on the focused desk's session when one is up.
-    deskWindows.openDeskFromFocused().catch((err) => {
+    // behavior) — carried on the focused desk's session when one is up. A
+    // hidden desk, or a boot still under way, is raised instead (secondLaunch).
+    deskWindows.secondLaunch().catch((err) => {
       dialog.showErrorBox('Deus Neuma', `Could not open a new desk.\n\n${err.message}`);
     });
   });
@@ -44,14 +46,17 @@ if (!app.requestSingleInstanceLock()) {
     // must never load ahead of its handlers, and the wallet store opens before
     // any window exists.
     registerIpcHandlers({ deskWindows });
+    // Electron grants every camera/mic/screen/location ask by default; the
+    // floor is deny, before any page exists (permission-guard.cjs).
+    guardAppSessions(session, getOrigin);
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.
     if (!(await resolveStartupPort())) return;
     try {
-      await startBackend();
+      await startBackend({ onRestarted: deskWindows.reloadDesks });
       await waitForBackend();
-      await deskWindows.createWindow();
+      await deskWindows.bootFirstDesk();
       tray.ensureTray(); // the corner tab — present from the first desk onward
       autoUpdate.init({ app, shell, Notification, refreshTray: tray.rebuildTrayMenu });
     } catch (err) {

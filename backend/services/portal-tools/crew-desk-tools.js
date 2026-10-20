@@ -84,7 +84,7 @@ const _handleHousePost = async (ws, connection, neumaPolicy, toolMode, match, ar
 const _housePostToolsFor = async (connection) =>
   (await _housePostContext(connection)) ? [POST_CHECK_TOOL] : [];
 
-// --- HOUSE POST (Design note, 2026-07-24 — backend word between housemates, no
+// --- HOUSE POST (ruling, 2026-07-24) — backend word between housemates, no
 // council convened. SENDING became the house/post INTENT (Stage 3): filed and
 // settled by the sweep, both ends seated re-verified at validate time. What
 // remains a tool is the READ — collecting one's own inbox.

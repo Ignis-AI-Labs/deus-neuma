@@ -13,6 +13,10 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { isSecretFile } from './secret-path-classifier.js';
+import { secretLinkReason } from './secret-inodes.js';
+// Re-exported for the filesystem organ, which is at the size cap and keeps one policy import.
+export { secretLinkReason };
+import { platformWallWriteReason, platformWriteWalls } from './platform-write-walls.js';
 
 // Denied path patterns — tools cannot access these (reads OR writes). Split in
 // two on 2026-07-26 (THE FOCUS GROUND) because a single substring list cannot
@@ -55,6 +59,77 @@ export const deniedPatternsFor = (resolvedPath) => {
   const underInstall = resolvedPath === NEUMA_INSTALL_ROOT
     || resolvedPath.startsWith(NEUMA_INSTALL_ROOT + path.sep);
   return underInstall ? [...SECRET_PATTERNS, ...INSTALL_PATTERNS] : SECRET_PATTERNS;
+};
+
+// THE LANE'S PLATFORM STATE — written only by the platform's own acts, never
+// by the being the lane belongs to, wherever the house stands. A lane holds the
+// being's work beside what the operator and platform keep FOR it: config/ (tool
+// policy and its grants, the spend allowlist, threshold and pending spends),
+// identity/ (seal records, true name, the write-once soul facts), audit/, the
+// voice first-seal receipt, the lane's standing marker and its granted
+// capacity. The readers trust these files, so a being able to write them could
+// lift its own approval rows or name its own recipients. INSTALL_PATTERNS held
+// config/ only while the lanes sat inside the checkout; Electron's
+// <home>/workspaces and a kin drive had no wall at all (audit 2026-10-19).
+// Anchored on the lane's own top level, so a project with a config/ inside the
+// being's work stays ordinary source. keys/ and owner.json are walls everywhere
+// already (SECRET_PATTERNS). Writes only: reading its own policy is fine.
+const LANE_STATE_DIRS = Object.freeze(['config', 'identity', 'audit']);
+const LANE_STATE_FILES = Object.freeze(['lane.json', 'allocation.json', 'voice/seal.json']);
+// A house's founding records stand beside its lanes, at the ground itself.
+const GROUND_STATE_FILE = /^house-founding\..+\.json$/;
+// A lane id, folded (neuma-workspace `_path`); a dot never appears in one, so
+// a house ground (`house.<wallet>`) is never mistaken for a lane.
+export const LANE_ID_FOLDED = /^[a-z0-9_-]+$/;
+const LANE_STATE_REFUSAL = 'That path is platform state your operator keeps for a lane (policy, grants, spend limits, '
+  + 'seals, audit) — it changes only through the platform\'s own acts, never a file write. Reading it is fine.';
+
+// pure — the path segments of `target` below `root`; [] for the root itself,
+// null when outside it. Both already resolved and folded.
+export const segmentsBelow = (root, target) => {
+  const rel = path.relative(root, target);
+  if (rel === '') return [];
+  if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return null;
+  return rel.split(path.sep);
+};
+
+// pure — is this lane-relative path platform state, or a directory holding
+// it? The lane itself counts: replacing the lane replaces all of its state.
+const isLaneState = (parts) => {
+  if (parts.length === 0 || LANE_STATE_DIRS.includes(parts[0])) return true;
+  const rel = parts.join('/');
+  return LANE_STATE_FILES.some((file) => file === rel || file.startsWith(`${rel}/`));
+};
+
+/**
+ * Does a WRITE reach platform state — the install's settings, the realm, the
+ * operator's login persistence (platform-write-walls.js) or a lane's own
+ * state? Case-folded, so a case-insensitive volume cannot be asked for
+ * `Config/` instead. Pure when `walls` is given; by default the walls are
+ * resolved at the call (impure: env, realm root, disk), never at import.
+ * @param {string} filePath
+ * @param {{ grounds?: string[], lanes?: string[], walls?: Array<{ path: string, reason: string }> }} where -
+ *   grounds hold lanes one level down (the workspaces, witnesses and harness
+ *   roots); lanes are lane roots named directly (the being's own, as its
+ *   engine resolved it)
+ * @returns {string|null} the refusal, or null when the write is the being's own work
+ */
+export const laneStateWriteReason = (filePath, { grounds = [], lanes = [], walls = platformWriteWalls() } = {}) => {
+  const walled = platformWallWriteReason(filePath, walls);
+  if (walled) return walled;
+  const target = path.resolve(filePath).toLowerCase();
+  const fold = (p) => path.resolve(p).toLowerCase();
+  for (const lane of lanes) {
+    const parts = segmentsBelow(fold(lane), target);
+    if (parts && isLaneState(parts)) return LANE_STATE_REFUSAL;
+  }
+  for (const ground of grounds) {
+    const parts = segmentsBelow(fold(ground), target);
+    if (!parts) continue;
+    if (parts.length === 0 || (parts.length === 1 && GROUND_STATE_FILE.test(parts[0]))) return LANE_STATE_REFUSAL;
+    if (LANE_ID_FOLDED.test(parts[0]) && isLaneState(parts.slice(1))) return LANE_STATE_REFUSAL;
+  }
+  return null;
 };
 
 /**
@@ -182,7 +257,8 @@ export const normalizeToolArgs = (toolName, args, defaultRoot = null) => {
 };
 
 /**
- * Check if a path argument is within allowed boundaries.
+ * Check if a path argument is within allowed boundaries. impure: one stat,
+ * for the hard-link law (a path that does not exist costs nothing more).
  * @param {string} filePath - Path to check
  * @param {string[]} allowedRoots - Allowed root directories (absolute paths)
  * @param {{ requireRoot?: boolean }} [opts] - requireRoot: a write with no root fails closed
@@ -220,6 +296,13 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
   if (isSecretFile(normalized)) {
     return { allowed: false, reason: 'Access denied: secret data file', deniedPattern: 'secret data file' };
   }
+
+  // A hard link made outside the being gives a secret's bytes an innocent
+  // name; every check above judged the name (secret-inodes.js). One stat.
+  // No deniedPattern: a twin has no consent story of its own — an operator
+  // grants the secret by its real name, never through a second one.
+  const linked = secretLinkReason(filePath);
+  if (linked) return { allowed: false, reason: linked };
 
   // Writes must be confined: fail closed when no root is in force, so an
   // unconfined write is never possible (the filesystem MCP server is rooted at

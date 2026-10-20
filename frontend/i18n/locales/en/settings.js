@@ -17,6 +17,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: 'LANGUAGE',
     note: 'The language this desk speaks — labels, settings, and every surface that has been translated. More languages land as their catalogs are ratified.',
+    preview: 'PREVIEW (INCOMPLETE)',
   }),
 
   account: Object.freeze({

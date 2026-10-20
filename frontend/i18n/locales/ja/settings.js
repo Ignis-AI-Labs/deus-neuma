@@ -17,6 +17,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: '言語',
     note: 'このデスクが話す言語——ラベル、設定、翻訳が完了したすべての画面。カタログが承認され次第、さらに言語が追加されます。',
+    preview: 'プレビュー（未完成）',
   }),
 
   account: Object.freeze({

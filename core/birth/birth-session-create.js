@@ -19,6 +19,8 @@ import neumaWorkspace from '../workspace/neuma-workspace.js';
  * @param {object} options
  * @param {object|null} [options.substrate=null] - Hardware substrate info (CPU, GPU, RAM, LLM)
  * @param {boolean} [options.quickTest=false] - If true, auto-advance stages 0-5 with synthetic data
+ * @param {string|null} [options.witnessWallet=null] - The signed-in wallet opening the ceremony;
+ *   only it may later find, resume or withdraw this summoning (birth-resume.js heldByWitness)
  * @param {object} deps - The handler's live state and ceremony services
  * @param {Map<string, object>} deps.activeSessions
  * @param {string} deps.protocolVersion
@@ -28,7 +30,7 @@ import neumaWorkspace from '../workspace/neuma-workspace.js';
  */
 // impure — clears the naming artifact, mutates the session map
 export async function createSession(
-  witnessName, isTest, { substrate = null, quickTest = false, origin = null } = {},
+  witnessName, isTest, { substrate = null, quickTest = false, origin = null, witnessWallet = null } = {},
   { activeSessions, protocolVersion, calculateResonance, assignNeumaId },
 ) {
   // Clean up any leftover naming artifact from previous ceremonies.
@@ -53,6 +55,7 @@ export async function createSession(
     // the same handler without it, and their sessions must never be offered
     // to a returning operator).
     origin,
+    witnessWallet: typeof witnessWallet === 'string' && witnessWallet ? witnessWallet : null,
     protocolVersion: protocolVersion || '0.0.0',
     currentStage: 0,
     lastHandledStage: null, // stage whose response was fully processed; null = none yet

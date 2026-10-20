@@ -4,10 +4,13 @@
  * fill (the validation data accumulating), and a per-being posture in
  * COUNTS ONLY — what a being holds beneath its turns stays beneath them
  * (the ceremony-disclosure counts-only law). Auth-gated; the per-being
- * read is owner-gated; the gate switch refuses under the env lock.
+ * read is owner-gated; the gate switch refuses under the env lock. The gates
+ * are the machine's (data/settings/mind.json, every house's beings ride them),
+ * so only the install owner flips one, at this computer's own desk.
  */
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { mindGateSettings } from '../services/mind-gate-settings.js';
@@ -61,7 +64,7 @@ router.get('/', async (req, res) => {
 
 // PUT /gates — the operator's switch: { gate, mode }. A 409 carries the env
 // lock's own words (or the depth-live refusal) — never a shrug.
-router.put('/gates', async (req, res) => {
+router.put('/gates', requireInstallOwner, async (req, res) => {
   const { gate, mode } = req.body ?? {};
   if (typeof gate !== 'string' || typeof mode !== 'string') {
     return res.status(400).json({ error: 'gate and mode are required strings' });

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createBindingIsolationKit, untilBinding } from '../helpers/binding-isolation-kit.js';
 import workspace from '../../core/workspace/neuma-workspace.js';
 import { writeOwner } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import { seal } from '../../core/identity/ai-witness/ai-witness-protocol.js';
 import { getAIWitnessesRoot, setAIWitnessesRoot } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { rehydrateApprovedPlan } from '../../backend/services/team-plan.js';
@@ -48,6 +49,9 @@ beforeAll(async () => {
     scope: { primaryRepo: 'Ignis-AI-Labs/deus-neuma', role: 'test-fixture', boundaries: [] },
     firstUtterance: 'This is a cryptographic storage fixture for lane isolation; no model is summoned or spoken through.',
   });
+  // The operator owns the install (on the kit's own data root), so the witness
+  // it sealed outside the desk's summon is its to take (witness-lane.js).
+  await makeInstallOwner(kit.connection.walletAddress);
   await send({ type: 'companion:manifest', neumaId: WITNESS }, 'companion:anchored');
   mcpService.registerNativeServer('binding-fixture-fs', nativeFilesystemClient);
   oldAllowedRoots = getAllowedDirectories();
@@ -184,8 +188,18 @@ test('a witness plan and cached runtime cannot survive a rebind into neuma autho
   expect(result.ok).toBe(false);
   expect(result.reason).toContain('no approved plan');
   for (const key of ['_approvedPlan', '_sessionCompaction', '_sensitiveGrants', '_teamWorkspace',
-    '_turnSandbox', '_turnCatalog', '_turnSkills', '_turnDisclosedToolIds', '_siloBySitting']) {
+    '_turnSandbox', '_turnCatalog', '_turnSkills', '_turnDisclosedToolIds']) {
     expect(kit.connection[key], key).toBeFalsy();
+  }
+  // The witness's compiled silo is gone with the binding. Since 3fd7f7ab1 the
+  // bind starts the NEW being's own compile (sitting-warmup.js), so the cache
+  // may hold exactly that lane — and what it holds is the neuma's own memory.
+  const silos = kit.connection._siloBySitting;
+  expect([...(silos?.keys() || [])].every((id) => id === NEUMA), '_siloBySitting').toBe(true);
+  if (silos?.has(NEUMA)) {
+    const memory = JSON.stringify((await silos.get(NEUMA)).layers.memory);
+    expect(memory).toContain('NEUMA_PRIVATE_HISTORY');
+    expect(memory).not.toContain('WITNESS_PRIVATE_HISTORY');
   }
   expect((await workspace.readPlanRecord(WITNESS)).goal).toBe('WITNESS_PRIVATE_PLAN');
   expect(await workspace.readPlanRecord(NEUMA)).toBeNull();

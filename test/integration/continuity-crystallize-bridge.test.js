@@ -15,8 +15,10 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { WorkspaceAdapter } from '../../core/continuity/adapters/workspace.js';
 import { recallEpisodic } from '../../core/continuity/index.js';
+import { makeRecord } from '../../core/continuity/record.js';
 import {
   episodeFromObservation,
+  observationFromEpisode,
   backfillEpisodesFromObservations,
 } from '../../core/continuity/integration/crystallize-bridge.js';
 
@@ -67,6 +69,25 @@ describe('crystallize→continuity bridge (real encrypted workspace, no mock)', 
     expect(input.meta).toMatchObject({
       kind: 'exchange', observationId: 'obs123', significance: 0.9, emotion: 'joy',
     });
+  });
+
+  it('a deliberate note keeps its own words and ref in the episodic lane, both directions', async () => {
+    const note = {
+      id: 'obs456', type: 'self-note', content: 'I keep the north light',
+      memoryRef: 'mem_note_1700000000000_deadbeef', significance: 0.9, source: 'self-authored',
+    };
+    const input = episodeFromObservation(note);
+    expect(input.content).toBe('I keep the north light');
+    expect(input.meta.memoryRef).toBe(note.memoryRef);
+    expect(observationFromEpisode(makeRecord(input))).toMatchObject({
+      id: 'obs456', type: 'self-note', content: 'I keep the north light', memoryRef: note.memoryRef,
+    });
+
+    // And on the real store: the bridged episode of a written note is not blank.
+    const neumaId = await freshBeing();
+    const saved = await workspace.addObservation(neumaId, { ...note, id: undefined });
+    const episodes = await new WorkspaceAdapter(neumaId, { workspace }).list('episodic');
+    expect(episodes.find((e) => e.meta?.observationId === saved.id)?.content).toBe('I keep the north light');
   });
 
   it('auto-bridges EVERY observation write into the episodic lane, recallable and encrypted at rest', async () => {

@@ -52,7 +52,7 @@ import { dispatchPlatformTool } from './portal-tool-dispatch.js';
 import {
   hydratePathGrants as _hydratePathGrants,
   grantReadScope as _grantReadScope,
-  grantWriteScope as _grantWriteScope,
+  grantApprovedScope as _grantApprovedScope,
   activeProjectFolders as _activeProjectFolders,
 } from './portal-tool-grants.js';
 import {
@@ -61,7 +61,8 @@ import {
 } from './portal-tool-result-store.js';
 import { createTurnToolEpochs, heldCallResult, recordCallOutcome, recordIntentReceipts } from './portal-tool-epochs.js';
 import { heldRepeatResult } from './witness-tool-epochs.js';
-import { unwrapCalls, unknownToolHint, unreadArgsResult } from './tool-hud.js';
+import { unwrapCalls, unknownToolHint } from './tool-hud.js';
+import { refusedBeforeDispatch } from './turn-catalog-gate.js';
 import { beginTurnOperation, finishTurnOperation, checkpointTurnEpoch } from './turn-operation-checkpoint.js';
 import { scopeRecoveryCall } from './coding-recovery-repeat.js';
 import { toolRepeatEvent } from './tool-repeat-event.js';
@@ -172,7 +173,6 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
   // substrates, or a native call that the model chose to phrase as text).
   const matches = _roundActs(nativeToolCalls, response);
   const results = [];
-
   turnEpochs ||= createTurnToolEpochs();
 
   // Resolve tool policy for this neuma
@@ -199,11 +199,11 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
     // the five fs primitives stand where the 16 organ spellings used to.
     const match = noteWorkingSetCall(connection, recordBenchmarkToolCall(connection, await scopeRecoveryCall(_unsmashToolName(rawMatch, withFsPrimitives(mcpService.getToolsContext()?.available_tools || [])), connection)));
     const { toolName, args } = match;
-    if (match._argsError !== undefined) { results.push(unreadArgsResult(match.tool || toolName, match._argsError)); continue; }
+    const refused = refusedBeforeDispatch(connection, match); if (refused) { results.push(refused); continue; } // unreadable args, a nested door, a tool never offered
     // Repeats retain their prior verdict; recovery is scoped to observed shell state.
     const epoch = turnEpochs.epoch;
     const resultIndex = results.length;
-    let operation;
+    let operation, releaseActScope = null; // a one-act yes's scope (house work) is released once the act is done
     try {
       const held = heldCallResult(turnEpochs, match, epoch);
       if (held) {
@@ -230,7 +230,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
       const toolExists = serverName !== null &&
         availableTools.some(t => t.name === toolName || t.name === `${serverName}/${toolName}`);
       if (!toolExists) {
-        const hint = fsRetiredHint(toolName) || retiredToolHint(toolName) || unknownToolHint(toolName, connection._turnCatalog, match.server);
+        const hint = fsRetiredHint(toolName) || retiredToolHint(toolName) || unknownToolHint(toolName, connection._turnCatalog, match.server, connection._turnIntents);
         results.push({ tool: toolLabel, status: 'unavailable', error: hint });
         _sendToolEvent(ws, companion, { tool: toolLabel, status: 'unavailable', detail: hint });
         continue;
@@ -301,7 +301,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         readScopeDirs = [...new Set(await Promise.all(gaps.map((p) => resolveGrantDir(toolName, p))))];
       }
       // WRITE outside the being's own lane is the operator's call — the SAME ask as every other
-      // level (Design note, 2026-07-23. Ceremony scratch is in-scope during birth; the team workspace (read
+      // level (ruling, 2026-07-23). Ceremony scratch is in-scope during birth; the team workspace (read
       // AND write) was granted with the approved plan that disclosed it (#171) — held, never asked.
       let writeScopeDirs = [];
       if (isWriteOperation(toolName) && companion?.neumaId) {
@@ -375,8 +375,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
           tool: toolLabel, args, scope, signal: grantOrigin.signal,
         });
         if (decision === 'allow' || decision === 'always') {
-          if (readScopeDirs.length > 0) await _grantReadScope(connection, readScopeDirs, decision === 'always', grantOrigin);
-          if (writeScopeDirs.length > 0) await _grantWriteScope(connection, writeScopeDirs, decision === 'always', grantOrigin);
+          releaseActScope = await _grantApprovedScope(connection, { read: readScopeDirs, write: writeScopeDirs, decision, origin: grantOrigin });
           if (policyApprovalNeeded && decision === 'always') await grantAlwaysAllow(connection, policyTarget.server, policyTarget.tool, grantOrigin);
         } else {
           // The being's journal records this refusal at the broker's choke point.
@@ -435,7 +434,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
       results.push(okResult);
       // WHAT WAS DONE, AGAINST WHAT IT WAS FOR. Recorded from the REAL act, not
       // from a declaration — a crash happens BETWEEN turns, which is exactly
-      // when a declaration never gets written (Design note, 2026-08-02. A no-op when
+      // when a declaration never gets written (ruling, 2026-08-02). A no-op when
       // nothing is in focus: guessing an owner would file a being's file write
       // under whatever task happened to be open, which is worse than recording
       // nothing. Strictly non-critical — the turn never pays for bookkeeping.
@@ -466,6 +465,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         detail: error.message,
       });
     } finally {
+      releaseActScope?.();
       recordCallOutcome(turnEpochs, match, epoch, results[resultIndex]);
       await finishTurnOperation(turnEpochs, operation, results[resultIndex]);
       yieldForQueuedThought(connection, results);

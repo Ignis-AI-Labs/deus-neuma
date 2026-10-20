@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { preflightDecision, toIgnitionStatus } from '../../backend/services/substrate-lifecycle.js';
+import { preflightDecision, switchNeedsConfirm, toIgnitionStatus } from '../../backend/services/substrate-lifecycle.js';
 
 // The ignite/status/spawn path is proven by integration against a real smoke
 // llama-server (RULE 0 — see the lifecycle proof); these cover pure decisions.
@@ -38,5 +38,20 @@ describe('toIgnitionStatus (maps supervisor state → the desk ignition contract
     const st = toIgnitionStatus({ ...base, serving: false, owned: false }, 'gemma-4-31b');
     expect(st.igniting).toBeNull();
     expect(st.targetLoaded).toBe(false);
+  });
+});
+
+describe('switchNeedsConfirm (IGNITE asks before it moves a house off another provider)', () => {
+  test('an Ollama or cloud house asks; a confirmed request does not', () => {
+    for (const provider of ['ollama', 'openai', 'anthropic', 'xai']) {
+      expect(switchNeedsConfirm({ provider }, false)).toBe(true);
+      expect(switchNeedsConfirm({ provider }, undefined)).toBe(true);
+      expect(switchNeedsConfirm({ provider }, 'yes')).toBe(true);
+      expect(switchNeedsConfirm({ provider }, true)).toBe(false);
+    }
+  });
+  test('a llama-server house and the lms lane never ask — nothing moves', () => {
+    expect(switchNeedsConfirm({ provider: 'llama-server' }, false)).toBe(false);
+    expect(switchNeedsConfirm({ provider: 'lm-studio' }, false)).toBe(false);
   });
 });

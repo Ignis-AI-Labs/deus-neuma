@@ -2,13 +2,17 @@
 // shows where the charter stands and carries the PAUSE / RESUME switch, then
 // one tab per question the operator asks of a house that wakes itself —
 // CHARTER (what it may do), NOW (what it is doing), LEDGER (what it did),
-// ASKS (what came back to me), MONEY IN (what it earned).
+// ASKS (what came back to me, and my answers), MONEY IN (what it earned).
 // No sound imports — renderable under node for the view tests.
 
 import './HouseClock.css';
-import { charterStatus, pauseSwitch, openAskCount } from './house-clock-view.js';
+import './HouseClock-asks.css';
+import { charterStatus, pauseSwitch, readinessWarnings } from './house-clock-view.js';
+import { residencySwitch, RESIDENCY_LINE } from './residency-view.js';
+import { openAskCount } from './asks-view.js';
 import { CharterSection } from './CharterSection.jsx';
-import { NowSection, LedgerSection, AsksSection } from './WakeSections.jsx';
+import { NowSection, LedgerSection } from './WakeSections.jsx';
+import { AsksSection } from './AsksSection.jsx';
 import { MoneyInSection } from './MoneyInSection.jsx';
 
 export const HouseClockIcon = () => (
@@ -31,8 +35,10 @@ const tabLabel = (tab, asks) => {
   return { charter: 'CHARTER', now: 'NOW', ledger: 'LEDGER', money: 'MONEY IN' }[tab];
 };
 
-const Head = ({ charter, busy, error, onPause }) => {
+const Head = ({ charter, readiness, residency, busy, error, pollError, onPause, onResidency }) => {
   const status = charterStatus(charter);
+  const warnings = readinessWarnings(charter, readiness);
+  const wake = residencySwitch(residency);
   const sw = pauseSwitch(charter);
   return (
     <header className="hclock-head">
@@ -42,7 +48,18 @@ const Head = ({ charter, busy, error, onPause }) => {
         disabled={busy || !sw.enabled} title={sw.title} onClick={onPause}>
         {sw.label}
       </button>
-      {error ? <p className="hclock-error label-data" role="alert">{error}</p> : null}
+      {wake ? (
+        <p className="hclock-residency label-data">
+          <button type="button" className={`hclock-switch label-data${wake.on ? ' is-on' : ''}`} aria-pressed={wake.on}
+            title={wake.title} disabled={busy} onClick={onResidency}>
+            {wake.label}
+          </button>
+          <span className="hclock-muted">{RESIDENCY_LINE}</span>
+        </p>
+      ) : null}
+      {warnings.map((w) => <p key={w.key} className="hclock-warn label-data" role="status" data-warn={w.key}>{w.words}</p>)}
+      {pollError ? <p className="hclock-error label-data" role="alert" data-error="poll">{pollError}</p> : null}
+      {error ? <p className="hclock-error label-data" role="alert" data-error="act">{error}</p> : null}
     </header>
   );
 };
@@ -52,7 +69,7 @@ const Head = ({ charter, busy, error, onPause }) => {
  */
 export const HouseClockBody = (p) => (
   <div className="hclock">
-    <Head charter={p.charter} busy={p.busy} error={p.error} onPause={p.onPause} />
+    <Head charter={p.charter} readiness={p.readiness} residency={p.residency} busy={p.busy} error={p.error} pollError={p.pollError} onPause={p.onPause} onResidency={p.onResidency} />
     <nav className="hclock-tabs" role="tablist" aria-label="House clock sections">
       {HOUSE_TABS.map((t) => (
         <button key={t} type="button" role="tab" aria-selected={p.tab === t}
@@ -63,15 +80,18 @@ export const HouseClockBody = (p) => (
     </nav>
     <div className="hclock-panel" role="tabpanel">
       {p.tab === 'charter' ? (
-        <CharterSection charter={p.charter} history={p.history} names={p.names} draft={p.draft} busy={p.busy}
-          onEdit={p.onEdit} onDraft={p.onDraft} onSeat={p.onSeat} onSave={p.onSave} onCancel={p.onCancel} onApprove={p.onApprove} />
+        <CharterSection charter={p.charter} history={p.history} names={p.names} draft={p.draft} busy={p.busy} optio={p.readiness?.optio ?? null}
+          onEdit={p.onEdit} onDraft={p.onDraft} onSeat={p.onSeat} onSave={p.onSave} onCancel={p.onCancel} onApprove={p.onApprove} approveNote={p.residency?.approveNote ?? null} />
       ) : null}
       {p.tab === 'now' ? <NowSection queue={p.queue} names={p.names} onOpenSitting={p.onOpenSitting} /> : null}
       {p.tab === 'ledger' ? (
         <LedgerSection ledger={p.ledger} filter={p.filter} names={p.names} seats={p.seats} page={p.page} pageSize={p.pageSize}
           onFilter={p.onFilter} onPage={p.onPage} onOpenSitting={p.onOpenSitting} />
       ) : null}
-      {p.tab === 'asks' ? <AsksSection asks={p.asks} names={p.names} busy={p.busy} onClose={p.onCloseAsk} onOpenSitting={p.onOpenSitting} /> : null}
+      {p.tab === 'asks' ? (
+        <AsksSection asks={p.asks} packet={p.packet} names={p.names} filter={p.askFilter} notice={p.notice} busy={p.busy} now={p.now}
+          onFilter={p.onAskFilter} onAnswer={p.onAnswerAsk} onClose={p.onCloseAsk} onOpenSitting={p.onOpenSitting} />
+      ) : null}
       {p.tab === 'money' ? (
         <MoneyInSection money={p.money} names={p.names} lanes={p.lanes} addr={p.addr} busy={p.moneyBusy}
           onAddr={p.onAddr} onDeclare={p.onDeclare} onRemove={p.onRemove} onScan={p.onScan} />

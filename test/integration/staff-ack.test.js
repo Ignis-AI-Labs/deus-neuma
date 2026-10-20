@@ -132,4 +132,19 @@ describe('staff/ack — the seat answers a dispatch', () => {
     expect(office.ok).toBe(false);
     expect(office.reason).toContain('already done');
   });
+
+  test('a blocked charge says the way on: the remaining work is a fresh charge', async () => {
+    const holder = connectionFor(HOUSEMATE);
+    const c = await charge();
+    const blocked = await staffAckIntent.validate({ id: c.id, status: 'blocked' }, { connection: holder });
+    await staffAckIntent.execute(blocked.value, { connection: holder });
+
+    const office = await staffDispatchUpdateIntent.validate(
+      { id: c.id, status: 'withdrawn' },
+      { connection: connectionFor(OPTIO) },
+    );
+    expect(office.ok).toBe(false);
+    expect(office.reason).toContain('already blocked');
+    expect(office.reason).toContain('file a fresh charge (staff/dispatch)');
+  });
 });

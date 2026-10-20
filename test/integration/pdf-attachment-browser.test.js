@@ -25,7 +25,7 @@ test('real PDFs extract in page order and upload as owned chat documents', async
     app.use('/api/v1/attachments', (await import('../../backend/routes/attachment-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { include: ['pdfjs-dist'] } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { include: ['pdfjs-dist'] } });
     app.get('/', (_req, res) => res.type('html').send(`<input type="file" id="file"><script type="module">
       import * as attachments from '/frontend/app/RelinkShell/attachments.js';
       import { prepareAttachmentSend } from '/frontend/app/RelinkShell/attachment-send.js';

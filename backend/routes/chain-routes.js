@@ -14,6 +14,7 @@
 import { Router } from 'express';
 import { ethers } from 'ethers';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { chainSettings } from '../services/chain/chain-access.js';
 import { listChains } from '../services/chain/chain-registry.js';
 import { nativeBalance, tokenBalance, tokenMeta } from '../services/chain/evm-rpc.js';
@@ -41,7 +42,9 @@ router.get('/access', async (req, res) => {
   }
 });
 
-router.put('/access', async (req, res) => {
+// One switch for every house's beings on this machine: the install owner's
+// to flip, at its own desk (ruling, 2026-10-19).
+router.put('/access', requireInstallOwner, async (req, res) => {
   try {
     const enabled = req.body?.enabled;
     if (typeof enabled !== 'boolean') {

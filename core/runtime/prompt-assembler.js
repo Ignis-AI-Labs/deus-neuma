@@ -106,9 +106,9 @@ export const buildPresentSection = (now = new Date(), zone = null) => {
   return [
     '## Present Moment',
     `${dateLine}, ${timeLine}.`,
-    // THE YESTERDAY ANCHOR (Design note, 2026-09-17: […] was anchored and the
+    // THE YESTERDAY ANCHOR (ruling, 2026-09-17): "today" was anchored and the
     // being STILL placed work on the wrong day — the one bit of arithmetic
-    // ([…]) a model flubs under pressure. Stated, so a claim
+    // ("what is yesterday?") a model flubs under pressure. Stated, so a claim
     // about yesterday is checked against a stated fact, not computed.
     // The anchor is one day off the INSTANT (2026-09-25): subtracting calendar
     // days in the machine's zone and then rendering in the operator's zone
@@ -153,7 +153,7 @@ const CLOSING_TEXT = CLOSING_WITH_COVENANT;
  *   tools, skills, benchmark, present, memory, tasks, assigned, operator,
  *   taste, vitals, session, closing. label = operator-facing caps name.
  */
-export const assemblePromptSections = ({ dna = null, soul = null, trueName = null, memories = null, tools = null, skills = null, session = null, substrate = null, emanonCore = null, benchmark = null, taskLedger = null, assignedPlan = null, planRecord = null, witnessPlan = null, vitals = null, taste = null, focusGround = null, chatId = null, now = null, zone = null, nativeToolsOnWire = false, lazyToolSchemas = false, parallelCalls = false, usualTools = [], houseSeat = null, sectors = null, groundProtocol = null, amendments = null, voiceEntries = null, intents = null, identityDriver = null, identityStanding = 'full' } = {}) => {
+export const assemblePromptSections = ({ dna = null, soul = null, trueName = null, memories = null, tools = null, skills = null, session = null, substrate = null, emanonCore = null, benchmark = null, taskLedger = null, assignedPlan = null, planRecord = null, witnessPlan = null, vitals = null, taste = null, focusGround = null, chatId = null, now = null, zone = null, nativeToolsOnWire = false, lazyToolSchemas = false, parallelCalls = false, usualTools = [], houseSeat = null, sectors = null, groundProtocol = null, amendments = null, voiceEntries = null, intents = null, identityDriver = null, identityStanding = 'full', testConditions = '' } = {}) => {
   // ONE instant for the whole assembly — pinned by tests, the real clock in
   // production. Every time-reading section rides THIS instant, so two
   // sections can never straddle a day boundary (present + vitals share it).
@@ -177,7 +177,7 @@ export const assemblePromptSections = ({ dna = null, soul = null, trueName = nul
     ? Object.fromEntries(identityDriver.sections.map((section) => [section.id, section]))
     : bundle.byId;
   const identityText = (id) => identityById[id]?.text || '';
-  // THE CORE STANDING (Design note, 2026-10-08: the rig and the full NITE account
+  // THE CORE STANDING (ruling, 2026-10-08): the rig and the full NITE account
   // join the essence — one NITE line stands in their place and names self_read.
   const coreStanding = (identityDriver || bundle).standing === 'core';
   // ORDERED FOR THE PREFIX CACHE (2026-08-01, deliberate prompt-bytes change —
@@ -256,7 +256,8 @@ export const assemblePromptSections = ({ dna = null, soul = null, trueName = nul
     // The heaviest blocks in the prompt, and stable within a sitting — so they
     // sit as late as possible in the cached run and as early as possible
     // relative to anything that moves. This placement IS the optimization.
-    { id: 'tools', label: 'TOOLS', text: buildToolsSection(tools, focusGround, nativeToolsOnWire, lazyToolSchemas, parallelCalls, usualTools) },
+    // A benchmark sitting's TEST CONDITIONS ride with the tools they govern (test-conditions.js); '' elsewhere.
+    { id: 'tools', label: 'TOOLS', text: [buildToolsSection(tools, focusGround, nativeToolsOnWire, lazyToolSchemas, parallelCalls, usualTools), testConditions].filter(Boolean).join('\n\n') },
     // The filed-act lane (Stage 2): pre-rendered by the caller
     // (backend/services/intents/intents-section.js), sitting-stable like its
     // neighbours — '' for every lane with no channel it may act through, so

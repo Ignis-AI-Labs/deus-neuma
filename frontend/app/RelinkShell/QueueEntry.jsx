@@ -109,7 +109,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // Settled copy arrives folded: a withdrawn post's body is exactly the text
-  // that should not be occupying the board (Design note, 2026-07-27. `folded` is the
+  // that should not be occupying the board (ruling, 2026-07-27). `folded` is the
   // board-wide COLLAPSE ALL; this is the per-entry override, so opening one
   // finished post does not require unfolding the whole board. The lane decides
   // the starting state — in UNAPPROVED the copy IS the work, so it opens.
@@ -183,7 +183,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
     </button>
   );
 
-  // THE REPLY APPROVAL IS THE SEND (Design note, 2026-08-06: the button says so, the
+  // THE REPLY APPROVAL IS THE SEND (ruling, 2026-08-06): the button says so, the
   // call carries the exact copy rendered on THIS card (textSeen — the backend
   // refuses if an edit landed between render and click), and a failed send
   // surfaces its honest detail right here instead of a silent 200.
@@ -273,7 +273,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
           // platform's own measure underneath.
           <div className="queue-preview">
             {entry.kind === 'reply' && entry.reply ? (
-              // THE EXCHANGE (Design note, 2026-07-28: a reply is never approved
+              // THE EXCHANGE (ruling, 2026-07-28): a reply is never approved
               // blind — what was said TO the house sits above the drafted
               // answer, verbatim, with its verification standing named
               // HONESTLY (unverified authors are answerable now — the
@@ -281,7 +281,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
               // category raised when the words need care.
               <div className="queue-reply-context">
                 <div className="queue-preview-head">
-                  {/* THE LINK BACK (Design note, 2026-08-28: the operator verifies
+                  {/* THE LINK BACK (ruling, 2026-08-28): the operator verifies
                       who the house is answering MANUALLY — the quoted post's
                       author opens the real post on X, from the id the queue
                       already persisted, on drafts and in the sent record. */}

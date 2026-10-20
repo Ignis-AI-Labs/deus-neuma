@@ -22,7 +22,7 @@ describe('ThoughtBubble', () => {
   it('folds the reasoning away and shows only that there was some', () => {
     const html = render({ kind: 'thought', text: 'First I check the premise, then I count.' });
     expect(html).toContain('THOUGHT');
-    expect(html).toContain('~10 TOK'); // 40 chars / 4 — tokens, the currency context is spent in (Design note, 2026-08-28
+    expect(html).toContain('~10 TOK'); // 40 chars / 4 — tokens, the currency context is spent in (ruling, 2026-08-28)
     // FOLDED: the words are not in the markup until the operator opens it, so a
     // being's reasoning never sits in the transcript being read by accident.
     expect(html).not.toContain('check the premise');

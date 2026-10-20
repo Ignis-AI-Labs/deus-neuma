@@ -25,7 +25,7 @@ beforeAll(async () => {
     configFile: false, root, cacheDir: path.join(tmp, 'vite'), appType: 'custom',
     esbuild: { jsx: 'automatic' },
     optimizeDeps: { include: ['react', 'react-dom/client', 'react/jsx-runtime', 'ethers'] },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (_req, res) => res.type('html').send(
     '<!doctype html><html><body><div id="root"></div><script type="module" src="/test/helpers/arrival-reconnect-page.jsx"></script></body></html>',

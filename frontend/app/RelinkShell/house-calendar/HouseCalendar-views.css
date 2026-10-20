@@ -1,0 +1,276 @@
+/* HouseCalendar-views.css — the three views over the same items: the WEEK
+   (a row per busy person, seven days across, quiet people folded beneath),
+   the MONTH's day entries, and the DAY in time order. One item idiom
+   throughout: its person's colour as a 2px edge, its time in the data
+   register, its words in the voice register; a selected item carries the
+   corner brackets (MGS ticks) and they snap, never fade. */
+
+/* ── The week ───────────────────────────────────────────────────────────── */
+.hcal-weekwrap { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--space-2); min-height: 240px; }
+.hcal-week { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+.hcal-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 120px) repeat(7, minmax(92px, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+.hcal-row.is-head { position: sticky; top: 0; z-index: 2; background: var(--color-void); border-bottom-color: var(--line-hover); }
+.hcal-corner { position: sticky; left: 0; background: var(--color-void); border-right: 1px solid var(--line); }
+
+.hcal-dayhead {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  border-right: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--snap), color var(--snap);
+}
+.hcal-dayhead:hover { background: var(--color-glass-hover); color: var(--color-text-secondary); }
+.hcal-dayhead-wd { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.2em; }
+.hcal-date { font-family: var(--font-data); font-weight: 200; font-size: 20px; line-height: 1; color: var(--color-text-secondary); }
+.hcal-dayhead.is-today, .hcal-dayhead.is-today .hcal-date { color: var(--signal); }
+.hcal-dayhead.is-today::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--signal);
+}
+.hcal-dayhead.is-past .hcal-date { color: var(--color-text-tertiary); }
+
+.hcal-who {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-3);
+  background: var(--color-void);
+  border-right: 1px solid var(--line);
+}
+.hcal-who-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hcal-cell {
+  position: relative;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-2) var(--space-5, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-right: 1px solid var(--line);
+}
+.hcal-cell.is-today { background: var(--color-glass-light); }
+.hcal-cell.is-past > .hcal-slot { opacity: 0.62; }
+.hcal-row.is-house .hcal-cell, .hcal-row.is-machine .hcal-cell { background-image: linear-gradient(var(--grid) 1px, transparent 1px); background-size: 100% 24px; }
+
+/* ── One item ───────────────────────────────────────────────────────────── */
+.hcal-slot { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hcal-item {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px var(--space-2) 3px calc(var(--space-2) + 2px);
+  text-align: left;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  box-shadow: inset 2px 0 0 0 var(--who, var(--line));
+  cursor: pointer;
+  transition: background var(--snap);
+}
+.hcal-item:hover { background: var(--color-glass-hover); }
+.hcal-item:focus-visible { outline: none; background: var(--color-glass-hover); }
+/* in a cell: the time on its own line, the words beneath in up to two lines */
+.hcal-meta { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.hcal-title {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+/* on the day's line: one row, the words unclamped */
+.hcal-item.is-wide { flex-direction: row; align-items: baseline; gap: var(--space-2); }
+.hcal-item.is-wide .hcal-title { display: block; }
+.hcal-time { flex: 0 0 auto; font-family: var(--font-data); font-size: 11px; letter-spacing: 0.06em; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.hcal-chan {
+  flex: 0 0 auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 0 4px;
+}
+.hcal-times { flex: 0 0 auto; margin-left: auto; font-family: var(--font-data); font-size: 11px; color: var(--color-text-tertiary); }
+.hcal-tone { flex: 0 0 auto; font-family: var(--font-data); font-size: 10px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+
+/* the tones — expected dashes its edge, waiting dots it; owed work done is
+   struck; anything else past is simply quiet; late owed work in alert */
+.hcal-item.is-projected { color: var(--color-text-secondary); box-shadow: none; background-image: linear-gradient(var(--who, var(--line)) 50%, transparent 50%); background-size: 2px 6px; background-repeat: repeat-y; }
+.hcal-item.is-held { color: var(--color-text-tertiary); box-shadow: none; background-image: linear-gradient(var(--who, var(--line)) 33%, transparent 33%); background-size: 2px 4px; background-repeat: repeat-y; }
+.hcal-item.is-projected:hover, .hcal-item.is-held:hover { background-color: var(--color-glass-hover); }
+.hcal-item.is-done { color: var(--color-text-tertiary); }
+.hcal-item.is-done .hcal-title { text-decoration: line-through; text-decoration-color: var(--line-hover); }
+.hcal-item.is-past { color: var(--color-text-secondary); }
+.hcal-item.is-overdue .hcal-title, .hcal-item.is-overdue .hcal-tone { color: var(--alert); }
+
+/* selected — the corner brackets, snapping on */
+.hcal-item.is-selected { background: var(--color-glass-hover); }
+.hcal-item.is-selected::before, .hcal-item.is-selected::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  pointer-events: none;
+}
+.hcal-item.is-selected::before { top: -1px; right: -1px; border-top: 1px solid var(--signal); border-right: 1px solid var(--signal); }
+.hcal-item.is-selected::after { bottom: -1px; left: -1px; border-bottom: 1px solid var(--signal); border-left: 1px solid var(--signal); }
+
+/* NOW — where today's timed items cross from past to coming */
+.hcal-now { position: relative; display: block; height: 1px; margin: 3px 0; background: var(--signal); }
+.hcal-now::before { content: ''; position: absolute; left: -3px; top: -2px; width: 5px; height: 5px; border-radius: 50%; background: var(--signal); }
+
+.hcal-more {
+  align-self: flex-start;
+  min-height: 24px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  padding: 0 var(--space-2);
+  cursor: pointer;
+}
+.hcal-more:hover { color: var(--color-text-primary); }
+
+/* the + that puts a task on this person's day: shown on hover and focus,
+   so a full week reads clean */
+.hcal-add {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  min-width: 24px;
+  min-height: 24px;
+  font-family: var(--font-data);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--snap), color var(--snap);
+}
+.hcal-cell:hover .hcal-add, .hcal-add:focus-visible { opacity: 1; }
+.hcal-add:hover { color: var(--color-text-primary); }
+
+.hcal-weekempty { margin: 0; padding: var(--space-5, 20px) var(--space-4); font-family: var(--font-data); font-size: 12px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+
+/* quiet this week — everyone with nothing in these days, one click from focus */
+.hcal-quietline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.hcal-quietline-head { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.22em; color: var(--color-text-tertiary); margin-right: var(--space-2); }
+.hcal-quietname {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.hcal-quietname:hover { color: var(--color-text-primary); background: var(--color-glass-hover); }
+
+/* ── The month's day entries (inside MonthCalendar's cells) ─────────────── */
+/* the month's weeks share the height the window gives — exactly that
+   height, never what the entries ask for (or a taller row would fit more
+   entries and grow again); its floor is 92px a week, and below that the
+   view scrolls. Each day shows what fits (use-month-fits.js), the rest +N */
+.hcal-monthbox { flex: 1 1 0; min-height: calc(var(--weeks, 6) * 94px + 32px); display: flex; flex-direction: column; }
+.hcal-monthbox .qcal { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.hcal-monthbox .qcal-grid { flex: 1 1 0; min-height: 0; grid-auto-rows: minmax(92px, 1fr); }
+.hcal-body .qcal-cell { min-height: 0; overflow: hidden; justify-content: flex-start; }
+.hcal-body .qcal-day { font-size: 13px; font-weight: 200; }
+.hcal-body .qcal-weekday { font-size: 11px; letter-spacing: 0.2em; padding: var(--space-1) var(--space-2); }
+/* one entry per line, never wrapped into columns — a wrapping column takes
+   its longest title's width and the words run past the day's edge */
+.hcal-body .qcal-marks { flex-direction: column; flex-wrap: nowrap; gap: 2px; align-items: stretch; min-width: 0; }
+.hcal-mini {
+  display: block;
+  min-width: 0;
+  padding-left: 5px;
+  box-shadow: inset 2px 0 0 0 var(--who, var(--line));
+  font-family: var(--font-voice);
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0;
+}
+.hcal-mini b { font-family: var(--font-data); font-weight: 400; font-size: 10px; color: var(--color-text-tertiary); margin-right: 4px; }
+.hcal-mini-more { font-family: var(--font-data); font-size: 10px; color: var(--color-text-tertiary); padding-left: 7px; }
+.hcal-body .qcal-counts { display: none; } /* the entries speak; the total stays for screen readers in the label */
+
+/* ── The day ────────────────────────────────────────────────────────────── */
+.hcal-day { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.hcal-dayline {
+  display: grid;
+  grid-template-columns: 8ch minmax(110px, 180px) 13ch minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.hcal-dayline-time { font-family: var(--font-data); font-size: 13px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.hcal-dayline-who { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-data); font-size: 12px; letter-spacing: 0.1em; color: var(--color-text-primary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hcal-dayline-kind { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.hcal-dayline.is-past { opacity: 0.55; }
+.hcal-dayline.is-now {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--signal);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--signal);
+}

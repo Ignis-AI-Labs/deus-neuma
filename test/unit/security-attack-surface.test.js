@@ -8,6 +8,7 @@ import {
   mapThreatAttackSurface,
   readArchitectureSurface,
   routeProtection,
+  selectWatchedRepo,
 } from '../../backend/services/security/attack-surface.js';
 
 const LOCK = Object.freeze({
@@ -133,4 +134,14 @@ describe('security attack-surface mapping (real filesystem + real architecture c
     expect(mapped.contexts[0].exposure).toBe('loopback_route_candidate');
     expect(mapped.contexts[0].confidence).toBe('static_evidence');
   }, 30000);
+
+  test("the app's own watch entry resolves to where the app runs now, never a stale mount path", () => {
+    const watch = { repos: [
+      { id: 'neuma', path: '/tmp/.mount_NEUMA-old/resources/app', app: true },
+      { id: 'mine', path: '/srv/mine' },
+    ] };
+    const installed = { appRoot: '/tmp/.mount_NEUMA-new/resources/app', resourcesPath: '/tmp/.mount_NEUMA-new/resources' };
+    expect(selectWatchedRepo(watch, 'neuma', '/', installed).path).toBe(installed.appRoot);
+    expect(selectWatchedRepo(watch, 'mine', '/', installed).path).toBe('/srv/mine');
+  });
 });

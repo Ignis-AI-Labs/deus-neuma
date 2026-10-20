@@ -7,21 +7,20 @@
  * serialized prompt; the first difference discards the whole suffix. So the
  * questions this suite answers with real bytes are: across two turns in the
  * same minute, where does the request first diverge? And across a MINUTE
- * TICK (the PRESENT MOMENT clock lives inside the system prompt), where then?
+ * TICK (the PRESENT MOMENT clock moves), where then?
  *
- * The laws pinned:
+ * The laws pinned (85730874c, #539: the clock rides the current turn; and
+ * 895994add, say it once: each turn's context block stays in history as sent):
  *   1. Same minute: the system prompt is BYTE-IDENTICAL turn to turn (a bare
- *      lane, plain answers — nothing crystallizes, nothing knocks). The first
- *      divergence lands where the previous turn's current-turn message became
- *      history and gained its `(hh:mm)` clock prefix — i.e. the ENTIRE
- *      standing prefix (system + the whole prior transcript) is reusable; the
- *      cache loses only the last exchange.
- *   2. Across a minute tick: the first divergence lands INSIDE the system
- *      prompt at the clock digits; the transcript message ENTRIES stay
- *      byte-identical (the append-only law holds — history rows never move),
- *      but their position after the changed byte means a flat prefix cache
- *      re-reads them. That is the measured cost Stage C reports; moving the
- *      clock is a semantic ruling, not this test's call.
+ *      lane, plain answers — nothing crystallizes, nothing knocks), and the
+ *      previous request is a strict prefix of the next: the last ask goes
+ *      back exactly as it was sent, its harness-context block in front of it,
+ *      so the cache keeps the WHOLE prior wire and reads only the new turn.
+ *   2. Across a minute tick: the same — the clock no longer lives in the
+ *      system prompt, it rides the current turn's harness-context block, so
+ *      a tick moves no byte the cache already holds. (Before 85730874c the
+ *      tick moved the first byte inside the system prompt, and a flat prefix
+ *      cache re-read the whole transcript after it.)
  */
 
 import fs from 'fs/promises';
@@ -39,6 +38,7 @@ import {
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 
 const NEUMA_ID = 'prefixecho';
 const MODEL = 'test-model';
@@ -168,6 +168,9 @@ beforeAll(async () => {
       res.writeHead(404); res.end(); return;
     }
     let raw = '';
+    // Decode as UTF-8 across chunk boundaries: a large body can split a
+    // multibyte character (the em dashes in these rows) between two chunks.
+    req.setEncoding('utf8');
     req.on('data', (chunk) => { raw += chunk; });
     req.on('end', () => {
       const body = JSON.parse(raw);
@@ -193,6 +196,8 @@ beforeAll(async () => {
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
   const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+  // The being's lane is this wallet's, as a birth leaves it: a bind verifies, it never claims.
+  await claimOwner(house, NEUMA_ID, keypair.address);
   await openPortal(`ws://127.0.0.1:${portalServer.address().port}`, token);
   await sendAndWait({ type: 'companion:manifest', companion: 'PrefixEcho', neumaId: NEUMA_ID }, 'companion:anchored');
 }, 30000);
@@ -214,7 +219,7 @@ afterAll(async () => {
 });
 
 describe('Stage C — the prefix a cache could actually hold, measured at the wire', () => {
-  test('same minute: system byte-identical; the first divergence is the last exchange becoming history', async () => {
+  test('same minute: system byte-identical; the previous request is a prefix of the next', async () => {
     // Start just after a roll so both turns are guaranteed one minute-share.
     await waitForMinuteRoll();
     scriptedAnswers.push(AA);
@@ -228,23 +233,22 @@ describe('Stage C — the prefix a cache could actually hold, measured at the wi
     const bodyB = capturedBodies.at(-1);
     // LAW 1: the system prompt did not move a byte between the two turns.
     expect(bodyB.messages[0].content).toBe(bodyA.messages[0].content);
+    // Each ask rides behind the harness's own block — never as the operator's words.
+    expect(bodyB.messages.at(-1).content).toMatch(/^<harness-context>\n[\s\S]*\n<\/harness-context>\n\n/);
+    expect(bodyB.messages.at(-1).content.endsWith(`</harness-context>\n\n${QB}`)).toBe(true);
 
     // The divergence map, measured on the serialized message stream (the
     // shape a flat prefix cache reads):
     const streamA = JSON.stringify(bodyA.messages);
     const streamB = JSON.stringify(bodyB.messages);
     const offset = firstDivergence(streamA, streamB);
-    // A = [system, {user QA}]; B = [system, {user '(clock) QA'}, {assistant '(clock) AB'}, {user QB}].
-    // They share through the end of the system entry and the user-row's role
-    // key — the first moved byte is the clock prefix on QA's content.
-    const systemEntryBytes = JSON.stringify(bodyA.messages[0]).length;
-    expect(offset).toBeGreaterThan(systemEntryBytes);
-    // …and it lands exactly where the old turn became history: the day
-    // marker / clock prefix its content gained on becoming a history row.
-    expect(streamB.slice(offset)).toMatch(/^(— .+? —\\n)?\(\d{2}:\d{2} [AP]M\)/);
-    expect(streamA.slice(offset, offset + QA.length)).toBe(QA);
-    // Reusable share: everything before the last exchange — on a long sitting
-    // that is nearly the whole prompt.
+    // A = [system, {user block+QA}]; B = [system, {user block+QA}, {assistant AA}, {user block+QB}].
+    // The last ask went back byte-identical, so the first moved byte is A's
+    // closing bracket, where B goes on with the answer and the new turn.
+    expect(bodyB.messages[1]).toEqual(bodyA.messages[1]);
+    expect(offset).toBe(streamA.length - 1);
+    expect(streamB.slice(offset)).toMatch(/^,\{"role":"assistant"/);
+    // Reusable share: everything but the new answer and ask.
     const receipt = {
       leg: 'same-minute',
       systemBytes: bodyA.messages[0].content.length,
@@ -256,7 +260,7 @@ describe('Stage C — the prefix a cache could actually hold, measured at the wi
     await fs.writeFile(RECEIPT_PATH, JSON.stringify({ sameMinute: receipt }, null, 1));
   }, 120000);
 
-  test('across a minute tick: the clock inside the system prompt moves the first byte; the transcript never does', async () => {
+  test('across a minute tick: the clock moves only inside the new turn; the cache keeps every prior byte', async () => {
     await waitForMinuteRoll();
     scriptedAnswers.push(AC);
     const turnC = await sendAndWait({ type: 'consciousness:stream', thought: QC }, 'consciousness:complete');
@@ -264,25 +268,24 @@ describe('Stage C — the prefix a cache could actually hold, measured at the wi
 
     const bodyB = capturedBodies.at(-2);
     const bodyC = capturedBodies.at(-1);
-    // LAW 2: the first divergence is INSIDE the system prompt, at the clock —
-    // and the transcript entries themselves are byte-identical across the tick.
+    // LAW 2: the tick did not reach the system prompt or any history entry —
+    // the whole of B's wire is a prefix of C's.
+    expect(bodyC.messages[0].content).toBe(bodyB.messages[0].content);
+    expect(bodyB.messages[0].content).not.toContain('## Present Moment');
+    for (let i = 1; i < bodyB.messages.length; i += 1) {
+      expect(bodyC.messages[i]).toEqual(bodyB.messages[i]);
+    }
     const streamB = JSON.stringify(bodyB.messages);
     const streamC = JSON.stringify(bodyC.messages);
     const offset = firstDivergence(streamB, streamC);
-    const systemEntryBytes = JSON.stringify(bodyB.messages[0]).length;
-    expect(offset).toBeLessThan(systemEntryBytes);
-    // …specifically inside the PRESENT MOMENT section's clock line (the
-    // volatile group sits LAST in the system prompt by the 2026-08-01
-    // ordering — so ~95% of even the system entry still shares).
-    const presentAt = bodyB.messages[0].content.indexOf('## Present Moment');
-    expect(presentAt).toBeGreaterThanOrEqual(0);
-    // JSON entry overhead ('{"role":"system","content":"') ahead of content.
-    const contentOffset = offset - (systemEntryBytes - bodyB.messages[0].content.length - 2);
-    expect(contentOffset).toBeGreaterThanOrEqual(presentAt);
-    expect(contentOffset).toBeLessThan(presentAt + 120);
-    for (let i = 1; i < bodyB.messages.length - 1; i += 1) {
-      expect(bodyC.messages[i]).toEqual(bodyB.messages[i]);
-    }
+    expect(offset).toBe(streamB.length - 1);
+    // …and the clock that moved is in the NEW turn's block, a time no earlier
+    // byte of the wire carries.
+    const turn = bodyC.messages.at(-1).content;
+    expect(turn.endsWith(`</harness-context>\n\n${QC}`)).toBe(true);
+    const clockLine = turn.match(/## Present Moment\n([^\n]*\d{1,2}:\d{2} [AP]M[^\n]*)\n/)?.[1];
+    expect(clockLine).toBeTruthy();
+    expect(streamB).not.toContain(clockLine);
 
     const prior = JSON.parse(await fs.readFile(RECEIPT_PATH, 'utf8'));
     await fs.writeFile(RECEIPT_PATH, JSON.stringify({
@@ -293,10 +296,8 @@ describe('Stage C — the prefix a cache could actually hold, measured at the wi
         systemBytesC: bodyC.messages[0].content.length,
         streamCBytes: streamC.length,
         firstDivergenceByte: offset,
-        divergenceSection: 'present (the minute-resolution clock)',
+        divergenceSection: 'none before the new turn (the clock rides its harness-context block)',
         reusableShareC: offset / streamC.length,
-        note: 'a flat prefix cache re-reads everything from the clock byte on — '
-          + 'the transcript entries are byte-stable but sit after it',
       },
     }, null, 1));
   }, 120000);

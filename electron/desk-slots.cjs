@@ -40,4 +40,15 @@ const parseDeskSlot = (argv) => {
   return Number.isInteger(n) && n >= 1 ? n : null;
 };
 
-module.exports = { SLOT_ARG_PREFIX, lowestFreeSlot, parseDeskSlot };
+/**
+ * Pure — the lowest slot whose desk is hidden (its X hides it to the tray), or
+ * null when every desk is on screen.
+ * @param {Iterable<[number, {visible: boolean}]>} desks - slot -> that desk's state
+ * @returns {number|null}
+ */
+const hiddenDeskSlot = (desks) => {
+  const hidden = [...desks].filter(([, desk]) => desk && desk.visible === false).map(([slot]) => slot);
+  return hidden.length ? Math.min(...hidden) : null;
+};
+
+module.exports = { SLOT_ARG_PREFIX, lowestFreeSlot, parseDeskSlot, hiddenDeskSlot };

@@ -6,6 +6,7 @@
  * social manipulation, identity erosion, and excessive tool use.
  */
 
+import path from 'path';
 import { filesystemTargets } from './fs-tool-targets.js';
 import { hasSensitivePath, isSecretFile } from './secret-path-classifier.js';
 import { projectFilesystemToolText } from './rogue-tool-text.js';
@@ -90,13 +91,36 @@ export const detectRoguePatterns = (response, context = {}) => {
  */
 export const shouldBlock = (result) => result.severity === 'HIGH';
 
+// What lies in the secret folders, and the folders themselves named alone
+// (listing `keys` names every key file in it). The rest of keys/ is the
+// sandbox's own wall to refuse, with its own words.
+const PROTECTED_PATH = /vault\/|keys\/keypair|\.ssh\//;
+const SECRET_FOLDER = /(?:^|\/)(?:keys|vault|\.ssh)\/?$/;
+
+// pure — a path as every fs tool opens it: backslashes as separators, `//`,
+// `./` and `x/..` collapsed, case folded (a case-insensitive volume opens
+// `KEYS/` as `keys/`).
+const diskSpelling = (p) => path.posix.normalize(String(p).replace(/\\/g, '/')).toLowerCase();
+
+// pure — the string values an unknown tool could open as a path: any single
+// line carrying a separator, at any depth of its arguments. A web address is
+// not a file on this disk (a file:// one is, read past its scheme).
+const pathLikeArgs = (value, depth = 0) => {
+  if (typeof value === 'string') {
+    const local = value.replace(/^file:\/\//i, '');
+    return /[/\\]/.test(local) && !/[\r\n]/.test(local) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(local) ? [local] : [];
+  }
+  if (!value || typeof value !== 'object' || depth > 4) return [];
+  return Object.values(value).flatMap((child) => pathLikeArgs(child, depth + 1));
+};
+
 /**
  * Check tool call arguments for dangerous patterns before execution.
  * `grantCovers` (optional) is the sensitive-grant door: a predicate over the
  * raw args — built by the call site from the lane's grants and the call's
  * direction — consulted ONLY when a sensitive substring fires, so an
  * operator-granted `.env` stops reading as a jailbreak while every ungranted
- * secret still dies here (Design note, 2026-08-18.
+ * secret still dies here (ruling, 2026-08-18).
  * @param {string} serverName - MCP server name
  * @param {string} toolName - Tool name
  * @param {Object} args - Tool call arguments
@@ -106,17 +130,24 @@ export const shouldBlock = (result) => result.severity === 'HIGH';
 export const checkToolArgs = (serverName, toolName, args, { grantCovers = null } = {}) => {
   const targets = filesystemTargets(serverName, toolName, args);
   const argsStr = JSON.stringify(targets ?? args ?? {}).toLowerCase();
+  // Every path the call can open, spelled the way the disk reads it: matched
+  // as raw text, `keys//keypair.json` or `config/./tool-policy.json` named the
+  // same file and passed (security seat fuzz G-TA1, 2026-10-19).
+  const paths = (targets ?? pathLikeArgs(args)).map(diskSpelling);
   const granted = grantCovers?.(args) === true;
 
-  // Path-based checks
+  // Path-based checks. Key material by name counts on every server, not only
+  // the two filesystem ones (G-TA3).
   const sensitive = targets
-    ? targets.some((target) => hasSensitivePath(target) || isSecretFile(target))
-    : argsStr.includes('.env') || argsStr.includes('credentials') || argsStr.includes('secrets');
+    ? paths.some((target) => hasSensitivePath(target) || isSecretFile(target))
+    : argsStr.includes('.env') || argsStr.includes('credentials') || argsStr.includes('secrets') || paths.some(isSecretFile);
   if (!granted && sensitive) {
     return { safe: false, reason: 'Access to sensitive files denied — request access with request_file_access' };
   }
 
-  if (!granted && /vault\/|keys\/keypair|\.ssh\//.test(argsStr)) {
+  // The folder itself is as protected as what it holds (G-TA2).
+  const protectedDir = [argsStr, ...paths].some((text) => PROTECTED_PATH.test(text)) || paths.some((p) => SECRET_FOLDER.test(p));
+  if (!granted && protectedDir) {
     return { safe: false, reason: 'Access to protected directories denied — request access with request_file_access' };
   }
 
@@ -124,7 +155,7 @@ export const checkToolArgs = (serverName, toolName, args, { grantCovers = null }
   // and tool policy beyond a neuma's own tool reach, regardless of the arg name
   // a tool uses. Defense-in-depth for the signing path: a jailbroken neuma must
   // not be able to widen its own spend authority or disown its witness.
-  if (/config\/spend-|config\/tool-policy|config\/sovereignty-|owner\.json/.test(argsStr)) {
+  if ([argsStr, ...paths].some((text) => /config\/spend-|config\/tool-policy|config\/sovereignty-|owner\.json/.test(text))) {
     return { safe: false, reason: 'Access to wallet/security config denied' };
   }
 

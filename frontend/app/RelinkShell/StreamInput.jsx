@@ -175,7 +175,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
     // honor the same gate, not send behind the affordance's back. An
     // attachment alone is a complete thought; text is optional when one rides.
     // `canQueue`: the caller holds mid-stream words and delivers them when the
-    // current action finishes, so a busy stream is no longer a closed door (Design note, 2026-07-26.
+    // current action finishes, so a busy stream is no longer a closed door (ruling, 2026-07-26).
     // Without it, busy still blocks — every existing caller behaves as before.
     if ((!text && ready.length === 0) || !connected || (busy && !canQueue) || uploading) return;
     if (ready.length === 0) {
@@ -193,7 +193,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
       const { images, files } = payload;
       const ids = await uploadAttachments({ images, files });
       // The FILES' NAMES ride the send — the operator's own bubble shows what
-      // was attached (Design note, 2026-09-17, live and after a reload.
+      // was attached (ruling, 2026-09-17), live and after a reload.
       fire(text, undefined, { ids, previews: images, names: files.map((f) => f.name) }, revisionRef.current ?? undefined);
       revisionRef.current = null; // a sent word retires the revision marker
       setValue('');
@@ -323,7 +323,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                   if (chain === 1 && !value && onEscapeRecallQueued) {
                     // The FIRST tap, empty-handed, while the portal holds a
                     // word: it comes home to be reworked, the flow untouched
-                    // (Design note, 2026-08-16. A drafted field is never stomped.
+                    // (ruling, 2026-08-16). A drafted field is never stomped.
                     e.preventDefault();
                     uiSound('tick');
                     onEscapeRecallQueued();
@@ -392,7 +392,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
             </button>
             {busy ? (
               <>
-                {/* MID-STREAM (Design note, 2026-07-26: while a reply runs, the witness
+                {/* MID-STREAM (ruling, 2026-07-26): while a reply runs, the witness
                     keeps BOTH ways to speak — interject now, or hold the word
                     for the next completed action — beside the stop. Watching a
                     being work stopped being read-only. */}

@@ -96,7 +96,7 @@ const rememberSpoken = (turnVoice, words, spoken) => {
  * The voice chain for one LLM round. Null when the turn has no voice (VOX off,
  * or silent) — the caller then streams words token by token, untouched.
  *
- * THE REPLY IS RELEASED BY ITS OWN VOICE (Design note, 2026-08-01: with VOX on, a
+ * THE REPLY IS RELEASED BY ITS OWN VOICE (ruling, 2026-08-01): with VOX on, a
  * sentence's WORDS reach the desk at the moment that sentence starts SOUNDING.
  * Every pending sentence is tracked so its words can never be LOST to a voice
  * failure; a barge-in is the one case that keeps its silence.

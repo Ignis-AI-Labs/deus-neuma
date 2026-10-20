@@ -11,7 +11,7 @@
 // and duplicates, because this is the operator's machine and the operator's
 // data — sovereignty includes the right to erase.
 //
-// ONE LEDGER PER HOUSE (Design note, 2026-10-16: each house's leads live in its own
+// ONE LEDGER PER HOUSE (ruling, 2026-10-16): each house's leads live in its own
 // office, `<realm>/<wallet>/offices/marketing/lead-ledger.json`
 // (house-office.js); the machine-wide ledger (data/settings/lead-ledger.json)
 // moves once to its house. Governance record, not a secret: plain JSON, same

@@ -3,10 +3,10 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { Wallet } from 'ethers';
 import WebSocket, { WebSocketServer } from 'ws';
+import { sealTestWitness } from '../helpers/sealed-test-witness.js';
 
-let root, server, wss, terminalWss, store, empty, mint, token, address, connections, approval;
+let root, server, wss, terminalWss, store, empty, mint, token, address, connections, approval, witnessLane;
 const clients = [];
 const HOST = 'revocation.test.ts.net';
 const waitFor = async (predicate) => {
@@ -35,16 +35,17 @@ const mode = async (client) => {
 const enable = (devices) => store.save({ ...empty, enabled: true, origin: HOST, devices });
 
 beforeAll(async () => {
-  if (!process.env.NEUMA_WITNESS_ENV) throw new Error('Set NEUMA_WITNESS_ENV to your own sealed witness env');
   root = await fs.mkdtemp('/tmp/neuma-revocation-');
   Object.assign(process.env, { NEUMA_DATA_ROOT: path.join(root, 'data'), NEUMA_REALM_ROOT: path.join(root, 'realm'), WORKSPACES_ROOT: path.join(root, 'workspaces'), WITNESSES_ROOT: path.join(root, 'witness-ground'), PLATFORM_DB_PATH: path.join(root, 'platform.db'), AUTH_SECRET: randomBytes(32).toString('hex') });
+  // A real witness sealed on this test's disk, and a fresh operator wallet — no one's own env.
+  const sealed = await sealTestWitness(root);
+  witnessLane = sealed.laneId;
   const remote = await import('../../backend/services/remote/remote-store.js');
   store = remote.remoteStore; empty = remote.EMPTY_REMOTE_STATE;
   const pairing = await import('../../backend/services/remote/pairing.js');
   mint = (now) => pairing.mintDevice({ address, label: 'Trace isolated proof', ...(now ? { now } : {}) });
   const auth = await import('../../backend/services/auth.js');
-  const env = await fs.readFile(process.env.NEUMA_WITNESS_ENV, 'utf8');
-  const wallet = new Wallet(env.match(/^[A-Z0-9_]*PRIVATE_KEY\s*=\s*(.+)$/m)[1].trim());
+  const wallet = sealed.operator;
   address = wallet.address;
   const challenge = auth.generateChallenge(address);
   token = auth.createSessionToken(auth.verifySignature(address, challenge, await wallet.signMessage(challenge)));
@@ -139,6 +140,44 @@ it('a card parked on a closed portal is shown again when the same sitting is res
   expect(await pending).toBe('deny');
 });
 
+// The flight check's finding 2 (2026-10-17): an INTENT's card died with its portal (the sweep was
+// cancelled on close), so it was never offered again and the intent waited for a new card.
+it('an intent card parked on a closed portal is offered again on resume, and its answer settles the intent', async () => {
+  const { writeOwner } = await import('../helpers/audit-auth.js');
+  const { sweepIntents } = await import('../../backend/services/intents/intent-sweep.js');
+  await writeOwner(process.env.WORKSPACES_ROOT, 'intentlane', address);
+  const intents = path.join(process.env.WORKSPACES_ROOT, 'intentlane', 'intents');
+  await fs.mkdir(intents, { recursive: true });
+  await fs.writeFile(path.join(intents, 'park-1.json'), JSON.stringify({ type: 'tasks/add', title: 'The parked task' }));
+  const first = await connect();
+  first.connection.companion = { neumaId: 'intentlane', name: 'Intent' };
+  first.connection.sessionId = 'parked-intent-sitting';
+  const swept = sweepIntents(first.connection, { mode: 'ask', lanePolicy: null, emit: () => {} });
+  const frame = await waitFor(() => first.messages.find((m) => m.type === 'tool:approval_request'));
+  expect(frame.tool).toBe('intents/tasks.add');
+  first.ws.close();
+  await waitFor(() => approval.parkedApprovalsFor(address.toLowerCase(), 'parked-intent-sitting').length === 1);
+  const back = await connect();
+  back.ws.send(JSON.stringify({ type: 'portal:resume', neumaId: 'intentlane', companionName: 'Intent', sessionId: 'parked-intent-sitting' }));
+  await waitFor(() => back.messages.find((m) => m.type === 'tool:approval_request' && m.id === frame.id));
+  back.ws.send(JSON.stringify({ type: 'tool:approval_response', id: frame.id, decision: 'deny' }));
+  expect(await swept).toEqual([expect.objectContaining({ tool: 'intents/tasks.add', status: 'denied' })]);
+  expect(JSON.parse(await fs.readFile(path.join(intents, 'park-1.result.json'), 'utf8')).status).toBe('denied');
+});
+
+it('an intent swept after its portal closed raises no card and stays pending — a closed portal is never a verdict', async () => {
+  const { sweepIntents } = await import('../../backend/services/intents/intent-sweep.js');
+  const intents = path.join(process.env.WORKSPACES_ROOT, 'intentlane', 'intents');
+  await fs.writeFile(path.join(intents, 'late-1.json'), JSON.stringify({ type: 'tasks/add', title: 'Filed as the portal closed' }));
+  const client = await connect();
+  client.connection.companion = { neumaId: 'intentlane', name: 'Intent' };
+  client.connection.sessionId = 'closed-intent-sitting';
+  client.ws.close();
+  await waitFor(() => client.connection.ws.readyState === WebSocket.CLOSED);
+  expect(await sweepIntents(client.connection, { mode: 'ask', lanePolicy: null, emit: () => {} })).toEqual([]);
+  await expect(fs.access(path.join(intents, 'late-1.result.json'))).rejects.toThrow();
+});
+
 it('asks on a closed portal settle and navigation on an open portal denies', async () => {
   const client = await connect();
   client.ws.close();
@@ -219,10 +258,10 @@ it('a card on a live screen keeps its turn\'s place: the wake waits until the tu
 it('a revoked socket cannot announce a late completion to its local sibling', async () => {
   const { verifiedWitnessForLane } = await import('../../backend/routes/portal-witness-binding.js');
   const { ensureWitnessLane } = await import('../../backend/services/witness-lane.js');
-  const lane = process.env.NEUMA_WITNESS_LANE;
+  const lane = witnessLane;
   const identity = await verifiedWitnessForLane(lane);
   expect(identity).toBeTruthy();
-  await ensureWitnessLane(identity.sealed, address);
+  await ensureWitnessLane(identity.sealed, address, { summoning: true });
   const pair = mint();
   await enable([pair.device]);
   const phone = await connect(pair), local = await connect();

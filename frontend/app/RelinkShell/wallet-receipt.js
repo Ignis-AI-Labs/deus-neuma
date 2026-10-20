@@ -6,11 +6,15 @@
 // (raw RPC objects in → human breakdown out); only fetchTxBreakdown touches IO.
 
 import { ethers } from 'ethers';
+import { EXPLORER_BY_NETWORK as EXPLORERS, explorerName as knownExplorerName } from '../../utils/explorer.js';
 
-const EXPLORERS = Object.freeze({
-  'base': 'https://basescan.org',
-  'base-sepolia': 'https://sepolia.basescan.org',
-});
+/**
+ * The explorer's name for the link text, from the same mapping as the links;
+ * an unknown key names Base, where its link lands. Pure.
+ * @param {string|null|undefined} networkKey
+ * @returns {'ETHERSCAN'|'BASESCAN'}
+ */
+export const explorerName = (networkKey) => knownExplorerName(networkKey) || knownExplorerName('base');
 
 /**
  * The explorer page for a transaction on the selected network. Unknown keys

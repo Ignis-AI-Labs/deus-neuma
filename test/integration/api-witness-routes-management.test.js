@@ -71,7 +71,7 @@ describe('GET /api/v1/witnesses', () => {
   });
 
   test('omits a witness lane claimed by another wallet', async () => {
-    await ensureWitnessLane({ vendorSlug: 'test-vendor', chosenName: 'Test' }, '0xanother-wallet');
+    await ensureWitnessLane({ vendorSlug: 'test-vendor', chosenName: 'Test' }, '0xanother-wallet', { summoning: true });
     const app = await buildApp();
     const list = await request(app).get('/api/v1/witnesses').set(operatorWitness.header);
     expect(list.status).toBe(200);

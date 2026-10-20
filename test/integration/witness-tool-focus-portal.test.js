@@ -23,11 +23,12 @@ import { setRoute } from '../../backend/services/neuma-routes-store.js';
 import { getRoots, setRoots } from '../../backend/services/user-files.js';
 import { sandboxPathFor } from '../../backend/services/witness-coding-sandbox.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const LANE_ID = 'witness-focus-vendor-Focus';
 const ENV_DOORS = [
   'AI_WITNESSES_ROOT', 'WITNESSES_ROOT', 'WORKSPACES_ROOT',
-  'NEUMA_PROVIDER_CREDENTIALS_PATH', 'NEUMA_ROUTES_PATH', 'NEUMA_REALM_ROOT',
+  'NEUMA_PROVIDER_CREDENTIALS_PATH', 'NEUMA_ROUTES_PATH', 'NEUMA_REALM_ROOT', 'NEUMA_DATA_ROOT',
 ];
 
 let root;
@@ -48,7 +49,11 @@ const authToken = async () => {
   const keypair = generateKeypair();
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
-  return createSessionToken(verifySignature(keypair.address, challenge, signature));
+  const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+  // The operator owns the install, so the witness it sealed outside the
+  // desk's summon is its to take (witness-lane.js; a bind never claims).
+  await makeInstallOwner(keypair.address);
+  return token;
 };
 
 const sendAndWait = (message, expectedType, timeoutMs = 10000) => new Promise((resolve, reject) => {
@@ -107,6 +112,7 @@ beforeAll(async () => {
   process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = path.join(settings, 'credentials.json');
   process.env.NEUMA_ROUTES_PATH = path.join(settings, 'routes.json');
   process.env.NEUMA_REALM_ROOT = path.join(settings, 'realm');
+  process.env.NEUMA_DATA_ROOT = path.join(root, 'data');
   setAIWitnessesRoot(identityRoot);
   setWitnessesRoot(witnessGround);
   setWorkspacesRoot(house);

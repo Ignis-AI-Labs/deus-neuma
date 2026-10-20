@@ -38,7 +38,7 @@ export const loadLatestSession = async (neumaId) => {
     const sessionId = sessions[0];
     return { sessionId, messages: await loadSessionMessages(neumaId, sessionId, RECENT_ROWS) };
   } catch (err) {
-    // FAIL LOUD, NEVER FORK (Design note, 2026-08-31: a failed load is not an empty
+    // FAIL LOUD, NEVER FORK (ruling, 2026-08-31): a failed load is not an empty
     // chat. The relink surfaces this and HOLDS sends — silently minting a
     // fresh session over an intact one is the fork this flag exists to kill.
     return { sessionId: null, messages: [], failed: true, error: String(err?.message || err) };

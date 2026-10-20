@@ -22,11 +22,12 @@ import { authHeadersOrNull } from '../../utils/http.js';
 import './AuthImage.css';
 
 /**
- * @param {{src: string, alt?: string, className?: string, onClick?: Function}} props
+ * @param {{src: string, alt?: string, className?: string, onClick?: Function, video?: boolean}} props
  *   `src` is an app-relative authenticated URL, already carrying any query the
- *   route needs (e.g. `?laneId=…`).
+ *   route needs (e.g. `?laneId=…`). `video` plays the same bytes in a player —
+ *   a forge render can be a clip with sound (video.ltx.i2v), not only a still.
  */
-export const AuthImage = ({ src, alt = '', className, onClick }) => {
+export const AuthImage = ({ src, alt = '', className, onClick, video = false }) => {
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
 
@@ -59,5 +60,6 @@ export const AuthImage = ({ src, alt = '', className, onClick }) => {
 
   if (failed) return <span className={`authimg-missing ${className || ''}`} title="could not load" aria-label={alt} />;
   if (!url) return <span className={`authimg-loading ${className || ''}`} aria-hidden="true" />;
+  if (video) return <video className={className} src={url} aria-label={alt} controls playsInline preload="metadata" />;
   return <img className={className} src={url} alt={alt} onClick={onClick} />;
 };

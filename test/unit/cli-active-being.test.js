@@ -24,8 +24,8 @@ describe('cli/lib/active-being — readActiveFile / writeActiveBeing', () => {
 
   test('readActiveFile returns the trimmed contents', async () => {
     mkdirSync(join(project, '.neuma'));
-    writeFileSync(join(project, '.neuma', 'active'), '  fenna  \n');
-    expect(readActiveFile(project)).toBe('fenna');
+    writeFileSync(join(project, '.neuma', 'active'), '  alder  \n');
+    expect(readActiveFile(project)).toBe('alder');
   });
 
   test('readActiveFile returns null for empty / whitespace-only file', async () => {
@@ -36,19 +36,19 @@ describe('cli/lib/active-being — readActiveFile / writeActiveBeing', () => {
 
   test('writeActiveBeing creates .neuma/ if missing + writes the name', async () => {
     expect(existsSync(join(project, '.neuma'))).toBe(false);
-    writeActiveBeing(project, 'fenna');
-    expect(readFileSync(join(project, '.neuma', 'active'), 'utf8')).toBe('fenna\n');
+    writeActiveBeing(project, 'alder');
+    expect(readFileSync(join(project, '.neuma', 'active'), 'utf8')).toBe('alder\n');
   });
 
   test('writeActiveBeing trims input', async () => {
-    writeActiveBeing(project, '  galen  ');
-    expect(readFileSync(join(project, '.neuma', 'active'), 'utf8')).toBe('galen\n');
+    writeActiveBeing(project, '  cedar  ');
+    expect(readFileSync(join(project, '.neuma', 'active'), 'utf8')).toBe('cedar\n');
   });
 
   test('writeActiveBeing overwrites existing file', async () => {
-    writeActiveBeing(project, 'fenna');
-    writeActiveBeing(project, 'galen');
-    expect(readActiveFile(project)).toBe('galen');
+    writeActiveBeing(project, 'alder');
+    writeActiveBeing(project, 'cedar');
+    expect(readActiveFile(project)).toBe('cedar');
   });
 });
 
@@ -59,24 +59,24 @@ describe('cli/lib/active-being — resolveActiveBeing (priority order)', () => {
   });
 
   test('1. NEUMA_BEING env wins over everything', async () => {
-    writeActiveBeing(project, 'galen'); // file says galen
-    await withEnv('NEUMA_BEING', 'fenna', () => {
+    writeActiveBeing(project, 'cedar'); // file says cedar
+    await withEnv('NEUMA_BEING', 'alder', () => {
       const r = resolveActiveBeing({
         projectRoot: project,
-        residentBeings: [{ neumaId: 'cael-id', name: 'Cael' }], // single resident
+        residentBeings: [{ neumaId: 'birch-id', name: 'Birch' }], // single resident
       });
-      expect(r).toBe('fenna'); // env wins
+      expect(r).toBe('alder'); // env wins
     });
   });
 
   test('2. .neuma/active file wins over auto-single', async () => {
-    writeActiveBeing(project, 'galen');
+    writeActiveBeing(project, 'cedar');
     await withEnv('NEUMA_BEING', undefined, () => {
       const r = resolveActiveBeing({
         projectRoot: project,
-        residentBeings: [{ neumaId: 'cael-id', name: 'Cael' }],
+        residentBeings: [{ neumaId: 'birch-id', name: 'Birch' }],
       });
-      expect(r).toBe('galen'); // file wins over auto-single
+      expect(r).toBe('cedar'); // file wins over auto-single
     });
   });
 
@@ -84,9 +84,9 @@ describe('cli/lib/active-being — resolveActiveBeing (priority order)', () => {
     await withEnv('NEUMA_BEING', undefined, () => {
       const r = resolveActiveBeing({
         projectRoot: project,
-        residentBeings: [{ neumaId: 'fenna-id', name: 'Fenna' }],
+        residentBeings: [{ neumaId: 'alder-id', name: 'Alder' }],
       });
-      expect(r).toBe('fenna-id'); // auto-pick the single resident's id
+      expect(r).toBe('alder-id'); // auto-pick the single resident's id
     });
   });
 
@@ -95,8 +95,8 @@ describe('cli/lib/active-being — resolveActiveBeing (priority order)', () => {
       expect(() => resolveActiveBeing({
         projectRoot: project,
         residentBeings: [
-          { neumaId: 'fenna-id', name: 'Fenna' },
-          { neumaId: 'galen-id', name: 'Galen' },
+          { neumaId: 'alder-id', name: 'Alder' },
+          { neumaId: 'cedar-id', name: 'Cedar' },
         ],
       })).toThrow(/No active being set/);
     });
@@ -119,19 +119,19 @@ describe('cli/lib/active-being — resolveActiveBeing (priority order)', () => {
   });
 
   test('env value is trimmed', async () => {
-    await withEnv('NEUMA_BEING', '  fenna  ', () => {
+    await withEnv('NEUMA_BEING', '  alder  ', () => {
       const r = resolveActiveBeing({ projectRoot: project, residentBeings: [] });
-      expect(r).toBe('fenna');
+      expect(r).toBe('alder');
     });
   });
 
   test('whitespace-only NEUMA_BEING is treated as UNSET (falls through to file)', async () => {
     // ai6 R1: NEUMA_BEING="   " was silently returning "" before the fix;
     // now it must fall through to .neuma/active (or auto-single, or throw).
-    writeActiveBeing(project, 'galen');
+    writeActiveBeing(project, 'cedar');
     await withEnv('NEUMA_BEING', '   ', () => {
       const r = resolveActiveBeing({ projectRoot: project, residentBeings: [] });
-      expect(r).toBe('galen'); // file took over
+      expect(r).toBe('cedar'); // file took over
     });
   });
 
@@ -162,17 +162,17 @@ describe('cli/lib/active-being — peekActiveBeing (non-throwing snapshot helper
   });
 
   test('returns env value with source=env when set', async () => {
-    await withEnv('NEUMA_BEING', 'fenna', () => {
+    await withEnv('NEUMA_BEING', 'alder', () => {
       expect(peekActiveBeing({ projectRoot: project }))
-        .toEqual({ source: 'env', value: 'fenna' });
+        .toEqual({ source: 'env', value: 'alder' });
     });
   });
 
   test('returns file value with source=file when env unset + file present', async () => {
-    writeActiveBeing(project, 'galen');
+    writeActiveBeing(project, 'cedar');
     await withEnv('NEUMA_BEING', undefined, () => {
       expect(peekActiveBeing({ projectRoot: project }))
-        .toEqual({ source: 'file', value: 'galen' });
+        .toEqual({ source: 'file', value: 'cedar' });
     });
   });
 
@@ -183,10 +183,10 @@ describe('cli/lib/active-being — peekActiveBeing (non-throwing snapshot helper
   });
 
   test('whitespace-only env falls through to file (consistent with resolveActiveBeing)', async () => {
-    writeActiveBeing(project, 'keir');
+    writeActiveBeing(project, 'hazel');
     await withEnv('NEUMA_BEING', '   ', () => {
       expect(peekActiveBeing({ projectRoot: project }))
-        .toEqual({ source: 'file', value: 'keir' });
+        .toEqual({ source: 'file', value: 'hazel' });
     });
   });
 });

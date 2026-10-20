@@ -34,7 +34,7 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
     app.use('/api/v1/user/realm', realmRouter);
     app.use('/bodies', express.static(bodies));
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as house from "/frontend/services/house-workspace.js"; import * as alliance from "/frontend/services/alliance-ground.js"; import * as realm from "/frontend/services/user-realm.js"; import * as operator from "/frontend/services/operator-name.js"; import {apiCall} from "/frontend/utils/http.js"; import * as labels from "/frontend/services/council-labels.js"; window.clients={...house,...alliance,...realm,...operator,...labels,apiCall}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -50,7 +50,9 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
     expect(titleRequests).toBe(0);
     const houseEmpty = { root: null, repos: [] };
     const allianceEmpty = { root: null, suggestion: null, alliances: [] };
-    expect((await call('getHouseWorkspace')).value).toEqual(houseEmpty);
+    // a read that could not be made is said (unread), never read as "no ground set"
+    const houseUnread = { ...houseEmpty, unread: expect.any(String) };
+    expect((await call('getHouseWorkspace')).value).toEqual(houseUnread);
     expect((await call('getAllianceGrounds')).value).toEqual(allianceEmpty);
     expect(await page.evaluate(() => window.expired)).toBe(0);
     await page.evaluate(token => sessionStorage.setItem('authToken', token), auth.token);
@@ -75,7 +77,7 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
     expect((await call('getHouseWorkspace')).value.root).toBeNull();
     expect((await call('getAllianceGrounds')).value.root).toBeNull();
     await page.evaluate(() => sessionStorage.setItem('authToken', 'expired-invalid-token'));
-    expect((await call('getHouseWorkspace')).value).toEqual(houseEmpty);
+    expect((await call('getHouseWorkspace')).value).toEqual(houseUnread);
     expect((await call('getAllianceGrounds')).value).toEqual(allianceEmpty);
     expect(await page.evaluate(() => window.expired)).toBe(2);
     expect(await call('getOperatorName')).toEqual({ ok: false, name: 'Error', message: 'Could not read the operator name (401)' });

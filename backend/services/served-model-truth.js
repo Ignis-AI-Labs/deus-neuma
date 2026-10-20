@@ -7,7 +7,7 @@
  * importers see zero change and the one-channel law keeps a single home.
  */
 import { pidAlive, readClaim, readSelection } from './substrate-claim-registry.js';
-import { getActiveModel, getConfig } from './llm-selection.js';
+import { fetchServedModelId, getConfig } from './llm-selection.js';
 import { servedModelIdentity, servedKeyFromLive } from './serving-identity.js';
 import { resolveServingLaunchConfig } from './serving-launch-config.js';
 
@@ -26,8 +26,10 @@ export const claimedLaunch = (cfg) => {
 
 /**
  * The LIVE half of the channel alone: what a healthy server itself answers,
- * mapped to a public identity (fd descriptors resolved via claim/kernel) —
- * null when no server answers or the answer carries no nameable identity.
+ * asked of that same server (never the machine provider, which may be ollama,
+ * LM Studio or a cloud while llama-server is the substrate), mapped to a
+ * public identity (fd descriptors resolved via claim/kernel) — null when no
+ * server answers or the answer carries no nameable identity.
  * NO resting fallback lives here: the focus-adoption law (substrate-
  * lifecycle) may only ever adopt a live answer, never a fallback echoing the
  * very default it exists to outrank. Impure.
@@ -38,10 +40,9 @@ export const liveServedKey = async (env, launch = null) => {
   const cfg = launch || resolveServingLaunchConfig(env);
   try {
     if (!(await isServing(cfg.port, cfg.host))) return null;
-    const live = await getActiveModel().catch(() => null);
-    const mapped = await servedModelIdentity(live?.id).catch(() => null)
-      || await servedModelIdentity(live?.name).catch(() => null);
-    return servedKeyFromLive(live, mapped);
+    const id = await fetchServedModelId(`http://${cfg.host}:${cfg.port}`);
+    const mapped = await servedModelIdentity(id).catch(() => null);
+    return servedKeyFromLive(id ? { id } : null, mapped);
   } catch {
     return null;
   }

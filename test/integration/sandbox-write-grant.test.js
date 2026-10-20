@@ -98,7 +98,7 @@ describe('sandbox write-scope grant — granted project folder, walls still hold
 
   test('delete_file EXECUTES inside a granted folder — and the walls still hold', async () => {
     // The old outright denial made a being fake deletions by overwriting
-    // files (Design note, 2026-07-23 — delete_file is now a real platform tool. At
+    // files (ruling, 2026-07-23) — delete_file is now a real platform tool. At
     // THIS layer (the sandbox) a granted folder confines it like any write;
     // the witness's per-delete approval card lives a layer above (portal /
     // council gates — tool-approval-flow proves that seam).

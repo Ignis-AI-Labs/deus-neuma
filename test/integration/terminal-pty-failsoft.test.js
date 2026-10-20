@@ -18,10 +18,13 @@ test('a real installation without node-pty imports, refuses a terminal and keeps
     const services = path.join(root, 'backend', 'services');
     await mkdir(services, { recursive: true });
     await writeFile(path.join(root, 'package.json'), '{"type":"module"}');
-    // Byte-identical manager in an actual package without node-pty. The logger
-    // remains the real implementation; no loader or dependency is substituted.
+    // Byte-identical manager in an actual package without node-pty. Its local
+    // imports (the logger, and since 955fdc696 the agent terminal environment)
+    // remain the real implementations; no loader or dependency is substituted.
     await copyFile(path.join(repo, 'backend/services/terminal-manager.js'), path.join(services, 'terminal-manager.js'));
-    await symlink(path.join(repo, 'backend/services/logger.js'), path.join(services, 'logger.js'));
+    for (const local of ['logger.js', 'agent-terminal-environment.js']) {
+      await symlink(path.join(repo, 'backend/services', local), path.join(services, local));
+    }
     const url = (relative) => JSON.stringify(pathToFileURL(path.join(repo, relative)).href);
     const script = `
       import assert from 'node:assert/strict';

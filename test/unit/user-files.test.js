@@ -110,7 +110,7 @@ describe('createEntry / renamePath / deletePath — real filesystem, root-contai
   });
 });
 
-// THE TWO-WAY BRIDGE (Design note, 2026-07-28 — the upload's name law and the
+// THE TWO-WAY BRIDGE (ruling, 2026-07-28) — the upload's name law and the
 // binary acts, real temp disk.
 describe('sanitizeUploadName / suffixedName (pure)', () => {
   it('a plain name passes; paths, traversal, and dot-names are refused', async () => {

@@ -59,16 +59,22 @@ describe('boardEntries (pure) — objective state never lies', () => {
 });
 
 describe('renderBoard (pure) — the check-in surface a brief carries', () => {
-  it('marks the reader, shows objective state, and indents check-ins verbatim', () => {
+  it('marks the reader, shows objective state, and indents check-ins verbatim inside the untrusted frame', () => {
     const board = renderBoard([
       { id: 'a', role: 'HELM', neumaId: 'n', state: 'done', status: 'spec shipped\nnothing left' },
       { id: 'b', role: null, neumaId: 'n2', state: 'working', status: null },
-    ], 'b');
-    expect(board).toBe(
-      'TEAM BOARD — where everyone stands right now:\n' +
-      '— HELM [DONE]\n    spec shipped\n    nothing left\n' +
-      '— b (YOU) [WORKING]'
-    );
+    ], 'b', 'feedfacecafe');
+    expect(board.startsWith('TEAM BOARD — where everyone stands right now:\nNOTICE:')).toBe(true);
+    expect(board.endsWith(
+      '— HELM [DONE]\n--- BEGIN EXTERNAL CONTENT feedfacecafe ---\n    spec shipped\n    nothing left\n'
+      + '--- END EXTERNAL CONTENT feedfacecafe ---\n— b (YOU) [WORKING]'
+    )).toBe(true);
+  });
+
+  it('a board with no check-ins renders plain — no notice about nothing', () => {
+    expect(renderBoard([
+      { id: 'a', role: 'HELM', neumaId: 'n', state: 'working', status: null },
+    ], 'a')).toBe('TEAM BOARD — where everyone stands right now:\n— HELM (YOU) [WORKING]');
   });
 });
 

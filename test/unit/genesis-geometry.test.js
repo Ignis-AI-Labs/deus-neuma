@@ -2,7 +2,7 @@
 // counts and relations. Pure: real inputs, real outputs, no mocks.
 import { describe, it, expect } from 'vitest';
 import {
-  GENESIS, circleCrossings, seedCenters, firstVesica, fruitCenters, metatronLines, genesisSolids, genesisLattice,
+  GENESIS, circleCrossings, seedCenters, firstVesica, fruitCenters, metatronLines, genesisSolids, genesisFamily, genesisLattice,
 } from '../../frontend/app/Genesis/genesis-geometry.js';
 
 const R = GENESIS.R;
@@ -101,5 +101,69 @@ describe('the lift: solids rise out of the drawing', () => {
     const l = genesisLattice();
     expect(l.vertices).toHaveLength(13);
     expect(l.edges).toHaveLength(36);
+  });
+});
+
+describe('the nest: the icosahedron inscribed in the octahedron at 1 : φ', () => {
+  const f = genesisFamily();
+  const d3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  const PHI = GENESIS.PHI;
+  const octa = f.octahedron;
+  const octaEdges = octa.edges.map(([i, j]) => [octa.vertices[i], octa.vertices[j]]);
+  const icosa = f.icosahedron;
+
+  it('the octahedron keeps the drawing\'s solids exactly; only the dual pair moves', () => {
+    const g = genesisSolids();
+    expect(f.octahedron.vertices).toEqual(g.octahedron.vertices);
+    expect(f.cube.vertices).toEqual(g.cube.vertices);
+  });
+
+  it('every icosahedron vertex lies on an octahedron edge, dividing it 1 : φ — one vertex per edge', () => {
+    const hosts = icosa.vertices.map((p) => {
+      const on = octaEdges.findIndex(([a, b]) => Math.abs(d3(a, p) + d3(p, b) - d3(a, b)) < 1e-12);
+      expect(on).toBeGreaterThanOrEqual(0);
+      const [a, b] = octaEdges[on];
+      const [near, far] = [d3(a, p), d3(p, b)].sort((x, y) => x - y);
+      expect(far / near).toBeCloseTo(PHI, 12);
+      return on;
+    });
+    expect(new Set(hosts).size).toBe(12);
+  });
+
+  it('it is regular: 12 vertices, 30 equal edges, five at every vertex, all on one sphere', () => {
+    expect(icosa.vertices).toHaveLength(12);
+    expect(icosa.edges).toHaveLength(30);
+    const lengths = icosa.edges.map(([i, j]) => d3(icosa.vertices[i], icosa.vertices[j]));
+    lengths.forEach((l) => expect(l).toBeCloseTo(lengths[0], 12));
+    const degree = icosa.vertices.map((_, k) => icosa.edges.filter((e) => e.includes(k)).length);
+    expect(new Set(degree)).toEqual(new Set([5]));
+    const o = { x: 0, y: 0, z: 0 };
+    icosa.vertices.forEach((v) => expect(d3(v, o)).toBeCloseTo(d3(icosa.vertices[0], o), 12));
+  });
+
+  it('the dodecahedron is its dual: one vertex at the centroid of every icosahedron face', () => {
+    const adj = new Set(icosa.edges.map(([i, j]) => `${Math.min(i, j)},${Math.max(i, j)}`));
+    const joined = (i, j) => adj.has(`${Math.min(i, j)},${Math.max(i, j)}`);
+    const centroids = [];
+    for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
+      if (joined(i, j) && joined(j, k) && joined(i, k)) {
+        const [a, b, c] = [icosa.vertices[i], icosa.vertices[j], icosa.vertices[k]];
+        centroids.push({ x: (a.x + b.x + c.x) / 3, y: (a.y + b.y + c.y) / 3, z: (a.z + b.z + c.z) / 3 });
+      }
+    }
+    expect(centroids).toHaveLength(20);
+    const dodeca = f.dodecahedron.vertices;
+    expect(dodeca).toHaveLength(20);
+    centroids.forEach((c) => expect(Math.min(...dodeca.map((v) => d3(v, c)))).toBeLessThan(1e-12));
+    const lengths = f.dodecahedron.edges.map(([i, j]) => d3(dodeca[i], dodeca[j]));
+    expect(lengths).toHaveLength(30);
+    lengths.forEach((l) => expect(l).toBeCloseTo(lengths[0], 12));
+  });
+
+  it('the nested pair keeps its true counts and how it enters', () => {
+    expect(f.icosahedron.counts).toEqual({ V: 12, E: 30, F: 20 });
+    expect(f.dodecahedron.counts).toEqual({ V: 20, E: 30, F: 12 });
+    expect(f.icosahedron.enters).toBe('phi');
+    expect(f.dodecahedron.enters).toBe('dual');
   });
 });

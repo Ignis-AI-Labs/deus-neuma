@@ -19,6 +19,11 @@ const KEYS = ['GH_CONFIG_DIR', 'HOME', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_HOST'];
 let root, token, oldEnv, git;
 const held = [];
 const exec = promisify(execFile);
+// The CLI's own multi-account hosts.yml shape. gh 2.102 (installed here
+// 2026-09-30) no longer answers `auth token --user` from the legacy
+// top-level oauth_token alone, so the fixture is written the way gh writes it.
+const hostsYml = (secret) => 'github.com:\n    users:\n        HarnessFixture:\n'
+  + `            oauth_token: ${secret}\n    git_protocol: https\n    user: HarnessFixture\n    oauth_token: ${secret}\n`;
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-github-auth-'));
@@ -30,8 +35,7 @@ beforeEach(async () => {
   process.env.GH_HOST = 'example.invalid';
   await fs.mkdir(process.env.GH_CONFIG_DIR);
   token = `gho_${randomBytes(24).toString('hex')}`;
-  await fs.writeFile(path.join(process.env.GH_CONFIG_DIR, 'hosts.yml'),
-    `github.com:\n    user: HarnessFixture\n    oauth_token: ${token}\n    git_protocol: https\n`, { mode: 0o600 });
+  await fs.writeFile(path.join(process.env.GH_CONFIG_DIR, 'hosts.yml'), hostsYml(token), { mode: 0o600 });
 });
 afterEach(async () => {
   for (const authorization of held.splice(0)) releaseGitHubAuthorization(authorization);
@@ -77,8 +81,7 @@ describe('backend-only GitHub authorization', () => {
   test('no account supports anonymous public access; malformed credential output refuses without reflecting bytes', async () => {
     await fs.writeFile(path.join(process.env.GH_CONFIG_DIR, 'hosts.yml'), '{}\n');
     expect(await resolveGitHubAuthorization(URL)).toBeNull();
-    await fs.writeFile(path.join(process.env.GH_CONFIG_DIR, 'hosts.yml'),
-      'github.com:\n    user: HarnessFixture\n    oauth_token: "INVALID CREDENTIAL MARKER"\n');
+    await fs.writeFile(path.join(process.env.GH_CONFIG_DIR, 'hosts.yml'), hostsYml('"INVALID CREDENTIAL MARKER"'));
     const error = await resolveGitHubAuthorization(URL).catch((failure) => failure);
     expect(error.code).toBe('github_auth_unavailable');
     expect(error.message).not.toContain('INVALID CREDENTIAL MARKER');

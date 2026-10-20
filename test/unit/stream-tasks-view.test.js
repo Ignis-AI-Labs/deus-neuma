@@ -22,7 +22,7 @@ const task = (over = {}) => ({
 const PLAN = {
   tasks: [
     task({ id: 'a', cadence: 'baseline', title: 'hold the daily post lane' }),
-    task({ id: 'b', cadence: 'daily', title: 'review tone with Founder' }),
+    task({ id: 'b', cadence: 'daily', title: 'review tone with Ada' }),
     task({ id: 'c', cadence: 'daily', title: 'read the mentions feed', status: 'done' }),
     task({ id: 'd', cadence: 'milestone', title: 'launch calendar v2' }),
   ],
@@ -36,15 +36,15 @@ const LEDGER = {
   ],
 };
 
-const KAGIPEM = { neumaId: 'kagipem-1', name: 'Kagipem' };
+const JUNIPER = { neumaId: 'juniper-1', name: 'Juniper' };
 
 describe('stream-tasks-view', () => {
   describe('railTitle', () => {
     test('names the being the rail is about', () => {
-      expect(railTitle(KAGIPEM)).toBe('TASKS // KAGIPEM');
+      expect(railTitle(JUNIPER)).toBe('TASKS // JUNIPER');
     });
     test('falls back to the lane id, then to the bare word', () => {
-      expect(railTitle({ neumaId: 'witness-openai-chatgpt-Basunor' })).toBe('TASKS // WITNESS-OPENAI-CHATGPT-BASUNOR');
+      expect(railTitle({ neumaId: 'witness-openai-chatgpt-Fern' })).toBe('TASKS // WITNESS-OPENAI-CHATGPT-FERN');
       expect(railTitle(null)).toBe('TASKS');
     });
   });
@@ -62,23 +62,23 @@ describe('stream-tasks-view', () => {
 
   describe('otherBeings', () => {
     const counts = [
-      { neumaId: 'kagipem-1', name: 'Kagipem', kind: 'neuma', count: 3 },
-      { neumaId: 'tenekom-1', name: 'Tenekom', kind: 'neuma', count: 3 },
-      { neumaId: 'witness-kimi-code-Basunor', name: 'Basunor', kind: 'witness', count: 5 },
-      { neumaId: 'cael-1', name: 'Cael', kind: 'neuma', count: 0 },
+      { neumaId: 'juniper-1', name: 'Juniper', kind: 'neuma', count: 3 },
+      { neumaId: 'holly-1', name: 'Holly', kind: 'neuma', count: 3 },
+      { neumaId: 'witness-kimi-code-Fern', name: 'Fern', kind: 'witness', count: 5 },
+      { neumaId: 'birch-1', name: 'Birch', kind: 'neuma', count: 0 },
     ];
 
     test('heaviest first, then alphabetical, and the rail\'s own being is excluded', () => {
-      expect(otherBeings(counts, 'kagipem-1').map((o) => o.name)).toEqual(['BASUNOR', 'TENEKOM']);
+      expect(otherBeings(counts, 'juniper-1').map((o) => o.name)).toEqual(['FERN', 'HOLLY']);
     });
 
     test('a being with nothing open is omitted — a row reading 0 is noise', () => {
-      expect(otherBeings(counts, null).some((o) => o.name === 'CAEL')).toBe(false);
+      expect(otherBeings(counts, null).some((o) => o.name === 'BIRCH')).toBe(false);
     });
 
     test('a witness is marked as one, so the two standings never read alike', () => {
-      expect(otherBeings(counts, null).find((o) => o.name === 'BASUNOR').kind).toBe('witness');
-      expect(otherBeings(counts, null).find((o) => o.name === 'TENEKOM').kind).toBe('neuma');
+      expect(otherBeings(counts, null).find((o) => o.name === 'FERN').kind).toBe('witness');
+      expect(otherBeings(counts, null).find((o) => o.name === 'HOLLY').kind).toBe('neuma');
     });
 
     test('garbage in, empty out', () => {
@@ -108,9 +108,9 @@ describe('stream-tasks-view', () => {
 
   describe('railState', () => {
     test('a being with work: NOW, the assigned groups by cadence, and the count', () => {
-      const bar = railState({ being: KAGIPEM, plan: PLAN, ledger: LEDGER, counts: [] });
+      const bar = railState({ being: JUNIPER, plan: PLAN, ledger: LEDGER, counts: [] });
       expect(bar.show).toBe(true);
-      expect(bar.title).toBe('TASKS // KAGIPEM');
+      expect(bar.title).toBe('TASKS // JUNIPER');
       // `own` replaced `now`, and it is WIDER on purpose: the rail shows every
       // live goal — taken on (L2) as well as being worked (L1) — because a goal
       // nobody has started is exactly the thing that sits unclosed. L3 is done,
@@ -132,30 +132,30 @@ describe('stream-tasks-view', () => {
     });
 
     test('loading is loading — never "this being has no work"', () => {
-      const bar = railState({ being: KAGIPEM, plan: undefined });
+      const bar = railState({ being: JUNIPER, plan: undefined });
       expect(bar.loading).toBe(true);
       expect(bar.unreadable).toBe(false);
       expect(bar.groups).toEqual([]);
     });
 
     test('an unreadable plan says so instead of reading as empty', () => {
-      const bar = railState({ being: KAGIPEM, plan: null });
+      const bar = railState({ being: JUNIPER, plan: null });
       expect(bar.loading).toBe(false);
       expect(bar.unreadable).toBe(true);
     });
 
     test('the foot counts only OTHER beings with live work', () => {
       const bar = railState({
-        being: KAGIPEM,
+        being: JUNIPER,
         plan: PLAN,
         counts: [
-          { neumaId: 'kagipem-1', name: 'Kagipem', count: 3 },
-          { neumaId: 'tenekom-1', name: 'Tenekom', count: 2 },
-          { neumaId: 'cael-1', name: 'Cael', count: 0 },
+          { neumaId: 'juniper-1', name: 'Juniper', count: 3 },
+          { neumaId: 'holly-1', name: 'Holly', count: 2 },
+          { neumaId: 'birch-1', name: 'Birch', count: 0 },
         ],
       });
       expect(bar.othersLive).toBe(1);
-      expect(bar.others[0].name).toBe('TENEKOM');
+      expect(bar.others[0].name).toBe('HOLLY');
     });
   });
 });
@@ -214,7 +214,7 @@ describe('the rail READS a goal\'s state — it never offers to settle it', () =
 
   it('rides railState, so the rail and the being read one truth', () => {
     const bar = railState({
-      being: { neumaId: 'kagipem' },
+      being: { neumaId: 'juniper' },
       plan: { tasks: [] },
       ledger: led([{ id: 'live', title: 'in hand', status: 'active' }], 'live'),
       chatId: CHAT,
@@ -263,7 +263,7 @@ describe('size, blocking, and the order the operator chose', () => {
       { id: 'far', title: 'taken up elsewhere', status: 'active', chatId: CHAT_B },
     ];
     const bar = railState({
-      being: { neumaId: 'kagipem' }, plan: { tasks: [] },
+      being: { neumaId: 'juniper' }, plan: { tasks: [] },
       ledger: { tasks: all }, chatId: CHAT,
     });
     expect(bar.own.map((r) => r.id)).toEqual(['here']);       // the other chat's work is not shown…
@@ -290,7 +290,7 @@ describe('size, blocking, and the order the operator chose', () => {
   });
 
   it('railState reports the order it was given, and defaults to the list\'s own', () => {
-    const base = { being: { neumaId: 'kagipem' }, plan: { tasks: [] }, ledger: { tasks: [] } };
+    const base = { being: { neumaId: 'juniper' }, plan: { tasks: [] }, ledger: { tasks: [] } };
     expect(railState(base).order).toBe('mine');
     expect(railState({ ...base, order: 'heaviest' }).order).toBe('heaviest');
   });

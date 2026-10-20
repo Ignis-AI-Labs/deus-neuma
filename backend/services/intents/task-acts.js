@@ -34,10 +34,10 @@ const taskIntent = (spec) => Object.freeze({
   ...spec,
 });
 
-// THE RECEIPT MAY NOT LIE BY OMISSION (Design note, 2026-09-20: a field the tool
+// THE RECEIPT MAY NOT LIE BY OMISSION (ruling, 2026-09-20): a field the tool
 // never advertised used to vanish in the ledger's whitelist without a
 // whisper, and the model read its own silence as acceptance — the exact
-// shape of the […] that stored nothing. An unknown field is
+// shape of the "subtasks recorded" that stored nothing. An unknown field is
 // now a refusal that names the fields the tool takes. Pure.
 const refuseUnknownFields = (payload, known, toolName) => {
   const unknown = Object.keys(payload || {}).filter((k) => !known.has(k));
@@ -48,8 +48,12 @@ const refuseUnknownFields = (payload, known, toolName) => {
 
 const TASK_ADD_FIELDS = new Set(['title', 'detail', 'size', 'blockedBy', 'cadence', 'scope', 'dueDate', 'dueTime', 'subtasks']);
 const TASK_UPDATE_FIELDS = new Set(['id', 'status', 'title', 'detail', 'size', 'blockedBy', 'cadence', 'scope', 'dueDate', 'dueTime', 'subtasks']);
-const OPERATOR_ADD_FIELDS = new Set(['title', 'detail', 'size', 'cadence', 'dueDate', 'dueTime', 'days', 'subtasks']);
-const OPERATOR_UPDATE_FIELDS = new Set(['id', 'title', 'detail', 'subtasks', 'dueDate', 'dueTime']);
+const OPERATOR_ADD_FIELDS = new Set(['title', 'detail', 'size', 'cadence', 'dueDate', 'dueTime', 'startTime', 'days', 'subtasks']);
+const OPERATOR_UPDATE_FIELDS = new Set(['id', 'title', 'detail', 'subtasks', 'dueDate', 'dueTime', 'startTime', 'days']);
+const OPERATOR_DROP_FIELDS = new Set(['id', 'title', 'reason']);
+// what an operator-list item's place on the calendar reads as, for a receipt
+const whenOf = (t) => [t.cadence, t.days?.length ? `days ${t.days.join(',')}` : '', t.dueDate || '',
+  t.startTime ? `${t.startTime}–${t.dueTime}` : t.dueTime ? `by ${t.dueTime}` : ''].filter(Boolean).join(' · ');
 
 // THE STEPS ON YOUR OWN LEDGER (2026-09-20): validated HERE so a malformed
 // step is refused before a card is ever filed, not discovered at execute
@@ -142,7 +146,7 @@ export const taskAddIntent = taskIntent({
         { id: randomUUID(), now, mintId: () => randomUUID() },
       );
       task = out.task;
-      // The machine half of the anti-duplication protocol (Design note, 2026-08-02:
+      // The machine half of the anti-duplication protocol (ruling, 2026-08-02):
       // candidates, never a refusal — named AFTER the add so nothing is lost.
       // Read against the ledger AS IT STOOD, inside the lock, so the answer
       // cannot be built from a list a concurrent writer has already moved on.
@@ -198,8 +202,10 @@ export const taskUpdateIntent = taskIntent({
     // against a ledger another writer has since changed could name a task
     // that is no longer there, or miss one that just arrived.
     let task;
+    let before;
     await withLedger(neumaId, now, (ledger) => {
       const fullId = resolveTaskId(ledger.tasks, fields.id);
+      before = ledger.tasks.find((t) => t.id === (fullId || fields.id))?.status;
       const out = updateTask(
         ledger, { ...authored, ...rescope, ...(fullId ? { id: fullId } : {}) }, { now, mintId: () => randomUUID() },
       );
@@ -207,8 +213,9 @@ export const taskUpdateIntent = taskIntent({
       return out.ledger;
     });
     // Settled work also lands on the append-only history, and the desk hears
-    // of it — the operator may be in another window entirely.
-    if (task.status === 'done' || task.status === 'dropped') {
+    // of it — the operator may be in another window entirely. Only the act
+    // that SETTLES it: retitling a task already done is not a second settle.
+    if ((task.status === 'done' || task.status === 'dropped') && before !== task.status) {
       await neumaWorkspace.appendTaskHistory(neumaId, {
         id: task.id, title: task.title, status: task.status,
         ...(task.cadence ? { cadence: task.cadence } : {}),
@@ -351,8 +358,8 @@ export const taskTakeIntent = taskIntent({
 export const operatorTaskAddIntent = taskIntent({
   name: 'tasks/operator-add',
   policyTool: 'tasks.operator-add',
-  fieldsForPrompt: '{title, detail?, size?, cadence?, dueDate?, dueTime?, days?, subtasks?}',
-  descriptionForPrompt: 'Record something on your OPERATOR\'S own list — THEIR list, never yours: you may add to it and amend its text and steps (tasks/operator-update), but you can never settle, drop, or re-status what stands there. cadence: once (default) | daily | weekly | biweekly | monthly | custom (with days) | baseline | milestone (dueDate only with milestone or once). size: quick | half | deep | epic. dueDate: YYYY-MM-DD deadline; dueTime: HH:MM — when within the day it is owed. subtasks: optional step titles. Work you set for YOURSELF goes in your own ledger (tasks/add), never here.',
+  fieldsForPrompt: '{title, detail?, size?, cadence?, dueDate?, dueTime?, startTime?, days?, subtasks?}',
+  descriptionForPrompt: 'Record something on your OPERATOR\'S own list — THEIR list, never yours — and with it their CALENDAR: everything dated or timed here shows on the house calendar (read it with calendar_read). you may add to it and amend its text, steps and schedule (tasks/operator-update), but you never settle or re-status what stands there, and taking something off is tasks/operator-drop — their approval card, every time. cadence: once (default) | daily | weekly | biweekly | monthly | custom (with days: 0 = Sunday … 6 = Saturday) | baseline | milestone (dueDate only with milestone or once). size: quick | half | deep | epic. dueDate: YYYY-MM-DD; dueTime: HH:MM — when within the day it is owed. A TIME BLOCK (training, meditation, deep work, a hard stop): startTime HH:MM with dueTime as its end — {title: "Chest + core", cadence: "custom", days: [1,3,5], startTime: "17:00", dueTime: "18:15"}. subtasks: optional step titles. Work you set for YOURSELF goes in your own ledger (tasks/add), never here.',
   validate: async (payload) => {
     const title = typeof payload?.title === 'string' ? payload.title.trim() : '';
     if (!title) return { ok: false, status: 'invalid', reason: 'a task needs a title — one line naming the work.' };
@@ -372,27 +379,29 @@ export const operatorTaskAddIntent = taskIntent({
       size: fields.size,
       cadence: fields.cadence ?? 'once',
       dueDate: fields.dueDate,
+      dueTime: fields.dueTime,
+      startTime: fields.startTime,
       days: fields.days,
       subtasks: fields.subtasks,
     });
     const subNote = task.subtasks?.length ? ` with ${task.subtasks.length} step(s)` : '';
-    return { ok: true, detail: `Recorded "${task.title}" on your operator's list${subNote} (${task.cadence}) — theirs to settle, never yours. Work you set for yourself still goes in your own ledger (tasks/add).` };
+    return { ok: true, detail: `Recorded "${task.title}" on your operator's list${subNote} (${whenOf(task)}) — on their calendar as stored; theirs to settle, never yours. Work you set for yourself still goes in your own ledger (tasks/add).` };
   },
 });
 
 export const operatorTaskUpdateIntent = taskIntent({
   name: 'tasks/operator-update',
   policyTool: 'tasks.operator-update',
-  fieldsForPrompt: '{id, title?, detail?, subtasks?, dueDate?, dueTime?}',
-  descriptionForPrompt: "Amend the TEXT, STEPS, or DEADLINE of a task on your OPERATOR'S list — the id OPERATOR LIST shows (a prefix is enough). subtasks REPLACES the whole step list with the titles given (same replace-all law as blockedBy): a step whose title matches a standing step keeps its check-mark, steps you leave out are retired, and an empty array clears the checklist. dueDate: YYYY-MM-DD (milestone or one-shot); dueTime: HH:MM — when within the day it is owed. You still can never settle, drop, or re-status their work — the rhythm's closing is theirs. The receipt shows the list AS STORED — read it back before you report the edit done.",
+  fieldsForPrompt: '{id, title?, detail?, subtasks?, dueDate?, dueTime?, startTime?, days?}',
+  descriptionForPrompt: "Amend the TEXT, STEPS, or SCHEDULE of a task on your OPERATOR'S list — and so their CALENDAR (move a block, retime a deadline, change a custom rhythm's days; calendar_read shows the schedule). The id OPERATOR LIST shows (a prefix is enough). startTime HH:MM with dueTime as the end makes it a time block; startTime null makes it a plain deadline again; days replaces a custom rhythm's weekdays (0 = Sunday … 6 = Saturday). subtasks REPLACES the whole step list with the titles given (same replace-all law as blockedBy): a step whose title matches a standing step keeps its check-mark, steps you leave out are retired, and an empty array clears the checklist. dueDate: YYYY-MM-DD (milestone or one-shot); dueTime: HH:MM — when within the day it is owed. You still never settle or re-status their work — the rhythm's closing is theirs; taking an item off is tasks/operator-drop, at their yes. The receipt shows the list AS STORED — read it back before you report the edit done.",
   validate: async (payload) => {
     const id = typeof payload?.id === 'string' ? payload.id.trim() : '';
     if (!id) return { ok: false, status: 'invalid', reason: "tasks/operator-update needs the task id — OPERATOR LIST shows them (a prefix is enough)." };
     const unknown = refuseUnknownFields(payload, OPERATOR_UPDATE_FIELDS, 'tasks/operator-update');
     if (unknown) return { ok: false, status: 'invalid', reason: unknown };
-    const touches = ['title', 'detail', 'subtasks', 'dueDate', 'dueTime'].some((k) => payload?.[k] !== undefined);
+    const touches = ['title', 'detail', 'subtasks', 'dueDate', 'dueTime', 'startTime', 'days'].some((k) => payload?.[k] !== undefined);
     if (!touches) {
-      return { ok: false, status: 'invalid', reason: 'tasks/operator-update changed nothing — pass title, detail, subtasks, dueDate, or dueTime. Status and dropping stay the operator\'s own acts.' };
+      return { ok: false, status: 'invalid', reason: 'tasks/operator-update changed nothing — pass title, detail, subtasks, dueDate, dueTime, startTime, or days. Status and dropping stay the operator\'s own acts.' };
     }
     return { ok: true, value: { ...payload, id } };
   },
@@ -417,19 +426,14 @@ export const operatorTaskUpdateIntent = taskIntent({
     // write on the same wallet queue, so the pair lands in order, and the
     // step write re-reads the store fresh, carrying any text change with it.
     let task;
-    if (fields.title !== undefined || fields.detail !== undefined
-      || fields.dueDate !== undefined || fields.dueTime !== undefined) {
-      ({ task } = await updateUserTask(wallet, fullId, {
-        ...(fields.title !== undefined ? { title: fields.title } : {}),
-        ...(fields.detail !== undefined ? { detail: fields.detail } : {}),
-        ...(fields.dueDate !== undefined ? { dueDate: fields.dueDate } : {}),
-        ...(fields.dueTime !== undefined ? { dueTime: fields.dueTime } : {}),
-      }));
+    const SCHEDULE = ['title', 'detail', 'dueDate', 'dueTime', 'startTime', 'days'];
+    if (SCHEDULE.some((k) => fields[k] !== undefined)) {
+      ({ task } = await updateUserTask(wallet, fullId, Object.fromEntries(SCHEDULE.filter((k) => fields[k] !== undefined).map((k) => [k, fields[k]]))));
     }
     if (fields.subtasks !== undefined) {
       ({ task } = await updateUserTaskSubtasks(wallet, fullId, fields.subtasks));
     }
-    // THE RECEIPT IS THE STORE, READ BACK (Design note, 2026-09-20: what it prints is
+    // THE RECEIPT IS THE STORE, READ BACK (ruling, 2026-09-20): what it prints is
     // what the store now holds — the operator's checks survive a title-matched
     // swap, retired steps are gone, and nothing is claimed that did not land.
     const steps = (task.subtasks || [])
@@ -437,7 +441,41 @@ export const operatorTaskUpdateIntent = taskIntent({
       .join('\n');
     return {
       ok: true,
-      detail: `Amended [${task.id.slice(0, 8)}] "${task.title}" on your operator's list — as stored now:\n${steps || '· (no steps — the checklist is empty)'}`,
+      detail: `Amended [${task.id.slice(0, 8)}] "${task.title}" on your operator's list — as stored now (${whenOf(task)}):\n${steps || '· (no steps — the checklist is empty)'}`,
     };
+  },
+});
+
+// THE ONE WAY OFF THE OPERATOR'S LIST (ruling, 2026-10-17): a being helping keep
+// the operator's calendar may take something off it — […]. So this act is
+// approval-required AND hard-gated (protocol-guard.js): the operator's card
+// every time, even in AUTO, unless they gave it an ALWAYS. The title must
+// match the stored item, so the card names exactly what leaves.
+export const operatorTaskDropIntent = taskIntent({
+  name: 'tasks/operator-drop',
+  policyTool: 'tasks.operator-drop',
+  fieldsForPrompt: '{id, title, reason}',
+  descriptionForPrompt: "Take something OFF your OPERATOR'S list and calendar — a task or time block they no longer want. It is ALWAYS their yes: filing it raises their approval card, every time — file it when they ask you to clear something, never on your own. id: the id OPERATOR LIST or calendar_read shows (a prefix is enough); title: the item's title exactly as it stands (their card shows it); reason: one line saying why.",
+  validate: async (payload, { connection }) => {
+    const unknown = refuseUnknownFields(payload, OPERATOR_DROP_FIELDS, 'tasks/operator-drop');
+    if (unknown) return { ok: false, status: 'invalid', reason: unknown };
+    const id = typeof payload?.id === 'string' ? payload.id.trim() : '';
+    const title = typeof payload?.title === 'string' ? payload.title.trim() : '';
+    const reason = typeof payload?.reason === 'string' ? payload.reason.trim().slice(0, 200) : '';
+    if (!id || !title || !reason) return { ok: false, status: 'invalid', reason: 'tasks/operator-drop needs the id, the title as it stands, and a one-line reason.' };
+    if (!connection?.walletAddress) return { ok: false, status: 'invalid', reason: 'no operator on this connection' };
+    const plan = materializeRecurrence(await getUserTasks(connection.walletAddress), new Date().toISOString()).plan;
+    let fullId;
+    try { fullId = resolveTaskId(plan.tasks, id); } catch (err) { return { ok: false, status: 'invalid', reason: err.message }; }
+    const task = fullId && plan.tasks.find((t) => t.id === fullId);
+    if (!task) return { ok: false, status: 'invalid', reason: `no task with id "${id}" on your operator's list — OPERATOR LIST and calendar_read show them.` };
+    if (task.title.toLowerCase() !== title.toLowerCase()) return { ok: false, status: 'invalid', reason: `[${id}] reads "${task.title}", not "${title}" — name it as it stands, so their card shows the right thing.` };
+    if (task.status === 'dropped') return { ok: false, status: 'invalid', reason: `"${task.title}" is already off their list.` };
+    return { ok: true, value: { id: fullId, title: task.title, reason } };
+  },
+  summarize: (payload) => `REMOVE from your list and calendar: "${String(payload?.title ?? '').slice(0, 120)}" — ${String(payload?.reason ?? '').slice(0, 160)}`,
+  execute: async (fields, { connection }) => {
+    const { task } = await updateUserTask(connection.walletAddress, fields.id, { status: 'dropped' });
+    return { ok: true, detail: `Removed "${task.title}" from your operator's list and calendar, at their yes (${fields.reason}).` };
   },
 });

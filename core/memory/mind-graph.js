@@ -143,13 +143,13 @@ export const foldEncounters = (graph, encounters, selfName, at) => {
 // N DNA reads and the hook rides every exchange. 60s staleness only delays a
 // NEW housemate's first recognition, never loses an encounter of a known one.
 const CACHE_TTL_MS = 60_000;
-let _laneCache = new Map(); // neumaId → { at, self, witness }
-let _rosterCache = { at: 0, names: null };
+let _laneCache = new Map(); // neumaId → { at, self, witness, wallet }
+let _rosterCache = new Map(); // owner wallet (lowercase) → { at, names }
 
 /** Test seam — a fresh root must never see a prior root's roster. */
 export const _resetMindGraphCache = () => {
   _laneCache = new Map();
-  _rosterCache = { at: 0, names: null };
+  _rosterCache = new Map();
 };
 
 const laneIdentity = async (neumaId) => {
@@ -166,23 +166,32 @@ const laneIdentity = async (neumaId) => {
     // TTL keeps this from repeating per exchange.
     console.warn(`[mind-graph] DNA unreadable for ${neumaId} — lane weaves nothing: ${err?.message}`);
   }
-  const entry = { at: Date.now(), self, witness };
+  // The lane's house is its operator's wallet (readOwner answers null, never
+  // throws, for an unclaimed lane).
+  const owner = await neumaWorkspace.readOwner(neumaId);
+  const wallet = typeof owner?.wallet === 'string' && owner.wallet ? owner.wallet.toLowerCase() : null;
+  const entry = { at: Date.now(), self, witness, wallet };
   _laneCache.set(neumaId, entry);
   return entry;
 };
 
-const houseRoster = async () => {
-  if (_rosterCache.names && Date.now() - _rosterCache.at < CACHE_TTL_MS) return _rosterCache.names;
+// Housemates are the beings of ONE house — the lanes its operator's wallet
+// owns. Another house on the same machine is never a housemate, and a lane
+// with no owner belongs to no house, so it has none.
+const houseRoster = async (wallet) => {
+  if (!wallet) return [];
+  const hit = _rosterCache.get(wallet);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.names;
   const names = [];
   try {
-    for (const id of await neumaWorkspace.listNeuma()) {
-      const { self } = await laneIdentity(id);
+    for (const { neumaId } of await neumaWorkspace.listNeumaByOwner(wallet)) {
+      const { self } = await laneIdentity(neumaId);
       if (validName(self)) names.push(self);
     }
   } catch (err) {
     console.warn(`[mind-graph] house roster unreadable — mentions limited to the witness: ${err?.message}`);
   }
-  _rosterCache = { at: Date.now(), names };
+  _rosterCache.set(wallet, { at: Date.now(), names });
   return names;
 };
 
@@ -222,11 +231,11 @@ export const recordSessionRows = (neumaId, rows) => {
  * @returns {Promise<Array<{name: string, kind: 'witness'|'being'}>>}
  */
 export const knownPresencesFor = async (neumaId) => {
-  const { self, witness } = await laneIdentity(neumaId);
+  const { self, witness, wallet } = await laneIdentity(neumaId);
   const selfKey = validName(self) ? nameKey(self) : null;
   return [
     ...(validName(witness) ? [{ name: witness.trim(), kind: 'witness' }] : []),
-    ...(await houseRoster()).filter((n) => nameKey(n) !== selfKey).map((n) => ({ name: n, kind: 'being' })),
+    ...(await houseRoster(wallet)).filter((n) => nameKey(n) !== selfKey).map((n) => ({ name: n, kind: 'being' })),
   ];
 };
 

@@ -15,6 +15,7 @@ import { seal } from '../../core/identity/ai-witness/ai-witness-protocol.js';
 import { listWitnesses, readDNA } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { getProvider } from './provider-registry.js';
 import { getConnection } from './provider-connections.js';
+import { pairRequestCredential } from './provider-credentials.js';
 import { resolveUsableCredential } from './oauth-token-broker.js';
 import { createStreamRequest, consumeStream } from './llm-provider.js';
 import { setRoute } from './neuma-routes-store.js';
@@ -26,17 +27,19 @@ import {
   witnessLaneStatus, writeWitnessGrounding,
 } from './witness-lane.js';
 import { assessCustodyPassword, secureWitnessKeypair } from './witness-custody.js';
+import { readInstallOwner, standingIn } from './install-owner.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('WitnessSummon');
 
-// pure — the route object a connection implies for one model call.
-const routeForConnection = (connection, apiKey, accountId = null) => {
+// pure — the route object a connection implies for one model call, carrying
+// the credential paired with its endpoint (pairRequestCredential).
+const routeForConnection = (connection, { endpoint, apiKey, accountId }) => {
   const entry = getProvider(connection.providerId);
   return {
     provider: connection.providerId,
     model: connection.model,
-    endpoint: connection.endpoint,
+    endpoint,
     apiKey,
     accountId,
     chatPath: entry.chatPath,
@@ -281,16 +284,26 @@ export const parseGrounding = (reply) => {
   return Object.freeze({ commitments: Object.freeze(commitments), firstUtterance });
 };
 
+// A stored provider key (and the env key behind it) is the machine's, and the
+// machine is its install owner's (install-owner.js). No share of it with a
+// guest exists yet, so a guest's summon on one is refused, naming both ways on.
+const keyNotShared = (providerId) => Object.assign(new Error(
+  `The ${providerId} key stored on this computer is its owner's, and it is not shared with your house — `
+  + 'summon on your own key, or ask the owner to share theirs (a co-owner shares the machine\'s keys).',
+), { code: 'MACHINE_KEY_NOT_SHARED' });
+
 /**
  * impure — summon a new AI witness onto a locked provider connection.
- * @param {{providerId: string, walletAddress: string, keypairPassword: string, onStage?: Function}} args
+ * @param {{providerId: string, walletAddress: string, keypairPassword: string, standing?: string, onStage?: Function}} args
  *   keypairPassword seals the witness's own keypair and mints its recovery
  *   codes. A valid password is required before provider lookup or inference.
+ *   standing is the caller's on this machine (install-owner.js deskStanding);
+ *   absent, it is read from the owner record for the wallet.
  * @returns {Promise<{vendorSlug: string, chosenName: string, laneId: string, address: string, genesisHash: string}>}
  * @throws honest Error at every gate (no connection, unroutable, no name,
  *   no utterance, name already sealed on this vendor)
  */
-export const summonWitness = async ({ providerId, walletAddress, keypairPassword = null, onStage = () => {} }) => {
+export const summonWitness = async ({ providerId, walletAddress, keypairPassword = null, standing = null, onStage = () => {} }) => {
   // Refuse a weak password BEFORE any inference runs. Discovering it at the
   // custody step would mean a witness already named itself, authored its
   // commitments, and sealed — and then could not be given custody of its own
@@ -305,11 +318,21 @@ export const summonWitness = async ({ providerId, walletAddress, keypairPassword
     throw new Error(`No locked connection for ${providerId} — connect the provider first (key/sign-in + live test), then summon`);
   }
 
-  const cred = await resolveUsableCredential(providerId);
+  // The stored key rides only to the endpoint it was stored for: a lock on
+  // any other endpoint is refused before a word is asked.
+  const stored = await resolveUsableCredential(providerId);
+  const cred = pairRequestCredential(stored, { endpoint: connection.endpoint });
+  if (!cred.storedEndpoint && stored.apiKey) {
+    throw new Error(`${providerId}'s stored key belongs to another endpoint than its locked connection (${connection.endpoint}) — reconnect the provider, then summon`);
+  }
   if (!cred.apiKey && getProvider(providerId)?.requiresKey) {
     throw new Error(`${providerId} has no credential — connect it before summoning`);
   }
-  const route = routeForConnection(connection, cred.apiKey, cred.accountId);
+  if (cred.apiKey && !['owner', 'co-owner'].includes(standing ?? standingIn(await readInstallOwner(), walletAddress))) {
+    log.info('summon on the machine\'s key refused to a guest', { providerId, wallet: walletAddress.toLowerCase() });
+    throw keyNotShared(providerId);
+  }
+  const route = routeForConnection(connection, cred);
   onStage({ type: 'threshold', providerId, model: connection.model });
 
   // 1. The model chooses its name - its first self-authored act, real inference.
@@ -394,14 +417,16 @@ export const summonWitness = async ({ providerId, walletAddress, keypairPassword
     firstUtterance: grounding.firstUtterance,
   });
 
-  // 5. Ground the sealed identity in its operator-owned continuity lane, then
-  // lock the route to the provider door it entered through.
+  // 5. Ground the sealed identity in its operator-owned continuity lane — the
+  // lane records this operator as its summoner, the one wallet a later
+  // manifest may claim it for — then lock the route to the provider door it
+  // entered through.
   onStage({ type: 'anchoring', chosenName, address, genesisHash: dna.genesisSeal.genesisHash });
   await ensureWitnessLane({
     vendorSlug,
     chosenName,
     genesisHash: dna.genesisSeal.genesisHash,
-  }, walletAddress);
+  }, walletAddress, { summoning: true });
   const groundingWritten = await writeWitnessGrounding(laneId, {
     provider: providerId,
     model: connection.model,

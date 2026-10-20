@@ -23,7 +23,7 @@ import { fullAuth } from '../helpers/audit-auth.js';
 
 test('substrate ignite client keeps its refusal grammar and never-throw idiom', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'substrate-ignite-http-'));
-  const keys = ['LM_STUDIO_URL', 'LM_STUDIO_API_KEY', 'NEUMA_SUBSTRATE_CLAIM_DIR', 'LLAMA_SERVER_URL', 'LLAMA_SERVER_BIN', 'LLAMA_SERVER_MODEL', 'LLAMA_SERVER_MMPROJ', 'SUBSTRATE_MODEL', 'SUBSTRATE_CONTEXT_LENGTH'];
+  const keys = ['LM_STUDIO_URL', 'LM_STUDIO_API_KEY', 'NEUMA_SUBSTRATE_CLAIM_DIR', 'LLAMA_SERVER_URL', 'LLAMA_SERVER_BIN', 'LLAMA_SERVER_MODEL', 'LLAMA_SERVER_MMPROJ', 'SUBSTRATE_MODEL', 'SUBSTRATE_CONTEXT_LENGTH', 'NEUMA_PROVIDER_CHOICE_PATH'];
   const saved = keys.map(key => process.env[key]); const config = getConfig();
   let vite; let server; let browser;
   try {
@@ -36,6 +36,7 @@ test('substrate ignite client keeps its refusal grammar and never-throw idiom', 
     process.env.LLAMA_SERVER_URL = origin;
     delete process.env.LLAMA_SERVER_BIN; delete process.env.LLAMA_SERVER_MODEL; delete process.env.LLAMA_SERVER_MMPROJ;
     delete process.env.SUBSTRATE_MODEL; process.env.SUBSTRATE_CONTEXT_LENGTH = '4096';
+    process.env.NEUMA_PROVIDER_CHOICE_PATH = path.join(root, 'llm-provider.json');
     process.env.LM_STUDIO_URL = `${origin}/no-model-here`; process.env.LM_STUDIO_API_KEY = '';
     setConfig({ provider: 'lm-studio', endpoint: process.env.LM_STUDIO_URL, model: '', apiKey: '' });
     loadConfig({ NODE_ENV: 'test', PORT: String(server.address().port), FRONTEND_PORT: String(server.address().port) });
@@ -43,7 +44,7 @@ test('substrate ignite client keeps its refusal grammar and never-throw idiom', 
     app.use('/api', (req, res, next) => { res.on('finish', () => requests.push({ method: req.method, status: res.statusCode })); next(); });
     app.use('/api/v1', (await import('../../backend/routes/llm-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">'
       + 'import {igniteSubstrate} from "/frontend/app/RelinkShell/substrate-client.js";'
       + 'window.ignite=igniteSubstrate;'
@@ -67,6 +68,18 @@ test('substrate ignite client keeps its refusal grammar and never-throw idiom', 
     expect(await page.evaluate(() => window.ignite('x; rm -rf /'))).toEqual({ ok: false, error: 'Invalid model key' });
     expect(requests.map(r => [r.method, r.status])).toEqual([['POST', 400], ['POST', 400]]);
     expect(await fs.readdir(process.env.NEUMA_SUBSTRATE_CLAIM_DIR)).toEqual([]);
+
+    // IGNITE asks first (the 2026-10-19 ruling): an Ollama house comes back as
+    // a question, untouched; the operator's yes rides the wire and moves it.
+    setConfig({ provider: 'ollama', endpoint: `${origin}/ollama`, model: '', apiKey: '' });
+    expect(await page.evaluate(() => window.ignite('pub/x'))).toEqual({ ok: false, ask: { from: 'ollama', model: 'pub/x' } });
+    expect(getConfig().provider).toBe('ollama');
+    await expect(fs.access(process.env.NEUMA_PROVIDER_CHOICE_PATH)).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await page.evaluate(() => window.ignite(null, { confirmSwitch: true }))).toEqual({ ok: true, status: 'igniting' });
+    expect(getConfig()).toMatchObject({ provider: 'llama-server', endpoint: origin });
+    expect(JSON.parse(await fs.readFile(process.env.NEUMA_PROVIDER_CHOICE_PATH, 'utf8'))).toMatchObject({ provider: 'llama-server', chosenBy: 'operator' });
+    expect(requests.map(r => [r.method, r.status])).toEqual([['POST', 400], ['POST', 400], ['POST', 409], ['POST', 202]]);
+    setConfig({ provider: 'lm-studio', endpoint: process.env.LM_STUDIO_URL, model: '', apiKey: '' });
 
     // A dead session is a plain refusal here: this site keeps a manual
     // failure-in-body round-trip (IGNITE_REFUSALS keys off the answer body's

@@ -1,0 +1,209 @@
+/* HouseCalendar.css — the house calendar's shell (LINE & CYCLE): the rail
+   beside the main view, the header (the range as a display numeral, the
+   view switch, the navigator), the standing loops, the docked detail, the
+   quick-add, the notes. The rail and the views carry their own sheets
+   (HouseCalendar-rail.css, HouseCalendar-views.css), imported after this.
+   Monochrome at rest; a person's colour only as their dot and the edge of
+   their items; SIGNAL for today, now and the focus; working text ≥14px. */
+
+.hcal {
+  outline: none; /* focusable only so the keyboard reaches it — no ring on the whole calendar */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* in a window it takes the height it is given and its parts scroll
+     inside it; on an open page it is as tall as it needs */
+  flex: 1 1 auto;
+  min-height: 420px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  container: hcal / inline-size;
+}
+.hcal-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.hcal-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header — the range large, its frame small; the switch and the arrows ── */
+.hcal-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.hcal-range { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.hcal-range-main {
+  font-family: var(--font-data);
+  font-weight: 200;
+  font-size: clamp(22px, 3.2cqi, 30px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.hcal-range-sub {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+.hcal-controls { display: flex; align-items: center; gap: var(--space-3); }
+
+/* the chamfered control — the desk's own idiom (inset hairline, 6px cut) */
+.hcal-btn, .hcal-view {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  cursor: pointer;
+  transition: color var(--snap), box-shadow var(--snap), background var(--snap);
+}
+.hcal-btn:hover:not(:disabled), .hcal-view:hover { color: var(--color-text-primary); box-shadow: inset 0 0 0 1px var(--line-hover); }
+.hcal-btn:focus-visible, .hcal-view:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--signal); }
+.hcal-btn:disabled { opacity: 0.4; cursor: default; }
+.hcal-btn.is-icon { padding: 0; width: 36px; font-size: 16px; letter-spacing: 0; }
+
+.hcal-views { display: flex; gap: 2px; }
+.hcal-view.is-on { color: var(--color-void); background: var(--color-text-primary); box-shadow: none; }
+.hcal-nav { display: flex; gap: 2px; }
+
+.hcal-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--space-3) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* ── Notes ──────────────────────────────────────────────────────────────── */
+.hcal-quiet { font-family: var(--font-data); font-size: 12px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.hcal-error {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--alert);
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--alert);
+}
+.hcal-foot { margin: 0; font-family: var(--font-data); font-size: 11px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+
+/* ── Always running — the loops with no phase to place on a day ─────────── */
+.hcal-standing { border-top: 1px solid var(--line); padding-top: var(--space-2); }
+.hcal-standing summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-tertiary);
+}
+.hcal-standing summary::-webkit-details-marker { display: none; }
+.hcal-standing summary::before { content: '+ '; }
+.hcal-standing[open] summary::before { content: '− '; }
+.hcal-standing summary:hover { color: var(--color-text-secondary); }
+.hcal-standing-n { color: var(--color-text-secondary); margin-left: var(--space-1); }
+.hcal-standing ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; }
+.hcal-standing-line {
+  display: grid;
+  grid-template-columns: 10ch 1fr auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  border-bottom: 1px dotted var(--line);
+}
+.hcal-standing-who, .hcal-standing-every { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.hcal-standing-title { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-secondary); }
+
+/* ── The detail — docked over the view's lower right, chamfered, its
+   person's colour on the edge ──────────────────────────────────────────── */
+.hcal-detail {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 5;
+  width: min(360px, calc(100% - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--color-void);
+  box-shadow: inset 0 0 0 1px var(--line-hover), inset 2px 0 0 0 var(--who, var(--line));
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+}
+.hcal-detail-head { display: flex; justify-content: space-between; align-items: center; }
+.hcal-detail-kind { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.22em; color: var(--color-text-tertiary); }
+.hcal-detail-title { margin: 0; font-family: var(--font-voice); font-weight: 300; font-size: 17px; line-height: 1.35; color: var(--color-text-primary); }
+.hcal-detail-facts { display: grid; grid-template-columns: 9ch 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-family: var(--font-data); font-size: 12px; letter-spacing: 0.1em; }
+.hcal-detail-facts dt { color: var(--color-text-tertiary); }
+.hcal-detail-facts dd { margin: 0; display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); }
+.hcal-detail .hcal-btn { align-self: flex-start; }
+
+/* ── Quick-add — a one-shot onto a person's day ─────────────────────────── */
+.hcal-quick { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; margin-top: var(--space-1); }
+.hcal-input {
+  min-height: 32px;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  box-shadow: inset 0 -1px 0 0 var(--line-hover);
+  padding: 0 var(--space-1);
+}
+.hcal-input:focus { outline: none; box-shadow: inset 0 -1px 0 0 var(--signal); }
+.hcal-quick-title { flex: 1 1 100%; min-width: 0; }
+.hcal-quick-wakes { flex: 1 1 100%; font-family: var(--font-data); font-size: 11px; color: var(--color-text-tertiary); }
+.hcal-quick-wakes[data-wakes="yes"] { color: var(--color-text-primary); }
+.hcal-quick-time { width: 6.6em; font-family: var(--font-data); font-size: 12px; }
+.hcal-quick-to { font-family: var(--font-data); font-size: 12px; color: var(--color-text-tertiary); }
+.hcal-quick .hcal-btn { min-height: 32px; padding: 0 var(--space-3); }
+.hcal-quick-x {
+  min-width: 32px;
+  min-height: 32px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+.hcal-quick-x:hover { color: var(--color-text-primary); }
+
+/* the dot — a person's own colour; circles are circles */
+.hcal-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full, 50%);
+  flex: 0 0 auto;
+}
+
+/* ── The side — the rail, and what the host pins beneath it ───────────── */
+.hcal-side { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+.hcal-sidefoot { flex: 0 0 auto; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); background: var(--color-void); }
+.hcal-ics { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
+.hcal-ics-note { font-family: var(--font-data); font-size: 10px; letter-spacing: 0.16em; line-height: 1.5; color: var(--color-text-tertiary); }
+.hcal-ics-url { max-width: 100%; font-family: var(--font-data); font-size: 11px; color: var(--color-text-secondary); word-break: break-all; user-select: all; }
+
+/* Narrow hosts — the rail stacks above the view */
+@container hcal (max-width: 760px) {
+  .hcal-frame { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .hcal-side { border-right: none; border-bottom: 1px solid var(--line); }
+}

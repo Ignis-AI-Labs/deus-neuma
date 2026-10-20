@@ -32,7 +32,7 @@ test('wallet policy reads preserve data, ownership and defaults while reporting 
     app.use('/api', (req, _res, next) => { requests.push(`${req.method} ${req.path}`); next(); });
     app.use('/api/v1/neuma', walletRouter);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as clients from "/frontend/app/RelinkShell/wallet-client.js"; window.clients=clients; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares); server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

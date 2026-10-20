@@ -317,7 +317,7 @@ describe('a witness TURN carries its standing work', () => {
     await seal({ ...SEAL_INPUT });
 
     const { ensureWitnessLane } = await import('../../backend/services/witness-lane.js');
-    await ensureWitnessLane({ vendorSlug: 'test-vendor', chosenName: 'Taskpeer', genesisHash: null }, turnWitness.address);
+    await ensureWitnessLane({ vendorSlug: 'test-vendor', chosenName: 'Taskpeer', genesisHash: null }, turnWitness.address, { summoning: true });
 
     const port = await startProvider();
     const { setCredential } = await import('../../backend/services/provider-credentials.js');

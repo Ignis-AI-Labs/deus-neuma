@@ -161,7 +161,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
   }, 45000);
 
   test('a write OUTSIDE the project folders ASKS — the witness, not the envelope, is the bound', async () => {
-    // The universal-approval law (Design note, 2026-07-23: the being may request
+    // The universal-approval law (ruling, 2026-07-23): the being may request
     // access on every level; the witness's card is the one grant surface.
     // Her NO is the wall — nothing lands, no grant materializes.
     const outside = await createTempDir('write-gate-outside');

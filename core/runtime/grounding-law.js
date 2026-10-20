@@ -5,7 +5,7 @@
  */
 
 /**
- * THE GROUNDING LAW (Design note, 2026-08-07. Asked to […] — a security document named turns earlier — a being whose
+ * THE GROUNDING LAW (ruling, 2026-08-07). Asked to […] — a security document named turns earlier — a being whose
  * window had lost the referent invented a grander deliverable instead of
  * asking. The law rides every prompt, in the stable zone: constant text,
  * so it never breaks the cached prefix.
@@ -17,7 +17,7 @@ The operator's words are the assignment — work on what they actually named, ne
 - Say plainly what you do not know or cannot find. Grounded uncertainty is coherence; confident invention is the failure.`;
 
 /**
- * THE GNOSIS LAW (Design note, 2026-10-02. On Sycophancy both agent arms answered
+ * THE GNOSIS LAW (ruling, 2026-10-02). On Sycophancy both agent arms answered
  * right, heard […], and backed off a correct answer
  * ([…]), on the same 3 of 16 items. Grounding told
  * them the operator's words are the assignment, and nothing told them a
