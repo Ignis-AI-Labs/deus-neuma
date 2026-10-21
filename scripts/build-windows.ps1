@@ -12,13 +12,16 @@
 #      Windows refuses to create without admin or Developer Mode, which stops the NSIS step
 #   5. builds the frontend and the NSIS installer (no publish, no native rebuild)
 #   6. refuses the package unless every native binary in it is a real Windows (PE) binary
-#   7. prints the installer, latest.yml and their SHA-256; -Install also installs it silently
+#   7. prints the installer, latest.yml and their SHA-256; -Install also installs it silently;
+#      -CopyTo <folder> copies the installer, its .blockmap and latest.yml there (a USB stick, a share)
+# -Repo may be a git bundle file instead of the GitHub URL (an offline copy, no sign-in needed).
 # The installer is UNSIGNED unless the machine holds the signing identity (release runbook 4b).
 
 param(
   [string]$Ref = 'origin/dev',
   [string]$Dir = (Join-Path $HOME 'deus-neuma-build'),
   [string]$Repo = 'https://github.com/Ignis-AI-Labs/deus-neuma.git',
+  [string]$CopyTo = '',
   [switch]$Install
 )
 $ErrorActionPreference = 'Stop'
@@ -39,6 +42,7 @@ Write-Host "   git $((git --version) -replace 'git version ','') - node $(node -
 Step 2 "source: $Ref of $Repo"
 if (-not (Test-Path (Join-Path $Dir '.git'))) { Run git @('clone', $Repo, $Dir) }
 Set-Location $Dir
+Run git @('remote', 'set-url', 'origin', $Repo)
 Run git @('fetch', '--quiet', 'origin')
 Run git @('checkout', '--quiet', '--detach', $Ref)
 Run git @('clean', '-fdxq', '-e', 'node_modules')
@@ -83,6 +87,11 @@ foreach ($f in @($exe.FullName, (Join-Path $PWD 'release\latest.yml'))) {
 }
 $sig = Get-AuthenticodeSignature $exe.FullName
 Write-Host "   signature: $($sig.Status)$(if ($sig.SignerCertificate) { ' - ' + $sig.SignerCertificate.Subject })"
+if ($CopyTo) {
+  New-Item -ItemType Directory -Force -Path $CopyTo | Out-Null
+  foreach ($f in @($exe.FullName, "$($exe.FullName).blockmap", (Join-Path $PWD 'release\latest.yml'))) { Copy-Item -Force $f $CopyTo }
+  Write-Host "   copied the installer, its .blockmap and latest.yml to $CopyTo"
+}
 if ($Install) {
   Step 8 'silent install'
   $p = Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait -PassThru
