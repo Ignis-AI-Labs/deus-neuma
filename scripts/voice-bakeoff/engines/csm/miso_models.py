@@ -1,5 +1,5 @@
 # Vendored verbatim (model definition only) from https://github.com/MisoLabsAI/MisoTTS models.py @ cd7dde13dbfec33fd8321e6c34a43f86724a8bad
-# Copyright (c) 2026 Kamino Learning, Inc. -- "Modified MIT License" (see meta.json / MisoTTS LICENSE).
+# Copyright (c) 2026 Kamino Learning, Inc. -- "Modified MIT License" (full text: LICENSE-MisoTTS beside this file).
 from dataclasses import dataclass
 import contextlib
 import io

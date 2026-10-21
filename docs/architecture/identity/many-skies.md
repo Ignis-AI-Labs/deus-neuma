@@ -404,7 +404,7 @@ single-spaced · trimmed; `fullNameDigest` = keccak256 of its UTF-8 bytes;
 `candidateFullNames`/`resolveFullName` = the 3→32-syllable ladder).
 
 ```solidity
-// SPDX-License-Identifier: See /LICENSE (proprietary until counsel)
+// SPDX-License-Identifier: LicenseRef-FSL-1.1-ALv2
 pragma solidity 0.8.24;
 
 interface INatalisView {
