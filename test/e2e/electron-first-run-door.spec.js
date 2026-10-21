@@ -132,6 +132,9 @@ test.describe('the door — a person with no being reaches the platform', () => 
 
   test('sign-in lands on the CHOICE, never on a forced birth ceremony', async () => {
     await expect(page.locator('#portal-enter')).toBeVisible({ timeout: 30 * 1000 });
+    // adults only, stated on the first screen before anyone enters
+    await expect(page.locator('#portal-age-notice')).toBeVisible();
+    await expect(page.locator('#portal-age-notice')).toContainText('18+ only');
     await shot(page, '01-gateway');
     await page.click('#portal-enter');
 
