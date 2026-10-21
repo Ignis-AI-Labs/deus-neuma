@@ -89,10 +89,11 @@ describe('pressEnvironment — Chromium keeps only the essentials, fonts and loc
 // suite never launches it. What it can prove without a GPU is that the one
 // spawn in the supervisor hands the child this builder's result.
 describe('the ComfyUI spawn passes the builder\'s environment (read)', () => {
-  test('the supervisor spawn carries env: comfyEngineEnvironment(process.env) and no raw process.env', () => {
+  test('the supervisor spawn carries env: comfyEngineEnvironment(withStoredHfToken(process.env)) and no raw process.env', () => {
     const src = readFileSync(path.join(REPO, 'backend/services/image-forge/comfyui-supervisor.js'), 'utf8');
     const spawnCall = src.slice(src.indexOf('spawn(launch.cmd'), src.indexOf('closeSync(logFd)'));
-    expect(spawnCall).toContain('env: comfyEngineEnvironment(process.env)');
+    // the builder's result, given the env plus only the HF token saved in Settings → API
+    expect(spawnCall).toContain('env: comfyEngineEnvironment(withStoredHfToken(process.env))');
     expect(src).not.toMatch(/env:\s*process\.env\b/);
   });
 });

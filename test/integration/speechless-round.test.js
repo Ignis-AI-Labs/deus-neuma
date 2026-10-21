@@ -11,7 +11,7 @@ import { createHarnessTurnKit } from '../helpers/harness-turn-kit.js';
 import { startLocalProvider } from '../helpers/local-provider.js';
 import { runToolRounds, speechlessRoundClose, SPEECHLESS_ROUND_TAIL_CHARS } from '../../backend/services/portal-turn-rounds.js';
 import { openTurnRecord, closeTurnRecord } from '../../backend/services/tool-action-record.js';
-import { CLOSE_THINK_BUDGET } from '../../backend/services/thought-governor.js';
+import { CLOSE_THINK_BUDGET, UNSETTLED_ALLOWANCE, leashReaskNote } from '../../backend/services/thought-governor.js';
 import { THINKING_BUDGET_MESSAGE } from '../../backend/services/llm-request-builders.js';
 
 let kit, provider;
@@ -185,5 +185,14 @@ describe('speechlessRoundClose (pure)', () => {
     expect(close).toContain('"""');
     expect(close).not.toContain('head');
     expect(close.length).toBeLessThan(3000);
+  });
+
+  // AA-Omniscience 2026-10-20: a close that only demanded an answer turned
+  // unsettled reasoning into guesses; the task's own […] stands.
+  test('a forced close leaves the honest way out where the task allows it; mid-work it offers the next act instead', () => {
+    expect(speechlessRoundClose('maybe 1926, maybe 1929')).toContain(UNSETTLED_ALLOWANCE);
+    expect(leashReaskNote('maybe 1926')).toContain(UNSETTLED_ALLOWANCE);
+    expect(UNSETTLED_ALLOWANCE).toMatch(/task allows/);
+    expect(speechlessRoundClose('x', { acting: true })).not.toContain(UNSETTLED_ALLOWANCE);
   });
 });

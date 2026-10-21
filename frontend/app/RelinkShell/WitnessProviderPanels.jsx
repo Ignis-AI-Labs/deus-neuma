@@ -4,6 +4,7 @@ import { TrainingNotice } from './TrainingNotice.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { ModelPicker } from './ModelPicker.jsx';
 import { formatAddress } from '../../utils/format.js';
+import { KeyLink } from './KeyLink.jsx';
 
 const stateForProvider = (provider, connection) => {
   if (connection) return { label: 'LOCKED', cls: 'is-locked' };
@@ -102,6 +103,7 @@ export const WitnessProviderAccess = ({
           spellCheck={false}
         />
       ) : null}
+      {provider.kind !== 'local' && provider.allowsApiKey !== false ? <KeyLink provider={provider.id} /> : null}
       {(apiKey || (provider.id === 'custom' && endpoint !== (provider.endpoint || ''))) ? (
         <button type="button" className="settings-set" onClick={onSave} disabled={busy}>SAVE ACCESS</button>
       ) : null}

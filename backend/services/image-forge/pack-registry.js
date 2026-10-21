@@ -96,10 +96,10 @@ export const PACK_MODELS = Object.freeze({
   // painterly, so it stays clearly apart from the Anima lane's flat cel look —
   // the two registers have to be different from EACH OTHER now that they are the
   // only two. Measured `sha256sum` 2026-08-27.
-  'hale-anime-xl-1.9': Object.freeze({
-    id: 'hale-anime-xl-1.9',
+  'nova-anime-xl-1.9': Object.freeze({
+    id: 'nova-anime-xl-1.9',
     label: 'NovaAnimeXL IL v1.9',
-    ckptName: 'haleAnimeXL_ilV190.safetensors',
+    ckptName: 'novaAnimeXL_ilV190.safetensors',
     sha256: 'fa486caafc330f133605d3c18b418d183812f14946631c6544bfb28730db6d6f',
     bytes: 6939105596,
   }),

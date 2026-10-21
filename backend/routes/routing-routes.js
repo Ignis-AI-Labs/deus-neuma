@@ -22,6 +22,8 @@
  * masked; only the test/model probes use a key, and only server-side.
  */
 import { Router } from 'express';
+import { credentialLinksPayload } from '../services/credential-links.js';
+import { hydrateStoredSecrets } from '../services/stored-secrets.js';
 import { requireAuth } from '../services/auth.js';
 import { requireInstallOwner } from '../services/install-owner.js';
 import {
@@ -262,13 +264,40 @@ router.post('/providers/:providerId/oauth/poll', requireInstallOwner, async (req
   }
 });
 
+// --- Where to get each key (public links, never a credential) ---
+// The desk reads this once and shows "get a key" beside every credential input.
+router.get('/credential-links', (req, res) => {
+  res.json(credentialLinksPayload());
+});
+
 // --- Keyed services (non-chat) ---
 // A service key shares the encrypted store, and nothing else: it is never a
 // model, a route, or a connection, so these routes only set, list and clear.
 
 const maskedService = async (entry, store) => {
   const { state, storeEntry } = await stateFor(entry, store);
-  return { ...maskCredential(entry, state, storeEntry), service: entry.service };
+  // Where the value in use comes from: saved here wins; the env name is the developers' fallback.
+  const stored = typeof storeEntry?.apiKey === 'string' && storeEntry.apiKey.length > 0;
+  const fromEnv = !stored && Boolean(entry.keyEnv && String(process.env[entry.keyEnv] || '').trim());
+  return {
+    ...maskCredential(entry, state, storeEntry), service: entry.service,
+    group: entry.group ?? null, format: entry.format ?? 'key', keyEnv: entry.keyEnv ?? null,
+    source: stored ? 'stored' : fromEnv ? 'env' : null,
+  };
+};
+
+// pure — a value the service can use: an https address (a loopback http one for a
+// node on this machine), an account id, or a key; never one with spaces or control characters.
+const serviceValueProblem = (format, value) => {
+  if (/[\s\u0000-\u001f]/.test(value)) return 'the value has spaces or line breaks in it';
+  if (format === 'url') {
+    let url;
+    try { url = new URL(value); } catch { return 'that is not a web address'; }
+    const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) return 'the address must start with https:// (http:// only for a node on this machine)';
+  }
+  if (format === 'id' && !/^[A-Za-z0-9_-]{6,64}$/.test(value)) return 'an account id is letters and digits only';
+  return null;
 };
 
 router.get('/services', async (req, res) => {
@@ -286,11 +315,15 @@ router.get('/services', async (req, res) => {
 router.put('/services/:serviceId/key', requireInstallOwner, async (req, res) => {
   try {
     const entry = getService(req.params.serviceId);
+    if (!entry) return res.status(404).json({ error: 'no such service' });
     const apiKey = req.body?.apiKey;
     if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
       return res.status(400).json({ error: 'apiKey must be a non-empty string' });
     }
+    const problem = serviceValueProblem(entry.format, apiKey.trim());
+    if (problem) return res.status(400).json({ error: problem });
     await setCredential(entry.id, { apiKey: apiKey.trim() });
+    await hydrateStoredSecrets();
     res.json({ success: true, service: await maskedService(entry) });
   } catch (error) {
     log.error('set service key failed', { error: error.message });
@@ -301,7 +334,9 @@ router.put('/services/:serviceId/key', requireInstallOwner, async (req, res) => 
 router.delete('/services/:serviceId/key', requireInstallOwner, async (req, res) => {
   try {
     const entry = getService(req.params.serviceId);
+    if (!entry) return res.status(404).json({ error: 'no such service' });
     const removed = await removeCredential(entry.id);
+    await hydrateStoredSecrets();
     res.json({ success: true, removed, service: await maskedService(entry) });
   } catch (error) {
     log.error('delete service key failed', { error: error.message });

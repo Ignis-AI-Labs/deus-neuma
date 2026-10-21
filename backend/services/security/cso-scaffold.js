@@ -88,17 +88,17 @@ const SURFACES = `# Surfaces — what the CSO's watch is charged with
 Three layers. The watch list (which repos are scanned) lives with the
 operator; this inventory is the office's map of what a new threat can bite.
 
-## HARDWARE — the rig
+## HARDWARE — the machine this house runs on
 
-- Fedora 44 host; kernel and NVIDIA driver versions are probed every scan
-  and ride your briefing. Check every hardware/kernel/GPU advisory against
-  THOSE numbers.
-- The GPU is shared with the substrate; the PCIe link is marginal (Xid 79
-  history, 2026-07). Availability is a security property here: nothing may
-  crash the rig.
+- The host: its OS, kernel and GPU driver versions are probed every scan and
+  ride your briefing. Check every hardware, kernel or GPU advisory against
+  THOSE numbers, never against a guess.
+- The GPU is shared with the local model: availability is a security property
+  here. Nothing may crash the machine.
 - Listening ports: the watch holds the operator's expected set; anything
   else answering is a finding.
-- Packaging lane: AppImage/RPM/deb builds + the clean-host proof.
+- If the house builds and ships its own software, its build and packaging
+  lane is a surface too.
 
 ## THE HOUSE — beings, witnesses, stores
 
@@ -122,20 +122,16 @@ operator; this inventory is the office's map of what a new threat can bite.
 
 ## SOFTWARE — the watched repos
 
-- This repo (neuma): the platform backend, the neuma engine, the desk, the
-  CLI. Full dependency tree incl. native modules (better-sqlite3, node-pty,
-  electron) — native CVEs ride the same OSV feed.
-- unavis-site (separate repo, formerly kenorie — the hosted web/social layer):
-  dependencies swept like ours.
-- evm-contracts (separate repo): EVERY Ignis smart contract, by platform —
-  umbrae/ (the DeFi protocol), ignis/ (Elite vault, arbitrage), unavis/ (Natalis,
-  HouseRegistry — Ethereum mainnet). The UNAVIS contracts moved there from
-  unavis-site on 2026-10-05 and are audited there; from here we hold the read-only ABIs
-  (docs/contracts/abis/) and the chain-reader. Contract exploit classes are
-  yours to track in the research loop — what bites Solidity there threatens
-  the house's anchors.
-- deployments/sepolia.json: the legacy Sepolia record.
-- Any further production repos the operator adds to the watch list.
+- The app itself: this install's own code and its full dependency tree,
+  native modules included (their CVEs ride the same OSV feed). The watch
+  covers it from the first boot.
+- The house's own repositories: the operator adds each one to the watch list
+  (the SECURITY window). List them here as they are added, with what each one
+  is and what it would cost the house if it were broken: a website, a
+  backend, smart contracts (whose exploit classes are yours to track in the
+  research loop), anything that holds users' data or money.
+- Any record of what the house has deployed (contract addresses, servers):
+  name where it lives.
 
 ## How to use this map
 

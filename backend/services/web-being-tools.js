@@ -57,11 +57,13 @@ export const WEB_TOOLS = Object.freeze([
   Object.freeze({
     name: 'web_fetch',
     server: 'web',
-    description: 'Read a web page — args {url}. Returns bounded readable text, not an original file. For SVG logos or other complete assets, file a web/download intent {url, name}; it saves original bytes to disk without text truncation. When configured, Kitesurf retries JavaScript-only pages. Public pages only; private and loopback addresses are refused.',
+    description: 'Read a web page — args {url}; for a PDF also {find?, pages?}: find keeps only the pages containing a phrase (a section number, a term), pages takes a range like "40-45". Returns bounded readable text, not an original file. For SVG logos or other complete assets, file a web/download intent {url, name}; it saves original bytes to disk without text truncation. When configured, Kitesurf retries JavaScript-only pages. Public pages only; private and loopback addresses are refused.',
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({
         url: Object.freeze({ type: 'string', description: 'the full http(s):// URL to read' }),
+        find: Object.freeze({ type: 'string', description: 'PDF only: return just the pages containing this phrase' }),
+        pages: Object.freeze({ type: 'string', description: 'PDF only: a page or range, e.g. "12" or "40-45"' }),
       }),
       required: Object.freeze(['url']),
     }),
@@ -321,7 +323,7 @@ export const handleWebTool = async (ws, connection, neumaPolicy, toolMode, match
       };
     }
     // web_fetch
-    const out = await fetchWebPage(String(args?.url || ''));
+    const out = await fetchWebPage(String(args?.url || ''), { pdf: { find: args?.find ?? null, pages: args?.pages ?? null } });
     if (!out.ok) {
       ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'web_fetch — failed', detail: out.error });
       await journalWebCall(connection, tool, String(args?.url || '').slice(0, 200), 'error');

@@ -18,22 +18,7 @@ import { PlatformSpace } from './PlatformSpace.jsx';
 import { CampaignsSection } from './CampaignsSection.jsx';
 import { LeadsSection } from './LeadsSection.jsx';
 import { BrandKitsSection } from './brandkits/BrandKitsSection.jsx';
-
-const XIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-  </svg>
-);
-
-// The outward signal — the shared glyph for a platform's window.
-const SignalIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-    <path d="M8 9.5V14" />
-    <circle cx="8" cy="7.5" r="1.6" />
-    <path d="M4.8 10.7a4.5 4.5 0 1 1 6.4 0" />
-    <path d="M2.7 12.8a7.4 7.4 0 1 1 10.6 0" />
-  </svg>
-);
+import { BrandMark } from './brand-marks.jsx';
 
 const MarketingIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -115,13 +100,13 @@ const leadsApp = {
 
 // Registry entries, keyed by window id — spread into the shell's REGISTRY.
 export const outreachApps = {
-  x: platformApp('x', 'X', <XIcon />),
-  telegram: platformApp('telegram', 'TELEGRAM', <SignalIcon />),
-  discord: platformApp('discord', 'DISCORD', <SignalIcon />),
-  facebook: platformApp('facebook', 'FACEBOOK', <SignalIcon />),
-  mastodon: platformApp('mastodon', 'MASTODON', <SignalIcon />),
-  bluesky: platformApp('bluesky', 'BLUESKY', <SignalIcon />),
-  linkedin: platformApp('linkedin', 'LINKEDIN', <SignalIcon />),
+  x: platformApp('x', 'X', <BrandMark id="x" />),
+  telegram: platformApp('telegram', 'TELEGRAM', <BrandMark id="telegram" />),
+  discord: platformApp('discord', 'DISCORD', <BrandMark id="discord" />),
+  facebook: platformApp('facebook', 'FACEBOOK', <BrandMark id="facebook" />),
+  mastodon: platformApp('mastodon', 'MASTODON', <BrandMark id="mastodon" />),
+  bluesky: platformApp('bluesky', 'BLUESKY', <BrandMark id="bluesky" />),
+  linkedin: platformApp('linkedin', 'LINKEDIN', <BrandMark id="linkedin" />),
   marketing: marketingApp,
   brandKits: brandKitsApp,
   leads: leadsApp,

@@ -36,6 +36,7 @@ import {
 } from '../../services/routing.js';
 import { useSettled } from './use-settled.js';
 import { loadSubstrateModels } from './substrate-client.js';
+import { KeyLink } from './KeyLink.jsx';
 
 export const ModelsSection = ({ focus: focusProp = null }) => {
   const { t } = useTranslation(['settingsModels', 'common']);
@@ -327,6 +328,7 @@ export const ModelsSection = ({ focus: focusProp = null }) => {
                 />
               </div>
             ) : null}
+            {selectedProvider.kind !== 'local' && selectedProvider.allowsApiKey !== false ? <KeyLink provider={selectedProvider.id} /> : null}
             <ProviderOAuth provider={selectedProvider} onChanged={loadProviders} />
             <div className="settings-control settings-provider-actions">
               <button type="button" className="settings-set" onClick={runTest} disabled={provBusy}>

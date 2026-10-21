@@ -12,6 +12,7 @@
 
 import { getAppConfig } from '../config.js';
 import { decodeEntities } from './html-to-text.js';
+import { serviceValue } from './stored-secrets.js';
 
 const TIMEOUT_MS = 10_000;
 
@@ -269,16 +270,14 @@ const searchDdg = async (query, limit) => {
 
 // Config may be unloaded in tests — absence reads as "nothing configured".
 const searchConfig = () => {
-  try {
-    const cfg = getAppConfig();
-    return {
-      exaKey: cfg.exaApiKey || '',
-      searxngUrl: cfg.searxngUrl || '',
-      braveKey: cfg.braveSearchApiKey || '',
-    };
-  } catch {
-    return { exaKey: '', searxngUrl: '', braveKey: '' };
-  }
+  // Saved in Settings → API wins; the env-loaded config is the fallback.
+  let cfg = {};
+  try { cfg = getAppConfig(); } catch { /* config unloaded: only saved values apply */ }
+  return {
+    exaKey: serviceValue('exa', {}) || cfg.exaApiKey || '',
+    searxngUrl: serviceValue('searxng', {}) || cfg.searxngUrl || '',
+    braveKey: serviceValue('brave', {}) || cfg.braveSearchApiKey || '',
+  };
 };
 
 /**

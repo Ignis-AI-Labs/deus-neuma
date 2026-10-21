@@ -7,12 +7,13 @@
 // a different decision entirely: the single-holder binding lives in each
 // platform's own OUTREACH window, because keys alone never let a being speak.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uiSound } from '../../services/ui-sound.js';
-import {
-  getChannelBoard, setChannelCredentials, clearChannelCredentials, getFlightTests,
-} from '../../services/social-channels-client.js';
+import { setChannelCredentials, clearChannelCredentials } from '../../services/social-channels-client.js';
+import { KeyLink } from './KeyLink.jsx';
+import { CredentialRow } from './CredentialMap.jsx';
+import { channelItem, passesState } from './credential-view.js';
 
 // THE FLIGHT LINE (ruling, 2026-07-28): a key being SET is a claim; the flight
 // test is the proof — the platform accepted it, answered, named the account.
@@ -44,9 +45,8 @@ const FlightLine = ({ test }) => {
   return <span className="settings-v flight-line is-idle">{t('channelKeys.flight.unconfigured')}</span>;
 };
 
-const ChannelKeysCard = ({ channel, test, onRetest, onChanged }) => {
+const ChannelKeysCard = ({ channel, test, item, open, onToggle, onRetest, onChanged }) => {
   const { t } = useTranslation('settingsApi');
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -68,99 +68,75 @@ const ChannelKeysCard = ({ channel, test, onRetest, onChanged }) => {
   const dirtyFields = Object.entries(draft).filter(([, v]) => v !== '');
 
   return (
-    <div className="settings-realm">
-      <div className="settings-row">
-        <span className="settings-k">{channel.name}</span>
-        <span className="settings-v">
-          {channel.configured ? t('channelKeys.card.connected') : t('channelKeys.card.notConnected')}
-        </span>
-      </div>
+    <CredentialRow item={item} open={open} onToggle={onToggle}>
+      <KeyLink family="channel" id={channel.id} lead="GET THE KEYS" />
       <div className="settings-row">
         <span className="settings-k">{t('channelKeys.card.flightTest')}</span>
         <FlightLine test={test} />
       </div>
-
+      {channel.fields.map((f) => (
+        <div className="settings-control" key={f.key}>
+          <input
+            className="settings-input"
+            type={f.secret ? 'password' : 'text'}
+            placeholder={f.set ? t('channelKeys.card.fieldSetPlaceholder', { label: f.label, source: f.source }) : f.label}
+            value={draft[f.key] ?? ''}
+            onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+            disabled={busy}
+          />
+        </div>
+      ))}
       <div className="settings-control">
-        <button type="button" className="settings-set" onClick={() => setOpen(!open)}>
-          {open ? t('channelKeys.card.close') : t('channelKeys.card.configure')}
+        <button
+          type="button"
+          className="settings-set"
+          disabled={busy || dirtyFields.length === 0}
+          onClick={() => act(() => setChannelCredentials(channel.id, Object.fromEntries(dirtyFields)))}
+        >
+          {t('channelKeys.card.save')}
         </button>
         <button type="button" className="settings-set" disabled={!channel.configured}
           title={channel.configured ? t('channelKeys.card.retestTitle') : t('channelKeys.card.retestTitleIdle')}
           onClick={onRetest}>
           {t('channelKeys.card.retest')}
         </button>
+        <button
+          type="button"
+          className="settings-set is-danger"
+          disabled={busy}
+          onClick={() => act(() => clearChannelCredentials(channel.id))}
+        >
+          {t('channelKeys.card.forget')}
+        </button>
       </div>
-
-      {open ? (
-        <>
-          {channel.fields.map((f) => (
-            <div className="settings-control" key={f.key}>
-              <input
-                className="settings-input"
-                type={f.secret ? 'password' : 'text'}
-                placeholder={f.set ? t('channelKeys.card.fieldSetPlaceholder', { label: f.label, source: f.source }) : f.label}
-                value={draft[f.key] ?? ''}
-                onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                disabled={busy}
-              />
-            </div>
-          ))}
-          <div className="settings-control">
-            <button
-              type="button"
-              className="settings-set"
-              disabled={busy || dirtyFields.length === 0}
-              onClick={() => act(() => setChannelCredentials(channel.id, Object.fromEntries(dirtyFields)))}
-            >
-              {t('channelKeys.card.save')}
-            </button>
-            <button
-              type="button"
-              className="settings-set is-danger"
-              disabled={busy}
-              onClick={() => act(() => clearChannelCredentials(channel.id))}
-            >
-              {t('channelKeys.card.forget')}
-            </button>
-          </div>
-          {error ? <p className="settings-err">{error}</p> : null}
-        </>
-      ) : null}
-    </div>
+      {error ? <p className="settings-err">{error}</p> : null}
+    </CredentialRow>
   );
 };
 
-export const ChannelKeysSection = () => {
+/**
+ * The platform keys, one row each, from the boards the API tab read once
+ * (use-api-credentials.js). Under a state filter only matching rows stand,
+ * and a section with none steps aside.
+ */
+export const ChannelKeysSection = ({ channels, tests, error, onChanged, onRetest, stateFilter, openKey, onOpen }) => {
   const { t } = useTranslation('settingsApi');
-  const [channels, setChannels] = useState(null);
-  const [tests, setTests] = useState(null);
-  const [loadError, setLoadError] = useState(null);
-
-  const refresh = () =>
-    getChannelBoard()
-      .then((board) => { setChannels(board.channels); setLoadError(null); })
-      .catch((e) => setLoadError(e.message));
-
-  // The flight read rides beside the board — soft: a probe failure must
-  // never blank the keys it sits under.
-  const refreshTests = ({ fresh = false } = {}) =>
-    getFlightTests({ fresh })
-      .then((r) => setTests(r.tests))
-      .catch(() => {});
-
-  useEffect(() => { refresh(); refreshTests(); }, []);
+  const rows = (channels ?? []).map((channel) => ({ channel, item: channelItem(channel, tests?.[channel.id]) }))
+    .filter(({ item }) => passesState(item, stateFilter));
+  if (stateFilter && rows.length === 0) return null;
 
   return (
     <section className="settings-sec">
       <div className="label-data settings-h">{t('channelKeys.heading')}</div>
       <p className="settings-note">{t('channelKeys.note')}</p>
 
-      {loadError ? <p className="settings-err">{loadError}</p> : null}
-      {!channels && !loadError ? <p className="settings-note">{t('channelKeys.reading')}</p> : null}
+      {error ? <p className="settings-err">{error}</p> : null}
+      {!channels && !error ? <p className="settings-note">{t('channelKeys.reading')}</p> : null}
 
-      {channels?.map((channel) => (
-        <ChannelKeysCard key={channel.id} channel={channel} test={tests?.[channel.id] || null}
-          onRetest={() => refreshTests({ fresh: true })} onChanged={refresh} />
+      {rows.map(({ channel, item }) => (
+        <ChannelKeysCard key={channel.id} channel={channel} test={tests?.[channel.id] || null} item={item}
+          open={openKey === item.key} onToggle={() => onOpen(openKey === item.key ? null : item.key)}
+          onRetest={() => onRetest({ fresh: true })} onChanged={onChanged} />
       ))}
     </section>
   );

@@ -123,6 +123,26 @@ describe('the shared coding prompt and architecture reader', () => {
     expect(await groundProtocolSection(null)).toBe('');
   });
 
+  // A public build once shipped this bundle without four of its files, and
+  // every chat turn on a software folder threw. A failed bundle is reported in
+  // the section, never thrown — and the ground's own protocol still rides.
+  test('a bundle that fails verification is reported in the turn, never thrown', async () => {
+    const ground = await fs.mkdtemp(path.join(root, 'ground-'));
+    await fs.writeFile(path.join(ground, 'package.json'), '{}');
+    await fs.writeFile(path.join(ground, 'AGENTS.md'), 'Run the narrow tests first.');
+    const broken = await copyBundle();
+    for (const name of ['FUNCTIONAL', 'PLANNING', 'TODO', 'WORKFLOW']) await fs.unlink(path.join(broken, `${name}.md`));
+    await expect(readStandardsBundle(broken)).rejects.toThrow();
+    const section = await groundProtocolSection(ground, { bundleRoot: broken });
+    expect(section).toContain('Neuma Coding Standards — unavailable this turn');
+    expect(section).toContain('failed verification');
+    expect(section).not.toContain('map/read_architecture');
+    expect(section).toContain('Run the narrow tests first.');
+    const whole = await groundProtocolSection(ground, { bundleRoot: await copyBundle() });
+    expect(whole).toContain('map/read_architecture');
+    expect(whole).not.toContain('unavailable this turn');
+  });
+
   test('standing guide stays bounded while CORE dispatch delivers exact canonical text', async () => {
     const bundle = await readStandardsBundle();
     const section = formatStandards(bundle);

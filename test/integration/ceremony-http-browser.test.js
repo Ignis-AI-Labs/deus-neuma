@@ -444,9 +444,10 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     // the record count only ever grows; the latest record is the proof.
     expect(records.length).toBeGreaterThanOrEqual(1);
     const record = records[records.length - 1];
-    expect(record).toMatchObject({ version: 'covenant-acceptance/1', wallet: auth.address });
+    expect(record).toMatchObject({ version: 'covenant-acceptance/2', wallet: auth.address });
     expect(record.documents.map((doc) => doc.id)).toEqual(['covenant', 'terms', 'eula']);
     expect(record.message).toContain('NEUMA COVENANT ACCEPTANCE');
+    expect(record.message).toContain('I am at least 18 years of age');
 
     expect(pageErrors).toEqual([]);
   } finally {

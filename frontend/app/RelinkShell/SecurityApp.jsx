@@ -27,9 +27,8 @@ const SecurityAppBody = () => {
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [layerFilter, setLayerFilter] = useState('');
-  const [repoFilter, setRepoFilter] = useState('');
+  // The overview's press: severity, status (or every open one), where.
+  const [filters, setFilters] = useState({});
 
   // Each read lands on its own: one failed read is named, never hides the rest.
   const loadAll = () => Promise.allSettled([getPosture(), getScan(), getWatch(), getThreats()])
@@ -84,7 +83,9 @@ const SecurityAppBody = () => {
       posture={posture}
       scan={scan}
       watch={watch}
-      entries={filterThreats(threats, { status: statusFilter, layer: layerFilter, repo: repoFilter })}
+      all={threats}
+      entries={filterThreats(threats, filters)}
+      now={Date.now()}
       detail={detail}
       busy={busy}
       error={error}
@@ -92,12 +93,8 @@ const SecurityAppBody = () => {
       onCloseDetail={() => setDetail(null)}
       onRunScan={onRunScan}
       onReopenThreat={onReopenThreat}
-      statusFilter={statusFilter}
-      layerFilter={layerFilter}
-      repoFilter={repoFilter}
-      onStatus={(v) => { uiSound('open'); setStatusFilter(v); }}
-      onLayer={(v) => { uiSound('open'); setLayerFilter(v); }}
-      onRepo={(v) => { uiSound('open'); setRepoFilter(v); }}
+      filters={filters}
+      onFilter={(f) => { uiSound('open'); setFilters(f); }}
     />
   );
 };

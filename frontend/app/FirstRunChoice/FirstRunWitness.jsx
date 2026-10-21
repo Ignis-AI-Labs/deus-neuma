@@ -27,6 +27,7 @@ import {
   listProviders, listProviderModels, setProviderKey, connectProvider,
 } from '../../services/routing.js';
 import './FirstRunWitness.css';
+import { KeyLink } from '../RelinkShell/KeyLink.jsx';
 
 /**
  * @param {{onDone: (witness: object|null) => void, onBack: () => void}} props
@@ -175,16 +176,19 @@ export const FirstRunWitness = ({ onDone, onBack }) => {
                   {provider.hasKey ? (
                     <p className="firstrun-witness-note label-data">A KEY IS ALREADY STORED FOR THIS PROVIDER</p>
                   ) : (
-                    <input
-                      className="settings-input"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder={`${provider.name} API key`}
-                      autoComplete="off"
-                      spellCheck={false}
-                      aria-label="Provider API key"
-                    />
+                    <>
+                      <input
+                        className="settings-input"
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder={`${provider.name} API key`}
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-label="Provider API key"
+                      />
+                      <KeyLink provider={provider.id} />
+                    </>
                   )}
                   <ModelPicker
                     models={models}

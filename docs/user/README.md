@@ -9,6 +9,7 @@ and contributor procedure live elsewhere; this folder explains what to do.
 | --- | --- |
 | Install from source | [`getting-started/install.md`](./getting-started/install.md) |
 | Install the current Linux beta | [`getting-started/beta-install.md`](./getting-started/beta-install.md) |
+| Check a download is ours | [`getting-started/verify-download.md`](./getting-started/verify-download.md) |
 | Launch the desk | [`getting-started/launch.md`](./getting-started/launch.md) |
 | Witness a birth ceremony | [`getting-started/birth-ceremony.md`](./getting-started/birth-ceremony.md) |
 | Understand the desk | [`desk/`](./desk/) |

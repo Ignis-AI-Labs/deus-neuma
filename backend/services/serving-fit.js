@@ -26,8 +26,10 @@ const execFileAsync = promisify(execFile);
 const log = createLogger('ServingFit');
 const MiB = 1024 * 1024;
 
-/** The share of the GPU the substrate may fill when the operator names none. */
-export const DEFAULT_VRAM_SHARE = 0.9;
+/** The share of the GPU the substrate may fill when the operator names none. 85%, not 90%:
+ *  on 2026-10-20, at 89% of a 96 GB card the driver refused the desktop its GPU channels
+ *  (NV_ERR_STATE_IN_USE) and the operator's screens blanked and redrew; at 84% they did not. */
+export const DEFAULT_VRAM_SHARE = 0.85;
 /** Kept free below the ceiling: allocator slack and driver growth. */
 export const FIT_MARGIN_MIB = 512;
 /** The smallest pool worth serving; below it the model does not fit this card. */

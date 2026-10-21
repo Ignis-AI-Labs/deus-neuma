@@ -1,7 +1,7 @@
 // security-view.test.js — the SECURITY window's display law, proven two
 // ways: the pure helpers with real inputs and outputs (RULE 0), and the
 // whole pane rendered for real (react-dom/server) over data shaped exactly
-// like the server's own responses — the seat, the posture strip, the
+// like the server's own responses — the seat, the triage overview, the
 // filtered ledger, the report with the office's verdicts, the watch.
 
 import { describe, it, expect } from 'vitest';
@@ -9,7 +9,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   severityLoud, statusOwes, statusLabel, filterThreats,
-  postureCountsLine, runLine, seatLine, hostLine, THREAT_STATUSES, THREAT_LAYERS,
+  runLine, seatLine, hostLine, whereOfThreat, THREAT_STATUSES,
 } from '../../frontend/app/RelinkShell/security-view.js';
 import { SecurityBody } from '../../frontend/app/RelinkShell/SecurityBody.jsx';
 
@@ -44,14 +44,10 @@ describe('security-view — the display law, pure', () => {
     const ordered = filterThreats(entries, {});
     expect(ordered.map((e) => e.externalId)).toEqual(['GHSA-crit', 'GHSA-high', 'GHSA-med', 'GHSA-low']);
     expect(filterThreats(entries, { status: 'new' }).map((e) => e.externalId)).toEqual(['GHSA-high', 'GHSA-low']);
-    expect(filterThreats(entries, { repo: 'kenorie' })).toHaveLength(1);
+    expect(filterThreats(entries, { where: 'kenorie' })).toHaveLength(1);
+    expect(filterThreats(entries, { status: '@open', severity: 'high' }).map((e) => e.externalId)).toEqual(['GHSA-high']);
+    expect(whereOfThreat({ layer: 'hardware' })).toBe('hardware');
     expect(filterThreats(null, {})).toEqual([]);
-  });
-
-  it('postureCountsLine speaks office order, or says the ledger is empty', () => {
-    expect(postureCountsLine({ byStatus: { new: 3, confirmed: 1, mitigated: 2 } }))
-      .toBe('NEW 3 · CONFIRMED 1 · MITIGATED 2');
-    expect(postureCountsLine({ byStatus: {} })).toBe('THE LEDGER HOLDS NOTHING');
   });
 
   it('runLine, seatLine, hostLine — the strip\'s honest sentences', () => {
@@ -67,9 +63,8 @@ describe('security-view — the display law, pure', () => {
     expect(hostLine(null)).toBeNull();
   });
 
-  it('the status and layer vocab stays in lockstep with the ledger\'s own law', () => {
+  it('the status vocab stays in lockstep with the ledger\'s own law', () => {
     expect(THREAT_STATUSES).toEqual(['new', 'not_affected', 'confirmed', 'mitigated', 'needs_operator']);
-    expect(THREAT_LAYERS).toEqual(['software', 'hardware', 'house']);
   });
 });
 
@@ -100,26 +95,30 @@ const renderBody = (over = {}) => renderToStaticMarkup(createElement(SecurityBod
   posture: FIXTURE.posture,
   scan: FIXTURE.scan,
   watch: FIXTURE.watch,
+  all: FIXTURE.threats,
   entries: filterThreats(FIXTURE.threats, {}),
+  now: Date.parse('2026-08-12T00:00:00Z'),
   detail: null,
   busy: false,
   error: null,
   onPickThreat: () => {},
   onCloseDetail: () => {},
   onRunScan: () => {},
-  statusFilter: '', layerFilter: '', repoFilter: '',
-  onStatus: () => {}, onLayer: () => {}, onRepo: () => {},
+  filters: {},
+  onFilter: () => {},
   ...over,
 }));
 
 describe('SecurityBody — the office, rendered for real', () => {
-  it('names the seated CSO, the last scan, the host, and the counts', () => {
+  it('names the seated CSO, the last scan, the host, and the triage overview', () => {
     const html = renderBody();
     expect(html).toContain('THE SEAT — DOVAN');
     expect(html).toContain('LAST SCAN');
     expect(html).toContain('KERNEL 7.1.7 · NVIDIA 610.57.04 · 1 LISTENERS');
-    expect(html).toContain('NEW 2 · CONFIRMED 1');
-    expect(html).toContain('SOFTWARE 2 · HOUSE 1');
+    expect(html).toContain('MUST ACT');
+    expect(html).toContain('SEVERITY × STATUS');
+    expect(html).toContain('WHERE THE OPEN WORK LIVES');
+    expect(html).toContain('SHOWING <b>3</b> OF 3 THREATS');
   });
 
   it('the ledger rows carry severity, status, id and title — debt sorted first', () => {
@@ -149,7 +148,7 @@ describe('SecurityBody — the office, rendered for real', () => {
   });
 
   it('the empty office is honest — no seat, no scan, nothing held', () => {
-    const html = renderBody({ posture: { cso: null, counts: { byStatus: {} } }, scan: { lastRunAt: null, host: null, runs: [] }, entries: [] });
+    const html = renderBody({ posture: { cso: null, counts: { byStatus: {} } }, scan: { lastRunAt: null, host: null, runs: [] }, entries: [], all: [] });
     expect(html).toContain('THE OFFICE STANDS EMPTY');
     expect(html).toContain('THE WATCH HAS NEVER RUN');
     expect(html).toContain('THE LEDGER HOLDS NOTHING');

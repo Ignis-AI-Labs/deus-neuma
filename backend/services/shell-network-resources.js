@@ -68,15 +68,33 @@ const findBinary = async (name) => {
 };
 
 // One private folder per process (mode 700, so no other user can swap the files) for the resolver and rules.
+// One folder per user, reused across processes, so test runs and restarts do not
+// leave a folder each in /tmp. Used only when it is provably ours: a real directory
+// (never a symlink), owned by this user, mode 700. Anything else gets a fresh folder.
+const ownFolder = async () => {
+  const uid = typeof process.getuid === 'function' ? process.getuid() : null;
+  const dir = path.join(os.tmpdir(), `neuma-outward-${uid ?? 'user'}`);
+  try { await fs.mkdir(dir, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+  const st = await fs.lstat(dir);
+  const ours = st.isDirectory() && !st.isSymbolicLink() && (uid === null || st.uid === uid) && (st.mode & 0o777) === 0o700;
+  return ours ? dir : fs.mkdtemp(path.join(os.tmpdir(), 'neuma-outward-'));
+};
+
+// impure — write a file fresh (a stale or swapped one is replaced, never followed)
+const writeFresh = async (file, content) => {
+  await fs.rm(file, { force: true });
+  await fs.writeFile(file, content, { mode: 0o444, flag: 'wx' });
+};
+
 let prepared = null;
 const prepareFiles = () => {
   prepared ??= (async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-outward-'));
+    const dir = await ownFolder();
     await fs.chmod(dir, 0o700);
     const resolvConf = path.join(dir, 'resolv.conf');
     const rules = path.join(dir, 'outward.nft');
-    await fs.writeFile(resolvConf, `nameserver ${STAND_IN_DNS}\n`, { mode: 0o444 });
-    await fs.writeFile(rules, OUTWARD_RULES, { mode: 0o444 });
+    await writeFresh(resolvConf, `nameserver ${STAND_IN_DNS}\n`);
+    await writeFresh(rules, OUTWARD_RULES);
     return { resolvConf, rules };
   })().catch((error) => { prepared = null; throw error; });
   return prepared;

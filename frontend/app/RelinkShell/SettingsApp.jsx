@@ -33,11 +33,8 @@ import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
 import { RemoteSection } from './RemoteSection.jsx';
-import { WebSection } from './WebSection.jsx';
-import { EmailSection } from './EmailSection.jsx';
 import { DocPressSection } from './DocPressSection.jsx';
-import { ChannelKeysSection } from './ChannelKeysSection.jsx';
-import { ServiceKeysSection } from './ServiceKeysSection.jsx';
+import { ApiTab } from './SettingsApiTab.jsx';
 
 const SettingsIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -69,15 +66,6 @@ const ModelsTab = ({ focus }) => (
 
 // Every key that reaches the outside world, in one place — the platform
 // windows decide WHO speaks; this tab holds WHAT unlocks the door.
-const ApiTab = () => (
-  <>
-    <ChannelKeysSection />
-    <EmailSection />
-    <WebSection />
-    <ServiceKeysSection />
-  </>
-);
-
 // Remote sits beside Security: a phone on the tailnet is a security posture
 // before it is a convenience (docs/security/remote-surface.md).
 const SecurityTab = () => (

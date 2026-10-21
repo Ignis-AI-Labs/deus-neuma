@@ -330,17 +330,37 @@ export const readGroundProtocol = async (groundPath) => {
 };
 
 /**
+ * What the turn carries when the packaged standards fail verification: the
+ * failure, said plainly. Pure. A failed bundle never silently becomes "no
+ * policy", and never ends the turn either — a public build once lost four of
+ * the bundle's files and every chat turn on a software folder threw.
+ * @param {string} reason
+ */
+export const standardsUnavailableSection = (reason) => [
+  '## Neuma Coding Standards — unavailable this turn',
+  `The packaged coding standards failed verification (${reason}) and are not loaded. Do not assume `
+    + 'their rules are met or waived: tell the operator, and follow this ground\'s own protocol where it has one.',
+].join('\n\n');
+
+// impure — the bundle, or the honest report of why it is missing
+const standardsOrReport = (bundleRoot) => codingStandardsSection(bundleRoot).catch((err) => {
+  log.error('coding standards bundle failed verification — the turn rides without it', { error: err.message });
+  return standardsUnavailableSection(err.message);
+});
+
+/**
  * The ground's protocol as one ready prompt section ('' when there is none).
  * impure — wraps the read and the pure render.
  * @param {string|null} groundPath
+ * @param {{ bundleRoot?: string }} [opts] the standards bundle (default: the packaged one)
  * @returns {Promise<string>}
  */
-export const groundProtocolSection = async (groundPath) => {
+export const groundProtocolSection = async (groundPath, { bundleRoot } = {}) => {
   if (!groundPath || typeof groundPath !== 'string') return '';
   // The coding standards are the cost of SOFTWARE work — a folder that holds
   // none (an empty ground, documents) reads only its own protocol
   // (software-ground.js; Design note, 2026-10-14, the per-request token audit).
-  const standards = await isSoftwareGround(groundPath) ? await codingStandardsSection() : '';
+  const standards = await isSoftwareGround(groundPath) ? await standardsOrReport(bundleRoot) : '';
   return [standards, formatGroundProtocol(await readGroundProtocol(groundPath), groundPath)]
     .filter(Boolean).join('\n\n');
 };

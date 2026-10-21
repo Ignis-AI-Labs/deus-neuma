@@ -33,7 +33,7 @@ const ENTRY = {
 const renderDetail = (detail) => renderToStaticMarkup(createElement(SecurityBody, {
   posture: null, scan: null, watch: null, entries: [detail], detail, busy: false, error: null,
   onPickThreat: () => {}, onCloseDetail: () => {}, onRunScan: () => {}, onReopenThreat: () => {},
-  statusFilter: '', layerFilter: '', repoFilter: '', onStatus: () => {}, onLayer: () => {}, onRepo: () => {},
+  all: [detail], now: Date.parse('2026-10-21T00:00:00Z'), filters: {}, onFilter: () => {},
 }));
 
 describe('the desk shows the fix and its proof', () => {

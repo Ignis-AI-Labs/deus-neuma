@@ -140,10 +140,11 @@ describe('keyed services (Tavily) — own routes, never a provider', () => {
 
     const services = await request(app).get('/api/v1/routing/services').set(witness.header);
     expect(services.status).toBe(200);
-    expect(services.body.services).toEqual([expect.objectContaining({
+    expect(services.body.services).toEqual(expect.arrayContaining([expect.objectContaining({
       id: 'tavily', kind: 'service', service: 'web-search', endpoint: 'https://api.tavily.com',
       requiresKey: true, hasKey: false, keyMasked: '',
-    })]);
+    })]));
+    expect(services.body.services.every((s) => s.kind === 'service' && s.keyMasked !== undefined && s.apiKey === undefined)).toBe(true);
   });
 
   test('PUT stores the key masked, the broker resolves it, DELETE clears it', async () => {

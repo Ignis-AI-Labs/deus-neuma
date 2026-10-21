@@ -11,6 +11,7 @@ import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { helperEnvironment } from '../agent-terminal-environment.js';
+import { withStoredHfToken } from '../stored-secrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(__filename), '..', '..', '..');
@@ -108,7 +109,7 @@ export const spawnEngineProcess = (engineId, host, port, { startModule, extraEnv
   const scratch = path.join(REPO_ROOT, 'voice-engines', '_tmp', engineId);
   mkdirSync(scratch, { recursive: true });
   const env = {
-    ...voiceHelperEnvironment(process.env, engineId),
+    ...voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
     TMPDIR: scratch, TEMP: scratch, TMP: scratch,
     ZONOS_HOST: host, ZONOS_PORT: String(port),
     KOKORO_HOST: host, KOKORO_PORT: String(port),
@@ -219,7 +220,7 @@ export const syncEngineVenv = (engineId, startModule) =>
     const { projectDir } = entryOf(engineId, startModule);
     const proc = spawn(uvBin(), ['sync', '--project', projectDir], {
       cwd: projectDir,
-      env: voiceHelperEnvironment(process.env, engineId),
+      env: voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stderr = '';

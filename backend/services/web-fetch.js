@@ -13,6 +13,8 @@
 import http from 'http';
 import https from 'https';
 import { assertSafeWebTarget, nextRedirectUrl } from './web-guard.js';
+import { pdfPagesFromBytes } from './pdf-text.js';
+import { isPdfResponse, selectPdfPages, MAX_WEB_PDF_BYTES } from './web-pdf.js';
 import { isPrivateHost } from './endpoint-guard.js';
 import { htmlToText, extractTitle } from './html-to-text.js';
 import { browserRunConfig, fetchRenderedHtml, isBrowserRunConfigured } from './browser-run.js';
@@ -232,6 +234,21 @@ export const readBounded = (res, maxBytes = MAX_BYTES) => new Promise((resolve) 
   res.on('error', () => { truncated = true; settle(); });
 });
 
+// impure — a PDF answer: bounded read, its text by page, only the pages asked for.
+const readPdfResponse = async (res, url, ask) => {
+  const { buf, truncated } = await readBounded(res, MAX_WEB_PDF_BYTES);
+  if (truncated) return { ok: false, url, status: res.statusCode, error: `the PDF is over ${MAX_WEB_PDF_BYTES / 1048576} MB — too large to read here; save it with a web/download intent` };
+  let pages;
+  try { pages = await pdfPagesFromBytes(buf); } catch (err) { return { ok: false, url, status: res.statusCode, error: err.message }; }
+  const { text, note } = selectPdfPages(pages, ask);
+  const overflowed = text.length > WEB_TEXT_MAX;
+  return {
+    ok: true, url, status: res.statusCode, title: note,
+    text: `${text.slice(0, WEB_TEXT_MAX)}${overflowed ? '\n[… truncated — ask for fewer pages]' : ''}`,
+    truncated: overflowed, renderer: 'direct',
+  };
+};
+
 /**
  * Fetch one web page as bounded readable text. A direct guarded request runs
  * first; configured Kitesurf rendering is a fail-soft JS-wall fallback.
@@ -240,7 +257,7 @@ export const readBounded = (res, maxBytes = MAX_BYTES) => new Promise((resolve) 
  * @param {{browserRun?: {accountId?: string, apiToken?: string, apiRoot?: string}}} [options]
  * @returns {Promise<{ok: true, url: string, status: number|null, title: string|null, text: string, truncated: boolean, renderer: 'direct'|'kitesurf'} | {ok: false, error: string}>}
  */
-export const fetchWebPage = async (target, { browserRun = browserRunConfig() } = {}) => {
+export const fetchWebPage = async (target, { browserRun = browserRunConfig(), pdf = {} } = {}) => {
   let url = target;
   let hops = 0;
   // At most one browser-UA retry per fetch, counted separately from redirects
@@ -288,6 +305,8 @@ export const fetchWebPage = async (target, { browserRun = browserRunConfig() } =
       return failure;
     }
     const contentType = res.headers['content-type'] || '';
+    // Law is often published only as PDF (statute titles, opinions, guidance): read its text (web-pdf.js).
+    if (isPdfResponse(contentType, url)) return readPdfResponse(res, url, pdf);
     if (!isTextual(contentType)) {
       res.destroy();
       return { ok: false, error: `not readable text (${contentType.split(';')[0] || 'unknown content type'})` };

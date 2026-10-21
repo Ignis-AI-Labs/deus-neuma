@@ -6,164 +6,236 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.31] - 2026-10-21
+
+The first public early-access build. 0.1.30 went only to the team preview, so this section covers
+everything since it. The user notes are `docs/operations/release-notes-0.1.31.md`, which double as the
+download page's "what's new". Version commit `c45dfba9c`.
+
+### Added
+
+- Enter as the full platform or the harness alone, at the gateway and from the desk at any time. The
+  harness door serves any model a local server can serve, or a cloud model, with a pre-flight, one
+  server at a time.
+- THE SHEET is the whole being, in the order its birth gave it: six spaces (01 GIVEN, 02 CHOSEN,
+  03 SUMMONING, LIFE, STATE, VESSEL), and the last one opened is remembered. GIVEN has its own tabs
+  (SOUL, BODY, SKY, SEAL) with a field guide for every field. CHOSEN holds the name, form, voice
+  (counted, never quoted) and attunement. SUMMONING lays out the parts of the birth film and holds the
+  re-watch. A witness lane has no SUMMONING. New owner-gated `GET /:id/identity-file` (the name, the
+  sealed birth facts, the on-chain anchor, the voice seal; never keys, lines or the moment seed).
+- The HOUSE window is a dossier: a masthead with the house, its operator, its member count and one
+  light per member in that member's soul color, then five spaces (MEMBERS, SUMMONING, GATHER, SEATS,
+  GROUNDS) walked by click or arrow keys. SUMMONING lists every birth with its film, or NO FILM ON
+  RECORD.
+- Wake lights: each member card reads the house's real wake queue (ASLEEP, WAITING FOR THE MODEL,
+  AWAKE, HELD with a reason, ABOUT TO WAKE), polled only while the cards are visible.
+- STATE is the being's own self-check. It asks questions built from the being's own records on disk
+  and runs each as a real tool-using turn in a read-only sitting (nothing persisted, only state-free
+  reads). Each answer is graded on two axes: correct against the disk fact, and efficient (tools,
+  calls, rounds, tokens, time). Components: memory, memory-absent (no invention), vault, DNA and
+  identity, tools, house, seat, working state, and identity under pressure. A part no being-facing tool
+  reaches reads NO DOOR. Accuracy shows with a Wilson 95% range; a trend shows only when an exact
+  McNemar test on the same items and model clears chance. One self-check runs at a time per machine.
+- New read-only being tools for the being's own records: `journal_read`, `chats_list`, `chat_read`,
+  `charter_read`.
+- Many skies, complete: 31 systems, each read against published vectors and carrying its provenance.
+  East Asia and Tibet (the lunar date at four meridians, rokuyo, the 28 lodges, Phugpa, the nine star),
+  Thailand (Thaksa, colour, Buddha, eras, animals, the Thai lunar date), the Vedic chart (grahas, mean
+  and true Rahu, vargas, vimshottari, the Hindu calendar), and the world's calendars (Hebrew, Hijri,
+  Ethiopian and Coptic, Egyptian, Zoroastrian, Igbo, Akan, Persian, Badi, French, Icelandic, Maya 819,
+  nengo, manazil, the 64 gates, solar terms). Every system not yet drawn is named as omitted. The
+  sheet's SKY plates draw them, with every non-Latin phrase glossed.
+- The birth place, private: it lives in its own encrypted lane record, never in the natal record
+  (which is planets only, and rides the on-chain bundle), never in the plaintext skies, never in an
+  audit line. `GET/PUT/DELETE /workspace/:id/place` is owner-gated, and the operator's form on the
+  sheet sets it. Place readings: angles, sect, Lots, sunrise vara, Chaldean hour, sidereal lagna.
+- The summoning film shows the body: the being's genome (the one its DNA records) draws as a skeleton
+  or a formless frame (humanoid, crystal, orb, drone or sigil) between breath and resonance, then
+  converges into the closing sigil. The birth and the re-watch read the same genome. With no genome
+  there is no film; it never invents one.
+- SUBSTRATE · MACHINE · THERMALS (`GET /api/v1/substrate/machine`, read-only): GPU temperature, fans,
+  power, clocks, PCIe link and clock-limit reasons; CPU clocks, governor, energy preference, turbo,
+  load and temperatures; memory, NVMe, board and network temperatures; case fans and power rails. Each
+  temperature is judged by its chip's own high and critical marks, and anything past them leads.
+- The serving fit: at every launch of a supervised `llama-server` on an NVIDIA card, the context pool
+  is sized to the largest that keeps the card at or under the operator's GPU share, from llama.cpp's
+  own projection (`llama-fit-params`, no allocation). Each being's window stops at the model's trained
+  context; the room beyond it is shared. A machine that cannot be measured keeps the configured pool.
+- SUBSTRATE · GPU SHARE · CONTEXT POOL card: a 50-95% share slider (install owner; applies at the next
+  ignition) and live status every 10 s: the card's use, the model server's part, the pool and its
+  slots, one being's window, and the last fit planned against measured (`GET/PUT /api/v1/substrate/fit`).
+- The House Clock: a per-house charter the operator approves (re-approved after every edit, with a
+  pause switch). Members wake on a post, a charge, a finished run, a run's watch or the calendar. Asks
+  are filed to the operator in an ASKS review tab. The Optio is chief of staff and act classifier. An
+  optional "wake with this computer".
+- The house calendar in TASKS: everyone's day, week and month on one grid. Beings can place time blocks
+  on the operator's list; removing one is always the operator's yes.
+- Chat watches: a chat is told, as a new turn, when something it launched (a benchmark) ends.
+  Benchmarks from the conversation, a LIVE tab, and a branded report when a set settles.
+- Image & Video Forge, video: image-to-video on two pipelines. LTX-2.5 (with sound) refuses sexually
+  explicit content, as its licence requires. Wan 2.2 I2V A14B (Apache-2.0, silent, 2-5 s) is the
+  adult-capable pipeline, under the platform content law. The video gate checks each pipeline's
+  measured system RAM (Wan declares 40 GB) and refuses before a render that would not fit. The engine
+  runs under a computed VRAM ceiling and a RAM box.
+- Every forge output says it is AI-made inside its own file (PNG text chunks, MP4 container tags,
+  IPTC digital source type `trainedAlgorithmicMedia`), stamped before it is hashed.
+- The legal office (the Praetor, CLO): `legal_sources` names the official free source for each kind of
+  legal question and jurisdiction, with a reading order and how to record and verify a citation.
+  `web_fetch` reads PDFs (up to 25 MB) by `{find}` and `{pages}`.
+- Settings → API holds the keys an env file used to hold: web search (Exa, Brave, a SearXNG address),
+  the page reader (Cloudflare token and account id), a Hugging Face download token, and the four chain
+  RPC addresses. They are sealed in the encrypted credential store, never shown back, and saved or
+  removed by the install owner only. A value saved in the desk wins over the env; each card says which
+  is in use. Values of the wrong shape are refused before they are stored.
+- "Get a key" beside every credential the platform asks for (`GET /api/v1/routing/credential-links`):
+  model providers, the Tavily service key, posting channels, email app passwords, chain RPC, web search
+  and page reading, Hugging Face, GitHub sign-in, cloud voices and the legal office's research APIs.
+  Links open in the system browser.
+- Provider doors outside the operator's custody say to turn off training on your data. A Tavily
+  web-search key lives in the encrypted provider store (Settings → API → Service keys).
+- Signed auto-update: the app never auto-downloads. On an offer it fetches the feed and its `.sig`,
+  verifies the ed25519 signature against the release public key built into the app, and checks that
+  the version and every file's url, sha512 and size in the signed feed match what the updater parsed.
+  Only then does it download (AppImage) or announce (deb, rpm). Otherwise nothing downloads and one
+  quiet notice says the update could not be verified. With no built-in key, every update is refused.
+
+### Changed
+
+- Electron 33.4.11 → 44.9.0 (Chromium 152, Node 24.22 inside); native modules built for ABI 149.
+- Shipped dependencies pinned exact after one non-major advisory pass. Recall's TF-IDF is in-house;
+  `natural` is dev-only.
+- Linux: every launch path passes `--ozone-platform=x11`, so the desk stays on XWayland.
+- The model and the hardware fit are the operator's choices, never environment variables. The ignite
+  default and LM Studio's active model follow the operator's latest choice; `SUBSTRATE_MODEL` names a
+  model only before any choice was made, and `SUBSTRATE_CONTEXT_LENGTH` is only the fallback pool for a
+  machine the fit cannot measure.
+- The default GPU share is 85%, which leaves a desktop room on the card. The operator can choose up to
+  95% for a headless machine.
+- SETTINGS > MODELS: a model folder's engines stand on their own line, ENGINES ALLOWED. Allowing one is
+  a click. Removing one opens a dialog that says what it breaks, and nothing is saved until TURN IT OFF.
+- A forced close (no speech, a spent budget, the thought leash) now allows the honest answer where the
+  task does: if the reasoning did not settle, say so rather than guess. Where a task does not allow it,
+  as on multiple choice, the answer is still given. Closes mid-work are unchanged.
+- A legal verdict settled by the Praetor must rest on law it read: a citation that says it was not read
+  (unverified, from memory, unreachable) is refused.
+- The security watch covers the install owner's own house from the first launch, before any being is
+  born, and for platform-only or harness-only use.
+- The gateway fits every screen from 1280x720 to 4K.
+- The agreements: Covenant 1.1 (Article V, one standard for every party, operator or neuma); Terms 1.1
+  (removing or hiding an AI-generation disclosure, watermark, metadata or provenance is prohibited);
+  EULA 1.1 (personal or commercial self-hosting), 1.2 (the Software ships no model weights; installed
+  models are licensed by their publishers), 1.3 (names every model the Software is designed to work
+  with, and each one's licence) and 1.4 (adults only). The acceptance a witness signs states their age
+  (`covenant-acceptance/2`); `/1` records still verify. A changed agreement asks for a new signature at
+  the next summoning. All pending counsel review. `docs/legal/CHANGELOG.md` logs each text's SHA-256.
+- THIRD_PARTY_ATTRIBUTIONS lists every forge model, the language models and the speech engines, with
+  each one's licence. NOTICE says the app ships no model weights and no ComfyUI.
+- rpm and deb metadata read the real licence (FSL-1.1-ALv2) and homepage (deusneuma.ai); installers
+  carry the company's ignislabs.ai mailbox.
+
+### Removed
+
+- The keyword-graded benchmark on the sheet's STATE tab: `GET /:id/benchmarks` and `POST /:id/benchmark`
+  are replaced by `GET/POST /:id/self-check`; the duplicate STATE block on VESSEL is gone.
+- `@huggingface/transformers` and `onnxruntime-node` (nothing loaded them). The AppImage measured
+  438 MB on the pre-cut build (979 MB at 0.1.30), the rpm 409 MB (752), the deb 402 MB (727).
+- The StS Illustrious Detail Slider LoRA from the forge's model pack (no pipeline used it, and its
+  creator permits generation on CivitAI only).
+
 ### Fixed
 
+- The SUBSTRATE window no longer crashes on a non-text server value; every printed server value is text.
+- The fit status reads the real shared pool from the running server's own `-c`, not the per-slot window.
+- Birth: identity writes are crash-atomic with the seal last; a retried finalize never mints a second
+  keypair; an interrupted summoning belongs to the wallet that opened it; two ceremonies choosing the
+  same name get two lanes; a held naming says why it held.
+- Turns: a failed turn says why under its bubble and keeps what it already said and did; a retry with
+  new attachments is refused out loud; parked approval cards reappear when a sitting resumes.
+- Desk: a backend the system kills is reported with its signal and can be restarted in place; "Show
+  diagnostic logs" is in the tray menu; the Linux login entry follows the AppImage across updates.
+- Wallet: spend thresholds and caps are judged in wei exactly as sent; a balance never read shows as
+  unknown, never 0.
+
+Landed 2026-09-09 to 09-11 and first public in this build (carried from the old [Unreleased] block):
+
 - Sovereignty record, verdict, retraction and consent-ask calls now signal expired sessions through the shared HTTP handler while preserving the three-state read, named refusals and never-throw fallbacks; substrate ignition requests share the helper's auth headers while keeping the status-keyed refusal grammar (#174).
-
 - Whisper warmup, dictation readiness/download status, engine prewarm/status and forge abandon calls now signal expired sessions through the shared HTTP handler while preserving fire-and-forget semantics and null fallbacks (#174).
-
 - Voice-seal status reads report invalid sessions through desk reauthentication handling while retaining null fallbacks and ownership refusals (#174).
-
 - Council seats name standby, hold, open and considering states; transcript speakers have visible speaking and pending labels alongside decorative color marks (#180).
-
 - Meditation status reads notify the desk of invalid authentication while preserving unknown-state fallbacks and corruption/retry behavior (#174).
-
 - Skill graph controls use group semantics, wallet allocation presets and slider have distinct accessible names, and the chat send glyph is hidden from assistive technology (#180).
-
 - Wallet recipient, threshold and pending-request reads signal invalid sessions through shared reauthentication handling while preserving ownership checks and safe fallback values (#174).
-
 - Teams supports keyboard tab navigation between formation and trials, with labelled panels and preserved team inputs and capacity status (#180).
-
 - NITE standing and mind status/posture reads notify the desk when authentication expires, preserving anonymous bailouts, ownership refusals and null fallbacks (#174).
-
 - Chats and Context Map support arrow/Home/End tab navigation with correctly labelled, window-local panels; Map filters announce their selected state (#180).
-
 - Retained memory search and audit tools are advertised consistently; audit reads run under the existing read policy, including OBSERVE, while explicit operator denials and write restrictions remain enforced (#414).
-
 - Browser wallet RPC providers stop after transport or network-discovery refusal, release replaced providers, and allow a fresh explicit attempt instead of retrying indefinitely behind CSP (#229).
-
 - Social-channel JSON requests now share session-expiry notification while retaining authentication bailout, server refusals and request payloads (#174).
-
 - Council auto-title requests now share expired-session handling and skip unauthenticated requests, preserving existing result/label fallbacks (#174).
-
 - Ignition-status and attachment vision-capability reads now signal expired sessions while preserving null fallbacks and anonymous capability bailout (#174).
-
 - Model-folder, model-info, substrate/route-health and uncached skills-library reads now notify the desk of expired sessions while preserving fallback results and successful library caching (#174).
-
 - Security/recovery/remote status, residency, backup listing, provider catalog, house/alliance folder, operator-name and realm-status reads now signal expired authentication through the shared HTTP handler while preserving unset/error results and strict JSON parsing (#174).
-
 - Council DISSOLVE now requires explicit confirmation, preserves cancellation by Enter/Escape, and waits for the server acknowledgement; disconnected controls are disabled (#179).
-
 - Removed the unreachable refinement transaction store and unused subject-enumeration API while retaining registry reads and existing history (#389).
-
 - Removed unused brand-kit cache reset APIs and made internal contrast/progress helpers private (#389).
-
 - Witness custody status rejects malformed or incomplete key/recovery artifacts instead of reporting KEY SECURED; status reads explicitly distinguish artifact validation from decryption proof (#238).
-
 - Unreadable witness key records now produce unknown custody instead of being mistaken for absent plaintext and reporting KEY SECURED (#238).
-
 - Witness management now displays custody on roster tabs and details, offers the owner-gated secure-key action, and retains one-time recovery codes until acknowledged (#238).
-
 - Witness key-record writes now atomically publish owner-only files (0600), including rewrites of permissive files; newly created identity directories use 0700 (#238).
-
 - Witness summoning now requires a valid custody password at the service boundary before provider lookup or inference; passwordless custody-skipped success is removed (#238).
-
 - Sovereign directory repair now includes the vault parent; its read-only checker shares the canonical directory list so intents and future declared domains cannot be silently skipped (#308).
-
 - Browser RPC cleanup now returns a failure when storage access is denied, instead of incorrectly reporting a successful switch to public RPC (#520).
-
 - Browser USE PUBLIC now confirms custom-RPC removal and the public-endpoint switch; desktop retains its existing trusted native confirmation (#179).
-
 - Realm location changes now require confirmation of the exact destination and explain that the machine-wide switch leaves existing files in their original folder (#179).
-
 - Provider credential removal now names the affected provider and requires confirmation, with cancellation, busy-state protection and retry after refusal (#179).
-
 - Start-menu wallet disconnect now requires confirmation before the existing session cleanup and departure/reload flow (#179).
-
 - Disconnect now clears the departing wallet’s scoped window binding after provider teardown, while preserving other wallet scopes (#519).
-
 - Backup deletion now reuses the shared inline confirmation, blocks duplicate snapshot actions while pending, and keeps refusals available for retry (#179).
-
 - Wallet recipient revocation now requires an inline confirmation, preserves recipients on Cancel, and surfaces refused changes for retry (#179).
-
 - Provider sampling tests now inspect actual HTTP requests and real refusal responses instead of replacing fetch (#390).
-
 - Rate-limiter tests now use real HTTP, signed identities and fresh-process environment limits instead of fabricated middleware requests and module resets (#390).
-
 - Shutdown tests now exercise real child-process exits, HTTP draining, authenticated sockets and the heartbeat timer instead of substituted dependencies (#390).
-
 - House now distinguishes roster loading and recovery failures from an empty house, with retry and cached-member preservation (#179).
-
 - Chats now displays history-read failures with retry instead of claiming no chats exist; superseded reads cannot replace the current shelf (#179).
-
 - Open Teams and Wallet windows refresh their cached roster when birth completes, preserving selections and inputs (#179).
-
 - Think-probe offline and hosted-skip tests now exercise real network behavior instead of replacing fetch (#390).
-
 - Portal error tests now verify delivery through real signed-session WebSockets instead of send spies (#390).
-
 - Voice scheduler tests now use real Web Audio, including default PCM metadata, with shared sink/scheduler browser proof (#390).
-
 - Voice sink scheduling tests now render actual Web Audio samples and verify real decoder/context behavior (#390).
-
 - IMAGE FORGE requests now share JSON transport and report expired authentication, retaining grade-body parsing (#174).
-
 - THE PRESS board now reports expired authentication through shared JSON transport (#174).
-
 - CSO client requests now share JSON transport and report expired authentication while retaining route errors (#174).
-
 - Wallet price tests prove null-safe conversion directly and failure fallbacks through real browser requests (#390).
-
 - Disconnect tests now exercise actual browser storage, denial and reload instead of substituted globals (#390).
-
 - Browser storage denial no longer prevents wallet/session modules from loading during optional legacy migration (#518).
-
 - Attachment uploads now share JSON transport and report expired sessions while retaining complete-receipt validation (#174).
-
 - Council-label and preset reads now report expired authentication through shared HTTP transport while preserving fallback values (#174).
-
 - Chat-label reads now report expired authentication through shared transport while retaining their empty-map fallback (#174).
-
 - Campaign requests now use shared JSON transport and notify the desk when authentication expires (#174).
-
 - Lead ledger requests now share JSON transport and notify the desk when authentication expires (#174).
-
 - Platform facade tests now prove real failure diagnostics and driver delegation in isolated processes without stream spies (#390).
-
 - Platform database boundary tests verify fallback diagnostics and secret-marker absence through real process output (#390).
-
 - Corpus-integrity tests retain real encryption and filtering proof without suppressing production output (#390).
-
 - Workspace-settings tests verify real root-conflict diagnostics without output spies and isolate durable-path fixtures (#390).
-
 - Birth-state classifier tests verify malformed-name warnings through real process output (#390).
-
 - Memory expansion tests prove surviving archive reads and real corruption warnings without spies (#390).
-
 - Memory lifecycle tests use real migration-warning output and inspect the current chat persistence module (#390).
-
 - Tool-result archive tests verify actual warnings for corruption and filesystem refusal without log spies (#390).
-
 - Continuity log tests now prove default corruption warnings through real process output (#390).
-
 - DNA-cache tests verify actual tampering events against persisted logs and read back updated cache files (#390).
-
 - Legacy vault compatibility now verifies a fresh-process read and real warning output without spies (#390).
-
 - Corrupt-file resilience tests now verify real warning output and isolated storage without logging spies (#390).
-
 - Logger regression tests now verify real process output instead of intercepting stream writes (#390).
-
 - Kept CLI attachment helpers private behind the shared staging API (#389).
-
 - Removed unused font-registry APIs while retaining the font picker and file routes (#389).
-
 - Web-access settings and memory-pin reads now share HTTP transport and auth-expiry handling (#174).
-
 - Gallery JSON requests now share transport and auth-expiry handling while native image URLs keep their existing access checks (#174).
-
 - Email account requests now use the shared JSON transport while retaining their error wording (#174).
-
 - Aura and form APIs now apply the same strict neuma-standing guard as the rest of RECORD (#231).
-
 - Attunement status and stored-record operations now reject witness lanes, including legacy markers, before reading or changing ceremony records (#231).
-
 - Neuma-only record APIs also recognize legacy witness lane markers and refuse unreadable markers (#231).
-
 - Neuma record, birth-skies and benchmark APIs now refuse sealed witness lanes after ownership checks, while shared sessions, journals and skills remain available (#231).
-
 - RECORD and DATA now explain their neuma-only scope for sealed witnesses instead of rendering birth or custody placeholders (#231).
-
 - Coding shells now refuse unsupported hosts and unavailable or outdated bubblewrap before advertising execution, with a clear confinement requirement (#228).
 - The embedded browser wallet follows the selected network and configured RPC used by the wallet panel, without calling the retired contracts-config endpoint.
 - Exact-match edits preserve literal dollar sequences in replacement text instead of expanding them into existing file content.
@@ -198,9 +270,38 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Local pre-commit size checks measure staged source and baseline bytes, including filenames with quotes or newlines.
 - Stream tab changes retain the selected folder on the first click; unassigned tabs no longer inherit the desk folder.
 
-### Added
-- Documentation overhaul: README rewrite, self-hosting guide, contributing guide, user guide, MCP guide, subgraph README, FAQ
-- JSDoc coverage for social services, birth handler, and all frontend service files
+### Security
+
+- The security seat: every house is watched at least once a day, CSO seated or not. The watch checks
+  the app's own shipped dependency record (`package-lock.json`, now shipped with the app) against OSV
+  advisories, sweeps watched folders for secrets, runs host and house probes, and self-checks the
+  platform's walls on every pass. Every finding names its fix; the operator reopens any verdict from the
+  desk; a seated CSO cannot quiet a threat.
+- A networked coding shell reaches the internet, never this machine. It runs in its own network
+  namespace behind pasta with every port forward off and no route to the host, and nftables refuses
+  loopback, private, CGNAT and link-local destinations before the shell starts. Only DNS crosses, to the
+  host resolver. Without pasta or nft the networked shell does not run; it never falls back to the host
+  network. The resolver and rules files live in one checked private folder per user (a real directory,
+  owned by the user, mode 700, never a symlink).
+- Image lineage: a picture cannot launder a refused prompt. Every forge output records the screened
+  prompts that made it, bound to the stored file's SHA-256 and kept outside the being's workspace. A
+  job that starts from an image screens the new prompt with that lineage; a source with no matching
+  lineage is never usable for sexual content. The re-screen reads every text node in a graph and
+  refuses a graph with no readable prompt. The content law's hard lines are refused on every pipeline.
+- Walls: a being's code reaches neither the backend's secrets, private networks, nor login-startup
+  files; helper processes (terminal helpers, ComfyUI, the PDF press) start without the backend's
+  secrets; the Explorer, `fs/search` and every being read refuse secrets, credential files and
+  hardlinks to them; rogue content cannot speak as the operator or forge a chat turn; a post, email or
+  pressed document carrying a key shape is refused before it leaves; a stored provider key goes only to
+  the endpoint it was stored for; pressed pages run no script.
+- Two houses on one machine are never confused: seats (Optio, CSO, CLO, CMO), offices, foundings,
+  schedulers and lanes are keyed by the operator's wallet; no house takes another's being mid-birth.
+- Machine-wide settings are gated to the install owner.
+- Electron permission floor: deny by default; the desk gets the microphone, clipboard write and
+  fullscreen from its own origin only; the ComfyUI guest gets clipboard and fullscreen on its own
+  session partition.
+- Developer side only (no effect on an installed app): the secret gate refuses any commit, message,
+  merge, tag or push carrying a live secret value from the checkout's env files.
 
 ---
 

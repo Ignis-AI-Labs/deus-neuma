@@ -26,5 +26,5 @@ export const formatStandards = ({ manifest }) => [
     + 'A packaged version is not evidence that upstream was checked. Review changed rules before adopting a new pin.',
 ].join('\n\n');
 
-/** impure — missing or corrupt platform policy stops composition instead of disappearing. */
-export const codingStandardsSection = async () => formatStandards(await readStandardsBundle());
+/** impure — missing or corrupt platform policy rejects instead of disappearing (the caller reports it). */
+export const codingStandardsSection = async (root) => formatStandards(await readStandardsBundle(root));

@@ -1,13 +1,19 @@
 // security-view.js — the SECURITY window's pure display law. Every decision
 // the pane makes about data lives here, so it is provable with nothing
-// faked: severity loudness, ledger filtering, the posture and run lines.
-// The impure shell (fetch, state) lives in SecurityApp.jsx.
+// faked: severity loudness, ledger filtering, the run and seat lines.
+// The impure shell (fetch, state) lives in SecurityApp.jsx; the overview's
+// counting is the shared triage-view.js.
+
+import { passesTriage } from './triage-view.js';
 
 /** The ledger's statuses, in the order the office works them. */
 export const THREAT_STATUSES = Object.freeze(['new', 'not_affected', 'confirmed', 'mitigated', 'needs_operator']);
 
-/** The watch's layers. */
-export const THREAT_LAYERS = Object.freeze(['software', 'hardware', 'house']);
+/** pure — where a threat lives: its repo, or its layer when it belongs to no repo (hardware, house). */
+export const whereOfThreat = (e) => e?.repo || e?.layer || 'other';
+
+/** pure — the operator's word for a where. */
+export const whereLabelThreat = (where) => String(where || '').toUpperCase();
 
 // pure — a severity reads loud only while it can hurt.
 export const severityLoud = (severity) => severity === 'critical' || severity === 'high';
@@ -54,36 +60,22 @@ const SEVERITY_ORDER =Object.freeze(['critical', 'high', 'medium', 'low', 'unkno
 const STATUS_ORDER = Object.freeze(['new', 'confirmed', 'needs_operator', 'mitigated', 'not_affected']);
 
 /**
- * The ledger filtered and ordered for the operator's eye: narrow by status,
- * layer, repo (empty = all); the most dangerous and least settled first —
- * criticals, highs, the unread — so the office's debt sorts to the top.
+ * The ledger filtered and ordered for the operator's eye: narrow by the
+ * overview's press (severity, status or every open status, where; empty =
+ * all); the most dangerous and least settled first — criticals, highs, the
+ * unread — so the office's debt sorts to the top.
  * Pure.
  * @param {Array<object>} entries
- * @param {{status?: string, layer?: string, repo?: string}} [filters]
+ * @param {{severity?: string, status?: string, where?: string}} [filters]
  */
-export const filterThreats = (entries, { status, layer, repo } = {}) => (entries ?? [])
-  .filter((e) => !status || e.status === status)
-  .filter((e) => !layer || e.layer === layer)
-  .filter((e) => !repo || e.repo === repo)
+export const filterThreats = (entries, filters = {}) => (entries ?? [])
+  .filter((e) => passesTriage(e, filters, statusOwes, whereOfThreat))
   .slice()
   .sort((a, b) => (
     SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity)
     || STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
     || String(b.lastSeenAt || '').localeCompare(String(a.lastSeenAt || ''))
   ));
-
-/**
- * The posture strip's counts line: […] — every
- * status that holds anything, in office order. Empty ledger reads honestly.
- * Pure.
- */
-export const postureCountsLine = (counts) => {
-  const byStatus = counts?.byStatus || {};
-  const parts = THREAT_STATUSES
-    .filter((s) => byStatus[s] > 0)
-    .map((s) => `${statusLabel(s)} ${byStatus[s]}`);
-  return parts.length ? parts.join(' · ') : 'THE LEDGER HOLDS NOTHING';
-};
 
 /**
  * One run of the watch as one line: when, what it added, what it covered.

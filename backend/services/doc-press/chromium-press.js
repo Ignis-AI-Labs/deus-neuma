@@ -16,6 +16,7 @@ import { pathToFileURL } from 'url';
 import WebSocket from 'ws';
 import { createLogger } from './../logger.js';
 import { helperEnvironment } from '../agent-terminal-environment.js';
+import { PRESS_DIR_PREFIX, recordPressOwner, sweepOrphanedPresses } from './press-orphans.js';
 
 const log = createLogger('DocPress.Chromium');
 
@@ -103,7 +104,12 @@ function launchChromium(executable, profileDir) {
     '--mute-audio',
     'about:blank'
   ];
-  const child = spawn(executable, args, { env: pressEnvironment(process.env), stdio: ['ignore', 'ignore', 'pipe'] });
+  // Its own process group, so the press ends the browser with every helper it spawned.
+  const child = spawn(executable, args, {
+    env: pressEnvironment(process.env),
+    stdio: ['ignore', 'ignore', 'pipe'],
+    detached: process.platform !== 'win32',
+  });
   const wsUrl = new Promise((resolve, reject) => {
     let stderrTail = '';
     const timer = setTimeout(
@@ -235,13 +241,17 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
   const marginIn = marginCm / 2.54;
   const executable = locateChromium();
 
-  const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'doc-press-'));
+  // A press whose owner died left its browser running; clear those first (press-orphans.js).
+  const swept = await sweepOrphanedPresses().catch(() => []);
+  if (swept.length) log.warn('swept orphaned presses', { count: swept.length });
+  const workDir = await fs.mkdtemp(path.join(os.tmpdir(), PRESS_DIR_PREFIX));
   const htmlPath = path.join(workDir, 'document.html');
   await fs.writeFile(htmlPath, withPressPolicy(html), 'utf8');
 
   const { child, wsUrl } = launchChromium(executable, path.join(workDir, 'profile'));
   let socket = null;
   try {
+    await recordPressOwner(workDir, child.pid);
     socket = await openSocket(await wsUrl);
     const cdp = createCdpClient(socket);
 
@@ -294,6 +304,14 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
         socket.close();
       } catch {
         // socket already gone — nothing to release
+      }
+    }
+    // The whole group: the browser's helpers can outlive its own exit.
+    if (process.platform !== 'win32') {
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        // the group is already gone
       }
     }
     if (child.exitCode === null) {

@@ -23,6 +23,7 @@ import { HarnessLocalServers } from './HarnessLocalServers.jsx';
 import '../RelinkShell/SettingsApp.css'; // settings-input / settings-set / settings-err, before the desk has loaded them
 import './FirstRunWitness.css';
 import './FirstRunHarness.css';
+import { KeyLink } from '../RelinkShell/KeyLink.jsx';
 
 const ROADS = Object.freeze([
   { id: 'local', name: 'On this machine', body: 'Ollama, LM Studio or llama.cpp — nothing leaves your computer.' },
@@ -176,6 +177,7 @@ export const FirstRunHarness = ({ onDone, onBack }) => {
                 <>
                   <TrainingNotice provider={provider} />
                   {provider.requiresKey && !provider.hasKey ? (
+                    <>
                     <input
                       className="settings-input"
                       type="password"
@@ -186,6 +188,8 @@ export const FirstRunHarness = ({ onDone, onBack }) => {
                       spellCheck={false}
                       aria-label="Provider API key"
                     />
+                    <KeyLink provider={provider.id} />
+                    </>
                   ) : provider.requiresKey ? (
                     <p className="firstrun-witness-note label-data">A KEY IS ALREADY STORED FOR THIS PROVIDER</p>
                   ) : null}

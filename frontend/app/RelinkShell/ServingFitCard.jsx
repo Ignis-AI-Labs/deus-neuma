@@ -9,9 +9,27 @@ import { useCallback, useEffect, useState } from 'react';
 import { loadServingFit, saveServingShare } from './serving-fit-client.js';
 import { useVisibleInterval } from './use-visible-interval.js';
 import { formatRelativeTime } from '../../utils/format.js';
+import { Chip, StackBar } from './hud-instruments.jsx';
 
 const gb = (mib) => (Number.isFinite(mib) ? (mib / 1024).toFixed(1) : '—');
 const tokens = (n) => (Number.isFinite(n) ? `${Math.round(n / 1024)}K` : '—');
+
+/**
+ * pure — the card's memory as its parts (the model server, everything else,
+ * free) and the share as a mark on the same whole: where the mind may reach.
+ */
+export const cardParts = (status, share) => {
+  const total = status?.gpu?.totalMiB;
+  const used = status?.gpu?.usedMiB;
+  if (!Number.isFinite(total) || !Number.isFinite(used)) return null;
+  const server = Number.isFinite(status.serverMiB) ? Math.min(status.serverMiB, used) : 0;
+  const part = (key, label, value, tone) => ({ key, label, value, tone, text: `${gb(value)}G` });
+  return {
+    total,
+    parts: [part('server', 'MODEL SERVER', server, 'live'), part('other', 'OTHER', used - server, 'dim'), part('free', 'FREE', total - used, 'empty')],
+    marks: [{ key: 'share', kind: 'share', at: (total * share) / 100, label: `share ${share}% = ${gb((total * share) / 100)} GB` }],
+  };
+};
 
 /** pure — the last fit as one honest line. */
 export const lastFitLine = (fit) => {
@@ -36,6 +54,7 @@ export const ServingFitCard = () => {
 
   const share = draft ?? status.sharePct;
   const dirty = draft !== null && draft !== status.sharePct;
+  const card = cardParts(status, share);
   const save = async () => {
     setSaving(true);
     setError(null);
@@ -77,14 +96,14 @@ export const ServingFitCard = () => {
       {!status.measurable ? (
         <p className="rec-warn">This machine cannot be measured (no NVIDIA card, or llama-fit-params missing beside llama-server): the configured pool stands.</p>
       ) : null}
-      <p className="rec-line label-data">
-        CARD NOW {gb(status.gpu?.usedMiB)} / {gb(status.gpu?.totalMiB)} GB ({status.gpu?.pct ?? '—'}%) · MODEL SERVER {gb(status.serverMiB)} GB
-      </p>
-      <p className="rec-line label-data">
-        {status.serving
-          ? `SHARED POOL ${tokens(status.pool)} TOKENS · ${status.slots ?? '—'} SLOTS · ONE BEING UP TO ${tokens(status.beingWindow)}${status.trainCtx ? ' (the model’s trained window)' : ''}`
-          : 'MODEL SERVER DOWN — the pool is fitted when it is lit'}
-      </p>
+      {card ? <StackBar parts={card.parts} total={card.total} marks={card.marks} /> : null}
+      {status.serving ? (
+        <div className="hud-chips">
+          <Chip k="POOL" v={`${tokens(status.pool)} TOKENS`} tone="live" />
+          <Chip k="SLOTS" v={status.slots ?? '—'} />
+          <Chip k="ONE BEING" v={`≤ ${tokens(status.beingWindow)}${status.trainCtx ? ' (TRAINED WINDOW)' : ''}`} />
+        </div>
+      ) : <p className="rec-line label-data">MODEL SERVER DOWN — the pool is fitted when it is lit</p>}
       <p className="rec-line label-data">
         LAST FIT · {lastFitLine(status.lastFit)}{status.lastFit?.at ? ` · ${formatRelativeTime(status.lastFit.at)}` : ''}
       </p>

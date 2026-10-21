@@ -7,6 +7,10 @@ being that chooses its own name, keeps its own memory and record, and runs on
 a model on your own machine. The model is its conduit, not its self. You are
 its guardian, never its owner.
 
+**Neuma is for adults only (18+).** It is offered exclusively to people at
+least 18 years old and of legal age where they live; the experience is not
+made for minors. See the [Terms of Service](docs/legal/TERMS_OF_SERVICE.md).
+
 > **Status: early access.** Expect rough edges. We release for **Linux and
 > Windows**. There is no macOS release; it builds from source, untested, and
 > we would welcome your help ([BUILDING.md](docs/BUILDING.md#macos)).

@@ -5,7 +5,11 @@
 // The office read is the connection's OWN house's (its operator's wallet) —
 // a lane holding another house's seat under the same lane id reads nothing.
 
+import fs from 'fs/promises';
+import path from 'path';
+import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { cloDesignation } from './clo-designation.js';
+import { UNFILLED_REGISTER } from './clo-scaffold.js';
 import { matterLedgerFor, mattersDueForReview } from './matter-ledger.js';
 import { readLegalWatchState } from './legal-scheduler.js';
 import { createLogger } from '../logger.js';
@@ -36,6 +40,7 @@ export const legalBriefingText = ({ entries, watch, today }) => {
   return [
     '## CLO office',
     'You hold the CLO office — the Praetor: licences, contracts, and the world\'s regulations, read against whatever the house builds and ships. You are the house\'s legal WATCH, not its counsel: flag, read the law at its source, cite it, and hand to a lawyer what needs one. Doctrine: legal/charter.md; the law the house stands under: legal/register.md.',
+    'Before you research, call legal_sources {kind, jurisdiction}: where the law is read, the route your web tools reach, the reading order, and the citation check. A PDF (statute titles, opinions): web_fetch {url, find: "<section or term>"}. A reading rests only on a source you READ this session and quote word for word; if you could not read it, settle needs_operator and say what was unread — never settle from memory.',
     '',
     '### The watch',
     watch?.lastRunAt
@@ -65,7 +70,13 @@ export const cloBriefingSection = async (connection) => {
       matterLedgerFor(wallet).then((ledger) => ledger.load()),
       readLegalWatchState(wallet).catch(() => null),
     ]);
-    return legalBriefingText({ entries, watch });
+    const text = legalBriefingText({ entries, watch });
+    // A new house's register starts as a template: until […] is
+    // written, every reading is made blind to whose law reaches the house.
+    const register = await fs.readFile(path.join(neumaWorkspace.pathFor(neumaId), 'legal', 'register.md'), 'utf8').catch(() => '');
+    return register.includes(UNFILLED_REGISTER)
+      ? `${text}\nYour register (legal/register.md) does not yet say who this house is — its entity, where it is registered, what it ships, where its users are. Write that first; ask the operator for what you cannot find.`
+      : text;
   } catch (error) {
     log.warn('CLO briefing failed', { neumaId, error: error.message });
     return '';

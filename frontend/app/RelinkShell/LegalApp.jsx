@@ -26,8 +26,8 @@ const LegalAppBody = () => {
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [areaFilter, setAreaFilter] = useState('');
+  // The overview's press: severity, status (or every open one), where.
+  const [filters, setFilters] = useState({});
   const [pick, setPick] = useState('');
   const [seatBusy, setSeatBusy] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -62,7 +62,9 @@ const LegalAppBody = () => {
       posture={posture}
       watch={watch}
       lanes={lanes}
-      entries={filterMatters(matters, { status: statusFilter, area: areaFilter })}
+      all={matters}
+      entries={filterMatters(matters, filters)}
+      now={Date.now()}
       detail={detail}
       busy={busy}
       error={error}
@@ -80,10 +82,8 @@ const LegalAppBody = () => {
       }}
       onCloseDetail={() => setDetail(null)}
       onRunWatch={() => act(setBusy, runLegalWatch)}
-      statusFilter={statusFilter}
-      areaFilter={areaFilter}
-      onStatus={(v) => { uiSound('open'); setStatusFilter(v); }}
-      onArea={(v) => { uiSound('open'); setAreaFilter(v); }}
+      filters={filters}
+      onFilter={(f) => { uiSound('open'); setFilters(f); }}
     />
   );
 };

@@ -100,3 +100,13 @@ Licences read at their sources on 2026-10-20.
 Every forge output (PNG, MP4) carries an AI-generated disclosure in its own
 metadata (`backend/services/image-forge/ai-disclosure.js`); the prompt and
 workflow are stripped.
+
+## Platform marks (desk icons for the outreach platforms)
+
+| Marks | Source | Licence | Notes |
+| ----- | ------ | ------- | ----- |
+| X, Telegram, Discord, Facebook, Mastodon, Bluesky | Simple Icons 16.35.0 | CC0 1.0 (the SVG paths) | Drawn single-colour in `frontend/app/RelinkShell/brand-marks.jsx`. |
+| LinkedIn "in" | drawn in-house (absent from Simple Icons) | — | Same file. |
+
+Each logo remains the trademark of its owner. The desk shows a mark only to
+name the platform a window speaks through; no endorsement is implied.

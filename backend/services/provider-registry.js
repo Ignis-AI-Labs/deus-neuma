@@ -142,9 +142,11 @@ export const getProvider = (id) => BY_ID[id] ?? null;
  * @property {'service'} kind
  * @property {string} service          what the key unlocks, e.g. 'web-search'
  * @property {string} endpoint         the service's base URL
- * @property {null} keyEnv             always null: the encrypted store is the
- *   only home for a service key, so no launch env can stand in for it
+ * @property {string|null} keyEnv      the env name that stands in when nothing is
+ *   saved in the desk (developers); null = the encrypted store is the only home
  * @property {true} requiresKey
+ * @property {string} [group]           the Settings → API heading it sits under
+ * @property {'key'|'url'|'id'} [format] what a valid value looks like
  */
 
 /** @type {ReadonlyArray<ServiceEntry>} */
@@ -152,7 +154,23 @@ export const SERVICE_CATALOG = Object.freeze([
   // Read by the benchmarks repository's search relay through
   // resolveUsableCredential('tavily'). Not the platform's own web_search tool
   // (Founder: web search only for the benchmarks that require it).
-  Object.freeze({ id: 'tavily', name: 'Tavily', kind: 'service', service: 'web-search', endpoint: 'https://api.tavily.com', keyEnv: null, requiresKey: true }),
+  Object.freeze({ id: 'tavily', name: 'Tavily', kind: 'service', service: 'web-search', endpoint: 'https://api.tavily.com', keyEnv: null, requiresKey: true, group: 'Benchmarks', format: 'key' }),
+  // Set in the desk for everyone; the env name stays the developers' door
+  // (stored-secrets.js: saved wins, env is the fallback).
+  Object.freeze({ id: 'exa', name: 'Exa (web search)', kind: 'service', service: 'web-search', endpoint: 'https://api.exa.ai', keyEnv: 'EXA_API_KEY', requiresKey: true, group: 'Web search', format: 'key' }),
+  Object.freeze({ id: 'brave', name: 'Brave Search (web and image search)', kind: 'service', service: 'web-search', endpoint: 'https://api.search.brave.com', keyEnv: 'BRAVE_SEARCH_API_KEY', requiresKey: true, group: 'Web search', format: 'key' }),
+  Object.freeze({ id: 'searxng', name: 'SearXNG address (self-hosted search)', kind: 'service', service: 'web-search', endpoint: null, keyEnv: 'SEARXNG_URL', requiresKey: true, group: 'Web search', format: 'url' }),
+  Object.freeze({ id: 'cloudflare-token', name: 'Cloudflare API token (page reader)', kind: 'service', service: 'page-reader', endpoint: 'https://api.cloudflare.com', keyEnv: 'CLOUDFLARE_API_TOKEN', requiresKey: true, group: 'Page reader', format: 'key' }),
+  Object.freeze({ id: 'cloudflare-account', name: 'Cloudflare account id (page reader)', kind: 'service', service: 'page-reader', endpoint: null, keyEnv: 'CLOUDFLARE_ACCOUNT_ID', requiresKey: true, group: 'Page reader', format: 'id' }),
+  Object.freeze({ id: 'hf-downloads', name: 'Hugging Face token (model downloads)', kind: 'service', service: 'downloads', endpoint: 'https://huggingface.co', keyEnv: 'HF_TOKEN', requiresKey: true, group: 'Model downloads', format: 'key' }),
+  Object.freeze({ id: 'rpc-ethereum', name: 'Ethereum mainnet RPC address', kind: 'service', service: 'chain-rpc', endpoint: null, keyEnv: 'ETH_RPC_URL', requiresKey: true, group: 'Chain RPC', format: 'url' }),
+  Object.freeze({ id: 'rpc-ethereum-sepolia', name: 'Ethereum Sepolia RPC address', kind: 'service', service: 'chain-rpc', endpoint: null, keyEnv: 'ETH_SEPOLIA_RPC_URL', requiresKey: true, group: 'Chain RPC', format: 'url' }),
+  Object.freeze({ id: 'rpc-base', name: 'Base mainnet RPC address', kind: 'service', service: 'chain-rpc', endpoint: null, keyEnv: 'BASE_MAINNET_RPC_URL', requiresKey: true, group: 'Chain RPC', format: 'url' }),
+  // The legal office's keyed research APIs (legal/legal-research-api.js adds the key server-side; the office never holds it).
+  Object.freeze({ id: 'courtlistener', name: 'CourtListener API token (case law, citation checks)', kind: 'service', service: 'legal-research', endpoint: 'https://www.courtlistener.com/api/rest/v4', keyEnv: 'COURTLISTENER_API_TOKEN', requiresKey: true, group: 'Legal research', format: 'key' }),
+  Object.freeze({ id: 'api-data-gov', name: 'api.data.gov key (Congress.gov, GovInfo, Regulations.gov)', kind: 'service', service: 'legal-research', endpoint: 'https://api.data.gov', keyEnv: 'API_DATA_GOV_KEY', requiresKey: true, group: 'Legal research', format: 'key' }),
+  Object.freeze({ id: 'openstates', name: 'Open States API key (state bills)', kind: 'service', service: 'legal-research', endpoint: 'https://v3.openstates.org', keyEnv: 'OPENSTATES_API_KEY', requiresKey: true, group: 'Legal research', format: 'key' }),
+  Object.freeze({ id: 'rpc-base-sepolia', name: 'Base Sepolia RPC address', kind: 'service', service: 'chain-rpc', endpoint: null, keyEnv: 'BASE_SEPOLIA_RPC_URL', requiresKey: true, group: 'Chain RPC', format: 'url' }),
 ]);
 
 const SERVICE_BY_ID = Object.freeze(

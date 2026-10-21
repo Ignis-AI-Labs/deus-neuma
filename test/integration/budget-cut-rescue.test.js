@@ -10,6 +10,7 @@ import { beforeEach, afterEach, expect, test, describe } from 'vitest';
 import { createHarnessTurnKit } from '../helpers/harness-turn-kit.js';
 import { startLocalProvider } from '../helpers/local-provider.js';
 import { runToolRounds } from '../../backend/services/portal-turn-rounds.js';
+import { UNSETTLED_ALLOWANCE } from '../../backend/services/thought-governor.js';
 import { openTurnRecord, closeTurnRecord } from '../../backend/services/tool-action-record.js';
 
 let kit, provider;
@@ -54,6 +55,7 @@ describe('the budget-cut rescue completes a cut answer', () => {
     const close = lastUserMessage(provider.turns[1]);
     expect(close).toContain('cut by the output budget');
     expect(close).toContain('the total is 7 tim');
+    expect(close).toContain(UNSETTLED_ALLOWANCE);
     expect(provider.turns[1].chat_template_kwargs).toEqual({ enable_thinking: false });
     // The completed answer is what stands; the draft remains in the record.
     expect(result.latestResponse).toBe('#### 14');

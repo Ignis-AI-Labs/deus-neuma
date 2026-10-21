@@ -32,6 +32,7 @@ import { argvViolations, buildComfyArgs, decideReapAction, resolveComfyConfig } 
 import { comfyHeadroomGb, engineRamCeilingGb } from './forge-capacity.js';
 import { boxedLaunch, memoryScopeAvailable } from './engine-memory-scope.js';
 import { probeMachine } from '../machine-probe.js';
+import { withStoredHfToken } from '../stored-secrets.js';
 
 export { argvViolations, buildComfyArgs, decideReapAction, resolveComfyConfig };
 
@@ -175,7 +176,7 @@ const bootToReady = async (cfg, waitMs) => {
   const launch = boxedLaunch(cfg.python, args, ramCeilingGb);
   const proc = spawn(launch.cmd, launch.args, {
     cwd: cfg.installDir,
-    env: comfyEngineEnvironment(process.env),
+    env: comfyEngineEnvironment(withStoredHfToken(process.env)),
     stdio: ['ignore', logFd, logFd],
   });
   closeSync(logFd); // the child holds its own descriptor

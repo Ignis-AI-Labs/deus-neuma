@@ -443,7 +443,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   // (scan / assess / file) are INTENTS — rows on the `intents` server above,
   // the seat re-verified at validate time, before any card.
   legal: {
-    allowed: ['legal_posture', 'legal_matters_list', 'legal_matter_get'],
+    allowed: ['legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api'],
     denied: [],
     requireApproval: [],
   },

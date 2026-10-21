@@ -31,6 +31,8 @@ export const ACT_FAMILIES = Object.freeze({
     'security_threat_get', 'security.assess',
     // CLO office (2026-10-01): one matter, and the reading that settles it.
     'legal_matter_get', 'legal.assess',
+    'legal_sources', // where the law is read — a read of the office's reference
+    'legal_research_api', // one official legal database, read with the house's key
     'read_history', // one folder's git log — a read of the record
   ]),
   // Looking at what EXISTS — a spread rather than a single thing.

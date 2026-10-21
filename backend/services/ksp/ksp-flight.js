@@ -215,7 +215,7 @@ export class KspFlightBridge {
       const expected = expectedForCommand(command, before);
       const receipt = Object.freeze({
         id: crypto.randomUUID(),
-        protocol: 'cael-v1',
+        protocol: 'veris-v1',
         issuedAt: isoNow(),
         command: command.command,
         reason: command.reason,

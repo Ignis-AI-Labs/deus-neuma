@@ -142,6 +142,55 @@ The rules:
 SHINKEI is enforced in review like any other rule in this document: a component
 with a fake gauge fails review.
 
+## JŌHŌ SEKKEI — 情報設計, "INFORMATION DESIGN"
+
+*Jōhō* (情報, information) + *sekkei* (設計, design). SHINKEI says every
+instrument must measure something real; JŌHŌ SEKKEI says the instruments come
+**first**. It is the core design principle of every surface that holds data,
+and it is locked: a surface may look beautiful, but it is never only
+beautiful — every visual it draws carries objective data.
+
+A data surface is designed by the questions its operator brings to it, and
+answers them by shape before it answers them in words:
+
+1. **Overview first, then filter, then detail.** The top of every data window
+   answers at a glance: *what needs me now, where is it, how much is there,
+   how long has it waited.* Rows of text are the drill-down, never the
+   overview.
+2. **Every count is a door.** A number on an overview narrows what lies below
+   it to exactly the things it counted; the same press again returns
+   everything. The view always says what it is showing and offers the way
+   back (`SHOWING 1 OF 574 · CRITICAL · NEW · SHOW ALL`).
+3. **Priority is drawn, not written.** One severity scale everywhere: alert
+   for critical, alert-dim for high, signal at falling strength below,
+   ink for what is settled. Alert colour is spent only on what cannot wait.
+   Open criticals and highs **stand** at the top of their window until each
+   is settled — the operator is reminded, never left to find them.
+4. **The form follows the data's shape.**
+
+   | The data | The form |
+   | -------- | -------- |
+   | a part of a bounded whole (load, memory, share) | dial, or a stacked bar of its parts |
+   | a value against its own limits (a temperature, a clock) | a bar on a stated axis with the limit marked on it |
+   | many readings of one kind (cores, drives, DIMMs) | a heatmap or a row of small multiples on one shared axis |
+   | counts across two dimensions (severity × status) | a matrix whose cells are shaded by count |
+   | where something lives (repo, area, part) | bars per place, split by severity |
+   | change over time | a trace with its window and its top labelled |
+   | a discrete count of slots | segments, one per slot |
+   | a setting, not a measurement | a chip — label and value, no gauge |
+
+5. **Packed panels, not a scroll of prose.** Panels sit on a grid sized to
+   the window (container queries), grouped by what the operator thinks in —
+   the part, the place, the severity — so the whole picture reads in one or
+   two screens.
+6. **SHINKEI binds every mark.** A shade, a bar, a sweep is a measured number
+   on a true scale; a missing reading shows `—`, never a drawn zero.
+
+Reference implementations: the SUBSTRATE window
+(`frontend/app/RelinkShell/hud-instruments.jsx`, `MachinePanels.jsx`) and the
+triage overview shared by SECURITY and LEGAL (`TriageOverview.jsx`,
+`triage-view.js`). Reuse them before drawing a new instrument.
+
 ## SOUND REGISTER (reserved — Founder's domain)
 
 Sound design is owned by Founder. The design
@@ -558,6 +607,7 @@ permitted, climbing requires the demand to be real.
 - [ ] Captions state true counts (rings, ticks, channels, paths).
 - [ ] Every loop is a genuinely continuous process, or a labeled drill.
 - [ ] Density level counted and within budget (components + instruments).
+- [ ] JŌHŌ SEKKEI: the overview answers what / where / how much / how long by shape; every count filters; open criticals and highs stand at the top.
 - [ ] Every element belongs to a plane; the level's plane allowance holds.
 - [ ] Reduced-motion final states exist and were viewed with my own eyes.
 

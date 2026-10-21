@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uiSound } from '../../services/ui-sound.js';
 import { getWebAccess, setWebAccess } from '../../services/web-client.js';
+import { KeyLink } from './KeyLink.jsx';
 
 const BACKEND_LABEL = Object.freeze({
   exa: 'Exa Instant',
@@ -79,10 +80,14 @@ export const WebSection = () => {
             <span className="settings-k">{t('web.searchKey')}</span>
             <span className="settings-v">{searchBackendLabel(state.searchBackend)}</span>
           </div>
+          <KeyLink family="web" id="exa" lead="GET A KEY, SAVE IT IN SETTINGS → API" />
+          <KeyLink family="web" id="brave" lead="GET A KEY, SAVE IT IN SETTINGS → API" />
+          <KeyLink family="web" id="searxng" lead="SELF-HOST, SAVE ITS ADDRESS IN SETTINGS → API" />
           <div className="settings-row">
             <span className="settings-k">{t('web.pageReaderKey')}</span>
             <span className="settings-v">{PAGE_READER_LABEL[state.pageReader] || state.pageReader}</span>
           </div>
+          <KeyLink family="web" id="cloudflare" lead="GET A TOKEN, SAVE IT IN SETTINGS → API" />
         </div>
       ) : (
         !loadError && <p className="settings-note">{t('web.reading')}</p>

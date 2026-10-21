@@ -28,11 +28,15 @@
 // sha512 and the installer come from one bucket, so TLS + sha512 trust anyone
 // who can write it. autoDownload is OFF: on update-available the app fetches
 // the same latest*.yml and its .sig, checks the offline release key's ed25519
-// signature (release-signature.cjs, key in release-public-key.cjs), checks the
-// signed version and sha512s ARE what electron-updater parsed, and only then
-// downloads (self) or tells the user (notify). Anything less — no key, no
-// signature, a bad one, a different feed — downloads nothing, logs why, and
-// shows one quiet […] notice.
+// signature (release-signature.cjs, key in release-public-key.cjs) under the
+// feed name THIS app asked for (its own platform + arch — so a signed feed for
+// another platform never verifies), checks the whole signed offer IS what
+// electron-updater parsed, and only then downloads (self) or tells the user
+// (notify). A failed check is asked once more past every cache (a .sig cached
+// apart from a new yml is not a forgery) before it stands. Anything less — no
+// key, no signature, a bad one, a different feed — downloads nothing, logs
+// why, and shows one quiet […] notice. A self install also
+// downloads only its own file type (AppImage on Linux, exe on Windows).
 
 const { refreshResidency } = require('./residency.cjs');
 const { RELEASE_PUBLIC_KEY } = require('./release-public-key.cjs');
@@ -41,6 +45,7 @@ const {
   channelFileFor,
   checkSignedFeed,
   releasePublicKey,
+  unfitForPlatform,
 } = require('./release-signature.cjs');
 
 const FEED_URL = 'https://deusneuma.ai/updates/';
@@ -126,6 +131,12 @@ const unverifiedNoticeFor = (version) => ({
   body: 'It was not downloaded, and nothing on this machine changed.',
 });
 
+/** The quiet notice for a signed offer whose update file is not this install's type. */
+const unfitNoticeFor = (version) => ({
+  title: `Deus Neuma ${version} is available — not as an update for this install`,
+  body: 'Its update file does not fit this system, so it was not downloaded. Get it from the downloads page.',
+});
+
 /**
  * What the tray menu gains, as data: an entry or null. `ready` (a downloaded
  * update awaiting install) outranks `available` (a system-package install that
@@ -164,9 +175,13 @@ const trayItems = () => {
   }];
 };
 
-// impure — the feed electron-updater just read, fetched again as bytes, with its detached signature
-const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile) => {
-  const ask = (name) => fetchImpl(new URL(name, feedUrl).href, { credentials: 'omit', cache: 'no-store' });
+// impure — the feed electron-updater just read, fetched again as bytes, with its detached signature.
+// Every read sends no-cache (fetch's no-store mode adds the headers), but a CDN may answer from its
+// cache anyway: the fresh read also carries a query no cache has seen, as electron-updater's does.
+const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile, fresh = false) => {
+  const bust = fresh ? `?noCache=${Date.now().toString(36)}` : '';
+  const options = { credentials: 'omit', cache: 'no-store' };
+  const ask = (name) => fetchImpl(new URL(`${name}${bust}`, feedUrl).href, options);
   const yml = await ask(channelFile);
   if (!yml.ok) throw new Error(`${channelFile} answered ${yml.status}`);
   const ymlBytes = Buffer.from(await yml.arrayBuffer());
@@ -177,18 +192,43 @@ const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile) => {
 };
 
 /**
+ * The verdict on an offer from the signed feed on the site. A failing verdict is asked again once,
+ * past every cache, before it stands — it still fails closed. impure (network)
+ * @param {{ fetchImpl: Function, feedUrl: string, channelFile: string,
+ *   publicKey: import('node:crypto').KeyObject, offered: object }} input
+ * @returns {Promise<{ ok: true, signed: object, refreshed: boolean } | { ok: false, reason: string,
+ *   firstReason?: string }>}
+ */
+const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered }) => {
+  const read = async (fresh) => {
+    try {
+      const { ymlBytes, sigText } = await fetchSignedFeed(fetchImpl, feedUrl, channelFile, fresh);
+      return checkSignedFeed({ fileName: channelFile, ymlBytes, sigText, publicKey, offered });
+    } catch (error) {
+      return { ok: false, reason: `the signed feed could not be fetched: ${error.message}` };
+    }
+  };
+  const first = await read(false);
+  if (first.ok) return { ...first, refreshed: false };
+  const second = await read(true);
+  return second.ok ? { ...second, refreshed: true, firstReason: first.reason } : second;
+};
+
+/**
  * Wire a configured updater to the app: verify every offer, then download (self) or tell the
  * user (notify); notices and the tray follow. Shared by init and the signature proof
  * (scripts/prove-update-signature.mjs), so the proof drives this exact code.
  *
  * @param {{ updater: object, form: 'self'|'notify', feedUrl: string, Notification: any,
  *   refreshTray: () => void, log: object, publicKeyText: string, fetchImpl: Function,
- *   channelFile: string }} deps — publicKeyText: the embedded form (release-public-key.cjs)
+ *   channelFile: string, platform?: string }} deps — publicKeyText: the embedded form
+ *   (release-public-key.cjs); channelFile: the feed name derived from THIS app's platform + arch
  * @returns {{ check: () => Promise<boolean> }}
  */
 // impure
 const wireUpdater = ({
   updater, form, feedUrl, Notification, refreshTray, log, publicKeyText, fetchImpl, channelFile,
+  platform = process.platform,
 }) => {
   const publicKey = releasePublicKey(publicKeyText);
   const noticed = new Set(); // one OS notice per kind per version per run
@@ -205,13 +245,10 @@ const wireUpdater = ({
 
   // impure — the verdict on an offer; without a key there is nothing to fetch
   const verdictOn = async (info) => {
-    if (!publicKey) return checkSignedFeed({ ymlBytes: Buffer.alloc(0), sigText: null, publicKey, offered: info });
-    try {
-      const { ymlBytes, sigText } = await fetchSignedFeed(fetchImpl, feedUrl, channelFile);
-      return checkSignedFeed({ ymlBytes, sigText, publicKey, offered: info });
-    } catch (error) {
-      return { ok: false, reason: `the signed feed could not be fetched: ${error.message}` };
-    }
+    if (!publicKey) return { ok: false, reason: 'no release public key is embedded in this build' };
+    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey, offered: info });
+    if (verdict.refreshed) log.info?.(`[neuma] update ${info.version}: the first read was stale (${verdict.firstReason}); the fresh read verified`);
+    return verdict;
   };
 
   // impure — the gate between […] and any byte of X
@@ -223,6 +260,12 @@ const wireUpdater = ({
       return;
     }
     log.info?.(`[neuma] update ${info.version} carries a valid release signature`);
+    const unfit = form === 'self' ? unfitForPlatform(verdict.signed, platform) : null;
+    if (unfit) {
+      log.warn(`[neuma] update ${info.version} not downloaded — ${unfit}`);
+      announce(`unfit ${info.version}`, unfitNoticeFor(info.version), true);
+      return;
+    }
     state.availableVersion = info.version;
     if (form === 'self') {
       // A failed download is dispatched as the updater's 'error' event, logged below.
@@ -306,6 +349,7 @@ const init = ({
     publicKeyText: RELEASE_PUBLIC_KEY,
     fetchImpl: (url, options) => net.fetch(url, options),
     channelFile: channelFileFor(platform, process.arch),
+    platform,
   });
 
   timers = [
@@ -333,8 +377,10 @@ module.exports = {
   installForm,
   noticeFor,
   unverifiedNoticeFor,
+  unfitNoticeFor,
   trayUpdateEntry,
   trayItems,
+  siteVerdict,
   wireUpdater,
   init,
 };

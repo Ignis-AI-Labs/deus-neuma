@@ -15,6 +15,14 @@
  *   self   signed by another key              → no byte requested
  *   self   no .sig on the feed                → no byte requested
  *   self   empty embedded key                 → no byte requested, the .sig never even asked for
+ *   self   cross-channel: a validly signed
+ *          Windows latest.yml + its .sig served
+ *          as this platform's feed            → no byte requested: the signature is bound to its name
+ *   self   an .exe feed signed for THIS
+ *          channel (a signing mistake)        → no byte requested: Linux self-updates only from an
+ *                                               AppImage; […] notice
+ *   self   stale cached .sig, fresh on a
+ *          cache-busted re-read              → downloads: the second read verified
  *   notify valid signature                    → "is available" notice, no byte requested
  *   notify no .sig                            → […] notice only
  *
@@ -38,15 +46,17 @@ const say = (line) => process.stderr.write(`[sig-proof] ${line}\n`);
 
 const VERSION = '9.9.9';
 const ARTIFACT = `Deus-Neuma-${VERSION}-x86_64.AppImage`;
+const EXE = `Deus-Neuma-${VERSION}-x64.exe`;
 const CHANNEL = channelFileFor(process.platform, process.arch);
+const OTHER_CHANNEL = CHANNEL === 'latest.yml' ? 'latest-linux.yml' : 'latest.yml';
 const sha512 = (bytes) => createHash('sha512').update(bytes).digest('base64');
-const feedFor = (bytes) => Buffer.from([
+const feedFor = (bytes, artifact = ARTIFACT) => Buffer.from([
   `version: ${VERSION}`,
   'files:',
-  `  - url: ${ARTIFACT}`,
+  `  - url: ${artifact}`,
   `    sha512: ${sha512(bytes)}`,
   `    size: ${bytes.length}`,
-  `path: ${ARTIFACT}`,
+  `path: ${artifact}`,
   `sha512: ${sha512(bytes)}`,
   "releaseDate: '2026-10-20T00:00:00.000Z'",
   '',
@@ -56,19 +66,29 @@ const real = randomBytes(512 * 1024);
 const evil = randomBytes(512 * 1024);
 const realFeed = feedFor(real);
 const evilFeed = feedFor(evil);
+const exeFeed = feedFor(real, EXE);
+const staleFeed = feedFor(evil); // the release before: its .sig is what a cache still holds
 const keyA = generateKeyPairSync('ed25519');
 const keyB = generateKeyPairSync('ed25519');
 const KEY_A = embeddedFormOf(keyA.publicKey);
+const sigA = (feed, name = CHANNEL) => signFeed(name, feed, keyA.privateKey);
+const NO_MATCH = new RegExp(`signature does not match ${CHANNEL.replace(/\./g, '\\.')}`);
+const NO_SIG = new RegExp(`no signature for ${CHANNEL.replace(/\./g, '\\.')}`);
+const UNVERIFIED = /notice — Deus Neuma .* could not be verified/;
+const UNFIT = /notice — Deus Neuma .* not as an update for this install/;
 
 const CASES = [
-  { name: 'self · valid signature', form: 'self', key: KEY_A, feeds: [realFeed], sig: signFeed(realFeed, keyA.privateKey), bytes: real, expectDownload: true },
-  { name: 'self · yml + installer swapped', form: 'self', key: KEY_A, feeds: [evilFeed], sig: signFeed(realFeed, keyA.privateKey), bytes: evil, reason: /signature does not match the feed/ },
-  { name: 'self · split view', form: 'self', key: KEY_A, feeds: [evilFeed, realFeed], sig: signFeed(realFeed, keyA.privateKey), bytes: evil, reason: /is not the signed feed: the offered files or their sha512/ },
-  { name: 'self · another key', form: 'self', key: KEY_A, feeds: [realFeed], sig: signFeed(realFeed, keyB.privateKey), bytes: real, reason: /signature does not match the feed/ },
-  { name: 'self · no .sig', form: 'self', key: KEY_A, feeds: [realFeed], sig: null, bytes: real, reason: /the feed has no signature/ },
-  { name: 'self · empty embedded key', form: 'self', key: '', feeds: [realFeed], sig: signFeed(realFeed, keyA.privateKey), bytes: real, reason: /no release public key is embedded/, sigNeverAsked: true },
-  { name: 'notify · valid signature', form: 'notify', key: KEY_A, feeds: [realFeed], sig: signFeed(realFeed, keyA.privateKey), bytes: real, notice: new RegExp(`notice — Deus Neuma ${VERSION} is available$`, 'm') },
-  { name: 'notify · no .sig', form: 'notify', key: KEY_A, feeds: [realFeed], sig: null, bytes: real, reason: /the feed has no signature/ },
+  { name: 'self · valid signature', form: 'self', key: KEY_A, feeds: [realFeed], sig: sigA(realFeed), bytes: real, expectDownload: true },
+  { name: 'self · yml + installer swapped', form: 'self', key: KEY_A, feeds: [evilFeed], sig: sigA(realFeed), bytes: evil, reason: NO_MATCH },
+  { name: 'self · split view', form: 'self', key: KEY_A, feeds: [evilFeed, realFeed], sig: sigA(realFeed), bytes: evil, reason: /is not the signed feed: the offered files or their sha512/ },
+  { name: 'self · another key', form: 'self', key: KEY_A, feeds: [realFeed], sig: signFeed(CHANNEL, realFeed, keyB.privateKey), bytes: real, reason: NO_MATCH },
+  { name: 'self · no .sig', form: 'self', key: KEY_A, feeds: [realFeed], sig: null, bytes: real, reason: NO_SIG },
+  { name: 'self · empty embedded key', form: 'self', key: '', feeds: [realFeed], sig: sigA(realFeed), bytes: real, reason: /no release public key is embedded/, sigNeverAsked: true },
+  { name: `self · cross-channel: a signed ${OTHER_CHANNEL} served as ${CHANNEL}`, form: 'self', key: KEY_A, feeds: [exeFeed], sig: sigA(exeFeed, OTHER_CHANNEL), bytes: real, artifact: EXE, reason: NO_MATCH },
+  { name: `self · an .exe feed signed for ${CHANNEL}`, form: 'self', key: KEY_A, feeds: [exeFeed], sig: sigA(exeFeed), bytes: real, artifact: EXE, reason: /is not an \.AppImage/, notice: UNFIT, noUnverifiedNotice: true },
+  { name: 'self · stale cached .sig, fresh on re-read', form: 'self', key: KEY_A, feeds: [realFeed], sig: sigA(realFeed), staleSig: sigA(staleFeed), bytes: real, expectDownload: true, log: /the first read was stale .*; the fresh read verified/ },
+  { name: 'notify · valid signature', form: 'notify', key: KEY_A, feeds: [realFeed], sig: sigA(realFeed), bytes: real, notice: new RegExp(`notice — Deus Neuma ${VERSION} is available$`, 'm') },
+  { name: 'notify · no .sig', form: 'notify', key: KEY_A, feeds: [realFeed], sig: null, bytes: real, reason: NO_SIG },
 ];
 
 const FIXTURE_MAIN = `
@@ -114,17 +134,19 @@ app.whenReady().then(async () => {
 // impure — one case: its own feed server, its own Electron
 const runCase = async (c, root) => {
   const requests = [];
+  const artifact = c.artifact ?? ARTIFACT;
   let feedHits = 0;
   const server = createServer((req, res) => {
-    const pathname = new URL(req.url, 'http://feed').pathname;
+    const { pathname, search } = new URL(req.url, 'http://feed');
     requests.push(pathname);
     if (pathname === `/${CHANNEL}`) {
       const body = c.feeds[Math.min(feedHits, c.feeds.length - 1)];
       feedHits += 1;
       res.writeHead(200, { 'content-type': 'text/yaml' }).end(body);
     } else if (pathname === `/${CHANNEL}.sig` && c.sig) {
-      res.writeHead(200, { 'content-type': 'text/plain' }).end(c.sig);
-    } else if (pathname === `/${ARTIFACT}`) {
+      // a cache keyed by URL: only a query it has never seen reaches the fresh signature
+      res.writeHead(200, { 'content-type': 'text/plain' }).end(c.staleSig && search === '' ? c.staleSig : c.sig);
+    } else if (pathname === `/${artifact}`) {
       res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': c.bytes.length }).end(c.bytes);
     } else {
       res.writeHead(404).end();
@@ -164,7 +186,7 @@ const runCase = async (c, root) => {
   await new Promise((resolve) => server.close(resolve));
 
   const result = JSON.parse(out.match(/^RESULT (.*)$/m)?.[1] ?? '{}');
-  const artifactAsked = requests.includes(`/${ARTIFACT}`);
+  const artifactAsked = requests.includes(`/${artifact}`);
   const problems = [];
   if (code !== 0) problems.push(`electron exited ${code}`);
   if (!requests.includes(`/${CHANNEL}`)) problems.push('the feed was never asked');
@@ -177,9 +199,11 @@ const runCase = async (c, root) => {
   }
   if (c.reason) {
     if (!new RegExp(`update ${VERSION} not downloaded — .*${c.reason.source}`).test(out)) problems.push(`no logged reason matching ${c.reason}`);
-    if (!/notice — Deus Neuma .* could not be verified/.test(out)) problems.push('no "could not be verified" notice');
+    if (!c.noUnverifiedNotice && !UNVERIFIED.test(out)) problems.push('no "could not be verified" notice');
+    if (c.noUnverifiedNotice && UNVERIFIED.test(out)) problems.push('a validly signed feed was called unverified');
   }
   if (c.notice && !c.notice.test(out)) problems.push(`no notice matching ${c.notice}`);
+  if (c.log && !c.log.test(out)) problems.push(`no log line matching ${c.log}`);
   if (c.form === 'notify' && c.reason && /notice — Deus Neuma \S+ is available$/m.test(out)) problems.push('an unverified update was announced as available');
   if (c.sigNeverAsked && requests.includes(`/${CHANNEL}.sig`)) problems.push('the .sig was fetched with no key to check it');
   const reasonLine = out.match(/not downloaded — (.*)$/m)?.[1];

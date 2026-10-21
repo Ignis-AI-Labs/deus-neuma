@@ -19,6 +19,7 @@ import {
 
 import { voiceHelperEnvironment } from '../services/voice/engine-process.js';
 import { createLogger } from '../services/logger.js';
+import { withStoredHfToken } from '../services/stored-secrets.js';
 const log = createLogger('Voice.Engines');
 
 const router = Router();
@@ -107,7 +108,7 @@ router.post('/local/:id/download', requireInstallOwner, (req, res) => {
 
   const proc = spawn(uvBin(), ['run', 'download.py', engineId], {
     cwd: downloaderDir,
-    env: voiceHelperEnvironment(process.env, engineId),
+    env: voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });

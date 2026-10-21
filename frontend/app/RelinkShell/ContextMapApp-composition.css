@@ -1,0 +1,79 @@
+/* CONTEXT MAP · COMPOSITION — the window read as instruments
+   (CompositionView.jsx). LINE & CYCLE: signal = what the window holds and
+   what was measured; ink = settled structure; alert = only what was cut. */
+
+.ctx-comp { display: flex; flex-direction: column; gap: 10px; font-family: var(--font-data); }
+.ctx-h { color: var(--color-heading); font-size: 10px; letter-spacing: 0.12em; }
+.ctx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; align-items: start; }
+.ctx-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; box-shadow: inset 0 0 0 1px var(--line); background: var(--color-glass-light); min-width: 0; }
+.ctx-panel-h { margin: 0; font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-tertiary); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+
+/* token figures — a measured count is live truth from the provider: signal */
+.ctx-tok { color: var(--color-text-secondary); font-family: var(--font-data); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ctx-tok-measured { color: var(--signal); }
+.ctx-est { color: var(--color-text-disabled); font-size: 9px; letter-spacing: 0.1em; }
+.ctx-note { color: var(--color-text-tertiary); font-size: 11px; line-height: 1.5; margin: 0; }
+
+/* ── THE WINDOW ───────────────────────────────────────── */
+.ctx-window-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ctx-big .ctx-tok { font-size: var(--text-3xl); font-weight: 200; line-height: 1; color: var(--color-text-primary); }
+.ctx-big .ctx-tok-measured { color: var(--signal); }
+.ctx-window-of { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.ctx-window-bar { position: relative; display: flex; height: 16px; background: var(--color-glass-hover); box-shadow: inset 0 0 0 1px var(--line); }
+.ctx-window-bar i { display: block; height: 100%; }
+.ctx-part-input { background: var(--signal); }
+.ctx-part-output { background: var(--signal-dim); }
+.ctx-window-bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; }
+.ctx-mark-peak { background: var(--color-text-primary); }
+.ctx-mark-cache { background: var(--color-text-tertiary); }
+.ctx-readouts { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.ctx-readout { display: inline-flex; align-items: baseline; gap: 6px; font-size: 10px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.ctx-sw { display: inline-block; width: 8px; height: 8px; flex: 0 0 auto; }
+.ctx-readout .ctx-sw.ctx-mark-peak, .ctx-readout .ctx-sw.ctx-mark-cache { width: 2px; }
+
+/* ── the families: what each part of the window is FOR ── */
+.ctx-fam-identity { --fam: var(--signal); }
+.ctx-fam-conversation { --fam: var(--color-text-primary); }
+.ctx-fam-platform { --fam: var(--signal-dim); }
+.ctx-fam-work { --fam: var(--color-text-secondary); }
+.ctx-fam-moment { --fam: color-mix(in srgb, var(--signal) 32%, var(--color-text-disabled)); }
+.ctx-fam-tools { --fam: var(--color-text-tertiary); }
+.ctx-fam-other { --fam: var(--color-text-disabled); }
+.ctx-fam-bar { display: flex; height: 12px; gap: 1px; }
+.ctx-fam-bar i { display: block; min-width: 2px; background: var(--fam); }
+.ctx-fam-bar i.is-dim { opacity: 0.2; }
+.ctx-fams { display: flex; flex-wrap: wrap; gap: 4px; }
+.ctx-fam {
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 8px;
+  background: none; border: var(--border-width-thin) solid var(--line);
+  font-family: var(--font-data); font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-secondary); cursor: pointer;
+}
+.ctx-fam .ctx-sw { background: var(--fam); }
+.ctx-fam b { font-weight: 400; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.ctx-fam:hover, .ctx-fam.is-lit { border-color: var(--line-hover); color: var(--color-text-primary); }
+.ctx-fam.is-lit { box-shadow: inset 0 -2px 0 var(--fam); }
+
+/* sections, ranked on one shared axis (the largest section) */
+.ctx-secs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ctx-sec { display: grid; grid-template-columns: minmax(110px, 34%) 1fr auto; gap: 8px; align-items: center; outline: none; }
+.ctx-sec:focus-visible { background: var(--color-glass-hover); }
+.ctx-sec-name { font-size: 10px; letter-spacing: 0.08em; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-sec-track { height: 8px; background: var(--color-glass-hover); }
+.ctx-sec-track i { display: block; height: 100%; background: var(--fam); }
+.ctx-sec-n { display: inline-flex; gap: 6px; align-items: baseline; justify-content: flex-end; min-width: 92px; }
+.ctx-sec-n small { font-size: 9px; color: var(--color-text-disabled); min-width: 28px; text-align: right; }
+.ctx-more { margin: 0; display: flex; gap: 12px; align-items: center; font-size: 9px; color: var(--color-text-disabled); }
+.ctx-more button { background: none; border: var(--border-width-thin) solid var(--line); padding: 2px 8px; font-family: var(--font-data); font-size: 9px; letter-spacing: 0.14em; color: var(--signal); cursor: pointer; }
+
+/* ── WHAT WAS CUT ─────────────────────────────────────── */
+.ctx-cut { margin: 0; font-size: 10px; letter-spacing: 0.08em; line-height: 1.5; color: var(--color-text-tertiary); }
+.ctx-cut.is-loud { padding: 4px 8px; border-left: var(--border-width-medium) solid var(--alert); background: var(--alert-tint); color: var(--color-text-primary); outline: none; }
+.ctx-cut.is-loud b { font-weight: 400; color: var(--alert); letter-spacing: 0.16em; margin-right: 6px; }
+.ctx-refs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ctx-ref { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 2px 8px; align-items: center; outline: none; }
+.ctx-ref:focus-visible { background: var(--color-glass-hover); }
+.ctx-ref-id { font-size: 10px; color: var(--signal); }
+.ctx-ref-track { height: 6px; background: var(--color-glass-hover); box-shadow: inset 0 0 0 1px var(--line); }
+.ctx-ref-track i { display: block; height: 100%; background: var(--signal-dim); }
+.ctx-ref-kept { grid-column: 1 / -1; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.ctx-ref-kind { grid-column: 1 / -1; font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-disabled); }

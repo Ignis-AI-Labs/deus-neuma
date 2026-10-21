@@ -155,10 +155,26 @@ test('the security window: the dangerous first, a verdict reopened, the watch cl
   // loud is SEEN: the critical's tag wears another color than the quiet low's
   expect(await colorOf(topSeverity)).not.toBe(await colorOf(lowRow.locator('.sec-tag').first()));
   await expect(rows.filter({ hasText: UNREAD.externalId }).locator('.sec-row-title')).toHaveText(UNREAD.title);
-  await expect(sec.locator('.sec-strip')).toContainText('NEW 3');
-  await expect(sec.locator('.sec-strip')).toContainText('NOT AFFECTED 1');
-  await expect(sec.locator('.sec-strip')).toContainText('MITIGATED 2');
+  // THE TRIAGE OVERVIEW — what cannot wait stands first, counted from the ledger
+  const tri = sec.locator('.tri');
+  await expect(tri.locator('.tri-must')).toHaveAttribute('role', 'alert');
+  await expect(tri.getByRole('button', { name: '1 critical open' })).toBeVisible();
+  await expect(tri.getByRole('button', { name: '1 high open' })).toBeVisible();
+  const cell = (label) => tri.getByRole('button', { name: label, exact: true });
+  for (const label of ['1 CRITICAL NEW', '1 HIGH NEW', '1 LOW NEW', '1 MEDIUM NOT AFFECTED', '1 MEDIUM MITIGATED', '1 HIGH MITIGATED']) {
+    await expect(cell(label)).toBeVisible();
+  }
+  await expect(tri.locator('.tri-showing')).toContainText('SHOWING 6 OF 6 THREATS');
   await shot(win, 'security-01-ledger');
+
+  // a count is a door: the critical cell narrows the ledger to exactly it; a second press returns all
+  await cell('1 CRITICAL NEW').click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first().locator('.sec-row-id')).toHaveText(CRITICAL.externalId);
+  await expect(tri.locator('.tri-showing')).toContainText('SHOWING 1 OF 6 THREATS · CRITICAL · NEW');
+  await shot(win, 'security-01b-critical-door');
+  await cell('1 CRITICAL NEW').click();
+  await expect(rows).toHaveCount(6);
 
   // A CSO-SETTLED verdict opens whole, and offers REOPEN
   const settledRow = rows.filter({ hasText: SETTLED.externalId });
@@ -194,8 +210,8 @@ test('the security window: the dangerous first, a verdict reopened, the watch cl
   await expect(reopenRow.locator('.sec-report-head')).not.toContainText('INVALID DATE');
   await expect(reopenRow.locator('.sec-report-body')).toHaveText('reopened by the operator from the desk');
   await expect(settledRow.locator('.sec-tag').nth(1)).toHaveText('NEW');
-  await expect(sec.locator('.sec-strip')).toContainText('NEW 4');
-  await expect(sec.locator('.sec-strip')).not.toContainText('NOT AFFECTED');
+  await expect(cell('1 MEDIUM NEW')).toBeVisible();
+  await expect(cell('0 MEDIUM NOT AFFECTED')).toBeDisabled();
   await shot(win, 'security-03-reopened');
 
   // AN UNREAD threat: nothing to reopen, and it says it is unread

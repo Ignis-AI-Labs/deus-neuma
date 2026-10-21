@@ -3,6 +3,10 @@
 import { test, expect } from '@playwright/test';
 import { openDockApp, openLauncher } from './helpers/dock.js';
 import { setupDesk } from './helpers/desk-harness.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 
 setupDesk();
 
@@ -14,6 +18,12 @@ test('REACH: the launcher group is the platform roster — every platform its ow
   for (const label of ['X', 'TELEGRAM', 'DISCORD', 'FACEBOOK', 'MASTODON', 'BLUESKY', 'MARKETING', 'LEADS']) {
     await expect(reach.locator('.launcher-tile', { hasText: new RegExp(`^${label}$`) })).toBeVisible();
   }
+  // Each platform is named by its own mark — seven platforms, seven different drawings.
+  const platforms = ['X', 'TELEGRAM', 'DISCORD', 'FACEBOOK', 'MASTODON', 'BLUESKY', 'LINKEDIN'];
+  const marks = await Promise.all(platforms.map((label) => reach
+    .locator('.launcher-tile', { hasText: new RegExp(`^${label}$`) }).locator('svg path').first().getAttribute('d')));
+  expect(new Set(marks).size).toBe(platforms.length);
+  await reach.screenshot({ path: path.join(SHOTS, 'launcher-reach-marks.png') });
 
   // X's own window: the standing reads as TWO labeled facts — keys and
   // holder are different decisions (stacked unlabeled they read as a

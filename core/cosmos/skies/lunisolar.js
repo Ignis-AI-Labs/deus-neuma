@@ -33,7 +33,7 @@ export const meridianOf = (reading, epochMs) => {
   if (reading === 'china') return before(1929, 1, 1) ? { offset: 465 + 40 / 60, label: 'Beijing 116°25′E (imperial)' } : { offset: 480, label: '120°E (UTC+8)' };
   if (reading === 'japan') return { offset: 540, label: '135°E (UTC+9)' };
   if (reading === 'korea') return before(1912, 1, 1) ? meridianOf('china', epochMs) : { offset: 540, label: '135°E (UTC+9)' };
-  if (reading === 'vietnam') return before(1968, 1, 1) ? meridianOf('china', epochMs) : { offset: 420, label: '105°E (UTC+N)' };
+  if (reading === 'vietnam') return before(1968, 1, 1) ? meridianOf('china', epochMs) : { offset: 420, label: '105°E (UTC+7)' };
   throw new Error(`unknown lunisolar reading: ${reading}`);
 };
 

@@ -51,6 +51,7 @@ import { resumeBenchChain } from './services/bench/bench-launch.js';
 import { startLineWidthWatch } from './services/substrate-lease.js';
 import { comfyShutdown } from './services/image-forge/comfyui-supervisor.js';
 import { startRemoteTunnel, stopRemoteTunnel } from './services/remote/wire.js';
+import { hydrateStoredSecrets } from './services/stored-secrets.js';
 
 /**
  * Run the whole boot sequence and wire the shutdown paths.
@@ -182,6 +183,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // dbPath misconfig — guard it here so even that can't stop the server from
     // listening (the singleton is left on its safe no-op driver, so platform
     // calls degrade rather than crash).
+    // Keys saved in Settings → API (search, page reader, downloads, chain RPC) load before anything asks for one.
+    await hydrateStoredSecrets();
+
     try {
       await platform.init();
     } catch (err) {

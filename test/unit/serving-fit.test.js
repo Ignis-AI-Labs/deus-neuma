@@ -50,7 +50,7 @@ describe('serving fit', () => {
     expect(() => projectedGpuMiB('nothing here')).toThrow(/no device rows/);
   });
 
-  test('the share is the operator saved choice (50-95%), else 90% — never an environment variable', () => {
+  test('the share is the operator saved choice (50-95%), else 85% — never an environment variable', () => {
     expect(shareFrom({})).toBe(DEFAULT_VRAM_SHARE);
     expect(shareFrom({ sharePct: 80 })).toBe(0.8);
     expect(shareFrom({ sharePct: 99 })).toBe(DEFAULT_VRAM_SHARE);

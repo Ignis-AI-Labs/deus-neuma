@@ -323,7 +323,7 @@ export const checkTrainer = async () => {
     `${r.versions.torch ? `torch ${r.versions.torch}` : 'ready'} · fast path available`,
     r.hfToken
       ? 'Trainer present with the linear-attention kernels'
-      : 'Trainer ready. Set HF_TOKEN for faster, un-rate-limited base downloads (not needed once a base is cached)');
+      : 'Trainer ready. For faster, un-rate-limited base downloads (not needed once a base is cached) save a Hugging Face Read token in Settings → API (or set HF_TOKEN) — make one at https://huggingface.co/settings/tokens');
 };
 
 // impure — what this machine can MAKE (images, video) beside the mind, and the

@@ -1,8 +1,10 @@
 # NEUMA END USER LICENSE AGREEMENT
 
-*Version 1.3 · Early access · Effective 20 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.4 · Early access · Effective 21 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
 
 Between you and Ignis AI Labs LLC, a Wyoming limited liability company, for the Neuma software you install or run — the platform, portal client, and neuma engine ("Software"). The Terms of Service and Neuma Covenant are incorporated by reference.
+
+**Adults only.** The Software is licensed exclusively to adults. You must be at least 18 years of age AND of legal age of majority in your jurisdiction, whichever is higher. No license is granted to anyone under 18, and persons under 18 may not install, run, or access the Software under any circumstances.
 
 ## 1. License grant
 

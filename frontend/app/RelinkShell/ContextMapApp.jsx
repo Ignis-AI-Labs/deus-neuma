@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import './ContextMapApp.css';
+import './ContextMapApp-composition.css';
 import { useActiveCompanion } from './consciousness-context.js';
 import { useSettled } from './use-settled.js';
 import { DeskTabs } from './DeskTabs.jsx';
