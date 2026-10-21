@@ -111,7 +111,7 @@ export const normalizeClock = (raw, where = 'the clock') => {
     dueDate = normalizeDueDate(value.dueDate ?? undefined) ?? null;
     dueTime = normalizeDueTime(value.dueTime ?? undefined) ?? null;
   } catch (err) {
-    throw new Error(`${where}: ${err.message}`);
+    throw new Error(`${where}: ${err.message}`, { cause: err });
   }
   if (dueTime && !dueDate) throw new Error(`${where}: a dueTime needs its dueDate (YYYY-MM-DD).`);
   if (work == null && !dueDate) {

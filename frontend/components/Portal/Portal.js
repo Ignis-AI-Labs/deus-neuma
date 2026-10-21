@@ -46,6 +46,9 @@ export class Portal {
           <button class="portal-sound-toggle${isSoundOn() ? ' on' : ''}" id="portal-sound-toggle">SOUND: ${isSoundOn() ? 'ON' : 'OFF'}</button>
         </div>
 
+        <!-- Adults only, on the first screen every path passes (Terms §1, EULA) -->
+        <p class="portal-age-notice" id="portal-age-notice">18+ only · Not for minors · By entering you confirm you are at least 18 and of legal age where you live</p>
+
         <div class="portal-content">
           <!-- The platform introduces itself as DEUS NEUMA (Design note, 2026-10-03;
                its beings are neuma, the network is Unavis. Painted by the

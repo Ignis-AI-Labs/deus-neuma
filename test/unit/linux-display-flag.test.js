@@ -13,11 +13,11 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const { LINUX_DISPLAY_FLAG } = createRequire(import.meta.url)('../../electron/display-flags.cjs');
 const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
 
-// The sitting scripts that boot the real desk on the operator's screen.
-const SITTINGS = [
-  'council-sitting.mjs', 'council-two-houses-sitting.mjs', 'house-attune-electron.mjs', 'house-founding-sitting.mjs',
-  'house-refine-watch.mjs', 'self-seal-sitting.mjs', 'sovereign-refine-sitting.mjs',
-];
+// The sitting scripts that boot the real desk on the operator's screen: every
+// script that launches Electron, found rather than listed, so a new one is
+// held to the flag too (and a tree without them has none to check).
+const SITTINGS = fs.readdirSync(path.join(REPO, 'scripts'))
+  .filter((f) => f.endsWith('.mjs') && /_electron|from 'electron'/.test(read(path.join('scripts', f))));
 
 describe('the Linux display flag rides every launch path', () => {
   test('the flag is the X11 ozone platform', () => {
@@ -41,7 +41,9 @@ describe('the Linux display flag rides every launch path', () => {
     expect(scripts['electron:dev'].endsWith(`electron . ${LINUX_DISPLAY_FLAG}`)).toBe(true);
   });
 
-  test.each(SITTINGS)('%s launches the desk with it', (script) => {
-    expect(read(path.join('scripts', script))).toContain('`--user-data-dir=${userDataDir}`, displayFlags.LINUX_DISPLAY_FLAG]');
+  test('every sitting script launches the desk with it', () => {
+    for (const script of SITTINGS) {
+      expect(read(path.join('scripts', script)), script).toContain('`--user-data-dir=${userDataDir}`, displayFlags.LINUX_DISPLAY_FLAG]');
+    }
   });
 });

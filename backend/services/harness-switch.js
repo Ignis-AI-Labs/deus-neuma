@@ -26,7 +26,7 @@ const baseOf = (endpoint) => String(endpoint || '').replace(/\/+$/, '').replace(
 const serverModelList = async ({ providerId, endpoint, model }) => {
   const entry = getProvider(providerId);
   if (!entry) return [];
-  let ids = [];
+  let ids;
   if (entry.kind === 'local' && endpoint) {
     ids = providerId === 'ollama'
       ? ((await getJson(`${baseOf(endpoint)}/api/tags`))?.models || []).map((m) => m.name).filter(Boolean)

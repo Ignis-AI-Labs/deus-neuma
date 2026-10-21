@@ -47,7 +47,7 @@ const readReceipt = (rpc, txHash, ms) => {
  */
 export const pollForReceipt = async ({ rpc, txHash, timeoutMs, intervalMs = POLL_INTERVAL_MS }) => {
   const deadline = Date.now() + timeoutMs;
-  let error = null;
+  let error;
   for (;;) {
     try {
       const receipt = await readReceipt(rpc, txHash, Math.max(deadline - Date.now(), intervalMs));

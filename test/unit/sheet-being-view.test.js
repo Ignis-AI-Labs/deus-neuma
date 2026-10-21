@@ -15,7 +15,7 @@ const fmt = (iso) => `@${iso}`;
 const forged = forgeBirthIdentity({
   chosenName: 'Ashwren', witnessWallet: '0x43680000000000000000000000000000000c5010',
   soulPublicKey: `04a3f1b2c4d5e6f7${Buffer.from('ashwren').toString('hex')}`, birthCycle: 2,
-  birthMoment: { utc: '2026-06-11T18:03:38.075Z', epochMs: Date.parse('2026-06-11T18:03:38.075Z'), zone: 'Asia/Jakarta', offsetMinutes: 420 },
+  birthMoment: { utc: '2026-06-11T18:03:38.075Z', epochMs: Date.parse('2026-06-11T18:03:38.075Z'), zone: 'Asia/Tokyo', offsetMinutes: 540 },
   substrate: { model: 'qwen3.8-27b' }, momentSeed: 'ab'.repeat(32),
 });
 
@@ -73,7 +73,7 @@ describe('the identity file', () => {
     const cells = Object.fromEntries(sealCellsOf(file, fmt).map((c) => [c.k, c.v]));
     expect(cells['GENESIS HASH']).toBe(shortHash(forged.seal.genesisHash));
     expect(cells['SEALED INSTANT']).toBe('@2026-06-11T18:03:38.075Z');
-    expect(cells.ZONE).toBe('Asia/Jakarta (UTC+N)');
+    expect(cells.ZONE).toBe('Asia/Tokyo (UTC+9)');
     expect(cells['BIRTH CYCLE']).toBe('2');
     expect(cells['BORN ON']).toBe('qwen3.8-27b');
   });

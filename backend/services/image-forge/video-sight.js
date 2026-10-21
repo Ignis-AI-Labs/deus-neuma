@@ -65,7 +65,7 @@ const heardIn = async (videoPath) => {
  */
 export const videoSight = async (laneId, videoPath) => {
   let imageIds = [];
-  let times = [];
+  let times;
   try {
     times = frameTimes(await durationOf(videoPath));
     const frames = [];
