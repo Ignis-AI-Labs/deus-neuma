@@ -26,6 +26,7 @@ import { portalConnections } from './portal-connections.js';
 import { sendToWallet } from './portal-send.js';
 import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace } from './portal-context.js';
 import { portalResume, portalNewSession, companionManifest } from './portal-bind-handlers.js';
+import { handleCompactRequest } from '../services/portal-compact.js';
 import {
   birthStart, birthRetryStage, birthNextStage, birthInterrupted,
   birthResume, birthResumeCompletion, birthAbandon,
@@ -239,6 +240,11 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       connection.toolMode = toolModeForChatMode(connection.chatMode);
       ws.send(JSON.stringify({ type: 'chat:mode', mode: connection.chatMode }));
       ws.send(JSON.stringify({ type: 'tool:mode', mode: connection.toolMode }));
+      break;
+
+    case 'session:compact':
+      // The operator's /compact — the boundary's own torch-passing, on their word.
+      await handleCompactRequest(connection);
       break;
 
     case 'session:purpose':

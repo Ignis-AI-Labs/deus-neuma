@@ -54,25 +54,23 @@
   border-color: var(--signal-dim);
 }
 
-/* The follow control — pinned at a transcript's bottom edge (sticky, zero
-   layout height). FOLLOWING = the stream snaps to the live tail; released
-   (clicked, or the reader scrolled up), the view stands still while the
-   stream keeps landing, and ▼ LIVE returns to now. Shared by the one-on-one
-   stream and the council transcript. */
-.stream-follow-dock {
-  position: sticky;
-  bottom: var(--space-1);
-  height: 0;
+/* The follow control — its own lane under a transcript (StreamFollow.jsx),
+   never an overlay inside it: the sticky dock it replaced sat on whatever
+   reached the bottom edge (an editor's SAVE row, a chip's last line).
+   FOLLOWING = the stream snaps to the live tail; released (clicked, or the
+   reader scrolled up), the view stands still while the stream keeps
+   landing, and ▼ LIVE returns to now. Shared by the one-on-one stream and
+   the council transcript. */
+.stream-follow-lane {
+  flex: none;
   display: flex;
   justify-content: flex-end;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 2;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 var(--space-4);
 }
 
 .stream-follow {
-  pointer-events: auto;
-  transform: translateY(-100%);
   font-family: var(--font-data);
   font-size: 10px;
   letter-spacing: var(--tracking-wide);
@@ -178,26 +176,33 @@
 }
 
 /* Stream — the flow of speech and actions. min-height:0 lets it scroll
-   inside the window's flex body instead of pushing the input off-screen. */
+   inside the window's flex body instead of pushing the input off-screen.
+   The frame stacks the transcript over the follow control's lane; the lane
+   is the transcript's bottom margin, so the stream drops its own. */
+.relink-stream-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .relink-stream {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-4) 0;
 }
 /* BLOCK FLOW, NOT A FLEX COLUMN (2026-09-28 smoothness pass). As a flex
    column, every streamed frame that grew the live reply re-ran the flex
    algorithm over the WHOLE transcript — at 500 rows, 3.4s of layout across
    one reply; as block flow, 0.5s. Each child's bottom margin is the old
    `gap` (every child is a flex box or out of flow, so nothing collapses
-   through); the zero-height follow dock takes none, so it sits exactly
-   where the gap left it and the tail keeps its 32px. A sibling
+   through), and the last one's is the tail's breath above the follow
+   lane. A sibling
    selector (`* + *`) was measured and refused: it re-matched on every
    appended row, ~1s of style recalc loading a 500-row history. The empty
    desk alone keeps flex: its welcome centers with `margin: auto`, which only
    a flex container honors vertically. */
 .relink-stream > * { margin-bottom: var(--space-4); }
-.relink-stream > .stream-follow-dock { margin-bottom: 0; }
 .relink-stream.is-empty {
   display: flex;
   flex-direction: column;
@@ -428,3 +433,18 @@
 }
 .relink-watch-tag { color: var(--signal); flex: 0 0 auto; }
 .relink-watch-text { opacity: 0.85; }
+
+/* The top of a long chat's drawn tail (use-stream-window.js): reaching it, or
+   pressing it, draws the earlier messages above without moving the reader. */
+.stream-earlier {
+  display: block;
+  margin: 0 auto var(--space-3);
+  padding: 4px 12px;
+  background: none;
+  border: var(--border-width-thin) solid var(--line);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+.stream-earlier:hover { color: var(--color-text-secondary); border-color: var(--line-hover); }

@@ -17,6 +17,7 @@ import { BenchRunCard } from './BenchRunCard.jsx';
 import { toolLinePath, openPathMenu, pathMenuAnchor } from './path-menu.js';
 import '../../components/ToolActionChip/ToolActionChip.css';
 import './ToolChip-execution.css';
+import { useLazyDetail } from './use-lazy-detail.js';
 
 const STATUS_LABELS = Object.freeze({
   ok: 'DONE',
@@ -141,7 +142,10 @@ export const ToolChip = ({ segment }) => {
   const sourceList = Array.isArray(sources) ? sources : [];
   const imageList = Array.isArray(images) ? images : [];
   const [open, setOpen] = useState(imageList.length > 0);
-  const expandable = Boolean(detail) || sourceList.length > 0 || imageList.length > 0;
+  // A history result the display view left at the server is read when opened.
+  const lazy = useLazyDetail(detail ? null : segment.ref ?? null, open);
+  const shownDetail = detail || lazy.value || '';
+  const expandable = Boolean(detail) || Boolean(segment.ref) || sourceList.length > 0 || imageList.length > 0;
 
   if (phase === 'acting') {
     return (
@@ -169,7 +173,10 @@ export const ToolChip = ({ segment }) => {
   const tone = chipTone(status);
   const summaryText = summary || `${label} — ${STATUS_LABELS[status] || status}`;
   const percent = tone === 'inflight' ? progressFrom(summaryText) : null;
-  const showDetail = Boolean(detail) && (open || tone === 'inflight');
+  const showDetail = Boolean(shownDetail) && (open || tone === 'inflight');
+  const reading = open && !shownDetail && segment.ref
+    ? (lazy.state === 'failed' ? 'COULD NOT READ THIS RESULT — CLOSE AND OPEN TO TRY AGAIN.' : lazy.state === 'missing' ? 'THE RECORD NO LONGER HOLDS THIS RESULT.' : 'READING…')
+    : null;
 
   return (
     <div className={`tool-chip resolved ${tone}${/^coding\/(execute|inspect)$/.test(label) ? ' is-execution' : ''}`}>
@@ -200,7 +207,8 @@ export const ToolChip = ({ segment }) => {
       {bench?.comparisonId ? <BenchRunCard bench={bench} /> : null}
       {open && imageList.length > 0 ? <MadeImages images={imageList} /> : null}
       {open && sourceList.length > 0 ? <SourceList sources={sourceList} /> : null}
-      {showDetail ? <pre className="tool-chip-detail">{detail}</pre> : null}
+      {showDetail ? <pre className="tool-chip-detail">{shownDetail}</pre> : null}
+      {reading ? <pre className="tool-chip-detail">{reading}</pre> : null}
     </div>
   );
 };

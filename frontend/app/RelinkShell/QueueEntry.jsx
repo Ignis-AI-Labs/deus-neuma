@@ -12,8 +12,9 @@ import {
 import { Lightbox } from './Lightbox.jsx';
 import { XPostLink } from './XPostLink.jsx';
 import {
-  approveQueuePost, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
+  approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
 } from '../../services/social-channels-client.js';
+import { threadOf } from './queue-thread-view.js';
 
 // Whether an attached CARD still matches the brand it was drawn from.
 //
@@ -198,11 +199,25 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
     await approveQueuePost(entry.id);
   };
 
+  // A THREAD IS ONE DECISION: every draft from its root down, approved at
+  // once with the copy each card shows (queue-thread-view.js).
+  const thread = entry.kind === 'reply' ? null : threadOf(byId, entry.id);
+  const threadDrafts = thread && thread.members.length > 1 ? thread.drafts : [];
+  const approveThread = () => approveQueueThread(entry.id,
+    Object.fromEntries(threadDrafts.map((e) => [e.id, e.text])));
+
   const actions = pending ? (
     <>
+      {threadDrafts.length > 1 ? (
+        <button type="button" className="settings-set is-thread" disabled={busy}
+          title={`Approve all ${threadDrafts.length} posts of this thread at once — each goes out after the one it follows`}
+          onClick={() => act(approveThread)}>
+          APPROVE THREAD ({threadDrafts.length} POSTS)
+        </button>
+      ) : null}
       <button type="button" className="settings-set" disabled={busy}
         onClick={() => act(approve)}>
-        {entry.kind === 'reply' ? 'APPROVE & SEND' : 'APPROVE'}
+        {entry.kind === 'reply' ? 'APPROVE & SEND' : threadDrafts.length > 1 ? 'APPROVE THIS ONE' : 'APPROVE'}
       </button>
       <button type="button" className="settings-set is-danger" disabled={busy}
         onClick={() => act(() => rejectQueuePost(entry.id))}>

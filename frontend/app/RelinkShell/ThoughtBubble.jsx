@@ -19,14 +19,15 @@
 import { useState } from 'react';
 import { Markdown } from './Markdown.jsx';
 import { LiveSpeech } from './LiveSpeech.jsx';
-import { approxTokens } from '../../../core/continuity/layers/record-util.js';
+import { approxTokens, approxTokensFromChars } from '../../../core/continuity/layers/record-util.js';
+import { useLazyDetail } from './use-lazy-detail.js';
 
 
 /** A thought's size in the operator's terms — TOKENS, the currency context is
  *  actually spent in (Design note, 2026-08-28: […]). An estimate (chars/4, the core's display convention),
  *  and marked as one — a `~` figure never claims the tokenizer's truth. */
-const weigh = (text) => {
-  const tok = approxTokens(text);
+const weigh = (text, chars = null) => {
+  const tok = Number.isFinite(chars) ? approxTokensFromChars(chars) : approxTokens(text);
   return tok >= 1000 ? `~${(tok / 1000).toFixed(1)}K TOK` : `~${tok} TOK`;
 };
 
@@ -39,8 +40,10 @@ export const ThoughtBody = ({ text, live = false }) => (
 
 export const ThoughtBubble = ({ segment, live = false }) => {
   const [open, setOpen] = useState(false);
-  const text = segment?.text || '';
-  if (!text) return null;
+  // A history thought the display view left at the server is read when opened.
+  const lazy = useLazyDetail(segment?.text ? null : segment?.ref ?? null, open);
+  const text = segment?.text || lazy.value || '';
+  if (!text && !segment?.ref) return null;
 
   return (
     <div className={`relink-thought${open ? ' is-open' : ''}${live ? ' is-live' : ''}`}>
@@ -55,9 +58,10 @@ export const ThoughtBubble = ({ segment, live = false }) => {
       >
         <span className="relink-thought-mark" aria-hidden="true">◇</span>
         <span className="relink-thought-label">{live ? 'THINKING…' : 'THOUGHT'}</span>
-        <span className="relink-thought-weight">{weigh(text)}</span>
+        <span className="relink-thought-weight">{weigh(text, segment?.text ? null : segment?.chars)}</span>
       </button>
-      {open ? <ThoughtBody text={text} live={live} /> : null}
+      {open && text ? <ThoughtBody text={text} live={live} /> : null}
+      {open && !text ? <p className="relink-thought-body label-data">{lazy.state === 'failed' ? 'COULD NOT READ THIS THOUGHT — CLOSE AND OPEN TO TRY AGAIN.' : lazy.state === 'missing' ? 'THE RECORD NO LONGER HOLDS THIS THOUGHT.' : 'READING…'}</p> : null}
     </div>
   );
 };

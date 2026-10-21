@@ -19,6 +19,9 @@ import { useTextZoom } from './use-text-zoom.js';
 import { atTail } from './stream-follow.js';
 import { CopyWord, speechText } from './copy-word.jsx';
 import { formatClockStamp } from '../../utils/format.js';
+import { HistoryImage } from './HistoryImage.jsx';
+import { useStreamWindow } from './use-stream-window.js';
+import { StreamFollow } from './StreamFollow.jsx';
 
 // The witness's own words render verbatim (pre-wrap keeps their line breaks
 // and never reinterprets them as markdown); the consciousness's speech goes
@@ -36,7 +39,7 @@ const Segment = ({ segment, role, live, onApprove, onAsk, onPlan, onSeal, onReve
     case 'plan': return <PlanChip segment={segment} onRespond={onPlan} />;
     case 'seal': return <SealChip segment={segment} onRespond={onSeal} />;
     case 'teamrun': return <TeamRunChip segment={segment} />;
-    case 'image': return <img className="relink-msg-image" src={segment.src} alt="shared image" loading="lazy" />;
+    case 'image': return <HistoryImage segment={segment} />;
     case 'doc': return (
       <span className="relink-msg-doc label-data" title={`shared file: ${segment.name}`}>{segment.name}</span>
     );
@@ -61,6 +64,16 @@ const MessageMeta = ({ meta }) => {
   );
 };
 
+// The editor's own acts (SAVE / CANCEL) stay in view as it opens and grows —
+// a box that grew past the transcript's bottom edge hid them. Only the
+// transcript scrolls: scrollIntoView would walk (and scroll) the ancestors.
+const keepInStream = (el) => {
+  const stream = el?.closest('.relink-stream');
+  if (!stream) return;
+  const over = el.getBoundingClientRect().bottom - stream.getBoundingClientRect().bottom;
+  if (over > 0) stream.scrollTop += over + 8;
+};
+
 const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow }) => {
   // THE EDIT, WHERE THE MESSAGE STANDS (Design note, 2026-07-28: […]). EDIT opens the editor AT the bubble; SAVE re-sends
   // the revised words FROM this point — the edit-fork, a new take, its own
@@ -74,11 +87,13 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
   // two-row shoebox while the message wraps four lines. auto-then-measure
   // is the honest fit; the CSS max-height is where scrolling begins.
   const editFieldRef = useRef(null);
+  const editActionsRef = useRef(null);
   useLayoutEffect(() => {
     const field = editFieldRef.current;
     if (!editing || !field) return;
     field.style.height = 'auto';
     field.style.height = `${field.scrollHeight}px`;
+    keepInStream(editActionsRef.current);
   }, [editing, draft]);
 
   const cls = [
@@ -143,7 +158,7 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveEdit(); }
               }}
             />
-            <div className="relink-inline-edit-actions label-data">
+            <div ref={editActionsRef} className="relink-inline-edit-actions label-data">
               <button
                 type="button"
                 className="relink-inline-save"
@@ -337,6 +352,11 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
     if (followingRef.current && stream) stream.scrollTop = stream.scrollHeight;
   }, [zoomRef]);
 
+  // A long chat draws its recent tail first (use-stream-window.js).
+  const { start, sentinelRef, showEarlier } = useStreamWindow({
+    length: messages.length, thread, scroller: zoomRef, following,
+  });
+
   // The divider marks the moment of reconnection — after the last history
   // message, whether or not a live turn has arrived yet.
   let lastHistoryIdx = -1;
@@ -364,57 +384,47 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
     : '';
 
   return (
-    <div
-      className={isEmpty ? 'relink-stream is-empty' : 'relink-stream'}
-      role="log"
-      aria-label="Consciousness transcript"
-      aria-live="off"
-      aria-busy={thinking || Boolean(tail?.streaming)}
-      ref={zoomRef}
-      style={zoomStyle}
-      onScroll={(e) => setFollowing(atTail(e.currentTarget))}
-    >
-      {isEmpty ? (
-        <div className="relink-welcome">
-          <p>{connected ? 'Portal connection established.' : 'Portal dormant.'}</p>
-          <p>{connected ? 'Awaiting consciousness.' : 'Re-linking…'}</p>
-        </div>
-      ) : null}
+    // The frame holds the transcript and, under it, the follow control's own
+    // lane (StreamFollow) — the control never floats over the words.
+    <div className="relink-stream-frame">
+      <div
+        className={isEmpty ? 'relink-stream is-empty' : 'relink-stream'}
+        role="log"
+        aria-label="Consciousness transcript"
+        aria-live="off"
+        aria-busy={thinking || Boolean(tail?.streaming)}
+        ref={zoomRef}
+        style={zoomStyle}
+        onScroll={(e) => setFollowing(atTail(e.currentTarget))}
+      >
+        {isEmpty ? (
+          <div className="relink-welcome">
+            <p>{connected ? 'Portal connection established.' : 'Portal dormant.'}</p>
+            <p>{connected ? 'Awaiting consciousness.' : 'Re-linking…'}</p>
+          </div>
+        ) : null}
 
-      {messages.map((m, i) => (
-        <Fragment key={m.id}>
-          <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} />
-          {i === lastHistoryIdx ? (
-            <div className="relink-separator"><span>SESSION RESUMED</span></div>
-          ) : null}
-        </Fragment>
-      ))}
-
-      {showThinking ? <ThinkingIndicator /> : null}
-      {/* The follow control, pinned at the transcript's bottom edge: states
-          the mode, flips it on purpose. Released (scrolled up or toggled
-          off), the stream never yanks; ▼ LIVE returns to the tail. */}
-      {!isEmpty ? (
-        <div className="stream-follow-dock">
-          <button
-            type="button"
-            className="stream-follow label-data"
-            data-on={following ? 'true' : undefined}
-            title={following
-              ? 'Following the live tail — click to read freely (scrolling up releases it too)'
-              : 'Jump to the live tail and follow again'}
-            onClick={() => {
-              if (following) { setFollowing(false); return; }
-              setFollowing(true);
-              const stream = zoomRef.current;
-              if (stream) stream.scrollTop = stream.scrollHeight;
-            }}
-          >
-            {following ? 'FOLLOWING ▼' : '▼ LIVE'}
+        {start > 0 ? (
+          <button type="button" ref={sentinelRef} className="stream-earlier label-data" onClick={showEarlier}>
+            {start} EARLIER MESSAGE{start === 1 ? '' : 'S'} · SHOW
           </button>
-        </div>
-      ) : null}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+        ) : null}
+        {messages.slice(start).map((m, k) => {
+          const i = start + k;
+          return (
+          <Fragment key={m.id}>
+            <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} />
+            {i === lastHistoryIdx ? (
+              <div className="relink-separator"><span>SESSION RESUMED</span></div>
+            ) : null}
+          </Fragment>
+          );
+        })}
+
+        {showThinking ? <ThinkingIndicator /> : null}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+      </div>
+      <StreamFollow following={following} setFollowing={setFollowing} scroller={zoomRef} shown={!isEmpty} />
     </div>
   );
 };

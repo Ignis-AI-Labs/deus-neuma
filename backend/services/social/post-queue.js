@@ -27,6 +27,7 @@ import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
 import { validateDraft, queuedSecretRefusal, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
+import { approveThreadIn } from './queue-thread.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
 
@@ -265,6 +266,24 @@ export const createPostQueue = (opts = {}) => {
       });
     },
 
+    /**
+     * The operator approves a whole THREAD at once — every draft from its root
+     * down, all or nothing, in one atom (queue-thread.js holds the law). impure.
+     * @param {string} id - any post of the thread
+     * @param {{decidedBy: string, textsSeen: Record<string, string>}} decision
+     */
+    approveThread(id, { decidedBy, textsSeen } = {}) {
+      return mutate(async () => {
+        const entries = await load();
+        const result = approveThreadIn(entries, id, { decidedBy, textsSeen, now: new Date() });
+        if (result.error) return { ok: false, error: result.error };
+        await save(entries);
+        return { ok: true, entries: result.approved };
+      }).catch((err) => {
+        if (err?.code !== LOCK_TIMEOUT) throw err;
+        return { ok: false, error: 'the campaign queue is busy on another process — not acted on' };
+      });
+    },
     /** The operator declines a draft — it stays in the record, marked. impure. */
     reject(id, { decidedBy } = {}) {
       return transition(id, ['draft'], (entry) => {

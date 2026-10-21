@@ -1,0 +1,93 @@
+# build-windows.ps1 - build the Deus Neuma Windows installer on a Windows PC, the proven road.
+#
+# Run in PowerShell (no admin, no Visual Studio needed):
+#   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 [-Ref origin/dev] [-Dir $HOME\deus-neuma-build] [-Install]
+#
+# What it does, and why each step exists (docs: BUILDING.md, the release runbook):
+#   1. checks Git and Node 22+ (and tells you the winget line if either is missing)
+#   2. clones or updates the public repository and checks out -Ref, in -Dir (never your own checkout)
+#   3. npm ci, then the OFFICIAL Electron prebuild of better-sqlite3: node-gyp would need Visual Studio,
+#      and a module built for plain Node fails silently in the app (the platform database turns into a no-op)
+#   4. seeds electron-builder's winCodeSign cache by hand: its archive holds two macOS symlinks that
+#      Windows refuses to create without admin or Developer Mode, which stops the NSIS step
+#   5. builds the frontend and the NSIS installer (no publish, no native rebuild)
+#   6. refuses the package unless every native binary in it is a real Windows (PE) binary
+#   7. prints the installer, latest.yml and their SHA-256; -Install also installs it silently
+# The installer is UNSIGNED unless the machine holds the signing identity (release runbook 4b).
+
+param(
+  [string]$Ref = 'origin/dev',
+  [string]$Dir = (Join-Path $HOME 'deus-neuma-build'),
+  [string]$Repo = 'https://github.com/Ignis-AI-Labs/deus-neuma.git',
+  [switch]$Install
+)
+$ErrorActionPreference = 'Stop'
+function Step($n, $s) { Write-Host "`n-- $n. $s" -ForegroundColor Cyan }
+function Fail($s) { Write-Host "`nX build stopped: $s" -ForegroundColor Red; exit 1 }
+function Run($exe, [string[]]$argv) {
+  & $exe @argv
+  if ($LASTEXITCODE -ne 0) { Fail "$exe $($argv -join ' ') exited $LASTEXITCODE" }
+}
+
+Step 1 'prerequisites'
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Fail 'Git is missing. Install it: winget install --id Git.Git -e   (then open a new PowerShell)' }
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Fail 'Node.js is missing. Install it: winget install --id OpenJS.NodeJS.LTS -e   (then open a new PowerShell)' }
+$nodeMajor = [int]((node -p 'process.versions.node').Split('.')[0])
+if ($nodeMajor -lt 22) { Fail "Node $nodeMajor is too old; 22 or newer is needed: winget upgrade --id OpenJS.NodeJS.LTS -e" }
+Write-Host "   git $((git --version) -replace 'git version ','') - node $(node -p 'process.versions.node')"
+
+Step 2 "source: $Ref of $Repo"
+if (-not (Test-Path (Join-Path $Dir '.git'))) { Run git @('clone', $Repo, $Dir) }
+Set-Location $Dir
+Run git @('fetch', '--quiet', 'origin')
+Run git @('checkout', '--quiet', '--detach', $Ref)
+Run git @('clean', '-fdxq', '-e', 'node_modules')
+$version = node -p "require('./package.json').version"
+Write-Host "   $(git log -1 --format='%h %s') - version $version"
+
+Step 3 'dependencies, with the Electron prebuild of better-sqlite3'
+Run npm @('ci', '--no-audit', '--no-fund')
+$electron = node -p "require('./node_modules/electron/package.json').version"
+Push-Location node_modules\better-sqlite3
+Run npx @('--yes', 'prebuild-install', '--runtime=electron', "--target=$electron", '--arch=x64', '--platform=win32')
+Pop-Location
+Set-Content -NoNewline -Path node_modules\.native-abi -Value 'electron'
+Write-Host "   better-sqlite3 for Electron $electron"
+
+Step 4 'electron-builder winCodeSign cache'
+$cache = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\winCodeSign\winCodeSign-2.6.0'
+if (-not (Test-Path (Join-Path $cache 'windows-10'))) {
+  $archive = Join-Path $env:TEMP 'winCodeSign-2.6.0.7z'
+  Invoke-WebRequest -UseBasicParsing -OutFile $archive 'https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z'
+  New-Item -ItemType Directory -Force -Path $cache | Out-Null
+  & .\node_modules\7zip-bin\win\x64\7za.exe x -y "-o$cache" $archive | Out-Null
+  # exit 2 is exactly the two macOS symlinks it cannot create; everything Windows needs lands
+  if ($LASTEXITCODE -gt 2) { Fail "7za could not extract winCodeSign (exit $LASTEXITCODE)" }
+}
+Write-Host "   $cache"
+
+Step 5 'build the frontend and the NSIS installer'
+Remove-Item -Recurse -Force release -ErrorAction SilentlyContinue
+Run npm @('run', 'build')
+Run npx @('--yes', 'electron-builder', '--win', '--publish', 'never', '-c.npmRebuild=false')
+
+Step 6 'every native binary in the package is a real Windows binary'
+Run node @('scripts/verify-win-natives.mjs', 'release\win-unpacked')
+
+Step 7 'the installer'
+$exe = Get-ChildItem release -Filter "*$version*.exe" | Select-Object -First 1
+if (-not $exe) { Fail 'no installer in release\' }
+foreach ($f in @($exe.FullName, (Join-Path $PWD 'release\latest.yml'))) {
+  $h = (Get-FileHash -Algorithm SHA256 $f).Hash.ToLower()
+  Write-Host ("   {0}  {1}  {2} B" -f $h, (Split-Path $f -Leaf), (Get-Item $f).Length)
+}
+$sig = Get-AuthenticodeSignature $exe.FullName
+Write-Host "   signature: $($sig.Status)$(if ($sig.SignerCertificate) { ' - ' + $sig.SignerCertificate.Subject })"
+if ($Install) {
+  Step 8 'silent install'
+  $p = Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait -PassThru
+  if ($p.ExitCode -ne 0) { Fail "the installer exited $($p.ExitCode)" }
+  Write-Host "   installed: open Deus Neuma from the Start menu"
+}
+Write-Host "`nOK Deus Neuma $version for Windows: $($exe.FullName)" -ForegroundColor Green
+Write-Host "   Bring release\$($exe.Name), its .blockmap and latest.yml to the release machine to sign the feed and publish."

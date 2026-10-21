@@ -157,8 +157,11 @@ test('authenticated witness → neuma → witness resumes return only the reques
   ]) {
     const reply = await send({ type: 'portal:resume', neumaId: id, sessionId: SESSION }, 'portal:resumed');
     expect(reply.neumaId).toBe(id);
-    expect(JSON.stringify(reply.recentMessages)).toContain(own);
-    expect(JSON.stringify(reply.recentMessages)).not.toContain(other);
+    // The resume frame carries no history (the desk reads it over REST, owner-gated
+    // per lane): nothing of either lane rides it, and the binding is the asked lane.
+    expect(reply.recentMessages).toBeUndefined();
+    expect(JSON.stringify(reply)).not.toContain(other);
+    expect(kit.connection.companion.neumaId).toBe(id);
     expect(kit.connection.companion.participantKind).toBe(kind);
     const silo = await compileSilo(id, { workspace });
     expect(JSON.stringify(silo.layers.memory)).toContain(own);

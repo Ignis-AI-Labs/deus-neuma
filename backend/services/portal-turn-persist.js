@@ -58,6 +58,8 @@ const log = createLogger('Portal');
 // needs first — a torch over a two-message region is churn, not continuity.
 const COMPACT_KEEP_RECENT = 20;
 const SOLO_REGION_FLOOR = 10;
+/** A sitting compacts only once its folded length passes this (the kept tail + the floor). */
+export const COMPACT_FLOOR = COMPACT_KEEP_RECENT + SOLO_REGION_FLOOR;
 
 export { settleCompositionRecord } from './portal-composition-record.js';
 

@@ -33,6 +33,7 @@ import { useLiveVoice } from './use-live-voice.js';
 import { LiveButton, RefineButton, useRefineDraft } from './ComposerTools.jsx';
 import { commandFromInput } from './commands.js';
 import { useCommandDispatch } from './use-command-dispatch.js';
+import { useCompactNote } from './use-compact-note.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { stepRecall, mayStep } from './sent-history.js';
 import { filesFrom } from './attachments.js';
@@ -89,6 +90,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
   // The one honest refusal line for an over-cap draft (cleared the moment
   // the draft shrinks under the cap, or on a successful send).
   const [sendNote, setSendNote] = useState(null);
+  useCompactNote(setSendNote);
   // The Escape ladder's standing: {at, chain, wiped} — when the last Escape
   // landed, which rung it reached, and the draft rung 2 wiped (restored if
   // the chain climbs on). Typing breaks the chain.

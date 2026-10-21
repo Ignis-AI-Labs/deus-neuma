@@ -8,8 +8,6 @@ import platform from '../services/supabase.js';
 import { neumaWorkspace, normalizeSpace } from '../../core/index.js';
 import { normalizePurpose } from '../../core/voice/purpose.js';
 import { lastRecordedComposition } from '../../core/runtime/context-composition.js';
-import { RECENT_ROWS } from '../../core/runtime/memory-section.js';
-import { foldBranchView, isViewMarker } from '../../core/workspace/branch-view.js';
 import {
   isWitnessLaneId, ensureWitnessLane,
 } from '../services/witness-lane.js';
@@ -124,26 +122,15 @@ export const portalResume = async (connection, message, { connectionId }) => {
       if (toolPolicy) connection._neumaToolPolicy = toolPolicy;
     } catch { /* non-critical */ }
 
-    // Load recent session messages if sessionId provided
-    let recentMessages = [];
+    // The bound session's runtime (counters, standing context) and its last
+    // recorded window anatomy. The desk reads the chat itself over REST
+    // (the display view) — this frame carries no history.
     let recordedComposition = null;
     if (message.sessionId) {
       connection.sessionId = message.sessionId;
       try {
-        // readSession returns the message ARRAY itself (JSONL lines), not a
-        // wrapper — `session.messages` was always undefined, so resume
-        // silently restored nothing. Take the tail of the array directly.
         const session = await neumaWorkspace.readSession(neumaId, message.sessionId);
-        if (Array.isArray(session) && session.length) {
-          // Fold AND drop the branch-view markers (the prompt tail's own law,
-          // memory-context.js) — marker rows are view facts, not speech, and
-          // they were eating tail slots in the resume display. A compaction
-          // summary that carries a view is speech and stays.
-          recentMessages = foldBranchView(session)
-            .filter((m) => !isViewMarker(m))
-            .slice(-RECENT_ROWS);
-          recordedComposition = lastRecordedComposition(session);
-        }
+        if (Array.isArray(session) && session.length) recordedComposition = lastRecordedComposition(session);
         await hydrateSessionRuntime(
           connection,
           neumaId,
@@ -167,7 +154,6 @@ export const portalResume = async (connection, message, { connectionId }) => {
       neumaId,
       companionName: connection.companion.name,
       sessionId: message.sessionId || null,
-      recentMessages,
       message: 'Session restored — the portal remembers',
     }));
     // A WATCH this chat set that fired while it was closed is told now, once

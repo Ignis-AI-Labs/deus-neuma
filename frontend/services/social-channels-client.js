@@ -113,6 +113,17 @@ export const stageQueuePost = ({ channelId, text, scheduledFor, campaignId }) =>
  * @param {string} id
  * @param {{scheduledFor?: string, textSeen?: string}} [decision]
  */
+/**
+ * Approve a whole THREAD in one decision — every draft from its root down. The
+ * copy of each post as read rides along (textsSeen); a post edited since is a
+ * refusal and nothing is approved.
+ * @param {string} id - any post of the thread
+ * @param {Record<string, string>} textsSeen - id → the text as shown
+ */
+// impure
+export const approveQueueThread = (id, textsSeen) =>
+  req(`/queue/${id}/approve-thread`, { method: 'PUT', body: { textsSeen } });
+
 // impure
 export const approveQueuePost = (id, { scheduledFor, textSeen } = {}) =>
   req(`/queue/${id}/approve`, {

@@ -42,6 +42,16 @@ import { foldForDisplay } from './branch-view.js';
  * @param {string} raw the record's own content, tool blocks and all
  * @returns {Array<Object>}
  */
+/**
+ * A lazy item (left out by the display view, session-display.js) gets the
+ * address the desk fetches it by: lane, session, point, take, part and index.
+ * Everything else passes untouched. Pure.
+ * @param {Array<*>} items
+ * @param {object} at - { neumaId, sessionId, turnId, take?, part }
+ */
+const addressLazy = (items, at) => items.map((it, index) => (it && typeof it === 'object' && it.lazy
+  ? { ...it, ref: { ...at, index } } : it));
+
 const rebaseMarks = (entries, raw) =>
   entries.map((t) => (Number.isFinite(t?.mark)
     ? { ...t, mark: stripToolBlocks(String(raw ?? '').slice(0, t.mark)).length }
@@ -56,7 +66,7 @@ const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: 
 // FOLD FIRST, then slice (2026-08-31): the prompt's tail is fold-then-slice
 // (memory-context.js) — folding after the slice dropped superseded takes
 // INSIDE the window and the desk showed fewer rows than the being had.
-export const toDisplayMessages = (messages, limit = 50) =>
+export const toDisplayMessages = (messages, limit = 50, where = {}) =>
   foldForDisplay(Array.isArray(messages) ? messages : [])
     .map((entry) => {
       if (entry.kind === 'user') {
@@ -69,13 +79,15 @@ export const toDisplayMessages = (messages, limit = 50) =>
           ...platformOrigin(m),
           // Images the witness shared persist on the user record — they ride
           // into history so a resumed session still shows what was shown.
-          ...(Array.isArray(m.images) && m.images.length > 0 ? { images: m.images } : {}),
+          ...(Array.isArray(m.images) && m.images.length > 0
+            ? { images: addressLazy(m.images, { ...where, turnId: m.turnId, part: 'image' }) } : {}),
           // Shared FILES too (Design note, 2026-09-17: […]) — the record kept the docs; the display
           // fold must not be the place they vanish.
           ...(Array.isArray(m.docs) && m.docs.length > 0 ? { docs: m.docs } : {}),
         };
       }
       if (entry.kind === 'takes') {
+        const at = { ...where, turnId: entry.turnId };
         const takes = entry.takes.map((t, i) => ({
           takeIndex: i + 1,
           content: stripToolBlocks(t.content),
@@ -84,11 +96,11 @@ export const toDisplayMessages = (messages, limit = 50) =>
           // rebuilds its settled chips from them (never re-executed), so the
           // history is exactly as the witness left it, tool calls and all.
           ...(Array.isArray(t.tools) && t.tools.length > 0
-            ? { tools: rebaseMarks(t.tools, t.content) } : {}),
+            ? { tools: addressLazy(rebaseMarks(t.tools, t.content), { ...at, take: i + 1, part: 'tool' }) } : {}),
           // THE THOUGHT TRAIL persists per take — the reasoning a turn
           // streamed outlives the reload, bubbles back where it streamed.
           ...(Array.isArray(t.thoughts) && t.thoughts.length > 0
-            ? { thoughts: rebaseMarks(t.thoughts, t.content) } : {}),
+            ? { thoughts: addressLazy(rebaseMarks(t.thoughts, t.content), { ...at, take: i + 1, part: 'thought' }) } : {}),
           // The declared affect persists per take — the revelation outlives
           // the reload (Campaign 6).
           ...(typeof t.affect === 'string' && t.affect ? { affect: t.affect } : {}),
@@ -171,9 +183,9 @@ export const loadSessionMessagesStrict = async (neumaId, sessionId, limit = 50) 
   const headers = authHeaders();
   if (!neumaId || !sessionId || !headers) return [];
   try {
-    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}`, { headers });
+    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}?view=display`, { headers });
     if (!Array.isArray(body?.messages)) return [];
-    return toDisplayMessages(body.messages, limit);
+    return toDisplayMessages(body.messages, limit, { neumaId, sessionId });
   } catch (err) {
     if (!err?.http) throw err;
     throw new Error(`session load failed: HTTP ${err.http}`, { cause: err });
@@ -192,9 +204,9 @@ export const loadSessionMessages = async (neumaId, sessionId, limit = 50) => {
   try {
     const headers = authHeaders();
     if (!neumaId || !sessionId || !headers) return [];
-    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}`, { headers });
+    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}?view=display`, { headers });
     if (!Array.isArray(body?.messages)) return [];
-    return toDisplayMessages(body.messages, limit);
+    return toDisplayMessages(body.messages, limit, { neumaId, sessionId });
   } catch {
     return [];
   }

@@ -23,6 +23,7 @@ import { postQueue } from '../services/social/post-queue.js';
 import { publishEntry } from '../services/social/post-scheduler.js';
 import { ofHouse, isHouseEntry, queueHouseGuard } from '../services/social/queue-house.js';
 import { readServed } from '../services/house-served.js';
+import socialThreadRouter from './social-thread-routes.js';
 import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
 import { reverifyMediaFile } from '../services/social/media-source.js';
@@ -94,6 +95,7 @@ router.get('/flight-test', async (req, res) => {
 // The whole queue — drafts awaiting decision, the schedule, and the history.
 // every /queue/:id act stands behind the house door (queue-house.js)
 router.use('/queue/:id', queueHouseGuard);
+router.use(socialThreadRouter); // PUT /queue/:id/approve-thread — the whole thread in one decision
 router.get('/queue', async (req, res) => {
   try {
     const [entries, served] = await Promise.all([postQueue.load(), readServed()]);
