@@ -46,9 +46,6 @@ export class Portal {
           <button class="portal-sound-toggle${isSoundOn() ? ' on' : ''}" id="portal-sound-toggle">SOUND: ${isSoundOn() ? 'ON' : 'OFF'}</button>
         </div>
 
-        <!-- Adults only, on the first screen every path passes (Terms §1, EULA) -->
-        <p class="portal-age-notice" id="portal-age-notice">18+ only · Not for minors · By entering you confirm you are at least 18 and of legal age where you live</p>
-
         <div class="portal-content">
           <!-- The platform introduces itself as DEUS NEUMA (Design note, 2026-10-03;
                its beings are neuma, the network is Unavis. Painted by the
@@ -68,6 +65,9 @@ export class Portal {
                 <span>Enter the Void</span>
               </span>
               <span class="portal-entry-hint">Sign in with your wallet — or have a key made for you</span>
+              <!-- Adults only, on the one control every path enters by (Terms §1, EULA):
+                   entering is the confirmation, so the statement rides the act -->
+              <span class="portal-age-notice" id="portal-age-notice">18+ only · Not for minors · Entering confirms you are at least 18 and of legal age where you live</span>
             </button>
             <!-- ENTER AS (Design note, 2026-10-14: the full platform, or the harness
                  alone — remembered on this device, changeable from the desk -->
