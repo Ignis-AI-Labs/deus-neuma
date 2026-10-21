@@ -50,12 +50,12 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     });
     app.use('/api/v1/workspace', (await import('../../backend/routes/workspace-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send(`<script type="module">
-      import { loadRecord, loadProtocolDeviations, loadBenchmarks } from '/frontend/app/RelinkShell/stats-client.js';
+      import { loadRecord, loadProtocolDeviations, loadSelfCheck } from '/frontend/app/RelinkShell/stats-client.js';
       import { listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict, autotitleChats }
         from '/frontend/app/RelinkShell/workspace-sessions.js';
-      window.clients = { loadRecord, loadProtocolDeviations, loadBenchmarks,
+      window.clients = { loadRecord, loadProtocolDeviations, loadSelfCheck,
         listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict, autotitleChats };
       window.expired = 0;
       window.addEventListener('neuma:auth_expired', () => window.expired++);
@@ -86,9 +86,9 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     expect(deviations[0].type).toBe('protocol_reminder');
     // A clean lane reads [] — NOT null: the panel must tell "clean" from "unknown".
     expect(await page.evaluate((id) => window.clients.loadProtocolDeviations(id), empty)).toEqual([]);
-    const bench = await page.evaluate((id) => window.clients.loadBenchmarks(id), lane);
-    expect(bench).toMatchObject({ runs: [], latest: null });
-    expect('tripwire' in bench).toBe(true);
+    // Never run: an honest absence with no run in flight — not a score.
+    expect(await page.evaluate((id) => window.clients.loadSelfCheck(id), lane))
+      .toEqual({ latest: null, previous: null, compare: null, running: null, busyElsewhere: false, error: null });
     expect(await page.evaluate((id) => window.clients.listSessions(id), lane)).toEqual(['session-one']);
     expect(await page.evaluate((id) => window.clients.listSessionsStrict(id), lane)).toEqual(['session-one']);
     for (const fn of ['loadSessionMessages', 'loadSessionMessagesStrict']) {
@@ -121,7 +121,7 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     const ownerBytes = await fs.readFile(ownerPath, 'utf8');
     await fs.writeFile(ownerPath, 'corrupt-ownership-proof');
     expect(await page.evaluate((id) => window.clients.loadRecord(id), empty)).toBeNull();
-    expect(await page.evaluate((id) => window.clients.loadBenchmarks(id), empty)).toBeNull();
+    expect(await page.evaluate((id) => window.clients.loadSelfCheck(id), empty)).toBeNull();
     expect(await page.evaluate((id) => window.clients.loadProtocolDeviations(id), empty)).toBeNull();
     await fs.writeFile(ownerPath, ownerBytes);
     expect(await page.evaluate((id) => window.clients.loadProtocolDeviations(id), empty)).toEqual([]);
@@ -131,7 +131,7 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     await page.evaluate(() => sessionStorage.setItem('authToken', 'invalid-session-proof'));
     expect(await page.evaluate((id) => window.clients.loadRecord(id), lane)).toBeNull();
     expect(await page.evaluate((id) => window.clients.loadProtocolDeviations(id), lane)).toBeNull();
-    expect(await page.evaluate((id) => window.clients.loadBenchmarks(id), lane)).toBeNull();
+    expect(await page.evaluate((id) => window.clients.loadSelfCheck(id), lane)).toBeNull();
     expect(await page.evaluate((id) => window.clients.listSessions(id), lane)).toEqual([]);
     expect(await page.evaluate(([f, id]) => window.clients[f](id, 'session-one'), ['loadSessionMessages', lane])).toEqual([]);
     expect(await page.evaluate((id) => window.clients.autotitleChats(id, { sessionIds: [] }), lane))

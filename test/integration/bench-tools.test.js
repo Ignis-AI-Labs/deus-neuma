@@ -108,6 +108,20 @@ describe.runIf(connected)('the connected benchmarks, from the conversation', () 
     expect(r.error).toContain('already running on this machine');
   });
 
+  test('house work reads the bench but never launches: no Optio CLEAR or charter stands in for the operator\'s yes', async () => {
+    // a wake's or a team member's connection, as wake-turn.js / team-member-turn.js build it
+    const houseWork = (laneId) => ({ ...seat(laneId), toolMode: 'ask', sessionId: 's-house', _approvalRefusal: 'nobody is at the desk' });
+    expect(benchToolsFor(houseWork(BEING)).map((t) => t.name)).toEqual(['bench_list', 'bench_status']);
+    const surface = (await platformToolsFor(houseWork(BEING), { seat: 'neuma' })).tools.map((t) => `${t.server}/${t.name}`);
+    expect(surface).not.toContain('bench/bench_run');
+    // a call made anyway is refused before the gate: no route is asked, nothing spawns, no approval is recorded
+    const r = await handleBenchTool(null, houseWork(BEING), null, 'ask', { server: 'bench', toolName: 'bench_run' }, { cell: 'no-such-cell', arms: ['bare'] });
+    expect(r).toMatchObject({ tool: 'bench/bench_run', status: 'denied' });
+    expect(r.error).toContain('only your operator opens');
+    expect(r.error).toContain('It was NOT launched');
+    expect((await call(BEING, 'bench_status')).status).toBe('ok'); // the reads stay open
+  });
+
   test('the desk\'s lanes include the operator\'s harness lane; it lives on its own ground', async () => {
     const lanes = await listOwnedLanes(wallet);
     expect(lanes).toEqual(expect.arrayContaining([

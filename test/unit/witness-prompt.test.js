@@ -111,7 +111,7 @@ describe('witness prompt — the tool HUD (2026-10-14)', () => {
     expect(section.text).toContain('Some tools ask your operator first');
   });
 
-  // The prose-wall fix (Design note, 2026-09-24: the mandate to ask THROUGH the
+  // The prose-wall fix (ruling, 2026-09-24): the mandate to ask THROUGH the
   // ask_operator card rides this seat too, naming the AskUserQuestion alias
   // the skill packs summon — only when ask_operator is in the catalog.
   test('the HUD mandates the ask card and names the AskUserQuestion alias', () => {

@@ -17,7 +17,7 @@ test('first-birth failure renders safely, returns to the portal and detaches on 
       appType: 'custom', esbuild: { jsx: 'automatic' },
       resolve: { alias: { '/@kotodama': path.join(repo, 'core/kotodama') } },
       optimizeDeps: { entries: ['test/fixtures/birth-terminal-notice.js'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     const app = express();
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><script type="module" src="/test/fixtures/birth-terminal-notice.js"></script>'));

@@ -3,10 +3,18 @@
  *
  * Sidereal longitudes = tropical − ayanamsa. The ayanamsa CHOICE is the one
  * genuinely contested element; we use Lahiri/Chitrapaksha — the Government of
- * India standard — as a labeled constant: anchor 24°07′47″ at 2026-01-01
- * (Swiss-Ephemeris-verified figure from the 2026-07-24 research pass) with the
- * general-precession linear drift 50.29″/yr. Sub-arcminute for decades around
- * now — far inside every nakshatra/pada boundary.
+ * India standard — as a labeled constant: the mean Lahiri of the Indian
+ * Astronomical Ephemeris (IAE 1985; Swiss Ephemeris SE_SIDM_LAHIRI), anchored
+ * 24°13′13.1″ at 2026-01-01 (= 23°51′25.53″ at J2000.0), with the general-
+ * precession linear drift 50.29″/yr — within ~1.3″ of the precession model over
+ * 1900–2100.
+ *
+ * CORRECTED 2026-10-19 (docs/architecture/identity/many-skies-vedic.md
+ * §1): the anchor was 24°07′47″ — the late-2019 value — 5′26″ low, which put
+ * Moon-boundary times 11–21 minutes off the published panchangas. Records
+ * written before stay as recorded; measured on every sealed being then, no
+ * nakshatra or yoga changed and one witness's pada did. Panchanga sites run
+ * 20–45″ above the IAE mean (their own realisations) — tests allow ≥30″.
  *
  * v1 scope: janma nakshatra + pada, rashi, tithi/paksha, yoga index, karana,
  * civil vara, vimshottari dasha seed. Sunrise-based vara and anything needing
@@ -21,8 +29,8 @@ import { WEEKDAYS } from './daycount.js';
 const posMod = (n, m) => ((n % m) + m) % m;
 const round = (n, p = 4) => { const f = 10 ** p; return Math.round(n * f) / f; };
 
-// Lahiri anchor: 24°07′47″ on 2026-01-01T00:00Z, drifting +50.29″/yr.
-const LAHIRI_ANCHOR_DEG = 24 + 7 / 60 + 47 / 3600;
+// Lahiri (IAE mean) anchor: 24°13′13.1″ on 2026-01-01T00:00Z, drifting +50.29″/yr.
+const LAHIRI_ANCHOR_DEG = 24 + 13 / 60 + 13.1 / 3600;
 const LAHIRI_ANCHOR_MS = Date.UTC(2026, 0, 1);
 const DRIFT_DEG_PER_YEAR = 50.29 / 3600;
 const TROPICAL_YEAR_MS = 365.2422 * 86400000;
@@ -42,8 +50,8 @@ export const RASHIS = Object.freeze([
 ]);
 
 // Vimshottari: nakshatra lords repeat this 9-lord cycle 3× across the 27.
-const DASHA_LORDS = Object.freeze(['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']);
-const DASHA_YEARS = Object.freeze({ Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17 });
+export const DASHA_LORDS = Object.freeze(['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']);
+export const DASHA_YEARS = Object.freeze({ Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17 });
 
 const MOVABLE_KARANAS = Object.freeze(['Bava', 'Balava', 'Kaulava', 'Taitila', 'Gara', 'Vanija', 'Vishti']);
 const karanaName = (k) => {
@@ -76,7 +84,7 @@ export const jyotisha = (instant, jdn) => {
   return {
     provenance: {
       kind: 'ancient-living',
-      ayanamsa: `Lahiri/Chitrapaksha (24°07′47″ @2026-01-01, +50.29″/yr linear) = ${round(ayanamsa)}°`,
+      ayanamsa: `Lahiri/Chitrapaksha — IAE 1985 / Swiss Ephemeris mean (24°13′13.1″ @2026-01-01, +50.29″/yr linear) = ${round(ayanamsa)}°`,
       note: 'vara is the civil weekday in v1 — sunrise-based vara needs the operator location (encrypted natal path)',
     },
     nakshatra: {

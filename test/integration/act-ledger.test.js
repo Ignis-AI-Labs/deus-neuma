@@ -27,7 +27,7 @@ beforeEach(async () => {
   vi.resetModules();
   // The ledger anchors to the DATA ROOT, not process.cwd() — it used to use
   // cwd, which on a packaged install is the read-only AppImage mount and could
-  // not be written at all (Bastien, 2026-08-05). Isolating by spying on cwd would
+  // not be written at all (Marcel, 2026-08-05). Isolating by spying on cwd would
   // now silently miss and write into the REPO's own data/, so the env door is
   // the one to hold. getDataRoot() reads it per call, so setting it here is
   // enough — no boot required.
@@ -51,16 +51,16 @@ const ledgerBytes = async () => {
 describe('the act ledger records the shape of an act', () => {
   test('an act lands with lane, tool, scope, decision and status', async () => {
     await recordAct({
-      laneId: 'ostrel', name: 'Ostrel', kind: 'witness',
+      laneId: 'quill', name: 'Quill', kind: 'witness',
       tool: 'filesystem/write_file',
-      args: { path: '/home/founder/Neuma Testing/ostrel-test-01.txt', content: 'hello' },
+      args: { path: '/home/ada/Neuma Testing/quill-test-01.txt', content: 'hello' },
       decision: 'approved', status: 'ok',
     });
 
     const [act] = await readActs();
-    expect(act.laneId).toBe('ostrel');
+    expect(act.laneId).toBe('quill');
     expect(act.tool).toBe('filesystem/write_file');
-    expect(act.scope).toContain('ostrel-test-01.txt');
+    expect(act.scope).toContain('quill-test-01.txt');
     expect(act.decision).toBe('approved');
     expect(act.status).toBe('ok');
     expect(typeof act.ts).toBe('string');
@@ -68,18 +68,18 @@ describe('the act ledger records the shape of an act', () => {
 
   test('THE ACCEPTANCE CRITERION: which being touched this, and did I approve it', async () => {
     // The consent, then the execution — two events, as they really happen.
-    await recordAct({ laneId: 'ostrel', name: 'Ostrel', tool: 'filesystem/write_file', args: { path: '/tmp/report.txt' }, decision: 'approved', status: 'approved' });
-    await recordAct({ laneId: 'ostrel', name: 'Ostrel', tool: 'filesystem/write_file', args: { path: '/tmp/report.txt' }, decision: 'auto', status: 'success' });
-    await recordAct({ laneId: 'fenna', name: 'Fenna', tool: 'filesystem/read_text_file', args: { path: '/tmp/other.txt' }, decision: 'auto', status: 'success' });
+    await recordAct({ laneId: 'quill', name: 'Quill', tool: 'filesystem/write_file', args: { path: '/tmp/report.txt' }, decision: 'approved', status: 'approved' });
+    await recordAct({ laneId: 'quill', name: 'Quill', tool: 'filesystem/write_file', args: { path: '/tmp/report.txt' }, decision: 'auto', status: 'success' });
+    await recordAct({ laneId: 'alder', name: 'Alder', tool: 'filesystem/read_text_file', args: { path: '/tmp/other.txt' }, decision: 'auto', status: 'success' });
 
     const acts = await readActs();
     const touched = acts.filter((a) => a.scope?.includes('report.txt'));
-    expect(touched.every((a) => a.laneId === 'ostrel')).toBe(true);       // which being
+    expect(touched.every((a) => a.laneId === 'quill')).toBe(true);       // which being
     expect(touched.some((a) => a.decision === 'approved')).toBe(true);   // and I approved it
   });
 
   test('a DENIED act is still recorded — a refusal is history too', async () => {
-    await recordAct({ laneId: 'ostrel', tool: 'filesystem/delete_file', args: { path: '/etc/passwd' }, decision: 'denied', status: 'denied' });
+    await recordAct({ laneId: 'quill', tool: 'filesystem/delete_file', args: { path: '/etc/passwd' }, decision: 'denied', status: 'denied' });
     const [act] = await readActs();
     expect(act.decision).toBe('denied');
     expect(act.scope).toContain('/etc/passwd');
@@ -112,7 +112,7 @@ describe('SOVEREIGNTY — the ledger records the act, never its content', () => 
 
   test('a secret driven through a real act does NOT appear in the ledger bytes', async () => {
     await recordAct({
-      laneId: 'ostrel', name: 'Ostrel', kind: 'witness',
+      laneId: 'quill', name: 'Quill', kind: 'witness',
       tool: 'vault/vault_save',
       args: {
         name: 'vault-token',
@@ -135,7 +135,7 @@ describe('SOVEREIGNTY — the ledger records the act, never its content', () => 
 
   test('a credential sitting in a NAMING slot is scrubbed too', async () => {
     await recordAct({
-      laneId: 'ostrel', tool: 'web/web_fetch',
+      laneId: 'quill', tool: 'web/web_fetch',
       args: { url: `https://api.test/v1?token=${SECRET}`, apiKey: SECRET },
       status: 'ok',
     });

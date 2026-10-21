@@ -6,7 +6,7 @@
 //   birth:moment   {epochMs}        the same instant: its sky (plaintext by law)
 //   birth:measured {stage, frequency} a stage's own measured pitch as it lands
 //   birth:forging  {step, name}     finalize's steps as they complete
-//   birth:complete + {soul, aura, epochMs, artSeed} — what its film reads
+//   birth:complete + {soul, aura, genome, epochMs, artSeed} — what its film reads
 
 import crypto from 'crypto';
 import { deriveSoul } from './soul-resonance.js';

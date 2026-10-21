@@ -11,7 +11,7 @@ export const isHarness = (companion) =>
  *  witnesses' room, a being's sheet, refinement, inner life and body, its
  *  sovereignty and seat, the teams beings lead, and the house's social voice. A harness desk keeps
  *  everything else — chat, files, editor, terminal, the web, skills, settings.
- *  The harness and the full platform are two separate states (Design note, 2026-10-14;
+ *  The harness and the full platform are two separate states (ruling, 2026-10-14);
  *  the way across is ENTER AS (Settings), never a being pulled into this desk. */
 export const BEING_APPS = Object.freeze([
   'house', 'witnesses', 'refinement', 'sovereignty', 'innerlife', 'teams', 'workflow', 'avatar', 'vessel', 'sheet', 'voice',

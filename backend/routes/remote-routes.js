@@ -2,7 +2,8 @@
  * Remote Routes — Neuma Remote, phases 1–2 plus the native road's desk side
  * (Road B, docs/security/remote-surface.md).
  *
- * Management (local only, signed in):
+ * Management (local only, signed in; every road change is the install
+ * owner's — pairing a phone and cutting one's own stay any house's):
  *   GET    /api/v1/remote                 status: enabled, origin, roads, devices, tailscale, serving
  *   POST   /api/v1/remote/enable          enrol this machine's MagicDNS name
  *   POST   /api/v1/remote/disable         off, every device cut
@@ -32,6 +33,7 @@ import { requireAuth, createSessionToken, verifySessionToken } from '../services
 import { bridgeLimiter } from '../services/rate-limiter.js';
 import { getAppConfig, isProduction } from '../config.js';
 import { requireLocalScope } from '../services/remote/access-guard.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { remoteStore, EMPTY_REMOTE_STATE } from '../services/remote/remote-store.js';
 import {
   createPairing, hasPairing, claimPairing, mintDevice, mintNativeDevice,
@@ -47,6 +49,10 @@ import {
 import { spkiSha256 } from '../services/remote/x509-self.js';
 
 const log = createLogger('Remote');
+
+// pure — is this device the wallet's own: the wallet that paired it?
+const ownDevice = (device, wallet) =>
+  typeof device?.address === 'string' && device.address === String(wallet || '').toLowerCase();
 
 // In development the desk is served by Vite, which proxies the API and the
 // socket, so that is the port Serve must front; packaged, the backend serves
@@ -91,9 +97,14 @@ export const createRemoteRouter = ({
 } = {}) => {
   const router = Router();
   const localOnly = [requireAuth, requireLocalScope];
+  // The roads are the machine's: opening, closing or cutting them reaches
+  // every house's phones, so they are the install owner's (install-owner.js).
+  const machineOnly = [...localOnly, requireInstallOwner];
 
-  // impure — CLI + store read
-  const status = async () => {
+  // impure — CLI + store read. The devices listed are the caller's own: a
+  // device acts as the wallet that paired it, and another house's phones are
+  // not this operator's to see or cut.
+  const status = async (wallet) => {
     const state = store.get();
     const ts = await tailscale.status();
     const port = servePort();
@@ -105,7 +116,7 @@ export const createRemoteRouter = ({
       origin: state.origin,
       rotatedAt: state.rotatedAt,
       roads: state.roads,
-      devices: state.devices.map(publicDevice),
+      devices: state.devices.filter((d) => ownDevice(d, wallet)).map(publicDevice),
       port,
       serving,
       desk: identity ? { fingerprint: identity.fingerprint, deskId: identity.deskId } : null,
@@ -136,11 +147,11 @@ export const createRemoteRouter = ({
     res.json({ token, address: device.address, expiresIn: expiresAt - Date.now(), device: publicDevice(device) });
   });
 
-  router.get('/', ...localOnly, async (_req, res) => {
-    res.json(await status());
+  router.get('/', ...localOnly, async (req, res) => {
+    res.json(await status(req.walletAddress));
   });
 
-  router.post('/enable', ...localOnly, async (_req, res) => {
+  router.post('/enable', ...machineOnly, async (req, res) => {
     const ts = await tailscale.status();
     if (!ts.dnsName) {
       res.status(409).json({ error: 'Tailscale is not running or not signed in on this machine', detail: ts.detail });
@@ -148,19 +159,19 @@ export const createRemoteRouter = ({
     }
     await store.save({ ...store.get(), enabled: true, origin: ts.dnsName });
     log.info('remote access enabled', { origin: ts.dnsName });
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
-  router.post('/disable', ...localOnly, async (_req, res) => {
+  router.post('/disable', ...machineOnly, async (req, res) => {
     await store.save(EMPTY_REMOTE_STATE);
     log.info('remote access disabled — every device cut');
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
-  router.post('/rotate', ...localOnly, async (_req, res) => {
+  router.post('/rotate', ...machineOnly, async (req, res) => {
     await store.save({ ...store.get(), devices: [], rotatedAt: new Date().toISOString() });
     log.info('remote devices rotated — every device cut');
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
   router.post('/pair', ...localOnly, async (req, res) => {
@@ -216,41 +227,41 @@ export const createRemoteRouter = ({
     res.type('image/svg+xml').send(svg);
   });
 
-  router.post('/lan/enable', ...localOnly, async (req, res) => {
+  router.post('/lan/enable', ...machineOnly, async (req, res) => {
     try {
       await enableLanRoad({ port: req.body?.port });
       log.info('native LAN road enabled', { native: lanStatus() });
-      res.json(await status());
+      res.json(await status(req.walletAddress));
     } catch (error) {
       log.error('LAN road enable failed', { error: error.message });
       res.status(502).json({ error: 'The native LAN road failed to start' });
     }
   });
 
-  router.post('/lan/disable', ...localOnly, async (_req, res) => {
+  router.post('/lan/disable', ...machineOnly, async (req, res) => {
     await disableLanRoad();
     log.info('native LAN road disabled — tunnel sockets cut');
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
-  router.put('/relay', ...localOnly, async (req, res) => {
+  router.put('/relay', ...machineOnly, async (req, res) => {
     try {
       await enableRelayRoad({ url: req.body?.url, token: req.body?.token });
       log.info('relay road enabled', { relay: relayStatus() });
-      res.json(await status());
+      res.json(await status(req.walletAddress));
     } catch (error) {
       log.warn('relay road enable refused', { error: error.message });
       res.status(400).json({ error: error.message });
     }
   });
 
-  router.post('/relay/disable', ...localOnly, async (_req, res) => {
+  router.post('/relay/disable', ...machineOnly, async (req, res) => {
     await disableRelayRoad();
     log.info('relay road disabled');
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
-  router.post('/https/enable', ...localOnly, async (_req, res) => {
+  router.post('/https/enable', ...machineOnly, async (req, res) => {
     const ts = await tailscale.status();
     if (!ts.binary) {
       res.status(409).json({ error: 'Tailscale is not installed on this machine' });
@@ -261,10 +272,10 @@ export const createRemoteRouter = ({
       res.status(502).json({ error: result.detail });
       return;
     }
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
-  router.post('/https/disable', ...localOnly, async (_req, res) => {
+  router.post('/https/disable', ...machineOnly, async (req, res) => {
     const ts = await tailscale.status();
     if (!ts.binary) {
       res.status(409).json({ error: 'Tailscale is not installed on this machine' });
@@ -275,13 +286,18 @@ export const createRemoteRouter = ({
       res.status(502).json({ error: result.detail });
       return;
     }
-    res.json(await status());
+    res.json(await status(req.walletAddress));
   });
 
   router.delete('/devices/:id', ...localOnly, async (req, res) => {
     const state = store.get();
-    await store.save({ ...state, devices: withoutDevice(state.devices, String(req.params.id)) });
-    res.json(await status());
+    const id = String(req.params.id);
+    if (!state.devices.some((d) => d.id === id && ownDevice(d, req.walletAddress))) {
+      res.status(404).json({ error: 'no such paired device' });
+      return;
+    }
+    await store.save({ ...state, devices: withoutDevice(state.devices, id) });
+    res.json(await status(req.walletAddress));
   });
 
   return router;

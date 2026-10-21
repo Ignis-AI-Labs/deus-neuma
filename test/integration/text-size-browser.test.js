@@ -26,7 +26,7 @@ test('LOOK scales fixed, token, inherited, editor and terminal text; persists, s
       appType: 'custom', esbuild: { jsx: 'automatic' },
       css: { postcss: { plugins: [textScaleCss()] } },
       optimizeDeps: { entries: ['test/fixtures/text-size.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><div id="root"></div><script type="module" src="/test/fixtures/text-size.jsx"></script>'));
     app.use(vite.middlewares);

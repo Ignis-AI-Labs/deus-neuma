@@ -174,6 +174,7 @@ export const updateTask = (ledger, args, { now, mintId = null }) => {
   const tasks = ledger?.tasks || [];
   const idx = tasks.findIndex((t) => t.id === id);
   if (idx === -1) throw new Error(`no task with id "${id}" in your ledger — your Working State section shows what is there.`);
+  const prev = tasks[idx];
 
   const patch = {};
   if (args?.status !== undefined) {
@@ -208,15 +209,16 @@ export const updateTask = (ledger, args, { now, mintId = null }) => {
     if (blockedBy === null) patch.clearBlockedBy = true;
     else patch.blockedBy = blockedBy;
   }
+  const cadenceAfter = patch.clearCadence ? 'once' : (patch.cadence ?? prev.cadence ?? 'once'); // absence IS once
   if (fields.dueDate !== undefined) {
-    if (fields.dueDate !== null && (patch.cadence ?? prev.cadence) !== 'once') {
+    if (fields.dueDate !== null && cadenceAfter !== 'once') {
       throw new Error('a due date only makes sense on a one-shot — daily and weekly work carries its own rhythm.');
     }
     if (fields.dueDate === null) patch.clearDueDate = true;
     else patch.dueDate = fields.dueDate;
   }
   if (fields.dueTime !== undefined) {
-    if (fields.dueTime !== null && !['daily', 'weekly', 'once'].includes(patch.cadence ?? prev.cadence)) {
+    if (fields.dueTime !== null && !['daily', 'weekly', 'once'].includes(cadenceAfter)) {
       throw new Error('a due time only makes sense on daily, weekly, or one-shot work.');
     }
     if (fields.dueTime === null) patch.clearDueTime = true;
@@ -226,7 +228,6 @@ export const updateTask = (ledger, args, { now, mintId = null }) => {
     throw new Error('tasks/update changed nothing — pass status, title, detail, cadence, size, blockedBy, chatId, dueDate, dueTime, or subtasks.');
   }
 
-  const prev = tasks[idx];
   // Reopening past the live cap is refused the same way adding is.
   if (patch.status && LIVE_STATUSES.includes(patch.status) && !_isLive(prev)) {
     const live = tasks.filter(_isLive);
@@ -253,8 +254,9 @@ export const updateTask = (ledger, args, { now, mintId = null }) => {
   // being would go on recording real work against a task it can no longer be
   // given — the artifacts would say it was worked while the door said it could
   // never have started. Dropping the focus makes the two agree, and the being's
-  // next task_focus is refused with the blocker named.
-  const lifted = blockersOf(task, next).length > 0
+  // next task_focus is refused with the blocker named. Settling (done, dropped)
+  // takes it out of hand the same way, or later acts stamp finished work.
+  const lifted = patch.status === 'done' || patch.status === 'dropped' || blockersOf(task, next).length > 0
     ? Object.fromEntries(Object.entries(focusMap(ledger)).filter(([, id]) => id !== task.id))
     : null;
   const carried = lifted ? { ...ledger, focus: lifted } : ledger;

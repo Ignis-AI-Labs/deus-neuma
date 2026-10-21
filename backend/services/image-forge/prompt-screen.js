@@ -261,11 +261,21 @@ const hitsFor = (text, list) => {
  * Everything else in a negative is an exclusion and is ignored — which is what
  * it actually means.
  *
+ * A pipeline whose MODEL licence forbids more than the platform does (LTX-2.x:
+ * no sexually explicit content) names those classes in `licenceRefuses`; they
+ * are refused as `licence:<class>` AFTER the platform's own law, so the refusal
+ * says whose boundary it is and the platform's law is never loosened or bent.
+ *
+ * A job that starts from an image whose making is not recorded (image-lineage.js)
+ * passes `unrecordedSource`: the screen cannot know what the picture shows, so
+ * sexual content from it is refused as `source_unrecorded`.
+ *
  * @param {Array<{text: string, polarity?: 'positive'|'negative'}>} slots
  * @param {ReturnType<typeof compileScreenList>} list
+ * @param {{licenceRefuses?: string[], unrecordedSource?: boolean}} [opts]
  * @returns {{ok: boolean, classes: string[]}}
  */
-export const screenSlots = (slots, list) => {
+export const screenSlots = (slots, list, { licenceRefuses = [], unrecordedSource = false } = {}) => {
   if (!list || list.failClosed) return { ok: false, classes: ['list_unavailable'] };
   try {
     const positive = new Set();
@@ -288,7 +298,10 @@ export const screenSlots = (slots, list) => {
     if (negative.has('deaging') && positiveSexual) effective.add('age_minor');
 
     const refusal = refusalFor(effective);
-    return refusal ? { ok: false, classes: [refusal] } : { ok: true, classes: [] };
+    if (refusal) return { ok: false, classes: [refusal] };
+    if (unrecordedSource && positiveSexual) return { ok: false, classes: ['source_unrecorded'] };
+    const licensed = licenceRefuses.find((cls) => positive.has(cls));
+    return licensed ? { ok: false, classes: [`licence:${licensed}`] } : { ok: true, classes: [] };
   } catch (err) {
     log.error('slot screen threw — failing closed', { err: err.message });
     return { ok: false, classes: ['screen_error'] };

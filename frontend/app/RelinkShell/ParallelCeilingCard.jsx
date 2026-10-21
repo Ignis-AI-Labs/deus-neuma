@@ -19,6 +19,7 @@ import { sameSubstrate } from '../../../core/runtime/tab-budget.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { formatRelativeTime } from '../../utils/format.js';
 import { useVisibleInterval } from './use-visible-interval.js';
+import { asText } from '../../utils/as-text.js';
 
 /**
  * The honest headline for a completed scan. Pure.
@@ -136,7 +137,7 @@ export const ParallelCeilingCard = () => {
     abortRef.current = null;
     setRunning(false);
     if (r.stopped) return; // soft stop: nothing recorded, card stays as it was
-    if (!r.ok) { setError(r.error); return; }
+    if (!r.ok) { setError(asText(r.error) || 'The scan could not be completed.'); return; }
     refresh();
   };
 

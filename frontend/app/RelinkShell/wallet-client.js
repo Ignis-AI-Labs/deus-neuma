@@ -87,13 +87,17 @@ export const resetNeumaKeyPassword = async (neumaId, recoveryCodes, newPassword)
   }
 };
 
-/** @returns {Promise<{address:string,balance:string}|null>} */
+/**
+ * A neuma's wallet. The selected network rides the read; the reply's
+ * `network` names where the balance was actually read (a neuma wallet lives
+ * on Base, so another selection is read on Base mainnet), and `balance` is
+ * null when the RPC did not answer.
+ * @returns {Promise<{address:string,balance:(string|null),network:string}|null>}
+ */
 export const loadWallet = async (neumaId) => {
   try {
     const headers = authHeadersOrNull();
     if (!neumaId || !headers) return null;
-    // The selected network rides the read so a neuma's balance reports the
-    // same chain the ME tab reads — one truth per window, never two chains.
     const { network } = await networkStatus();
     return await apiCall('GET', `${base(neumaId)}?network=${encodeURIComponent(network.key)}`, { headers, strictJson: true });
   } catch { return null; }

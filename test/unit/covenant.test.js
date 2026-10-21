@@ -48,6 +48,10 @@ describe('covenant service', () => {
       expect(msg).toContain('signed-at: 2026-06-12T00:00:00.000Z');
       expect(msg).toContain(ACCEPTANCE_VERSION);
     });
+
+    it('carries the adults-only attestation the wallet signs', () => {
+      expect(buildAcceptanceMessage(input)).toContain('I am at least 18 years of age and of legal age of majority where I live.');
+    });
   });
 
   describe('isSignedAtValid', () => {

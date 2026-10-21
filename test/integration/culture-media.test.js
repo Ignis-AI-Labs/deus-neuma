@@ -23,6 +23,7 @@ import { mediaToolsFor, handleMediaTool, isMediaTool } from '../../backend/servi
 import { createWebSettings } from '../../backend/services/web-settings.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { channelBindings } from '../../backend/services/social/channel-bindings.js';
+import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import { loadConfig, _resetConfig } from '../../backend/config.js';
 import path from 'path';
@@ -43,7 +44,7 @@ const PNG = Buffer.concat([
 ]);
 
 describe('the culture media lane (real loopback + real broker + real disk, gnosis)', () => {
-  let house, origRoot, library, settings;
+  let house, origRoot, library, settings, positionHouse;
   let braveServer, lastBraveRequest;
   let httpServer, wss, serverWs, client, clientLog, decide;
   const savedEnv = {};
@@ -86,10 +87,12 @@ describe('the culture media lane (real loopback + real broker + real disk, gnosi
     // The intent's doors point at this suite's real tmp instances — the same
     // seams the tool's ports carried.
     setMediaSaveSeams({ settings, library });
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: '0xTestWitness' });
+    positionHouse = usePositionHouse(house);
+    await channelBindings.bind(POSITION_HOUSE, 'x', { neumaId: NEUMA_ID });
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
+    await ownLane(NEUMA_ID);
 
     // The loopback Brave — the REAL request code calls it, the token is
     // asserted on the wire, the payload is Brave-shaped.
@@ -161,6 +164,7 @@ describe('the culture media lane (real loopback + real broker + real disk, gnosi
     httpServer?.close();
     braveServer?.close();
     setWorkspacesRoot(origRoot);
+    positionHouse?.restore();
     await fs.rm(house, { recursive: true, force: true });
   });
 

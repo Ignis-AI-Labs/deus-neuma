@@ -7,6 +7,7 @@
  */
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { ensureHarnessLane, listHarnessLanes, harnessLaneId, harnessRouteView } from '../services/harness-lane.js';
 import { releaseLocalServer } from '../services/local-server-release.js';
 import { switchHarness } from '../services/harness-switch.js';
@@ -66,8 +67,9 @@ router.post('/switch', async (req, res) => {
   }
 });
 
-// impure — free a local model server's memory, to move to another: {providerId, endpoint}
-router.post('/servers/release', async (req, res) => {
+// impure — free a local model server's memory, to move to another: {providerId, endpoint}.
+// The server is the machine's, so freeing it is the install owner's act.
+router.post('/servers/release', requireInstallOwner, async (req, res) => {
   try {
     const result = await releaseLocalServer({ providerId: req.body?.providerId, endpoint: req.body?.endpoint });
     log.info('local server release', { providerId: req.body?.providerId, ok: result.ok, code: result.code });

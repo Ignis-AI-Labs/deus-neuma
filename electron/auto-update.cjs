@@ -1,6 +1,6 @@
 // auto-update.cjs — the update pipeline, client side.
 //
-// THE BARGAIN (Design note, 2026-08-11: […] A packaged NEUMA checks shortly after boot and every
+// THE BARGAIN (ruling, 2026-08-11): […] A packaged NEUMA checks shortly after boot and every
 // 30 minutes, downloads in the background, and installs on the next quit. The
 // operator's only surface is a tray entry and one quiet OS notice — the desk
 // itself is never interrupted.
@@ -23,6 +23,30 @@
 // Differential download stays disabled. It once forwarded an Authorization
 // header past a redirect (the real swap proof); there is no header now, but
 // the full-download path is the one proven end to end.
+//
+// NOTHING DOWNLOADS ON THE BUCKET'S WORD ALONE (security seat G2). The feed's
+// sha512 and the installer come from one bucket, so TLS + sha512 trust anyone
+// who can write it. autoDownload is OFF: on update-available the app fetches
+// the same latest*.yml and its .sig, checks the offline release key's ed25519
+// signature (release-signature.cjs, key in release-public-key.cjs) under the
+// feed name THIS app asked for (its own platform + arch — so a signed feed for
+// another platform never verifies), checks the whole signed offer IS what
+// electron-updater parsed, and only then downloads (self) or tells the user
+// (notify). A failed check is asked once more past every cache (a .sig cached
+// apart from a new yml is not a forgery) before it stands. Anything less — no
+// key, no signature, a bad one, a different feed — downloads nothing, logs
+// why, and shows one quiet […] notice. A self install also
+// downloads only its own file type (AppImage on Linux, exe on Windows).
+
+const { refreshResidency } = require('./residency.cjs');
+const { RELEASE_PUBLIC_KEY } = require('./release-public-key.cjs');
+const {
+  SIGNATURE_SUFFIX,
+  channelFileFor,
+  checkSignedFeed,
+  releasePublicKey,
+  unfitForPlatform,
+} = require('./release-signature.cjs');
 
 const FEED_URL = 'https://deusneuma.ai/updates/';
 const DOWNLOADS_PAGE = 'https://deusneuma.ai/download';
@@ -69,7 +93,8 @@ const isSiteFeed = (feedUrl) => {
  * place its settings live, shared by init and the update-privacy proof (scripts/prove-update-privacy.mjs).
  */
 const configureUpdater = (updater, form, feedUrl) => {
-  updater.autoDownload = form === 'self';
+  // Never on the feed's word: wireUpdater downloads only after the signature holds.
+  updater.autoDownload = false;
   updater.disableDifferentialDownload = true;
   updater.requestHeaders = { ...UPDATE_REQUEST_HEADERS };
   // Linux's autoUpdater is AppImageUpdater even inside deb/rpm installs. It
@@ -99,6 +124,18 @@ const noticeFor = (form, version) => (form === 'self'
     title: `Deus Neuma ${version} is available`,
     body: 'Open the downloads page to fetch it — your package manager installs it.',
   });
+
+/** The quiet notice for an offered update whose signature did not hold. */
+const unverifiedNoticeFor = (version) => ({
+  title: `Deus Neuma ${version} is available — it could not be verified`,
+  body: 'It was not downloaded, and nothing on this machine changed.',
+});
+
+/** The quiet notice for a signed offer whose update file is not this install's type. */
+const unfitNoticeFor = (version) => ({
+  title: `Deus Neuma ${version} is available — not as an update for this install`,
+  body: 'Its update file does not fit this system, so it was not downloaded. Get it from the downloads page.',
+});
 
 /**
  * What the tray menu gains, as data: an entry or null. `ready` (a downloaded
@@ -138,6 +175,135 @@ const trayItems = () => {
   }];
 };
 
+// impure — the feed electron-updater just read, fetched again as bytes, with its detached signature.
+// Every read sends no-cache (fetch's no-store mode adds the headers), but a CDN may answer from its
+// cache anyway: the fresh read also carries a query no cache has seen, as electron-updater's does.
+const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile, fresh = false) => {
+  const bust = fresh ? `?noCache=${Date.now().toString(36)}` : '';
+  const options = { credentials: 'omit', cache: 'no-store' };
+  const ask = (name) => fetchImpl(new URL(`${name}${bust}`, feedUrl).href, options);
+  const yml = await ask(channelFile);
+  if (!yml.ok) throw new Error(`${channelFile} answered ${yml.status}`);
+  const ymlBytes = Buffer.from(await yml.arrayBuffer());
+  const sig = await ask(`${channelFile}${SIGNATURE_SUFFIX}`);
+  if (sig.status === 404) return { ymlBytes, sigText: null };
+  if (!sig.ok) throw new Error(`${channelFile}${SIGNATURE_SUFFIX} answered ${sig.status}`);
+  return { ymlBytes, sigText: await sig.text() };
+};
+
+/**
+ * The verdict on an offer from the signed feed on the site. A failing verdict is asked again once,
+ * past every cache, before it stands — it still fails closed. impure (network)
+ * @param {{ fetchImpl: Function, feedUrl: string, channelFile: string,
+ *   publicKey: import('node:crypto').KeyObject, offered: object }} input
+ * @returns {Promise<{ ok: true, signed: object, refreshed: boolean } | { ok: false, reason: string,
+ *   firstReason?: string }>}
+ */
+const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered }) => {
+  const read = async (fresh) => {
+    try {
+      const { ymlBytes, sigText } = await fetchSignedFeed(fetchImpl, feedUrl, channelFile, fresh);
+      return checkSignedFeed({ fileName: channelFile, ymlBytes, sigText, publicKey, offered });
+    } catch (error) {
+      return { ok: false, reason: `the signed feed could not be fetched: ${error.message}` };
+    }
+  };
+  const first = await read(false);
+  if (first.ok) return { ...first, refreshed: false };
+  const second = await read(true);
+  return second.ok ? { ...second, refreshed: true, firstReason: first.reason } : second;
+};
+
+/**
+ * Wire a configured updater to the app: verify every offer, then download (self) or tell the
+ * user (notify); notices and the tray follow. Shared by init and the signature proof
+ * (scripts/prove-update-signature.mjs), so the proof drives this exact code.
+ *
+ * @param {{ updater: object, form: 'self'|'notify', feedUrl: string, Notification: any,
+ *   refreshTray: () => void, log: object, publicKeyText: string, fetchImpl: Function,
+ *   channelFile: string, platform?: string }} deps — publicKeyText: the embedded form
+ *   (release-public-key.cjs); channelFile: the feed name derived from THIS app's platform + arch
+ * @returns {{ check: () => Promise<boolean> }}
+ */
+// impure
+const wireUpdater = ({
+  updater, form, feedUrl, Notification, refreshTray, log, publicKeyText, fetchImpl, channelFile,
+  platform = process.platform,
+}) => {
+  const publicKey = releasePublicKey(publicKeyText);
+  const noticed = new Set(); // one OS notice per kind per version per run
+  const announce = (key, { title, body }, silent) => {
+    if (noticed.has(key)) return;
+    noticed.add(key);
+    log.info?.(`[neuma] update notice — ${title}`);
+    try {
+      new Notification({ title, body, silent }).show();
+    } catch (error) {
+      log.warn(`[neuma] update notice failed: ${error.message}`);
+    }
+  };
+
+  // impure — the verdict on an offer; without a key there is nothing to fetch
+  const verdictOn = async (info) => {
+    if (!publicKey) return { ok: false, reason: 'no release public key is embedded in this build' };
+    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey, offered: info });
+    if (verdict.refreshed) log.info?.(`[neuma] update ${info.version}: the first read was stale (${verdict.firstReason}); the fresh read verified`);
+    return verdict;
+  };
+
+  // impure — the gate between […] and any byte of X
+  const verifyOffer = async (info) => {
+    const verdict = await verdictOn(info);
+    if (!verdict.ok) {
+      log.warn(`[neuma] update ${info.version} not downloaded — ${verdict.reason}`);
+      announce(`unverified ${info.version}`, unverifiedNoticeFor(info.version), true);
+      return;
+    }
+    log.info?.(`[neuma] update ${info.version} carries a valid release signature`);
+    const unfit = form === 'self' ? unfitForPlatform(verdict.signed, platform) : null;
+    if (unfit) {
+      log.warn(`[neuma] update ${info.version} not downloaded — ${unfit}`);
+      announce(`unfit ${info.version}`, unfitNoticeFor(info.version), true);
+      return;
+    }
+    state.availableVersion = info.version;
+    if (form === 'self') {
+      // A failed download is dispatched as the updater's 'error' event, logged below.
+      updater.downloadUpdate().catch(() => {});
+    } else {
+      announce(info.version, noticeFor(form, info.version), false); // self announces on downloaded
+    }
+    refreshTray();
+  };
+
+  let verifying = null; // a check never overlaps a verification: downloadUpdate takes the LATEST offer
+  updater.on('update-available', (info) => {
+    verifying = verifyOffer(info).finally(() => { verifying = null; });
+  });
+  updater.on('update-downloaded', (info) => {
+    state = { ready: true, availableVersion: info.version };
+    announce(info.version, noticeFor(form, info.version), false);
+    refreshTray();
+  });
+  // The swap moves the AppImage to its new versioned name and deletes the old: the login entry follows.
+  updater.on('appimage-filename-updated', (file) => refreshResidency({ appImage: file }));
+  updater.on('update-not-available', () => log.info?.('[neuma] up to date'));
+  updater.on('error', (error) => log.warn(`[neuma] update check failed: ${error.message}`));
+
+  // The site, or the local proof seam — nothing else is ever asked.
+  const check = async () => {
+    if (!isSiteFeed(feedUrl) && !isLoopbackFeed(feedUrl)) {
+      log.warn('[neuma] update feed is not the Deus Neuma site — refusing the check');
+      return false;
+    }
+    if (verifying) return false;
+    const result = await updater.checkForUpdates().catch(() => null);
+    if (verifying) await verifying;
+    return !!result;
+  };
+  return { check };
+};
+
 /**
  * Wire the updater. No-ops in dev. Never throws: an update check is the least
  * important thing the app does, and it must never cost a boot.
@@ -157,6 +323,8 @@ const init = ({
 }) => {
   const form = installForm({ isPackaged: app.isPackaged, appimage: !!env.APPIMAGE, platform });
   if (form === 'dev') return { form };
+  // The login entry starts this app's own file (residency.cjs): kept current at each packaged launch.
+  refreshResidency({ appImage: env.APPIMAGE || null });
 
   const feedUrl = resolveFeedUrl(env);
 
@@ -169,41 +337,20 @@ const init = ({
   }
   live = { form, updater, shell };
   configureUpdater(updater, form, feedUrl);
-
-  const noticed = new Set(); // one OS notice per version per run
-  const announce = (version) => {
-    if (noticed.has(version)) return;
-    noticed.add(version);
-    try {
-      const { title, body } = noticeFor(form, version);
-      const note = new Notification({ title, body, silent: false });
-      note.show();
-    } catch (error) {
-      log.warn(`[neuma] update notice failed: ${error.message}`);
-    }
-  };
-
-  updater.on('update-available', (info) => {
-    state.availableVersion = info.version;
-    if (form === 'notify') announce(info.version); // self announces on downloaded
-    refreshTray();
+  // Chromium's stack, as electron-updater's own requests use (system proxy included); no cookies.
+  const { net } = require('electron');
+  const { check } = wireUpdater({
+    updater,
+    form,
+    feedUrl,
+    Notification,
+    refreshTray,
+    log,
+    publicKeyText: RELEASE_PUBLIC_KEY,
+    fetchImpl: (url, options) => net.fetch(url, options),
+    channelFile: channelFileFor(platform, process.arch),
+    platform,
   });
-  updater.on('update-downloaded', (info) => {
-    state = { ready: true, availableVersion: info.version };
-    announce(info.version);
-    refreshTray();
-  });
-  updater.on('update-not-available', () => log.info?.('[neuma] up to date'));
-  updater.on('error', (error) => log.warn(`[neuma] update check failed: ${error.message}`));
-
-  // The site, or the local proof seam — nothing else is ever asked.
-  const check = () => {
-    if (!isSiteFeed(feedUrl) && !isLoopbackFeed(feedUrl)) {
-      log.warn('[neuma] update feed is not the Deus Neuma site — refusing the check');
-      return Promise.resolve(false);
-    }
-    return updater.checkForUpdates().then((result) => !!result).catch(() => false);
-  };
 
   timers = [
     setTimeout(check, FIRST_CHECK_DELAY_MS),
@@ -229,7 +376,11 @@ module.exports = {
   isSiteFeed,
   installForm,
   noticeFor,
+  unverifiedNoticeFor,
+  unfitNoticeFor,
   trayUpdateEntry,
   trayItems,
+  siteVerdict,
+  wireUpdater,
   init,
 };

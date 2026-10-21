@@ -1,10 +1,14 @@
 // @ts-check
 // Desk e2e — SETTINGS app. Split from desk.spec.js (SIZE-017).
 import { test, expect } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { openDockApp } from './helpers/dock.js';
 import { BACKEND, token, setupDesk } from './helpers/desk-harness.js';
 
 setupDesk();
+
+const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 
 test('SETTINGS: the hotkey legend lists the desk keys, honestly scoped', async ({ page }) => {
   // Settings is a system surface — launched from the Start menu, not the dock.
@@ -35,15 +39,41 @@ test('SETTINGS: the API tab gathers every outward key — channel keys, email, w
   const settings = page.locator('.settings');
   await expect(settings.locator('.settings-h', { hasText: 'CHANNEL KEYS' })).toBeVisible();
 
-  // The real board answers: every catalog platform's key card renders.
+  // THE MAP — one tile per credential the real boards hold, counted by state.
+  const authedGet = async (url) => (await fetch(`${BACKEND}${url}`, { headers: { Authorization: `Bearer ${token}` } })).json();
+  const [{ channels }, { services }] = await Promise.all([authedGet('/api/v1/social-channels'), authedGet('/api/v1/routing/services')]);
+  const map = settings.locator('.cred-map');
+  await expect(map).toBeVisible();
+  await expect(map.locator('.cred-tile')).toHaveCount(channels.length + services.length + 1);
+  // The shot: the window given the desk, its raise settled before the eye reads it.
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const win = page.locator('.fwin', { has: settings });
+  const maximize = win.getByRole('button', { name: 'Maximize window' });
+  if (await maximize.count()) await maximize.first().click();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(SHOTS, 'settings-api-map.png') });
+
+  // Every catalog platform stands as a row.
   for (const name of ['X (Twitter)', 'Telegram', 'Discord', 'Mastodon', 'Bluesky', 'Facebook Page']) {
-    await expect(settings.locator('.settings-k', { hasText: name })).toBeVisible();
+    await expect(settings.locator('.cred-row', { hasText: name })).toBeVisible();
   }
 
-  // CONFIGURE opens the key fields; a secret field is a password input
+  // A count is a door: NOT SET leaves only the rows that are not set, and says how many.
+  const missing = map.locator('.cred-count', { hasText: 'NOT SET' });
+  if (await missing.count()) {
+    const n = Number(await missing.locator('b').innerText());
+    await missing.click();
+    await expect(settings.locator('.cred-item')).toHaveCount(n);
+    await expect(settings.locator('.cred-row-state', { hasText: 'NOT SET' })).toHaveCount(n);
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(SHOTS, 'settings-api-not-set.png') });
+    await missing.click();
+  }
+
+  // A tile opens its row: Mastodon's key fields, a secret field a password input
   // (never an echo of a stored value).
-  const mastodonCard = settings.locator('.settings-realm', { has: page.locator('.settings-k', { hasText: 'Mastodon' }) });
-  await mastodonCard.locator('.settings-set', { hasText: 'CONFIGURE' }).click();
+  await map.locator('.cred-tile', { hasText: 'Mastodon' }).click();
+  const mastodonCard = settings.locator('.cred-item', { hasText: 'Mastodon' });
   await expect(mastodonCard.locator('input[placeholder*="Instance URL"]')).toBeVisible();
   await expect(mastodonCard.locator('input[type="password"]')).toHaveCount(1);
 

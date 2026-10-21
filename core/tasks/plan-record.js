@@ -34,10 +34,11 @@ const _clip = (text, max) => (text.length <= max ? text : `${text.slice(0, max -
  *
  * @param {{name?: string|null, goal: string, steps: Array, workspace?: Object|null}} plan
  *   the engine-validated plan (steps carry neumaId — resolvePlanMembers ran)
- * @param {{memberNames?: Object, approvedAt: string, chatId?: string|null}} stamp
+ * @param {{memberNames?: Object, approvedAt: string, chatId?: string|null, approvedBy?: ?Object}} stamp -
+ *   approvedBy: who said yes ({kind: 'operator'|'optio'|'charter', ...}), read by the dispatch gate
  * @returns {Object} frozen record; `taskIds` starts empty — materialization fills it
  */
-export const planRecordFrom = (plan, { memberNames = {}, approvedAt, chatId = null }) => {
+export const planRecordFrom = (plan, { memberNames = {}, approvedAt, chatId = null, approvedBy = null }) => {
   if (!plan?.goal || !Array.isArray(plan.steps) || plan.steps.length === 0) {
     throw new Error('planRecordFrom: an approved plan with goal and steps is required');
   }
@@ -65,6 +66,7 @@ export const planRecordFrom = (plan, { memberNames = {}, approvedAt, chatId = nu
     ...(plan.concurrency ? { concurrency: plan.concurrency } : {}),
     ...(plan.checkIn != null ? { checkIn: plan.checkIn } : {}),
     approvedAt,
+    ...(approvedBy ? { approvedBy: Object.freeze({ ...approvedBy }) } : {}),
     ...(chat ? { chatId: chat } : {}),
     taskIds: Object.freeze({}),
   });

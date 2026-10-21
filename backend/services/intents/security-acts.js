@@ -23,6 +23,8 @@ import { assessThreats } from '../security/assess-service.js';
 import { selectWatchedRepo } from '../security/attack-surface.js';
 import { watchStoreFor } from '../security/watch-store.js';
 import { circuitBreaker } from '../security/circuit-breaker.js';
+import { notAffectedEvidence } from '../security/verdict-evidence.js';
+import { securityFileFixIntent } from './security-fix.js';
 
 const ASSESS_STATUSES = Object.freeze(['not_affected', 'confirmed', 'mitigated', 'needs_operator']);
 const BREAKER_ACTIONS = Object.freeze(['block_source', 'unblock_source', 'lock_remote', 'release_remote', 'set_auto_containment']);
@@ -63,7 +65,7 @@ export const securityAssessIntent = Object.freeze({
   name: 'security/assess',
   policyTool: 'security.assess',
   fieldsForPrompt: '{id | ids, status, assessment, surfaces?, githubIssue?}',
-  descriptionForPrompt: 'CSO ONLY. Record a reasoned verdict on one threat or a batch. status: not_affected | confirmed | mitigated | needs_operator. Map software exposure first (security_attack_surface).',
+  descriptionForPrompt: 'CSO ONLY. Record a reasoned verdict on one threat or a batch. status: not_affected | confirmed | mitigated | needs_operator. Map software exposure first (security_attack_surface) — a not_affected on an advisory carries that map automatically. mitigated is a CLAIM: the next whole scan verifies it, or reopens the threat if it still sees it.',
   availableFor: securityScanIntent.availableFor,
   validate: async (payload, { connection }) => {
     const seat = await seatRefusal(connection);
@@ -88,15 +90,19 @@ export const securityAssessIntent = Object.freeze({
       ...(Array.isArray(payload.surfaces) ? { surfaces: payload.surfaces.map(String) } : {}),
       assessedBy: connection.companion?.neumaId || 'cso',
       ...(payload.githubIssue ? { githubIssue: String(payload.githubIssue) } : {}),
+      evidenceById: await notAffectedEvidence({ wallet: connection.walletAddress, ids, status: payload.status }),
     };
     const result = await assessThreats({ wallet: connection.walletAddress, ids, verdict });
     if (!result.ok && !result.settled.length) {
       return { ok: false, reason: result.error || result.failed.map((f) => `${f.id}: ${f.error}`).join('; ') };
     }
     const failures = result.failed.length ? `\nFailed (${result.failed.length}): ${result.failed.map((f) => `${f.id}: ${f.error}`).join('; ')}` : '';
+    const evidenced = result.settled.filter((entry) => entry.evidence).length;
+    const evidenceNote = evidenced ? `\nAttack-surface evidence attached to ${evidenced} verdict(s).` : '';
+    const claimNote = verdict.status === 'mitigated' ? '\nThe next whole scan verifies each mitigation, or reopens it if it still sees the threat.' : '';
     return {
       ok: true,
-      detail: `Assessed ${result.settled.length} threat(s) → ${verdict.status}:\n${result.settled.map((entry) => `[${entry.id.slice(0, 10)}] ${entry.title}`).join('\n')}${failures}`,
+      detail: `Assessed ${result.settled.length} threat(s) → ${verdict.status}:\n${result.settled.map((entry) => `[${entry.id.slice(0, 10)}] ${entry.title}`).join('\n')}${failures}${evidenceNote}${claimNote}`,
     };
   },
 });
@@ -162,5 +168,5 @@ export const securityCircuitBreakerIntent = Object.freeze({
 });
 
 export const securityIntents = Object.freeze([
-  securityScanIntent, securityAssessIntent, securityEscalateIntent, securityCircuitBreakerIntent,
+  securityScanIntent, securityAssessIntent, securityEscalateIntent, securityCircuitBreakerIntent, securityFileFixIntent,
 ]);

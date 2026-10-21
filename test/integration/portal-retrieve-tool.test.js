@@ -196,7 +196,8 @@ describe('B-02 — retrieve_result platform tool (real WS + real disk, gnosis)',
 
   test('a long PLATFORM result (not only an organ read) is kept and retrievable — never a dead cut', async () => {
     const connection = freshConnection({ toolMode: 'auto' });
-    const tools = [TOOL_SEARCH_TOOL, ...Array.from({ length: 8 }, (_, i) => ({
+    // retrieve_result rides every session's catalog (portal-tool-catalog.js retrieveToolsFor).
+    const tools = [TOOL_SEARCH_TOOL, ..._retrieveToolsFor(connection), ...Array.from({ length: 8 }, (_, i) => ({
       server: 'atlas', name: `chart_${i}`,
       description: `Chart the stars ${i}. ${'Long guidance about charting. '.repeat(40)}`,
       inputSchema: { type: 'object', properties: { q: { type: 'string' } } },

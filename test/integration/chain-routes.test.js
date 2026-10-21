@@ -55,10 +55,10 @@ describe('Chain routes (/api/v1/chain)', () => {
     const { witnessFor } = await import('../helpers/witness.js');
     witness = await witnessFor(house, 'chainlane');
     app = await buildApp();
-    // Importing the app graph (auth → … → core barrel) executes the natural
-    // package's import-time dotenv.config() ONCE per process (CJS cache) —
-    // hydrate first, THEN isolate, or the first test reads the operator's
-    // .env chains as configured.
+    // Isolate again after the app graph imports. Nothing in it loads .env at
+    // import any more (core's recall stopped importing natural's package
+    // root, whose storage adapters called dotenv, on 2026-10-19); the second
+    // clear keeps the chains unconfigured if an import ever sets one again.
     for (const k of ENV_KEYS) { if (k !== 'NEUMA_CHAIN_ACCESS_PATH') delete process.env[k]; }
     const { resetChainProviders } = await import('../../backend/services/chain/chain-registry.js');
     resetChainProviders();

@@ -18,6 +18,7 @@
  *  - Dry-run writes NOTHING — not even a ledger row.
  */
 
+import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';

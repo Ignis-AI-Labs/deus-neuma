@@ -9,26 +9,27 @@
 // frame the sound engine is scoring at are the same frame.
 
 import { partProgress } from './genesis-timeline.js';
-import { genesisSolids } from './genesis-geometry.js';
+import { genesisFamily } from './genesis-geometry.js';
 import { cameraAt } from './genesis-camera.js';
 import { drawingAt } from './genesis-state-drawing.js';
 import { constructAt } from './genesis-state-construct.js';
 import { emanonAt } from './genesis-state-emanon.js';
 import { captionAt } from './genesis-captions.js';
 
-const SOLIDS = genesisSolids();
+const SOLIDS = genesisFamily();
 
 /**
- * The genesis at time t (ms). Pure.
+ * The genesis at time t (ms), framed for a viewport aspect. Pure.
  * @param {number} t
+ * @param {number} [aspect] width / height
  */
-export const sceneAt = (t) => {
+export const sceneAt = (t, aspect) => {
   const drawing = drawingAt(t);
   const construct = constructAt(t);
   const emanon = emanonAt(t);
   return {
     t,
-    camera: cameraAt(t),
+    camera: cameraAt(t, aspect),
     drawing,
     construct,
     emanon,

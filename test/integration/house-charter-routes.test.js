@@ -13,6 +13,7 @@ import request from 'supertest';
 import path from 'path';
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { SERVING_PARALLEL_SLOTS } from '../../backend/services/serving-launch-config.js';
 
 describe('the house charter, through its routes', () => {
   let app, operator, stranger;
@@ -54,6 +55,9 @@ describe('the house charter, through its routes', () => {
     let res = await as(operator, request(app).get('/api/v1/house-clock/charter'));
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ charter: null, standing: 'none', history: [] });
+    // what the house lacks to work rides beside the charter: no shared ground, no Optio (2026-10-18),
+    // and how many slots the model line runs - here the server's slot count, no measured width read yet
+    expect(res.body.readiness).toEqual({ ground: null, optio: null, lineSlots: SERVING_PARALLEL_SLOTS });
 
     res = await as(operator, request(app).put('/api/v1/house-clock/charter').send(charter()));
     expect(res.status).toBe(200);
@@ -105,6 +109,32 @@ describe('the house charter, through its routes', () => {
       .send(charter({ allow: ['intents/wallet.send'] })));
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/money out/);
+  });
+
+  test('a typo in allow or escalate is refused, naming the act — it would match nothing and hold nothing', async () => {
+    let res = await as(operator, request(app).put('/api/v1/house-clock/charter')
+      .send(charter({ escalate: ['intents/social.posts'] })));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('"intents/social.posts" in escalate is not an act this house knows — check its spelling (e.g. intents/social.post, web/web_search)');
+    res = await as(operator, request(app).put('/api/v1/house-clock/charter')
+      .send(charter({ allow: ['web/web_serch'] })));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/"web\/web_serch" in allow is not an act this house knows/);
+    // the known ids land: policy rows, and intents by their registered policy name (form.render has no policy row)
+    res = await as(operator, request(app).put('/api/v1/house-clock/charter')
+      .send(charter({ allow: ['web/web_search', 'intents/tasks.add'], escalate: ['intents/social.post', 'intents/form.render', 'staff/house_state'] })));
+    expect(res.status).toBe(200);
+    expect(res.body.charter.escalate).toEqual(['intents/social.post', 'intents/form.render', 'staff/house_state', 'intents/wallet.send']);
+  });
+
+  test('readiness names the house\'s own ground once it is set — never another house\'s', async () => {
+    const { setHouseWorkspace } = await import('../../backend/services/house-workspace.js');
+    const ground = path.join(path.dirname(process.env.WORKSPACES_ROOT), 'house-ground');
+    await setHouseWorkspace(operator.address, ground);
+    let res = await as(operator, request(app).get('/api/v1/house-clock/charter'));
+    expect(res.body.readiness).toEqual({ ground, optio: null, lineSlots: SERVING_PARALLEL_SLOTS });
+    res = await as(stranger, request(app).get('/api/v1/house-clock/charter'));
+    expect(res.body.readiness).toEqual({ ground: null, optio: null, lineSlots: SERVING_PARALLEL_SLOTS });
   });
 
   test('a house only ever reads and writes its own charter', async () => {

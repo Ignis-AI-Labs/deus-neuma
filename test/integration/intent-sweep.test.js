@@ -135,7 +135,7 @@ describe('the intent sweep (real WS + real workspace + real queue, gnosis)', () 
     process.env.NEUMA_SECURITY_CSO_PATH = `${house}/cso.json`;
     process.env.NEUMA_SECURITY_THREATS_PATH = `${house}/threats.json`;
     process.env.NEUMA_SECURITY_WATCH_PATH = `${house}/watch.json`;
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: auth.address });
+    await channelBindings.bind(auth.address, 'x', { neumaId: NEUMA_ID });
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
@@ -475,14 +475,16 @@ describe('the intent sweep (real WS + real workspace + real queue, gnosis)', () 
     expect(section).toContain('social/queue');
     expect(section).toContain('intents/');
     // A crew member stages but never publishes — only the queue type renders.
-    await sectorCrew.add('x', { neumaId: 'witness-test-Crew', kind: 'witness', remit: 'campaigns' });
+    // The crew is the house's own: its operator seats a witness lane it manifested.
     await workspace.create('witness-test-Crew');
+    await writeOwner(path.join(house, 'witnesses'), 'witness-test-Crew', auth.address);
+    await sectorCrew.add(auth.address, 'x', { neumaId: 'witness-test-Crew', kind: 'witness', remit: 'campaigns' });
     const crewSection = await intentSectionFor({
       companion: { name: 'Crew', neumaId: 'witness-test-Crew' },
     });
     expect(crewSection).toContain('social/queue');
     expect(crewSection).not.toContain('social/post');
-    await sectorCrew.remove('x', 'witness-test-Crew');
+    await sectorCrew.remove(auth.address, 'x', 'witness-test-Crew');
     // A lane with no custody reach is offered only the seat-gated types —
     // never the custody ones (no channel, no mailbox, no spend, no CSO seat).
     const nobody = await intentSectionFor({ companion: { name: 'Nobody', neumaId: 'nobody-here' } });

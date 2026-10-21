@@ -11,8 +11,9 @@ import { basename } from 'path';
 import { resolvePostMedia } from '../social/post-media.js';
 import { postQueue, validateDraft as validateQueueDraft, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from '../social/post-queue.js';
 import { channelBindings } from '../social/channel-bindings.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
-import { replyCandidates } from '../social/reply-candidates.js';
+import { replyCandidatesOf } from '../social/reply-candidates.js';
 import { postIdFrom, readXReplyTarget } from '../social/x-reader.js';
 import { gateAct } from '../act-gate.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
@@ -86,9 +87,10 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
   }
 
   // SECTOR CREW gate, re-read per call — same law as staging a post.
+  const house = await houseOfLane(companion?.neumaId);
   const [bindings, crewStore] = await Promise.all([
-    channelBindings.load().catch(() => ({})),
-    sectorCrew.load().catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
+    sectorCrew.load(house).catch(() => ({})),
   ]);
   if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
     const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before threading for it`;
@@ -157,7 +159,7 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   const text = typeof args?.text === 'string' ? args.text.trim() : '';
   // The post's id, or its x.com link (what an operator pastes).
   const toPostId = postIdFrom(args?.toPostId);
-  // No scheduledFor here BY LAW (Design note, 2026-08-06: a reply rides no calendar —
+  // No scheduledFor here BY LAW (ruling, 2026-08-06): a reply rides no calendar —
   // it goes out the moment the operator approves it. A caller naming one is
   // refused by validateQueueDraft with the store's own reason.
   const campaignId = (typeof args?.campaignId === 'string' && args.campaignId.trim()) || null;
@@ -198,10 +200,11 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
     return { tool, status: 'error', error: invalid };
   }
 
-  // Gate 1 — the target is real: the house's record first, else X itself.
-  let candidate = await replyCandidates.byPostId(toPostId).catch(() => null);
+  // Gate 1 — the target is real: the house's own record first, else X itself.
+  const house = await houseOfLane(companion?.neumaId);
+  let candidate = await replyCandidatesOf(house).byPostId(toPostId).catch(() => null);
   if (!candidate) {
-    const live = await readXReplyTarget(toPostId);
+    const live = await readXReplyTarget(toPostId, { wallet: house });
     if (!live.ok) {
       const error = `X could not show that post (${live.detail}) — nothing to answer`;
       _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — post not found` });
@@ -237,8 +240,8 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
 
   // SECTOR CREW gate, re-read per call — same law as staging a post.
   const [bindings, crewStore] = await Promise.all([
-    channelBindings.load().catch(() => ({})),
-    sectorCrew.load().catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
+    sectorCrew.load(house).catch(() => ({})),
   ]);
   if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
     const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before answering for it`;
@@ -325,8 +328,9 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
   }
 
   // The record is the target list — same law as answering: a being cannot
-  // set aside a post the house never saw.
-  const candidate = await replyCandidates.byPostId(toPostId).catch(() => null);
+  // set aside a post its house never saw.
+  const house = await houseOfLane(companion?.neumaId);
+  const candidate = await replyCandidatesOf(house).byPostId(toPostId).catch(() => null);
   if (!candidate) {
     const error = 'that reply is not on the house\'s record — read the field with read_x {what:\'mentions\'} and name one you actually saw.';
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not a reply to the house` });
@@ -335,8 +339,8 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
 
   // SECTOR CREW gate, re-read per call — same law as staging an answer.
   const [bindings, crewStore] = await Promise.all([
-    channelBindings.load().catch(() => ({})),
-    sectorCrew.load().catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
+    sectorCrew.load(house).catch(() => ({})),
   ]);
   if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
     const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before deciding for it`;
@@ -361,7 +365,7 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
   if (!gate.ok) return gate.result;
 
   _sendToolEvent(ws, companion, { tool, status: 'executing' });
-  const marked = await replyCandidates.dismiss(toPostId, {
+  const marked = await replyCandidatesOf(house).dismiss(toPostId, {
     by: companion?.name || 'being',
     reason,
   }).catch((err) => ({ ok: false, error: err.message }));

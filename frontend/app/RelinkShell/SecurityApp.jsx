@@ -14,7 +14,7 @@ import './SecurityApp.css';
 import { AppTitle } from './app-title.jsx';
 import { uiSound } from '../../services/ui-sound.js';
 import {
-  getPosture, getScan, getWatch, getThreats, getThreat, runScan,
+  getPosture, getScan, getWatch, getThreats, getThreat, runScan, reopenThreat,
 } from '../../services/cso-client.js';
 import { filterThreats } from './security-view.js';
 import { SecurityBody, SecurityIcon } from './SecurityBody.jsx';
@@ -27,16 +27,19 @@ const SecurityAppBody = () => {
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [layerFilter, setLayerFilter] = useState('');
-  const [repoFilter, setRepoFilter] = useState('');
+  // The overview's press: severity, status (or every open one), where.
+  const [filters, setFilters] = useState({});
 
-  const loadAll = () => Promise.all([getPosture(), getScan(), getWatch(), getThreats()])
+  // Each read lands on its own: one failed read is named, never hides the rest.
+  const loadAll = () => Promise.allSettled([getPosture(), getScan(), getWatch(), getThreats()])
     .then(([p, s, w, t]) => {
-      setPosture(p); setScan(s.scan); setWatch(w.watch); setThreats(t.threats);
-      setError(null);
-    })
-    .catch((e) => setError(e.message)); // surfaced, never swallowed
+      if (p.status === 'fulfilled') setPosture(p.value);
+      if (s.status === 'fulfilled') setScan(s.value.scan);
+      if (w.status === 'fulfilled') setWatch(w.value.watch);
+      if (t.status === 'fulfilled') setThreats(t.value.threats);
+      const failed = [p, s, w, t].filter((r) => r.status === 'rejected').map((r) => r.reason?.message || String(r.reason));
+      setError(failed.length ? failed.join(' · ') : null);
+    });
 
   useEffect(() => { loadAll(); }, []);
 
@@ -60,24 +63,38 @@ const SecurityAppBody = () => {
     }
   };
 
+  // The operator outranks every verdict: one press puts it back on the list.
+  const onReopenThreat = async () => {
+    uiSound('activate');
+    setBusy(true);
+    try {
+      const { threat } = await reopenThreat(detail.id, 'reopened by the operator from the desk');
+      setDetail(threat);
+      await loadAll();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <SecurityBody
       posture={posture}
       scan={scan}
       watch={watch}
-      entries={filterThreats(threats, { status: statusFilter, layer: layerFilter, repo: repoFilter })}
+      all={threats}
+      entries={filterThreats(threats, filters)}
+      now={Date.now()}
       detail={detail}
       busy={busy}
       error={error}
       onPickThreat={onPickThreat}
       onCloseDetail={() => setDetail(null)}
       onRunScan={onRunScan}
-      statusFilter={statusFilter}
-      layerFilter={layerFilter}
-      repoFilter={repoFilter}
-      onStatus={(v) => { uiSound('open'); setStatusFilter(v); }}
-      onLayer={(v) => { uiSound('open'); setLayerFilter(v); }}
-      onRepo={(v) => { uiSound('open'); setRepoFilter(v); }}
+      onReopenThreat={onReopenThreat}
+      filters={filters}
+      onFilter={(f) => { uiSound('open'); setFilters(f); }}
     />
   );
 };

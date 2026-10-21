@@ -18,3 +18,17 @@ export const decodeStreamTransfer = (payload) => {
   if (!tab) return null;
   return Object.freeze({ ...tearOutPayload(tab), ...(raw.tab ? { tab } : {}) });
 };
+
+/**
+ * Pure - the window actions that seat a transferred sitting in a stream
+ * window of its own. Instance 1 is the desk's own stream and never reads a
+ * payload, so an OPEN_NEW while it is closed would become instance 1 and drop
+ * the sitting: the desk stream opens first and the sitting lands beside it.
+ * @param {string} payload - encodeStreamTransfer's string
+ * @param {Array<{id: string}>} windows - the window manager's open windows
+ * @returns {object[]}
+ */
+export const openSittingActions = (payload, windows = []) => [
+  ...((windows || []).some((w) => w.id === 'chat') ? [] : [{ type: 'OPEN', id: 'chat' }]),
+  { type: 'OPEN_NEW', appId: 'chat', payload },
+];

@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { buildBenchFixtureTree } from '../helpers/bench-fixture-tree.js';
 import { useTempRealm } from '../helpers/temp-realm.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV = [
   'NEUMA_BENCH_HARNESS_PATH', 'NEUMA_BENCH_SERVING_URL', 'NEUMA_DATA_ROOT', 'WORKSPACES_ROOT',
@@ -44,6 +45,8 @@ describe('the clear-machine law — a test run on the box refuses the benchmark'
     process.env.NEUMA_BENCH_TEST_PROCESS_PATTERN = marker;
     const { witnessFor } = await import('../helpers/witness.js');
     witness = await witnessFor(process.env.WORKSPACES_ROOT, 'benchlane');
+    // The bench plane runs the machine's processes: its launches are the install owner's.
+    await makeInstallOwner(witness.address);
     const { default: router } = await import('../../backend/routes/bench-routes.js');
     app = express();
     app.use(express.json());

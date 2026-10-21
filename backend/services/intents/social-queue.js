@@ -11,26 +11,30 @@
  * runs BEFORE the operator's card, so a card only ever describes a draft that
  * can stand.
  */
-import { getChannel, CHANNEL_CATALOG, resolveChannelCredentials } from '../social/channel-registry.js';
-import { loadChannelCredentials } from '../social/channel-credentials.js';
+import { getChannel, CHANNEL_CATALOG } from '../social/channel-registry.js';
+import { loadChannelCredentials, resolveChannelCredential } from '../social/channel-credentials.js';
 import { channelBindings } from '../social/channel-bindings.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { postQueue, validateDraft as validateQueueDraft } from '../social/post-queue.js';
 import { resolvePostMedia } from '../social/post-media.js';
 
 // impure — the channels this lane may STAGE for: crewed (or held) AND
-// credentialed. The queue intent's availability probe (intents-section asks
-// each type once per turn).
+// credentialed, in the lane's own house (house-positions.js). The queue
+// intent's availability probe (intents-section asks each type once per turn).
 const stageableChannels = async (laneId) => {
+  const house = await houseOfLane(laneId);
   const [store, bindings, crewStore] = await Promise.all([
-    loadChannelCredentials().catch(() => ({})),
-    channelBindings.load().catch(() => ({})),
-    sectorCrew.load().catch(() => ({})),
+    loadChannelCredentials(house).catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
+    sectorCrew.load(house).catch(() => ({})),
   ]);
-  return CHANNEL_CATALOG
-    .filter((c) => resolveChannelCredentials(c, store[c.id], process.env) !== null)
-    .filter((c) => canStageForSector(crewStore, bindings, c.id, laneId))
-    .map((c) => c.id);
+  const crewed = CHANNEL_CATALOG.filter((c) => canStageForSector(crewStore, bindings, c.id, laneId));
+  const out = [];
+  for (const c of crewed) {
+    if (await resolveChannelCredential(house, c.id, store).catch(() => null)) out.push(c.id);
+  }
+  return out;
 };
 
 export const socialQueueIntent = Object.freeze({
@@ -68,9 +72,10 @@ export const socialQueueIntent = Object.freeze({
     // SECTOR CREW gate. Staging is WORK, not custody: anyone the operator put
     // on this sector's crew may draft into the queue, and the holder may too.
     // The holder's binding still stands alone in front of the actual send.
+    const house = await houseOfLane(connection.companion?.neumaId);
     const [bindings, crewStore] = await Promise.all([
-      channelBindings.load().catch(() => ({})),
-      sectorCrew.load().catch(() => ({})),
+      channelBindings.load(house).catch(() => ({})),
+      sectorCrew.load(house).catch(() => ({})),
     ]);
     if (!canStageForSector(crewStore, bindings, channel.id, connection.companion?.neumaId || null)) {
       return { ok: false, status: 'denied', reason: `you are not on the ${channel.name} crew — ask your operator to add you to that sector before staging posts for it` };

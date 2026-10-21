@@ -21,7 +21,7 @@ export const ReplyCandidateCard = ({ candidate: c, now, children }) => {
       <div className="cham-in queue-card-in">
         <div className="queue-entry-head">
           <span className="queue-entry-id">
-            {/* THE LINK BACK (Design note, 2026-08-28: a knock is verified on the
+            {/* THE LINK BACK (ruling, 2026-08-28): a knock is verified on the
                 real X post, never on the card's say-so — the author opens the
                 replier's own post, and the ANSWERS label opens the house post
                 it answers when this lane published it. */}

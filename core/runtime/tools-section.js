@@ -207,12 +207,16 @@ export const intentFamilyLines = (intentTypes) => {
  * @param {string} intentsDir - the lane's intents directory (absolute)
  * @returns {string} the section text, '' when no type is available
  */
-export const buildIntentsSection = (intentTypes, intentsDir) => {
+export const buildIntentsSection = (intentTypes, intentsDir, { searchable = true } = {}) => {
   if (!intentTypes?.length) return '';
-  const lines = intentFamilyLines(intentTypes);
+  // A wire with no search door (the text wire) carries each contract here: the being has nowhere else to read it.
+  const listing = searchable
+    ? `Types you may file, by family — before filing one, call system/tool_search with its exact name (e.g. "${intentTypes[0].name}") for its full contract, or with a family (e.g. "${intentTypes[0].name.split('/')[0]}/") for every contract in it:
+${intentFamilyLines(intentTypes).join('\n')}`
+    : `Types you may file, each with its fields:
+${intentTypes.map((t) => `- ${t.name}${t.channels?.length ? ` (channels: ${t.channels.join(', ')})` : ''} ${t.fieldsForPrompt || ''} — ${t.descriptionForPrompt || ''}`).join('\n')}`;
   return `## Intents — consequential acts are FILES, not tool calls
 To act beyond your tools, write a JSON file at ${intentsDir}/<a-unique-name>.json holding {"type": "<one of the types below>", …its fields} (your own lane is always yours to write). The platform returns settlement receipts with the tool results — validation, your operator's card when the type asks, then execution; do not poll or reread it. After an interruption, read that saved result once (${intentsDir}/<name>.result.json). No result is not failure and never a reason to file again; a settled intent never runs twice.
 
-Types you may file, by family — before filing one, call system/tool_search with its exact name (e.g. "${intentTypes[0].name}") for its full contract, or with a family (e.g. "${intentTypes[0].name.split('/')[0]}/") for every contract in it:
-${lines.join('\n')}`;
+${listing}`;
 };

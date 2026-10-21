@@ -1,7 +1,8 @@
 // CoS briefing — the Optio's office section, composed FRESH from the real
 // stores each turn: the house roster (the office's address book), the posts
-// waiting in the office's house inbox, the standing plan of record, and the
-// house's recent team runs.
+// waiting in the office's house inbox, the standing plan of record, the
+// house's recent team runs, and what waits on the operator (the open asks the
+// office organizes into one review packet, Design note, 2026-10-16.
 //
 // The empty-string law holds absolutely: any lane but the seated Optio's —
 // and any store failure — yields '', so every other being's prompt is
@@ -10,12 +11,14 @@
 // the HOUSE SEAT and CMO sections carry.
 
 import { cosDesignation } from './cos-designation.js';
-import { houseSeatFor, chargeOfTitle } from '../house-titles.js';
+import { houseSeatFor, chargeOfTitle, seatLabelOf } from '../house-titles.js';
 import { loadHouseWorkspace } from '../house-workspace.js';
 import { readNewPosts } from '../house-post.js';
 import { listRuns } from '../team-run-store.js';
 import { computeHouseState } from './house-state.js';
-import { OPEN_DISPATCH_STATUSES, TERMINAL_DISPATCH_STATUSES } from './dispatch-store.js';
+import { TERMINAL_DISPATCH_STATUSES } from './dispatch-store.js';
+import { readAsks } from '../house-clock/wake-ledger.js';
+import { readPacket } from '../house-clock/review-packet.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../logger.js';
 
@@ -23,6 +26,8 @@ const log = createLogger('Staff.Briefing');
 
 const POST_PREVIEW_CAP = 5;
 const RUN_CAP = 5;
+const ASK_CAP = 12;
+const CHARGE_CAP = 5;
 
 // One bounded line, never structure: roster titles/names and post bodies all
 // cross a file boundary into prompt text.
@@ -33,7 +38,7 @@ const rosterLines = (seat, selfId) => seat.roster.map((r) => {
   const holder = r.neumaId === selfId ? 'YOU'
     : r.isWitness ? 'your operator'
       : r.name ? clean(r.name, 60) : 'a housemate (not on a lane)';
-  return `- ${clean(r.title, 60)} — ${holder}${charge ? ` — ${charge}` : ''}`;
+  return `- ${clean(seatLabelOf(r.title), 60)} — ${holder}${charge ? ` — ${charge}` : ''}`;
 });
 
 const postLines = (posts) => {
@@ -53,14 +58,38 @@ const runLine = (run) =>
 
 const DAY_MS = 86_400_000;
 
-// One line per open charge, honest about the wait. Pure.
+// pure — one open ask as the office reads it: its id (the packet names it), who, what
+const askLine = (ask, nameOf) => {
+  const who = clean(nameOf(ask.seat), 40);
+  const where = ask.runId ? ` (team run ${clean(ask.runId, 40)}, step ${clean(ask.stepId, 20)})` : '';
+  const what = ask.kind === 'decision' ? `decision: "${clean(ask.question, 160)}"`
+    : ask.kind === 'plan' ? `team plan${ask.planId ? ` ${clean(ask.planId, 30)}` : ''} — ${clean(ask.why, 120)}`
+      : `act ${clean(ask.tool, 60)} — ${clean(ask.why, 120)}`;
+  return `- [${ask.id}] ${who}${where} · ${what}`;
+};
+
+// What waits on the operator, and the packet the office last filed. Pure.
+const askLines = (asks, packet, nameOf) => {
+  const open = asks.filter((a) => a.status === 'open');
+  if (!open.length) return ['Nothing waits on the operator.'];
+  return [
+    `${open.length} open ask(s) wait on the operator. Organize them into ONE review packet (house/review-packet {summary, order, blocked}): what needs them and why, related asks together, the blocked ones marked, so they can answer and the house keeps moving:`,
+    ...open.slice(0, ASK_CAP).map((a) => askLine(a, nameOf)),
+    ...(open.length > ASK_CAP ? [`- …and ${open.length - ASK_CAP} more.`] : []),
+    packet ? `Your last packet: filed ${clean(packet.at, 30)}, ${packet.order.length} ask(s).` : 'No packet filed yet.',
+  ];
+};
+
+// One line per charge, past due first, honest about the wait — and about how
+// many more the drawer holds than the briefing has room for. Pure.
 const chargeLines = (dispatches, now) => {
   const charges = dispatches?.charges ?? [];
   if (!charges.length) return ['The drawer is empty — staff/dispatch files a standing charge.'];
-  const open = charges.filter((c) => OPEN_DISPATCH_STATUSES.includes(c.status));
+  const shown = charges.slice(0, CHARGE_CAP);
+  const more = dispatches.total - shown.length;
   return [
     `${dispatches.open} open of ${dispatches.total} charge(s) — staff/dispatch files, staff/dispatch-update moves:`,
-    ...charges.slice(0, 5).map((c) => {
+    ...shown.map((c) => {
       const age = Number.isFinite(Date.parse(c.filedAt))
         ? `${Math.max(0, Math.floor((now - Date.parse(c.filedAt)) / DAY_MS))}d`
         : '?';
@@ -68,8 +97,9 @@ const chargeLines = (dispatches, now) => {
       const due = c.dueAt ? `, due ${clean(c.dueAt, 30)}` : '';
       return `- [${clean(c.id, 30)}] "${clean(c.title, 60)}" → ${clean(c.to, 40)} — dispatched ${age} ago${due}${closed}`;
     }),
-    ...(open.some((c) => c.dueAt && Date.parse(c.dueAt) < now)
-      ? ['At least one charge is PAST DUE — carry it to the operator; escalation is the office\'s move, not a failure.']
+    ...(more > 0 ? [`- …and ${more} more — house_state lists every open one.`] : []),
+    ...(dispatches.pastDue
+      ? [`${dispatches.pastDue} charge(s) PAST DUE — carry them to the operator; escalation is the office's move, not a failure.`]
       : []),
   ];
 };
@@ -110,7 +140,13 @@ export const cosBriefingSection = async (connection) => {
   try {
     const officer = await cosDesignation.getOfficer(connection.walletAddress);
     if (officer?.laneId !== neumaId) return '';
-    const { seat, posts, plan, runs, house } = await cosBoardSnapshot(connection.walletAddress, neumaId);
+    const [{ seat, posts, plan, runs, house }, asks, packet] = await Promise.all([
+      cosBoardSnapshot(connection.walletAddress, neumaId),
+      readAsks(connection.walletAddress).catch(() => []),
+      readPacket(connection.walletAddress).catch(() => null),
+    ]);
+    const names = new Map((seat?.roster ?? []).filter((r) => r.neumaId).map((r) => [r.neumaId, r.name]));
+    const nameOf = (lane) => names.get(lane) || lane;
     return [
       '## CHIEF OF STAFF OFFICE',
       'You hold the Optio office — you are the house\'s chief of staff, the operator\'s standing delegate for managing the house\'s other beings. Doctrine: staff/playbook.md; standing charges: staff/dispatches/. While you hold this office, the house\'s dispatch crosses YOU — a team filing from another lane is denied and sent to your house inbox. Every working team run of the house is yours to govern: how many parts work at once, each clock, the check-ins — team/tune; every desk sees who changed what.',
@@ -133,6 +169,9 @@ export const cosBriefingSection = async (connection) => {
       '',
       '### Recent team runs',
       runs.length ? runs.map(runLine).join('\n') : 'None recorded — the house has not run a team yet.',
+      '',
+      '### Waiting on your operator',
+      ...askLines(asks, packet, nameOf),
     ].join('\n');
   } catch (error) {
     log.warn('CoS briefing failed', { neumaId, error: error.message });

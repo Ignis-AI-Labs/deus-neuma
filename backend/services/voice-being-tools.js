@@ -9,7 +9,7 @@
 // (the write-once founding moment, the operator's wallet as witness) and
 // voice/claim (accretion into a sealed repository) are filed and settled by
 // the sweep. Nothing is ever removed — there is no voice_forget and there
-// never will be (Design note, 2026-08-18.
+// never will be (ruling, 2026-08-18).
 //
 // The read routes through the same ACTS gate as every governed tool (policy
 // defaults in tool-policy.js: allowed — self-knowledge is the being's own

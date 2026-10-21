@@ -331,15 +331,18 @@ describe('buildArgs — the closed verb catalog, pure', () => {
   });
 
   test('run-cell validated optionals slot in order', () => {
+    // buildArgs judges the deadline against the real clock (future, at most 24
+    // days out), so a fixed date expires; two days from now always holds.
+    const deadline = new Date(Date.now() + 2 * 86_400_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
     const built = buildArgs('run-cell', {
-      cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir',
-      limit: 25, attempt: 2, deadline: '2026-10-01T00:00:00Z', comparisonId: 'cmp-1',
+      cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel',
+      limit: 25, attempt: 2, deadline, comparisonId: 'cmp-1',
     }, ctx());
     expect(built.ok).toBe(true);
     expect(built.argv).toEqual([
       'bench.mjs', 'run', 'gsm8k', '--model', 'qwen3.8-27b', '--arm', 'neuma',
-      '--approved-by', wallet, '--lane', 'keir',
-      '--limit', '25', '--attempt', '2', '--deadline', '2026-10-01T00:00:00Z', '--comparison-id', 'cmp-1',
+      '--approved-by', wallet, '--lane', 'hazel',
+      '--limit', '25', '--attempt', '2', '--deadline', deadline, '--comparison-id', 'cmp-1',
     ]);
   });
 
@@ -353,13 +356,13 @@ describe('buildArgs — the closed verb catalog, pure', () => {
     expect(bad('preflight-cell', { cell: 'nope', arm: 'neuma', model: 'qwen3.8-27b' })).toContain('unknown cell');
     expect(bad('preflight-cell', { cell: 'gsm8k', arm: 'cheat', model: 'qwen3.8-27b' })).toContain('not one of gsm8k');
     expect(bad('preflight-cell', { cell: 'gsm8k', arm: 'neuma', model: 'gpt-5' })).toContain('unregistered model');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir' }, { cell, modelKeys })).toContain('approving wallet');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', limit: 0 })).toContain('limit');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', attempt: 1.5 })).toContain('attempt');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', deadline: '2026-10-01T00:00:00' })).toContain('timezone');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', deadline: '2020-01-01T00:00:00Z' })).toContain('past');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', deadline: '2027-12-31T00:00:00Z' })).toContain('24 days');
-    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', comparisonId: 'Bad_ID' })).toContain('comparisonId');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel' }, { cell, modelKeys })).toContain('approving wallet');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', limit: 0 })).toContain('limit');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', attempt: 1.5 })).toContain('attempt');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', deadline: '2026-10-01T00:00:00' })).toContain('timezone');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', deadline: '2020-01-01T00:00:00Z' })).toContain('past');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', deadline: '2027-12-31T00:00:00Z' })).toContain('24 days');
+    expect(bad('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', comparisonId: 'Bad_ID' })).toContain('comparisonId');
     expect(bad('validate-window', { plan: '../etc/passwd' })).toContain('bad plan name');
     expect(bad('night-start', { plan: 'UPPER' })).toContain('bad plan name');
     expect(VERBS).toContain('run-cell');
@@ -376,20 +379,20 @@ describe('buildArgs — the closed verb catalog, pure', () => {
     expect(noLanePreflight.reason).toContain('--lane');
 
     // With the lane the argv carries it; the workspace root slots when absolute.
-    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir' }, ctx()))
-      .toEqual({ ok: true, argv: ['bench.mjs', 'run', 'gsm8k', '--model', 'qwen3.8-27b', '--arm', 'neuma', '--approved-by', wallet, '--lane', 'keir'] });
-    expect(buildArgs('preflight-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', workspaceRoot: '/mnt/data/neuma/claude/aldmere' }, ctx()))
-      .toEqual({ ok: true, argv: ['bench.mjs', 'preflight', 'gsm8k', '--model', 'qwen3.8-27b', '--arm', 'neuma', '--lane', 'keir', '--workspace-root', '/mnt/data/neuma/claude/aldmere'] });
+    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel' }, ctx()))
+      .toEqual({ ok: true, argv: ['bench.mjs', 'run', 'gsm8k', '--model', 'qwen3.8-27b', '--arm', 'neuma', '--approved-by', wallet, '--lane', 'hazel'] });
+    expect(buildArgs('preflight-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', workspaceRoot: '/mnt/data/neuma/claude/thornfield' }, ctx()))
+      .toEqual({ ok: true, argv: ['bench.mjs', 'preflight', 'gsm8k', '--model', 'qwen3.8-27b', '--arm', 'neuma', '--lane', 'hazel', '--workspace-root', '/mnt/data/neuma/claude/thornfield'] });
 
     // Refusals: lane charset, relative workspace root.
     expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'bad lane!' }, ctx()).reason)
       .toContain('lane must match');
-    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', workspaceRoot: 'relative/dir' }, ctx()).reason)
+    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', workspaceRoot: 'relative/dir' }, ctx()).reason)
       .toContain('absolute path');
 
     // A floor arm still runs lane-free; a lane given there rides through (the
     // harness reads it for comparison grouping).
-    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'bare', model: 'qwen3.8-27b', lane: 'keir' }, ctx()).ok).toBe(true);
+    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'bare', model: 'qwen3.8-27b', lane: 'hazel' }, ctx()).ok).toBe(true);
   });
 
   test('endpoint law — floor arms get the serving URL, remote hosts refused', () => {
@@ -410,9 +413,9 @@ describe('buildArgs — the closed verb catalog, pure', () => {
     expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'bare', model: 'qwen3.8-27b', endpoint: 'not a url' }, ctx()).reason)
       .toContain('not a valid URL');
     // Identity arms route through the lane — nothing injected; an explicit endpoint rides.
-    const identity = buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir' }, ctx());
+    const identity = buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel' }, ctx());
     expect(identity.argv).not.toContain('--endpoint');
-    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'keir', endpoint: 'http://127.0.0.1:8089' }, ctx()).argv)
+    expect(buildArgs('run-cell', { cell: 'gsm8k', arm: 'neuma', model: 'qwen3.8-27b', lane: 'hazel', endpoint: 'http://127.0.0.1:8089' }, ctx()).argv)
       .toEqual(expect.arrayContaining(['--endpoint', 'http://127.0.0.1:8089']));
   });
 

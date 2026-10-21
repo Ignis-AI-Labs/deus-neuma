@@ -54,7 +54,7 @@ test('roster recovery heals the window and shared bindings independently through
       root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'cache'), appType: 'custom',
       optimizeDeps: { noDiscovery: true, include: [] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send(`<!doctype html><title>Binding recovery proof</title>
       <script type="module">

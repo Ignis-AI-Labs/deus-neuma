@@ -33,7 +33,8 @@ const renderCard = (sheet, now = NOW, props = {}) =>
 // One tab's page, cut out of the markup by its tabpanel id.
 const pageOf = (html, key) => {
   const open = html.indexOf(`<div class="dos-page" role="tabpanel" id="sheet-panel-${key}"`);
-  const next = html.indexOf('<div class="dos-page"', open + 1);
+  // the next of the FILE's pages — GIVEN holds pages of its own (given-panel-*)
+  const next = html.indexOf('<div class="dos-page" role="tabpanel" id="sheet-panel-', open + 1);
   return html.slice(open, next === -1 ? undefined : next);
 };
 
@@ -73,17 +74,20 @@ const CRAFT = {
 };
 
 const RUN_AT = '2026-07-15T08:30:00.000Z';
+// The self-check route's payload (GET /:id/self-check).
 const STATE = {
-  runs: [{ id: 'run-1', runAt: RUN_AT, dimensions: [{ key: 'recall', label: 'Recall', score: 0.75 }] }],
   latest: {
     id: 'run-1',
     runAt: RUN_AT,
-    dimensions: [
-      { key: 'recall', label: 'Recall', score: 0.75 },
-      { key: 'consistency', label: 'Consistency', score: 0.5 },
-      { key: 'boundary', label: 'Boundary-holding', score: null },
+    components: [
+      { key: 'memory', label: 'Memory', score: 0.75 },
+      { key: 'dna', label: 'DNA', score: 0.5 },
+      { key: 'vault', label: 'Vault', score: null },
     ],
   },
+  previous: null,
+  compare: null,
+  running: null,
 };
 
 const ATTUNEMENT = {
@@ -142,26 +146,38 @@ describe('SheetCard — a full sheet', () => {
     expect(html).toContain(cell('BORN', formatShortDate(RECORD.identity.birthAt)));
   });
 
-  it('reads as a dossier: the cover plate, the tab strip, numbered sections, the aura as a button', () => {
+  it('reads as a dossier: the cover plate, the strip of spaces in the order its birth gave it, the aura as a button', () => {
     expect(html).toContain('PERSONNEL RECORD');
     expect(html).toContain('class="dos-index"');
-    for (const [code, title] of [['01', 'GENOME'], ['02', 'FORM'], ['03', 'SKIES'], ['04', 'BOND'], ['05', 'MIND'], ['06', 'CRAFT']]) {
+    for (const [code, title] of [['01', 'GIVEN'], ['02', 'CHOSEN'], ['03', 'SUMMONING'], ['04', 'LIFE'], ['05', 'STATE'], ['06', 'VESSEL']]) {
       expect(html).toContain(`<span class="dos-index-code">${code}</span>${title}`);
     }
-    expect(html).toContain('id="sheet-sec-genome"');
+    expect(html).toContain('id="given-panel-body"');
     expect(html).toContain('aria-label="Enlarge THE AURA OF Sovereign"'); // a click opens the viewer
   });
 
-  it('each tab is its own page: GENOME opens, every other page is hidden', () => {
+  it('each space is its own page: GIVEN opens, every other page is hidden', () => {
     expect(html).toContain('role="tablist"');
-    expect(html).toContain('id="sheet-tab-genome" type="button" role="tab" aria-selected="true"');
-    expect(html).toContain('id="sheet-tab-form" type="button" role="tab" aria-selected="false"');
-    expect(pageOf(html, 'genome')).not.toContain('hidden=""');
-    for (const key of ['form', 'skies', 'bond', 'mind', 'craft', 'state', 'substrate', 'attunement']) {
+    expect(html).toContain('id="sheet-tab-given" type="button" role="tab" aria-selected="true"');
+    expect(html).toContain('id="sheet-tab-chosen" type="button" role="tab" aria-selected="false"');
+    expect(pageOf(html, 'given').split('>')[0]).not.toContain('hidden'); // GIVEN's own page is open (its sub-pages hide themselves)
+    for (const key of ['chosen', 'summoning', 'life', 'state', 'vessel']) {
       expect(pageOf(html, key), key).toMatch(/^<div[^>]*hidden=""/);
     }
-    expect(pageOf(html, 'bond')).toContain('CONVERSATIONS'); // each section lives in its own page
-    expect(pageOf(html, 'genome')).not.toContain('CONVERSATIONS');
+    expect(pageOf(html, 'life')).toContain('CONVERSATIONS'); // each section lives in its own space
+    expect(pageOf(html, 'given')).not.toContain('CONVERSATIONS');
+    // GIVEN holds its soul, body, sky and seal — each its own page; CHOSEN its name, form, voice, attunement
+    for (const key of ['soul', 'body', 'sky', 'seal']) expect(pageOf(html, 'given')).toContain(`id="given-panel-${key}"`);
+    expect(pageOf(html, 'given')).toMatch(/id="given-panel-soul"[^>]*>(?!<\/div>)/); // SOUL opens; the rest wait hidden
+    expect(pageOf(html, 'given')).toMatch(/id="given-panel-sky"[^>]*hidden=""/);
+    expect(pageOf(html, 'chosen')).toContain('id="sheet-sec-form"');
+    expect(pageOf(html, 'chosen')).toContain('What remains when no one is watching?');
+  });
+
+  it('a sealed witness was never summoned — its record has no SUMMONING space', () => {
+    const w = renderCard(FULL, NOW, { witness: true });
+    expect(w).not.toContain('id="sheet-tab-summoning"');
+    expect(w).toContain('id="sheet-tab-given"');
   });
 
   it('fills the level slot with a truth — AGE DAYS as the oversized numeral', () => {
@@ -199,7 +215,7 @@ describe('SheetCard — a full sheet', () => {
     expect(html).toContain('>75%</span>');
     expect(html).toContain('style="width:50%"');
     expect(html).toContain('>50%</span>');
-    // An unmeasured dimension inside a real run — no bar, no fabricated zero.
+    // A component with nothing answerable inside a real run — no bar, no fabricated zero.
     expect(html).toContain('>N/A</span>');
     expect(html).toContain(`RUN ${formatDateTime(RUN_AT)}`);
   });
@@ -239,12 +255,13 @@ describe('SheetCard — a full sheet', () => {
 describe('SheetCard — null legs are UNREADABLE, never silent zeros', () => {
   it('every block sourced from a null leg says UNREADABLE', () => {
     const html = renderCard({
-      record: null, craft: null, state: null, attunement: null, skies: null, aura: null, form: null,
+      record: null, craft: null, state: null, attunement: null, skies: null, aura: null, form: null, file: null, film: null,
     });
-    // record feeds IDENTITY/BOND/MIND/SUBSTRATE (4) + craft + state + attunement
-    // + skies + aura + genome + form. (genome 10 -> 11, 2026-09-25: the GENOME
-    // block rides the form leg and owns its own honest UNREADABLE.)
-    expect((html.match(/UNREADABLE/g) || []).length).toBe(11);
+    // record feeds IDENTITY/SOUL/BOND/MIND/SUBSTRATE (5) + craft + state +
+    // attunement + skies + aura + genome + form (7) + the identity file's
+    // NAME/SEAL/VOICE (3) + the film's SUMMONING (1) = 16 (2026-10-17: the
+    // record as the whole being).
+    expect((html.match(/UNREADABLE/g) || []).length).toBe(16);
     expect(html).not.toContain('NO ACTS YET');
     expect(html).not.toContain('NOT MEASURED');
     expect(html).not.toContain('data-testid="aura-sigil"');
@@ -292,8 +309,8 @@ describe('SheetCard — honest empties', () => {
     expect(html).toContain('NO ACTS YET — THE ACT IS THE PROOF.');
   });
 
-  it('no benchmark runs reads NOT MEASURED', () => {
-    const html = renderCard({ ...FULL, state: { runs: [], latest: null } });
+  it('no self-check run reads NOT MEASURED', () => {
+    const html = renderCard({ ...FULL, state: { latest: null, previous: null, compare: null, running: null } });
     expect(html).toContain('NOT MEASURED');
   });
 
@@ -333,32 +350,34 @@ describe('SheetCard — the data law in edge cases', () => {
 
 // SKIES (MANY SKIES, 2026-07-24) — the birth moment's reading on the card,
 // retroactive for every backfilled member; provenance stays on the sheet.
+// 2026-10-19: SKY is GIVEN's own page — an atlas of the traditions, one drawn
+// at a time with its field guide (given/SkyPlate.jsx; plates proven in
+// given-sky.test.js). A record from an older engine carries less, and the
+// atlas lists exactly what it carries.
 describe('SheetCard — SKIES', () => {
-  it('renders every carried system with its provenance note', () => {
-    const html = renderCard(FULL);
-    expect(html).toContain('MAYA COUNT');
-    expect(html).toContain('KIN 160/260');
-    expect(html).toContain('KIN 207 — Blue Crystal Hand');
-    expect(html).toContain('MODERN 1987'); // the Dreamspell honestly labeled on the card
-    expect(html).toContain('YANG FIRE HORSE');
-    expect(html).toContain('ASHWINI PADA 1');
-    expect(html).toContain('KWASI / AKOSUA'); // AKAN, its own row (skies-lines.js)
-    expect(html).toContain('READ FROM THE SEALED INSTANT');
+  it('lists every carried system by its tradition — the modern one labelled so — and opens on the sky itself', () => {
+    const sky = pageOf(renderCard(FULL), 'given');
+    const atlas = sky.slice(sky.indexOf('aria-label="The skies, by tradition"'));
+    for (const name of ['THE SKY AT ITS INSTANT', 'THE TZOLK&#x27;IN', 'THE DREAMSPELL', 'THE FOUR PILLARS', 'JYOTISHA', 'WETON', 'AKAN', 'THE DECANS']) expect(atlas).toContain(`>${name}</span>`);
+    expect(atlas).toContain('>MODERN</span>'); // the Dreamspell honestly labeled on the card
+    expect(atlas).not.toContain('>THE HAAB&#x27;</span>'); // this record never carried it
+    expect(sky).toContain('READ FROM THE SEALED INSTANT');
+    expect(sky).toContain('<h4 class="gv-plate-title">THE SKY AT ITS INSTANT</h4>');
   });
 
   it('an honestly absent record says so — distinct from UNREADABLE', () => {
     const html = renderCard({ ...FULL, skies: { skies: null, recorded: false } });
     expect(html).toContain('NO SKIES RECORDED — THE READING AWAITS ITS BACKFILL.');
-    expect(html).not.toContain('MAYA COUNT');
+    expect(html).not.toContain('aria-label="The skies, by tradition"');
   });
 });
 
 describe('SheetCard — the tabs', () => {
   it('the operator\'s extras land inside their own tab\'s page', () => {
     const html = renderCard(FULL, NOW, { extras: { mind: createElement('p', null, 'EXTRA-MIND'), substrate: createElement('p', null, 'EXTRA-SUB') } });
-    expect(pageOf(html, 'mind')).toContain('EXTRA-MIND');
-    expect(pageOf(html, 'substrate')).toContain('EXTRA-SUB');
-    expect(pageOf(html, 'genome')).not.toContain('EXTRA-');
+    expect(pageOf(html, 'life')).toContain('EXTRA-MIND');
+    expect(pageOf(html, 'vessel')).toContain('EXTRA-SUB');
+    expect(pageOf(html, 'given')).not.toContain('EXTRA-');
   });
 
   it('arrow keys walk the strip and wrap at both ends', () => {

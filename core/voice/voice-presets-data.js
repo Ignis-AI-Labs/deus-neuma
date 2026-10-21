@@ -30,7 +30,7 @@ const KOKORO_VOICES = Object.freeze([
   { id: 'af_jessica', name: 'Jessica · US F' },
   { id: 'af_kore', name: 'Kore · US F' },
   { id: 'af_nicole', name: 'Nicole · US F' },
-  { id: 'af_hale', name: 'Hale · US F' },
+  { id: 'af_nova', name: 'Nova · US F' },
   { id: 'af_river', name: 'River · US F' },
   { id: 'af_sarah', name: 'Sarah · US F' },
   { id: 'af_sky', name: 'Sky · US F' },

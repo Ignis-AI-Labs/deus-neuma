@@ -26,6 +26,24 @@ const minLevel = () => {
 
 const timestamp = () => new Date().toISOString();
 
+/**
+ * One log entry as TEXT and its data. A message is always a string: the
+ * failures feed is rendered by the SUBSTRATE window, and a non-text message
+ * there crashed it (2026-10-18, React #31 […]). An
+ * object-first call (`log.warn({ … }, 'text')`) is read in its own order; any
+ * other non-text message is said as text. Pure.
+ * @returns {[string, object|null]}
+ */
+export const entryOf = (msg, data) => {
+  if (typeof msg === 'string') return [msg, data ?? null];
+  if (msg && typeof msg === 'object' && !(msg instanceof Error) && typeof data === 'string') return [data, msg];
+  const text = msg instanceof Error ? msg.message
+    : typeof msg?.message === 'string' ? msg.message
+      : typeof msg?.error === 'string' ? msg.error
+        : (() => { try { return JSON.stringify(msg) ?? String(msg); } catch { return String(msg); } })();
+  return [text, data && typeof data === 'object' ? data : null];
+};
+
 // In-memory ring of the most recent warn/error entries — the failures feed for
 // the SUBSTRATE HUD (and pullable from the CLI). Bounded so it never grows
 // unbounded; process-lifetime only (not a durable audit log).
@@ -71,7 +89,8 @@ export function createLogger(context) {
   const format = isProduction() ? formatJSON : formatDev;
   const threshold = minLevel();
 
-  const emit = (level, msg, data) => {
+  const emit = (level, rawMsg, rawData) => {
+    const [msg, data] = entryOf(rawMsg, rawData);
     // Capture warn/error to the ring even if the console threshold would hide
     // them, so the failures feed never misses one.
     captureIssue(level, context, msg, data);

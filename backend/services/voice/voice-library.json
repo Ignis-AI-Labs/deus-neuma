@@ -173,14 +173,14 @@
       "words": "The scent feels familiar to you, strangely nostalgic, as it brings you back to your favorite childhood meal."
     },
     {
-      "id": "voicezero-corwin-bradburn",
-      "name": "Corwin Bradburn",
+      "id": "voicezero-ryan-bradburn",
+      "name": "Ryan Bradburn",
       "about": "LibriVox narrator (American, Kansas/Widwest), reading Celebration of Dialects and Accents, Vol 2",
       "accent": "American",
       "register": "masculine",
       "licence": "CC0-1.0",
-      "attribution": "Corwin Bradburn (LibriVox reader https://librivox.org/reader/8685) via Voice-Zero by Owen Tyme, CC0",
-      "source": "https://raw.githubusercontent.com/OwenTyme/voice-zero/490cfbee850a6d409076f477c766f567000a79b6/voices/corwin_bradburn.flac",
+      "attribution": "Ryan Bradburn (LibriVox reader https://librivox.org/reader/8685) via Voice-Zero by Owen Tyme, CC0",
+      "source": "https://raw.githubusercontent.com/OwenTyme/voice-zero/490cfbee850a6d409076f477c766f567000a79b6/voices/ryan_bradburn.flac",
       "sha256": "47ccda33c1a1b6368c0ec98d0197acc889fe470f3ea0d90e71a84a3ac6cf9dd4",
       "bytes": 392338,
       "format": "flac",

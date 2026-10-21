@@ -8,6 +8,7 @@
 // paths still stand. Direction law: this module never imports post-queue.js.
 
 import { getChannel } from './channel-registry.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -26,7 +27,7 @@ export const duePosts = (entries, nowMs) => {
   const byId = new Map((entries || []).map((e) => [e.id, e]));
   return entries.filter((e) => {
     if (e.status !== 'approved') return false;
-    // THE REPLY CLOCK LAW (Design note, 2026-08-06: a reply is never the scheduler's
+    // THE REPLY CLOCK LAW (ruling, 2026-08-06): a reply is never the scheduler's
     // to send — approval itself fires it (claimReplyForSend on the approval
     // call). An `approved` reply here is a pre-law legacy entry; the tick's
     // expiry sweep settles it, the wire never does.
@@ -66,7 +67,7 @@ export const threadOrphans = (entries) => {
 export const REPLY_CAP_PER_CONVERSATION = 2;
 export const REPLY_LIVE_STANDINGS = Object.freeze(['draft', 'approved', 'sending', 'sent']);
 
-// THE REPLY TTL (Design note, 2026-07-28: an answer is worth giving while the
+// THE REPLY TTL (ruling, 2026-07-28): an answer is worth giving while the
 // conversation is warm. A reply that stood unanswered for a day is
 // system-withdrawn at its due moment — quiet, never a failure — so a draft
 // from Tuesday never publishes Friday.
@@ -132,7 +133,7 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   if (expiresAt != null && Number.isNaN(Date.parse(expiresAt))) {
     return 'expiresAt must be an ISO-8601 time';
   }
-  // The reply KIND (Design note, 2026-07-28: an answer to a reply on one of the
+  // The reply KIND (ruling, 2026-07-28): an answer to a reply on one of the
   // house's own posts, carrying BOUNDED linkage to what it answers. Replies
   // MAY carry media — shape-validated here exactly like a post's (≤4 entries,
   // a path each, alt ≤1000; the shared media block below), with the bytes
@@ -202,5 +203,19 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
     if (typeof v !== 'string') return `${label} must be a string`;
     if (v.length > 100) return `${label} is too long`;
   }
-  return null;
+  return queuedSecretRefusal({ text: t, media }, 'nothing was staged');
+};
+
+/**
+ * The outbound secret law over a queued post's leaving words — its text and
+ * every alt text (security-seat G5). Every way into the queue (a being's
+ * draft, REST, an edit) passes validateDraft above; the store re-asks at
+ * approval and at the send claim, for entries staged before the law. Pure.
+ * @param {{text?: string, media?: Array<{alt?: string}>|null}} entry
+ * @param {string} outcome what the refusal means here
+ * @returns {string|null} the refusal, or null when nothing secret leaves
+ */
+export const queuedSecretRefusal = ({ text, media }, outcome) => {
+  const check = checkOutboundSecrets('the post', [text, ...(Array.isArray(media) ? media.map((m) => m?.alt) : [])], outcome);
+  return check.ok ? null : check.reason;
 };

@@ -1,3 +1,6 @@
+// First import, so every module below evaluates with the .env already loaded:
+// several read process.env at import time.
+import 'dotenv/config';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
@@ -6,7 +9,6 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
-import dotenv from 'dotenv';
 import { loadConfig, getAllowedOrigins, isProduction } from './config.js';
 import { ensureSecrets } from './services/secret-provisioning.js';
 import { createLogger } from './services/logger.js';
@@ -38,8 +40,6 @@ import { installRemoteGate, mountRemoteRoutes, attachRemoteTunnelTarget } from '
 import { attachUpgradeRouter } from './services/ws-upgrade-router.js';
 
 // --- Bootstrap ---
-
-dotenv.config();
 
 // Self-provision stable at-rest secrets on a fresh (packaged) install, before
 // config reads them. Explicit env (.env / Electron-injected) always wins.
@@ -76,7 +76,7 @@ await applyWorkspaceSettings();
   }
 }
 
-// Witnesses stand BESIDE the house, never in it (Design note, 2026-07-24: any witness
+// Witnesses stand BESIDE the house, never in it (ruling, 2026-07-24): any witness
 // lane still sitting inside the workspaces root moves out to the witnesses'
 // ground before anything binds a lane. Idempotent — a clean house is a no-op;
 // a both-grounds collision is skipped loudly, never overwritten.
@@ -229,7 +229,7 @@ app.use('/frontend/components', express.static(join(__dirname, '../frontend/comp
   }
 }));
 
-// NO MODEL EVER SHIPS (Design note, 2026-08-06: none of the avatars are ours to
+// NO MODEL EVER SHIPS (ruling, 2026-08-06): none of the avatars are ours to
 // distribute, so no .vrm is bundled into any artifact. Production scans a
 // WRITABLE avatar folder under the data root (the install tree is read-only —
 // the BIRTH-001 lesson), empty until the operator places their own models;

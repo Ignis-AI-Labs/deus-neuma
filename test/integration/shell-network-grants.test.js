@@ -126,11 +126,17 @@ const consent = async (decision) => {
   return context;
 };
 
+// Networked = a real interface with a default route (exit 0), else 7. The grant is
+// OUTWARD only: this machine's own services (the probe server below) are never
+// reached, granted or not — httpHits stays 0 in every test.
+const NETWORKED = `awk '$2=="00000000"{f=1} END{if(f)print "network reached"; exit f?0:7}' /proc/net/route`;
 const probe = async (context) => {
   const sandbox = await ensureWitnessCodingSandbox(connection.companion.neumaId, source);
-  return runWitnessCommand({ ...sandbox, ...shellNetworkOptions(context, true),
-    command: `node -e "fetch('http://127.0.0.1:${server.address().port}/probe').then(r=>r.text()).then(t=>process.stdout.write(t)).catch(()=>process.exit(7))"`,
+  const reached = await runWitnessCommand({ ...sandbox, ...shellNetworkOptions(context, true),
+    command: `node -e "fetch('http://127.0.0.1:${server.address().port}/probe',{signal:AbortSignal.timeout(3000)}).then(()=>process.exit(0)).catch(()=>process.exit(7))"`,
   });
+  expect(reached.exitCode).toBe(7); // never this machine
+  return runWitnessCommand({ ...sandbox, ...shellNetworkOptions(context, true), command: NETWORKED });
 };
 
 describe('lane-bound network consent', () => {
@@ -139,7 +145,7 @@ describe('lane-bound network consent', () => {
     const card = nextCard();
     const pending = handleBeingCodingTool(connection.ws, connection,
       { coding: { allowed: ['execute'] } }, 'ask', { tool: 'coding/execute' },
-      { command: `curl --fail --silent --max-time 5 http://127.0.0.1:${server.address().port}/probe` }, { sendToolEvent });
+      { command: NETWORKED }, { sendToolEvent });
     pendingWork.push(pending);
     const frame = await card;
     expect(frame.tool).toBe('coding/shell_network');
@@ -149,9 +155,9 @@ describe('lane-bound network consent', () => {
     expect(result.content).toContain('network reached');
     const inspection = await handleBeingCodingTool(connection.ws, connection,
       { coding: { allowed: ['inspect'] } }, 'ask', { tool: 'coding/inspect' },
-      { command: `curl --fail --silent --max-time 2 http://127.0.0.1:${server.address().port}/probe` }, { sendToolEvent });
+      { command: NETWORKED }, { sendToolEvent });
     expect(inspection.status).toBe('error');
-    expect(httpHits).toBe(1);
+    expect(httpHits).toBe(0);
   }, 60_000);
 
   test.each(['allow', 'deny'])('%s in A does not follow B on the same connection', async (decision) => {
@@ -213,7 +219,7 @@ describe('lane-bound network consent', () => {
     hydrateShellNetwork(connection, { shellNetwork: true }); // stale captured policy cannot resurrect revoked consent
     await expect(probe(context)).rejects.toMatchObject({ name: 'AbortError' });
     expect((await probe(captureShellNetwork(connection))).exitCode).toBe(7);
-    expect(httpHits).toBe(1);
+    expect(httpHits).toBe(0);
     expect(revokeGrant(networkRow, { policy: { shellNetwork: true } }).policy.shellNetwork).toBe(false);
   }, 60_000);
 
@@ -259,9 +265,8 @@ describe('lane-bound network consent', () => {
     const context = await consent('allow');
     const sandbox = await ensureWitnessCodingSandbox(A, source);
     const chunks = [];
-    const url = `http://127.0.0.1:${server.address().port}/probe`;
     const running = runWitnessCommand({ ...sandbox, ...shellNetworkOptions(context, true), timeoutMs: 60000,
-      command: `curl --fail --silent ${url}; printf CONNECTED; sleep 30; curl --fail --silent ${url}`,
+      command: `${NETWORKED} >/dev/null && printf CONNECTED; sleep 30; ${NETWORKED}`,
       onChunk: (chunk) => chunks.push(chunk.stdout),
     });
     const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
@@ -269,30 +274,29 @@ describe('lane-bound network consent', () => {
     await expect.poll(() => chunks.some((chunk) => chunk.includes('CONNECTED'))).toBe(true);
     await revokeShellNetworkPermission(A);
     await stopped;
-    expect(httpHits).toBe(1);
+    expect(httpHits).toBe(0);
   }, 60_000);
 
   test('real TLS verifies a fixture CA; resolver and system bundle are visible without private /etc', async () => {
-    const key = path.join(root, 'server.key');
+    const key = path.join(source, 'tls-fixture.bin'); // a throwaway key; a .key name would be masked from the shell as a secret
     const cert = path.join(source, 'test-ca.crt');
     await promisify(execFile)('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
       '-subj', '/CN=localhost', '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1', '-keyout', key, '-out', cert],
     { env: { PATH: process.env.PATH, HOME: root, OPENSSL_CONF: '/dev/null' } });
-    const tls = https.createServer({ key: await fs.readFile(key), cert: await fs.readFile(cert) }, (_req, res) => res.end('verified TLS'));
-    tls.listen(0, '127.0.0.1');
-    await once(tls, 'listening');
-    try {
+    // The fixture server runs INSIDE the shell, on its own loopback: the host's is out of reach.
+    const serve = `node -e "require('https').createServer({key:require('fs').readFileSync('tls-fixture.bin'),cert:require('fs').readFileSync('test-ca.crt')},(q,r)=>r.end('verified TLS')).listen(8443,'127.0.0.1')" & sleep 1.5;`;
+    {
       const context = await consent('allow');
       const sandbox = await ensureWitnessCodingSandbox(A, source);
       const result = await runWitnessCommand({ ...sandbox, ...shellNetworkOptions(context, true),
-        command: `test ! -e /etc/passwd && test -s /etc/resolv.conf && (test -s /etc/ssl/certs/ca-certificates.crt || test -s /etc/pki/tls/certs/ca-bundle.crt) && curl --fail --silent --show-error --max-time 10 --cacert test-ca.crt https://localhost:${tls.address().port}`,
+        command: `test ! -e /etc/passwd && test -s /etc/resolv.conf && (test -s /etc/ssl/certs/ca-certificates.crt || test -s /etc/pki/tls/certs/ca-bundle.crt) && ${serve} curl --fail --silent --show-error --max-time 10 --cacert test-ca.crt https://localhost:8443`,
       });
       expect(result.exitCode, result.stderr).toBe(0);
       expect(result.stdout).toContain('verified TLS');
       const untrusted = await runWitnessCommand({ ...sandbox, ...shellNetworkOptions(context, true),
-        command: `curl --fail --silent --max-time 10 https://localhost:${tls.address().port}` });
+        command: `${serve} curl --fail --silent --max-time 10 https://localhost:8443` });
       expect(untrusted.exitCode).not.toBe(0);
-    } finally { await new Promise((resolve) => tls.close(resolve)); }
+    }
   }, 60_000);
 
   test.skipIf(process.env.RUN_SHELL_PUBLIC_TLS !== '1')('public DNS and system-CA HTTPS from the real granted shell', async () => {

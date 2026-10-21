@@ -22,12 +22,15 @@
  */
 import { buildFormPipelines } from './form-registry.js';
 import { buildFlux2Pipelines } from './pipelines-flux2.js';
+import { buildVideoPipelines, VIDEO_MODELS } from './pipelines-video.js';
 
-/** The engine build this pack is authored against (spike-verified, pinned). */
+/** The engine build this pack is authored against (pinned): always the newest release, moved
+ *  only after a live pack proof renders every pipeline on the old and new builds and
+ *  they match (v0.28.0 → v0.41.0: mean abs diff 0.2-3.5/255). */
 export const ENGINE_PIN = Object.freeze({
   repo: 'Comfy-Org/ComfyUI',
-  tag: 'v0.28.0',
-  sha: '700821e1364eaab0e8f21c538a2131719fec57bf',
+  tag: 'v0.41.0',
+  sha: '98cc0bf84b7cb1383654c5b402e7612d875d6d22',
 });
 
 /**
@@ -93,10 +96,10 @@ export const PACK_MODELS = Object.freeze({
   // painterly, so it stays clearly apart from the Anima lane's flat cel look —
   // the two registers have to be different from EACH OTHER now that they are the
   // only two. Measured `sha256sum` 2026-08-27.
-  'hale-anime-xl-1.9': Object.freeze({
-    id: 'hale-anime-xl-1.9',
-    label: 'HaleAnimeXL IL v1.9',
-    ckptName: 'haleAnimeXL_ilV190.safetensors',
+  'nova-anime-xl-1.9': Object.freeze({
+    id: 'nova-anime-xl-1.9',
+    label: 'NovaAnimeXL IL v1.9',
+    ckptName: 'novaAnimeXL_ilV190.safetensors',
     sha256: 'fa486caafc330f133605d3c18b418d183812f14946631c6544bfb28730db6d6f',
     bytes: 6939105596,
   }),
@@ -213,6 +216,7 @@ export const PACK_MODELS = Object.freeze({
       vae: Object.freeze({ sha256: 'd64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5', bytes: 336213556 }),
     }),
   }),
+  ...VIDEO_MODELS,
 });
 
 /**
@@ -239,13 +243,6 @@ export const PACK_LORAS = Object.freeze({
     loraName: 'AddMicroDetails_Illustrious_v6.safetensors',
     sha256: 'ce12af9c5e510a745618f76f1197c5776cd283e5dddd707fc0371afd940b4454',
     bytes: 228470756,
-  }),
-  'ill-detail-slider': Object.freeze({
-    id: 'ill-detail-slider',
-    label: 'StS Illustrious Detail Slider v1.0',
-    loraName: 'StS-Illustrious-Detail-Slider-v1.0.safetensors',
-    sha256: '2e7a68ec7e2eba5a07881e885e072213bbb1b03cbf881d852f0f85623ad99349',
-    bytes: 8789076,
   }),
   // Trained ON Anima (`ss_base_model_version: "anima"` in its own metadata), so
   // it is NOT interchangeable with the three above: DiT key grammar
@@ -365,9 +362,11 @@ const STILL_PIPELINES = Object.freeze({
 const FORM_PIPELINES = buildFormPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 // FLUX.2 klein + the controlled Z-Image lane (`pipelines-flux2.js`), same one-way hand-in.
 const FLUX2_PIPELINES = buildFlux2Pipelines(PROMPT_SLOTS, SAMPLER_SLOTS, SIZE_SLOTS);
+// Video with sound (`pipelines-video.js`), same one-way hand-in.
+const VIDEO_PIPELINES = buildVideoPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 
 /** The whole manifest, frozen once. */
-export const PIPELINES = Object.freeze({ ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES });
+export const PIPELINES = Object.freeze({ ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES, ...VIDEO_PIPELINES });
 
 /** The pipeline a caller gets when it names none. */
 export const DEFAULT_PIPELINE_ID = 'still.sdxl.txt2img';

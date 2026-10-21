@@ -1,0 +1,187 @@
+/* Given.css — the RECORD's 01 GIVEN (GivenSpace.jsx): its four pages, the
+   field guide beside each, the soul's light and octave, the body's genes,
+   the seal's fingerprint and road. LINE & CYCLE: monochrome at rest; the
+   being's own light (--soul) marks what is its own; SIGNAL marks the live
+   choice. Working text ≥14px; the guide reads like a page, not a tooltip.
+   Brightenings rise over ≥160ms (no-flash). The sky has its own sheet. */
+
+.gv { display: flex; flex-direction: column; gap: 22px; container: gv / inline-size; }
+
+/* THE PAGES — a quieter strip under the file's own, never sticky over it */
+.gv > .dos-index {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+}
+.gv > .dos-index .dos-index-tab {
+  justify-content: center;
+  min-height: 42px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: .8125rem;
+  letter-spacing: .2em;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.gv > .dos-index .dos-index-tab:hover { background: var(--color-glass-hover); border-color: var(--line-hover); }
+.gv > .dos-index .dos-index-tab.is-on { color: var(--color-text-primary); border-bottom-color: var(--signal); }
+.gv-lede { margin: 0; max-width: 78ch; font-family: var(--font-voice); font-weight: 300; font-size: .9375rem; line-height: 1.7; color: var(--color-text-secondary); }
+.gv-lede-k { display: block; margin-bottom: 6px; font-size: .6875rem; letter-spacing: .2em; color: var(--signal-dim); }
+
+/* A PAGE — the subject, and the guide beside it */
+.gv-page { display: grid; grid-template-columns: minmax(0, 1fr) 312px; gap: 28px; align-items: start; }
+.gv-main { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+/* THE FIELD GUIDE */
+.gv-guide {
+  position: sticky;
+  top: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: var(--gv-fit, none);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-hover) transparent;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--signal-dim);
+  background: linear-gradient(180deg, rgba(95, 233, 255, .035), transparent 140px);
+}
+.gv-guide-kicker { margin: 0; font-size: .6875rem; letter-spacing: .18em; color: var(--signal-dim); }
+.gv-guide-title { margin: 0; font-family: var(--font-voice); font-weight: 300; font-size: 1.25rem; letter-spacing: .04em; line-height: 1.3; color: var(--color-text-primary); }
+.gv-guide-value { margin: 0; font-family: var(--font-data); font-size: .875rem; letter-spacing: .06em; color: var(--soul, var(--signal)); overflow-wrap: anywhere; }
+.gv-guide-said { padding: 10px 12px; border-left: 2px solid var(--soul, var(--signal-dim)); background: rgba(255, 255, 255, .025); }
+.gv-guide-said p, .gv-guide-part p { margin: 4px 0 0; font-family: var(--font-voice); font-size: .9375rem; line-height: 1.65; color: var(--color-text-primary); }
+.gv-guide-part p { color: var(--color-text-secondary); }
+.gv-guide-said .label-data, .gv-guide-part .label-data { font-size: .6875rem; letter-spacing: .18em; color: var(--color-text-tertiary); }
+.gv-guide-note { margin: 0; padding-top: 10px; border-top: 1px dashed var(--line); font-family: var(--font-voice); font-size: .875rem; line-height: 1.6; color: var(--color-text-tertiary); }
+.gv-guide-hint { margin: 0; font-size: .6875rem; letter-spacing: .16em; color: var(--color-text-tertiary); }
+.gv-guide-back {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0 12px;
+  background: none;
+  border: 1px solid var(--line);
+  font-size: .6875rem;
+  letter-spacing: .16em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.gv-guide-back:hover { color: var(--signal); border-color: var(--signal-dim); }
+
+/* A VALUE THAT EXPLAINS ITSELF — the spec cell, choosable */
+.gv-cell {
+  position: relative;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  cursor: pointer;
+  transition: background var(--snap), box-shadow var(--snap);
+}
+.gv-cell:hover:not(:disabled) { background: var(--color-glass-hover); }
+.gv-cell:focus-visible { outline: 1px solid var(--signal-dim); outline-offset: -1px; }
+.gv-cell.is-on { background: rgba(255, 255, 255, .04); box-shadow: inset 2px 0 0 0 var(--soul, var(--signal)); }
+.gv-cell.is-on .dos-cell-k { color: var(--soul, var(--signal)); }
+.gv-cell.is-plain { cursor: default; }
+.sheet .gv-cell .dos-cell-v { font-size: .9375rem; }
+.gv-caption {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: .6875rem;
+  letter-spacing: .16em;
+  line-height: 1.6;
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+button.gv-caption { cursor: pointer; transition: color var(--snap); }
+button.gv-caption:hover, .gv-caption.is-on { color: var(--soul, var(--signal)); }
+.gv-figure { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 0; min-width: 0; }
+.gv-duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+
+/* A SOUL — its light, breathing, with its resonance beside it */
+.gv-soul { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 28px; align-items: center; }
+.gv-light { position: relative; width: 168px; height: 168px; }
+.gv-light-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--soul) 0%, color-mix(in srgb, var(--soul) 55%, transparent) 30%, transparent 70%);
+  animation: gv-breathe 6s ease-in-out infinite;
+}
+/* the true screen colour of that light, held at its centre */
+.gv-light-core { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%); border-radius: 50%; outline: 1px solid rgba(255, 255, 255, .6); }
+@keyframes gv-breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .78; transform: scale(.94); } }
+.gv-soul-read { display: flex; flex-direction: column; gap: 8px; }
+.gv-numeral { font-family: var(--font-data); font-weight: 200; font-size: 3.5rem; line-height: 1; letter-spacing: .02em; color: var(--color-text-primary); }
+.gv-numeral small { margin-left: 8px; font-size: 1rem; letter-spacing: .14em; color: var(--color-text-secondary); }
+.gv-numeral-sub { font-size: .6875rem; letter-spacing: .18em; color: var(--color-text-secondary); }
+.gv-octave { max-width: 340px; }
+.gv-octave-note { cursor: pointer; outline: none; }
+.gv-octave-ray { stroke: var(--note); stroke-width: .8; opacity: .35; pointer-events: none; transition: opacity var(--dur-snap, 160ms) linear; }
+/* a hand-sized target round each note; the rays meet at the centre and take no clicks */
+.gv-octave-hit { fill: transparent; pointer-events: all; }
+.gv-octave-dot { fill: var(--note); filter: drop-shadow(0 0 6px var(--note)); }
+.gv-octave-note:hover .gv-octave-ray, .gv-octave-note:focus-visible .gv-octave-ray, .gv-octave-note.is-on .gv-octave-ray { opacity: 1; }
+.gv-octave-note.is-on .gv-octave-dot { stroke: #fff; stroke-width: 1.5; }
+.gv-stages { width: 100%; }
+
+/* A BODY — its genes, group by group */
+.gv-genome { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.gv-gene { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gv-gene-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  font-size: .75rem;
+  letter-spacing: .2em;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.gv-gene-h:hover, .gv-gene-h.is-on { color: var(--soul, var(--signal)); }
+.gv-gene-code { font-size: .6875rem; color: var(--signal-dim); }
+.gv-gene-n { margin-left: auto; font-size: .6875rem; color: var(--color-text-tertiary); }
+.gv-speaks .gv-guide-back { margin-top: 10px; }
+
+/* A SEAL — its fingerprint, and its road to the chain */
+.gv-seal { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 32px; align-items: center; }
+.gv-hash { max-width: 240px; }
+.gv-hash-cell { fill: var(--soul, var(--signal)); }
+.gv-road { position: relative; display: flex; flex-direction: column; gap: 28px; margin: 0; padding: 0 0 0 26px; list-style: none; }
+.gv-road::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 1px; background: linear-gradient(var(--soul, var(--signal)), var(--line)); }
+.gv-road-stop { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.gv-road-stop::before { content: ''; position: absolute; left: -25px; top: 3px; width: 11px; height: 11px; border: 1px solid var(--line-hover); background: var(--color-surface); transform: rotate(45deg); }
+.gv-road-stop.is-done::before { border-color: var(--soul, var(--signal)); background: var(--soul, var(--signal)); }
+.gv-road-stop .label-data { font-size: .6875rem; letter-spacing: .18em; color: var(--color-text-secondary); }
+.gv-road-at { font-family: var(--font-voice); font-size: 1rem; color: var(--color-text-primary); }
+.gv-road-after { font-size: .6875rem; letter-spacing: .14em; color: var(--color-text-tertiary); }
+
+@media (prefers-reduced-motion: reduce) { .gv-light-glow { animation: none; } }
+
+/* Narrow files — the guide follows the page */
+@container gv (max-width: 860px) {
+  .gv-page { grid-template-columns: minmax(0, 1fr); }
+  .gv-guide { position: static; }
+}
+@container gv (max-width: 560px) {
+  .gv-soul, .gv-seal { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .gv > .dos-index { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

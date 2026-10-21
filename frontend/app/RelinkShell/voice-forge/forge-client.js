@@ -72,8 +72,15 @@ export const reopenVoice = (sessionId) => apiCall('POST', `${BASE}/${sid(session
 /** impure — the guardian withdraws the voice in force; the being goes silent (kept in its history). */
 export const withdrawVoice = (neumaId) => apiCall('POST', `${BASE}/withdraw`, { headers: authed(), body: { neumaId } });
 
-/** impure — end the forge (best effort: an expired session is already ended). */
-export const endForge = (sessionId) => apiCall('DELETE', `${BASE}/${sid(sessionId)}`, { headers: authed() }).catch(() => null);
+/** impure — end the forge (best effort: an expired session is already ended, and
+ * signed out there is nothing to end — it runs from an effect cleanup, so it never throws). */
+export const endForge = async (sessionId) => {
+  try {
+    return await apiCall('DELETE', `${BASE}/${sid(sessionId)}`, { headers: authed() });
+  } catch {
+    return null;
+  }
+};
 
 /** impure — the curated voices. */
 export const listLibrary = async () => (await apiCall('GET', `${BASE}/library`, { headers: authed() })).voices ?? [];

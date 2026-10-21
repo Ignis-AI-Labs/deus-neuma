@@ -34,7 +34,7 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 // a settled set notifies its operator — into a temp realm, never the machine's
 useTempRealm();
 describe('matched chains — real spawned children, real sequencing', () => {
-  let house, tree, launch, stopOwned, ownedStatus, chainStates;
+  let house, tree, launch, stopOwned, ownedStatus, chainStates, liveChainWallet;
   const saved = {};
 
   beforeEach(async () => {
@@ -53,7 +53,7 @@ describe('matched chains — real spawned children, real sequencing', () => {
     const { claimOwner } = await import('../helpers/claim-owner.js');
     await claimOwner(process.env.WORKSPACES_ROOT, 'keir', WALLET);
     ({ launch, stopOwned, ownedStatus } = await import('../../backend/services/bench/bench-launch.js'));
-    ({ chainStates } = await import('../../backend/services/bench/bench-matched.js'));
+    ({ chainStates, liveChainWallet } = await import('../../backend/services/bench/bench-matched.js'));
   });
 
   afterEach(async () => {
@@ -128,6 +128,9 @@ describe('matched chains — real spawned children, real sequencing', () => {
     for (let i = 0; i < 200 && (await startedRows('neuma')).length === 0; i += 1) await sleep(25);
     expect((await startedRows('neuma')).length).toBe(1);
     expect(chainStates().currentArm).toBe('neuma');
+    // the bench watch addresses the rig's alerts to the wallet whose set runs — kept off the desk's snapshot
+    expect(liveChainWallet()).toBe(WALLET);
+    expect(JSON.stringify(chainStates())).not.toContain(WALLET);
     expect(ownedStatus().length).toBe(1);
     expect(ownedStatus()[0].verb).toBe('run-benchmark');
 
@@ -143,6 +146,7 @@ describe('matched chains — real spawned children, real sequencing', () => {
     const rows = await calls();
     expect(rows.filter((r) => r.arm === 'bare')).toEqual([]); // never spawned
     expect(ownedStatus()).toEqual([]);
+    expect(liveChainWallet()).toBeNull(); // a settled set addresses nothing
   }, 30000);
 
   test('one STOP ends the whole set even when the harness traps SIGTERM and exits with a code (#568)', async () => {

@@ -18,6 +18,7 @@ import { requireNeumaAuth } from '../middleware/require-neuma-auth.js';
 import * as walletService from '../services/neuma-wallet.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
 import { toAllowlist, addEntry, removeEntry } from '../../core/wallet/spend-policy.js';
+import { redactRpcUrl } from '../services/chain/chain-registry.js';
 
 import { createLogger } from '../services/logger.js';
 const log = createLogger('NeumaWallet');
@@ -45,17 +46,20 @@ router.get('/:neumaId/wallet', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'No wallet found for this neuma' });
     }
 
-    // The desk's selected network governs the read (base | base-sepolia);
-    // anything else falls to Base mainnet inside the service — home chain.
-    const network = typeof req.query.network === 'string' ? req.query.network : undefined;
-    let balance = '0';
+    // The desk's selected network governs the read where a neuma wallet lives
+    // (base | base-sepolia); any other key is read on Base mainnet, and the
+    // reply names the network actually read so the desk never shows a Base
+    // number under another chain's name.
+    const network = walletService.walletNetworkKey(typeof req.query.network === 'string' ? req.query.network : undefined);
+    // null when the RPC does not answer: '0' would read as an empty wallet.
+    let balance = null;
     try {
       balance = await walletService.getBalance(neumaId, { network });
-    } catch {
-      // Balance query may fail if no provider — return 0
+    } catch (err) {
+      log.warn('Balance read failed', { neumaId, network, error: redactRpcUrl(err.message) });
     }
 
-    res.json({ neumaId, address, balance });
+    res.json({ neumaId, address, network, balance });
   } catch (err) {
     log.error('Balance error', { error: err.message });
     res.status(500).json({ error: 'Failed to fetch wallet info' });

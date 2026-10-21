@@ -11,7 +11,9 @@
  * The rig:
  *   --old <path>   the running AppImage (older version, updater aboard)
  *   --new <path>   the newer AppImage the feed offers
- *   --yml <path>   the newer build's latest-linux.yml (emitted beside it)
+ *   --yml <path>   the newer build's latest-linux.yml (emitted beside it), with its
+ *                  latest-linux.yml.sig beside it — `--old` must embed the key
+ *                  that signed it, or (rightly) nothing downloads
  *
  * It creates an isolated keyless runtime, binds the packaged backend to
  * kernel-assigned port :0, serves the feed on loopback, and copies `--old`
@@ -125,6 +127,15 @@ const server = createServer(async (req, res) => {
     const stat = await fs.stat(NEW_YML);
     res.writeHead(200, { 'Content-Type': 'text/yaml', 'Content-Length': stat.size });
     createReadStream(NEW_YML).pipe(res);
+    return;
+  }
+  // The yml's release signature (scripts/release-key.mjs --sign), when it sits beside it — the app
+  // downloads nothing without one its embedded key verifies.
+  if (pathname === `${ymlPath}.sig`) {
+    const sig = await fs.readFile(`${NEW_YML}.sig`).catch(() => null);
+    if (!sig) { res.writeHead(404); res.end('no signature'); return; }
+    res.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Length': sig.length });
+    res.end(sig);
     return;
   }
   if (!artifacts.has(pathname)) { res.writeHead(404); res.end('not here'); return; }

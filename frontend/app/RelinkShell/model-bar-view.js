@@ -98,7 +98,7 @@ export const mergeIgniteView = (being, substrate) => {
  * yields nothing: the control stands down rather than offering a rung the vendor
  * does not have.
  *
- * The gears above HIGH are RUNGS here, never chips (Design note, 2026-07-30 — they are
+ * The gears above HIGH are RUNGS here, never chips (ruling, 2026-07-30) — they are
  * quantities of the same thing. Whether the model reasons AT ALL is the separate
  * switch beside this list, because that is a different question.
  * @param {{tiers?: Array<string>, labels?: Object}|null} capability

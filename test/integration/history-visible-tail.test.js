@@ -35,3 +35,22 @@ test('signed resume carries the selected question and answer despite trailing vi
   expect(frame.recentMessages.some((row) => row.branchView)).toBe(false);
   expect((await workspace.readSession(kit.laneId, sessionId))).toEqual(loaded);
 });
+
+test('signed resume keeps the session summary when a take switch rode it through a real compaction', async () => {
+  const sessionId = kit.connection.sessionId;
+  const rows = [
+    { role: 'user', content: 'plan the garden', turnId: 'switched' },
+    { role: 'assistant', content: 'take one', turnId: 'switched', takeIndex: 1 },
+    { role: 'assistant', content: 'take two', turnId: 'switched', takeIndex: 2 },
+    { role: 'system', branchView: { switched: 1 } },
+    ...Array.from({ length: 40 }, (_, i) => (i % 2
+      ? { role: 'assistant', content: `answer ${i}`, turnId: `f${i >> 1}`, takeIndex: 1 }
+      : { role: 'user', content: `ask ${i}`, turnId: `f${i >> 1}` })),
+  ];
+  for (const row of rows) await workspace.appendMessage(kit.laneId, sessionId, row);
+  expect(await workspace.compactSession(kit.laneId, sessionId, { threshold: 30, keepRecent: 20 })).toBe(true);
+  expect(await portalResume(kit.connection, { neumaId: kit.laneId, sessionId }, { connectionId: 'summary-proof' })).toBe(true);
+  const frame = await untilHarness(() => kit.frames.find((event) => event.type === 'portal:resumed'));
+  expect(frame.recentMessages[0].content).toMatch(/^\[SESSION SUMMARY\]/);
+  expect(frame.recentMessages[0].branchView).toEqual({ switched: 1 });
+});

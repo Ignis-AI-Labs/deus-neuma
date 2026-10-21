@@ -225,7 +225,7 @@ test('THE STRIP SURVIVES A RELOAD — and brings each tab\'s sitting back with i
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-// ── THE DRAG (Design note, 2026-07-31 ─────────────────────────────────────────────
+// ── THE DRAG (ruling, 2026-07-31) ─────────────────────────────────────────────
 // […]
 
 const tabIds = (page) => page.$$eval('.stream-col .tabstrip .tabstrip-tab',
@@ -266,11 +266,11 @@ test('a reorder does NOT change which sitting you are in', async ({ page }) => {
   expect(page.__crashes).toEqual([]);
 });
 
-// ── THE TEAR-OUT, CORRECTED (Design note, 2026-07-31 ──────────────────────────────
+// ── THE TEAR-OUT, CORRECTED (ruling, 2026-07-31) ──────────────────────────────
 // […] The desk IS the operating
 // system: the tear-out opens a window IN it, on its OWN portal — otherwise it
 // would draw this same conversation twice and call it parallel work.
-// DELIBERATE (Design note, 2026-10-05: no pop-out button — only a drag let go OUTSIDE
+// DELIBERATE (ruling, 2026-10-05): no pop-out button — only a drag let go OUTSIDE
 // the tab's own window ([…]).
 
 const streamWindows = (page) => page.locator('.fwin').filter({ has: page.locator('.stream-col') });
@@ -411,7 +411,7 @@ test('each stream window names its OWN being, live', async ({ page }) => {
 });
 
 
-// ── EACH STREAM IS ITS OWN CHANNEL (Design note, 2026-07-31 ───────────────────────
+// ── EACH STREAM IS ITS OWN CHANNEL (ruling, 2026-07-31) ───────────────────────
 // […]
 //
 // The cause was a strip that stayed at DESK level while the streams moved per

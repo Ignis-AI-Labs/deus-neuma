@@ -10,6 +10,8 @@
 // Pure, and its own module, so the clamp can be proven directly rather than
 // inferred from a window that happened to open.
 
+const { COMFY_PARTITION } = require('./permission-guard.cjs');
+
 /** Hosts an embedded guest may be pointed at: the operator's own machine only. */
 const LOOPBACK_HOSTS = Object.freeze(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
@@ -21,7 +23,7 @@ const LOOPBACK_HOSTS = Object.freeze(['127.0.0.1', 'localhost', '::1', '[::1]'])
  * value only says whether the attach may proceed at all.
  *
  * @param {object} webPreferences the guest's proposed preferences (mutated)
- * @param {{src?: string}} params the guest's declared attributes
+ * @param {{src?: string, partition?: string}} params the guest's declared attributes (partition is overwritten)
  * @returns {{allow: boolean, reason: (string|null)}}
  */
 const clampWebviewPreferences = (webPreferences, params) => {
@@ -37,7 +39,12 @@ const clampWebviewPreferences = (webPreferences, params) => {
     webPreferences.sandbox = true;
     webPreferences.webSecurity = true;
     webPreferences.allowRunningInsecureContent = false;
+    // The guest's session is the engine's own, whatever the tag declared: a
+    // guest attached into the desk's session would share its storage and its
+    // grant-all-by-default fallback for any partition no guard covers.
+    webPreferences.partition = COMFY_PARTITION;
   }
+  if (params && typeof params === 'object') params.partition = COMFY_PARTITION;
 
   let target;
   try {

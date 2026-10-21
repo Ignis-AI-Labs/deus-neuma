@@ -3,18 +3,19 @@
 // The mailbox is an outward-facing POSITION exactly like a social channel:
 // one neuma may hold it, an unbound account is usable by NO ONE even when
 // credentials exist, and no other neuma can ride those keys. The store is
-// the social layer's binding factory pointed at its own file and catalog —
-// same governance record shape, same default-deny law.
+// the social layer's per-house binding factory pointed at its own file and
+// catalog — same governance record shape, same default-deny law, one
+// mailbox per house.
 
 import { join } from 'path';
-import { createChannelBindings } from '../social/channel-bindings.js';
+import { createHouseBindings } from '../social/channel-bindings.js';
 import { EMAIL_ACCOUNT, getEmailAccount } from './email-registry.js';
 import { getSettingsDir } from '../data-root.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'email-binding.json');
 
-// Overridable per call (not at import) so tests exercising the real disk
-// path never touch the operator's live binding.
+// The machine record of the binding made before it moved into the houses.
+// Overridable per call (not at import) so tests never read the operator's.
 export const emailBindingPath = () =>
   process.env.NEUMA_EMAIL_BINDING_PATH || DEFAULT_PATH;
 
@@ -30,7 +31,8 @@ export const canNeumaUseEmail = (bindings, neumaId) =>
   bindings?.[EMAIL_ACCOUNT.id]?.neumaId === neumaId;
 
 // The one instance the routes and the portal share.
-export const emailBinding = createChannelBindings({
-  path: emailBindingPath,
+export const emailBinding = createHouseBindings({
+  name: 'email-binding.json',
+  legacyPath: emailBindingPath,
   isValidId: (id) => getEmailAccount(id) !== null,
 });

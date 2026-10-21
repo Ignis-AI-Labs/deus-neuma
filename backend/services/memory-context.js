@@ -15,8 +15,9 @@ import {
   detectEmotion,
 } from '../../core/index.js';
 import { MEMORY_REF_PATTERN, formatMemoryRef } from '../../core/memory/memory-query.js';
+import { sanitizeMemoryForPrompt } from '../../core/runtime/memory-sanitizer.js';
 import { activePins } from '../../core/memory/pin-ledger.js';
-import { foldBranchView, isBranchViewRow } from '../../core/workspace/branch-view.js';
+import { foldBranchView, isViewMarker } from '../../core/workspace/branch-view.js';
 import { compactionTelemetry } from '../../core/runtime/session-compactor.js';
 import { recallSemantic, writeMindRecord, deriveResidue, activeMindRecords } from '../../core/continuity/index.js';
 import { WorkspaceAdapter } from '../../core/continuity/adapters/workspace.js';
@@ -39,22 +40,36 @@ const log = createLogger('MemoryContext');
 export const undercurrentShadowMetrics = () => undercurrentShadowLane.entries();
 export const depthShadowMetrics = () => depthShadowLane.entries();
 
+/**
+ * Pure — all a client-sent memoryContext may contribute: the operator's name,
+ * one sanitized line. Everything a being reads as its OWN memory (recall,
+ * pins, the torch, the conversation) comes from its store, never from a frame.
+ * @param {*} raw the frame's memoryContext
+ * @returns {{userName?: string}}
+ */
+export const clientMemoryContext = (raw) => {
+  const name = typeof raw?.userName === 'string'
+    ? sanitizeMemoryForPrompt(raw.userName.replace(/[\s\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 80), 80)
+    : '';
+  return name ? { userName: name } : {};
+};
+
 // Gather memory context from both session data and vector engine.
-// `excludeTurnId`: the LIVE point's id when it was persisted at turn start
-// (RETRY-ANYWHERE) — its user row is already on disk when this gather runs,
-// and the current ask must never ride the prompt as its own history line.
+// `excludeTurnId`: the LIVE point's id — its user row is already on disk when
+// this gather runs (persisted at turn start, or a retry's), and the current
+// ask must never ride the prompt as its own history line; nor may the takes a
+// retry is replacing.
 // impure — reads the being's sovereign store
 // `blind`: a BENCHMARK sitting recalls no stored memory — no recall, pins,
 // space history or through-lines (Design note, 2026-10-06: a model answering from what
 // it stored […]). Identity and the sitting's own
 // conversation still ride.
 export const gatherMemoryContext = async (thought, companionName, sessionMemoryContext, neumaId, sessionId, space = null, excludeTurnId = null, blind = false) => {
-  const memories = { ...(sessionMemoryContext || {}) };
-  delete memories.compaction;
-  // D4 (Design note, 2026-08-31: a fail-soft lane used to vanish silently — the
+  const memories = clientMemoryContext(sessionMemoryContext);
+  // D4 (ruling, 2026-08-31): a fail-soft lane used to vanish silently — the
   // prompt simply shrank. Every catch below now NAMES the lane it lost on
   // `degraded`, and the turn's composition event carries the names (ids only)
-  // so the desk can say […] instead of looking like a
+  // so the desk can say "context degraded" instead of looking like a
   // compaction. The fail-soft behavior itself is unchanged.
   const degraded = [];
 
@@ -127,17 +142,25 @@ export const gatherMemoryContext = async (thought, companionName, sessionMemoryC
   // Load recent conversation from workspace session
   if (neumaId && sessionId) {
     try {
-      const recentMessages = await neumaWorkspace.readSession(neumaId, sessionId);
+      // A strict read first: an unreadable file or line is NAMED on degraded,
+      // then the healthy rows still ride (the forgiving read skips only the bad).
+      const recentMessages = await neumaWorkspace.readSessionStrict(neumaId, sessionId).catch((err) => {
+        if (err?.code === 'ENOENT') return [];
+        degraded.push('recentConversation');
+        log.warn('session read degraded — the healthy rows still ride', { neumaId, err: err?.message });
+        return neumaWorkspace.readSession(neumaId, sessionId);
+      });
       if (recentMessages.length > 0) {
         // THE TAKES: the chain the being reads is the chain the operator sees.
         // Fold the record to the branch view BEFORE the tail slice, so a
         // superseded take never rides the prompt as a second asking. The
         // branch-view MARKERS themselves are view facts, not speech — they
         // stay out of the prompt (a system row would render as an empty
-        // "You:" line), while compaction summaries ride as they always have.
+        // "You:" line), while compaction summaries ride as they always have —
+        // even one carrying the view it compacted (isViewMarker, not isBranchViewRow).
         memories.recentConversation = foldBranchView(recentMessages)
-          .filter((m) => !isBranchViewRow(m))
-          .filter((m) => !(excludeTurnId && m.role === 'user' && m.turnId === excludeTurnId))
+          .filter((m) => !isViewMarker(m))
+          .filter((m) => !(excludeTurnId && m.turnId === excludeTurnId))
           .slice(-RECENT_ROWS);
         // The being's own torch from its last compaction — carried VERBATIM
         // into the assembled prompt. Without this, the compaction summary

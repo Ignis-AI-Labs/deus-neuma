@@ -175,7 +175,7 @@ const paintInstruments = (k, L, s) => {
   });
 };
 
-/** Its name, beneath: DEUS NEUMA (Design note, 2026-10-03, a hairline, what it is for — and on the gateway, its name in Japanese. */
+/** Its name, beneath: DEUS NEUMA (ruling, 2026-10-03), a hairline, what it is for — and on the gateway, its name in Japanese. */
 const paintName = (k, L, s, subtitle) => {
   if (s.name <= 0) return;
   const size = L.nameSize;

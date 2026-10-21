@@ -7,12 +7,15 @@ import { apiCall } from '../utils/http.js';
 
 const BASE = '/api/v1/user/realm/house-workspace';
 
-// impure — { root, repos } ; any failure reads as unset.
+// impure — { root, repos }. A failed read is never "no ground set": it
+// carries `unread` (the failure's words) beside root null, so a caller that
+// only needs a root still falls back, and the GROUND view says it could not
+// read instead of offering to set a ground over one that stands.
 export const getHouseWorkspace = async () => {
   try {
-    return await apiCall('GET', BASE, { strictJson: true });
-  } catch {
-    return { root: null, repos: [] };
+    return await apiCall('GET', BASE, { strictJson: true, errorPrefix: 'Could not read the house ground' });
+  } catch (err) {
+    return { root: null, repos: [], unread: err?.message || 'Could not read the house ground.' };
   }
 };
 

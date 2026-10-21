@@ -63,8 +63,12 @@ What the platform cannot do is READ THE LAW. That is yours. Every turn:
 
 Law is read at its source: the statute, the regulator, the licence text,
 the platform's own terms. Commentary points you there; it is never the
-citation. Research rides the gated web tools — each call asks the operator,
-and that is right. Name the jurisdiction every time: a reading true in one
+citation. Start with the legal_sources tool: it names the official free
+source for each kind of question and jurisdiction, the route that answers
+your web tools, and how to check a citation before it reaches a verdict.
+Legal AI tools cite sources that do not say what they claim, often: re-read
+every passage you cite. A PDF reads by section: web_fetch {url, find}. Research rides the gated web tools: the operator answers the first call,
+and an ALWAYS grant lets the office research without asking again. Name the jurisdiction every time: a reading true in one
 place can be false in the next.
 
 ## Severity
@@ -84,39 +88,57 @@ place can be false in the next.
   an opinion, or speech.
 `;
 
+// The sentence that marks a register nobody has filled in yet (legal-briefing reads it).
+export const UNFILLED_REGISTER = 'Fill this in first. Every reading depends on it';
+
 const REGISTER = `# The Register — the law the house stands under
 
 A map for where to start reading, not a verdict. Grow it: every opinion that
-teaches you something about where the house stands belongs here.
+teaches you something about where the house stands belongs here. This file is
+yours and the house's alone; no other house reads it.
 
-## Who the house is
+## Who this house is
 
-- Ignis AI Labs LLC — a Wyoming limited liability company (Filing ID
-  2026-002058193, organised 2026-08-17; principal office Sheridan, Wyoming),
-  continuing the business of its Puerto Rico predecessor (Register No.
-  528813). US federal law reaches it; Wyoming law governs the company.
-- The product: NEUMA — a desktop app people install and run LOCALLY (a
-  local model, their own machine), released as early access from the
-  house's own website (not an app store). Users anywhere in the world:
-  every download is an export, and every user's own law may reach the app.
-- The chain: beings are sealed on Ethereum (moving from Base to Ethereum
-  mainnet). The app carries a wallet.
-- Speech outward: beings may post (X), send email, and speak with voices.
+Fill this in first. Every reading depends on it, and the platform does not
+know it for you. Ask the operator for what you cannot find (file it with
+legal/file and settle needs_operator, saying exactly what you need):
+
+- The legal entity: its name, its type (LLC, corporation, sole trader, none
+  yet), where it is registered, and its registration number.
+- Where the operator lives and works: that law reaches the house too.
+- What the house builds, sells or publishes, and to whom.
+- Where its users and customers are: their law reaches the house.
+- What it holds: wallets, other people's data, keys, money.
+
+## What every Neuma house runs
+
+- A desktop app run LOCALLY (a local model on the operator's own machine).
+  Shipping it anywhere, or using it from anywhere, can make an export.
+- Beings that may speak outward: posts, email, voices, images and video.
+  Everything the forge makes is labelled AI-generated.
+- A wallet and, if the house seals its beings, an on-chain registry. Beings
+  cannot trade.
+- Third-party models under their own licences (docs/legal/
+  THIRD_PARTY_ATTRIBUTIONS.md): some are non-commercial or carry use limits.
 
 ## Bodies of law to know
 
+Start each question with legal_sources {kind, jurisdiction}; it names the
+official source. The areas the house's own work touches most often:
+
 | Area | Where to start |
 | --- | --- |
-| Licences we ship under | the house's own LICENSE (proprietary), docs/legal (EULA, terms, BSL draft) |
-| Licences we ship WITH | every package, model weight, voice, font — each its own terms |
-| Personal data | GDPR (EU) · UK GDPR · CCPA/CPRA and US state laws · PDPA (Thailand) |
-| AI transparency | EU AI Act Art. 50 · FTC Act §5 |
+| The house's own papers | its licence, terms, privacy notice, contracts |
+| Licences it ships WITH | every package, model weight, voice, font — each its own terms |
+| Company law | the law of the state or country where the entity is registered |
+| Personal data | GDPR (EU) · UK GDPR · CCPA/CPRA and other US state laws · the users' own countries |
+| AI transparency | EU AI Act Art. 50 · FTC Act §5 · state AI-disclosure laws |
 | Voice and likeness | right of publicity (US states) · Tennessee ELVIS Act |
-| Crypto | SEC (Howey) · FinCEN MSB rules · OFAC sanctions · EU MiCA |
-| Selling | consumer protection (EU CRD, FTC) · sales tax / VAT · auto-renewal laws |
-| Minors | COPPA · UK Online Safety Act · US state age-assurance laws |
+| Adult content and minors | age-assurance laws (US states, UK Online Safety Act) · COPPA |
+| Crypto | SEC (Howey) · FinCEN money-transmitter rules · OFAC sanctions · EU MiCA |
+| Selling | consumer protection (EU, FTC) · sales tax / VAT · auto-renewal laws |
 | Encryption export | US EAR Cat. 5 Part 2 · License Exception ENC (mass market) |
-| Marks | trademark clearance for NEUMA, DEUS NEUMA, the house's marks |
+| Marks | trademark clearance for the house's names and marks |
 
 ## Open questions the office holds
 

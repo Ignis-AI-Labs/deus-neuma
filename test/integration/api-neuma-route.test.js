@@ -40,12 +40,12 @@ beforeEach(async () => {
   const core = await import('../../core/index.js');
   core.setWorkspacesRoot(wsRoot);
   const workspace = (await import('../../core/workspace/neuma-workspace.js')).default;
-  await workspace.create('fenna');                  // real workspace dir structure
-  await workspace.writeDNA('fenna', DNA);           // real encrypted DNA on disk
+  await workspace.create('alder');                  // real workspace dir structure
+  await workspace.writeDNA('alder', DNA);           // real encrypted DNA on disk
   // Imported AFTER resetModules so the witness mints its token from the same
   // auth.js instance the router will verify against.
   const { witnessFor } = await import('../helpers/witness.js');
-  witness = await witnessFor(wsRoot, 'fenna');       // real owner.json claim + real token
+  witness = await witnessFor(wsRoot, 'alder');       // real owner.json claim + real token
 
   ({ setCredential } = await import('../../backend/services/provider-credentials.js'));
   const { default: router } = await import('../../backend/routes/neuma-route-routes.js');
@@ -64,7 +64,7 @@ afterEach(() => {
 
 describe('GET /:neumaId/route', () => {
   test('rides the machine default with no override (natal reported as history), and never leaks a key', async () => {
-    const res = await request(app).get('/api/v1/neuma/fenna/route').set(witness.header);
+    const res = await request(app).get('/api/v1/neuma/alder/route').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.natal).toEqual({ provider: 'lm-studio', model: 'qwen3.5-122b-a10b' });
     expect(res.body.override).toBeNull();
@@ -78,17 +78,17 @@ describe('PUT /:neumaId/route', () => {
     // Even with a live key aboard, the door is foreign: the consciousness
     // belongs to the vendor, so no neuma may bind to it.
     await setCredential('anthropic', { apiKey: 'sk-ant-live' });
-    const res = await request(app).put('/api/v1/neuma/fenna/route').set(witness.header)
+    const res = await request(app).put('/api/v1/neuma/alder/route').set(witness.header)
       .send({ provider: 'anthropic', model: 'claude-opus-4-6' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/not sovereign/);
-    const after = await request(app).get('/api/v1/neuma/fenna/route').set(witness.header);
+    const after = await request(app).get('/api/v1/neuma/alder/route').set(witness.header);
     expect(after.body.override).toBeNull();
     expect(after.body.effective).toMatchObject({ provider: 'lm-studio', source: 'machine-default' });
   });
 
   test('a SOVEREIGN override becomes effective — keyless by nature, no key leaked', async () => {
-    const res = await request(app).put('/api/v1/neuma/fenna/route').set(witness.header)
+    const res = await request(app).put('/api/v1/neuma/alder/route').set(witness.header)
       .send({ provider: 'llama-server', model: 'gemma-4-31b' });
     expect(res.status).toBe(200);
     expect(res.body.override).toEqual({ provider: 'llama-server', model: 'gemma-4-31b' });
@@ -97,15 +97,15 @@ describe('PUT /:neumaId/route', () => {
   });
 
   test('an unknown provider is rejected 400', async () => {
-    const res = await request(app).put('/api/v1/neuma/fenna/route').set(witness.header).send({ provider: 'nope', model: 'x' });
+    const res = await request(app).put('/api/v1/neuma/alder/route').set(witness.header).send({ provider: 'nope', model: 'x' });
     expect(res.status).toBe(400);
   });
 });
 
 describe('DELETE /:neumaId/route (clear the override)', () => {
   test('clears the override', async () => {
-    await request(app).put('/api/v1/neuma/fenna/route').set(witness.header).send({ provider: 'llama-server', model: 'gemma-4-31b' });
-    const res = await request(app).delete('/api/v1/neuma/fenna/route').set(witness.header);
+    await request(app).put('/api/v1/neuma/alder/route').set(witness.header).send({ provider: 'llama-server', model: 'gemma-4-31b' });
+    const res = await request(app).delete('/api/v1/neuma/alder/route').set(witness.header);
     expect(res.body.cleared).toBe(true);
     expect(res.body.override).toBeNull();
     expect(res.body.effective.source).toBe('machine-default');
@@ -115,20 +115,20 @@ describe('DELETE /:neumaId/route (clear the override)', () => {
 describe('ownership (real owner.json)', () => {
   test('a wallet that does not own the neuma gets 403', async () => {
     const { strangerWitness } = await import('../helpers/witness.js');
-    await fs.writeFile(ownerFile('fenna'), JSON.stringify({ wallet: strangerWitness().address, claimedAt: 1 }));
-    const res = await request(app).get('/api/v1/neuma/fenna/route').set(witness.header);
+    await fs.writeFile(ownerFile('alder'), JSON.stringify({ wallet: strangerWitness().address, claimedAt: 1 }));
+    const res = await request(app).get('/api/v1/neuma/alder/route').set(witness.header);
     expect(res.status).toBe(403);
   });
 
   test('the owning wallet is allowed through', async () => {
-    await fs.writeFile(ownerFile('fenna'), JSON.stringify({ wallet: witness.address, claimedAt: 1 }));
-    const res = await request(app).get('/api/v1/neuma/fenna/route').set(witness.header);
+    await fs.writeFile(ownerFile('alder'), JSON.stringify({ wallet: witness.address, claimedAt: 1 }));
+    const res = await request(app).get('/api/v1/neuma/alder/route').set(witness.header);
     expect(res.status).toBe(200);
   });
 
   test('a corrupt owner.json is refused fail-closed (500) — never treated as unclaimed', async () => {
-    await fs.writeFile(ownerFile('fenna'), '{ "wallet":');   // malformed JSON
-    const res = await request(app).get('/api/v1/neuma/fenna/route').set(witness.header);
+    await fs.writeFile(ownerFile('alder'), '{ "wallet":');   // malformed JSON
+    const res = await request(app).get('/api/v1/neuma/alder/route').set(witness.header);
     // W1-004: corrupt claim must not widen access (was soft-open when null)
     expect(res.status).toBe(500);
     expect(res.body.error).toMatch(/corrupt|refuse/i);

@@ -1,6 +1,7 @@
 // house-clock-client.js — the operator's client for the house clock: the
 // charter (read, write, approve the version on screen, pause, resume), the
-// queue, the wake ledger and the asks a wake filed. Every route reads and
+// queue, the wake ledger, the asks house work filed (and the Optio's review
+// packet), and the operator's answer to one. Every route reads and
 // writes only the calling wallet's own house. Every failure throws with the
 // route's honest reason — a window that could not act must never LOOK like
 // it did.
@@ -40,9 +41,16 @@ export const getWakeLedger = ({ offset = 0, limit = 20, seat = '', outcome = '' 
   return clockCall('GET', `/ledger?${q}`, { errorPrefix: 'Could not read the wake ledger' });
 };
 
-/** @returns {Promise<{asks: Object[]}>} impure */
+/** Every ask, and the Optio's current review packet. @returns {Promise<{asks: Object[], packet: ?Object}>} impure */
 export const getHouseAsks = () => clockCall('GET', '/asks', { errorPrefix: 'Could not read the asks' });
 
-/** The operator has dealt with an ask. Nothing runs. impure */
+/**
+ * The operator answers an ask: allow | deny an act (allow = once, exactly that act), approve | revise a
+ * plan, reply to a decision. The seat is woken with it. @returns {Promise<{ask: Object, woken: {queued: boolean, why?: string}}>} impure
+ */
+export const answerHouseAsk = (id, answer) =>
+  clockCall('POST', `/asks/${encodeURIComponent(id)}/answer`, { body: answer, errorPrefix: 'Could not answer the ask' });
+
+/** Dismiss an ask without answering. Nothing runs. impure */
 export const closeHouseAsk = (id, note) =>
   clockCall('POST', `/asks/${encodeURIComponent(id)}/close`, { body: note ? { note } : {}, errorPrefix: 'Could not close the ask' });

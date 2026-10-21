@@ -17,7 +17,7 @@ beforeAll(async () => {
     configFile: false, root: fileURLToPath(new URL('../../', import.meta.url)),
     cacheDir: path.join(tmp, 'vite'), appType: 'custom',
     optimizeDeps: { include: ['ethers'] },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   server = http.createServer((req, res) => {
     if (req.url === '/') {

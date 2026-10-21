@@ -15,7 +15,7 @@ import { getProvider, getAddress } from './neuma-wallet-spend.js';
 
 // Barrel — the moved public surface; the arrow is origin → spend, never back.
 export {
-  resolveWalletRpc, getAddress, getBalance, sendTransaction,
+  resolveWalletRpc, walletNetworkKey, getAddress, getBalance, sendTransaction,
   requestSpend, listPendingSpends, getWalletView,
   approvePendingSpend, approvePendingSpendWithPassword, rejectPendingSpend,
   pendingApprovalMessage,

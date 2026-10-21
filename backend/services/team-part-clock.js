@@ -12,6 +12,9 @@
 
 import { markStepClock } from './team-run-live.js';
 
+// The longest delay setTimeout holds; a longer one overflows and fires at once.
+const TIMER_MAX_MS = 2 ** 31 - 1;
+
 /**
  * @param {Object} args
  * @param {Object} args.entry - the live registry entry
@@ -47,7 +50,8 @@ export const createAttemptClock = ({ entry, stepId, limits, onPass, keep = null 
     if (current.dueMs != null) {
       const left = current.dueMs - Date.now();
       if (left <= 0) { fire('due'); return; }
-      later(() => fire('due'), left);
+      // A due further out than one timer holds re-arms when that timer ends.
+      later(() => (Date.now() >= current.dueMs ? fire('due') : arm()), Math.min(left, TIMER_MAX_MS));
     }
     if (current.limitMs != null && since != null) {
       const left = current.limitMs - total();

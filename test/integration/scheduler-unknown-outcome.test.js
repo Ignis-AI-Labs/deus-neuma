@@ -10,7 +10,7 @@ import { postQueue } from '../../backend/services/social/post-queue.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
 
 let root, server, watcher, saved, house;
-const doors = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_X_API_ROOT',
+const doors = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_X_API_ROOT',
   'X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'];
 afterEach(async () => {
   house?.restore();
@@ -30,7 +30,9 @@ test('a transient recording failure after acceptance stays sending and reconcile
   const temporary = `${queue}.${process.pid}.tmp`;
   process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = queue;
   process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = path.join(root, 'credentials.json');
-  for (const key of doors.slice(3)) process.env[key] = 'fixture-only';
+  // The machine's binding record is this test's own, never the operator's.
+  process.env.NEUMA_SOCIAL_BINDINGS_PATH = path.join(root, 'bindings.json');
+  for (const key of doors.slice(4)) process.env[key] = 'fixture-only';
   const accepted = [];
   let repaired = false;
   server = http.createServer(async (req, res) => {

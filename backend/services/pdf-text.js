@@ -13,30 +13,26 @@ import fs from 'node:fs/promises';
 export const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 /**
- * Impure — the text of the PDF at `filePath`, `[Page N]` per page.
- * @param {string} filePath an already-validated path
- * @returns {Promise<string>}
+ * The text of a PDF's bytes, one entry per page. Impure (pdfjs).
+ * @param {Uint8Array} bytes
+ * @returns {Promise<string[]>}
  */
-export const pdfText = async (filePath) => {
-  const { size } = await fs.stat(filePath);
-  if (size > MAX_PDF_BYTES) throw new Error(`That PDF is ${Math.round(size / 1048576)}MB — over the ${MAX_PDF_BYTES / 1048576}MB read limit.`);
+export const pdfPagesFromBytes = async (bytes) => {
+  if (bytes.length > MAX_PDF_BYTES) throw new Error(`That PDF is ${Math.round(bytes.length / 1048576)}MB — over the ${MAX_PDF_BYTES / 1048576}MB read limit.`);
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const loading = pdfjs.getDocument({ data: new Uint8Array(await fs.readFile(filePath)), isEvalSupported: false });
+  const loading = pdfjs.getDocument({ data: new Uint8Array(bytes), isEvalSupported: false });
   try {
     const pdf = await loading.promise;
     const pages = [];
-    let hasText = false;
     for (let number = 1; number <= pdf.numPages; number += 1) {
       const page = await pdf.getPage(number);
       const content = await page.getTextContent();
-      const text = content.items.filter((item) => typeof item.str === 'string')
-        .map((item) => `${item.str}${item.hasEOL ? '\n' : ' '}`).join('').trim();
-      hasText ||= Boolean(text);
-      pages.push(`[Page ${number}]\n${text}`);
+      pages.push(content.items.filter((item) => typeof item.str === 'string')
+        .map((item) => `${item.str}${item.hasEOL ? '\n' : ' '}`).join('').trim());
       page.cleanup();
     }
-    if (!hasText) throw new Error('This PDF has no selectable text (a scan?) — ask your operator for a searchable copy or the pages as images.');
-    return pages.join('\n\n');
+    if (!pages.some(Boolean)) throw new Error('This PDF has no selectable text (a scan?) — ask your operator for a searchable copy or the pages as images.');
+    return pages;
   } catch (error) {
     if (error.name === 'PasswordException') throw new Error('This PDF is password-protected — ask your operator for an unlocked copy.', { cause: error });
     if (error.name === 'InvalidPDFException') throw new Error('This file could not be read as a PDF.', { cause: error });
@@ -44,4 +40,16 @@ export const pdfText = async (filePath) => {
   } finally {
     await loading.destroy();
   }
+};
+
+/**
+ * Impure — the text of the PDF at `filePath`, `[Page N]` per page.
+ * @param {string} filePath an already-validated path
+ * @returns {Promise<string>}
+ */
+export const pdfText = async (filePath) => {
+  const { size } = await fs.stat(filePath);
+  if (size > MAX_PDF_BYTES) throw new Error(`That PDF is ${Math.round(size / 1048576)}MB — over the ${MAX_PDF_BYTES / 1048576}MB read limit.`);
+  const pages = await pdfPagesFromBytes(await fs.readFile(filePath));
+  return pages.map((text, i) => `[Page ${i + 1}]\n${text}`).join('\n\n');
 };

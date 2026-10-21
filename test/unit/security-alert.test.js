@@ -3,10 +3,11 @@
  * ONE security_alert notification, proven with NO mock on the claimed path
  * (RULE 0): the REAL per-house designation store, the REAL lane workspace +
  * owner.json, the REAL bus, and the REAL notification store on real tmp disk.
- * The addressing law is what is proven: the alert goes to the house whose
- * ledger took the threats, only while that house seats a CSO — and with no
- * seat it reaches NOBODY, never everybody, never another house that seats a
- * CSO under the same lane id.
+ * The addressing law is what is proven: the alert goes to the operator of
+ * the house whose ledger took the threats, CSO seated or not (ruling,
+ * 2026-10-19: the seat decides who assesses, never whether the operator
+ * hears) — and never to another house, even one that seats a CSO under the
+ * same lane id.
  */
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { standTwoHouses, HOUSE_A, HOUSE_B } from '../helpers/house-office-kit.js';
@@ -22,6 +23,7 @@ const CSO_LANE = 'keir';
 const CRITICAL = { severity: 'critical', externalId: 'CVE-2026-0001', repo: 'neuma', title: 'a critical fixture' };
 const HIGH = { severity: 'high', externalId: 'GHSA-2026-0002', repo: 'kenorie', title: 'a high fixture' };
 const LOW = { severity: 'low', externalId: 'GHSA-2026-0003', repo: 'neuma', title: 'a low fixture' };
+const MEDIUM = { severity: 'medium', externalId: 'GHSA-2026-0004', repo: 'neuma', title: 'a medium fixture' };
 
 describe('security watch operator alert (real stores, real bus, gnosis)', () => {
   let houses;
@@ -46,7 +48,8 @@ describe('security watch operator alert (real stores, real bus, gnosis)', () => 
     expect(card.detail).toContain('CRITICAL CVE-2026-0001 (neuma)');
     expect(card.detail).toContain('HIGH GHSA-2026-0002 (kenorie)');
     expect(card.detail).not.toContain('GHSA-2026-0003');
-    expect(card.ref).toEqual({ critical: 1, high: 1 });
+    expect(card.detail).not.toContain('no CSO seated');
+    expect(card.ref).toEqual({ critical: 1, high: 1, medium: 0 });
   });
 
   test('a run with nothing critical or high raises nothing', async () => {
@@ -57,21 +60,30 @@ describe('security watch operator alert (real stores, real bus, gnosis)', () => 
     expect((await readNotifications(WALLET)).records.length).toBe(0);
   });
 
-  test('no seated CSO — the alert has no address and reaches nobody', async () => {
-    await alertOnNewCriticals([CRITICAL], WALLET);
+  test('no seated CSO — the card goes straight to the house operator, saying nobody else reads it', async () => {
+    await alertOnNewCriticals([CRITICAL, MEDIUM], WALLET);
+    const { records } = await readNotifications(WALLET);
+    expect(records.length).toBe(1);
+    expect(records[0].detail).toContain('no CSO seated — these wait on you');
+    expect(records[0].detail).toContain('1 new medium counted in the ledger');
+    expect(records[0].ref).toEqual({ critical: 1, high: 0, medium: 1 });
+  });
+
+  test('mediums alone never raise a card', async () => {
+    await alertOnNewCriticals([MEDIUM, MEDIUM], WALLET);
     expect((await readNotifications(WALLET)).records.length).toBe(0);
   });
 
-  test('house B\'s threats never reach house A, though A seats a CSO under the same lane id', async () => {
+  test('house B\'s threats reach B\'s operator and never house A, though A seats a CSO under the same lane id', async () => {
     await seatGuardian();
     await alertOnNewCriticals([CRITICAL], HOUSE_B);
     expect((await readNotifications(HOUSE_A)).records.length).toBe(0);
-    expect((await readNotifications(HOUSE_B)).records.length).toBe(0);
+    expect((await readNotifications(HOUSE_B)).records.length).toBe(1);
   });
 
   test('no house at all — fail-soft, nobody is addressed', async () => {
     await seatGuardian();
-    await expect(alertOnNewCriticals([CRITICAL], undefined)).resolves.toBeUndefined();
+    await expect(alertOnNewCriticals([CRITICAL], undefined)).resolves.toBeNull();
     expect((await readNotifications(WALLET)).records.length).toBe(0);
   });
 });

@@ -86,13 +86,46 @@ export const receiptLine = (r, names) => ({
   ].join(' · '),
 });
 
+const SKIP_WORDS = Object.freeze({ unconfigured: 'NO RPC SET', 'rpc-unavailable': 'RPC UNREACHABLE' });
+
 /**
- * The watch set's summary line. Pure.
- * @param {?{watched: Object[], unwatched: Object[], lastScan: ?{at: string}}} watch
+ * The networks a scan did not fully read, and why, so a skipped network is
+ * never mistaken for one that was read and held nothing. Pure.
+ * @param {?Array<{network: string, skipped?: string, errors?: string[]}>} networks - per-network scan results
+ * @returns {string[]} e.g. ['ETHEREUM — NO RPC SET', 'BASE — READ ERRORS']
+ */
+export const unreadNetworks = (networks) => (networks ?? []).flatMap((n) => {
+  if (n.skipped) return [`${networkWord(n.network)} — ${SKIP_WORDS[n.skipped] || String(n.skipped).toUpperCase()}`];
+  return n.errors?.length ? [`${networkWord(n.network)} — READ ERRORS`] : [];
+});
+
+const unreadClause = (networks) => {
+  const unread = unreadNetworks(networks);
+  return unread.length ? ` · NOT READ: ${unread.join(' · ')}` : '';
+};
+
+/**
+ * What one scan-now did: which networks it read and how many new receipts —
+ * never "scanned" when no network was read. Pure.
+ * @param {{appended: number, watched?: number, networks?: Array<{network: string, skipped?: string, errors?: string[]}>}} result
+ */
+export const scanNote = (result) => {
+  const networks = result?.networks ?? [];
+  const read = networks.filter((n) => !n.skipped).map((n) => networkWord(n.network));
+  if (!read.length) {
+    return result?.watched === 0 ? 'NOTHING SCANNED — NO ADDRESS IS WATCHED' : `NOTHING SCANNED${unreadClause(networks)}`;
+  }
+  const count = `${result.appended} NEW RECEIPT${result.appended === 1 ? '' : 'S'}`;
+  return `SCANNED ${read.join(' + ')} — ${count}${unreadClause(networks)}`;
+};
+
+/**
+ * The watch set's summary line, naming any network the last scan did not read. Pure.
+ * @param {?{watched: Object[], unwatched: Object[], lastScan: ?{at: string, networks?: Object[]}}} watch
  */
 export const watchLine = (watch) => {
   if (!watch) return '—';
-  const last = watch.lastScan?.at ? `LAST SCAN ${formatDateTime(watch.lastScan.at)}` : 'NEVER SCANNED';
+  const last = watch.lastScan?.at ? `LAST SCAN ${formatDateTime(watch.lastScan.at)}${unreadClause(watch.lastScan.networks)}` : 'NEVER SCANNED';
   return `${watch.watched?.length ?? 0} WATCHED · ${watch.unwatched?.length ?? 0} NOT WATCHED · ${last}`;
 };
 

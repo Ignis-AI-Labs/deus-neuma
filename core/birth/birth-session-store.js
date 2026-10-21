@@ -21,7 +21,18 @@ export { TEST_SESSION_TTL_MS, REAL_SESSION_TTL_MS } from './birth-session-expiry
 // birth depends on is probed through the SAME builders the birth uses —
 // a probe that rebuilds a path is a probe of a different road). Re-exported
 // by staged-birth-handler.js so its import surface stays unchanged.
-export const birthSessionPath = (sessionId) => join(resolveCeremonyScratchDir(PROJECT_ROOT), `birth-${sessionId}.json`);
+//
+// The id is the minted shape (birth-session-create.js: 16 random bytes, hex)
+// or nothing: birth:resume hands a client-sent id straight to this builder,
+// and `../../workspaces/<lane>/identity/genesis-seal` once resolved to that
+// lane's seal — which the expiry sweep then deleted.
+const BIRTH_SESSION_ID = /^[0-9a-f]{32}$/;
+export const birthSessionPath = (sessionId) => {
+  if (typeof sessionId !== 'string' || !BIRTH_SESSION_ID.test(sessionId)) {
+    throw new Error(`Invalid birth sessionId: ${String(sessionId).slice(0, 40)}`);
+  }
+  return join(resolveCeremonyScratchDir(PROJECT_ROOT), `birth-${sessionId}.json`);
+};
 
 /**
  * Persist session state to a temp checkpoint file for recovery.
@@ -45,7 +56,8 @@ export async function writeSessionCheckpoint(sessionId, session) {
  * Read a session checkpoint back from disk.
  * @param {string} sessionId - Session ID
  * @returns {Promise<object|null>} Parsed session, or null when the checkpoint
- *   is missing or unreadable (expiry is the caller's decision)
+ *   is missing or unreadable, or the id is not the minted shape (expiry is
+ *   the caller's decision)
  */
 export async function readSessionCheckpoint(sessionId) {
   try {
@@ -84,11 +96,14 @@ export async function listSessionCheckpoints() {
 }
 
 /**
- * Delete a session checkpoint file. Missing file is fine.
+ * Delete a session checkpoint file. Missing file is fine; an id that is not
+ * the minted shape is refused (birthSessionPath) and logged, never silent.
  * @param {string} sessionId - Session ID
  */
 export async function deleteSessionCheckpoint(sessionId) {
   try {
     await fs.unlink(birthSessionPath(sessionId));
-  } catch { /* ok if not found */ }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.error(`[Birth] Checkpoint delete refused for ${String(sessionId).slice(0, 40)}:`, err.message);
+  }
 }

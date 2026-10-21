@@ -29,7 +29,7 @@ const GENESIS = TARGETS.genesisPath;
 // an inherited env (sc-echo, 2026-08-06).
 const PRE_BIRTH_ROOT = resolveCeremonyScratchDir(process.cwd());
 
-const write = (p) => ({ server: 'fs', toolName: 'write', tool: 'fs/write', args: { path: p, content: 'Lifovan' } });
+const write = (p) => ({ server: 'fs', toolName: 'write', tool: 'fs/write', args: { path: p, content: 'Yarrow' } });
 
 describe('canonicalizeBirthCalls — naming (stage 4)', () => {
   // Every path dialect a substrate has been seen (or is likely) to invent.
@@ -46,7 +46,7 @@ describe('canonicalizeBirthCalls — naming (stage 4)', () => {
   test.each(DIALECTS)('rebases %s onto the canonical scratch path', (dialect) => {
     const [call] = canonicalizeBirthCalls([write(dialect)], 4, TARGETS);
     expect(call.args.path).toBe(SCRATCH_NAME);
-    expect(call.args.content).toBe('Lifovan'); // the author's content is untouched
+    expect(call.args.content).toBe('Yarrow'); // the author's content is untouched
   });
 
   test.each(DIALECTS)('the rebased %s passes the REAL pre-birth sandbox check', (dialect) => {
@@ -63,13 +63,13 @@ describe('canonicalizeBirthCalls — naming (stage 4)', () => {
   });
 
   test('stage 4 rebases an INVENTED filename too — the only sanctioned write is the name (live 2026-07-07: an invented spelling escaped the exact-basename match and the sandbox refused the naming on stream)', () => {
-    const invented = { server: 'fs', toolName: 'write', tool: 'fs/write', args: { path: 'my_name.txt', content: 'Tenekom' } };
+    const invented = { server: 'fs', toolName: 'write', tool: 'fs/write', args: { path: 'my_name.txt', content: 'Holly' } };
     const [rebased] = canonicalizeBirthCalls([invented], 4, TARGETS);
     expect(rebased.args.path).toBe(SCRATCH_NAME);
-    expect(rebased.args.content).toBe('Tenekom'); // authored content untouched
+    expect(rebased.args.content).toBe('Holly'); // authored content untouched
   });
 
-  // THE NAMING HOLDS ONE ACT (Design note, 2026-10-14: this test pinned the
+  // THE NAMING HOLDS ONE ACT (ruling, 2026-10-14): this test pinned the
   // pass-through that let a naming list a folder […].
   test('non-write tools are not run at stage 4 — the naming holds one act', () => {
     const read = { server: 'fs', toolName: 'read', tool: 'fs/read', args: { path: 'chosen_name.txt' } };
@@ -189,9 +189,9 @@ describe('canonicalizeBirthCalls — captured write IS the landed write (echo BL
     expect(out[0]).toBe(empty); // the empty write is untouched, never lands as DNA
   });
 
-  test('a suffix-spelled genesis name (metidar.genesis.md) beats an earlier incidental .md', () => {
+  test('a suffix-spelled genesis name (poplar.genesis.md) beats an earlier incidental .md', () => {
     const note = { server: 'fs', toolName: 'write', args: { path: '/dna/scratch-notes.md', content: 'notes' } };
-    const named = { server: 'fs', toolName: 'write', args: { path: '/dna/metidar.genesis.md', content: 'the real DNA' } };
+    const named = { server: 'fs', toolName: 'write', args: { path: '/dna/poplar.genesis.md', content: 'the real DNA' } };
     const out = canonicalizeBirthCalls([note, named], 5, TARGETS);
     expect(out[0]).toBe(note);
     expect(out[1].args.path).toBe(GENESIS);
@@ -221,16 +221,16 @@ describe('canonicalizeBirthCalls — captured write IS the landed write (echo BL
   });
 
   test('stage 4 rebases an fs/write with content even when path is missing', () => {
-    const pathless = { server: 'fs', toolName: 'write', args: { content: 'Dufesom' } };
+    const pathless = { server: 'fs', toolName: 'write', args: { content: 'Sorrel' } };
     const [call] = canonicalizeBirthCalls([pathless], 4, TARGETS);
     expect(call.args.path).toBe(SCRATCH_NAME);
-    expect(call.args.content).toBe('Dufesom');
+    expect(call.args.content).toBe('Sorrel');
   });
 });
 
 describe('ceremonyWriteRoots — locked-in birth confinement (pure)', () => {
   const scratch = ceremonyScratchDir('/proj');
-  const lane = path.resolve('/house/kisonam');
+  const lane = path.resolve('/house/teasel');
 
   test('no lane → scratch only', () => {
     expect(ceremonyWriteRoots({ scratchDir: scratch })).toEqual([scratch]);
@@ -260,8 +260,8 @@ describe('ceremonyWriteRoots — locked-in birth confinement (pure)', () => {
 describe('isolatePortalForBirth', () => {
   test('clears companion, grants, and write budget', () => {
     const conn = {
-      companion: { neumaId: 'kisonam', name: 'Kisonam' },
-      neumaId: 'kisonam',
+      companion: { neumaId: 'teasel', name: 'Teasel' },
+      neumaId: 'teasel',
       _writeOps: 4,
       _grantedWriteRoots: ['/x'],
       _grantedReadRoots: ['/y'],
@@ -284,7 +284,7 @@ describe("canonicalizeBirthCalls — a stage-4 edit (either spelling) IS the nam
   test('a retired edit_file spelling converts to the canonical fs naming write, content from the edits', () => {
     const edit = {
       server: 'filesystem', toolName: 'edit_file', tool: 'filesystem/edit_file',
-      args: { path: '/home/guardian-two/.neuma/data/temp/chosen_name.txt', edits: [{ oldText: '', newText: 'Aether' }] },
+      args: { path: '/home/tester-two/.neuma/data/temp/chosen_name.txt', edits: [{ oldText: '', newText: 'Aether' }] },
     };
     const [call] = canonicalizeBirthCalls([edit], 4, TARGETS);
     expect(call.toolName).toBe('write');

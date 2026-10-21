@@ -28,6 +28,7 @@ import workspaceRouter from '../../backend/routes/workspace-routes.js';
 import { forgeBirthIdentity } from '../../core/birth/identity-forge.js';
 import { riteRecordOf, riteFromRecord, RITE_FILE } from '../../core/birth/rite-record.js';
 import { artSeedOf } from '../../core/birth/rite-frames.js';
+import { appearanceSectionFor } from '../../core/genome/birth-genome.js';
 import RITE_SOULS from '../../frontend/app/Rite/rite-souls.json';
 
 let app, wsRoot, previousRoot, owner, ownerToken, strangerToken;
@@ -108,6 +109,11 @@ describe('its film, re-derived from its lane', () => {
     expect(film.artSeed).toBe(artSeedOf(MOMENT_SEED));
     expect(film.genesisHash).toBe(forged.seal.genesisHash);
     expect(film.aura.recorded).toBe(true);
+    // its body: the very genome its DNA's appearance records — the same sealed anchors, the same derivation
+    expect(film.genome).toEqual(JSON.parse(JSON.stringify(appearanceSectionFor({
+      soulPublicKey: forged.seal.record.soulPublicKey, genesisHash: forged.seal.genesisHash, momentSeed: MOMENT_SEED, neumaId: 'ritefilm',
+    }).genome)));
+    expect(film.genome.schema).toBe('genome/v4');
     expect(film.soul.scale.tonic).toEqual(RITE_SOULS.souls[0].scale.tonic);
     expect(film.trueName.fullName).toBe(forged.trueName.fullName);
   });

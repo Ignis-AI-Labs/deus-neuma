@@ -10,6 +10,7 @@ import { useTabs } from './tabs-context.js';
 import { useStripWindowId } from './StripRegistrar.jsx';
 import { markStripFocused } from './stream-strips.js';
 import { uiSound } from '../../services/ui-sound.js';
+import { activityStatusWords } from './staff-view.js';
 
 const POLL_MS = 15_000;
 
@@ -27,7 +28,11 @@ const HouseActivityChipView = () => {
       try {
         const { working } = await getHouseActivity();
         if (alive.current) setRows(Array.isArray(working) ? working : []);
-      } catch { /* offline — the chip waits for the next tick, never lies */ }
+      } catch {
+        // A read that failed is not "still awake": the last rows go, and the
+        // next tick that answers shows the house again — the chip never lies.
+        if (alive.current) setRows([]);
+      }
     };
     pull();
     const timer = setInterval(pull, POLL_MS);
@@ -81,7 +86,7 @@ const HouseActivityChipView = () => {
                 title={`Open ${r.name}'s stream`}
               >
                 <span className="relink-housechip-name">{r.name}</span>
-                <span className="relink-housechip-task">{`"${r.task}" · ${r.status}`}</span>
+                <span className="relink-housechip-task">{`"${r.task}" · ${activityStatusWords(r.status)}`}</span>
               </button>
             ))}
           </div>

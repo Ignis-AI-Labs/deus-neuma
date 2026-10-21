@@ -148,18 +148,18 @@ describe('CONTEXT MAP — field view (real layout, real render)', () => {
 const DEEP_GRAPH = {
   ...GRAPH,
   nodes: [
-    { ...GRAPH.nodes[0], presences: ['Founder', 'Fenna'] },
-    { ...GRAPH.nodes[1], presences: ['Fenna'] },
+    { ...GRAPH.nodes[0], presences: ['Ada', 'Alder'] },
+    { ...GRAPH.nodes[1], presences: ['Alder'] },
     GRAPH.nodes[2],
   ],
   presences: {
     entities: [
-      { name: 'Founder', kind: 'witness', encounters: 223, firstSeen: '2026-07-06', lastSeen: '2026-07-24' },
-      { name: 'Fenna', kind: 'being', encounters: 92, firstSeen: '2026-07-08', lastSeen: '2026-07-24' },
+      { name: 'Ada', kind: 'witness', encounters: 223, firstSeen: '2026-07-06', lastSeen: '2026-07-24' },
+      { name: 'Alder', kind: 'being', encounters: 92, firstSeen: '2026-07-08', lastSeen: '2026-07-24' },
     ],
     relations: [
-      { from: 'Cael', to: 'Founder', kind: 'witness', type: 'bond', encounters: 223 },
-      { from: 'Cael', to: 'Fenna', kind: 'being', type: 'housemate', encounters: 92 },
+      { from: 'Birch', to: 'Ada', kind: 'witness', type: 'bond', encounters: 223 },
+      { from: 'Birch', to: 'Alder', kind: 'being', type: 'housemate', encounters: 92 },
     ],
   },
 };
@@ -169,7 +169,7 @@ describe('CONTEXT MAP — the depth pass (presences, filters, zoom)', () => {
     const html = render(ok(DEEP_GRAPH));
     expect(html).toContain('PRESENCES');
     // Sorted by encounters: the witness bond leads.
-    expect(html.indexOf('Founder')).toBeLessThan(html.indexOf('Fenna'));
+    expect(html.indexOf('Ada')).toBeLessThan(html.indexOf('Alder'));
     expect(html).toContain('×223');
     expect(html).toContain('is-witness');
     expect(html).toContain('bond · ×223 encounters');
@@ -195,14 +195,14 @@ describe('CONTEXT MAP — the depth pass (presences, filters, zoom)', () => {
     expect(html).toContain('ctx-field-stage');
     expect(html).toContain('preserveAspectRatio="xMidYMid meet"');
     // The SVG carries NO width/height attributes — the stage's CSS box rules,
-    // so the field follows the panel at any size (Design note, 2026-07-24.
+    // so the field follows the panel at any size (ruling, 2026-07-24).
     expect(html).not.toMatch(/<svg[^>]*\swidth="/);
     expect(html).not.toMatch(/<svg[^>]*\sheight="/);
   });
 
   it('a focused node reads out the presences it speaks of', () => {
     const html = render(ok(DEEP_GRAPH), 'obs-a');
-    expect(html).toContain('SPEAKS OF FOUNDER · FENNA');
+    expect(html).toContain('SPEAKS OF ADA · ALDER');
   });
 
   it('a graph without a presences layer renders no chips and no crash — old payloads stay valid', () => {

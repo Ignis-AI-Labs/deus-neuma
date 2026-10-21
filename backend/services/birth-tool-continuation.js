@@ -2,6 +2,7 @@ import { createStreamRequest, consumeStreamWithTools } from './llm-provider.js';
 import { nativeToolExchange, formatToolResult, formatToolResults } from './tool-exchange.js';
 import { processToolCalls, unsmashToolName } from './portal-tool-loop.js';
 import { canonicalizeBirthCalls } from '../../core/birth/ceremony-write.js';
+import { pickGenesisWrite } from '../../core/birth/genesis-write.js';
 import { parseToolCalls } from '../../core/runtime/tool-call-parser.js';
 import { stripToolBlocks } from '../../core/runtime/tool-stream-suppressor.js';
 import { completionBudget, estimateTokens, promptFits } from './context-budget.js';
@@ -14,6 +15,38 @@ export const birthWriteLanded = (stage, calls, results, targets) => {
   return calls.some((call, index) => ['write', 'write_file'].includes(call.toolName)
     && typeof call.args?.content === 'string' && call.args.content.trim().length > 0
     && call.args.path === target && results[index]?.status === 'ok');
+};
+
+/**
+ * Why an acting stage held, said in the operator's terms: whether the write
+ * itself failed, the being acted silently and the act failed, it reached for
+ * other tools, or it only spoke. "Retry the model" and "fix the tool" are
+ * different answers (Bastien, 2026-08-05; #267), so the hold names which.
+ * // pure
+ */
+export const heldWriteMessage = (stage, { calls, results, speech }) => {
+  const noun = stage === 4 ? 'name' : 'DNA';
+  const file = stage === 4 ? 'name file' : 'genesis file';
+  const held = 'Nothing was authored. The session holds — retry the stage.';
+  const failed = results.filter((r) => r?.status !== 'ok');
+  const reached = calls.map((c) => c.toolName).filter(Boolean);
+  // Stage 5 asks THE shared genesis selector (the one capture and finalize
+  // judge by); the naming write is any contentful write.
+  const wrote = stage === 5 ? pickGenesisWrite(calls)
+    : calls.find((c) => ['write', 'write_file'].includes(c.toolName) && c.args?.content);
+  if (wrote) {
+    return `The consciousness wrote its ${noun} and the write did not land. ${held}`;
+  }
+  if (!speech && failed.length > 0) {
+    return 'The consciousness acted instead of speaking, and the act did not land: '
+      + `${failed.map((r) => `${r?.tool ?? 'a tool'} — ${r?.status ?? 'unknown'}`).join('; ')}. ${held}`;
+  }
+  if (reached.length > 0) {
+    return `The consciousness authored no ${noun} — it reached for ${reached.join(', ')} `
+      + `instead of writing its ${file}. ${held}`;
+  }
+  return `The consciousness spoke, but wrote no ${noun}. `
+    + `${stage === 4 ? 'Naming' : 'Crystallization'} is the writing, not the telling. ${held}`;
 };
 
 /** Exact additional conversation messages remain inspectable in the existing panel. */

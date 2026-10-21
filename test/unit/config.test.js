@@ -105,7 +105,7 @@ describe('backend/config.js', () => {
       expect(loadConfig({ CEREMONY_SEAL_NETWORK: 'base-sepolia' }).ceremonySealNetwork).toBe('base-sepolia');
     });
 
-    it('the FOUNDING defaults to MAINNET — the official recognition targets the real chain (Design note, 2026-07-16', () => {
+    it('the FOUNDING defaults to MAINNET — the official recognition targets the real chain (ruling, 2026-07-16)', () => {
       const config = loadConfig({});
       expect(config.houseFoundNetwork).toBe('ethereum');
     });

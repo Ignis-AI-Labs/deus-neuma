@@ -35,9 +35,9 @@ const unconfigured = (channelName) => ({ ok: null, detail: `${channelName} is no
 // Every probe: one impure call, never throws, answers the flight shape.
 // { ok: true, account: { id?, name? } } | { ok: false, status?, detail } | unconfigured
 
-const probeX = async (credentials, signal) => {
+const probeX = async (credentials, signal, wallet) => {
   if (!credentials) return unconfigured('X');
-  const me = await readXMe({ signal });
+  const me = await readXMe({ signal, wallet });
   if (!me.ok) return { ok: false, status: me.status, detail: me.detail || 'the account lookup failed' };
   const account = me.data?.id
     ? { id: String(me.data.id), name: String(me.data.username || '') }
@@ -160,32 +160,34 @@ const PROBES = Object.freeze({
   linkedin: probeLinkedIn,
 });
 
-// The brief cache — one entry per channel: { at, result }.
+// The brief cache — one entry per house per channel: { at, result }.
 const cache = new Map();
 
 /**
  * Probe every channel (or a named subset). impure — credential store +
  * network + clock. Never throws: a channel that cannot even resolve its
  * credentials answers its own failure shape.
- * @param {{fresh?: boolean, channels?: Array<string>}} [opts]
+ * @param {{fresh?: boolean, channels?: Array<string>, wallet: string}} opts -
+ *   wallet: the house whose connections are proven (each house its own keys)
  * @returns {Promise<Record<string, {ok: true|false|null, detail?: string,
  *   account?: {id: string, name: string}, status?: number, checkedAt: string}>>}
  */
-export const runFlightTests = async ({ fresh = false, channels = null } = {}) => {
+export const runFlightTests = async ({ fresh = false, channels = null, wallet } = {}) => {
   const ids = channels || Object.keys(PROBES);
   const out = {};
   await Promise.all(ids.map(async (id) => {
     const probe = PROBES[id];
     if (!probe) return;
-    const cached = cache.get(id);
+    const key = `${String(wallet || '').toLowerCase()}|${id}`;
+    const cached = cache.get(key);
     if (!fresh && cached && Date.now() - cached.at < TTL_MS) {
       out[id] = cached.result;
       return;
     }
-    const credentials = await resolveChannelCredential(id).catch(() => null);
-    const result = await probe(credentials, AbortSignal.timeout(TIMEOUT_MS));
+    const credentials = await resolveChannelCredential(wallet, id).catch(() => null);
+    const result = await probe(credentials, AbortSignal.timeout(TIMEOUT_MS), wallet);
     const stamped = { ...result, checkedAt: new Date().toISOString() };
-    cache.set(id, { at: Date.now(), result: stamped });
+    cache.set(key, { at: Date.now(), result: stamped });
     out[id] = stamped;
   }));
   return out;

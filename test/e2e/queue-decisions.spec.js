@@ -197,8 +197,11 @@ const seedStores = async () => {
 
   const dir = path.join(root, 'social');
   await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
+  // The replies are the signed-in house's own record, in its realm dir (reply-candidates.js).
+  const houseDir = path.join(root, 'realm', new ethers.Wallet(readClaudeWallet()).address.toLowerCase());
+  await fs.promises.mkdir(houseDir, { recursive: true, mode: 0o700 });
   await fs.promises.writeFile(
-    path.join(dir, 'reply-candidates.json'), `${JSON.stringify(candidates, null, 2)}\n`, { mode: 0o600 },
+    path.join(houseDir, 'reply-candidates.json'), `${JSON.stringify(candidates, null, 2)}\n`, { mode: 0o600 },
   );
   await fs.promises.writeFile(
     path.join(dir, 'social-post-queue.json'), `${JSON.stringify(queue, null, 2)}\n`, { mode: 0o600 },
@@ -296,7 +299,7 @@ const openRepliesSection = async (page) => {
   return win;
 };
 
-// One strip in REPLIES (Design note, 2026-10-13 — anchored, so ANSWERED never matches UNANSWERED.
+// One strip in REPLIES (ruling, 2026-10-13) — anchored, so ANSWERED never matches UNANSWERED.
 const bucketTab = (win, name) => win.locator('.replies-board .queue-lane', { hasText: new RegExp(`^${name}`) });
 
 test('what awaits approval stands at the head of the board — STAGED opens while anything is owed', async ({ page }) => {

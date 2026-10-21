@@ -36,7 +36,7 @@ import { isHarnessLane } from '../../../core/workspace/lane-grounds.js';
 import {
   IDENTITY_ARMS, LANE_ARMS, isIsoWithTimezone, validateDeadline, positiveInt,
   identityArgv, endpointArgv, buildChainArgv, mintComparisonId,
-  runMatchedChain, requestChainStop, COMPARISON_ID_RE,
+  runMatchedChain, resumeMatchedChain, requestChainStop, COMPARISON_ID_RE,
 } from './bench-matched.js';
 import { createLogger } from '../logger.js';
 
@@ -173,6 +173,18 @@ export const ownedStatus = () =>
   [...owned.entries()].map(([pid, child]) => ({
     pid, verb: child.verb, startedAt: child.startedAt, logFile: child.logFile, long: child.long,
   }));
+
+/**
+ * THE BOOT STEP: carry on the matched set the last desk was running (a
+ * relaunch mid-arm, 2026-10-20), its live arm registered as this plane's own.
+ * @returns {Promise<?string>} the comparison id carried on, or null
+ */
+// impure
+export const resumeBenchChain = () => resumeMatchedChain({
+  logDir: benchLaunchLogDir(),
+  registerOwned: (pid, meta) => owned.set(pid, meta),
+  deregisterOwned: (pid) => owned.delete(pid),
+});
 
 /**
  * SIGTERM the plane-owned LONG children only (a night window launched through

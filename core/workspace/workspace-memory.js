@@ -22,6 +22,17 @@ import crypto from 'crypto';
 import { encryptEnvelope } from './workspace-crypto.js';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 
+// An observation's id is its file name — hex only, so no id can name a path
+// outside the lane's own observations directory.
+const OBSERVATION_ID = /^[a-f0-9]+$/;
+
+// pure — refuse an id that could not be a file name in the observations dir
+const assertObservationId = (id, where) => {
+  if (!OBSERVATION_ID.test(String(id))) {
+    throw new Error(`${where}: invalid observation id ${String(id).slice(0, 40)}`);
+  }
+};
+
 /**
  * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
  * @returns {Readonly<Object>} async methods assigned onto the NeumaWorkspace facade
@@ -103,15 +114,21 @@ export const createMemoryDomain = ({ locks }) => Object.freeze({
    * Add a single observation to the workspace memory store. Auto-generates an ID and timestamp.
    * @param {string} neumaId - Neuma identifier
    * @param {Object} observation - Observation data (type, userMessage, response, significance, etc.)
+   * @param {{preserveId?: boolean}} [opts] - preserveId keeps the record's own
+   *   id (an import restoring a lane, whose supersededBy links and episodes
+   *   name it); every other caller gets a minted id, whatever it sent
    * @returns {Promise<Object>} The saved observation record with generated id and timestamp
    */
-  async addObservation(neumaId, observation) {
-    const id = crypto.randomBytes(8).toString('hex');
+  async addObservation(neumaId, observation, { preserveId = false } = {}) {
+    const id = preserveId ? observation.id : crypto.randomBytes(8).toString('hex');
+    assertObservationId(id, 'addObservation');
     const filePath = path.join(this._path(neumaId), 'memory', 'observations', `${id}.json`);
     const recordedAt = observation.timestamp || observation.recordedAt || new Date().toISOString();
     const record = {
-      id,
       ...observation,
+      // The id lands after the caller's fields: it must be the file's name,
+      // never a value a caller chose.
+      id,
       // Bi-temporal: when the moment was recorded vs when it actually occurred.
       // occurredAt defaults to the record time; a memory about a past event may
       // override it. Validity stays open until something supersedes it.
@@ -148,6 +165,9 @@ export const createMemoryDomain = ({ locks }) => Object.freeze({
    * @returns {Promise<Object|null>} The updated record, or null if not found
    */
   async invalidateObservation(neumaId, id, { supersededBy, at, lifecycle, reason } = {}) {
+    // An id that could not be a file name names no record — and must never
+    // be joined into a path, or it reaches outside the lane.
+    if (!OBSERVATION_ID.test(String(id))) return null;
     const filePath = path.join(this._path(neumaId), 'memory', 'observations', `${id}.json`);
     // The read-modify-write runs UNDER the per-file lock (MEM-009 #202), the
     // sibling of MEM-008 that was missed when the others were fixed. Two
@@ -260,9 +280,7 @@ export const createMemoryDomain = ({ locks }) => Object.freeze({
    */
   // impure — one locked read-modify-write on the observation's own file
   async stampObservationAnchor(neumaId, obsId, anchor) {
-    if (!/^[a-f0-9]+$/.test(String(obsId))) {
-      throw new Error(`stampObservationAnchor: invalid observation id ${String(obsId).slice(0, 40)}`);
-    }
+    assertObservationId(obsId, 'stampObservationAnchor');
     const filePath = path.join(this._path(neumaId), 'memory', 'observations', `${obsId}.json`);
     return locks.withFileLock(filePath, async () => {
       const record = await this._readJSON(filePath);

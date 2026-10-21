@@ -10,11 +10,19 @@
  *   filesystem/delete_file  — IRREVERSIBLE (the fs/edit {delete:true} sub-op
  *                             carries this identity, fs-primitives.js)
  *   coding/execute          — an arbitrary shell run, sandboxed but unsupervised
+ *   intents/team.workspace-run — the being's own script run, the same class
  *   intents/social.post     — outward speech under the house's name
  *   intents/social.queue    — staged outward speech
  *   intents/email.send      — named speech to a real person
  *   intents/wallet.send     — value leaving the house (allowed by default via
  *                             the spend policy; AUTO still pauses on the card)
+ *   intents/tasks.operator-drop — taking something off the OPERATOR'S own list
+ *                             and calendar: their yes, every time (ruling, 2026-10-17)
+ *   intents/security.assess — a verdict can quiet a real threat; a turned CSO
+ *                             must never hide one unseen (ruling 2026-10-19)
+ *   intents/security.escalate — outward speech on the operator's own gh login
+ *   intents/security.circuit-breaker — blocks traffic for every house on
+ *                             the machine
  *
  * AUTO alone grants none of these acts. An explicit operator grant does:
  * Founder's 2026-09-06 clarification is Allow / Always / Revoke, not a second
@@ -34,9 +42,14 @@
 const AUTO_HARD_GATES = Object.freeze(new Set([
   'filesystem/delete_file',
   'coding/execute',
+  'intents/team.workspace-run',
   'intents/social.post',
   'intents/email.send',
   'intents/wallet.send',
+  'intents/tasks.operator-drop',
+  'intents/security.assess',
+  'intents/security.escalate',
+  'intents/security.circuit-breaker',
 ]));
 
 /**

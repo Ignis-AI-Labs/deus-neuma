@@ -54,8 +54,11 @@ const cursorPath = (root, neumaId) => path.join(root, 'post', neumaId, 'cursor.j
  * Append one post to the recipient's inbox on the house ground.
  * impure (fs append; near-atomic — one appendFile per post, the realm
  * writer's own law).
+ * @param {string} root
+ * @param {Object} post - makePost's
+ * @param {{wake?: boolean}} [opts] - false: lands in the inbox, wakes no one
  */
-export const appendPost = async (root, post) => {
+export const appendPost = async (root, post, { wake = true } = {}) => {
   const file = inboxPath(root, post.to);
   await fs.mkdir(path.dirname(file), { recursive: true });
   // Heal an unterminated tail FIRST (a crash mid-append leaves a torn line
@@ -75,8 +78,9 @@ export const appendPost = async (root, post) => {
   } finally {
     await handle?.close();
   }
-  // The recipient has work: the house clock may wake it (house-clock.js).
-  signalWake({ seat: post.to, reason: 'post', ref: post.id, detail: { from: post.from, re: post.re ?? null } });
+  // The recipient has work: the house clock may wake it (house-clock.js) —
+  // unless the sender says this post waits for the next read (a quiet check-in).
+  if (wake) signalWake({ seat: post.to, reason: 'post', ref: post.id, detail: { from: post.from, re: post.re ?? null } });
   return post;
 };
 

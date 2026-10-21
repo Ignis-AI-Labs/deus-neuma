@@ -1,6 +1,7 @@
 // THE CARDS AS THE STANDARD — the craft decisions, pinned.
 //
-// Design note, 2026-08-31: […]
+// Ruling, 2026-08-31: the new cards are locked into the brand kit — they set
+// the standard of quality the rest works towards.
 //
 // The six cards were tuned over a long session of visual review, one correction
 // at a time, until the geometry read as deliberate. `brand-card-frame-fit.test.js`
@@ -114,7 +115,7 @@ describe('the cards are one family', () => {
   });
 
   test('every card wears the identical footer', async () => {
-    // Founder, on getting this right: […]
+    // Getting this right is what makes the footer read as deliberate design.
     //
     // ⚠️ This drifted once already. The launch card was built on an inset frame
     // (96/1504/804) and inherited the shared footer rhythm anyway, which put its
@@ -147,7 +148,8 @@ describe('the cards are one family', () => {
   });
 
   test('the brand signs with its MARK, never its name in a font', async () => {
-    // Design note, 2026-08-31: […]
+    // Ruling, 2026-08-31: the branded wordmark always signs the bottom-left
+    // corner — never the name set in a plain font.
     //
     // The launch card used to set the company name as <text>. A wordmark is
     // drawn artwork with its own spacing and weight; the same name typed in the
@@ -164,7 +166,8 @@ describe('the cards are one family', () => {
 
 describe('a timestamp is the provenance of a MEASUREMENT', () => {
   test('only the two cards that draw a measured number carry asOf', async () => {
-    // Design note, 2026-08-31: […]
+    // Ruling, 2026-08-31: an announcement carries no date unless it shows
+    // something measured at a specific time.
     //
     // A stamp on a launch card answers a question nobody asked and reads as a
     // claim about when something was true. On a TVL figure it is the difference
@@ -248,12 +251,14 @@ describe('the type scale is a scale, not a pile of sizes', () => {
 
 describe('the mask is composition, not decoration', () => {
   test('every card that cuts the mark cuts it in the SAME place', async () => {
-    // Design note, 2026-08-31: […]
+    // Ruling, 2026-08-31: the mark sits far enough right that only its left
+    // half shows, bleeding off the edge.
     //
     // The SVG root clips to the viewBox, so a 1180px mark placed at x=1010 on a
     // 1600px card is cut exactly in half by the frame itself. That is why the
     // numbers are worth pinning: they are not a position, they are a CUT.
-    // ⚠️ THREE now, not two — `quote` joined on 2026-09-01. Founder: […] The numbers are not a position, they are a CUT: a 1180px mark at
+    // ⚠️ THREE now, not two — `quote` joined on 2026-09-01, for the artistic
+    // weight of the enlarged half mask on the right. The numbers are not a position, they are a CUT: a 1180px mark at
     // x=1010 on a 1600px card is halved by the frame itself, and it only reads
     // as deliberate if every card that does it uses the identical geometry.
     for (const name of ['announcement', 'launch', 'quote']) {
@@ -290,7 +295,8 @@ describe('the mask is composition, not decoration', () => {
 });
 
 describe('one ground under every card', () => {
-  // Design note, 2026-09-01: […]
+  // Ruling, 2026-09-01: build the cards cleanly into the system, one solid
+  // flow of templates.
   //
   // An audit for that request found the family was running THREE different
   // ground treatments, and — the part worth saying plainly — the six approved
@@ -304,7 +310,7 @@ describe('one ground under every card', () => {
 
   test('the ground is a 26px DOT grid — the one card without it is named', async () => {
     // Dots read as texture you feel; a 40px ruled grid reads as graph paper you
-    // are being asked to look at. Founder picked the dot cards as the strong ones.
+    // are being asked to look at. The review picked the dot cards as the strong ones.
     const without = [];
     for (const name of ALL) {
       if (!(await svgOf(name)).includes('<pattern id="grid" width="26"')) without.push(name);
@@ -313,7 +319,7 @@ describe('one ground under every card', () => {
     //   launch     draws no grid at all — the one card built around a single
     //              full-bleed statement with a half-cut mark and nothing else.
     //   milestone  still draws the 40px RULED grid, the last card that does.
-    // Both are Founder's to change, not a test's. The list may shrink; it may not
+    // Both are the brand owner's to change, not a test's. The list may shrink; it may not
     // grow, which is the whole point of writing it down.
     expect(without.sort()).toEqual(['launch', 'milestone']);
   });
@@ -321,20 +327,20 @@ describe('one ground under every card', () => {
   test('only ONE card draws an inner frame, and it is the one that earned it', async () => {
     // Four corner marks read as an instrument sighting on something; a closed
     // box reads as a border and shrinks the card it holds. `announcement` — the
-    // card Founder pointed at — draws corners only.
+    // card the review pointed at — draws corners only.
     const boxed = [];
     for (const name of ALL) {
       if ((await svgOf(name)).includes('rect x="24" y="24" width="1552"')) boxed.push(name);
     }
-    // milestone's double frame is deliberate and Founder approved the composition
-    // it belongs to ([…]). Nothing else may join it.
+    // milestone's double frame is deliberate and its composition was approved
+    // as reading designed, not accidental. Nothing else may join it.
     expect(boxed).toEqual(['milestone']);
   });
 
   test('the diagonal corner wash is spreading, and the holdouts are listed', async () => {
     // ⚠️ THE ONE STILL IN MOTION. accentGlow rising from the bottom-left corner,
     // against the older vertical top-and-bottom edge. Five cards carry it. The
-    // remaining four are approved artwork and changing them is Founder's call, not
+    // remaining four are approved artwork and changing them is the brand owner's call, not
     // a test's — so this records the state rather than forcing it.
     const missing = [];
     for (const name of ALL) {

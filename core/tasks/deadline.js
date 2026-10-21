@@ -102,7 +102,9 @@ export const dueStateOf = (task, now = new Date()) => {
 export const dueLabel = (task, now = new Date()) => {
   const state = dueStateOf(task, now);
   if (!state) return '';
-  const when = `${task.dueDate || _dayKeyOf(state.at)}${task.dueTime ? ` ${task.dueTime}` : ''}`;
+  const day = task.dueDate || _dayKeyOf(state.at);
   const mark = state.state === 'overdue' ? ' — OVERDUE' : state.state === 'due' ? ' — DUE TODAY' : '';
-  return ` — DUE ${when}${mark}`;
+  // a block (start → end) reads as one: when it opens and when it closes
+  if (task.startTime) return ` — BLOCK ${day} ${task.startTime}–${task.dueTime}${mark}`;
+  return ` — DUE ${day}${task.dueTime ? ` ${task.dueTime}` : ''}${mark}`;
 };

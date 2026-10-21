@@ -13,6 +13,7 @@ import { useSettled } from './use-settled.js';
 import { recoverRoster } from '../roster-recovery.js';
 import { getRoster } from '../../utils/companion-data.js';
 import { uiSound } from '../../services/ui-sound.js';
+import { useOperatorName } from './use-operator-name.js';
 import { orderedScopes } from './todo-view.js';
 import { MeLane } from './VesselMeLane.jsx';
 import { NeumaLane } from './VesselNeumaLane.jsx';
@@ -26,6 +27,7 @@ const VesselIcon = () => (
 // --- The window -------------------------------------------------------------
 
 const VesselBody = () => {
+  const operatorName = useOperatorName();
   const { activeCompanion } = useConsciousnessPick('activeCompanion');
   const [roster, setRoster] = useState(getRoster);
   // 'me' = the human vessel; otherwise a neumaId from the roster.
@@ -59,7 +61,7 @@ const VesselBody = () => {
           className={`vl-scope${isMe ? ' is-on' : ''}`}
           aria-pressed={isMe}
           onClick={() => selectScope('me')}
-        >ME</button>
+        >{operatorName}</button>
         {scopes.map((m) => (
           <button
             key={m.neumaId}

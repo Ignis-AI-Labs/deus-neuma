@@ -2,7 +2,8 @@
 //
 // Separate from voice-routes.js (which is provider config + synthesis) because
 // engine lifecycle is a distinct concern: these routes manage processes, not
-// audio. Both are mounted under /api/v1/voice.
+// audio. Both are mounted under /api/v1/voice. Starting, stopping and
+// fetching engines acts on the machine, so it is the install owner's.
 
 import { Router } from 'express';
 import { spawn } from 'child_process';
@@ -10,12 +11,15 @@ import { mkdirSync, createWriteStream } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import {
   launch, stop, getStatus, listStatus, healthCheck, shutdownAll,
   isUvAvailable, engineReadiness, uvBin,
 } from '../services/voice/engine-manager.js';
 
+import { voiceHelperEnvironment } from '../services/voice/engine-process.js';
 import { createLogger } from '../services/logger.js';
+import { withStoredHfToken } from '../services/stored-secrets.js';
 const log = createLogger('Voice.Engines');
 
 const router = Router();
@@ -64,7 +68,7 @@ router.get('/local/:id/health', async (req, res) => {
 
 // --- Launch / stop ---
 
-router.post('/local/:id/launch', async (req, res) => {
+router.post('/local/:id/launch', requireInstallOwner, async (req, res) => {
   const { timeoutMs, skipSync } = req.body || {};
   try {
     const status = await launch(req.params.id, {
@@ -78,7 +82,7 @@ router.post('/local/:id/launch', async (req, res) => {
   }
 });
 
-router.post('/local/:id/stop', (req, res) => {
+router.post('/local/:id/stop', requireInstallOwner, (req, res) => {
   if (!getStatus(req.params.id)) return res.status(404).json({ error: 'unknown local engine' });
   const status = stop(req.params.id);
   res.json(status);
@@ -90,7 +94,7 @@ router.post('/local/:id/stop', (req, res) => {
 
 const _downloads = new Map();
 
-router.post('/local/:id/download', (req, res) => {
+router.post('/local/:id/download', requireInstallOwner, (req, res) => {
   const engineId = req.params.id;
   const existing = _downloads.get(engineId);
   if (existing?.state === 'running') {
@@ -104,6 +108,7 @@ router.post('/local/:id/download', (req, res) => {
 
   const proc = spawn(uvBin(), ['run', 'download.py', engineId], {
     cwd: downloaderDir,
+    env: voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -152,7 +157,7 @@ router.get('/local/:id/download/status', (req, res) => {
   res.json(entry);
 });
 
-router.post('/shutdown-all', (_req, res) => {
+router.post('/shutdown-all', requireInstallOwner, (_req, res) => {
   shutdownAll();
   res.json({ ok: true });
 });

@@ -24,7 +24,7 @@ describe('snap zones — hit testing', () => {
     expect(hitZone({ x: 500, y: 796 }, B)).toBe('bottom');
   });
 
-  test('THE DELIBERATE SNAP (Design note, 2026-07-29: passing NEAR an edge is not pressing it', () => {
+  test('THE DELIBERATE SNAP (ruling, 2026-07-29): passing NEAR an edge is not pressing it', () => {
     // The old 30px reach snapped on travel; the new law is an 8px press.
     expect(hitZone({ x: 10, y: 400 }, B)).toBeNull();
     expect(hitZone({ x: 988, y: 400 }, B)).toBeNull();

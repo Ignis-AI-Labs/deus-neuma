@@ -1,6 +1,6 @@
 // AskChip — a being's question to its operator, inline where it was asked.
 //
-// SEQUENCED (Design note, 2026-07-27. A protocol that must settle five parameters
+// SEQUENCED (ruling, 2026-07-27). A protocol that must settle five parameters
 // before it starts asks five questions, and this walks them ONE AT A TIME:
 // the question, its own numbered choices, and a line for the operator's own
 // words. Before this the whole set arrived as a single blob with every

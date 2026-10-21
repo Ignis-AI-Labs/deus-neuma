@@ -1,6 +1,6 @@
 // GPU probe — name and VRAM, whoever made the card.
 //
-// WHY THIS EXISTS (Design note, 2026-08-02: […] The detector shelled out to `nvidia-smi` and returned
+// WHY THIS EXISTS (ruling, 2026-08-02): […] The detector shelled out to `nvidia-smi` and returned
 // null on failure — a branch whose own comment read […]. So a person with a Radeon and 24 GB of VRAM was
 // told, in the first-run flight check, `no GPU detected`. Not a crash: a
 // quieter failure, where the app is confidently wrong about the machine and
@@ -79,10 +79,16 @@ export const parseAmdSysfs = ({ vendor, vramBytes, productName, cardLabel } = {}
 /**
  * Windows `Get-CimInstance Win32_VideoController` CSV → GPU, or null. Pure.
  *
+ * The probe's `ConvertTo-Csv` (Windows PowerShell 5.1) QUOTES every field —
+ * `[…],"4293918720"` — so both fields are unquoted
+ * before they are read; a quoted number parsed as NaN and every card's VRAM
+ * read unknown.
+ *
  * AdapterRAM is a uint32 and therefore SATURATES AT 4 GB — an 8 GB card and a
- * 24 GB card both report 4294967295. Reporting 4 GB for a 24 GB card would be
- * a confident lie that sends a capable rig to CPU, so a saturated value yields
- * a null VRAM: the name is known, the size is not, and the caller says so.
+ * 24 GB card both report a value pinned at the top of the field (4293918720
+ * or 4294967295). Reporting 4 GB for a 24 GB card would be a confident lie
+ * that sends a capable rig to CPU, so a saturated value yields a null VRAM:
+ * the name is known, the size is not, and the caller says so.
  * @param {string} stdout
  * @returns {{name:string, vramGB:number|null, unified:boolean, vendor:string}|null}
  */
@@ -91,15 +97,14 @@ export const parseWindowsVideoController = (stdout) => {
   if (!line) return null;
   const idx = line.lastIndexOf(',');
   if (idx === -1) return null;
-  const name = line.slice(0, idx).trim().replace(/^"|"$/g, '');
-  const ram = Number.parseInt(line.slice(idx + 1).trim(), 10);
+  const unquote = (field) => field.trim().replace(/^"|"$/g, '').replace(/""/g, '"');
+  const name = unquote(line.slice(0, idx));
+  const ram = Number.parseInt(unquote(line.slice(idx + 1)), 10);
   if (!name) return null;
-  // ONLY the exact uint32 ceiling means "capped, size unknown". A value above
-  // it is a system reporting the true size through a wider field, and must be
-  // believed — an earlier `>=` here threw away every honest answer over 4 GB,
-  // which is precisely the large cards this change exists to serve.
-  const UINT32_MAX = 4294967295;
-  const saturated = !Number.isFinite(ram) || ram <= 0 || ram === UINT32_MAX;
+  // The field cannot hold 4 GB: anything at the 4095 MB mark or above is the
+  // ceiling, not a size.
+  const SATURATION_FLOOR = 0xFFF00000;
+  const saturated = !Number.isFinite(ram) || ram <= 0 || ram >= SATURATION_FLOOR;
   const vendor = /amd|radeon|ati/i.test(name) ? 'amd' : /nvidia|geforce|quadro|rtx/i.test(name) ? 'nvidia' : 'unknown';
   return { name, vramGB: saturated ? null : Math.round(ram / BYTES_PER_GB), unified: false, vendor };
 };

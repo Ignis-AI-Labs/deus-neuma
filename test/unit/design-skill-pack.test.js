@@ -50,7 +50,7 @@ describe('design skill pack — the bench ships with the house', () => {
     await installPlugin(PACK_DIR, root);
     const svc = createSkillService(root);
     const { body } = await svc.getSkill('design-variations');
-    // Ratify-before-code — the whole point (Design note, 2026-08-10.
+    // Ratify-before-code — the whole point (ruling, 2026-08-10).
     expect(body).toMatch(/No real code before a ratified variant/);
     // Bound to the language, reference shipped beside the skill.
     expect(body).toMatch(/line-and-cycle\.md/);

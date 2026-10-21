@@ -72,6 +72,32 @@ export const soulSpectrumFrom = ({ observations = null, transcript = null, seal 
   return null;
 };
 
+const readRecord = (file) => fs.readFile(file, 'utf8').then(JSON.parse, () => null);
+
+// impure — reads the lane's seal and transcript; derives the record, never writes it.
+const deriveRecord = async (workspace, neumaId, observations) => {
+  const [seal, transcript] = await Promise.all([
+    workspace.readGenesisSeal(neumaId).catch(() => null),
+    observations ? null : workspace.readBirthTranscript(neumaId).catch(() => null),
+  ]);
+  const spectrum = soulSpectrumFrom({ observations, transcript, seal });
+  return spectrum && { schema: 'soul-spectrum/v1', neumaId, derivedAt: new Date().toISOString(), ...spectrum };
+};
+
+/**
+ * Read a being's spectrum for display: its written record, else what its
+ * records derive — NEVER written here. A reader (the roster, the Sheet) is
+ * not the write: a read that lands between the seal and the birth's measured
+ * write once locked a derived color before the ceremony measured its own.
+ * Impure (reads the lane).
+ * @param {object} workspace a NeumaWorkspace
+ * @param {string} neumaId
+ * @returns {Promise<object|null>}
+ */
+export const readSoulSpectrum = async (workspace, neumaId) =>
+  (await readRecord(path.join(workspace.root, neumaId, SPECTRUM_FILE)))
+    ?? deriveRecord(workspace, neumaId, null);
+
 /**
  * Read a being's spectrum, deriving and writing it once when absent. Impure:
  * reads the lane, writes `identity/soul-spectrum.json` with O_EXCL so two
@@ -83,15 +109,10 @@ export const soulSpectrumFrom = ({ observations = null, transcript = null, seal 
  */
 export const ensureSoulSpectrum = async (workspace, neumaId, { observations = null } = {}) => {
   const file = path.join(workspace.root, neumaId, SPECTRUM_FILE);
-  const existing = await fs.readFile(file, 'utf8').then(JSON.parse, () => null);
+  const existing = await readRecord(file);
   if (existing) return existing;
-  const [seal, transcript] = await Promise.all([
-    workspace.readGenesisSeal(neumaId).catch(() => null),
-    observations ? null : workspace.readBirthTranscript(neumaId).catch(() => null),
-  ]);
-  const spectrum = soulSpectrumFrom({ observations, transcript, seal });
-  if (!spectrum) return null;
-  const record = { schema: 'soul-spectrum/v1', neumaId, derivedAt: new Date().toISOString(), ...spectrum };
+  const record = await deriveRecord(workspace, neumaId, observations);
+  if (!record) return null;
   await fs.mkdir(path.dirname(file), { recursive: true });
   try {
     await fs.writeFile(file, `${JSON.stringify(record, null, 2)}\n`, { flag: 'wx' });

@@ -25,7 +25,7 @@ test('council labels retain fallback and wallet isolation while reporting expire
     app.use('/api/v1/user/realm', (await import('../../backend/routes/user-realm-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as labels from "/frontend/services/council-labels.js"; import * as presets from "/frontend/services/llm-presets.js"; window.client={...labels,...presets}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app);

@@ -28,7 +28,7 @@ import { getRoster } from '../../../utils/companion-data.js';
 import { recoverRoster } from '../../roster-recovery.js';
 import { useSettled } from '../use-settled.js';
 import { uiSound } from '../../../services/ui-sound.js';
-import { setPath, unsetPath } from './brand-kits-view.js';
+import { groundFromRead, setPath, unsetPath } from './brand-kits-view.js';
 import { isDirty } from './kit-progress.js';
 
 export const useKitDraft = () => {
@@ -42,7 +42,7 @@ export const useKitDraft = () => {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
   const [roster, setRoster] = useState(getRoster);
-  const [ground, setGround] = useState({ known: false, root: null });
+  const [ground, setGround] = useState({ known: false, root: null, unread: null });
 
   // The house roster, for the OWNER picker. Same recovery pass the HOUSE window
   // and the BeingSwitcher run — the backend owns the roster and localStorage is
@@ -55,13 +55,12 @@ export const useKitDraft = () => {
       .finally(() => { if (!settled()) setRoster(getRoster()); });
   }, []);
 
-  // Where a kit can be SAVED. Asked once, up front, because the refusal it
-  // prevents arrives at the end of the work otherwise.
-  useSettled((settled) => {
-    getHouseWorkspace()
-      .then((answer) => { if (!settled()) setGround({ known: true, root: answer?.root || null }); })
-      .catch(() => { if (!settled()) setGround({ known: true, root: null }); });
-  }, []);
+  // Where a kit can be SAVED. Asked up front, because the refusal it prevents
+  // arrives at the end of the work otherwise; asked again on RETRY after a
+  // read that failed. getHouseWorkspace never throws: a failure is `unread`.
+  const readGround = useCallback((settled = () => false) => getHouseWorkspace()
+    .then((answer) => { if (!settled()) setGround(groundFromRead(answer)); }), []);
+  useSettled((settled) => { readGround(settled); }, [readGround]);
 
   const reload = useCallback(async () => {
     const answer = await listBrandKits();
@@ -176,6 +175,6 @@ export const useKitDraft = () => {
   return {
     kits, totals, open, detail, draft, raw, rawError, saving, notice, roster,
     ground, dirty,
-    openKit, startNew, editField, unsetField, editRaw, save, reload, setNotice,
+    readGround, openKit, startNew, editField, unsetField, editRaw, save, reload, setNotice,
   };
 };

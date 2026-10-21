@@ -32,7 +32,7 @@ test('provider reads distinguish unavailable models from expired-auth uncertaint
     loadConfig({ NODE_ENV: 'test', PORT: String(server.address().port), FRONTEND_PORT: String(server.address().port) });
     app.use('/api/v1', (await import('../../backend/routes/llm-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import {getModelInfo} from "/frontend/services/llm-presets.js"; import {getSubstrateHealth} from "/frontend/services/substrate-health.js"; import {getIgnitionStatus} from "/frontend/services/substrate-ignition.js"; import {substrateSeesImages} from "/frontend/services/attachments-client.js"; window.clients={getModelInfo,getSubstrateHealth,getIgnitionStatus,substrateSeesImages}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     browser = await chromium.launch({ args: ['--disable-gpu'] }); const page = await browser.newPage();

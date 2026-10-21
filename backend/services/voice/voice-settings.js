@@ -15,9 +15,7 @@
 import fs from 'fs/promises';
 import { join, dirname } from 'path';
 import { getSettingsDir } from '../data-root.js';
-import { getSubstrateProfile } from '../substrate-detector.js';
-import { recommendSubstrate } from '../substrate-setup.js';
-import { getSubstrateTelemetry } from '../substrate-telemetry.js';
+import { measuredMindGB, probeMachine } from '../machine-probe.js';
 import { getTier } from './engine-registry.js';
 import { TIER_CHOICES, autoTier } from './voice-tier.js';
 import { createLogger } from '../logger.js';
@@ -91,43 +89,10 @@ export const voiceSettings = createVoiceSettings({
   path: () => process.env.NEUMA_VOICE_SETTINGS_PATH || DEFAULT_PATH,
 });
 
-// pure — the mind's GPU footprint from the substrate telemetry's on-GPU
-// processes (every llama-server is a mind on the card), or null when none is
-// measured.
-export const measuredMindGB = (processes) => {
-  const mb = (processes ?? []).filter((p) => /llama-server/.test(p.name)).reduce((s, p) => s + p.memMB, 0);
-  return mb > 0 ? Math.round((mb / 1024) * 10) / 10 : null;
-};
-
-// The machine changes rarely (a card, a mind swap); a turn must not pay an
-// nvidia-smi round trip per sentence.
-const MACHINE_TTL_MS = 5 * 60 * 1000;
-let _machine = null;
-
-/**
- * impure — the GPU and the mind's footprint beside it: MEASURED when a mind is
- * on the card, else the size of the model recommended for this machine
- * (substrate-setup.js — its tiers are never copied here). Cached MACHINE_TTL_MS.
- * @param {{fresh?: boolean}} [opts]
- */
-export const probeVoiceMachine = async ({ fresh = false } = {}) => {
-  if (!fresh && _machine && Date.now() - _machine.at < MACHINE_TTL_MS) return _machine.value;
-  const [profile, telemetry] = await Promise.all([
-    getSubstrateProfile().catch(() => null),
-    getSubstrateTelemetry().catch(() => null),
-  ]);
-  const gpu = profile?.gpu ?? null;
-  const measured = measuredMindGB(telemetry?.processes);
-  const rec = profile ? recommendSubstrate(profile) : null;
-  const recommended = rec && rec.mode !== 'cpu' ? (rec.sizeGB ?? 0) : 0;
-  const value = Object.freeze({
-    gpu: gpu ? Object.freeze({ name: gpu.name, vendor: gpu.vendor ?? null, vramGB: gpu.vramGB ?? null, unified: gpu.unified === true }) : null,
-    mindGB: measured ?? recommended,
-    mindSource: measured !== null ? 'measured' : 'recommended',
-  });
-  _machine = { at: Date.now(), value };
-  return value;
-};
+// The probe lives in machine-probe.js (shared with the Image Forge's VRAM
+// ceiling); these names stay exported here so the voice readers never break.
+export { measuredMindGB };
+export const probeVoiceMachine = probeMachine;
 
 /**
  * impure — the voice tier in force: the person's setting, the machine, what

@@ -10,7 +10,6 @@ import {
   servedModelMatch, subjectNotice, readinessVerdict, machineNotice,
 } from './bench-launch-view.js';
 import { benchmarkRow, estimateView } from './bench-launch-layout-view.js';
-import { liveRunLine } from './bench-run-chip-view.js';
 
 const Subject = ({ serving, models }) => {
   const match = servedModelMatch(serving, models);

@@ -75,6 +75,7 @@ test.describe('settings hotkey legend — DESK group (real Electron, real IPC)',
       },
     });
     page = await app.firstWindow();
+    await page.waitForURL((url) => Number(url.port) > 0, { timeout: 30 * 1000 });
     origin = new URL(page.url()).origin;
     expect(Number(new URL(origin).port)).toBeGreaterThan(0);
     await page.waitForFunction(() => !!window.neuma?.desktop, null, { timeout: 30 * 1000 });

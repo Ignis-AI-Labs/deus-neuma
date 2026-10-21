@@ -3,14 +3,14 @@
 // The preference rides the wallet-scoped, slot-free localStorage lane
 // (windowing/storage-scope.js `walletKey`): the language is the OPERATOR's,
 // shared by every desk window they open, exactly like the folder shelf.
-// Resolution law: the persisted choice wins; a fresh desk falls to the
-// browser/Electron locale when we ship its language; English holds the
-// floor.
+// Resolution law (pickInitialLanguage): the persisted choice wins; a fresh
+// desk falls to the browser/Electron locale only when we ship that language
+// complete, never onto a preview; English holds the floor.
 //
 // impure — localStorage reads/writes and navigator.
 
 import { operatorKey } from '../app/windowing/storage-scope.js';
-import { DEFAULT_LANGUAGE, isSupportedLanguage, matchLanguageTag } from './languages.js';
+import { isSupportedLanguage, pickInitialLanguage } from './languages.js';
 
 const PREF_KEY = 'ui.language';
 
@@ -42,13 +42,9 @@ export const saveLanguagePreference = (code) => {
 
 /**
  * The language the desk boots in.
- * @returns {string} persisted → navigator → DEFAULT_LANGUAGE
+ * @returns {string} persisted → a complete navigator language → DEFAULT_LANGUAGE
  */
-export const resolveInitialLanguage = () => {
-  const saved = loadLanguagePreference();
-  if (saved) return saved;
-  const nav = typeof navigator !== 'undefined'
-    ? matchLanguageTag(navigator.language || '')
-    : null;
-  return nav || DEFAULT_LANGUAGE;
-};
+export const resolveInitialLanguage = () => pickInitialLanguage({
+  saved: loadLanguagePreference(),
+  osTag: typeof navigator !== 'undefined' ? navigator.language : null,
+});

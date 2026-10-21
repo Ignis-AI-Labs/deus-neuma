@@ -39,7 +39,7 @@ test('desk policy switches keep their refusal words, null reads, and never-throw
     app.use('/api/v1/mind', (await import('../../backend/routes/mind-routes.js')).default);
     app.use('/api/v1/expression', (await import('../../backend/routes/expression-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">'
       + 'import {setMeditation,runMeditationNow} from "/frontend/app/RelinkShell/meditation-client.js";'
       + 'import {setMindGate} from "/frontend/app/RelinkShell/mind-client.js";'

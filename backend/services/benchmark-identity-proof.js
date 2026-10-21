@@ -21,7 +21,7 @@ const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex'
 // The identity-critical sections — a benchmark pin that shed any of these is
 // not carrying the being, whatever the hashes say (the SILO arm's shed law,
 // spoken in the agent path's section ids). Under the CORE identity standing
-// (Design note, 2026-10-08 genesis is never sent rather than shed: the being rides
+// (ruling, 2026-10-08) genesis is never sent rather than shed: the being rides
 // whole as its standing core plus an essence it can call (self_read), and the
 // resonance canary still stands — in the core's BIRTH section.
 export const AGENT_IDENTITY_SECTIONS = Object.freeze(['identity', 'trueName', 'genesis', 'voice', 'silo', 'soul']);

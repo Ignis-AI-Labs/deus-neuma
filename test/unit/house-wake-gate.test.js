@@ -35,10 +35,16 @@ describe('quiet hours', () => {
 });
 
 describe('taking a signal', () => {
-  test('no charter, unapproved, paused: never taken', () => {
+  test('no charter: never taken', () => {
     expect(takeGate({ charter: null, seat: 'optio' })).toEqual({ ok: false, why: 'the charter is none' });
-    expect(takeGate({ charter: charter({ approvedVersion: null, approvedAt: null }), seat: 'optio' }).why).toMatch(/unapproved/);
-    expect(takeGate({ charter: charter({ paused: true }), seat: 'optio' }).why).toMatch(/paused/);
+  });
+  test('an unapproved or paused charter takes it, to hold until APPROVE / RESUME', () => {
+    const pending = charter({ approvedVersion: null, approvedAt: null });
+    expect(takeGate({ charter: pending, seat: 'optio' })).toEqual({ ok: true });
+    expect(takeGate({ charter: charter({ paused: true }), seat: 'optio' })).toEqual({ ok: true });
+    expect(runGate({ charter: pending, seat: 'optio', now: at(12), count: 0 }).why).toBe('the charter is unapproved');
+    // the pending version's seats decide, as an active one's do
+    expect(takeGate({ charter: pending, seat: 'stranger' }).why).toMatch(/not a seat/);
   });
   test('a seat the charter does not name is never taken', () => {
     expect(takeGate({ charter: charter(), seat: 'stranger' }).why).toMatch(/not a seat/);

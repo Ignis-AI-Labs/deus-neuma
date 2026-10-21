@@ -114,7 +114,7 @@ const boot = async ({ withApi, tag }) => {
   const vite = await createServer({
     configFile: false, root: process.cwd(), cacheDir: path.join(ISO, `vite-${tag}`),
     appType: 'custom', optimizeDeps: { noDiscovery: true },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (_req, res) => res.type('html').send(PAGE));
   app.use(vite.middlewares);

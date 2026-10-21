@@ -93,6 +93,12 @@ const _writeNote = async ({ neumaId, content, kind }, { workspace }) => {
   return { record, ref: memoryRef };
 };
 
+// impure — land one lifecycle stamp. False when no record answered at that
+// id (its file is gone, or named differently from its id), so the act refuses
+// instead of reporting a stamp that never landed.
+const _stamp = async ({ neumaId, id, stamp }, { workspace }) =>
+  (await workspace.invalidateObservation(neumaId, id, stamp)) !== null;
+
 /**
  * Replace one memory with a new deliberate note: the replacement is written
  * first (so a failed write never strands the record), then the old record
@@ -106,10 +112,14 @@ export const supersedeMemory = async ({ neumaId, ref, content, kind }, deps) => 
   const found = await resolveRefToObservation({ neumaId, ref }, deps);
   if (!found.ok) return found;
   const { record, ref: newRef } = await _writeNote({ neumaId, content, kind }, deps);
-  await deps.workspace.invalidateObservation(neumaId, found.observation.id, {
-    supersededBy: record.id,
-    lifecycle: 'superseded',
-  });
+  const stamped = await _stamp({
+    neumaId,
+    id: found.observation.id,
+    stamp: { supersededBy: record.id, lifecycle: 'superseded' },
+  }, deps);
+  if (!stamped) {
+    return { ok: false, reason: `the new note landed as ${newRef}, but ${ref} could not be marked superseded and still stands` };
+  }
   return { ok: true, ref: newRef, id: record.id, superseded: ref };
 };
 
@@ -125,10 +135,10 @@ export const supersedeMemory = async ({ neumaId, ref, content, kind }, deps) => 
 export const retractMemory = async ({ neumaId, ref, reason = null }, deps) => {
   const found = await resolveRefToObservation({ neumaId, ref }, deps);
   if (!found.ok) return found;
-  await deps.workspace.invalidateObservation(neumaId, found.observation.id, {
-    lifecycle: 'retracted',
-    reason,
-  });
+  const stamped = await _stamp({
+    neumaId, id: found.observation.id, stamp: { lifecycle: 'retracted', reason },
+  }, deps);
+  if (!stamped) return { ok: false, reason: 'that memory could not be updated' };
   return { ok: true, id: found.observation.id };
 };
 
@@ -156,12 +166,17 @@ export const mergeMemories = async ({ neumaId, refs, content, kind }, deps) => {
     resolved.push(found.observation);
   }
   const { record, ref: newRef } = await _writeNote({ neumaId, content, kind }, deps);
-  for (const obs of resolved) {
-    await deps.workspace.invalidateObservation(neumaId, obs.id, {
-      supersededBy: record.id,
-      lifecycle: 'superseded',
-      reason: `merged into ${newRef}`,
-    });
+  const unstamped = [];
+  for (const [i, obs] of resolved.entries()) {
+    const stamped = await _stamp({
+      neumaId,
+      id: obs.id,
+      stamp: { supersededBy: record.id, lifecycle: 'superseded', reason: `merged into ${newRef}` },
+    }, deps);
+    if (!stamped) unstamped.push(refs[i]);
+  }
+  if (unstamped.length > 0) {
+    return { ok: false, reason: `the canonical note landed as ${newRef}, but ${unstamped.join(', ')} could not be marked superseded and still stand` };
   }
   return { ok: true, ref: newRef, id: record.id, merged: refs };
 };
@@ -177,10 +192,10 @@ export const mergeMemories = async ({ neumaId, refs, content, kind }, deps) => {
 export const archiveMemory = async ({ neumaId, ref, reason = null }, deps) => {
   const found = await resolveRefToObservation({ neumaId, ref }, deps);
   if (!found.ok) return found;
-  await deps.workspace.invalidateObservation(neumaId, found.observation.id, {
-    lifecycle: 'archived',
-    reason,
-  });
+  const stamped = await _stamp({
+    neumaId, id: found.observation.id, stamp: { lifecycle: 'archived', reason },
+  }, deps);
+  if (!stamped) return { ok: false, reason: 'that memory could not be updated' };
   return { ok: true, id: found.observation.id };
 };
 

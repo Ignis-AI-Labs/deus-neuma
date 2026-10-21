@@ -14,7 +14,7 @@
  * ownership on every call, and it can only ever take a grant AWAY. There is
  * still no endpoint here that widens anything.
  *
- * GET  /                  — every lane this wallet owns, with its standing grants
+ * GET  /                  — every lane this wallet owns (its witness and harness lanes too), with its standing grants
  * GET  /:neumaId          — one lane's
  * POST /:neumaId/revoke   — take back ONE named grant
  *
@@ -25,6 +25,7 @@ import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { readLaneMarker } from '../services/witness-lane.js';
+import { harnessLaneId } from '../services/harness-lane.js';
 import { beingPermissions, housePermissions } from '../services/permissions-ledger.js';
 import { revokeGrant, revokeRefusal } from '../services/permissions-revoke.js';
 import { createLogger } from '../services/logger.js';
@@ -59,7 +60,16 @@ const laneRecord = async (being) => {
   }
 };
 
-/** Every being (and sealed witness lane) this wallet owns. impure. */
+// impure — a lane's display name: its own chosen name, else its id.
+const laneName = async (neumaId) => {
+  const trueName = await neumaWorkspace.readTrueName(neumaId).catch(() => null);
+  return [trueName?.chosenName, trueName?.fullName]
+    .find((value) => typeof value === 'string' && value.trim()) || neumaId;
+};
+
+const sameWallet = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+
+/** Every being (and sealed witness lane, and its harness lane) this wallet owns. impure. */
 const ownedBeings = async (wallet) => {
   const owned = await neumaWorkspace.listNeumaByOwner(wallet);
   const beings = [];
@@ -68,10 +78,25 @@ const ownedBeings = async (wallet) => {
     // kind of seat an operator most wants to audit — so unlike the roster this
     // does NOT filter them out. It records which kind each one is instead.
     const marker = await readLaneMarker(neumaId).catch(() => null);
-    const trueName = await neumaWorkspace.readTrueName(neumaId).catch(() => null);
-    const name = [trueName?.chosenName, trueName?.fullName]
-      .find((value) => typeof value === 'string' && value.trim()) || neumaId;
-    beings.push({ neumaId, name, kind: marker ? 'witness' : 'neuma' });
+    beings.push({ neumaId, name: await laneName(neumaId), kind: marker ? 'witness' : 'neuma' });
+  }
+  // Sealed witnesses' lanes stand on their own ground beside the house, where
+  // the house listing above never reaches. owner.json decides, as for any
+  // lane: only those claimed by this wallet are listed, as witnesses.
+  for (const laneId of await neumaWorkspace.listWitnessLanes()) {
+    if (beings.some((b) => b.neumaId === laneId)) continue;
+    const owner = await neumaWorkspace.readOwner(laneId);
+    if (sameWallet(owner?.wallet, wallet)) {
+      beings.push({ neumaId: laneId, name: await laneName(laneId), kind: 'witness' });
+    }
+  }
+  // The wallet's harness lane stands on its own ground, where no house
+  // listing reaches — yet its ALWAYS grants are as standing as a being's.
+  // Named as what it is, never as a being; owner.json decides, as for any lane.
+  const harness = harnessLaneId(wallet);
+  const harnessOwner = await neumaWorkspace.readOwner(harness);
+  if (sameWallet(harnessOwner?.wallet, wallet)) {
+    beings.push({ neumaId: harness, name: 'HARNESS', kind: 'harness' });
   }
   return beings;
 };

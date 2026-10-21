@@ -6,7 +6,7 @@
  * and every change lands as one appended touch on the lead's history — the
  * record of how a relationship moved is never quietly rewritten. All routes
  * require the witness's Bearer token, and every route reads and moves only
- * the signed-in operator's OWN house's ledger (Design note, 2026-10-16.
+ * the signed-in operator's OWN house's ledger (ruling, 2026-10-16).
  */
 
 import express from 'express';

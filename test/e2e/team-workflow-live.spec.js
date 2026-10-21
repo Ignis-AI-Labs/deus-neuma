@@ -276,7 +276,7 @@ test.describe('WORKFLOW — a team run the operator watches, guides, stops and r
     expect(run.sessions?.[first.id] && run.sessions?.[second.id], 'each part recorded its sitting').toBeTruthy();
     expect(run.sessions[first.id]).not.toBe(run.sessions[second.id]);
 
-    // ── 10. ONE MEMBER, SEPARATELY (Design note, 2026-10-12: OPEN LOG opens the
+    // ── 10. ONE MEMBER, SEPARATELY (ruling, 2026-10-12): OPEN LOG opens the
     //     second member alone — its whole log, from its own lane, in order:
     //     how each attempt began, its acts, how it ended.
     const logRow = rowOf(page, second.id);

@@ -31,6 +31,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { witnessFor, strangerWitness } from '../helpers/witness.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import neumaWorkspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { mcpService } from '../../backend/services/mcp.js';
 import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.js';
@@ -49,6 +50,8 @@ beforeAll(async () => {
   await neumaWorkspace.create(NEUMA_ID);
   laneDir = neumaWorkspace.pathFor(NEUMA_ID);
   witness = await witnessFor(wsRoot, NEUMA_ID);
+  // Adding or dropping an MCP server is the install owner's act; the witness owns this install.
+  await makeInstallOwner(witness.address);
 
   // The platform's in-process filesystem organ, stood the way boot stands it.
   await connectFilesystemServer();

@@ -21,10 +21,17 @@
  * the window only when 0.1 × window ≥ 1024 — and the portal lane's real
  * section load (the tool surface alone measured ~12K tokens in this harness)
  * must ALSO leave the post-compaction tail (summary + 20 kept rows ≈ 5.4K
- * tokens) inside the budget. 32768 satisfies both by construction: the
- * crossing turn fills to window − 1024 = 31,744 ≥ 29,491 whenever the seeded
- * history overflows the tail budget (108K chars against a ~70K budget), and
- * the post-compaction turn carries summary + kept rows with room to spare.
+ * tokens) inside the budget. A full window does not fill the tail to the
+ * last row: its start moves in steps of a quarter of the tail budget's 16K
+ * band (memory-section.js steppedStart, 82ae4335b), so a tail of ~64K chars
+ * can stand 16K chars (~4.4K tokens) short — more than the boundary's 2,253
+ * tokens of headroom, and whether it crossed came down to where the section
+ * load put the step. The crossing ask is therefore a long one (~46K chars):
+ * the turn rides beside the tail and is counted against its room
+ * (bf6a04899), so the tail budget drops under 32K chars, its step to 4K
+ * chars, and the crossing turn fills to within ~1.4K tokens of window − 1024
+ * — past 29,491 by construction. The post-compaction turn carries summary +
+ * kept rows (the long ask capped like any operator row) with room to spare.
  */
 
 import fs from 'fs/promises';
@@ -43,6 +50,7 @@ import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { SOLO_TORCH_ASK } from '../../backend/services/solo-torch.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 
 const NEUMA_ID = 'compactecho';
 const MODEL = 'test-model';
@@ -53,7 +61,8 @@ const ENV_DOORS = [
 const WINDOW = 32768;
 
 const Q1 = 'A short opening question about the work ahead.';
-const Q2 = 'The sitting has grown long — what have we covered?';
+const Q2 = 'The sitting has grown long — what have we covered? The passage we kept returning to: '
+  + 'The ledger and the lighthouse kept their watch through the long fog. '.repeat(660);
 const Q3 = 'Where do we stand now, after all of that?';
 const A1 = 'A short opening answer about the work ahead.';
 const A2 = 'We have covered the whole long sitting — it is all still with me.';
@@ -195,6 +204,9 @@ beforeAll(async () => {
       res.writeHead(404); res.end(); return;
     }
     let raw = '';
+    // Decode as UTF-8 across chunk boundaries: a large body can split a
+    // multibyte character (the em dashes in these rows) between two chunks.
+    req.setEncoding('utf8');
     req.on('data', (chunk) => { raw += chunk; });
     req.on('end', () => {
       const body = JSON.parse(raw);
@@ -226,6 +238,8 @@ beforeAll(async () => {
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
   const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+  // The being's lane is this wallet's, as a birth leaves it: a bind verifies, it never claims.
+  await claimOwner(house, NEUMA_ID, keypair.address);
   await openPortal(`ws://127.0.0.1:${portalServer.address().port}`, token);
 }, 30000);
 
@@ -272,8 +286,9 @@ describe('Stage B — compaction fires at the measured boundary, and nothing is 
 
   test('the boundary turn measures hot and compaction FIRES — torch authored, region archived, tail kept', async () => {
     // Grow the real session past what the tail budget can carry: 120 rows ≈
-    // 108K chars against a ≤55K budget — the measured prompt fills to window
-    // − reserve ≈ 15.4K tokens, past the 0.9 boundary (14,746) by construction.
+    // 108K chars against the ~25K the long ask leaves the tail — the measured
+    // prompt fills to within a 4K-char step of window − 1024, past the 0.9
+    // boundary (29,491) by construction.
     for (const row of SEED_ROWS) {
       await workspace.appendMessage(NEUMA_ID, sessionId, row);
     }
@@ -328,9 +343,16 @@ describe('Stage B — compaction fires at the measured boundary, and nothing is 
 
     const body = capturedBodies.at(-1);
     expect(body.messages[0].role).toBe('system');
-    // THE TORCH LANDED — the being's own words to itself, in MEMORY.
-    expect(body.messages[0].content).toContain('Your torch from your last instance');
-    expect(body.messages[0].content).toContain('Pick up by continuing from the summary');
+    // THE TORCH LANDED — the being's own words to itself, in MEMORY. On the
+    // local wire MEMORY rides the current turn's harness-context block, ahead
+    // of the operator's words (85730874c, #539) — once, never in the system.
+    const turn = body.messages.at(-1);
+    expect(turn.role).toBe('user');
+    expect(turn.content.startsWith('<harness-context>\n')).toBe(true);
+    expect(turn.content.endsWith(`\n</harness-context>\n\n${Q3}`)).toBe(true);
+    expect(turn.content).toContain('## Memory\nYour torch from your last instance');
+    expect(turn.content).toContain('Pick up by continuing from the summary');
+    expect(body.messages[0].content).not.toContain('Your torch from your last instance');
 
     // The wire shape post-compaction: [system, summary (as an assistant
     // message — the reading the in-prompt lane gave it), …kept rows, turn].
@@ -341,7 +363,6 @@ describe('Stage B — compaction fires at the measured boundary, and nothing is 
     expect(wireText).toContain(ROW_TEXT(119)); // newest kept row, verbatim
     expect(wireText).not.toContain(ROW_TEXT(101)); // aged into the summary
     expect(wireText).not.toContain(ROW_TEXT(0)); // aged — and PROVEN archived above, never dropped
-    expect(body.messages.at(-1)).toEqual({ role: 'user', content: Q3 });
 
     // The gauge stayed honest across the arc: the compaction is a recorded
     // FACT now, and this turn measured BELOW the boundary (the rewrite worked).

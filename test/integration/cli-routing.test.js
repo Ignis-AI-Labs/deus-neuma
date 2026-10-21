@@ -12,6 +12,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { PROVIDER_CATALOG } from '../../backend/services/provider-registry.js';
 import * as routing from '../../cli/lib/routing.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_KEYS = [...new Set(PROVIDER_CATALOG.map((e) => e.keyEnv).filter(Boolean))];
 let server;
@@ -37,15 +38,17 @@ beforeEach(async () => {
   // same auth.js instance the router will verify against.
   const { witnessFor } = await import('../helpers/witness.js');
   witness = await witnessFor(wsRoot, 'fenna'); // claims owner.json AND mints a paired token
+  await makeInstallOwner(witness.address);
   TOKEN = witness.token;
 
   const routingRouter = (await import('../../backend/routes/routing-routes.js')).default;
   const neumaRouteRouter = (await import('../../backend/routes/neuma-route-routes.js')).default;
 
-  // Clear provider key env vars AFTER the imports: importing core triggers a
-  // dotenv.config() that refills any unset var from .env (which holds a real
-  // ANTHROPIC_API_KEY), so an earlier delete would be undone. The route handlers
-  // read process.env at request time, so clearing here is what they see.
+  // Clear provider key env vars after the imports. Importing core no longer
+  // loads .env (core's recall stopped importing natural's package root, whose
+  // storage adapters called dotenv, on 2026-10-19); clearing last still wins
+  // if an import ever sets one again. The route handlers read process.env at
+  // request time, so clearing here is what they see.
   for (const k of ENV_KEYS) { saved[k] = process.env[k]; delete process.env[k]; }
   const app = express();
   app.use(express.json());

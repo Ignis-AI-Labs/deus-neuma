@@ -10,7 +10,7 @@
  * playbook), never by a hard gate. The designation still decides exactly one
  * thing — which lane carries the per-turn CMO briefing — and only inside
  * its own house: the stores and the seat are the connection's house's
- * (Design note, 2026-10-16, the realm pinned to temp.
+ * (ruling, 2026-10-16), the realm pinned to temp.
  */
 import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
 import fs from 'fs/promises';
@@ -30,6 +30,8 @@ import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js
 import { writeOwner } from '../helpers/audit-auth.js';
 import { cmoDesignation } from '../../backend/services/marketing/cmo-designation.js';
 import { scaffoldCmoWorkspace } from '../../backend/services/marketing/marketing-scaffold.js';
+import { setHouseWorkspace } from '../../backend/services/house-workspace.js';
+import { writeReadyBrandKit } from '../helpers/ready-brand-kit.js';
 
 const {
   _campaignToolsFor, _handleCampaignTool, _isCampaignTool,
@@ -69,7 +71,11 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     process.env.WORKSPACES_ROOT = `${house}/workspaces`;
     setRealmRoot(`${house}/realm`);
     for (const lane of [LANE_A, LANE_B]) await writeOwner(`${house}/workspaces`, lane, WALLET);
-    await channelBindings.bind('x', { neumaId: LANE_A, boundBy: '0xTestWitness' });
+    // THE BRAND KIT COMES FIRST (d8312f93b): campaigns/create refuses a brand
+    // with no complete kit, so the house's ground carries one.
+    await setHouseWorkspace(WALLET, `${house}/ground`);
+    await writeReadyBrandKit(`${house}/ground`, 'neuma');
+    await channelBindings.bind(WALLET, 'x', { neumaId: LANE_A });
 
     httpServer = createServer();
     wss = new WebSocketServer({ server: httpServer });
@@ -100,18 +106,22 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     // acts as the campaigns/* intents, so advertising both described one act
     // twice. The read has no intent — and no prompt replacement outside the
     // CMO briefing — so it stays.
-    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list']);
+    // pipeline_state joined the reads 2026-09-08 (6f1b91f57, posting-pipeline-v2):
+    // the one computed posture call — a read, so it has no intent either.
+    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state']);
     // queue_cancel joined the family 2026-07-26: staged copy goes stale and a
     // being must be able to pull its own dead draft, not merely report it.
     // queue_get joined 2026-08-03: the list gives the month, but an edit made
     // against a list line is an edit made blind — the copy's revisions and its
     // thread only fit in a single-entry read.
-    expect(SOCIAL_TOOLS.map((t) => t.name)).toEqual(['queue_list', 'queue_get', 'read_x', 'queue_cancel']);
+    // replies_list joined 2026-10-13 (264e4769f): the reply inbox — what is
+    // unanswered, staged, answered — is a read the being needs to answer at all.
+    expect(SOCIAL_TOOLS.map((t) => t.name)).toEqual(['queue_list', 'queue_get', 'read_x', 'queue_cancel', 'replies_list']);
   });
 
   test('ADVERTISING — the bench READ is all that is offered; a seated CMO changes no access', async () => {
     await cmoDesignation.designate(WALLET, LANE_A);
-    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list']);
+    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state']);
     // The office is carried in language, not gates: the bench description
     // names the CMO's office as the lead the house defers to. It rides the
     // READ now — the mutations it used to ride left with the catalog cut.
@@ -119,7 +129,7 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     expect(list.description).toMatch(/CMO/);
     // THE CUT (#414): create/update are `campaigns/*` intents, so neither is
     // advertised and neither dispatches.
-    expect(CAMPAIGN_TOOLS.map((t) => t.name)).toEqual(['campaign_list']);
+    expect(CAMPAIGN_TOOLS.map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state']);
     for (const retired of ['campaign_create', 'campaign_update']) {
       expect(_isCampaignTool({ toolName: retired }), `${retired} still dispatches`).toBe(false);
       expect(retiredToolHint(retired)).toContain(`campaigns/${retired.replace('campaign_', '')}`);
@@ -135,12 +145,12 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     const granted = granting('campaigns.create', 'campaigns.update');
 
     const [created] = await viaIntent(connection, 'campaigns/create',
-      { name: 'First Light', brand: 'Neuma', pillars: ['craft', 'proof'], cadence: 'weekly' },
+      { name: 'First Light', brand: 'neuma', pillars: ['craft', 'proof'], cadence: 'weekly' },
       'ask', granted);
     expect(created.status).toBe('ok');
     const [stored] = await (await bench()).load();
     expect(stored).toMatchObject({
-      name: 'First Light', brand: 'Neuma', status: 'active',
+      name: 'First Light', brand: 'neuma', status: 'active',
       pillars: ['craft', 'proof'], cadence: 'weekly',
     });
 

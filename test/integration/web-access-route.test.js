@@ -3,6 +3,7 @@ import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * Integration tests for /api/v1/web/web-access — the operator's switch route.
@@ -37,6 +38,7 @@ describe('web-access routes', () => {
     // right shape (nothing to own).
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
 
     const { default: router } = await import('../../backend/routes/web-routes.js');
     app = express();

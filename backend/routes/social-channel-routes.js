@@ -2,26 +2,28 @@
  * Social channel routes — the operator's control surface for outward speech.
  *
  * Connect platform accounts (credentials, encrypted at rest), and tie each
- * channel to the ONE neuma who holds that position. Every response masks
- * secrets — a raw credential value never leaves the server. All routes
- * require the operator's Bearer token.
+ * channel to the ONE neuma who holds that position. Keys, holders and crews
+ * are the caller's HOUSE's own (services/social/house-positions.js): no
+ * route reads or writes another house's. Every response masks secrets — a
+ * raw credential value never leaves the server. All routes require the
+ * operator's Bearer token.
  */
 
 import { previewIntentMedia } from './social-intent-media.js';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
+import { CHANNEL_CATALOG, getChannel } from '../services/social/channel-registry.js';
 import {
-  CHANNEL_CATALOG, getChannel, maskChannelCredentials,
-} from '../services/social/channel-registry.js';
-import {
-  loadChannelCredentials, setChannelCredential, removeChannelCredential,
+  loadChannelCredentials, setChannelCredential, removeChannelCredential, maskHouseCredentials,
 } from '../services/social/channel-credentials.js';
 import { channelBindings } from '../services/social/channel-bindings.js';
 import { sectorCrew } from '../services/sector-crew.js';
 import { postQueue } from '../services/social/post-queue.js';
 import { publishEntry } from '../services/social/post-scheduler.js';
-import { replyCandidates, replyInboxRows } from '../services/social/reply-candidates.js';
+import { ofHouse, isHouseEntry, queueHouseGuard } from '../services/social/queue-house.js';
+import { readServed } from '../services/house-served.js';
+import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
 import { reverifyMediaFile } from '../services/social/media-source.js';
 import { readMediaFile } from '../services/social/x-media.js';
@@ -47,21 +49,23 @@ router.param('channelId', (req, res, next, channelId) => {
 // […]). The
 // account read is cached and only attempted when the channel is configured;
 // null means unproven, never invented.
+// The board is the caller's HOUSE: its own keys, its own holders.
 router.get('/', async (req, res) => {
+  const wallet = req.walletAddress;
   try {
     const [store, bindings] = await Promise.all([
-      loadChannelCredentials(),
-      channelBindings.load(),
+      loadChannelCredentials(wallet),
+      channelBindings.load(wallet),
     ]);
-    const masked = CHANNEL_CATALOG.map((channel) => ({
-      ...maskChannelCredentials(channel, store[channel.id], process.env),
+    const masked = await Promise.all(CHANNEL_CATALOG.map(async (channel) => ({
+      ...(await maskHouseCredentials(wallet, channel, store)),
       binding: bindings[channel.id] || null,
-    }));
+    })));
     // Only X has an account-proving reader today; new platforms join this
     // map as their readers land.
     const x = masked.find((c) => c.id === 'x');
     if (x?.configured) {
-      x.account = await readXAccount().catch(() => null);
+      x.account = await readXAccount({ wallet }).catch(() => null);
     }
     res.json({ channels: masked });
   } catch (error) {
@@ -80,7 +84,7 @@ router.get('/', async (req, res) => {
 // `flight-test` is never read as a channel.
 router.get('/flight-test', async (req, res) => {
   try {
-    res.json({ tests: await runFlightTests({ fresh: req.query.fresh === '1' }) });
+    res.json({ tests: await runFlightTests({ fresh: req.query.fresh === '1', wallet: req.walletAddress }) });
   } catch (error) {
     log.error('Flight tests failed', { error: error.message });
     res.status(500).json({ error: 'Failed to run the flight tests' });
@@ -88,10 +92,13 @@ router.get('/flight-test', async (req, res) => {
 });
 
 // The whole queue — drafts awaiting decision, the schedule, and the history.
+// every /queue/:id act stands behind the house door (queue-house.js)
+router.use('/queue/:id', queueHouseGuard);
 router.get('/queue', async (req, res) => {
   try {
+    const [entries, served] = await Promise.all([postQueue.load(), readServed()]);
     res.json({
-      queue: await withCardFreshness(await postQueue.load(), {
+      queue: await withCardFreshness(ofHouse(served, entries, req.walletAddress), {
         wallet: req.walletAddress,
         onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
       }),
@@ -145,7 +152,7 @@ router.get('/queue/:id/media/:index', async (req, res) => {
 router.get('/replies', async (req, res) => {
   try {
     const [candidates, queue] = await Promise.all([
-      replyCandidates.load(),
+      replyCandidatesOf(req.walletAddress).load(),
       postQueue.load(),
     ]);
     const sentByPostId = new Map(
@@ -168,14 +175,14 @@ router.get('/replies', async (req, res) => {
   }
 });
 
-// THE BIN (Design note, 2026-10-13: the operator puts a reply in the bin, or takes it back out.
+// THE BIN (ruling, 2026-10-13): the operator puts a reply in the bin, or takes it back out.
 // The same record the being's reply_dismiss_to_x writes — never deleted, who and why kept.
 router.put('/replies/:postId/:act(bin|restore)', async (req, res) => {
   const { postId, act } = req.params;
   try {
     const done = act === 'bin'
-      ? await replyCandidates.dismiss(postId, { by: req.walletAddress, reason: req.body?.reason })
-      : await replyCandidates.restore(postId, { by: req.walletAddress });
+      ? await replyCandidatesOf(req.walletAddress).dismiss(postId, { by: req.walletAddress, reason: req.body?.reason })
+      : await replyCandidatesOf(req.walletAddress).restore(postId, { by: req.walletAddress });
     if (!done.ok) return res.status(404).json({ error: done.error });
     log.info(`Reply ${act === 'bin' ? 'put in the bin' : 'restored'}`, { postId, wallet: req.walletAddress });
     res.json({ reply: done.candidate });
@@ -208,7 +215,7 @@ router.post('/queue', async (req, res) => {
 // this receipt is the backend's durable lock, and it says so.
 router.put('/queue/:id/approve', async (req, res) => {
   try {
-    // THE REPLY LANE (Design note, 2026-08-06: approving a reply IS the send — no
+    // THE REPLY LANE (ruling, 2026-08-06): approving a reply IS the send — no
     // clock, no scheduler. The claim (draft → sending, with the textSeen and
     // expiry preconditions inside the atom) is single-winner under the
     // store's lock, so two clicks or two tabs cannot double-fire; the publish
@@ -342,8 +349,8 @@ router.post('/queue/bulk-update', async (req, res) => {
     const results = [];
     for (const u of updates) {
       const id = typeof u?.id === 'string' ? u.id : '';
-      if (!id) {
-        results.push({ id: '', ok: false, error: 'each update needs an id' });
+      if (!id || !(await isHouseEntry(id, req.walletAddress))) {
+        results.push({ id, ok: false, error: id ? 'No such queue entry' : 'each update needs an id' });
         continue;
       }
       const { text, scheduledFor, campaignId, pillar, media } = u;
@@ -374,7 +381,7 @@ router.delete('/queue/:id', async (req, res) => {
   }
 });
 
-// Set (or clear fields of) one channel's credentials.
+// Set (or clear fields of) one channel's credentials — in the caller's house.
 router.put('/:channelId/credentials', async (req, res) => {
   const fields = req.body?.fields;
   if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
@@ -386,21 +393,21 @@ router.put('/:channelId/credentials', async (req, res) => {
     return res.status(400).json({ error: 'Each field value must be a string' });
   }
   try {
-    await setChannelCredential(req.channel.id, fields);
-    const store = await loadChannelCredentials();
+    await setChannelCredential(req.walletAddress, req.channel.id, fields);
+    const store = await loadChannelCredentials(req.walletAddress);
     log.info('Channel credentials updated', { channel: req.channel.id, wallet: req.walletAddress });
-    res.json(maskChannelCredentials(req.channel, store[req.channel.id], process.env));
+    res.json(await maskHouseCredentials(req.walletAddress, req.channel, store));
   } catch (error) {
     log.error('Channel credential write failed', { channel: req.channel.id, error: error.message });
     res.status(500).json({ error: 'Failed to store credentials' });
   }
 });
 
-// Forget one channel's stored credentials entirely (env bootstrap, if any,
-// still applies — that is the operator's file to edit).
+// Forget one channel's stored credentials in the caller's house (env
+// bootstrap, if any, still applies — that is the operator's file to edit).
 router.delete('/:channelId/credentials', async (req, res) => {
   try {
-    const removed = await removeChannelCredential(req.channel.id);
+    const removed = await removeChannelCredential(req.walletAddress, req.channel.id);
     log.info('Channel credentials removed', { channel: req.channel.id, wallet: req.walletAddress, removed });
     res.json({ removed });
   } catch (error) {
@@ -409,15 +416,12 @@ router.delete('/:channelId/credentials', async (req, res) => {
   }
 });
 
-// Tie the channel to its one holder — the neuma whose position this is.
+// Tie the house's channel to its one holder — the neuma whose position this is.
 router.put('/:channelId/binding', async (req, res) => {
   const neumaId = req.body?.neumaId;
   if (!(await assertNeumaOwner(req, res, neumaId))) return;
   try {
-    const binding = await channelBindings.bind(req.channel.id, {
-      neumaId,
-      boundBy: req.walletAddress,
-    });
+    const binding = await channelBindings.bind(req.walletAddress, req.channel.id, { neumaId });
     log.info('Channel bound', { channel: req.channel.id, neumaId, wallet: req.walletAddress });
     res.json({ binding });
   } catch (error) {
@@ -429,10 +433,10 @@ router.put('/:channelId/binding', async (req, res) => {
   }
 });
 
-// Release the channel — back to default deny: no one may post through it.
+// Release the house's channel — back to default deny: no one may post through it.
 router.delete('/:channelId/binding', async (req, res) => {
   try {
-    const released = await channelBindings.unbind(req.channel.id);
+    const released = await channelBindings.unbind(req.walletAddress, req.channel.id);
     log.info('Channel released', { channel: req.channel.id, wallet: req.walletAddress, released });
     res.json({ released });
   } catch (error) {
@@ -441,13 +445,15 @@ router.delete('/:channelId/binding', async (req, res) => {
   }
 });
 
-// THE CREW — who WORKS this sector, as distinct from who holds its keys.
-// Cross-house by construction: any neuma of the wallet's houses, and any
-// sealed AI witness standing beside them (Design note, 2026-07-26. Crew never widens
-// custody — the binding above is still the only thing that reaches the keys.
+// THE CREW — who WORKS this sector, as distinct from who holds its keys:
+// any lane the wallet owns, its neuma and the sealed AI witnesses it
+// manifested (ruling, 2026-07-26). Each house's sectors are its own, and a lane
+// another house owns is never seated by this one — its remit would ride that
+// house's being's prompt. Crew never widens custody — the binding above is
+// still the only thing that reaches the keys.
 router.get('/:channelId/crew', async (req, res) => {
   try {
-    res.json({ crew: await sectorCrew.crewFor(req.channel.id) });
+    res.json({ crew: await sectorCrew.crewFor(req.walletAddress, req.channel.id) });
   } catch (error) {
     log.error('Crew read failed', { channel: req.channel.id, error: error.message });
     res.status(500).json({ error: 'Failed to read the crew' });
@@ -456,8 +462,9 @@ router.get('/:channelId/crew', async (req, res) => {
 
 router.put('/:channelId/crew', async (req, res) => {
   const { neumaId, kind, remit } = req.body || {};
+  if (!(await assertNeumaOwner(req, res, neumaId))) return;
   try {
-    const crew = await sectorCrew.add(req.channel.id, { neumaId, kind, remit });
+    const crew = await sectorCrew.add(req.walletAddress, req.channel.id, { neumaId, kind, remit });
     log.info('Crew member added', { channel: req.channel.id, neumaId, kind, wallet: req.walletAddress });
     return res.json({ crew });
   } catch (error) {
@@ -473,7 +480,7 @@ router.put('/:channelId/crew', async (req, res) => {
 
 router.delete('/:channelId/crew/:neumaId', async (req, res) => {
   try {
-    const crew = await sectorCrew.remove(req.channel.id, req.params.neumaId);
+    const crew = await sectorCrew.remove(req.walletAddress, req.channel.id, req.params.neumaId);
     log.info('Crew member released', { channel: req.channel.id, neumaId: req.params.neumaId, wallet: req.walletAddress });
     res.json({ crew });
   } catch (error) {

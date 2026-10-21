@@ -14,6 +14,9 @@
 //   FLOW — uFlow ≥ 0 sends a head of light along every stroke, each on its
 //     own phase (its order), so a whole channel system is visibly carrying
 //     energy rather than glowing all at once.
+//   THE DASH — uDash > 0 breaks every stroke into that many dashes along
+//     itself: a solid's hand (genesis-signatures.js). 0 draws it whole.
+//   THE MARKS — a point on every vertex of a solid, in its own shape.
 import * as THREE from 'three';
 import { PULSE_GLSL } from '../BootIgnition/gyro-shaders.js';
 
@@ -41,6 +44,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uSpan;
   uniform float uBurn;
   uniform float uFlow;
+  uniform float uDash;
   varying float vAlong;
   varying float vOrder;
   varying float vRadius;
@@ -48,6 +52,7 @@ const FRAGMENT = /* glsl */ `
   void main() {
     float local = clamp((uDraw - vOrder * (1.0 - uSpan)) / uSpan, 0.0, 1.0);
     if (local <= 0.0 || vAlong > local) discard;
+    if (uDash > 0.0 && fract(vAlong * uDash) > 0.55) discard;
     float e = energyAt(vRadius);
     float f = 0.0;
     if (uFlow >= 0.0) {
@@ -79,6 +84,57 @@ export const penMaterial = (shared, { color, span, blending }) => new THREE.Shad
     uBurn: { value: 0 },
     uLift: { value: 1 },
     uFlow: { value: -1 },
+    uDash: { value: 0 },
+  },
+  transparent: true,
+  depthWrite: false,
+  blending,
+});
+
+// A vertex mark: a point sprite cut to its shape (MARKS order in
+// genesis-signatures.js: dot, ring, square, diamond, triangle — outlines but
+// the dot), lifted like its solid.
+const MARK_VERTEX = /* glsl */ `
+  uniform float uLift;
+  uniform float uSize;
+  void main() {
+    gl_PointSize = uSize;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xy, position.z * uLift, 1.0);
+  }
+`;
+const MARK_FRAGMENT = /* glsl */ `
+  uniform vec3 uColor;
+  uniform vec3 uSignal;
+  uniform float uOpacity;
+  uniform float uBurn;
+  uniform float uShape;
+  void main() {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    p.y = -p.y;
+    int shape = int(uShape + 0.5);
+    float r = length(p);
+    float m = shape == 0 ? (r < 0.5 ? 1.0 : 0.0)
+      : shape == 1 ? step(0.62, r) * step(r, 0.95)
+      : shape == 2 ? step(0.6, max(abs(p.x), abs(p.y))) * step(max(abs(p.x), abs(p.y)), 0.88)
+      : shape == 3 ? step(0.72, abs(p.x) + abs(p.y)) * step(abs(p.x) + abs(p.y), 1.0)
+      : step(0.34, max(-p.y, 0.5 * p.y + 0.866 * abs(p.x))) * step(max(-p.y, 0.5 * p.y + 0.866 * abs(p.x)), 0.5);
+    if (m < 0.5) discard;
+    gl_FragColor = vec4(mix(uColor, uSignal, uBurn), uOpacity);
+  }
+`;
+
+/** A mark material for one solid's vertices (shape: its MARKS index). */
+export const markMaterial = (shared, { color, shape, blending }) => new THREE.ShaderMaterial({
+  vertexShader: MARK_VERTEX,
+  fragmentShader: MARK_FRAGMENT,
+  uniforms: {
+    uSignal: shared.uSignal,
+    uColor: { value: new THREE.Color(color) },
+    uOpacity: { value: 0 },
+    uBurn: { value: 0 },
+    uLift: { value: 1 },
+    uSize: { value: 8 },
+    uShape: { value: shape },
   },
   transparent: true,
   depthWrite: false,
@@ -86,7 +142,8 @@ export const penMaterial = (shared, { color, span, blending }) => new THREE.Shad
 });
 
 /** impure — set one pen's uniforms for a frame; `master` scales its opacity. */
-export const setPen = (u, { draw = 1, opacity = 0, burn = 0, lift = 1, flow = -1 }, master) => {
+export const setPen = (u, { draw = 1, opacity = 0, burn = 0, lift = 1, flow = -1, dash = 0 }, master) => {
+  u.uDash.value = dash;
   u.uDraw.value = draw;
   u.uOpacity.value = opacity * master;
   u.uBurn.value = burn;

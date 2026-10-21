@@ -4,7 +4,7 @@
 //   1. each being's soul anchor (identity/onchain-seal.json `soulAddress` —
 //      the being's own wallet, published on chain at its seal; the same
 //      public read house-titles.js joins seats by);
-//   2. the house's own founding records (workspaces/house-founding.<net>.json)
+//   2. the house's own founding records (workspaces/house-founding.<net>.<wallet>.json)
 //      whose head is this operator — their Neuma-kind members, so a founded
 //      member is watched even when its lane is not on this machine;
 //   3. the receive addresses the operator declares (extras.json).
@@ -20,44 +20,19 @@
 //
 // impure (fs reads).
 
-import fs from 'fs/promises';
-import path from 'path';
 import { ethers } from 'ethers';
-import { neumaWorkspace, getWorkspacesRoot, isWitnessLane } from '../../../core/index.js';
+import { neumaWorkspace, isWitnessLane } from '../../../core/index.js';
 import { soulAddressOf } from '../house-titles.js';
 import { readExtras } from './money-in-store.js';
 import { servedHouses } from '../house-served.js';
-import { createLogger } from '../logger.js';
+import { readOperatorRecords } from '../house-founding-record.js';
 
-const log = createLogger('MoneyIn.Watch');
-
-const FOUNDING_RE = /^house-founding\.[a-z0-9-]+\.json$/i;
-const KIND_WITNESS = 0;
 const KIND_NEUMA = 1;
 
 const lower = (a) => String(a || '').toLowerCase();
 
 // impure — the founding records whose Witness seat is this house's operator.
-const foundingRecordsOf = async (house) => {
-  let names;
-  try {
-    names = await fs.readdir(getWorkspacesRoot());
-  } catch (error) {
-    if (error.code === 'ENOENT') return [];
-    throw error;
-  }
-  const records = [];
-  for (const name of names.filter((n) => FOUNDING_RE.test(n))) {
-    try {
-      const record = JSON.parse(await fs.readFile(path.join(getWorkspacesRoot(), name), 'utf8'));
-      const members = Array.isArray(record?.members) ? record.members : [];
-      if (members.some((m) => m?.kind === KIND_WITNESS && lower(m.address) === lower(house))) records.push(record);
-    } catch (error) {
-      log.warn('founding record unreadable — its members are not watched', { name, error: error.message });
-    }
-  }
-  return records;
-};
+const foundingRecordsOf = async (house) => (await readOperatorRecords(house)).map((f) => f.record);
 
 /**
  * Every house this backend serves — the operator wallets that own a being on

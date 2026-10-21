@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { scanArchitecture } from '../mapview/scan.js';
 import { getAppConfig } from '../../config.js';
+import { currentLayout, lockfileTarget } from './app-inventory.js';
 
 const CACHE_MS = 30_000;
 const MAX_DEPENDENCY_PATHS = 30;
@@ -206,14 +207,18 @@ export const readArchitectureSurface = async (repoPath) => {
   });
 };
 
-/** Pick only a repository already admitted to the security watch. Pure. */
-export const selectWatchedRepo = (watch, repoId = null, cwd = process.cwd()) => {
+/**
+ * Pick only a repository already admitted to the security watch. The app's
+ * own entry resolves to where the app runs NOW: an AppImage mounts at a new
+ * path every launch, so a stored path goes stale. Pure.
+ */
+export const selectWatchedRepo = (watch, repoId = null, cwd = process.cwd(), layout = currentLayout()) => {
   const repos = Array.isArray(watch?.repos) ? watch.repos : [];
   const repo = repoId
     ? repos.find((entry) => entry.id === repoId)
     : repos.find((entry) => path.resolve(entry.path) === path.resolve(cwd)) || repos[0];
   if (!repo) throw new Error(repoId ? `no watched repo ${repoId}` : 'no repositories are on the security watch');
-  return repo;
+  return repo.app === true ? { ...repo, path: lockfileTarget(repo, layout).root } : repo;
 };
 
 const exposureClass = ({ roots, importers, routes, directNetworkExposure }) => {
@@ -233,7 +238,8 @@ export const mapThreatAttackSurface = async (threat, repoPath) => {
     return Object.freeze({ measuredAt: new Date().toISOString(), threatId: threat?.id || null, error: 'attack-surface dependency mapping requires a software threat' });
   }
   const [lockRaw, surface] = await Promise.all([
-    fs.readFile(path.join(repoPath, 'package-lock.json'), 'utf8'),
+    // An installed app's lockfile ships beside the app, not inside it.
+    fs.readFile(lockfileTarget({ path: repoPath }, currentLayout()).lockfile, 'utf8'),
     readArchitectureSurface(repoPath),
   ]);
   const lockJson = JSON.parse(lockRaw);

@@ -16,8 +16,10 @@ import { getCapabilities, hasPrefixBoundary, queryLocalCapabilities, probeEndpoi
 import { decodeToolName } from './tool-schema.js';
 import { tryParseArgs } from '../../core/runtime/tool-call-parser.js';
 import { ensureServing, activeLaunchConfig } from './llama-server-supervisor.js';
+import { routeNamesLaunch } from './serving-launch-config.js';
 import { getConfig, configFromRoute, getActiveModel, fetchServedModelId } from './llm-selection.js';
 import { markActivity } from './substrate-idle.js';
+import { whenMachineFree } from './machine-lease.js';
 import { getProvider } from './provider-registry.js';
 import { liveModels } from './provider-probe.js';
 import { ensureLmStudioLoaded } from './local-server-models.js';
@@ -177,24 +179,40 @@ export const invalidateServerAdapters = (endpoint) => {
   if (endpoint) serverAdaptersCache.delete(endpoint.replace(/\/$/, ''));
 };
 
+/**
+ * Graceful-return lifecycle for the house's OWN supervised llama-server: if an
+ * idle-unload stopped it, reload it before this turn streams, and restart the
+ * idle clock. Only the house launch's endpoint is supervised — an operator's
+ * own llama.cpp on any other port is used as it stands, never booted or
+ * clocked (a turn to :8080 used to boot :8089 and fail on a model file the
+ * house never had). Already-serving is only a health check. Impure.
+ * @param {{provider: string, endpoint: string}} config - the turn's resolved config
+ * @returns {Promise<{status: string}|null>} the supervisor's answer, or null when the endpoint is not the house's
+ */
+export const wakeHouseServing = async (config) => {
+  if (config.provider !== 'llama-server') return null;
+  const launch = activeLaunchConfig(process.env);
+  if (!routeNamesLaunch(config, launch)) return null;
+  // A mind parked for a heavy job (machine-lease.js) relights when the job is done — never early.
+  await whenMachineFree();
+  const served = await ensureServing(launch);
+  markActivity();
+  return served;
+};
+
 export const createStreamRequest = async (messages, options = {}) => {
   // Per-neuma routing: an explicit resolved route (provider/endpoint/apiKey/
   // model/chatPath) overrides the machine-wide config for this one call, while
   // sampling still falls back to the global config so a preset behaves
   // identically to the default path. Absent a route, nothing changes.
   const config = options.route ? configFromRoute(options.route, getConfig()) : getConfig();
-  // Graceful-return lifecycle (backend-supervised llama-server only): if an
-  // idle-unload stopped the substrate, reload it before this summon streams, and
-  // restart the idle clock. Imports stay one-way; already-serving is only a health check.
   // A HARNESS lane rides the server its person chose (harness-lane.js) — never
   // the house's supervised model: it is not booted, reloaded or clocked for it.
-  if (config.provider === 'llama-server' && options.superviseLlamaServer !== false
-    && options.route?.source !== 'harness') {
-    const served = await ensureServing(activeLaunchConfig(process.env));
+  if (options.superviseLlamaServer !== false && options.route?.source !== 'harness') {
+    const served = await wakeHouseServing(config);
     // A FRESH boot means a fresh adapter list — drop the cached one so the
     // zero-guard below reads the new server's truth, not the old server's.
     if (served?.status === 'serving') invalidateServerAdapters(config.endpoint);
-    markActivity();
   }
   // 'local-model' is a placeholder, not a real identifier — LM Studio with
   // more than one model loaded rejects it (model_not_found), which severed

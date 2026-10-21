@@ -7,9 +7,10 @@
  * docs/work/size-law-breakdown.md Part 1 step 2 / #278). Leaf module —
  * portal-stream imports it, never the reverse (direction law).
  */
-import { CHANNEL_CATALOG, getChannel, resolveChannelCredentials } from '../social/channel-registry.js';
-import { loadChannelCredentials } from '../social/channel-credentials.js';
+import { CHANNEL_CATALOG, getChannel } from '../social/channel-registry.js';
+import { loadChannelCredentials, resolveChannelCredential } from '../social/channel-credentials.js';
 import { channelBindings, canNeumaPost } from '../social/channel-bindings.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { REPLY_CAP_PER_CONVERSATION } from '../social/post-queue.js';
 
@@ -86,7 +87,7 @@ const X_QUEUE_SELF_REPLY_TOOL = Object.freeze({
   }),
 });
 
-// THE DO-NOT-ENGAGE MARK (Design note, 2026-07-28: some replies the house simply
+// THE DO-NOT-ENGAGE MARK (ruling, 2026-07-28): some replies the house simply
 // does not answer — bait, abuse, noise. Setting one aside is a DECISION and
 // is recorded as one (who, when, why) on the candidate itself; the record of
 // what was said is never deleted, the knock simply stops surfacing it.
@@ -236,16 +237,22 @@ export const replyDismissToolChannel = (match) => {
 // unreadable store advertises nothing.
 export const channelToolsFor = async (neumaId) => {
   if (!neumaId) return [];
+  // The being's own house's keys, holders and crews (house-positions.js).
+  const house = await houseOfLane(neumaId);
   const [store, bindings, crewStore] = await Promise.all([
-    loadChannelCredentials().catch(() => ({})),
-    channelBindings.load().catch(() => ({})),
-    sectorCrew.load().catch(() => ({})),
+    loadChannelCredentials(house).catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
+    sectorCrew.load(house).catch(() => ({})),
   ]);
+  const configured = new Set();
+  for (const c of CHANNEL_CATALOG) {
+    if (await resolveChannelCredential(house, c.id, store).catch(() => null)) configured.add(c.id);
+  }
   // Two different reaches, so two different catalogs (Design note, 2026-07-26, […]): the HOLDER sees the reply lane; the crew only the
   // edit lane. Advertising a tool the gate will refuse teaches a being its
   // permissions by refusal — the exact thing annotateToolAccess exists to end.
   return CHANNEL_CATALOG
-    .filter((c) => resolveChannelCredentials(c, store[c.id], process.env) !== null)
+    .filter((c) => configured.has(c.id))
     .flatMap((c) => {
       const holds = canNeumaPost(bindings, c.id, neumaId);
       // The reply lane is the HOLDER's engagement lane: the being that is

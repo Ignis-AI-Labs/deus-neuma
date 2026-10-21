@@ -279,15 +279,18 @@ describe('neuma coding tool surface', () => {
     await neumaWorkspace.writeToolPolicy(LANE_ID, { shellNetwork: true });
     const tools = await beingCodingToolsFor(connection);
     await stashBeingTurnCatalog(connection, tools, []);
+    // Networked = a real interface with a default route; this machine's own
+    // services stay out of reach (the grant is outward only).
     let requests = 0;
-    server.on('request', (_req, res) => { requests += 1; res.end('persisted-network-proof'); });
-    const script = `fetch('http://127.0.0.1:${server.address().port}/network-proof', {signal: AbortSignal.timeout(5000)})`
-      + '.then(r => r.text()).then(t => process.stdout.write(t))'
-      + '.catch(e => { process.stderr.write(e.message); process.exitCode = 1; })';
+    server.on('request', (_req, res) => { requests += 1; res.end('host-reached'); });
+    const script = "const up = require('fs').readFileSync('/proc/net/route', 'utf8').split('\\n').some((l) => l.split(/\\s+/)[1] === '00000000');"
+      + `fetch('http://127.0.0.1:${server.address().port}/network-proof', {signal: AbortSignal.timeout(5000)})`
+      + ".then(() => 'host-reached', () => 'host-unreachable')"
+      + ".then((host) => process.stdout.write((up ? 'persisted-network-proof' : 'offline') + ' ' + host))";
     const execution = await dispatch(match('execute', `node -e ${JSON.stringify(script)}`));
     expect(execution).toMatchObject({ tool: 'coding/execute', status: 'ok' });
-    expect(execution.content).toContain('persisted-network-proof');
-    expect(requests).toBe(1);
+    expect(execution.content).toContain('persisted-network-proof host-unreachable');
+    expect(requests).toBe(0);
     // Neither remembered network consent nor routine local execution asks again.
     expect(frames.some((frame) => frame.type === 'tool:approval_request' && frame.tool === 'coding/shell_network')).toBe(false);
     expect(frames.some((frame) => frame.type === 'tool:approval_request' && frame.tool === 'coding/execute')).toBe(false);

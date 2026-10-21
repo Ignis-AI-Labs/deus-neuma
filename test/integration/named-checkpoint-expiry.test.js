@@ -38,7 +38,8 @@ const checkpoint = (isTest, chosenName) => ({
 
 test('a year-old named real checkpoint remains discoverable without rewriting bytes', async () => {
   await withCheckpoint(checkpoint(false, 'Checkpoint Fixture'), async ({ id, file, bytes }) => {
-    expect((await listInterruptedSessions()).map(row => row.sessionId)).toContain(id);
+    // No wallet recorded: discoverable by the install's owner (unrecordedOpen).
+    expect((await listInterruptedSessions(undefined, { unrecordedOpen: true })).map(row => row.sessionId)).toContain(id);
     expect(await fs.readFile(file, 'utf8')).toBe(bytes);
   });
 });
@@ -56,7 +57,7 @@ test('a year-old named real checkpoint restores without deleting or refreshing b
 for (const isTest of [false, true]) {
   test(`expired ${isTest ? 'named rehearsal' : 'unnamed real'} retains its cleanup policy`, async () => {
     await withCheckpoint(checkpoint(isTest, isTest ? 'Rehearsal Fixture' : null), async ({ id, file, returned }) => {
-      expect((await listInterruptedSessions()).map(row => row.sessionId)).not.toContain(id);
+      expect((await listInterruptedSessions(undefined, { unrecordedOpen: true })).map(row => row.sessionId)).not.toContain(id);
       expect(await restoreSession(id, new Map())).toBeNull();
       await expect(fs.access(file)).rejects.toMatchObject({ code: 'ENOENT' });
       if (isTest) await expect(fs.access(returned)).rejects.toMatchObject({ code: 'ENOENT' });

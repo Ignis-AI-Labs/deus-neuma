@@ -20,6 +20,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { channelBindings } from '../../backend/services/social/channel-bindings.js';
+import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
@@ -32,7 +33,7 @@ const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET']
 const SOCIAL_PATHS = ['NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SECTOR_CREW_PATH'];
 
 describe('queue edit tools (real WS + real policy cascade + real queue disk, gnosis)', () => {
-  let house, origRoot, httpServer, wss, serverWs, client, port;
+  let house, origRoot, httpServer, wss, serverWs, client, port, positionHouse;
   let clientLog;
   let decide = null; // armed per test — the witness's chip answer
   const savedEnv = {};
@@ -73,10 +74,12 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${house}/social-post-queue.json`;
     process.env.NEUMA_SECTOR_CREW_PATH = `${house}/sector-crew.json`;
-    await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: '0xTestWitness' });
+    positionHouse = usePositionHouse(house);
+    await channelBindings.bind(POSITION_HOUSE, 'x', { neumaId: NEUMA_ID });
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
+    await ownLane(NEUMA_ID);
 
     const { getChannel } = await import('../../backend/services/social/channel-registry.js');
     channel = getChannel('x');
@@ -120,12 +123,13 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     wss?.close();
     httpServer?.close();
     setWorkspacesRoot(origRoot);
+    positionHouse?.restore();
     await fs.rm(house, { recursive: true, force: true });
   });
 
   test('ADVERTISING — the edit tools ride wherever staging rights ride (staging itself is an intent now)', async () => {
     // The reply lane's tools ride with the holder: the answer, the thread
-    // draft, and the do-not-engage mark (Design note, 2026-07-28. post_to_x and
+    // draft, and the do-not-engage mark (ruling, 2026-07-28). post_to_x and
     // queue_post_to_x are GONE (Stage 2) — consequential acts are filed as
     // intents, never advertised as tools.
     expect((await _postToolsFor(NEUMA_ID)).map((t) => t.name)).toEqual([
@@ -137,10 +141,11 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     // A crew member (not the holder) edits the calendar it works — but the
     // reply lane stays the holder's.
     const { sectorCrew } = await import('../../backend/services/sector-crew.js');
-    await sectorCrew.add('x', { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'campaigns' });
+    await ownLane('witness-openai-Kagipem');
+    await sectorCrew.add(POSITION_HOUSE, 'x', { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'campaigns' });
     expect((await _postToolsFor('witness-openai-Kagipem')).map((t) => t.name))
       .toEqual(['queue_update_to_x', 'queue_bulk_update_to_x', 'queue_self_reply_to_x']);
-    await sectorCrew.remove('x', 'witness-openai-Kagipem');
+    await sectorCrew.remove(POSITION_HOUSE, 'x', 'witness-openai-Kagipem');
   });
 
   test('the matchers accept both dialects and never eat each other', () => {

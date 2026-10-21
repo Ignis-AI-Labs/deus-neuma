@@ -17,10 +17,11 @@ import { deliberateStandby } from '../services/substrate-idle.js';
 import { resolveAuthorizedIgnition } from '../services/model-folder-authority.js';
 import { substrateModelView } from '../services/substrate-model-view.js';
 import { requireAuth } from '../services/auth.js';
+import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { getAppConfig } from '../config.js';
 import { getCapabilities } from '../services/model-capabilities.js';
 import { assertSafeEndpoint } from '../services/endpoint-guard.js';
-
+import { requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 const log = createLogger('LLM');
 
@@ -317,7 +318,7 @@ router.get('/llm/provider', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/llm/provider', requireAuth, async (req, res) => {
+router.put('/llm/provider', requireAuth, requireInstallOwner, async (req, res) => {
   try {
     const { provider, endpoint, apiKey, model, temperature, maxTokens, topP } = req.body;
     // SEC-AUDIT-007 residual: do not persist a private/metadata endpoint for later server-side fetch
@@ -381,7 +382,7 @@ router.get('/substrate', requireAuth, async (req, res) => {
 // The configured substrate model this install considers "the mind" — what
 // ignition loads when the witness relights a downed substrate from the desk.
 const substrateTarget = () => ({
-  modelKey: process.env.SUBSTRATE_MODEL || null,
+  modelKey: getConfig().model || process.env.SUBSTRATE_MODEL || null, // the operator's latest choice first; env only before any
   contextLength: parseInt(process.env.SUBSTRATE_CONTEXT_LENGTH, 10) || 32768,
 });
 
@@ -406,11 +407,11 @@ router.get('/llm/substrate/models', requireAuth, async (req, res) => {
   }
 });
 
-// Refusals the desk must distinguish: a busy substrate re-offers later; an
-// unowned one names the operator's move.
-const IGNITE_REFUSAL_STATUS = { busy: 409, unowned: 409 };
+// Refusals the desk must distinguish: a busy substrate re-offers later; an unowned one names the operator's move;
+// a house on another provider asks before it moves (resend with { confirmSwitch: true }).
+const IGNITE_REFUSAL_STATUS = { busy: 409, unowned: 409, 'switch-unconfirmed': 409 };
 
-router.post('/llm/substrate/ignite', requireAuth, async (req, res) => {
+router.post('/llm/substrate/ignite', requireAuth, requireInstallOwner, async (req, res) => {
   try {
     const cfg = getConfig();
     const launchCfg = activeLaunchConfig(process.env);
@@ -422,7 +423,7 @@ router.post('/llm/substrate/ignite', requireAuth, async (req, res) => {
       // per-request model must come out of the rig's own catalog — ignition
       // never spawns a caller-invented path.
       if (req.body?.model) {
-        // THE FOLDER LAW (Design note, 2026-08-28: the chosen folder IS the authorization — model AND engine.
+        // THE FOLDER LAW (ruling, 2026-08-28): the chosen folder IS the authorization — model AND engine.
         const gate = await resolveAuthorizedIgnition(process.env, req.body.model, cfg.provider);
         if (gate.error) return res.status(gate.status).json({ error: gate.error });
         const entry = gate.entry;
@@ -433,7 +434,7 @@ router.post('/llm/substrate/ignite', requireAuth, async (req, res) => {
         // died at the gate).
         selection = { path: entry.path, key: entry.servingModel ?? entry.id };
       }
-    } else {
+    } else if (cfg.provider === 'lm-studio') {
       // The lms path loads a user-nameable model key.
       if (!modelKey) {
         return res.status(400).json({
@@ -444,7 +445,7 @@ router.post('/llm/substrate/ignite', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Invalid model key' });
       }
     }
-    const result = await igniteConfigured(cfg, launchCfg, { modelKey, contextLength: target.contextLength }, selection);
+    const result = await igniteConfigured(cfg, launchCfg, { modelKey, contextLength: target.contextLength }, selection, { confirmSwitch: req.body?.confirmSwitch === true });
     log.info('Substrate ignition requested', { provider: cfg.provider, status: result.status, model: selection?.key || modelKey });
     // An accepted ignite IS the operator's provider choice: persisted durably,
     // so the next boot restores this lane and relights the persisted selection.
@@ -472,11 +473,12 @@ router.get('/llm/capabilities', requireAuth, async (req, res) => {
     // answer judges the route THAT being will ride (a per-neuma override can
     // point at a different server than the machine default — the composer's
     // attach affordance keys off this, and a wrong-server answer lies).
-    // Without it, the active model's machine-config route stands.
-    // An explicit ?model= stays static.
+    // Which model a being rides is its own house's to ask. Without it, the
+    // active model's machine-config route stands; an explicit ?model= stays static.
     if (!req.query.model) {
       const neumaId = req.query.neumaId;
       if (typeof neumaId === 'string' && /^[a-zA-Z0-9_-]+$/.test(neumaId)) {
+        if (!(await assertNeumaOwner(req, res, neumaId))) return;
         try {
           const route = isWitnessLaneId(neumaId)
             ? await resolveWitnessRoute(neumaId)
@@ -488,9 +490,7 @@ router.get('/llm/capabilities', requireAuth, async (req, res) => {
       res.json(await getActiveModelCapabilities());
       return;
     }
-    const modelId = req.query.model;
-    const capabilities = getCapabilities(modelId);
-    res.json({ model: modelId, ...capabilities });
+    res.json({ model: req.query.model, ...getCapabilities(req.query.model) });
   } catch (error) {
     log.error('Capabilities error', { error: error.message });
     res.status(500).json({ error: 'Failed to get model capabilities' });

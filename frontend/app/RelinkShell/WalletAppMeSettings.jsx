@@ -13,6 +13,7 @@ import { formatAddress } from '../../utils/format.js';
 import { isLedgerSupported, listLedgerAccounts } from '../../services/ledger-client.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { RecoveryPhraseSection } from './WalletAppPhrase.jsx';
+import { KeyLink } from './KeyLink.jsx';
 
 // Which chain the wallet points at — Base mainnet (home) or Base Sepolia
 // (testnet-first walks). Desktop: main holds the selection and gates a switch
@@ -164,6 +165,7 @@ const RpcSection = () => {
           ? 'In this browser it is saved to local storage (readable by this site) — the desktop app stores it in your OS keychain.'
           : 'Your URL is stored in your OS keychain and never leaves this machine.'}
       </p>
+      <KeyLink family="chain" id="rpc" lead="GET AN RPC URL" />
 
       <div className={`wal-rpc-state cham${isCustom ? ' is-custom' : ''}`}>
         <div className="wal-rpc-state-in cham-in">

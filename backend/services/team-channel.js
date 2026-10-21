@@ -22,6 +22,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { broadcastRun } from './team-run-live.js';
+import { isWithinRoots } from './sandbox-path-policy.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('TeamChannel');
@@ -81,6 +82,11 @@ export const createTeamRoom = ({ root, name = null }) => {
   const chains = new Map();
   const write = (rel, text) => {
     const file = path.join(dir, rel);
+    // The platform's own write, which the tool sandbox never sees: it stays in the room.
+    if (!isWithinRoots(file, [dir])) {
+      log.warn('team room file refused — it falls outside the room', { file });
+      return Promise.resolve();
+    }
     const prior = chains.get(file) || Promise.resolve();
     const next = prior
       .then(() => fs.mkdir(path.dirname(file), { recursive: true }))

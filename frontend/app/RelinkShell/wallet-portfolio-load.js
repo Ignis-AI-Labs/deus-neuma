@@ -16,13 +16,15 @@ import { buildPortfolio } from './wallet-portfolio.js';
  * carries usd:null (via buildPortfolio), never a fabricated value.
  * @param {string} address the wallet address to read
  * @param {string|number|null} ethBalanceEth native ETH balance (already read), or null if unknown
+ * @param {{tokens?: boolean}} [opts] tokens: false skips the token read (the
+ *   balance came from another network than the one the token read would use)
  * @returns {Promise<Readonly<{rows:Array,usdTotal:(number|null),change24h:(number|null)}>|null>}
  */
-export const buildWalletPortfolio = async (address, ethBalanceEth) => {
+export const buildWalletPortfolio = async (address, ethBalanceEth, { tokens: readTokens = true } = {}) => {
   if (!address) return null;
   // Each leaf read degrades internally (→ [] / null / {}) and never throws, so
   // Promise.all is safe: one failing feed cannot reject the whole build.
-  const [tokens, ethPrice] = await Promise.all([listTokenBalances(address), fetchEthPrice()]);
+  const [tokens, ethPrice] = await Promise.all([readTokens ? listTokenBalances(address) : [], fetchEthPrice()]);
   const tokenPrices = await fetchTokenPrices(tokens.map((t) => t.coingeckoId));
   // Pure composition — ETH-first ordering is structural, not procedural.
   const ethHolding = ethBalanceEth != null ? [{ symbol: 'ETH', balance: ethBalanceEth, price: ethPrice }] : [];

@@ -31,3 +31,29 @@ export const agentTerminalEnvironment = (env, platform) => {
   result.TERM = 'xterm-256color';
   return result;
 };
+
+// A helper that fetches (npx, uv sync, a model download) needs the operator's
+// proxy and trust settings; none of them is a backend secret.
+const NETWORK_KEYS = Object.freeze(new Set([
+  'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'no_proxy', 'all_proxy',
+  'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'NODE_EXTRA_CA_CERTS',
+]));
+
+/**
+ * The environment a helper process the platform spawns (an MCP server, a
+ * voice sidecar, a sandboxed run) starts with: the agent essentials and the
+ * network settings, plus the names the helper itself reads (`passes`) —
+ * never the backend's own secrets (AUTH_SECRET, DNA_ENCRYPTION_KEY, provider
+ * keys). Pure; the input is never mutated.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} platform
+ * @param {(key: string) => boolean} [passes]
+ * @returns {Record<string, string>}
+ */
+export const helperEnvironment = (env, platform, passes = () => false) => {
+  const result = agentTerminalEnvironment(env, platform);
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === 'string' && (NETWORK_KEYS.has(key) || passes(key))) result[key] = value;
+  }
+  return result;
+};

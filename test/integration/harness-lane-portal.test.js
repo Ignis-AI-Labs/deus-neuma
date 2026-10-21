@@ -199,8 +199,11 @@ describe('a harness lane — the platform with no being', () => {
     const composed = frames.filter((f) => f.type === 'context:composition');
     expect(composed.length).toBeGreaterThan(0);
     // The platform allowlist, plus the conversation itself: the history tail
-    // and the person's own ask (currentTurn) — never an identity layer.
-    const allowed = new Set(['platformSeat', 'recentConversation', 'currentTurn', ...PLATFORM_SECTION_IDS]);
+    // and the person's own ask (currentTurn) — never an identity layer. On the
+    // local wire the gauge also names the harness block's own frame and the
+    // earlier turns' carried blocks (turn-context-carry.js wireContextSections,
+    // 4e713b352): platform machinery, measured, never a being's layer.
+    const allowed = new Set(['platformSeat', 'recentConversation', 'currentTurn', 'harnessFrame', 'harnessCarry', ...PLATFORM_SECTION_IDS]);
     for (const event of composed) {
       const ids = (event.sections || event.composition?.sections || []).map((s) => s.id);
       expect(ids).toContain('platformSeat');

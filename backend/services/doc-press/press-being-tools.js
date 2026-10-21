@@ -21,6 +21,7 @@ import { neumaWorkspace } from '../../../core/index.js';
 import { gateAct } from '../act-gate.js';
 import { pressDocument, listBrandKits } from './index.js';
 import { locateChromium } from './chromium-press.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('PressTools');
@@ -94,6 +95,9 @@ const validatePressArgs = (args) => {
   }
   const title = typeof args?.title === 'string' && args.title.trim() ? args.title.trim().slice(0, 120) : 'document';
   const kitId = typeof args?.kit === 'string' && args.kit.trim() ? args.kit.trim() : undefined;
+  // A pressed PDF is made to be handed out: a key inside it leaves with it.
+  const secret = checkOutboundSecrets('the document', [markdown, title], 'nothing was pressed');
+  if (!secret.ok) return { error: secret.reason };
   return { markdown, title, kitId };
 };
 

@@ -19,6 +19,7 @@ import { ensureFilesystemRoots } from './mcp-filesystem.js';
 import { addGrantedReadRoot, addGrantedWriteRoot } from './tool-policy.js';
 import { hydrateShellNetwork } from './shell-network-grants.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
+import { approvalCoversOneAct } from './tool-approval.js';
 
 const log = createLogger('Portal');
 
@@ -74,7 +75,7 @@ export const grantReadScope = async (connection, dirs, persist, origin = capture
 // neuma's persisted policy (pathGrants.write). A write grant is a deliberate
 // escalation, only ever reached for a folder inside the active project (the
 // gate enforces that bound); the sandbox denied-path list still fires first.
-export const grantWriteScope = async (connection, dirs, persist, origin = capturePolicyGrant(connection)) => {
+const grantWriteScope = async (connection, dirs, persist, origin = capturePolicyGrant(connection)) => {
   origin.beforeCommit();
   const current = connection._grantedWriteRoots || [];
   connection._grantedWriteRoots = [...new Set([...current, ...dirs])];
@@ -91,6 +92,29 @@ export const grantWriteScope = async (connection, dirs, persist, origin = captur
     origin.beforeCommit();
     log.warn('Write-scope grant not persisted — holds for this session only', { dirs, err: err.message });
   }
+};
+
+// impure — land the scope one card's yes named. A yes for ONE act (house work:
+// tool-approval.js approvalCoversOneAct) reaches for that act only and is never
+// persisted: the returned release takes back exactly the roots it added, and the
+// tool loop calls it once the act is done, so the next act in the same folder is
+// asked again (the Optio's CLEAR on one write never opened the folder for the
+// rest of the wake). Any other yes stands for the session, ALWAYS persisted,
+// and returns null.
+export const grantApprovedScope = async (connection, { read, write, decision, origin }) => {
+  const oneAct = approvalCoversOneAct(connection);
+  const persist = decision === 'always' && !oneAct;
+  const added = {
+    read: read.filter((dir) => !(connection._grantedReadRoots || []).includes(dir)),
+    write: write.filter((dir) => !(connection._grantedWriteRoots || []).includes(dir)),
+  };
+  if (read.length > 0) await grantReadScope(connection, read, persist, origin);
+  if (write.length > 0) await grantWriteScope(connection, write, persist, origin);
+  if (!oneAct) return null;
+  return () => {
+    connection._grantedReadRoots = (connection._grantedReadRoots || []).filter((dir) => !added.read.includes(dir));
+    connection._grantedWriteRoots = (connection._grantedWriteRoots || []).filter((dir) => !added.write.includes(dir));
+  };
 };
 
 // impure — the folders attached to the turn's active project (its space). The

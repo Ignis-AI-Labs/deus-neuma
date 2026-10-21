@@ -3,10 +3,11 @@
 // what changed. Driven through the real producers: stablePromptSplit,
 // recentConversationMessages (rows with their turnIds) and buildStreamBody.
 import { describe, test, expect } from 'vitest';
-import { buildStreamBody, systemMessageWithCacheSplit, anchorVolatileAtTurn } from '../../backend/services/llm-request-builders.js';
+import { buildStreamBody, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead } from '../../backend/services/llm-request-builders.js';
 import { stablePromptSplit } from '../../core/runtime/prompt-cache.js';
 import { buildPresentSection } from '../../core/runtime/prompt-assembler.js';
-import { CARRY_NOTE_SHORT } from '../../backend/services/turn-context-carry.js';
+import { buildCompositionEvent } from '../../core/runtime/context-composition.js';
+import { CARRY_NOTE_SHORT, wireContextSections } from '../../backend/services/turn-context-carry.js';
 import { recentConversationMessages } from '../../core/runtime/memory-section.js';
 
 const LOCAL = Object.freeze({ provider: 'llama-server', endpoint: 'http://127.0.0.1:8089', model: 'qwen3.8', temperature: 0.7, maxTokens: 4096 });
@@ -134,8 +135,99 @@ describe('say it once — the local wire carries the per-turn block', () => {
     expect(total).toBeLessThanOrEqual((1180 - 1024) * 3.6 + 4000); // inside the window, give or take this turn's block
   });
 
+  test('a retry of a carried point sends its sections whole, and the next turn still carries them', () => {
+    const connection = {};
+    const first = send(turnWire({ connection, turnId: 't1', ask: 'one', clock: '12:01' }));
+    expect(first[1].content).toContain('MEMORY: the voice seal');
+    // The retry re-runs t1 on the same chat — its own row still in a tail
+    // that did not exclude it — under a fresh turn key.
+    const retry = send(turnWire({ connection, turnId: 't1', rows: [row('t1', 'one'), reply('t1', 'take one')], ask: 'one', clock: '12:02' }));
+    const retryBlock = retry.at(-1).content;
+    expect(retryBlock).toContain('MEMORY: the voice seal');
+    expect(retryBlock).not.toContain('Still standing');
+    // The next fresh turn: t1's block (the retry's, whole) is restored in front of its ask.
+    const next = send(turnWire({ connection, turnId: 't2', rows: [row('t1', 'one'), reply('t1', 'take two')], ask: 'two', clock: '12:03' }));
+    expect(next.map((m) => m.content).join('\n')).toContain('MEMORY: the voice seal');
+  });
+
   test('without a chat the wire keeps the plain law, byte-identical', () => {
     const plain = send(turnWire({ connection: null, turnId: 't1', ask: 'one', clock: '12:01' }));
     expect(plain[1].content).toMatch(/^<harness-context>\nThe harness's standing context for this turn — the clock, your memory, your working lists\. These are not the operator's words; the operator's message follows this block\.\n\nPRESENT 12:01/);
+  });
+});
+
+// The gauge (the context:composition event) must describe what rode: the
+// sections are counted as portal-stream counts them — the wire built ahead of
+// round one (composeLocalWireAhead), the sections through wireContextSections.
+describe('say it once — the gauge counts what the carry put on the wire', () => {
+  const STABLE_IDS = new Set(['identity']);
+  const charsOf = (list) => list.reduce((n, m) => n + m.content.length, 0);
+  // One turn's composition sections as portal-stream builds them: the prompt
+  // sections, the transcript's words, the operator's ask.
+  const contextSectionsFor = (messages, args) => {
+    const transcript = messages.slice(1, -1);
+    return [
+      ...sections(args),
+      ...(transcript.length ? [{ id: 'recentConversation', label: 'RECENT CONVERSATION', text: transcript.map((m) => `${m.role}: ${m.content}`).join('\n\n') }] : []),
+      { id: 'currentTurn', label: 'CURRENT TURN', text: args.ask },
+    ];
+  };
+  const gaugedTurn = (args) => {
+    const messages = turnWire(args);
+    composeLocalWireAhead(LOCAL, messages);
+    const context = contextSectionsFor(messages, args);
+    const before = buildCompositionEvent({ sections: wireContextSections(context, messages[0]) });
+    const wire = send(messages); // round one
+    const after = buildCompositionEvent({ sections: wireContextSections(context, messages[0]) });
+    // What the harness context added: the wire against the same turn with no harness block at all.
+    const bare = [{ role: 'system', content: messages[0].cacheSplit.stable }, ...messages.slice(1)];
+    const harnessChars = (event) => event.sections
+      .filter((s) => !STABLE_IDS.has(s.id) && s.id !== 'recentConversation' && s.id !== 'currentTurn')
+      .reduce((n, s) => n + s.chars, 0);
+    return { wire, before, after, added: charsOf(wire) - charsOf(bare), harnessChars };
+  };
+
+  test('over five turns — a changed section, then a window that drops the oldest blocks — the gauge sums to the wire', () => {
+    const connection = {};
+    const rows = [];
+    const turns = [];
+    for (let i = 1; i <= 5; i += 1) {
+      const args = {
+        connection, turnId: `t${i}`, rows: [...rows], ask: `ask ${i}`, clock: `12:0${i}`,
+        window: i === 5 ? 1180 : 100000, ...(i >= 3 ? { memory: 'MEMORY: the taskbar night' } : {}),
+      };
+      const turn = gaugedTurn(args);
+      // Counted before inference, and again after round one: the same wire.
+      expect(turn.after.sections).toEqual(turn.before.sections);
+      expect(turn.harnessChars(turn.before)).toBe(turn.added);
+      expect(turn.before.totals.chars).toBe(turn.before.sections.reduce((n, s) => n + s.chars, 0));
+      turns.push(turn);
+      rows.push(row(`t${i}`, `ask ${i}`), reply(`t${i}`, 'ok'));
+    }
+    const ids = (turn) => turn.before.sections.map((s) => s.id);
+    // Turn 1 sends every section whole; nothing earlier rides.
+    expect(ids(turns[0])).toEqual(['identity', 'harnessFrame', 'present', 'memory', 'tasks', 'closing', 'currentTurn']);
+    // Turn 2: only the clock moved — the rest stands in turn 1's block, restored on the wire.
+    expect(ids(turns[1])).toEqual(['identity', 'harnessCarry', 'harnessFrame', 'present', 'recentConversation', 'currentTurn']);
+    const carry2 = turns[1].before.sections.find((s) => s.id === 'harnessCarry');
+    expect(carry2.chars).toBe(turns[1].wire[1].content.length - 'ask 1'.length);
+    // Turn 3: the memory changed, so it rides again — counted at what it sent.
+    const memory3 = turns[2].before.sections.find((s) => s.id === 'memory');
+    expect(memory3.chars).toBe('MEMORY: the taskbar night'.length);
+    // Turn 5: the tight window dropped the oldest blocks — the gauge counts only the ones restored.
+    const restored = turns[4].wire.filter((m) => m.role === 'user' && m.content.startsWith('<harness-context>')).length - 1;
+    expect(restored).toBeLessThan(4);
+    const carry5 = turns[4].before.sections.find((s) => s.id === 'harnessCarry');
+    expect(carry5.chars).toBeLessThan(turns[3].before.sections.find((s) => s.id === 'harnessCarry').chars);
+  });
+
+  test('any other wire is counted exactly as before — same sections, untouched', () => {
+    const CLOUD = { provider: 'openai', endpoint: 'https://api.openai.com', model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 4096 };
+    const args = { connection: {}, turnId: 't1', ask: 'one', clock: '12:01' };
+    const messages = turnWire(args);
+    composeLocalWireAhead(CLOUD, messages);
+    buildStreamBody(CLOUD, messages, {});
+    const context = contextSectionsFor(messages, args);
+    expect(wireContextSections(context, messages[0])).toBe(context);
   });
 });

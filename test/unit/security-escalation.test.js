@@ -7,7 +7,8 @@
  * ride (the secret law — sweep findings carry file+line, never material).
  */
 import { describe, test, expect } from 'vitest';
-import { escalationBody } from '../../backend/services/security/escalation.js';
+import { escalationBody, fileSecurityIssue } from '../../backend/services/security/escalation.js';
+import { createTempDir } from '../helpers/temp-fs.js';
 
 const THREAT = {
   id: 'th_escalate01', layer: 'software', source: 'secret-sweep', repo: 'neuma',
@@ -39,5 +40,17 @@ describe('escalationBody — the Rule 7 executable issue body', () => {
     expect(body).not.toMatch(/null|undefined/);
     expect(body).toContain('plaintext key shape in env.claude'); // summary fell to the title
     expect(body).toContain('assessment text rides the ledger entry');
+  });
+});
+
+describe('fileSecurityIssue — the CSO-written text is scanned before gh runs', () => {
+  test('an assessment carrying a key shape is refused and nothing is filed', async () => {
+    // Built at runtime so this file never trips the repo's own secret sweep.
+    const fakeKey = ['sk', 'escalationfixture'.repeat(2)].join('-');
+    const cwd = await createTempDir('escalation-refusal');
+    const filed = await fileSecurityIssue({ ...THREAT, assessment: `the key is ${fakeKey}` }, cwd);
+    expect(filed.ok).toBe(false);
+    expect(filed.error).toMatch(/looks like a secret \(openai-key\)/);
+    expect(filed.error).not.toContain(fakeKey);
   });
 });

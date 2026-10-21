@@ -1,5 +1,6 @@
 /* SubstrateApp — the SUBSTRATE HUD. LINE & CYCLE: monochrome at rest, signal
-   marks live data, alert marks failure/heat. Chamfered instrument panels. */
+   marks live data, alert marks failure/heat. Chamfered instrument panels laid
+   on a 12-column console; the instruments' own styles are hud-instruments.css. */
 
 .sub-body {
   height: 100%;
@@ -9,7 +10,9 @@
   color: var(--color-text-secondary);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  /* the console reflows on the WINDOW's width, not the screen's */
+  container-type: inline-size;
 }
 
 /* header — the active model at a glance */
@@ -81,110 +84,74 @@
 .sub-btn.is-primary:hover:not(:disabled) { border-color: var(--signal); box-shadow: 0 0 8px var(--signal-faint); }
 .sub-btn:disabled { opacity: 0.5; cursor: default; }
 
-/* panel grid */
+/* the console — 12 columns; a panel declares its span (sub-panel.jsx) */
 .sub-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--space-3);
 }
-.sub-panel-wide { grid-column: 1 / -1; }
+.sub-span-3 { grid-column: span 3; }
+.sub-span-4 { grid-column: span 4; }
+.sub-span-6 { grid-column: span 6; }
+.sub-span-8 { grid-column: span 8; }
+.sub-span-12 { grid-column: span 12; }
+/* a narrower window pairs the quarter panels, then stacks everything */
+@container (max-width: 1180px) {
+  .sub-span-3 { grid-column: span 6; }
+  .sub-span-4, .sub-span-8 { grid-column: span 12; }
+}
+@container (max-width: 720px) {
+  .sub-span-3, .sub-span-6 { grid-column: span 12; }
+}
 
-.sub-panel { background: transparent; }
+.sub-panel { background: transparent; min-width: 0; }
 .sub-panel-in {
   background: var(--color-glass-light);
   border: var(--border-width-thin) solid var(--line);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  padding: var(--space-3);
   height: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 .sub-panel-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wide);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
-  margin: 0 0 var(--space-1);
+  margin: 0;
+  padding-bottom: var(--space-1);
+  border-bottom: var(--border-width-thin) solid var(--line);
 }
-
-/* a single reading */
-.sub-stat {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.sub-stat-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  letter-spacing: var(--tracking-wide);
-}
-.sub-stat-value {
-  font-size: var(--text-base);
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-.sub-stat-value.is-live { color: var(--signal); }
-.sub-stat-unit {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  margin-left: 2px;
-}
-
-/* meter (VRAM / KV) */
-.sub-kv {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--space-2);
-}
-.sub-kv-pct {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-.sub-meter {
-  height: 6px;
-  background: var(--signal-faint);
+.sub-panel-aside {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
   overflow: hidden;
-}
-.sub-meter-fill {
-  height: 100%;
-  background: var(--signal);
-  /* scaleX, never width: a width transition re-lays-out the page on every
-     frame of every 1.5s poll; a transform stays on the GPU (profiled
-     2026-09-25). */
-  transform-origin: left center;
-  transition: transform 0.4s ease;
-}
-.sub-meter-fill.is-warm { background: var(--alert-dim); }
-.sub-meter-fill.is-hot { background: var(--alert); }
-
-/* adapters */
-.sub-adapters { display: flex; flex-direction: column; gap: 2px; }
-.sub-adapter-list {
-  font-size: var(--text-sm);
-  color: var(--signal-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-/* process list */
-.sub-proc-list, .sub-fail-list {
+/* the RECORD window's cards (GPU share, parallel capacity) speak in the
+   console's tighter data register here */
+.sub-grid .rec-cap { gap: var(--space-2); }
+.sub-grid .rec-line { font-size: 11px; letter-spacing: 0.12em; }
+.sub-grid .rec-sub { font-size: var(--text-sm); }
+.sub-grid .rec-note { font-size: var(--text-xs); line-height: 1.5; color: var(--color-text-tertiary); }
+
+/* failures list */
+.sub-fail-list {
   list-style: none;
   margin: 0; padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
-.sub-proc {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: var(--space-2);
-  align-items: baseline;
-  font-size: var(--text-sm);
-}
-.sub-proc-name { color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub-proc-pid { font-size: var(--text-xs); color: var(--color-text-tertiary); }
-.sub-proc-mem { color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
 
 /* failures feed */
 .sub-fail {

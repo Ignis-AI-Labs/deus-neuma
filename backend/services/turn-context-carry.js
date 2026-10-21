@@ -83,7 +83,8 @@ export const carryForTurn = ({ connection, chatId, turnId, window = null } = {})
  * impure (records the block) — this turn's block body: the clock always, a
  * section only when it changed or its last copy is not on this wire, and a
  * one-line notice for a section that emptied. A later round of the same turn
- * returns the bytes already sent.
+ * returns the bytes already sent. What each section put in the block is held
+ * beside it (bySection), for the gauge.
  * @param {Object} state contextCarryFor's state
  * @param {{turnId: string, turnKey: string, sections: ReadonlyArray<{id: string, label?: string, text: string}>, carried: Set<string>}} args
  * @returns {string} the wrapped block
@@ -93,6 +94,7 @@ const blockForTurn = (state, { turnId, turnKey, sections, carried }) => {
   if (held?.turnKey === turnKey) return held.block;
   const parts = [];
   const standing = [];
+  const bySection = new Map();
   const shown = new Map(state.shown);
   for (const section of sections) {
     const fp = fingerprint(section.text);
@@ -104,10 +106,13 @@ const blockForTurn = (state, { turnId, turnKey, sections, carried }) => {
     }
     if (section.id === 'present' && priorStands) {
       // Its fixed lines still stand where they were last sent: the carrier keeps them.
-      parts.push(changedLines(section.text, prior.text));
+      const moved = changedLines(section.text, prior.text);
+      parts.push(moved);
+      bySection.set(section.id, moved);
       continue;
     }
     parts.push(section.text);
+    bySection.set(section.id, section.text);
     shown.set(section.id, { fp, turnId, label: section.label || section.id, ...(section.id === 'present' ? { text: section.text } : {}) });
   }
   const now = new Set(sections.map((section) => section.id));
@@ -120,7 +125,7 @@ const blockForTurn = (state, { turnId, turnKey, sections, carried }) => {
   const block = wrap(parts.join('\n\n'), carried.size ? CARRY_NOTE_SHORT : CARRY_NOTE);
   state.shown = shown;
   state.byTurn.delete(turnId);
-  state.byTurn.set(turnId, { turnKey, block });
+  state.byTurn.set(turnId, { turnKey, block, bySection });
   return block;
 };
 
@@ -143,8 +148,9 @@ const restoredAsk = (held, rendered) => (typeof held.sent === 'string' && held.s
 
 /**
  * impure — the local wire under the carry: earlier blocks back in front of
- * their own asks, the current ask led by this turn's block. Null when the
- * carry cannot apply (no per-section tail) — the caller keeps the plain law.
+ * their own asks, the current ask led by this turn's block; what it put there
+ * is recorded on the descriptor (carry.wire). Null when the carry cannot
+ * apply (no per-section tail) — the caller keeps the plain law.
  * @param {Array<Object>} messages system + transcript + current turn (+ rounds)
  * @param {{stable: string, volatileSections?: Array}} split the system message's cache split
  * @param {number} at the current turn's index
@@ -155,6 +161,15 @@ export const carriedMessages = (messages, split, at, carry) => {
   const sections = split?.volatileSections;
   if (!Array.isArray(sections) || !sections.length || !carry?.state) return null;
   const { state } = carry;
+  // A RETRY answers a point this chat already carried: the same turnId under
+  // a fresh turnKey. Its old block and the sections it last carried no longer
+  // stand on this wire (the take they rode is being replaced), so the point's
+  // row is not counted as carried and those sections go out whole.
+  const prior = state.byTurn.get(carry.turnId);
+  if (prior && prior.turnKey !== carry.turnKey) {
+    state.byTurn.delete(carry.turnId);
+    for (const [id, shown] of state.shown) if (shown.turnId === carry.turnId) state.shown.delete(id);
+  }
   let rows = [];
   for (let i = 1; i < at; i += 1) {
     const m = messages[i];
@@ -184,10 +199,53 @@ export const carriedMessages = (messages, split, at, carry) => {
     ? [{ type: 'text', text: block }, ...turn.content]
     : `${block}\n\n${turn.content ?? ''}`;
   state.byTurn.get(carry.turnId).sent = typeof turn.content === 'string' ? turn.content : null;
+  // What the carry put on this wire, for the gauge (wireContextSections): the
+  // earlier blocks restored in front of their asks, and this turn's block.
+  carry.wire = Object.freeze({
+    carried: rows.map((i) => `${state.byTurn.get(messages[i].turnId).block}\n\n`).join(''),
+    block: Array.isArray(turn.content) ? block : `${block}\n\n`,
+    bySection: state.byTurn.get(carry.turnId).bySection,
+  });
   return messages.map((message, i) => {
     if (i === 0) return { role: 'system', content: split.stable };
     if (i === at) return { ...turn, content };
     if (restored.has(i)) return { ...message, content: restoredAsk(state.byTurn.get(message.turnId), message.content) };
     return message;
   });
+};
+
+/**
+ * Pure — the gauge's sections as the carried wire holds them. A volatile
+ * section counts only what this turn's block carried of it (an unchanged one
+ * stands in an earlier block and drops out); the block's own frame — its
+ * wrapper, note, standing line and joins — and the earlier turns' blocks
+ * restored in front of their asks are sections of their own, where the
+ * volatile ones begin. Without a recorded carry (any other dialect, the plain
+ * law, the wire not built yet) the sections return untouched.
+ * @param {ReadonlyArray<{id: string, label: string, text: string}>} sections the turn's composition sections
+ * @param {Object} system the turn's system message (messages[0])
+ * @returns {ReadonlyArray<{id: string, label: string, text?: string, chars?: number}>}
+ */
+export const wireContextSections = (sections, system) => {
+  const wire = system?.contextCarry?.wire;
+  const volatile = system?.cacheSplit?.volatileSections;
+  if (!wire || !Array.isArray(volatile)) return sections;
+  const ids = new Set(volatile.map((section) => section.id));
+  const at = sections.findIndex((section) => ids.has(section.id));
+  if (at < 0) return sections;
+  const out = [];
+  let rode = 0;
+  for (const section of sections) {
+    if (!ids.has(section.id)) { out.push(section); continue; }
+    const text = wire.bySection.get(section.id);
+    if (text === undefined) continue;
+    rode += text.length;
+    out.push(text === section.text ? section : Object.freeze({ ...section, text }));
+  }
+  return Object.freeze([
+    ...out.slice(0, at),
+    ...(wire.carried ? [Object.freeze({ id: 'harnessCarry', label: 'HARNESS CONTEXT, EARLIER TURNS', text: wire.carried })] : []),
+    Object.freeze({ id: 'harnessFrame', label: 'HARNESS CONTEXT FRAME', chars: wire.block.length - rode }),
+    ...out.slice(at),
+  ]);
 };

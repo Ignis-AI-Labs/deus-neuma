@@ -47,6 +47,7 @@ import { sessionTailBudgetFor } from './envelope-budget.js';
 import { estimateTokens } from './context-budget.js';
 import { latestTorch, nearContextBoundary, COMPACTION_BOUNDARY_RATIO } from './solo-torch.js';
 import { compactionTelemetry } from '../../core/runtime/session-compactor.js';
+import { clientMemoryContext } from './memory-context.js';
 
 // The parent stream's log lane, kept: these lines are the witness turn path's
 // own record, and readers grep them under the name they have always carried.
@@ -92,10 +93,10 @@ export const buildWitnessTurnContext = async (opts) => {
     if (Array.isArray(sessionRows)) {
       history = foldBranchView(sessionRows)
         .filter((m) => (m.role === 'user' || m.role === 'assistant' || m.compacted === true) && typeof m.content === 'string')
-        // The point persisted at turn START (persistTurnPoint) is the LIVE
-        // ask — it rides as the current turn below, never as its own
-        // history line.
-        .filter((m) => !(take.userRecord && m.role === 'user' && m.turnId === take.turnId));
+        // This turn's point is the LIVE ask — it rides as the current turn
+        // below, never as its own history line; a retry's earlier takes stay
+        // out too, or the fresh take anchors on the answer it replaces.
+        .filter((m) => m.turnId !== take.turnId);
     }
   } catch { /* first turn of a fresh session — nothing to carry */ }
   // The peer's own torch from its last compaction — same pickup law as the
@@ -126,7 +127,7 @@ export const buildWitnessTurnContext = async (opts) => {
     firstUtterance,
     zone: connection.clientTimeZone || null,
     memories: selfTorch ? { ...memories, selfTorch } : memories,
-    witnessName: message?.memoryContext?.userName || null,
+    witnessName: clientMemoryContext(message?.memoryContext).userName || null,
     tools: runtime.tools,
     nativeToolsOnWire: Boolean(routeCapabilities.tools && runtime.tools.length),
     // THE CRAFT — the same library a neuma reads, from the one read the

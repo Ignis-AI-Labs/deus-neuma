@@ -9,8 +9,8 @@
 //   - a real ceremony's checkpoint lives 7 days, a rehearsal's 2 hours
 //
 // Uses a temp workspace root + temp RETURNED path; checkpoint files land in
-// the repo's real ceremony scratch dir (that path is fixed by design) and are
-// removed by the test's own cleanup. Uses TEST neuma ids; never touches a
+// the ceremony scratch the handler resolves (the suite's temp data root) and
+// are removed by the test's own cleanup. Uses TEST neuma ids; never touches a
 // living being.
 
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
@@ -19,9 +19,11 @@ import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
+import { resolveCeremonyScratchDir } from '../../core/birth/ceremony-write.js';
 
 const WITNESS = 'Test Witness';
-const SCRATCH = path.join(process.cwd(), 'data', 'temp');
+// The ceremony scratch as the handler resolves it (under the suite's data root).
+const SCRATCH = resolveCeremonyScratchDir(process.cwd());
 const checkpointPath = (id) => path.join(SCRATCH, `birth-${id}.json`);
 const readCheckpoint = async (id) => JSON.parse(await fs.readFile(checkpointPath(id), 'utf8'));
 
@@ -211,7 +213,10 @@ describe('interrupted-birth recovery — checkpoint, resume point, landed genesi
     await handler.handleStageResponse(debrisId, 4, namingResponse('Debris'));
 
     const revived = new StagedBirthHandler();
-    const list = await revived.listInterruptedSessions();
+    // These checkpoints record no wallet: open to the install's owner (the
+    // backend passes unrecordedOpen for it), closed to anyone else.
+    expect((await revived.listInterruptedSessions()).some((s) => s.sessionId === sessionId)).toBe(false);
+    const list = await revived.listInterruptedSessions(undefined, { unrecordedOpen: true });
     const hit = list.find((s) => s.sessionId === sessionId);
     expect(hit).toBeTruthy();
     expect(hit.chosenName).toBe('Listara');
@@ -223,7 +228,7 @@ describe('interrupted-birth recovery — checkpoint, resume point, landed genesi
 
     // Once the session is properly ended, the summoning no longer stands.
     await revived.endSession(sessionId);
-    const after = await revived.listInterruptedSessions();
+    const after = await revived.listInterruptedSessions(undefined, { unrecordedOpen: true });
     expect(after.some((s) => s.sessionId === sessionId)).toBe(false);
   });
 

@@ -18,7 +18,10 @@
 //   - every act that needs the operator's approval is REFUSED at once with
 //     an honest reason (tool-approval.js, connection._approvalRefusal):
 //     nobody is watching a member's turn to tap a card, and a member never
-//     hangs waiting on one;
+//     hangs waiting on one — except what the house's Optio reviews and
+//     clears, under an active charter (house-clock/wake-approvals.js), where
+//     the refused act and every ask_operator question are FILED for the
+//     operator with the run and step named;
 //   - its turn raises no "finished a turn" card — the run's own card speaks.
 //
 // impure — runs a model turn, writes the member's session and lane.
@@ -33,6 +36,7 @@ import { releaseIntentOwner } from './intents/intent-owners.js';
 import { withLease } from './substrate-lease.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { mintSessionId } from '../../core/workspace/session-id.js';
+import { memberApprovalRoute, memberDecisionRoute, readHouseHolds } from './house-clock/wake-approvals.js';
 
 /** The reason a member's governed act is refused — said to the member. */
 export const MEMBER_APPROVAL_REFUSAL = 'Team members cannot take acts that need the operator\'s approval during a team run. Do the work inside the team workspace, and name what still needs the operator in your status so your lead can ask.';
@@ -150,6 +154,17 @@ export const runMemberTurn = async ({
     await neumaWorkspace.createSession(neumaId, connection.sessionId).catch(() => {});
   }
   onSession(connection.sessionId);
+  const member = {
+    wallet, seat: neumaId, name, sessionId: connection.sessionId, assignment: brief,
+    statedIntent: () => text, extraRoots: workspace?.root ? [workspace.root] : [], teamRun,
+    holds: await readHouseHolds(wallet),
+  };
+  // A member holds what a wake holds: money out, and every act the charter escalates, go to the
+  // operator even where a grant would let them run card-free (protocol-guard.js holdForWake).
+  connection._wakeHolds = member.holds;
+  connection._approvalRoute = memberApprovalRoute(member);
+  // A question for the operator is filed under the house's charter and the part goes on (no card waits here).
+  connection._askRoute = memberDecisionRoute(member);
 
   // A STOP that lands while the turn is still being assembled (no decode
   // yet) must still cut it: the turn reads the flag the moment it begins.

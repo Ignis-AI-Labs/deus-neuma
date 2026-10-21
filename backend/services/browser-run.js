@@ -8,6 +8,7 @@
 
 import { getAppConfig } from '../config.js';
 import { assertSafeWebTarget } from './web-guard.js';
+import { serviceValue } from './stored-secrets.js';
 
 const API_ROOT = 'https://api.cloudflare.com';
 const MAX_BYTES = 1_000_000;
@@ -15,15 +16,14 @@ const TIMEOUT_MS = 20_000;
 
 /** Resolve Browser Run credentials without making import order a boot hazard. */
 export const browserRunConfig = () => {
-  try {
-    const config = getAppConfig();
-    return Object.freeze({
-      accountId: String(config.cloudflareAccountId || ''),
-      apiToken: String(config.cloudflareApiToken || ''),
-    });
-  } catch {
-    return Object.freeze({ accountId: '', apiToken: '' });
-  }
+  // Saved in Settings → API wins; the env-loaded config is the fallback.
+  const saved = { accountId: serviceValue('cloudflare-account', {}), apiToken: serviceValue('cloudflare-token', {}) };
+  let config = {};
+  try { config = getAppConfig(); } catch { /* config unloaded: only saved values apply */ }
+  return Object.freeze({
+    accountId: saved.accountId || String(config.cloudflareAccountId || ''),
+    apiToken: saved.apiToken || String(config.cloudflareApiToken || ''),
+  });
 };
 
 /** Pure readiness check; secrets never leave the boolean. */

@@ -69,6 +69,14 @@ const seatContext = async (connection) => {
   return { root, seat, neumaId, actorName: connection.companion?.name || neumaId };
 };
 
+// pure — the refusal for a closed charge. A blocked one is closed too, and the
+// way on is said: the work that remains is a fresh charge (staff/dispatch).
+const closedRefusal = (id, status) => ({
+  ok: false,
+  status: 'invalid',
+  reason: `charge '${id}' is already ${status} — a closed charge does not move${status === 'blocked' ? '; for the work that remains, file a fresh charge (staff/dispatch)' : ''}`,
+});
+
 export const staffDispatchIntent = Object.freeze({
   name: 'staff/dispatch',
   policyTool: 'staff.dispatch',
@@ -126,7 +134,7 @@ export const staffDispatchIntent = Object.freeze({
     });
     const boardLanded = await fileEntry(context.root, boardEntry);
     const landed = await fileDispatch(context.neumaId, { ...charge, postId: post.id, boardId: boardLanded.id });
-    // THE TRAIL (Design note, 2026-09-15: the operator sees the dispatch the moment
+    // THE TRAIL (ruling, 2026-09-15): the operator sees the dispatch the moment
     // it is filed — who was commanded, what, and by which office.
     try {
       notifyOperator({
@@ -165,9 +173,9 @@ export const staffDispatchUpdateIntent = Object.freeze({
     if (payload?.status === undefined && payload?.note === undefined) {
       return { ok: false, status: 'invalid', reason: 'a charge update moves something — carry {status}, {note}, or both' };
     }
-    if (charge.status !== 'dispatched') {
-      return { ok: false, status: 'invalid', reason: `charge '${id}' is already ${charge.status} — a closed charge does not move` };
-    }
+    // Only a CLOSED charge stands still; one its holder acked (received, working) is still the office's to note,
+    // block, withdraw or close (2026-10-17 flight: the Optio could not move a charge once it was acked).
+    if (TERMINAL_DISPATCH_STATUSES.includes(charge.status)) return closedRefusal(id, charge.status);
     return { ok: true, value: { laneId: context.neumaId, id, status: payload?.status, note: payload?.note } };
   },
 
@@ -218,9 +226,7 @@ export const staffAckIntent = Object.freeze({
     if (!charge) {
       return { ok: false, status: 'invalid', reason: `charge '${id}' is not in the office's drawer — the id came with the dispatch post` };
     }
-    if (TERMINAL_DISPATCH_STATUSES.includes(charge.status)) {
-      return { ok: false, status: 'invalid', reason: `charge '${id}' is already ${charge.status} — a closed charge does not move` };
-    }
+    if (TERMINAL_DISPATCH_STATUSES.includes(charge.status)) return closedRefusal(id, charge.status);
     if (charge.to !== context.neumaId) {
       return { ok: false, status: 'denied', reason: `charge '${id}' is dispatched to ${charge.to} — only its holder acks it` };
     }

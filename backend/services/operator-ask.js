@@ -45,7 +45,7 @@ export const isAskTool = (match) =>
 
 /** What the being reads when nobody answered — honest, never a fabricated
  *  reply, and it names the path forward. Keyed by settle status. There is no
- *  `timeout` key: the ask carries no clock (Design note, 2026-07-27 — interrupt and
+ *  `timeout` key: the ask carries no clock (ruling, 2026-07-27) — interrupt and
  *  portal close are the only unanswered endings left. */
 export const ASK_UNANSWERED = Object.freeze({
   interrupted: 'The turn was interrupted before your operator answered.',
@@ -311,6 +311,16 @@ export const handleAskOperator = async (connection, args) => {
   const ask = normalizeAsk(args);
   if (!ask) {
     return { tool, status: 'error', error: 'ask_operator needs args {questions: [{question, options?}]} — at least one non-empty question. A single question may also be sent as {question, options}.' };
+  }
+
+  // HOUSE WORK (a wake, a team member's turn) never waits on a card nobody is
+  // watching: its route files each question for the operator as a decision and
+  // the turn goes on at once (house-clock/wake-approvals.js). Choices are the
+  // asker's to offer there — the operator answers in their own words.
+  if (connection._askRoute) {
+    const filed = await connection._askRoute(ask.questions)
+      .catch((err) => { log.error('a house decision could not be filed', { error: err.message }); return null; });
+    return { tool, status: 'ok', content: filed || ASK_UNANSWERED.absent };
   }
 
   // The chooser is only a chooser if there is something to choose. A bare

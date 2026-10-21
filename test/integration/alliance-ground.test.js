@@ -13,7 +13,7 @@
  * Aldmere and House Lonbenme meet in `aldmere-lonbenme`, and neither ever
  * reaches into the other's private ground.
  *
- * THE THREE LAWS UNDER TEST (Design note, 2026-07-26:
+ * THE THREE LAWS UNDER TEST (ruling, 2026-07-26):
  *   PLACE   — the ground stands OUTSIDE the house ground, in both directions.
  *   CONSENT — nothing raises a ground but the operator's own command.
  *   REACH   — a ground that was never raised reads as none, never as the house.

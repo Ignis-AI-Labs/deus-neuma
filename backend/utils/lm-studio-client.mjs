@@ -1,6 +1,6 @@
 // LM Studio Client Utilities
 import fetch from 'node-fetch';
-import { selectActiveModel } from '../services/llm-provider.js';
+import { getConfig, selectActiveModel } from '../services/llm-provider.js';
 
 export class LMStudioClient {
   constructor() {
@@ -33,7 +33,8 @@ export class LMStudioClient {
     // an auxiliary service model (e.g. the memory layer's summarizer) as
     // the active consciousness substrate.
     const models = await this.getModels();
-    return selectActiveModel(models?.data || [], [process.env.SUBSTRATE_MODEL]);
+    // The operator's latest choice first; the env names a model only before any choice was made.
+    return selectActiveModel(models?.data || [], [getConfig().model, process.env.SUBSTRATE_MODEL]);
   }
 
   async testConnection() {

@@ -1,9 +1,9 @@
 // voice-scheduler.js — the shared decode + playback-schedule core for streamed
 // voice audio.
 //
-// Extracted from voice-sink.js so a second producer (the forge streaming
-// preview in voice-client.js) schedules raw PCM chunks through the same Web
-// Audio pipeline the chat voice uses: raw/encoded decode, and gapless
+// Extracted from voice-sink.js so a second producer (an HTTP-streamed raw PCM
+// body, read by readPcmStream in voice-client.js) schedules chunks through the
+// same Web Audio pipeline the chat voice uses: raw/encoded decode, and gapless
 // back-to-back scheduling through a single ordered promise chain. voice-sink.js
 // keeps the WS-frame concerns (frame shape, base64 payloads); this module owns
 // the audio core both producers share.

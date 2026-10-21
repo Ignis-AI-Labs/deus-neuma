@@ -5,7 +5,7 @@
 # app-data dir, so nothing user-specific is bundled.
 #
 # NOTES:
-#   - native modules (node-pty, onnxruntime-node, better-sqlite3) must load
+#   - native modules (node-pty, better-sqlite3) must load
 #     from outside the asar — listed under asarUnpack.
 #   - run `npm run build` first so dist/ exists before packaging
 #     (`npm run dist:linux` does both).
@@ -72,6 +72,15 @@ files:
   # samples' licence forbids redistributing them raw.
   - "!dist/sounds/**"
 
+# The app's OWN dependency record, so an installed app's security watch can
+# check what it ships (advisory-scan.js via app-inventory.js reads
+# <resources>/package-lock.json). It cannot ride `files:` above:
+# electron-builder appends its default exclusions (package-lock.json among
+# them) after every user pattern there, and the last match wins.
+extraResources:
+  - from: package-lock.json
+    to: package-lock.json
+
 # NO asar — the backend runs as a SPAWNED Node child (ELECTRON_RUN_AS_NODE),
 # and a plain-Node child cannot read inside an asar archive (spawn ENOTDIR:
 # cwd/script paths inside app.asar are not real directories). Every tree the
@@ -115,6 +124,12 @@ win:
 linux:
   category: Utility
   executableName: neuma
+  # The desktop entry's arguments. --no-sandbox is electron-builder's own
+  # AppImage default, which a set value replaces; the display flag keeps the
+  # desk on X11 / XWayland (electron/display-flags.cjs).
+  executableArgs:
+    - --no-sandbox
+    - --ozone-platform=x11
   synopsis: Sovereign relationships with AI.
   desktop:
     Name: Deus Neuma

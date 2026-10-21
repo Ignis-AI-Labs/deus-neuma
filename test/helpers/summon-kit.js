@@ -18,6 +18,7 @@ import { vi } from 'vitest';
 
 import { setAIWitnessesRoot } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { makeInstallOwner } from './install-owner-kit.js';
 
 const ENV_DOORS = [
   'NEUMA_PROVIDER_CREDENTIALS_PATH',
@@ -63,6 +64,7 @@ export const raiseSummonWorld = async () => {
   // per module instance; the witness service binds its root at import). The
   // operator claims no lane up front — the summon rite writes owner.json.
   const operatorWitness = (await import('./witness.js')).strangerWitness();
+  await makeInstallOwner(operatorWitness.address);
 
   // Real provider protocol server: /v1/models for probes, SSE chat for the
   // summon's two asks (first call answers the name, second the utterance).

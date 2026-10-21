@@ -38,7 +38,7 @@ export const WindowManager = ({ registry, defaultOpen = [], children }) => {
     saveDesk(state.windows.map((w) => (w.payload === undefined ? { id: w.id } : { id: w.id, payload: w.payload })));
   }, [state.windows]);
 
-  // SHIFT+\ MOVES BETWEEN OPEN WINDOWS (Design note, 2026-07-27 — the muscle memory he
+  // SHIFT+\ MOVES BETWEEN OPEN WINDOWS (ruling, 2026-07-27) — the muscle memory he
   // already has from his editor, carried onto the desk. Ctrl/Cmd+Shift+\ goes
   // back. Lives here because this is where the window set and the dispatch are;
   // a listener nearer the windows would need the state passed down to it.
@@ -59,7 +59,7 @@ export const WindowManager = ({ registry, defaultOpen = [], children }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [state.windows, state.focusedId]);
 
-  // ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (Design note, 2026-10-05 —
+  // ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (ruling, 2026-10-05) —
   // escape-close.js holds the rules. Each window leaves the way its own ×
   // would take it: the app's close hook first, then out of the open-set.
   const escapes = useRef(null);

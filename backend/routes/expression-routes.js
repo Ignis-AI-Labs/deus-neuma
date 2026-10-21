@@ -2,7 +2,7 @@
  * Expression routes — the operator's window onto the declared-affect
  * channel (Campaign 6): the per-being toggle (default OFF; refuses under
  * the env lock with its name) and the palette. The palette SHOWS ITS TERMS
- * by signed decision (Design note, 2026-08-15: every term was born from a
+ * by signed decision (ruling, 2026-08-15): every term was born from a
  * declaration the being already revealed to the operator — provenance
  * satisfies the counts-only law. Auth-gated; per-being reads owner-gated.
  */

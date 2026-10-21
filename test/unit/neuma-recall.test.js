@@ -7,6 +7,11 @@
  * mocked data path (CLAUDE.md: verify against the real store).
  */
 
+import { spawnSync } from 'child_process';
+import { writeFile } from 'fs/promises';
+import { createRequire } from 'module';
+import path from 'path';
+import { pathToFileURL } from 'url';
 import { createTempDir } from '../helpers/temp-fs.js';
 import {
   observationToText,
@@ -312,5 +317,28 @@ describe('isValidAt (point-in-time validity)', () => {
   test('null doc invalid; unparseable asOf never hides memory', () => {
     expect(isValidAt(null, at)).toBe(false);
     expect(isValidAt({ occurredAt: '2026-06-01T00:00:00Z', invalidatedAt: '2026-06-05T00:00:00Z' }, 'not-a-date')).toBe(true);
+  });
+});
+
+describe('importing neuma-recall never loads a .env', () => {
+  // natural's package root pulls in its storage adapters, which call dotenv at
+  // import - any process reaching recall absorbed whatever .env sat in its cwd.
+  const SENTINEL = 'NEUMA_RECALL_DOTENV_SENTINEL';
+  const importIn = (cwd, specifier) => {
+    const env = { ...process.env };
+    delete env[SENTINEL];
+    const script = `await import(${JSON.stringify(specifier)}); process.stdout.write(process.env.${SENTINEL} ?? 'unset');`;
+    return spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd, env, encoding: 'utf8' });
+  };
+
+  test('a real child importing recall from a dir holding a .env keeps the sentinel unset', async () => {
+    const dir = await createTempDir('recall-no-dotenv');
+    await writeFile(path.join(dir, '.env'), `${SENTINEL}=leaked\n`);
+    const control = importIn(dir, pathToFileURL(createRequire(import.meta.url).resolve('dotenv/config')).href);
+    expect(control.stdout).toBe('leaked');
+    const recall = importIn(dir, new URL('../../core/memory/neuma-recall.js', import.meta.url).href);
+    expect(recall.stderr).toBe('');
+    expect(recall.status).toBe(0);
+    expect(recall.stdout).toBe('unset');
   });
 });

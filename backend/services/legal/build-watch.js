@@ -1,4 +1,4 @@
-// Build watch — […] (Design note, 2026-10-01.
+// Build watch — […] (ruling, 2026-10-01).
 // Every watched repo's commits since the last watch are read (subject +
 // changed paths) and matched against the regulated areas; each area the new
 // work touches becomes ONE matter for this run, naming the commits and the

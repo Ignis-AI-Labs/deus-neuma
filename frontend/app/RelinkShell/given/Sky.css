@@ -1,0 +1,188 @@
+/* Sky.css — 01·C SKY (SkyPlate.jsx) and every sky instrument (SkyRings.jsx,
+   SkyGlyphs.jsx; the soul's octave and the seal's fingerprint borrow them).
+   Instruments are hairline drawings in the CYCLE register: the cycle at rest
+   in ink, the being's own place in its soul's light (--soul), breathing
+   slowly — a cycle breathes, structure snaps. Reduced motion holds still.
+   Captions state true counts (SHINKEI). */
+
+/* THE PAGE — the atlas, the plate, the guide */
+.gv-sky { display: grid; grid-template-columns: 196px minmax(0, 1fr) 312px; gap: 26px; align-items: start; }
+/* the atlas scrolls in its own frame, held under the tab strip — forty-odd skies never stretch the page */
+.gv-atlas {
+  position: sticky;
+  top: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: var(--gv-fit, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-hover) transparent;
+  padding-right: 4px;
+}
+.gv-atlas-instant { margin: 0 0 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line); font-size: .6875rem; letter-spacing: .14em; line-height: 1.7; color: var(--color-text-secondary); }
+.gv-atlas-region { display: flex; flex-direction: column; }
+.gv-atlas-h { margin: 0 0 4px; font-size: .625rem; letter-spacing: .22em; color: var(--color-text-tertiary); }
+.gv-atlas-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px 7px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--snap), color var(--snap);
+}
+.gv-atlas-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--signal);
+  opacity: 0;
+  transform: scaleY(0);
+  transition: opacity var(--dur-snap, 160ms) linear, transform var(--dur-snap, 160ms) var(--ease-snap, ease-out);
+}
+.gv-atlas-item:hover { background: var(--color-glass-hover); }
+.gv-atlas-item:focus-visible { outline: 1px solid var(--signal-dim); outline-offset: -1px; }
+.gv-atlas-item.is-on { background: rgba(255, 255, 255, .035); }
+.gv-atlas-item.is-on::before { opacity: 1; transform: scaleY(1); }
+.gv-atlas-name { font-family: var(--font-voice); font-size: .875rem; color: var(--color-text-primary); }
+.gv-atlas-item.is-on .gv-atlas-name { color: var(--signal); }
+.gv-atlas-kicker { font-size: .625rem; letter-spacing: .14em; color: var(--color-text-tertiary); }
+
+.gv-sky-plate { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.gv-plate-h { display: flex; flex-direction: column; gap: 6px; }
+.gv-plate-kicker { font-size: .6875rem; letter-spacing: .2em; color: var(--signal-dim); }
+.gv-plate-title { margin: 0; font-family: var(--font-voice); font-weight: 300; font-size: 1.375rem; letter-spacing: .05em; color: var(--color-text-primary); }
+.gv-instrument {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 22px 18px 16px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--soul, #5fe9ff) 7%, transparent), transparent 62%),
+    rgba(0, 0, 0, .18);
+}
+/* the corner brackets every instrument sits in */
+.gv-instrument::before, .gv-instrument::after { content: ''; position: absolute; width: 12px; height: 12px; pointer-events: none; }
+.gv-instrument::before { top: -1px; left: -1px; border-top: 1px solid var(--line-hover); border-left: 1px solid var(--line-hover); }
+.gv-instrument::after { bottom: -1px; right: -1px; border-bottom: 1px solid var(--line-hover); border-right: 1px solid var(--line-hover); }
+.gv-reading { margin: 0; padding: 12px 14px; border-left: 2px solid var(--soul, var(--signal-dim)); font-family: var(--font-voice); font-size: .9375rem; line-height: 1.65; color: var(--color-text-primary); }
+
+/* THE INSTRUMENTS */
+.ski { display: block; width: 100%; max-width: 460px; height: auto; overflow: visible; }
+.ski-grid { max-width: 100%; }
+.ski-line { fill: none; stroke: var(--line-hover); stroke-width: 1; }
+.ski-faint { stroke: var(--line); }
+.ski-tick { stroke: var(--line); stroke-width: .75; }
+.ski-cell { fill: rgba(255, 255, 255, .025); stroke: var(--line); stroke-width: .6; }
+.ski-cell.is-near { fill: color-mix(in srgb, var(--soul, #5fe9ff) 16%, transparent); }
+.ski-cell.is-sun { fill: rgba(255, 255, 255, .08); }
+.ski-cell.is-moon { fill: rgba(255, 255, 255, .14); stroke: var(--color-text-primary); }
+.ski-cross { fill: color-mix(in srgb, var(--soul, #5fe9ff) 7%, transparent); }
+.ski-lit { fill: var(--soul, var(--signal)); filter: drop-shadow(0 0 5px var(--soul, var(--signal))); animation: ski-breathe 4.8s ease-in-out infinite; }
+@keyframes ski-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+.ski-hand { stroke: var(--soul, var(--signal)); stroke-width: 1; opacity: .65; }
+.ski-dot { fill: var(--color-text-primary); }
+.ski-dot.is-bright { fill: #fff; filter: drop-shadow(0 0 5px #fff); }
+.ski-earth { fill: var(--color-text-secondary); }
+.ski-chord { stroke: rgba(255, 255, 255, .3); stroke-width: .8; }
+.ski-chord.is-tense { stroke-dasharray: 3 3; }
+.ski-moon-dark { fill: #0b0f14; stroke: rgba(255, 255, 255, .35); stroke-width: .6; }
+.ski-moon-lit { fill: #e8ecf1; }
+.ski-moon-lit.is-on { fill: var(--soul, #e8ecf1); }
+.ski-ring-on { fill: none; stroke: var(--soul, var(--signal)); stroke-width: 1; }
+.ski-label { font-family: var(--font-data); font-size: 11px; letter-spacing: .1em; fill: var(--color-text-secondary); }
+.ski-label.is-small { font-size: 9.5px; fill: var(--color-text-tertiary); }
+.ski-label.is-tiny { font-size: 8.5px; fill: var(--color-text-tertiary); }
+.ski-label.is-on { fill: var(--soul, var(--signal)); }
+/* a lit label drawn inside its own lit cell is cut out of the light, not lost in it */
+.ski-label.is-on.is-in { fill: #07090b; font-weight: 600; }
+.ski-mark { font-family: var(--font-data); font-size: 9.5px; letter-spacing: .08em; fill: var(--color-text-primary); }
+.ski-big { font-family: var(--font-voice); font-weight: 300; font-size: 21px; letter-spacing: .05em; fill: var(--color-text-primary); }
+.ski-shell { fill: none; stroke: var(--soul, var(--signal)); stroke-width: 3; }
+
+/* the Long Count — numerals as the monuments wrote them */
+.ski-lc { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 420px; margin: 0; padding: 0; list-style: none; }
+.ski-lc-row { display: grid; grid-template-columns: 56px 44px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.ski-numeral { width: 56px; height: 56px; }
+.ski-lc-n { font-family: var(--font-data); font-weight: 200; font-size: 1.75rem; color: var(--color-text-primary); text-align: right; }
+.ski-lc-name { font-size: .75rem; letter-spacing: .18em; color: var(--color-text-primary); }
+.ski-lc-unit { font-size: .6875rem; letter-spacing: .1em; color: var(--color-text-tertiary); }
+
+/* the four pillars — characters as they are written; the Day Master lit */
+.ski-pillars { display: flex; flex-direction: column; align-items: center; gap: 22px; width: 100%; }
+.ski-pillar-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 480px; }
+.ski-pillar { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border: 1px solid var(--line); }
+.ski-pillar.is-master { border-color: var(--soul, var(--signal)); box-shadow: 0 0 18px -6px var(--soul, var(--signal)); }
+.ski-pillar-name { font-size: .6875rem; letter-spacing: .2em; color: var(--color-text-secondary); }
+.ski-pillar-glyph { font-size: 2.5rem; line-height: 1.15; color: var(--color-text-primary); }
+.ski-pillar.is-master .ski-pillar-glyph:first-of-type { color: var(--soul, var(--signal)); }
+.ski-pillar-sub { font-size: .625rem; letter-spacing: .08em; color: var(--color-text-tertiary); text-align: center; text-transform: uppercase; }
+.ski-hexagram { display: grid; grid-template-columns: 64px auto; grid-template-rows: auto auto auto; column-gap: 16px; align-items: center; }
+.ski-hex { grid-row: 1 / span 3; width: 64px; }
+.ski-hexagram-n { font-family: var(--font-data); font-weight: 200; font-size: 1.5rem; color: var(--color-text-primary); }
+.ski-hexagram-name { font-size: .8125rem; letter-spacing: .1em; color: var(--color-text-primary); }
+.ski-hexagram-sub { font-size: .625rem; letter-spacing: .14em; color: var(--color-text-tertiary); }
+
+/* the Dreamspell — the board, and the oracle cross beside it */
+.ski-pair { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 22px; align-items: center; width: 100%; }
+.ski-oracle { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: '. guide .' 'antipode destiny analog' '. occult .'; gap: 6px; }
+.ski-oracle-cell { display: flex; flex-direction: column; gap: 3px; padding: 8px 6px; border: 1px solid var(--line); text-align: center; }
+.ski-oracle-cell.is-guide { grid-area: guide; }
+.ski-oracle-cell.is-antipode { grid-area: antipode; }
+.ski-oracle-cell.is-destiny { grid-area: destiny; border-color: var(--soul, var(--signal)); }
+.ski-oracle-cell.is-analog { grid-area: analog; }
+.ski-oracle-cell.is-occult { grid-area: occult; }
+.ski-oracle-cell .label-data { font-size: .5625rem; letter-spacing: .16em; color: var(--color-text-tertiary); }
+.ski-oracle-v { font-family: var(--font-voice); font-size: .75rem; line-height: 1.3; color: var(--color-text-primary); }
+
+@media (prefers-reduced-motion: reduce) { .ski-lit { animation: none; } }
+
+/* Narrower files — the guide drops beneath, then the atlas rises above */
+@container gv (max-width: 1120px) {
+  .gv-sky { grid-template-columns: 164px minmax(0, 1fr) 272px; gap: 20px; }
+}
+/* below that, the guide sits right under the plate it explains — never past the whole atlas */
+@container gv (max-width: 940px) {
+  .gv-sky { grid-template-columns: 164px minmax(0, 1fr); grid-template-areas: 'atlas plate' 'atlas guide'; }
+  .gv-atlas { grid-area: atlas; }
+  .gv-sky-plate { grid-area: plate; }
+  .gv-sky > .gv-guide { grid-area: guide; position: static; }
+}
+@container gv (max-width: 720px) {
+  .gv-sky { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'atlas' 'plate' 'guide'; }
+  .gv-atlas { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; max-height: min(var(--gv-fit, 640px), 300px); }
+  .gv-atlas-instant { grid-column: 1 / -1; }
+  .ski-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* the place's horizon and meridian across the wheel */
+.ski-axis { stroke: var(--soul, var(--signal)); stroke-width: .9; opacity: .55; }
+
+/* the place — the witness's own exact place */
+.gv-place-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px 16px; border: 1px dashed var(--line-hover); }
+.gv-place-form label { display: flex; flex-direction: column; gap: 4px; font-size: .6875rem; letter-spacing: .14em; color: var(--color-text-tertiary); }
+.gv-place-form input { width: 9.5em; min-height: 32px; padding: 0 8px; background: transparent; border: none; box-shadow: inset 0 -1px 0 var(--line-hover); font-family: var(--font-data); font-size: .875rem; color: var(--color-text-primary); }
+.gv-place-form input:focus { outline: none; box-shadow: inset 0 -1px 0 var(--signal); }
+.gv-place-form .gv-place-label input { width: 14em; font-family: var(--font-voice); }
+.gv-place-note { flex: 1 1 100%; margin: 0; font-size: .6875rem; letter-spacing: .12em; line-height: 1.6; color: var(--color-text-tertiary); }
+.gv-place-error { flex: 1 1 100%; margin: 0; font-size: .75rem; color: var(--alert); }
+
+/* a sky its record predates, read from the same sealed instant by today's engine */
+.gv-fresh { margin: 0; font-size: .6875rem; letter-spacing: .14em; color: var(--color-text-tertiary); }
+.ski-loshu { max-width: 240px; }
+.ski-big.is-dark { fill: #05070a; }
+.ski-chart { max-width: 420px; }
+.ski-timeline { max-width: 100%; }
+.ski-mark.is-on { fill: var(--soul, var(--signal)); }

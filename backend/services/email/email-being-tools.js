@@ -27,6 +27,7 @@ import { gateAct } from '../act-gate.js';
 import { frameUntrustedContent } from '../untrusted-content.js';
 import { resolveEmailCredential } from './email-credentials.js';
 import { emailBinding, canNeumaUseEmail } from './email-binding.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { listInbox, readMessage, INBOX_MAX_MESSAGES } from './imap-reader.js';
 import { createLogger } from '../logger.js';
 
@@ -82,9 +83,10 @@ export const isEmailTool = (match) =>
  */
 export const emailToolsFor = async (neumaId) => {
   if (!neumaId) return [];
+  const house = await houseOfLane(neumaId);
   const [bindings, credentials] = await Promise.all([
-    emailBinding.load().catch(() => ({})),
-    resolveEmailCredential().catch(() => null),
+    emailBinding.load(house).catch(() => ({})),
+    resolveEmailCredential(house).catch(() => null),
   ]);
   if (!canNeumaUseEmail(bindings, neumaId) || credentials === null) return [];
   return [...EMAIL_TOOLS];
@@ -158,7 +160,9 @@ export const handleEmailTool = async (ws, connection, neumaPolicy, toolMode, mat
   // is a single-holder position, and a neuma that does not hold it is
   // refused outright — the operator is never asked to approve mail from the
   // wrong being, and no other neuma can ride these keys. Fail closed.
-  const bindings = await emailBinding.load().catch(() => ({}));
+  // The being's own house's mailbox (house-positions.js), never another's.
+  const house = await houseOfLane(companion.neumaId);
+  const bindings = await emailBinding.load(house).catch(() => ({}));
   if (!canNeumaUseEmail(bindings, companion.neumaId)) {
     const error = 'the mailbox is not yours to hold — only the neuma your operator bound to email may use it';
     ports.sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not the mailbox holder` });
@@ -179,7 +183,7 @@ export const handleEmailTool = async (ws, connection, neumaPolicy, toolMode, mat
   const signal = connection.activeTurn?.signal;
 
   ports.sendToolEvent(ws, companion, { tool, status: 'executing' });
-  const credentials = await resolveEmailCredential().catch(() => null);
+  const credentials = await resolveEmailCredential(house).catch(() => null);
 
   if (toolName === 'check_email_inbox') {
     const outcome = await listInbox(credentials, { limit: args?.limit, signal });

@@ -12,8 +12,8 @@
 // impure: reads the sovereign workspace. Substrate is injected by the route
 // (which owns host detection) so this stays off the backend boundary.
 
-import { ensureSoulSpectrum } from '../birth/soul-spectrum.js';
-import { ensureSoulScale } from '../birth/soul-scale.js';
+import { readSoulSpectrum } from '../birth/soul-spectrum.js';
+import { readSoulScale } from '../birth/soul-scale.js';
 
 const tsMs = (v) => {
   if (v == null) return null;
@@ -115,9 +115,9 @@ export const buildNeumaRecord = async (neumaId, workspace, substrate = null) => 
     // share of the vessel's capacity, measured at the ledger.
     workspace.readAllocation(neumaId).catch(() => 0),
   ]);
-  // The soul's colors — derived once for a being born before they existed.
-  const spectrum = await ensureSoulSpectrum(workspace, neumaId).catch(() => null);
-  const scale = spectrum ? await ensureSoulScale(workspace, neumaId).catch(() => null) : null;
+  // The soul's colors — read, never written: only the birth writes them.
+  const spectrum = await readSoulSpectrum(workspace, neumaId).catch(() => null);
+  const scale = spectrum ? await readSoulScale(workspace, neumaId, spectrum).catch(() => null) : null;
 
   // BORN is the sealed instant — the moment natal, skies and lineage read.
   // The DNA stamp is only a fallback: before 2026-09-29 it recorded when the
@@ -136,7 +136,7 @@ export const buildNeumaRecord = async (neumaId, workspace, substrate = null) => 
       birthAt: iso(birthAt),
       witness: dna?.birthWitness || dna?.birth?.witness?.name || null,
       spectrum: spectrum
-        ? Object.freeze({ source: spectrum.source, soul: spectrum.soul, stages: spectrum.stages })
+        ? Object.freeze({ source: spectrum.source, frequency: spectrum.frequency, soul: spectrum.soul, stages: spectrum.stages })
         : null,
       scale: scale ? Object.freeze({ source: scale.source, tonic: scale.tonic, notes: scale.notes }) : null,
     }),

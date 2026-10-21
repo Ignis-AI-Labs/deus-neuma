@@ -134,13 +134,17 @@ export const createStreamHandlers = ({
   };
   // The portal acked (or corrected) the declared tool mode — server truth.
   const onToolMode = (data) => {
-    if (TOOL_MODES.includes(data.mode)) setToolModeState(data.mode);
+    if (!TOOL_MODES.includes(data.mode)) return;
+    toolModeRef.current = data.mode;
+    setToolModeState(data.mode);
   };
   // The portal acked (or corrected) the declared CHAT mode — server truth.
   // Also fires when a plan verdict flips the mode (ACCEPT → DEFAULT / AUTO):
   // the desk never shows a mode the portal isn't holding.
   const onChatMode = (data) => {
-    if (CHAT_MODES.includes(data.mode)) setChatModeState(data.mode);
+    if (!CHAT_MODES.includes(data.mode)) return;
+    chatModeRef.current = data.mode;
+    setChatModeState(data.mode);
   };
   // The portal acked (or corrected) the declared sitting purpose — server
   // truth, same contract as tool:mode. Unknown values already failed closed
@@ -192,7 +196,7 @@ export const createStreamHandlers = ({
   const onProviderRetry = (data) => {
     dispatch(providerRetryAction(data, Date.now()));
   };
-  // THE LINE, visible (Design note, 2026-10-12: waiting its turn for the house's model, and who is ahead.
+  // THE LINE, visible (ruling, 2026-10-12): waiting its turn for the house's model, and who is ahead.
   const onWatchFired = (data) => {
     if (typeof data?.text === 'string' && data.text) dispatch({ type: 'WATCH_FIRED', text: data.text, at: data.at ?? Date.now() });
   };
@@ -210,7 +214,7 @@ export const createStreamHandlers = ({
     //
     // A QUIET PORTAL NEVER CHIMES. Every tab past the first runs its own
     // socket (TabPortalHost, #407) and connects on its FIRST FOCUS, so this
-    // fired on a plain tab switch: […] (Design note, 2026-08-29.
+    // fired on a plain tab switch: […] (ruling, 2026-08-29).
     //
     // The badge was already silenced for these portals in August; the chime
     // lives here and was missed, so the announcement only changed senses. The

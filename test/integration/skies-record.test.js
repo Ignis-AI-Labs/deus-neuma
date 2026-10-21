@@ -47,7 +47,7 @@ describe('skies record — plaintext beside the seal, idempotent', () => {
     expect(skies.instant).toBe(MOMENT.utc);
     expect(skies.local.jdn).toBeGreaterThan(2461000); // 2026 local date
     // The reading is complete: all v1 systems + honest omissions.
-    expect(Object.keys(skies.systems)).toHaveLength(9);
+    expect(Object.keys(skies.systems)).toHaveLength(31); // 9 of v1 + East Asia (lunisolar, xiu, tibetan, nineStar) + Thai + Vedic + the world's sixteen, 2026-10-19
     expect(skies.omitted.some((o) => o.system === 'ifa')).toBe(true);
   });
 

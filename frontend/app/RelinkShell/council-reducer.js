@@ -195,6 +195,7 @@ export const reducer = (state, action) => {
             id: action.id,
             tool: action.tool,
             args: action.args || '',
+            fullArgs: action.fullArgs || '',
             scope: action.scope || '',
             turnId: `approval-${action.id}`,
             at: action.at ?? null,

@@ -77,7 +77,7 @@ describe('openablePath — which code spans are doors', () => {
 // test/unit/path-utils.test.js.
 
 describe('changedPath — what makes the Explorer re-list', () => {
-  // The live bug (Design note, 2026-07-26: two beings created repos/chronicle and
+  // The live bug (ruling, 2026-07-26): two beings created repos/chronicle and
   // wrote a file into it; the Explorer kept showing the tree from mount.
   it('announces a directory creation and a write', () => {
     expect(changedPath({ tool: 'create_directory', status: 'ok', path: '/g/repos/chronicle' }))

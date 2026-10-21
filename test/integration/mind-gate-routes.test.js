@@ -7,6 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { createMindGateSettings, resolveMindGates } from '../../backend/services/mind-gate-settings.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const WALLET = '0xtest-operator';
 
@@ -127,6 +128,7 @@ describe('Mind API', () => {
     // auth.js instance the router will verify against.
     const { fullAuth, writeOwner } = await import('../helpers/audit-auth.js');
     const auth = await fullAuth();
+    await makeInstallOwner(auth.address);
     await writeOwner(workspace.root, neumaId, auth.address);
     witness = { header: { Authorization: `Bearer ${auth.token}` } };
 

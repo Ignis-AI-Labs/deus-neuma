@@ -8,9 +8,10 @@
  * real closures over real arrays, not spies. What they do is asserted by
  * looking at the arrays afterwards, never by asking whether a fake was called.
  *
- * THE TWO BUGS THIS PINS (Design note, 2026-08-30:
- *   […]
- *   […]
+ * THE TWO BUGS THIS PINS (reported 2026-08-30):
+ *   - with focus on the right panel's stream, an attachment landed on the tab
+ *     open on the left;
+ *   - dragging a tab and dropping it into the other side did nothing.
  */
 import { describe, test, expect, beforeEach } from 'vitest';
 import { gapForPointer as gapOf, indexForGap, releasedOutside } from '../../frontend/app/RelinkShell/use-tab-drag.js';
@@ -122,17 +123,17 @@ describe('which stream owns the folder choice', () => {
 
 describe('the ground lands on the stream the operator is in', () => {
   test('writing through the target strip reaches THAT window, not the desk', () => {
-    const desk = makeStrip([{ id: 'tab-desk', name: 'KISONAM', neumaId: 'kisonam', kind: 'local' }]);
-    const second = makeStrip([{ id: 'tab-right', name: 'METIDAR', neumaId: 'metidar', kind: 'local' }]);
+    const desk = makeStrip([{ id: 'tab-desk', name: 'TEASEL', neumaId: 'teasel', kind: 'local' }]);
+    const second = makeStrip([{ id: 'tab-right', name: 'POPLAR', neumaId: 'poplar', kind: 'local' }]);
     register(STREAM_APP, desk);
     register('chat#2', second);
     markStripFocused('chat#2');
 
     const target = stripFor(groundTargetId(stripEntries()));
-    target.setGround(target.focusedId, { kind: 'folder', path: '/mnt/metidar' });
+    target.setGround(target.focusedId, { kind: 'folder', path: '/mnt/poplar' });
 
     // The right stream got it…
-    expect(second.state.grounds['tab-right']).toEqual({ kind: 'folder', path: '/mnt/metidar' });
+    expect(second.state.grounds['tab-right']).toEqual({ kind: 'folder', path: '/mnt/poplar' });
     // …and the left one was not touched, which is the bug.
     expect(desk.state.grounds).toEqual({});
   });
@@ -144,7 +145,7 @@ describe('THE RENDER LOOP — a no-op must never wake the desk', () => {
   // every stream window, which re-registers its strip. If an unchanged
   // re-registration notifies, that circuit never opens and the app dies.
   test('re-registering identical values does NOT notify', () => {
-    const strip = makeStrip([{ id: 'tab-1', name: 'DOVAN', neumaId: 'dovan', kind: 'local', sessionId: 'sess-dovan' }]);
+    const strip = makeStrip([{ id: 'tab-1', name: 'SPRUCE', neumaId: 'spruce', kind: 'local', sessionId: 'sess-spruce' }]);
     register(STREAM_APP, strip);
 
     let woken = 0;
@@ -158,7 +159,7 @@ describe('THE RENDER LOOP — a no-op must never wake the desk', () => {
   });
 
   test('a REAL change still notifies — the guard must not go deaf', () => {
-    const strip = makeStrip([{ id: 'tab-1', name: 'DOVAN', neumaId: 'dovan', kind: 'local', sessionId: 'sess-dovan' }]);
+    const strip = makeStrip([{ id: 'tab-1', name: 'SPRUCE', neumaId: 'spruce', kind: 'local', sessionId: 'sess-spruce' }]);
     register(STREAM_APP, strip);
 
     let woken = 0;
@@ -213,8 +214,8 @@ describe('the registry tells the desk when to re-read', () => {
 
 describe('transferring a sitting between streams', () => {
   test('the tab LEAVES one strip and JOINS the other', () => {
-    const left = makeStrip([{ id: 'tab-1', name: 'DOVAN', neumaId: 'dovan', kind: 'local', sessionId: 'sess-dovan' }, { id: 'tab-2', name: 'CAEL', neumaId: 'cael', kind: 'local' }]);
-    const right = makeStrip([{ id: 'tab-3', name: 'METIDAR', neumaId: 'metidar', kind: 'local' }]);
+    const left = makeStrip([{ id: 'tab-1', name: 'SPRUCE', neumaId: 'spruce', kind: 'local', sessionId: 'sess-spruce' }, { id: 'tab-2', name: 'BIRCH', neumaId: 'birch', kind: 'local' }]);
+    const right = makeStrip([{ id: 'tab-3', name: 'POPLAR', neumaId: 'poplar', kind: 'local' }]);
     register(STREAM_APP, left);
     register('chat#2', right);
 
@@ -229,12 +230,12 @@ describe('transferring a sitting between streams', () => {
     // `open` would have minted a new id and dropped sessionId — the sitting
     // would have arrived as a different chat wearing the same name.
     const landed = right.state.tabs.find((t) => t.id === 'tab-1');
-    expect(landed.sessionId).toBe('sess-dovan');
-    expect(landed.name).toBe('DOVAN');
+    expect(landed.sessionId).toBe('sess-spruce');
+    expect(landed.name).toBe('SPRUCE');
   });
 
   test('THE HOUSE TAB MOVES LIKE ANY OTHER', () => {
-    // It was refused here once, and that refusal was the bug Founder kept hitting:
+    // It was refused here once, and that refusal was the bug operators kept hitting:
     // the house tab is merely the OLDEST, so it is the first tab on the strip
     // and the ONLY tab in a fresh window — the very one an operator grabs. The
     // role is derived from age, so the source re-designates on its own.
@@ -269,7 +270,7 @@ describe('transferring a sitting between streams', () => {
 
   test('a refusal from the receiving strip leaves the tab where it was', () => {
     const left = makeStrip([
-      { id: 'tab-1', name: 'DOVAN', neumaId: 'dovan', kind: 'local', sessionId: 'sess-dovan' },
+      { id: 'tab-1', name: 'SPRUCE', neumaId: 'spruce', kind: 'local', sessionId: 'sess-spruce' },
       { id: 'tab-keep', name: 'KEEP', neumaId: 'keep', kind: 'local' },
     ]);
     const right = makeStrip();
@@ -286,7 +287,7 @@ describe('transferring a sitting between streams', () => {
 
   test('dropping onto the strip it came from is refused, not a duplicate', () => {
     const left = makeStrip([
-      { id: 'tab-1', name: 'DOVAN', neumaId: 'dovan', kind: 'local', sessionId: 'sess-dovan' },
+      { id: 'tab-1', name: 'SPRUCE', neumaId: 'spruce', kind: 'local', sessionId: 'sess-spruce' },
       { id: 'tab-keep', name: 'KEEP', neumaId: 'keep', kind: 'local' },
     ]);
     register(STREAM_APP, left);
@@ -296,7 +297,7 @@ describe('transferring a sitting between streams', () => {
   });
 
   test('a window closed mid-drag refuses instead of throwing', () => {
-    register(STREAM_APP, makeStrip([{ id: 'tab-1', name: 'DOVAN', neumaId: 'dovan', kind: 'local', sessionId: 'sess-dovan' }]));
+    register(STREAM_APP, makeStrip([{ id: 'tab-1', name: 'SPRUCE', neumaId: 'spruce', kind: 'local', sessionId: 'sess-spruce' }]));
     const out = transferTab(STREAM_APP, 'chat#7', 'tab-1');
     expect(out.ok).toBe(false);
     expect(out.error).toMatch(/no longer open/);
@@ -337,7 +338,8 @@ describe('a transferred tab must NOT also tear out a window', () => {
 /**
  * THE DROP CARET'S ARITHMETIC.
  *
- * Design note, 2026-08-30: […]
+ * Ruling, 2026-08-30: a tab held over the right side of another shows it will
+ * drop to the right; held over the left side, it drops to the left.
  *
  * A caret sits in a GAP (0..n), but `moveTab` takes a FINAL INDEX — and it
  * splices the tab out before inserting, so every gap to the right of where the
@@ -398,7 +400,7 @@ describe('gap -> moveTab index', () => {
 describe('a transfer lands where the caret pointed', () => {
   test('the sitting takes the gap it was aimed at, not the end', () => {
     const left = makeStrip([
-      { id: 'tab-x', name: 'DOVAN', neumaId: 'dovan', kind: 'local' },
+      { id: 'tab-x', name: 'SPRUCE', neumaId: 'spruce', kind: 'local' },
       { id: 'tab-keep', name: 'KEEP', neumaId: 'keep', kind: 'local' },
     ]);
     const right = makeStrip([
@@ -437,14 +439,14 @@ describe('a transfer lands where the caret pointed', () => {
 
 describe('THE DRAIN LAW — docking a torn-out sitting back (2026-09-15)', () => {
   test('a popped-out window drains into the desk and CLOSES', () => {
-    const tab = { id: 'tab-1', neumaId: 'keir', name: 'Keir' };
+    const tab = { id: 'tab-1', neumaId: 'hazel', name: 'Hazel' };
     const popout = makeStrip([tab]);
     let closed = false;
     // The close door rides only POPPED-OUT strips (StripRegistrar publishes it
     // for every stream window that is not the desk's own).
     popout.api.closeWindow = () => { closed = true; };
     register('chat#2', popout);
-    const desk = makeStrip([{ id: 'house-tab', neumaId: 'kagipem', name: 'Kagipem' }]);
+    const desk = makeStrip([{ id: 'house-tab', neumaId: 'juniper', name: 'Juniper' }]);
     register(STREAM_APP, desk);
 
     const out = transferTab('chat#2', STREAM_APP, 'tab-1', 1);
@@ -455,9 +457,9 @@ describe('THE DRAIN LAW — docking a torn-out sitting back (2026-09-15)', () =>
   });
 
   test("the desk's own strip still refuses to drain — no close door, no close", () => {
-    const desk = makeStrip([{ id: 'last', neumaId: 'keir', name: 'Keir' }]);
+    const desk = makeStrip([{ id: 'last', neumaId: 'hazel', name: 'Hazel' }]);
     register(STREAM_APP, desk);
-    const other = makeStrip([{ id: 'other-tab', neumaId: 'kagipem', name: 'Kagipem' }]);
+    const other = makeStrip([{ id: 'other-tab', neumaId: 'juniper', name: 'Juniper' }]);
     register('chat#2', other);
 
     const out = transferTab(STREAM_APP, 'chat#2', 'last', 0);
@@ -467,7 +469,8 @@ describe('THE DRAIN LAW — docking a torn-out sitting back (2026-09-15)', () =>
   });
 });
 
-// THE DELIBERATE TEAR-OUT (Design note, 2026-10-05: […]).
+// THE DELIBERATE TEAR-OUT (ruling, 2026-10-05: a tab becomes its own window
+// only when it is dragged and dropped outside the window).
 describe('releasedOutside — only a release past the window\'s own edge tears out', () => {
   const region = { left: 100, top: 50, right: 900, bottom: 650 };
 

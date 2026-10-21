@@ -56,6 +56,25 @@ const cleanNotifyText = (raw, fallback) => {
 const isSafeAppId = (raw) => typeof raw === 'string' && /^[a-z][a-z0-9-]{0,31}$/.test(raw);
 
 /**
+ * What a clicked OS notification hands the desk: the card's own id, so the
+ * desk replays that card's click and lands where it does (its sitting, its
+ * tab), and the app id it falls back to when the desk no longer holds the
+ * card. The id is the record id's own closed shape (ID_PATTERN in
+ * core/runtime/notification-record.js); anything else is dropped, never
+ * forwarded. Null when there is no app to open.
+ *
+ * Pure.
+ *
+ * @param {unknown} payload - what the renderer sent with notifications:notify
+ * @returns {?{appId: string, id?: string}}
+ */
+const activationOf = (payload) => {
+  if (!isSafeAppId(payload?.appId)) return null;
+  const id = typeof payload.id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(payload.id) ? payload.id : null;
+  return id ? { appId: payload.appId, id } : { appId: payload.appId };
+};
+
+/**
  * Should an OS notification fire, given what every desk window is doing?
  *
  * "Unfocused" has three shapes and only one of them is obvious:
@@ -79,5 +98,5 @@ const noDeskOnScreen = (desks) => {
 };
 
 module.exports = {
-  NOTIFY_TEXT_MAX, cleanNotifyText, isSafeAppId, noDeskOnScreen,
+  NOTIFY_TEXT_MAX, cleanNotifyText, isSafeAppId, activationOf, noDeskOnScreen,
 };

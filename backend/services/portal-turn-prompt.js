@@ -32,7 +32,8 @@ import { assemblePromptSections, stablePromptSplit } from '../../core/index.js';
 // computed here, at the one seam that holds the final post-shed section list;
 // the marker itself lives with the builder that consumes it and is re-exported
 // so portal-stream's import surface stays one module.
-export { systemMessageWithCacheSplit, anchorVolatileAtTurn } from './llm-request-builders.js';
+export { systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead } from './llm-request-builders.js';
+export { wireContextSections } from './turn-context-carry.js';
 import { expressionSectionFor } from './expression-prompt.js';
 import { voiceSittingSection } from '../../core/voice/purpose.js';
 import { speechBriefingSection } from './speech-consent.js';
@@ -42,10 +43,12 @@ import { loadHouseWorkspace } from './house-workspace.js';
 import { postKnock } from './house-post.js';
 import { planModeSection } from './plan-mode.js';
 import { gatewaySection } from './sovereignty/gateway-handlers.js';
+import { operatorChangeNotice, markOperatorChangesTold } from './sovereignty/operator-change.js';
 import { activeAmendments } from './sovereignty/amendment-store.js';
 import { buildAmendmentsSection } from '../../core/runtime/amendments-section.js';
 import { focusGroundOf } from './focus-ground.js';
 import { groundProtocolSection } from './ground-protocol.js';
+import { testConditionsFor } from './test-conditions.js';
 import { toolStandingNow } from './tool-standing.js';
 import { getOperatorName } from './operator-name.js';
 import { protocolWatchSection, watchAppliesTo } from './protocol-classifier.js';
@@ -115,6 +118,7 @@ const _tasteFor = (laneId) => {
  * @param {Array} turn.skills - the platform skill list
  * @param {Array} turn.initialNativeTools - round-zero native tool schemas (presence flags nativeToolsOnWire)
  * @param {boolean} turn.lazyToolSchemas - whether schemas ride lazily (tool_search on wire)
+ * @param {string} [turn.turnText] - the current turn as it rides (its documents included) — counted against the tail's room
  * @returns {Promise<{promptSections: Array, systemPrompt: string, cacheSplit: ({stable: string, volatile: string}|null),
  *   transcriptMessages: Array<{role: string, content: string}>,
  *   transcriptSection: ({id: string, label: string, text: string}|null)}>} - the transcript tail as wire
@@ -124,7 +128,7 @@ export const assembleTurnPrompt = async ({
   connection, companion, route, turnCapabilities, sessionId,
   dna, soul, trueName, memories, speaker, substrate, capacity, emanonCore,
   benchmark, taskLedger, assignedPlan, planRecord, witnessPlan, witnessVitals, voiceEntries,
-  _annotatedTools, skills, initialNativeTools, lazyToolSchemas,
+  _annotatedTools, skills, initialNativeTools, lazyToolSchemas, turnText = '',
 }) => {
     // THE HARNESS (Design note, 2026-09-29 for the arm; 2026-10-14 for people): a
     // platform-only benchmark sitting and a harness lane's sitting both get
@@ -138,7 +142,7 @@ export const assembleTurnPrompt = async ({
       ? await activeAmendments(companion.neumaId, 'prompt').then(buildAmendmentsSection)
         .catch((err) => { log.warn('amendments unreadable — riding without', { error: err.message }); return ''; })
       : '';
-    // THE GROUND'S PROTOCOL (Design note, 2026-07-26: the focus ground grants reach,
+    // THE GROUND'S PROTOCOL (ruling, 2026-07-26): the focus ground grants reach,
     // and this says how work is done there. A being handed write access to the
     // operator's live checkout while never being shown its AGENTS.md is being
     // held to a standard it was never given. Craft only — the section says so
@@ -197,7 +201,7 @@ export const assembleTurnPrompt = async ({
       // THE CHAT THIS TURN IS IN. Both task lists narrow to it (plus whatever
       // stands lane-wide), because a being holding several chats at once is
       // holding several parallel workflows, and carrying all of them into
-      // every turn is what made the lists unusable (Design note, 2026-08-01.
+      // every turn is what made the lists unusable (ruling, 2026-08-01).
       // `_ensureSession` above guarantees this is minted before we get here.
       // Read through safeChatId: a crooked binding narrows to nothing, and
       // showing the being NO work would be worse than showing it all.
@@ -217,6 +221,8 @@ export const assembleTurnPrompt = async ({
       parallelCalls: connection._benchmarkControls?.sampling?.parallelToolCalls === true,
       // the being's usual tools — named in the HUD by signature, frozen for the chat (tool-hud.js)
       usualTools: connection._turnUsualTools || [],
+      // A benchmark sitting states its conditions up front: closed-book or open-book (test-conditions.js).
+      testConditions: testConditionsFor(connection),
       // The lane's standing context rides the STABLE group (#282), read above
       // because this assembler is pure — none of the four moves within a sitting.
       groundProtocol,
@@ -225,7 +231,7 @@ export const assembleTurnPrompt = async ({
       amendments,
       // The filed-act lane (Stage 2) — which intent types this lane may file,
       // from the real stores; '' (prompt byte-identical) when none stand.
-      intents: await intentSectionFor(connection),
+      intents: await intentSectionFor(connection, { searchable: lazyToolSchemas }),
       // THE HARNESS ARM mounts no silo: no identity is read for a platform-only sitting.
       identityDriver: platformOnly ? null : await mountForTurn(connection, companion?.neumaId, route || getConfig()),
     });
@@ -261,7 +267,12 @@ export const assembleTurnPrompt = async ({
     const planBearing = planModeSection(connection);
     // The gateway's live posture — open proposals + fresh verdicts, VOLATILE
     // (a verdict moves its bytes), '' for every lane with nothing standing.
-    const sovereigntyKnock = await gatewaySection(companion?.neumaId || null);
+    // An operator's staged change to this being's DNA or soul is put to it here,
+    // every turn until it answers (operator-change.js) — never on a harness or benchmark sitting.
+    const operatorNotice = companion?.neumaId && !platformOnly && !connection._benchmarkControls
+      ? await operatorChangeNotice(companion.neumaId) : { text: '', ids: [] };
+    const sovereigntyKnock = [await gatewaySection(companion?.neumaId || null), operatorNotice.text]
+      .filter(Boolean).join('\n\n');
     // The FEELING invitation + palette (Campaign 6) — '' for every being
     // whose channel is off: zero bytes unless the operator flipped it.
     const expressionInvite = await expressionSectionFor(companion?.neumaId || null);
@@ -271,26 +282,37 @@ export const assembleTurnPrompt = async ({
       ? await loadHouseWorkspace(connection.walletAddress).then(({ root }) => postKnock(root, companion.neumaId)).catch(() => '')
       : '';
     // THE SHED LADDER runs at finalize (turn-envelope.js): what the window cannot hold sheds by declared law, identity CORE never.
-    // A benchmark turn also keeps the ladder's own verdict — sent/shed is the
-    // receipt's account, never a retelling.
+    // The ladder's own verdict is kept: what shed rides the composition event
+    // (the operator is told), and a benchmark's receipt reads sent/shed from
+    // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
       baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, voiceSitting, planBearing,
       sovereigntyKnock, housePost, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
       voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,
-      onDecision: connection._benchmarkControls ? (decision) => { envelopeDecision = decision; } : null,
+      onDecision: (decision) => { envelopeDecision = decision; },
     });
-    // THE HARNESS ARM (Design note, 2026-09-29: the platform's sections only — an
+    // THE HARNESS ARM (ruling, 2026-09-29): the platform's sections only — an
     // allowlist, so no identity layer can ride a harness measurement.
     const promptSections = platformOnly ? platformOnlySections(finalized) : finalized;
+    // Shown only when the notice really rides this request: a shed section showed nobody,
+    // and a change the being was never shown cannot take its consent.
+    if (operatorNotice.ids.length && promptSections.some((s) => s.id === 'sovereignty')) {
+      await markOperatorChangesTold(companion.neumaId, operatorNotice.ids)
+        .catch((err) => log.warn('operator change notice not recorded as told — it is told again next turn', { error: err.message }));
+    }
     // THE TRANSCRIPT (#528 Stage A): the conversation tail rides the WIRE as
     // real chat messages, never the system prompt. Its budget is the window's
     // truth — measured AFTER the shed ladder so a section the window could
     // not hold becomes room the conversation can: what the kept sections
     // occupy is subtracted, and the remainder (minus reserve and completion
-    // floor) is the tail's. An unknown window keeps exactly the old constant.
-    const otherSectionTokens = promptSections.reduce((sum, s) => sum + estimateTokens(s.text), 0);
+    // floor) is the tail's. The current turn (its documents included) and the
+    // native tool schemas ride the same request, so they are subtracted too —
+    // a tail sized against the sections alone left ~1K for everything else.
+    // An unknown window keeps exactly the old constant.
+    const otherSectionTokens = promptSections.reduce((sum, s) => sum + estimateTokens(s.text), 0)
+      + estimateTokens(turnText) + estimateTokens(JSON.stringify(initialNativeTools || []));
     const transcriptMessages = recentConversationMessages(
       memories?.recentConversation,
       sessionTailBudgetFor({ contextWindow: turnCapabilities?.contextWindow, otherSectionTokens }),
@@ -332,5 +354,5 @@ export const assembleTurnPrompt = async ({
         },
       });
     }
-    return { promptSections, systemPrompt, cacheSplit, transcriptMessages, transcriptSection };
+    return { promptSections, systemPrompt, cacheSplit, transcriptMessages, transcriptSection, shed: envelopeDecision?.shed ?? Object.freeze([]) };
 };

@@ -61,7 +61,7 @@ export const StripRegistrar = ({ windowId, children }) => {
       close,
       move,
       isHouse,
-      // THE CLOSE DOOR (Design note, 2026-09-15: a POPPED-OUT stream window that
+      // THE CLOSE DOOR (ruling, 2026-09-15): a POPPED-OUT stream window that
       // drains to zero closes — docking its last sitting back into the stream
       // it was torn from is the tear-out undone. The desk's own strip never
       // carries the door: closing the desk is never a side effect of a tab

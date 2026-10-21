@@ -255,7 +255,7 @@ describe('the room deletes on the card, never on faith', () => {
 });
 
 // ---------------------------------------------------------------------------
-// THE FOCUS GROUND in the room (Design note, 2026-07-26 — the folder standing open in
+// THE FOCUS GROUND in the room (ruling, 2026-07-26) — the folder standing open in
 // the Explorer is the ground EVERY seat works, superseding both older answers:
 // the house workspace a housemate got, and the raised cross-house ground an
 // external seat needed. The room must never name one folder and work another.

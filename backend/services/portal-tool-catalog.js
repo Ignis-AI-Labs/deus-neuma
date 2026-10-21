@@ -166,7 +166,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // refuse. Both conditions are re-read per turn.
     capability('imageForge', () => imageToolsFor(connection)),
     // The card tool rides its OWN family: the SVG card infrastructure is not
-    // the diffusion engine's dependent (Design note, 2026-09-03 — no ComfyUI gate.
+    // the diffusion engine's dependent (ruling, 2026-09-03) — no ComfyUI gate.
     capability('cards', () => cardToolsFor(connection)),
     // The architecture map rides wherever the being has a ground. Design note, 2026-07-27:
     // […] Read-only, so it needs no switch.
@@ -237,7 +237,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   const sovereigntyTools = isNeuma && connection.companion?.neumaId
     ? [SOVEREIGNTY_PROPOSALS_TOOL]
     : [];
-  // THE HARNESS SEAT (Design note, 2026-10-14: a person using the platform with no
+  // THE HARNESS SEAT (ruling, 2026-10-14): a person using the platform with no
   // being keeps the platform's own hands — skills, cut-result retrieval, web
   // and the culture library (behind the operator's switch), the image forge,
   // cards, the architecture map, the press, asking the operator, PLAN

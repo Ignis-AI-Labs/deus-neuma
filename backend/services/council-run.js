@@ -52,6 +52,8 @@ import { send, refuse, broadcastState } from './council-wire.js';
 import { groundOf, refreshGround } from './council-ground.js';
 import { houseTools, runHouseTool } from './council-tool-guard.js';
 import { persistUtterance } from './council-record.js';
+import { frameCouncilTranscript, frameCouncilToolResults } from './council-frame.js';
+import { noteInjectionSighting } from './security/injection-sightings.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('Council');
@@ -131,6 +133,7 @@ const speakTurn = async (connection, run, member, deps) => {
     witnessName: run.witnessName,
     members: run.state.members,
     transcriptTail: tail(run.transcript),
+    renderExchange: frameCouncilTranscript,
     workspace: ground,
     // A ground is described by WHOSE it is. Telling an external seat that
     // […] is its ground would be a lie in the one
@@ -238,7 +241,7 @@ const speakTurn = async (connection, run, member, deps) => {
         // A seat in a room is still working a ground, and the room's floor does
         // not suspend the repository's law. Byte-identical on an ordinary turn.
         content: withProtocolReminders(
-          `[TOOL RESULTS]\n${results.join('\n---\n')}\n\nContinue your turn — speak to the room, and call another tool only if the work needs it.`,
+          `[TOOL RESULTS]\n${frameCouncilToolResults(results)}\n\nContinue your turn — speak to the room, and call another tool only if the work needs it.`,
           calls,
           {
             // `content` is the seat's own utterance for this round — its words,
@@ -272,6 +275,7 @@ const speakTurn = async (connection, run, member, deps) => {
   if (!run.closed) send(connection, 'council:spoke', { neumaId: member.neumaId, turnId });
   if (spoken) {
     run.transcript.push({ speaker: member.neumaId, name: member.name, content: spoken });
+    noteInjectionSighting({ wallet: connection.walletAddress, lane: member.neumaId, kind: 'council speech', source: 'council', origin: `${member.name}, speaking in council`, text: spoken }); // a flag, never awaited (G13)
     await persistUtterance(run, { speaker: member.neumaId, name: member.name, content: spoken });
   }
   return spoken;
@@ -334,6 +338,7 @@ const handRound = async (connection, run, lastSpeaker, deps) => {
         witnessName: run.witnessName,
         members: run.state.members,
         transcriptTail: handTail(run.transcript),
+        renderExchange: frameCouncilTranscript,
         standing: stand && (stand.hand === 'hold' || stand.hand === 'open')
           ? { hand: stand.hand, note: stand.note || '' }
           : null,

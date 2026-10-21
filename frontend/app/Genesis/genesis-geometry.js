@@ -15,7 +15,8 @@
 //     tetrahedra — true relations, gyro-geometry.js). So the solids can rise
 //     out of the drawing literally: every vertex lifts from its projected
 //     point to its true depth. The icosahedron needs φ and is NOT in the
-//     hexagonal drawing; the dodecahedron is derived as its dual.
+//     hexagonal drawing: it is inscribed in the octahedron, each vertex
+//     dividing an octahedron edge 1 : φ; the dodecahedron is its dual.
 // The genesis plane is XY, facing a camera on +Z. Scale: the inner hexagon
 // (2r) equals the gyro cube's projected radius, so the drawing and the
 // construct are one object at one scale.
@@ -178,14 +179,9 @@ const triangleFaces = (edges) => {
 
 const counts = (solid, faces) => Object.freeze({ V: solid.vertices.length, E: solid.edges.length, F: faces });
 
-/**
- * The five solids of the genesis in the genesis frame, each with its true
- * V · E · F (faces counted, not assumed) and how it enters: `lift` rises out
- * of the drawing, `phi` is built on the golden ratio (absent from the
- * hexagonal drawing), `dual` is derived from the icosahedron's faces. Pure.
- */
-export const genesisSolids = () => {
-  const s = platonicSolids();
+// The family in the genesis frame, each with its true V · E · F (faces
+// counted, not assumed) and how it enters.
+const inFrame = (s) => {
   const icosaFaces = triangleFaces(s.icosahedron.edges);
   return Object.freeze({
     cube: { ...framed(s.cube), counts: counts(s.cube, s.octahedron.vertices.length), enters: 'lift' },
@@ -195,6 +191,33 @@ export const genesisSolids = () => {
     dodecahedron: { ...framed(s.dodecahedron), counts: counts(s.dodecahedron, s.icosahedron.vertices.length), enters: 'dual' },
   });
 };
+
+/**
+ * The five solids in the genesis frame as the gyro holds them (the dual
+ * pair a small nucleus): `lift` rises out of the drawing, `phi` is built on
+ * the golden ratio (absent from the hexagonal drawing), `dual` is derived
+ * from the icosahedron's faces. Pure.
+ */
+export const genesisSolids = () => inFrame(platonicSolids());
+
+// THE NEST. The gyro's icosahedron is the cyclic (0, ±1, ±φ), on the
+// octahedron's own axes; grown until its vertices touch the octahedron
+// (|x| + |y| + |z| equal to the octahedron's corner), each stands on an
+// octahedron edge and divides it 1 : φ — the φ-solid is drawn INSIDE the
+// solid before it. Scaling keeps the dodecahedron its face-centroid dual.
+const nested = (s) => {
+  const corner = Math.max(...s.octahedron.vertices.map((v) => Math.abs(v.x) + Math.abs(v.y) + Math.abs(v.z)));
+  const v = s.icosahedron.vertices[0];
+  const k = corner / (Math.abs(v.x) + Math.abs(v.y) + Math.abs(v.z));
+  const grow = (solid) => Object.freeze({ vertices: solid.vertices.map((p) => ({ x: p.x * k, y: p.y * k, z: p.z * k })), edges: solid.edges });
+  return { ...s, icosahedron: grow(s.icosahedron), dodecahedron: grow(s.dodecahedron) };
+};
+
+/**
+ * The five solids as GENESIS draws them: the family nested, the icosahedron
+ * inscribed in the octahedron at 1 : φ and the dodecahedron its dual. Pure.
+ */
+export const genesisFamily = () => inFrame(nested(platonicSolids()));
 
 /** The vector-equilibrium lattice (13 nodes, 36 struts) in the genesis frame. Pure. */
 export const genesisLattice = () =>

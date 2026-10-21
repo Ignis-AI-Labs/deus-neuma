@@ -1,10 +1,14 @@
 // @ts-check
 // Desk e2e — SUBSTRATE / LINK / INFERENCE apps. Split from desk.spec.js (SIZE-017).
 import { test, expect } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { openDockApp } from './helpers/dock.js';
 import { BACKEND, token, setupDesk } from './helpers/desk-harness.js';
 
 setupDesk();
+
+const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 
 test('SUBSTRATE: the engine-room HUD opens and renders the live lens', async ({ page }) => {
   await openDockApp(page, 'SUBSTRATE');
@@ -13,6 +17,35 @@ test('SUBSTRATE: the engine-room HUD opens and renders the live lens', async ({ 
   // Never a blank window: either the live instrument panels (substrate serving)
   // or the honest empty/loading state. One of them proves the lens wired through.
   await expect(page.locator('.sub-panel-title').first().or(page.locator('.empty-state'))).toBeVisible();
+  expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
+});
+
+test('SUBSTRATE: the machine reads as instruments — dials, cores, DIMMs, drives — against the real readings', async ({ page }) => {
+  // Ground truth: the same machine read the HUD draws (backend/services/machine-thermals.js).
+  const machine = await (await fetch(`${BACKEND}/api/v1/substrate/machine`, { headers: { Authorization: `Bearer ${token}` } })).json();
+  await page.setViewportSize({ width: 1680, height: 1050 });
+  await openDockApp(page, 'SUBSTRATE');
+  const win = page.locator('.fwin', { has: page.locator('.sub-body') });
+  const maximize = win.getByRole('button', { name: 'Maximize window' });
+  if (await maximize.count()) await maximize.first().click();
+  const hud = page.locator('.sub-body');
+  await expect(hud.locator('.sub-panel-title', { hasText: 'BOARD · COOLING' })).toBeVisible();
+  // One heatmap cell per core the chip reports, one thermometer per DIMM,
+  // one bar per drive's Composite — the console draws every reading it was given.
+  const of = (kind, re) => machine.readings.filter((r) => r.kind === kind && r.type === 'temp' && re.test(r.label));
+  await expect(hud.locator('.hud-core')).toHaveCount(of('cpu', /^core\s*\d+/i).length);
+  await expect(hud.locator('.hud-thermo')).toHaveCount(of('memory', /./).length);
+  await expect(hud.locator('.sub-panel', { hasText: 'STORAGE' }).locator('.hud-bar')).toHaveCount(of('storage', /^Composite$/).length);
+  // Every alert the machine raised is counted in the strip.
+  if (machine.alerts.length) await expect(hud.locator('.hud-alerts-count')).toHaveText(String(machine.alerts.length));
+  else await expect(hud.locator('.hud-alerts')).toHaveCount(0);
+  await expect(hud.locator('.hud-dial').first()).toBeVisible();
+  // The window's open and maximize transitions settle before the eye reads it.
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(SHOTS, 'substrate-hud.png') });
+  await hud.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(SHOTS, 'substrate-hud-lower.png') });
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 

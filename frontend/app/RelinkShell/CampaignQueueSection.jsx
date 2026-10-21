@@ -48,7 +48,7 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
   // the self-refresh poll — the label's own granularity is the minute.
   const [now, setNow] = useState(() => Date.now());
   const [seed, setSeed] = useState(null);
-  // THE MONTH ⇄ DAY VIEW (Design note, 2026-07-28: […] The calendar is the navigator — the month is
+  // THE MONTH ⇄ DAY VIEW (ruling, 2026-07-28): […] The calendar is the navigator — the month is
   // where you start, a click drills into the SAME board filtered to that day,
   // BACK returns to the month. `dayKey` null is the UNSCHEDULED bucket — a
   // day view like any other, it just has no date. The key is kept when going
@@ -137,7 +137,7 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
     .filter((g) => !(lane === 'queued' && g.key === 'awaiting'));
   // A pending decision never folds, so it is never counted as foldable.
   const foldable = here.filter((e) => e.status !== 'draft').length;
-  // THE INBOUND (Design note, 2026-07-28: the REPLIES section meets WHO KNOCKED,
+  // THE INBOUND (ruling, 2026-07-28): the REPLIES section meets WHO KNOCKED,
   // not just what was staged — the replies to the house's own posts. The
   // listener is X's today, so a platform's space meets the knock on its own
   // lane only.
@@ -317,7 +317,7 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
             </button>
           </div>
           {/* KIND first: POSTS | REPLIES — the two sections that must never
-              be confused (Design note, 2026-08-06. Standing second, inside. */}
+              be confused (ruling, 2026-08-06). Standing second, inside. */}
           {sectionStrip}
           <div className="queue-lanes" role="tablist" aria-label={`${section} lanes`}>
             {QUEUE_LANES.map((l) => (

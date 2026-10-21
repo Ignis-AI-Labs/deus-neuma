@@ -87,7 +87,8 @@ const MadeImages = ({ images }) => {
           <AuthImage
             className="tool-chip-made-img"
             src={`${img.url}?laneId=${encodeURIComponent(img.laneId || '')}`}
-            alt="generated image"
+            alt={String(img.mime).startsWith('video/') ? 'generated video' : 'generated image'}
+            video={String(img.mime).startsWith('video/')}
           />
           <figcaption className="tool-chip-made-meta">
             {img.path ? (

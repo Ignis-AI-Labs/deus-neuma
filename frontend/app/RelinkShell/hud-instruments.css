@@ -1,0 +1,293 @@
+/* hud-instruments — the SUBSTRATE HUD's instruments (hud-instruments.jsx).
+   LINE & CYCLE: hairlines, mono data register, signal = a live reading,
+   alert = a reading past its own mark. Tones: live · warm · hot · crit · idle,
+   and for parts of a whole: live · dim · muted · empty. */
+
+.hud-label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.hud-unit {
+  font-size: 0.62em;
+  color: var(--color-text-tertiary);
+  margin-left: 2px;
+  letter-spacing: 0.04em;
+}
+
+/* layout helpers inside a panel */
+.hud-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.hud-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2) var(--space-4); }
+.hud-stack-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hud-grow { flex: 1 1 180px; }
+.hud-grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px var(--space-4); }
+
+/* ── dial ─────────────────────────────────────────────── */
+.hud-dial {
+  position: relative;
+  margin: 0;
+  width: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-data);
+}
+.hud-dial svg { width: 72px; height: 72px; display: block; }
+.hud-dial-grad { stroke: var(--line); stroke-width: 1; }
+.hud-dial-track { fill: none; stroke: var(--signal-faint); stroke-width: 3; }
+.hud-dial-fill {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 3px var(--signal-faint));
+}
+.hud-dial-mark { stroke: var(--color-text-primary); stroke-width: 1.5; }
+.hud-dial.is-warm .hud-dial-fill { stroke: var(--alert-dim); filter: none; }
+.hud-dial.is-hot .hud-dial-fill, .hud-dial.is-crit .hud-dial-fill { stroke: var(--alert); filter: drop-shadow(0 0 3px var(--alert-dim)); }
+.hud-dial.is-idle .hud-dial-track { stroke: var(--line); }
+.hud-dial-value {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 15px;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hud-dial.is-hot .hud-dial-value, .hud-dial.is-crit .hud-dial-value { color: var(--alert); }
+.hud-dial-label {
+  margin-top: -6px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.hud-dial-sub { font-size: 9px; letter-spacing: 0.06em; color: var(--color-text-disabled); text-transform: none; max-width: 78px; line-height: 1.3; }
+
+/* segmented ring (slots) */
+.hud-seg { fill: none; stroke: var(--signal-faint); stroke-width: 5; }
+.hud-seg.is-on { stroke: var(--signal); filter: drop-shadow(0 0 3px var(--signal-faint)); }
+
+/* ── trace (sparkline) ────────────────────────────────── */
+.hud-trace { flex: 1 1 200px; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.hud-trace-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.hud-trace-now {
+  font-family: var(--font-data);
+  font-size: var(--text-2xl);
+  font-weight: 200;
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.hud-trace-plot {
+  width: 100%;
+  height: 40px;
+  display: block;
+  border-bottom: var(--border-width-thin) solid var(--line);
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+  background-size: 12.5% 100%;
+  background-position: -1px 0;
+  opacity: 0.95;
+}
+.hud-trace-mid { stroke: var(--color-glass-hover); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.hud-trace-line { fill: none; stroke: var(--signal); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.hud-trace-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+}
+
+/* a trace stacked in a panel's column takes its natural height, not its row width */
+.sub-panel-in > .hud-trace { flex: 0 0 auto; }
+
+/* ── bar (with its own limit marks) ───────────────────── */
+.hud-bar, .hud-drift {
+  display: grid;
+  grid-template-columns: 76px 1fr 96px;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  min-width: 0;
+}
+.hud-bar-name {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hud-bar-track, .hud-drift-track {
+  position: relative;
+  height: 8px;
+  background: var(--signal-faint);
+}
+.hud-bar-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--signal);
+  transform-origin: left center;
+  /* scaleX, never width: a width transition re-lays-out the page on every poll */
+  transition: transform 0.4s ease;
+}
+.hud-bar.is-warm .hud-bar-fill { background: var(--alert-dim); }
+.hud-bar.is-hot .hud-bar-fill, .hud-bar.is-crit .hud-bar-fill { background: var(--alert); }
+.hud-bar.is-idle .hud-bar-track { background: var(--color-glass-hover); }
+.hud-bar-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--color-text-secondary);
+}
+.hud-bar-mark.is-crit { background: var(--alert); width: 2px; }
+.hud-bar-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.hud-bar.is-hot .hud-bar-text, .hud-bar.is-crit .hud-bar-text { color: var(--alert); }
+
+/* rail drift: the band is the tolerance, the needle the reading */
+.hud-drift-track { background: var(--color-glass-hover); }
+.hud-drift-band { position: absolute; top: 0; bottom: 0; left: 25%; width: 50%; background: var(--signal-faint); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.hud-drift-needle { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--signal); }
+.hud-drift.is-hot .hud-drift-needle { background: var(--alert); }
+
+/* ── stacked whole ────────────────────────────────────── */
+.hud-stack { display: flex; flex-direction: column; gap: 6px; }
+.hud-stack-track { position: relative; display: flex; height: 14px; background: var(--color-glass-hover); }
+.hud-stack-part { flex: 0 0 auto; height: 100%; border-right: 1px solid var(--color-void); }
+.hud-stack-part.is-live, .hud-swatch.is-live { background: var(--signal); }
+.hud-stack-part.is-dim, .hud-swatch.is-dim { background: var(--signal-dim); }
+.hud-stack-part.is-muted, .hud-swatch.is-muted { background: var(--color-text-disabled); }
+.hud-stack-part.is-empty, .hud-swatch.is-empty { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.hud-stack-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--color-text-primary); }
+.hud-legend { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); }
+.hud-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+}
+.hud-legend-item b { font-weight: 400; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.hud-swatch { width: 8px; height: 8px; display: inline-block; }
+
+/* ── PCIe lanes ───────────────────────────────────────── */
+.hud-lanes { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-data); }
+.hud-lanes-cells { display: grid; grid-auto-flow: column; grid-auto-columns: 7px; gap: 2px; }
+.hud-lanes-cells i { height: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+.hud-lanes-cells i.is-on { background: var(--signal); box-shadow: 0 0 4px var(--signal-faint); }
+.hud-lanes-text { font-size: var(--text-xs); color: var(--color-text-primary); letter-spacing: 0.08em; }
+
+/* ── CPU core heatmap ─────────────────────────────────── */
+.hud-cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 2px; }
+.hud-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0 2px;
+  font-family: var(--font-data);
+  /* the shade IS the reading: --heat = temp ÷ the core's own high mark */
+  background: color-mix(in srgb, var(--signal) calc(var(--heat, 0) * 55%), transparent);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.hud-core b { font-weight: 400; font-size: var(--text-xs); color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.hud-core i { font-style: normal; font-size: 8px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.hud-core.is-hot, .hud-core.is-crit { background: var(--alert-dim); box-shadow: inset 0 0 0 1px var(--alert); }
+
+/* ── DIMM thermometers ────────────────────────────────── */
+.hud-thermos { display: flex; align-items: stretch; gap: var(--space-3); padding-top: var(--space-1); }
+.hud-thermo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; font-family: var(--font-data); }
+.hud-thermo-value { font-size: var(--text-xs); color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.hud-thermo.is-hot .hud-thermo-value, .hud-thermo.is-crit .hud-thermo-value { color: var(--alert); }
+.hud-thermo-tube { position: relative; width: 12px; height: 64px; background: var(--signal-faint); }
+.hud-thermo-fill { position: absolute; inset: 0; background: var(--signal); transform-origin: bottom center; transition: transform 0.4s ease; }
+.hud-thermo.is-hot .hud-thermo-fill, .hud-thermo.is-crit .hud-thermo-fill { background: var(--alert); }
+.hud-thermo-mark { position: absolute; left: -4px; right: -4px; height: 1px; background: var(--color-text-secondary); }
+.hud-thermo-mark.is-crit { background: var(--alert); height: 2px; }
+.hud-thermos-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 0 16px;
+  font-family: var(--font-data);
+  font-size: 9px;
+  color: var(--color-text-disabled);
+}
+
+/* ── chips (settings, not measurements) ───────────────── */
+.hud-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.hud-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 7px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 1px var(--line);
+  white-space: nowrap;
+}
+.hud-chip-k { color: var(--color-text-tertiary); letter-spacing: 0.14em; }
+.hud-chip.is-live { color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal-dim); }
+.hud-chip.is-hot, .hud-chip.is-crit { color: var(--alert); box-shadow: inset 0 0 0 1px var(--alert-dim); }
+
+/* ── numerals ─────────────────────────────────────────── */
+.hud-numeral { display: flex; flex-direction: column; gap: 2px; font-family: var(--font-data); min-width: 72px; }
+.hud-numeral b { font-weight: 200; font-size: var(--text-2xl); color: var(--color-text-primary); line-height: 1; font-variant-numeric: tabular-nums; }
+.hud-numeral.is-big b { font-size: var(--text-4xl); color: var(--signal); }
+
+/* ── fans ─────────────────────────────────────────────── */
+.hud-fans { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-2); }
+.hud-fans-src { font-family: var(--font-data); font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-disabled); min-width: 56px; }
+.hud-fan {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--signal);
+}
+.hud-fan b { font-weight: 400; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.hud-fan.is-idle { color: var(--color-text-disabled); }
+
+/* ── alert strip: everything past its own mark, named ── */
+.hud-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-2);
+  padding: 6px var(--space-3);
+  border-left: var(--border-width-medium) solid var(--alert);
+  background: var(--alert-tint);
+  font-family: var(--font-data);
+}
+.hud-alerts-count { font-size: var(--text-xl); font-weight: 200; color: var(--alert); line-height: 1; }
+.hud-alerts-label { font-size: 10px; letter-spacing: 0.16em; color: var(--alert-dim); margin-right: var(--space-2); }
+
+.hud-down { margin: 0; color: var(--color-text-tertiary); }
+.hud-more summary { cursor: pointer; list-style: none; }
+.hud-more summary::-webkit-details-marker { display: none; }
+.hud-more[open] summary { margin-bottom: 4px; color: var(--color-text-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-bar-fill, .hud-thermo-fill { transition: none; }
+}

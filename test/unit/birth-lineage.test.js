@@ -16,35 +16,35 @@ describe('birth lineage — the house as it stands', () => {
   let root;
   beforeAll(async () => {
     root = await createTempDir('birth-lineage');
-    await laneWith(root, 'keir', {
-      trueName: { chosenName: 'Keir', fullName: 'Keir Napagum Aldmere' },
+    await laneWith(root, 'hazel', {
+      trueName: { chosenName: 'Hazel', fullName: 'Hazel Curlew Thornfield' },
       seal: { genesisHash: 'aa'.repeat(32), record: { birthMoment: { utc: '2026-06-11T10:00:00.000Z', epochMs: 1749636000000 } } },
     });
     await laneWith(root, 'signal', {
-      trueName: { chosenName: 'Signal', fullName: 'Signal Risebol Aldmere' },
+      trueName: { chosenName: 'Signal', fullName: 'Signal Merlin Thornfield' },
       seal: { genesisHash: 'bb'.repeat(32), record: { birthMoment: { utc: '2026-06-11T12:00:00.000Z', epochMs: 1749643200000 } } },
     });
     // A lane with no identity records at all — legacy shape, still a real kin.
-    await mkdir(join(root, 'fenna'), { recursive: true });
+    await mkdir(join(root, 'alder'), { recursive: true });
   });
 
   it('reads members from their sealed records, eldest first, unrecorded last', async () => {
-    const members = await readHouseLineage(root, ['signal', 'fenna', 'keir']);
-    expect(members.map((m) => m.neumaId)).toEqual(['keir', 'signal', 'fenna']);
-    expect(members[0].fullName).toBe('Keir Napagum Aldmere');
-    expect(members[2].chosenName).toBe('fenna'); // no records — shown as itself
+    const members = await readHouseLineage(root, ['signal', 'alder', 'hazel']);
+    expect(members.map((m) => m.neumaId)).toEqual(['hazel', 'signal', 'alder']);
+    expect(members[0].fullName).toBe('Hazel Curlew Thornfield');
+    expect(members[2].chosenName).toBe('alder'); // no records — shown as itself
     expect(members[2].birthEpochMs).toBeNull();
   });
 
   it('composes the lineage with real facts: names, births, the eldest, the ordinal', async () => {
-    const members = await readHouseLineage(root, ['signal', 'fenna', 'keir']);
+    const members = await readHouseLineage(root, ['signal', 'alder', 'hazel']);
     const block = composeLineage(members);
     expect(block).toContain('THE HOUSE AS IT STANDS');
-    expect(block).toContain('Keir Napagum Aldmere');
+    expect(block).toContain('Hazel Curlew Thornfield');
     expect(block).toContain('the eldest');
-    expect(block.indexOf('Keir')).toBeLessThan(block.indexOf('Signal'));
+    expect(block.indexOf('Hazel')).toBeLessThan(block.indexOf('Signal'));
     expect(block).toContain('born 2026-06-11T10:00:00.000Z');
-    expect(block).toContain('birth moment unrecorded'); // fenna — honest absence
+    expect(block).toContain('birth moment unrecorded'); // alder — honest absence
     expect(block).toContain('its 4th'); // 3 kin → the newcomer would be 4th
   });
 

@@ -18,9 +18,7 @@ import { takeQueuedActionMessages, QUEUED_ACTION_REASON } from '../../backend/se
 let kit;
 let running;
 afterEach(async () => {
-  if (kit?.connection._turnSandbox) {
-    await fs.writeFile(path.join(kit.connection._turnSandbox.workspace, 'release'), 'release');
-  }
+  if (kit) await fs.writeFile(path.join(kit.ground, 'release'), 'continue');
   await running;
   await mcpService.disconnect('filesystem');
   await kit?.close();
@@ -41,12 +39,18 @@ describe.each(['portal', 'witness'])('%s queued tool handoff', (seat) => {
       const event = JSON.parse(data.toString());
       if (event.type === 'tool:approval_request') kit.decide(event, 'allow');
     });
+    // The release signal is a file that EXISTS in the live ground before the
+    // shell starts, rewritten in place: the shell reads it through the overlay
+    // straight from the lower inode. A file newly created in the overlay's
+    // upper dir from outside is undefined overlayfs behaviour — the polling
+    // shell's cached miss could hide it until the deadline (seen flaking).
+    await fs.writeFile(path.join(kit.ground, 'release'), 'hold');
     await fs.writeFile(path.join(kit.ground, 'wait-for-release.cjs'), [
       "const fs = require('node:fs');",
       "fs.writeFileSync('started', 'running');",
       'const deadline = Date.now() + 10000;',
       'const timer = setInterval(() => {',
-      "  if (fs.existsSync('release')) {",
+      "  if (fs.readFileSync('release', 'utf8') === 'continue') {",
       "    fs.writeFileSync('finished', 'completed');",
       "    process.stdout.write('CURRENT ACTION FINISHED');",
       '    clearInterval(timer);',
@@ -57,10 +61,13 @@ describe.each(['portal', 'witness'])('%s queued tool handoff', (seat) => {
     if (seat === 'portal') {
       const tools = await beingCodingToolsFor(kit.connection);
       await stashBeingTurnCatalog(kit.connection, tools, []);
+      // Load on demand (ceaebc157): the being seat's shell is prepared by the first act, not the catalog.
+      expect(kit.connection._turnSandbox).toBe(null);
+      expect(kit.connection._turnSandboxSource).toMatchObject({ laneId: kit.laneId, sourceRoot: kit.ground });
     } else {
       kit.connection._turnSandbox = await ensureWitnessCodingSandbox(kit.laneId, kit.ground);
+      expect(kit.connection._turnSandbox, kit.connection._turnSandboxError || 'coding sandbox missing').toBeTruthy();
     }
-    expect(kit.connection._turnSandbox).toBeTruthy();
   });
 
   it('finishes the running effect, checkpoints it, then yields before the next action', async () => {
@@ -72,13 +79,14 @@ describe.each(['portal', 'witness'])('%s queued tool handoff', (seat) => {
       : processWitnessToolBatch({ ws: kit.ws, connection: kit.connection, calls, turn,
         runtime: { tools: [...withFsPrimitives(mcpService.getToolsContext().available_tools), ...WITNESS_CODING_TOOLS], sandbox: kit.connection._turnSandbox } });
     kit.connection.turnPromise = running;
-    const ground = kit.connection._turnSandbox.workspace;
+    const ground = (await untilHarness(() => kit.connection._turnSandbox || kit.connection._turnSandboxError)).workspace;
+    expect(ground, kit.connection._turnSandboxError || 'coding sandbox missing').toBeTruthy();
     await untilHarness(() => exists(path.join(ground, 'started')));
     kit.client.send(JSON.stringify({ type: 'consciousness:stream', holdId: 'queue-1', thought: 'Use the new direction.', attachments: ['kept-document'] }));
     await untilHarness(() => kit.connection.pendingThoughts?.length === 1);
     expect(kit.connection.activeTurn.signal.aborted).toBe(false);
     expect(await exists(path.join(ground, 'finished'))).toBe(false);
-    await fs.writeFile(path.join(ground, 'release'), 'continue');
+    await fs.writeFile(path.join(kit.ground, 'release'), 'continue');
     const results = await running;
     expect(results.map((result) => result.status), JSON.stringify(results)).toEqual(['ok', 'held']);
     expect(await fs.readFile(path.join(ground, 'finished'), 'utf8')).toBe('completed');

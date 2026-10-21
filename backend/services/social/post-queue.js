@@ -9,7 +9,7 @@
 // after the channel binding and credentials are re-checked at send time — an
 // approval is not a bypass of the no-cross-routing law.
 //
-// THE REPLY EXCEPTION (Design note, 2026-08-06: a reply never rests at `approved`.
+// THE REPLY EXCEPTION (ruling, 2026-08-06): a reply never rests at `approved`.
 // Approving a reply IS the send — claimReplyForSend moves draft → sending in
 // one atom and the approval call itself publishes. An answer has no clock;
 // what matters is the tone against what was said, so the only acts on a reply
@@ -25,7 +25,7 @@ import { join, dirname } from 'path';
 import { withFileLock, LOCK_TIMEOUT } from '../file-lock.js';
 import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
-import { validateDraft, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
+import { validateDraft, queuedSecretRefusal, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
@@ -159,7 +159,7 @@ export const createPostQueue = (opts = {}) => {
       if (invalid) return Promise.reject(new Error(invalid));
       return mutate(async () => {
         const entries = await load();
-        // ONE LIVE ANSWER PER TARGET (Design note, 2026-07-28: while a live entry
+        // ONE LIVE ANSWER PER TARGET (ruling, 2026-07-28): while a live entry
         // already answers this post, a second stage is refused honestly —
         // […]. A DEAD answer (failed/withdrawn/
         // rejected) blocks nothing: a fresh answer may be staged.
@@ -250,7 +250,9 @@ export const createPostQueue = (opts = {}) => {
         return Promise.resolve({ ok: false, error: 'scheduledFor must be an ISO-8601 time' });
       }
       return transition(id, ['draft'], (entry) => {
-        // A reply is sent BY approval, never armed by it (Design note, 2026-08-06.
+        const secret = queuedSecretRefusal(entry, 'nothing was approved');
+        if (secret) return { error: secret };
+        // A reply is sent BY approval, never armed by it (ruling, 2026-08-06).
         // Arming one here would strand it: the scheduler refuses the kind, so
         // an approved reply is a promise the system can no longer keep.
         if (entry.kind === 'reply') {
@@ -361,13 +363,17 @@ export const createPostQueue = (opts = {}) => {
      *  (c34d0505214ab341, 2026-07-28). */
     claimForSend(id) {
       return transition(id, ['approved'], (entry) => {
+        // Refused, the entry stays `approved` and unsent: an edit (which
+        // re-runs validateDraft) or a withdrawal is the operator's way out.
+        const secret = queuedSecretRefusal(entry, 'nothing was sent');
+        if (secret) return { error: secret };
         entry.status = 'sending';
         entry.sendingAt = new Date().toISOString();
       });
     },
 
     /**
-     * THE REPLY APPROVAL (Design note, 2026-08-06: approving a reply IS the send.
+     * THE REPLY APPROVAL (ruling, 2026-08-06): approving a reply IS the send.
      * draft → sending in ONE atom — a reply never rests at `approved` — and
      * the caller publishes immediately after, outside the lock (a network
      * call must never ride inside the file lock). `sendingAt` is the same
@@ -394,6 +400,8 @@ export const createPostQueue = (opts = {}) => {
         if (typeof textSeen !== 'string' || textSeen !== entry.text) {
           return { error: 'the copy moved since it was read — re-read the reply and decide again' };
         }
+        const secret = queuedSecretRefusal(entry, 'nothing was sent');
+        if (secret) return { error: secret };
         const at = new Date();
         if (entry.expiresAt && Date.parse(entry.expiresAt) <= at.getTime()) {
           entry.status = 'withdrawn';

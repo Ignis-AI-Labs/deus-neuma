@@ -11,10 +11,11 @@ const path = require('node:path');
 const residency = require('./residency.cjs');
 const { registerWalletIpc } = require('./wallet/wallet-ipc.cjs');
 const { browserTargetFor } = require('./open-in-browser.cjs');
+const { externalUrlFor } = require('./desk-links.cjs');
 const { sanitizeBootPayload } = require('./desk-boot.cjs');
-const { logPaths } = require('./backend-log.cjs');
+const { revealBackendLog } = require('./backend-log.cjs');
 const { APP_HOTKEYS, buildAppMenuTemplate } = require('./hotkeys.cjs');
-const { cleanNotifyText, isSafeAppId } = require('./notify-text.cjs');
+const { cleanNotifyText, activationOf } = require('./notify-text.cjs');
 const { dragIcon } = require('./drag-icon.cjs');
 const { primaryBounds } = require('./primary-placement.cjs');
 
@@ -109,10 +110,10 @@ const registerIpcHandlers = ({ deskWindows }) => {
       });
       notification.on('click', () => {
         const win = raiseDesk();
-        // Ask the desk to open the app the card pointed at. A small enum of
-        // app ids, never a URL or a path.
-        const appId = isSafeAppId(payload?.appId) ? payload.appId : null;
-        if (win && appId) win.webContents.send('notifications:activate', { appId });
+        // Ask the desk to replay the card's click. A record id and a small enum
+        // of app ids, never a URL or a path.
+        const activation = activationOf(payload);
+        if (win && activation) win.webContents.send('notifications:activate', activation);
       });
       notification.show();
     } catch (error) {
@@ -135,14 +136,10 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // their Rabby/MetaMask). http(s) only — never file:// or custom schemes,
   // even though the renderer is our own app.
   ipcMain.handle('app:openExternal', (_event, url) => {
-    try {
-      const u = new URL(String(url));
-      if (u.protocol === 'http:' || u.protocol === 'https:') {
-        shell.openExternal(u.toString());
-        return { ok: true };
-      }
-    } catch { /* invalid url — fall through */ }
-    return { ok: false };
+    const target = externalUrlFor(url);
+    if (!target) return { ok: false };
+    shell.openExternal(target);
+    return { ok: true };
   });
 
   // Open a LOCAL HTML file in the user's default browser (the FILES tree's
@@ -260,12 +257,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
     },
     // Packaged only — that is where the log lane exists, and where the
     // operator has no terminal to read instead.
-    onShowLogs: app.isPackaged ? () => {
-      const { current } = logPaths(app.getPath('home'));
-      // Reveal rather than open: the folder holds this run AND the previous
-      // one, and the previous run is usually the one that failed.
-      shell.showItemInFolder(current);
-    } : null,
+    onShowLogs: app.isPackaged ? () => revealBackendLog(shell, app.getPath('home')) : null,
   })));
 
   // Native folder picker — lets the witness browse to a workspace home in the

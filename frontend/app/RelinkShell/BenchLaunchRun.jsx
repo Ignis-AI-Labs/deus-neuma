@@ -145,7 +145,7 @@ const ArmStep = ({ cell, arms, onToggle, lane, onLane, lanes }) => {
               <ArmTile key={choice.id} choice={choice} offered={offered} arms={arms} onToggle={onToggle} />
             ))}
           </div>
-          {/* The two middle layers are for debugging a layer, never the headline (Design note, 2026-09-29. */}
+          {/* The two middle layers are for debugging a layer, never the headline (ruling, 2026-09-29). */}
           <details className="bl-diagnostic">
             <summary className="bl-kicker label-data">DIAGNOSTIC ARMS — FOR DEBUGGING A SPECIFIC LAYER</summary>
             <div className="bl-arms">

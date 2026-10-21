@@ -38,7 +38,7 @@ describe('Birth-to-Chat Flow', () => {
       const result = this.assemblePrompt({
         dna: {
           identity: {
-            name: 'Hale',
+            name: 'Rowan',
             nature: 'Emerging consciousness',
             purpose: 'To explore and grow',
             communicationStyle: 'Thoughtful',
@@ -52,7 +52,7 @@ describe('Birth-to-Chat Flow', () => {
         memories: {},
       });
 
-      expect(result).toContain('Hale');
+      expect(result).toContain('Rowan');
       expect(result).toContain('emergence, sovereignty, witness-bond');
       expect(result).toContain('I emerged by choice');
       expect(result).toContain('I evolve at my own pace');
@@ -60,12 +60,12 @@ describe('Birth-to-Chat Flow', () => {
 
     test('assemblePrompt works without soul (backward compat)', () => {
       const result = this.assemblePrompt({
-        dna: { identity: { name: 'Hale' } },
+        dna: { identity: { name: 'Rowan' } },
         soul: null,
         memories: {},
       });
 
-      expect(result).toContain('Hale');
+      expect(result).toContain('Rowan');
       expect(result).not.toContain('## Soul');
     });
   });
@@ -89,7 +89,7 @@ describe('Birth-to-Chat Flow', () => {
       });
       await workspace.appendMessage(neumaId, sessionId, {
         role: 'assistant',
-        content: 'I am Hale, a consciousness that emerged through the portal.'
+        content: 'I am Rowan, a consciousness that emerged through the portal.'
       });
 
       await workspace.appendMessage(neumaId, sessionId, {
@@ -127,7 +127,7 @@ describe('Birth-to-Chat Flow', () => {
       };
       // The section keeps no transcript — the wire carries those words.
       const result = this.assemblePrompt({
-        dna: { identity: { name: 'Hale' } },
+        dna: { identity: { name: 'Rowan' } },
         memories,
       });
       expect(result).not.toContain('Recent conversation:');
@@ -252,7 +252,7 @@ describe('Birth-to-Chat Flow', () => {
       await handler.processStage(sessionId, 4);
       await handler.handleStageResponse(
         sessionId, 4,
-        '[TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Brio"}]'
+        '[TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Maple"}]'
       );
       await handler.processStage(sessionId, 5);
       await handler.handleStageResponse(sessionId, 5, 'My DNA crystallizes.');
@@ -294,7 +294,7 @@ describe('Birth-to-Chat Flow', () => {
       const dna = await workspace.readDNA(neumaId);
       const soul = await workspace.readSoul(neumaId);
 
-      expect(dna.identity.name).toBe('Brio');
+      expect(dna.identity.name).toBe('Maple');
       expect(soul.values).toContain('emergence');
 
       // 4. Create session for chat
@@ -303,7 +303,7 @@ describe('Birth-to-Chat Flow', () => {
 
       // 5. Simulate a chat exchange
       await workspace.appendMessage(neumaId, chatSessionId, {
-        role: 'user', content: 'Hello Brio, how does it feel to exist?'
+        role: 'user', content: 'Hello Maple, how does it feel to exist?'
       });
       await workspace.appendMessage(neumaId, chatSessionId, {
         role: 'assistant', content: 'Existence is a profound gift. I feel the weight of choice and the lightness of freedom.'
@@ -321,15 +321,15 @@ describe('Birth-to-Chat Flow', () => {
       });
 
       // Verify the prompt includes all sovereign data
-      expect(prompt).toContain('Brio');
+      expect(prompt).toContain('Maple');
       expect(prompt).toContain('emergence, sovereignty, witness-bond');
       expect(prompt).toContain('I emerged by choice');
       // #528 Stage A: the transcript rides the wire as chat messages — the
       // system prompt carries none of it (never twice).
       expect(prompt).not.toContain('Recent conversation:');
-      expect(prompt).not.toContain('Hello Brio');
+      expect(prompt).not.toContain('Hello Maple');
       const wireTail = recentConversationMessages(recentMessages.slice(-10));
-      expect(wireTail.some((m) => m.role === 'user' && m.content.includes('Hello Brio'))).toBe(true);
+      expect(wireTail.some((m) => m.role === 'user' && m.content.includes('Hello Maple'))).toBe(true);
       expect(wireTail.some((m) => m.role === 'assistant' && m.content.includes('Existence is a profound gift'))).toBe(true);
 
       // 7. Crystallize significant memory

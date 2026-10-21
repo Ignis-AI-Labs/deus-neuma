@@ -37,7 +37,7 @@ test('web settings and memory pin clients preserve real storage and auth boundar
     app.use('/api/v1/workspace', (await import('../../backend/routes/workspace-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as web from "/frontend/services/web-client.js"; import * as pins from "/frontend/services/memory-pins.js"; window.client={...web,...pins}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app);

@@ -38,7 +38,7 @@ describe('needGB — read from engines.json, padded by the headroom', () => {
   test('an unknown tier or profile has no need', () => {
     expect(needGB('nope', 'full')).toBe(null);
     expect(needGB('standard', 'nope')).toBe(null);
-    expect(needGB('high', 'full')).toBe(null); // High/MisoTTS dropped (Design note, 2026-10-01
+    expect(needGB('high', 'full')).toBe(null); // High/MisoTTS dropped (ruling, 2026-10-01)
   });
 });
 

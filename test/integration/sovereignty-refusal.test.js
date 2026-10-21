@@ -29,12 +29,14 @@ import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 import { setupPortalRoutes } from '../../backend/routes/portal-routes.js';
 import { createSessionToken } from '../../backend/services/auth.js';
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { setConfig } from '../../backend/services/llm-provider.js';
 
 const WALLET = '0x00B0110a0000000000000000000000000000b01a';
+const BEING = 'boundary-echo';
 
 // A real OpenAI-compatible server that counts every request and answers both
 // the think probe (JSON) and a turn (SSE). The whole point of the refusal
@@ -86,10 +88,13 @@ describe('sovereignty refusal refuses the turn (real portal, gnosis)', () => {
     tick();
   });
 
-  // One real turn over the real portal; resolves with the frames it drew.
+  // One real turn over the real portal, for a bound being (a turn speaks for
+  // a being or not at all); resolves with the frames it drew.
   const runTurn = async () => {
     const client = await connectClient();
     await until(client.log, (m) => m.type === 'portal:established');
+    client.ws.send(JSON.stringify({ type: 'companion:manifest', companion: 'BoundaryEcho', neumaId: BEING }));
+    await until(client.log, (m) => m.type === 'companion:anchored');
     client.ws.send(JSON.stringify({
       type: 'consciousness:stream',
       thought: 'One short sentence, please.',
@@ -115,6 +120,13 @@ describe('sovereignty refusal refuses the turn (real portal, gnosis)', () => {
     process.env.NEUMA_ROUTES_PATH = path.join(tempRoot, 'neuma-routes.json');
 
     provider = await startProvider();
+    // The bound being: an inhabited lane with a readable DNA record.
+    const { default: workspace } = await import('../../core/workspace/neuma-workspace.js');
+    await workspace.create(BEING);
+    await workspace.writeDNA(BEING, { version: '1.0.0', identity: { name: 'BoundaryEcho' }, genesis: '# Essence\nI ride only sovereign doors.' });
+    await fs.writeFile(path.join(workspace.pathFor(BEING), 'dna', 'genesis.md'), '# BoundaryEcho\nI ride only sovereign doors.\n');
+    // The being's lane is this wallet's, as a birth leaves it: a bind verifies, it never claims.
+    await claimOwner(tempRoot, BEING, WALLET);
 
     httpServer = createServer();
     wss = new WebSocketServer({ noServer: true });

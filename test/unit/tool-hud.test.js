@@ -2,7 +2,7 @@
 // system/call becomes the call it names — and the transcript keeps what the
 // model sent. Real inputs, real outputs; the echo through the real exchange.
 import { describe, expect, it } from 'vitest';
-import { CALL_TOOL, contractsOf, unknownToolHint, unreadArgsResult, unwrapCall, unwrapCalls } from '../../backend/services/tool-hud.js';
+import { CALL_TOOL, contractsOf, doorRefusal, unknownToolHint, unreadArgsResult, unwrapCall, unwrapCalls } from '../../backend/services/tool-hud.js';
 import { signatureOf, toolLine } from '../../core/runtime/tool-signature.js';
 import { nativeToolExchange } from '../../backend/services/tool-exchange.js';
 
@@ -22,6 +22,18 @@ describe('system/call — the door becomes the call it names', () => {
   it('the door named the native way (system__call) or in text is the same door', () => {
     expect(unwrapCall({ server: null, toolName: 'system__call', args: { tool: 'fs/list', args: {} } }).tool).toBe('fs/list');
     expect(unwrapCall({ tool: 'system/call', args: { tool: '/fs/write', args: { path: 'x', content: 'y' } } }).tool).toBe('fs/write');
+  });
+
+  it('the door naming the door is refused in every spelling, and a second unwrap cannot peel it (audit C1)', () => {
+    for (const inner of ['system/call', 'call', 'system__call', '/system/call']) {
+      const once = unwrapCall(door({ tool: inner, args: { tool: 'platform/platform_data', args: {} } }));
+      expect(once).toMatchObject({ server: 'system', toolName: 'call', tool: 'system/call' });
+      const twice = unwrapCall(once);
+      expect(twice.tool).toBe('system/call');
+      expect(doorRefusal(twice)).toMatchObject({ tool: 'system/call', status: 'invalid' });
+    }
+    expect(doorRefusal(unwrapCall(door({ tool: 'fs/read', args: { path: 'a' } })))).toBeNull();
+    expect(doorRefusal(unwrapCall(door('{not json')))).toMatchObject({ status: 'invalid' });
   });
 
   it('every other call is left exactly as it came; a door naming nothing stays the door, labeled as one', () => {
@@ -85,6 +97,14 @@ describe('a tool the model does not have is answered with the way to the right o
   });
   it('a wrong name in a real family lists that family (coding/run → coding/ holds: execute)', () => {
     expect(unknownToolHint('run', catalog, 'coding')).toContain('coding/ holds: execute.');
+  });
+  it('an intent called as a tool is named as the intent it is, with how to file it (2026-10-17 flight: "dispatch")', () => {
+    const intents = [{ name: 'staff/dispatch', fieldsForPrompt: '{to, title, body}', descriptionForPrompt: 'Charge a member.' }];
+    for (const hint of [unknownToolHint('dispatch', catalog, null, intents), unknownToolHint('dispatch', catalog, 'staff', intents)]) {
+      expect(hint).toContain('staff/dispatch is not a tool — it is an intent you FILE');
+      expect(hint).toContain('{"type": "staff/dispatch"} and its fields {to, title, body}');
+    }
+    expect(unknownToolHint('dispatch', catalog)).toContain('No tool named dispatch.');
   });
   it('always the door that finds tools; nothing invented when nothing is close', () => {
     const hint = unknownToolHint('launch_rocket', catalog);

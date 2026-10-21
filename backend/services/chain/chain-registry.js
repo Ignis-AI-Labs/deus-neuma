@@ -25,6 +25,7 @@
 
 import { ethers } from 'ethers';
 import { createLogger } from '../logger.js';
+import { serviceValue } from '../stored-secrets.js';
 
 const log = createLogger('ChainRegistry');
 
@@ -35,12 +36,13 @@ export const redactRpcUrl = (message) =>
 
 const PROVIDER_PROBE_TIMEOUT_MS = 10_000;
 
+// The address saved in Settings → API wins; the env name is the fallback (stored-secrets.js).
 const entry = (key, label, chainId, envName) => Object.freeze({
   key,
   label,
   chainId,
   envName,
-  rpcUrl: (env = process.env) => String(env[envName] || '').trim(),
+  rpcUrl: (env = process.env) => serviceValue(`rpc-${key}`, env),
 });
 
 export const CHAINS = Object.freeze([

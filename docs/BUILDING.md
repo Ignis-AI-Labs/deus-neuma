@@ -99,7 +99,7 @@ the first time.
 
 ```bash
 npm run lint
-npx vitest run test/unit            # fast, no model needed
+npx vitest run --project suite test/unit   # fast, no model needed (what CI runs)
 npx vitest run test/integration     # slower
 npx playwright install && npx playwright test test/e2e/<spec>
 ```

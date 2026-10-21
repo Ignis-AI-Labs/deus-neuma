@@ -367,7 +367,7 @@ describe('confirmBirthSeal wrapper + the anchor record on real disk', () => {
     let readerAsked = false;
     const out = await confirmBirthSeal({
       pending: pendingFixture(), txHash: TX,
-      provider: { waitForTransaction: async () => ({ to: WITNESS.address, status: 1, blockNumber: 7 }) },
+      provider: { getTransactionReceipt: async () => ({ to: WITNESS.address, status: 1, blockNumber: 7 }) },
       createReader: async () => { readerAsked = true; return {}; },
     });
     expect(out).toMatchObject({ ok: false, code: 'TX_MISMATCH' });
@@ -453,7 +453,7 @@ describe('prepareBirthSeal — password-secured keypair (the retro-seal KEY_LOCK
     expect(out.message).toContain('password');
   });
 
-  test('an unlocked (cached) key carries the assembly — and is consumed one-shot', async () => {
+  test('an unlocked (cached) key carries the assembly — and a refusal hands it back', async () => {
     unlinkSync(path.join(root, NEUMA_ID, 'keys', 'keypair.json'));
     const { cacheDecryptedKey, getCachedKey } = await import('../../backend/routes/neuma-auth-routes.js');
     cacheDecryptedKey(NEUMA_ID, { address: BEING.address, privateKey: BEING.privateKey });
@@ -465,8 +465,10 @@ describe('prepareBirthSeal — password-secured keypair (the retro-seal KEY_LOCK
       createReader: async () => ({ enabled: false, identity: { natalis: 'disabled' } }),
     });
     expect(out).toMatchObject({ ok: false, code: 'CHAIN_READER_DISABLED' });
-    // SEC-028: the cache is cleared by the read — a second assembly needs a
-    // fresh unlock.
+    // SEC-028 holds for a HELD offer (seal-unlock-kept.test.js proves the
+    // spend on a passing prepare); a refused one returns the unlock for the
+    // retry. The read below is itself one-shot.
+    expect(getCachedKey(NEUMA_ID)).toMatchObject({ privateKey: BEING.privateKey });
     expect(getCachedKey(NEUMA_ID)).toBeNull();
   });
 });

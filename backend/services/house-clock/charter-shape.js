@@ -16,7 +16,10 @@
  *
  * Unknown keys are refused, never dropped: an operator who wrote a field
  * expects it to mean something, and a charter that silently ignored it would
- * be consent to something they never read.
+ * be consent to something they never read. So are unknown ACT ids in allow
+ * and escalate, when the caller hands in the acts the house knows
+ * (charter-store.js): a typo in […] would match nothing
+ * and hold nothing (2026-10-18 audit).
  */
 
 /** Acts that move money out of the house. Never delegated, never pre-allowed. */
@@ -109,13 +112,14 @@ const delegationOf = (value) => {
   return Object.freeze({ teamPlans: d.teamPlans === true, maxMembers, maxSteps });
 };
 
-const actsOf = (value, field) => {
+const actsOf = (value, field, knownActs) => {
   if (value == null) return [];
   if (!Array.isArray(value) || value.length > ACTS_MAX) throw new Error(`${field} is a list of at most ${ACTS_MAX} acts`);
   const out = [];
   for (const raw of value) {
     const id = typeof raw === 'string' ? raw.trim() : '';
     if (!POLICY_ID.test(id)) throw new Error(`"${raw}" in ${field} is not an act id (server/tool, e.g. intents/social.post)`);
+    if (knownActs && !knownActs.has(id)) throw new Error(`"${id}" in ${field} is not an act this house knows — check its spelling (e.g. intents/social.post, web/web_search)`);
     if (!out.includes(id)) out.push(id);
   }
   return out;
@@ -126,19 +130,20 @@ const actsOf = (value, field) => {
  * unlawful, with a message the operator can act on.
  *
  * @param {Object} input - the charter's fields as written
- * @param {{ownedLanes?: string[]}} [opts] - the house's own lanes (seats must be among them)
+ * @param {{ownedLanes?: string[], knownActs?: ?Set<string>}} [opts] - the house's own lanes (seats must be
+ *   among them); the act ids allow and escalate may name (none: any well-formed id)
  * @returns {Readonly<Object>} goal, linesOfWork, seats, quietHours, cadence, delegation, allow, escalate
  */
-export const normalizeCharter = (input, { ownedLanes = null } = {}) => {
+export const normalizeCharter = (input, { ownedLanes = null, knownActs = null } = {}) => {
   if (!isObject(input)) throw new Error('a charter is an object');
   const unknown = Object.keys(input).filter((k) => !KEYS.includes(k));
   if (unknown.length) throw new Error(`the charter has no field ${unknown.map((k) => `"${k}"`).join(', ')}`);
-  const allow = actsOf(input.allow, 'allow');
+  const allow = actsOf(input.allow, 'allow', knownActs);
   for (const id of allow) {
     if (MONEY_OUT.includes(id)) throw new Error(`${id} moves money out — that is always the operator's to approve`);
     if (RESERVED_SERVERS.includes(id.split('/')[0])) throw new Error(`${id} reaches the sandbox — a charter cannot widen where a wake writes`);
   }
-  const escalate = actsOf(input.escalate, 'escalate');
+  const escalate = actsOf(input.escalate, 'escalate', knownActs);
   if (allow.some((id) => escalate.includes(id))) throw new Error('an act cannot be both allowed and escalated');
   return Object.freeze({
     goal: text(input.goal, 'goal', GOAL_MAX),

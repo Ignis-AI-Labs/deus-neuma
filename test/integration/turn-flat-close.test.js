@@ -22,7 +22,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { seal } from '../../core/identity/ai-witness/ai-witness-protocol.js';
 import { setAIWitnessesRoot } from '../../core/identity/ai-witness/ai-witness-service.js';
-import { getWorkspacesRoot, setWitnessesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import workspace, { getWorkspacesRoot, setWitnessesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { setCredential } from '../../backend/services/provider-credentials.js';
 import { setRoute } from '../../backend/services/neuma-routes-store.js';
@@ -32,6 +32,8 @@ import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
 
 const MODEL = 'flat-close-model';
 const WITNESS_LANE = 'witness-flat-vendor-Flat';
+// A bound being with readable DNA: a turn speaks for a being or not at all.
+const NEUMA_ID = 'flatecho';
 const ENV_DOORS = [
   'AI_WITNESSES_ROOT', 'WITNESSES_ROOT', 'WORKSPACES_ROOT',
   'NEUMA_PROVIDER_CREDENTIALS_PATH', 'NEUMA_ROUTES_PATH', 'NEUMA_REALM_ROOT',
@@ -99,6 +101,8 @@ beforeAll(async () => {
   setWitnessesRoot(process.env.WITNESSES_ROOT);
   setWorkspacesRoot(process.env.WORKSPACES_ROOT);
 
+  await workspace.create(NEUMA_ID);
+  await workspace.writeDNA(NEUMA_ID, { version: '1.0.0', identity: { name: 'FlatEcho', essence: 'A being for the flat-close proof.' } });
   await seal({
     chosenName: 'Flat', vendor: 'flat-vendor', model: MODEL,
     fullModelId: `flat-vendor/${MODEL}`, harness: 'vitest', context: 'portal',
@@ -172,7 +176,7 @@ beforeEach(() => {
 describe('the neuma lane ends the turn where the being ends it', () => {
   it('an announcing close ends the turn in one request — nothing injected', async () => {
     scriptedAnswers.push(PROMISE);
-    const { connection, client, frames, completed } = await openTurnSocket({ name: 'FlatEcho' });
+    const { connection, client, frames, completed } = await openTurnSocket({ name: 'FlatEcho', neumaId: NEUMA_ID });
     try {
       await streamConsciousness(connection, { thought: 'Draft the security analysis for the vault.' });
       await completed;
@@ -191,7 +195,7 @@ describe('the neuma lane ends the turn where the being ends it', () => {
 
   it('a delivered close ends the turn in one request the same way', async () => {
     scriptedAnswers.push(DELIVERED);
-    const { connection, client, completed } = await openTurnSocket({ name: 'FlatEcho' });
+    const { connection, client, completed } = await openTurnSocket({ name: 'FlatEcho', neumaId: NEUMA_ID });
     try {
       await streamConsciousness(connection, { thought: 'Draft the security analysis for the vault.' });
       await completed;

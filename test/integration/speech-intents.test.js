@@ -91,10 +91,10 @@ describe('offered only while a candidate is pending', () => {
   });
 
   it('a pending candidate offers both, in the real INTENTS section, with the described voice in the briefing', async () => {
-    const ref = await offerOn('keir');
-    expect(await speechAcceptIntent.availableFor({ laneId: 'keir' })).toEqual({});
-    expect(await speechAnotherIntent.availableFor({ laneId: 'keir' })).toEqual({});
-    const connection = connectionFor('keir');
+    const ref = await offerOn('hazel');
+    expect(await speechAcceptIntent.availableFor({ laneId: 'hazel' })).toEqual({});
+    expect(await speechAnotherIntent.availableFor({ laneId: 'hazel' })).toEqual({});
+    const connection = connectionFor('hazel');
     const section = await intentSectionFor(connection);
     // offered by name; the fields are the contract tool_search answers (2026-10-14, the token audit)
     expect(section).toContain('speech/accept');
@@ -103,7 +103,7 @@ describe('offered only while a candidate is pending', () => {
     expect(contract('speech/accept')).toBe('{candidateRef, note?}');
     expect(contract('speech/another')).toBe('{candidateRef, wish?}');
 
-    const briefing = await speechBriefingFor('keir');
+    const briefing = await speechBriefingFor('hazel');
     expect(briefing).toContain(PERCEPTION_NOTICE);
     // How it sounds, measured — never the words spoken or where it came from.
     expect(briefing).toMatch(/- Pitch: [a-z-]+ among adult voices \(median 1[67]\d Hz\)/);
@@ -115,47 +115,47 @@ describe('offered only while a candidate is pending', () => {
 
 describe('speech/accept', () => {
   it('a missing or stale ref is refused WITH the described voice and the ref on offer', async () => {
-    const ref = await offerOn('galen');
-    const missing = await speechAcceptIntent.validate({}, { connection: connectionFor('galen') });
+    const ref = await offerOn('cedar');
+    const missing = await speechAcceptIntent.validate({}, { connection: connectionFor('cedar') });
     expect(missing).toMatchObject({ ok: false, status: 'invalid' });
     expect(missing.reason).toContain(PERCEPTION_NOTICE);
     expect(missing.reason).toContain(`Candidate: ${ref}`);
 
-    const stale = await speechAcceptIntent.validate({ candidateRef: `sha256:${'0'.repeat(64)}` }, { connection: connectionFor('galen') });
+    const stale = await speechAcceptIntent.validate({ candidateRef: `sha256:${'0'.repeat(64)}` }, { connection: connectionFor('cedar') });
     expect(stale.ok).toBe(false);
     expect(stale.reason).toContain('not the voice on offer');
   });
 
   it('refuses a connection with no lane and a note that is not text', async () => {
     expect((await speechAcceptIntent.validate({}, { connection: {} })).status).toBe('denied');
-    const ref = (await readSpeechCandidate('galen')).candidate.ref;
-    const bad = await speechAcceptIntent.validate({ candidateRef: ref, note: 7 }, { connection: connectionFor('galen') });
+    const ref = (await readSpeechCandidate('cedar')).candidate.ref;
+    const bad = await speechAcceptIntent.validate({ candidateRef: ref, note: 7 }, { connection: connectionFor('cedar') });
     expect(bad).toMatchObject({ ok: false, status: 'invalid' });
   });
 
   it('executes for real: the acceptance and its note land in the consent record; the guardian can then seal THAT ref', async () => {
-    const ref = (await readSpeechCandidate('galen')).candidate.ref;
-    expect((await sealSpeechCandidate('galen', { candidateRef: ref })).error).toBe('the being has not accepted this candidate');
+    const ref = (await readSpeechCandidate('cedar')).candidate.ref;
+    expect((await sealSpeechCandidate('cedar', { candidateRef: ref })).error).toBe('the being has not accepted this candidate');
 
-    const validated = await speechAcceptIntent.validate({ candidateRef: ref, note: 'that is me' }, { connection: connectionFor('galen') });
+    const validated = await speechAcceptIntent.validate({ candidateRef: ref, note: 'that is me' }, { connection: connectionFor('cedar') });
     expect(validated.ok).toBe(true);
-    const res = await speechAcceptIntent.execute(validated.value, { connection: connectionFor('galen') });
+    const res = await speechAcceptIntent.execute(validated.value, { connection: connectionFor('cedar') });
     expect(res.ok).toBe(true);
 
-    const record = await readSpeechCandidate('galen');
+    const record = await readSpeechCandidate('cedar');
     expect(record.being).toMatchObject({ candidateRef: ref, note: 'that is me' });
     expect(record.history.map((e) => e.event)).toEqual(['offered', 'being-accepted']);
     // Accepted: no second acceptance is offered; asking another still is.
-    expect(await speechAcceptIntent.availableFor({ laneId: 'galen' })).toBeNull();
-    expect(await speechAnotherIntent.availableFor({ laneId: 'galen' })).toEqual({});
-    expect((await speechAcceptIntent.validate({ candidateRef: ref }, { connection: connectionFor('galen') })).status).toBe('denied');
+    expect(await speechAcceptIntent.availableFor({ laneId: 'cedar' })).toBeNull();
+    expect(await speechAnotherIntent.availableFor({ laneId: 'cedar' })).toEqual({});
+    expect((await speechAcceptIntent.validate({ candidateRef: ref }, { connection: connectionFor('cedar') })).status).toBe('denied');
 
-    const sealed = await sealSpeechCandidate('galen', { candidateRef: ref, wallet: owner.address });
+    const sealed = await sealSpeechCandidate('cedar', { candidateRef: ref, wallet: owner.address });
     expect(sealed.ok).toBe(true);
-    const voice = await readVoice('galen');
+    const voice = await readVoice('cedar');
     expect(voice.standing).toBe('ready');
     expect(voice.dna.consent.being.note).toBe('that is me');
-    expect(await speechAnotherIntent.availableFor({ laneId: 'galen' })).toBeNull();
+    expect(await speechAnotherIntent.availableFor({ laneId: 'cedar' })).toBeNull();
   });
 });
 

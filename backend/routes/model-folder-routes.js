@@ -2,11 +2,13 @@
  * Model-folder routes — the operator's AUTHORIZED MODEL FOLDERS (the folder
  * law: a chosen folder both lists and authorizes its models, and names which
  * serving engines may load from it — model-folder-authority.js). Machine
- * settings, auth-gated; own module rather than a growth ring on llm-routes
+ * settings, auth-gated, written only by the install owner at its own desk;
+ * own module rather than a growth ring on llm-routes
  * (decomposition-first).
  */
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { readModelFolders, setModelFolders, FOLDER_SERVERS } from '../services/model-folder-authority.js';
 
@@ -26,7 +28,7 @@ router.get('/', async (req, res) => {
 });
 
 // PUT / — replace the chosen folders: { folders: [{ path, servers? }] }
-router.put('/', async (req, res) => {
+router.put('/', requireInstallOwner, async (req, res) => {
   try {
     res.json({ folders: await setModelFolders(req.body?.folders), servers: FOLDER_SERVERS });
   } catch (error) {

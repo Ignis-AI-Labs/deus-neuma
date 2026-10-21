@@ -45,7 +45,7 @@ test.describe('desktop right-click menu (real Electron, real IPC)', () => {
       },
     });
     page = await app.firstWindow();
-    await expect.poll(() => Number(new URL(page.url()).port), { timeout: 30 * 1000 }).toBeGreaterThan(0);
+    await page.waitForURL((url) => Number(url.port) > 0, { timeout: 30 * 1000 });
     await page.waitForFunction(() => !!window.neuma?.desktop, null, { timeout: 30 * 1000 });
 
     // A focusable editable to right-click on. Injected only as a target —

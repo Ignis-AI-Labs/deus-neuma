@@ -146,6 +146,13 @@ export const setWitnessesRoot = (root) => {
 export const isWitnessLane = (laneId) =>
   typeof laneId === 'string' && laneId.startsWith('witness-');
 
+// pure — strictly below the ground by whole segments: a bare prefix test let
+// a sibling whose name extends the ground's (`<ground>-evil`) pass as inside.
+const belowGround = (target, ground) => {
+  const rel = path.relative(path.resolve(ground), target);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+};
+
 // Shape of a CCR-lite tool-result ref: tr_<sid8>_<seq>_<rand8>. sid8 binds the
 // ref to the session it was minted in (sha256 of the sessionId, first 8 hex
 // chars) so resolution can reject foreign refs early; rand8 is defense-in-depth
@@ -186,6 +193,7 @@ class NeumaWorkspace {
     const deps = {
       locks: this._locks,
       isWitnessLane,
+      getWitnessesRoot,
       TOOL_RESULT_REF_PATTERN,
     };
     // Domain methods land as own properties of the instance, so cross-domain
@@ -405,13 +413,13 @@ class NeumaWorkspace {
     // this one resolver, so the split holds everywhere at once.
     const ground = isWitnessLane(neumaId) ? getWitnessesRoot() : isHarnessLane(neumaId) ? getHarnessRoot(this.root) : this.root;
     const resolved = path.resolve(path.join(ground, neumaId));
-    if (!resolved.startsWith(path.resolve(ground))) {
+    if (!belowGround(resolved, ground)) {
       throw new Error('Path traversal denied');
     }
     // Resolve symlinks to prevent symlink-based traversal
     try {
       const real = realpathSync(resolved);
-      if (!real.startsWith(path.resolve(ground))) {
+      if (!belowGround(real, ground)) {
         throw new Error('Symlink traversal denied');
       }
       return real;

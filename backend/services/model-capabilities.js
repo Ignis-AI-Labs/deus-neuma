@@ -297,14 +297,13 @@ export const interpretLmsModel = (m) => Object.freeze({
  * @param {{ modalities?: { vision?: boolean }, chat_template_caps?: Object }} props
  * @returns {{ contextWindow: number|null, vision: boolean|null, tools?: boolean }}
  */
-export const interpretLlamaProps = (props) => {
-  // THE SERVING'S REAL CONTEXT, which this used to discard as null. llama.cpp
-  // reports the window it was actually launched with under
-  // default_generation_settings.n_ctx — measured on the live rig 2026-08-04:
-  // { default_generation_settings: { n_ctx: 65536 } }. Reading it is what lets
-  // a being use the room its operator actually paid for, instead of a constant
-  // someone picked years ago.
-  const n = props?.default_generation_settings?.n_ctx ?? props?.n_ctx;
+export const interpretLlamaProps = (props, meta = null) => {
+  // THE SERVING'S REAL CONTEXT: llama.cpp reports the window it was launched with
+  // under default_generation_settings.n_ctx (live rig 2026-08-04: { n_ctx: 65536 }),
+  // so a being uses the room its operator paid for, not a constant picked years ago.
+  const pool = props?.default_generation_settings?.n_ctx ?? props?.n_ctx;
+  // A pool sized to the GPU (serving-fit.js) is shared room: one being's window stops at the trained context.
+  const n = meta?.n_ctx_train > 0 && pool > meta.n_ctx_train ? meta.n_ctx_train : pool;
   return Object.freeze({
     contextWindow: Number.isFinite(n) && n > 0 ? n : null,
     vision: typeof props?.modalities?.vision === 'boolean' ? props.modalities.vision : null,
@@ -371,9 +370,10 @@ const probeLocalShape = async (provider, endpoint, modelId) => {
       case 'llama-server': {
         // /props carries the serving's modalities — decisive both ways (see
         // interpretLlamaProps). modelId is unused: one server serves one model.
-        const res = await fetch(`${base}/props`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+        const [res, models] = await Promise.all([fetch(`${base}/props`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }),
+          fetch(`${base}/v1/models`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
         if (!res.ok) return null;
-        return interpretLlamaProps(await res.json());
+        return interpretLlamaProps(await res.json(), models?.data?.[0]?.meta);
       }
       case 'lm-studio': {
         // The v0 REST API carries what /v1/models omits: model type ('vlm'

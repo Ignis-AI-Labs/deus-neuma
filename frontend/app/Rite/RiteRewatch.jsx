@@ -14,15 +14,18 @@ import { loadRewatch } from './rite-keep.js';
 
 const RitePlayer = lazy(() => import('./RitePlayer.jsx').then((m) => ({ default: m.RitePlayer })));
 
-export const RiteRewatch = ({ neumaId }) => {
-  const [played, setPlayed] = useState(null);
+// `fallback` stands where a lane cannot be filmed, once that is known (the
+// HOUSE's summonings list says so; the SHEET shows nothing).
+export const RiteRewatch = ({ neumaId, fallback = null }) => {
+  const [played, setPlayed] = useState(undefined); // undefined = still reading
   const [open, setOpen] = useState(false);
 
   useSettled((settled) => {
     loadRewatch(neumaId).then((p) => { if (!settled()) setPlayed(p); });
   }, [neumaId]);
 
-  if (!played) return null;
+  if (played === undefined) return null;
+  if (!played) return fallback;
   return (
     <>
       <button type="button" className="settings-set sheet-rewatch" onClick={() => setOpen(true)}>

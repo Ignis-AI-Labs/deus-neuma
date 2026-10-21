@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadHouseWorkspace } from '../../backend/services/house-workspace.js';
 import { readNewPosts } from '../../backend/services/house-post.js';
-import { listDispatches, readDispatch, deliveryOf } from '../../backend/services/staff/dispatch-store.js';
+import { listDispatches, readDispatch, deliveryOf, updateDispatch } from '../../backend/services/staff/dispatch-store.js';
 import { staffDispatchIntent, staffDispatchUpdateIntent } from '../../backend/services/intents/staff-acts.js';
 import { WALLET, OPTIO, HOUSEMATE, createStaffOfficeFixture } from '../helpers/staff-office-fixture.js';
 
@@ -128,5 +128,23 @@ describe('staff/dispatch-update — only the officer moves a charge', () => {
     );
     expect(again.ok).toBe(false);
     expect(again.reason).toContain('already done');
+  });
+
+  test('a charge its holder acked is still the office\'s to move — only a closed one stands still', async () => {
+    const connection = connectionFor(OPTIO);
+    const verdict = await staffDispatchIntent.validate(
+      { to: HOUSEMATE, title: 'Draft the ledger report', body: 'Done looks like: the report filed.' },
+      { connection },
+    );
+    await staffDispatchIntent.execute(verdict.value, { connection });
+    const { charge } = verdict.value;
+    await updateDispatch(OPTIO, charge.id, { status: 'working' });
+
+    const noted = await staffDispatchUpdateIntent.validate({ id: charge.id, note: 'the draft is due today' }, { connection });
+    expect(noted.ok).toBe(true);
+    const blocked = await staffDispatchUpdateIntent.validate({ id: charge.id, status: 'blocked' }, { connection });
+    expect(blocked.ok).toBe(true);
+    await staffDispatchUpdateIntent.execute(blocked.value, { connection });
+    expect((await readDispatch(OPTIO, charge.id)).status).toBe('blocked');
   });
 });

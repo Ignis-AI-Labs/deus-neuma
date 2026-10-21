@@ -18,7 +18,7 @@ test('CSP refusal stops the provider, stays quiet, and permits an explicit fresh
     vite = await createServer({
       configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(temp, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.set('Content-Security-Policy', CSP_DIRECTIVES.join('; '))
       .type('html').send('<!doctype html><script type="module" src="/probe.js"></script>'));

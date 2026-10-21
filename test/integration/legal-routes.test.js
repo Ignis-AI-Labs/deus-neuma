@@ -82,7 +82,9 @@ describe('legal routes (/api/v1/legal)', () => {
     expect(seated.body.clo.laneId).toBe('praetorlane');
     const dir = path.join(process.env.WORKSPACES_ROOT, 'praetorlane', 'legal');
     expect(await fs.readFile(path.join(dir, 'charter.md'), 'utf8')).toContain('You are\nNOT counsel');
-    expect(await fs.readFile(path.join(dir, 'register.md'), 'utf8')).toContain('Wyoming limited liability company');
+    // Every house starts from a template it fills in for itself — never one company's facts.
+    expect(await fs.readFile(path.join(dir, 'register.md'), 'utf8')).toContain('## Who this house is');
+    expect(await fs.readFile(path.join(dir, 'register.md'), 'utf8')).not.toMatch(/Ignis|Wyoming limited liability company/);
     await fs.access(path.join(dir, 'opinions'));
 
     // a re-seat never clobbers the office's own edits

@@ -5,7 +5,7 @@
 // the bound one marked. A row resumes that sitting in place; + NEW CHAT
 // replaces the screen the way the composer's button does; the full CHATS
 // window (councils, batch retitling, pinning) stays one door away. Reading,
-// switching, and NAMING live here now (Design note, 2026-09-18: right-click a row
+// switching, and NAMING live here now (ruling, 2026-09-18): right-click a row
 // to rename it by hand or let the conduit name it from what was said, and
 // TITLE names the whole untitled shelf in one stroke.
 
@@ -38,7 +38,7 @@ export const StreamChats = () => {
   // This rail publishes a BUTTON to the one shared strip and draws only its
   // panel; the strip tracks which rail is open on everyone's behalf. `show`
   // follows neumaId, so with no being bound the button withdraws instead of
-  // offering a chat list that cannot exist (Design note, 2026-08-25.
+  // offering a chat list that cannot exist (ruling, 2026-08-25).
   const isOpen = useRailItem('chats', { label: t('stream.railChats'), show: Boolean(neumaId), title: t('stream.railChatsTitle') });
   // The list is read only while this rail is the open one — folding it stops
   // the refreshes, exactly as the collapsed flag used to.

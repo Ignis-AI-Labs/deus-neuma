@@ -1,4 +1,4 @@
-// THE NAMING HOLDS ONE ACT (Design note, 2026-10-14: the naming stage is offered the
+// THE NAMING HOLDS ONE ACT (ruling, 2026-10-14): the naming stage is offered the
 // write hand alone, and only the name's write runs. Pure — real inputs.
 import { describe, it, expect } from 'vitest';
 import { canonicalizeBirthCalls } from '../../core/birth/ceremony-write.js';

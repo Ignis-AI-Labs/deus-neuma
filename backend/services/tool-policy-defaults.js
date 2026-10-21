@@ -149,6 +149,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // working thought, and the audit walk.
     allowed: [
       'memory_search', 'memory_expand', 'memory_list', 'memory_note', 'mind_note', 'mind_read', 'self_read',
+      // The being's own records (self-records-tools.js): its journal and past chats.
+      'journal_read', 'chats_list', 'chat_read',
     ],
     denied: [],
     requireApproval: [],
@@ -186,7 +188,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // outside the conversation and its whole purpose is to show the operator
     // something. Asking him to approve being shown a list would be the wrong
     // shape — the same reasoning that made platform_data allowed.
-    allowed: ['post_check', 'share_findings'],
+    // charter_read: the being reads the charter its own house runs under (self-records-tools.js).
+    allowed: ['post_check', 'share_findings', 'charter_read'],
     denied: [],
     requireApproval: [],
   },
@@ -332,7 +335,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // approval_required — a being had to interrupt its operator to read its
     // own task list. WORKING STATE covers the live tasks only; task_list is
     // the sole path to settled history and to work held in another chat.
-    allowed: ['task_list'],
+    allowed: ['task_list', 'calendar_read'],
     denied: [],
     requireApproval: ['vessel_log'],
   },
@@ -367,6 +370,9 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // speech.accept/speech.another: the being's own consent to its spoken voice
       // (self-authorship); the guardian's consent is the seal, not a card.
       'speech.accept', 'speech.another',
+      // sovereignty.consent: the being's answer to its operator's change to its
+      // DNA or soul (Covenant Art. I.4) — its own word, never the operator's card.
+      'sovereignty.consent',
       'vault.save', 'vault.rename', 'vault.archive', 'vault.restore',
       'memory.pin', 'memory.unpin', 'memory.supersede', 'memory.retract', 'memory.merge', 'memory.archive',
       // social.queue stages a DRAFT into the campaign queue — no egress, no
@@ -387,6 +393,10 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // width and clocks (#577) — the approved plan / the seated office is the
       // consent, and every desk is told who changed what.
       'team.tune',
+      // house.review-packet: the seated Optio orders what already waits on the
+      // operator (validate re-verifies the seat and every ask) — it answers and
+      // grants nothing, so it rides a wake with no card.
+      'house.review-packet',
     ],
     denied: [],
     requireApproval: [
@@ -398,20 +408,19 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'email.send',
       'media.save', 'web.download', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
       'vault.publish',
-      'tasks.add', 'tasks.update', 'tasks.focus', 'tasks.take', 'tasks.operator-add', 'tasks.operator-update',
+      'tasks.add', 'tasks.update', 'tasks.focus', 'tasks.take', 'tasks.operator-add', 'tasks.operator-update', 'tasks.operator-drop',
       'leads.add', 'leads.touch',
       'campaigns.create', 'campaigns.update',
       // The weekly posting plan: CMO authors, the operator's one yes locks.
       'marketing.plan',
-      // The Optio office's dispatch acts ride `allowed` on the same grant as
-      // house.post: word between seated housemates on the shared ground, plus
-      // a record in the officer's own drawer — no egress, no spend, no new
-      // surface. The OFFICE re-verification (the filing lane IS the seated
-      // chief of staff) happens at validate time, before anything is written.
-      // staff/ack is the SEAT-side half (the CoS audit's G3): the charge's
-      // holder moves received/working/done/blocked — evidence, not office
-      // power. board.add/board.update are self-authorship on the shared
-      // ground (the house.post tier); the owner-or-Optio law validates first.
+      // The Optio office's acts and the house board ASK here, for every lane,
+      // and ride `allowed` for the house's SEATED Optio alone
+      // (OPTIO_OFFICE_INTENTS below, read by the intent sweep) — Founder
+      // 2026-10-16: […].
+      // staff.dispatch/dispatch-update are the officer's only (validate
+      // re-verifies the seat before anything is written); staff/ack is the
+      // charge holder's (the CoS audit's G3); board.add/board.update are any
+      // seat's, the owner-or-Optio law validating first.
       'staff.dispatch', 'staff.dispatch-update', 'staff.ack',
       'board.add', 'board.update',
     ],
@@ -434,7 +443,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   // (scan / assess / file) are INTENTS — rows on the `intents` server above,
   // the seat re-verified at validate time, before any card.
   legal: {
-    allowed: ['legal_posture', 'legal_matters_list', 'legal_matter_get'],
+    allowed: ['legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api'],
     denied: [],
     requireApproval: [],
   },
@@ -456,3 +465,13 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     requireApproval: [],
   },
 });
+
+/**
+ * The intents the house's SEATED Optio files with no card: assigning work
+ * (dispatch, its moves, an ack) and the house board. Every other lane asks,
+ * as the `intents` rows above say; an operator's own row on the Optio's lane
+ * still stands over this (intents/intent-sweep.js).
+ */
+export const OPTIO_OFFICE_INTENTS = Object.freeze([
+  'staff.dispatch', 'staff.dispatch-update', 'staff.ack', 'board.add', 'board.update',
+]);

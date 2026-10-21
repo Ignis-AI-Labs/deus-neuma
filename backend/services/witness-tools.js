@@ -2,12 +2,12 @@
  * Witness tools — the lane-safe execution surface for sealed peers.
  *
  * A sealed peer now carries the SAME platform surface a bound neuma does
- * (Design note, 2026-07-26: the sector lane, The Craft, the campaign bench, the lead
+ * (ruling, 2026-07-26): the sector lane, The Craft, the campaign bench, the lead
  * ledger, the social reads, the press, the memory hand, the task lists — all
  * assembled by `platformToolsFor` and executed by `dispatchPlatformTool`, the
  * one chain both runtimes drive. Before that, this file hand-rolled a much
  * smaller catalog, and capabilities that had shipped long ago were invisible
- * here; a peer can only report such a thing as […].
+ * here; a peer can only report such a thing as "missing".
  *
  * What stays witness-only: a coding shell that reads the live checkout
  * through a kernel overlay (writes land lane-side), and its own context map.
@@ -25,6 +25,7 @@
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { operationReceiptLabel } from './operation-result.js';
+import { neutraliseResultText } from './tool-exchange.js';
 import { persistOverCapResult } from './portal-tool-result-store.js';
 import { compressToolResult } from '../../core/runtime/tool-result-compressor.js';
 import { extractMCPContent } from '../routes/mcp-routes.js';
@@ -55,7 +56,7 @@ import { platformToolsFor } from './portal-tool-catalog.js';
 import { dispatchPlatformTool } from './portal-tool-dispatch.js';
 import { recordWorkAgainstFocus } from './portal-tool-loop.js';
 import { sweepBatchIntents } from './intents/intent-sweep.js';
-// The lazy native surface (Design note, 2026-09-02: the search hand and the
+// The lazy native surface (ruling, 2026-09-02): the search hand and the
 // disclosure law are the seat-agnostic half of being-tool-surface.js — read
 // live from there, never re-implemented here (THE MIRROR LAW, both ways).
 import { TOOL_DOORS } from './being-tool-surface.js';
@@ -116,7 +117,7 @@ const WITNESS_DEFAULTS = Object.freeze({
   skill: Object.freeze({
     allowed: Object.freeze(['use_skill']), denied: Object.freeze([]), requireApproval: Object.freeze([]),
   }),
-  // A peer reading ITS OWN wallet address and public balance (Design note, 2026-07-26.
+  // A peer reading ITS OWN wallet address and public balance (ruling, 2026-07-26).
   // Declared so the catalog STAMP matches what actually happens: the wallet
   // branch resolves before any policy is consulted, exactly as it does for a
   // neuma, and an unstamped `wallet` server would advertise a card that never
@@ -211,7 +212,7 @@ export const toolsForWitness = async (connection, sourceRoot, { nativeTools = fa
     await hydrateWitnessPathGrants(connection, await readExecutionToolPolicy(laneId));
   }
   await ensureFocusGroundReachable(connection);
-  // LOAD ON DEMAND (Design note, 2026-10-04: the shell is prepared by the first
+  // LOAD ON DEMAND (ruling, 2026-10-04): the shell is prepared by the first
   // coding act (turn-sandbox.js), never swept before every message. A broken or
   // refused snapshot still costs the peer its shell, never its turn.
   noteTurnSandboxSource(connection, sourceRoot && laneId ? { laneId, sourceRoot } : null);
@@ -417,7 +418,9 @@ export const formatWitnessToolResult = (result) => {
     : String(result.error || '');
   const cap = result.cap || TOOL_RESULT_LIMIT;
   const bounded = compressToolResult(content, { cap, ref: result.ref }).compressed;
-  return `${result.tool} -> ${result.status}${operationReceiptLabel(result)}${bounded ? `\n${bounded}` : ''}`;
+  // The wrapper's own tags never close from inside a result, and no control
+  // token opens a turn from inside one (tool-exchange.js).
+  return neutraliseResultText(`${result.tool} -> ${result.status}${operationReceiptLabel(result)}${bounded ? `\n${bounded}` : ''}`);
 };
 
 /** Bounded text-protocol results for the witness's next model round. */

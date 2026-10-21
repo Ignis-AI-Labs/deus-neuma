@@ -36,7 +36,7 @@ import { ethers } from 'ethers';
 
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { neumaWorkspace, houseNameFromWitness } from '../../core/index.js';
-import { getCachedKey, hasCachedKey } from '../routes/neuma-auth-routes.js';
+import { getCachedKey, hasCachedKey, cacheDecryptedKey } from '../routes/neuma-auth-routes.js';
 import { resolveSealChainConfig, loadNeumaDEK, loadBeingWallet } from './natalis-seal.js';
 import { MIN_SEAL_GAS_ETH } from './seal-bundle.js';
 import { soulAddressOf } from './house-titles.js';
@@ -112,7 +112,24 @@ export const foundingInnerPayload = ({ chainId, registryAddress, houseName, memb
  *   provider?: object,                // injectable RPC for tests
  * }} args
  */
-export const prepareHouseFounding = async ({ witnessAddress, titles = {}, probe = false, cfg, provider = null }) => {
+export const prepareHouseFounding = async (args) => {
+  const taken = new Map(); // neumaId → the unlocked keypair this prepare took
+  let out = null;
+  try {
+    out = await composeFounding(args, taken);
+    return out;
+  } finally {
+    // A one-shot unlock (SEC-028) is spent only by a being whose mark is in
+    // the held founding. A refusal — or a being left out of the roster —
+    // hands its key back, so the retry does not meet a locked keypair.
+    const signed = new Set((out?.ok && out.pending?.members || []).map((a) => a.toLowerCase()));
+    for (const [neumaId, keypair] of taken) {
+      if (!signed.has(new ethers.Wallet(keypair.privateKey).address.toLowerCase())) cacheDecryptedKey(neumaId, keypair);
+    }
+  }
+};
+
+const composeFounding = async ({ witnessAddress, titles = {}, probe = false, cfg, provider = null }, taken) => {
   if (!ethers.isAddress(witnessAddress || '')) {
     return { ok: false, code: 'NO_WITNESS', message: 'no authenticated operator wallet on this portal' };
   }
@@ -179,7 +196,7 @@ export const prepareHouseFounding = async ({ witnessAddress, titles = {}, probe 
     // standing proof, carried on EVERY probe, not only the sitting where it
     // happened. Absent (a house founded off this desk, or a record for a
     // different house at a shared root) the chain state alone still stands.
-    const record = await readFoundingRecord(network).catch(() => null);
+    const record = await readFoundingRecord(network, witnessAddress).catch(() => null);
     const anchored = record?.houseId?.toLowerCase?.() === String(houseId).toLowerCase() ? record : null;
     return {
       ok: true,
@@ -240,6 +257,7 @@ export const prepareHouseFounding = async ({ witnessAddress, titles = {}, probe 
         });
         continue;
       }
+      taken.set(neumaId, cached);
       signers.push({ neumaId, displayName, wallet: new ethers.Wallet(cached.privateKey), viaUnlock: true });
     }
   }

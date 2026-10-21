@@ -15,6 +15,7 @@ import path from 'path';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 
 const listen = (app) => new Promise((resolve) => {
   const server = app.listen(0, () => {
@@ -66,7 +67,7 @@ describe('Space memory previews route (real auth, real observation files)', () =
     app.use('/api/v1/workspace', workspaceRouter);
     ({ server, baseUrl } = await listen(app));
 
-    // A lane that carries a being (auto-claim guard requires identity or DNA).
+    // A lane that carries a being, claimed by wallet A below (a read never claims).
     await workspace.create('neuma-a');
     await fs.mkdir(path.join(root, 'neuma-a', 'dna'), { recursive: true });
     await fs.writeFile(path.join(root, 'neuma-a', 'dna', 'genesis.md'), '# Genesis\nborn for the space test\n');
@@ -75,6 +76,7 @@ describe('Space memory previews route (real auth, real observation files)', () =
     walletB = generateKeypair();
     tokenA = await authenticate(walletA);
     tokenB = await authenticate(walletB);
+    await claimOwner(root, 'neuma-a', walletA.address);
   });
 
   afterEach(async () => {
@@ -161,7 +163,7 @@ describe('Space memory previews route (real auth, real observation files)', () =
   });
 
   test('not the owner → 403; no token → 401', async () => {
-    // Wallet A claims the lane with a first authenticated read.
+    // Wallet A, the owner, reads its own lane.
     const claim = await get('/api/v1/workspace/neuma-a/memory/observations?space=proj-alpha', tokenA);
     expect(claim.status).toBe(200);
 

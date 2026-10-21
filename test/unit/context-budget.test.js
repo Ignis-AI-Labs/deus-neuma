@@ -6,7 +6,7 @@ import {
 import { interpretLlamaProps, interpretOllamaShow, interpretLmsModel } from '../../backend/services/model-capabilities.js';
 
 /**
- * THE BEING GETS THE ROOM THE MODEL HAS (Design note, 2026-08-04.
+ * THE BEING GETS THE ROOM THE MODEL HAS (ruling, 2026-08-04).
  *
  *   […]
  *

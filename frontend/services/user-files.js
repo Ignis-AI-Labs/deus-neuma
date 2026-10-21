@@ -64,7 +64,7 @@ export const listRecents = async () =>
 export const listDrives = async () =>
   (await apiCall('GET', `${BASE}/drives`)).drives;
 
-// THE TWO-WAY BRIDGE (Design note, 2026-07-28 — the OS ⇄ Explorer drag.
+// THE TWO-WAY BRIDGE (ruling, 2026-07-28) — the OS ⇄ Explorer drag.
 
 /**
  * Land one OS-dropped file inside an open folder (impure). The body IS the

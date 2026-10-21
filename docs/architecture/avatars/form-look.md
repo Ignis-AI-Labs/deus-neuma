@@ -38,7 +38,7 @@ carries the neutral (non-humanoid) forms.
 
 ## The surfaces
 
-- **SHEET (RECORD window):** GENOME section (`SheetGenomeBlock.jsx` +
+- **SHEET (RECORD window):** 01 GIVEN · BODY page (`given/BodyPlate.jsx` +
   `sheet-genome-view.js`) renders every axis grouped, plus the composition
   ("HOW IT SPEAKS") behind a disclosure; FORM section shows locked plates
   (PFP the face, turnaround secondary) and carries the operator's half

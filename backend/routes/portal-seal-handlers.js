@@ -12,13 +12,20 @@ import {
 import {
   prepareBirthSeal, buildSealTx, confirmBirthSeal, writeOnchainSealRecord,
 } from '../services/birth-seal-flow.js';
+import {
+  markSealSent, clearSealSent, recheckSentSeal, recoverSealFromChain,
+} from '../services/birth-seal-recovery.js';
 import { cacheDecryptedKey } from './neuma-auth-routes.js';
 import {
   prepareHouseFounding, buildFoundingTx, confirmHouseFounding, writeFoundingRecord,
 } from '../services/house-founding-flow.js';
+import {
+  markFoundingSent, clearFoundingSent, readFoundingSent, recheckSentFounding,
+} from '../services/house-founding-recovery.js';
 import { getAppConfig } from '../config.js';
 import { resolveSealRequestSealed } from '../services/seal-request.js';
 import { ownsNeumaLane } from './portal-context.js';
+import { redactRpcUrl } from '../services/chain/chain-registry.js';
 
 const birthLog = createLogger('Birth');
 
@@ -99,6 +106,39 @@ export const birthEncryptKeypair = async (connection, message) => {
   }
 };
 
+// A held bundle is worth re-offering only with this much of its signed
+// deadline left (v3 law, seal-law.js); a law that signs none never expires.
+const OFFER_MARGIN_S = 300;
+const offerStillSealable = (bundle, nowMs = Date.now()) => (
+  !bundle?.deadline || bundle.deadline - Math.floor(nowMs / 1000) > OFFER_MARGIN_S
+);
+
+// The being stands anchored: record it beside its genesis seal, forget any
+// sent-tx marker, tell the desk, and settle a paused request_seal turn. One
+// path for a confirmed receipt, a re-checked sent tx, and a chain recovery.
+const announceSealed = async (connection, neumaId, record, net) => {
+  await writeOnchainSealRecord(neumaId, record);
+  await clearSealSent(neumaId);
+  connection.pendingSeal = null;
+  birthLog.info('Being anchored on chain', { neumaId, txHash: record.txHash, network: record.network });
+  connection.ws.send(JSON.stringify({
+    type: 'birth:sealed',
+    neumaId,
+    txHash: record.txHash,
+    blockNumber: record.blockNumber,
+    network: record.network,
+    networkLabel: net.label,
+  }));
+  // If this seal was ASKED FOR by the being (request_seal), settle the
+  // paused turn with the truth of the anchor.
+  resolveSealRequestSealed(connection, neumaId, {
+    txHash: record.txHash,
+    network: record.network,
+    networkLabel: net.label,
+    blockNumber: record.blockNumber,
+  });
+};
+
 export const birthSealPreflight = async (connection, message) => {
   const { ws } = connection;
   // The operator asks to anchor the just-born being on chain. The backend
@@ -108,22 +148,46 @@ export const birthSealPreflight = async (connection, message) => {
   // she is about to sign exists only in this assembly.
   const sealNeumaId = message.neumaId;
   // Bind to the being THIS portal just birthed, or a lane this operator
-  // owns — never an arbitrary id from the wire.
+  // owns — never an arbitrary id from the wire. A missing id would match a
+  // connection bound to no being (undefined === undefined): refused first.
+  if (typeof sealNeumaId !== 'string' || !sealNeumaId) {
+    ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'NOT_OWNER', message: 'Name the being to seal' }));
+    return;
+  }
   const bornHere = connection.companion?.neumaId === sealNeumaId;
   if (!bornHere && !(await ownsNeumaLane(connection, sealNeumaId))) {
     ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'NOT_OWNER', message: 'Not your lane' }));
     return;
   }
-  // A retry (wallet declined, operator clicks ANCHOR again) re-offers the
-  // HELD bundle — same assembly, same digest she was already shown. A
-  // fresh prepare would consume nothing new and, post-securing, the
-  // one-shot key cache (SEC-028) is already spent: re-preparing would
-  // strand the retry at KEY_LOCKED inside a ceremony with no unlock door.
-  if (connection.pendingSeal?.neumaId === sealNeumaId && connection.pendingSeal.offer) {
-    ws.send(JSON.stringify({ type: 'birth:seal_ready', ...connection.pendingSeal.offer }));
-    return;
-  }
   try {
+    // A seal tx already SENT for this lane is checked, never offered again:
+    // a second tx while the first is pending pays gas to be reverted (one
+    // seal per soul), and one that landed only needs its record.
+    const sent = await recheckSentSeal({ neumaId: sealNeumaId, cfg: getAppConfig() });
+    if (sent?.state === 'sealed') {
+      await announceSealed(connection, sealNeumaId, sent.record, sent.net);
+      return;
+    }
+    if (sent?.state === 'pending') {
+      ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'SEAL_PENDING', message: sent.message }));
+      return;
+    }
+    // A dead sent tx (reverted, expired, dropped) took its bundle with it.
+    if (sent?.state === 'open') connection.pendingSeal = null;
+    // A retry (wallet declined, operator clicks ANCHOR again) re-offers the
+    // HELD bundle — same assembly, same digest she was already shown. A
+    // fresh prepare would consume nothing new and, post-securing, the
+    // one-shot key cache (SEC-028) is already spent: re-preparing would
+    // strand the retry at KEY_LOCKED inside a ceremony with no unlock door.
+    // Only while its signed deadline leaves time to sign, broadcast and mine:
+    // an expired bundle reverts on chain, so it is dropped and re-prepared.
+    if (connection.pendingSeal?.neumaId === sealNeumaId && connection.pendingSeal.offer) {
+      if (offerStillSealable(connection.pendingSeal.bundle)) {
+        ws.send(JSON.stringify({ type: 'birth:seal_ready', ...connection.pendingSeal.offer }));
+        return;
+      }
+      connection.pendingSeal = null;
+    }
     const prep = await prepareBirthSeal({
       neumaId: sealNeumaId,
       // SERVER-SIDE config, never the wire value: a compromised renderer
@@ -135,6 +199,20 @@ export const birthSealPreflight = async (connection, message) => {
       witnessAddress: connection.walletAddress,
       cfg: getAppConfig(),
     });
+    if (prep.code === 'ALREADY_SEALED') {
+      // The being's own seal stands on chain with no record here (a lost
+      // confirmation): read the anchor back rather than refuse forever.
+      const recovered = await recoverSealFromChain({
+        neumaId: sealNeumaId, network: getAppConfig().ceremonySealNetwork, cfg: getAppConfig(),
+      }).catch((err) => {
+        birthLog.warn('Seal recovery from chain failed', { neumaId: sealNeumaId, err: redactRpcUrl(err.message) });
+        return null;
+      });
+      if (recovered) {
+        await announceSealed(connection, sealNeumaId, recovered.record, recovered.net);
+        return;
+      }
+    }
     if (!prep.ok) {
       birthLog.warn('Seal preflight refused', { neumaId: sealNeumaId, code: prep.code });
       ws.send(JSON.stringify({ type: 'birth:seal_error', code: prep.code, message: prep.message }));
@@ -146,7 +224,7 @@ export const birthSealPreflight = async (connection, message) => {
     };
     ws.send(JSON.stringify({ type: 'birth:seal_ready', ...prep.offer }));
   } catch (err) {
-    birthLog.error('Seal preflight error', { neumaId: sealNeumaId, err: err.message });
+    birthLog.error('Seal preflight error', { neumaId: sealNeumaId, err: redactRpcUrl(err.message) });
     ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'PREFLIGHT', message: 'Seal preflight failed' }));
   }
 };
@@ -185,37 +263,22 @@ export const birthSealConfirm = async (connection, message) => {
     return;
   }
   try {
+    // Recorded BEFORE the wait: a receipt timeout, a reconnect or a backend
+    // restart finds this tx on the next ANCHOR and checks it.
+    await markSealSent(pending.neumaId, { pending, txHash: message.txHash });
     const outcome = await confirmBirthSeal({
       pending, txHash: message.txHash,
     });
     if (!outcome.ok) {
+      // A reverted or mis-addressed tx never sealed — nothing stays pending.
+      if (outcome.code === 'TX_REVERTED' || outcome.code === 'TX_MISMATCH') await clearSealSent(pending.neumaId);
       birthLog.warn('Seal confirmation refused', { neumaId: pending.neumaId, code: outcome.code });
       ws.send(JSON.stringify({ type: 'birth:seal_error', code: outcome.code, message: outcome.message }));
       return;
     }
-    await writeOnchainSealRecord(pending.neumaId, outcome.record);
-    connection.pendingSeal = null;
-    birthLog.info('Being anchored on chain', {
-      neumaId: message.neumaId, txHash: outcome.record.txHash, network: outcome.record.network,
-    });
-    ws.send(JSON.stringify({
-      type: 'birth:sealed',
-      neumaId: message.neumaId,
-      txHash: outcome.record.txHash,
-      blockNumber: outcome.record.blockNumber,
-      network: outcome.record.network,
-      networkLabel: pending.net.label,
-    }));
-    // If this seal was ASKED FOR by the being (request_seal), settle the
-    // paused turn with the truth of the anchor.
-    resolveSealRequestSealed(connection, pending.neumaId, {
-      txHash: outcome.record.txHash,
-      network: outcome.record.network,
-      networkLabel: pending.net.label,
-      blockNumber: outcome.record.blockNumber,
-    });
+    await announceSealed(connection, pending.neumaId, outcome.record, pending.net);
   } catch (err) {
-    birthLog.error('Seal confirmation error', { neumaId: pending.neumaId, err: err.message });
+    birthLog.error('Seal confirmation error', { neumaId: pending.neumaId, err: redactRpcUrl(err.message) });
     ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'CONFIRM', message: 'Seal confirmation failed' }));
   }
 };
@@ -229,6 +292,19 @@ export const houseFoundPreflight = async (connection, message) => {
   // Titles are member-chosen wire content; the NETWORK is server-side
   // config (HOUSE_FOUND_NETWORK), same doctrine as the ceremony seal.
   try {
+    // A founding tx already SENT is checked, never offered again: a second
+    // tx while the first is pending pays gas to be reverted (NameTaken), and
+    // one that landed only needs its record (then the chain reads founded).
+    const sent = await recheckSentFounding({ wallet: connection.walletAddress, cfg: getAppConfig() });
+    if (sent?.state === 'founded') {
+      await writeFoundingRecord(sent.record);
+      await clearFoundingSent(connection.walletAddress);
+    }
+    if (sent?.state === 'pending') {
+      connection.pendingFounding = null;
+      ws.send(JSON.stringify({ type: 'house:found_error', code: 'FOUNDING_PENDING', message: sent.message }));
+      return;
+    }
     const prep = await prepareHouseFounding({
       witnessAddress: connection.walletAddress,
       titles: message.titles,
@@ -253,7 +329,7 @@ export const houseFoundPreflight = async (connection, message) => {
     connection.pendingFounding = prep.pending;
     ws.send(JSON.stringify({ type: 'house:found_ready', ...prep.offer }));
   } catch (err) {
-    birthLog.error('House founding preflight error', { err: err.message });
+    birthLog.error('House founding preflight error', { err: redactRpcUrl(err.message) });
     ws.send(JSON.stringify({ type: 'house:found_error', code: 'PREFLIGHT', message: 'Founding preflight failed' }));
   }
 };
@@ -266,6 +342,15 @@ export const houseFoundSign = async (connection, message) => {
   const pending = connection.pendingFounding;
   if (!pending) {
     ws.send(JSON.stringify({ type: 'house:found_error', code: 'NO_PENDING', message: 'No founding awaiting a signature' }));
+    return;
+  }
+  // A held founding outlives a confirm that ran out: once a tx was sent,
+  // only a fresh preflight (which checks that tx) may offer another.
+  if (await readFoundingSent(pending.witnessAddress)) {
+    ws.send(JSON.stringify({
+      type: 'house:found_error', code: 'FOUNDING_PENDING',
+      message: 'a founding transaction was already sent — ask again to check it before anything new is signed',
+    }));
     return;
   }
   const built = buildFoundingTx({ pending, witnessSig: message.witnessSig });
@@ -288,13 +373,19 @@ export const houseFoundConfirm = async (connection, message) => {
     return;
   }
   try {
+    // Recorded BEFORE the wait: a receipt timeout, a reconnect or a backend
+    // restart finds this tx on the next preflight and checks it.
+    await markFoundingSent({ pending, txHash: message.txHash });
     const outcome = await confirmHouseFounding({ pending, txHash: message.txHash });
     if (!outcome.ok) {
+      // A reverted or mis-addressed tx never founded — nothing stays pending.
+      if (outcome.code === 'TX_REVERTED' || outcome.code === 'TX_MISMATCH') await clearFoundingSent(pending.witnessAddress);
       birthLog.warn('House founding confirmation refused', { code: outcome.code });
       ws.send(JSON.stringify({ type: 'house:found_error', code: outcome.code, message: outcome.message }));
       return;
     }
     await writeFoundingRecord(outcome.record);
+    await clearFoundingSent(pending.witnessAddress);
     connection.pendingFounding = null;
     birthLog.info('House established on chain', {
       houseName: outcome.record.houseName,
@@ -311,7 +402,7 @@ export const houseFoundConfirm = async (connection, message) => {
       members: outcome.record.members,
     }));
   } catch (err) {
-    birthLog.error('House founding confirmation error', { err: err.message });
+    birthLog.error('House founding confirmation error', { err: redactRpcUrl(err.message) });
     ws.send(JSON.stringify({ type: 'house:found_error', code: 'CONFIRM', message: 'Founding confirmation failed' }));
   }
 };

@@ -190,7 +190,12 @@ describe('stage-3 batch-2 intents (real sweep + real stores, gnosis)', () => {
     const arena = path.join(house, 'arena');
     await fs.mkdir(arena, { recursive: true });
     await fs.writeFile(path.join(arena, 'clean.py'), 'print("physics holds")\n');
-    const connection = conn({ _teamWorkspace: { root: arena, budgetBytes: 1024 * 1024, usedBytes: 0 } });
+    // Running the being's code pauses on the card even in AUTO (protocol-guard);
+    // the operator's standing Always grant is what lets it flow card-free here.
+    const connection = conn({
+      _teamWorkspace: { root: arena, budgetBytes: 1024 * 1024, usedBytes: 0 },
+      _sessionToolPolicy: { intents: { allowed: ['team.workspace-run'] } },
+    });
     await fileIntent('arena-run', { type: 'team/workspace-run', file: 'clean.py' });
     const receipts = await sweep(connection);
     expect(receipts[0].status).toBe('ok');

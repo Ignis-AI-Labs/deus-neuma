@@ -16,7 +16,9 @@ test('history command stays readable and every execution sound has audible, dist
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/execution-sounds.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      // No HMR socket; the client dials a port the browser refuses — hmr:false still
+      // aimed it at :24678, where any other Vite on the box answers and the page reloads.
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     server = http.createServer((req, res) => {
       if (req.url === '/') {

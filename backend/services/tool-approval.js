@@ -66,6 +66,20 @@ export const approvalPreview = (args) => {
     : text;
 };
 
+/**
+ * The whole args text the act will run with, when the preview had to cut it —
+ * the card offers it in full, so a yes is never given to words past the cut.
+ * Null when the preview already shows everything. Pure.
+ * @param {Object|undefined} args
+ * @returns {?string}
+ */
+export const approvalFullArgs = (args) => {
+  if (!args || typeof args !== 'object') return null;
+  let text;
+  try { text = JSON.stringify(args, null, 2); } catch { return null; }
+  return typeof text === 'string' && text.length > APPROVAL_PREVIEW_MAX_CHARS ? text : null;
+};
+
 const _pending = (connection) => {
   if (!connection._pendingApprovals) connection._pendingApprovals = new Map();
   return connection._pendingApprovals;
@@ -94,17 +108,33 @@ export const parkedApprovalsFor = (wallet, sessionId) =>
 export const parkedApprovalCount = () => _parked.size;
 
 /**
+ * Whether a yes on this connection covers exactly ONE act. House work (a
+ * wake, a team member) has no screen: every yes it gets is its route's
+ * (requestToolApproval below) — the Optio's CLEAR, the operator's ALLOW ONCE,
+ * the charter — given for the act in front of it. So no scope or session
+ * grant may ride that yes to the next act: the next one is asked again. A
+ * live operator's own ALLOW keeps standing for the session as the desk
+ * shows it. Pure.
+ * @param {Object} connection
+ * @returns {boolean}
+ */
+export const approvalCoversOneAct = (connection) => Boolean(connection?._approvalRefusal);
+
+/**
  * impure — ask the operator to approve one tool call and wait for the answer.
  * Resolves with the operator's decision, or 'interrupted' (the turn was cut).
  * The broker never times out. Checkpoint IO may reject before authority advances;
  * the ask itself waits for the human.
  * @param {Object} connection - Portal connection (carries ws + pending map)
- * @param {Object} request - { tool, args, scope?, signal? } —
+ * @param {Object} request - { tool, args, scope?, signal?, lane? } —
  *   `scope` names what a yes actually grants (e.g. […]),
  *   so the operator decides on the real stakes, not just a tool name.
+ *   `lane` ({laneId, name}) is the being that ASKED when it is not the
+ *   connection's own companion (a council member) — the consent is filed
+ *   under the asker's lane, never the one-on-one being's.
  * @returns {Promise<'allow'|'always'|'deny'|'interrupted'>}
  */
-export const requestToolApproval = (connection, { tool, args, scope, surface, signal }) =>
+export const requestToolApproval = (connection, { tool, args, scope, surface, signal, lane }) =>
   withOperationApproval(connection, () => new Promise((resolve) => {
     const id = randomUUID();
     const pending = _pending(connection);
@@ -113,7 +143,7 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
 
     // `via`: the socket that carried the answer — a parked ask is answered
     // from a later connection, and THAT screen is the one to tell.
-    const settle = (decision, { reason, via, by } = {}) => {
+    const settle = (decision, { reason, via, by, approvedBy } = {}) => {
       const entry = pending.get(id);
       if (!entry) return;
       pending.delete(id);
@@ -147,14 +177,15 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
       if (decision === 'allow' || decision === 'always') {
         const label = String(tool || '');
         recordAct({
-          laneId: connection.companion?.neumaId || null,
-          name: connection.companion?.name || null,
+          laneId: (lane ? lane.laneId : connection.companion?.neumaId) || null,
+          name: (lane ? lane.name : connection.companion?.name) || null,
           tool: label,
           args,
           // A hand-declared scope (a path grant's directories) is truer than
           // anything the args could be read for, so it wins when present.
           ...(scope ? { scope: String(scope).slice(0, 300) } : {}),
           decision: by ? `approved-${by}` : decision === 'always' ? 'approved-always' : 'approved',
+          ...(approvedBy ? { approvedBy } : {}),
           status: 'approved',
         });
       }
@@ -183,6 +214,8 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
       ...(connection._runningToolOperation ? { operationId: connection._runningToolOperation.operation.id } : {}),
       tool,
       args: approvalPreview(args),
+      // The preview is a window; past its cut the card offers the whole text.
+      ...(approvalFullArgs(args) ? { fullArgs: approvalFullArgs(args) } : {}),
       // The card images behind the yes — the desk renders them on the chip
       // (posting-pipeline-v2: approve with eyes).
       ...(approvalMedia(args).length ? { media: approvalMedia(args) } : {}),
@@ -207,12 +240,20 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
     // A TEAM MEMBER's turn has no one tapping its cards (team-member-turn.js):
     // the act is refused at once, with the reason it can act on — never an
     // ask that waits on a screen nobody is watching.
-    // A HOUSE WAKE's turn (house-clock/wake-turn.js) asks its charter first:
-    // an act the operator's charter allows proceeds, recorded as the charter's
-    // yes; anything else is refused at once and filed for the operator.
+    // HOUSE WORK (a wake, house-clock/wake-turn.js; a member, under its
+    // house's charter) asks its route first (house-clock/wake-approvals.js):
+    // what the charter allows or the Optio's review clears proceeds, recorded
+    // as that yes; anything else is refused at once — with the Optio's reason
+    // when she held it, which the being reads (act-gate.js refusalForDecision).
     if (connection._approvalRefusal) {
-      if (connection._approvalRoute?.({ tool, args, scope }) === 'allow') settle('allow', { by: 'charter' });
-      else settle('deny', { reason: connection._approvalRefusal });
+      Promise.resolve()
+        .then(() => connection._approvalRoute?.({ tool, args, scope, signal }))
+        .catch((err) => { log.error('a house work route failed — the act is refused', { tool, error: err.message }); return null; })
+        .then((routed) => {
+          if (routed?.decision === 'allow') { settle('allow', { by: routed.by || 'charter', approvedBy: routed.approvedBy }); return; }
+          connection._approvalRefusalNow = routed?.refusal || connection._approvalRefusal;
+          settle('deny', { reason: connection._approvalRefusalNow });
+        });
       return;
     }
     const ws = connection.ws;

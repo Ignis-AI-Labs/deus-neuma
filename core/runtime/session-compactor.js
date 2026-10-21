@@ -31,7 +31,7 @@ export const shouldCompact = (messageCount, threshold = 100) =>
  * compactions this session has survived — a recorded FACT. The count rides
  * each summary entry (compactSession carries it forward, +1 per compaction);
  * a legacy entry from before the field counts as one. Message counts and
- * thresholds left this reading (Design note, 2026-08-15: compaction keys on CONTEXT,
+ * thresholds left this reading (ruling, 2026-08-15): compaction keys on CONTEXT,
  * and a message-based distance was a prediction, not a measurement.
  * @param {Array} entries session messages as read from the JSONL
  * @returns {{ compactionCount: number }}

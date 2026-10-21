@@ -155,6 +155,8 @@ export const READ_TOOLS = Object.freeze(new Set([
   // store, so observe mode holds them. memory_list only WALKS the record —
   // the audit lane stays open while the operator watches.
   'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
+  // Its own journal and past conversations are its own record too.
+  'journal_read', 'chats_list', 'chat_read',
   // A being reading its own skies is pure observation of a write-once record;
   // so is reading its own given body (the genome).
   'skies_read', 'genome_read',
@@ -199,6 +201,7 @@ export const READ_TOOLS = Object.freeze(new Set([
 export const OBSERVATION_TOOLS = Object.freeze(new Set([
   // The being's own record
   'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
+  'journal_read', 'chats_list', 'chat_read', 'charter_read',
   // vault reads retired (prompt + fs); vault mutations are intents only
   'skies_read', 'genome_read', 'post_check', 'refinement_sense', 'wallet_view',
   'flight_check', 'get_telemetry', 'get_view', 'inspect', 'sandbox_status', 'ground_git',
@@ -207,14 +210,14 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   // acts, and reporting to the person watching is not an act on the world.
   'share_findings',
   // Shared house state — reads, even though observe mode holds them
-  'task_list', 'queue_list', 'queue_get', 'replies_list', 'campaign_list', 'lead_list',
+  'task_list', 'calendar_read', 'queue_list', 'queue_get', 'replies_list', 'campaign_list', 'lead_list',
   // The whole posting posture in one call — computed from the real stores,
   // no egress, no mutation (posting-pipeline-v2; it carded once because its
   // policy ROW was absent — this set is the second half of the same lesson).
   'pipeline_state',
   'security_posture', 'security_threats_list', 'security_threat_get',
   'security_attack_surface', 'security_telemetry',
-  'legal_posture', 'legal_matters_list', 'legal_matter_get', 'bench_list', 'bench_status',
+  'legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api', 'bench_list', 'bench_status',
   'media_library', 'map_read', 'read_architecture', 'read_history', 'read_x',
   'retrieve_result', 'image_search',
   // The filesystem lane — the five primitives (organ spellings are internal)

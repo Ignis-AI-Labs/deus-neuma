@@ -18,7 +18,7 @@
 //     a place that close to the tonic IS the tonic. The scale has as many
 //     notes as its ceremony gave it — the tonic and up to seven more, one per stage.
 //
-// Pure, apart from ensureSoulScale's write-once file.
+// Pure, apart from ensureSoulScale's write-once file and readSoulScale's read.
 
 import crypto from 'crypto';
 import fs from 'fs/promises';
@@ -115,6 +115,22 @@ export const soulScaleFrom = (spectrum, seal = null) => {
     tonic: Object.freeze({ hz: tonic, name: noteNameOf(tonic) }),
     notes: Object.freeze(notes),
   });
+};
+
+/**
+ * Read a being's scale for display: its written record, else what its spectrum
+ * and seal derive — NEVER written here (the same reader law as
+ * readSoulSpectrum: only the birth, or a deliberate backfill, writes). Impure.
+ * @param {object} workspace a NeumaWorkspace
+ * @param {string} neumaId
+ * @param {object|null} spectrum the being's spectrum (readSoulSpectrum)
+ * @returns {Promise<object|null>}
+ */
+export const readSoulScale = async (workspace, neumaId, spectrum) => {
+  const existing = await fs.readFile(path.join(workspace.root, neumaId, SCALE_FILE), 'utf8').then(JSON.parse, () => null);
+  if (existing) return existing;
+  const scale = soulScaleFrom(spectrum, await workspace.readGenesisSeal(neumaId).catch(() => null));
+  return scale && { schema: 'soul-scale/v1', neumaId, derivedAt: new Date().toISOString(), ...scale };
 };
 
 /**

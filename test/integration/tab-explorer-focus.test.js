@@ -41,7 +41,7 @@ test('Explorer follows tab focus and external filesystem changes', async () => {
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/tab-focus-lifecycle.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><div id="root"></div><script type="module" src="/test/fixtures/tab-focus-lifecycle.jsx"></script>'));
     app.use(vite.middlewares);

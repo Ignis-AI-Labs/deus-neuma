@@ -99,7 +99,7 @@ test.describe('the door — a person with no being reaches the platform', () => 
     });
 
     page = await app.firstWindow();
-    expect(Number(new URL(page.url()).port)).toBeGreaterThan(0);
+    await page.waitForURL((url) => Number(url.port) > 0, { timeout: 30 * 1000 });
     await page.waitForFunction(() => !!window.neuma?.desktop, null, { timeout: 30 * 1000 });
     // ?noboot=1 skips the ignition overlay — this spec is about the door behind
     // it, and the boot sequence has its own spec.

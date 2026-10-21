@@ -245,7 +245,7 @@ test('ctrl toggles, shift ranges, modified clicks never open, and a selected row
   expect(crashes, `JS crashes: ${crashes.join(' | ')}`).toEqual([]);
 });
 
-// ————— bulk delete (Design note, 2026-08-16: the gesture takes the WHOLE selection,
+// ————— bulk delete (ruling, 2026-08-16): the gesture takes the WHOLE selection,
 // and the ask is a desk-level POPUP — never a bar crammed into the rail —————
 
 test('a delete on a selected row takes the whole selection: popup confirms, cancel keeps every byte, delete lands recursively and closes buried editors', async ({ page }) => {
@@ -308,7 +308,7 @@ test('a delete on a selected row takes the whole selection: popup confirms, canc
   expect(crashes, `JS crashes: ${crashes.join(' | ')}`).toEqual([]);
 });
 
-// ————— external truth (Design note, 2026-08-16: […] —————
+// ————— external truth (ruling, 2026-08-16): […] —————
 
 test('the live watch drops a row deleted behind the desk on its own; right-click REFRESH surfaces an external arrival', async ({ page }) => {
   const ext = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'xmulti-ext-'));

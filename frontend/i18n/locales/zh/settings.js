@@ -16,6 +16,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: '语言',
     note: '本界面所使用的语言——标签、设置以及每一个已完成翻译的界面。更多语言将在其词表审定后上线。',
+    preview: '预览（未完成）',
   }),
 
   account: Object.freeze({

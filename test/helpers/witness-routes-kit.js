@@ -20,6 +20,7 @@ import { seal } from '../../core/identity/ai-witness/ai-witness-protocol.js';
 import { setAIWitnessesRoot } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { setWorkspacesRoot, setWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
 import { isThinkProbe, respondThinkProbe } from './think-probe.js';
+import { makeInstallOwner } from './install-owner-kit.js';
 
 export const SEAL_INPUT = Object.freeze({
   chosenName: 'Test',
@@ -76,6 +77,9 @@ export const sealWitnessWorld = async () => {
   // Imported below every env door: auth.js's graph drags in ai-witness-service,
   // which freezes its root from AI_WITNESSES_ROOT at import time.
   const operatorWitness = (await import('./witness.js')).strangerWitness();
+  // The operator owns the install, so a witness sealed outside the desk's
+  // summon is its to take (witness-lane.js).
+  await makeInstallOwner(operatorWitness.address);
   await seal({ ...SEAL_INPUT });
   return { savedEnv, witnessRoot, laneRoot, groundRoot, operatorWitness };
 };

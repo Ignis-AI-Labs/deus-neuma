@@ -5,11 +5,12 @@
 // baselined monolith that must shrink, never grow.
 //
 // The secret law holds here exactly as in the ledger: no secret material can
-// ride — the ledger never holds any (sweep findings carry file+line only),
-// and the body builder adds nothing beyond the entry itself.
+// ride. Sweep findings carry file+line only, but the summary and assessment
+// are free text, so the whole issue is scanned before gh ever runs.
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { scanText } from './secret-sweep.js';
 
 const execFileP = promisify(execFile);
 
@@ -51,6 +52,12 @@ export const escalationBody = (threat) => [
 export const fileSecurityIssue = async (threat, repoPath) => {
   const title = `[WATCHTOWER] ${threat.title}`.slice(0, 240);
   const body = escalationBody(threat);
+  // The assessment and summary are CSO-written text: a turned or careless
+  // CSO must never carry a key out on the operator's own gh login.
+  const leaks = scanText(`${title}\n${body}`);
+  if (leaks.length) {
+    return { ok: false, error: `the issue text holds what looks like a secret (${[...new Set(leaks.map((l) => l.patternId))].join(', ')}) — nothing was filed` };
+  }
   const labels = ['domain: security', 'audit: watchtower',
     ...(threat.severity !== 'unknown' ? [`severity: ${threat.severity}`] : [])];
   const baseArgs = ['issue', 'create', '--title', title, '--body', body];

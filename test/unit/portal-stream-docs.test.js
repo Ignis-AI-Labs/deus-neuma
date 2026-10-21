@@ -99,7 +99,7 @@ describe('documents persist on the session record (real workspace round-trip)', 
   });
 });
 
-// THE ROOM (Design note, 2026-10-06: an attached document rides whole when the turn
+// THE ROOM (ruling, 2026-10-06): an attached document rides whole when the turn
 // has room for it; when it does not, the lines that fit ride with an honest
 // note, and the block's header never claims full contents it does not carry.
 describe('composeDocsBlock — fitted to the turn\'s room', () => {

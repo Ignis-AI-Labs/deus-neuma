@@ -20,7 +20,7 @@ import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/work
 import { assemblePrompt } from '../../core/runtime/prompt-assembler.js';
 
 describe('nearContextBoundary — measured truth only', () => {
-  // The two boundaries are separate constants (Design note, 2026-08-31: the FOLD
+  // The two boundaries are separate constants (ruling, 2026-08-31): the FOLD
   // releases recoverable machinery at 0.8; COMPACTION — the session-rewriting,
   // torch-passing act — waits for 0.9.
   test('the two boundaries are pinned: fold 0.8, compaction 0.9', () => {

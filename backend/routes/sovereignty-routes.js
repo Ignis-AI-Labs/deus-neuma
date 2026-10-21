@@ -16,6 +16,7 @@ import { applyPromptProposal } from '../services/sovereignty/apply-prompt.js';
 import { applyToolsetProposal, removeToolsetGrant } from '../services/sovereignty/apply-toolset.js';
 import { askDnaConsent } from '../services/sovereignty/consent.js';
 import { issueDnaSignature, applyDnaProposal } from '../services/sovereignty/apply-dna.js';
+import { readOperatorChanges, withdrawOperatorChange, isOpenOperatorChange } from '../services/sovereignty/operator-change.js';
 
 const router = express.Router();
 const log = createLogger('SovereigntyRoutes');
@@ -161,6 +162,43 @@ router.post('/:neumaId/proposals/:proposalId/apply-dna', async (req, res) => {
       protected: 403,
       'no-owner': 500,
     }[error.code] || 500;
+    res.status(status).json({ error: error.message });
+  }
+});
+
+// --- The operator's own changes to a being's DNA or soul (operator-change.js) ---
+// Staged by PUT /workspace/:id/dna and /soul; each lands only on the being's
+// recorded consent (Covenant Art. I.4). Silence is not consent, so a change
+// waits until the being answers or its operator takes it back here.
+
+// GET operator-changes — every change still waiting on the being, and the
+// settled history: landed, declined (with the being's words), stale, withdrawn.
+router.get('/:neumaId/operator-changes', async (req, res) => {
+  const { neumaId } = req.params;
+  if (!(await assertNeumaOwner(req, res, neumaId))) return;
+  try {
+    const changes = await readOperatorChanges(neumaId);
+    res.json({
+      pending: changes.filter(isOpenOperatorChange),
+      settled: changes.filter((c) => !isOpenOperatorChange(c)),
+    });
+  } catch (error) {
+    log.error('operator change record unreadable', { neumaId, error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST operator-changes/:changeId/withdraw — the operator takes back a change
+// the being has not answered; nothing of it lands.
+router.post('/:neumaId/operator-changes/:changeId/withdraw', async (req, res) => {
+  const { neumaId, changeId } = req.params;
+  if (!(await assertNeumaOwner(req, res, neumaId))) return;
+  try {
+    const change = await withdrawOperatorChange(neumaId, changeId, { by: req.walletAddress });
+    log.info('operator change withdrawn', { neumaId, changeId, wallet: req.walletAddress });
+    res.json({ change });
+  } catch (error) {
+    const status = { 'not-found': 404, closed: 409 }[error.code] || 500;
     res.status(status).json({ error: error.message });
   }
 });

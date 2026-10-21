@@ -5,7 +5,7 @@
 //   node scripts/linkedin-verify.mjs --post "text"   → ONE real test post
 //
 // Resolves credentials through the SAME door the platform rides
-// (resolveChannelCredential('linkedin') — encrypted store > .env) and the
+// (resolveChannelCredential(house, 'linkedin') — encrypted store > .env) and the
 // SAME wire (the poster's request builders): one path, proven here, trusted
 // everywhere. A bare LINKEDIN_ACCESS_TOKEN in .env is enough for discovery —
 // the script answers with the Person URN to paste, then the full set resolves.
@@ -32,9 +32,17 @@ if (process.env.NEUMA_LINKEDIN_API_ROOT) {
   process.exit(1);
 }
 
+// Keys are per HOUSE (backend/services/social/house-positions.js): name the
+// house whose keys this proves.
+const HOUSE = process.env.NEUMA_HOUSE_WALLET;
+if (!/^0x[0-9a-fA-F]{40}$/.test(HOUSE || '')) {
+  console.error('set NEUMA_HOUSE_WALLET=<your house wallet 0x…> — account keys are kept per house');
+  process.exit(1);
+}
+
 let full = null;
 try {
-  full = await resolveChannelCredential('linkedin');
+  full = await resolveChannelCredential(HOUSE, 'linkedin');
 } catch (err) {
   // A store that throws must never read as "not configured" — the proof
   // stops here, loudly, rather than falling into discovery mode.

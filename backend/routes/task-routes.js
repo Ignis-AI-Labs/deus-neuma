@@ -22,13 +22,12 @@ import { requireAuth } from '../services/auth.js';
 import { createLogger } from '../services/logger.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { getUserTasks, addUserTask, updateUserTask, addSubtaskToTask, updateSubtaskInTask, removeSubtaskFromTask, applyPresetToMine } from '../services/user-tasks.js';
-import { houseDeadlineRecords } from '../services/house-deadlines.js';
+import { houseDeadlineRecords, ownedLanes } from '../services/house-deadlines.js';
+import { houseAgenda } from '../services/house-agenda/house-agenda.js';
 import { mintCalendarToken, revokeCalendarToken, walletForCalendarToken } from '../services/calendar-share.js';
 import { buildTasksIcs, liveDeadlines } from '../services/tasks-ics.js';
 import { listPresets, createCustomPreset, deleteCustomPreset, resolvePreset } from '../services/task-presets.js';
 import { neumaWorkspace } from '../../core/index.js';
-import { listWitnesses } from '../../core/identity/ai-witness/ai-witness-service.js';
-import { readLaneMarker, witnessLaneId, witnessLaneStatus } from '../services/witness-lane.js';
 import { addAssigned, updateAssigned, materializeRecurrence, addSubtask, updateSubtask, removeSubtask } from '../../core/tasks/assigned-plan.js';
 import { instantiatePreset } from '../../core/tasks/task-presets.js';
 import { bridgeMineCompletion } from '../services/vessel-daily-bridge.js';
@@ -69,7 +68,7 @@ const answerError = (res, error, op) => {
 // on a being's lane the flag is inert but lawful (the pure module validates it).
 const authoredFields = (body, { withStatus, withChat = false }) => {
   const out = {};
-  for (const key of ['title', 'detail', 'cadence', 'dueDate', 'dueTime', 'days', 'size', 'vessel']) {
+  for (const key of ['title', 'detail', 'cadence', 'dueDate', 'dueTime', 'startTime', 'days', 'size', 'vessel']) {
     if (body?.[key] !== undefined) out[key] = body[key];
   }
   if (withChat && body?.chatId !== undefined) out.chatId = body.chatId;
@@ -225,21 +224,9 @@ router.get('/live', async (req, res) => {
       return materializeRecurrence(plan, now).plan.tasks.filter((t) => t.status === 'open').length;
     };
 
-    const counts = [];
-    for (const { neumaId } of await neumaWorkspace.listNeumaByOwner(wallet).catch(() => [])) {
-      // A witness lane is owned too, but it is not a neuma — it rides below with
-      // its own kind, exactly as the roster splits them.
-      if (await readLaneMarker(neumaId)) continue;
-      counts.push({ beingId: neumaId, kind: 'neuma', open: await countFor(neumaId) });
-    }
-    for (const w of await listWitnesses().catch(() => [])) {
-      const laneId = witnessLaneId(w.vendorSlug, w.chosenName);
-      const lane = await witnessLaneStatus(laneId).catch(() => null);
-      // An unprovisioned or foreign lane is not this wallet's to count.
-      if (!lane?.provisioned) continue;
-      if (lane.ownerWallet && lane.ownerWallet.toLowerCase() !== String(wallet).toLowerCase()) continue;
-      counts.push({ beingId: laneId, kind: 'witness', name: w.chosenName, open: await countFor(laneId) });
-    }
+    const counts = await Promise.all((await ownedLanes(wallet)).map(async ({ laneId, kind, name }) => ({
+      beingId: laneId, kind, ...(name ? { name } : {}), open: await countFor(laneId),
+    })));
     res.json({ counts });
   } catch (error) {
     answerError(res, error, 'Could not read the live task counts');
@@ -400,6 +387,17 @@ router.get('/deadlines', async (req, res) => {
     res.json({ deadlines: await houseDeadlineRecords(req.walletAddress) });
   } catch (error) {
     answerError(res, error, 'Could not read the house deadlines');
+  }
+});
+
+// GET /agenda?from=YYYY-MM-DD&to=YYYY-MM-DD — the house calendar: every row's
+// schedule for the window (house-agenda/), this wallet's house only.
+router.get('/agenda', async (req, res) => {
+  try {
+    res.json(await houseAgenda(req.walletAddress, { from: req.query.from, to: req.query.to }));
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
+    answerError(res, error, 'Could not read the house agenda');
   }
 });
 

@@ -52,7 +52,7 @@ export const StreamTasks = () => {
   // itself. It publishes a BUTTON to the one shared strip (StreamRail) and draws
   // only its panel — which is what lets the strip stay reachable while a panel
   // is open, so another rail is one tap away instead of requiring this one to be
-  // folded first (Design note, 2026-08-25.
+  // folded first (ruling, 2026-08-25).
   //
   // Exclusivity is unchanged and still belongs to stream-rail-state.js; the
   // strip subscribes once on everyone's behalf rather than each rail keeping a
@@ -233,7 +233,7 @@ export const StreamTasks = () => {
                 <h4 className="stream-tasks-h label-data">THEIR OWN GOALS</h4>
                 <ul className="stream-tasks-list">
                   {bar.own.map((t) => (
-                    // A MARK, not a control (Design note, 2026-08-03: the box says where
+                    // A MARK, not a control (ruling, 2026-08-03): the box says where
                     // this goal stands; settling a being's own task still goes
                     // through the being. So the row reads, and offers no act the
                     // operator does not own.

@@ -249,6 +249,9 @@ describe('B-04 — composition transport over signed sockets and scripted HTTP b
     expect(ids).toContain('identity');
     expect(ids).toContain('closing');
     expect(ids).toContain('currentTurn');
+    // The local wire folds the volatile tail into the turn (turn-context-carry.js):
+    // its block's frame is counted as the wire carried it.
+    expect(ids).toContain('harnessFrame');
     for (const s of first.sections) expect(s.chars).toBeGreaterThan(0);
 
     for (const composition of comps) {
@@ -285,7 +288,7 @@ describe('B-04 — composition transport over signed sockets and scripted HTTP b
       usedTokens: 5012,
       source: 'measured',
     });
-    // FACTS ONLY (Design note, 2026-08-15: recorded compactions, whether THIS turn
+    // FACTS ONLY (ruling, 2026-08-15): recorded compactions, whether THIS turn
     // measured at the boundary (5000+12 of 8192 = 61%, below the 0.9
     // compaction ratio — fold territory begins at 0.8, compaction waits for
     // 0.9, Design note, 2026-08-31, the ratio — never a message-count prediction

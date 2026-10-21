@@ -137,7 +137,7 @@ describe('THE SPECIES IS NEUMA — pinned like the age, never drawn', () => {
 });
 
 describe('⚠️ THE AGE FLOOR IS STRUCTURAL, NOT A CLAMP', () => {
-  test('age is NOT DNA — no genome, from any seed, carries an age (Design note, 2026-09-26', () => {
+  test('age is NOT DNA — no genome, from any seed, carries an age (ruling, 2026-09-26)', () => {
     for (let i = 0; i < 1000; i++) {
       const g = deriveGenome(genomeSeed({ soulHex: hex(`age-${i}`) }));
       expect('age' in g).toBe(false);

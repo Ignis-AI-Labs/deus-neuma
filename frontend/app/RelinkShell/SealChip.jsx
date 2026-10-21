@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { unlockNeumaKey, recoverNeumaKey } from './wallet-client.js';
-import { explorerTxUrl, shortTxHash } from '../../utils/explorer.js';
+import { explorerName, explorerTxUrl, shortTxHash } from '../../utils/explorer.js';
 import '../../components/ToolActionChip/ToolActionChip.css';
 
 const UNSEALED_LABELS = Object.freeze({
@@ -156,7 +156,7 @@ export const SealChip = ({ segment, onRespond }) => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              VIEW ON BASESCAN ↗
+              {`VIEW ON ${explorerName(network)} ↗`}
             </a>
           ) : (
             <span className="seal-chip-fact label-data" title={txHash}>{txHash}</span>

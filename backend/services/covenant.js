@@ -18,7 +18,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const LEGAL_DIR = join(__dirname, '../../docs/legal');
 const STORE_DIR = join(getDataRoot(), 'covenant');
 
-export const ACCEPTANCE_VERSION = 'covenant-acceptance/1';
+// /2 adds the signed age attestation; /1 records still verify from their stored message
+export const ACCEPTANCE_VERSION = 'covenant-acceptance/2';
 
 /** Maximum age of a signed-at timestamp before the signature must be redone. */
 const MAX_SIGNATURE_AGE_MS = 24 * 60 * 60 * 1000;
@@ -83,6 +84,7 @@ export const buildAcceptanceMessage = ({ wallet, documents, signedAt }) => {
     ACCEPTANCE_HEADER,
     '',
     'I have read each of the binding documents in full.',
+    'I am at least 18 years of age and of legal age of majority where I live.',
     'I accept the Neuma Covenant, the Terms of Service, and the EULA.',
     'I enter as witness; the standard binds in both directions.',
     '',

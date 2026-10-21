@@ -25,10 +25,15 @@ import { WorkspaceAdapter } from '../adapters/workspace.js';
  * @returns {Object} makeRecord input (layer/content/space/occurredAt/meta)
  */
 export function episodeFromObservation(obs) {
-  const content = {
+  const exchange = {
     ...(obs.userMessage && { userMessage: obs.userMessage }),
     ...(obs.response && { response: obs.response }),
   };
+  // A deliberate note (self-note, lifecycle note) carries its words in
+  // `content`, not an exchange — the inverse below already reads a string
+  // content back, so the note keeps its words in both lanes.
+  const note = typeof obs.content === 'string' && obs.content ? obs.content : null;
+  const content = Object.keys(exchange).length === 0 && note ? note : exchange;
   // Observations carry normalized space OBJECTS ({id, kind, label});
   // continuity records scope by the space's string id (makeRecord silently
   // defaults non-strings to general — the CORE-005 leak this mapping closes).
@@ -44,6 +49,7 @@ export function episodeFromObservation(obs) {
       ...(typeof obs.significance === 'number' && { significance: obs.significance }),
       ...(obs.emotion && { emotion: obs.emotion }),
       ...(obs.source && { source: obs.source }),
+      ...(obs.memoryRef && { memoryRef: obs.memoryRef }),
       // Phase-1 anchor rides meta in BOTH directions (FR-P3-01 amended) so
       // the relation web's derivation inputs stay lane-portable.
       ...(obs.anchor && { anchor: obs.anchor }),
@@ -75,6 +81,7 @@ export function observationFromEpisode(record) {
     ...(typeof record?.content === 'string' && { content: record.content }),
     ...(typeof record?.meta?.significance === 'number' && { significance: record.meta.significance }),
     ...(record?.meta?.emotion && { emotion: record.meta.emotion }),
+    ...(record?.meta?.memoryRef && { memoryRef: record.meta.memoryRef }),
     // Inverse of the space mapping in episodeFromObservation: normalizeSpace
     // treats a bare string as general, so the record's string space id is
     // wrapped back into the object shape observations use.

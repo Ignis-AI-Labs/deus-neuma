@@ -12,9 +12,12 @@
  * runtime. Re-run when the catalog should move forward; review the diff like
  * any other change.
  *
- * Usage: node scripts/sync-provider-catalog.mjs [--from <path>] [--check]
+ * Usage: node scripts/sync-provider-catalog.mjs [--from <path>] [--check] [--links-only]
  *   --from <path>  map a previously downloaded api.json instead of fetching
  *   --check        report what would change without writing
+ *   --links-only   write only each CATALOGED provider's documentation link
+ *                  (backend/services/provider-docs-data.js) — the catalog
+ *                  itself is untouched, so links can move without a re-sync
  */
 
 import { readFile, writeFile } from 'fs/promises';
@@ -29,6 +32,8 @@ const args = process.argv.slice(2);
 const fromIdx = args.indexOf('--from');
 const FROM_FILE = fromIdx !== -1 ? args[fromIdx + 1] : null;
 const CHECK_ONLY = args.includes('--check');
+const LINKS_ONLY = args.includes('--links-only');
+const DOCS_TARGET = path.join(REPO_ROOT, 'backend', 'services', 'provider-docs-data.js');
 
 // Ids the hand-written core registry already owns — generated entries must
 // never shadow them (keys, route overrides, and UI reference these ids).
@@ -145,8 +150,33 @@ const fetchCatalog = async () => {
   return res.json();
 };
 
+// impure — the documentation link models.dev publishes for each provider the
+// committed snapshot already carries (https only); nothing else moves.
+const writeLinksOnly = async (raw) => {
+  const { GENERATED_PROVIDERS } = await import(TARGET);
+  const docs = {};
+  for (const { id } of GENERATED_PROVIDERS) {
+    const doc = raw[id]?.doc;
+    if (typeof doc === 'string' && /^https:\/\//i.test(doc)) docs[id] = doc;
+  }
+  const body = `/**
+ * GENERATED FILE — do not edit by hand.
+ * Regenerate with: node scripts/sync-provider-catalog.mjs --links-only
+ *
+ * Each cataloged provider's documentation link from models.dev (${API_URL}),
+ * synced ${new Date().toISOString().split('T')[0]}: where a person finds how to get its key. The
+ * hand-written direct key pages in credential-links.js win over these.
+ */
+
+export const PROVIDER_DOCS = Object.freeze(${JSON.stringify(docs, null, 2)});
+`;
+  await writeFile(DOCS_TARGET, body);
+  console.log(`wrote ${path.relative(REPO_ROOT, DOCS_TARGET)} — ${Object.keys(docs).length} of ${GENERATED_PROVIDERS.length} providers have a link`);
+};
+
 const run = async () => {
   const raw = await fetchCatalog();
+  if (LINKS_ONLY) return writeLinksOnly(raw);
   const entries = [];
   const skipped = [];
   for (const [id, p] of Object.entries(raw)) {

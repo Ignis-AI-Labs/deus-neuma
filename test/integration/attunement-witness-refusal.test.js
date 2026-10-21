@@ -17,7 +17,7 @@ import { attunementStatus, abandonAttunementRecord, reviewAttunementRecord, offe
 import { offerAttunement } from '../../core/attunement/record.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 
-let oldDataRoot;
+let oldDataRoot; let oldCredentialPath;
 let root; let oldRoot; let oldWitnesses; let app; let wallet; let token;
 const witness = 'witness-test-attunement';
 const legacy = 'legacy-witness-attunement';
@@ -28,6 +28,12 @@ beforeAll(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-attunement-refusal-'));
   oldDataRoot = process.env.NEUMA_DATA_ROOT;
   process.env.NEUMA_DATA_ROOT = path.join(root, 'data');
+  // The credential store resolves its settings dir at import (before this
+  // hook), so NEUMA_DATA_ROOT alone left status reading the operator's real
+  // data/settings/provider-credentials.json — sealed under the real key, it
+  // failed to decrypt under the test key and status answered 500.
+  oldCredentialPath = process.env.NEUMA_PROVIDER_CREDENTIALS_PATH;
+  process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = path.join(root, 'data', 'settings', 'provider-credentials.json');
   oldRoot = getWorkspacesRoot();
   oldWitnesses = getWitnessesRoot();
   setWorkspacesRoot(path.join(root, 'house'));
@@ -58,6 +64,8 @@ afterAll(async () => {
   setWitnessesRoot(oldWitnesses);
   if (oldDataRoot === undefined) delete process.env.NEUMA_DATA_ROOT;
   else process.env.NEUMA_DATA_ROOT = oldDataRoot;
+  if (oldCredentialPath === undefined) delete process.env.NEUMA_PROVIDER_CREDENTIALS_PATH;
+  else process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = oldCredentialPath;
   if (root) await fs.rm(root, { recursive: true, force: true });
 });
 

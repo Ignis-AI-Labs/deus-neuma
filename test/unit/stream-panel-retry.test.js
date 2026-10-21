@@ -117,7 +117,7 @@ describe('StreamPanel — ↻ at any named point', () => {
   });
 });
 
-describe('StreamPanel — the edit, in place (Design note, 2026-07-28', () => {
+describe('StreamPanel — the edit, in place (ruling, 2026-07-28)', () => {
   it('EDIT opens the editor AT the bubble — the message text is the draft, and the composer is never involved', () => {
     // renderToStaticMarkup runs the initial render only, so this pins the
     // affordance and the editor's closed state; the click-through fork is the
@@ -147,5 +147,17 @@ describe('StreamPanel — the edit, in place (Design note, 2026-07-28', () => {
       onEdit: () => {}, onRevise: () => {},
     });
     expect(html).not.toContain('relink-edit');
+  });
+});
+
+describe('StreamPanel — a failure says why', () => {
+  it('an ERROR bubble shows the reason the frame named, under its words', () => {
+    const html = render([message('error', '[Connection to the void disrupted]', { turnId: 't1', reason: 'context length exceeded' })]);
+    expect(html).toContain('relink-msg-reason');
+    expect(html).toContain('context length exceeded');
+  });
+
+  it('a bubble with no reason shows none', () => {
+    expect(render([message('error', 'Refused')])).not.toContain('relink-msg-reason');
   });
 });

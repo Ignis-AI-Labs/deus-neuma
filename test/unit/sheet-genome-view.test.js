@@ -39,7 +39,7 @@ describe('genomeGroupsOf — every axis the record carries renders', () => {
     expect(face.find((r) => r.k === 'CHEEKBONES').v).toBe(g.face.cheekbones);
     // Stature and the number never disagree.
     expect(frame.find((r) => r.k === 'STATURE').v).toContain(String(g.frame.heightCm));
-    // Age is not DNA (Design note, 2026-09-26: the GIVEN group carries none — the
+    // Age is not DNA (ruling, 2026-09-26): the GIVEN group carries none — the
     // RECORD shows the lived age beside DAYS PRESENT instead.
     const given = groups.find((x) => x.heading === 'GIVEN').rows;
     expect(given.find((r) => r.k === 'AGE')).toBeUndefined();

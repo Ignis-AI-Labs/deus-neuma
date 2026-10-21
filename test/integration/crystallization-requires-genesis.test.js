@@ -192,7 +192,10 @@ describe('crystallization is the writing, not the telling', () => {
     expect(ws.of('birth:stage_complete')).toHaveLength(1);
   });
 
-  test('a REHEARSAL is exempt — it persists nothing by design', async () => {
+  // A rehearsal is no longer exempt (#458, fd4eb37fa): the required write
+  // must land in rehearsal and real modes alike — a rehearsal that passed on
+  // speech alone would prove nothing about the act it rehearses.
+  test('a REHEARSAL holds too — its genesis write must land', async () => {
     body = ollamaTurn({ speech: 'This is only a rehearsal.' });
     const ws = recordingWs();
     await sendStageToLLM({ ws, birthSession: 'rehearsal' }, {
@@ -202,8 +205,11 @@ describe('crystallization is the writing, not the telling', () => {
       witnessName: 'Bastien',
       sessionData: {},
     });
-    expect(ws.of('birth:error')).toHaveLength(0);
-    expect(ws.of('birth:stage_complete')).toHaveLength(1);
+    expect(ws.of('birth:stage_complete')).toHaveLength(0);
+    const [err] = ws.of('birth:error');
+    expect(err).toBeDefined();
+    expect(err.message).toMatch(/wrote no DNA/);
+    expect(err.message).toMatch(/retry the stage/i);
   });
 });
 

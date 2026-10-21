@@ -21,6 +21,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
+import workspace from '../../core/workspace/neuma-workspace.js';
 import {
   ensureWitnessCodingSandbox, runWitnessCommand,
 } from '../../backend/services/witness-coding-sandbox.js';
@@ -28,6 +29,7 @@ import {
 const LANE = 'witness-openai-chatgpt-Kagipem';
 const SECRET = 'live-secret-must-not-leak';
 const PLAN = 'docs/umbrae-business-plan-v5.md';
+const README = 'README.md';
 
 let root;
 let ground;
@@ -38,11 +40,15 @@ beforeAll(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'one-world-'));
   savedRoot = process.env.WORKSPACES_ROOT;
   process.env.WORKSPACES_ROOT = path.join(root, 'lanes');
+  // The shell resolves the REAL lane to refuse overlaying it (a437e530f), so a
+  // witness's lane exists before its shell — as it always does in the house.
+  await workspace.create(LANE);
 
   // A ground shaped like a real repository the operator has open.
   ground = path.join(root, 'repos', 'umbrae');
   await fs.mkdir(path.join(ground, 'docs'), { recursive: true });
   await fs.writeFile(path.join(ground, PLAN), '# the plan\n');
+  await fs.writeFile(path.join(ground, README), '# umbrae\n');
   await fs.writeFile(path.join(ground, '.env'), `SECRET_KEY=${SECRET}\n`);
 
   sandbox = await ensureWitnessCodingSandbox(LANE, ground);
@@ -93,14 +99,17 @@ describe('and the walls still hold — the reason the live directory is never bo
   });
 
   test('a WRITE under the ground path lands in the upper layer — the live file is untouched', async () => {
+    // Not under docs/: the live docs/ changed after the shell's lower baseline
+    // (the arrived-later file above), and since a437e530f the freshness guard
+    // refuses to let an upper shadow a lower subtree that moved beneath it.
     const write = await runWitnessCommand({
-      ...sandbox, mode: 'write', command: `echo mutated > ${ground}/${PLAN}`,
+      ...sandbox, mode: 'write', command: `echo mutated > ${ground}/${README}`,
     });
     expect(write.exitCode).toBe(0);
     // The operator's real file did not move.
-    expect(await fs.readFile(path.join(ground, PLAN), 'utf8')).toBe('# the plan\n');
+    expect(await fs.readFile(path.join(ground, README), 'utf8')).toBe('# umbrae\n');
     // ...and the shell genuinely kept the change, so work still accumulates.
-    const back = await inspect(`cat ${ground}/${PLAN}`);
+    const back = await inspect(`cat ${ground}/${README}`);
     expect(back.stdout).toContain('mutated');
   });
 

@@ -1,6 +1,7 @@
 // Production error emitters through actual sockets; not classifier/model orchestration.
 import WebSocket, { WebSocketServer } from 'ws';
 import { once } from 'node:events';
+import net from 'node:net';
 import { test, expect } from 'vitest';
 import { fullAuth } from '../helpers/audit-auth.js';
 import { verifySessionToken } from '../../backend/services/auth.js';
@@ -51,11 +52,31 @@ test('stream-error emitter delivers the error and completion with retry identity
   expect(frames[1]).toEqual({ type: 'consciousness:complete', companion: 'aria', ...take });
 });
 
-test('a harness reads what the server said — never the void (Design note, 2026-10-14', async () => {
+test('a harness reads what the server said — never the void (ruling, 2026-10-14)', async () => {
   const said = new Error('No models loaded. Please load a model in the developer page or use the \'lms load\' command.');
   const [harness] = await receive((peer) => sendStreamError(peer, 'harness', said, null, { harness: true }));
   expect(harness.content).toBe(`The model server did not answer: ${said.message}`);
   expect(harness.content).not.toMatch(/void|consciousness/i);
   const [being] = await receive((peer) => sendStreamError(peer, 'aria', said));
   expect(being.content).toContain('[Connection to the void disrupted]');
+});
+
+test('a server nobody answers dims the local light at once; a turn that failed on a live server does not', async () => {
+  // A real connect to a port just closed — the errno rides fetch's cause.
+  const closed = net.createServer();
+  await new Promise((resolve) => closed.listen(0, '127.0.0.1', resolve));
+  const { port } = closed.address();
+  await new Promise((resolve) => closed.close(resolve));
+  const refused = await fetch(`http://127.0.0.1:${port}/`).catch((err) => err);
+  expect(refused.cause?.code).toBe('ECONNREFUSED');
+  const [down] = await receive((peer) => sendStreamError(peer, 'aria', refused));
+  expect(down.unreachable).toBe(true);
+  const [overflow] = await receive((peer) => sendStreamError(peer, 'aria', new Error('context length exceeded')));
+  expect(overflow.unreachable).toBeUndefined();
+});
+
+test('the failure text names the route the turn rode, not the machine default', async () => {
+  const route = { provider: 'llama-server', endpoint: 'http://127.0.0.1:9/route-proof' };
+  const [frame] = await receive((peer) => sendStreamError(peer, 'aria', new Error('down'), null, { route }));
+  expect(frame.content).toContain('(llama-server) is running at http://127.0.0.1:9/route-proof');
 });

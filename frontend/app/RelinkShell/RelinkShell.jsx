@@ -161,7 +161,7 @@ export const RelinkShell = ({ wsService }) => {
   const tabs = useDeskTabs(wsService, budget);
 
   /**
-   * THE GROUND FOLLOWS THE SITTING (Design note, 2026-08-29.
+   * THE GROUND FOLLOWS THE SITTING (ruling, 2026-08-29).
    *
    * […]
    *

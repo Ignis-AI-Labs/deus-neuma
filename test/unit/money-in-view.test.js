@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
-  periodStarts, formatUsd, totalLine, assetLines, memberLines, receiptLine, watchLine, sourceWords,
+  periodStarts, formatUsd, totalLine, assetLines, memberLines, receiptLine, watchLine, sourceWords, scanNote, unreadNetworks,
 } from '../../frontend/app/RelinkShell/house-clock/money-in-view.js';
 import { MoneyInSection } from '../../frontend/app/RelinkShell/house-clock/MoneyInSection.jsx';
 import { summarizeMoneyIn } from '../../backend/services/money-in/money-in-summary.js';
@@ -66,6 +66,19 @@ describe('money-in-view — totals, unpriced counted apart', () => {
     expect(sourceWords('soul-anchor')).toBe('its public soul address');
     expect(sourceWords('founding-record:base')).toBe('the house founding record');
     expect(sourceWords('operator')).toBe('declared by you');
+  });
+
+  it('a scan note names what it read and what it did not, and why', () => {
+    const base = { network: 'base', head: 10, tokenWindow: null, receipts: 0, gaps: 0, errors: [] };
+    expect(scanNote({ appended: 2, watched: 1, networks: [{ network: 'ethereum', head: 9, receipts: 2, gaps: 0, errors: [] }, base] }))
+      .toBe('SCANNED ETHEREUM + BASE — 2 NEW RECEIPTS');
+    expect(scanNote({ appended: 0, watched: 1, networks: [{ network: 'ethereum', skipped: 'unconfigured' }, base] }))
+      .toBe('SCANNED BASE — 0 NEW RECEIPTS · NOT READ: ETHEREUM — NO RPC SET');
+    expect(scanNote({ appended: 0, watched: 1, networks: [
+      { network: 'ethereum', skipped: 'rpc-unavailable', error: 'connect ECONNREFUSED' }, { network: 'base', skipped: 'unconfigured' },
+    ] })).toBe('NOTHING SCANNED · NOT READ: ETHEREUM — RPC UNREACHABLE · BASE — NO RPC SET');
+    expect(scanNote({ appended: 0, watched: 0, networks: [] })).toBe('NOTHING SCANNED — NO ADDRESS IS WATCHED');
+    expect(unreadNetworks([{ ...base, errors: ['token logs: timeout'] }])).toEqual(['BASE — READ ERRORS']);
   });
 });
 

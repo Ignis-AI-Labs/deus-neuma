@@ -17,6 +17,7 @@ export const createStreamActions = ({
   turnStartedRef, erroredRef, streamSeenRef, sinkRef, holdSeqRef,
   voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
   companionRef, focusRef, projectsRef, historyReadyRef, historyFailedRef, navigationSeqRef,
+  toolModeRef, chatModeRef,
 }) => {
   // THE RELOAD-RACE GATE (D5, Design note, 2026-08-31: a send fired in the link-up
   // window — after a reload, before loadLatestSession settled — used to stamp
@@ -36,7 +37,7 @@ export const createStreamActions = ({
   // those ride the portal frame, never bytes); previews are local data URIs
   // for the operator's own bubble. urgency: 'now' INTERJECTS (cuts the reply
   // in flight), anything else HOLDS until the turn finishes — the council's
-  // two ways, wired to the one-on-one (Design note, 2026-07-26.
+  // two ways, wired to the one-on-one (ruling, 2026-07-26).
   const sendThought = (text, preset, attachments, urgency = 'hold') => {
     const trimmed = text.trim();
     const ids = [...(attachments?.ids || [])];
@@ -114,7 +115,7 @@ export const createStreamActions = ({
     wsService.send('consciousness:interrupt');
   };
 
-  // THE TAKES (Design note, 2026-07-27: ask a turn-point again as a new TAKE of the
+  // THE TAKES (ruling, 2026-07-27): ask a turn-point again as a new TAKE of the
   // same point — another version of the answer, never a duplicated ask
   // cluttering the stream. The portal runs the turn against the RECORD (the
   // point's persisted words + attachments); the take opens IN PLACE of the
@@ -134,7 +135,7 @@ export const createStreamActions = ({
     }, `Retry ${turnId}`);
   };
 
-  // THE EDIT-FORK (Design note, 2026-07-28: a message pulled back into the field and
+  // THE EDIT-FORK (ruling, 2026-07-28): a message pulled back into the field and
   // re-sent FROM ITS POINT — the revised words ride the retry frame
   // (`retry: { turnId, thought }`), the portal re-runs the point against them,
   // and the answer lands as the point's next take. The point's bubble shows
@@ -231,6 +232,9 @@ export const createStreamActions = ({
     try {
       localStorage.setItem(toolModeKeyFor(companionRef.current?.neumaId), mode);
     } catch { /* private mode */ }
+    // The link-up restate carries the declaration, not the last ack: a
+    // reconnect inside the ack's flight must never put the stale mode back.
+    toolModeRef.current = mode;
     if (wsService.isConnected) wsService.send('tool:mode', { mode });
     else setToolModeState(mode); // dormant portal — hold locally, restated on link-up
   };
@@ -243,6 +247,7 @@ export const createStreamActions = ({
     // Persisted against the being it was set FOR — one being on auto must
     // never put another on auto (the tool:mode law, unchanged).
     writeChatModePref(companionRef.current?.neumaId, mode);
+    chatModeRef.current = mode; // what link-up restates — see setToolMode
     if (wsService.isConnected) wsService.send('chat:mode', { mode });
     else setChatModeState(mode); // dormant portal — hold locally, restated on link-up
   };

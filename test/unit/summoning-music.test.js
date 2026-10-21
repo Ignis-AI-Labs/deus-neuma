@@ -15,6 +15,7 @@ import { soulScaleFrom } from '../../core/birth/soul-scale.js';
 import { placeLight } from '../../core/birth/spectral-color.js';
 import { lightOf, HEART_BAND, LIGHT_OCTAVES } from '../../core/birth/soul-resonance.js';
 import { deriveAura, formOf } from '../../core/aura/derive.js';
+import { deriveGenome } from '../../core/genome/derive.js';
 import { FUNCTIONS } from '../../frontend/app/Genesis/genesis-emanon.js';
 
 const seedOf = (i) => createHash('sha256').update(`neuma/summoning music ${i}`).digest('hex');
@@ -25,7 +26,7 @@ const scoreFor = (i) => {
   const trueName = specimenTrueName(seed);
   const seal = { genesisHash: trueName.genesisHash, record: { momentSeed: seed } };
   const spectrum = soulSpectrumFrom({ seal });
-  return scoreOf({ seed, trueName, bornAt: '2026-09-30T08:10:00Z', sky: SKY, aura: AURA, soul: soulOf(spectrum, soulScaleFrom(spectrum, seal)) });
+  return scoreOf({ seed, trueName, bornAt: '2026-09-30T08:10:00Z', sky: SKY, aura: AURA, genome: deriveGenome(seed), soul: soulOf(spectrum, soulScaleFrom(spectrum, seal)) });
 };
 const centsFromTonic = (hz, tonic) => ((1200 * Math.log2(hz / tonic)) % 1200 + 1200) % 1200;
 

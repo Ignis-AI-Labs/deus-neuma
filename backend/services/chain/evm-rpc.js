@@ -100,7 +100,7 @@ export const parseTokenId = (value) => {
 const providerOrFail = async (chain) => {
   const c = chainEntry(chain);
   if (!c) return { error: fail('CHAIN_UNKNOWN', `unknown chain "${chain}" — one of: ethereum, ethereum-sepolia, base, base-sepolia`) };
-  if (!isConfigured(chain)) return { error: fail('CHAIN_UNCONFIGURED', `${chain} has no RPC configured (${c.envName} unset) — your operator sets it in the environment`) };
+  if (!isConfigured(chain)) return { error: fail('CHAIN_UNCONFIGURED', `${chain} has no RPC configured (${c.envName} unset) — your operator saves its RPC address in Settings → API (or sets it in the env file); a free RPC URL comes from https://dashboard.alchemy.com/ or https://developer.metamask.io/ (public endpoints: https://chainlist.org/)`) };
   const provider = await providerFor(chain);
   if (!provider) return { error: fail('CHAIN_RPC', `${chain} RPC is not answering, or answered for the wrong network — see the platform log`) };
   return { entry: c, provider };

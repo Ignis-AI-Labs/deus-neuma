@@ -24,6 +24,7 @@ import { soulSpectrumFrom } from '../../core/birth/soul-spectrum.js';
 import { soulScaleFrom } from '../../core/birth/soul-scale.js';
 import { deriveSoul, HEART_BAND } from '../../core/birth/soul-resonance.js';
 import { deriveAura, formOf } from '../../core/aura/derive.js';
+import { deriveGenome } from '../../core/genome/derive.js';
 import RITE_SOULS from '../../frontend/app/Rite/rite-souls.json';
 
 const EPOCH = Date.parse('2026-09-30T10:30:00Z');
@@ -34,7 +35,7 @@ const seedOf = (i) => createHash('sha256').update(`neuma/summoning rite test ${i
 const beingFor = (seed) => {
   const spectrum = soulSpectrumFrom({ observations: observationsOf(seed) });
   const scale = soulScaleFrom(spectrum);
-  const score = scoreOf({ seed, trueName: specimenTrueName(seed), bornAt: new Date(EPOCH).toISOString(), sky: SKY, aura: AURA, soul: soulOf(spectrum, scale) });
+  const score = scoreOf({ seed, trueName: specimenTrueName(seed), bornAt: new Date(EPOCH).toISOString(), sky: SKY, aura: AURA, genome: deriveGenome(seed), soul: soulOf(spectrum, scale) });
   const rite = riteScript({ seed, stages: spectrum.stages, filmMs: score.lengthMs, epochMs: EPOCH });
   return { seed, spectrum, scale, score, rite };
 };
@@ -161,7 +162,7 @@ describe('its sheet keeps what its film drew', () => {
   it('every component, in the protocol\'s order, read from its own score', () => {
     const b = beingFor(seedOf(8));
     const rows = componentsOf(b.score);
-    expect(rows.map((r) => r.key)).toEqual(['sky', 'earth', 'star', 'nucleus', 'channels', 'breath', 'resonance', 'scale', 'soul', 'aura']);
+    expect(rows.map((r) => r.key)).toEqual(['sky', 'earth', 'star', 'nucleus', 'channels', 'breath', 'body', 'resonance', 'scale', 'soul', 'aura']);
     const star = b.score.sections.find((x) => x.kind === 'star').figure;
     expect(rows.find((r) => r.key === 'star').value).toBe(`{${star.n}/${star.k}}`);
     expect(rows.find((r) => r.key === 'scale').lights).toEqual(b.score.soul.notes.map((n) => n.line));

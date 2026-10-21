@@ -1,4 +1,4 @@
-// ProjectFocus — one project, organized (Design note, 2026-07-24.
+// ProjectFocus — one project, organized (ruling, 2026-07-24).
 //
 // The window's second register: the shelf picks a project, THIS view holds
 // it. The heading names the project so the focus is never ambiguous; the main

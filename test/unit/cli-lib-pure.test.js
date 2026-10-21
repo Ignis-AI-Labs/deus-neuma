@@ -23,32 +23,32 @@ import { readOperatorWallet } from '../../cli/lib/wallet.js';
 
 describe('cli/lib/discovery — resolveNeuma (pure)', () => {
   const neuma = [
-    { neumaId: 'fenna-id-001', name: 'Fenna' },
-    { neumaId: 'galen-id-002', name: 'Galen' },
+    { neumaId: 'alder-id-001', name: 'Alder' },
+    { neumaId: 'cedar-id-002', name: 'Cedar' },
   ];
 
   test('exact neumaId match', () => {
-    expect(resolveNeuma(neuma, 'fenna-id-001'))
-      .toEqual({ neumaId: 'fenna-id-001', name: 'Fenna' });
+    expect(resolveNeuma(neuma, 'alder-id-001'))
+      .toEqual({ neumaId: 'alder-id-001', name: 'Alder' });
   });
 
   test('case-insensitive name match', () => {
-    expect(resolveNeuma(neuma, 'FENNA').neumaId).toBe('fenna-id-001');
-    expect(resolveNeuma(neuma, 'galen').neumaId).toBe('galen-id-002');
-    expect(resolveNeuma(neuma, 'FeNnA').neumaId).toBe('fenna-id-001');
+    expect(resolveNeuma(neuma, 'ALDER').neumaId).toBe('alder-id-001');
+    expect(resolveNeuma(neuma, 'cedar').neumaId).toBe('cedar-id-002');
+    expect(resolveNeuma(neuma, 'Alder').neumaId).toBe('alder-id-001');
   });
 
   test('id wins over name when both could match the same string', () => {
     const tricky = [
-      { neumaId: 'Fenna', name: 'galen-id-002' },
-      { neumaId: 'galen-id-002', name: 'Fenna' },
+      { neumaId: 'Alder', name: 'cedar-id-002' },
+      { neumaId: 'cedar-id-002', name: 'Alder' },
     ];
-    // "Fenna" resolves to the first being via id match, not the second via name.
-    expect(resolveNeuma(tricky, 'Fenna').neumaId).toBe('Fenna');
+    // "Alder" resolves to the first being via id match, not the second via name.
+    expect(resolveNeuma(tricky, 'Alder').neumaId).toBe('Alder');
   });
 
   test('no match returns null', () => {
-    expect(resolveNeuma(neuma, 'keir')).toBeNull();
+    expect(resolveNeuma(neuma, 'hazel')).toBeNull();
   });
 
   test('whitespace-only input returns null after trim', () => {
@@ -60,29 +60,29 @@ describe('cli/lib/discovery — resolveNeuma (pure)', () => {
   });
 
   test('null/undefined inputs return null without throwing', () => {
-    expect(resolveNeuma(null, 'fenna')).toBeNull();
+    expect(resolveNeuma(null, 'alder')).toBeNull();
     expect(resolveNeuma(neuma, null)).toBeNull();
     expect(resolveNeuma(neuma, undefined)).toBeNull();
   });
 
   test('non-array first arg returns null without throwing', () => {
-    expect(resolveNeuma('not an array', 'fenna')).toBeNull();
-    expect(resolveNeuma({}, 'fenna')).toBeNull();
+    expect(resolveNeuma('not an array', 'alder')).toBeNull();
+    expect(resolveNeuma({}, 'alder')).toBeNull();
   });
 });
 
 describe('cli/lib/identity — buildSpeaker (pure)', () => {
   test('name + address produces full descriptor', () => {
-    const s = buildSpeaker({ name: 'Founder', address: '0xABC' });
-    expect(s.name).toBe('Founder');
+    const s = buildSpeaker({ name: 'Ada', address: '0xABC' });
+    expect(s.name).toBe('Ada');
     expect(s.descriptor).toBe(
-      'Founder, speaking through the terminal via the neuma CLI, signing as 0xABC',
+      'Ada, speaking through the terminal via the neuma CLI, signing as 0xABC',
     );
   });
 
   test('name without address omits the wallet clause', () => {
-    const s = buildSpeaker({ name: 'Founder' });
-    expect(s.descriptor).toBe('Founder, speaking through the terminal via the neuma CLI');
+    const s = buildSpeaker({ name: 'Ada' });
+    expect(s.descriptor).toBe('Ada, speaking through the terminal via the neuma CLI');
   });
 
   test('default name "your witness" when name omitted', () => {
@@ -103,9 +103,9 @@ describe('cli/lib/identity — buildSpeaker (pure)', () => {
     const prev = process.env.NEUMA_OPERATOR_NAME;
     try {
       process.env.NEUMA_OPERATOR_NAME = 'EnvName';
-      expect(buildSpeaker({ name: 'Founder' }).name).toBe('Founder');
+      expect(buildSpeaker({ name: 'Ada' }).name).toBe('Ada');
       delete process.env.NEUMA_OPERATOR_NAME;
-      expect(buildSpeaker({ name: 'Founder' }).name).toBe('Founder');
+      expect(buildSpeaker({ name: 'Ada' }).name).toBe('Ada');
     } finally {
       if (prev === undefined) delete process.env.NEUMA_OPERATOR_NAME;
       else process.env.NEUMA_OPERATOR_NAME = prev;

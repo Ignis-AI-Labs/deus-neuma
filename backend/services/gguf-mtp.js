@@ -23,7 +23,16 @@ const FIXED_WIDTH = Object.freeze({ 0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7:
  * @param {Buffer} buf
  * @returns {number}
  */
-export const nextnLayersFromGguf = (buf) => {
+export const nextnLayersFromGguf = (buf) => ggufUintFromHeader(buf, KEY_SUFFIX);
+
+/**
+ * Pure — the unsigned value of the first metadata key ending in `suffix`
+ * (u32/i32/u64), or 0 when absent, not GGUF, or past the buffer.
+ * @param {Buffer} buf
+ * @param {string} suffix
+ * @returns {number}
+ */
+export const ggufUintFromHeader = (buf, suffix) => {
   if (!Buffer.isBuffer(buf) || buf.length < 24 || buf.toString('latin1', 0, 4) !== 'GGUF') return 0;
   let at = 24; // magic u32, version u32, tensor_count u64, kv_count u64
   const kvCount = Number(buf.readBigUInt64LE(16));
@@ -47,9 +56,10 @@ export const nextnLayersFromGguf = (buf) => {
     for (let i = 0; i < kvCount; i += 1) {
       const key = str();
       need(4); const type = buf.readUInt32LE(at); at += 4;
-      if (key.endsWith(KEY_SUFFIX) && (type === 4 || type === 5)) {
+      if (key.endsWith(suffix) && (type === 4 || type === 5)) {
         need(4); return type === 4 ? buf.readUInt32LE(at) : Math.max(0, buf.readInt32LE(at));
       }
+      if (key.endsWith(suffix) && type === 10) { need(8); return Number(buf.readBigUInt64LE(at)); }
       skip(type);
     }
   } catch {
@@ -73,6 +83,26 @@ export const modelHasMtpHeads = async (modelPath) => {
     return nextnLayersFromGguf(buf.subarray(0, bytesRead)) > 0;
   } catch {
     return false;
+  } finally {
+    await handle?.close();
+  }
+};
+
+/**
+ * Impure — the model's trained context (`<arch>.context_length`) from the
+ * file's own metadata, or 0 when it cannot be read.
+ * @param {string} modelPath
+ * @returns {Promise<number>}
+ */
+export const modelTrainContext = async (modelPath) => {
+  let handle;
+  try {
+    handle = await fs.open(modelPath, 'r');
+    const buf = Buffer.alloc(METADATA_READ_MAX);
+    const { bytesRead } = await handle.read(buf, 0, METADATA_READ_MAX, 0);
+    return ggufUintFromHeader(buf.subarray(0, bytesRead), '.context_length');
+  } catch {
+    return 0;
   } finally {
     await handle?.close();
   }

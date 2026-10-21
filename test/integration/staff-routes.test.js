@@ -112,7 +112,7 @@ describe('Staff routes (/api/v1/staff)', () => {
 
   test('the board: unseated reads nulls; seated reads the office snapshot from the real stores', async () => {
     const empty = (await request(app).get('/api/v1/staff/board').set(witness.header)).body;
-    expect(empty).toMatchObject({ cos: null, roster: null, posts: null, plan: null, runs: [] });
+    expect(empty).toMatchObject({ cos: null, roster: null, posts: null, plan: null, runs: [], house: null });
 
     await request(app).put('/api/v1/staff/seat').set(witness.header).send({ laneId: 'optiolane' });
     const board = (await request(app).get('/api/v1/staff/board').set(witness.header)).body;
@@ -120,8 +120,47 @@ describe('Staff routes (/api/v1/staff)', () => {
     expect(board.posts).toMatchObject({ count: 0, torn: 0, recent: [] });
     expect(board.plan).toBeNull();
     expect(board.runs).toEqual([]);
-    // No house ground is set in this stack — the roster reads as no seat.
-    expect(board.roster).toBeNull();
+    // No founding record stands in this stack — the office's lane is the
+    // operator's own, so it holds a LOCAL seat, untitled (ruling, 2026-10-18).
+    expect(board.roster).toMatchObject({ founded: false, network: 'local', title: null });
+    expect(board.roster.roster.map((r) => r.neumaId)).toContain('optiolane');
+    expect(board.house).toEqual({ dispatches: { open: 0, pastDue: 0, total: 0, charges: [] } });
+  }, 30000);
+
+  test('the board carries the dispatch drawer the window reads: a filed charge is on it', async () => {
+    const { fileDispatch, makeCharge } = await import('../../backend/services/staff/dispatch-store.js');
+    await request(app).put('/api/v1/staff/seat').set(witness.header).send({ laneId: 'optiolane' });
+    const charge = await fileDispatch('optiolane', makeCharge({
+      from: 'optiolane', to: 'crewlane', title: 'Draft the ledger report', body: 'Done looks like: the report filed.',
+      filedAt: '2026-09-15T04:00:00.000Z', by: witness.address,
+    }));
+    const board = (await request(app).get('/api/v1/staff/board').set(witness.header)).body;
+    expect(board.house.dispatches).toMatchObject({ open: 1, total: 1 });
+    expect(board.house.dispatches.charges).toEqual([expect.objectContaining({ id: charge.id, to: 'crewlane', title: 'Draft the ledger report', status: 'dispatched' })]);
+    // the drawer only — never the house's whole fold
+    expect(Object.keys(board.house)).toEqual(['dispatches']);
+  }, 30000);
+
+  test('re-seating the office carries its OPEN charges to the new Optio — none stranded in the old drawer', async () => {
+    const { claimOwner } = await import('../helpers/claim-owner.js');
+    const { fileDispatch, makeCharge, updateDispatch, listDispatches, readDispatch } = await import('../../backend/services/staff/dispatch-store.js');
+    await claimOwner(process.env.WORKSPACES_ROOT, 'secondlane', witness.address);
+    await request(app).put('/api/v1/staff/seat').set(witness.header).send({ laneId: 'optiolane' });
+    const lawful = { from: 'optiolane', to: 'crewlane', body: 'Done looks like: the report filed.', by: witness.address };
+    const open = await fileDispatch('optiolane', makeCharge({ ...lawful, title: 'Still owed', filedAt: '2026-09-15T04:00:00.000Z' }));
+    const closed = await fileDispatch('optiolane', makeCharge({ ...lawful, title: 'Already done', filedAt: '2026-09-15T05:00:00.000Z' }));
+    await updateDispatch('optiolane', closed.id, { status: 'done' });
+
+    const reseat = await request(app).put('/api/v1/staff/seat').set(witness.header).send({ laneId: 'secondlane' });
+    expect(reseat.status).toBe(200);
+    expect(reseat.body.charges).toEqual({ carried: 1, left: 0 });
+    // The new office reads the open charge (the drawer every reader keys by the seated officer)...
+    const board = (await request(app).get('/api/v1/staff/board').set(witness.header)).body;
+    expect(board.house.dispatches).toMatchObject({ open: 1, total: 1 });
+    expect(board.house.dispatches.charges[0].id).toBe(open.id);
+    expect(await readDispatch('secondlane', open.id)).toMatchObject({ from: 'secondlane', carriedFrom: 'optiolane', status: 'dispatched' });
+    // ...and the closed one stays where it closed.
+    expect((await listDispatches('optiolane')).map((c) => c.id)).toEqual([closed.id]);
   }, 30000);
 
   test('two operators, two houses: each route reads and moves ONLY its own house\'s Optio', async () => {

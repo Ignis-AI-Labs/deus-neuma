@@ -13,8 +13,15 @@
 //     chartered housemate; the post's signal wakes that housemate for a real
 //     wake turn; the ledger shows the wake, and OPEN SITTING shows its sitting
 //     with the opening note drawn as the platform's WAKE line;
-//   - the wake reached for an act that needs the operator: it was refused in
-//     the turn and filed — the ASKS tab shows it, and CLOSE marks it dealt with;
+//   - the wake reached for acts that need the operator and put a decision to
+//     them: each was refused or filed in the turn, and the turn went on — the
+//     ASKS tab shows them, opened by the ask's own tray card (and the packet's
+//     card brings an open window back to ASKS); the desk's being, seated as the Optio, files a REAL
+//     review packet (house/review-packet) that sits on top in her order with
+//     the blocked one marked; the kind and blocked filters narrow the list;
+//   - the operator REPLIES to the decision and ALLOWS ONCE the act: the seat is
+//     woken with the answers (never spending its daily limit) and takes that
+//     exact act, which now runs; both read ANSWERED; CLOSE dismisses the last;
 //   - a second post finds the seat's daily limit spent: NOW shows it held and
 //     why; PAUSE shows it held because the house is paused; RESUME releases it;
 //   - MONEY IN reads, and an extra receive address is declared and removed.
@@ -56,10 +63,37 @@ const sse = (res, text) => {
 };
 const textOf = (m) => (typeof m?.content === 'string' ? m.content : JSON.stringify(m?.content ?? ''));
 const call = (tool, args) => `[TOOL: ${tool} ${JSON.stringify(args)}]`;
+// the conversation's tool results so far (one per round the sitting has taken)
+const toolRounds = (messages) => messages.filter((m) => textOf(m).includes('tool_response')).length;
+const intentFile = (lane, name) => path.join(perf.root, lane, 'intents', `${name}.json`);
+// the act the operator allows once: the same content, filed again, is the same act
+const MATE_TASK = JSON.stringify({ type: 'tasks/add', title: 'Outline the digest' });
+
+// the wake's rounds: an act the operator must approve, an act the charter sends them, a decision
+const wakeRound = (n) => [
+  `I read the house post from my housemate.\n${call('web/web_search', { query: 'research digest gap' })}`,
+  `Recording the outline task.\n${call('fs/write', { path: intentFile(MATE, 'task-1'), content: MATE_TASK })}`,
+  `The price is my operator's call.\n${call('operator/ask_operator', { question: 'Ratify the $250 first-job price?', options: ['Ratify', 'Lower it'] })}`,
+][n] ?? 'I read the house post. The search, the task and the price wait on my operator.';
+
+// impure — the desk's being, as the Optio, brings the open asks back as one packet
+const packetReply = async () => {
+  const open = (await (await api('GET', '/api/v1/house-clock/asks')).json()).asks.filter((a) => a.status === 'open');
+  const price = open.find((a) => a.kind === 'decision');
+  const content = JSON.stringify({
+    type: 'house/review-packet',
+    summary: 'The price comes first: the offer cannot go out without it. The task and the search can follow.',
+    order: [price.id, ...open.filter((a) => a !== price).map((a) => a.id)],
+    blocked: [price.id],
+  });
+  return `Bringing it together for you.\n${call('fs/write', { path: intentFile(SENDER, 'packet'), content })}`;
+};
 
 // A real OpenAI-wire serving whose answer is chosen by what it was asked:
 //   the operator's trigger → the sender files a house/post intent to MATE;
-//   a wake's opening note → MATE reaches for web_search (needs the operator);
+//   a wake's opening note → MATE's rounds (wakeRound), then a closing line;
+//   an answer's wake → MATE takes the act allowed once again, then closes;
+//   the operator's packet trigger → the sender (the Optio) files the packet;
 //   anything after a tool result → a plain closing line.
 const startStub = () => new Promise((resolve) => {
   const server = http.createServer((req, res) => {
@@ -70,7 +104,7 @@ const startStub = () => new Promise((resolve) => {
     }
     let raw = '';
     req.on('data', (c) => { raw += c; });
-    req.on('end', () => {
+    req.on('end', async () => {
       let body = {};
       try { body = JSON.parse(raw); } catch { /* answer anyway */ }
       if (isThinkProbe(body)) { respondThinkProbe(res); return; }
@@ -82,13 +116,23 @@ const startStub = () => new Promise((resolve) => {
       // a wake's sitting: its opening note is one of the asks in this conversation
       if (users.some((m) => textOf(m).includes(WAKE_HEAD))) {
         wakeTurns.push(body);
-        sse(res, afterTool
-          ? 'I read the house post. The search waits on my operator.'
-          : `I read the house post from my housemate.\n${call('web/web_search', { query: 'research digest gap' })}`);
+        const rounds = toolRounds(messages);
+        if (users.some((m) => textOf(m).includes('Your operator ANSWERED'))) {
+          const allowed = users.some((m) => textOf(m).includes('They ALLOWED ONCE'));
+          sse(res, allowed && rounds === 0
+            ? `Taking it, as allowed.\n${call('fs/write', { path: intentFile(MATE, 'task-again'), content: MATE_TASK })}`
+            : 'I have my operator\'s answer.');
+          return;
+        }
+        sse(res, wakeRound(rounds));
         return;
       }
       // the LAST trigger in the ask: the harness's context block recaps earlier words before the operator's own
       const trigger = [...lastUser.matchAll(TRIGGER)].at(-1);
+      if (!afterTool && lastUser.lastIndexOf('PACKET-TRIGGER') > (trigger?.index ?? -1)) {
+        sse(res, await packetReply());
+        return;
+      }
       if (trigger && !afterTool) {
         const intent = path.join(perf.root, SENDER, 'intents', `post-${trigger[1]}.json`);
         sse(res, `Posting to my housemate.\n${call('fs/write', {
@@ -172,15 +216,21 @@ const foundHouse = async () => {
   expect(set.status, await set.text()).toBe(200);
 };
 
-// impure — the sweep's verdict on the sender's n-th house/post intent, once it stands
-const intentResult = async (n, ms = 60000) => {
-  const file = path.join(perf.root, SENDER, 'intents', `post-${n}.result.json`);
+// impure — the sweep's verdict on one lane's intent, once it stands (the sender's n-th house/post by default)
+const intentResult = async (n, ms = 60000, lane = SENDER) => {
+  const file = path.join(perf.root, lane, 'intents', `${typeof n === 'number' ? `post-${n}` : n}.result.json`);
   for (const end = Date.now() + ms; Date.now() < end;) {
     const raw = await fs.promises.readFile(file, 'utf8').catch(() => null);
     if (raw) return JSON.parse(raw);
     await new Promise((r) => setTimeout(r, 250));
   }
   return { status: 'never settled', file, dir: await fs.promises.readdir(path.dirname(file)).catch((e) => e.message) };
+};
+
+// impure — the operator clicks a card in the notification tray, by its title
+const trayCard = async (page, title) => {
+  if (!(await page.locator('.ntray-panel').count())) await page.locator('.ntray-bell').click();
+  await page.locator('.ntray-panel-list .ntray-card-body', { hasText: title }).first().click();
 };
 
 // impure — the operator says something to the desk's own being
@@ -190,7 +240,7 @@ const say = async (page, text) => {
   await input.press('Enter');
 };
 
-test('the HOUSE CLOCK: charter, approval, a real wake on the ledger, its sitting, an ask, a held wake, PAUSE, money in', async ({ page }) => {
+test('the HOUSE CLOCK: charter, approval, a real wake on the ledger, its sitting, asks, the Optio\'s packet, answers, a held wake, PAUSE, money in', async ({ page }) => {
   test.setTimeout(6 * 60 * 1000);
   const crashes = [];
   page.on('pageerror', (e) => crashes.push(e.message));
@@ -207,6 +257,9 @@ test('the HOUSE CLOCK: charter, approval, a real wake on the ledger, its sitting
   const pause = win.locator('.hclock-switch');
   await expect(status).toHaveText('NO CHARTER');
   await expect(pause).toBeDisabled();
+  // with no charter the header still says what else the house lacks: the ground is set, no Optio is seated
+  await expect(win.locator('[data-warn="optio"]')).toHaveText(/^NO OPTIO SEATED/);
+  await expect(win.locator('[data-warn="ground"]')).toHaveCount(0);
 
   // ── CHARTER: write it ─────────────────────────────────────────────────────
   await win.getByRole('button', { name: 'WRITE A CHARTER' }).click();
@@ -215,12 +268,16 @@ test('the HOUSE CLOCK: charter, approval, a real wake on the ledger, its sitting
   const mateRow = form.locator('.hclock-seat-row').filter({ hasText: /mate/i });
   await mateRow.locator('input[type="checkbox"]').check();
   await mateRow.locator('input[type="number"]').fill('1');
+  await form.locator('.hclock-field', { hasText: 'ALWAYS COMES TO YOU' }).locator('textarea').fill('intents/tasks.add');
   await form.getByRole('button', { name: 'SAVE' }).click();
   await expect(status).toHaveText('PENDING APPROVAL — VERSION 1');
 
   // ── APPROVE exactly the version shown ────────────────────────────────────
   await win.getByRole('button', { name: 'APPROVE VERSION 1' }).click();
   await expect(status).toHaveText('APPROVED AT VERSION 1');
+  // what the house lacks is said under the standing: it has its ground, but no Optio yet
+  await expect(win.locator('[data-warn="optio"]')).toHaveText(/^NO OPTIO SEATED/);
+  await expect(win.locator('[data-warn="ground"]')).toHaveCount(0);
   await expect(pause).toHaveText('PAUSE');
   await expect(win.locator('.hclock-line', { hasText: 'MAY WAKE' })).toContainText('up to 1 a day');
 
@@ -233,7 +290,7 @@ test('the HOUSE CLOCK: charter, approval, a real wake on the ledger, its sitting
   await expect(wake).toBeVisible({ timeout: 90000 });
   await expect(wake).toContainText('a house post came in');
   await expect(wake.locator('.hclock-outcome')).toHaveText('SENT SOMETHING TO YOU');
-  await expect(wake).toContainText('1 SENT TO YOU — SEE ASKS');
+  await expect(wake).toContainText('3 SENT TO YOU — SEE ASKS');
   expect(wakeTurns.length).toBeGreaterThanOrEqual(1);
   // the outcome filter runs on the server: FAILED shows nothing, the house's real outcome shows the wake
   await win.getByRole('button', { name: 'Filter by outcome' }).click();
@@ -261,15 +318,91 @@ test('the HOUSE CLOCK: charter, approval, a real wake on the ledger, its sitting
   await sittingWin.locator('.fwin-ctl-close').click();
   await expect(sittingWin).toHaveCount(0);
 
-  // ── ASKS: what the wake could not do came back to the operator ───────────
-  await openDockApp(page, 'HOUSE CLOCK'); // the bar raises the open window over the sitting
-  await win.getByRole('tab', { name: 'ASKS (1)' }).click();
-  const ask = win.locator('.hclock-wake.is-open').first();
-  await expect(ask).toContainText('web/web_search');
-  await expect(ask).toContainText('Why it came to you:');
-  await ask.getByRole('button', { name: 'CLOSE' }).click();
-  await expect(win.locator('.hclock-wake').first()).toContainText(/CLOSED /);
+  // ── ASKS: what the wake could not do or decide came back to the operator ──
+  // Its tray card opens the HOUSE CLOCK on the ASKS tab: here a window the card itself opens (closed first).
+  await win.locator('.fwin-ctl-close').click();
+  await expect(win).toHaveCount(0);
+  await trayCard(page, 'Mate\'s wake was refused web/web_search — filed for you');
+  await expect(win.getByRole('tab', { name: 'ASKS (3)' })).toHaveAttribute('aria-selected', 'true', { timeout: 20000 });
+  const askFor = (text) => win.locator('.hclock-wake.is-open').filter({ hasText: text });
+  await expect(askFor('web/web_search')).toContainText('Why it came to you:');
+  await expect(askFor('intents/tasks.add')).toContainText('the charter sends this act to the operator');
+  await expect(askFor('Ratify the $250 first-job price?')).toContainText('DECISION');
+  await expect(win.getByText('No review packet yet.')).toBeVisible();
+
+  // ── THE OPTIO organizes: seated, she files ONE review packet ─────────────
+  const seated = await api('PUT', '/api/v1/staff/seat', { laneId: SENDER, consent: { note: 'e2e: Fenna takes the seat' } });
+  expect(seated.status, await seated.text()).toBe(200);
+  // seated, but the charter seats only the mate: the header says so
+  await expect(win.locator('[data-warn="optio-seat"]')).toHaveText(/^THE OPTIO HOLDS NO SEAT IN THIS CHARTER/, { timeout: 20000 });
+  await expect(win.locator('[data-warn="optio"]')).toHaveCount(0);
+  await say(page, 'Please PACKET-TRIGGER: bring what waits on me together.');
+  const filedPacket = await intentResult('packet');
+  expect(filedPacket, JSON.stringify(filedPacket)).toMatchObject({ status: 'done' });
+  const packet = win.locator('.hclock-packet');
+  await expect(packet).toContainText('The price comes first', { timeout: 20000 });
+  await expect(packet).toContainText('REVIEW PACKET FROM Fenna');
+  await expect(packet).toContainText('3 WAIT ON YOU, 1 BLOCKED');
+  const firstItem = packet.locator('.hclock-packet-item').first();
+  await expect(firstItem).toContainText('decision: Ratify the $250 first-job price?');
+  await expect(firstItem.locator('.hclock-tag.is-blocked')).toHaveText('BLOCKED');
+  await page.screenshot({ path: path.join(SHOTS, 'house-clock-asks-packet.png') });
+  // the packet's tray card, clicked while the open window stands on another tab, brings it to ASKS
+  await win.getByRole('tab', { name: 'CHARTER' }).click();
+  await expect(win.getByRole('tab', { name: 'CHARTER' })).toHaveAttribute('aria-selected', 'true');
+  await trayCard(page, 'Fenna\'s review packet: 3 for you, 1 blocked');
+  await expect(win.getByRole('tab', { name: /^ASKS/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(packet).toContainText('The price comes first');
+
+  // ── clearly filtered: by kind, and blocked only ──────────────────────────
+  await win.getByRole('button', { name: 'Filter asks by kind' }).click();
+  await page.locator('[role="option"]', { hasText: 'DECISIONS' }).click();
+  await expect(win.locator('.hclock-wake')).toHaveCount(1);
+  await win.getByRole('button', { name: 'Filter asks by kind' }).click();
+  await page.locator('[role="option"]', { hasText: 'EVERY KIND' }).click();
+  await expect(win.locator('.hclock-wake')).toHaveCount(3);
+  await win.getByLabel('BLOCKED ONLY').check();
+  await expect(win.locator('.hclock-wake')).toHaveCount(1);
+  await expect(win.locator('.hclock-wake')).toContainText('Ratify the $250 first-job price?');
+  await win.getByLabel('BLOCKED ONLY').uncheck();
+
+  // ── the operator answers: REPLY to the decision, ALLOW ONCE the act ──────
+  const decision = askFor('Ratify the $250 first-job price?');
+  await decision.getByRole('button', { name: 'Ratify', exact: true }).click();
+  await decision.getByRole('textbox').fill('Ratify it: $250 holds for the first three jobs.');
+  await decision.getByRole('button', { name: 'REPLY' }).click();
+  await expect(decision).toHaveCount(0);
+  await askFor('intents/tasks.add').getByRole('button', { name: 'ALLOW ONCE' }).click();
+  await expect(askFor('intents/tasks.add')).toHaveCount(0);
+  // the seat was woken with the answers (past its spent daily limit) and took exactly that act, which ran
+  const retaken = await intentResult('task-again', 90000, MATE);
+  expect(retaken, JSON.stringify(retaken)).toMatchObject({ status: 'done' });
+  expect(wakeTurns.some((t) => JSON.stringify(t.messages).includes('Ratify it: $250 holds for the first three jobs.'))).toBe(true);
+  await win.getByRole('button', { name: 'Filter asks by standing' }).click();
+  await page.locator('[role="option"]', { hasText: 'ANSWERED' }).click();
+  await expect(win.locator('.hclock-wake')).toHaveCount(2);
+  await expect(win.locator('.hclock-wake').filter({ hasText: 'REPLIED: Ratify' })).toContainText('Ratify it: $250 holds for the first three jobs.');
+  await expect(win.locator('.hclock-wake').filter({ hasText: 'ALLOWED ONCE' })).toHaveCount(1);
+  await expect(packet.locator('.hclock-packet-item').first()).toContainText('ANSWERED');
+  await expect(packet).toContainText('1 WAIT ON YOU');
+  await expect(packet.locator('.hclock-tag.is-blocked')).toHaveCount(0); // answered: it blocks nothing now
+  await page.screenshot({ path: path.join(SHOTS, 'house-clock-asks-answered.png') });
+
+  // ── CLOSE stays: dismiss without answering ───────────────────────────────
+  await win.getByRole('button', { name: 'Filter asks by standing' }).click();
+  await page.locator('[role="option"]', { hasText: 'OPEN' }).click();
+  await askFor('web/web_search').getByRole('button', { name: 'CLOSE' }).click();
+  await expect(win.locator('.hclock-wake')).toHaveCount(0);
   await expect(win.getByRole('tab', { name: 'ASKS', exact: true })).toBeVisible();
+  await win.getByRole('button', { name: 'Filter asks by standing' }).click();
+  await page.locator('[role="option"]', { hasText: 'DISMISSED' }).click();
+  await expect(win.locator('.hclock-wake').first()).toContainText(/DISMISSED /);
+
+  // the answer's wake is on the ledger, for its own reason
+  await win.getByRole('tab', { name: 'LEDGER' }).click();
+  await win.getByRole('button', { name: 'Filter by outcome' }).click();
+  await page.locator('[role="option"]', { hasText: 'EVERY OUTCOME' }).click();
+  await expect(win.locator('.hclock-wake').filter({ hasText: 'your answer to what it filed' }).first()).toBeVisible({ timeout: 15000 });
 
   // ── a second post finds the daily limit spent: held, in view, with its reason ──
   await say(page, 'Please send POST-TRIGGER-2 to the house.');

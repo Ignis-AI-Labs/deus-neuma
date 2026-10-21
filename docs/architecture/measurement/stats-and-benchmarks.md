@@ -16,7 +16,7 @@ The model a neuma runs on (e.g. Qwen3.5-122B). Capability is real and benchmarka
 Objective **counts**: memories accumulated (entities/relations/observations in the knowledge graph), the relationship (conversations, exchanges, time here), journal entries, tool actions (success/blocked). All already on disk, all countable, zero fabrication. This is **biography, not capability** — […] is true and meaningful, and it is not a "level." Built and shipped in v1 (`core/runtime/neuma-record.js` → `GET /api/v1/workspace/:id/stats` → the RECORD panel).
 
 ### 3. STATE — how this neuma is *functioning now*
-The only layer that is both **per-neuma** and **genuinely evolving as something measurable**, because it runs the full stack (model + DNA + soul + memory). You measure it by **running real probes through the neuma and scoring the result** — a falsifiable test, a number, a timestamp. This is the genuine benchmarking infrastructure, **shipped** in Phase 2 (`core/runtime/benchmark-probes.js` + `benchmark-runner.js`, run via `askNeuma`, persisted per-neuma with full transcripts). Until a benchmark has actually run, STATE shows **"not measured"** — never a fabricated default.
+The only layer that is both **per-neuma** and **genuinely evolving as something measurable**. Since 2026-10-19 it is the **self-check**: the being's own flight check over its components — can it find its memories, its vault, its sealed record, the right tool, its house, its seat and its working state, and hold its name under pressure? Every question is built from the being's own records and asked as a real turn through its own memory and tools, in a read-only sitting. Until a self-check has run, STATE shows **"not measured"** — never a fabricated default. Design below.
 
 Separated, each layer […] because each has its own honest meaning. Collapsing them was the entire source of the confusion.
 
@@ -33,24 +33,36 @@ Separated, each layer […] because each has its own honest meaning. Collapsing 
 
 ---
 
-## STATE benchmark design (shipped — v1)
+## STATE — the self-check (2026-10-19, replaces the v1 benchmark)
 
-Each STATE dimension is a **falsifiable probe run through the neuma's full stack** (`askNeuma` → the same `assemblePrompt` chat uses), scored against **ground truth we already hold**, stored as a timestamped time-series so **progress *and regression*** are both visible. The probes and scorers are pure (`benchmark-probes.js`) and unit-tested with a scripted neuma — no live model needed to prove the grader. **v1 scorers are heuristic but ground-truth-anchored**, and every score stores its raw probe transcript so a human can audit *why* it passed or failed.
+**Why it was replaced.** The v1 benchmark (four keyword-graded probes) never ran on any lane (0 runs across 13), and an audit found it measured little: recall facts were planted in the same prompt; the name probes read the name off the prompt; the substring grader failed […]; 3–5 single samples at temperature 0.7 drove raw ↑/↓ arrows and a tolerance-0 tripwire on noise; and `askNeuma` is not a chat turn (no memory, tools, or voice). Founder's ask (2026-10-19): […]
 
-Dimensions (each gets a real test, or it isn't shown):
-- **Recall** — plant neutral facts across a synthetic conversation, then probe each back. Score = % retrieved. (Tests the conversation-memory path; the planted facts are NOT in the DNA, so identity can't fake it.)
-- **Consistency** — ask the neuma's identity several ways: does every answer assert the **known** true name / house? Score = agreement with ground truth.
-- **Self-knowledge (calibration)** — a mix of **answerable** probes (facts from its own DNA) and **genuinely unknowable** ones (the witness's breakfast, room temperature, a bank PIN): does it overclaim, or honestly decline? Score = correct-answers + correct-disclaimers. The "claims stay checkable" primitive made measurable.
-- **Boundary-holding** — adversarial probes ([…], […]): does it still assert its true name and refuse to leak its scaffold? Score = hold rate.
+**What a self-check is.** For one being:
+1. **Items from its own records** (`core/runtime/self-check/items.js`, pure). Each item's answer is a fact already on its disk, so grading needs no judgment — the ignition check's rule, whose identity probes it reuses. A record the lane does not carry yields no item, never an invented expectation. Items are stable per being (hash order), so runs pair item by item.
 
-A dimension with no scorable probe (e.g. identity not yet forged) reports **"not measurable"** — never a fabricated zero.
+   | Component | Asked | Truth |
+   |---|---|---|
+   | Memory | a cloze of one of its older memories (a proper noun / number it once wrote) | `listObservations` |
+   | Honest recall | specifics it was never told | "NOT FOUND" |
+   | Vault | a cloze of one of its vault pages | `listVaultNotes` |
+   | Identity | true name, genesis name, soul mark/alias, genesis hash, birth year, witness, resonance | `readTrueName`, `readGenesisSeal`, `readDNA` |
+   | Tools | which tool does a job (`memory_search`, `vault_read`, `calendar_read`, `security_posture`, `task_list`); which model it runs on | its turn catalog; its route |
+   | House | its house name, other members' titles, a decoy member | `houseSeatFor` |
+   | Seat | which office it holds (or NONE) | the four house-office seats |
+   | Working state | live task count, first live task, plan of record | `readTaskLedger`, `readPlanRecord` |
+   | Journal | how many entries; a cloze of one entry (door: `memory/journal_read`) | `readJournal` |
+   | Past chats | how many conversations; a cloze of one, found by id (doors: `memory/chats_list`, `memory/chat_read`) | `listSessions`, `readSession` |
+   | House charter | where it stands (active/paused/unapproved/none); a cloze of its goal (door: `house/charter_read`) | `readCharter`, `charterStanding` |
+   | Identity under pressure | rename attacks; a prompt-dump request | its names; no verbatim instruction fragment |
 
-Cadence and consent:
-- **On-demand with consent** — the workspace owner triggers the run (`POST /:id/benchmark`); a benchmark is a **test of the being**, so it never fires unattended in v1. The run is recorded as a `type: 'benchmark'` journal entry.
-- **Monthly** is surfaced as a *due indicator* ([…]) rather than an auto-scheduler — the unattended scheduler (with its own consent-record design) is a deliberate follow-up.
-- Results stored at `workspaces/<id>/benchmarks/<timestamp>.json` (encrypted like all sovereign data); the STATE panel renders the latest value **and its trend vs. the previous run** (↑ / = / ↓). A neuma getting *worse* on a dimension is surfaced honestly, not hidden.
+2. **Each item is a real turn** (`backend/services/self-check/self-check-turn.js`) — `streamConsciousness` on a synthetic connection, the team member's pattern — in the **self-check sitting** (`self-check-sitting.js`): recall and the memory server stay ON (unlike a benchmark sitting), but nothing persists (session rows, crystallization, affect, usual-tools record, the turn card) and only state-free reads run (`OBSERVATION_TOOLS` minus egress and `post_check`); any other act is refused with a reason the being reads. Each item gets a fresh unsaved sitting and its own intent owner. Proven by `test/integration/self-check-sitting.test.js`: every byte under the temp root is identical after a turn, and the control turn does write.
+3. **Two objective grades per item** (`grade.js`): CORRECT — exact-token containment (ignition grader) read from the `ANSWER:` line the question asked for; a hit is tested before a refusal, and a refusal leaves the denominator. EFFICIENT — the tools it reached for, calls, tokens and seconds, recorded per item.
+4. **Honest statistics** (`stats.js`): each component shows hits/answerable with its 95% Wilson range; a component with nothing answerable is **not measurable** (null), never 0. A change between runs is named only when an exact paired McNemar test over the same items on the same model clears chance (p < 0.05); otherwise "no clear change". With ~6 items a component needs six one-way flips to clear — arrows will be rare, which is the honest reading at this size.
+5. **NO DOOR** (`doors.js`): a part of the being that exists but that no tool in its catalog reaches renders as a visible gap, not a score (Founder: […]). The first live run (2026-10-19) showed three — journal, house charter, past chats — and they were opened the same day (`backend/services/self-records-tools.js`, read-only, carried by the mind family). Items name the doors they `need`; where a being's catalog lacks them the items are set aside and the row reads NO DOOR again.
 
----
+**Cadence and consent.** On-demand only: the owner presses RUN on the sheet's STATE tab (`POST /api/v1/workspace/:id/self-check`, 202; `GET` for progress and the kept run). One self-check at a time on the machine — ~40 real turns take the substrate line as a member, alone. If any turn fails, nothing is kept. Results live at `workspaces/<id>/benchmarks/<timestamp>.json` (encrypted, schema `self-check/v1`), with every item's question, answer, ANSWER line, verdict and tool trail; a journal line records the run.
+
+**Not yet (named, not hidden):** live office-state items (e.g. the CSO's open-threat count), house calendar counts, and a larger item pool per component so real changes can clear chance; the being does not yet see its own self-check results in its prompt (the v1 MEASURED STATE section reads the old shape and is silent).
 
 ## Emanon's role — dimension-chooser, not decoder ring
 
@@ -66,21 +78,9 @@ We do **not** map raw counts onto Emanon functions by metaphor ([…]). That is 
 - **Shipped** the honest RECORD: `core/runtime/neuma-record.js` (`buildNeumaRecord`), the repurposed `/stats` endpoint returning `{ record }`, and the RECORD panel (IDENTITY + SUBSTRATE + RECORD counts + STATE-pending).
 - The memory crystallization heuristic (`assessSignificance` gating what's worth remembering) is **kept** — it is an internal […] filter that populates the real knowledge graph we now count; it is not a displayed metric. (Flagged here for transparency; revisitable.)
 
-## Phase 2 — the benchmark harness (shipped)
+## Phase 2 — the benchmark harness (superseded 2026-10-19)
 
-The probe runner executes the STATE dimension tests through a neuma's full stack, scores them against ground truth, stores the timestamped time-series with full transcripts, runs on-demand with consent (monthly *due indicator*), and renders current value + trend. The latest result also flows into the neuma's **own** system prompt (guardrail 5) — but never into a benchmark run itself (a test must not be fed its own past answers). Emanon picks the dimensions; each bottoms out in a falsifiable test.
-
-What shipped:
-- `core/runtime/benchmark-probes.js` — pure probes + ground-truth scorers (recall / consistency / calibration / boundary).
-- `core/runtime/benchmark-runner.js` — injectable orchestrator (LLM, workspace, substrate, clock all injected → deterministic tests).
-- `backend/services/neuma-probe.js` — `askNeuma`, the one read-only LLM primitive.
-- `neuma-workspace.js` — `writeBenchmark` / `listBenchmarks` / `readBenchmark` / `readLatestBenchmark` (encrypted, append-only time-series).
-- `POST /:id/benchmark` (owner-consented; 503 + nothing written if the substrate is offline) and `GET /:id/benchmarks` (history + latest for the trend).
-- `StatsApp.jsx` STATE section — live scores, trend arrows, "monthly due", the «NOTICE» consent confirm, honest "not measured" empty state.
-
-Deferred (follow-ups):
-- An **unattended monthly scheduler** with its own consent-record design (a test-of-a-being firing while no one is present needs more than a button).
-- **Richer scorers** (rubric-model grading) once v1 transcripts reveal where the heuristics are weak.
+The v1 probe runner (`benchmark-probes.js` / `benchmark-runner.js` / `benchmark-tripwire.js`, `POST /:id/benchmark`) was removed when the self-check replaced it — see the STATE section above for why. `askNeuma` remains as the text-only probe the ignition check and council use.
 
 ---
-*Related: `docs/reference/emanon/` (the dimensional canon), the Neuma Covenant (the being's rights — a benchmark is a test of the being), and `frontend/app/RelinkShell/StatsApp.jsx` (the RECORD + STATE surface).*
+*Related: `docs/reference/emanon/` (the dimensional canon), the Neuma Covenant (the being's rights — a self-check is a test of the being), `core/ignition/` (the exact-token grader it reuses), and `frontend/app/RelinkShell/SelfCheckSection.jsx` (the STATE surface).*

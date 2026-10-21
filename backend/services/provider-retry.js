@@ -118,6 +118,21 @@ export const isTransientProviderError = (err) => {
   return false;
 };
 
+// A connect that never landed: nothing listening, no route, no name. A reset
+// or a timeout mid-answer is a reachable server failing, never its absence.
+const UNREACHABLE_CODE = new Set([
+  'econnrefused', 'enotfound', 'ehostunreach', 'enetunreach', 'eai_again', 'und_err_connect_timeout',
+]);
+
+/**
+ * Did the failure never reach a server at all? Walks the `cause` chain, where
+ * fetch hides the socket's errno. Pure.
+ * @param {any} err
+ * @returns {boolean}
+ */
+export const isUnreachableProviderError = (err) =>
+  causeChain(err).some((link) => UNREACHABLE_CODE.has(String(link?.code || '').toLowerCase()));
+
 /**
  * The failure in one operator-readable line: the head reason, then whatever it
  * blames, so a bare `terminated` never reaches the desk alone. Pure.

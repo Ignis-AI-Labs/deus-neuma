@@ -11,7 +11,7 @@ import {
 // An unknown status is tested too, which is what actually catches drift.
 const ALL_STANDINGS = ['draft', 'approved', 'sending', 'sent', 'failed', 'rejected', 'withdrawn'];
 
-// THE MONTH GRID (Design note, 2026-07-28: […] Pure truth tables — `now` is injected, so the calendar
+// THE MONTH GRID (ruling, 2026-07-28): […] Pure truth tables — `now` is injected, so the calendar
 // is testable without a clock. The properties that matter: the grid is always
 // 6×7 Mon-first, today is exactly one cell, a reply counts ONLY as a reply,
 // the unscheduled appear nowhere in it, and every scheduled entry counts

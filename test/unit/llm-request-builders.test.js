@@ -159,6 +159,11 @@ describe('the hosted no-think variants pass 2 sends (via noThinkOptions)', () =>
     expect('chat_template_kwargs' in budgeted).toBe(false);
     const kin = buildStreamBody({ ...LOCAL, provider: 'custom', endpoint: 'http://127.0.0.1:8089/v1' }, TURN, { thinkingBudget: 2250 });
     expect(kin.thinking_budget_tokens).toBe(2250);
+    // An lm-studio route at a server the probe heard name itself llama.cpp: the budget rides;
+    // the template switch is proven only on llama-server, so it never does.
+    const studio = { ...LOCAL, provider: 'lm-studio', endpoint: 'http://127.0.0.1:1234' };
+    expect(buildStreamBody(studio, TURN, { thinkingBudget: 1 }).thinking_budget_tokens).toBe(1);
+    expect('chat_template_kwargs' in buildStreamBody(studio, TURN, { noThink: true })).toBe(false);
     const hosted = buildStreamBody(OPENAI, TURN, { thinkingBudget: 2250 });
     expect('thinking_budget_tokens' in hosted).toBe(false);
     expect('reasoning_budget_message' in hosted).toBe(false);

@@ -6,7 +6,7 @@
 //   node scripts/x-read-verify.mjs --recent     → the 5 latest house posts
 //
 // Rides the SAME credential door the read_x tool uses — resolveChannelCredential
-// ('x'), store > env (.env at the repo root) — and the same signing core the
+// (house, 'x'), store > env (.env at the repo root) — and the same signing core the
 // poster is proven against (uniform-architecture law: one OAuth 1.0a path).
 // Read is research, not speech: this script publishes nothing, ever.
 
@@ -22,7 +22,14 @@ const { readXMe, readXListings, formatXReadForBeing } = await import(
   path.join(REPO, 'backend/services/social/x-reader.js')
 );
 
-const me = await readXMe();
+// Keys are per HOUSE (backend/services/social/house-positions.js): name the
+// house whose keys this proves.
+const HOUSE = process.env.NEUMA_HOUSE_WALLET;
+if (!/^0x[0-9a-fA-F]{40}$/.test(HOUSE || '')) {
+  console.error('set NEUMA_HOUSE_WALLET=<your house wallet 0x…> — account keys are kept per house');
+  process.exit(1);
+}
+const me = await readXMe({ wallet: HOUSE });
 if (!me.ok || !me.data?.username) {
   console.error(`me-read FAILED — ${me.status ? `HTTP ${me.status}: ` : ''}${me.detail}`);
   if (me.status === 401) console.error('401 usually means a key was mispasted, or the access token predates Read+Write.');
@@ -42,7 +49,7 @@ if (!flag) {
   process.exit(0);
 }
 
-const listing = await readXListings({ kind: flag, limit: 5 });
+const listing = await readXListings({ kind: flag, limit: 5, wallet: HOUSE });
 if (!listing.ok) {
   console.error(`${flag} read FAILED — ${listing.status ? `HTTP ${listing.status}: ` : ''}${listing.detail}`);
   process.exit(1);

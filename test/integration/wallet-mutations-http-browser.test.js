@@ -73,7 +73,7 @@ test('wallet mutations preserve every refusal string and resolution shape while 
     app.use('/api/v1/neuma', walletRouter);
     app.use('/api/v1/neuma', recoveryRouter);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { include: ['ethers'] }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { include: ['ethers'] }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">'
       + 'import * as clients from "/frontend/app/RelinkShell/wallet-client.js";'
       + 'import * as embedded from "/frontend/services/EmbeddedWallet.js";'
@@ -116,11 +116,12 @@ test('wallet mutations preserve every refusal string and resolution shape while 
     expect(await expired()).toBe(2);
     expect(await call('recoverNeumaKey', LANE, [...codes])).toEqual({ ok: true });
 
-    // loadWallet — the whole body resolves (the balance value is the route's
-    // own: live RPC '0.0', or its '0' fallback when no provider answers).
+    // loadWallet — the whole body resolves and names the network it was read
+    // on; the balance is the route's own read (a decimal string such as
+    // '0.0'), or null when no provider answers — never a '0' stand-in.
     const wallet = await call('loadWallet', LANE);
-    expect(wallet).toMatchObject({ neumaId: LANE, address: being.address });
-    expect(typeof wallet.balance).toBe('string');
+    expect(wallet).toMatchObject({ neumaId: LANE, address: being.address, network: 'base' });
+    expect(wallet.balance === null || /^\d+\.\d+$/.test(wallet.balance)).toBe(true);
     expect(await call('loadWallet', '')).toBeNull();
 
     // Allowlist — validation refusal verbatim, real add, real remove, disk truth.

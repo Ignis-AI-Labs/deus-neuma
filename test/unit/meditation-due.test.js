@@ -24,20 +24,20 @@ const ranAt = (iso) => ({ lastRunAt: iso, lastOutcome: 'synthesis', runs: [] });
 
 describe('decideDue — the named gates', () => {
   const enabled = settingsFor({
-    cael: { enabled: true, cadenceHours: 24 },
-    fenna: { enabled: true, cadenceHours: 24 },
+    birch: { enabled: true, cadenceHours: 24 },
+    alder: { enabled: true, cadenceHours: 24 },
   });
 
   it('a never-run enabled being is due at boot (catch-up is free)', () => {
-    const d = decideDue({ now: NOW, settings: enabled, state: { lanes: {} }, laneIds: ['cael'], posture: openPosture() });
-    expect(d.runnable).toBe('cael');
+    const d = decideDue({ now: NOW, settings: enabled, state: { lanes: {} }, laneIds: ['birch'], posture: openPosture() });
+    expect(d.runnable).toBe('birch');
     expect(d.blocked).toEqual([]);
   });
 
   it('disabled and cadence-fresh lanes are postures, never candidates', () => {
-    const settings = settingsFor({ cael: { enabled: false, cadenceHours: 24 }, fenna: { enabled: true, cadenceHours: 24 } });
-    const state = { lanes: { fenna: ranAt(new Date(NOW - 2 * HOURS).toISOString()) } };
-    const d = decideDue({ now: NOW, settings, state, laneIds: ['cael', 'fenna'], posture: openPosture() });
+    const settings = settingsFor({ birch: { enabled: false, cadenceHours: 24 }, alder: { enabled: true, cadenceHours: 24 } });
+    const state = { lanes: { alder: ranAt(new Date(NOW - 2 * HOURS).toISOString()) } };
+    const d = decideDue({ now: NOW, settings, state, laneIds: ['birch', 'alder'], posture: openPosture() });
     expect(d.runnable).toBeNull();
     expect(d.blocked).toEqual([]); // nothing due → nothing blocked
   });
@@ -52,7 +52,7 @@ describe('decideDue — the named gates', () => {
   ])('machine gate %o blocks every due lane with %s', (postureOverride, reason) => {
     const d = decideDue({
       now: NOW, settings: enabled, state: { lanes: {} },
-      laneIds: ['cael', 'fenna'], posture: openPosture(postureOverride),
+      laneIds: ['birch', 'alder'], posture: openPosture(postureOverride),
     });
     expect(d.runnable).toBeNull();
     expect(d.blocked).toHaveLength(2);
@@ -62,66 +62,66 @@ describe('decideDue — the named gates', () => {
   it('the env lock blocks before any posture is consulted', () => {
     const d = decideDue({
       now: NOW, settings: { ...enabled, envLocked: true }, state: { lanes: {} },
-      laneIds: ['cael'], posture: openPosture({ serving: false }),
+      laneIds: ['birch'], posture: openPosture({ serving: false }),
     });
     expect(d.blocked[0].reason).toBe(GATE_REASONS.envLocked);
   });
 
   it('an open portal blocks THAT lane; the other still runs', () => {
     const d = decideDue({
-      now: NOW, settings: enabled, state: { lanes: {} }, laneIds: ['cael', 'fenna'],
-      posture: openPosture({ boundLaneIds: new Set(['cael']) }),
+      now: NOW, settings: enabled, state: { lanes: {} }, laneIds: ['birch', 'alder'],
+      posture: openPosture({ boundLaneIds: new Set(['birch']) }),
     });
-    expect(d.runnable).toBe('fenna');
-    expect(d.blocked).toEqual([expect.objectContaining({ laneId: 'cael', reason: GATE_REASONS.portalOpen })]);
+    expect(d.runnable).toBe('alder');
+    expect(d.blocked).toEqual([expect.objectContaining({ laneId: 'birch', reason: GATE_REASONS.portalOpen })]);
   });
 
   it('most overdue wins; one being per tick', () => {
     const state = {
       lanes: {
-        cael: ranAt(new Date(NOW - 30 * HOURS).toISOString()),   // 6h overdue
-        fenna: ranAt(new Date(NOW - 50 * HOURS).toISOString()),  // 26h overdue
+        birch: ranAt(new Date(NOW - 30 * HOURS).toISOString()),   // 6h overdue
+        alder: ranAt(new Date(NOW - 50 * HOURS).toISOString()),  // 26h overdue
       },
     };
-    const d = decideDue({ now: NOW, settings: enabled, state, laneIds: ['cael', 'fenna'], posture: openPosture() });
-    expect(d.runnable).toBe('fenna');
+    const d = decideDue({ now: NOW, settings: enabled, state, laneIds: ['birch', 'alder'], posture: openPosture() });
+    expect(d.runnable).toBe('alder');
   });
 });
 
 describe('decideDue — the unclear-retry cooldown (IL-003)', () => {
   it('a lane inside its cooldown is not a candidate — cadence-due or self-requested, alike', () => {
     const settings = settingsFor({
-      fenna: { enabled: true, cadenceHours: 24 },
-      cael: { enabled: false, cadenceHours: 24 },
+      alder: { enabled: true, cadenceHours: 24 },
+      birch: { enabled: false, cadenceHours: 24 },
     });
     const state = {
       lanes: {
-        fenna: ranAt(new Date(NOW - 30 * HOURS).toISOString()), // cadence-due
-        cael: {
+        alder: ranAt(new Date(NOW - 30 * HOURS).toISOString()), // cadence-due
+        birch: {
           lastRunAt: null, lastOutcome: 'unclear', runs: [],
           requestedAt: new Date(NOW - 5 * 60 * 1000).toISOString(),
           retryNotBefore: new Date(NOW + 20 * 60 * 1000).toISOString(),
         },
       },
     };
-    const d = decideDue({ now: NOW, settings, state, laneIds: ['fenna', 'cael'], posture: openPosture() });
-    expect(d.runnable).toBe('fenna');
+    const d = decideDue({ now: NOW, settings, state, laneIds: ['alder', 'birch'], posture: openPosture() });
+    expect(d.runnable).toBe('alder');
     // A resting cooldown is a posture, not a blockage — nothing shows blocked.
     expect(d.blocked).toEqual([]);
   });
 
   it('the cooldown expires: the lane is due again without ceremony', () => {
-    const settings = settingsFor({ cael: { enabled: true, cadenceHours: 24 } });
+    const settings = settingsFor({ birch: { enabled: true, cadenceHours: 24 } });
     const state = {
       lanes: {
-        cael: {
+        birch: {
           lastRunAt: null, lastOutcome: 'unclear', runs: [],
           retryNotBefore: new Date(NOW - 1).toISOString(),
         },
       },
     };
-    const d = decideDue({ now: NOW, settings, state, laneIds: ['cael'], posture: openPosture() });
-    expect(d.runnable).toBe('cael');
+    const d = decideDue({ now: NOW, settings, state, laneIds: ['birch'], posture: openPosture() });
+    expect(d.runnable).toBe('birch');
   });
 });
 
@@ -149,41 +149,41 @@ describe('decideDue — the being\'s own standing request (#318)', () => {
 
   it('a request is due NOW on an un-enabled lane and outranks a cadence-overdue lane', () => {
     const settings = settingsFor({
-      fenna: { enabled: true, cadenceHours: 24 },
-      cael: { enabled: false, cadenceHours: 24 },
+      alder: { enabled: true, cadenceHours: 24 },
+      birch: { enabled: false, cadenceHours: 24 },
     });
     const state = {
       lanes: {
-        fenna: { lastRunAt: new Date(NOW - 26 * HOURS).toISOString(), lastOutcome: 'synthesis', runs: [] },
-        cael: { lastRunAt: null, lastOutcome: null, runs: [], requestedAt: iso },
+        alder: { lastRunAt: new Date(NOW - 26 * HOURS).toISOString(), lastOutcome: 'synthesis', runs: [] },
+        birch: { lastRunAt: null, lastOutcome: null, runs: [], requestedAt: iso },
       },
     };
-    // fenna listed FIRST — the request must win on rank, not order.
-    const d = decideDue({ now: NOW, settings, state, laneIds: ['fenna', 'cael'], posture: openPosture() });
-    expect(d.runnable).toBe('cael');
+    // alder listed FIRST — the request must win on rank, not order.
+    const d = decideDue({ now: NOW, settings, state, laneIds: ['alder', 'birch'], posture: openPosture() });
+    expect(d.runnable).toBe('birch');
   });
 
   it('a QUIET portal never refuses the being\'s own request (the manual-door law)', () => {
-    const settings = settingsFor({ cael: { enabled: false, cadenceHours: 24 } });
-    const state = { lanes: { cael: { lastRunAt: null, lastOutcome: null, runs: [], requestedAt: iso } } };
+    const settings = settingsFor({ birch: { enabled: false, cadenceHours: 24 } });
+    const state = { lanes: { birch: { lastRunAt: null, lastOutcome: null, runs: [], requestedAt: iso } } };
     const d = decideDue({
-      now: NOW, settings, state, laneIds: ['cael'],
-      posture: openPosture({ boundLaneIds: new Set(['cael']) }),
+      now: NOW, settings, state, laneIds: ['birch'],
+      posture: openPosture({ boundLaneIds: new Set(['birch']) }),
     });
-    expect(d.runnable).toBe('cael');
+    expect(d.runnable).toBe('birch');
     expect(d.blocked).toEqual([]);
   });
 
   it('machine gates still hold a request — the piggyback law is not the being\'s to waive', () => {
-    const settings = settingsFor({ cael: { enabled: false, cadenceHours: 24 } });
-    const state = { lanes: { cael: { lastRunAt: null, lastOutcome: null, runs: [], requestedAt: iso } } };
+    const settings = settingsFor({ birch: { enabled: false, cadenceHours: 24 } });
+    const state = { lanes: { birch: { lastRunAt: null, lastOutcome: null, runs: [], requestedAt: iso } } };
     const d = decideDue({
-      now: NOW, settings, state, laneIds: ['cael'],
+      now: NOW, settings, state, laneIds: ['birch'],
       posture: openPosture({ idleLongEnough: false }),
     });
     expect(d.runnable).toBeNull();
     expect(d.blocked).toEqual([
-      expect.objectContaining({ laneId: 'cael', reason: GATE_REASONS.recentlyActive }),
+      expect.objectContaining({ laneId: 'birch', reason: GATE_REASONS.recentlyActive }),
     ]);
   });
 });

@@ -1,6 +1,6 @@
 // tree-selection — the Explorer's multi-select model, pure.
 //
-// File-manager grammar (Design note, 2026-08-16: plain click selects the one row
+// File-manager grammar (ruling, 2026-08-16): plain click selects the one row
 // (and still toggles/opens); ctrl(meta)+click toggles that row in or out and
 // moves the anchor; shift+click selects the visible range from the anchor;
 // ctrl+shift extends the standing set with that range. A modified click only

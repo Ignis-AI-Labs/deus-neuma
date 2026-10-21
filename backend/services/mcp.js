@@ -3,6 +3,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 import { createLogger } from './logger.js';
+import { helperEnvironment } from './agent-terminal-environment.js';
 const log = createLogger('MCP');
 
 class MCPService {
@@ -16,7 +17,7 @@ class MCPService {
    * @param {string} name - Logical server name (e.g. 'filesystem')
    * @param {string} command - Command to launch the MCP server process
    * @param {string[]} [args=[]] - Command-line arguments for the server process
-   * @param {Object} [env={}] - Additional environment variables merged with process.env
+   * @param {Object} [env={}] - Additional environment variables merged over the helper environment
    * @returns {Promise<Client>} Connected MCP client instance
    * @throws {Error} If connection to the server fails
    */
@@ -27,7 +28,9 @@ class MCPService {
       const transportConfig = {
         command,
         args,
-        env: { ...process.env, ...env }  // Merge with existing env
+        // The server's own configured names over the helper essentials —
+        // never the backend's secrets (helperEnvironment).
+        env: { ...helperEnvironment(process.env, process.platform), ...env },
       };
       
       const transport = new StdioClientTransport(transportConfig);

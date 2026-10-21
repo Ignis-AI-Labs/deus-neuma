@@ -22,11 +22,13 @@ import { kitSwitcherOptions } from './brand-kits-view.js';
 
 export const KitHeader = ({
   kits, totals, open, detail, draft, dirty, saving, notice, ground,
-  onOpen, onNew, onSave, onGround,
+  onOpen, onNew, onSave, onGround, onRetryGround,
 }) => {
   const [picking, setPicking] = useState(false);
   const [groundError, setGroundError] = useState(null);
   const options = kitSwitcherOptions(kits, open, draft?.name);
+  // A read that failed is not "no ground set": no SET form over a ground that may stand.
+  const unset = ground.known && !ground.root && !ground.unread;
 
   const chooseGround = async (root) => {
     setPicking(false);
@@ -66,7 +68,7 @@ export const KitHeader = ({
           className="bk-save"
           onClick={onSave}
           disabled={saving || !dirty || !draft}
-          title={ground.known && !ground.root
+          title={unset
             ? 'no house ground is set, so there is nowhere of your own to keep a brand kit'
             : undefined}
         >
@@ -74,11 +76,17 @@ export const KitHeader = ({
         </button>
       </div>
 
-      {ground.known && !ground.root ? (
+      {unset ? (
         <p className="bk-band">
           No house ground is set, so there is nowhere of your own to keep a brand
           kit. You can still read and edit — a save needs somewhere to land.
           <button type="button" onClick={() => setPicking(true)}>SET THE GROUND</button>
+        </p>
+      ) : null}
+      {ground.unread ? (
+        <p className="bk-band" role="alert">
+          {`COULD NOT READ THE HOUSE GROUND — ${ground.unread}`}
+          <button type="button" onClick={onRetryGround}>RETRY</button>
         </p>
       ) : null}
       {groundError ? <p className="bk-error">{groundError}</p> : null}

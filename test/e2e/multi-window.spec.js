@@ -108,7 +108,7 @@ const openDeskViaMenu = async (app, itemId = 'desk.new') => {
     app.waitForEvent('window'),
     app.evaluate(({ Menu }, id) => Menu.getApplicationMenu().getMenuItemById(id).click(), itemId),
   ]);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
   return page;
 };
 
@@ -124,7 +124,7 @@ test.describe('multi-window milestone (real Electron)', () => {
     const app = await launchApp(userData, wsRoot);
     try {
       const desk1 = await app.firstWindow();
-      await desk1.waitForLoadState('domcontentloaded');
+      await desk1.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       backend = new URL(desk1.url()).origin;
       expect(Number(new URL(backend).port)).toBeGreaterThan(0);
       const session = await mintToken();
@@ -224,7 +224,7 @@ test.describe('multi-window milestone (real Electron)', () => {
     let dragged;
     try {
       const desk1 = await app.firstWindow();
-      await desk1.waitForLoadState('domcontentloaded');
+      await desk1.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       await authenticateDesk(desk1, await mintToken(), ALPHA);
       const desk2 = await openDeskViaMenu(app);
       await expect(desk2.locator('.relink')).toBeVisible({ timeout: 30_000 });
@@ -253,7 +253,7 @@ test.describe('multi-window milestone (real Electron)', () => {
       await app.close();
       app = await launchApp(userData, wsRoot);
       const desk1b = await app.firstWindow();
-      await desk1b.waitForLoadState('domcontentloaded');
+      await desk1b.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       // A restart drops sessionStorage by nature — re-auth desk 1, then the
       // second window opened claims slot 2 and must restore ITS layout.
       await authenticateDesk(desk1b, await mintToken(), ALPHA);
@@ -277,7 +277,7 @@ test.describe('multi-window milestone (real Electron)', () => {
     const app = await launchApp(userData, wsRoot);
     try {
       const desk1 = await app.firstWindow();
-      await desk1.waitForLoadState('domcontentloaded');
+      await desk1.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       const session = await mintToken();
       await authenticateDesk(desk1, session, ALPHA);
       const desk2 = await openDeskViaMenu(app);

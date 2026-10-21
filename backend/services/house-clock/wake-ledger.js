@@ -19,6 +19,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { walletDir } from '../user-realm.js';
 import { readActs } from '../act-ledger.js';
+import { createWriteChain } from '../write-chain.js';
 
 /** The house clock's own room in the operator's realm. */
 export const clockDir = (wallet) => path.join(walletDir(wallet), 'house-clock');
@@ -37,7 +38,7 @@ export const LEDGER_PAGE_MAX = 200;
 export const actsDuring = async (seat, startedAt, endedAt) =>
   (await readActs({ since: startedAt, laneIds: [seat] }))
     .filter((a) => a.ts >= startedAt && a.ts <= endedAt)
-    .map(({ ts, tool, scope, decision, status }) => ({ ts, tool, scope: scope ?? null, decision, status }));
+    .map(({ ts, tool, scope, decision, status, approvedBy }) => ({ ts, tool, scope: scope ?? null, decision, status, ...(approvedBy ? { approvedBy } : {}) }));
 
 // impure — every parsed line of an append-only file, oldest first; a missing
 // file is empty, and a torn line costs only itself.
@@ -82,19 +83,22 @@ export const readWakeLedger = async (wallet, { offset = 0, limit = 50, seat = nu
   return { rows: rows.slice(from, from + size), total: rows.length };
 };
 
-// ── THE OPERATOR'S ASKS — what a wake could not do without them ──────────────
-// An act a wake was refused, or a plan it sent back, filed for the operator:
-// nobody was at the desk to tap a card, and a wake never waits on one. Append-
-// only (`asks.jsonl`), metadata only (the act, what it reached for, why it came
-// back) — the seat's words stay in its sitting, which the ask names.
+// ── THE OPERATOR'S ASKS — what house work could not do without them ─────────
+// An act a wake or a team member was refused, a plan it sent back, or a
+// decision it put to the operator (ask_operator), filed for them: nobody was
+// at the desk to tap a card, and house work never waits on one. Append-only
+// (`asks.jsonl`): the act and what it reached for, why it came back, a
+// decision's question and choices — the seat's other words stay in its
+// sitting, which the ask names (a member's ask names its run and step too).
 
 const asksFile = (wallet) => path.join(clockDir(wallet), 'asks.jsonl');
 
 /**
  * File one ask for the operator. impure.
  * @param {string} wallet
- * @param {{wakeId: string, seat: string, kind: 'act'|'plan', tool?: string, planId?: string,
- *   scope?: ?string, why: string, sessionId?: ?string}} ask
+ * @param {{wakeId: ?string, seat: string, kind: 'act'|'plan'|'decision', tool?: string, planId?: string,
+ *   scope?: ?string, question?: string, options?: string[], why: string, sessionId?: ?string,
+ *   runId?: ?string, stepId?: ?string}} ask
  * @returns {Promise<Object>} the filed ask
  */
 export const fileAsk = async (wallet, ask) => {
@@ -105,22 +109,44 @@ export const fileAsk = async (wallet, ask) => {
 };
 
 // The operator CLOSING an ask: they saw it and dealt with it (in the seat's
-// sitting, or by deciding it should not happen). Closing is not approving —
-// nothing runs, the refused act stays not taken. Its own append-only file, so
-// the asks themselves are never rewritten; the first close of an ask stands.
+// sitting, or by deciding it should not happen) — […]. Closing is not approving — nothing runs, the refused act stays
+// not taken. Or ANSWERING it (ask-answer.js): their decision and words, which
+// wake the seat. Both land in one append-only file, so the asks themselves
+// are never rewritten; the first close or answer of an ask stands.
 const closedFile = (wallet) => path.join(clockDir(wallet), 'asks-closed.jsonl');
 
 export const ASK_NOTE_MAX = 280;
 
-/** Every ask filed for the operator, newest first, closed ones marked. impure. */
+/** One chain for every close and answer, so two can never both settle one ask. impure. */
+export const settleChain = createWriteChain();
+
+// pure — an ask as its first close or answer left it
+const settled = (ask, c) => {
+  if (!c) return ask;
+  if (c.answer) return { ...ask, status: 'answered', answeredAt: c.at, answeredBy: c.by, answer: c.answer };
+  return { ...ask, status: 'closed', closedAt: c.at, closedBy: c.by, ...(c.note ? { closeNote: c.note } : {}) };
+};
+
+/** Every ask filed for the operator, newest first, closed and answered ones marked. impure. */
 export const readAsks = async (wallet) => {
   const [asks, closes] = await Promise.all([readLines(asksFile(wallet)), readLines(closedFile(wallet))]);
   const closed = new Map();
   for (const c of closes) if (!closed.has(c.askId)) closed.set(c.askId, c);
-  return asks.map((ask) => {
-    const c = closed.get(ask.id);
-    return c ? { ...ask, status: 'closed', closedAt: c.at, closedBy: c.by, ...(c.note ? { closeNote: c.note } : {}) } : ask;
-  }).reverse();
+  return asks.map((ask) => settled(ask, closed.get(ask.id))).reverse();
+};
+
+/**
+ * The operator's answer to one open ask, on the record. impure. The caller
+ * (ask-answer.js) has judged it, inside settleChain.
+ * @param {string} wallet
+ * @param {{askId: string, by: string, answer: {decision: string, text?: string, option?: string}}} row
+ * @returns {Promise<Object>} the ask as it now stands
+ */
+export const recordAnswer = async (wallet, { askId, by, answer }) => {
+  const row = { v: 1, askId, by: String(by || '').toLowerCase(), at: new Date().toISOString(), answer };
+  await fs.mkdir(clockDir(wallet), { recursive: true });
+  await fs.appendFile(closedFile(wallet), `${JSON.stringify(row)}\n`, 'utf8');
+  return settled((await readLines(asksFile(wallet))).find((a) => a.id === askId), row);
 };
 
 /**
@@ -129,12 +155,12 @@ export const readAsks = async (wallet) => {
  * @param {{id: string, by: string, note?: string}} close
  * @returns {Promise<?Object>} the ask as it now stands, or null when this house filed no such ask
  */
-export const closeAsk = async (wallet, { id, by, note }) => {
+export const closeAsk = (wallet, { id, by, note }) => settleChain(async () => {
   const ask = (await readAsks(wallet)).find((a) => a.id === id);
-  if (!ask || ask.status === 'closed') return ask ?? null;
+  if (!ask || ask.status !== 'open') return ask ?? null;
   const text = typeof note === 'string' ? note.trim().slice(0, ASK_NOTE_MAX) : '';
   const row = { v: 1, askId: id, by: String(by || '').toLowerCase(), at: new Date().toISOString(), ...(text ? { note: text } : {}) };
   await fs.mkdir(clockDir(wallet), { recursive: true });
   await fs.appendFile(closedFile(wallet), `${JSON.stringify(row)}\n`, 'utf8');
   return { ...ask, status: 'closed', closedAt: row.at, closedBy: row.by, ...(text ? { closeNote: text } : {}) };
-};
+});

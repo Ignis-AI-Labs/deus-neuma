@@ -23,12 +23,12 @@
  * No hidden mutation contract — everything the remaining turn reads comes
  * back in the return, explicitly.
  *
- * Follow-up generation rounds after tool execution. The consciousness
- * may chain actions (read, then write) but never spins unbounded.
+ * Follow-up rounds after tool execution: the being may chain acts (read, then write), never unbounded.
  */
 import { recordBenchmarkExtraCall } from './benchmark-extra-calls.js';
 import { noteRoundRoom } from './read-room.js';
 import { settleBenchmarkToolTrail } from './benchmark-tool-trail.js';
+import { noteToolResultSightings } from './security/injection-sightings.js';
 import { callerCloseTools, callerYielded, processRoundActs, yieldCloseCalls } from './caller-tools.js';
 import { yieldForQueuedThought, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
 import { createLogger } from './logger.js';
@@ -36,6 +36,7 @@ import { safeSend as _safeSend } from './ws-send.js';
 import { sightForResults, withSight } from './image-forge/image-sight.js';
 import { isFinalToolRound, toolRoundCap, withinToolRounds } from './tool-rounds.js';
 import { neumaWorkspace, buildCompositionEvent } from '../../core/index.js';
+import { wireContextSections } from './turn-context-carry.js';
 import { markTurnText, recordThoughtStretch } from './tool-action-record.js';
 import { RESULTS_FOLLOW_UP, formatToolResult, formatToolResults, nativeToolExchange } from './tool-exchange.js';
 import { pastFoldBoundary, foldWorkingContext, workingContextNote } from './working-context.js';
@@ -118,7 +119,7 @@ export const notifyTurnEnded = (connection, companionName, sessionId, take, inte
     const laneId = connection?.companion?.neumaId ?? null;
     if (!connection?.walletAddress || !laneId) return;
     // A team member's step is part of the run; the run's own card speaks.
-    if (connection._teamMember) return;
+    if (connection._teamMember || connection._selfCheck === true) return; // a self-check's report is its card
     const witness = connection.companion?.participantKind === 'witness'
       || laneId.startsWith?.('witness-');
     notifyOperator({
@@ -240,7 +241,7 @@ export const runToolRounds = async ({
     // The gauge's frame on the turn's measured usage so far.
     const sendComposition = (completionText) => _safeSend(ws, {
       ...buildCompositionEvent({
-        sections: [...contextSections, ...toolContextSections], usage: turnUsage, completionText, standing: standingUsage,
+        sections: [...wireContextSections(contextSections, messages[0]), ...toolContextSections], usage: turnUsage, completionText, standing: standingUsage,
         toolResults: connection.compositionToolResults || [], budget: contextBudget, cache: latestCacheTelemetry,
       }),
       ...contextScope,
@@ -339,6 +340,7 @@ export const runToolRounds = async ({
       // The sender's own tools (caller-tools.js) are handed back, never run here.
       const toolResults = await processRoundActs(processToolCalls, ws, roundResponse, connection, acts, turnToolEpochs);
       settleBenchmarkToolTrail(connection, toolResults);
+      noteToolResultSightings(connection, toolResults); // a flag for the CSO, never awaited, never a gate (G13)
       log.info('round tools processed', {
         name: companionName,
         round,

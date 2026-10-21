@@ -112,7 +112,7 @@ const NiteBody = () => {
   }, [refresh, refreshStanding, neumaId]);
 
   // THE ASK — the answer is shown as it ARRIVES, never as a finished page
-  // appearing (Design note, 2026-08-18. Deltas append to `answer` so the witness
+  // appearing (ruling, 2026-08-18). Deltas append to `answer` so the witness
   // watches the being speak.
   const carryRite = useCallback(async () => {
     playSound('confirm');

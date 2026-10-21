@@ -2,10 +2,33 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [dev, main]
 permissions:
   contents: read
 jobs:
+  # Every pull request, a fork's included: no key-shaped value and no secret
+  # file may enter the tree. The log names the file, line and pattern, never
+  # the value. Dependencies install with --ignore-scripts, so nothing in a
+  # pull request's lockfile runs before the scan has read it.
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: tracked files (the standing sweep)
+        run: node scripts/secret-scan.mjs
+      - name: the whole tree and its file names (the commit gate)
+        run: |
+          tree="$RUNNER_TEMP/tree"
+          mkdir -p "$tree"
+          git archive HEAD | tar -x -C "$tree"
+          node scripts/secret-gate.mjs --tree "$tree"
+  # Lint and the unit tests of the GPU-free lane (the `suite` project): no
+  # model, no GPU, no network service.
   checks:
     runs-on: ubuntu-latest
     steps:
@@ -14,7 +37,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: node scripts/secret-scan.mjs
       - run: npm ci
       - run: npm run lint
-      - run: npx vitest run test/unit
+      - run: npx vitest run --project suite test/unit

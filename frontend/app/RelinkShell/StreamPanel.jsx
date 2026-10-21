@@ -88,7 +88,7 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
     message.streaming ? 'is-streaming' : '',
     message.transient ? 'is-transient' : '',
     // A word the portal still HOLDS — visibly waiting, and still the
-    // operator's to rewrite, promote, or pull home (Design note, 2026-08-16.
+    // operator's to rewrite, promote, or pull home (ruling, 2026-08-16).
     message.queued ? 'is-queued' : '',
     // Editing stretches the bubble to the stream's width — the bubble's own
     // shrink-to-fit column is right for a spoken line, wrong for an editor.
@@ -182,6 +182,7 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
         )}
       </div>
       {message.meta ? <MessageMeta meta={message.meta} /> : null}
+      {message.role === 'error' && message.reason ? <div className="relink-msg-reason label-data">{message.reason}</div> : null}
       {/* COPY on every settled message — the spoken words, paste-ready
           anywhere; EDIT stays the witness's own-words affordance.
           THE TAKES ride here too: ‹ k/N › walks a point's versions (an

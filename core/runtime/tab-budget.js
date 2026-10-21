@@ -5,7 +5,7 @@
  *
  *   […]
  *
- * ── WHAT IT NO LONGER DOES (Design note, 2026-10-15 ───────────────────────────────
+ * ── WHAT IT NO LONGER DOES (ruling, 2026-10-15) ───────────────────────────────
  *
  * […] No tab — local or witness — is ever held
  * back from opening, focusing or connecting; the witness cap is gone with the

@@ -8,7 +8,9 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createHarnessTurnKit } from '../helpers/harness-turn-kit.js';
 import { processToolCalls } from '../../backend/services/portal-tool-loop.js';
-import { beingCodingToolsFor, stashBeingTurnCatalog } from '../../backend/services/being-tool-surface.js';
+import { beingCodingToolsFor, stashBeingTurnCatalog, TOOL_DOORS } from '../../backend/services/being-tool-surface.js';
+import { unwrapCalls } from '../../backend/services/tool-hud.js';
+import { memoryToolsFor } from '../../backend/services/portal-tools/memory-being-tools.js';
 import { openTurnOperations } from '../../backend/services/turn-operation-checkpoint.js';
 import { openTurnRecord, closeTurnRecord } from '../../backend/services/tool-action-record.js';
 import { processRoundActs } from '../../backend/services/caller-tools.js';
@@ -77,6 +79,21 @@ describe('a closed-book sitting', () => {
     expect(results[2].tool).toMatch(/sandbox_status/);
   });
 
+  test('a door inside the door is refused: the nested call never reaches a tool the sitting closed', async () => {
+    // Audit C1 (2026-10-19): system/call naming system/call passed the
+    // closed-book split as the door, then the loop peeled it a second time
+    // and ran memory_search / platform_data / chain_balance past the split.
+    await stashBeingTurnCatalog(kit.connection, [...await beingCodingToolsFor(kit.connection), ...WEB_TOOLS, ...TOOL_DOORS], []);
+    expect(kit.connection._turnCatalog.some((t) => t.server === 'system' && t.name === 'call')).toBe(true);
+    const acts = unwrapCalls([
+      { server: 'system', toolName: 'call', tool: 'system/call', callId: 'nested', args: { tool: 'system/call', args: { tool: 'memory/memory_search', args: { query: 'answer' } } } },
+    ]);
+    const results = await round(acts, 'cb-nested');
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ tool: 'system/call', status: 'invalid' });
+    expect(results[0].error).toMatch(/cannot call system\/call/);
+  });
+
   test('a refusal between two runs keeps its place: each result answers its own call', async () => {
     const results = await round([
       { server: 'coding', toolName: 'sandbox_status', tool: 'coding/sandbox_status', args: {}, callId: 'first' },
@@ -104,6 +121,39 @@ describe('a closed-book sitting', () => {
     expect(shellNetworkOptions(context, true).network).toBe(true);
     kit.connection._closedBook = true;
     expect(await sweepIntents(kit.connection, { mode: 'auto', emit: () => {} })).toEqual([]);
+  });
+});
+
+// Audit C4 (2026-10-19): the platform dispatch matched tools by bare name and
+// never consulted the turn's catalog, so an open-book benchmark sitting (which
+// loses the memory server) could still read stored memory by calling it.
+describe('a being seat runs only what its turn offered', () => {
+  beforeEach(async () => {
+    kit = await createHarnessTurnKit('turn-catalog-fixture');
+    kit.connection.toolWorkspace = kit.ground;
+    kit.connection._benchmarkControls = {};
+    await stashBeingTurnCatalog(kit.connection, [...await beingCodingToolsFor(kit.connection), ...await memoryToolsFor(kit.connection)], []);
+    openTurnRecord(kit.ws);
+  });
+
+  afterEach(async () => {
+    if (kit) closeTurnRecord(kit.ws);
+    await kit?.close();
+  });
+
+  test('a memory call in an open-book benchmark sitting is unavailable; an offered tool still runs', async () => {
+    expect((await memoryToolsFor(kit.connection)).length).toBeGreaterThan(0);
+    expect(kit.connection._turnCatalog.some((t) => t.server === 'memory')).toBe(false);
+    const results = await round([
+      { server: 'memory', toolName: 'memory_list', tool: 'memory/memory_list', args: {}, callId: 'mem' },
+      { server: 'coding', toolName: 'memory_search', tool: 'coding/memory_search', args: { query: 'answer' }, callId: 'forged' },
+      { server: 'coding', toolName: 'sandbox_status', tool: 'coding/sandbox_status', args: {}, callId: 'own' },
+    ], 'tc-1');
+    expect(results).toHaveLength(3);
+    expect(results[0]).toMatchObject({ tool: 'memory/memory_list', status: 'unavailable' });
+    expect(results[1]).toMatchObject({ tool: 'coding/memory_search', status: 'unavailable' });
+    expect(results[2].tool).toMatch(/sandbox_status/);
+    expect(results[2].status).not.toBe('unavailable');
   });
 });
 

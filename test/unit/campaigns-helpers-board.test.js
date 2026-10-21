@@ -275,7 +275,7 @@ describe('queueWhenLabel — one meta line per entry, in the data register', () 
     expect(queueWhenLabel({ status: 'approved', scheduledFor: null }, now)).toBe('SENDS ON THE NEXT PASS');
   });
 
-  it('the schedule LOCK rides the approved card — the lock timestamp proves it armed (Design note, 2026-07-28', () => {
+  it('the schedule LOCK rides the approved card — the lock timestamp proves it armed (ruling, 2026-07-28)', () => {
     const decidedAt = iso(new Date(2026, 6, 28, 13, 38, 0));
     expect(queueWhenLabel({ status: 'approved', scheduledFor: iso(new Date(2026, 6, 28, 20, 0, 0)), decidedAt }, now))
       .toBe('SENDS IN 2H · TUE 8:00 PM · LOCKED TUE 1:38 PM');
@@ -312,7 +312,7 @@ describe('queueWhenLabel — one meta line per entry, in the data register', () 
     expect(queueWhenLabel({ status: 'something-new' }, now)).toBe('');
   });
 
-  // THE REPLY'S CLOCK IS NOT A SLOT (Design note, 2026-08-06: the live standings
+  // THE REPLY'S CLOCK IS NOT A SLOT (ruling, 2026-08-06): the live standings
   // speak the approval law and the TTL — never GOES OUT IN / SENDS IN / the
   // schedule-lock vocabulary, which would all be lies for a reply.
   it('a draft REPLY reads the approval law and its expiry, never a slot', () => {

@@ -220,7 +220,7 @@ export const runWitnessTalk = async ({ cwd, stdin = process.stdin, stdout, stder
     );
   } catch (error) {
     if (String(error.message).startsWith('owner_claim_conflict')) {
-      return fail(`'${sealed.chosenName}'s lane belongs to another wallet — this seat cannot bind it.`);
+      return fail(`'${sealed.chosenName}'s lane is not this wallet's to bind — ${error.message.replace(/^owner_claim_conflict: /, '')}.`);
     }
     return fail(error.message);
   }

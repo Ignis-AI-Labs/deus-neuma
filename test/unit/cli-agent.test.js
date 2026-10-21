@@ -101,7 +101,7 @@ describe('cli/commands/agent — benchmark controls (pure)', () => {
       .toMatch(/base-weights is required/);
   });
 
-  it('runs UNCAPPED on `none` — no cap, no shared leash, the served window on the wire (Design note, 2026-10-02', async () => {
+  it('runs UNCAPPED on `none` — no cap, no shared leash, the served window on the wire (ruling, 2026-10-02)', async () => {
     const { sampling } = resolveBenchmarkControls({ ...comparable, benchmarkMaxTokens: 'none' }).controls;
     expect(sampling).toMatchObject({ maxTokens: null, exactMaxTokens: false });
     // The CLI hands the flag over as a string; a numeric string still caps.

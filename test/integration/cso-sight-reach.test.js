@@ -16,6 +16,7 @@ import { clearAttackSurfaceCache } from '../../backend/services/security/attack-
 import { circuitBreaker } from '../../backend/services/security/circuit-breaker.js';
 import { trafficMonitor } from '../../backend/services/security/traffic-monitor.js';
 import { createLogger } from '../../backend/services/logger.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_KEYS = Object.freeze([
   'NEUMA_DATA_ROOT',
@@ -54,6 +55,7 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
   let remoteSource;
   let token;
   let threat;
+  let operatorWallet;
   let originalWorkspaceRoot;
   let originalRealmRoot;
   const savedEnv = {};
@@ -106,6 +108,7 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
     remoteBase = `http://${remoteSource}:${port}`;
 
     const keypair = generateKeypair();
+    operatorWallet = keypair.address;
     const challengeResponse = await fetch(`${localBase}/api/v1/auth/challenge?address=${keypair.address}`);
     if (!challengeResponse.ok) throw new Error(`wallet challenge failed: ${challengeResponse.status}`);
     const { challenge } = await challengeResponse.json();
@@ -129,6 +132,8 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
     // on any other — 56a45564b), so the lane is made and claimed first.
     await neumaWorkspace.create('guardianlane');
     await claimOwner(path.join(root, 'workspaces'), 'guardianlane', keypair.address);
+    // The firewall is machine-wide: this wallet drives it as the install's owner.
+    await makeInstallOwner(keypair.address);
     const seated = await authed(localBase, '/api/v1/cso/seat', {
       method: 'PUT',
       body: JSON.stringify({ laneId: 'guardianlane' }),
@@ -227,6 +232,43 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
     expect(serialized).toContain('[redacted]');
     expect(serialized).not.toContain('telemetry-redaction-fixture-value');
     expect(serialized).not.toContain('token=');
+  });
+
+  test('the operator reopens a CSO verdict over real HTTP; the verdict stays in the history', async () => {
+    const ledger = await threatLedgerFor(operatorWallet);
+    await ledger.ingest([{
+      layer: 'software', source: 'manual', repo: 'neuma', externalId: 'GHSA-reopen-fixture',
+      title: 'a verdict the operator overturns', severity: 'high', summary: 'reopen fixture',
+    }]);
+    const target = (await ledger.load()).find((e) => e.externalId === 'GHSA-reopen-fixture');
+    await ledger.assess(target.id, { status: 'not_affected', assessment: 'the CSO says it does not bite', assessedBy: 'guardianlane' });
+
+    const reopen = (id, note) => authed(localBase, `/api/v1/cso/threats/${id}/reopen`, { method: 'PUT', body: JSON.stringify({ note }) });
+    const reopened = await reopen(target.id, 'I want a second look');
+    expect(reopened.status).toBe(200);
+    const stored = await ledger.get(target.id);
+    expect(stored).toMatchObject({ status: 'new', assessedBy: null });
+    expect(stored.history.map((h) => h.assessment)).toEqual(expect.arrayContaining(['the CSO says it does not bite', 'I want a second look']));
+    expect((await reopen(target.id)).status).toBe(409);
+    expect((await reopen('th_nosuchthreat')).status).toBe(404);
+  });
+
+  test('a signed-in guest of this install cannot move the machine firewall', async () => {
+    const guest = generateKeypair();
+    const { challenge } = await (await fetch(`${localBase}/api/v1/auth/challenge?address=${guest.address}`)).json();
+    const verified = await fetch(`${localBase}/api/v1/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: guest.address, signature: await signMessage(guest.privateKey, challenge), challenge }),
+    });
+    const { token: guestToken } = await verified.json();
+    const refused = await fetch(`${localBase}/api/v1/cso/mitigations`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${guestToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'block_source', source: '198.51.100.90', durationSeconds: 30, reason: 'a guest trying the firewall' }),
+    });
+    expect(refused.status).toBe(403);
+    expect((await circuitBreaker.evaluate('198.51.100.90')).blocked).toBe(false);
   });
 
   test('operator-authenticated source rules block real remote TCP and preserve loopback recovery', async () => {

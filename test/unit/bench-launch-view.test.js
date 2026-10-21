@@ -57,7 +57,7 @@ describe('bench-view — RUN A BENCHMARK display law, pure', () => {
     expect(arms.map((a) => a.id)).toEqual(['bare', 'harness', 'neuma', 'platform', 'silo']);
     expect(arms.filter((a) => a.core).map((a) => a.name)).toEqual(['BARE MODEL', 'HARNESS', 'FULL BEING']);
     expect(arms[0].isDefault).toBe(true);
-    expect(arms[1].line).toContain('every identity layer off'); // the platform agent (Design note, 2026-09-29
+    expect(arms[1].line).toContain('every identity layer off'); // the platform agent (ruling, 2026-09-29)
     expect(arms[2].line).toContain('benchmarks a being, not a model');
     const diagnostic = arms.filter((a) => !a.core);
     expect(diagnostic.map((a) => a.name)).toEqual(['PLATFORM WIRE', 'SILO']);
@@ -121,10 +121,10 @@ describe('bench-view — RUN A BENCHMARK display law, pure', () => {
 
   it('laneOptions — the operator\u2019s own lanes as Select options, kind named', () => {
     expect(laneOptions([
-      { laneId: 'keir', label: 'Keir', kind: 'neuma' },
+      { laneId: 'hazel', label: 'Hazel', kind: 'neuma' },
       { laneId: 'witness-xai-Grok', label: 'Grok', kind: 'witness' },
     ])).toEqual([
-      { value: 'keir', label: 'Keir — NEUMA' },
+      { value: 'hazel', label: 'Hazel — NEUMA' },
       { value: 'witness-xai-Grok', label: 'Grok — WITNESS' },
     ]);
     expect(laneOptions(null)).toEqual([]);
@@ -143,8 +143,8 @@ describe('bench-view — RUN A BENCHMARK display law, pure', () => {
     const EMPTY = { limit: '', attempt: '', deadline: '', comparisonId: '', lane: '', workspaceRoot: '' };
     expect(fineControlParams(EMPTY)).toEqual({});
     expect(fineControlParams({ ...EMPTY, limit: ' 25 ', attempt: '2' })).toEqual({ limit: 25, attempt: 2 });
-    expect(fineControlParams({ ...EMPTY, deadline: ' 2026-10-01T00:00:00Z ', comparisonId: 'cmp-1', lane: ' keir ' }))
-      .toEqual({ deadline: '2026-10-01T00:00:00Z', comparisonId: 'cmp-1', lane: 'keir' });
+    expect(fineControlParams({ ...EMPTY, deadline: ' 2026-10-01T00:00:00Z ', comparisonId: 'cmp-1', lane: ' hazel ' }))
+      .toEqual({ deadline: '2026-10-01T00:00:00Z', comparisonId: 'cmp-1', lane: 'hazel' });
     expect(fineControlParams({ ...EMPTY, workspaceRoot: '/abs/path' })).toEqual({ workspaceRoot: '/abs/path' });
     // A non-number is passed through for the SERVER to refuse — never client-judged.
     expect(fineControlParams({ ...EMPTY, limit: 'abc' })).toEqual({ limit: NaN });
@@ -160,7 +160,7 @@ describe('bench-view — RUN A BENCHMARK display law, pure', () => {
 
 describe('BenchLaunch — RUN A BENCHMARK, the first-timer flow, rendered for real', () => {
   const FORM = {
-    cell: 'gsm8k', arms: ['neuma'], model: '', lane: 'keir', workspaceRoot: '',
+    cell: 'gsm8k', arms: ['neuma'], model: '', lane: 'hazel', workspaceRoot: '',
     limit: '', attempt: '', deadline: '', comparisonId: '', plan: 'tb-rem2a-20260918',
   };
   const base = {
@@ -170,7 +170,7 @@ describe('BenchLaunch — RUN A BENCHMARK, the first-timer flow, rendered for re
       { key: 'qwen3-30b-a3b-thinking', label: 'Q30', servedId: 'qwen3-30b-a3b-thinking-2507', fileName: 'Qwen3-30B.gguf', hasSha256: false, quantization: 'Q8_0' },
     ],
     lanes: [
-      { laneId: 'keir', label: 'Keir', kind: 'neuma' },
+      { laneId: 'hazel', label: 'Hazel', kind: 'neuma' },
       { laneId: 'witness-xai-Grok', label: 'Grok', kind: 'witness' },
     ],
     plans: [{ name: 'tb-rem2a-20260918', windowHours: 8, model: 'qwen3.8-27b-uncensored-hauhaucs', groupCount: 1, stepCount: 1 }],
@@ -235,8 +235,8 @@ describe('BenchLaunch — RUN A BENCHMARK, the first-timer flow, rendered for re
     expect(identity).toContain('Identity arms benchmark a being, not a model');
     // The lane is a dropdown of MY house + MY witnesses — never free text.
     expect(identity).toContain('aria-label="The being under test"');
-    expect(identity).toContain('Keir — NEUMA');
-    expect(identity).not.toContain('bench-input" value="keir'); // no free-text lane field
+    expect(identity).toContain('Hazel — NEUMA');
+    expect(identity).not.toContain('bench-input" value="hazel'); // no free-text lane field
     const floor = renderToStaticMarkup(createElement(BenchLaunch, { ...base, form: { ...FORM, arms: ['bare'] } }));
     expect(floor).not.toContain('ONE LANE RIDES');
     const noLanes = renderToStaticMarkup(createElement(BenchLaunch, { ...base, lanes: [] }));
@@ -299,7 +299,7 @@ describe('BenchLaunch — RUN A BENCHMARK, the first-timer flow, rendered for re
     expect(two).toContain('RUN THE MATCHED SET (2)');
     expect(two).toContain('<span class="bl-numeral kx-scan">~1.5 h</span>');
     expect(two).toContain('bare model ~45 min · full being ~45 min');
-    expect(two).toContain('2 arms · Keir');
+    expect(two).toContain('2 arms · Hazel');
     const chainState = {
       chainId: 'chain-x', state: 'running', cell: 'gsm8k', arms: ['bare', 'neuma'],
       comparisonId: 'desk-x', startedAt: new Date(NOW - 60000).toISOString(),
@@ -333,9 +333,9 @@ describe('BenchLaunch — RUN A BENCHMARK, the first-timer flow, rendered for re
     expect(refused).toContain('the rig is locked by pid 42');
     const argv = renderToStaticMarkup(createElement(BenchLaunch, {
       ...base,
-      result: launchResultView('RUN THE BENCHMARK — gsm8k / neuma', { argv: ['bench.mjs', 'run', 'gsm8k', '--lane', 'keir'], pid: 7, logFile: '/l', long: true }),
+      result: launchResultView('RUN THE BENCHMARK — gsm8k / neuma', { argv: ['bench.mjs', 'run', 'gsm8k', '--lane', 'hazel'], pid: 7, logFile: '/l', long: true }),
     }));
-    expect(argv).toContain('node bench.mjs run gsm8k --lane keir');
+    expect(argv).toContain('node bench.mjs run gsm8k --lane hazel');
   });
 });
 

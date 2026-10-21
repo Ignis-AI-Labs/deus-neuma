@@ -1,7 +1,7 @@
 // Procedural layer — […] Retrieval over the procedural log: the
 // methods / how-to / learned procedures a being accumulates and refines.
 //
-// This is JUST a memory layer (Design note, 2026-06-24 — it stores how-to records the
+// This is JUST a memory layer (ruling, 2026-06-24) — it stores how-to records the
 // same way episodic stores events. It is NOT the skills system: a skill (#22) is
 // its own thing (a custom-function + context-management capability a being picks
 // up); procedural memory is where raw methods live. They compose; they are not

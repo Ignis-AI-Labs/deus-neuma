@@ -5,12 +5,14 @@
 //                         local path (e.g. a cloned shadow-clone repo or a
 //                         Claude marketplace cache dir). Auth-gated: install
 //                         reads arbitrary operator-named paths, so only the
-//                         authenticated witness may point it anywhere.
+//                         authenticated witness may point it anywhere; the
+//                         library is the machine's, so only its install owner.
 
 import { Router } from 'express';
 import os from 'os';
 import path from 'path';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { skillService } from '../services/skill-service.js';
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../services/logger.js';
@@ -51,7 +53,7 @@ router.get('/skills', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/skills/install', requireAuth, async (req, res) => {
+router.post('/skills/install', requireAuth, requireInstallOwner, async (req, res) => {
   const pluginDir = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
   if (!pluginDir || !path.isAbsolute(pluginDir)) {
     return res.status(400).json({ success: false, error: 'path must be an absolute directory path' });

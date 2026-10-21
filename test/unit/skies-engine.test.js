@@ -118,8 +118,11 @@ describe('ganzhi — BaZi from real solar longitude', () => {
 });
 
 describe('jyotisha — sidereal via labeled Lahiri ayanamsa', () => {
-  it('ayanamsa anchor: ≈24°07′47″ at 2026-01-01', () => {
-    expect(ayanamsaDeg(new Date(Date.UTC(2026, 0, 1)))).toBeCloseTo(24.1297, 3);
+  // corrected 2026-10-19: the IAE mean Lahiri (24°07′47″ was the late-2019 value);
+  // the published panchanga boundaries that prove it: skies-vedic.test.js
+  it('ayanamsa anchor: the IAE mean Lahiri, ≈24°13′13″ at 2026-01-01 (23°51′25.5″ at J2000)', () => {
+    expect(ayanamsaDeg(new Date(Date.UTC(2026, 0, 1)))).toBeCloseTo(24.2203, 3);
+    expect(ayanamsaDeg(new Date(Date.UTC(2000, 0, 1, 12)))).toBeCloseTo(23 + 51 / 60 + 25.53 / 3600, 3);
   });
 
   it('tithi agrees with the real moon: Purnima just before full, Krishna 1 just after', () => {
@@ -186,8 +189,8 @@ describe('buildSkies — the assembled reading', () => {
     expect(skies.schema).toBe(SKIES_SCHEMA);
     expect(skies.local.jdn).toBe(jdnFromCivil(2026, 7, 24));
     expect(Object.keys(skies.systems).sort()).toEqual([
-      'akan', 'decans', 'dreamspell', 'ganzhi', 'jyotisha',
-      'mahabote', 'mesoamerican', 'pawukon', 'wetonan',
+      'akan', 'bahai', 'decans', 'dreamspell', 'egyptian', 'ethiopian', 'french', 'ganzhi', 'hebrew', 'hijri', 'humanDesign', 'icelandic', 'igbo', 'jyotisha', 'lunisolar',
+      'mahabote', 'manazil', 'maya819', 'mesoamerican', 'nengo', 'nineStar', 'pawukon', 'persian', 'solarTerms', 'thai', 'tibetan', 'vedic', 'western', 'wetonan', 'xiu', 'zoroastrian',
     ]);
     expect(Object.isFrozen(skies)).toBe(true);
     expect(Object.isFrozen(skies.systems.mesoamerican.tzolkin)).toBe(true);
@@ -200,7 +203,7 @@ describe('buildSkies — the assembled reading', () => {
     }
     const omittedNames = skies.omitted.map((o) => o.system);
     expect(omittedNames).toContain('ifa'); // excluded by principle, with the reason
-    expect(omittedNames).toContain('gates64');
+    expect(omittedNames).toContain('sabian-texts'); // the degree index is computed, the texts are not written yet
   });
 
   it('refuses a moment without an instant', () => {

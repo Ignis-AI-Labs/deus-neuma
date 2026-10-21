@@ -152,10 +152,21 @@ export const LEASH_TAIL_CHARS = 2000;
  * so the answer is built on the work, not instead of it. Pure.
  * @param {string} tail the last LEASH_TAIL_CHARS of the cut reasoning
  */
+/**
+ * THE HONEST WAY OUT of a forced close (operator, 2026-10-20). A close that
+ * only demanded […] turned unsettled reasoning into
+ * guesses: on AA-Omniscience the questions re-asked after a speechless round
+ * came back wrong 68-76% of the time against ~50% overall, and the 26
+ * questions BARE abstained on at its output limit came back 15 wrong. Where
+ * the task allows […], the being may say it. Where it does not,
+ * as on multiple choice, the answer is still given. Pure.
+ */
+export const UNSETTLED_ALLOWANCE = 'If your reasoning did not settle it and the task allows saying so, say that plainly rather than guessing.';
+
 export const leashReaskNote = (tail) => [
   'Your reasoning ran past its room and was cut. It ended here:',
   `"""\n${tail}\n"""`,
-  'Do not deliberate further. Using what you already worked out, give the final answer now, in exactly the form the task requires.',
+  `Do not deliberate further. Using what you already worked out, give the final answer now, in exactly the form the task requires. ${UNSETTLED_ALLOWANCE}`,
 ].join('\n\n');
 
 /**

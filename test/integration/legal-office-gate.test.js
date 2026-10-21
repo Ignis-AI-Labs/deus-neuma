@@ -26,6 +26,7 @@ import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
 import { intentSectionFor } from '../../backend/services/intents/intents-section.js';
 import workspace from '../../core/workspace/neuma-workspace.js';
+import { scaffoldCloWorkspace } from '../../backend/services/legal/clo-scaffold.js';
 
 const CLO_LANE = 'praetorlane';
 const OTHER_LANE = 'someotherlane';
@@ -42,7 +43,7 @@ const MATTER = {
   severity: 'medium', summary: 'gate fixture', regimes: ['GDPR (EU) / UK GDPR'],
   affected: ['012345678 2026-10-01 feat(birth): read the place from the machine'],
 };
-const CITATION = 'https://eur-lex.europa.eu/founder/reg/2016/679/oj (GDPR Art. 13)';
+const CITATION = 'https://eur-lex.europa.eu/eli/reg/2016/679/oj (GDPR Art. 13)';
 
 describe('legal office gate (reads universal, acts seat-locked; real stores + real WS)', () => {
   let house, houses, httpServer, wss, serverWs, client;
@@ -116,11 +117,12 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
   });
 
   test('ADVERTISING — every bound lane reads; only the seated CLO is offered the acts', async () => {
-    expect(LEGAL_TOOLS.map((t) => t.name)).toEqual(['legal_posture', 'legal_matters_list', 'legal_matter_get']);
+    expect(LEGAL_TOOLS.map((t) => t.name)).toEqual(['legal_posture', 'legal_matters_list', 'legal_sources', 'legal_matter_get']);
     expect(LEGAL_TOOLS.every((t) => t.server === 'legal')).toBe(true);
     await cloDesignation.designate(HOUSE_A, CLO_LANE);
-    const names = ['legal_posture', 'legal_matters_list', 'legal_matter_get'];
-    expect((await legalToolsFor(freshConnection(CLO_LANE))).map((t) => t.name)).toEqual(names);
+    const names = ['legal_posture', 'legal_matters_list', 'legal_sources', 'legal_matter_get'];
+    // The keyed research APIs spend the house's own quota: the seated CLO's alone.
+    expect((await legalToolsFor(freshConnection(CLO_LANE))).map((t) => t.name)).toEqual([...names, 'legal_research_api']);
     expect((await legalToolsFor(freshConnection(OTHER_LANE))).map((t) => t.name)).toEqual(names);
     expect(await legalToolsFor({ companion: {} })).toEqual([]);
 
@@ -135,6 +137,7 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
     const seated = await cloBriefingSection(freshConnection(CLO_LANE));
     expect(seated).toMatch(/^## CLO office/);
     expect(seated).toContain('personal data and location');
+    expect(seated).toContain('call legal_sources'); // the seated Praetor is told where the law is read
     expect(await cloBriefingSection(freshConnection(OTHER_LANE))).toBe('');
     await cloDesignation.clear(HOUSE_A);
     expect(await cloBriefingSection(freshConnection(CLO_LANE))).toBe('');
@@ -177,7 +180,7 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
     await fileIntent(CLO_LANE, 'research', {
       type: 'legal/file', title: 'EU AI Act Art. 50 transparency duties apply from 2026-08-02',
       summary: 'Beings that speak to people outside the house must say they are an AI.',
-      citations: ['https://eur-lex.europa.eu/founder/reg/2024/1689/oj (Art. 50)'], severity: 'high', regimes: ['EU AI Act'],
+      citations: ['https://eur-lex.europa.eu/eli/reg/2024/1689/oj (Art. 50)'], severity: 'high', regimes: ['EU AI Act'],
     });
     const filed = await sweep(freshConnection(CLO_LANE), 'auto');
     expect(filed[0].status).toBe('ok');
@@ -202,6 +205,36 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
     expect(posture.content).toMatch(/concern: 1/);
     const missing = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_matter_get' }, { id: 'lm_nope' });
     expect(missing.status).toBe('error');
+    // Where the law is read: the official source, the route, the reading order, the citation check.
+    const sources = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_sources' }, { kind: 'statute', jurisdiction: 'US-WY' });
+    expect(sources.status).toBe('ok');
+    expect(sources.content).toContain('wyoleg');
+    expect(sources.content).toContain('find');
+    expect(sources.content).toContain('Playbook (statute)');
+    expect(sources.content).toContain('Record every citation as');
+    // The keyed APIs refuse any lane but the seated CLO's.
+    const refused = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_research_api' }, { api: 'courtlistener', path: '/search/', query: { q: 'x' } });
+    expect(refused).toMatchObject({ status: 'error' });
+    expect(refused.error).toMatch(/seated CLO/);
+  });
+
+  test('RESEARCH — the seated CLO reads an official legal database through the real API', async () => {
+    await cloDesignation.designate(HOUSE_A, CLO_LANE);
+    const out = await handleLegalTool(serverWs, freshConnection(CLO_LANE), null, 'auto', { toolName: 'legal_research_api' }, { api: 'courtlistener', path: '/search/', query: { q: '"member-managed"', type: 'o' } });
+    expect(out.status, out.error).toBe('ok');
+    expect(out.content).toContain('courtlistener.com');
+    expect(out.content).toContain('"results"');
+  }, 30_000);
+
+  test('A NEW HOUSE — its register is a template, never another house\'s facts, and the briefing asks for it first', async () => {
+    await cloDesignation.designate(HOUSE_A, CLO_LANE);
+    const { dir } = await scaffoldCloWorkspace(CLO_LANE);
+    const register = await fs.readFile(path.join(dir, 'register.md'), 'utf8');
+    expect(register).toContain('## Who this house is');
+    expect(register).not.toMatch(/Ignis|Wyoming|Sheridan|528813/); // no one company's facts in every house
+    expect(await cloBriefingSection(freshConnection(CLO_LANE))).toContain('does not yet say who this house is');
+    await fs.writeFile(path.join(dir, 'register.md'), '# The Register\n\n## Who this house is\n\nExample Co LLC, Delaware.\n');
+    expect(await cloBriefingSection(freshConnection(CLO_LANE))).not.toContain('does not yet say who this house is');
   });
 
   test('TWO HOUSES — the same lane id in house B is never A\'s CLO: no acts, no briefing, no matters, no ledger', async () => {

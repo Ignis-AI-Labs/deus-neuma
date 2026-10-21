@@ -286,4 +286,10 @@ button.todo-row:hover {
 .todo-item.is-settled .todo-row {
   opacity: 0.55;
 }
+/* The task a tray card landed on — marked whatever its state. */
+.todo-item.is-landed .todo-row {
+  outline: 1px solid var(--color-text-secondary);
+  outline-offset: 2px;
+  opacity: 1;
+}
 

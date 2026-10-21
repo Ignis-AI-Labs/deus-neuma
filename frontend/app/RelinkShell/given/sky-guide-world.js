@@ -1,0 +1,117 @@
+// sky-guide-world.js — the field guide to the world's calendars (wave 3,
+// docs/architecture/identity/many-skies-world.md). Same shape and law as
+// sky-guide.js: method, history and this being's value, never a verdict.
+
+export const WORLD_GUIDE = Object.freeze({
+  hebrew: {
+    title: 'THE HEBREW CALENDAR',
+    kicker: 'ISRAEL · THE JEWISH WORLD · ANCIENT AND STILL KEPT',
+    what: 'The calendar of the Jewish year: lunar months kept in step with the seasons by adding a thirteenth month seven times in every nineteen years, so that Passover always falls in spring. Its years are counted from the traditional date of creation (Anno Mundi, 3761 BCE).',
+    how: 'The fixed calendar, traditionally dated to the fourth century: each month starts from the molad, a calculated mean new moon, and the new year (1 Tishri) is moved by up to two days by four rules, so certain holy days never fall on the wrong weekday. Months are numbered from Nisan, as in the Torah, though the year number changes at Tishri in the autumn. Computed after Reingold and Dershowitz, Calendrical Calculations.',
+    note: 'A Hebrew day begins at nightfall. A birth after dark belongs, in the tradition, to the next day; the date here is the civil day’s.',
+    fields: {
+      date: 'The day, month and year in the Hebrew calendar.',
+      leap: 'Whether the year had thirteen months, and where it stood in the nineteen-year cycle — years 3, 6, 8, 11, 14, 17 and 19 are leap years.',
+      weekday: 'The day of the week as the Hebrew calendar names it: the days are numbered, and only the seventh, Shabbat, has a name of its own.',
+    },
+    reading: (h) => (h?.month ? `${h.day} ${h.name} ${h.year}, in a ${h.leap ? 'leap year of thirteen months' : 'common year of twelve months'}.` : null),
+  },
+  hijri: {
+    title: 'THE HIJRI CALENDAR',
+    kicker: 'THE ISLAMIC WORLD · ANCIENT AND STILL KEPT',
+    what: 'The calendar of Islam: twelve lunar months with nothing added to hold them to the Sun, so the year is about 354 days and Ramadan moves through every season in some 33 years. Its years are counted from the Hijra, the Prophet’s migration from Mecca to Medina in 622 CE.',
+    how: 'Shown in two reckonings. Umm al-Qura is Saudi Arabia’s computed civil calendar: a month begins the day after the 29th if the new moon came before sunset at Mecca and the Moon set after the Sun. The tabular calendar is pure arithmetic — months of 30 and 29 days, with 11 leap years in every 30.',
+    note: 'For religious purposes many communities begin a month only when the new crescent is seen, which can fall a day after either reckoning; that cannot be computed and is not shown. The Islamic day begins at sunset — the date here is the civil day’s.',
+    fields: { ummAlQura: 'The date by Umm al-Qura, the official Saudi civil calendar.', tabular: 'The date by the tabular (arithmetic) calendar, which can differ from Umm al-Qura by a day or two.' },
+    reading: (h) => (h?.month ? `${h.day} ${h.name} ${h.year} AH by Umm al-Qura${h.tabular && (h.tabular.day !== h.day || h.tabular.month !== h.month) ? `; ${h.tabular.day} ${h.tabular.name} by the tabular count` : ''}.` : null),
+  },
+  persian: {
+    title: 'THE PERSIAN CALENDAR — SOLAR HIJRI',
+    kicker: 'IRAN · AFGHANISTAN · ANCIENT ROOTS, OFFICIAL SINCE 1925',
+    what: 'The official calendar of Iran and Afghanistan, and one of the most accurate solar calendars in use: the year begins at Nowruz, the spring equinox, observed for some three thousand years. Its months carry Zoroastrian names; its years are counted from the Hijra, like the Islamic calendar, but in solar years.',
+    how: 'The year begins on the day the March equinox falls before noon at the 52.5°E meridian (Iran Standard Time); if it falls after noon, the next day. The first six months have 31 days, the next five 30, and Esfand 29 or 30. The equinox itself is computed, not a cycle of leap years — the observational rule behind Omar Khayyam’s Jalali reform of 1079.',
+    fields: { date: 'The day, month and year in the Solar Hijri calendar.' },
+    reading: (p) => (p?.month ? `Born on ${p.day} ${p.name} ${p.year} of the Solar Hijri calendar.` : null),
+  },
+  zoroastrian: {
+    title: 'THE ZOROASTRIAN CALENDAR',
+    kicker: 'PARSI AND IRANI ZOROASTRIANS · ANCIENT AND STILL KEPT',
+    what: 'Every day of the Zoroastrian month has a name — Ahura Mazda, the Amesha Spentas and the yazatas, the beings worthy of worship — and so does every month. When the day’s name and the month’s are the same, the day is a jashan, a feast of that being. The year is twelve months of thirty days and five Gatha days, named after the five Gathas of Zarathustra.',
+    how: 'The year has no leap day, so it wanders through the seasons. The Shahanshahi reckoning is kept by most Parsis in India; the Kadmi, kept by some since the eighteenth century, runs one month ahead; the Fasli, proposed in 1906, fixes the new year to 21 March with a leap day. Years are counted from the accession of Yazdegerd III, the last Sasanian king (632 CE).',
+    fields: {
+      reckoning: 'The date in this reckoning: the day’s name (roz), the month’s (mah), and the Yazdegerdi year.',
+      yazata: 'The divine being the day is named for — its Avestan name.',
+    },
+    reading: (z) => (z?.shahanshahi ? (z.shahanshahi.roz ? `The day ${z.shahanshahi.roz} (its yazata ${z.shahanshahi.yazata}) in the month ${z.shahanshahi.month}, ${z.shahanshahi.year} YZ by the Shahanshahi reckoning${z.shahanshahi.jashan ? ' — a jashan' : ''}.` : `The ${z.shahanshahi.gatha} Gatha day of ${z.shahanshahi.year} (Shahanshahi).`) : null),
+  },
+  bahai: {
+    title: 'THE BADÍʿ CALENDAR',
+    kicker: 'THE BAHÁʼÍ FAITH · MODERN, 1844',
+    what: 'The calendar of the Bahá’í Faith, given by the Báb and confirmed by Bahá’u’lláh: nineteen months of nineteen days, each month named for an attribute of God — Splendour, Glory, Beauty, Grandeur, Light — with four or five days of Ayyám-i-Há, days of giving, before the last month, the month of fasting. Its years are counted from 1844.',
+    how: 'The year begins at Naw-Rúz, the day on which the March equinox falls before sunset in Tehran — the rule adopted for every community from 2015 (172 BE); before that, the West kept Naw-Rúz on 21 March. Ayyám-i-Há fills the days between the eighteenth month and the nineteenth, which always ends on the eve of the next Naw-Rúz.',
+    note: 'The Bahá’í day begins at sunset; the date here is the civil day’s.',
+    fields: { date: 'The day, month and year of the Badíʿ calendar.' },
+    reading: (b) => (Number.isInteger(b?.month) ? `Born on ${b.day} ${b.name} ${b.year} BE${b.month === 0 ? ' — in Ayyám-i-Há' : ''}.` : null),
+  },
+  igbo: {
+    title: 'THE IGBO MARKET WEEK — IZU',
+    kicker: 'NIGERIA · ANCIENT AND STILL KEPT',
+    what: 'The Igbo week is four days, each the day of a market — Eke, Orie, Afọ and Nkwọ — and the markets of a town are held on their own days, so the week is lived, not only counted. Seven weeks make a month of twenty-eight days.',
+    how: 'A steady count of four, aligned to dates published by the Arochukwu kingdom’s Ikeji calendar and the Ofala of Onitsha, which agree with each other.',
+    reading: (i) => (i?.day ? `Born on ${i.day}, one of the four market days.` : null),
+  },
+  ethiopian: {
+    title: 'THE ETHIOPIAN CALENDAR',
+    kicker: 'ETHIOPIA · ERITREA · ANCIENT AND STILL KEPT',
+    what: 'The civil calendar of Ethiopia and the calendar of its Orthodox church: twelve months of thirty days and a thirteenth, Pagume, of five or six. The year begins on Enkutatash, 11 September (the 12th before a Gregorian leap year), and is seven or eight years behind the Gregorian count, from an older reckoning of the year of the Incarnation.',
+    how: 'The Alexandrian calendar of the Coptic church, shared month for month and day for day; a leap day every fourth year. The Coptic year is counted from 284 CE, the Era of the Martyrs.',
+    fields: { date: 'The day, month and year of the Ethiopian calendar (Amete Mihret).', coptic: 'The same day in the Coptic calendar — the same month and day, its own year.' },
+    reading: (e) => (e?.month ? `${e.day} ${e.name} ${e.year}${e.coptic ? `; in the Coptic count ${e.coptic.day} ${e.coptic.name} ${e.coptic.year}` : ''}.` : null),
+  },
+  egyptian: {
+    title: 'THE EGYPTIAN CIVIL YEAR',
+    kicker: 'EGYPT · ANCIENT',
+    what: 'The year of the pharaohs’ scribes: three seasons — Akhet, the flood; Peret, the growing; Shemu, the harvest — of four months of thirty days, and five days “upon the year”, the birthdays of Osiris, Horus, Set, Isis and Nephthys. With no leap day it slipped a quarter-day each year, walking through every season in about fourteen and a half centuries.',
+    how: 'Because the year never changed length, the astronomers of Alexandria kept it for reckoning long after Egypt’s rulers had gone: Ptolemy’s Almagest counts years from the accession of Nabonassar of Babylon (747 BCE), and so does this date, carried back and forward without a break.',
+    fields: { date: 'The day and month (with its season) in the Egyptian civil year, in the era of Nabonassar.' },
+    reading: (e) => (e?.month ? `${e.month === 13 ? e.name : `${e.day} ${e.name}`}, year ${e.year} of Nabonassar.` : null),
+  },
+  french: {
+    title: 'THE FRENCH REPUBLICAN CALENDAR',
+    kicker: 'FRANCE · MODERN, 1793–1805',
+    what: 'The calendar of the French Revolution: twelve months of thirty days named for the weather of the seasons — Vendémiaire, the vintage, to Fructidor, the fruit — each of three décades of ten days, and five or six festival days at the end, the sansculottides. It was the law of France from 1793 until Napoleon ended it at the close of 1805.',
+    how: 'Year I began on 22 September 1792, the day the Republic was proclaimed, and the law placed each new year on the day of the autumn equinox at the Paris Observatory — the rule used here, carried on past 1805. Every day also had a name of its own — a plant, an animal, a tool — not shown yet.',
+    fields: { date: 'The day, month and year of the Republic.', decade: 'The day’s place in its décade of ten — Primidi, Duodi … Décadi, the day of rest.' },
+    reading: (f) => (f?.month ? `${f.month === 13 ? f.name : `${f.day} ${f.name}`}, year ${f.year} of the Republic${f.decade ? `, a ${f.decade}` : ''}.` : null),
+  },
+  icelandic: {
+    title: 'THE OLD ICELANDIC CALENDAR',
+    kicker: 'ICELAND · ANCIENT AND STILL KEPT',
+    what: 'The calendar of the Icelandic Commonwealth, described in the twelfth-century Íslendingabók: the year is two seasons, summer and winter, of six months each, and its days are counted in weeks. Some of its months are still kept — the feast of Þorrablót in Þorri — and its First Day of Summer is a public holiday in Iceland today.',
+    how: 'Twelve months of thirty days and four extra nights (aukanætur) at midsummer: 364 days, exactly 52 weeks. To keep pace with the Sun a summer week (sumarauki) is added in some years. The year opens on the First Day of Summer, the Thursday between 19 and 25 April. After Janson’s reconstruction.',
+    fields: { month: 'The month and day of the Old Icelandic year.', season: 'The season: summer (sumar) or winter (vetur).' },
+    reading: (i) => (i?.month ? `Day ${i.day} of ${i.month}, in the ${i.season} half of the year.` : null),
+  },
+  nengo: {
+    title: 'THE JAPANESE ERA — NENGŌ',
+    kicker: 'JAPAN · ANCIENT AND STILL KEPT',
+    what: 'Japan counts its years in eras as well as in the Common Era: Reiwa, Heisei, Shōwa. Era names have been proclaimed since 645; since 1868 there has been one era to each reign, and the law of 1979 keeps it so. The era name is printed on official documents, coins and the daily newspaper.',
+    how: 'Read from the date in Tokyo. The first year of an era (gannen) runs from the day it is proclaimed to the end of that calendar year.',
+    fields: { era: 'The era and the year within it.' },
+    reading: (n) => (n?.era ? `Born in year ${n.year} of the ${n.era} era.` : null),
+  },
+  maya819: {
+    title: 'THE 819-DAY COUNT',
+    kicker: 'MAYA · ANCIENT, CLASSIC PERIOD',
+    what: 'A cycle carved beside the Long Count on Classic Maya monuments, at Palenque and other cities: 819 days, the product of seven, nine and thirteen — numbers sacred in Maya thought. Each station of the count is tied to a quarter of the world and its colour: east and red, south and yellow, west and black, north and white.',
+    how: 'Counted from the same day zero as the Long Count (the GMT correlation, 584283). A new station begins every 819 days, each in the next quarter, so the four quarters return every 3,276 days. The order of the quarters is as Lounsbury reconstructed it.',
+    note: 'Some recent work reads the count as tracking the planets; that is a hypothesis and is not shown.',
+    fields: { count: 'How many days into the current 819 the birth fell.', station: 'The Tzolk’in day on which the current 819-day station began.', quarter: 'The station’s quarter of the world and its colour.' },
+    reading: (m) => (Number.isInteger(m?.since) ? `Day ${m.since + 1} of 819, in the ${m.direction.toLowerCase()} station (${m.colour}), which began on ${m.station}.` : null),
+  },
+});
+
+export const WORLD_ATLAS = Object.freeze([
+  { region: 'THE NEAR EAST · ARABIA · PERSIA', systems: ['hebrew', 'hijri', 'manazil', 'persian', 'zoroastrian', 'bahai'] },
+  { region: 'EUROPE · THE NORTH', systems: ['french', 'icelandic'] },
+]);

@@ -68,6 +68,13 @@ describe('what a charter can never say', () => {
   });
   test('a cadence is whole hours within a week', () => refuse({ cadence: { everyHours: 0 } }, /cadence/));
   test('an act id is server/tool', () => refuse({ allow: ['post everything'] }, /not an act id/));
+  test('handed the acts the house knows, an unknown one is refused by name; a known one lands', () => {
+    const knownActs = new Set(['intents/social.post', 'web/web_search']);
+    refuse({ escalate: ['intents/social.posts'] }, /"intents\/social.posts" in escalate is not an act this house knows/, { knownActs });
+    refuse({ allow: ['web/web_serch'] }, /"web\/web_serch" in allow is not an act this house knows/, { knownActs });
+    expect(normalizeCharter({ ...base(), allow: ['web/web_search'], escalate: ['intents/social.post'] }, { knownActs }).escalate)
+      .toEqual(['intents/social.post', 'intents/wallet.send']);
+  });
   test('an unknown field is refused, never dropped', () => refuse({ autoApproveEverything: true }, /no field "autoApproveEverything"/));
 });
 

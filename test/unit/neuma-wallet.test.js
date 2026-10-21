@@ -221,6 +221,35 @@ describe('sendTransaction — every gate that fires before the chain', () => {
   });
 });
 
+describe('sendTransaction — the gates judge the wei the send moves', () => {
+  test('one wei over the threshold needs the operator, where a float read let it pass', async () => {
+    const id = await lane('wei-threshold');
+    await allowOnly(id, RECIPIENT);
+    await neumaWorkspace.writeSpendThreshold(id, { thresholdEth: 0.05 });
+    await expect(sendTransaction(id, { to: RECIPIENT, value: '0.050000000000000001' }))
+      .rejects.toThrow(/approval required/i);
+  });
+
+  test('one wei over the per-tx cap is refused, where a float read let it pass', async () => {
+    const id = await lane('wei-cap');
+    await allowOnly(id, RECIPIENT);
+    await neumaWorkspace.writeSpendThreshold(id, { thresholdEth: 1 });
+    await expect(sendTransaction(id, { to: RECIPIENT, value: '0.100000000000000001' }))
+      .rejects.toThrow('exceeds max 0.1 ETH per tx');
+    // Exactly the cap stands: only the locked keypair stops it.
+    await expect(sendTransaction(id, { to: RECIPIENT, value: '0.1' }))
+      .rejects.toThrow('not unlocked');
+  });
+
+  test('a value the send could not parse, or a negative one, is refused before any gate', async () => {
+    const id = await lane('wei-invalid');
+    await allowOnly(id, RECIPIENT);
+    await neumaWorkspace.writeSpendThreshold(id, { thresholdEth: 1 });
+    await expect(sendTransaction(id, { to: RECIPIENT, value: '0.01abc' })).rejects.toThrow('is not an ETH amount');
+    await expect(sendTransaction(id, { to: RECIPIENT, value: '-0.01' })).rejects.toThrow('cannot be negative');
+  });
+});
+
 describe('resolveWalletRpc', () => {
   // Pure: a neuma's chain is Base — the configured endpoint per network
   // first, the public node as the floor, NEVER Ethereum L1 (the old

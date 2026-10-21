@@ -1,5 +1,5 @@
 /**
- * THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16 — reducer half.
+ * THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — reducer half.
  *
  * A send carries a hold handle; while the portal HOLDS the word its bubble
  * is marked, repaints only from the portal's echoed words, stands down when

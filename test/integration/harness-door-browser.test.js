@@ -51,7 +51,7 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
     vite = await createServer({ configFile: false, root: repo, cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/harness-door.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     const app = express();
     app.use(express.json());
     app.use('/api/v1/routing', routingRouter);

@@ -8,7 +8,8 @@
 // The text is VERBATIM (the frame doctrine: never strip or mangle what
 // arrived — framing happens at the context boundary, not at rest).
 //
-// A field record, not a secret: plain JSON under data/settings, same
+// A field record, not a secret: plain JSON, one file per HOUSE in its
+// operator's realm dir (house-positions.js, replyCandidatesOf), same
 // 0600/0700 posture as the sibling social stores. Factory shape so tests
 // run the real disk path against tmp files.
 
@@ -16,14 +17,18 @@ import fs from 'fs/promises';
 import { join, dirname } from 'path';
 import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
+import { houseKey } from '../staff/cos-designation.js';
+import { housePositionFile } from './house-positions.js';
+import { createChannelBindings } from './channel-bindings.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'reply-candidates.json');
 
-// Overridable per call so tests never touch the operator's live record.
+// The machine record of the replies landed before they moved into the
+// houses. Overridable per call so tests never touch the operator's live record.
 export const replyCandidatesPath = () =>
   process.env.NEUMA_REPLY_CANDIDATES_PATH || DEFAULT_PATH;
 
-// THE ESCALATION READ (Design note, 2026-07-28 — a PURE HEURISTIC, and honest about
+// THE ESCALATION READ (ruling, 2026-07-28) — a PURE HEURISTIC, and honest about
 // being one: a first-pass shape read over the reply's words so anything that
 // might need care is COUNTED and MARKED for the being and the witness. It is
 // never a gate and never a verdict — a miscategorized reply is still shown,
@@ -143,7 +148,9 @@ export const replyInboxRows = (candidates, queueEntries) => {
 };
 
 /**
- * @param {{ path?: string|(() => string) }} [opts]
+ * @param {{ path?: string|(() => string), seed?: () => Promise<Array<object>> }} [opts]
+ *   seed: what a file that was never written reads as (a house's share of
+ *   the machine record)
  */
 export const createReplyCandidates = (opts = {}) => {
   // Same law as createPostQueue: a supplied-but-empty `path` is a BUG, not a
@@ -153,13 +160,14 @@ export const createReplyCandidates = (opts = {}) => {
     || (typeof opts.path === 'string' && opts.path.length > 0))) {
     throw new TypeError('createReplyCandidates: `path` was supplied but is not a non-empty string or a function');
   }
-  const { path = replyCandidatesPath } = opts;
+  const { path = replyCandidatesPath, seed = async () => [] } = opts;
   const target = () => (typeof path === 'function' ? path() : path);
 
   // Serialize mutations — two ticks must never interleave a read+write.
   const serialize = createWriteChain();
 
-  // impure — missing file = nobody has replied yet; a corrupt file surfaces,
+  // impure — missing file = nobody has replied yet (or the house's share of
+  // the machine record, its seed); a corrupt file surfaces,
   // never collapses to [] (that would silently re-offer every reply the
   // being already saw).
   const load = async () => {
@@ -167,7 +175,7 @@ export const createReplyCandidates = (opts = {}) => {
     try {
       raw = await fs.readFile(target(), 'utf8');
     } catch (err) {
-      if (err.code === 'ENOENT') return [];
+      if (err.code === 'ENOENT') return seed();
       throw err;
     }
     const parsed = JSON.parse(raw);
@@ -307,5 +315,41 @@ export const createReplyCandidates = (opts = {}) => {
   };
 };
 
-// The one instance the listener, the portal, and the stage gate share.
-export const replyCandidates = createReplyCandidates();
+// EACH HOUSE'S OWN RECORD (Design note, 2026-10-16: two houses are never confused):
+// a house's listener lands the replies to its own posts in its own realm dir,
+// and only that house's desk, beings and stage gate read them. The machine
+// record written before then is read, never moved, and only by the house it
+// was landed for: the one the machine X binding names (boundBy) — every
+// reply in it came through that binding's account. A caller with no house
+// reads nothing and lands nothing.
+const HOUSE_FILE = 'reply-candidates.json';
+const NOT_ON_RECORD = Object.freeze({ ok: false, error: 'that reply is not on the house\'s record' });
+const NO_HOUSE = Object.freeze({
+  load: async () => [],
+  byPostId: async () => null,
+  add: async () => { throw new Error('a reply lands in a house — no house was named'); },
+  dismiss: async () => NOT_ON_RECORD,
+  restore: async () => NOT_ON_RECORD,
+});
+const machineRecord = createReplyCandidates();
+const machineBindings = createChannelBindings();
+const houseStores = new Map();
+
+/**
+ * The reply record of one house (its operator's wallet). impure (the
+ * returned store reads and writes disk).
+ * @param {?string} wallet
+ * @returns {ReturnType<typeof createReplyCandidates>}
+ */
+export const replyCandidatesOf = (wallet) => {
+  const key = houseKey(wallet);
+  if (!key) return NO_HOUSE;
+  const file = housePositionFile(key, HOUSE_FILE);
+  if (!houseStores.has(file)) {
+    houseStores.set(file, createReplyCandidates({
+      path: file,
+      seed: async () => (houseKey((await machineBindings.bindingFor('x'))?.boundBy) === key ? machineRecord.load() : []),
+    }));
+  }
+  return houseStores.get(file);
+};

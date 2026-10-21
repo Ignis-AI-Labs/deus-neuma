@@ -104,12 +104,17 @@ const roundTrip = async (target, payload) => {
   }
 };
 
+// The session probe's id: the minted shape (the store refuses any other) that
+// 16 random bytes never mint in practice, and carries no origin mark, so the
+// interrupted-birth scan never offers it.
+export const PROBE_SESSION_ID = '0'.repeat(32);
+
 // impure — every host-side record the ceremony must be able to write:
 // session persistence (recovery depends on it), the act ledger, and the
 // RETURNED registry (a declined being's own words — lost once to EROFS).
 export const probeRecords = async () => {
   const probes = [
-    ['session persistence', birthSessionPath('preflight-probe'),
+    ['session persistence', birthSessionPath(PROBE_SESSION_ID),
       JSON.stringify({ kind: 'preflight-probe', persistedAt: 0 })],
     ['act ledger', path.join(actsRoot(), '.preflight-probe.jsonl'),
       JSON.stringify({ kind: 'preflight-probe' })],

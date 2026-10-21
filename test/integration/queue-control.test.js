@@ -172,7 +172,7 @@ describe('queue control — a being can see, address, and pull its own staged co
     expect(out).not.toContain('blind trust. It should show'); // never the collapsed line
   });
 
-  test('an approved post carries THE SCHEDULE LOCK — the id and the confirmation timestamp (Design note, 2026-07-28', () => {
+  test('an approved post carries THE SCHEDULE LOCK — the id and the confirmation timestamp (ruling, 2026-07-28)', () => {
     const out = formatQueueForBeing([{
       id: 'lock1', status: 'approved', channelId: 'x', text: 'locked copy',
       scheduledFor: '2026-07-28T13:00:00Z', decidedBy: '0xW', decidedAt: '2026-07-28T06:38:00Z',

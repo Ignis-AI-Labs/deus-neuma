@@ -79,4 +79,14 @@ const openBackendLog = (home) => {
  */
 const shouldRotate = (bytes) => Number.isFinite(bytes) && bytes >= MAX_BYTES;
 
-module.exports = { openBackendLog, logPaths, logDir, shouldRotate, MAX_BYTES };
+/**
+ * impure — reveal the log folder in the OS file manager with this run's log
+ * selected. Reveal rather than open: the folder holds this run AND the
+ * previous one, and the previous run is usually the one that failed. The
+ * Help menu and the tray both land here.
+ * @param {{ showItemInFolder: (p: string) => void }} shell - Electron's shell
+ * @param {string} home - the user's home directory
+ */
+const revealBackendLog = (shell, home) => shell.showItemInFolder(logPaths(home).current);
+
+module.exports = { openBackendLog, logPaths, logDir, shouldRotate, revealBackendLog, MAX_BYTES };

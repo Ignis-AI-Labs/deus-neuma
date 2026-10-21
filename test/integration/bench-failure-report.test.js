@@ -12,6 +12,7 @@ import fs from 'node:fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { buildBenchFixtureTree } from '../helpers/bench-fixture-tree.js';
 import { useTempRealm } from '../helpers/temp-realm.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV = ['NEUMA_BENCH_HARNESS_PATH', 'NEUMA_BENCH_SERVING_URL', 'NEUMA_DATA_ROOT', 'WORKSPACES_ROOT', 'NEUMA_BENCH_TEST_PROCESS_PATTERN'];
 
@@ -53,6 +54,8 @@ describe('GET /api/v1/bench/chain/report — the copyable failure report', () =>
     process.env.WORKSPACES_ROOT = path.join(house, 'workspaces');
     const { witnessFor } = await import('../helpers/witness.js');
     witness = await witnessFor(process.env.WORKSPACES_ROOT, 'benchlane');
+    // The bench plane runs the machine's processes: its launches are the install owner's.
+    await makeInstallOwner(witness.address);
     ({ stopOwned } = await import('../../backend/services/bench/bench-launch.js'));
     const { default: router } = await import('../../backend/routes/bench-routes.js');
     app = express();

@@ -366,7 +366,7 @@ const CampaignMaterial = ({ campaign, onChanged }) => {
 // (channelId = a catalog id) or the house-wide bench (channelId = null),
 // which also carries the CMO designation — one seat, one place to set it.
 // Each platform requires its own approach, so its campaigns live in its
-// own space (Design note, 2026-07-23.
+// own space (ruling, 2026-07-23).
 export const CampaignsSection = ({ channelId = null }) => {
   const [campaigns, setCampaigns] = useState(null);
   const [statuses, setStatuses] = useState([]);

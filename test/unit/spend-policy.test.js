@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   emptyAllowlist, toAllowlist, isRecipientAllowed, addEntry, removeEntry,
-  requiresApproval, buildApprovalMessage,
+  requiresApproval, buildApprovalMessage, classifySpend,
 } from '../../core/wallet/spend-policy.js';
 
 const A = '0x1111111111111111111111111111111111111111';
@@ -104,6 +104,19 @@ describe('spend-policy (pure)', () => {
     test('a zero threshold makes every non-zero send need approval', () => {
       expect(requiresApproval(0, 0)).toBe(false);
       expect(requiresApproval(0, 0.0001)).toBe(true);
+    });
+
+    // The send moves parseEther(value) wei; a float compare rounded one wei
+    // over the threshold down to it and sent it autonomously (audit 3 D1).
+    test('decides in wei, exactly as the send will move it', () => {
+      const allowlist = addEntry(null, A, '', 't');
+      expect(classifySpend(allowlist, 0.05, { to: A, value: '0.050000000000000001' })).toBe('pending');
+      expect(classifySpend(allowlist, 0.1, { to: A, value: '0.100000000000000001' })).toBe('pending');
+      expect(classifySpend(allowlist, 0.05, { to: A, value: '0.05' })).toBe('autonomous');
+    });
+
+    test('a value the send could not parse never passes as autonomous', () => {
+      for (const value of ['abc', '', '0.1.2']) expect(requiresApproval(1, value)).toBe(true);
     });
   });
 

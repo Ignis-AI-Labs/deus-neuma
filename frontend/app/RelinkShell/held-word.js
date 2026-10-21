@@ -1,4 +1,4 @@
-// held-word.js — THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16.
+// held-word.js — THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16).
 //
 // A send carries a hold handle (holdId); while the portal HOLDS that word
 // the bubble is addressable, and three doors open on it — none touching the

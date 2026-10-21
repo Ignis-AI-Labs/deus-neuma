@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { SLOT_ARG_PREFIX, lowestFreeSlot, parseDeskSlot } = require('../../electron/desk-slots.cjs');
+const { SLOT_ARG_PREFIX, lowestFreeSlot, parseDeskSlot, hiddenDeskSlot } = require('../../electron/desk-slots.cjs');
 
 describe('lowestFreeSlot', () => {
   it('claims slot 1 on an empty registry', () => {
@@ -48,5 +48,22 @@ describe('parseDeskSlot', () => {
 
   it('takes the first declaration when several appear', () => {
     expect(parseDeskSlot([`${SLOT_ARG_PREFIX}2`, `${SLOT_ARG_PREFIX}9`])).toBe(2);
+  });
+});
+
+describe('hiddenDeskSlot', () => {
+  it('finds the desk the X hid to the tray', () => {
+    expect(hiddenDeskSlot([[1, { visible: false }]])).toBe(1);
+    expect(hiddenDeskSlot([[1, { visible: true }], [2, { visible: false }]])).toBe(2);
+  });
+
+  it('takes the lowest hidden slot, whatever order the registry lists them in', () => {
+    expect(hiddenDeskSlot([[3, { visible: false }], [1, { visible: true }], [2, { visible: false }]])).toBe(2);
+  });
+
+  it('is null when every desk is on screen, or there is none', () => {
+    expect(hiddenDeskSlot([[1, { visible: true }], [2, { visible: true }]])).toBeNull();
+    expect(hiddenDeskSlot([])).toBeNull();
+    expect(hiddenDeskSlot(new Map().entries())).toBeNull();
   });
 });

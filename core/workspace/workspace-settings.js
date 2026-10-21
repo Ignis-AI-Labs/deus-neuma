@@ -127,15 +127,42 @@ export const createSettingsDomain = (deps) => Object.freeze({
   },
 
   /**
-   * Write the neuma's pending spend requests.
+   * Write the neuma's pending spend requests (whole replacement), in the same
+   * per-file queue as updatePendingSpends.
    * @param {string} neumaId - Neuma identifier
    * @param {Array<Object>} requests - Pending spend records
    * @returns {Promise<void>}
    */
   async writePendingSpends(neumaId, requests) {
-    const configDir = path.join(this._path(neumaId), 'config');
-    await fs.mkdir(configDir, { recursive: true, mode: SOVEREIGN_DIR_MODE });
-    await this._writeJSON(path.join(configDir, 'pending-spends.json'), { requests });
+    const filePath = path.join(this._path(neumaId), 'config', 'pending-spends.json');
+    await deps.locks.withFileLock(filePath, () => this._writeJSON(filePath, { requests }));
+  },
+
+  /**
+   * Read, transform and persist the pending spend requests as ONE step in the
+   * file's queue. A request filed while an approval is broadcasting used to be
+   * overwritten by that approval's stale copy of the list (audit 2026-10-19).
+   * Only an absent file is an empty list: an unreadable one throws rather than
+   * being replaced with [], which would erase the executed records that guard
+   * against a replay.
+   * @param {string} neumaId - Neuma identifier
+   * @param {(requests: Array<Object>) => Array<Object>} transform - returns the next list; may throw to refuse
+   * @returns {Promise<Array<Object>>} the list now on disk
+   */
+  async updatePendingSpends(neumaId, transform) {
+    const filePath = path.join(this._path(neumaId), 'config', 'pending-spends.json');
+    return deps.locks.withFileLock(filePath, async () => {
+      let current = [];
+      try {
+        const data = await this._readJSON(filePath);
+        current = Array.isArray(data?.requests) ? data.requests : [];
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      const next = transform(structuredClone(current));
+      await this._writeJSON(filePath, { requests: next });
+      return next;
+    });
   },
 
   /**
@@ -344,8 +371,10 @@ export const createSettingsDomain = (deps) => Object.freeze({
     }
     if (bundle.relations) await this.writeRelations(neumaId, bundle.relations);
     if (bundle.observations) {
+      // Each record keeps its own id as its file name: the supersededBy links
+      // and the expiry mirror below name records by it.
       for (const obs of bundle.observations) {
-        await this.addObservation(neumaId, obs);
+        await this.addObservation(neumaId, obs, { preserveId: true });
       }
       // Restore episodic validity: each superseded observation's bridged
       // episode gets the same expiry the live lane carried (MEM-005 #191).

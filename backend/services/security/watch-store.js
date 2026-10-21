@@ -3,28 +3,30 @@
 // meant to listen on). The operator owns this list; the scheduler reads it
 // every run.
 //
-// ONE WATCH PER HOUSE (Design note, 2026-10-16: each house's list lives in its own
+// ONE WATCH PER HOUSE (ruling, 2026-10-16): each house's list lives in its own
 // office, `<realm>/<wallet>/offices/security/security-watch.json`
 // (house-office.js); the machine-wide list (data/settings/security-watch.json)
 // moves once to the house that owns the seated CSO lane. Plain JSON, same
-// posture as the sibling security stores. First load SEEDS the defaults (this repo, plus the unavis-site
-// checkout — formerly kenorie — when one stands beside it) so a fresh install watches the house's own
-// code from its first boot; the operator's later edits are the record and
-// are never re-seeded over.
+// posture as the sibling security stores. First load SEEDS one entry: the
+// running app itself (`app: true` — the dev checkout it runs from, or an
+// installed app's own shipped inventory, app-inventory.js), so a fresh install
+// watches the code it actually runs from its first boot. Other repos are the
+// operator's to add; a product default never names one developer's
+// checkouts. The operator's later edits are the record and are never
+// re-seeded over, and code never rewrites a list that exists.
 //
 // Watched repos are scan TARGETS, read-only by law: nothing in the security
 // lane ever writes inside them.
 
 import fs from 'fs/promises';
-import { join, dirname, resolve, basename, isAbsolute } from 'path';
-import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
+import { join, dirname, basename, isAbsolute } from 'path';
 import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
 import { createHouseStore } from '../house-office.js';
 import { legacyCsoPath } from './cso-designation.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const THIS_REPO = resolve(join(__dirname, '../../..'));
+import { APP_ROOT, currentLayout, lockfileTarget, isPackagedLayout } from './app-inventory.js';
+import { readInstallOwner, standingIn } from '../install-owner.js';
 
 const DEFAULT_LEGACY_PATH = join(getSettingsDir(), 'security-watch.json');
 
@@ -46,41 +48,43 @@ const repoIdFor = (path, taken) => {
   return `${base}-${n}`;
 };
 
-// impure — what a watched repo offers the scanners.
-const describeRepo = async (path) => ({
-  hasLockfile: await fs.access(join(path, 'package-lock.json')).then(() => true, () => false),
+// impure — what a watched repo offers the scanners (for the app itself, the
+// lockfile it ships, wherever this layout keeps it).
+const describeRepo = async (repo) => ({
+  hasLockfile: await fs.access(lockfileTarget(repo, currentLayout()).lockfile).then(() => true, () => false),
 });
 
+// impure — may this house's fresh watch hold the running app? An installed
+// app is everyone's (its shipped inventory; no git tree is swept). A dev
+// checkout is the install owner's working tree, and its leak findings are
+// theirs: a guest house's watch starts empty there.
+const appSeedFor = async (wallet) => {
+  if (!wallet || isPackagedLayout(currentLayout())) return true;
+  return standingIn(await readInstallOwner(), wallet) !== 'guest';
+};
+
 /**
- * @param {{ path: string|(() => string), seedRepos?: string[] }} opts
+ * @param {{ path: string|(() => string), seedRepos?: string[], wallet?: string }} opts
+ *   wallet — the house this watch belongs to (decides the default seed)
  */
-export const createWatchStore = ({ path, seedRepos }) => {
+export const createWatchStore = ({ path, seedRepos, wallet }) => {
   const target = () => (typeof path === 'function' ? path() : path);
 
   const serialize = createWriteChain();
 
-  // impure — this repo plus (by default) the checkouts beside it: the
-  // unavis-site web layer (a checkout still named kenorie counts too) and
-  // evm-contracts, where every Ignis smart contract lives by platform
-  // (the UNAVIS contracts moved there 2026-10-05).
   const defaultSeeds = async () => {
     if (Array.isArray(seedRepos)) return seedRepos;
-    const stands = (dir) => fs.access(join(dir, '.git')).then(() => true, () => false);
-    const seeds = [THIS_REPO];
-    for (const group of [['unavis-site', 'kenorie'], ['evm-contracts']]) {
-      for (const name of group) {
-        const sibling = resolve(join(THIS_REPO, '..', name));
-        if (await stands(sibling)) { seeds.push(sibling); break; }
-      }
-    }
-    return seeds;
+    return (await appSeedFor(wallet)) ? [APP_ROOT] : [];
   };
 
   // impure — atomic tmp+rename with the 0600/0700 re-tighten.
   const save = async (watch) => {
     const file = target();
     await fs.mkdir(dirname(file), { recursive: true, mode: 0o700 });
-    const tmp = `${file}.${process.pid}.tmp`;
+    // A tmp name of its own per write: a house's first open reads the watch
+    // twice at once (posture + watch), and both seed it — one shared tmp name
+    // lost the second rename and hid the whole ledger.
+    const tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
     await fs.writeFile(tmp, `${JSON.stringify(watch, null, 2)}\n`, { mode: 0o600 });
     await fs.rename(tmp, file);
     await fs.chmod(dirname(file), 0o700);
@@ -100,7 +104,8 @@ export const createWatchStore = ({ path, seedRepos }) => {
       for (const path of await defaultSeeds()) {
         const id = repoIdFor(path, taken);
         taken.add(id);
-        repos.push({ id, path, addedAt: new Date().toISOString(), ...(await describeRepo(path)) });
+        const repo = { id, path, ...(path === APP_ROOT ? { app: true } : {}) };
+        repos.push({ ...repo, addedAt: new Date().toISOString(), ...(await describeRepo(repo)) });
       }
       const watch = { repos, host: { expectedPorts: [...DEFAULT_EXPECTED_PORTS] } };
       await save(watch);
@@ -119,8 +124,10 @@ export const createWatchStore = ({ path, seedRepos }) => {
     /**
      * Put a repo under the standing watch. impure.
      * @param {string} repoPath absolute path to a git checkout
+     * @param {{mayWatch?: (path: string) => boolean}} [opts] - the caller's
+     *   reach; a path it refuses is answered OUTSIDE_HOUSE and never stored
      */
-    addRepo(repoPath) {
+    addRepo(repoPath, { mayWatch = null } = {}) {
       const path = typeof repoPath === 'string' ? repoPath.trim() : '';
       if (!path || !isAbsolute(path)) {
         return Promise.reject(new Error('a watched repo needs an absolute path'));
@@ -128,12 +135,17 @@ export const createWatchStore = ({ path, seedRepos }) => {
       return serialize(async () => {
         const stat = await fs.stat(path).catch(() => null);
         if (!stat?.isDirectory()) throw new Error('no such directory');
+        // The caller's reach judges the path once it stands, before anything
+        // is stored: a watched repo's findings land in the watcher's ledger.
+        if (mayWatch && !mayWatch(path)) {
+          return { ok: false, code: 'OUTSIDE_HOUSE', error: "That checkout is outside your house. This computer's other folders belong to its owner." };
+        }
         const isGit = await fs.access(join(path, '.git')).then(() => true, () => false);
         if (!isGit) throw new Error('not a git checkout — the sweep reads tracked files');
         const watch = await load();
         if (watch.repos.some((r) => r.path === path)) return { ok: false, error: 'already watched', watch };
         const id = repoIdFor(path, new Set(watch.repos.map((r) => r.id)));
-        watch.repos.push({ id, path, addedAt: new Date().toISOString(), ...(await describeRepo(path)) });
+        watch.repos.push({ id, path, addedAt: new Date().toISOString(), ...(await describeRepo({ path })) });
         await save(watch);
         return { ok: true, repo: watch.repos[watch.repos.length - 1], watch };
       });

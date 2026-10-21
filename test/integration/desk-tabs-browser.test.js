@@ -28,7 +28,7 @@ test('desk tabs navigate by keyboard with window-local panels and truthful map f
     app.use('/api/v1/user/realm', (await import('../../backend/routes/user-realm-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(kit.root, 'vite'),
       appType: 'custom', esbuild: { jsx: 'automatic' }, optimizeDeps: { entries: ['test/fixtures/desk-tabs.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<div id="root"></div><script type="module" src="/test/fixtures/desk-tabs.jsx"></script>'));
     app.use(vite.middlewares);
     browser = await chromium.launch({ args: ['--disable-gpu'] });

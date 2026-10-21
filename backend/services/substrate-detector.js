@@ -41,7 +41,10 @@ export const getSubstrateProfile = async () => {
 
   // SINGLE CHANNEL: use the canonical loader so substrate profile (injected
   // into prompts) and every other surface agree on the active served model.
-  const served = await activeServedModelKey(process.env).catch(() => null);
+  // That channel names llama-server's model, so another provider keeps its own.
+  const served = config.provider === 'llama-server'
+    ? await activeServedModelKey(process.env).catch(() => null)
+    : null;
 
   return Object.freeze({
     cpu,

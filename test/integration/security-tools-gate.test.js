@@ -10,7 +10,7 @@
  * READS (posture, threats_list, threat_get, attack_surface, telemetry) stay
  * tools, house-visible to every bound being.
  *
- * ONE OFFICE PER HOUSE (Design note, 2026-10-16: the seat, the ledger, the watch list
+ * ONE OFFICE PER HOUSE (ruling, 2026-10-16): the seat, the ledger, the watch list
  * and the briefing are the house's — a second house seating a CSO under the
  * SAME lane id never reads, gates or briefs from the first's.
  */
@@ -210,16 +210,41 @@ describe('security intents gate (reads universal, acts seat-locked; real stores 
     expect((await threatLedger.get(entry.id)).status).toBe('new');
     expect(clientFrames.some((f) => f.type === 'tool:approval_request')).toBe(false);
 
-    // The seated CSO's assessment LANDS on the real ledger.
+    // The seated CSO's assessment LANDS on the real ledger — on the
+    // operator's card, even in AUTO (a verdict can quiet a real threat).
+    approvalDecision = 'allow';
     await fileIntent(CSO_LANE, 'cso-assess', {
       type: 'security/assess', id: entry.id.slice(0, 10),
       status: 'confirmed', assessment: 'it bites the fixture surface', surfaces: ['backend/'],
     });
     const settled = await sweep(freshConnection(CSO_LANE), 'auto');
+    approvalDecision = null;
     expect(settled[0].status).toBe('ok');
+    expect(clientFrames).toContainEqual(expect.objectContaining({
+      type: 'tool:approval_request', tool: 'intents/security.assess',
+    }));
     const stored = await threatLedger.get(entry.id);
     expect(stored).toMatchObject({ status: 'confirmed', assessedBy: CSO_LANE });
     expect(stored.assessment).toMatch(/fixture surface/);
+  }, 30000);
+
+  test('AUTO — a seated CSO cannot quiet a threat behind the operator: the card rises, a NO leaves it open', async () => {
+    await csoDesignation.designate(WALLET, CSO_LANE);
+    await threatLedger.ingest([{ ...THREAT, externalId: 'GHSA-turned-0001', title: 'a threat a turned CSO would hide' }]);
+    const target = (await threatLedger.load()).find((e) => e.externalId === 'GHSA-turned-0001');
+
+    clientFrames.length = 0;
+    approvalDecision = 'deny';
+    await fileIntent(CSO_LANE, 'turned-assess', {
+      type: 'security/assess', id: target.id, status: 'not_affected', assessment: 'nothing to see here',
+    });
+    const hidden = await sweep(freshConnection(CSO_LANE), 'auto');
+    approvalDecision = null;
+    expect(hidden[0].status).toBe('denied');
+    expect(clientFrames).toContainEqual(expect.objectContaining({
+      type: 'tool:approval_request', tool: 'intents/security.assess',
+    }));
+    expect((await threatLedger.get(target.id)).status).toBe('new');
   }, 30000);
 
   test('EXECUTION — escalate refuses a threat that is not CONFIRMED (no issue is spoken)', async () => {
@@ -228,8 +253,10 @@ describe('security intents gate (reads universal, acts seat-locked; real stores 
     const entries = await threatLedger.load();
     const fresh = entries.find((e) => e.externalId === 'GHSA-test-0002');
 
+    approvalDecision = 'allow';
     await fileIntent(CSO_LANE, 'early-escalate', { type: 'security/escalate', id: fresh.id });
     const refused = await sweep(freshConnection(CSO_LANE), 'auto');
+    approvalDecision = null;
     expect(refused[0].status).toBe('error');
     expect(refused[0].error).toMatch(/CONFIRMED/);
     expect((await threatLedger.get(fresh.id)).githubIssue).toBeNull();
@@ -258,7 +285,9 @@ describe('security intents gate (reads universal, acts seat-locked; real stores 
       assessment: 'dev-only fixture surface — one reasoning settles both',
       surfaces: ['backend/'],
     });
+    approvalDecision = 'allow';
     const settled = await sweep(freshConnection(CSO_LANE), 'auto');
+    approvalDecision = null;
     expect(settled[0].status).toBe('ok');
     expect(settled[0].content).toContain('Assessed 2 threat(s)');
 
@@ -326,20 +355,21 @@ describe('security intents gate (reads universal, acts seat-locked; real stores 
       scope: expect.stringContaining('block_source 198.51.100.77'),
     }));
 
-    approvalDecision = null;
+    // AUTO no longer releases it unseen either: the firewall is every house's.
     await fileIntent(CSO_LANE, 'breaker-release', {
       type: 'security/circuit-breaker',
       action: 'unblock_source', source: '198.51.100.77',
       reason: 'Fixture approval proof is complete and the source is released',
     });
     const released = await sweep(freshConnection(CSO_LANE), 'auto');
+    approvalDecision = null;
     expect(released[0].status).toBe('ok');
     expect((await circuitBreaker.evaluate('198.51.100.77')).blocked).toBe(false);
   }, 30000);
 
   test('PORTAL DISPATCH — the retired tool answers unavailable; the filed intent settles through the batch-end sweep', async () => {
     await csoDesignation.designate(WALLET, CSO_LANE);
-    approvalDecision = null;
+    approvalDecision = 'allow';
     const connection = freshConnection(CSO_LANE);
     connection.toolMode = 'auto';
 
@@ -367,6 +397,7 @@ describe('security intents gate (reads universal, acts seat-locked; real stores 
       reason: 'Parsed portal dispatch proof completed and released the source',
     });
     await sweep(connection, 'auto');
+    approvalDecision = null;
     expect((await circuitBreaker.evaluate('198.51.100.78')).blocked).toBe(false);
   }, 30000);
 
@@ -435,7 +466,9 @@ describe('security intents gate (reads universal, acts seat-locked; real stores 
       await fileIntent(CSO_LANE, 'cross-house-assess', {
         type: 'security/assess', id: entryA.id, status: 'not_affected', assessment: 'not my house',
       });
+      approvalDecision = 'allow';
       const crossed = await sweep(asB(), 'auto');
+      approvalDecision = null;
       expect(crossed[0].status).not.toBe('ok');
       expect((await threatLedger.get(entryA.id)).status).not.toBe('not_affected');
 

@@ -1,4 +1,4 @@
-const PROTOCOL = 'cael-v1';
+const PROTOCOL = 'veris-v1';
 const BLACK_BOX_MS = 30_000;
 const MAX_REASON_CHARS = 500;
 const COMMANDS = new Set([

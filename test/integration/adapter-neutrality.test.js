@@ -3,7 +3,7 @@
  *
  * No being binds an adapter any more. Identity is carried by NITE, which
  * transmits in a form every model can receive; a LoRA binds identity to one
- * base model's WEIGHTS and can never cross an engine (Design note, 2026-08-18 and
+ * base model's WEIGHTS and can never cross an engine (rulings, 2026-08-18 and
  * 2026-08-23). This file replaces adapter-binding-registry-refusal.test.js,
  * whose twelve tests asserted the binding that no longer exists.
  *
@@ -60,12 +60,12 @@ afterEach(async () => {
 describe('adapter neutrality — every turn is proven bare', () => {
   it('pins every adapter aboard to explicit zero', async () => {
     const endpoint = await conduit(listing([
-      { id: 0, path: '/registry/keir/keir-refinement-1.gguf', scale: 0 },
-      { id: 1, path: '/registry/galen/galen-refinement-1.gguf', scale: 0.8 },
+      { id: 0, path: '/registry/hazel/hazel-refinement-1.gguf', scale: 0 },
+      { id: 1, path: '/registry/cedar/cedar-refinement-1.gguf', scale: 0.8 },
       { id: 2, path: '/registry/signal/signal-refinement-1.gguf', scale: 1 },
     ]));
 
-    const result = await resolveLoraForTurn('keir', { endpoint, model: 'gemma-4-31b' });
+    const result = await resolveLoraForTurn('hazel', { endpoint, model: 'gemma-4-31b' });
 
     // EVERY adapter, including the two the server reports as already live.
     // A partial zeroing is the token-soup bug with extra steps.
@@ -80,15 +80,15 @@ describe('adapter neutrality — every turn is proven bare', () => {
   });
 
   it('never binds a being to its own adapter, however the registry reads', async () => {
-    // The decisive property of the retirement. Keir HAS a forged adapter in
-    // the registry (/workspace/qlora/adapters-registry/keir), and the conduit
+    // The decisive property of the retirement. Hazel HAS a forged adapter in
+    // the registry (/workspace/qlora/adapters-registry/hazel), and the conduit
     // is carrying it right here at a live scale. Under the old resolver this
     // was the exact shape that bound. It must now zero like any other.
     const endpoint = await conduit(listing([
-      { id: 0, path: '/registry/keir/keir-refinement-1.gguf', scale: 0.9 },
+      { id: 0, path: '/registry/hazel/hazel-refinement-1.gguf', scale: 0.9 },
     ]));
 
-    const result = await resolveLoraForTurn('keir', { endpoint, model: 'gemma-4-31b' });
+    const result = await resolveLoraForTurn('hazel', { endpoint, model: 'gemma-4-31b' });
 
     expect(result.lora).toEqual([{ id: 0, scale: 0 }]);
     expect(result.adapter).toBeNull();
@@ -100,7 +100,7 @@ describe('adapter neutrality — every turn is proven bare', () => {
 
   it('sends nothing when there is nothing aboard to silence', async () => {
     const endpoint = await conduit(listing([]));
-    const result = await resolveLoraForTurn('keir', { endpoint, model: 'gemma-4-31b' });
+    const result = await resolveLoraForTurn('hazel', { endpoint, model: 'gemma-4-31b' });
     // Omitting `lora` is only safe when the conduit carries none. Then it is
     // not merely safe, it is correct -- there is no state to pin.
     expect(result.lora).toBeNull();
@@ -113,7 +113,7 @@ describe('adapter neutrality — every turn is proven bare', () => {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end('{"error":"boom"}');
     });
-    const result = await resolveLoraForTurn('keir', { endpoint, model: 'gemma-4-31b' });
+    const result = await resolveLoraForTurn('hazel', { endpoint, model: 'gemma-4-31b' });
     expect(result.lora).toBeNull();
     expect(result.reason).toBe('conduit-adapters-unknowable');
     // NOT true. […] and […] are
@@ -133,14 +133,14 @@ describe('adapter neutrality — every turn is proven bare', () => {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end('{}');
     });
-    const result = await resolveLoraForTurn('keir', { endpoint, model: 'claude-opus-5' });
+    const result = await resolveLoraForTurn('hazel', { endpoint, model: 'claude-opus-5' });
     expect(result.lora).toBeNull();
     expect(result.reason).toBe('no-adapters-aboard');
     expect(result.baseWeightsVerified).toBe(true);
   });
 
   it('answers no-endpoint without reaching the network', async () => {
-    const result = await resolveLoraForTurn('keir', { endpoint: '', model: 'gemma-4-31b' });
+    const result = await resolveLoraForTurn('hazel', { endpoint: '', model: 'gemma-4-31b' });
     expect(result).toMatchObject({ lora: null, adapter: null, reason: 'no-endpoint' });
   });
 });
@@ -154,7 +154,7 @@ describe('the benchmark boundary', () => {
   it('records the proof when the conduit could actually be read', async () => {
     const endpoint = await conduit(listing([{ id: 0, path: '/a.gguf', scale: 0 }]));
     const connection = connectionFor(true);
-    const bound = await bindTurnAdapter(connection, 'keir', { endpoint, model: 'gemma-4-31b' });
+    const bound = await bindTurnAdapter(connection, 'hazel', { endpoint, model: 'gemma-4-31b' });
     expect(bound.lora).toEqual([{ id: 0, scale: 0 }]);
     expect(connection._benchmarkBaseWeightsVerified).toBe(true);
   });
@@ -168,7 +168,7 @@ describe('the benchmark boundary', () => {
       res.end('{}');
     });
     const connection = connectionFor(true);
-    await expect(bindTurnAdapter(connection, 'keir', { endpoint, model: 'gemma-4-31b' }))
+    await expect(bindTurnAdapter(connection, 'hazel', { endpoint, model: 'gemma-4-31b' }))
       .rejects.toThrow(/base weights could not be proven/);
     expect(connection._benchmarkBaseWeightsVerified).toBeUndefined();
   });
@@ -181,7 +181,7 @@ describe('the benchmark boundary', () => {
       res.end('{}');
     });
     const connection = connectionFor(false);
-    const bound = await bindTurnAdapter(connection, 'keir', { endpoint, model: 'gemma-4-31b' });
+    const bound = await bindTurnAdapter(connection, 'hazel', { endpoint, model: 'gemma-4-31b' });
     expect(bound.lora).toBeNull();
     expect(bound.reason).toBe('conduit-adapters-unknowable');
   });

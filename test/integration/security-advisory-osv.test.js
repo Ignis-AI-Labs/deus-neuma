@@ -42,12 +42,13 @@ describe('advisory scan against the LIVE OSV API', () => {
     });
     const scan = await runAdvisoryScan({ id: 'fixture-repo', path: dir });
     expect(scan.error).toBeNull();
+    expect(scan.ok).toBe(true);
     expect(scan.checked).toBe(1);
     const hit = scan.hits.find((h) => h.externalId === MINIMIST_GHSA);
     expect(hit).toBeTruthy();
     expect(hit).toMatchObject({
-      layer: 'software', source: 'osv', repo: 'fixture-repo',
-      affected: [{ package: 'minimist', version: '1.2.5' }],
+      layer: 'software', source: 'osv', repo: 'fixture-repo', shipped: true,
+      affected: [{ package: 'minimist', version: '1.2.5', shipped: true }],
     });
 
     const ledger = createThreatLedger({ path: path.join(dir, 'threats.json') });
@@ -60,6 +61,7 @@ describe('advisory scan against the LIVE OSV API', () => {
 
   test('a repo with no lockfile says so — never a silent "clean"', async () => {
     const scan = await runAdvisoryScan({ id: 'lockless', path: dir });
+    expect(scan.ok).toBe(false);
     expect(scan.checked).toBe(0);
     expect(scan.error).toMatch(/no package-lock\.json/);
   });

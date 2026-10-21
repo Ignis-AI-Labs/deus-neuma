@@ -23,6 +23,7 @@ import { runWidth } from './team-run-gate.js';
 import { governsOf } from './team-clock.js';
 import { startWatch } from './team-watch.js';
 import { withLineKind } from './substrate-lease.js';
+import { runOutsideWake } from './house-clock/wake-signal.js';
 import { createTeamRoom } from './team-channel.js';
 import { askNeuma } from './neuma-probe.js';
 import { createLogger } from './logger.js';
@@ -178,8 +179,9 @@ const start = async ({ plan, lead, wallet, ws, resume, deps }) => {
   // team/run MID-turn, and a run started inside that turn's context rode its
   // lease — every member decoded beside the lead without a place of its own.
   // Each member takes its own place (kind 'member'); the run's housekeeping
-  // waits behind the people (kind 'background').
-  const settled = withLineKind('background', () => runTeamInBackground({
+  // waits behind the people (kind 'background'). It leaves a filing wake's
+  // chain too: its end is new work, never one more reply in that wake's chain.
+  const settled = runOutsideWake(() => withLineKind('background', () => runTeamInBackground({
     entry, plan: runPlan, connection, record, ask, maxParallel, memberTools: tools, continueWaits: deps.continueWaits,
     resume: resume ? {
       completed: resume.completed || {}, statuses, torches: resume.torches || {}, order: resume.order || [],
@@ -187,7 +189,7 @@ const start = async ({ plan, lead, wallet, ws, resume, deps }) => {
       // backend died recorded no reason; the part is told the run stopped.
       failures: resume.failures || {},
     } : null,
-  }));
+  })));
   deps.onSettled?.(settled);
   return { ok: true, runId };
 };

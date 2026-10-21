@@ -5,7 +5,7 @@
 //
 // ⚠️ The membership rulings below (CHATS in WORKSPACE, STREAM/TEAMS/WORKFLOW in
 // WORKSPACE) used to be pinned by POSITION. Position is no longer anyone's to
-// choose — every section is alphabetical now (Design note, 2026-08-25 — so they are
+// choose — every section is alphabetical now (ruling, 2026-08-25) — so they are
 // pinned by MEMBERSHIP and BAND instead, which is what those rulings were
 // always actually about.
 import { describe, expect, it } from 'vitest';

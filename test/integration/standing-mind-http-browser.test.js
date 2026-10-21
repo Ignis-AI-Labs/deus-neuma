@@ -28,7 +28,7 @@ test('standing and mind reads preserve scoped data and null refusals while repor
     app.use('/api/v1/roster', (await import('../../backend/routes/roster-routes.js')).default);
     app.use('/api/v1/mind', (await import('../../backend/routes/mind-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import {loadStanding} from "/frontend/app/RelinkShell/nite-client.js"; import {loadMind,loadMindPosture} from "/frontend/app/RelinkShell/mind-client.js"; window.clients={loadStanding,loadMind,loadMindPosture}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares); server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

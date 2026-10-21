@@ -8,7 +8,7 @@
 //   buildFoundingTx        — verify the desk-signed witnessSig recovers over
 //                            the held digest (refusing the double-wrap trap by
 //                            name), then encode the establishHouse calldata.
-//   confirmHouseFounding   — wait for the receipt, check it landed at the
+//   confirmHouseFounding   — poll for the receipt, check it landed at the
 //                            registry, read the house back (lagging-node
 //                            retry); classifyFoundingReceipt is the pure judge.
 //   writeFoundingRecord    — persist the public anchor facts; raise the house
@@ -27,8 +27,10 @@ import { readFileSync } from 'node:fs';
 import { ethers } from 'ethers';
 
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { ensureHouseGround } from './house-workspace.js';
+import { defaultHouseGround, ensureHouseGround } from './house-workspace.js';
+import { foundingRecordName, recordBelongsTo, recordOperator } from './house-founding-record.js';
 import { createLogger } from './logger.js';
+import { receiptProvider, pollForReceipt, receiptPendingMessage } from './chain-receipt.js';
 
 const log = createLogger('HouseFounding');
 
@@ -150,6 +152,7 @@ export const classifyFoundingReceipt = ({ receipt, established, pending, txHash,
 export const confirmHouseFounding = async ({
   pending, txHash, provider = null,
   receiptTimeoutMs = RECEIPT_TIMEOUT_MS,
+  pollIntervalMs,
   readbackAttempts = READBACK_ATTEMPTS,
   readbackDelayMs = READBACK_DELAY_MS,
 }) => {
@@ -157,35 +160,37 @@ export const confirmHouseFounding = async ({
     return { ok: false, code: 'BAD_TX', message: 'malformed transaction hash' };
   }
   const { net } = pending;
-  const rpc = provider || new ethers.JsonRpcProvider(net.rpcUrl);
-  let receipt;
+  const rpc = provider || receiptProvider(net);
   try {
-    receipt = await rpc.waitForTransaction(txHash, 1, receiptTimeoutMs);
-  } catch (err) {
-    return { ok: false, code: 'RECEIPT_TIMEOUT', message: `no receipt within ${receiptTimeoutMs}ms: ${err.message}` };
-  }
-
-  // Only ask the chain about the house when there is a landed, registry-
-  // addressed, successful receipt to stand on.
-  let established = false;
-  if (receipt && receipt.status === 1
-      && (receipt.to || '').toLowerCase() === net.houseRegistryAddress.toLowerCase()) {
-    const registry = new ethers.Contract(net.houseRegistryAddress, loadHouseRegistryAbi(pending.network), rpc);
-    for (let attempt = 0; attempt < readbackAttempts && !established; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, readbackDelayMs));
-      try {
-        const house = await registry.getHouse(pending.houseId);
-        established = Number(house[1]) !== 0
-          && await registry.isMember(pending.houseId, pending.witnessAddress);
-      } catch { /* stale node — retry */ }
+    const { receipt, error } = await pollForReceipt({ rpc, txHash, timeoutMs: receiptTimeoutMs, intervalMs: pollIntervalMs });
+    if (!receipt) {
+      return { ok: false, code: 'RECEIPT_TIMEOUT', message: receiptPendingMessage(receiptTimeoutMs, error) };
     }
-  }
 
-  return classifyFoundingReceipt({
-    receipt, established, pending, txHash,
-    foundedAt: new Date().toISOString(),
-    receiptTimeoutMs,
-  });
+    // Only ask the chain about the house when there is a landed, registry-
+    // addressed, successful receipt to stand on.
+    let established = false;
+    if (receipt.status === 1
+        && (receipt.to || '').toLowerCase() === net.houseRegistryAddress.toLowerCase()) {
+      const registry = new ethers.Contract(net.houseRegistryAddress, loadHouseRegistryAbi(pending.network), rpc);
+      for (let attempt = 0; attempt < readbackAttempts && !established; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, readbackDelayMs));
+        try {
+          const house = await registry.getHouse(pending.houseId);
+          established = Number(house[1]) !== 0
+            && await registry.isMember(pending.houseId, pending.witnessAddress);
+        } catch { /* stale node — retry */ }
+      }
+    }
+
+    return classifyFoundingReceipt({
+      receipt, established, pending, txHash,
+      foundedAt: new Date().toISOString(),
+      receiptTimeoutMs,
+    });
+  } finally {
+    if (!provider) rpc.destroy();
+  }
 };
 
 /**
@@ -194,8 +199,8 @@ export const confirmHouseFounding = async ({
  * design: every field is already public on chain.
  *
  * Registration locks the WHOLE organization in (Design note, 2026-07-24, […]): the moment the receipt lands, the
- * house's shared ground is raised too — `<workspacesRoot>/house`, with its
- * repos/ and post/ conventions — unless the operator already chose a ground,
+ * house's shared ground is raised too — `<workspacesRoot>/house.<wallet>`, its
+ * own per wallet, with repos/ and post/ — unless the operator already chose one,
  * which founding never moves. Ground-raising is best-effort beside the
  * receipt: a raise failure is warned loudly but never voids the sealed
  * founding (the chain already spoke).
@@ -203,13 +208,14 @@ export const confirmHouseFounding = async ({
  * impure (fs writes).
  */
 export const writeFoundingRecord = async (record) => {
-  const filePath = path.join(getWorkspacesRoot(), `house-founding.${record.network}.json`);
+  // Named by the wallet that heads the house: a second wallet founding on
+  // this install writes its own record, never over the first house's.
+  const witnessAddress = recordOperator(record);
+  const filePath = path.join(getWorkspacesRoot(), foundingRecordName(record.network, witnessAddress));
   await fs.writeFile(filePath, JSON.stringify(record, null, 2));
-  const witnessAddress = (Array.isArray(record?.members) ? record.members : [])
-    .find((m) => m?.kind === KIND.Witness)?.address;
   if (witnessAddress) {
     try {
-      const { root, raised } = await ensureHouseGround(witnessAddress, path.join(getWorkspacesRoot(), 'house'));
+      const { root, raised } = await ensureHouseGround(witnessAddress, defaultHouseGround(getWorkspacesRoot(), witnessAddress));
       if (raised) log.info('Founding raised the house ground', { root });
     } catch (error) {
       log.warn('House ground could not be raised at founding — set it in HOUSE settings; the receipt stands', { error: error.message });
@@ -219,19 +225,34 @@ export const writeFoundingRecord = async (record) => {
 };
 
 /**
- * Read the persisted founding record back — the mirror of
+ * Read this wallet's persisted founding record back — the mirror of
  * writeFoundingRecord, so the probe can resurface the founding tx as the
- * operator's standing proof. Throws when no record stands (caller catches).
+ * operator's standing proof. A legacy network-only record is read only when
+ * its own Witness seat is this wallet — never another house's receipt.
+ * Throws when no record of this wallet's stands (caller catches).
  *
  * impure (fs read).
  *
  * @param {string} network
+ * @param {string} wallet - the operator wallet asking
  * @returns {Promise<object>}
  */
-const readFoundingRecord = async (network) =>
-  JSON.parse(await fs.readFile(
-    path.join(getWorkspacesRoot(), `house-founding.${network}.json`), 'utf8',
-  ));
+const readFoundingRecord = async (network, wallet) => {
+  const read = async (name) => JSON.parse(await fs.readFile(path.join(getWorkspacesRoot(), name), 'utf8'));
+  const owner = String(wallet || '').toLowerCase();
+  if (!owner) throw new Error('a founding record is read for an operator wallet');
+  let keyed = true;
+  let record;
+  try {
+    record = await read(foundingRecordName(network, owner));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+    keyed = false;
+    record = await read(foundingRecordName(network, null));
+  }
+  if (!recordBelongsTo(record, owner, keyed)) throw new Error('the founding record here belongs to another house');
+  return record;
+};
 
 // Private in house-founding-flow.js before the split; the flow's probe still
 // resurfaces the record through it, so it exports here (definition verbatim).

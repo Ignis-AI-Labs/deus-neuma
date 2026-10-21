@@ -41,6 +41,7 @@ import { detectRoguePatterns, shouldBlock } from './rogue-detector.js';
 import { createSpeechTurn, resolveTurnVoice } from './voice/speech-turn.js';
 import { makeSpeechClock } from './portal-speech-clock.js';
 import { createSpeechLoopGuard } from './speech-loop-guard.js';
+import { withSpokenContent } from './turn-failure-record.js';
 
 const log = createLogger('Portal');
 
@@ -174,8 +175,10 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
   // zero-content guard: a recovering provider must never duplicate partial
   // speech).
   let attemptHadContent = false;
+  let attemptSaid = '';
   const guardedOnContent = (content) => {
     if (content) attemptHadContent = true;
+    attemptSaid += content || '';
     loopGuard.push(content);
     onContent(content);
   };
@@ -195,6 +198,7 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
     // Pass 2 (thinking off) rides the operator's own signal — the governor's is spent.
     attempt: async (noThink) => {
       attemptHadContent = false;
+      attemptSaid = '';
       loopGuard.reset();
       stampFilter = createClockStampFilter();
       reasoningStampFilter = createClockStampFilter();
@@ -218,7 +222,9 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
         return streamed;
       } catch (err) {
         if (loopGuard.tripped()) return { content: loopGuard.keptRaw(), toolCalls: [] };
-        throw err;
+        // The words this attempt already streamed would die with it: they ride
+        // the error, so a failed turn's record keeps them (turn-failure-record.js).
+        throw withSpokenContent(err, attemptSaid);
       }
     },
     spoke: () => attemptHadContent,

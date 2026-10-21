@@ -10,7 +10,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
  * — a real wallet with a real HMAC token proves every request, and a
  * genuine 401 comes from sending none.
  *
- * Every route reads the signed-in operator's OWN house (Design note, 2026-10-16:
+ * Every route reads the signed-in operator's OWN house (ruling, 2026-10-16:
  * two houses on one machine are never confused): the realm is pinned to temp
  * so each wallet's bench and seat land in its own tmp house.
  */
@@ -57,9 +57,9 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
     // THE CALLER MUST OWN THE LANE IT SEATS. This was a stranger wallet on the
     // reasoning that the CMO seat's ownership gate "is exercised separately" —
     // true only while the auth mock waved `assertNeumaOwner` through. Seating
-    // `keir` from a wallet that owns nothing is a 404 against the real gate,
+    // `hazel` from a wallet that owns nothing is a 404 against the real gate,
     // and rightly so (#409 cause A).
-    witness = await witnessFor(process.env.WORKSPACES_ROOT, 'keir');
+    witness = await witnessFor(process.env.WORKSPACES_ROOT, 'hazel');
 
     app = await buildApp();
   });
@@ -164,12 +164,12 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
     expect((await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({})).status).toBe(400);
     expect((await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({ laneId: '   ' })).status).toBe(400);
 
-    const seated = await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({ laneId: 'keir' });
+    const seated = await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({ laneId: 'hazel' });
     expect(seated.status).toBe(200);
-    expect(seated.body.cmo.laneId).toBe('keir');
+    expect(seated.body.cmo.laneId).toBe('hazel');
     expect(Date.parse(seated.body.cmo.designatedAt)).not.toBeNaN();
 
-    expect((await request(app).get('/api/v1/campaigns/cmo').set(witness.header)).body.cmo.laneId).toBe('keir');
+    expect((await request(app).get('/api/v1/campaigns/cmo').set(witness.header)).body.cmo.laneId).toBe('hazel');
 
     const cleared = await request(app).delete('/api/v1/campaigns/cmo').set(witness.header);
     expect(cleared.status).toBe(200);
@@ -179,31 +179,31 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
 
   test('two houses: each operator\'s bench and seat are its own; another house\'s DELETE never unseats', async () => {
     const { witnessFor } = await import('../helpers/witness.js');
-    const other = await witnessFor(process.env.WORKSPACES_ROOT, 'rugevil');
+    const other = await witnessFor(process.env.WORKSPACES_ROOT, 'linden');
     await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', brand: 'Neuma' });
-    expect((await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({ laneId: 'keir' })).status).toBe(200);
+    expect((await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({ laneId: 'hazel' })).status).toBe(200);
 
     // House B sees an empty bench and no CMO — never house A's.
     expect((await request(app).get('/api/v1/campaigns').set(other.header)).body.campaigns).toEqual([]);
     expect((await request(app).get('/api/v1/campaigns/cmo').set(other.header)).body.cmo).toBeNull();
     // B cannot seat A's lane: the real owner gate answers 403.
-    expect((await request(app).put('/api/v1/campaigns/cmo').set(other.header).send({ laneId: 'keir' })).status).toBe(403);
+    expect((await request(app).put('/api/v1/campaigns/cmo').set(other.header).send({ laneId: 'hazel' })).status).toBe(403);
     // B's DELETE touches B's house alone — A's CMO stands.
     expect((await request(app).delete('/api/v1/campaigns/cmo').set(other.header)).status).toBe(200);
-    expect((await request(app).get('/api/v1/campaigns/cmo').set(witness.header)).body.cmo.laneId).toBe('keir');
+    expect((await request(app).get('/api/v1/campaigns/cmo').set(witness.header)).body.cmo.laneId).toBe('hazel');
   });
 
   test('a DELETE whose house record names a lane the caller does not own is refused 403', async () => {
     const { default: fs } = await import('fs/promises');
     const { witnessFor } = await import('../helpers/witness.js');
-    const other = await witnessFor(process.env.WORKSPACES_ROOT, 'rugevil');
+    const other = await witnessFor(process.env.WORKSPACES_ROOT, 'linden');
     // A forged (or stale) record in B's house naming A's lane.
     const record = path.join(process.env.NEUMA_REALM_ROOT, other.address.toLowerCase(), 'house-cmo.json');
     await fs.mkdir(path.dirname(record), { recursive: true });
-    await fs.writeFile(record, JSON.stringify({ laneId: 'keir', designatedAt: new Date().toISOString() }));
+    await fs.writeFile(record, JSON.stringify({ laneId: 'hazel', designatedAt: new Date().toISOString() }));
     const refused = await request(app).delete('/api/v1/campaigns/cmo').set(other.header);
     expect(refused.status).toBe(403);
-    expect(JSON.parse(await fs.readFile(record, 'utf8')).laneId).toBe('keir');
+    expect(JSON.parse(await fs.readFile(record, 'utf8')).laneId).toBe('hazel');
   });
 
   test('a corrupt store is our fault, not the caller\'s — declare answers 500, never 400', async () => {

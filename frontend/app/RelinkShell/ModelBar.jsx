@@ -12,6 +12,7 @@ import { Select } from './Select.jsx';
 import { setBeingEffort } from '../../services/inference.js';
 import { setNeumaRoute } from '../../services/routing.js';
 import { igniteSubstrate, unloadSubstrate } from './substrate-client.js';
+import { IgniteSwitchAsk } from './IgniteSwitchAsk.jsx';
 import { modelBarState } from './model-bar-view.js';
 import { useSubstrateBoot } from './use-substrate-boot.js';
 import { useModelBarData } from './use-model-bar-data.js';
@@ -19,6 +20,7 @@ import { ModelBarReadStatus } from './ModelBarReadStatus.jsx';
 import { HarnessServerPick, switchHarnessTo } from './HarnessServerPick.jsx';
 import { announceSubstrateChange, onSubstrateChange } from './substrate-change.js';
 import { uiSound } from '../../services/ui-sound.js';
+import { asText } from '../../utils/as-text.js';
 
 const ModelBarView = ({
   beingId,
@@ -31,6 +33,8 @@ const ModelBarView = ({
 }) => {
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState(null);
+  // IGNITE's question when the house runs on another provider (IgniteSwitchAsk.jsx)
+  const [ask, setAsk] = useState(null);
   const [epoch, setEpoch] = useState(0);
   const { modelRead, effortRead, setEffort } = useModelBarData({ beingId, catalog, epoch, serving });
   const models = modelRead.data;
@@ -55,9 +59,11 @@ const ModelBarView = ({
   const run = async (fn) => {
     const body = async () => {
       setRefusal(null);
+      setAsk(null);
       try {
         const result = await fn();
-        if (result && result.ok === false) setRefusal(result.error);
+        if (result?.ask) setAsk(result.ask);
+        else if (result && result.ok === false) setRefusal(asText(result.error) || 'The act did not land.');
         else if (result?.status === 'igniting') {
           announceSubstrateChange('igniting');
           watch();
@@ -164,6 +170,10 @@ const ModelBarView = ({
       <ModelBarReadStatus modelRead={modelRead} effortRead={effortRead} beingId={beingId}
         locked={locked} onRetry={reread} />
       {refusal ? <span className="relink-modelbar-refusal label-data" role="status">{refusal}</span> : null}
+      {ask ? (
+        <IgniteSwitchAsk ask={ask} locked={locked} onCancel={() => setAsk(null)}
+          onConfirm={() => run(() => igniteSubstrate(ask.model, { confirmSwitch: true }))} />
+      ) : null}
       {witnessCatalog && models?.catalogSource === 'fallback' ? (
         <span className="relink-modelbar-note label-data" role="status">MODEL LIST UNVERIFIED</span>
       ) : null}

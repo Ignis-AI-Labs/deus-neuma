@@ -1,5 +1,5 @@
 /**
- * THE FOCUS LAW (Design note, 2026-08-21: the model the operator loaded LAST is the
+ * THE FOCUS LAW (ruling, 2026-08-21): the model the operator loaded LAST is the
  * standing focus until HE changes it — no relight may fall past it to an env
  * default. Under test: adoptLiveSelection against a REAL http server (RULE 0
  * — a scripted real server across a real socket, zero mocks) and a REAL

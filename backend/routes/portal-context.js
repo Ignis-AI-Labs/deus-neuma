@@ -4,7 +4,7 @@
 // gate. Extracted from portal-routes.js (P8 decomposition, SIZE-033 plan) —
 // bodies byte-identical.
 import { createLogger } from '../services/logger.js';
-import { claimOrVerifyLaneOwnership } from '../services/lane-ownership.js';
+import { verifyLaneOwnership } from '../services/lane-ownership.js';
 import { announceTakenThought } from '../services/held-thoughts.js';
 import { streamConsciousness } from '../services/portal-stream.js';
 import { streamWitnessTurn } from '../services/witness-stream.js';
@@ -34,6 +34,11 @@ const expirePendingTurnGates = (connection) => {
 // all old-turn frames therefore precede the ack on the wire.
 export const settleActiveTurn = async (connection) => {
   cancelIntentSweeps(connection);
+  // THE DRAIN EPOCH: settling a turn also ends the drain behind it. A held
+  // word was said to the chat and being bound now; whoever settles decides
+  // what runs next — navigation clears the held words, an interjection runs
+  // first and drains them after it.
+  connection.drainEpoch = (connection.drainEpoch || 0) + 1;
   if (!connection.turnPromise) return;
   if (connection.activeTurn) connection.activeTurn.abort();
   else { connection.interruptRequested = true; connection.lineWait?.abort(); }
@@ -56,6 +61,7 @@ export const settleActiveTurn = async (connection) => {
  * next pass, and the stack never grows with the conversation.
  */
 export const runTurnAndDrain = async (connection, first) => {
+  const epoch = connection.drainEpoch || 0;
   let next = first;
   while (next) {
     cancelIntentSweeps(connection);
@@ -75,6 +81,8 @@ export const runTurnAndDrain = async (connection, first) => {
         connection.interruptRequested = false;
       }
     }
+    // A settle while this turn ran (navigation, an interjection) ended this drain.
+    if ((connection.drainEpoch || 0) !== epoch) return;
     next = connection.pendingThoughts?.shift() || null;
     announceTakenThought(connection, next);
   }
@@ -118,9 +126,10 @@ export const updateClientTimeZone = (connection, rawZone) => {
   connection.clientTimeZone = isValidTimeZone(rawZone) ? rawZone : null;
 };
 
-// impure — applies the same atomic first-claim gate as REST before a lane binds.
+// impure — the same ownership check as REST before a lane binds; a bind is a
+// read, so it never claims an unclaimed lane (lane-ownership.js).
 const laneOwnershipFor = async (connection, neumaId) => {
-  const result = await claimOrVerifyLaneOwnership({
+  const result = await verifyLaneOwnership({
     workspace: neumaWorkspace,
     neumaId,
     wallet: connection.walletAddress,

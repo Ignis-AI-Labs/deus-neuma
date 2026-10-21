@@ -11,11 +11,17 @@
 // leg is independently fail-soft: one repo's unreadable lockfile or a downed
 // OSV must never cost the other legs' findings.
 //
-// ONE WATCH PER HOUSE (Design note, 2026-10-16: two houses on one machine are never
+// ONE WATCH PER HOUSE (ruling, 2026-10-16: two houses on one machine are never
 // confused): a run is a house's run — its watch list, its ledger, its scan
 // state (`<realm>/<wallet>/offices/security/`), its own lanes in the house
 // probe. Only the host inventory (kernel, driver) is a fact of the MACHINE:
 // it lands in one machine-wide file every house reads.
+//
+// EVERY SERVED HOUSE IS WATCHED (ruling, 2026-10-19), CSO seated or not: the
+// seat decides who assesses, never whether the house is watched — a user who
+// is not paying attention is the one the watch exists for. A run tells the
+// ledger which scopes it read WHOLE, so what a scope no longer surfaces is
+// closed and the open count means something again (threat-lifecycle.js).
 
 import fs from 'fs/promises';
 import { join, dirname, resolve } from 'path';
@@ -27,15 +33,22 @@ import { runAdvisoryScan } from './advisory-scan.js';
 import { sweepRepo, sweepFindingsAsThreats } from './secret-sweep.js';
 import { runHostProbe } from './host-probe.js';
 import { runHouseProbe } from './house-probe.js';
+import { runSelfChecks } from './self-check.js';
+import { sweepRepoHistory, escalateLeakedEnvFindings } from './history-sweep.js';
+import { checkLeakLiveness } from './leak-liveness.js';
+import { currentLayout, lockfileTarget } from './app-inventory.js';
 import { csoDesignation, legacyCsoPath } from './cso-designation.js';
 import { watchStoreFor } from './watch-store.js';
 import { threatLedgerFor } from './threat-ledger.js';
-import { createLegacyMove, officeFile, officeHouses, settleLegacy } from '../house-office.js';
+import { alertOnNewCriticals, remindOpenCriticals } from './security-alerts.js';
+import { createLegacyMove, officeFile, settleLegacy } from '../house-office.js';
 import { houseKey } from '../staff/cos-designation.js';
 import { readServed } from '../house-served.js';
-import { notifyOperator } from '../notification-bus.js';
-import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
+import { installDeskHouse } from '../install-owner.js';
 import { createLogger } from '../logger.js';
+
+// The alert's old home: callers and tests that read it from here keep working.
+export { alertOnNewCriticals };
 
 const log = createLogger('SecurityScheduler');
 
@@ -44,8 +57,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // from the data root, which moves under the OS home in the packaged app.
 const REPO_ROOT = resolve(join(__dirname, '../../..'));
 
-const TICK_MS = 60 * 60 * 1000; // check hourly…
-const RUN_EVERY_MS = 24 * 60 * 60 * 1000; // …run daily. Founder's law: minimum every 24h.
+export const TICK_MS = 60 * 60 * 1000; // check hourly…
+export const RUN_EVERY_MS = 24 * 60 * 60 * 1000; // …run daily. Founder's law: minimum every 24h.
 const RUNS_KEPT = 20;
 
 const STATE_NAME = 'security-scan-state.json';
@@ -119,43 +132,27 @@ const saveState = async (state, path) => {
 // two overlapping runs of one house would double both.
 const inFlight = new Map();
 
-// THE OPERATOR'S EAR — a run that lands NEW critical/high threats tells the
-// house's operator directly (tray + OS leg), once per run, never per threat.
-// The card is addressed to the house whose ledger took the threats, and only
-// while that house seats a CSO — the officer the operator named; with no
-// seated office there is no address, and an unaddressed notification reaches
-// nobody, never everybody. Fail-soft by law: the watch's record must never
-// depend on a card (the bus itself already never throws).
-// impure — exposed for tests (the same seam securityTick already stands on):
-// the alert's addressing and gating are provable against real tmp stores
-// without a full scan.
-export const alertOnNewCriticals = async (added, wallet) => {
-  const fresh = (added || []).filter((e) => e.severity === 'critical' || e.severity === 'high');
-  if (!fresh.length) return;
-  try {
-    const officer = await csoDesignation.getOfficer(wallet);
-    if (!officer?.laneId) {
-      log.info('new critical/high threats, no CSO seated in this house — the alert has no address', { count: fresh.length });
-      return;
-    }
-    const worst = fresh.slice(0, 3)
-      .map((e) => `${e.severity.toUpperCase()} ${e.externalId}${e.repo ? ` (${e.repo})` : ''}`)
-      .join(' · ');
-    await notifyOperator({
-      wallet: houseKey(wallet),
-      kind: KIND.securityAlert,
-      standing: STANDING.system,
-      title: `Security watch: ${fresh.length} new critical/high threat${fresh.length === 1 ? '' : 's'}`,
-      detail: worst + (fresh.length > 3 ? ` · +${fresh.length - 3} more in the ledger` : ''),
-      ref: {
-        critical: fresh.filter((e) => e.severity === 'critical').length,
-        high: fresh.filter((e) => e.severity === 'high').length,
-      },
-    });
-  } catch (err) {
-    log.warn('the security alert could not be raised — the ledger still holds the threats', { error: err.message });
-  }
-};
+// pure — the (source, repo-or-host) scopes a run read WHOLE. THE PROBE
+// CONTRACT: a leg's result carries `error` (string|null) or `errors`
+// (string[]); any error at all means the leg may have missed something, so
+// its scope is left out and closes nothing. A leg that never ran (null) is
+// left out the same way. The git-history pass files under the tracked
+// sweep's own scope (secret-sweep, repo), so once a repo leg carries a
+// `history` key that scope is whole only when BOTH passes ran clean — else
+// a clean tracked sweep would close history hits nobody re-checked.
+export const scannedScopes = ({ repoLegs = [], host = null, house = null, selfCheck = null }) => [
+  ...repoLegs.flatMap(({ repo, advisories, sweep, history }) => [
+    ...(advisories?.ok === true ? [{ source: 'osv', repo }] : []),
+    // History findings share the sweep's scope, so the scope is whole only
+    // when BOTH legs read clean — a missing history leg would otherwise close
+    // every leak still sitting in a pushed commit.
+    ...(sweep && !sweep.error && !sweep.skipped && history && !history.error
+      ? [{ source: 'secret-sweep', repo }] : []),
+  ]),
+  ...(host && Array.isArray(host.errors) && host.errors.length === 0 ? [{ source: 'host-probe', repo: null }] : []),
+  ...(house && Array.isArray(house.errors) && house.errors.length === 0 ? [{ source: 'house-probe', repo: null }] : []),
+  ...(selfCheck && Array.isArray(selfCheck.errors) && selfCheck.errors.length === 0 ? [{ source: 'self-check', repo: null }] : []),
+];
 
 /**
  * A house's full watch pass. Never throws once begun — every leg records its
@@ -181,10 +178,13 @@ export const runSecurityScan = ({ wallet, trigger = 'manual', watchStore, ledger
       repos: [], // {repo, checked, swept, hits, sweepFindings, error}
       host: null, // {inventory, findings, errors}
       house: null, // {findings, notes, errors}
-      added: 0, seen: 0,
+      selfCheck: null, // {findings, errors}
+      added: 0, seen: 0, closed: 0, reopened: 0, verified: 0,
       finishedAt: null,
     };
     const findings = [];
+    const repoLegs = [];
+    const historyFindings = [];
 
     let watch;
     try {
@@ -200,23 +200,42 @@ export const runSecurityScan = ({ wallet, trigger = 'manual', watchStore, ledger
     // SOFTWARE — each watched repo, both scanners, each leg fail-soft.
     for (const repo of watch.repos) {
       const leg = { repo: repo.id, checked: 0, swept: 0, hits: 0, sweepFindings: 0, error: null };
-      const [advisories, sweep] = await Promise.all([
+      // An installed app is a bundle, not a checkout: its dependencies are
+      // watched, but there is no git tree or history to sweep for secrets.
+      const installedApp = lockfileTarget(repo, currentLayout()).installed;
+      // Not swept is not "swept clean": a skipped leg never makes its scope
+      // whole, so nothing in it is closed by the watch.
+      const notACheckout = { repo: repo.id, scanned: 0, findings: [], error: null, skipped: true };
+      const [advisories, sweep, swept] = await Promise.all([
         runAdvisoryScan(repo).catch((err) => ({ repo: repo.id, checked: 0, hits: [], error: err.message })),
-        sweepRepo(repo).catch((err) => ({ repo: repo.id, scanned: 0, findings: [], error: err.message })),
+        installedApp ? notACheckout : sweepRepo(repo).catch((err) => ({ repo: repo.id, scanned: 0, findings: [], error: err.message })),
+        installedApp ? { ...notACheckout, durationMs: 0 } : sweepRepoHistory(repo),
       ]);
+      // A leak in history is judged by whether its value is still LIVE in
+      // this checkout's env files — the history itself never forgets it.
+      const history = { ...swept, findings: await checkLeakLiveness(repo.path, swept.findings) };
       leg.checked = advisories.checked;
       leg.hits = advisories.hits.length;
       leg.swept = sweep.scanned;
       leg.sweepFindings = sweep.findings.length;
-      leg.error = [advisories.error, sweep.error].filter(Boolean).join(' | ') || null;
-      findings.push(...advisories.hits, ...sweepFindingsAsThreats(repo, sweep.findings));
+      leg.historyFindings = history.findings.length;
+      leg.error = [advisories.error, sweep.error, history.error && `history: ${history.error}`].filter(Boolean).join(' | ') || null;
+      findings.push(...advisories.hits, ...sweepFindingsAsThreats(repo, sweep.findings), ...history.findings);
+      historyFindings.push(...history.findings);
       summary.repos.push(leg);
+      repoLegs.push({ repo: repo.id, advisories, sweep, history });
     }
 
     // HARDWARE — the rig itself, against the operator's named ports.
     summary.host = await runHostProbe({ expectedPorts: watch.host?.expectedPorts || [] })
       .catch((err) => ({ inventory: null, findings: [], errors: [err.message] }));
     findings.push(...summary.host.findings);
+
+    // THE PLATFORM ITSELF — its own walls, re-proven every pass on this
+    // install: a wall that stopped holding is a finding, and one that holds
+    // again closes it.
+    summary.selfCheck = await runSelfChecks().catch((err) => ({ findings: [], errors: [err.message] }));
+    findings.push(...summary.selfCheck.findings);
 
     // HOUSE — this house's lanes, stores, env files, keypair custody.
     const webAccessEnabled = await webSettings.isEnabled().catch(() => null);
@@ -226,18 +245,28 @@ export const runSecurityScan = ({ wallet, trigger = 'manual', watchStore, ledger
       repoRoot: REPO_ROOT,
       webAccessEnabled,
     }).catch((err) => ({ findings: [], notes: { webAccessEnabled }, errors: [err.message] }));
+    // An env file holding a value that already sits in git history is a
+    // leak to rotate, not a file to seal.
+    summary.house.findings = escalateLeakedEnvFindings(summary.house.findings, historyFindings);
     findings.push(...summary.house.findings);
 
     // THE LEDGER, last: everything every leg surfaced, deduplicated by the
-    // store's (source, externalId, repo) law. Fresh criticals/highs then go
-    // straight to the operator's ear — a sudden attack is not something you
-    // discover next time you open the panel.
-    if (findings.length) {
+    // store's (source, externalId, repo) law, and every whole scope's
+    // vanished entries closed — a clean scope with no findings still runs,
+    // since that is exactly when everything in it has gone. Fresh
+    // criticals/highs then go straight to the operator's ear — a sudden
+    // attack is not something you discover next time you open the panel.
+    const scanned = scannedScopes({ repoLegs, host: summary.host, house: summary.house, selfCheck: summary.selfCheck });
+    if (findings.length || scanned.length) {
       try {
-        const { added, seen } = await ledger.ingest(findings);
+        const { added, seen, closed, reopened, escalated, verified } = await ledger.ingest(findings, { scanned });
         summary.added = added.length;
         summary.seen = seen;
-        await alertOnNewCriticals(added, house);
+        summary.closed = closed.length;
+        summary.reopened = reopened.length;
+        summary.verified = verified.length;
+        // One entry can be both reopened and re-rated; it is named once.
+        await alertOnNewCriticals([...new Set([...added, ...reopened, ...escalated])], house, { ledger });
       } catch (err) {
         summary.error = `ledger ingest failed: ${err.message}`;
         log.error('security scan findings could not land in the ledger', { error: err.message });
@@ -248,7 +277,7 @@ export const runSecurityScan = ({ wallet, trigger = 'manual', watchStore, ledger
     await saveState(await appendRun(statePath, summary), statePath);
     await saveHost(summary.host?.inventory);
     log.info('security scan complete', {
-      house, trigger, added: summary.added, seen: summary.seen,
+      house, trigger, added: summary.added, seen: summary.seen, closed: summary.closed, reopened: summary.reopened, verified: summary.verified,
       repos: summary.repos.map((r) => `${r.repo}:${r.checked}deps/${r.hits}hits`),
     });
     return summary;
@@ -307,28 +336,42 @@ export const securityTick = async (wallet, nowMs = Date.now(), runFn = () => run
   return runFn();
 };
 
+// impure — the install's own desk house, or null; a torn owner record never
+// costs the served houses their watch.
+const deskHouse = () => installDeskHouse().catch((err) => {
+  log.error('install owner unreadable — the desk house is not walked this tick', { error: err.message });
+  return null;
+});
+
 /**
- * The houses the watch walks: every house that seats a CSO or already holds
- * security records — after the machine-wide records are placed, so a house
- * whose office still sat in data/settings is not skipped. impure.
+ * The houses the watch walks: every house this process SERVES
+ * (house-served.js — a house whose lanes this backend does not hold is
+ * another desk's watch, and its alerts are never ours to raise), seated or
+ * not — and the install's own desk house even before it holds a lane
+ * (install-owner.js: a fresh install before its first birth, and a
+ * platform-only or harness-only user who never summons, are watched too).
+ * Each house once. After the machine-wide records are placed, so a house
+ * whose office still sat in data/settings keeps its history. impure.
  * @returns {Promise<string[]>}
  */
 export const securityHouses = async () => {
   await csoDesignation.seatedHouses();
   await settleLegacy('security');
-  return officeHouses('security', 'cso');
+  const served = (await readServed()).houses;
+  const desk = await deskHouse();
+  return desk && !served.includes(desk) ? [...served, desk] : [...served];
 };
 
-// impure — one pass over every house this process SERVES (house-served.js:
-// a house whose lanes this backend does not hold is another desk's watch,
-// and its alerts are never ours to raise), each fail-soft: one house's
-// broken state never holds another's watch. Exposed for tests: `runFor`
-// stands in for the network scan so the WALK is what is proven.
+// impure — one pass over every watched house, each fail-soft: one house's
+// broken state never holds another's watch. The scan (when due) runs before
+// the reminder, so a reminder never names what this pass just closed.
+// Exposed for tests: `runFor` stands in for the network scan so the WALK is
+// what is proven.
 export const tickSecurityHouses = async ({ nowMs = Date.now(), runFor } = {}) => {
-  const { houses } = await readServed();
-  for (const wallet of (await securityHouses()).filter((w) => houses.includes(w))) {
+  for (const wallet of await securityHouses()) {
     const runFn = runFor ? () => runFor(wallet) : undefined;
     await securityTick(wallet, nowMs, runFn).catch((err) => log.error('security tick failed', { house: wallet, error: err.message }));
+    await remindOpenCriticals({ wallet, nowMs });
   }
 };
 const tickHouses = () => tickSecurityHouses();

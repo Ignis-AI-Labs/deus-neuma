@@ -11,7 +11,7 @@ import {
 import { recommendSubstrate } from '../../backend/services/substrate-setup.js';
 
 /**
- * GPU DETECTION FOR PEOPLE WHO DO NOT OWN NVIDIA (Design note, 2026-08-02.
+ * GPU DETECTION FOR PEOPLE WHO DO NOT OWN NVIDIA (ruling, 2026-08-02).
  *
  * The detector shelled out to `nvidia-smi` and returned null on failure, so a
  * Radeon owner with 24 GB of VRAM was told `no GPU detected` and steered to CPU
@@ -135,24 +135,32 @@ describe('gpu parsers (pure)', () => {
     expect(parseAmdSysfs()).toBeNull();
   });
 
+  // The probe's real output: Windows PowerShell 5.1's ConvertTo-Csv quotes
+  // EVERY field, the number included.
   test('Windows AdapterRAM saturating at 4 GB yields UNKNOWN size, not a wrong number', () => {
-    // The uint32 cap: a 24 GB card reports 4294967295. Reporting 4 GB would
-    // send a capable rig to CPU on a lie.
-    const gpu = parseWindowsVideoController('"AMD Radeon RX 7900 XTX",4294967295');
-    expect(gpu.name).toBe('AMD Radeon RX 7900 XTX');
-    expect(gpu.vramGB).toBeNull();
-    expect(gpu.vendor).toBe('amd');
+    // The uint32 cap: a 24 GB card reports a value pinned at the top of the
+    // field. Reporting 4 GB would send a capable rig to CPU on a lie.
+    for (const pinned of ['4293918720', '4294967295']) {
+      const gpu = parseWindowsVideoController(`"AMD Radeon RX 7900 XTX","${pinned}"`);
+      expect(gpu.name).toBe('AMD Radeon RX 7900 XTX');
+      expect(gpu.vramGB).toBeNull();
+      expect(gpu.vendor).toBe('amd');
+    }
   });
 
   test('Windows reports a real size when it fits in uint32', () => {
-    expect(parseWindowsVideoController('"AMD Radeon RX 6600",8589934592'))
-      .toMatchObject({ vramGB: 8, vendor: 'amd' });
+    expect(parseWindowsVideoController('"AMD Radeon RX 550","2147483648"'))
+      .toMatchObject({ name: 'AMD Radeon RX 550', vramGB: 2, vendor: 'amd' });
   });
 
   test('a comma inside the adapter name does not break the split', () => {
-    const gpu = parseWindowsVideoController('"Radeon RX 7900 XTX, 24GB",8589934592');
-    expect(gpu.name).toBe('Radeon RX 7900 XTX, 24GB');
-    expect(gpu.vramGB).toBe(8);
+    const gpu = parseWindowsVideoController('"Radeon RX 550, 2GB","2147483648"');
+    expect(gpu.name).toBe('Radeon RX 550, 2GB');
+    expect(gpu.vramGB).toBe(2);
+  });
+
+  test('an adapter that reports no AdapterRAM reads UNKNOWN size', () => {
+    expect(parseWindowsVideoController('"Microsoft Basic Display Adapter",""').vramGB).toBeNull();
   });
 });
 

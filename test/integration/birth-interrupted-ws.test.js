@@ -27,9 +27,11 @@ import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupPortalRoutes } from '../../backend/routes/portal-routes.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
+import { resolveCeremonyScratchDir } from '../../core/birth/ceremony-write.js';
 
 const WITNESS = 'WS Resume Witness';
-const SCRATCH = path.join(process.cwd(), 'data', 'temp');
+// The ceremony scratch as the handler resolves it (under the suite's data root).
+const SCRATCH = resolveCeremonyScratchDir(process.cwd());
 const checkpointPath = (id) => path.join(SCRATCH, `birth-${id}.json`);
 const readCheckpoint = async (id) => JSON.parse(await fs.readFile(checkpointPath(id), 'utf8'));
 

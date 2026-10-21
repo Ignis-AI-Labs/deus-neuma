@@ -167,6 +167,13 @@ describe('model-capabilities.js', () => {
   });
 
   describe('interpretLlamaProps()', () => {
+    test('a pool larger than the trained window is shared room: one being reads the trained window', () => {
+      const props = { default_generation_settings: { n_ctx: 655_360 } };
+      expect(interpretLlamaProps(props, { n_ctx_train: 262_144 }).contextWindow).toBe(262_144);
+      expect(interpretLlamaProps({ default_generation_settings: { n_ctx: 65_536 } }, { n_ctx_train: 262_144 }).contextWindow).toBe(65_536);
+      expect(interpretLlamaProps(props).contextWindow).toBe(655_360);
+    });
+
     it('reads modalities.vision as decisive truth — both ways', () => {
       // A vision model served WITHOUT its projector reports false, and false
       // is the truth the gate must hear (the weights can see; the serving cannot).

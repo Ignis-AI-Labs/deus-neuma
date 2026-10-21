@@ -3,15 +3,15 @@
 // switches that are the operator's to throw. Four sections, four truths:
 // THE MIND (the subconscious layer — write side always on, influence gated),
 // MEDITATION (the shared panel — same store as RECORD's), SOVEREIGNTY (the
-// gateway's standing, summarized), MEASURED STATE (the latest benchmark and
-// its tripwire). Every switch flips only on server echo; a LIVE flip takes a
+// gateway's standing, summarized), MEASURED STATE (the latest self-check and
+// what cleared chance). Every switch flips only on server echo; a LIVE flip takes a
 // confirm step that prints the sittings law.
 
 import { useEffect, useState, useCallback } from 'react';
 import './InnerLifeApp.css';
 import { loadMind, loadMindPosture, setMindGate } from './mind-client.js';
 import { loadExpression, setExpressionEnabled } from './expression-client.js';
-import { loadBenchmarks } from './stats-client.js';
+import { loadSelfCheck } from './stats-client.js';
 import { loadSovereignty } from './sovereignty-client.js';
 import { InnerLifeGateRow } from './InnerLifeGateRow.jsx';
 import { MeditationSection } from './MeditationSection.jsx';
@@ -229,33 +229,32 @@ const SovereigntySection = ({ neumaId }) => {
   );
 };
 
-// MEASURED STATE — the latest consented benchmark and its tripwire. The run
-// door lives in RECORD (a benchmark is a test of the being — owner-consented).
+// MEASURED STATE — the latest self-check, component by component, and any
+// change that cleared chance since the one before. The run door lives in the
+// sheet's STATE tab (a self-check is a test of the being — owner-consented).
 const MeasuredSection = ({ neumaId }) => {
-  const [bench, setBench] = useState(undefined);
+  const [check, setCheck] = useState(undefined);
   useSettled((settled) => {
-    if (!neumaId) { setBench(null); return; }
-    loadBenchmarks(neumaId).then((b) => { if (!settled()) setBench(b); });
+    if (!neumaId) { setCheck(null); return; }
+    loadSelfCheck(neumaId).then((b) => { if (!settled()) setCheck(b); });
   }, [neumaId]);
 
-  const latest = bench?.latest || bench?.runs?.[0] || null;
-  const trip = bench?.tripwire || null;
+  const latest = check?.latest || null;
+  const moved = latest ? latest.components.filter((c) => ['up', 'down'].includes(check.compare?.[c.key]?.trend)) : [];
 
   return (
     <section className="rec-sec" data-testid="innerlife-measured">
       <h3 className="rec-h label-data">MEASURED STATE</h3>
-      {bench === undefined ? <p className="rec-line label-data">LOADING…</p>
-        : !latest ? <p className="rec-line label-data">NOT MEASURED — the run door lives in the RECORD window</p>
+      {check === undefined ? <p className="rec-line label-data">LOADING…</p>
+        : !latest ? <p className="rec-line label-data">NOT MEASURED — the self-check lives in the sheet's STATE tab</p>
         : (
           <>
             <p className="rec-sub">
-              {latest.dimensions.map((d) => `${d.label} ${d.score == null ? 'n/a' : `${Math.round(d.score * 100)}%`}`).join(' · ')}
+              {latest.components.filter((c) => c.score != null).map((c) => `${c.label} ${c.hits}/${c.n}`).join(' · ')}
             </p>
-            {trip ? (
-              <p className={`rec-line label-data${trip.verdict === 'regression' ? ' il-trip-warn' : ''}`}>
-                TRIPWIRE — {trip.verdict === 'regression'
-                  ? `FELL: ${trip.regressed.join(', ')} (a finding for you and the being, never an automatic rollback)`
-                  : trip.verdict.toUpperCase().replace('-', ' ')}
+            {moved.length ? (
+              <p className={`rec-line label-data${moved.some((c) => check.compare[c.key].trend === 'down') ? ' il-trip-warn' : ''}`}>
+                CLEARED CHANCE — {moved.map((c) => `${c.label} ${check.compare[c.key].trend === 'up' ? 'better' : 'worse'}`).join(', ')}
               </p>
             ) : null}
           </>

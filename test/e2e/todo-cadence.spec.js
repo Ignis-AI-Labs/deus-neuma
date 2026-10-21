@@ -107,7 +107,7 @@ const settleWindow = async (page) => {
   await expect(page.locator('.todo-standing-tab', { hasText: 'HOUSE' })
     .locator('.todo-standing-n')).toBeVisible();
   // These cases work the operator's OWN list, so ME is the standing on screen.
-  await expect(page.locator('.todo-standing-tab.is-on')).toHaveText('ME');
+  await expect(page.locator('.todo-standing-tab.is-on')).toHaveText('OPERATOR');
   // Plan loaded: either a LIVE section or the honest empty state. `.todo-sec`
   // alone also matches the SETTLED drawer, so with nothing open both arms of the
   // `.or()` matched at once and tripped strict mode.

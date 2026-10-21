@@ -36,7 +36,7 @@ test('recovery and residency reads preserve refusals and signal expired sessions
     app.use('/api/v1/neuma', routeRouter);
     app.use('/api/v1/residency', residencyRouter);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import {getRecoveryStatus} from "/frontend/services/security.js"; import {getResidency} from "/frontend/services/residency.js"; import {getLaneRouteHealth} from "/frontend/services/route-health.js"; window.clients={getRecoveryStatus,getResidency,getLaneRouteHealth}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

@@ -9,6 +9,7 @@
 import { resolvePostMedia } from '../social/post-media.js';
 import { postQueue, previewUpdate } from '../social/post-queue.js';
 import { channelBindings } from '../social/channel-bindings.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { gateAct } from '../act-gate.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
@@ -25,9 +26,10 @@ const _diffForChip = (preview) => Object.fromEntries(
 // re-read per call: editing the calendar is WORK, same as filling it. Fail
 // closed on an unreadable store, same law. Returns the refusal, or null.
 const _queueEditCrewGate = async (ws, connection, tool, toolName, channel) => {
+  const house = await houseOfLane(connection.companion?.neumaId);
   const [bindings, crewStore] = await Promise.all([
-    channelBindings.load().catch(() => ({})),
-    sectorCrew.load().catch(() => ({})),
+    channelBindings.load(house).catch(() => ({})),
+    sectorCrew.load(house).catch(() => ({})),
   ]);
   if (canStageForSector(crewStore, bindings, channel.id, connection.companion?.neumaId || null)) return null;
   const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before editing its queue`;

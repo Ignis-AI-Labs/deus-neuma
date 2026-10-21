@@ -28,7 +28,7 @@ test.skipIf(process.platform === 'win32')('FilesApp preserves exact rename input
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(temp, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/files-rename.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     const app = express();
     app.use(express.json());

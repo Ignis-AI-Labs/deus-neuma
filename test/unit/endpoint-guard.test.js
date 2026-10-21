@@ -12,6 +12,10 @@ describe('isPrivateHost (pure)', () => {
       expect(isPrivateHost(h)).toBe(true);
     }
   });
+  test('flags the IPv6 unspecified address in both spellings (it reaches a ::-bound listener)', () => {
+    expect(isPrivateHost('::')).toBe(true);
+    expect(isPrivateHost('[::]')).toBe(true);
+  });
   test('does not flag public addresses or provider hostnames', () => {
     for (const h of ['8.8.8.8', '1.1.1.1', '172.15.0.1', '172.32.0.1', 'api.z.ai', 'api.openai.com', 'openrouter.ai']) {
       expect(isPrivateHost(h)).toBe(false);
@@ -37,6 +41,9 @@ describe('assertSafeEndpoint (IP-literal cases — deterministic)', () => {
     expect(await assertSafeEndpoint('http://localhost:1234')).toEqual({ ok: true });
     expect(await assertSafeEndpoint('http://127.0.0.1:11434')).toEqual({ ok: true });
     expect(await assertSafeEndpoint('http://[::1]:8080')).toEqual({ ok: true });
+  });
+  test('refuses the IPv6 unspecified address', async () => {
+    expect(await assertSafeEndpoint('http://[::]:8080')).toEqual({ ok: false, reason: 'private-address' });
   });
   test('blocks the cloud-metadata address and private ranges', async () => {
     expect(await assertSafeEndpoint('http://169.254.169.254/latest/meta-data')).toEqual({ ok: false, reason: 'private-address' });

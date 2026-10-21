@@ -94,6 +94,17 @@ export const settledTasks = (tasks) =>
     .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
 
 /**
+ * When in the day a task sits, as a row reads it: a block's span
+ * ("17:00–18:15"), a deadline's time ("BY 21:00"), or '' when it has none.
+ * Pure.
+ * @param {{startTime?: string, dueTime?: string}} task
+ */
+export const timeLabel = (task) => {
+  if (task?.startTime && task?.dueTime) return `${task.startTime}–${task.dueTime}`;
+  return task?.dueTime ? `BY ${task.dueTime}` : '';
+};
+
+/**
  * A milestone past its due date, still open. Date-only comparison against the
  * local day key — a task due today is not yet late.
  * @param {{cadence: string, status: string, dueDate?: string}} task
@@ -144,7 +155,7 @@ export const todayKey = (date = new Date()) => {
  * dropped, most recently touched first, capped (the deep record lives in the
  * lane's HISTORY drawer, not here).
  *
- * PARITY WITH THE STREAM RAIL is the point (Design note, 2026-08-03: the window used
+ * PARITY WITH THE STREAM RAIL is the point (ruling, 2026-08-03): the window used
  * to render bare status while the rail read derived state, so the same task
  * described itself two different ways depending on where you looked.
  *

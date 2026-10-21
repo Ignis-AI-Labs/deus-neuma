@@ -7,7 +7,9 @@
 //
 // Same signing core as the poster (uniform-architecture law: one OAuth 1.0a
 // path, proven in scripts/x-post-verify.mjs, trusted everywhere) and the same
-// credential door as posting — resolveChannelCredential('x'), store > env.
+// credential door as posting — the HOUSE's own X keys,
+// resolveChannelCredential(wallet, 'x'), store > env. Every read names the
+// house it reads for; a read with no house has no keys.
 // Never throws: every failure returns {ok:false, detail} so the consciousness
 // reads a real outcome, and the operator's barge-in signal cuts an in-flight
 // read off.
@@ -60,12 +62,12 @@ const _xGet = async (credentials, url, params, { signal } = {}) => {
  * reply: a target that vanished between approval and send fails the send
  * honestly — a reply never falls back to being a bare post. Never throws.
  * @param {string} postId
- * @param {{signal?: AbortSignal}} [opts]
+ * @param {{signal?: AbortSignal, wallet: string}} opts - wallet: the house whose keys read
  * @returns {Promise<{ok: true, data: object}|{ok: false, status?: number, detail: string}>}
  */
 // impure — disk (credential store) + network + clock + entropy
-export const readXPost = async (postId, { signal } = {}) => {
-  const credentials = await resolveChannelCredential('x').catch(() => null);
+export const readXPost = async (postId, { signal, wallet } = {}) => {
+  const credentials = await resolveChannelCredential(wallet, 'x').catch(() => null);
   if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
   const res = await _xGet(credentials, `${apiRoot()}/tweets/${encodeURIComponent(String(postId))}`, { 'tweet.fields': 'author_id' }, { signal });
   if (!res.ok) return res;
@@ -111,12 +113,12 @@ export const replyTargetFrom = (body) => {
  * Any public post, read live for an answer to it (Design note, 2026-10-12: […]): who wrote it and what it says, from X itself.
  * Never throws.
  * @param {string} postId
- * @param {{signal?: AbortSignal}} [opts]
+ * @param {{signal?: AbortSignal, wallet: string}} opts - wallet: the house whose keys read
  * @returns {Promise<{ok: true, target: object}|{ok: false, status?: number, detail: string}>}
  */
 // impure — disk (credential store) + network
-export const readXReplyTarget = async (postId, { signal } = {}) => {
-  const credentials = await resolveChannelCredential('x').catch(() => null);
+export const readXReplyTarget = async (postId, { signal, wallet } = {}) => {
+  const credentials = await resolveChannelCredential(wallet, 'x').catch(() => null);
   if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
   const res = await _xGet(credentials, `${apiRoot()}/tweets/${encodeURIComponent(String(postId))}`, {
     'tweet.fields': 'author_id,conversation_id', expansions: 'author_id', 'user.fields': 'username,verified_type',
@@ -130,12 +132,12 @@ export const readXReplyTarget = async (postId, { signal } = {}) => {
  * Who does the house speak as on X? The me-read is also the credential
  * proof — a working lane answers with the account, a broken one with the
  * honest reason. Never throws.
- * @param {{signal?: AbortSignal}} [opts]
+ * @param {{signal?: AbortSignal, wallet: string}} opts - wallet: the house whose keys read
  * @returns {Promise<{ok: true, data: object}|{ok: false, status?: number, detail: string}>}
  */
 // impure — disk (credential store) + network + clock + entropy
-export const readXMe = async ({ signal } = {}) => {
-  const credentials = await resolveChannelCredential('x').catch(() => null);
+export const readXMe = async ({ signal, wallet } = {}) => {
+  const credentials = await resolveChannelCredential(wallet, 'x').catch(() => null);
   if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
   const res = await _xGet(credentials, meEndpoint(), {}, { signal });
   if (!res.ok) return res;
@@ -146,16 +148,19 @@ export const readXMe = async ({ signal } = {}) => {
 // scheduler both want it, and /2/users/me is not free (Design note, 2026-07-28:
 // […]). Five
 // minutes of trust; a key rotation is rarer than that and surfaces at the
-// next read. Null means unconfigured or unanswered — never invented.
-let accountCache = null; // { at, account: {id, username}|null }
+// next read. Null means unconfigured or unanswered — never invented. One
+// entry per house: each house speaks as its own account.
+const accountCache = new Map(); // wallet -> { at, account: {id, username}|null }
 // impure — cached disk + network
-export const readXAccount = async ({ ttlMs = 5 * 60 * 1000 } = {}) => {
-  if (accountCache && Date.now() - accountCache.at < ttlMs) return accountCache.account;
-  const me = await readXMe();
+export const readXAccount = async ({ ttlMs = 5 * 60 * 1000, wallet } = {}) => {
+  const key = String(wallet || '').toLowerCase();
+  const cached = accountCache.get(key);
+  if (cached && Date.now() - cached.at < ttlMs) return cached.account;
+  const me = await readXMe({ wallet });
   const account = me.ok && me.data?.id
     ? { id: String(me.data.id), username: String(me.data.username || '') }
     : null;
-  accountCache = { at: Date.now(), account };
+  accountCache.set(key, { at: Date.now(), account });
   return account;
 };
 
@@ -163,13 +168,13 @@ export const readXAccount = async ({ ttlMs = 5 * 60 * 1000 } = {}) => {
  * Read the house's X lane: `mentions` (who is speaking to the house) or
  * `recent` (what the house has said). Two-step by API shape — the me-read
  * yields the account id the listing endpoints hang off. Never throws.
- * @param {{kind: 'mentions'|'recent', limit?: number, signal?: AbortSignal}} opts
+ * @param {{kind: 'mentions'|'recent', limit?: number, signal?: AbortSignal, wallet: string}} opts
  * @returns {Promise<{ok: true, data: {tweets: Array, users: Array}}
  *   |{ok: false, status?: number, detail: string}>}
  */
 // impure — disk (credential store) + network + clock + entropy
-export const readXListings = async ({ kind, limit = 10, signal } = {}) => {
-  const credentials = await resolveChannelCredential('x').catch(() => null);
+export const readXListings = async ({ kind, limit = 10, signal, wallet } = {}) => {
+  const credentials = await resolveChannelCredential(wallet, 'x').catch(() => null);
   if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
   const me = await _xGet(credentials, meEndpoint(), {}, { signal });
   if (!me.ok) return me;

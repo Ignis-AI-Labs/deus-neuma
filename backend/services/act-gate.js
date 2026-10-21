@@ -72,7 +72,9 @@ export const ACT_REFUSALS = Object.freeze({
  */
 export const refusalForDecision = (connection, decision) => {
   if (decision === 'interrupted') return ACT_REFUSALS.interrupted;
-  if (connection?._approvalRefusal) return { summary: 'refused — no operator watches this turn', error: connection._approvalRefusal };
+  // The route's own words for THIS refusal (an Optio's hold) when it gave them — the broker sets
+  // them just before it resolves, and a turn's asks are taken one at a time.
+  if (connection?._approvalRefusal) return { summary: 'refused — no operator watches this turn', error: connection._approvalRefusalNow || connection._approvalRefusal };
   return ACT_REFUSALS.deny;
 };
 

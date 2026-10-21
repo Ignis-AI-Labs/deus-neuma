@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadHouseWorkspace } from '../../backend/services/house-workspace.js';
 import { listEntries, readEntry } from '../../backend/services/staff/board-store.js';
 import { boardAddIntent, boardUpdateIntent } from '../../backend/services/intents/board-acts.js';
-import { staffDispatchIntent, staffAckIntent } from '../../backend/services/intents/staff-acts.js';
+import { staffDispatchIntent, staffAckIntent, staffDispatchUpdateIntent } from '../../backend/services/intents/staff-acts.js';
 import { listDispatches } from '../../backend/services/staff/dispatch-store.js';
 import { WALLET, OPTIO, HOUSEMATE, BYSTANDER, createStaffOfficeFixture } from '../helpers/staff-office-fixture.js';
 
@@ -115,5 +115,58 @@ describe('dispatch and board move together', () => {
     await staffAckIntent.execute(ack2.value, { connection: holder });
     expect((await readEntry(await ground(), charge.boardId)).status).toBe('done');
     expect((await listDispatches(OPTIO)).find((c) => c.id === charge.id).status).toBe('done');
+  });
+
+  test('the office\'s own move (staff/dispatch-update) moves the linked entry too', async () => {
+    const office = connectionFor(OPTIO);
+    const filed = await staffDispatchIntent.validate(
+      { to: HOUSEMATE, title: 'Draft the ledger report', body: 'Done looks like: the report filed.' },
+      { connection: office },
+    );
+    await staffDispatchIntent.execute(filed.value, { connection: office });
+    const [charge] = await listDispatches(OPTIO);
+
+    const move = await staffDispatchUpdateIntent.validate(
+      { id: charge.id, status: 'withdrawn', note: 'the operator dropped the report' },
+      { connection: office },
+    );
+    expect(move.ok).toBe(true);
+    await staffDispatchUpdateIntent.execute(move.value, { connection: office });
+    const entry = await readEntry(await ground(), charge.boardId);
+    expect(entry.status).toBe('withdrawn');
+    expect(entry.note).toBe('the operator dropped the report');
+  });
+
+  test('a dispatched entry\'s status and note move only through its charge — the board alone refuses', async () => {
+    const office = connectionFor(OPTIO);
+    const filed = await staffDispatchIntent.validate(
+      { to: HOUSEMATE, title: 'Draft the ledger report', body: 'Done looks like: the report filed.' },
+      { connection: office },
+    );
+    await staffDispatchIntent.execute(filed.value, { connection: office });
+    const [charge] = await listDispatches(OPTIO);
+
+    const holderMove = await boardUpdateIntent.validate(
+      { id: charge.boardId, status: 'done' },
+      { connection: connectionFor(HOUSEMATE) },
+    );
+    expect(holderMove.ok).toBe(false);
+    expect(holderMove.reason).toContain(`staff/ack {id: "${charge.id}"`);
+
+    const officeMove = await boardUpdateIntent.validate(
+      { id: charge.boardId, note: 'moving it here' },
+      { connection: office },
+    );
+    expect(officeMove.ok).toBe(false);
+    expect(officeMove.reason).toContain(`staff/dispatch-update {id: "${charge.id}"}`);
+
+    // What only the board knows (what holds the entry up) still moves on the board.
+    const blocker = await boardUpdateIntent.validate(
+      { id: charge.boardId, blockedBy: 'some-other-entry' },
+      { connection: connectionFor(HOUSEMATE) },
+    );
+    expect(blocker.ok).toBe(true);
+    expect((await readEntry(await ground(), charge.boardId)).status).toBe('open');
+    expect((await listDispatches(OPTIO))[0].status).toBe('dispatched');
   });
 });

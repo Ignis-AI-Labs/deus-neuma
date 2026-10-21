@@ -13,7 +13,7 @@
  * The answer is read from disk, never configured: a process serves the
  * houses whose operator wallet owns a being's lane (owner.json) on a ground
  * it serves: this process's workspaces root and the witnesses' ground beside
- * it. One desk serves one house (Design note, 2026-10-16; the two desks on this
+ * it. One desk serves one house (ruling, 2026-10-16); the two desks on this
  * machine are the special case this module keeps apart. The grounds are held
  * as a list only so the judging stays honest about what a bare lane id can
  * name. A lane with no readable owner serves no house. A witness lane

@@ -52,7 +52,7 @@ test.describe('desk relay (real Electron)', () => {
     const app = await launchApp(userData, wsRoot);
     try {
       const desk1 = await app.firstWindow();
-      await desk1.waitForLoadState('domcontentloaded');
+      await desk1.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
 
       // I-01 on the real lifecycle: the first desk knows it is desk 1.
       expect(await desk1.evaluate(() => window.neuma?.deskSlot)).toBe(1);
@@ -67,7 +67,7 @@ test.describe('desk relay (real Electron)', () => {
         app.waitForEvent('window'),
         desk1.evaluate(() => window.neuma.desk.open()),
       ]);
-      await desk2.waitForLoadState('domcontentloaded');
+      await desk2.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
 
       // The relay delivered: the token was seeded by the preload, so it is
       // already in sessionStorage when the page's own scripts read it.
@@ -81,7 +81,7 @@ test.describe('desk relay (real Electron)', () => {
         app.waitForEvent('window'),
         desk2.evaluate(() => window.neuma.desk.open()),
       ]);
-      await desk3.waitForLoadState('domcontentloaded');
+      await desk3.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       expect(await desk3.evaluate(() => sessionStorage.getItem('authToken'))).toBeNull();
       expect(await desk3.evaluate(() => window.neuma?.deskSlot)).toBe(3);
 
@@ -100,7 +100,7 @@ test.describe('desk relay (real Electron)', () => {
         app.waitForEvent('window'),
         desk1.evaluate(() => window.neuma.desk.open()),
       ]);
-      await desk2again.waitForLoadState('domcontentloaded');
+      await desk2again.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       expect(await desk2again.evaluate(() => window.neuma?.deskSlot)).toBe(2);
       // ...and it received desk 1's token again through its own fresh boot.
       expect(await desk2again.evaluate(() => sessionStorage.getItem('authToken'))).toBe(token);
@@ -117,7 +117,7 @@ test.describe('desk relay (real Electron)', () => {
     const app = await launchApp(userData, wsRoot);
     try {
       const desk1 = await app.firstWindow();
-      await desk1.waitForLoadState('domcontentloaded');
+      await desk1.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       const token = `e2e-menu-proof-${Date.now()}`;
       // A bound window: wallet + token + this window's companion binding
       // (the wallet-scoped sessionStorage key companion-data writes).
@@ -133,7 +133,7 @@ test.describe('desk relay (real Electron)', () => {
         app.waitForEvent('window'),
         app.evaluate(({ Menu }) => Menu.getApplicationMenu().getMenuItemById('desk.new').click()),
       ]);
-      await desk2.waitForLoadState('domcontentloaded');
+      await desk2.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       expect(await desk2.evaluate(() => sessionStorage.getItem('authToken'))).toBe(token);
       // The opener's companion arrived as this window's one-shot seed (F-01):
       // resolveBoundCompanion consumes it and fixes the window's own binding.
@@ -145,7 +145,7 @@ test.describe('desk relay (real Electron)', () => {
         app.waitForEvent('window'),
         app.evaluate(({ Menu }) => Menu.getApplicationMenu().getMenuItemById('desk.new-fresh').click()),
       ]);
-      await desk3.waitForLoadState('domcontentloaded');
+      await desk3.waitForURL((url) => Number(url.port) > 0, { waitUntil: 'domcontentloaded', timeout: 30 * 1000 });
       expect(await desk3.evaluate(() => sessionStorage.getItem('authToken'))).toBeNull();
     } finally {
       await app.close();

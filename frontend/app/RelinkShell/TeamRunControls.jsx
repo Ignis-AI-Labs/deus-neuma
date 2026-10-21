@@ -2,7 +2,7 @@
 // whole run, or STOP one member. Shared by the chat's team chip and the
 // WORKFLOW window, so the two can never disagree about what a stop does.
 //
-// A stop is a deliberate gesture (Design note, 2026-10-05: the first press arms it
+// A stop is a deliberate gesture (ruling, 2026-10-05): the first press arms it
 // and says what will happen, the second sends it, anything else lets it go.
 // The stop reaches the member's decode on the server (team-run-live.js); the
 // board and the done frame report what it actually did — nothing here

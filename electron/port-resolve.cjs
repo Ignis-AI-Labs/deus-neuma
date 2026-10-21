@@ -1,6 +1,6 @@
 // Port resolution — NEUMA must not lose to whatever else the operator runs.
 //
-// WHY (Design note, 2026-08-02: […]
+// WHY (ruling, 2026-08-02): […]
 //
 // The desk used to take one look at port 47317, and if ANYTHING held it, show a
 // dialog asserting […], tell the operator to go kill it, and quit. For a stale NEUMA
@@ -107,4 +107,23 @@ const resolvePort = async (preferred, { span = SCAN_SPAN, identify = identifyPor
   return { port: null, outcome: 'exhausted', skipped };
 };
 
-module.exports = { looksLikeNeuma, identifyPortHolder, resolvePort, isHeld, SCAN_SPAN };
+/**
+ * What the operator is told when the desk moved off its port. Pure.
+ *
+ * The desk's origin IS its port (http://127.0.0.1:<port>), and the browser keeps
+ * a desk's window layouts, unsent drafts and display choices per origin. A move
+ * therefore opens a desk without them — not lost, parked under the other port —
+ * and saying nothing would read as the app forgetting the operator's work.
+ * @param {number} preferred - the port the desk normally uses
+ * @param {number} port - the port it is using this time
+ * @returns {{ message: string, detail: string }}
+ */
+const portMovedNotice = (preferred, port) => ({
+  message: `Port ${preferred} is in use by another program, so Deus Neuma is using port ${port} this time.`,
+  detail: `Your desk keeps its window layouts, unsent drafts and display choices (such as language) per port, `
+    + `so this desk opens without the ones you made on port ${preferred}. They are not lost: they come back `
+    + `the next time Deus Neuma runs on port ${preferred}, and what you set up now stays with port ${port}.\n\n`
+    + `To always use one port, free port ${preferred}, or set NEUMA_PORT to a port of your choice.`,
+});
+
+module.exports = { looksLikeNeuma, identifyPortHolder, resolvePort, portMovedNotice, isHeld, SCAN_SPAN };

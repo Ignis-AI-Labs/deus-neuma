@@ -15,7 +15,7 @@
 //      stands: tapping another button swaps the panel in place.
 //
 // Exclusivity is NOT implemented here — stream-rail-state.js already holds one
-// value naming the open rail (Design note, 2026-08-15 and folding is its mechanism.
+// value naming the open rail (ruling, 2026-08-15) and folding is its mechanism.
 // This file is the strip; that file is the law.
 //
 // A rail JOINS BY MOUNTING. It registers {id, label, badge, show, title} and

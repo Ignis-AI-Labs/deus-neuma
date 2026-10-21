@@ -1,7 +1,7 @@
 // bench-failure-report.test.js — the matched set's copyable FAILURE REPORT:
 // the pure builder over the shape a real failed chain carries (the neuma arm
 // refused by the harness's test-process gate, 2026-09-25), the tail law, the
-// panel's show-the-button law, and the panel rendered for real.
+// LIVE tab's show-the-button law, and the tab rendered for real.
 
 import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
@@ -9,6 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { buildFailureReport, tailText } from '../../backend/services/bench/bench-failure-report.js';
 import { chainNeedsReport } from '../../frontend/app/RelinkShell/bench-launch-view.js';
 import { BenchRunPanel } from '../../frontend/app/RelinkShell/BenchRunPanel.jsx';
+import { BenchLive } from '../../frontend/app/RelinkShell/BenchLive.jsx';
 
 const LOG = '/data/benchmarks/launch/2026-09-25T15-05-15-858Z-run-benchmark-neuma.log';
 const REFUSAL = '  ✗ Error: test process is already running; benchmark refused:';
@@ -86,11 +87,13 @@ describe('chainNeedsReport', () => {
   });
 });
 
-describe('BenchRunPanel — the COPY FAILURE REPORT act', () => {
-  const render = (chainState, reportNote = null) => renderToStaticMarkup(createElement(BenchRunPanel, {
-    serving: null, models: [], cell: null, arms: [], ready: false, busy: false,
-    chainState, nowMs: Date.parse('2026-09-25T15:10:00Z'), reportNote,
-    onPreflight: () => {}, onRun: () => {}, onStop: () => {}, onCopyReport: () => {},
+// The act lives on the LIVE tab with the set it reports on since 24b911949
+// (LAUNCH keeps only the act of starting a run).
+describe('BenchLive — the COPY FAILURE REPORT act', () => {
+  const render = (chainState, reportNote = null) => renderToStaticMarkup(createElement(BenchLive, {
+    status: { chain: chainState, live: [] }, cells: [], runRows: [], busy: false,
+    nowMs: Date.parse('2026-09-25T15:10:00Z'), reportNote,
+    onStop: () => {}, onCopyReport: () => {}, onLaunch: () => {},
   }));
 
   it('stands on a settled set with a failed arm, and says what the copy did', () => {

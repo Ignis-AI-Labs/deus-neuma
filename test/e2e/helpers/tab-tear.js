@@ -1,6 +1,6 @@
 // Tab gestures for e2e — real HTML5 drags with the mouse, step by step.
 //
-// THE DELIBERATE TEAR-OUT (Design note, 2026-10-05: a sitting gets its own window only
+// THE DELIBERATE TEAR-OUT (ruling, 2026-10-05): a sitting gets its own window only
 // by being dragged OUT of the window it lives in and let go there — there is no
 // pop-out button. `tearOut` is that gesture: it carries the tab to the desk's
 // top status strip, which no window ever covers (snapped and maximized windows

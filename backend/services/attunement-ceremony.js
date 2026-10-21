@@ -54,7 +54,7 @@ export const neutralQuestionRoute = () => {
   });
 };
 
-// Ceremony render policy — SPEED DELIBERATELY CHOSEN (Design note, 2026-07-12,
+// Ceremony render policy — SPEED DELIBERATELY CHOSEN (ruling, 2026-07-12),
 // taking the flip the 2026-07-09 A/B anticipated. The measured trade (three
 // A/B dry renders on the real substrate, identical knobs): 4-way parallel
 // rendered 75-77/89 model questions vs serial-with-5-attempts 85/89 in

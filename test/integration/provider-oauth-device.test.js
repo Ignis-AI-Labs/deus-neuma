@@ -129,7 +129,7 @@ afterEach(async () => {
 });
 
 describe('credential store union (pure merge)', () => {
-  test('oauth patch replaces; a fresh key replaces back; endpoint merges onto either shape', () => {
+  test('oauth patch replaces; a fresh key replaces back; a moved endpoint leaves the token behind', () => {
     const oauth = mergeCredential(undefined, {
       type: 'oauth', access: 'a1', refresh: 'r1', expiresAt: 123, account: 'xai',
     });
@@ -139,7 +139,9 @@ describe('credential store union (pure merge)', () => {
     expect(keyed).toEqual({ apiKey: 'sk-plain' });
 
     const withEndpoint = mergeCredential(oauth, { endpoint: 'https://proxy.example/v1' });
-    expect(withEndpoint).toMatchObject({ type: 'oauth', access: 'a1', endpoint: 'https://proxy.example/v1' });
+    // The token belongs to the provider's own endpoint: an endpoint-only
+    // patch must never carry it to a new host (audit 3 E1).
+    expect(withEndpoint).toEqual({ endpoint: 'https://proxy.example/v1' });
 
     expect(mergeCredential(undefined, { type: 'oauth', access: '' })).toBe(null);
   });

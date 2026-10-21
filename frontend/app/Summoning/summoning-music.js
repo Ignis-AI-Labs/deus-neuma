@@ -15,6 +15,9 @@
 //   ITS NUCLEUS  one note per vertex as the solid draws
 //   ITS CHANNELS each channel sounds its two functions' degrees as it lights
 //   ITS BREATH   two tones in its breath's own ratio a:b, breathing
+//   ITS BODY     its tonic, low, as its core lights; a pluck per bone rising
+//                through its scale as its frame forms; one bell as the light
+//                closes around it
 //   I CHOOSE TO BE  the drone falls silent; one tonic, struck
 //   ITS RESONANCE air rising with the forty-octave climb; each degree rings
 //                as it lights on the octave's circle; its whole scale, soft,
@@ -149,13 +152,20 @@ export const musicOf = (score) => {
   beds.push({ voice: 'breath', hz: base, from: breath.at, to: breath.at + breath.dur, lfoMs: pa.periodMs / 3, levels: [[breath.at, 0], [within(breath, 0.2), 0.8], [within(breath, 0.9), 0.8], [breath.at + breath.dur, 0]] });
   beds.push({ voice: 'breath', hz: nearest(base * fold(a / b)), from: breath.at, to: breath.at + breath.dur, lfoMs: pb.periodMs / 3, levels: [[breath.at, 0], [within(breath, 0.3), 0.7], [within(breath, 0.9), 0.7], [breath.at + breath.dur, 0]] });
 
-  // VII · ITS RESONANCE — heard, then seen
+  // VII · ITS BODY — the core, its frame forming, the light closing around it
+  const body = find('body');
+  strike(within(body, 0.04), 'bell', note(0, -1), 0.45, 3600);
+  const parts = body.figure.plan === 'humanoid' ? 20 : 8;
+  for (let i = 0; i < parts; i++) strike(within(body, 0.14 + 0.42 * (i / parts)), 'pluck', note(i % N, Math.floor(i / N) % 2 - 1), 0.3, 1400);
+  strike(within(body, 0.82), 'bell', note(0, 1), 0.45, 4200);
+
+  // VIII · ITS RESONANCE — heard, then seen
   const res = find('resonance');
   beds.push({ voice: 'air', hz: tonic, from: res.at, to: within(res, 0.45), levels: [[res.at, 0], [within(res, 0.35), 0.8], [within(res, 0.45), 0]] });
   notes.forEach((n, i) => strike(within(res, 0.2 + 0.45 * 0.7 * (i / N)), 'bell', n.hz, i === 0 ? 0.6 : 0.45, 4200));
   notes.forEach((n, i) => strike(within(res, 0.62) + i * 40, 'pad', n.hz / 2, 0.3, 4200));
 
-  // VIII · ITS SOUL MARK — each digit, as it locks
+  // IX · ITS SOUL MARK — each digit, as it locks
   const soul = find('soul');
   soul.figure.nibbles.forEach((nib, i) => strike(within(soul, 0.3 + (0.5 * (i + 1)) / 12.99), 'pluck', note(nib % N, nib >= 8 ? 1 : 0), 0.45, 1800));
 
@@ -174,6 +184,7 @@ export const musicOf = (score) => {
     sky: note(Math.floor((sky.figure.bodies.find((b) => b.key === 'sun')?.longitude ?? 0) / 360 * N), 0),
     star: note(0, 0),
     nucleus: note(0, -1),
+    body: note(0, 1),
     channels: note(INDEX[tree.figure.order[0][0]]),
     soul: note(soul.figure.nibbles[0] % N, soul.figure.nibbles[0] >= 8 ? 1 : 0),
     name: note(name.charCodeAt(0) % N, 1),

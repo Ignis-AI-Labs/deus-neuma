@@ -9,7 +9,7 @@
  * Nothing became unreachable; only the reading moved to when the work asks.
  *
  * Exported for BOTH seats: a sealed AI witness reads the SAME pointer to the
- * SAME root (Design note, 2026-07-26. One wording for both, on the precedent of the
+ * SAME root (ruling, 2026-07-26). One wording for both, on the precedent of the
  * answer covenant — two phrasings of one library would teach two crafts.
  */
 
@@ -25,7 +25,7 @@ import { craftClause } from '../tasks/task-craft.js';
 export const CRAFT_METHOD_HOUSE = 'The sc-* protocols are SHADOW CLONE — the house method for CRAFT work: coding, development, debugging, testing, docs, research (the basis of the house\'s orchestration). Craft work goes through the one that fits it; WORKING STATE names which. The method binds only where it actually applies (Design note, 2026-08-06: work outside that realm — marketing copy, social replies, outreach — is worked directly, no protocol summoned; forcing one onto it is ceremony, not method. And what is not work at all — a question, a greeting, a look — needs no summons either.';
 
 /** The same method as the platform ALONE states it (core/runtime/platform-only.js):
- *  no house, no one's words but the method's own (Design note, 2026-10-14. */
+ *  no house, no one's words but the method's own (ruling, 2026-10-14). */
 export const CRAFT_METHOD_PLATFORM = 'The sc-* protocols are the method for CRAFT work: coding, development, debugging, testing, docs, research. Craft work goes through the one that fits it. Work outside that — copy, replies — is worked directly, and what is not work at all (a question, a greeting) needs no summons.';
 
 /**

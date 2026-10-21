@@ -144,7 +144,7 @@ describe('ledgerRows', () => {
     expect(ledgerRows(undefined)).toEqual({ live: [], settled: [] });
   });
 
-  // PARITY WITH THE STREAM RAIL (Design note, 2026-08-03. The window used to render
+  // PARITY WITH THE STREAM RAIL (ruling, 2026-08-03). The window used to render
   // bare status while the rail read derived state, so the same task described
   // itself two different ways depending on where you looked.
   it('reads the SAME derived state the rail does — worked, unfinished, ticked', () => {

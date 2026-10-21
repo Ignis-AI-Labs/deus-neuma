@@ -23,7 +23,7 @@ import './RelinkMarkdown.css';
 const PLUGINS = [remarkGfm];
 
 // A code span whose whole content is an absolute path is a DOOR (Founder,
-// 2026-07-26). DELIBERATE (Design note, 2026-10-06: right-click — or Ctrl/⌘+click,
+// 2026-07-26). DELIBERATE (ruling, 2026-10-06): right-click — or Ctrl/⌘+click,
 // or Ctrl+Enter — raises the path's menu (open the file, show it in the file
 // manager, copy it, or focus its folder); a plain click still just selects, so
 // copying a path works as before, and nothing moves the window's focus unless

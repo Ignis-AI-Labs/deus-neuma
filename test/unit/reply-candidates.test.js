@@ -156,7 +156,7 @@ describe('assessSubstance (pure heuristic)', () => {
   });
 });
 
-// THE ESCALATION READ (Design note, 2026-07-28 — a pure heuristic, honest about
+// THE ESCALATION READ (ruling, 2026-07-28) — a pure heuristic, honest about
 // being one: representative words land in their category, everything else
 // defaults to ordinary, and the most severe shape wins the first match.
 describe('categorizeCandidate (pure heuristic)', () => {
@@ -195,7 +195,7 @@ describe('categorizeCandidate (pure heuristic)', () => {
   });
 });
 
-// THE DO-NOT-ENGAGE MARK (Design note, 2026-07-28: the decision is recorded, never
+// THE DO-NOT-ENGAGE MARK (ruling, 2026-07-28): the decision is recorded, never
 // deleted, and idempotent.
 describe('dismiss (real disk)', () => {
   test('dismiss records who, when, and why — and the candidate is NEVER deleted', async () => {

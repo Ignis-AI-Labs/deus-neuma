@@ -75,8 +75,8 @@ recurring.
 
 **Ethereum.** A record meant to last decades belongs on the most widely
 secured, longest-lived public network. The current generation of contracts
-runs on Ethereum's Sepolia test network, and moves to Ethereum mainnet for
-launch. Earlier seals made on Base stay there: those contracts are
+runs on Ethereum mainnet, and seals and house foundings go there by default
+(a rehearsal can use the Sepolia test network instead). Earlier seals made on Base stay there: those contracts are
 immutable too, and Neuma still reads them.
 
 ## Check it yourself

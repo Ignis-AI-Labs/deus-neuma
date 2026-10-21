@@ -1,5 +1,5 @@
 /**
- * The working-context ladder (Design note, 2026-08-15: a being self-aware of its
+ * The working-context ladder (ruling, 2026-08-15): a being self-aware of its
  * window, and a turn that folds machinery instead of dying at the boundary.
  *
  * Everything under test is pure — real message shapes from the two wire

@@ -19,7 +19,9 @@ import './NotificationTray.css';
 import { useWindows } from '../../windowing/use-windows.js';
 import { appIdOf } from '../../windowing/window-manager-reducer.js';
 import { useNotifications } from '../notifications-context.js';
-import { notificationTarget } from './notification-target.js';
+import { cardLanding, cardOpenActions, notificationTarget } from './notification-target.js';
+import { requestHouseClockTab } from '../house-clock/house-clock-focus.js';
+import { requestCardLanding } from '../card-landing.js';
 import { KIND, STANDING } from '../../../../core/runtime/notification-record.js';
 
 /** How long a toast stays up before it retires into the panel. */
@@ -166,19 +168,6 @@ const NotificationTrayView = () => {
     notifications?.setFrontmostApp?.(focusedId ? appIdOf(focusedId) : null);
   }, [notifications, focusedId]);
 
-  // The operator clicked the OS notification. Main has already raised and
-  // focused the desk; this opens the window the card pointed at. Feature-probed
-  // rather than gated on isElectron, because a partial bridge is a real state
-  // and the browser lane simply has no OS leg. The returned closure is the
-  // unsubscribe — without detaching, a remount would open two windows per click.
-  const dispatch = windows?.dispatch;
-  useEffect(() => {
-    const onActivate = (payload) => {
-      if (payload?.appId) dispatch?.({ type: 'OPEN', id: payload.appId });
-    };
-    return window.neuma?.notifications?.onActivate?.(onActivate);
-  }, [dispatch]);
-
   // A record the tray has not shown before rises as a toast. Driven off state
   // rather than off the socket so a card can only ever toast once, however many
   // times a reconnect re-delivers it.
@@ -208,10 +197,35 @@ const NotificationTrayView = () => {
     const target = notificationTarget(record);
     if (!target) return;
     // An app id, never a window id: `open` raises an existing instance and
-    // creates one otherwise, so a card outliving its window still lands.
-    windows?.dispatch?.({ type: 'OPEN', id: target.appId });
+    // creates one otherwise, so a card outliving its window still lands; a
+    // sitting lands in its own stream window (cardOpenActions).
+    for (const action of cardOpenActions(record, windows?.state?.windows)) windows?.dispatch?.(action);
+    // The HOUSE CLOCK opens on the tab the card is about (house-clock-focus.js).
+    if (target.appId === 'houseclock' && target.payload?.tab) requestHouseClockTab(target.payload.tab);
+    // Every other app lands on the card's own item (card-landing.js).
+    const landing = cardLanding(record);
+    if (landing) requestCardLanding(landing.appId, landing.item);
     setOpen(false);
   }, [notifications, windows]);
+
+  // The operator clicked the OS notification. Main has already raised and
+  // focused the desk; this replays that card's own click, so it lands where the
+  // card does. A card the desk no longer holds still opens its app.
+  // Feature-probed rather than gated on isElectron, because a partial bridge is
+  // a real state and the browser lane simply has no OS leg. Read through refs
+  // so the subscription is made once: the returned closure is the unsubscribe,
+  // and without detaching a remount would open two windows per click.
+  const latest = useRef({ activate, records, dispatch: windows?.dispatch });
+  latest.current = { activate, records, dispatch: windows?.dispatch };
+  useEffect(() => {
+    const onActivate = (payload) => {
+      const now = latest.current;
+      const record = payload?.id ? now.records.find((rec) => rec.id === payload.id) : null;
+      if (record) now.activate(record);
+      else if (payload?.appId) now.dispatch?.({ type: 'OPEN', id: payload.appId });
+    };
+    return window.neuma?.notifications?.onActivate?.(onActivate);
+  }, []);
 
   const dismiss = useCallback((record) => {
     notifications?.markRead?.(record.id);

@@ -57,7 +57,7 @@ export const FirstRunChoice = ({ onChoose }) => {
         </p>
 
         <div className="firstrun-paths">
-          {/* THE PLATFORM ALONE (Design note, 2026-10-14: the lightest door, first — a
+          {/* THE PLATFORM ALONE (ruling, 2026-10-14): the lightest door, first — a
               model and our harness, no being and nothing to commit to
               (FirstRunHarness, docs/work/harness-only.md). */}
           <button

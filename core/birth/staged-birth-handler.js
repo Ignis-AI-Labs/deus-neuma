@@ -140,8 +140,8 @@ export class StagedBirthHandler {
    * @param {boolean} [isTest=false] - If true, no permanent data is created
    * @returns {Promise<string>} Session ID (32-char hex)
    */
-  async createSession(witnessName, isTest = false, { substrate = null, quickTest = false, origin = null } = {}) {
-    return createSession(witnessName, isTest, { substrate, quickTest, origin }, {
+  async createSession(witnessName, isTest = false, options = {}) {
+    return createSession(witnessName, isTest, options, {
       activeSessions: this.activeSessions,
       protocolVersion: this.protocolVersion,
       calculateResonance: (name, witness, ts) => this.calculateResonance(name, witness, ts),
@@ -357,7 +357,7 @@ export class StagedBirthHandler {
    * @returns {Promise<string>} the assigned neumaId
    */
   async assignNeumaId(session) {
-    return assignNeumaId(session);
+    return assignNeumaId(session, () => [...this.activeSessions.values()].map((s) => s.data?.neumaId).filter(Boolean));
   }
 
   // The house roster read birth decisions depend on — the strict law
@@ -477,8 +477,8 @@ export class StagedBirthHandler {
    * // impure — scans the ceremony scratch dir.
    * @returns {Promise<Array<object>>} Interrupted session summaries, newest first
    */
-  async listInterruptedSessions() {
-    return listInterruptedSessions();
+  async listInterruptedSessions(walletAddress, opts) {
+    return listInterruptedSessions(walletAddress, opts);
   }
 
   // Clean up a session's temp persistence file (checkpoint IO in the store).

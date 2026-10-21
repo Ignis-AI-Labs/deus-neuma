@@ -53,6 +53,8 @@ import { createLogger } from '../logger.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { writeJsonAtomic } from '../user-realm.js';
 import { resolvePolicy, checkToolAccess, applyToolMode, normalizeToolMode, GLOBAL_DEFAULTS } from '../tool-policy.js';
+import { OPTIO_OFFICE_INTENTS } from '../tool-policy-defaults.js';
+import { cosDesignation } from '../staff/cos-designation.js';
 import { applyProtocolGuard, holdForWake } from '../protocol-guard.js';
 import { requestToolApproval } from '../tool-approval.js';
 import { grantAlwaysAllow, ACT_REFUSALS, refusalForDecision } from '../act-gate.js';
@@ -151,6 +153,15 @@ const executionStarted = async (dir, name) => {
   }
 };
 
+// impure (the designation) — the house's SEATED Optio assigns work and keeps
+// the board with no card (Design note, 2026-10-16: […]); every other lane asks, and an operator's own row on
+// the Optio's lane stands over the default.
+const optioOfficeAccess = async (connection, access, policyTool, ownRow) => {
+  if (access !== 'approval_required' || ownRow !== undefined || !OPTIO_OFFICE_INTENTS.includes(policyTool)) return access;
+  const officer = await cosDesignation.getOfficer(connection.walletAddress).catch(() => null);
+  return officer?.laneId && officer.laneId === connection.companion?.neumaId ? 'allowed' : access;
+};
+
 // Settle one intent file. Returns the one-line receipt the tool batch hands
 // back to the model THIS round, or null when the intent stays pending
 // (observe hold, interrupted card — see the header).
@@ -220,8 +231,9 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   // guard rides after the mode: AUTO still pauses on its hard-gated classes
   // (outbound posts, spends) — protocol-guard.js.
   const policy = resolvePolicy(GLOBAL_DEFAULTS, lanePolicy, connection._sessionToolPolicy || null);
-  const baseAccess = checkToolAccess(policy, 'intents', type.policyTool);
-  const explicit = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`intents/${type.policyTool}`] === 'allowed';
+  const ownRow = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`intents/${type.policyTool}`];
+  const baseAccess = await optioOfficeAccess(connection, checkToolAccess(policy, 'intents', type.policyTool), type.policyTool, ownRow);
+  const explicit = ownRow === 'allowed';
   // A house wake's charter sends its escalated acts back to the operator, grant or none.
   const access = holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, type.policyTool), mode, 'intents', type.policyTool, explicit), 'intents', type.policyTool);
   if (access === 'denied') {
@@ -232,9 +244,13 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   }
 
   if (access === 'approval_required') {
+    // A card no screen could show is no decision: the intent stays pending for
+    // the next sweep (a card already on screen when the portal closes parks).
+    if (!connection._approvalRefusal && connection.ws?.readyState !== connection.ws?.OPEN) return null;
     const decision = await requestToolApproval(connection, {
       tool: tool(type.policyTool),
-      args: payload,
+      // A type whose act is more than its fields (a run's code) says what the card shows.
+      args: type.cardArgs ? type.cardArgs(verdict.value) : payload,
       scope: type.summarize(payload),
       signal,
     });

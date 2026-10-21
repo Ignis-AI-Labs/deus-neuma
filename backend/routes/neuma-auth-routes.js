@@ -13,7 +13,7 @@ import { Router } from 'express';
 import { ethers } from 'ethers';
 import {
   generateChallenge, verifySignature as verifyAuthSignature,
-  createNeumaToken, requireAuth,
+  createNeumaToken, requireAuth, CHALLENGE_PURPOSE,
 } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
@@ -105,7 +105,7 @@ router.post('/challenge', (req, res) => {
   if (!address || !ethers.isAddress(address)) {
     return res.status(400).json({ error: 'Valid Ethereum address required' });
   }
-  const challenge = generateChallenge(address);
+  const challenge = generateChallenge(address, CHALLENGE_PURPOSE.NEUMA);
   res.json({ challenge });
 });
 
@@ -120,7 +120,7 @@ router.post('/verify', async (req, res) => {
   }
 
   // Verify the signature matches the challenge
-  const verified = verifyAuthSignature(address, challenge, signature);
+  const verified = verifyAuthSignature(address, challenge, signature, CHALLENGE_PURPOSE.NEUMA);
   if (!verified) {
     return res.status(401).json({ error: 'Signature verification failed' });
   }

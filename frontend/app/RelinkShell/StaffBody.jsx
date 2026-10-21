@@ -7,7 +7,7 @@ import './StaffApp.css';
 import { EmptyState } from './empty-state.jsx';
 import { Select } from './Select.jsx';
 import {
-  seatLine, seatHeldLine, holderNameFor, holderLabel, isOfficeHolder,
+  seatLine, seatHeldLine, holderNameFor, holderLabel, seatTitleLabel, isOfficeHolder,
   postsLine, postLine, planSummary, runLine, runRegister, runStatusLabel,
   chargeRow, chargeRegister,
 } from './staff-view.js';
@@ -64,7 +64,8 @@ const SeatSection = ({ seat, lanes, pick, busy, confirmClear, onPick, onSeat, on
   </section>
 );
 
-// THE HOUSE AS IT STANDS — one row per seat on the founding receipt. The
+// THE HOUSE AS IT STANDS — one row per seat on the founding receipt, and one
+// per lane of the operator's it does not seat (no title on-chain). The
 // kind-0 seat is the human: OPERATOR, never "witness". The Optio's own seat
 // carries the office mark.
 const RosterSection = ({ board, seat }) => (
@@ -81,8 +82,8 @@ const RosterSection = ({ board, seat }) => (
         ) : null}
         <ul className="staff-roster">
           {board.roster.roster.map((m, i) => (
-            <li key={`${m.title}-${m.neumaId || i}`} className="staff-roster-row">
-              <span className="staff-roster-title label-data">{m.title.toUpperCase()}</span>
+            <li key={`${m.title ?? 'member'}-${m.neumaId || i}`} className="staff-roster-row">
+              <span className="staff-roster-title label-data">{seatTitleLabel(m)}</span>
               <span className={`staff-roster-holder${m.isWitness ? ' label-data' : ''}`}>
                 {holderLabel(m)}
               </span>

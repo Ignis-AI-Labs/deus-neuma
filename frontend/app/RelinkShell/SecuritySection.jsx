@@ -31,7 +31,7 @@ const pluralSuffix = (n) => (n === 1 || currentLocale() !== 'en' ? '' : 's');
 
 export const SecuritySection = () => {
   const { t } = useTranslation('settingsSecurity');
-  // a harness desk is shown the machine, never the house (Design note, 2026-10-14
+  // a harness desk is shown the machine, never the house (ruling, 2026-10-14)
   const harness = isHarness(useConsciousnessPick('activeCompanion')?.activeCompanion);
   const [status, setStatus] = useState(null);
   const [recovery, setRecovery] = useState({}); // neumaId -> recovery status

@@ -151,7 +151,7 @@ const openGateway = async (app) => {
   log(`firstWindow: ${page.url()}`);
   // The window must have loaded the app's own app-local origin (same-origin with
   // its backend) — the exact condition the portal-origin fix depends on.
-  await expect.poll(() => Number(new URL(page.url()).port), { timeout: 30 * 1000 }).toBeGreaterThan(0);
+  await page.waitForURL((url) => Number(url.port) > 0, { timeout: 30 * 1000 });
   await page.waitForFunction(() => !!window.neuma?.desktop, null, { timeout: 30 * 1000 });
   log('desktop confirmed');
   if (MODE === 'test') {

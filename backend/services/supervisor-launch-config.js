@@ -13,6 +13,7 @@ import { lineageEvidenceFor, memoizedProjectorFor } from './model-catalog.js';
 import { clearSelection, readSelection, writeSelection } from './substrate-claim-registry.js';
 import { resolveServingLaunchConfig, validatedServingLaunchConfig } from './serving-launch-config.js';
 import { claimedLaunch } from './served-model-truth.js';
+import { portTaken } from './served-health-cache.js';
 
 /**
  * Select the model the supervised substrate serves. The selection IS the persisted
@@ -94,11 +95,28 @@ export const missingPrerequisites = (ready, cfg = {}) => [
 const PUBLIC_ERROR_MESSAGES = Object.freeze({
   'launch-not-ready': 'The local substrate is missing a required launch input.',
   'launch-refused': 'The local substrate launch was refused before start — see the backend log for the exact reason.',
+  'port-held': 'Another program already holds the local substrate\'s port — stop it or choose a free port; NEUMA will not start a second server on it.',
+  'gpu-unavailable': 'The local substrate could not prove a usable GPU on this machine — see the backend log for the exact reason.',
   'process-exited': 'The local substrate process exited unexpectedly.',
   'relight-failed': 'The local substrate could not restart automatically.',
   'spawn-failed': 'The local substrate process could not start.',
 });
 
+/** The public code for a boot refused before any process spawned. Pure.
+ *  @param {{code?: string}} error */
+export const refusedBootCode = (error) =>
+  (error?.code === 'SERVING_GPU_UNAVAILABLE' ? 'gpu-unavailable' : 'launch-refused');
+
+/**
+ * impure — the failure record when another program already holds the
+ * launch's port (it answers a connect but not llama-server's healthy /health),
+ * or null when the port is free. Spawning there could only die on the bind and
+ * relight into the same wall, re-hashing the model each time.
+ * @param {{host: string, port: number}} launch
+ */
+export const heldPortFailure = async ({ host, port }) => (await portTaken(port, host)
+  ? { code: 'port-held', error: `port ${port} on ${host} is held by another program — the substrate cannot start there`, at: new Date().toISOString() }
+  : null);
 
 /** Project internal process failures into the bounded public status contract. Pure. */
 export const projectSupervisorFailure = (failure) => {

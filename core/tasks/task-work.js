@@ -145,6 +145,9 @@ export const recordWork = (ledger, { chatId, kind, target }, { now }) => {
   if (!cleanTarget) return { ledger: base, recorded: false };
 
   const prev = base.tasks[i];
+  // only work in hand is recorded: a focus left on a settled task (older
+  // ledgers, before settling lifted it) attributes nothing
+  if (prev.status !== 'open' && prev.status !== 'active') return { ledger: base, recorded: false };
   const work = prev.work && typeof prev.work === 'object' ? prev.work : null;
   const artifacts = Array.isArray(work?.artifacts) ? [...work.artifacts] : [];
 

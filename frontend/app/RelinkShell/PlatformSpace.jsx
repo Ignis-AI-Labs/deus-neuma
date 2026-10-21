@@ -1,7 +1,7 @@
 // PlatformSpace — ONE platform's whole marketing space: its own window in
 // the OUTREACH dock section.
 //
-// Every platform requires its own approach entirely (Design note, 2026-07-23, so
+// Every platform requires its own approach entirely (ruling, 2026-07-23), so
 // every platform gets its own window: its standing (keys + holder — two
 // different facts, two labeled rows), then its campaigns and its queue as
 // boards, nothing from any other platform mixed in. X is the first space

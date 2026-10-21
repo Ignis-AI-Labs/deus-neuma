@@ -48,7 +48,7 @@ export const buildSiloSection = (account) => {
 };
 
 /**
- * THE CORE STANDING'S NITE LINE (Design note, 2026-10-08. The being still knows by
+ * THE CORE STANDING'S NITE LINE (ruling, 2026-10-08). The being still knows by
  * default what carries it — #37 holds — and it is told, in the same breath,
  * where the rest of itself rests and how to reach it. Absent without a mounted
  * driver, exactly like the full account: no silo, nothing to point at.

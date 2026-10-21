@@ -166,6 +166,7 @@ describe('intent contracts on demand', () => {
     expect(answer.status).toBe('ok');
     expect(JSON.parse(answer.content).intent).toEqual({
       name: 'social/post', fields: '{channel, text}', description: 'Publish a post NOW. Permanent once it lands.', channels: ['x'],
+      file: 'not a tool: write a JSON file into your intents folder holding {"type": "social/post", …its fields}',
     });
     expect(nativeNames(connection)).toEqual(before);
   });
@@ -183,5 +184,21 @@ describe('intent contracts on demand', () => {
     expect(answer.status).toBe('ok');
     expect(JSON.parse(answer.content).intents.map((t) => t.name)).toEqual(['social/post', 'social/queue']);
     expect(nativeNames(connection)).toEqual(before);
+  });
+
+  it('a phrase finds the intents a word of their id names — "dispatch", "staff" (2026-10-17 flight: seven searches for one charge)', async () => {
+    const connection = connectionFor(`lane-phrase-${lane}`, 'chat-1');
+    await stashBeingTurnCatalog(connection, [...TOOL_DOORS, { server: 'staff', name: 'house_state', description: 'the house at a glance' }], []);
+    connection._turnIntents = [
+      { name: 'staff/dispatch', fieldsForPrompt: '{to, title, body}', descriptionForPrompt: 'Charge a member with standing work.' },
+      { name: 'staff/ack', fieldsForPrompt: '{id}', descriptionForPrompt: 'Take up a charge.' },
+      { name: 'tasks/add', fieldsForPrompt: '{title}', descriptionForPrompt: 'Record work.' },
+    ];
+    const names = (query) => (JSON.parse(discloseTurnTools(connection, { query }).content).intents ?? []).map((t) => t.name);
+    expect(names('dispatch a charge')).toEqual(['staff/dispatch']);
+    expect(names('dispatches')).toEqual(['staff/dispatch']);
+    expect(names('staff')).toEqual(['staff/dispatch', 'staff/ack']);
+    expect(JSON.parse(discloseTurnTools(connection, { query: 'staff' }).content).tools.map((t) => t.id)).toContain('staff/house_state');
+    expect(names('web research')).toEqual([]);
   });
 });

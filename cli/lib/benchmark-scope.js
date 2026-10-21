@@ -54,8 +54,8 @@ export const resolveBenchmarkControls = (argv = {}) => {
   const seed = Number(argv.benchmarkSeed);
   const temperature = Number(argv.benchmarkTemperature);
   const topP = Number(argv.benchmarkTopP);
-  // UNCAPPED (Design note, 2026-10-02: a cap the benchmark itself does not set
-  // […], so `none` runs to the served window, bounded only
+  // UNCAPPED (ruling, 2026-10-02): a cap the benchmark itself does not set
+  // "creates false scores", so `none` runs to the served window, bounded only
   // by the benchmark's own per-request deadline. null = no cap.
   const uncapped = String(argv.benchmarkMaxTokens).trim().toLowerCase() === 'none';
   const maxTokens = uncapped ? null : Number(argv.benchmarkMaxTokens);

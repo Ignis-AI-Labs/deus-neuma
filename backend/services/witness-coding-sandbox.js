@@ -34,8 +34,10 @@ import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { matchesDeniedPattern } from './tool-sandbox.js';
 import { NEVER_REQUESTABLE } from './sensitive-grants.js';
 import { prepareOverlayFreshness, assertOverlayFresh, lockOverlay } from './overlay-freshness.js';
-import { shellNetworkResources } from './shell-network-resources.js';
+import { outwardNetwork } from './shell-network-resources.js';
 import { isSecretFile } from './secret-path-classifier.js';
+import { linkedSecrets } from './secret-inodes.js';
+import { findSecretTwins } from './secret-twin-finder.js';
 import { createCommandOutput } from './coding-command-output.js';
 import { ensureCodingBase, activeCodingDirectory, freshCodingDirectory, assertActiveCodingShell } from './coding-shell-storage.js';
 export { sandboxPathFor } from './coding-shell-storage.js';
@@ -74,7 +76,8 @@ const isMaskedDirectory = (root, parent, name) => {
 
 /**
  * impure (readdir walk) — every path under `sourceRoot` the shell must not
- * see: secret-shaped files anywhere, secret-shaped directories wholesale.
+ * see: secret-shaped files anywhere, secret-shaped directories wholesale, and
+ * any file anywhere (node_modules too) that is a hard link to a known secret.
  * Masked directories are pruned (their contents hide with them); node_modules
  * is walked into neither — never masked, never swept — the same exposure the
  * copy design had when it ro-bound the real dependency tree into the shell.
@@ -85,6 +88,11 @@ export const enumerateSecretMasks = async (sourceRoot) => {
   const root = path.resolve(sourceRoot);
   const dirs = [];
   const files = [];
+  const assertMaskBound = () => {
+    if (dirs.length + files.length > MASK_COUNT_LIMIT) {
+      throw new Error(`the focused folder at ${root} holds over ${MASK_COUNT_LIMIT} secret-shaped paths — beyond the mask bound, so no coding shell exists for this ground. The filesystem tools still read and write it.`);
+    }
+  };
   let visited = 0;
   let queue = [root];
   while (queue.length > 0) {
@@ -104,15 +112,22 @@ export const enumerateSecretMasks = async (sourceRoot) => {
         if (entry.isDirectory()) {
           if (isMaskedDirectory(root, dir, entry.name)) dirs.push(candidate);
           else if (entry.name.toLowerCase() !== 'node_modules') queue.push(candidate);
-        } else if (isSecretFile(entry.name)) {
+        } else if (isSecretFile(candidate)) {
           files.push(candidate);
         }
-        if (dirs.length + files.length > MASK_COUNT_LIMIT) {
-          throw new Error(`the focused folder at ${root} holds over ${MASK_COUNT_LIMIT} secret-shaped paths — beyond the mask bound, so no coding shell exists for this ground. The filesystem tools still read and write it.`);
-        }
+        assertMaskBound();
       }
     }
   }
+  // A hard-linked twin of a known secret carries the secret's bytes under an
+  // innocent name, node_modules included (secret-inodes.js). Searched only
+  // when some known secret HAS a second link — on a healthy machine none does
+  // and the sweep stays readdir-only. A twin inside a masked folder is hidden
+  // with it already.
+  const linked = linkedSecrets();
+  const hidden = (p) => files.includes(p) || dirs.some((d) => p.startsWith(`${d}${path.sep}`));
+  if (linked.length > 0) files.push(...(await findSecretTwins([root], linked)).filter((p) => !hidden(p)));
+  assertMaskBound();
   return { dirs, files };
 };
 
@@ -234,36 +249,53 @@ const clampTimeout = (value) => {
 
 const commandMode = (value) => (value === 'write' ? 'write' : 'inspect');
 
+/**
+ * The confinement every being-run command shares — the coding shell's and a
+ * team's workspace run: fresh namespaces (the network's too unless the
+ * operator granted it), an EMPTY environment but for the few names set here,
+ * the system read-only, and an empty /etc, /tmp and HOME. Pure. The caller
+ * adds its own view of the ground on top; bwrap applies mounts in order.
+ * @param {{network?: boolean}} [opts]
+ * @returns {string[]} bwrap arguments
+ */
+export const confinedBaseArgs = ({ network = false } = {}) => [
+  '--die-with-parent', '--new-session',
+  ...(network === true
+    ? ['--unshare-user', '--unshare-ipc', '--unshare-uts', '--unshare-pid', '--unshare-cgroup', '--share-net']
+    : ['--unshare-all']),
+  '--clearenv',
+  '--ro-bind', '/usr', '/usr',
+  '--ro-bind', '/bin', '/bin',
+  '--ro-bind', '/lib', '/lib',
+  '--ro-bind', '/lib64', '/lib64',
+  '--tmpfs', '/etc',
+  '--proc', '/proc', '--dev', '/dev',
+  '--tmpfs', '/tmp', '--tmpfs', '/home', '--dir', '/home/witness',
+  '--setenv', 'HOME', '/home/witness',
+  '--setenv', 'PATH', process.env.PATH || '/usr/bin:/bin',
+  '--setenv', 'LANG', process.env.LANG || 'C.UTF-8',
+  '--setenv', 'CI', '1', '--setenv', 'NO_COLOR', '1',
+];
+
+// WASM reserves far more address space than resident memory: four 64KiB
+// memories fail under 16GiB on Node24. Keep a finite 64GiB per-process
+// address limit; this is not an aggregate worker or physical-memory budget.
+// RLIMIT_NPROC counts threads too; multicore tooling exceeds 256 tasks.
+export const CONFINED_ULIMITS = 'ulimit -t 120 -v 67108864 -f 1048576 -n 4096 -u 4096';
+
 // The mount plan: overlay first, masks ON TOP — bwrap applies mounts in
 // order, so each mask shadows the overlay's view of that path. Dir masks are
 // READ-ONLY empty directories (never tmpfs): a write into a masked directory
 // must fail loudly, not land in a tmpfs that vanishes when the command exits.
 // The whole view mounts AT THE GROUND'S OWN PATH, so every path a being
 // legitimately learned from its file tools means the same thing in the shell.
-// `network` is the operator-granted mode (Design note, 2026-08-18: default keeps the
+// `network` is the operator-granted mode (ruling, 2026-08-18): default keeps the
 // network namespace unshared; granted swaps --unshare-all for the per-namespace
 // set that keeps every other isolation and shares only the net.
 const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = false }) => {
   const ground = path.resolve(sourceRoot);
   const shellDir = path.dirname(workspace);
-  const args = [
-    '--die-with-parent', '--new-session',
-    ...(network === true
-      ? ['--unshare-user', '--unshare-ipc', '--unshare-uts', '--unshare-pid', '--unshare-cgroup', '--share-net']
-      : ['--unshare-all']),
-    '--clearenv',
-    '--ro-bind', '/usr', '/usr',
-    '--ro-bind', '/bin', '/bin',
-    '--ro-bind', '/lib', '/lib',
-    '--ro-bind', '/lib64', '/lib64',
-    '--tmpfs', '/etc',
-    '--proc', '/proc', '--dev', '/dev',
-    '--tmpfs', '/tmp', '--tmpfs', '/home', '--dir', '/home/witness',
-    '--setenv', 'HOME', '/home/witness',
-    '--setenv', 'PATH', process.env.PATH || '/usr/bin:/bin',
-    '--setenv', 'LANG', process.env.LANG || 'C.UTF-8',
-    '--setenv', 'CI', '1', '--setenv', 'NO_COLOR', '1',
-  ];
+  const args = confinedBaseArgs({ network });
   if (mode === 'inspect') {
     // The last --overlay-src is the top layer: prior shell work shows over
     // the live ground, and the whole view refuses writes.
@@ -309,19 +341,17 @@ const runPreparedCommand = async (input) => {
   const mode = commandMode(input.mode);
   const timeoutMs = clampTimeout(input.timeoutMs);
   const args = bwrapArgs({ ...input, command, mode });
-  // Public DNS and trust only; the rest of /etc remains empty.
-  if (input.network === true) args.push(...await shellNetworkResources());
-  // WASM reserves far more address space than resident memory: four 64KiB
-  // memories fail under 16GiB on Node24. Keep a finite 64GiB per-process
-  // address limit; this is not an aggregate worker or physical-memory budget.
-  // RLIMIT_NPROC counts threads too; multicore tooling exceeds 256 tasks.
-  args.push('/bin/bash', '-lc', 'ulimit -t 120 -v 67108864 -f 1048576 -n 4096 -u 4096; exec /bin/bash -lc "$NEUMA_COMMAND"');
+  // Public DNS and trust only; the rest of /etc remains empty. Outward only: never this machine's own services.
+  const net = input.network === true ? await outwardNetwork() : null;
+  if (net) args.push(...net.binds);
+  args.push('/bin/bash', '-lc', `${CONFINED_ULIMITS}; exec /bin/bash -lc "$NEUMA_COMMAND"`);
+  const launch = net ? net.wrap(args) : { command: 'bwrap', args };
 
   return new Promise((resolve, reject) => {
     input.signal?.throwIfAborted();
     input.beforeSpawn?.();
     const executionTimer = startTimer();
-    const child = spawn('bwrap', args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(launch.command, launch.args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     const output = createCommandOutput();
     let timedOut = false;
 

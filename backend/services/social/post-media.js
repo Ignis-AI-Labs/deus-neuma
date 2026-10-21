@@ -36,7 +36,7 @@ export const resolvePostMedia = async (connection, rawMedia) => {
     ...focusGroundRoots(connection),
     ...(Array.isArray(connection._grantedReadRoots) ? connection._grantedReadRoots : []),
     ...(Array.isArray(connection._grantedWriteRoots) ? connection._grantedWriteRoots : []),
-    // THE CULTURE LIBRARY is trusted by construction (Design note, 2026-07-28:
+    // THE CULTURE LIBRARY is trusted by construction (ruling, 2026-07-28):
     // every file in it arrived through media_save — the ACTS-chipped,
     // sniff-verified download — so it needs no Explorer ground to attach
     // from. It grants READ of its own directory only; nothing else widens.

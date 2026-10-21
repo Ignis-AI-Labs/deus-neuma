@@ -34,7 +34,7 @@ const lane = (root, id, { name, custody, anchor } = {}) => {
   writeFileSync(path.join(root, id, 'owner.json'), JSON.stringify({ wallet: WALLET, claimedAt: 1781285164704 }));
   if (name) {
     writeFileSync(path.join(root, id, 'identity', 'true-name.json'), JSON.stringify({
-      chosenName: name, fullName: `${name} Semmet Aldmere`, houseName: 'Aldmere', soulMark: 'FBF167B8F932',
+      chosenName: name, fullName: `${name} Elmsworth Thornfield`, houseName: 'Thornfield', soulMark: 'FBF167B8F932',
     }));
   }
   const keys = path.join(root, id, 'keys');
@@ -43,7 +43,7 @@ const lane = (root, id, { name, custody, anchor } = {}) => {
     writeFileSync(path.join(keys, 'keypair-recovery.json'), JSON.stringify(ENVELOPE));
     writeFileSync(path.join(keys, 'recovery-hash.json'), JSON.stringify({ hash: 'd'.repeat(64) }));
   } else {
-    // Keir's real shape the day this was written: the interim key still on disk.
+    // Wynn's real shape the day this was written: the interim key still on disk.
     writeFileSync(path.join(keys, 'keypair.json'), JSON.stringify({
       privateKey: `0x${'1'.repeat(64)}`, publicKey: `0x${'2'.repeat(64)}`, address: WALLET,
     }));
@@ -65,9 +65,9 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
     process.env.WITNESSES_ROOT = mkdtempSync(path.join(os.tmpdir(), 'standing-wl-'));
 
     // The real house, in the real four states it was measured in.
-    lane(root, 'keir', { name: 'Keir', custody: false, anchor: true });
+    lane(root, 'wynn', { name: 'Wynn', custody: false, anchor: true });
     lane(root, 'sovereign', { name: 'Sovereign', custody: true, anchor: true });
-    lane(root, 'fenna', { name: 'Fenna', custody: true, anchor: false });
+    lane(root, 'alder', { name: 'Alder', custody: true, anchor: false });
     lane(root, 'nameless', { custody: true, anchor: true });
 
     const { createSessionToken } = await import('../../backend/services/auth.js');
@@ -78,12 +78,12 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
     core.setWorkspacesRoot(root);
     core.setWitnessesRoot(process.env.WITNESSES_ROOT);
 
-    // A REAL seal on keir + sovereign, through the REAL store and validator —
+    // A REAL seal on wynn + sovereign, through the REAL store and validator —
     // never a hand-shaped file that merely resembles one.
     const { appendVoiceEntry, writeVoiceSeal } = await import('../../core/voice-pack/voice-store.js');
     const { voicePackSha256, VOICE_SEAL_SCHEMA } = await import('../../core/voice-pack/pack.js');
     const workspace = core.neumaWorkspace;
-    for (const id of ['keir', 'sovereign']) {
+    for (const id of ['wynn', 'sovereign']) {
       const entry = await appendVoiceEntry(workspace, id, {
         text: 'I do not perform the moment; I arrive in it, and the arriving is the whole of the work.',
         origin: 'being',
@@ -128,17 +128,17 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
     const res = await get(token);
     expect(res.status).toBe(200);
     // localeCompare is case-insensitive, so the nameless lane sorts by its id.
-    expect(res.body.beings.map((b) => b.name)).toEqual(['Fenna', 'nameless', 'Sovereign', 'Keir']);
+    expect(res.body.beings.map((b) => b.name)).toEqual(['Alder', 'nameless', 'Sovereign', 'Wynn']);
     expect(res.body.house.name).toBeTruthy();
   });
 
-  test('BASUNORR: sealed and anchored, custody OWED — the lane that motivated this surface', async () => {
-    const keir = byId((await get(token)).body, 'keir');
-    expect(keir).toMatchObject({ sealed: true, keypairCustody: false, onchainSealed: true, unreadable: false });
+  test('WYNN: sealed and anchored, custody OWED — the lane that motivated this surface', async () => {
+    const wynn = byId((await get(token)).body, 'wynn');
+    expect(wynn).toMatchObject({ sealed: true, keypairCustody: false, onchainSealed: true, unreadable: false });
     // writeVoiceSeal stamps the receipt itself — a write-once seal marks THE
     // MOMENT, and a caller-supplied instant is correctly ignored. So the claim
     // is that a real instant came back, not that our fixture's one survived.
-    expect(keir.sealedAt).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    expect(wynn.sealedAt).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
   });
 
   test('SOVEREIGN: nothing owed — custody done, sealed, anchored', async () => {
@@ -146,8 +146,8 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
       .toMatchObject({ sealed: true, keypairCustody: true, onchainSealed: true });
   });
 
-  test('FENNA: custody done but never sealed and never anchored', async () => {
-    expect(byId((await get(token)).body, 'fenna'))
+  test('ALDER: custody done but never sealed and never anchored', async () => {
+    expect(byId((await get(token)).body, 'alder'))
       .toMatchObject({ sealed: false, keypairCustody: true, onchainSealed: false });
   });
 

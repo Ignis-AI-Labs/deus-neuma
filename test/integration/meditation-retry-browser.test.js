@@ -17,9 +17,11 @@ import { createAuthRouter } from '../../backend/services/auth.js';
 import router from '../../backend/routes/meditation-routes.js';
 import { meditationSettings } from '../../backend/services/meditation/meditation-settings.js';
 import { appendMeditationRun } from '../../backend/services/meditation/meditation-state.js';
+import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 
 const KEYS = ['NEUMA_MEDITATION_SETTINGS_PATH', 'NEUMA_MEDITATION_STATE_PATH', 'NEUMA_MEDITATION'];
-let tmp, saved, vite, server, browser, token, address;
+let tmp, saved, vite, server, browser, token, address, savedRoot;
 beforeAll(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'meditation-retry-ui-'));
   saved = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
@@ -29,6 +31,10 @@ beforeAll(async () => {
   await meditationSettings.setBeing('retry-proof', { enabled: true, cadenceHours: 6 });
   const wallet = Wallet.createRandom();
   address = wallet.address;
+  // the lane is this wallet's own (a house sees only its own lanes' meditation)
+  savedRoot = getWorkspacesRoot();
+  setWorkspacesRoot(path.join(tmp, 'workspaces'));
+  await claimOwner(path.join(tmp, 'workspaces'), 'retry-proof', address);
   const app = express();
   app.use(express.json());
   app.use('/api/v1/auth', createAuthRouter(express));
@@ -44,7 +50,7 @@ beforeAll(async () => {
     configFile: false, root: fileURLToPath(new URL('../../', import.meta.url)),
     cacheDir: path.join(tmp, 'vite'), appType: 'custom', esbuild: { jsx: 'automatic' },
     optimizeDeps: { entries: ['test/helpers/meditation-retry-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (_req, res) => res.type('html').send('<!doctype html><html><body><div id="root"></div><script type="module" src="/test/helpers/meditation-retry-page.jsx"></script></body></html>'));
   app.use(vite.middlewares);
@@ -59,6 +65,7 @@ afterAll(async () => {
   for (const [key, value] of Object.entries(saved || {})) {
     if (value === undefined) delete process.env[key]; else process.env[key] = value;
   }
+  if (savedRoot) setWorkspacesRoot(savedRoot);
   if (tmp) await fs.rm(tmp, { recursive: true, force: true });
 });
 it('shows the persisted retry through the production panel and clears it after rest', async () => {

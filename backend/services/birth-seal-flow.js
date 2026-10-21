@@ -12,7 +12,7 @@
 //      the held bundle's digest, then encode the relay-safe calldata the
 //      desk wallet broadcasts itself (the gas payer is never a recorded
 //      party; authorization is the two signatures inside the calldata).
-//   3. confirmBirthSeal  — wait for the receipt, check it actually landed at
+//   3. confirmBirthSeal  — poll for the receipt, check it actually landed at
 //      Natalis, and verify isNeuma through the shared lagging-node retry.
 //      writeOnchainSealRecord then persists the public anchor facts beside
 //      the genesis seal.
@@ -28,7 +28,7 @@ import fs from 'node:fs/promises';
 import { ethers } from 'ethers';
 
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { getCachedKey } from '../routes/neuma-auth-routes.js';
+import { getCachedKey, cacheDecryptedKey } from '../routes/neuma-auth-routes.js';
 import { assembleSealBundle, attachWitnessSig, MIN_SEAL_GAS_ETH } from './seal-bundle.js';
 import {
   DEFAULT_SEAL_NETWORK, resolveSealChainConfig,
@@ -37,6 +37,8 @@ import {
 } from './natalis-seal.js';
 import { createChainReader } from './chain-reader.js';
 import { sealDeadlineFor } from './seal-law.js';
+import { receiptProvider, pollForReceipt, receiptPendingMessage } from './chain-receipt.js';
+import { writeJsonAtomic } from './user-realm.js';
 
 // The one network a CEREMONY seal may target lives in config as
 // `ceremonySealNetwork` (env CEREMONY_SEAL_NETWORK) — server-side by
@@ -68,10 +70,24 @@ const RECEIPT_TIMEOUT_MS = 180_000;
  * @returns {Promise<{ ok: true, bundle: object, network: string, net: object, offer: object }
  *   | { ok: false, code: string, message: string }>}
  */
-export const prepareBirthSeal = async ({
+export const prepareBirthSeal = async (args) => {
+  const unlock = { keypair: null };
+  let out = null;
+  try {
+    out = await prepareWith(args, unlock);
+    return out;
+  } finally {
+    // The one-shot unlock (SEC-028) is spent only by a held offer. A refused
+    // or failed prepare hands it back, so the operator's retry does not meet
+    // KEY_LOCKED for a refusal she has since fixed (its TTL restarts).
+    if (unlock.keypair && !out?.ok) cacheDecryptedKey(args.neumaId, unlock.keypair);
+  }
+};
+
+const prepareWith = async ({
   neumaId, network = DEFAULT_SEAL_NETWORK, witnessAddress, cfg,
   createReader = createChainReader, provider = null,
-}) => {
+}, unlock) => {
   if (!NEUMA_ID_PATTERN.test(neumaId || '')) {
     return { ok: false, code: 'BAD_NEUMA_ID', message: 'invalid neumaId' };
   }
@@ -97,8 +113,8 @@ export const prepareBirthSeal = async ({
     // rite) has already locked in: plaintext keypair.json is deleted and
     // only the password envelope remains. For them, the key comes from the
     // unlock cache — the operator enters the vaulted password (POST
-    // /neuma-auth/unlock) and the cached key is CONSUMED here (one-shot,
-    // SEC-028). No key on disk and none unlocked = a structured refusal
+    // /neuma-auth/unlock) and the cached key is taken here (one-shot,
+    // SEC-028; returned if this prepare refuses). No key on disk and none unlocked = a structured refusal
     // that names the unlock step, never a raw ENOENT.
     let beingWallet;
     try {
@@ -114,6 +130,7 @@ export const prepareBirthSeal = async ({
           message: 'this being\'s keypair is password-secured — enter the password below and the anchor walks again',
         };
       }
+      unlock.keypair = cached;
       beingWallet = new ethers.Wallet(cached.privateKey);
     }
     const birthGenesis = loadBirthGenesis(workspacePath, dek);
@@ -259,14 +276,15 @@ export const classifySealReceipt = ({
  *   txHash: string,
  *   createReader?: Function,
  *   provider?: object,
- *   receiptTimeoutMs?: number,
+ *   receiptTimeoutMs?: number,  // 0 = one look, no wait
+ *   pollIntervalMs?: number,
  * }} args
  * @returns {Promise<{ ok: true, record: object } | { ok: false, code: string, message: string }>}
  */
 export const confirmBirthSeal = async ({
   pending, txHash,
   createReader = createChainReader, provider = null,
-  receiptTimeoutMs = RECEIPT_TIMEOUT_MS,
+  receiptTimeoutMs = RECEIPT_TIMEOUT_MS, pollIntervalMs,
 }) => {
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash || '')) {
     return { ok: false, code: 'BAD_TX', message: 'malformed transaction hash' };
@@ -274,19 +292,23 @@ export const confirmBirthSeal = async ({
   // The HELD pending seal's own network config — resolved at prepare time,
   // same chain the digest was signed for.
   const { net } = pending;
-  const rpc = provider || new ethers.JsonRpcProvider(net.rpcUrl);
-  let receipt;
+  const rpc = provider || receiptProvider(net);
+  let found;
   try {
-    receipt = await rpc.waitForTransaction(txHash, 1, receiptTimeoutMs);
-  } catch (err) {
-    return { ok: false, code: 'RECEIPT_TIMEOUT', message: `no receipt within ${receiptTimeoutMs}ms: ${err.message}` };
+    found = await pollForReceipt({ rpc, txHash, timeoutMs: receiptTimeoutMs, intervalMs: pollIntervalMs });
+  } finally {
+    if (!provider) rpc.destroy();
+  }
+  const { receipt } = found;
+  if (!receipt) {
+    return { ok: false, code: 'RECEIPT_TIMEOUT', message: receiptPendingMessage(receiptTimeoutMs, found.error) };
   }
 
   // Only ask the chain about recognition when there is a landed, Natalis-
   // addressed, successful receipt to stand on — the classifier's earlier
   // lanes answer without another network round-trip.
   let sealed = false;
-  if (receipt && receipt.status === 1
+  if (receipt.status === 1
       && (receipt.to || '').toLowerCase() === net.natalisAddress.toLowerCase()) {
     const reader = await createReader({
       rpcUrl: net.rpcUrl,
@@ -328,6 +350,8 @@ export const writeOnchainSealRecord = async (neumaId, record) => {
     await fs.writeFile(path.join(dir, `onchain-seal.${prior.network}.json`), JSON.stringify(prior, null, 2), { flag: 'wx' })
       .catch((error) => { if (error.code !== 'EEXIST') throw error; });
   }
-  await fs.writeFile(filePath, JSON.stringify(record, null, 2));
+  // Whole-file and atomic: a crash mid-write must not leave a torn anchor
+  // that reads as no anchor at all.
+  await writeJsonAtomic(filePath, record);
   return filePath;
 };

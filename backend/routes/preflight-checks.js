@@ -10,7 +10,8 @@ import fs from 'fs/promises';
 import os from 'os';
 import { join } from 'path';
 import { createLogger } from '../services/logger.js';
-import { testConnection, getActiveModel, getConfig, setConfig as setLlmConfig } from '../services/llm-provider.js';
+import { getActiveModel, getConfig, setConfig as setLlmConfig } from '../services/llm-provider.js';
+import { reachSubstrate } from '../services/substrate-reach.js';
 import { loadProviderChoice, saveProviderChoice } from '../services/provider-choice.js';
 import { pickAutoAdopt, dedupeEndpoints } from '../services/provider-discovery.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
@@ -20,6 +21,8 @@ import { mcpService } from '../services/mcp.js';
 import { getWorkspacesRoot } from '../../core/index.js';
 import { trainerReadiness } from '../services/trainer-readiness.js';
 import { probeCeremonyRoad } from '../services/ceremony-road.js';
+import { probeMachine } from '../services/machine-probe.js';
+import { forgeCapacity } from '../services/image-forge/forge-capacity.js';
 import {
   MIN_FREE_DISK_GB, RECOMMENDED_FREE_DISK_GB, freeGBAt,
 } from '../services/storage-health.js';
@@ -42,7 +45,7 @@ const PROVIDER_NAMES = Object.freeze({
 // `adoptedFrom` marks the one permitted self-heal recursion (see below).
 export const checkSubstrate = async (adoptedFrom = null) => {
   const config = getConfig();
-  const reachable = await testConnection();
+  const reachable = await reachSubstrate();
   if (!reachable) {
     // THE CONFIGURED PROVIDER IS NOT THE ONLY PROVIDER (reported from the wild,
     // 2026-08-02). A person ran Ollama with a model loaded and this row said
@@ -80,15 +83,18 @@ export const checkSubstrate = async (adoptedFrom = null) => {
     if (!adoptedFrom) {
       const target = pickAutoAdopt(found, await loadProviderChoice());
       if (target) {
-        setLlmConfig({ provider: target.id, endpoint: target.endpoint, model: target.models[0] });
-        await saveProviderChoice(
-          { provider: target.id, endpoint: target.endpoint, model: target.models[0] },
-          { chosenBy: 'auto' },
-        );
-        log.info('Substrate auto-adopted — no operator choice existed', {
-          provider: target.id, endpoint: target.endpoint, wasConfigured: config.provider,
-        });
-        return checkSubstrate({ name: target.name, endpoint: target.endpoint });
+        const adopted = { provider: target.id, endpoint: target.endpoint, model: target.models[0] };
+        setLlmConfig(adopted);
+        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint });
+        // Remembered only once the adopted server has answered: a choice that
+        // never reached a mind must not outlive this run as the house's mind.
+        if (checked.status === 'pass') {
+          await saveProviderChoice(adopted, { chosenBy: 'auto' });
+          log.info('Substrate auto-adopted — no operator choice existed', {
+            provider: target.id, endpoint: target.endpoint, wasConfigured: config.provider,
+          });
+        }
+        return checked;
       }
     }
 
@@ -317,5 +323,19 @@ export const checkTrainer = async () => {
     `${r.versions.torch ? `torch ${r.versions.torch}` : 'ready'} · fast path available`,
     r.hfToken
       ? 'Trainer present with the linear-attention kernels'
-      : 'Trainer ready. Set HF_TOKEN for faster, un-rate-limited base downloads (not needed once a base is cached)');
+      : 'Trainer ready. For faster, un-rate-limited base downloads (not needed once a base is cached) save a Hugging Face Read token in Settings → API (or set HF_TOKEN) — make one at https://huggingface.co/settings/tokens');
+};
+
+// impure — what this machine can MAKE (images, video) beside the mind, and the
+// VRAM the forge engine always keeps free. Never 'fail': a being is born
+// without a forge. It is said out loud because the person who picks up a
+// video tool rarely knows it needs many GB of system memory as well as the
+// GPU, and should know the machine's limits before trying. See
+// image-forge/forge-capacity.js.
+export const checkForge = async () => {
+  const c = forgeCapacity(await probeMachine());
+  const say = (v) => (v.ok ? `yes, ${v.why}` : `no, ${v.why}`);
+  return row('forge', 'Image & Video Forge', c.image.ok && c.video.ok ? 'pass' : 'warn',
+    `Images: ${say(c.image)}. Video: ${say(c.video)}.`,
+    `The forge engine always keeps ${c.headroomGb} GB of GPU memory free; set COMFYUI_VRAM_HEADROOM_GB to choose your own ceiling`);
 };

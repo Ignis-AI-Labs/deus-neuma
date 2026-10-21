@@ -1,5 +1,5 @@
 /**
- * END THE STANDING PLAN (Design note, 2026-10-10 — DELETE /api/v1/staff/plan, end to end on the REAL
+ * END THE STANDING PLAN (ruling, 2026-10-10) — DELETE /api/v1/staff/plan, end to end on the REAL
  * route, the REAL designation store, the REAL workspace engine (the plan record written and read
  * through it, encrypted) and REAL auth, with the REAL live-connection registry the portal keeps.
  *

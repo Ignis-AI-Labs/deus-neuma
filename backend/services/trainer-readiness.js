@@ -18,6 +18,7 @@
  */
 import { spawn } from 'node:child_process';
 import { createLogger } from './logger.js';
+import { serviceValue } from './stored-secrets.js';
 
 const log = createLogger('TrainerReadiness');
 
@@ -152,7 +153,7 @@ export const trainerReadiness = async (python = process.env.NEUMA_REFINEMENT_PYT
   // An anonymous Hub pull is rate-limited and slower, and a base checkpoint is
   // tens of GB — worth naming, never worth blocking on (a rig whose base is
   // already cached needs no token at all).
-  const hfToken = Boolean(process.env.HF_TOKEN || process.env.HUGGING_FACE_HUB_TOKEN);
+  const hfToken = Boolean(process.env.HUGGING_FACE_HUB_TOKEN || serviceValue('hf-downloads'));
   const verdict = { ...readinessFrom(probe, python), hfToken };
   if (!verdict.ready) log.warn('trainer not ready', { python, missing: verdict.missing.map((m) => m.module) });
   else if (verdict.degraded.length) {

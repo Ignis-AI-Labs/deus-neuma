@@ -36,7 +36,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { allianceGroundName, allianceParties, isPartyTo } from '../../core/kotodama/alliance.js';
-import { isWithin, loadAllianceRoot, loadHouseWorkspace } from './ground-roots.js';
+import { assertClearOfRealmAndSettings, isWithin, loadAllianceRoot, loadHouseWorkspace } from './ground-roots.js';
 
 // The containment primitive and this ground's own loader keep their public
 // address here (CQ-036, #395 moved them to ground-roots.js — the place law is
@@ -116,6 +116,9 @@ export const setAllianceRoot = async (wallet, root) => {
       );
     }
   }
+
+  // The realm and the settings are no ground either — the same law as the house ground.
+  await assertClearOfRealmAndSettings(wallet, resolved, 'an alliances root');
 
   // A LANE can never become a root (the same law house-workspace.js keeps):
   // stamping our marker over someone's home would reclassify it out of lane
@@ -209,7 +212,7 @@ export const findAllianceGround = async (wallet, partnerWallets) => {
  * RAISE the ground where these houses build together — the OPERATOR'S command.
  *
  * Nothing in the room calls this. It exists behind an explicit act, because a
- * folder that appears on its own is a folder nobody chose (Design note, 2026-07-26.
+ * folder that appears on its own is a folder nobody chose (ruling, 2026-07-26).
  *
  * impure — creates directories, writes the marker.
  *
