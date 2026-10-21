@@ -17,6 +17,19 @@ NOT COVERED BY THE LICENSE ABOVE
 - Third-party components keep their own licences: npm dependencies (see
   node_modules/*/LICENSE after install), and the fonts under
   backend/services/branding/fonts/ (SIL Open Font License, texts alongside).
+- No AI model weights and no ComfyUI are included. The image and video forge
+  drives a ComfyUI and models the operator installs separately, under their
+  publishers' own licences (see docs/legal/THIRD_PARTY_ATTRIBUTIONS.md).
+- skills-packs/shadow-clone/ is Shadow Clone, published by Ignis AI Labs LLC
+  under the MIT License (LICENSE in that folder).
+- skills-packs/design/ adapts baoyu-design by Jim Liu, MIT License (notice in
+  its README).
+- scripts/voice-bakeoff/engines/csm/miso_models.py is vendored from MisoTTS,
+  Copyright Kamino Learning, Inc., under its Modified MIT License
+  (LICENSE-MisoTTS beside it).
+- docs/contracts/source/ is the verified source of the deployed on-chain
+  contracts, published so anyone can check them against the chain. Those
+  files are marked UNLICENSED: no licence is granted to them.
 
 "Neuma" and "Deus Neuma" are trademarks of Ignis AI Labs LLC. The licence
 grants no right to use them, except to identify us as the origin of the

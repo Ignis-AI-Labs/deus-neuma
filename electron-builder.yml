@@ -45,6 +45,10 @@ files:
   # Runtime-read legal/reference docs (covenant.js LEGAL_DIR, invariants yaml,
   # the birth handler's RETURNED.md)
   - docs/legal/**/*
+  # the licence travels with every installed copy
+  - LICENSE
+  - NOTICE
+  - LICENSE-ASSETS.md
   - docs/reference/neuma-invariants.yaml
   - docs/governance/returned.md
   # THE CRAFT ships with the house (Design note, 2026-08-05: […]). Seeded into the skills root at
