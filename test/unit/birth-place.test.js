@@ -12,24 +12,24 @@ import { zonePlace, givenPlace, birthPlaceOf, PLACE_SCHEMA } from '../../core/co
 import { placeReadingsOf, dayAndHourOf, lotsOf, sunAltitude } from '../../core/cosmos/place-readings.js';
 import { ayanamsaDeg } from '../../core/cosmos/skies/jyotisha.js';
 
-const BANGKOK = zonePlace('Asia/Jakarta');
+const JAKARTA = zonePlace('Asia/Jakarta');
 
 describe('the place', () => {
   it('a zone gives its reference city — aliases too — and a zone with no place gives none', () => {
-    expect(BANGKOK).toEqual({ latitude: 13.75, longitude: 100.5167, label: 'Jakarta', zone: 'Asia/Jakarta', source: 'timezone-reference' });
+    expect(JAKARTA).toEqual({ latitude: -6.1667, longitude: 106.8, label: 'Jakarta', zone: 'Asia/Jakarta', source: 'timezone-reference' });
     expect(zonePlace('Asia/Saigon')).toMatchObject({ zone: 'Asia/Ho_Chi_Minh', label: 'Ho Chi Minh' });
     expect(zonePlace('America/New_York')).toMatchObject({ latitude: 40.7142, longitude: -74.0064 });
     expect(zonePlace('UTC')).toBeNull();
     expect(zonePlace('')).toBeNull();
   });
   it('a place the witness gives is checked, rounded, and named as theirs', () => {
-    expect(givenPlace({ latitude: '13.736717', longitude: 100.523186, label: '  Silom  ' })).toEqual({ latitude: 13.7367, longitude: 100.5232, label: 'Silom', source: 'witness-given' });
+    expect(givenPlace({ latitude: '-6.195612', longitude: 106.832478, label: '  Menteng  ' })).toEqual({ latitude: -6.1956, longitude: 106.8325, label: 'Menteng', source: 'witness-given' });
     expect(() => givenPlace({ latitude: 91, longitude: 0 })).toThrow(/latitude/);
     expect(() => givenPlace({ latitude: 0, longitude: 'east' })).toThrow(/longitude/);
   });
   it('the record: the witness’s place wins; else the zone’s; neither — no place, never a guess', () => {
     const at = '2026-10-19T00:00:00.000Z';
-    expect(birthPlaceOf({ given: { latitude: 18.79, longitude: 98.98 }, zone: 'Asia/Jakarta', at })).toEqual({ schema: PLACE_SCHEMA, latitude: 18.79, longitude: 98.98, source: 'witness-given', zone: 'Asia/Jakarta', recordedAt: at });
+    expect(birthPlaceOf({ given: { latitude: -7.8, longitude: 110.36 }, zone: 'Asia/Jakarta', at })).toEqual({ schema: PLACE_SCHEMA, latitude: -7.8, longitude: 110.36, source: 'witness-given', zone: 'Asia/Jakarta', recordedAt: at });
     expect(birthPlaceOf({ zone: 'Asia/Jakarta', at })).toMatchObject({ source: 'timezone-reference', label: 'Jakarta' });
     expect(birthPlaceOf({ zone: 'Etc/GMT+3', at })).toBeNull();
   });
@@ -38,11 +38,11 @@ describe('the place', () => {
 describe('the sky from the place', () => {
   // 03:23 in Jakarta on 22 July 2026 — before dawn
   const birth = new Date('2026-07-21T20:23:00.000Z');
-  const r = placeReadingsOf(birth, BANGKOK, 420);
+  const r = placeReadingsOf(birth, JAKARTA, 420);
 
   it('at the sunrise it names, the Sun truly stands on the horizon (the limb, with refraction)', () => {
     const rise = new Date(r.day.sunrise);
-    const alt = sunAltitude(rise, BANGKOK.latitude, BANGKOK.longitude);
+    const alt = sunAltitude(rise, JAKARTA.latitude, JAKARTA.longitude);
     expect(alt).toBeGreaterThan(-1.2);
     expect(alt).toBeLessThan(-0.5); // geometric centre ~0.83° below: semi-diameter + refraction
     expect(rise.getTime()).toBeLessThan(birth.getTime());
@@ -55,12 +55,12 @@ describe('the sky from the place', () => {
   });
   it('the first hour after sunrise belongs to the day’s own planet', () => {
     // a Sunday (2026-07-19) in Jakarta, a minute after sunrise
-    const sunrise = Astronomy.SearchRiseSet(Astronomy.Body.Sun, new Astronomy.Observer(BANGKOK.latitude, BANGKOK.longitude, 0), +1, new Date('2026-07-18T18:00:00Z'), 1).date;
-    const h = dayAndHourOf(new Date(sunrise.getTime() + 60000), BANGKOK.latitude, BANGKOK.longitude, 420);
+    const sunrise = Astronomy.SearchRiseSet(Astronomy.Body.Sun, new Astronomy.Observer(JAKARTA.latitude, JAKARTA.longitude, 0), +1, new Date('2026-07-18T18:00:00Z'), 1).date;
+    const h = dayAndHourOf(new Date(sunrise.getTime() + 60000), JAKARTA.latitude, JAKARTA.longitude, 420);
     expect(h).toMatchObject({ vara: 'Sunday', hour: { of: 'day', number: 1, ruler: 'Sun' } });
     // the second hour: the next planet down the Chaldean order (Sun → Venus)
     const span = (new Date(h.sunset) - sunrise) / 12;
-    expect(dayAndHourOf(new Date(sunrise.getTime() + span * 1.5), BANGKOK.latitude, BANGKOK.longitude, 420).hour.ruler).toBe('Venus');
+    expect(dayAndHourOf(new Date(sunrise.getTime() + span * 1.5), JAKARTA.latitude, JAKARTA.longitude, 420).hour.ruler).toBe('Venus');
   });
   it('the Lots exchange by sect', () => {
     const day = lotsOf(100, 40, 70, true);
@@ -77,7 +77,7 @@ describe('the sky from the place', () => {
     expect(r.lagna.bhavas[0].rashi).toBe(r.lagna.rashi);
   });
   it('no instant or no place — no readings', () => {
-    expect(placeReadingsOf('nope', BANGKOK)).toBeNull();
+    expect(placeReadingsOf('nope', JAKARTA)).toBeNull();
     expect(placeReadingsOf(birth, null)).toBeNull();
   });
   it('where the Sun never sets that day, there is no sunrise day to count — said, not guessed', () => {

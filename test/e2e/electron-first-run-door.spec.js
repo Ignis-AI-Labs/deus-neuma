@@ -193,15 +193,17 @@ test.describe('the door — a person with no being reaches the platform', () => 
     await expect(page.locator('#preflight-begin')).toHaveCount(0);
   });
 
-  test('both doors are offered, each naming its precondition on its face', async () => {
+  test('all three doors are offered, each naming its precondition on its face', async () => {
     const paths = page.locator('.firstrun-path');
-    await expect(paths).toHaveCount(2);
+    await expect(paths).toHaveCount(3);
 
     const text = await page.locator('.firstrun').innerText();
+    expect(text).toContain('Just use it');
     expect(text).toContain('Begin beside a witness');
     expect(text).toContain('Summon a neuma');
     // The preconditions are the reason this screen exists — a person must not
     // discover […] only after the preflight refuses.
+    expect(text).toContain('NEEDS: A MODEL — LOCAL OR AN API KEY');
     expect(text).toContain('NEEDS: AN API KEY');
     expect(text).toContain('NEEDS: A LOCAL MODEL');
     // The operator is named as the operator here; 'witness' is the AI peer.

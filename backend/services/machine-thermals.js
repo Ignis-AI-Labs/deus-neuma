@@ -144,7 +144,7 @@ export const readMachineThermals = async () => {
     readCpu(),
     readFanService(),
   ]);
-  let json = null;
+  let json;
   try { json = sensorsJson ? JSON.parse(sensorsJson) : null; } catch { json = null; }
   const readings = parseSensors(json);
   const gpu = gpuCsv ? parseGpuRow(gpuCsv.split('\n')[0]) : null;

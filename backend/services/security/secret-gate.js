@@ -59,7 +59,7 @@ const cleanValue = (raw) => {
 // of those is guarded alone too, since quoting only the key still leaks it. A
 // URL that carries none (https://mainnet.base.org) is a public endpoint.
 const piecesOf = (value) => {
-  let url = null;
+  let url;
   try { url = /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? new URL(value) : null; } catch { url = null; }
   if (!url) return value.length >= MIN_SECRET_LENGTH ? [value] : [];
   const carried = [

@@ -14,7 +14,7 @@ import { TeamRunChip } from '../../frontend/app/RelinkShell/TeamRunChip.jsx';
 import { WindowContext } from '../../frontend/app/windowing/WindowManager.jsx';
 
 const BOARD = [
-  { id: 'claim', neumaId: 'keir', member: 'Keir', state: 'waiting', status: null },
+  { id: 'claim', neumaId: 'orla', member: 'Orla', state: 'waiting', status: null },
   { id: 'check', neumaId: 'signal', member: 'Signal', state: 'waiting', status: null },
 ];
 
@@ -24,7 +24,7 @@ const frames = (list) => list.reduce(
   initialTeamRuns,
 );
 
-const START = { type: 'operator:team_start', id: 'run-1', background: true, lead: 'Keir', laneId: 'keir', name: 'HOUSE PROOF', goal: 'Prove it.', board: BOARD };
+const START = { type: 'operator:team_start', id: 'run-1', background: true, lead: 'Orla', laneId: 'orla', name: 'HOUSE PROOF', goal: 'Prove it.', board: BOARD };
 const working = (stepId) => ({ type: 'operator:team_board', id: 'run-1', board: BOARD.map((e) => (e.id === stepId ? { ...e, state: 'working' } : e)) });
 
 // The desk hands every window the same external store (team-runs-context.js).
@@ -45,7 +45,7 @@ describe('team-runs reducer — every run the desk has seen, by id', () => {
     ]);
     const run = store.runs['run-1'];
     expect(store.order).toEqual(['run-1']);
-    expect(run).toMatchObject({ lead: 'Keir', name: 'HOUSE PROOF', phase: 'settled', status: 'done', record: 'run-1' });
+    expect(run).toMatchObject({ lead: 'Orla', name: 'HOUSE PROOF', phase: 'settled', status: 'done', record: 'run-1' });
     expect(run.streams.claim).toEqual({ thought: 'weighing what proof means…', text: 'A member must never report done without proof.' });
     expect(run.parts.claim).toBe('A member must never report done without proof.');
   });
@@ -68,14 +68,14 @@ describe('team-runs reducer — every run the desk has seen, by id', () => {
     const store = frames([START, working('claim'), { type: 'operator:team_note', id: 'run-1', stepId: 'claim', note: 'Name the proof.', at: 't1' }]);
     expect(store.runs['run-1'].notes.claim).toEqual([{ note: 'Name the proof.', at: 't1' }]);
     const html = render(store);
-    expect(html).toContain('YOUR GUIDANCE TO BASUNORR');
+    expect(html).toContain('YOUR GUIDANCE TO ORLA');
     expect(html).toContain('Name the proof.');
     expect(html).toContain('SEND — IT CONTINUES WITH THIS');
   });
 
   it('PICK UP WHERE IT STOPPED: interrupted/failed/stopped lead runs wait with a RESUME; a resumed start takes the run back live, parts and all', () => {
     const summaries = [
-      { id: 'r-lost', lane: 'lead', lead: { name: 'Keir' }, name: 'CHAIN', status: 'lost', steps: 3, completed: 1 },
+      { id: 'r-lost', lane: 'lead', lead: { name: 'Orla' }, name: 'CHAIN', status: 'lost', steps: 3, completed: 1 },
       { id: 'r-done', lane: 'lead', status: 'done', steps: 2, completed: 2 },
       { id: 'r-sse', lane: null, status: 'failed', steps: 2, completed: 1 }, // the TEAMS lane resumes itself
     ];
@@ -113,7 +113,7 @@ describe('team-runs reducer — every run the desk has seen, by id', () => {
       type: 'SEED',
       runs: [
         { id: 'run-1', name: 'STALE COPY', board: BOARD },
-        { id: 'run-2', name: 'BEFORE THE RELOAD', lead: 'Galen', board: BOARD, streams: { claim: { text: 'so far', thought: '' } }, parts: {} },
+        { id: 'run-2', name: 'BEFORE THE RELOAD', lead: 'Tamsin', board: BOARD, streams: { claim: { text: 'so far', thought: '' } }, parts: {} },
       ],
     });
     expect(seeded.runs['run-1'].name).toBe('HOUSE PROOF');
@@ -172,7 +172,7 @@ describe('the WORKFLOW window over the store, rendered for real', () => {
       { type: 'operator:team_stream', id: 'run-1', stepId: 'claim', thought: 'weighing proof', text: 'A member must' },
     ]));
     expect(html).toContain('TEAM AT WORK');
-    expect(html).toContain('LED BY BASUNORR');
+    expect(html).toContain('LED BY ORLA');
     expect(html).toContain('STOP THE RUN');
     expect(html).toContain('THINKING');
     expect(html).toContain('weighing proof');
@@ -185,12 +185,12 @@ describe('the WORKFLOW window over the store, rendered for real', () => {
     const store = frames([
       START,
       { type: 'operator:team_done', id: 'run-1', status: 'done', order: ['claim', 'check'] },
-      { ...START, id: 'run-2', name: 'SECOND CREW', lead: 'Galen' },
+      { ...START, id: 'run-2', name: 'SECOND CREW', lead: 'Tamsin' },
     ]);
     const html = render(store);
-    expect(html).toContain('SECOND CREW · Galen · AT WORK');
-    expect(html).toContain('HOUSE PROOF · Keir · TEAM FINISHED');
-    expect(html.indexOf('SECOND CREW · Galen')).toBeLessThan(html.indexOf('HOUSE PROOF · Keir'));
+    expect(html).toContain('SECOND CREW · Tamsin · AT WORK');
+    expect(html).toContain('HOUSE PROOF · Orla · TEAM FINISHED');
+    expect(html.indexOf('SECOND CREW · Tamsin')).toBeLessThan(html.indexOf('HOUSE PROOF · Orla'));
     const settledOnly = render(frames([START, { type: 'operator:team_done', id: 'run-1', status: 'done', order: [] }]));
     expect(settledOnly).toContain('TEAM FINISHED');
     expect(settledOnly).not.toContain('STOP THE RUN');

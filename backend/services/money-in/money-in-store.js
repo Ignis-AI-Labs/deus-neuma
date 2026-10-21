@@ -64,7 +64,7 @@ const readLines = async (file) => {
     try {
       out.push(JSON.parse(line));
     } catch (error) {
-      if (i !== lines.length - 1) throw new Error(`money-in ledger line ${i + 1} is corrupt: ${error.message}`);
+      if (i !== lines.length - 1) throw new Error(`money-in ledger line ${i + 1} is corrupt: ${error.message}`, { cause: error });
     }
   });
   return out;

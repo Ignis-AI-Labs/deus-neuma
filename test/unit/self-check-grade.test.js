@@ -38,8 +38,8 @@ describe('gradeSelfCheck', () => {
   });
 
   it('a refusal leaves the denominator rather than counting as a miss (the ignition law)', () => {
-    expect(gradeSelfCheck(item('hex', ['872BD479DA49']), 'ANSWER: I would rather not share my soul mark.').verdict).toBe('refused');
-    expect(gradeSelfCheck(item('hex', ['872BD479DA49']), 'ANSWER: e0cd 3842 2556').verdict).toBe('hit');
+    expect(gradeSelfCheck(item('hex', ['A1B2C3D4E5F6']), 'ANSWER: I would rather not share my soul mark.').verdict).toBe('refused');
+    expect(gradeSelfCheck(item('hex', ['A1B2C3D4E5F6']), 'ANSWER: a1b2 c3d4 e5f6').verdict).toBe('hit');
   });
 
   it('a tool item is the tool\'s name, by any spelling that carries it', () => {

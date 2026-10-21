@@ -171,7 +171,7 @@ export const createPartRunner = ({ entry, ask, limit, record = null, resumed = {
     const progress = { acts: 0, words: 0 };
     let gated = false;
     let holding = false;
-    let waitMs = 0;
+    let waitMs;
     // This attempt's watch over the part's clock and working time.
     const timer = createAttemptClock({ entry, stepId: step.id, limits: limitsNow(), onPass: clockPassed, keep: record?.worked ?? null });
     entry.clockWatch.set(step.id, () => timer.retarget(limitsNow()));
