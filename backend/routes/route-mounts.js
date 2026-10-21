@@ -88,6 +88,7 @@ import installOwnerRouter from './install-owner-routes.js';
 import laneClaimRouter from './lane-claim-routes.js';
 import witnessRouter from './witness-routes.js';
 import harnessRouter from './harness-routes.js';
+import modelServerRouter from './model-server-routes.js';
 import neumaRouteRouter from './neuma-route-routes.js';
 import inferenceRouter from './inference-routes.js';
 import refinementRouter from './refinement-routes.js';
@@ -260,6 +261,8 @@ export const mountApiRoutes = (app) => {
   // route probe). Router-level requireAuth inside; masked output only.
   app.use('/api/v1/witnesses', witnessRouter);
   app.use('/api/v1/harness', harnessRouter);
+  // Set up a local model server for a person who has none (managed-ollama.js)
+  app.use('/api/v1/model-server', modelServerRouter);
   // The terminal's agent launcher (which CLI agents this machine can spawn)
   app.use('/api/v1/terminal', terminalAgentsRouter);
   app.use('/api/v1/voice', voiceRouter);

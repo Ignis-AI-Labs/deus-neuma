@@ -4,7 +4,7 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 [-Ref origin/dev] [-Dir $HOME\deus-neuma-build] [-Install]
 #
 # What it does, and why each step exists (docs: BUILDING.md, the release runbook):
-#   1. checks Git and Node 22+ (and tells you the winget line if either is missing)
+#   1. preflight: 64-bit Windows, disk space, Git and Node 22+ (installed with winget if missing), the npm registry
 #   2. clones or updates the public repository and checks out -Ref, in -Dir (never your own checkout)
 #   3. npm ci, then the OFFICIAL Electron prebuild of better-sqlite3: node-gyp would need Visual Studio,
 #      and a module built for plain Node fails silently in the app (the platform database turns into a no-op)
@@ -25,6 +25,8 @@ param(
   [switch]$Install
 )
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 may default to TLS 1.0, which GitHub and npm refuse
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 function Step($n, $s) { Write-Host "`n-- $n. $s" -ForegroundColor Cyan }
 function Fail($s) { Write-Host "`nX build stopped: $s" -ForegroundColor Red; exit 1 }
 function Run($exe, [string[]]$argv) {
@@ -32,12 +34,32 @@ function Run($exe, [string[]]$argv) {
   if ($LASTEXITCODE -ne 0) { Fail "$exe $($argv -join ' ') exited $LASTEXITCODE" }
 }
 
-Step 1 'prerequisites'
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Fail 'Git is missing. Install it: winget install --id Git.Git -e   (then open a new PowerShell)' }
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Fail 'Node.js is missing. Install it: winget install --id OpenJS.NodeJS.LTS -e   (then open a new PowerShell)' }
-$nodeMajor = [int]((node -p 'process.versions.node').Split('.')[0])
-if ($nodeMajor -lt 22) { Fail "Node $nodeMajor is too old; 22 or newer is needed: winget upgrade --id OpenJS.NodeJS.LTS -e" }
-Write-Host "   git $((git --version) -replace 'git version ','') - node $(node -p 'process.versions.node')"
+Step 1 'preflight: what this build needs, installed for you where it can be'
+# The PATH a fresh install wrote, without opening a new window
+function Refresh-Path {
+  $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+}
+function Node-Major { if (Get-Command node -ErrorAction SilentlyContinue) { [int]((node -p 'process.versions.node').Split('.')[0]) } else { 0 } }
+function Ensure($what, $id, [scriptblock]$ok, $why) {
+  if (& $ok) { return }
+  Write-Host "   $what is needed ($why)." -ForegroundColor Yellow
+  if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    Fail "$what is missing and winget is not available to install it. Install 'App Installer' from the Microsoft Store (it provides winget), then run this again."
+  }
+  Write-Host "   Installing $what with winget. If Windows asks for permission, click Yes."
+  & winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements
+  Refresh-Path
+  if (-not (& $ok)) { Fail "$what still is not available after installing. Open a new PowerShell window and run this again." }
+  Write-Host "   $what installed."
+}
+if (-not [Environment]::Is64BitOperatingSystem) { Fail 'Deus Neuma builds for 64-bit Windows; this Windows is 32-bit.' }
+$free = [math]::Round((Get-PSDrive -Name (Split-Path -Qualifier $HOME).TrimEnd(':')).Free / 1GB, 1)
+if ($free -lt 12) { Fail "the build needs about 12 GB free on $(Split-Path -Qualifier $HOME); there are $free GB. Free some space and run this again." }
+Ensure 'Git' 'Git.Git' { [bool](Get-Command git -ErrorAction SilentlyContinue) } 'to unpack the source'
+Ensure 'Node.js 22 or newer' 'OpenJS.NodeJS.LTS' { (Node-Major) -ge 22 } 'to build the app'
+try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 15 'https://registry.npmjs.org/-/ping' | Out-Null }
+catch { Fail 'the build downloads its packages from registry.npmjs.org, which cannot be reached. Check the internet connection and run this again.' }
+Write-Host "   64-bit Windows - $free GB free - git $((git --version) -replace 'git version ','') - node $(node -p 'process.versions.node') - npm registry reachable"
 
 Step 2 "source: $Ref of $Repo"
 if (-not (Test-Path (Join-Path $Dir '.git'))) { Run git @('clone', $Repo, $Dir) }

@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react';
 import { apiCall } from '../../utils/http.js';
 import { capacityVerdict } from './capacity-verdict.js';
+import { ModelServerSetup } from './ModelServerSetup.jsx';
 import './FirstRunChoice.css';
 
 /**
@@ -28,14 +29,17 @@ export const FirstRunChoice = ({ onChoose }) => {
   // TOLD what their machine can hold, not stopped from trying. A probe that
   // fails leaves both doors open and says so.
   const [verdict, setVerdict] = useState(null);
+  // Whether a model is already served here (the setup card shows only when none is)
+  const [modelReady, setModelReady] = useState(true);
+  const [probe, setProbe] = useState(0);
 
   useEffect(() => {
     let live = true;
     apiCall('GET', '/api/v1/preflight/setup', { strictJson: true })
-      .then((setup) => { if (live) setVerdict(capacityVerdict(setup)); })
+      .then((setup) => { if (live) { setVerdict(capacityVerdict(setup)); setModelReady(Boolean(setup?.ready)); } })
       .catch(() => { if (live) setVerdict(capacityVerdict(null)); });
     return () => { live = false; };
-  }, []);
+  }, [probe]);
 
   // One click, one commitment — the second click cannot double-fire a phase
   // change while the first is still settling.
@@ -119,6 +123,15 @@ export const FirstRunChoice = ({ onChoose }) => {
             )}
           </button>
         </div>
+
+        {/* THE STANDARD (Design note, 2026-10-22: a machine that CAN host a neuma but serves no model yet is
+            offered the setup here, before the summoning, not told at the birth's flight check. */}
+        {verdict && (verdict.state === 'ok' || verdict.state === 'cpu') && !modelReady ? (
+          <div className="firstrun-setup harness-guide">
+            <p className="label-data">BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET</p>
+            <ModelServerSetup onDone={() => setProbe((n) => n + 1)} />
+          </div>
+        ) : null}
 
         <button
           type="button"

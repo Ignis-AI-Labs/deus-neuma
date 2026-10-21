@@ -174,3 +174,8 @@
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
+
+/* The setup card (ModelServerSetup) for a capable machine that serves no model yet */
+.firstrun-setup {
+  margin-top: var(--space-4);
+}

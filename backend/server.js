@@ -74,6 +74,10 @@ await applyWorkspaceSettings();
       provider: choice.provider, endpoint: choice.endpoint, chosenBy: choice.chosenBy,
     });
   }
+  // A model server the platform set up for this person (managed-ollama.js) starts again with
+  // the platform, so the mind is there after a restart. Fire-and-observe: boot never waits on it.
+  const { startManagedAtBoot } = await import('./services/managed-ollama.js');
+  startManagedAtBoot().catch(() => {});
 }
 
 // Witnesses stand BESIDE the house, never in it (ruling, 2026-07-24): any witness
