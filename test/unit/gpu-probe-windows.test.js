@@ -1,0 +1,32 @@
+// The Windows card reading behind the model chosen at install (gpu-probe.js parseWindowsAdapters):
+// the driver registry's true sizes, the largest card winning over integrated graphics.
+import { describe, it, expect } from 'vitest';
+import { parseWindowsAdapters } from '../../backend/services/gpu-probe.js';
+
+const GB = 1024 ** 3;
+
+describe('parseWindowsAdapters', () => {
+  it('reads a 24 GB AMD card at its true size, past the 4 GB WMI ceiling', () => {
+    expect(parseWindowsAdapters(`AMD Radeon RX 7900 XTX\t${24 * GB}\r\n`))
+      .toEqual({ name: 'AMD Radeon RX 7900 XTX', vramGB: 24, unified: false, vendor: 'amd' });
+  });
+
+  it('takes a laptop\'s discrete card over its integrated graphics, in either order', () => {
+    const intel = `Intel(R) UHD Graphics 770\t${GB}`;
+    const nvidia = `NVIDIA GeForce RTX 4070 Laptop GPU\t${8 * GB}`;
+    for (const out of [`${intel}\r\n${nvidia}\r\n`, `${nvidia}\r\n${intel}\r\n`]) {
+      expect(parseWindowsAdapters(out)).toMatchObject({ name: 'NVIDIA GeForce RTX 4070 Laptop GPU', vramGB: 8, vendor: 'nvidia' });
+    }
+  });
+
+  it('names an Intel Arc card as Intel', () => {
+    expect(parseWindowsAdapters(`Intel(R) Arc(TM) A770 Graphics\t${16 * GB}`)).toMatchObject({ vramGB: 16, vendor: 'intel' });
+  });
+
+  it('gives no card for nothing, garbage, or only a sliver of shared memory', () => {
+    expect(parseWindowsAdapters('')).toBeNull();
+    expect(parseWindowsAdapters(undefined)).toBeNull();
+    expect(parseWindowsAdapters('no tab here\nname\tnot-a-number')).toBeNull();
+    expect(parseWindowsAdapters(`Microsoft Basic Display Adapter\t${128 * 1024 * 1024}`)).toBeNull();
+  });
+});

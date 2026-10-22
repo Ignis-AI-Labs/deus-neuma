@@ -111,6 +111,32 @@ export const parseWindowsVideoController = (stdout) => {
   return { name, vramGB: saturated ? null : Math.round(ram / BYTES_PER_GB), unified: false, vendor };
 };
 
+/**
+ * Windows display adapters from the driver registry → the card with the most memory, or null. Pure.
+ *
+ * One `name<TAB>bytes` line per adapter, from the display class key's
+ * `HardwareInformation.qwMemorySize` (64-bit: the true size of a 16 or 24 GB card, where WMI's
+ * AdapterRAM stops at 4 GB) or `HardwareInformation.MemorySize`. Every adapter is read and the
+ * largest wins, so a laptop's integrated graphics never stand in for its discrete card.
+ * @param {string} stdout
+ * @returns {{name:string, vramGB:number, unified:boolean, vendor:string}|null}
+ */
+export const parseWindowsAdapters = (stdout) => {
+  const cards = String(stdout ?? '').split(/\r?\n/).map((line) => {
+    const tab = line.lastIndexOf('\t');
+    if (tab <= 0) return null;
+    const name = line.slice(0, tab).trim();
+    const bytes = Number(line.slice(tab + 1).trim());
+    return name && Number.isFinite(bytes) && bytes > 0 ? { name, bytes } : null;
+  }).filter(Boolean);
+  const best = cards.reduce((a, c) => (!a || c.bytes > a.bytes ? c : a), null);
+  if (!best || best.bytes < BYTES_PER_GB / 2) return null;
+  const vendor = /amd|radeon|ati\b/i.test(best.name) ? 'amd'
+    : /nvidia|geforce|quadro|rtx/i.test(best.name) ? 'nvidia'
+      : /intel|arc/i.test(best.name) ? 'intel' : 'unknown';
+  return { name: best.name, vramGB: Math.round(best.bytes / BYTES_PER_GB), unified: false, vendor };
+};
+
 /** impure — one sysfs attribute, or undefined. Never throws. */
 const readAttr = async (dir, attr) => {
   try {
@@ -164,12 +190,29 @@ const probeWindows = async () => {
   return r.ok ? parseWindowsVideoController(r.stdout) : null;
 };
 
+// The registry read behind parseWindowsAdapters (Windows PowerShell 5.1, no modules)
+const WINDOWS_ADAPTERS_PS = [
+  "Get-ChildItem 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}' -ErrorAction SilentlyContinue |",
+  'ForEach-Object { $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue;',
+  "$b = $p.'HardwareInformation.qwMemorySize'; if (-not $b) { $b = $p.'HardwareInformation.MemorySize' };",
+  'if ($b -is [byte[]]) { $b = [BitConverter]::ToUInt32($b, 0) };',
+  // no double quotes: Node escapes them on a Windows command line and PowerShell 5.1 reads that unevenly
+  'if ($p.DriverDesc -and $b) { $p.DriverDesc + [char]9 + $b } }',
+].join(' ');
+
+/** impure — Windows, every adapter's true memory from the driver registry. Never throws. */
+const probeWindowsAdapters = async () => {
+  if (process.platform !== 'win32') return null;
+  const r = await boundedExec('powershell', ['-NoProfile', '-NonInteractive', '-Command', WINDOWS_ADAPTERS_PS], { timeoutMs: WINDOWS_PROBE_MS });
+  return r.ok ? parseWindowsAdapters(r.stdout) : null;
+};
+
 // impure — one full probe, in vendor order. On Windows both probes run at once
 // (nvidia-smi still wins when it answers), so the slower one never adds to the wait.
 const probeOnce = async () => {
   if (process.platform === 'win32') {
-    const [nvidia, windows] = await Promise.all([probeNvidia(), probeWindows()]);
-    return nvidia ?? windows;
+    const [nvidia, adapters, windows] = await Promise.all([probeNvidia(), probeWindowsAdapters(), probeWindows()]);
+    return nvidia ?? adapters ?? windows;
   }
   const nvidia = await probeNvidia();
   if (nvidia) return nvidia;
