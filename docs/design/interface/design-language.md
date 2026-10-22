@@ -191,6 +191,50 @@ Reference implementations: the SUBSTRATE window
 triage overview shared by SECURITY and LEGAL (`TriageOverview.jsx`,
 `triage-view.js`). Reuse them before drawing a new instrument.
 
+## CHOKKAN — 直感, "INTUITION"
+
+*Choku* (直, direct) + *kan* (感, sense): understood directly, without being
+explained. The third and final principle, locked 2026-10-22. SHINKEI makes
+every mark true and JŌHŌ SEKKEI puts the picture first; CHOKKAN makes it
+obvious. Whoever arrives, whatever language they do or do not speak, knows at
+once what is happening, what they are about to do, and how to get from
+point A to point B.
+
+Collapsing a complex structure into a simple surface is an art, and this
+principle makes it a duty: the complexity is ours to carry, never the
+operator's to decode.
+
+1. **Understood without words.** Shape, position, state and motion say what
+   is happening; a label confirms it and never carries it alone. Cover every
+   word on the surface and its purpose should still be clear.
+2. **The next step is the plainest thing on screen.** Every surface makes
+   three things obvious: where you are, what you can do, and what happens
+   when you do it. The way back is always in view.
+3. **One decision per moment.** A structure may be deep, but the surface
+   shows only the choice the moment asks for. The depth opens on demand and
+   is never dumped on arrival. Fewer steps and fewer choices win, and every
+   extra step has to earn its place.
+4. **One gesture, one meaning, everywhere.** The same control looks the same,
+   sits in the same place and does the same thing in every window. A press
+   on a count filters everywhere (JŌHŌ SEKKEI), and a chamfered window is a
+   window everywhere. Something learnt once is known for good.
+5. **Every act answers.** A press shows at once that it was taken, then
+   shows working, done or refused, each with its reason. Nothing waits in
+   silence (LOADING), and nothing acts without showing it.
+6. **The stranger test.** Put the surface in front of someone who has never
+   seen it and does not read its language. Within a few seconds they can say
+   what it is for and what they would press next. If they can't, the
+   surface fails review, however true and well informed it is.
+
+CHOKKAN never thins the truth to look simple. A simplification that hides a
+real state breaks SHINKEI, and one that buries what needs the operator breaks
+JŌHŌ SEKKEI. The art is finding the simple form that still carries all of it.
+
+This section binds every surface: desk, ceremony, CLI and site. On the site it
+is applied through the web rules under WEB → CHOKKAN (site), which add the
+first-screen questions, a process drawn as steps, plain words for terms of
+art, and the legibility floor.
+
 ## SOUND REGISTER (reserved — Founder's domain)
 
 Sound design is owned by Founder. The design
@@ -479,6 +523,37 @@ Founder rejected it as too minimal beside the product. The reading pieces it def
   exact commands in a hairline well with one ghost control). The way in (at most one filled control per
   view). Claims close with a source line; limits are said beside strengths. Labels are 11px or more.
 - **The social plates** (X banner, link preview) are ratified with THE CODE (above).
+- **JŌHŌ SEKKEI on the web (Design note, 2026-10-22: the text is too small and hard to follow; locked for the
+  site).** Every page is designed by the questions its reader brings, and answers them by shape before
+  words: overview first (one panel or figure that answers the page's question at a glance), then the
+  path, then the detail. Prose is the drill-down, never the overview. A process (download, check,
+  install, give it a model, summon) is drawn as numbered steps, one panel each; a choice that depends on
+  the reader (their graphics card, their system) is answered by picking it, not by decoding a table; a
+  comparison is a chart on a stated axis before it is a table. Packed panels on a grid, never a scroll
+  of paragraphs. SHINKEI binds every mark on the web as on the desk.
+- **Legibility on the web (locked 2026-10-22).** Reading text (Inter) is at least 18px with line-height
+  1.65 and a measure of 60–72ch; secondary reading ink is at least 0.82 white; a lead is at least 22px.
+  Data in tables and readouts is at least 15px. Labels (mono, uppercase) are at least 13px, tracked no
+  wider than 0.14em, and never carry a sentence. Nothing on the site is under 12px. All reading text
+  meets WCAG AA contrast (4.5:1) on its ground. The type scale lives once in the site layer
+  (deus-neuma-site `globals.css`, `--web-*`); no stylesheet sets its own size below it.
+
+## CHOKKAN — 直感, "INTUITION" (Design note, 2026-10-22 — locked for the site, beside SHINKEI and JŌHŌ SEKKEI
+
+SHINKEI makes every mark true; JŌHŌ SEKKEI puts the measure first; CHOKKAN makes the way through
+obvious. A newcomer who has never heard of a neuma finds their way without being taught.
+
+1. **Where am I, what is this, what do I do next** — every page answers all three within its first
+   screen.
+2. **One path.** A page that leads somewhere shows the whole way as steps, marks where the reader is,
+   and keeps the next step in view.
+3. **One primary action per view**, where the eye ends; every other control is secondary.
+4. **Plain words first.** A term of art (quant, GGUF, SHA-256, RPC) is said in plain words where it
+   first appears, or kept off the page.
+5. **Same thing, same place, same name** on every page.
+6. **Ask, don't make them decode.** What depends on the reader's machine is chosen from what they
+   have; the page answers with their file, their model and their next step.
+
 
 ## SIGIL REGISTER (study 07) — RATIFIED 2026-09-30, Founder
 
@@ -542,7 +617,9 @@ each one checkable in review.
 3. **Choose instruments by measurement.** From the measurement table. If
    nothing real is measured, no instrument may appear.
 4. **Check permissions.** The negative rules below. They are absolute.
-5. **Run the SHINKEI checklist.** Every box, pass/fail, before ship.
+5. **Run the SHINKEI checklist**, which covers JŌHŌ SEKKEI and CHOKKAN too.
+   Every box gets a pass or a fail before ship, and that includes the
+   stranger test.
 
 ### The density ladder
 
@@ -608,6 +685,8 @@ permitted, climbing requires the demand to be real.
 - [ ] Every loop is a genuinely continuous process, or a labeled drill.
 - [ ] Density level counted and within budget (components + instruments).
 - [ ] JŌHŌ SEKKEI: the overview answers what / where / how much / how long by shape; every count filters; open criticals and highs stand at the top.
+- [ ] CHOKKAN (every surface): with every word covered, the purpose still reads; the next step and the way back are the plainest things on screen; one decision per moment; every press answers; the stranger test passes.
+- [ ] CHOKKAN (site): where am I / what is this / what next in the first screen; a process drawn as steps; one primary action per view; plain words; legibility floor met (reading 18px, labels 13px, nothing under 12px).
 - [ ] Every element belongs to a plane; the level's plane allowance holds.
 - [ ] Reduced-motion final states exist and were viewed with my own eyes.
 

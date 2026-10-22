@@ -16,11 +16,13 @@ Every change takes the same road, ours included:
 your branch ──PR──▶ dev ──release PR──▶ main
 ```
 
-- **`dev`** is the default branch and where all work lands. Branch from `dev`
-  and open your pull request **into `dev`**.
-- **`main`** is what has been released. It moves only by a release pull request
-  from `dev`, opened by the maintainers. A pull request into `main` from any
-  other branch is closed by CI.
+- **`main`** is the default branch: what has been released, the code behind
+  the download. It moves only by a release pull request from `dev`, opened by
+  the maintainers. A pull request into `main` from any other branch is closed
+  by CI.
+- **`dev`** is where all work lands. Branch from `dev` and open your pull
+  request **into `dev`**. GitHub suggests `main` as the base of a new pull
+  request (it is the default branch): change it to `dev`.
 - **`sync`** carries the core team's changes from our internal tree. It reaches
   `dev` by a pull request like yours; do not branch from it or target it.
 
