@@ -7,7 +7,7 @@ import { hideVoidFade } from '../../utils/loading-states.js';
 import { apiCall } from '../../utils/http.js';
 import { riteIsLive, riteSignal } from '../../app/Rite/rite-signal.js';
 import { renderCheck, paintTally } from './preflight-rows.js';
-import { tallyLine } from './preflight-groups.js';
+import { tallyLine, isOptional } from './preflight-groups.js';
 import { renderHome, applyHome, browseFolder, paintVerdict } from './preflight-home.js';
 import './PreflightCheck-groups.css';
 
@@ -145,9 +145,11 @@ export class PreflightCheck {
     const tallyEl = this.container.querySelector('#preflight-tally');
     for (const [index, check] of data.checks.entries()) {
       renderCheck(rowsEl, check);
-      const shown = data.checks.slice(0, index + 1);
-      const settled = shown.length === data.checks.length;
-      paintTally(tallyEl, tallyLine(shown, data.checks.length),
+      // the headline counts what the summoning needs; optional capabilities stand apart
+      const core = data.checks.filter((c) => !isOptional(c.id));
+      const shown = data.checks.slice(0, index + 1).filter((c) => !isOptional(c.id));
+      const settled = index === data.checks.length - 1;
+      paintTally(tallyEl, settled ? tallyLine(shown, core.length) : `INSPECTING · ${index + 1} OF ${data.checks.length}`,
         !settled ? 'running' : (shown.some((c) => c.status === 'fail') ? 'blocked' : 'clear'));
       if (check.status === 'pass') riteSignal('rite:check', { check: index });
       playSound('deliberationTick');

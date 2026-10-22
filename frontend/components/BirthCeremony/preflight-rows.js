@@ -4,6 +4,8 @@
 // impure — builds DOM nodes; every string goes through textContent.
 import { groupOf, groupLine } from './preflight-groups.js';
 import { el } from '../../utils/dom-el.js';
+import { plainCheck } from './plain-checks.js';
+import './PreflightCheck-plain.css';
 
 const STATUS_LABEL = Object.freeze({ pass: 'PASS', warn: 'NOTE', fail: 'FAIL' });
 
@@ -32,7 +34,7 @@ const groupSection = (rowsEl, check) => {
 const paintGroup = (section) => {
   const checks = [...section.querySelectorAll('.preflight-row')].map((row) => ({ status: row.dataset.status }));
   const line = section.querySelector('.pf-group-tally');
-  line.textContent = groupLine(checks);
+  line.textContent = groupLine(checks, { optional: section.dataset.group === 'optional' });
   section.classList.toggle('has-fail', checks.some((c) => c.status === 'fail'));
 };
 
@@ -47,21 +49,37 @@ export const renderCheck = (rowsEl, check) => {
   rowEl.dataset.check = check.id;
   rowEl.dataset.status = check.status;
 
+  // Plain words first (plain-checks.js); the measurement and its technical remedy stay, small, beneath.
+  const plain = plainCheck(check);
   const head = el('button', 'pf-row-head');
   head.type = 'button';
+  head.title = check.label;
   head.append(
     el('span', 'pf-mark'),
-    el('span', 'pf-label', check.label),
-    el('span', 'pf-summary', check.detail),
+    el('span', 'pf-label', plain.name),
+    el('span', 'pf-summary', plain.means || check.detail),
     el('span', 'pf-status', STATUS_LABEL[check.status] || check.status.toUpperCase()),
   );
   const detail = el('div', 'pf-detail');
-  detail.append(el('p', 'pf-detail-text', check.detail));
+  if (plain.means) {
+    detail.append(el('p', 'pf-plain', plain.means), el('p', 'pf-todo', `WHAT TO DO · ${plain.todo}`));
+    if (plain.notYours) detail.append(el('p', 'pf-not-yours', plain.notYours));
+    if (plain.fix === 'setup') {
+      // the app can do this itself: the setup sits just below the checks
+      const fix = el('button', 'pf-fix', 'SET IT UP FOR ME ↓');
+      fix.type = 'button';
+      fix.addEventListener('click', () => rowsEl.closest('.preflight-overlay')?.querySelector('#pf-setup')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+      detail.append(fix);
+    }
+  }
+  const tech = el('div', plain.means ? 'pf-tech' : 'pf-tech is-pass');
+  tech.append(el('p', 'pf-detail-text', check.detail));
   if (check.requirement) {
     const need = el('p', 'pf-requirement', check.requirement);
     if (check.status === 'pass') need.classList.add('is-quiet');
-    detail.append(need);
+    tech.append(need);
   }
+  detail.append(tech);
   rowEl.append(head, detail);
   head.addEventListener('click', () => setOpen(rowEl, !rowEl.classList.contains('is-open')));
   setOpen(rowEl, check.status !== 'pass');
