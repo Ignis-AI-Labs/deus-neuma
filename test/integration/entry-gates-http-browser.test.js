@@ -80,6 +80,12 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     const capacity = page.locator('.firstrun-capacity');
     await expect(capacity).toBeVisible({ timeout: 20_000 });
     expect(await capacity.getAttribute('class')).toMatch(/is-(ok|cpu|insufficient|unknown)/);
+    // A machine that serves no model is offered the setup right at the door,
+    // exactly when the real backend says no model is ready (and it can host one).
+    const offer = page.getByText('BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET');
+    const status = await (await page.request.get(`http://127.0.0.1:${server.address().port}/api/v1/preflight/setup`)).json();
+    if (!status.ready && status.recommendation?.fit !== 'insufficient') await expect(offer).toBeVisible();
+    else await expect(offer).toHaveCount(0);
     await page.evaluate(() => window.hideDoor());
 
     // Any probe failure — an HTTP refusal or a dropped connection — resolves to
@@ -88,6 +94,8 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     await page.evaluate(() => window.showDoor());
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
     await expect(page.getByText('Both doors remain open')).toBeVisible();
+    // A machine that could not be read is still offered the setup (it reads its own plan).
+    await expect(page.getByText('BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET')).toBeVisible();
     await page.evaluate(() => window.hideDoor());
     preflightFailure = 'drop';
     await page.evaluate(() => window.showDoor());

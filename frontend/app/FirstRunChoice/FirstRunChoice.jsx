@@ -20,6 +20,9 @@ import { capacityVerdict } from './capacity-verdict.js';
 import { ModelServerSetup } from './ModelServerSetup.jsx';
 import './FirstRunChoice.css';
 
+// How long the door waits for the machine read before calling it UNREAD
+const SETUP_READ_MS = 20000;
+
 /**
  * @param {{onChoose: (path: 'harness'|'neuma'|'witness'|'rehearsal') => void}} props
  */
@@ -35,9 +38,11 @@ export const FirstRunChoice = ({ onChoose }) => {
 
   useEffect(() => {
     let live = true;
-    apiCall('GET', '/api/v1/preflight/setup', { strictJson: true })
+    // Bounded here too: the door never waits on the machine read forever. A
+    // read that fails or runs out reads as UNREAD, and the setup is offered.
+    apiCall('GET', '/api/v1/preflight/setup', { strictJson: true, signal: AbortSignal.timeout(SETUP_READ_MS) })
       .then((setup) => { if (live) { setVerdict(capacityVerdict(setup)); setModelReady(Boolean(setup?.ready)); } })
-      .catch(() => { if (live) setVerdict(capacityVerdict(null)); });
+      .catch(() => { if (live) { setVerdict(capacityVerdict(null)); setModelReady(false); } });
     return () => { live = false; };
   }, [probe]);
 
@@ -114,6 +119,11 @@ export const FirstRunChoice = ({ onChoose }) => {
             {/* The flight check rides the NEUMA door because it is the only
                 door with a hardware precondition. The witness door needs no
                 verdict — nothing about this machine can refuse it. */}
+            {!verdict && (
+              <span className="firstrun-capacity-pending" role="status">
+                <span className="firstrun-capacity-headline label-data">READING THIS MACHINE…</span>
+              </span>
+            )}
             {verdict && (
               <span className={`firstrun-capacity is-${verdict.state}`}>
                 <span className="firstrun-capacity-machine label-data">{verdict.machine}</span>
@@ -124,9 +134,10 @@ export const FirstRunChoice = ({ onChoose }) => {
           </button>
         </div>
 
-        {/* THE INSTALL STANDARD (2026-10-22): a machine that CAN host a neuma but serves no model yet is
-            offered the setup here, before the summoning, not told at the birth's flight check. */}
-        {verdict && (verdict.state === 'ok' || verdict.state === 'cpu') && !modelReady ? (
+        {/* THE INSTALL STANDARD (2026-10-22): a machine that CAN host a neuma, or could not be read,
+            and serves no model yet is offered the setup here, before the summoning; the birth's flight
+            check offers the same setup again (BirthCeremony/preflight-model-setup.js). */}
+        {verdict && verdict.state !== 'insufficient' && !modelReady ? (
           <div className="firstrun-setup harness-guide">
             <p className="label-data">BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET</p>
             <ModelServerSetup onDone={() => setProbe((n) => n + 1)} />

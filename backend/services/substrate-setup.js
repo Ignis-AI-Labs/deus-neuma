@@ -11,6 +11,9 @@ import { getSubstrateProfile } from './substrate-detector.js';
 import { resolveUsableCredential } from './oauth-token-broker.js';
 import { discoverProviders } from './provider-discovery.js';
 import { servableModelIds } from './local-server-models.js';
+import { withDeadline } from './bounded-exec.js';
+
+const DISCOVERY_BUDGET_MS = 4000;
 
 // Model tiers, largest first.
 //
@@ -221,7 +224,10 @@ export const probeProviders = async () => {
   const [ollama, lmStudio, discovered] = await Promise.all([
     probe(probeUrl(ollamaBase, '/api/tags')),
     probe(probeUrl(lmStudioBase, '/v1/models')),
-    discoverProviders().catch(() => []),
+    // A machine with many listeners (Windows lists dozens) must not hold the
+    // flight check: the sweep gets a budget and answers with what it found by
+    // then; the outer deadline is the backstop if a probe itself overruns.
+    withDeadline(discoverProviders({ budgetMs: DISCOVERY_BUDGET_MS }), DISCOVERY_BUDGET_MS + 2500, []),
   ]);
   return {
     ollama: { running: ollama !== null, models: parseOllamaTags(ollama), endpoint: ollamaBase },
@@ -243,9 +249,10 @@ export const probeProviders = async () => {
  * @returns {Promise<{hardware:Object, recommendation:Object, providers:Object, ready:boolean}>}
  */
 export const getSetupStatus = async () => {
-  const profile = await getSubstrateProfile();
-  const providers = await probeProviders();
-  const ready = providers.ollama.models.length > 0 || providers.lmStudio.models.length > 0;
+  const [profile, providers] = await Promise.all([getSubstrateProfile(), probeProviders()]);
+  // any server holding a model, on the usual ports or found by the sweep
+  const ready = providers.ollama.models.length > 0 || providers.lmStudio.models.length > 0
+    || providers.discovered.some((d) => (d.models || []).length > 0);
   return {
     hardware: {
       gpu: profile.gpu,

@@ -6,6 +6,7 @@
  * signatures, found by the real sweep. If discovery only worked on
  * well-known ports, every test here would fail.
  */
+import process from 'node:process';
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import http from 'node:http';
 import {
@@ -112,6 +113,23 @@ describe('the full sweep', () => {
     delete process.env.NEUMA_DISCOVERY_PORTS;
     const providers = found.map((f) => f.provider).sort();
     expect(providers).toEqual(['llama-server', 'ollama']);
+  }, 30000);
+
+  test('a budget answers on time with every server found so far, whatever a silent listener does', async () => {
+    // A real listener that accepts and never answers: each probe of it waits out its timeout.
+    const silent = await new Promise((resolve) => {
+      const srv = http.createServer(() => {});
+      srv.listen(0, '127.0.0.1', () => resolve(srv));
+    });
+    process.env.NEUMA_DISCOVERY_PORTS = `${silent.address().port},${ollamaSrv.address().port}`;
+    const started = Date.now();
+    const found = await discoverProviders({ budgetMs: 1000 });
+    const took = Date.now() - started;
+    delete process.env.NEUMA_DISCOVERY_PORTS;
+    silent.closeAllConnections();
+    silent.close();
+    expect(took).toBeLessThan(1500);
+    expect(found.map((f) => f.provider)).toEqual(['ollama']);
   }, 30000);
 });
 

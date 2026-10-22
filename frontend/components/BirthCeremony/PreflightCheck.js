@@ -291,7 +291,7 @@ export class PreflightCheck {
   // panel beneath a failed substrate check
   async renderSubstrateSetup() {
     const el = this.container.querySelector('#pf-setup');
-    el.textContent = '';
+    this.clearSubstrateSetup();
     let setup;
     try {
       setup = await apiCall('GET', '/api/v1/preflight/setup');
@@ -300,9 +300,25 @@ export class PreflightCheck {
     }
     el.appendChild(this.buildSetupPanel(setup));
     el.classList.add('visible');
+    if (!setup.ready) await this.offerModelSetup(el);
+  }
+
+  // impure — no model is served: set one up right here, then check again. The
+  // setup card is the door's own (loaded on demand, only when it is needed).
+  async offerModelSetup(el) {
+    try {
+      const { mountModelSetup } = await import('./preflight-model-setup.js');
+      const host = document.createElement('div');
+      el.appendChild(host);
+      this.unmountModelSetup = mountModelSetup(host, () => this.run());
+    } catch {
+      // the panel's guide still names the way by hand
+    }
   }
 
   clearSubstrateSetup() {
+    this.unmountModelSetup?.();
+    this.unmountModelSetup = null;
     const el = this.container.querySelector('#pf-setup');
     if (el) {
       el.textContent = '';
@@ -354,7 +370,8 @@ export class PreflightCheck {
       // Two different people are read this line: one who has no provider yet,
       // and one whose provider is running on a port we did not look at. Both
       // need to be told, or the second concludes NEUMA simply cannot see it.
-      guide.textContent = 'Install Ollama (ollama.com) or LM Studio (lmstudio.ai), start it, load the recommended model — then RECHECK. '
+      guide.textContent = 'SET IT UP FOR ME below installs a model server and the model for this machine. '
+        + 'Or install Ollama (ollama.com) or LM Studio (lmstudio.ai) yourself, load the recommended model, then RECHECK. '
         + 'Already running on a different port? Set its address in Settings → Models and RECHECK.';
     } else if (!anyModel) {
       guide.textContent = `Your provider is running — load ${rec.model || 'a model'} in it, then RECHECK.`;
@@ -459,6 +476,7 @@ export class PreflightCheck {
 
 
   hide() {
+    this.clearSubstrateSetup();
     this.container.classList.remove('visible');
     setTimeout(() => {
       if (this.container) {

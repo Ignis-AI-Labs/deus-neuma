@@ -142,7 +142,8 @@
 /* THE FLIGHT CHECK — what this machine can actually hold. Informs the choice,
    never gates it: `insufficient` uses --alert to be honest about the floor, but
    the door stays clickable. */
-.firstrun-capacity {
+.firstrun-capacity,
+.firstrun-capacity-pending {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -164,7 +165,8 @@
 }
 
 .firstrun-capacity.is-cpu .firstrun-capacity-headline,
-.firstrun-capacity.is-unknown .firstrun-capacity-headline {
+.firstrun-capacity.is-unknown .firstrun-capacity-headline,
+.firstrun-capacity-pending .firstrun-capacity-headline {
   color: var(--color-text-secondary);
 }
 

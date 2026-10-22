@@ -18,14 +18,16 @@
 //
 // impure at the edges (exec, fs); every parser below is pure.
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { readFile, readdir } from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { boundedExec } from './bounded-exec.js';
 
-const execAsync = promisify(exec);
+// Each probe answers within its bound with its whole process tree killed at
+// the deadline (bounded-exec.js), so a hung nvidia-smi or CIM query on Windows
+// is never left running behind the first-run flight check.
 const PROBE_MS = 5000;
+const WINDOWS_PROBE_MS = 8000;
 
 /** PCI vendor id for AMD/ATI. Intel is 0x8086, NVIDIA 0x10de. */
 const AMD_VENDOR = '0x1002';
@@ -149,41 +151,29 @@ export const probeAmdLinux = async (root = '/sys/class/drm') => {
 
 /** impure — NVIDIA via nvidia-smi. Never throws. */
 const probeNvidia = async () => {
-  try {
-    const { stdout } = await execAsync(
-      'nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits',
-      { timeout: PROBE_MS }
-    );
-    return parseNvidiaSmi(stdout, os.totalmem());
-  } catch {
-    return null;
-  }
+  const r = await boundedExec('nvidia-smi', ['--query-gpu=name,memory.total', '--format=csv,noheader,nounits'], { timeoutMs: PROBE_MS });
+  return r.ok ? parseNvidiaSmi(r.stdout, os.totalmem()) : null;
 };
 
 /** impure — Windows, any vendor, via CIM. Never throws. */
 const probeWindows = async () => {
   if (process.platform !== 'win32') return null;
-  try {
-    const { stdout } = await execAsync(
-      'powershell -NoProfile -Command "Get-CimInstance Win32_VideoController | '
-      + 'Select-Object -First 1 Name,AdapterRAM | ConvertTo-Csv -NoTypeInformation | Select-Object -Skip 1"',
-      { timeout: PROBE_MS }
-    );
-    return parseWindowsVideoController(stdout);
-  } catch {
-    return null;
-  }
+  const r = await boundedExec('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+    'Get-CimInstance Win32_VideoController | Select-Object -First 1 Name,AdapterRAM | ConvertTo-Csv -NoTypeInformation | Select-Object -Skip 1',
+  ], { timeoutMs: WINDOWS_PROBE_MS });
+  return r.ok ? parseWindowsVideoController(r.stdout) : null;
 };
 
-// impure — one full probe, in vendor order.
+// impure — one full probe, in vendor order. On Windows both probes run at once
+// (nvidia-smi still wins when it answers), so the slower one never adds to the wait.
 const probeOnce = async () => {
+  if (process.platform === 'win32') {
+    const [nvidia, windows] = await Promise.all([probeNvidia(), probeWindows()]);
+    return nvidia ?? windows;
+  }
   const nvidia = await probeNvidia();
   if (nvidia) return nvidia;
-  if (process.platform === 'linux') {
-    const amd = await probeAmdLinux();
-    if (amd) return amd;
-  }
-  return probeWindows();
+  return process.platform === 'linux' ? probeAmdLinux() : null;
 };
 
 // The card's name and VRAM cannot change under a running process, yet every
