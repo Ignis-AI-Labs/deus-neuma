@@ -83,3 +83,18 @@
   min-height: 1em;
   margin-bottom: var(--space-4);
 }
+
+/* The password-locked backup file (wallet-backup-panel.js) */
+.wallet-picker-backup-lede {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
+}
+
+.wallet-picker-backup-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}

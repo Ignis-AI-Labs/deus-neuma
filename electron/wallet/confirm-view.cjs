@@ -26,6 +26,11 @@ const clip = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
 // Decode a sign payload for display. A 0x payload that is not valid UTF-8 is an
 // opaque digest the human cannot evaluate — flag it so the view can warn in the
 // theatrical alert register (this is exactly the case «WARNING» is reserved for).
+// The first line of a Sign-In with Ethereum (EIP-4361) challenge — the login
+// every sign-in asks the wallet to sign. Pure.
+const SIGN_IN_LINE = / wants you to sign in with your Ethereum account:$/;
+const isSignInMessage = (text) => SIGN_IN_LINE.test(String(text ?? '').split('\n')[0]);
+
 const decodeSign = (m) => {
   if (typeof m === 'string' && m.startsWith('0x')) {
     try {
@@ -86,6 +91,17 @@ const buildSignConfirmView = (req) => {
       confirmLabel: 'SIGN',
     };
   }
+  // The sign-in challenge says what it is: a plain word for a plain act.
+  if (isSignInMessage(text)) {
+    return {
+      ...base,
+      heading: 'SIGN IN',
+      intro: 'Sign in with this wallet. Signing proves the wallet is yours — it sends nothing and costs nothing.',
+      body: clip(text, 400),
+      confirmLabel: 'SIGN IN',
+      rejectLabel: 'CANCEL',
+    };
+  }
   return {
     ...base,
     heading: 'SIGN MESSAGE',
@@ -141,4 +157,4 @@ const isTrustedResolve = (event, confirmWebContents) => {
   return event.sender === confirmWebContents;
 };
 
-module.exports = { buildSignConfirmView, buildGateView, isTrustedResolve, DEFAULT_CHAIN_ID };
+module.exports = { buildSignConfirmView, buildGateView, isTrustedResolve, isSignInMessage, DEFAULT_CHAIN_ID };

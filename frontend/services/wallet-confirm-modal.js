@@ -48,7 +48,12 @@ export const requestConfirmation = (type, details) => {
     const panel = document.createElement('div');
     panel.className = 'wallet-confirm-panel';
 
-    const title = type === 'transaction' ? 'Confirm Transaction' : 'Sign Message';
+    // A sign-in challenge (EIP-4361) says what it is, as the desktop window does
+    // (electron/wallet/confirm-view.cjs isSignInMessage).
+    const text = typeof details?.message === 'string' && details.message.startsWith('0x')
+      ? ethers.toUtf8String(details.message) : String(details?.message ?? '');
+    const signIn = type !== 'transaction' && / wants you to sign in with your Ethereum account:$/.test(text.split('\n')[0]);
+    const title = type === 'transaction' ? 'Confirm Transaction' : signIn ? 'Sign In' : 'Sign Message';
     const body = element('div', 'wallet-confirm-body');
 
     if (type === 'transaction') {
@@ -67,7 +72,7 @@ export const requestConfirmation = (type, details) => {
     }
 
     panel.append(element('div', 'wallet-confirm-header', title), body);
-    appendActions(panel, 'Reject', 'Confirm');
+    appendActions(panel, signIn ? 'Cancel' : 'Reject', signIn ? 'Sign in' : 'Confirm');
 
     overlay.appendChild(panel);
     document.body.appendChild(overlay);

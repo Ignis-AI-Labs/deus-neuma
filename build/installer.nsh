@@ -47,6 +47,8 @@
   !define MUI_FINISHPAGE_TITLE "Deus Neuma is installed"
   !define MUI_FINISHPAGE_TEXT "Deus Neuma ${VERSION} is installed on this PC.$\r$\n$\r$\nDeus Neuma is for adults only (18+).$\r$\n$\r$\nClick Finish to close this wizard."
   !define MUI_FINISHPAGE_RUN_TEXT "Launch Deus Neuma"
+  ; the install log stays on screen, "Completed", until the person clicks Next
+  !define MUI_FINISHPAGE_NOAUTOCLOSE
 !endif
 
 ; show the install details, so every step (the model download above all) is seen
@@ -59,6 +61,26 @@
   Name "Deus Neuma"
   !pragma warning default 6029
   BrandingText "Deus Neuma ${VERSION}"
+!macroend
+
+; The details list is the person's log of the install: electron-builder turns it off for its own steps
+; (SetDetailsPrint none), so it is turned back on here, at the first hook inside the install section, and
+; every step says what it is doing before it does it. electron-builder's own running-app check follows.
+; (defining this hook makes electron-builder skip what its own check needs, so it is included here)
+!include "getProcessInfo.nsh"
+Var pid
+!macro customCheckAppRunning
+  SetDetailsPrint both
+  !ifdef BUILD_UNINSTALLER
+    DetailPrint "Removing Deus Neuma ${VERSION} from $INSTDIR."
+  !else
+    DetailPrint "Installing Deus Neuma ${VERSION} to $INSTDIR."
+    DetailPrint "Closing Deus Neuma first, if it is running."
+  !endif
+  !insertmacro _CHECK_APP_RUNNING
+  !ifndef BUILD_UNINSTALLER
+    DetailPrint "Copying Deus Neuma's files: about 1 GB, a minute or two."
+  !endif
 !macroend
 
 !ifndef BUILD_UNINSTALLER
@@ -373,6 +395,9 @@ Var PfBold
 ; electron-builder has copied the app and made the Start menu entry ($newStartMenuLink, named with the
 ; app's notification ID) by now.
 !macro customInstall
+  SetDetailsPrint both
+  DetailPrint "Deus Neuma's files are in place."
+  DetailPrint "Registered with Windows: Settings > Apps lists Deus Neuma ${VERSION}."
   ${If} ${isUpdated}
     ; an update keeps the person's choices: the Start menu entry the update remade goes again if they
     ; had chosen none
@@ -385,6 +410,7 @@ Var PfBold
   ${Else}
     ${If} $CompStartMenu == ${BST_CHECKED}
       WriteRegStr HKCU "${DN_REG}" "StartMenu" "1"
+      DetailPrint "Start menu entry created."
     ${Else}
       WinShell::UninstShortcut "$newStartMenuLink"
       Delete "$newStartMenuLink"
@@ -406,6 +432,9 @@ Var PfBold
     ${Else}
       DeleteRegValue HKCU "${DN_RUN}" "${APP_ID}"
     ${EndIf}
+    ${If} $CompModel != ${BST_CHECKED}
+      DetailPrint "Local model server: not chosen. Deus Neuma offers it when it first starts."
+    ${EndIf}
     ${If} $CompModel == ${BST_CHECKED}
       WriteRegStr HKCU "${DN_REG}" "ModelHome" "$ModelHome"
       DetailPrint "Setting up the local model server and the model for this PC, in $ModelHome."
@@ -421,6 +450,7 @@ Var PfBold
       ${EndIf}
     ${EndIf}
   ${EndIf}
+  DetailPrint "Deus Neuma ${VERSION} is installed."
 !macroend
 !endif
 
