@@ -3,6 +3,7 @@
 // displayed-ask swap, and the plain message push. Split from
 // stream-reducer.js (size law); bodies moved verbatim. Pure and
 // deterministic exactly as the reducer is: no IO, no clocks.
+import { historyCompactMessage } from './compact-marker.js';
 
 /** Segments for a witness/persisted message: shared images ride above the
  *  words (either may stand alone). Pure. */
@@ -108,6 +109,7 @@ const historySegments = (content, tools, images, thoughts) => {
  *  through as a single-take message, exactly as before. */
 export const toHistoryMessages = (messages, base, prefix) =>
   messages.map((m, k) => {
+    if (m.compacted === true) return historyCompactMessage(m, `${prefix}${base + k}`);
     const shared = {
       id: `${prefix}${base + k}`,
       // The platform's own lines — a watch's report, a house wake's note — never the operator's bubble.

@@ -14,6 +14,8 @@ describe('compact-note', () => {
   test('refusals say why, in numbers where there are numbers', () => {
     expect(compactNote({ state: 'refused', reason: 'too-short', have: 10, need: 31 }))
       .toBe('NOT ENOUGH TO COMPACT YET — 10 MESSAGES; COMPACTION STARTS AT 31 (THE LATEST 20 ALWAYS STAY WORD FOR WORD).');
+    expect(compactNote({ state: 'refused', reason: 'too-little-context', haveTokens: 3480, needTokens: 13108 }))
+      .toBe('NOT WORTH COMPACTING YET — ≈3.5K TOKENS OF CONVERSATION WOULD FOLD; COMPACTION STARTS AT ≈13.1K.');
     expect(compactNote({ state: 'refused', reason: 'turn-in-flight' })).toBe('A TURN IS RUNNING — COMPACT ONCE IT HAS FINISHED.');
     expect(compactNote({ state: 'failed' })).toBe('COMPACTION FAILED — NOTHING WAS CHANGED. TRY AGAIN.');
     expect(compactNote({ state: 'mystery' })).toBeNull();

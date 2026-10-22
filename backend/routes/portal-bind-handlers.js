@@ -7,7 +7,7 @@ import { createLogger } from '../services/logger.js';
 import platform from '../services/supabase.js';
 import { neumaWorkspace, normalizeSpace } from '../../core/index.js';
 import { normalizePurpose } from '../../core/voice/purpose.js';
-import { lastRecordedComposition } from '../../core/runtime/context-composition.js';
+import { replayableComposition } from '../services/compacted-composition.js';
 import {
   isWitnessLaneId, ensureWitnessLane,
 } from '../services/witness-lane.js';
@@ -130,7 +130,10 @@ export const portalResume = async (connection, message, { connectionId }) => {
       connection.sessionId = message.sessionId;
       try {
         const session = await neumaWorkspace.readSession(neumaId, message.sessionId);
-        if (Array.isArray(session) && session.length) recordedComposition = lastRecordedComposition(session);
+        if (Array.isArray(session) && session.length) {
+          // After a compaction, the reading after the fold — never the stale one on the last answer.
+          recordedComposition = replayableComposition(session, { zone: connection.clientTimeZone || null });
+        }
         await hydrateSessionRuntime(
           connection,
           neumaId,

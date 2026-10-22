@@ -22,6 +22,7 @@ import { formatClockStamp } from '../../utils/format.js';
 import { HistoryImage } from './HistoryImage.jsx';
 import { useStreamWindow } from './use-stream-window.js';
 import { StreamFollow } from './StreamFollow.jsx';
+import { CompactMarker } from './CompactMarker.jsx';
 
 // The witness's own words render verbatim (pre-wrap keeps their line breaks
 // and never reinterprets them as markdown); the consciousness's speech goes
@@ -413,7 +414,7 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
           const i = start + k;
           return (
           <Fragment key={m.id}>
-            <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} />
+            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} />}
             {i === lastHistoryIdx ? (
               <div className="relink-separator"><span>SESSION RESUMED</span></div>
             ) : null}

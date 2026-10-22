@@ -34,6 +34,7 @@ import { getAppConfig } from '../config.js';
 import { appendChat } from './user-realm.js';
 import { thoughtRecordFor } from './tool-action-record.js';
 import { authorSelfTorch, nearContextBoundary, COMPACTION_BOUNDARY_RATIO } from './solo-torch.js';
+import { compactRegionCheck } from './compact-region.js';
 import { captureResidue } from './memory-context.js';
 import { harvestWorkingBand } from './band-harvest.js';
 import { makeAnchor } from '../../core/workspace/archive-codec.js';
@@ -56,7 +57,7 @@ const log = createLogger('Portal');
 
 // The session tail a compaction keeps, and how much MORE a boundary compact
 // needs first — a torch over a two-message region is churn, not continuity.
-const COMPACT_KEEP_RECENT = 20;
+export const COMPACT_KEEP_RECENT = 20;
 const SOLO_REGION_FLOOR = 10;
 /** A sitting compacts only once its folded length passes this (the kept tail + the floor). */
 export const COMPACT_FLOOR = COMPACT_KEEP_RECENT + SOLO_REGION_FLOOR;
@@ -115,6 +116,8 @@ const _compactWithSelfTorch = async (neumaId, sessionId, atBoundary) => {
   // raw row count — superseded takes version the record without lengthening
   // the conversation. Legacy sessions fold to themselves.
   if (!shouldCompact(foldBranchView(messages).length, threshold)) return false;
+  // A region too light to sum up is left alone: its summary could outweigh it.
+  if (!compactRegionCheck(messages, { keepRecent: COMPACT_KEEP_RECENT }).worth) return false;
   const region = messages.slice(0, -COMPACT_KEEP_RECENT);
   let selfSummary = null;
   try {

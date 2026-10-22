@@ -337,6 +337,8 @@ export const createStreamHandlers = ({
     ['consciousness:provider-retry', onProviderRetry],
     ['substrate:line', onSubstrateLine],
     ['watch:fired', onWatchFired],
+    // A /compact, drawn in the thread where it happened (compact-marker.js).
+    ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     ['tool:usage', onTool],
     ['tool:approval_request', cardHandler('tool:approval_request')],
     ['tool:approval_resolved', cardHandler('tool:approval_resolved')],

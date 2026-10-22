@@ -63,6 +63,28 @@ const rebaseMarks = (entries, raw) =>
 const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake']);
 const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: m.origin } : {});
 
+// A compaction summary row as the display carries it: the counts the marker
+// states, and the words it shows. Pure.
+const compactedRow = (m) => ({
+  role: 'system',
+  compacted: true,
+  content: typeof m.content === 'string' ? m.content : '',
+  ...(m.timestamp ? { at: m.timestamp } : {}),
+  ...(Number.isInteger(m.originalCount) ? { originalCount: m.originalCount } : {}),
+  ...(Number.isInteger(m.compactionCount) ? { compactionCount: m.compactionCount } : {}),
+  ...(m.authoredBy ? { authoredBy: m.authoredBy } : {}),
+});
+
+// What a compaction kept word for word: the spoken rows after its summary that
+// were already said when it ran (a later turn was never part of the fold). Pure.
+const withKeptCount = (m, i, all) => {
+  if (!m.compacted || !m.at) return m;
+  const ranAt = Date.parse(m.at);
+  const kept = all.slice(i + 1)
+    .filter((r) => (r.role === 'user' || r.role === 'assistant') && r.at && Date.parse(r.at) <= ranAt).length;
+  return { ...m, kept };
+};
+
 // FOLD FIRST, then slice (2026-08-31): the prompt's tail is fold-then-slice
 // (memory-context.js) — folding after the slice dropped superseded takes
 // INSIDE the window and the desk showed fewer rows than the being had.
@@ -123,6 +145,8 @@ export const toDisplayMessages = (messages, limit = 50, where = {}) =>
       // it was said rides into history — the stream stamps each message so a
       // returning witness can track the conversation they weren't here for.
       const m = entry.record;
+      // A compaction's summary row stands in the chat as its marker (compact-marker.js).
+      if (m?.role === 'system' && m.compacted === true) return compactedRow(m);
       if (m?.role !== 'user' && m?.role !== 'assistant') return null;
       return {
         role: m.role,
@@ -138,11 +162,12 @@ export const toDisplayMessages = (messages, limit = 50, where = {}) =>
           ? { affect: m.affect } : {}),
       };
     })
-    .filter((m) => m && (m.content || m.images || (m.tools && m.tools.length > 0)
+    .filter((m) => m && (m.compacted || m.content || m.images || (m.tools && m.tools.length > 0)
       || (m.thoughts && m.thoughts.length > 0)
       || (m.takes && m.takes.some((t) => t.content || (t.tools && t.tools.length > 0)
         || (t.thoughts && t.thoughts.length > 0)))))
-    .slice(-limit);
+    .slice(-limit)
+    .map(withKeptCount);
 
 /**
  * List a neuma's session ids, newest first.

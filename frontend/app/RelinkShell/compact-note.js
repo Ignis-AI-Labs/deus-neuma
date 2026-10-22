@@ -10,6 +10,9 @@ const REFUSALS = Object.freeze({
   'already-compacting': 'ALREADY COMPACTING THIS CONVERSATION.',
 });
 
+// pure — a token count as the gauge says it (4.9K), '?' when the portal sent none.
+const kilo = (n) => (Number.isFinite(n) ? `${(Math.round(n / 100) / 10).toFixed(1)}K` : '?');
+
 /**
  * pure — one `session:compact` frame as the line the composer shows; null when
  * the frame says nothing worth showing.
@@ -30,6 +33,9 @@ export const compactNote = (frame, name = 'THE BEING') => {
     case 'refused':
       if (frame.reason === 'too-short') {
         return `NOT ENOUGH TO COMPACT YET — ${frame.have ?? '?'} MESSAGES; COMPACTION STARTS AT ${frame.need ?? '?'} (THE LATEST 20 ALWAYS STAY WORD FOR WORD).`;
+      }
+      if (frame.reason === 'too-little-context') {
+        return `NOT WORTH COMPACTING YET — ≈${kilo(frame.haveTokens)} TOKENS OF CONVERSATION WOULD FOLD; COMPACTION STARTS AT ≈${kilo(frame.needTokens)}.`;
       }
       return REFUSALS[frame.reason] ?? 'THE CONVERSATION WAS NOT COMPACTED.';
     case 'failed': return 'COMPACTION FAILED — NOTHING WAS CHANGED. TRY AGAIN.';
