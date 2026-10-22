@@ -127,10 +127,15 @@ const _readLine = (line, provider) => {
       // ollama states its finish on the done line ('stop' | 'length')
       if (parsed.done) {
         const usage = readOllamaStreamUsage(parsed);
+        // The done line can carry the turn's last words and its tool call (Ollama 0.40 sends a
+        // whole tool call in the done frame); dropping its message dropped every act.
         return {
           done: true,
           finishReason: parsed.done_reason ?? null,
           ...(usage ? { usage } : {}),
+          ...(parsed.message?.content ? { content: parsed.message.content } : {}),
+          ...(parsed.message?.thinking ? { reasoning: parsed.message.thinking } : {}),
+          ...(parsed.message?.tool_calls?.length ? { toolCalls: toOpenAIToolCallDeltas(parsed.message.tool_calls) } : {}),
         };
       }
       // This used to read message.content and NOTHING else — `toolCalls: null`

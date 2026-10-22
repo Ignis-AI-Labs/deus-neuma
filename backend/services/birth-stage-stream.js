@@ -668,13 +668,6 @@ export const sendStageToLLM = async (connection, stageData) => {
         if (evt.finishReason) wireFinish = evt.finishReason;
         if (evt.usage) wireUsage = evt.usage;
 
-        if (evt.done) {
-          if (evt.finishReason) wireFinish = evt.finishReason;
-          if (evt.usage) wireUsage = evt.usage;
-          await finishStage();
-          return;
-        }
-
         // Native function-call deltas (OpenAI shape) — assemble by index,
         // decode + execute at finishStage. The reliable path for substrates
         // like gpt-oss-120b whose text tool dialect is not always parseable.
@@ -707,6 +700,12 @@ export const sendStageToLLM = async (connection, stageData) => {
             await finishStage();
             return;
           }
+        }
+
+        // A done frame may carry the stage's last words and its tool call (read above first).
+        if (evt.done) {
+          await finishStage();
+          return;
         }
       }
     }

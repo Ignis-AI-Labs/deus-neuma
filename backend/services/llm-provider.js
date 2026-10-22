@@ -481,12 +481,13 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
       // being's thinking into its answer or into what gets recorded as speech.
       if (actionBoundary(evt, 'before')) { await cancelActionStream(reader, options.signal); return finish(); }
       if (evt.reasoning && options.onReasoning) options.onReasoning(evt.reasoning);
-      if (evt.done) return finish();
       if (evt.content !== null && evt.content !== undefined) {
         fullResponse += evt.content;
         filteredOnContent(evt.content);
       }
       if (evt.toolCalls && onToolDelta) onToolDelta(evt.toolCalls);
+      // a done frame's own words and call are read before the turn ends (llm-stream-frames.js)
+      if (evt.done) return finish();
       if (actionBoundary(evt, 'after')) { await cancelActionStream(reader, options.signal); return finish(); }
     }
   }
