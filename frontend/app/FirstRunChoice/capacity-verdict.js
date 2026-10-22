@@ -62,12 +62,14 @@ export const capacityVerdict = (setup) => {
     };
   }
 
+  // A model already running here: there is nothing to download, and the person is told so.
+  const running = setup?.ready === true ? 'A model is already running on this machine — nothing to download. ' : '';
   if (rec.mode === 'cpu') {
     return {
       state: 'cpu',
       machine,
       headline: `CAN HOST ${rec.model} — ON CPU`,
-      detail: `${rec.why} It will work, but expect slow replies. A witness runs at full speed on the provider's hardware.`,
+      detail: `${running}${rec.why} It will work, but expect slow replies. A witness runs at full speed on the provider's hardware.`,
     };
   }
 
@@ -75,6 +77,6 @@ export const capacityVerdict = (setup) => {
     state: 'ok',
     machine,
     headline: `CAN HOST ${rec.model}`,
-    detail: `${rec.sizeGB ? `About ${rec.sizeGB} GB to download. ` : ''}${rec.why}`,
+    detail: `${running || (rec.sizeGB ? `About ${rec.sizeGB} GB to download. ` : '')}${rec.why}`,
   };
 };

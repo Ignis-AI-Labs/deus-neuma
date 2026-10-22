@@ -25,6 +25,14 @@ export const ModelServerSetup = ({ onDone }) => {
   const [job, setJob] = useState(null);
   const [error, setError] = useState('');
   const timer = useRef(null);
+  // The progress is what the person watches next: it comes into view when the work starts
+  const progress = useRef(null);
+  const working = job?.state === 'running';
+  useEffect(() => {
+    if (!working) return;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    progress.current?.scrollIntoView({ block: 'center', behavior: still ? 'auto' : 'smooth' });
+  }, [working]);
 
   // impure — read the plan (and any job already running) from the backend
   useEffect(() => {
@@ -80,7 +88,7 @@ export const ModelServerSetup = ({ onDone }) => {
       </p>
       {!plan.enoughDisk ? <p role="alert">This disk does not have room for it. Free some space, then RECHECK.</p> : null}
       {running ? (
-        <div className="harness-setup-progress" role="status" aria-live="polite">
+        <div className="harness-setup-progress" role="status" aria-live="polite" ref={progress}>
           <p className="label-data">{STEP_TEXT[job.step] || 'WORKING'}{pct != null ? ` · ${pct}% · ${size(job.completed)} OF ${size(job.total)}` : '…'}</p>
           <progress max={100} value={pct ?? undefined} />
           <button type="button" className="sub-btn" onClick={stop}>STOP</button>

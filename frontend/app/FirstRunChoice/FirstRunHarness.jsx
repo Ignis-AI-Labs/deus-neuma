@@ -76,6 +76,19 @@ export const FirstRunHarness = ({ onDone, onBack }) => {
 
   useEffect(() => { if (road === 'local') recheck(); }, [road, recheck]);
 
+  // impure — a machine that already serves a model starts on that road (a model the platform
+  // set up a minute ago is never asked about again); the cloud stays one press away
+  useEffect(() => {
+    let live = true;
+    apiCall('GET', '/api/v1/preflight/setup', { strictJson: true })
+      .then((next) => {
+        if (!live || !localServers(next).some((s) => s.state === 'ready')) return;
+        setRoad((r) => r || 'local');
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+
   // the chosen server's models, keyed by what it holds (the rows are rebuilt each render)
   const heldKey = server ? `${server.endpoint}\n${server.models.join('\n')}` : '';
   useEffect(() => {

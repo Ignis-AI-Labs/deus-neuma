@@ -38,10 +38,14 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { FirstRunChoice } from ${JSON.stringify(path.resolve('frontend/app/FirstRunChoice/FirstRunChoice.jsx'))};
+      import { PreflightCheck } from ${JSON.stringify(path.resolve('frontend/components/BirthCeremony/PreflightCheck.js'))};
       window.expired = 0;
+      window.chosen = null;
       window.addEventListener('neuma:auth_expired', () => window.expired++);
       const root = createRoot(document.getElementById('root'));
-      window.showDoor = () => root.render(React.createElement(FirstRunChoice, { onChoose: () => {} }));
+      window.showDoor = () => root.render(React.createElement(FirstRunChoice, { onChoose: (p) => { window.chosen = p; } }));
+      // the flight check torn down while its run still awaits the machine (a step back to the door)
+      window.tearDownMidRun = () => { const check = new PreflightCheck(() => {}, () => {}); check.show(); check.hide(); };
       window.hideDoor = () => root.render(null);
       window.ready = true;
     `;
@@ -80,13 +84,29 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     const capacity = page.locator('.firstrun-capacity');
     await expect(capacity).toBeVisible({ timeout: 20_000 });
     expect(await capacity.getAttribute('class')).toMatch(/is-(ok|cpu|insufficient|unknown)/);
-    // A machine that serves no model is offered the setup right at the door,
-    // exactly when the real backend says no model is ready (and it can host one).
-    const offer = page.getByText('BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET');
-    const status = await (await page.request.get(`http://127.0.0.1:${server.address().port}/api/v1/preflight/setup`)).json();
-    if (!status.ready && status.recommendation?.fit !== 'insufficient') await expect(offer).toBeVisible();
-    else await expect(offer).toHaveCount(0);
+    // ONE TRUTH: the door's "ready" IS the flight check's substrate row, asked of the same backend.
+    const base = `http://127.0.0.1:${server.address().port}/api/v1/preflight`;
+    const mind = await (await page.request.get(`${base}/mind`)).json();
+    const flight = await (await page.request.get(`${base}/`)).json();
+    expect(mind.ready).toBe(flight.checks.find((c) => c.id === 'substrate').status === 'pass');
+    // No model answers here (the sweep is pinned to a dead port): the door says so and offers the setup,
+    expect(mind.ready).toBe(false);
+    await expect(page.getByText('BEFORE YOU SUMMON · NO MODEL IS READY YET')).toBeVisible({ timeout: 20_000 });
+    // and SUMMON does not enter the ceremony: it is held right where it was pressed, with the reason.
+    await page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).click();
+    await expect(page.getByText('THE SUMMONING WAITS HERE · NO MODEL IS READY YET')).toBeVisible();
+    await expect(page.getByText('the summoning begins by itself once it answers')).toBeVisible();
+    expect(await page.evaluate(() => window.chosen)).toBeNull();
+    // the doors that need no local model still open at once
+    await page.locator('.firstrun-path', { hasText: 'Begin beside a witness' }).click();
+    expect(await page.evaluate(() => window.chosen)).toBe('witness');
     await page.evaluate(() => window.hideDoor());
+
+    // A flight check torn down mid-run stops after its awaits — no step touches the gone panel.
+    await page.evaluate(() => window.tearDownMidRun());
+    await page.waitForResponse((r) => r.url().endsWith('/api/v1/preflight') || r.url().endsWith('/api/v1/preflight/'), { timeout: 60_000 });
+    await page.waitForTimeout(2500);
+    expect(errors).toEqual([]);
 
     // Any probe failure — an HTTP refusal or a dropped connection — resolves to
     // capacityVerdict(null): CAPACITY UNREAD, both doors open, never a throw.
@@ -95,7 +115,7 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
     await expect(page.getByText('Both doors remain open')).toBeVisible();
     // A machine that could not be read is still offered the setup (it reads its own plan).
-    await expect(page.getByText('BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET')).toBeVisible();
+    await expect(page.getByText('BEFORE YOU SUMMON · NO MODEL IS READY YET')).toBeVisible();
     await page.evaluate(() => window.hideDoor());
     preflightFailure = 'drop';
     await page.evaluate(() => window.showDoor());
@@ -117,4 +137,4 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     else process.env.NEUMA_DISCOVERY_PORTS = PREVIOUS_DISCOVERY;
     await fs.rm(root, { recursive: true, force: true });
   }
-}, 60_000);
+}, 180_000);

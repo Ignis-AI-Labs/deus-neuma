@@ -181,3 +181,26 @@
 .firstrun-setup {
   margin-top: var(--space-4);
 }
+
+/* READY: a model runs here — the live state wears the signal, the sentence stays plain */
+.firstrun-ready {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-thin) solid var(--signal);
+  color: var(--color-text-secondary);
+}
+.firstrun-ready .label-data {
+  color: var(--signal);
+  margin-right: var(--space-2);
+}
+
+/* A summoning held at the door until its model answers: the gate it waits at is marked live */
+.firstrun-setup.is-holding {
+  border: var(--border-width-thin) solid var(--signal);
+}
+.firstrun-ready.is-checking {
+  border-color: var(--color-border-primary);
+}
+.firstrun-ready.is-checking .label-data {
+  color: var(--color-text-secondary);
+}

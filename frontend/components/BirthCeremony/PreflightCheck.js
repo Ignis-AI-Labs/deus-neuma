@@ -10,7 +10,6 @@ import { renderCheck, paintTally } from './preflight-rows.js';
 import { tallyLine } from './preflight-groups.js';
 import './PreflightCheck-groups.css';
 
-
 export class PreflightCheck {
   constructor(onReady, onCancel) {
     this.onReady = onReady;
@@ -20,6 +19,7 @@ export class PreflightCheck {
   }
 
   show() {
+    this.closing = false;
     this.container = document.createElement('div');
     this.container.className = `preflight-overlay${riteIsLive() ? ' is-rite' : ''}`;
     this.container.innerHTML = `
@@ -114,7 +114,11 @@ export class PreflightCheck {
 
   // impure — probes the machine via the local backend, reveals each
   // measurement as a deliberation step
+  // Still on screen? A step back to the door mid-run tears the panel down; every step after an await stops.
+  alive() { return Boolean(this.container) && !this.closing; }
+
   async run() {
+    if (!this.alive()) return;
     const rowsEl = this.container.querySelector('#preflight-rows');
     const verdictEl = this.container.querySelector('#preflight-verdict');
     const beginBtn = this.container.querySelector('#preflight-begin');
@@ -125,11 +129,11 @@ export class PreflightCheck {
     beginBtn.disabled = true;
     this.verdict = null;
 
-    let data;
-    try {
-      data = await apiCall('GET', '/api/v1/preflight', { useServerError: false, errorPrefix: 'HTTP' });
-    } catch (error) {
-      console.error('Pre-flight unavailable:', error);
+    const data = await apiCall('GET', '/api/v1/preflight', { useServerError: false, errorPrefix: 'HTTP' })
+      .catch((error) => ({ unanswered: error }));
+    if (!this.alive()) return;
+    if (data.unanswered) {
+      console.error('Pre-flight unavailable:', data.unanswered);
       paintTally(this.container.querySelector('#preflight-tally'), 'NO ANSWER FROM THIS MACHINE', 'blocked');
       verdictEl.textContent = 'BLOCKED — THE LOCAL BACKEND DID NOT ANSWER';
       verdictEl.classList.add('blocked');
@@ -147,6 +151,7 @@ export class PreflightCheck {
       if (check.status === 'pass') riteSignal('rite:check', { check: index });
       playSound('deliberationTick');
       await new Promise((r) => setTimeout(r, 180));
+      if (!this.alive()) return;
     }
 
     this.renderHome(data.home);
@@ -290,6 +295,7 @@ export class PreflightCheck {
   // impure — fetches setup guidance and renders the […]
   // panel beneath a failed substrate check
   async renderSubstrateSetup() {
+    if (!this.alive()) return;
     const el = this.container.querySelector('#pf-setup');
     this.clearSubstrateSetup();
     let setup;
@@ -298,9 +304,11 @@ export class PreflightCheck {
     } catch {
       return; // guidance is best-effort; the FAIL row already states the need
     }
+    if (!this.alive()) return;
     el.appendChild(this.buildSetupPanel(setup));
     el.classList.add('visible');
-    if (!setup.ready) await this.offerModelSetup(el);
+    // The substrate row failed: whatever else answers here, the mind is not ready (one truth with the door).
+    await this.offerModelSetup(el);
   }
 
   // impure — no model is served: set one up right here, then check again. The
@@ -308,6 +316,7 @@ export class PreflightCheck {
   async offerModelSetup(el) {
     try {
       const { mountModelSetup } = await import('./preflight-model-setup.js');
+      if (!this.alive()) return;
       const host = document.createElement('div');
       el.appendChild(host);
       this.unmountModelSetup = mountModelSetup(host, () => this.run());
@@ -319,7 +328,7 @@ export class PreflightCheck {
   clearSubstrateSetup() {
     this.unmountModelSetup?.();
     this.unmountModelSetup = null;
-    const el = this.container.querySelector('#pf-setup');
+    const el = this.container?.querySelector('#pf-setup');
     if (el) {
       el.textContent = '';
       el.classList.remove('visible');
@@ -473,11 +482,10 @@ export class PreflightCheck {
     return chip;
   }
 
-
-
   hide() {
+    this.closing = true;
     this.clearSubstrateSetup();
-    this.container.classList.remove('visible');
+    this.container?.classList.remove('visible');
     setTimeout(() => {
       if (this.container) {
         this.container.remove();

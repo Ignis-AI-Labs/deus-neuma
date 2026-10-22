@@ -73,9 +73,11 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
     expect(await first.textContent()).toContain('NEEDS: A MODEL — LOCAL OR AN API KEY');
     await first.click();
 
-    // the harness door asks where the model runs before anything else
+    // a machine that already serves a model starts on LOCAL (the house llama.cpp here is
+    // ready): the road is chosen for the person, the cloud one press away
     await page.getByTestId('firstrun-harness').waitFor();
-    expect(await page.getByRole('button', { name: 'CONNECT & OPEN THE DESK' }).count()).toBe(0);
+    const local = page.getByRole('radio', { name: /On this machine/ });
+    await expect.poll(() => local.getAttribute('aria-checked'), { timeout: 30_000 }).toBe('true');
 
     // CLOUD: the witness door's catalog, with the machine's own servers left to LOCAL
     await page.getByRole('radio', { name: /A cloud provider/ }).click();

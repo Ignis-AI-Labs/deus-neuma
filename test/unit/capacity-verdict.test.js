@@ -91,3 +91,14 @@ describe('capacityVerdict', () => {
     expect(v.machine).toBe('X · 8 GB VRAM');
   });
 });
+
+describe('capacityVerdict with a model already running', () => {
+  const rec = { model: 'Qwen3.8-4B (distilled)', fit: 'comfortable', mode: 'gpu', budgetGB: 8, sizeGB: 2.8, why: 'A 4B for 8 GB cards' };
+  const hardware = { platform: 'linux', memoryGB: 16, gpu: { name: 'NVIDIA', vramGB: 8 } };
+  test('says nothing is left to download instead of naming a download', () => {
+    const ready = capacityVerdict({ hardware, recommendation: rec, ready: true });
+    expect(ready.detail).toMatch(/^A model is already running on this machine — nothing to download\./);
+    expect(ready.detail).not.toContain('GB to download');
+    expect(capacityVerdict({ hardware, recommendation: rec, ready: false }).detail).toMatch(/^About 2\.8 GB to download\./);
+  });
+});

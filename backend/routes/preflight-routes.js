@@ -234,4 +234,25 @@ router.get('/setup', async (req, res) => {
   }
 });
 
+/**
+ * GET /mind — is the mind a being will run on ready? THE SAME TEST as the flight check's
+ * substrate row (checkSubstrate: the resolved provider route reachable, its model loaded, and
+ * answering in words), so the door that opens a summoning and the flight check inside it can
+ * never disagree. It also loads the model, so the ceremony does not wait on a cold start.
+ */
+router.get('/mind', async (req, res) => {
+  try {
+    const row = await checkSubstrate();
+    res.json({
+      ready: row.status === 'pass',
+      detail: row.detail,
+      requirement: row.requirement,
+      switchTo: row.switchTo || null,
+    });
+  } catch (error) {
+    log.error('Mind check failed', { error: error.message });
+    res.status(500).json({ error: 'Could not check the model' });
+  }
+});
+
 export default router;

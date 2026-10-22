@@ -14,9 +14,12 @@
 // custody; a WITNESS is a sealed peer from an external platform, standing beside
 // the house and reached with the operator's own API key. A beginner meeting both
 // words for the first time meets them here, once, with the difference visible.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiCall } from '../../utils/http.js';
 import { capacityVerdict } from './capacity-verdict.js';
+import { readyModelLabel } from './local-servers.js';
+import { useMindCheck } from './use-mind-check.js';
+import { gateWords, needsMind } from './door-gate.js';
 import { ModelServerSetup } from './ModelServerSetup.jsx';
 import './FirstRunChoice.css';
 
@@ -32,8 +35,8 @@ export const FirstRunChoice = ({ onChoose }) => {
   // TOLD what their machine can hold, not stopped from trying. A probe that
   // fails leaves both doors open and says so.
   const [verdict, setVerdict] = useState(null);
-  // Whether a model is already served here (the setup card shows only when none is)
-  const [modelReady, setModelReady] = useState(true);
+  // The model a person can talk to now, named plainly (shown where the setup offer stood)
+  const [readyModel, setReadyModel] = useState(null);
   const [probe, setProbe] = useState(0);
 
   useEffect(() => {
@@ -41,18 +44,35 @@ export const FirstRunChoice = ({ onChoose }) => {
     // Bounded here too: the door never waits on the machine read forever. A
     // read that fails or runs out reads as UNREAD, and the setup is offered.
     apiCall('GET', '/api/v1/preflight/setup', { strictJson: true, signal: AbortSignal.timeout(SETUP_READ_MS) })
-      .then((setup) => { if (live) { setVerdict(capacityVerdict(setup)); setModelReady(Boolean(setup?.ready)); } })
-      .catch(() => { if (live) { setVerdict(capacityVerdict(null)); setModelReady(false); } });
+      .then((setup) => {
+        if (!live) return;
+        setVerdict(capacityVerdict(setup));
+        setReadyModel(readyModelLabel(setup));
+      })
+      .catch(() => { if (live) setVerdict(capacityVerdict(null)); });
     return () => { live = false; };
   }, [probe]);
+
+  // ONE TRUTH FOR "READY": the flight check's own substrate test, asked at the door. A summoning
+  // (or its rehearsal) never begins on a model that is not running, loaded and answering: the
+  // door it was pressed on holds it, says why, offers the setup, and lets it through by itself.
+  const [mind, recheckMind] = useMindCheck();
+  const [pending, setPending] = useState(null);
+  const gate = useRef(null);
+
+  const go = (path) => { setChosen(path); onChoose(path); };
+  useEffect(() => { if (pending && !chosen && mind.state === 'ready') go(pending); }, [pending, mind.state]);
+  useEffect(() => { if (pending) gate.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [pending]);
 
   // One click, one commitment — the second click cannot double-fire a phase
   // change while the first is still settling.
   const choose = (path) => {
     if (chosen) return;
-    setChosen(path);
-    onChoose(path);
+    if (needsMind(path) && mind.state !== 'ready') { setPending(path); return; }
+    go(path);
   };
+  const words = gateWords(mind, pending);
+  const afterSetup = () => { setProbe((n) => n + 1); recheckMind(); };
 
   return (
     <div className="firstrun">
@@ -137,11 +157,25 @@ export const FirstRunChoice = ({ onChoose }) => {
         {/* THE INSTALL STANDARD (2026-10-22): a machine that CAN host a neuma, or could not be read,
             and serves no model yet is offered the setup here, before the summoning; the birth's flight
             check offers the same setup again (BirthCeremony/preflight-model-setup.js). */}
-        {verdict && verdict.state !== 'insufficient' && !modelReady ? (
-          <div className="firstrun-setup harness-guide">
-            <p className="label-data">BEFORE YOU SUMMON · NO MODEL IS RUNNING ON THIS MACHINE YET</p>
-            <ModelServerSetup onDone={() => setProbe((n) => n + 1)} />
+        {mind.state === 'not' ? (
+          <div className={`firstrun-setup harness-guide${pending ? ' is-holding' : ''}`} ref={gate} role="region" aria-label="Before you summon">
+            <p className="label-data">{words.title}</p>
+            <p>{words.body}</p>
+            <ModelServerSetup onDone={afterSetup} />
+            <button type="button" className="sub-btn" onClick={recheckMind}>CHECK AGAIN</button>
           </div>
+        ) : null}
+        {mind.state === 'checking' && words ? (
+          <p className="firstrun-ready is-checking" role="status" ref={gate}>
+            <span className="label-data">{words.title}</span> {words.body}
+          </p>
+        ) : null}
+        {/* Ready: the model is named, and the next step is the plainest thing on the screen. */}
+        {mind.state === 'ready' ? (
+          <p className="firstrun-ready" role="status">
+            <span className="label-data">READY · {readyModel || 'THE MODEL'} ANSWERS ON THIS MACHINE</span>
+            {' '}Start talking now with <strong>Just use it</strong>, or summon a neuma.
+          </p>
         ) : null}
 
         <button
