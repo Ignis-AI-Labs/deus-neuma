@@ -19,6 +19,8 @@ import path from 'node:path';
 // the packaged app's data root (electron/backend-spawn.cjs), so the app finds what this installs
 process.env.NEUMA_DATA_ROOT ||= path.join(os.homedir(), '.neuma', 'data');
 process.env.NEUMA_VAULT_ROOT ||= path.join(os.homedir(), '.neuma', 'vault');
+// the install log is for a person: the backend's own info lines (colour codes and all) stay out of it
+process.env.LOG_LEVEL ||= 'error';
 
 const M = await import('../services/managed-ollama.js');
 const homeAt = process.argv.indexOf('--home');
