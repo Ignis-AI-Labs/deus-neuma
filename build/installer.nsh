@@ -95,7 +95,6 @@ Var CbStartMenu
 Var CbDesktop
 Var CbStartup
 Var ModelHomeField
-Var ComponentsSeen
 Var PfDone
 Var PfOS
 Var PfRam
@@ -249,7 +248,7 @@ Var PfBold
     ${If} $PfOnline == 1
       StrCpy $3 "Connected: ready for the model download."
     ${Else}
-      StrCpy $3 "Not connected. Deus Neuma installs; the model download waits until you are online."
+      StrCpy $3 "Not connected now. Setup still tries the model; if it cannot, Deus Neuma offers it later."
     ${EndIf}
     ${DnRow} 95u "Internet" "$3"
 
@@ -276,13 +275,8 @@ Var PfBold
 
   Function ComponentsCreate
     !insertmacro MUI_HEADER_TEXT "Components" "Choose what to install with Deus Neuma."
-    ; offline, the model cannot download now: it starts unchecked (the app offers it later)
-    ${If} $ComponentsSeen != 1
-      ${If} $PfOnline != 1
-        StrCpy $CompModel ${BST_UNCHECKED}
-      ${EndIf}
-      StrCpy $ComponentsSeen 1
-    ${EndIf}
+    ; The model is always offered checked: a person who knows nothing still ends up with one. Even
+    ; offline (or when the System check could not run) setup tries; if it cannot, the app offers it.
     nsDialogs::Create 1018
     Pop $0
 
