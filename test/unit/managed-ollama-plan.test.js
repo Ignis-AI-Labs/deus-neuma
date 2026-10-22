@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
-  OLLAMA_ALT_ENDPOINT, OLLAMA_ENDPOINT, OLLAMA_VERSION, humanBytes, installPlan, ollamaAssetFor, ollamaModelRef,
+  OLLAMA_ALT_ENDPOINT, OLLAMA_ENDPOINT, OLLAMA_VERSION, humanBytes, installPlan, managedEndpoints, ollamaAssetFor, ollamaModelRef,
   ollamaPullable, pullProgress, versionAtLeast,
 } from '../../backend/services/managed-ollama-plan.js';
 
@@ -80,6 +80,16 @@ describe('the plan for each starting point', () => {
     expect(plan.server).toBe('download');
     expect(plan.endpoint).toBe(OLLAMA_ALT_ENDPOINT);
     expect(plan.notes[0]).toMatch(/running here, too old/);
+  });
+  test('a moved endpoint moves the platform\'s server and its next port; anything but loopback http is ignored', () => {
+    expect(managedEndpoints()).toEqual({ usual: OLLAMA_ENDPOINT, alt: OLLAMA_ALT_ENDPOINT });
+    const moved = managedEndpoints('http://localhost:47434/');
+    expect(moved).toEqual({ usual: 'http://127.0.0.1:47434', alt: 'http://127.0.0.1:47435' });
+    for (const bad of ['http://10.0.0.5:47434', 'https://127.0.0.1:47434', 'http://127.0.0.1:80', 'nonsense']) {
+      expect(managedEndpoints(bad)).toEqual({ usual: OLLAMA_ENDPOINT, alt: OLLAMA_ALT_ENDPOINT });
+    }
+    expect(installPlan(base({ endpoints: moved })).endpoint).toBe('http://127.0.0.1:47434');
+    expect(installPlan(base({ endpoints: moved, running: { up: true, version: '0.24.0', models: [] } })).endpoint).toBe('http://127.0.0.1:47435');
   });
   test('a running Ollama whose version cannot be read is not trusted either', () => {
     const plan = installPlan(base({ running: { up: true, version: null, models: [] } }));

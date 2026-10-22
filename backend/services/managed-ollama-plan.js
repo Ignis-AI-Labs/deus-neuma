@@ -27,6 +27,18 @@ export const OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
 export const OLLAMA_ALT_ENDPOINT = 'http://127.0.0.1:11435';
 const RELEASE = `https://github.com/ollama/ollama/releases/download/v${OLLAMA_VERSION}`;
 
+/**
+ * The platform's own server endpoints: the usual one, and the next port for when the usual one
+ * is held by an Ollama the platform will not use. An override (NEUMA_OLLAMA_ENDPOINT, read by
+ * managed-ollama.js) moves both; anything but a loopback http URL is ignored. Pure.
+ */
+export const managedEndpoints = (override) => {
+  const m = /^http:\/\/(127\.0\.0\.1|localhost):(\d{2,5})\/?$/.exec(String(override || '').trim());
+  const port = m ? Number(m[2]) : NaN;
+  if (!(port >= 1024 && port < 65535)) return Object.freeze({ usual: OLLAMA_ENDPOINT, alt: OLLAMA_ALT_ENDPOINT });
+  return Object.freeze({ usual: `http://127.0.0.1:${port}`, alt: `http://127.0.0.1:${port + 1}` });
+};
+
 const ASSETS = Object.freeze({
   'linux-x64': Object.freeze({
     name: 'ollama-linux-amd64.tar.zst',
@@ -101,9 +113,10 @@ export const pullableChoice = (recommendation) => {
  * @param {{platform: string, arch: string, recommendation: object|null,
  *   running: {up: boolean, version: string|null, models: string[]},
  *   system: {bin: string, version: string|null}|null, managedInstalled: boolean, freeBytes: number|null}} machine
- *   running: what answers on the usual port; system: an Ollama installed outside the platform
+ *   running: what answers on the usual port; system: an Ollama installed outside the platform;
+ *   endpoints: the platform's own usual + next endpoint (managedEndpoints)
  */
-export const installPlan = ({ platform, arch, recommendation: matched, running, system, managedInstalled, freeBytes }) => {
+export const installPlan = ({ platform, arch, recommendation: matched, running, system, managedInstalled, freeBytes, endpoints = managedEndpoints() }) => {
   const { choice: recommendation, note: choiceNote } = pullableChoice(matched);
   const ref = ollamaModelRef(recommendation);
   if (!ref) {
@@ -120,7 +133,7 @@ export const installPlan = ({ platform, arch, recommendation: matched, running, 
     return Object.freeze({ supported: false, reason: `There is no Ollama build for ${platform} on ${arch}. Install a model server yourself (Ollama ${MIN_OLLAMA_VERSION} or newer, LM Studio or llama.cpp), then RECHECK.` });
   }
   // the usual port is taken by an Ollama the platform will not use: its own answers on the next one
-  const endpoint = running?.up && !runningOk ? OLLAMA_ALT_ENDPOINT : OLLAMA_ENDPOINT;
+  const endpoint = running?.up && !runningOk ? endpoints.alt : endpoints.usual;
   const haveModel = runningOk && (running.models || []).some((m) => m.toLowerCase() === ref.toLowerCase());
   const modelBytes = Math.round((Number(recommendation.sizeGB) || 0) * GB);
   const steps = [];

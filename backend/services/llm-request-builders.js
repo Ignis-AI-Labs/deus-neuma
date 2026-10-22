@@ -209,7 +209,12 @@ export const buildStreamBody = (config, messages, options) => {
         // request with `tools` present returns message.tool_calls, without it
         // the model can only talk about acting.
         ...(options.tools?.length ? { tools: options.tools } : {}),
-        options: { temperature: temp, num_predict: maxTok }
+        // the window this model is served at (model-capabilities.js OLLAMA_SERVED_CONTEXT):
+        // unasked, Ollama picks one by the GPU and cuts a longer prompt silently
+        options: {
+          temperature: temp, num_predict: maxTok,
+          ...(Number.isFinite(options.contextWindow) && options.contextWindow > 0 ? { num_ctx: options.contextWindow } : {}),
+        }
       };
 
     case 'anthropic': {

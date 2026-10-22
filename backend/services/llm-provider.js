@@ -275,7 +275,13 @@ export const createStreamRequest = async (messages, options = {}) => {
   const headers = buildHeaders(config);
   // A close held from calling (close-prefix.js): on the local wire the tool-call opener is banned.
   const ban = options.banToolCalls && isLocalLlamaWire(config) ? await toolCallBan({ ...config, model }) : null;
-  const body = buildStreamBody(config, messages, { ...effectiveOptions, model, ...(ban ? { logitBias: ban } : {}) });
+  // An Ollama is told its window on every request (model-capabilities.js OLLAMA_SERVED_CONTEXT)
+  const ollamaWindow = dialectOf(config) === 'ollama'
+    ? (await getRouteCapabilities(options.route || null).catch(() => null))?.contextWindow ?? null
+    : null;
+  const body = buildStreamBody(config, messages, {
+    ...effectiveOptions, model, ...(ban ? { logitBias: ban } : {}), ...(ollamaWindow ? { contextWindow: ollamaWindow } : {}),
+  });
 
   // LoRA zero-guard (llama-server wire): per-request `lora` SETS the slot's
   // adapter scales and the slot KEEPS them for later requests that omit the

@@ -208,6 +208,13 @@ describe('model-capabilities.js', () => {
       expect(out.contextWindow).toBe(8192);
       expect(out.parameterSize).toBe('8.0B');
     });
+
+    it('a trained window above the served one reads as the served window; a smaller one stays', () => {
+      expect(interpretOllamaShow({ model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(65536);
+      expect(interpretOllamaShow({ model_info: { 'qwen3.context_length': 40960 } }).contextWindow).toBe(40960);
+      // a window pinned in the Modelfile is the operator's decision and stands
+      expect(interpretOllamaShow({ parameters: 'num_ctx 131072', model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(131072);
+    });
   });
 
   describe('promptProfileFor() — NITE-004 (#399) prompt-surface rows', () => {

@@ -4,7 +4,8 @@
 // One job at a time, observed by polling (GET /api/v1/model-server/status):
 //   download → the pinned Ollama build, resumable, SHA-256 checked before anything runs it
 //   unpack   → under <data root>/model-server/ollama (no admin rights, nothing system-wide)
-//   start    → `ollama serve` on 127.0.0.1:11434, models kept under <data root>/model-server/models
+//   start    → `ollama serve` on 127.0.0.1:11434 (NEUMA_OLLAMA_ENDPOINT moves it), models kept under
+//              <data root>/model-server/models
 //   pull     → the model the capacity check recommends, straight from Hugging Face (Ollama
 //              verifies every layer it pulls)
 //   adopt    → the platform's mind becomes that server and model, persisted (provider-choice.js)
@@ -22,33 +23,37 @@ import { spawn, spawnSync } from 'node:child_process';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getDataRoot } from './data-root.js';
+import { managedRecordPath, readManagedRecord } from './managed-ollama-record.js';
 import { createLogger } from './logger.js';
 import { getSetupStatus } from './substrate-setup.js';
 import { saveProviderChoice } from './provider-choice.js';
 import { setConfig } from './llm-provider.js';
+import { OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
 import {
-  MIN_OLLAMA_VERSION, OLLAMA_ENDPOINT, OLLAMA_VERSION, installPlan, ollamaAssetFor, pullProgress, versionAtLeast,
+  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, ollamaAssetFor, pullProgress, versionAtLeast,
 } from './managed-ollama-plan.js';
 
 const log = createLogger('ManagedOllama');
 
+// impure — the platform's own endpoints, read at call time: 127.0.0.1:11434 unless
+// NEUMA_OLLAMA_ENDPOINT moves the platform's server to a port of its own
+const endpoints = () => managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT);
+
 // impure — read at call time (packaged vs dev data roots)
 const root = () => path.join(getDataRoot(), 'model-server');
-const recordPath = () => path.join(root(), 'managed.json');
+const recordPath = managedRecordPath;
 // Where the server and the models are kept: the folder the person chose in the installer (kept in
 // the record), else beside the record. Models are large, so this is the person's choice.
 let chosenHome = null;
 const serverHome = () => chosenHome || readRecordQuiet()?.home || root();
-const readRecordQuiet = () => { try { return JSON.parse(fs.readFileSync(recordPath(), 'utf8')); } catch { return null; } };
+const readRecordQuiet = readManagedRecord;
 const managedBin = () => {
   const asset = ollamaAssetFor(process.platform, process.arch);
   return asset ? path.join(serverHome(), 'ollama', asset.bin) : null;
 };
 
 /** The record of what the platform set up, or null. impure */
-export const readRecord = () => {
-  try { return JSON.parse(fs.readFileSync(recordPath(), 'utf8')); } catch { return null; }
-};
+export const readRecord = readManagedRecord;
 const writeRecord = async (record) => {
   await fsp.mkdir(root(), { recursive: true });
   const tmp = `${recordPath()}.${process.pid}.tmp`;
@@ -70,7 +75,7 @@ export const findSystemOllama = () => {
 };
 
 /** What answers at an Ollama endpoint: up, its version, the models it holds. impure */
-export const serverState = async (endpoint = OLLAMA_ENDPOINT) => {
+export const serverState = async (endpoint = endpoints().usual) => {
   try {
     const v = await fetch(`${endpoint}/api/version`, { signal: AbortSignal.timeout(2000) });
     if (!v.ok) return { up: false, version: null, models: [] };
@@ -82,7 +87,7 @@ export const serverState = async (endpoint = OLLAMA_ENDPOINT) => {
 };
 
 /** Is an Ollama answering at this endpoint? impure */
-export const ollamaUp = async (endpoint = OLLAMA_ENDPOINT) => (await serverState(endpoint)).up;
+export const ollamaUp = async (endpoint = endpoints().usual) => (await serverState(endpoint)).up;
 
 /** Free bytes on the disk that holds the data root. impure */
 const freeBytes = async () => {
@@ -99,7 +104,8 @@ export const currentPlan = async () => {
     platform: process.platform,
     arch: process.arch,
     recommendation: setup.recommendation,
-    running: await serverState(OLLAMA_ENDPOINT),
+    running: await serverState(endpoints().usual),
+    endpoints: endpoints(),
     system: findSystemOllama(),
     managedInstalled: Boolean(record?.managed && record.bin && fs.existsSync(record.bin)),
     freeBytes: await freeBytes(),
@@ -159,7 +165,7 @@ const run = async (plan, signal) => {
   if (!versionAtLeast(version, MIN_OLLAMA_VERSION)) {
     throw new Error(`the model server answering at ${endpoint} is Ollama ${version || '(unknown)'}, older than ${MIN_OLLAMA_VERSION}; it cannot run this model`);
   }
-  if (!plan.model.ready) await pullModel(plan.model.ref, signal, endpoint);
+  if (!plan.model.ready) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
   update({ step: 'adopt', line: 'Making it the platform\'s model server' });
   const choice = { provider: 'ollama', endpoint, model: plan.model.ref };
   setConfig(choice);
@@ -185,7 +191,7 @@ const ensureManagedServer = async (plan, signal) => {
   await fsp.mkdir(serverHome(), { recursive: true });
   const archive = path.join(serverHome(), asset.name);
   update({ step: 'download', completed: 0, total: asset.size, line: `Downloading Ollama ${OLLAMA_VERSION}` });
-  await downloadVerified(asset, archive, signal);
+  await obtainArchive(asset, archive, signal);
   update({ step: 'unpack', completed: 0, total: 0, line: 'Unpacking' });
   const dir = path.join(serverHome(), 'ollama');
   const tmp = `${dir}.unpacking`;
@@ -198,6 +204,29 @@ const ensureManagedServer = async (plan, signal) => {
   if (process.platform !== 'win32') await fsp.chmod(bin, 0o755);
   await fsp.rm(archive, { force: true });
   return bin;
+};
+
+/** The SHA-256 of a file on disk, read as a stream. impure */
+const fileSha256 = async (file) => {
+  const hash = createHash('sha256');
+  await pipeline(fs.createReadStream(file), new Transform({ transform(c, _e, cb) { hash.update(c); cb(); } }));
+  return hash.digest('hex');
+};
+
+/**
+ * The pinned archive, on disk. An archive already there is kept until its unpack succeeds, so a
+ * retry after a later step failed never downloads it again: one whose SHA-256 matches the pin is
+ * used as it is; one that does not is replaced; a partial download resumes. impure
+ * @returns {Promise<'kept'|'downloaded'>}
+ */
+export const obtainArchive = async (asset, archive, signal) => {
+  if (fs.existsSync(archive)) {
+    update({ line: 'Checking the Ollama download already on this disk' });
+    if (await fileSha256(archive) === asset.sha256) return 'kept';
+    await fsp.rm(archive, { force: true });
+  }
+  await downloadVerified(asset, archive, signal);
+  return 'downloaded';
 };
 
 /** Download with resume; refuse anything that does not hash to the pinned SHA-256. impure */
@@ -251,12 +280,13 @@ const unpack = async (asset, archive, dir) => {
 
 // ── serve + pull ─────────────────────────────────────────────────────────────
 /** Start `ollama serve` as this backend's child and wait for it to answer. impure */
-const startServer = async (bin, managed, endpoint = OLLAMA_ENDPOINT) => {
+const startServer = async (bin, managed, endpoint = endpoints().usual) => {
   if (await ollamaUp(endpoint)) return;
   if (!bin) throw new Error('no Ollama to start');
   await fsp.mkdir(serverHome(), { recursive: true });
   const out = fs.openSync(path.join(serverHome(), 'ollama.log'), 'a');
-  const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, '') };
+  // its default window is the one every request names, so no request reloads the model
+  const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), OLLAMA_CONTEXT_LENGTH: String(OLLAMA_SERVED_CONTEXT) };
   if (managed) env.OLLAMA_MODELS = readRecordQuiet()?.modelsDir || path.join(serverHome(), 'models');
   child = spawn(bin, ['serve'], { env, stdio: ['ignore', out, out], windowsHide: true });
   child.on('exit', (code) => { log.info('ollama serve exited', { code }); child = null; });
@@ -269,8 +299,14 @@ const startServer = async (bin, managed, endpoint = OLLAMA_ENDPOINT) => {
 };
 
 /** Pull a model through Ollama, reporting bytes across every layer. impure */
-const pullModel = async (ref, signal, endpoint = OLLAMA_ENDPOINT) => {
-  update({ step: 'pull', completed: 0, total: 0, line: `Downloading ${ref}` });
+const pullModel = async (ref, signal, endpoint = endpoints().usual, name = ref) => {
+  const downloading = `Downloading the model, ${name}`;
+  // Ollama's own words are layer digests ("pulling 3f2a1b..."); a person is told what is happening
+  const said = (status) => (/^pulling/.test(status) ? downloading
+    : /verifying/.test(status) ? `Checking the download of ${name}`
+      : /writing manifest|removing/.test(status) ? `Finishing ${name}`
+        : status === 'success' ? `${name} is downloaded` : downloading);
+  update({ step: 'pull', completed: 0, total: 0, line: downloading });
   const res = await fetch(`${endpoint}/api/pull`, {
     method: 'POST', signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: ref, stream: true }),
   });
@@ -289,7 +325,7 @@ const pullModel = async (ref, signal, endpoint = OLLAMA_ENDPOINT) => {
       if (p.total) layers.set(p.status, { total: p.total, completed: p.completed || 0 });
       if (p.status === 'success') finished = true;
       const sum = [...layers.values()].reduce((a, l) => ({ total: a.total + l.total, completed: a.completed + l.completed }), { total: 0, completed: 0 });
-      update({ total: sum.total, completed: sum.completed, line: p.status });
+      update({ total: sum.total, completed: sum.completed, line: said(p.status) });
     }
   }
   if (!finished) throw new Error('the model download ended before it finished; start again to resume it');
@@ -299,7 +335,7 @@ const pullModel = async (ref, signal, endpoint = OLLAMA_ENDPOINT) => {
 export const startManagedAtBoot = async () => {
   const record = readRecord();
   if (!record?.managed || !record.bin || !fs.existsSync(record.bin)) return;
-  const endpoint = record.endpoint || OLLAMA_ENDPOINT;
+  const endpoint = record.endpoint || endpoints().usual;
   if (await ollamaUp(endpoint)) return;
   try {
     await startServer(record.bin, true, endpoint);

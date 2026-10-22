@@ -7,6 +7,7 @@
 
 import { llamaToolCapabilities } from './llama-tool-capabilities.js';
 import { lmStudioDownloadedCaps } from './local-server-models.js';
+import { OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
 
 const KNOWN_MODELS = Object.freeze({
   // OpenAI
@@ -328,7 +329,7 @@ export const interpretOllamaShow = (data) => {
   const pinned = (data?.parameters || '').match(/num_ctx\s+(\d+)/);
   const archCtx = Object.entries(data?.model_info || {})
     .find(([k]) => k.endsWith('.context_length'))?.[1];
-  const ctx = pinned ? parseInt(pinned[1], 10) : archCtx;
+  const ctx = pinned ? parseInt(pinned[1], 10) : Number.isFinite(archCtx) ? Math.min(archCtx, OLLAMA_SERVED_CONTEXT) : archCtx;
   const caps = Array.isArray(data?.capabilities) ? data.capabilities : null;
   const vision = caps ? caps.includes('vision') : (data?.projector_info ? true : null);
   return Object.freeze({

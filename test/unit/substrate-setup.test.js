@@ -14,6 +14,13 @@ const gpu = (vramGB) => ({ gpu: { name: 'NVIDIA', vramGB }, memory: { totalGB: 6
 const cpu = (totalGB, os = 'linux') => ({ gpu: null, memory: { totalGB }, platform: { os } });
 
 describe('recommendSubstrate (pure)', () => {
+  test('a budget cap lowers the recommendation and never raises it', () => {
+    expect(recommendSubstrate(gpu(96), { capGB: 12 }).model).toBe('Qwen3.8-4B (distilled)');
+    expect(recommendSubstrate(gpu(96), { capGB: 12 }).budgetGB).toBe(12);
+    expect(recommendSubstrate(gpu(8), { capGB: 96 }).model).toBe(recommendSubstrate(gpu(8)).model);
+    expect(recommendSubstrate(gpu(96), { capGB: null }).model).toBe(recommendSubstrate(gpu(96)).model);
+  });
+
   // Design note, 2026-10-06: […] — the newest Qwen at every size the 2026-10-06 ladder
   // proved (scripts/min-spec-ladder.mjs), sized at the served 65536 tokens.
   test('every card class gets the newest model it can hold', () => {

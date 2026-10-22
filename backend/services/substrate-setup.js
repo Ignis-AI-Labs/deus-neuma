@@ -12,6 +12,8 @@ import { resolveUsableCredential } from './oauth-token-broker.js';
 import { discoverProviders } from './provider-discovery.js';
 import { servableModelIds } from './local-server-models.js';
 import { withDeadline } from './bounded-exec.js';
+import { managedEndpoints } from './managed-ollama-plan.js';
+import { readManagedRecord } from './managed-ollama-record.js';
 
 const DISCOVERY_BUDGET_MS = 4000;
 
@@ -118,7 +120,14 @@ const optionOf = ({ model, quant, sizeGB, released, checked, source }) => Object
  *   fit: comfortable | tight | insufficient · mode: gpu | unified | cpu
  *   options: every choice that fits, newest first — `checked` = summon-checked
  */
-export const recommendSubstrate = (profile) => {
+/**
+ * The recommendation for a machine. Pure.
+ * @param {object} profile - getSubstrateProfile()
+ * @param {{capGB?: number|null}} [options] - capGB: an upper bound on the model budget (a GPU
+ *   shared with other work, or an operator who wants a lighter model); never raises the budget
+ */
+export const recommendSubstrate = (profile, { capGB = null } = {}) => {
+  const cap = Number.isFinite(capGB) && capGB > 0 ? capGB : Infinity;
   const gpu = profile?.gpu || null;
   const ramGB = Math.round(profile?.memory?.totalGB || 0);
   const isMac = /darwin|mac/i.test(profile?.platform?.os || '');
@@ -133,11 +142,11 @@ export const recommendSubstrate = (profile) => {
   // is the honest floor, and the card still shows in the flight check.
   const gpuSized = gpu && Number.isFinite(gpu.vramGB) && gpu.vramGB > 0;
   const accelerated = gpu?.unified || (!gpu && isMac)
-    ? { mode: 'unified', budgetGB: Math.floor(ramGB * UNIFIED_SHARE) }
+    ? { mode: 'unified', budgetGB: Math.min(Math.floor(ramGB * UNIFIED_SHARE), cap) }
     : gpuSized
-      ? { mode: 'gpu', budgetGB: gpu.vramGB }
+      ? { mode: 'gpu', budgetGB: Math.min(gpu.vramGB, cap) }
       : null;
-  const onCpu = { mode: 'cpu', budgetGB: Math.min(Math.max(ramGB - OS_RESERVE_GB, 0), CPU_BUDGET_CAP_GB) };
+  const onCpu = { mode: 'cpu', budgetGB: Math.min(Math.max(ramGB - OS_RESERVE_GB, 0), CPU_BUDGET_CAP_GB, cap) };
 
   // A small GPU must never make the verdict WORSE than the same box with no GPU
   // at all: an 8 GiB card beside 64 GiB of RAM is still a machine that can run
@@ -212,9 +221,16 @@ const endpointFor = async (providerId, fallback) => {
  * unactionable advice.
  * @returns {Promise<{ollama:{running:boolean,models:string[],endpoint:string}, lmStudio:{running:boolean,models:string[],available:string[],endpoint:string}, discovered:Array<object>}>}
  */
+// pure — two addresses name one server (localhost and 127.0.0.1 are one machine)
+const sameServer = (a, b) => {
+  const fold = (e) => String(e || '').replace(/\/+$/, '').replace('//localhost', '//127.0.0.1');
+  return fold(a) === fold(b);
+};
+
 export const probeProviders = async () => {
   const [ollamaBase, lmStudioBase] = await Promise.all([
-    endpointFor('ollama', 'http://localhost:11434'),
+    // the platform's own server's address (NEUMA_OLLAMA_ENDPOINT moves it), unless one is configured
+    endpointFor('ollama', process.env.NEUMA_OLLAMA_ENDPOINT ? managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT).usual : 'http://localhost:11434'),
     endpointFor('lm-studio', 'http://localhost:1234'),
   ]);
   // The DYNAMIC sweep beside the two configured probes (Bastien, 2026-08-08:
@@ -229,6 +245,15 @@ export const probeProviders = async () => {
     // then; the outer deadline is the backstop if a probe itself overruns.
     withDeadline(discoverProviders({ budgetMs: DISCOVERY_BUDGET_MS }), DISCOVERY_BUDGET_MS + 2500, []),
   ]);
+  // The server the platform set up itself is always looked for, at the address its record
+  // names: when an outdated Ollama holds the usual port, the platform's own answers on the
+  // next one, which the time-boxed sweep may not reach on a busy machine.
+  const own = readManagedRecord()?.endpoint || null;
+  const found = [...(discovered || [])];
+  if (own && ![ollamaBase, ...found.map((d) => d.endpoint)].some((e) => sameServer(e, own))) {
+    const tags = await probe(probeUrl(own, '/api/tags'));
+    if (tags !== null) found.push({ provider: 'ollama', endpoint: own, models: parseOllamaTags(tags) });
+  }
   return {
     ollama: { running: ollama !== null, models: parseOllamaTags(ollama), endpoint: ollamaBase },
     // `models` = loaded (what the flight check may adopt); `available` = every
@@ -238,7 +263,7 @@ export const probeProviders = async () => {
       available: lmStudio !== null ? await servableModelIds(lmStudioBase, lmStudio) : [],
     },
     // Every local LLM server on ANY port: [{provider, endpoint, models}].
-    discovered,
+    discovered: found,
   };
 };
 
@@ -259,7 +284,8 @@ export const getSetupStatus = async () => {
       memoryGB: Math.round(profile.memory.totalGB),
       platform: profile.platform.os,
     },
-    recommendation: recommendSubstrate(profile),
+    // NEUMA_MODEL_BUDGET_GB caps the budget (a shared GPU, or a lighter model by choice)
+    recommendation: recommendSubstrate(profile, { capGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null }),
     providers,
     ready,
   };
