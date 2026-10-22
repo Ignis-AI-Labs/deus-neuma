@@ -124,7 +124,7 @@ export const FirstRunChoice = ({ onChoose }) => {
           </button>
         </div>
 
-        {/* THE STANDARD (Design note, 2026-10-22: a machine that CAN host a neuma but serves no model yet is
+        {/* THE INSTALL STANDARD (2026-10-22): a machine that CAN host a neuma but serves no model yet is
             offered the setup here, before the summoning, not told at the birth's flight check. */}
         {verdict && (verdict.state === 'ok' || verdict.state === 'cpu') && !modelReady ? (
           <div className="firstrun-setup harness-guide">

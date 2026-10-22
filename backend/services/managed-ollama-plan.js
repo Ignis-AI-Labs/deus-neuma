@@ -1,7 +1,7 @@
 // managed-ollama-plan — what the platform installs for a person who has no model server,
 // decided from the machine alone. Pure: no I/O; managed-ollama.js does the work.
 //
-// THE STANDARD (Design note, 2026-10-22: an installer checks what the person needs, says what is
+// THE INSTALL STANDARD (2026-10-22): an installer checks what the person needs, says what is
 // missing, and installs it for them when it can. A first run with no local model server used to
 // end at […], a dead end for anyone who has never heard of
 // one. Now the platform offers to set one up: Ollama (it drives NVIDIA and AMD cards and the

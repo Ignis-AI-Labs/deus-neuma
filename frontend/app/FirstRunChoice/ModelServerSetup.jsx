@@ -1,5 +1,5 @@
 // ModelServerSetup — when this machine has no model server ready, offer to set one up and do it.
-// THE STANDARD (Design note, 2026-10-22: say what is missing, then install it for the person. The plan
+// THE INSTALL STANDARD (2026-10-22): say what is missing, then install it for the person. The plan
 // (what downloads, how big, whether the disk holds it) is read from this machine by
 // GET /api/v1/model-server/plan; the work runs in the backend (managed-ollama.js) and this card
 // polls its progress. Done → the parent re-reads the machine and the server shows READY.
