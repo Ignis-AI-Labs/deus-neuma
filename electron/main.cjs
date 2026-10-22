@@ -23,6 +23,11 @@ const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
 
+// Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
+// shows an app's notices (the update alert) only under its shortcut's ID, and "open at login" is the
+// Run entry by this name, the same one the installer's […] writes.
+if (process.platform === 'win32') app.setAppUserModelId('ai.neuma.app');
+
 const deskWindows = createDeskWindows({
   getOrigin,
   announceStillRunning: () => tray.announceStillRunning(),

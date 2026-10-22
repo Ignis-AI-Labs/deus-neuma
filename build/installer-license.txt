@@ -4,11 +4,11 @@ WHAT THIS NEEDS
 - 64-bit Windows 10 or 11.
 - Adults only: you must be at least 18 and of legal age where you live.
 - A graphics card with 8 GB of memory or more (24 GB recommended). Without one, a computer with 16 GB of RAM or more runs a smaller model on the processor, more slowly.
-- About 5 GB free for the app, plus room for the model it downloads on first run: 2.7 GB to about 33 GB, chosen to fit this computer.
-- An internet connection for that first download.
+- About 5 GB free for the app, plus room for the model setup downloads: 2.7 GB to about 33 GB, chosen to fit this computer.
+- An internet connection for that download.
 
-WHAT HAPPENS ON FIRST RUN
-On first run, Deus Neuma checks this computer, tells you what it can run, and sets up the local model server and the right model for you. Anything that needs your permission asks first.
+WHAT SETUP DOES
+This setup checks this computer first and shows what it found. You choose the install folder, the components, where the models are kept, and whether Deus Neuma starts with Windows. Setup then installs everything you chose, including the local model server and the model that fits this computer. If the model step cannot finish, Deus Neuma offers it again on first run.
 
 To install, read and accept the End User License Agreement below.
 

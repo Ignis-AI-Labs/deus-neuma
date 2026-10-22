@@ -229,10 +229,15 @@ const downloadVerified = async (asset, dest, signal) => {
   await fsp.rename(part, dest);
 };
 
+// Windows' own bsdtar by its full path: a GNU tar earlier on the PATH (Git for Windows) cannot read a zip
+const TAR = process.platform === 'win32'
+  ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+  : 'tar';
+
 /** Unpack with the system's own tar (Linux tar, Windows 10+ bsdtar). impure */
 const unpack = async (asset, archive, dir) => {
   const tarRun = (args, input) => new Promise((resolve, reject) => {
-    const p = spawn('tar', args, { stdio: [input ? 'pipe' : 'ignore', 'ignore', 'pipe'], windowsHide: true });
+    const p = spawn(TAR, args, { stdio: [input ? 'pipe' : 'ignore', 'ignore', 'pipe'], windowsHide: true });
     let err = '';
     p.stderr.on('data', (d) => { err += d; });
     p.on('error', reject);

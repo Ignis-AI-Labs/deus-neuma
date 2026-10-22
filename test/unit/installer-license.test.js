@@ -29,7 +29,7 @@ describe('the installer says what it needs before anything installs', () => {
     const at = (s) => committed.indexOf(s);
     expect(at('WHAT THIS NEEDS')).toBeGreaterThan(-1);
     expect(at('Adults only: you must be at least 18')).toBeGreaterThan(at('WHAT THIS NEEDS'));
-    expect(at('NEUMA END USER LICENSE AGREEMENT')).toBeGreaterThan(at('WHAT HAPPENS ON FIRST RUN'));
+    expect(at('NEUMA END USER LICENSE AGREEMENT')).toBeGreaterThan(at('WHAT SETUP DOES'));
     // every EULA section heading made it through
     for (const h of read('docs/legal/EULA.md').match(/^## .+$/gm)) {
       expect(committed, h).toContain(asciiSafe(h.slice(3).toUpperCase()));

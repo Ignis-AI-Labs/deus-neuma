@@ -1,29 +1,53 @@
 ; installer.nsh - the Deus Neuma setup wizard for Windows (electron-builder includes build/installer.nsh).
 ;
-; THE INSTALL STANDARD (2026-10-22): a classic wizard, start to finish. The person sees every step,
-; chooses every location and every component, and nothing is ever asked of them in a terminal. The
-; installer, not the person, provides what the app needs. The pages, in order:
+; THE INSTALL STANDARD (2026-10-22), for every Windows installer Ignis ships: ONE setup .exe, built and
+; signed by us, that a person double-clicks. A classic wizard, start to finish: the person sees every
+; step, chooses every location and every option, and nothing is ever asked of them in a terminal. The
+; installer, not the person, checks the PC and provides what the app needs. The pages, in order:
 ;   Welcome
 ;   What it needs + License (build/installer-license.txt: the requirements, then the EULA, 18+)
 ;   Install for: just me / everyone on this PC        (electron-builder)
-;   Install location, with Browse                      (electron-builder)
-;   Components: Deus Neuma (required), the local model server and the model for this PC,
-;               the benchmarks kit, a desktop shortcut
+;   Install location, with Browse: ...\Programs\Deus Neuma by default
+;   System check: Windows, memory, graphics card, disk, a model server already here, the internet;
+;                 each line says what was found and what setup will do about it (installer-preflight.ps1)
+;   Components: Deus Neuma (required), the local model server and the model for this PC, the benchmarks
+;               kit, a Start menu entry, a desktop shortcut, start Deus Neuma with Windows
 ;   Model location, with Browse (only when the model is chosen): models can be 30+ GB
 ;   Ready to install: everything chosen, before anything is written
 ;   Installing, with every step shown; the model step runs the app's own runtime (NEUMA.exe as
 ;     Node) with backend/cli/setup-model-server.mjs --home <the chosen folder>, the same code the
 ;     app's first run uses. If it cannot finish, the install still succeeds and the app offers it.
-;   Finish, with Launch Deus Neuma
-; An update (electron-updater, --updated) skips every page and installs no component again.
-; The uninstaller asks before it removes the model folder, and keeps it by default.
+;   Finish, with Launch Deus Neuma (checked)
+; Every choice is kept (HKCU\Software\Deus Neuma), so an update (electron-updater, --updated) shows no
+; page, installs no component again and keeps them. The uninstaller removes the shortcuts and the
+; start-with-Windows entry, and asks before it removes the model folder (kept by default).
 
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
 !include "x64.nsh"
 !include "FileFunc.nsh"
+!include "TextFunc.nsh"
+!include "WinVer.nsh"
 
 !define DN_REG "Software\Deus Neuma"
+!define DN_RUN "Software\Microsoft\Windows\CurrentVersion\Run"
+
+; The folder the person sees is the trademark: ...\Programs\Deus Neuma, not the internal product name
+; (NEUMA names the app's data folder and keychain entry, electron-builder.yml). This file is read before
+; electron-builder's own script, so every default location, and the "add the app's folder to a folder
+; the person browsed to" rule, use it. Nothing reads an install from this name: an installed copy is
+; found by its registry entry.
+!ifdef APP_FILENAME
+  !undef APP_FILENAME
+!endif
+!define APP_FILENAME "Deus Neuma"
+
+!ifndef BUILD_UNINSTALLER
+  ; the Finish page (electron-builder inserts it, with its own launch-as-the-person function)
+  !define MUI_FINISHPAGE_TITLE "Deus Neuma is installed"
+  !define MUI_FINISHPAGE_TEXT "Deus Neuma ${VERSION} is installed on this PC.$\r$\n$\r$\nDeus Neuma is for adults only (18+).$\r$\n$\r$\nClick Finish to close this wizard."
+  !define MUI_FINISHPAGE_RUN_TEXT "Launch Deus Neuma"
+!endif
 
 ; show the install details, so every step (the model download above all) is seen
 !macro customHeader
@@ -37,76 +61,245 @@
   BrandingText "Deus Neuma ${VERSION}"
 !macroend
 
-; 64-bit Windows only, said before anything is copied
+!ifndef BUILD_UNINSTALLER
+Var CompModel
+Var CompBench
+Var CompStartMenu
+Var CompDesktop
+Var CompStartup
+Var ModelHome
+Var CbModel
+Var CbStartMenu
+Var CbDesktop
+Var CbStartup
+Var ModelHomeField
+Var ComponentsSeen
+Var PfDone
+Var PfOS
+Var PfRam
+Var PfGpu
+Var PfGpuGB
+Var PfOllama
+Var PfOllamaRunning
+Var PfLmStudio
+Var PfOnline
+Var PfDiskGB
+Var PfBold
+!endif
+
+; Before any page: 64-bit Windows 10 or 11 only, said before anything is copied. Then the defaults every
+; page starts from (also what a silent install, /S, installs).
 !macro customInit
   ${IfNot} ${RunningX64}
     MessageBox MB_OK|MB_ICONSTOP "Deus Neuma needs 64-bit Windows 10 or 11. This Windows is 32-bit, so it cannot be installed here."
     Abort
   ${EndIf}
+  ${IfNot} ${AtLeastWin10}
+    MessageBox MB_OK|MB_ICONSTOP "Deus Neuma needs 64-bit Windows 10 or 11. This PC runs an older Windows, so it cannot be installed here."
+    Abort
+  ${EndIf}
+  StrCpy $CompModel ${BST_CHECKED}
+  StrCpy $CompBench ${BST_UNCHECKED}
+  StrCpy $CompStartMenu ${BST_CHECKED}
+  StrCpy $CompDesktop ${BST_CHECKED}
+  StrCpy $CompStartup ${BST_UNCHECKED}
+  ReadRegStr $ModelHome HKCU "${DN_REG}" "ModelHome"
+  ${If} $ModelHome == ""
+    StrCpy $ModelHome "$PROFILE\.neuma\data\model-server"
+  ${EndIf}
 !macroend
 
 !macro customWelcomePage
   !define MUI_WELCOMEPAGE_TITLE "Welcome to Deus Neuma ${VERSION} Setup"
-  !define MUI_WELCOMEPAGE_TEXT "This wizard installs Deus Neuma: sovereign relationships with AI, on your own PC.$\r$\n$\r$\nYou choose where it goes and what comes with it. If this PC has no local model server, setup can install one, and the model that fits this PC.$\r$\n$\r$\nDeus Neuma is for adults only (18+).$\r$\n$\r$\nClick Next to continue."
+  !define MUI_WELCOMEPAGE_TEXT "This wizard installs Deus Neuma: sovereign relationships with AI, on your own PC.$\r$\n$\r$\nSetup checks this PC first and shows you what it found. You choose where Deus Neuma goes and what comes with it. If this PC has no local model server, setup installs one, and the model that fits this PC.$\r$\n$\r$\nDeus Neuma is for adults only (18+).$\r$\n$\r$\nClick Next to continue."
   !insertmacro MUI_PAGE_WELCOME
 !macroend
 
 !ifndef BUILD_UNINSTALLER
-Var CompModel
-Var CompBench
-Var CompDesktop
-Var ModelHome
-Var CbModel
-Var CbBench
-Var CbDesktop
-Var ModelHomeField
+; one System check row: a bold name, then what was found
+!macro DnRow y name finding
+  ${NSD_CreateLabel} 0 ${y} 72u 18u "${name}"
+  Pop $R9
+  SendMessage $R9 ${WM_SETFONT} $PfBold 0
+  ${NSD_CreateLabel} 76u ${y} -76u 18u "${finding}"
+  Pop $R9
+!macroend
+!define DnRow '!insertmacro DnRow'
 
 ; The pages and their functions live where electron-builder inserts them: by then the Modern UI is
 ; loaded (an include is read before it, so MUI_HEADER_TEXT would not exist yet).
 !macro customPageAfterChangeDir
+  Page custom SystemCheckCreate SystemCheckLeave
   Page custom ComponentsCreate ComponentsLeave
   Page custom ModelHomeCreate ModelHomeLeave
   Page custom ReadyCreate
 
+  ; the folder the app will really go to: electron-builder adds "\Deus Neuma" to a folder that lacks it
+  Function DnInstallDir
+    ${StrContains} $0 "${APP_FILENAME}" $INSTDIR
+    ${If} $0 == ""
+      Push "$INSTDIR\${APP_FILENAME}"
+    ${Else}
+      Push "$INSTDIR"
+    ${EndIf}
+  FunctionEnd
+
+  Function SystemCheckCreate
+    !insertmacro MUI_HEADER_TEXT "System check" "Setup checked this PC. Nothing has been installed yet."
+    ; read the PC once: hidden, read-only (build/installer-preflight.ps1), the 64-bit PowerShell
+    ${If} $PfDone != 1
+      InitPluginsDir
+      File "/oname=$PLUGINSDIR\preflight.ps1" "${BUILD_RESOURCES_DIR}/installer-preflight.ps1"
+      ${DisableX64FSRedirection}
+      nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\preflight.ps1" "$PLUGINSDIR\preflight.txt"'
+      ${EnableX64FSRedirection}
+      Pop $0
+      Pop $0
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "os=" $PfOS
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "ramGB=" $PfRam
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "gpu=" $PfGpu
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "gpuGB=" $PfGpuGB
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "ollama=" $PfOllama
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "ollamaRunning=" $PfOllamaRunning
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "lmstudio=" $PfLmStudio
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "online=" $PfOnline
+      ${If} $PfRam == ""
+        StrCpy $PfRam 0
+      ${EndIf}
+      ${If} $PfGpuGB == ""
+        StrCpy $PfGpuGB 0
+      ${EndIf}
+      StrCpy $PfDone 1
+    ${EndIf}
+    ; the install folder's drive is read every time: Back can change the folder
+    StrCpy $1 $INSTDIR 3
+    ${DriveSpace} "$1" "/D=F /S=G" $PfDiskGB
+
+    nsDialogs::Create 1018
+    Pop $0
+    CreateFont $PfBold "$(^Font)" "$(^FontSize)" "700"
+
+    ${If} $PfOS == ""
+      StrCpy $PfOS "64-bit Windows 10 or 11"
+    ${EndIf}
+    ${DnRow} 0u "Windows" "$PfOS: ready."
+
+    ${If} $PfRam >= 16
+      StrCpy $3 "$PfRam GB: ready."
+    ${ElseIf} $PfGpuGB >= 8
+      StrCpy $3 "$PfRam GB: enough with this graphics card."
+    ${ElseIf} $PfRam == 0
+      StrCpy $3 "Could not be read. Setup carries on."
+    ${Else}
+      StrCpy $3 "$PfRam GB: below the 16 GB a model on the processor needs. It may run slowly."
+    ${EndIf}
+    ${DnRow} 19u "Memory" "$3"
+
+    ${If} $PfGpuGB >= 8
+      StrCpy $3 "$PfGpu, $PfGpuGB GB: ready. Setup picks the model that fits it."
+    ${ElseIf} $PfGpu != ""
+      StrCpy $3 "$PfGpu, $PfGpuGB GB: below 8 GB, so a smaller model runs on the processor."
+    ${Else}
+      StrCpy $3 "None with its own memory found. A smaller model runs on the processor."
+    ${EndIf}
+    ${DnRow} 38u "Graphics card" "$3"
+
+    ${If} $PfDiskGB >= 40
+      StrCpy $3 "$1 has $PfDiskGB GB free: ready."
+    ${ElseIf} $PfDiskGB >= 5
+      StrCpy $3 "$1 has $PfDiskGB GB free: enough for the app. You can keep the model on another drive."
+    ${Else}
+      StrCpy $3 "$1 has $PfDiskGB GB free: the app needs about 5 GB. Click Back to choose another drive."
+    ${EndIf}
+    ${DnRow} 57u "Disk" "$3"
+
+    ${If} $PfOllama != ""
+      StrCpy $3 "Ollama $PfOllama is installed. Setup uses it if it is new enough, or installs its own."
+    ${ElseIf} $PfOllamaRunning == 1
+      StrCpy $3 "Ollama is running. Setup uses it if it is new enough, or installs its own."
+    ${ElseIf} $PfLmStudio == 1
+      StrCpy $3 "LM Studio is installed. Setup can still install Ollama and the model (next page)."
+    ${Else}
+      StrCpy $3 "None yet. Setup installs Ollama and the model for you (next page)."
+    ${EndIf}
+    ${DnRow} 76u "Model server" "$3"
+
+    ${If} $PfOnline == 1
+      StrCpy $3 "Connected: ready for the model download."
+    ${Else}
+      StrCpy $3 "Not connected. Deus Neuma installs; the model download waits until you are online."
+    ${EndIf}
+    ${DnRow} 95u "Internet" "$3"
+
+    ${If} $PfDiskGB < 5
+      StrCpy $3 "This drive is too full for Deus Neuma. Click Back and choose a folder on another drive."
+    ${ElseIf} $PfGpuGB < 8
+    ${AndIf} $PfRam < 16
+    ${AndIf} $PfRam > 0
+      StrCpy $3 "This PC is below what a local model needs to run well. You can still install Deus Neuma. Click Next to choose what to install."
+    ${Else}
+      StrCpy $3 "Everything Deus Neuma needs is here, or setup installs it. Click Next to choose what to install."
+    ${EndIf}
+    ${NSD_CreateLabel} 0 118u 100% 20u "$3"
+    Pop $0
+    nsDialogs::Show
+  FunctionEnd
+
+  Function SystemCheckLeave
+    ${If} $PfDiskGB < 1
+      MessageBox MB_OK|MB_ICONEXCLAMATION "The drive $INSTDIR is on is full. Click Back and choose a folder on another drive."
+      Abort
+    ${EndIf}
+  FunctionEnd
+
   Function ComponentsCreate
     !insertmacro MUI_HEADER_TEXT "Components" "Choose what to install with Deus Neuma."
-    ${If} $ModelHome == ""
-      StrCpy $CompModel ${BST_CHECKED}
-      StrCpy $CompDesktop ${BST_CHECKED}
-      StrCpy $CompBench ${BST_UNCHECKED}
-      StrCpy $ModelHome "$PROFILE\.neuma\data\model-server"
+    ; offline, the model cannot download now: it starts unchecked (the app offers it later)
+    ${If} $ComponentsSeen != 1
+      ${If} $PfOnline != 1
+        StrCpy $CompModel ${BST_UNCHECKED}
+      ${EndIf}
+      StrCpy $ComponentsSeen 1
     ${EndIf}
     nsDialogs::Create 1018
     Pop $0
 
-    ${NSD_CreateCheckbox} 0 0 100% 12u "Deus Neuma (required)"
+    ${NSD_CreateCheckbox} 0 0 100% 12u "Deus Neuma ${VERSION} (required)"
     Pop $0
     ${NSD_Check} $0
     EnableWindow $0 0
 
-    ${NSD_CreateCheckbox} 0 20u 100% 12u "Local model server and the model for this PC (recommended)"
+    ${NSD_CreateCheckbox} 0 16u 100% 12u "Local model server and the model for this PC (recommended)"
     Pop $CbModel
     ${NSD_SetState} $CbModel $CompModel
-    ${NSD_CreateLabel} 12u 33u -12u 30u "Installs Ollama inside Deus Neuma's folder (no admin rights) and downloads the model that fits this PC's graphics card or memory: about 3 to 35 GB. An Ollama or LM Studio you already have is used if it is new enough. You choose the folder on the next page."
+    ${NSD_CreateLabel} 12u 29u -12u 28u "Ollama, kept in a folder you choose next (no admin rights), and the model that fits this PC: about 3 to 35 GB to download. An Ollama you already have is used if it is new enough."
     Pop $0
 
-    ${NSD_CreateCheckbox} 0 70u 100% 12u "Benchmarks kit (not available yet)"
-    Pop $CbBench
-    ${NSD_SetState} $CbBench ${BST_UNCHECKED}
-    EnableWindow $CbBench 0
-    ${NSD_CreateLabel} 12u 83u -12u 20u "Public benchmarks to run against your own models. It is being prepared for release and will be offered here when it is ready."
+    ${NSD_CreateCheckbox} 0 60u 100% 12u "Benchmarks kit (coming in a later update)"
     Pop $0
+    EnableWindow $0 0
 
-    ${NSD_CreateCheckbox} 0 110u 100% 12u "Desktop shortcut"
+    ${NSD_CreateCheckbox} 0 78u 100% 12u "Start menu entry"
+    Pop $CbStartMenu
+    ${NSD_SetState} $CbStartMenu $CompStartMenu
+
+    ${NSD_CreateCheckbox} 0 94u 100% 12u "Desktop shortcut"
     Pop $CbDesktop
     ${NSD_SetState} $CbDesktop $CompDesktop
+
+    ${NSD_CreateCheckbox} 0 110u 100% 12u "Start Deus Neuma when Windows starts"
+    Pop $CbStartup
+    ${NSD_SetState} $CbStartup $CompStartup
+    ${NSD_CreateLabel} 12u 123u -12u 12u "You can change this later in Deus Neuma's settings."
+    Pop $0
     nsDialogs::Show
   FunctionEnd
 
   Function ComponentsLeave
     ${NSD_GetState} $CbModel $CompModel
-    ${NSD_GetState} $CbBench $CompBench
+    ${NSD_GetState} $CbStartMenu $CompStartMenu
     ${NSD_GetState} $CbDesktop $CompDesktop
+    ${NSD_GetState} $CbStartup $CompStartup
   FunctionEnd
 
   Function ModelHomeCreate
@@ -153,12 +346,20 @@ Var ModelHomeField
 
   Function ReadyCreate
     !insertmacro MUI_HEADER_TEXT "Ready to install" "Nothing has been written yet."
-    StrCpy $1 "Install location:$\r$\n      $INSTDIR$\r$\n$\r$\nComponents:$\r$\n      Deus Neuma ${VERSION}"
+    Call DnInstallDir
+    Pop $2
+    StrCpy $1 "Install location:$\r$\n      $2$\r$\n$\r$\nComponents:$\r$\n      Deus Neuma ${VERSION}"
     ${If} $CompModel == ${BST_CHECKED}
-      StrCpy $1 "$1$\r$\n      Local model server and the model for this PC$\r$\n$\r$\nModel folder:$\r$\n      $ModelHome"
+      StrCpy $1 "$1$\r$\n      Local model server and the model for this PC$\r$\n            kept in $ModelHome"
+    ${EndIf}
+    ${If} $CompStartMenu == ${BST_CHECKED}
+      StrCpy $1 "$1$\r$\n      Start menu entry"
     ${EndIf}
     ${If} $CompDesktop == ${BST_CHECKED}
-      StrCpy $1 "$1$\r$\n$\r$\nA desktop shortcut will be created."
+      StrCpy $1 "$1$\r$\n      Desktop shortcut"
+    ${EndIf}
+    ${If} $CompStartup == ${BST_CHECKED}
+      StrCpy $1 "$1$\r$\n      Starts when Windows starts"
     ${EndIf}
     StrCpy $1 "$1$\r$\n$\r$\nClick Install to begin, or Back to change anything."
     nsDialogs::Create 1018
@@ -169,18 +370,48 @@ Var ModelHomeField
   FunctionEnd
 !macroend
 
+; electron-builder has copied the app and made the Start menu entry ($newStartMenuLink, named with the
+; app's notification ID) by now.
 !macro customInstall
-  ${IfNot} ${isUpdated}
+  ${If} ${isUpdated}
+    ; an update keeps the person's choices: the Start menu entry the update remade goes again if they
+    ; had chosen none
+    ReadRegStr $0 HKCU "${DN_REG}" "StartMenu"
+    ${If} $0 == "0"
+      WinShell::UninstShortcut "$newStartMenuLink"
+      Delete "$newStartMenuLink"
+      StrCpy $launchLink "$appExe"
+    ${EndIf}
+  ${Else}
+    ${If} $CompStartMenu == ${BST_CHECKED}
+      WriteRegStr HKCU "${DN_REG}" "StartMenu" "1"
+    ${Else}
+      WinShell::UninstShortcut "$newStartMenuLink"
+      Delete "$newStartMenuLink"
+      StrCpy $launchLink "$appExe"
+      WriteRegStr HKCU "${DN_REG}" "StartMenu" "0"
+      DetailPrint "No Start menu entry, as chosen."
+    ${EndIf}
     ${If} $CompDesktop == ${BST_CHECKED}
-      CreateShortCut "$DESKTOP\Deus Neuma.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0
+      CreateShortCut "$DESKTOP\${SHORTCUT_NAME}.lnk" "$appExe" "" "$appExe" 0 "" "" "${APP_DESCRIPTION}"
+      ClearErrors
+      WinShell::SetLnkAUMI "$DESKTOP\${SHORTCUT_NAME}.lnk" "${APP_ID}"
       DetailPrint "Desktop shortcut created."
+    ${EndIf}
+    ; the same Run entry the app's own "open at login" setting reads and writes (Electron, named with
+    ; the app's ID, electron/main.cjs), so the box here and the setting in the app are one switch
+    ${If} $CompStartup == ${BST_CHECKED}
+      WriteRegStr HKCU "${DN_RUN}" "${APP_ID}" '"$appExe"'
+      DetailPrint "Deus Neuma will start when Windows starts."
+    ${Else}
+      DeleteRegValue HKCU "${DN_RUN}" "${APP_ID}"
     ${EndIf}
     ${If} $CompModel == ${BST_CHECKED}
       WriteRegStr HKCU "${DN_REG}" "ModelHome" "$ModelHome"
       DetailPrint "Setting up the local model server and the model for this PC, in $ModelHome."
       DetailPrint "This downloads several GB and can take a while. Every step is shown below."
       System::Call 'Kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", t "1")i'
-      nsExec::ExecToLog '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" "$INSTDIR\resources\app\backend\cli\setup-model-server.mjs" --yes --home "$ModelHome"'
+      nsExec::ExecToLog '"$appExe" "$INSTDIR\resources\app\backend\cli\setup-model-server.mjs" --yes --home "$ModelHome"'
       Pop $0
       System::Call 'Kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", t "")i'
       ${If} $0 == 0
@@ -195,14 +426,15 @@ Var ModelHomeField
 
 !macro customUnInstall
   ${IfNot} ${isUpdated}
-    Delete "$DESKTOP\Deus Neuma.lnk"
+    Delete "$DESKTOP\${SHORTCUT_NAME}.lnk"
+    DeleteRegValue HKCU "${DN_RUN}" "${APP_ID}"
     ReadRegStr $0 HKCU "${DN_REG}" "ModelHome"
     ${If} $0 != ""
     ${AndIf} ${FileExists} "$0\*.*"
       MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 "Also remove the local model server and the downloaded models in:$\r$\n$0$\r$\n$\r$\nThey can be large. Choose No to keep them for a later install." IDNO +3
         RMDir /r "$0"
         DetailPrint "Removed the model folder $0."
-      DeleteRegKey HKCU "${DN_REG}"
     ${EndIf}
+    DeleteRegKey HKCU "${DN_REG}"
   ${EndIf}
 !macroend

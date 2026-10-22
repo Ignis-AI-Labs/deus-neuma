@@ -31,11 +31,14 @@ export const requirementsFor = (platform) => Object.freeze([
   platform === 'windows' ? '64-bit Windows 10 or 11.' : '64-bit (x86-64) Linux with a desktop.',
   'Adults only: you must be at least 18 and of legal age where you live.',
   'A graphics card with 8 GB of memory or more (24 GB recommended). Without one, a computer with 16 GB of RAM or more runs a smaller model on the processor, more slowly.',
-  `About 5 GB free for the app, plus room for the model it downloads on first run: ${MODEL_GB.min} GB to about ${MODEL_GB.max} GB, chosen to fit this computer.`,
-  'An internet connection for that first download.',
+  `About 5 GB free for the app, plus room for the model ${platform === 'windows' ? 'setup' : 'it'} downloads${platform === 'windows' ? '' : ' on first run'}: ${MODEL_GB.min} GB to about ${MODEL_GB.max} GB, chosen to fit this computer.`,
+  `An internet connection for that ${platform === 'windows' ? '' : 'first '}download.`,
 ]);
 
 export const FIRST_RUN = 'On first run, Deus Neuma checks this computer, tells you what it can run, and sets up the local model server and the right model for you. Anything that needs your permission asks first.';
+
+// The Windows wizard does the same during setup (build/installer.nsh), with every choice the person's.
+export const DURING_SETUP = 'This setup checks this computer first and shows what it found. You choose the install folder, the components, where the models are kept, and whether Deus Neuma starts with Windows. Setup then installs everything you chose, including the local model server and the model that fits this computer. If the model step cannot finish, Deus Neuma offers it again on first run.';
 
 /** Any text as plain ASCII, so every installer renders it the same. Pure. */
 export const asciiSafe = (text) => String(text)
@@ -71,8 +74,8 @@ export const installerLicenseText = (eulaMarkdown) => asciiSafe([
   'WHAT THIS NEEDS',
   ...requirementsFor('windows').map((l) => `- ${l}`),
   '',
-  'WHAT HAPPENS ON FIRST RUN',
-  FIRST_RUN,
+  'WHAT SETUP DOES',
+  DURING_SETUP,
   '',
   'To install, read and accept the End User License Agreement below.',
   '',
