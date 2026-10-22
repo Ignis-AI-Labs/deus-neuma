@@ -255,6 +255,16 @@ describe('LLM Provider', () => {
       })).toEqual({ thinks: true, implicitOpen: false });
     });
 
+    test('Ollama\'s native channel is named thinking — a glance cut mid-thought is a thinker', () => {
+      // the exact reply Ollama 0.40.7 gave the 16-token glance (Qwen3.8-4B distilled, 2026-10-22)
+      expect(classifyThinkBehavior({
+        role: 'assistant',
+        content: '',
+        thinking: 'Thinking Process:\n\n1.  **Analyze the Request:** The user wants',
+      })).toEqual({ thinks: true, implicitOpen: false });
+      expect(classifyThinkBehavior({ content: 'ready', thinking: '' })).toEqual({ thinks: false, implicitOpen: false });
+    });
+
     test('empty reasoning string is not reasoning', () => {
       expect(classifyThinkBehavior({ content: 'ready', reasoning: '' }))
         .toEqual({ thinks: false, implicitOpen: false });
