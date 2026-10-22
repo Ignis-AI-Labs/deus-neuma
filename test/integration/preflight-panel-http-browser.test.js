@@ -277,7 +277,7 @@ test('setup panel renders from the real route; the provider chip really moves th
         text: document.querySelector('.pf-setup-panel').textContent,
       }));
     });
-    expect(panel.verdict).toBe('BLOCKED — RESOLVE THE FAILED CHECKS, THEN RECHECK');
+    expect(panel.verdict).toBe('NOT YET — FIX WHAT IS MARKED ABOVE, THEN PRESS RECHECK');
     expect(panel.rows).toBeGreaterThan(0);
 
     // GET /api/v1/preflight/setup (site 3, success): the panel is built from the

@@ -19,7 +19,7 @@ export const useMindCheck = () => {
     let live = true;
     setMind({ state: 'checking' });
     apiCall('GET', '/api/v1/preflight/mind', { strictJson: true, signal: AbortSignal.timeout(MIND_READ_MS) })
-      .then((r) => { if (live) setMind({ state: r?.ready ? 'ready' : 'not', detail: r?.detail, requirement: r?.requirement }); })
+      .then((r) => { if (live) setMind({ state: r?.ready ? 'ready' : 'not', detail: r?.chosen ? r?.detail : undefined, requirement: r?.requirement }); })
       .catch(() => { if (live) setMind({ state: 'not', detail: 'The model on this machine could not be checked.' }); });
     return () => { live = false; };
   }, [round]);

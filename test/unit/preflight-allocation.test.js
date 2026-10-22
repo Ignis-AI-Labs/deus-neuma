@@ -17,8 +17,9 @@ describe('preflight allocation boundaries', () => {
   });
 
   test.each([
-    [null, null], [0, null], [1.99, null], [2, 1], [10, 1], [100, 10], [200, 20], [5000, 20],
-  ])('available %s suggests %s GB', (available, expected) => {
+    // a new neuma starts with 5 GB, capped so POST /workspace always accepts it
+    [null, null], [0, null], [1.99, null], [2, 1], [3.5, 2], [6, 5], [10, 5], [100, 5], [5000, 5],
+  ])('available %s starts the neuma at %s GB', (available, expected) => {
     const suggestion = suggestedAllocationGB(available);
     expect(suggestion).toBe(expected);
     if (suggestion !== null) expect(isAffordable(suggestion, available)).toBe(true);

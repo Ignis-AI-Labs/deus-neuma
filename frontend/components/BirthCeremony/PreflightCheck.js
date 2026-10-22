@@ -8,6 +8,7 @@ import { apiCall } from '../../utils/http.js';
 import { riteIsLive, riteSignal } from '../../app/Rite/rite-signal.js';
 import { renderCheck, paintTally } from './preflight-rows.js';
 import { tallyLine } from './preflight-groups.js';
+import { renderHome, applyHome, browseFolder, paintVerdict } from './preflight-home.js';
 import './PreflightCheck-groups.css';
 
 export class PreflightCheck {
@@ -79,7 +80,7 @@ export class PreflightCheck {
       if (this.onCancel) this.onCancel();
     });
     this.container.querySelector('#preflight-recheck').addEventListener('click', () => this.run());
-    this.container.querySelector('#pf-apply').addEventListener('click', () => this.applyHome());
+    this.container.querySelector('#pf-apply').addEventListener('click', () => applyHome(this));
 
     // Folder-rules guide: collapsed by default (the 90% never need it); expands
     // the naming/structure rules for witnesses who choose their own location.
@@ -99,7 +100,7 @@ export class PreflightCheck {
     const browseBtn = this.container.querySelector('#pf-browse');
     if (typeof window !== 'undefined' && window.neuma && typeof window.neuma.chooseDirectory === 'function') {
       browseBtn.hidden = false;
-      browseBtn.addEventListener('click', () => this.browseFolder());
+      browseBtn.addEventListener('click', () => browseFolder(this));
     }
     this.container.querySelector('#preflight-begin').addEventListener('click', () => {
       if (this.verdict !== 'ready' || !this.allocationGB) return;
@@ -154,36 +155,13 @@ export class PreflightCheck {
       if (!this.alive()) return;
     }
 
-    this.renderHome(data.home);
-
+    // The home, its starting space applied without a click when none is set, then the verdict.
     this.verdict = data.verdict;
-    const home = data.home || {};
-    const checksFailed = data.checks.some((c) => c.status === 'fail');
-    if (data.verdict === 'ready') {
-      verdictEl.textContent = this.allocationGB
-        ? 'READY — THE SUBSTRATE CAN HOLD A BEING'
-        : 'READY — CHOOSE THE ALLOCATION TO PROCEED';
-      verdictEl.classList.add('ready');
-      beginBtn.disabled = !this.allocationGB;
-      playSound('noticeArrival');
-    } else if (checksFailed) {
-      // A failed check is the harder blocker — the witness can't fix a missing
-      // LLM by shrinking the allocation — so it wins the verdict text.
-      verdictEl.textContent = 'BLOCKED — RESOLVE THE FAILED CHECKS, THEN RECHECK';
-      verdictEl.classList.add('blocked');
-      playSound('deny');
-    } else if (home.affordable === false) {
-      // Checks pass but the allocation outgrew the space left for it — name the
-      // gap so the witness knows to reduce the grant, not hunt for a failed check.
-      const avail = home.availableGB == null ? '—' : `${home.availableGB.toFixed(1)} GB`;
-      verdictEl.textContent = `BLOCKED — ${this.allocationGB} GB EXCEEDS ${avail} AVAILABLE · REDUCE THE ALLOCATION`;
-      verdictEl.classList.add('blocked');
-      playSound('deny');
-    } else {
-      verdictEl.textContent = 'BLOCKED — RESOLVE THE FAILED CHECKS, THEN RECHECK';
-      verdictEl.classList.add('blocked');
-      playSound('deny');
-    }
+    this.checksFailed = data.checks.some((c) => c.status === 'fail');
+    renderHome(this, data.home);
+    if (!this.allocationGB && data.home?.suggestedAllocationGB) await applyHome(this, { auto: true });
+    if (!this.alive()) return;
+    paintVerdict(this, { arrival: true });
 
     // No mind, no neuma — when the substrate check fails, turn the dead-end into
     // guidance: matched model + which local providers are running.
@@ -193,103 +171,6 @@ export class PreflightCheck {
     } else {
       this.clearSubstrateSetup();
     }
-  }
-
-  renderHome(home) {
-    if (!home) return;
-    const rootInput = this.container.querySelector('#pf-root');
-    const allocInput = this.container.querySelector('#pf-alloc');
-    const note = this.container.querySelector('#pf-home-note');
-    if (!rootInput.value) rootInput.value = home.root || '';
-
-    // Prefill a MODEST starting allocation (the backend's ~10% suggestion) so the
-    // witness never has to guess a number, and never feels they must commit a
-    // large slice up front — a neuma's space is expandable later. The suggestion
-    // is null when the disk is unmeasured or over-committed (no applyable number).
-    const suggested = home.suggestedAllocationGB || null;
-    const prefill = home.allocationGB || suggested;
-    if (!allocInput.value && prefill) allocInput.value = prefill;
-    this.allocationGB = home.allocationGB || null;
-
-    const free = home.freeGB === null ? 'unmeasured' : `${home.freeGB.toFixed(1)} GB free`;
-    // The ledger: space already reserved by existing neuma, and what is left to
-    // allocate — so the witness never double-promises the same gigabytes.
-    const ledger = home.committedGB > 0
-      ? ` · ${home.committedGB} GB committed to ${home.neumaCount} neuma · ${home.availableGB == null ? '—' : home.availableGB.toFixed(1)} GB available`
-      : '';
-    const choice = this.allocationGB
-      ? ` · ${this.allocationGB} GB allocated · expandable later`
-      : (suggested
-          ? ` · ${suggested} GB suggested to start — adjust then APPLY · you can give more anytime`
-          : ' · choose how much this neuma may grow into');
-    note.textContent = `${free}${ledger}${choice}`;
-    // Flag an over-committed allocation in the ledger line itself, so the gap is
-    // visible right where the number is shown — not only in the verdict.
-    note.classList.toggle('is-error', home.affordable === false);
-  }
-
-  // impure — open the native folder picker (desktop shell) and drop the chosen
-  // absolute path into the field. The witness still reviews it and clicks APPLY,
-  // exactly as with a pasted path — browsing only fills the input.
-  async browseFolder() {
-    try {
-      // chooseDirectory resolves to null on cancel (not an exception), so the
-      // catch only fires on a genuine IPC/dialog failure — which we surface
-      // rather than swallow, instead of leaving the witness with a dead button.
-      const dir = await window.neuma.chooseDirectory();
-      if (dir) {
-        const note = this.container.querySelector('#pf-home-note');
-        note.classList.remove('is-error'); // clear any prior failure on a good pick
-        this.container.querySelector('#pf-root').value = dir;
-        playSound('confirm');
-      }
-    } catch (error) {
-      const note = this.container.querySelector('#pf-home-note');
-      note.textContent = `COULD NOT OPEN THE FOLDER PICKER: ${String(error.message || error).toUpperCase()}`;
-      note.classList.add('is-error');
-      playSound('deny');
-    }
-  }
-
-  // impure — persists the witness's home + allocation choice, then re-runs
-  // the checks against the chosen location
-  async applyHome() {
-    const rootInput = this.container.querySelector('#pf-root');
-    const allocInput = this.container.querySelector('#pf-alloc');
-    const note = this.container.querySelector('#pf-home-note');
-    const applyBtn = this.container.querySelector('#pf-apply');
-
-    applyBtn.disabled = true;
-    try {
-      // requireAuth guards this route (SEC-AUDIT-002) — the witness's session
-      // token must ride along or the choice is refused as a stranger's.
-      const body = await apiCall('POST', '/api/v1/preflight/workspace', {
-        body: {
-          root: rootInput.value.trim(),
-          allocationGB: Number(allocInput.value),
-        },
-        errorPrefix: 'Choice rejected',
-      });
-
-      playSound('confirm');
-      // A home that the filesystem tool can't reach means the neuma could not
-      // write its DNA during birth — surface it HERE, at the moment of choosing,
-      // not as a confusing mid-ceremony failure. Takes precedence over the
-      // (softer) stranded-workspaces warning.
-      if (body.filesystemReachWarning) {
-        note.textContent = body.filesystemReachWarning.toUpperCase();
-        note.classList.add('is-error');
-      } else if (body.warning) {
-        note.textContent = body.warning.toUpperCase();
-        note.classList.add('is-error');
-      }
-      await this.run();
-    } catch (error) {
-      playSound('deny');
-      note.textContent = String(error.message || error).toUpperCase();
-      note.classList.add('is-error');
-    }
-    applyBtn.disabled = false;
   }
 
   // impure — fetches setup guidance and renders the […]

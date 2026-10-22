@@ -13,6 +13,7 @@ import path, { join } from 'path';
 import { createLogger } from '../services/logger.js';
 import { requireAuth } from '../services/auth.js';
 import { getSetupStatus } from '../services/substrate-setup.js';
+import { loadProviderChoice } from '../services/provider-choice.js';
 import { getAppConfig } from '../config.js';
 import { SEAL_NETWORKS } from '../services/natalis-seal.js';
 import { connectFilesystemServer } from '../services/mcp-filesystem.js';
@@ -30,6 +31,37 @@ import { computeAvailable, isAffordable, suggestedAllocationGB } from './preflig
 
 const router = Router();
 const log = createLogger('Preflight');
+
+// impure — the home's space numbers. Allocation ledger: space already RESERVED by existing neuma
+// (logical commitments they grow into), so raw disk-free over-states what a new neuma can claim:
+// available = free − committed. The neuma list is read once for both the count and the sum.
+const homeBlock = async () => {
+  const settings = await loadWorkspaceSettings();
+  const freeGB = await freeGBAt(getWorkspacesRoot());
+  const ids = await neumaWorkspace.listNeuma();
+  const committedGB = await neumaWorkspace.totalAllocatedGB({ ids });
+  const availableGB = computeAvailable(freeGB, committedGB);
+  return {
+    root: getWorkspacesRoot(),
+    allocationGB: settings.allocationGB,
+    suggestedAllocationGB: suggestedAllocationGB(availableGB),
+    freeGB,
+    committedGB,
+    availableGB,
+    affordable: isAffordable(settings.allocationGB, availableGB),
+    neumaCount: ids.length,
+  };
+};
+
+// GET /home — only the space numbers: a changed allocation re-reads these, never the checks.
+router.get('/home', async (req, res) => {
+  try {
+    res.json({ home: await homeBlock() });
+  } catch (error) {
+    log.error('Home read failed', { error: error.message });
+    res.status(500).json({ error: 'Could not read the space' });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {
@@ -49,17 +81,8 @@ router.get('/', async (req, res) => {
       await checkTrainer(),
       await checkForge(),
     ];
-    const settings = await loadWorkspaceSettings();
-
-    // Allocation ledger — space already RESERVED by existing neuma. Allocations
-    // are logical (a neuma grows into its grant), so raw disk-free over-states
-    // what a new neuma can actually claim. available = free − committed. Read the
-    // neuma list once and reuse it for both the count and the sum.
-    const freeGB = await freeGBAt(getWorkspacesRoot());
-    const ids = await neumaWorkspace.listNeuma();
-    const committedGB = await neumaWorkspace.totalAllocatedGB({ ids });
-    const availableGB = computeAvailable(freeGB, committedGB);
-    const affordable = isAffordable(settings.allocationGB, availableGB);
+    const home = await homeBlock();
+    const { affordable } = home;
 
     // A chosen-but-unaffordable allocation BLOCKS the launch exactly like a failed
     // check: the substrate cannot hold a being you cannot give space. This catches
@@ -75,16 +98,7 @@ router.get('/', async (req, res) => {
     res.json({
       verdict,
       checks,
-      home: {
-        root: getWorkspacesRoot(),
-        allocationGB: settings.allocationGB,
-        suggestedAllocationGB: suggestedAllocationGB(availableGB),
-        freeGB,
-        committedGB,
-        availableGB,
-        affordable,
-        neumaCount: ids.length,
-      },
+      home,
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -245,6 +259,8 @@ router.get('/mind', async (req, res) => {
     const row = await checkSubstrate();
     res.json({
       ready: row.status === 'pass',
+      // a route nobody chose (the factory default) names nothing a person set up: no detail then
+      chosen: Boolean(await loadProviderChoice()),
       detail: row.detail,
       requirement: row.requirement,
       switchTo: row.switchTo || null,
