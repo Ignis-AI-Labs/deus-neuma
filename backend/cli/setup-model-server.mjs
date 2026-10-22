@@ -6,8 +6,10 @@
 // (managed-ollama.js): the plan read from this machine, the pinned Ollama checked against its
 // SHA-256, kept under the app's data folder with no admin rights, and the model chosen for this PC.
 //
-//   setup-model-server.mjs            print the plan and exit
-//   setup-model-server.mjs --yes      do it, printing one line per step and progress as it goes
+//   setup-model-server.mjs                    print the plan and exit
+//   setup-model-server.mjs --yes              do it, printing one line per step and progress as it goes
+//   setup-model-server.mjs --yes --home <dir> keep the server and the models in <dir> (the folder the
+//                                             person chose in the installer; models can be 30+ GB)
 // Exit 0: ready (or nothing needed). Exit 1: not done; the app offers it again on first run.
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +19,8 @@ process.env.NEUMA_DATA_ROOT ||= path.join(os.homedir(), '.neuma', 'data');
 process.env.NEUMA_VAULT_ROOT ||= path.join(os.homedir(), '.neuma', 'vault');
 
 const M = await import('../services/managed-ollama.js');
+const homeAt = process.argv.indexOf('--home');
+const home = homeAt > 0 ? process.argv[homeAt + 1] : null;
 const say = (line) => process.stdout.write(`${line}\n`);
 const gb = (n) => `${(n / 1e9).toFixed(1)} GB`;
 
@@ -28,7 +32,8 @@ say(`Model server: ${plan.steps.map((s) => s.label).join(', ')}. Download ${gb(p
 if (!plan.enoughDisk) { say(`Not enough disk space: it needs ${gb(plan.needBytes)} free, this disk has ${gb(plan.freeBytes)}.`); process.exit(1); }
 if (!process.argv.includes('--yes')) process.exit(0);
 
-await M.startJob();
+if (home) say(`Model folder: ${home}`);
+await M.startJob({ home });
 let last = '';
 for (;;) {
   const j = M.jobStatus();

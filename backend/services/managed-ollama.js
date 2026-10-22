@@ -35,9 +35,14 @@ const log = createLogger('ManagedOllama');
 // impure — read at call time (packaged vs dev data roots)
 const root = () => path.join(getDataRoot(), 'model-server');
 const recordPath = () => path.join(root(), 'managed.json');
+// Where the server and the models are kept: the folder the person chose in the installer (kept in
+// the record), else beside the record. Models are large, so this is the person's choice.
+let chosenHome = null;
+const serverHome = () => chosenHome || readRecordQuiet()?.home || root();
+const readRecordQuiet = () => { try { return JSON.parse(fs.readFileSync(recordPath(), 'utf8')); } catch { return null; } };
 const managedBin = () => {
   const asset = ollamaAssetFor(process.platform, process.arch);
-  return asset ? path.join(root(), 'ollama', asset.bin) : null;
+  return asset ? path.join(serverHome(), 'ollama', asset.bin) : null;
 };
 
 /** The record of what the platform set up, or null. impure */
@@ -81,7 +86,7 @@ export const ollamaUp = async (endpoint = OLLAMA_ENDPOINT) => (await serverState
 
 /** Free bytes on the disk that holds the data root. impure */
 const freeBytes = async () => {
-  let dir = root();
+  let dir = serverHome();
   while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
   try { const s = await fsp.statfs(dir); return s.bavail * s.bsize; } catch { return null; }
 };
@@ -121,8 +126,9 @@ export const cancelJob = () => {
  * Start setting up a model server. Refuses a second job. The route passes nothing (the plan is
  * read from this machine); a proof run may pass a plan of its own. impure
  */
-export const startJob = async ({ plan: given } = {}) => {
+export const startJob = async ({ plan: given, home } = {}) => {
   if (job.state === 'running') return job;
+  if (home) chosenHome = path.resolve(home);
   const plan = given ?? await currentPlan();
   if (!plan.supported) { update({ state: 'failed', error: plan.reason, plan }); return job; }
   if (!plan.enoughDisk) {
@@ -163,7 +169,7 @@ const run = async (plan, signal) => {
     managed,
     bin,
     endpoint,
-    ...(managed ? { modelsDir: path.join(root(), 'models') } : {}),
+    ...(managed ? { home: serverHome(), modelsDir: path.join(serverHome(), 'models') } : {}),
     model: plan.model.ref,
     installedAt: new Date().toISOString(),
   });
@@ -176,12 +182,12 @@ const ensureManagedServer = async (plan, signal) => {
   const asset = ollamaAssetFor(process.platform, process.arch);
   const bin = managedBin();
   if (fs.existsSync(bin)) return bin;
-  await fsp.mkdir(root(), { recursive: true });
-  const archive = path.join(root(), asset.name);
+  await fsp.mkdir(serverHome(), { recursive: true });
+  const archive = path.join(serverHome(), asset.name);
   update({ step: 'download', completed: 0, total: asset.size, line: `Downloading Ollama ${OLLAMA_VERSION}` });
   await downloadVerified(asset, archive, signal);
   update({ step: 'unpack', completed: 0, total: 0, line: 'Unpacking' });
-  const dir = path.join(root(), 'ollama');
+  const dir = path.join(serverHome(), 'ollama');
   const tmp = `${dir}.unpacking`;
   await fsp.rm(tmp, { recursive: true, force: true });
   await fsp.mkdir(tmp, { recursive: true });
@@ -243,15 +249,15 @@ const unpack = async (asset, archive, dir) => {
 const startServer = async (bin, managed, endpoint = OLLAMA_ENDPOINT) => {
   if (await ollamaUp(endpoint)) return;
   if (!bin) throw new Error('no Ollama to start');
-  await fsp.mkdir(root(), { recursive: true });
-  const out = fs.openSync(path.join(root(), 'ollama.log'), 'a');
+  await fsp.mkdir(serverHome(), { recursive: true });
+  const out = fs.openSync(path.join(serverHome(), 'ollama.log'), 'a');
   const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, '') };
-  if (managed) env.OLLAMA_MODELS = path.join(root(), 'models');
+  if (managed) env.OLLAMA_MODELS = readRecordQuiet()?.modelsDir || path.join(serverHome(), 'models');
   child = spawn(bin, ['serve'], { env, stdio: ['ignore', out, out], windowsHide: true });
   child.on('exit', (code) => { log.info('ollama serve exited', { code }); child = null; });
   for (let i = 0; i < 60; i += 1) {
     if (await ollamaUp(endpoint)) return;
-    if (!child) throw new Error(`the model server stopped while starting; its log is ${path.join(root(), 'ollama.log')}`);
+    if (!child) throw new Error(`the model server stopped while starting; its log is ${path.join(serverHome(), 'ollama.log')}`);
     await new Promise((r) => setTimeout(r, 1000));
   }
   throw new Error('the model server did not answer within a minute of starting');
@@ -304,4 +310,4 @@ export const startManagedAtBoot = async () => {
 process.once('exit', () => { try { child?.kill(); } catch { /* already gone */ } });
 
 /** The home this module installs into, for the screen's honesty line. impure */
-export const installHome = () => root().replace(os.homedir(), '~');
+export const installHome = () => serverHome().replace(os.homedir(), '~');
