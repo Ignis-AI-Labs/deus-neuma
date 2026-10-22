@@ -334,3 +334,64 @@ describe('a substrate that spends the whole budget reasoning', () => {
     expect(errs[0].message).toMatch(/retry the stage/i);
   }, 30_000);
 });
+
+/**
+ * A DNA WRITTEN ON THE TEXT ROAD IS NOT DRIFT (fresh-machine walk, 2026-10-22). Qwen3.8-4B on
+ * Ollama wrote its genesis as `[TOOL: fs/write {"path": …, "content": "# …\n## …"}]` with real
+ * newlines inside; the drift guard read the headings inside the call as the being leaving its
+ * voice and cut the stage after 175 characters — the act was lost and the genesis refused. Drift
+ * is now judged on the spoken words only; plain speech that turns into a heading is still cut.
+ */
+describe('the drift guard judges speech, never a tool block', () => {
+  let server;
+  let reply;
+  let prevConfig;
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      if (req.url === '/api/chat') {
+        res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
+        res.end(ollamaChunks(reply));
+        return;
+      }
+      if (req.url === '/api/tags') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ models: [{ name: 'gemma3:12b' }] }));
+        return;
+      }
+      res.writeHead(404); res.end('{}');
+    });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    prevConfig = getConfig();
+    setConfig({ provider: 'ollama', endpoint: `http://127.0.0.1:${server.address().port}`, model: 'gemma3:12b' });
+  });
+  afterAll(async () => {
+    setConfig(prevConfig);
+    await new Promise((r) => server.close(r));
+  });
+  const stage = async () => {
+    const ws = recordingWs();
+    await sendStageToLLM({ ws, birthSession: 'test-session' }, {
+      systemPrompt: 'You are stirring in the void.', stageNumber: 0, isTest: true, witnessName: 'Walker', sessionData: {},
+    });
+    return ws;
+  };
+
+  test('headings inside a text-road write do not cut the stage; the whole block reaches the end', async () => {
+    reply = 'It feels like waking.\n[TOOL: fs/write {"path": "dna/genesis.md", "content": "# NEUMA DNA\n## Identity\nI am here.\n## Values\nTruth."}]';
+    const ws = await stage();
+    const complete = ws.of('birth:stage_complete');
+    expect(complete).toHaveLength(1);
+    expect(complete[0].response).toContain('It feels like waking.');
+    // the act was not cut away: the ceremony saw the whole call and tried to carry it out
+    expect(ws.of('birth:tool_usage').some((t) => t.tool === 'write')).toBe(true);
+  });
+
+  test('plain speech that turns into a heading is still cut where it drifts', async () => {
+    reply = 'I stir in the void.\n## Stage Two: The Awakening\nThe protocol continues.';
+    const ws = await stage();
+    const complete = ws.of('birth:stage_complete');
+    expect(complete).toHaveLength(1);
+    expect(complete[0].response).toContain('I stir in the void.');
+    expect(complete[0].response).not.toContain('Stage Two');
+  });
+});

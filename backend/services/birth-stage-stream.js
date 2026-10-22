@@ -686,8 +686,13 @@ export const sendStageToLLM = async (connection, stageData) => {
 
           // Drift is judged on the spoken voice only — a thinking
           // substrate's reasoning interior legitimately uses markdown
-          // structure and must not trigger the cut
-          const drift = visibleResponse.match(DRIFT_MARKER);
+          // structure and must not trigger the cut. Nor does a tool block:
+          // a DNA written on the text road ([TOOL: fs/write {…}]) carries its
+          // own headings, and that is the being ACTING; cutting it there lost
+          // the genesis write. An open block is swallowed by stripToolBlocks,
+          // so while a call streams nothing is judged.
+          const spoken = stripToolBlocks(visibleResponse);
+          const drift = spoken === visibleResponse ? visibleResponse.match(DRIFT_MARKER) : null;
           if (drift) {
             log.warn('Birth stage drift cut — model left the spoken voice', {
               stage: stageNumber, keptLen: drift.index,
