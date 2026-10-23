@@ -15,6 +15,8 @@ import {
   approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
 } from '../../services/social-channels-client.js';
 import { threadOf } from './queue-thread-view.js';
+import { TikTokPostSettings } from './TikTokPostSettings.jsx';
+import { useTikTokApproval } from './use-tiktok-approval.js';
 
 // Whether an attached CARD still matches the brand it was drawn from.
 //
@@ -61,12 +63,15 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  // A YouTube post's attachment is its video: played in place, so the
+  // operator approves what they have watched.
+  const [video, setVideo] = useState(false);
   useEffect(() => {
     let live = true;
     let objectUrl = null;
     fetchQueueMediaUrl(entryId, index)
-      .then((u) => {
-        if (live) { objectUrl = u; setUrl(u); } else { URL.revokeObjectURL(u); }
+      .then((m) => {
+        if (live) { objectUrl = m.url; setUrl(m.url); setVideo(m.type.startsWith('video/')); } else { URL.revokeObjectURL(m.url); }
       })
       .catch(() => { if (live) setFailed(true); });
     return () => { live = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
@@ -74,7 +79,8 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
   const file = String(item.path || '').split('/').pop();
   return (
     <div className="queue-media-item">
-      {url
+      {url && video ? <video className="queue-media-video" src={url} controls preload="metadata" aria-label={`video ${file}`} /> : null}
+      {url && !video
         ? (
           <>
             <button
@@ -95,10 +101,13 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
             ) : null}
           </>
         )
-        : <span className="queue-media-alt">{failed ? `UNREADABLE — ${file}` : file}</span>}
-      <span className={`queue-media-alt${item.alt ? '' : ' is-missing'}`}>
-        {item.alt || '[NO ALT TEXT]'}
-      </span>
+        : null}
+      {url ? null : <span className="queue-media-alt">{failed ? `UNREADABLE — ${file}` : file}</span>}
+      {video ? null : (
+        <span className={`queue-media-alt${item.alt ? '' : ' is-missing'}`}>
+          {item.alt || '[NO ALT TEXT]'}
+        </span>
+      )}
       <KitMark kit={item.kit} />
     </div>
   );
@@ -115,6 +124,8 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   // finished post does not require unfolding the whole board. The lane decides
   // the starting state — in UNAPPROVED the copy IS the work, so it opens.
   const [open, setOpen] = useState(startOpen);
+  // A TikTok post's approval carries the choices made on its card.
+  const tiktok = useTikTokApproval(entry);
   // THE THREAD'S PARENT (Kagipem 2026-07-29): a self-reply is read BENEATH
   // the post it answers — the parent's copy and its own moment ride the card.
   const parentEntry = entry.kind === 'self-reply' && entry.thread?.parentId
@@ -196,6 +207,10 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
       }
       return;
     }
+    if (tiktok) {
+      await approveQueuePost(entry.id, { textSeen: entry.text, tiktok: tiktok.approval ?? undefined });
+      return;
+    }
     await approveQueuePost(entry.id);
   };
 
@@ -215,8 +230,8 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
           APPROVE THREAD ({threadDrafts.length} POSTS)
         </button>
       ) : null}
-      <button type="button" className="settings-set" disabled={busy}
-        onClick={() => act(approve)}>
+      <button type="button" className="settings-set" disabled={busy || Boolean(tiktok?.blockers.length)}
+        title={tiktok?.blockers[0]} onClick={() => act(approve)}>
         {entry.kind === 'reply' ? 'APPROVE & SEND' : threadDrafts.length > 1 ? 'APPROVE THIS ONE' : 'APPROVE'}
       </button>
       <button type="button" className="settings-set is-danger" disabled={busy}
@@ -346,6 +361,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
                 ))}
               </div>
             ) : null}
+            {tiktok ? <TikTokPostSettings entry={entry} state={tiktok} /> : null}
             <div className="queue-preview-foot">
               {/* The spacer keeps the count right-aligned, as it was when the
                   meta line carried text. */}

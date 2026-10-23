@@ -103,7 +103,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     const res = await request(app).get('/api/v1/social-channels').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.channels.map((c) => c.id).sort())
-      .toEqual(['bluesky', 'discord', 'facebook', 'linkedin', 'mastodon', 'telegram', 'x']);
+      .toEqual(['bluesky', 'discord', 'facebook', 'linkedin', 'mastodon', 'telegram', 'tiktok', 'x', 'youtube']);
     for (const c of res.body.channels) {
       expect(c.configured).toBe(false);
       expect(c.binding).toBeNull();

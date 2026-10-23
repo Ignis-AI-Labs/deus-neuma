@@ -11,6 +11,8 @@ import { postToMastodon } from './mastodon-poster.js';
 import { postToBluesky } from './bluesky-poster.js';
 import { postToFacebook } from './facebook-poster.js';
 import { postToLinkedIn } from './linkedin-poster.js';
+import { postToYouTube } from './youtube-poster.js';
+import { postToTikTok } from './tiktok-poster.js';
 
 export const POSTERS = Object.freeze({
   x: postToX,
@@ -20,6 +22,8 @@ export const POSTERS = Object.freeze({
   bluesky: postToBluesky,
   facebook: postToFacebook,
   linkedin: postToLinkedIn,
+  youtube: postToYouTube,
+  tiktok: postToTikTok,
 });
 
 /**
@@ -27,3 +31,26 @@ export const POSTERS = Object.freeze({
  * @param {string} channelId
  */
 export const posterFor = (channelId) => POSTERS[channelId] || null;
+
+// The channels whose post IS its media: the poster takes the staged file
+// paths itself (`opts.media`) instead of ids uploaded ahead of time, because
+// for a video the upload is the publication.
+// Each names what a still image means there: YouTube has no photo post, and
+// TikTok's needs a verified domain to pull from, which this app has not yet.
+const OWN_MEDIA = Object.freeze({
+  youtube: Object.freeze({ name: 'YouTube', photo: 'YouTube takes videos only; a photo cannot go to YouTube' }),
+  tiktok: Object.freeze({ name: 'TikTok', photo: 'TikTok photo posts need a verified domain; coming later' }),
+});
+
+/**
+ * Whether a channel's poster uploads its own media (pure).
+ * @param {string} channelId
+ */
+export const postsOwnMedia = (channelId) => Object.hasOwn(OWN_MEDIA, channelId ?? '');
+
+/**
+ * A video channel's name and its refusal of a still image, or null (pure).
+ * @param {string} channelId
+ * @returns {{name: string, photo: string}|null}
+ */
+export const ownMediaChannel = (channelId) => (postsOwnMedia(channelId) ? OWN_MEDIA[channelId] : null);

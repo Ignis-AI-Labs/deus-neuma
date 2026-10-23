@@ -51,6 +51,8 @@ export const approveThreadIn = (entries, id, { decidedBy, textsSeen = {}, now })
   const root = threadRootOf(entries, id);
   if (!root) return { error: 'no such queued post' };
   if (root.kind === 'reply') return { error: 'a reply is no thread — it is decided through its own approval' };
+  // A TikTok post's approval carries the person's choices from its card.
+  if (root.channelId === 'tiktok') return { error: 'a TikTok post is no thread — approve it from its card, with its choices' };
   if (DEAD.includes(root.status)) return { error: `the thread's first post is ${root.status} — the thread can never publish` };
   const members = threadMembers(entries, root.id);
   const drafts = members.filter((e) => e.status === 'draft');

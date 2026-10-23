@@ -107,6 +107,8 @@ export const outreachApps = {
   mastodon: platformApp('mastodon', 'MASTODON', <BrandMark id="mastodon" />),
   bluesky: platformApp('bluesky', 'BLUESKY', <BrandMark id="bluesky" />),
   linkedin: platformApp('linkedin', 'LINKEDIN', <BrandMark id="linkedin" />),
+  youtube: platformApp('youtube', 'YOUTUBE', <BrandMark id="youtube" />),
+  tiktok: platformApp('tiktok', 'TIKTOK', <BrandMark id="tiktok" />),
   marketing: marketingApp,
   brandKits: brandKitsApp,
   leads: leadsApp,

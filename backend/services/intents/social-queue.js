@@ -60,7 +60,7 @@ export const socialQueueIntent = Object.freeze({
     const campaignId = (typeof payload?.campaignId === 'string' && payload.campaignId.trim()) || null;
     const pillar = (typeof payload?.pillar === 'string' && payload.pillar.trim()) || '';
 
-    const resolvedMedia = await resolvePostMedia(connection, payload?.media);
+    const resolvedMedia = await resolvePostMedia(connection, payload?.media, { channelId: channel.id });
     if (!resolvedMedia.ok) return { ok: false, status: 'invalid', reason: `media refused: ${resolvedMedia.detail}` };
     const media = resolvedMedia.media;
 

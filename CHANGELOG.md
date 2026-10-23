@@ -6,6 +6,162 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Work since 0.1.54, not yet in a shipped build.
+
+### Added
+
+- The desk shows a ready update in its own window: a slim bar under the status line, "0.1.x IS
+  READY · RESTART TO UPDATE · WHAT'S NEW · later" for an install that updates itself, and
+  "IS OUT · DOWNLOAD" (the downloads page) for a .deb or .rpm. Nothing restarts without the press.
+  WHAT'S NEW shows the release notes of every version since the one running, read from the signed
+  update feed; the first launch on a new version opens them once. The tray entry and the OS notice
+  stay. A version with no notes says so.
+- YouTube and TikTok channels: connect with your own developer app, then queue videos through the
+  same draft, approval and schedule as the other channels.
+- Each social platform's window offers as its holder only the house's marketing seat and the
+  platform's own crew, and every platform opens on the same standing panel.
+
+### Changed
+
+- Terms of Service 1.2: the eligibility section is worded plainly; the adults-only rule is
+  unchanged. Each operator signs the new text at their next summoning.
+- The release flow places each version's release notes into the build, so the update feed and the
+  app carry them.
+
+## [0.1.54] - 2026-10-23
+
+Shipped to users (Linux). Builds 0.1.50 to 0.1.53 were never offered; their changes are here.
+Notes: `docs/operations/release-notes-0.1.54.md`. Version commit `3b8175206`.
+
+### Added
+
+- The first screen leads with one model bar: whether a model runs on this computer, one SET UP
+  button with the model and its size, one progress bar with the step, percent and time left, and
+  "Model ready" once it answers. Three short ways in sit below; Summon waits until the model is
+  ready. Details wait behind "details".
+- Each social platform's window opens on a header (its holder and keys), a month at a glance whose
+  counts filter the post queue, and a queue calendar drawn by status.
+
+### Changed
+
+- The model the app sets up is fitted to the graphics card: its context window is sized to the
+  card's free memory at setup and every start (32,768 tokens where it fits, smaller only when it
+  must; beyond that part of the model runs on the processor, said plainly). The app's own model
+  server runs one model at a time.
+- On Windows, an NVIDIA driver older than the card needs keeps the model on the processor until it
+  is updated, with a link to the drivers; the install's owner can choose to use the card anyway.
+
+### Fixed
+
+- One press of SET IT UP FOR ME sets the model up once: a second press no longer starts a second
+  download that corrupts the first; a damaged or partial download mends itself; the model must
+  answer before it is used; the app's own server comes back at every launch beside an older Ollama;
+  a failure is one sentence with TRY AGAIN.
+- The Windows installer tells an already set-up PC so instead of offering to download 0.0 GB.
+
+## [0.1.49] - 2026-10-23
+
+Shipped to users (Linux). Builds 0.1.37 to 0.1.48 were never offered to users; their changes are
+here. Notes: `docs/operations/release-notes-0.1.49.md`. Version commit `b57c23f90`.
+
+### Added
+
+- A summoning never begins without a model that answers: the door asks the flight check's own
+  question, holds SUMMON and REHEARSE with the reason, offers the setup, and lets the summoning
+  through by itself once the model answers.
+- A new neuma's space is set for you (5 GB, capped by what the disk has left), applied without a
+  click; changing the size no longer re-runs the checks.
+- Every new wallet can be saved as a password-locked backup file that restores it on any computer;
+  the sign-in signature reads SIGN IN.
+- The Windows setup wizard: a System check page, every option the person's own, the Deus Neuma
+  artwork, a live install log, and the model server and model set up by the installer.
+
+### Changed
+
+- The flight check speaks plainly: a plain name for every row, and for every row that does not pass,
+  what it means and what to do. Refinement and image & video making stand in their own OPTIONAL
+  group and never count against being ready.
+- The first-run door shows READING THIS MACHINE… while it reads, gives up after 20 seconds, and
+  offers the setup whenever no model is ready.
+
+### Fixed
+
+- Thinking models on Ollama pass the flight check, and a fast model no longer strands the ceremony
+  at its second stage.
+- A neuma's naming and DNA writes are kept when Ollama sends them in its final message; a DNA written
+  with headings is no longer cut as drift.
+- The app's own model server is always found, every chat names Ollama's context window (no silent
+  cut), and a retry never downloads the Ollama archive twice.
+- The rite's ring no longer crosses the introduction or the name input on scaled screens.
+- On Windows, every graphics card's real memory is read, so AMD and Intel cards get the right model;
+  the installer's model step is always offered, survives a dropped connection and shows its progress.
+
+## [0.1.36] - 2026-10-22
+
+Shipped to users (Linux). Notes: `docs/operations/release-notes-0.1.36.md` (0.1.34 and 0.1.35 were
+never offered; their changes are here). Version commit `318f38eda`.
+
+### Added
+
+- A compaction you can see: `/compact` leaves a marker in the chat with how much was carried forward
+  and a WHERE WE LEFT OFF summary, and the context gauge moves at once.
+- The Windows installer sets up the model server and the model, as a classic setup wizard where the
+  person chooses every location and component.
+
+### Changed
+
+- A compaction runs only when the part it would fold is worth summing up (about 2,000 tokens, or 5%
+  of the model's window); below that, `/compact` says so and changes nothing.
+
+## [0.1.33] - 2026-10-22
+
+Shipped to users (Linux). Notes: `docs/operations/release-notes-0.1.33.md`. Version commit
+`3af262cf3`.
+
+### Added
+
+- No model server? The app sets one up: SET IT UP FOR ME downloads Ollama (checked against its
+  published SHA-256, kept in the app's own folder, no admin rights), starts it, and downloads the
+  model chosen for the machine, with progress you can stop and resume. An older Ollama is left alone.
+- `/compact` compacts the conversation on demand.
+- A thread in the post queue is approved as one decision.
+- The installers state what Deus Neuma needs before anything installs; the Linux packages carry the
+  same list.
+
+### Changed
+
+- Long chats open on their words: the recent messages draw first and earlier ones arrive as you
+  scroll up.
+
+### Fixed
+
+- The 18+ statement on the first screen can no longer be painted over.
+- The chat's follow control has its own lane and never covers the words.
+
+## [0.1.32] - 2026-10-21
+
+The first public build, made from the public source exactly as anyone can build it. Notes:
+`docs/operations/release-notes-0.1.32.md`. Version commit `b2a87899a`.
+
+### Added
+
+- Deus Neuma is for adults: the first screen says so, and the agreements ask your age.
+- SUBSTRATE reads as a panel of instruments; SECURITY and LEGAL open on a triage overview of what
+  needs you.
+- Settings → API opens on a map of every key, one row each.
+- Each social platform is drawn as its own mark in the launcher and taskbar.
+- Every install carries LICENSE, NOTICE and the assets licence.
+
+### Changed
+
+- The release key signs the download checksums (`SHA256SUMS.sig`) as well as the update feed, and
+  each signature is bound to its file's name.
+
+### Fixed
+
+- A document press whose owner stopped no longer leaves its browser holding the graphics card.
+- A coding-standards bundle that fails its check is reported in the turn instead of failing it.
+
 ## [0.1.31] - 2026-10-21
 
 The first public early-access build. 0.1.30 went only to the team preview, so this section covers

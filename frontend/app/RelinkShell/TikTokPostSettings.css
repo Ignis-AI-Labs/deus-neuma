@@ -1,0 +1,65 @@
+/* TikTokPostSettings — a TikTok post's choices on its queue card. Built from
+   the desk's own parts (settings rows, the desk toggle, the one Select); this
+   file only lays them out and marks the three states the guidelines need
+   seen: a control the account turned off (greyed), the fixed AI label, and
+   what still blocks APPROVE. */
+.tt-settings {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tt-row { align-items: center; flex-wrap: wrap; }
+
+.tt-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tt-account {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* The author's settings lines, offered beside the control, never chosen for you. */
+.tt-suggest,
+.tt-label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+/* Greyed when the account itself turned the interaction off. */
+.tt-settings .settings-desk-toggle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.tt-settings .settings-desk-toggle:disabled:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--line);
+}
+
+/* The AI label is a fact, not a control: no frame, no press. */
+.tt-fixed {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+
+.tt-declaration a { color: inherit; text-decoration: underline; }
+.tt-declaration a:hover { color: var(--signal); }
+
+.tt-blocker {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+}

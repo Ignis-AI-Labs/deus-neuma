@@ -22,6 +22,19 @@ export default Object.freeze({
       save: '키 저장',
       forget: '키 지우기',
     }),
+    connect: Object.freeze({
+      label: '연결',
+      connect: '연결',
+      reconnect: '다시 연결',
+      cancel: '취소',
+      connected: '연결됨 · {{channel}}',
+      notConnected: '연결 안 됨',
+      waiting: '브라우저에서 Google 로그인을 마쳐 주세요…',
+      needClient: '먼저 OAuth 클라이언트 ID와 시크릿을 저장한 뒤 연결하세요.',
+      failed: '연결이 끝나지 않았습니다.',
+      tiktokWaiting: '브라우저에서 TikTok 로그인을 마쳐 주세요…',
+      tiktokNeedClient: '먼저 TikTok 클라이언트 키와 시크릿을 저장한 뒤 연결하세요.',
+    }),
   }),
 
   email: Object.freeze({

@@ -9,6 +9,8 @@
 
 import { getChannel } from './channel-registry.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
+import { youtubeDraftRefusal } from './youtube-metadata.js';
+import { tiktokDraftRefusal } from './tiktok-metadata.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -126,6 +128,17 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   const channel = getChannel(channelId || '');
   if (channel?.maxChars && t.length > channel.maxChars) {
     return `the post is ${t.length} characters — ${channel.name || channelId} allows at most ${channel.maxChars}`;
+  }
+  // A YouTube post is one video and its title — refused here, at staging,
+  // so a text-only draft never reaches the operator's approval.
+  if (channelId === 'youtube') {
+    const refusal = youtubeDraftRefusal({ text: t, media, kind });
+    if (refusal) return refusal;
+  }
+  // A TikTok post likewise: one video and its caption and settings.
+  if (channelId === 'tiktok') {
+    const refusal = tiktokDraftRefusal({ text: t, media, kind });
+    if (refusal) return refusal;
   }
   if (scheduledFor != null && Number.isNaN(Date.parse(scheduledFor))) {
     return 'scheduledFor must be an ISO-8601 time';

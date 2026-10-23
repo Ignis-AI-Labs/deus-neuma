@@ -23,7 +23,8 @@ import { readXPost, readXListings, readXAccount } from './x-reader.js';
 import { channelBindings } from './channel-bindings.js';
 import { sectorCrew, canSendStaged } from '../sector-crew.js';
 import { resolveChannelCredential } from './channel-credentials.js';
-import { posterFor } from './poster-registry.js';
+import { posterFor, postsOwnMedia } from './poster-registry.js';
+import { OWN_MEDIA_SENDS } from './own-media-sends.js';
 import { getChannel } from './channel-registry.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { readServed, houseWallet, servesLane } from '../house-served.js';
@@ -41,6 +42,8 @@ export const TICK_MS = 60 * 1000;
 // before the outcome could record). Fifteen minutes is generous for one POST
 // call and tight enough that a real loss surfaces the same hour.
 const SEND_LEASE_MS = 15 * 60 * 1000;
+// pure — a video streams for as long as its size takes, so its lease is longer.
+const leaseFor = (entry) => OWN_MEDIA_SENDS[entry.channelId]?.leaseMs ?? SEND_LEASE_MS;
 
 // An approved post this far past its slot is overdue — logged, loudly, once
 // per tick (the board's OVERDUE meta tells the same story on the desk).
@@ -66,10 +69,16 @@ const normalizeText = (text) => String(text || '').replace(/\s+/g, ' ').trim().s
  */
 const reconcileStuckSends = async (entries, nowMs) => {
   const stuck = entries.filter((e) => e.status === 'sending'
-    && nowMs - Date.parse(e.sendingAt || e.decidedAt || e.createdAt || 0) > SEND_LEASE_MS);
-  // Each house's sends are judged against its OWN account's live posts.
+    && nowMs - Date.parse(e.sendingAt || e.decidedAt || e.createdAt || 0) > leaseFor(e));
+  // Each house's sends are judged against its OWN account's live posts — a
+  // video send against its own platform's record, never another platform's.
   for (const house of new Set(stuck.map(entryHouse))) {
-    await reconcileHouseSends(house, stuck.filter((e) => entryHouse(e) === house));
+    const theirs = stuck.filter((e) => entryHouse(e) === house);
+    const posts = theirs.filter((e) => !OWN_MEDIA_SENDS[e.channelId]);
+    if (posts.length) await reconcileHouseSends(house, posts);
+    for (const [channelId, { reconcile }] of Object.entries(OWN_MEDIA_SENDS)) {
+      await reconcile(house, theirs.filter((e) => e.channelId === channelId), { journal: journalSend, log });
+    }
   }
 };
 
@@ -293,7 +302,21 @@ export const publishEntry = async (entry) => {
   // Replies ride the same path — their media was resolved and witnessed at
   // stage time like any post's.
   let mediaIds = [];
-  if (post && Array.isArray(entry.media) && entry.media.length) {
+  const ownMedia = [];
+  if (post && Array.isArray(entry.media) && entry.media.length && postsOwnMedia(entry.channelId)) {
+    // The upload IS the post (a video): the poster takes the re-verified
+    // paths itself, so nothing is uploaded ahead of the irreversible act.
+    for (const item of entry.media) {
+      const verified = await reverifyMediaFile(item.path);
+      if (!verified.ok) {
+        const refused = { ok: false, detail: `media refused — ${verified.detail}` };
+        await postQueue.recordOutcome(entry.id, refused);
+        await journalSend(entry, refused);
+        return refused;
+      }
+      ownMedia.push({ path: verified.path });
+    }
+  } else if (post && Array.isArray(entry.media) && entry.media.length) {
     const uploaded = await uploadEntryMedia(credentials, entry);
     if (!uploaded.ok) {
       await postQueue.recordOutcome(entry.id, uploaded);
@@ -307,6 +330,16 @@ export const publishEntry = async (entry) => {
   const outcome = post
     ? await post(credentials, entry.text, {
       mediaIds,
+      media: ownMedia,
+      // A video poster refreshes its sign-in in the house's own store, and
+      // keeps its platform's ticket on the entry before any byte is sent.
+      house,
+      // A TikTok post leaves with exactly the choices its approval recorded.
+      tiktokConsent: entry.tiktokConsent ?? null,
+      onTicket: async (ticket) => {
+        const kept = await postQueue.recordSendTicket(entry.id, ticket);
+        if (!kept.ok) throw new Error(kept.error);
+      },
       // The reply's linkage rides to the wire — the poster turns it into
       // in_reply_to_tweet_id; a plain post carries none. A self-reply
       // answers its parent's live post (the thread law, resolved above).
@@ -324,6 +357,12 @@ export const publishEntry = async (entry) => {
     if (account) outcome.postedAs = account;
   }
 
+  // Accepted but not yet settled (TikTok still processing): the entry keeps
+  // its sending lease and its ticket, and the reconciler settles it.
+  if (outcome.pending) {
+    log.info('queued post accepted, outcome pending', { id: entry.id, channel: entry.channelId, detail: outcome.detail });
+    return outcome;
+  }
   await postQueue.recordOutcome(entry.id, outcome);
   await journalSend(entry, outcome);
   const channel = getChannel(entry.channelId);

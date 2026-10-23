@@ -8,6 +8,8 @@
 import { laneCardRoot } from './lane-card-root.js';
 import { readMediaFile, ALT_TEXT_MAX, MEDIA_PER_POST_MAX } from './x-media.js';
 import { resolveMediaFile } from './media-source.js';
+import { readVideoHead } from './video-media.js';
+import { ownMediaChannel } from './poster-registry.js';
 import { mediaLibraryRoot } from '../media-library.js';
 import { focusGroundRoots } from '../focus-ground.js';
 
@@ -22,13 +24,22 @@ import { focusGroundRoots } from '../focus-ground.js';
  * for. Alt text is carried through unchanged; its absence is surfaced by the
  * queue read, never invented here.
  *
+ * A channel whose post IS its media (YouTube, TikTok: postsOwnMedia) takes one
+ * VIDEO, sniffed by its head, instead of images; a still names that channel's
+ * own photo refusal.
+ *
  * impure (disk)
+ * @param {object} connection
+ * @param {unknown} rawMedia
+ * @param {{channelId?: string}} [opts] - the channel the media will go to
  * @returns {Promise<{ok: true, media: Array<{path: string, alt: string}>}
  *   |{ok: false, detail: string}>}
  */
-export const resolvePostMedia = async (connection, rawMedia) => {
+export const resolvePostMedia = async (connection, rawMedia, { channelId = null } = {}) => {
   if (rawMedia == null) return { ok: true, media: [] };
   if (!Array.isArray(rawMedia)) return { ok: false, detail: 'media must be a list of {path, alt}' };
+  const video = ownMediaChannel(channelId);
+  if (video && rawMedia.length > 1) return { ok: false, detail: `a ${video.name} post is exactly one video` };
   if (rawMedia.length > MEDIA_PER_POST_MAX) {
     return { ok: false, detail: `at most ${MEDIA_PER_POST_MAX} images ride one post` };
   }
@@ -54,8 +65,10 @@ export const resolvePostMedia = async (connection, rawMedia) => {
     const resolved = await resolveMediaFile(item?.path, roots);
     if (!resolved.ok) return { ok: false, detail: resolved.detail };
     // Sniff now too, so a being learns at STAGE time that its file is not an
-    // image — not hours later when the scheduler refuses to publish.
-    const read = await readMediaFile(resolved.path);
+    // image (or, for a video channel, not a video) — not hours later when the
+    // scheduler refuses to publish.
+    const read = video ? await readVideoHead(resolved.path) : await readMediaFile(resolved.path);
+    if (!read.ok && video && (await readMediaFile(resolved.path)).ok) return { ok: false, detail: video.photo };
     if (!read.ok) return { ok: false, detail: read.detail };
     media.push({ path: resolved.path, alt: String(item?.alt || '').slice(0, ALT_TEXT_MAX) });
   }

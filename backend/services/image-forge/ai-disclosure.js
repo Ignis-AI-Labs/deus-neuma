@@ -26,6 +26,17 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 export const SOFTWARE = 'Deus Neuma Image & Video Forge';
 export const DISCLOSURE = 'AI-generated content (digital source type: trainedAlgorithmicMedia), made with the Deus Neuma Image & Video Forge.';
 
+// THE PUBLIC SIDE of the same law: what the house publishes says it is
+// AI-made in the words people read, and in every flag a platform asks for.
+// Everything the house publishes was made or drafted by its beings, so the
+// flag is a constant, never an option a caller could switch off.
+
+/** The one line that rides public text beside AI-made media (a video's description). */
+export const POST_DISCLOSURE = 'AI-generated content, made with Deus Neuma.';
+
+/** A platform's AI-made flag (YouTube `status.containsSyntheticMedia`, TikTok `post_info.is_aigc`): always raised. */
+export const CONTAINS_SYNTHETIC_MEDIA = true;
+
 // pure — one PNG tEXt chunk (Latin-1 keyword and text, CRC over type + data)
 const textChunk = (keyword, text) => {
   const data = Buffer.concat([Buffer.from(keyword, 'latin1'), Buffer.from([0]), Buffer.from(text, 'latin1')]);

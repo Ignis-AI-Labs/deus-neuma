@@ -12,15 +12,17 @@
 //   desk-windows.cjs   — desk slots, boot/handoff relay, the one window factory
 //   ipc-handlers.cjs   — every renderer-facing IPC registration + the app menu
 //   tray.cjs           — the corner tab + the once-per-install "still running" notice
+//   update-bar.cjs     — the desk's update bar + WHAT'S NEW (what auto-update.cjs found)
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
-const { app, BrowserWindow, Notification, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, Notification, dialog, ipcMain, shell, session } = require('electron');
 const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
 const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
+const { registerUpdateBar } = require('./update-bar.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
 
 // Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
@@ -51,6 +53,7 @@ if (!app.requestSingleInstanceLock()) {
     // must never load ahead of its handlers, and the wallet store opens before
     // any window exists.
     registerIpcHandlers({ deskWindows });
+    const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate });
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).
     guardAppSessions(session, getOrigin);
@@ -63,7 +66,9 @@ if (!app.requestSingleInstanceLock()) {
       await waitForBackend();
       await deskWindows.bootFirstDesk();
       tray.ensureTray(); // the corner tab — present from the first desk onward
-      autoUpdate.init({ app, shell, Notification, refreshTray: tray.rebuildTrayMenu });
+      // An offer that changes reaches the tray and every desk's bar together.
+      const refreshTray = () => { tray.rebuildTrayMenu(); updateBar.publish(); };
+      autoUpdate.init({ app, shell, Notification, refreshTray });
     } catch (err) {
       dialog.showErrorBox('Deus Neuma', `Could not start the local backend.\n\n${err.message}`);
       app.quit();

@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { createRequire } from 'module';
 import path from 'path';
 import os from 'os';
+import { pinSocialKeysEmpty } from './helpers/no-social-keys.js';
 
 // THE OPERATOR'S .env NEVER REACHES THE HERMETIC SUITE. The `natural` package
 // (core/memory/neuma-recall.js, reached through core/index.js by most backend
@@ -28,6 +29,9 @@ import os from 'os';
     rmSync(empty, { recursive: true, force: true });
   }
 }
+
+// No real social keys reach a backend a test spawns (test/helpers/no-social-keys.js).
+pinSocialKeysEmpty();
 
 // Set test environment
 process.env.NODE_ENV = 'test';

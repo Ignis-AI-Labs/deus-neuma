@@ -125,6 +125,17 @@
   display: block;
 }
 
+/* A YouTube post's video plays in place: the operator watches what they
+   approve. Contained, never cropped — a vertical Short keeps its shape. */
+.queue-media-video {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  background: var(--color-void);
+  border: 1px solid var(--line);
+  display: block;
+}
+
 /* The thumbnail is a door, not a picture — clicking it hangs the staged
    image full-size in the Lightbox for the operator's own eyes. The button
    is a transparent wrapper: the thumb's own border and sizing carry the

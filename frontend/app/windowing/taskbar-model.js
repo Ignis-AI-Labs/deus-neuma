@@ -20,7 +20,7 @@ export const LAUNCHER_CATEGORIES = Object.freeze([
   { id: 'beings', apps: ['avatar', 'house', 'innerlife', 'refinement', 'sovereignty', 'vessel', 'voice'] },
   { id: 'work', apps: ['chat', 'chats', 'staff', 'houseclock', 'projects', 'teams', 'todo', 'workflow'] },
   { id: 'create', apps: ['files', 'terminal', 'comfyui', 'gallery', 'brandKits'] },
-  { id: 'reach', apps: ['x', 'bluesky', 'facebook', 'linkedin', 'mastodon', 'marketing', 'leads', 'discord', 'telegram'] },
+  { id: 'reach', apps: ['x', 'bluesky', 'facebook', 'linkedin', 'mastodon', 'youtube', 'tiktok', 'marketing', 'leads', 'discord', 'telegram'] },
   { id: 'know', apps: ['sheet', 'skills', 'contextmap', 'map', 'db', 'stats'] },
   { id: 'system', apps: ['settings', 'substrate', 'wallet', 'security', 'legal', 'witnesses', 'bench'] },
 ].map((c) => Object.freeze({ ...c, apps: Object.freeze(c.apps) })));

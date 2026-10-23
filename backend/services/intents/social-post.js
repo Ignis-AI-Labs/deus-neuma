@@ -34,7 +34,8 @@ const speakableChannels = async (laneId) => {
     loadChannelCredentials(house).catch(() => ({})),
     channelBindings.load(house).catch(() => ({})),
   ]);
-  const held = CHANNEL_CATALOG.filter((c) => canNeumaPost(bindings, c.id, laneId));
+  // A queue-only channel (YouTube) is never offered for an instant post.
+  const held = CHANNEL_CATALOG.filter((c) => !c.queueOnly && canNeumaPost(bindings, c.id, laneId));
   const out = [];
   for (const c of held) {
     if (await resolveChannelCredential(house, c.id, store).catch(() => null)) out.push(c.id);
@@ -60,6 +61,9 @@ export const socialPostIntent = Object.freeze({
     const channel = typeof payload?.channel === 'string' ? getChannel(payload.channel.trim()) : null;
     if (!channel) {
       return { ok: false, status: 'invalid', reason: `unknown channel "${payload?.channel ?? ''}" — the INTENTS section names the channels you may speak through` };
+    }
+    if (channel.queueOnly) {
+      return { ok: false, status: 'invalid', reason: `${channel.name} posts go through the campaign queue (social/queue) so your operator sees the video before it goes out; there is no instant ${channel.name} post` };
     }
     const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
     // Media is authorised BEFORE the operator's card: an unreachable path

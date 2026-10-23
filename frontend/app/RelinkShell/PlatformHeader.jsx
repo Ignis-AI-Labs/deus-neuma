@@ -8,6 +8,10 @@
 import { BrandMark } from './brand-marks.jsx';
 import { STRIP_BEFORE, untilLabel } from './platform-pulse.js';
 import { dayKeyOf } from './month-grid.js';
+import { keysStanding } from './platform-standing.js';
+
+// The KEYS fact as the head names it — the same reading the standing's cell draws.
+const KEYS_FACT = Object.freeze({ unset: ['NOT SET', 'hot'], failing: ['FAILING', 'hot'], proven: ['PROVEN', 'live'], set: ['SET', null] });
 
 const when = (iso) => new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -58,8 +62,8 @@ const DayStrip = ({ strip, onDay }) => {
  */
 export const PlatformHeader = ({ channel, test, holderName, crewCount, pulse, now, onOpen, standingOpen, onStanding }) => {
   const m = pulse.month;
-  const account = test?.ok === true && test.account?.name ? `@${test.account.name}` : null;
-  const keys = !channel.configured ? ['NOT SET', 'hot'] : test?.ok === true ? ['PROVEN', 'live'] : test?.ok === false ? ['FAILING', 'hot'] : ['SET', null];
+  const { state, account } = keysStanding(channel, test);
+  const keys = KEYS_FACT[state];
   return (
     <header className="pc-head">
       <div className="pc-id">

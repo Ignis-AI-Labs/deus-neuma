@@ -72,6 +72,21 @@ export const CREDENTIAL_LINKS = Object.freeze({
     mastodon: link('https://docs.joinmastodon.org/client/token/', 'Mastodon access tokens', 'on your instance: Preferences → Development → New application'),
     bluesky: link('https://bsky.app/settings/app-passwords', 'Bluesky app passwords', 'an app password, never your account password'),
     linkedin: link('https://www.linkedin.com/developers/apps', 'LinkedIn Developers', 'the token lasts 60 days'),
+    // Your OWN Google Cloud project, in this order: turn the API on, set up the
+    // consent screen, then make the Desktop client whose id + secret go here.
+    youtube: Object.freeze([
+      link('https://console.cloud.google.com/apis/library/youtube.googleapis.com', 'Enable YouTube Data API v3', 'in your own Google Cloud project; its quota is yours alone'),
+      link('https://console.cloud.google.com/auth/branding', 'OAuth consent screen', 'set the consent screen to In production, or the sign-in dies after 7 days'),
+      link('https://console.cloud.google.com/apis/credentials', 'Google Cloud credentials', 'create an OAuth client of type Desktop app; copy its client id and secret here, then press CONNECT'),
+    ]),
+    // The company's OWN TikTok developer app: make it (or its sandbox), add the
+    // two products, then test as a sandbox target user before app review.
+    tiktok: Object.freeze([
+      link('https://developers.tiktok.com/apps/', 'TikTok developer apps', 'copy the app\'s client key and client secret here; a sandbox has its own pair'),
+      link('https://developers.tiktok.com/doc/login-kit-desktop', 'Login Kit for Desktop', 'add Login Kit, platform Desktop, redirect URI http://127.0.0.1:*/callback/'),
+      link('https://developers.tiktok.com/doc/content-posting-api-get-started', 'Content Posting API', 'add Content Posting with Direct Post on; scopes user.info.basic, video.publish, video.upload'),
+      link('https://developers.tiktok.com/doc/add-a-sandbox', 'TikTok sandbox', 'add your TikTok account as a sandbox target user to test before review'),
+    ]),
   }),
   email: Object.freeze({
     gmail: link('https://myaccount.google.com/apppasswords', 'Google app passwords', 'needs 2-Step Verification on; use the 16-letter app password, not your Google password'),

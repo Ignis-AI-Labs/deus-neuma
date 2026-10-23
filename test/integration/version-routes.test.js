@@ -24,7 +24,12 @@ describe('GET /api/v1/version', () => {
     expect(res.body.name).toBe('NEUMA');
     expect(res.body.version).toBe(pkg.version);
     expect(Array.isArray(res.body.changelog)).toBe(true);
-    expect(res.body.changelog[0].version).toBe(pkg.version);
+    // The newest SHIPPED section may trail package.json: the public sync raises the patch
+    // version on every push, and a section is written only for a build that ships.
+    const parts = (v) => v.split('.').map(Number);
+    const [a, b] = [parts(res.body.changelog[0].version), parts(pkg.version)];
+    const cmp = a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+    expect(cmp).toBeLessThanOrEqual(0);
     expect(res.body.changelog[0].date).toMatch(/^\d{4}-\d{2}-\d{2}/);
     expect(res.body.changelog[0].text.length).toBeGreaterThan(0);
   });

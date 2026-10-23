@@ -14,6 +14,7 @@ import { setChannelCredentials, clearChannelCredentials } from '../../services/s
 import { KeyLink } from './KeyLink.jsx';
 import { CredentialRow } from './CredentialMap.jsx';
 import { channelItem, passesState } from './credential-view.js';
+import { ChannelConnect } from './ChannelConnect.jsx';
 
 // THE FLIGHT LINE (ruling, 2026-07-28): a key being SET is a claim; the flight
 // test is the proof — the platform accepted it, answered, named the account.
@@ -74,7 +75,8 @@ const ChannelKeysCard = ({ channel, test, item, open, onToggle, onRetest, onChan
         <span className="settings-k">{t('channelKeys.card.flightTest')}</span>
         <FlightLine test={test} />
       </div>
-      {channel.fields.map((f) => (
+      {/* A field the CONNECT sign-in writes (a refresh token) is never typed. */}
+      {channel.fields.filter((f) => !f.connect).map((f) => (
         <div className="settings-control" key={f.key}>
           <input
             className="settings-input"
@@ -109,6 +111,9 @@ const ChannelKeysCard = ({ channel, test, item, open, onToggle, onRetest, onChan
           {t('channelKeys.card.forget')}
         </button>
       </div>
+      {channel.fields.some((f) => f.connect)
+        ? <ChannelConnect channel={channel} test={test} onConnected={async () => { await onChanged(); onRetest(); }} />
+        : null}
       {error ? <p className="settings-err">{error}</p> : null}
     </CredentialRow>
   );

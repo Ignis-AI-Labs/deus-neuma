@@ -58,6 +58,9 @@ files:
   # someone had run an installer by hand.
   - skills-packs/**/*
   - build/icon.png
+  # The version's release notes, when the release flow placed them: the app's first launch on a new version shows them as WHAT'S NEW
+  # (electron/update-bar.cjs). Absent in a build without notes; nothing else reads it.
+  - build/release-notes.md
   # The backend imports this ONE frontend module (council-session.js →
   # stripToolBlocks); everything else under frontend/ is dev-only source.
   - frontend/utils/tool-stream-filter.js
@@ -177,3 +180,8 @@ publish:
   provider: generic
   url: https://deusneuma.ai/updates/
   channel: latest
+# WHAT'S NEW rides the feed: with no releaseInfo set, electron-builder reads
+# build/release-notes.md (its default notes file in buildResources) into each
+# latest*.yml as `releaseNotes`, which the release key then signs with the rest
+# of the feed. An installed app shows them in its update bar only after that
+# signature holds (auto-update.cjs). No file, no releaseNotes — never a failure.

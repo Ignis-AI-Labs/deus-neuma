@@ -28,6 +28,7 @@ import { createWriteChain } from '../write-chain.js';
 import { validateDraft, queuedSecretRefusal, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
 import { approveThreadIn } from './queue-thread.js';
+import { tiktokApproveRefusal } from './tiktok-metadata.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
 
@@ -244,9 +245,9 @@ export const createPostQueue = (opts = {}) => {
     /**
      * The operator approves a draft (optionally re-timing it). impure.
      * @param {string} id
-     * @param {{decidedBy: string, scheduledFor?: string|null}} decision
+     * @param {{decidedBy: string, scheduledFor?: string|null, tiktokConsent?: object|null, textSeen?: string}} decision
      */
-    approve(id, { decidedBy, scheduledFor } = {}) {
+    approve(id, { decidedBy, scheduledFor, tiktokConsent, textSeen } = {}) {
       if (scheduledFor != null && Number.isNaN(Date.parse(scheduledFor))) {
         return Promise.resolve({ ok: false, error: 'scheduledFor must be an ISO-8601 time' });
       }
@@ -259,6 +260,9 @@ export const createPostQueue = (opts = {}) => {
         if (entry.kind === 'reply') {
           return { error: 'a reply goes out the moment it is approved — decide it through the reply approval (approve-and-send), not the schedule lane' };
         }
+        const tiktok = tiktokApproveRefusal(entry, { consent: tiktokConsent, textSeen });
+        if (tiktok) return { error: tiktok };
+        if (entry.channelId === 'tiktok') entry.tiktokConsent = tiktokConsent ?? null;
         entry.status = 'approved';
         entry.decidedBy = String(decidedBy || '');
         entry.decidedAt = new Date().toISOString();
@@ -435,6 +439,12 @@ export const createPostQueue = (opts = {}) => {
         entry.sendingAt = at.toISOString();
         return null;
       });
+    },
+
+    /** Keep a platform's ticket for a send in flight (TikTok's publish_id),
+     *  so the reconciler can ask the platform what became of it. impure. */
+    recordSendTicket(id, ticket) {
+      return transition(id, ['sending'], (entry) => { entry.sendTicket = String(ticket); });
     },
 
     /** Record the real outcome of a publish attempt. impure. A successful

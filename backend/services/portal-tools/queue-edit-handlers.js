@@ -73,7 +73,7 @@ export const handleNeumaQueueUpdate = async (ws, connection, neumaPolicy, toolMo
   // "images untouched"; an explicit [] clears them.
   let media;
   if (args?.media !== undefined) {
-    const resolvedMedia = await resolvePostMedia(connection, args.media);
+    const resolvedMedia = await resolvePostMedia(connection, args.media, { channelId: channel.id });
     if (!resolvedMedia.ok) {
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — media refused`, detail: resolvedMedia.detail });
       return { tool, status: 'error', error: resolvedMedia.detail };
@@ -167,7 +167,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
     }
     let media;
     if (u.media !== undefined) {
-      const resolvedMedia = await resolvePostMedia(connection, u.media);
+      const resolvedMedia = await resolvePostMedia(connection, u.media, { channelId: channel.id });
       if (!resolvedMedia.ok) {
         results[i] = { id, ok: false, error: resolvedMedia.detail };
         continue;

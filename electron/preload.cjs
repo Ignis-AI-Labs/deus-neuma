@@ -142,6 +142,18 @@ contextBridge.exposeInMainWorld('neuma', {
       return () => ipcRenderer.removeListener('notifications:activate', handler);
     },
   },
+  // The desk's update bar and WHAT'S NEW (electron/update-bar.cjs). `state` reads what to show,
+  // `onChange` hears every change and returns its own unsubscribe, `act` sends the one choice
+  // made ('restart' | 'download' | 'later' | 'seen'); main re-checks every act against the offer.
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    act: (action) => ipcRenderer.invoke('update:act', action),
+    onChange: (cb) => {
+      const handler = (_event, view) => cb(view);
+      ipcRenderer.on('update:changed', handler);
+      return () => ipcRenderer.removeListener('update:changed', handler);
+    },
+  },
   // App-level hotkeys (electron/hotkeys.cjs), for the Settings legend. Data
   // only — rebinding stays main's business.
   hotkeys: () => ipcRenderer.invoke('hotkeys:list'),

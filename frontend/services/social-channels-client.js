@@ -124,15 +124,25 @@ export const stageQueuePost = ({ channelId, text, scheduledFor, campaignId }) =>
 export const approveQueueThread = (id, textsSeen) =>
   req(`/queue/${id}/approve-thread`, { method: 'PUT', body: { textsSeen } });
 
-// impure
-export const approveQueuePost = (id, { scheduledFor, textSeen } = {}) =>
+// impure — `tiktok` carries the choices made on a TikTok post's card.
+export const approveQueuePost = (id, { scheduledFor, textSeen, tiktok } = {}) =>
   req(`/queue/${id}/approve`, {
     method: 'PUT',
     body: {
       ...(scheduledFor ? { scheduledFor } : {}),
       ...(textSeen !== undefined ? { textSeen } : {}),
+      ...(tiktok ? { tiktok } : {}),
     },
   });
+
+/**
+ * What a TikTok post's card renders from: the account as TikTok names it
+ * now and the author's suggestions.
+ * @param {string} id
+ * @returns {Promise<{ok: true, mode: 'drafts'}|{ok: true, mode: 'post', creator: object, suggested: object}>}
+ */
+// impure
+export const fetchTikTokCard = (id) => req(`/queue/${id}/tiktok`);
 
 /**
  * Decline a draft — it stays in the record, marked.
@@ -175,13 +185,14 @@ export const removeQueuePost = (id) =>
   req(`/queue/${id}`, { method: 'DELETE' });
 
 /**
- * One staged attachment's bytes as a LOCAL object URL. The preview route is
- * behind the Bearer token and an <img> cannot send headers, so the bytes
- * travel through fetch and the element points at the object URL — the caller
- * owns revoking it.
+ * One staged attachment's bytes as a LOCAL object URL, with the type the
+ * server sniffed (an image, or a YouTube post's video). The preview route is
+ * behind the Bearer token and an <img>/<video> cannot send headers, so the
+ * bytes travel through fetch and the element points at the object URL — the
+ * caller owns revoking it.
  * @param {string} entryId
  * @param {number} index
- * @returns {Promise<string>}
+ * @returns {Promise<{url: string, type: string}>}
  */
 // impure
 export const fetchQueueMediaUrl = async (entryId, index) => {
@@ -189,8 +200,31 @@ export const fetchQueueMediaUrl = async (entryId, index) => {
   if (!headers) throw new Error('Not authenticated.');
   const res = await fetch(`/api/v1/social-channels/queue/${entryId}/media/${index}`, { headers });
   if (!res.ok) throw new Error(`The staged media did not load (${res.status}).`);
-  return URL.createObjectURL(await res.blob());
+  const blob = await res.blob();
+  return { url: URL.createObjectURL(blob), type: blob.type };
 };
+
+/**
+ * Begin the house's CONNECT for a sign-in channel (youtube, tiktok): the
+ * backend's loopback listener stands and this answers the platform's consent
+ * URL to open in the system browser.
+ * @param {string} channelId
+ * @returns {Promise<{authUrl: string}>}
+ */
+// impure
+export const startChannelConnect = (channelId) => req(`/${channelId}/connect`, { method: 'POST' });
+
+/**
+ * A CONNECT's outcome: pending, complete (with the account), error, or idle.
+ * @param {string} channelId
+ * @returns {Promise<{status: string, error?: string, channel?: {id: string, title: string}}>}
+ */
+// impure
+export const pollChannelConnect = (channelId) => req(`/${channelId}/connect`);
+
+/** Cancel a CONNECT in progress. */
+// impure
+export const cancelChannelConnect = (channelId) => req(`/${channelId}/connect`, { method: 'DELETE' });
 
 /**
  * The wallet's own roster, for the holder picker — one auth envelope for

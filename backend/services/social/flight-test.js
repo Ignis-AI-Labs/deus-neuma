@@ -19,6 +19,8 @@ import { readLinkedInIdentity, linkedinExpiryNote } from './linkedin-poster.js';
 import { normalizeInstanceUrl } from './mastodon-poster.js';
 import { isSecureServiceUrl } from './bluesky-poster.js';
 import { GRAPH_VERSION } from './facebook-poster.js';
+import { readYouTubeChannel } from './youtube-poster.js';
+import { readTikTokAccount } from './tiktok-poster.js';
 
 const TTL_MS = 60 * 1000;
 const TIMEOUT_MS = 8 * 1000;
@@ -150,6 +152,24 @@ const probeLinkedIn = async (credentials, signal) => {
   return note ? { ok: true, account, detail: note } : { ok: true, account };
 };
 
+// The channel the stored refresh token speaks as: its @handle where it has
+// one, its title always (the desk names the channel by its title).
+const probeYouTube = async (credentials, signal) => {
+  if (!credentials) return unconfigured('YouTube');
+  const me = await readYouTubeChannel(credentials, { signal });
+  if (!me.ok) return { ok: false, status: me.status, detail: me.detail };
+  return { ok: true, account: { id: me.channel.id, name: me.channel.handle || me.channel.title, title: me.channel.title } };
+};
+
+// The account the house's TikTok sign-in speaks as, by its display name; the
+// probe refreshes the access token through the house's store when it is due.
+const probeTikTok = async (credentials, signal, wallet) => {
+  if (!credentials) return unconfigured('TikTok');
+  const me = await readTikTokAccount(wallet, { signal });
+  if (!me.ok) return { ok: false, status: me.status, detail: me.detail };
+  return { ok: true, account: { id: me.user.id, name: me.user.displayName, title: me.user.displayName } };
+};
+
 const PROBES = Object.freeze({
   x: probeX,
   telegram: probeTelegram,
@@ -158,6 +178,8 @@ const PROBES = Object.freeze({
   bluesky: probeBluesky,
   facebook: probeFacebook,
   linkedin: probeLinkedIn,
+  youtube: probeYouTube,
+  tiktok: probeTikTok,
 });
 
 // The brief cache — one entry per house per channel: { at, result }.

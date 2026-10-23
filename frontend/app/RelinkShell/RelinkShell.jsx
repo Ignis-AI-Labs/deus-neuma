@@ -95,6 +95,7 @@ import { useNotifications } from './use-notifications.js';
 import { NotificationsContext } from './notifications-context.js';
 import { NotificationTray } from './NotificationTray/NotificationTray.jsx';
 import { PlatformVersion } from './PlatformVersion.jsx';
+import { UpdateBar } from './UpdateBar.jsx';
 import { deskRegistryFor, isHarness } from '../harness-mode.js';
 
 // Voice and the 3D body are held back from the early release (coming-later.js).
@@ -376,6 +377,9 @@ export const RelinkShell = ({ wsService }) => {
       {/* THE FIRST SEAL — the desk's notice that a bound lane owes its
           founding words. One act: dispatch into the full-screen ceremony. */}
       <VoiceSealGate companion={consciousness.activeCompanion} />
+
+      {/* A ready update, from the desk app: one press to install, and what changed. */}
+      <UpdateBar />
     </div>
   );
 };

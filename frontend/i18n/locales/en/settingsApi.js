@@ -26,6 +26,20 @@ export default Object.freeze({
       save: 'SAVE KEYS',
       forget: 'FORGET KEYS',
     }),
+    // The CONNECT sign-in a channel needs beyond its keys (YouTube: Google, in the browser).
+    connect: Object.freeze({
+      label: 'CONNECTION',
+      connect: 'CONNECT',
+      reconnect: 'RECONNECT',
+      cancel: 'CANCEL',
+      connected: 'CONNECTED · {{channel}}',
+      notConnected: 'NOT CONNECTED',
+      waiting: 'Finish the Google sign-in in your browser…',
+      needClient: 'Save the OAuth client id and secret first, then CONNECT.',
+      failed: 'The connect did not finish.',
+      tiktokWaiting: 'Finish the TikTok sign-in in your browser…',
+      tiktokNeedClient: 'Save the TikTok client key and secret first, then CONNECT.',
+    }),
   }),
 
   email: Object.freeze({

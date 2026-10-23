@@ -14,6 +14,7 @@
  * @property {boolean} secret masked in every API response when true
  * @property {string} env    .env bootstrap variable for this field
  * @property {string} [fallback] value used when neither store nor env carries one
+ * @property {boolean} [connect] filled by the channel's CONNECT sign-in, never typed
  */
 
 /**
@@ -22,10 +23,15 @@
  * @property {string} name
  * @property {number} maxChars platform's own post-length ceiling (advisory — the API is the authority)
  * @property {ReadonlyArray<ChannelField>} fields
+ * @property {boolean} [queueOnly] posts only through the operator-approved queue, never instantly
  */
 
 const field = (key, label, secret, env, fallback) =>
   Object.freeze({ key, label, secret, env, ...(fallback !== undefined ? { fallback } : {}) });
+
+// A field the channel's CONNECT sign-in writes (a refresh token): the desk
+// shows a CONNECT button for it, never an input.
+const connectField = (key, label, env) => Object.freeze({ ...field(key, label, true, env), connect: true });
 
 /** @type {ReadonlyArray<ChannelEntry>} */
 export const CHANNEL_CATALOG = Object.freeze([
@@ -99,6 +105,42 @@ export const CHANNEL_CATALOG = Object.freeze([
       field('tokenExpiresAt', 'Token Expiry (ISO date — the verify script prints it)', false, 'LINKEDIN_TOKEN_EXPIRES_AT'),
     ]),
   }),
+  Object.freeze({
+    id: 'youtube',
+    name: 'YouTube',
+    // The queue's own text ceiling; the title and description limits are
+    // YouTube's and are judged in youtube-metadata.js.
+    maxChars: 4000,
+    // A video is approved by the operator who has SEEN it: YouTube posts ride
+    // the campaign queue only, never the instant post.
+    queueOnly: true,
+    // The operator's OWN Google Cloud project, Desktop app client: their
+    // quota, their consent screen. The refresh token comes from CONNECT.
+    fields: Object.freeze([
+      field('clientId', 'OAuth Client ID (Desktop app)', false, 'YOUTUBE_CLIENT_ID'),
+      field('clientSecret', 'OAuth Client Secret', true, 'YOUTUBE_CLIENT_SECRET'),
+      connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'YOUTUBE_REFRESH_TOKEN'),
+    ]),
+  }),
+  Object.freeze({
+    id: 'tiktok',
+    name: 'TikTok',
+    // The caption's own limit (2200) is TikTok's, judged in tiktok-metadata.js;
+    // this ceiling leaves room for the settings lines around it.
+    maxChars: 2400,
+    // The operator approves a video they have SEEN: queue only, never instant.
+    queueOnly: true,
+    // The company's OWN TikTok developer app (or its sandbox): Login Kit for
+    // Desktop + Content Posting. CONNECT fills the token pair; a refresh
+    // replaces both before the access token's 24 hours run out.
+    fields: Object.freeze([
+      field('clientKey', 'Client Key', false, 'TIKTOK_CLIENT_KEY'),
+      field('clientSecret', 'Client Secret', true, 'TIKTOK_CLIENT_SECRET'),
+      connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'TIKTOK_REFRESH_TOKEN'),
+      connectField('accessToken', 'Access Token (set by CONNECT)', 'TIKTOK_ACCESS_TOKEN'),
+      connectField('accessExpiresAt', 'Access Token Expiry (set by CONNECT)', 'TIKTOK_ACCESS_EXPIRES_AT'),
+    ]),
+  }),
 ]);
 
 /**
@@ -156,6 +198,7 @@ export const maskChannelCredentials = (channel, storeEntry, env) => Object.freez
       secret: f.secret,
       set: stored || fromEnv || hasFallback,
       source: stored ? 'store' : fromEnv ? 'env' : hasFallback ? 'default' : 'none',
+      ...(f.connect ? { connect: true } : {}),
     });
   })),
 });

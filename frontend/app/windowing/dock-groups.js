@@ -95,7 +95,7 @@ export const DOCK_GROUPS = Object.freeze([
   // channel. One kit governs every channel a company speaks through, and the
   // work that reads it — campaigns, cards, pressed documents — starts in this
   // section (Design note, 2026-08-31: […]).
-  plain('marketing', 'MARKETING', ['bluesky', 'brandKits', 'facebook', 'leads', 'linkedin', 'marketing', 'mastodon', 'x']),
+  plain('marketing', 'MARKETING', ['bluesky', 'brandKits', 'facebook', 'leads', 'linkedin', 'marketing', 'mastodon', 'tiktok', 'x', 'youtube']),
 
   // COMMUNITY is the private-circles layer: Telegram and Discord are
   // community management — member care, announcements, moderation — never

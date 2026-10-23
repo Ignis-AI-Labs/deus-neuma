@@ -16,7 +16,7 @@ import './Select.css';
 /**
  * @param {object} props
  * @param {string} props.value the selected option's value ('' = none)
- * @param {Array<{value: string, label: string, disabled?: boolean}>} props.options
+ * @param {Array<{value: string, label: string, disabled?: boolean, title?: string}>} props.options  title = why, on hover
  * @param {(value: string) => void} props.onChange
  * @param {() => void} [props.onOpen] Refresh choices on mouse or keyboard opening.
  * @param {string} [props.placeholder] shown on the trigger when nothing matches value
@@ -145,6 +145,7 @@ export const Select = ({
                 role="option"
                 aria-selected={o.value === value}
                 aria-disabled={o.disabled || undefined}
+                title={o.title}
                 tabIndex={-1}
                 className={`lc-sel-opt${o.value === value ? ' is-on' : ''}${o.disabled ? ' is-disabled' : ''}`}
                 onClick={() => choose(o)}

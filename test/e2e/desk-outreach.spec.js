@@ -25,24 +25,28 @@ test('REACH: the launcher group is the platform roster — every platform its ow
   expect(new Set(marks).size).toBe(platforms.length);
   await reach.screenshot({ path: path.join(SHOTS, 'launcher-reach-marks.png') });
 
-  // X's own window: the standing reads as TWO labeled facts — keys and
-  // holder are different decisions (stacked unlabeled they read as a
-  // contradiction) — and its boards hang as CAMPAIGNS / QUEUE.
+  // X's own window: the standing reads as three labeled cells — keys,
+  // holder and crew are different decisions (stacked unlabeled they read as
+  // a contradiction) — and its boards hang as CAMPAIGNS / QUEUE.
   await reach.locator('.launcher-tile', { hasText: /^X$/ }).click();
   const space = page.locator('.outreach-panel');
-  await expect(space.locator('.settings-k', { hasText: 'Keys' })).toBeVisible();
-  await expect(space.locator('.settings-k', { hasText: 'Holder' })).toBeVisible();
-  await expect(space.locator('.settings-set', { hasText: 'MANAGE KEYS' })).toBeVisible();
+  const unfold = async (panel) => {
+    const btn = panel.locator('.pc-standing-btn');
+    if ((await btn.getAttribute('aria-expanded')) !== 'true') await btn.click();
+  };
+  await unfold(space);
+  for (const k of ['KEYS', 'HOLDER', 'CREW']) await expect(space.locator(`.ps-cell[aria-label="${k}"]`)).toBeVisible();
   await expect(space.locator('.outreach-tab.is-on', { hasText: 'CAMPAIGNS' })).toBeVisible();
 
   // No other platform bleeds into this window — the whole point of the rooms.
-  await expect(space.locator('.settings-k', { hasText: 'Telegram' })).toHaveCount(0);
+  await expect(space.locator('.pc-name', { hasText: 'Telegram' })).toHaveCount(0);
 
   // Another platform's window renders the same format — the template holds
   // for every platform the catalog will ever carry.
   await openDockApp(page, 'MASTODON');
   const spaces = page.locator('.outreach-panel');
-  await expect(spaces.last().locator('.settings-k', { hasText: 'Keys' })).toBeVisible();
+  await unfold(spaces.last());
+  await expect(spaces.last().locator('.ps-cell[aria-label="KEYS"]')).toBeVisible();
   await expect(spaces.last().locator('.outreach-tab', { hasText: 'QUEUE' })).toBeVisible();
 
   // MARKETING carries the CMO seat and the deliberately house-wide bench.
@@ -57,7 +61,7 @@ test('OUTREACH: a campaign born in a platform window stays in that platform — 
   // declared inside X's window carries channelId 'x', renders in X's own
   // board, and does NOT surface on the MARKETING (house-wide) bench.
   await openDockApp(page, 'X');
-  const xSpace = page.locator('.outreach-panel', { has: page.locator('.settings-k', { hasText: 'Keys' }) });
+  const xSpace = page.locator('.outreach-panel', { has: page.locator('.pc-name', { hasText: 'X (Twitter)' }) });
   const probeName = `E2E Push ${Date.now()}`;
 
   await xSpace.locator('.settings-set', { hasText: 'NEW CAMPAIGN' }).click();

@@ -10,6 +10,7 @@
  */
 
 import { previewIntentMedia } from './social-intent-media.js';
+import { previewQueueMedia } from './social-queue-media.js';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
@@ -24,10 +25,10 @@ import { publishEntry } from '../services/social/post-scheduler.js';
 import { ofHouse, isHouseEntry, queueHouseGuard } from '../services/social/queue-house.js';
 import { readServed } from '../services/house-served.js';
 import socialThreadRouter from './social-thread-routes.js';
+import socialTikTokRouter from './social-tiktok-routes.js';
+import { tiktokApproval } from '../services/social/tiktok-approval.js';
 import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
-import { reverifyMediaFile } from '../services/social/media-source.js';
-import { readMediaFile } from '../services/social/x-media.js';
 import { readXAccount } from '../services/social/x-reader.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
 import { createLogger } from '../services/logger.js';
@@ -96,6 +97,7 @@ router.get('/flight-test', async (req, res) => {
 // every /queue/:id act stands behind the house door (queue-house.js)
 router.use('/queue/:id', queueHouseGuard);
 router.use(socialThreadRouter); // PUT /queue/:id/approve-thread — the whole thread in one decision
+router.use(socialTikTokRouter); // GET /queue/:id/tiktok — what a TikTok post's card renders from
 router.get('/queue', async (req, res) => {
   try {
     const [entries, served] = await Promise.all([postQueue.load(), readServed()]);
@@ -111,38 +113,11 @@ router.get('/queue', async (req, res) => {
   }
 });
 
-// One staged attachment's BYTES — the witness's preview thumbnails are the
-// only reader. The send-time re-check doctrine applies here too: the stored
-// path must still resolve to the exact real path staging authorised, and the
-// bytes must still sniff as an image — a file swapped or gutted since
-// staging is a 404, never a stream. Private and never cached: these are
-// drafts awaiting a decision, not public media.
+// A being's own card, before it is staged (social-intent-media.js), and one
+// staged attachment's BYTES for the operator's preview (social-queue-media.js).
+// Private and never cached: drafts awaiting a decision, not public media.
 router.get('/intent-media', previewIntentMedia);
-
-router.get('/queue/:id/media/:index', async (req, res) => {
-  try {
-    const entries = await postQueue.load();
-    const entry = entries.find((e) => e.id === req.params.id);
-    const index = Number.parseInt(req.params.index, 10);
-    const item = entry && Number.isInteger(index) && index >= 0
-      ? entry.media?.[index]
-      : null;
-    if (!item) return res.status(404).json({ error: 'no such media on that queue entry' });
-    const verified = await reverifyMediaFile(item.path);
-    if (!verified.ok) {
-      return res.status(404).json({ error: `the staged media no longer stands — ${verified.detail}` });
-    }
-    const read = await readMediaFile(verified.path);
-    if (!read.ok) {
-      return res.status(404).json({ error: `the staged media is unreadable — ${read.detail}` });
-    }
-    res.set({ 'Content-Type': read.contentType, 'Cache-Control': 'private, no-store' });
-    res.send(read.content);
-  } catch (error) {
-    log.error('Queue media preview failed', { id: req.params.id, error: error.message });
-    res.status(500).json({ error: 'Failed to read the staged media' });
-  }
-});
+router.get('/queue/:id/media/:index', previewQueueMedia);
 
 // THE INBOUND HALF OF THE REPLY LANE (Design note, 2026-07-28: […]).
 // Every reply to the house's OWN posts that the listener landed, each
@@ -265,8 +240,13 @@ router.put('/queue/:id/approve', async (req, res) => {
           : { ok: false, ...(outcome.pending ? { pending: true } : {}), detail: outcome.detail },
       });
     }
+    // A TikTok post's approval IS the person's consent to its card's choices,
+    // judged against the account as TikTok describes it right now.
+    const tiktok = target?.channelId === 'tiktok' ? await tiktokApproval(req.walletAddress, target, req.body?.tiktok) : null;
+    if (tiktok && !tiktok.ok) return res.status(409).json({ error: tiktok.detail });
     const result = await postQueue.approve(req.params.id, {
       decidedBy: req.walletAddress, scheduledFor: req.body?.scheduledFor,
+      ...(tiktok ? { tiktokConsent: tiktok.consent, textSeen: req.body?.textSeen } : {}),
     });
     if (!result.ok) return res.status(409).json({ error: result.error });
     log.info('Post approved', { id: req.params.id, wallet: req.walletAddress });

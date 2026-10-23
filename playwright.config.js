@@ -3,8 +3,16 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { pinSocialKeysEmpty } from './test/helpers/no-social-keys.js';
 
 dotenv.config();
+
+// NO REAL SOCIAL KEYS IN A TEST (2026-10-21 incident: a dev lane posted for real).
+// Every backend a spec spawns inherits this env, and its own dotenv would reload
+// the repo .env's live channel keys; they are pinned empty here for every spec
+// (test/helpers/no-social-keys.js). A spec proves a channel against a local
+// stand-in, never a real account.
+pinSocialKeysEmpty();
 
 // THE MACHINE'S SERVING TRUTH, READ-ONLY (2026-10-06). Every backend and
 // Electron app a spec spawns inherits this process's env — and with no pin

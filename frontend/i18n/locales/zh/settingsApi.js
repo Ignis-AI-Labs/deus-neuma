@@ -22,6 +22,19 @@ export default Object.freeze({
       save: '保存密钥',
       forget: '清除密钥',
     }),
+    connect: Object.freeze({
+      label: '连接',
+      connect: '连接',
+      reconnect: '重新连接',
+      cancel: '取消',
+      connected: '已连接 · {{channel}}',
+      notConnected: '未连接',
+      waiting: '请在浏览器中完成 Google 登录…',
+      needClient: '请先保存 OAuth 客户端 ID 和密钥，再连接。',
+      failed: '连接未完成。',
+      tiktokWaiting: '请在浏览器中完成 TikTok 登录…',
+      tiktokNeedClient: '请先保存 TikTok 的 Client Key 和 Client Secret，再连接。',
+    }),
   }),
 
   email: Object.freeze({

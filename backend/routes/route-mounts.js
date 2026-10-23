@@ -29,6 +29,7 @@ import actRouter from './act-routes.js';
 import weaveRouter from './weave-routes.js';
 import socialRouter from './social-routes.js';
 import socialChannelRouter from './social-channel-routes.js';
+import socialConnectRouter from './social-connect-routes.js';
 import leadRouter from './lead-routes.js';
 import campaignRouter from './campaign-routes.js';
 import csoRouter from './cso-routes.js';
@@ -145,6 +146,9 @@ export const mountApiRoutes = (app) => {
 
   // The witness's outward-speech board: connect platform accounts and tie each
   // channel to its one neuma holder. Router-level requireAuth inside.
+  // The sign-in CONNECTs (YouTube via Google, TikTok via Login Kit) stand
+  // beside it, same prefix.
+  app.use('/api/v1/social-channels', socialConnectRouter);
   app.use('/api/v1/social-channels', socialChannelRouter);
   app.use('/api/v1/leads', leadRouter);
   app.use('/api/v1/campaigns', campaignRouter);
