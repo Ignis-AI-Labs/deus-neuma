@@ -22,6 +22,7 @@ import { uiSound } from '../../../services/ui-sound.js';
 import { Lightbox } from '../Lightbox.jsx';
 import { EmptyState } from '../empty-state.jsx';
 import { useKit } from './kit-context.js';
+import { mediaMenuDoor } from '../media-menu.js';
 
 /** The grounds a mark is judged against. */
 const GROUNDS = [
@@ -51,6 +52,7 @@ const MarkBoard = ({ name, rule, art, bg, onDrop, onZoom }) => (
                 style={{ background: ground.color || bg || '#000' }}
                 aria-label={`view ${name} ${ground.label.toLowerCase()} full size`}
                 onClick={() => { uiSound('toggle'); onZoom({ name, ground: ground.label, color: ground.color || bg || '#000' }); }}
+                {...mediaMenuDoor({ kind: 'image', src: art, name: `${name}.svg`, alt: name })}
               >
                 <img src={art} alt={`${name} on ${ground.label.toLowerCase()}`} />
               </button>

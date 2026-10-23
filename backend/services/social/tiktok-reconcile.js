@@ -59,12 +59,12 @@ export const settleFromStatus = (entry, status, nowMs) => {
  * @param {string} house
  * @param {Array<object>} stuck - TikTok entries past their lease
  * @param {{journal: (entry: object, outcome: object) => Promise<void>,
- *   log: {info: Function, warn: Function}, nowMs?: number}} deps
+ *   log: {info: Function, warn: Function}, nowMs?: number, accountId?: string}} deps — accountId: the account they went out as
  */
-export const reconcileTikTokSends = async (house, stuck, { journal, log, nowMs = Date.now() }) => {
+export const reconcileTikTokSends = async (house, stuck, { journal, log, nowMs = Date.now(), accountId }) => {
   if (!stuck.length) return;
   const ticketed = stuck.filter((e) => e.sendTicket);
-  const token = ticketed.length ? await tiktokAccessFor(house).catch((err) => ({ ok: false, detail: err.message })) : null;
+  const token = ticketed.length ? await tiktokAccessFor(house, { accountId }).catch((err) => ({ ok: false, detail: err.message })) : null;
   if (token && !token.ok) {
     log.warn('TikTok stuck-send reconciliation deferred: no usable sign-in', { count: ticketed.length, detail: token.detail });
   }

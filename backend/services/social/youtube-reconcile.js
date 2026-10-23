@@ -11,7 +11,8 @@
 // scheduler; the scheduler hands it its journal.
 
 import { postQueue } from './post-queue.js';
-import { resolveChannelCredential } from './channel-credentials.js';
+import { resolveAccountCredential } from './account-store.js';
+import { firstAccountId } from './account-shape.js';
 import { refreshAccessToken } from './youtube-oauth.js';
 import { readRecentUploads } from './youtube-api.js';
 import { parseYouTubeDraft } from './youtube-metadata.js';
@@ -39,11 +40,11 @@ export const matchLiveUpload = (entry, uploads) => {
  * @param {string} house
  * @param {Array<object>} stuck - YouTube entries past their lease
  * @param {{journal: (entry: object, outcome: object) => Promise<void>,
- *   log: {info: Function, warn: Function}}} deps
+ *   log: {info: Function, warn: Function}, accountId?: string}} deps — accountId: the account they went out as
  */
-export const reconcileYouTubeSends = async (house, stuck, { journal, log }) => {
+export const reconcileYouTubeSends = async (house, stuck, { journal, log, accountId = firstAccountId('youtube') }) => {
   if (!stuck.length) return;
-  const credentials = await resolveChannelCredential(house, 'youtube').catch(() => null);
+  const credentials = await resolveAccountCredential(house, accountId).catch(() => null);
   const token = credentials ? await refreshAccessToken(credentials) : null;
   const recent = token?.ok ? await readRecentUploads(token.accessToken) : null;
   if (!recent?.ok) {

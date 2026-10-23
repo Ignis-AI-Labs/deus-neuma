@@ -2,7 +2,8 @@
  * A LOCAL STAND-IN FOR TIKTOK'S OPEN API: one real HTTP server on 127.0.0.1
  * that answers in the shapes TikTok documents (developers.tiktok.com, read
  * 2026-10-23) for the calls the TikTok channel makes:
- *   POST /v2/oauth/token/                         code exchange + refresh grant
+ *   POST /v2/oauth/token/                         code exchange + refresh grant (a code
+ *                                                 `second:…` signs in a second person)
  *   GET  /v2/user/info/                           the account: only the fields asked
  *                                                 for, each refused unless its scope
  *                                                 was granted (scope_not_authorized)
@@ -111,6 +112,14 @@ export const startTikTokStandIn = async () => {
         expires_in: 86400, refresh_expires_in: 31536000, open_id: 'open-1', scope: state.grantedScope, token_type: 'Bearer',
       });
     }
+    // A code minted `second:…` is a second person signing in (a house's
+    // second TikTok account): their own token pair and their own open_id.
+    if (String(form.code || '').startsWith('second:')) {
+      return json(res, 200, {
+        access_token: 'access-2', refresh_token: 'refresh-2', expires_in: 86400, refresh_expires_in: 31536000, open_id: 'open-2',
+        scope: state.grantedScope, token_type: 'Bearer',
+      });
+    }
     return json(res, 200, {
       access_token: 'access-1', refresh_token: 'refresh-1', expires_in: 86400, refresh_expires_in: 31536000, open_id: 'open-1',
       scope: state.tokenMode === 'no-publish-scope' ? 'user.info.basic,video.upload' : state.grantedScope,
@@ -124,7 +133,9 @@ export const startTikTokStandIn = async () => {
     const fields = String(url.searchParams.get('fields') || '').split(',').filter(Boolean);
     state.hits.push({ leg: 'user', auth: req.headers.authorization, fields: fields.join(',') });
     if (fields.some((f) => !granted().has(FIELD_SCOPE[f]))) return refuse(res, 401, 'scope_not_authorized');
-    const full = standInUser(root);
+    const full = req.headers.authorization === 'Bearer access-2'
+      ? { ...standInUser(root), open_id: 'open-2', union_id: 'union-2', display_name: 'Second Light', username: 'secondlight' }
+      : standInUser(root);
     return ok(res, { user: Object.fromEntries(fields.filter((f) => f in full).map((f) => [f, full[f]])) });
   };
 

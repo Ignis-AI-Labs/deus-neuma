@@ -30,6 +30,8 @@ import weaveRouter from './weave-routes.js';
 import socialRouter from './social-routes.js';
 import socialChannelRouter from './social-channel-routes.js';
 import socialConnectRouter from './social-connect-routes.js';
+import socialAccountRouter from './social-account-routes.js';
+import companyRouter from './company-routes.js';
 import leadRouter from './lead-routes.js';
 import campaignRouter from './campaign-routes.js';
 import csoRouter from './cso-routes.js';
@@ -149,6 +151,9 @@ export const mountApiRoutes = (app) => {
   // The sign-in CONNECTs (YouTube via Google, TikTok via Login Kit) stand
   // beside it, same prefix.
   app.use('/api/v1/social-channels', socialConnectRouter);
+  // The house's apps and accounts (many per platform, each under a company).
+  app.use('/api/v1/social-channels', socialAccountRouter);
+  app.use('/api/v1/companies', companyRouter);
   app.use('/api/v1/social-channels', socialChannelRouter);
   app.use('/api/v1/leads', leadRouter);
   app.use('/api/v1/campaigns', campaignRouter);

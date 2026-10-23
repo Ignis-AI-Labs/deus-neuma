@@ -9,6 +9,7 @@
 import { resolvePostMedia } from '../social/post-media.js';
 import { postQueue, previewUpdate } from '../social/post-queue.js';
 import { laneHouseEntries } from '../social/queue-house.js';
+import { entryAccountId } from '../social/account-shape.js';
 import { channelBindings } from '../social/channel-bindings.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
@@ -35,14 +36,17 @@ const _diffForChip = (preview) => Object.fromEntries(
 // impure — the SECTOR CREW gate the queue-edit tools share with staging,
 // re-read per call: editing the calendar is WORK, same as filling it. Fail
 // closed on an unreadable store, same law. Returns the refusal, or null.
-const _queueEditCrewGate = async (ws, connection, tool, toolName, channel) => {
+// The crew is the ACCOUNT's: an edit is gated by the crew of every account
+// whose posts it touches.
+const _queueEditCrewGate = async (ws, connection, tool, toolName, channel, accountIds) => {
   const house = await houseOfLane(connection.companion?.neumaId);
   const [bindings, crewStore] = await Promise.all([
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (canStageForSector(crewStore, bindings, channel.id, connection.companion?.neumaId || null)) return null;
-  const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before editing its queue`;
+  const off = [...new Set(accountIds)].filter((id) => !canStageForSector(crewStore, bindings, id, connection.companion?.neumaId || null));
+  if (!off.length) return null;
+  const error = `you are not on the crew of ${channel.name} account ${off.join(', ')} — ask your operator to add you to that sector before editing its queue`;
   _sendToolEvent(ws, connection.companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
   return { tool, status: 'denied', error };
 };
@@ -112,7 +116,7 @@ export const handleNeumaQueueUpdate = async (ws, connection, neumaPolicy, toolMo
     return { tool, status: 'error', error: preview.error };
   }
 
-  const crewRefusal = await _queueEditCrewGate(ws, connection, tool, toolName, channel);
+  const crewRefusal = await _queueEditCrewGate(ws, connection, tool, toolName, channel, [entryAccountId(target.entry)]);
   if (crewRefusal) return crewRefusal;
 
   const actsRefusal = await _queueEditActsGate(ws, connection, neumaPolicy, toolMode, tool, toolName, {
@@ -198,7 +202,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
       results[i] = { id, ok: false, error: preview.error };
       continue;
     }
-    viable.push({ index: i, id, patch, preview });
+    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry) });
   }
 
   const verdict = () => {
@@ -209,7 +213,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
   };
 
   if (viable.length) {
-    const crewRefusal = await _queueEditCrewGate(ws, connection, tool, toolName, channel);
+    const crewRefusal = await _queueEditCrewGate(ws, connection, tool, toolName, channel, viable.map((v) => v.accountId));
     if (crewRefusal) return crewRefusal;
     const actsRefusal = await _queueEditActsGate(ws, connection, neumaPolicy, toolMode, tool, toolName, {
       updates: viable.map(({ id, preview }) => ({

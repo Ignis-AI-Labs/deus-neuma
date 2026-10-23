@@ -7,7 +7,8 @@
  *       house's account as creator info names it RIGHT NOW (nickname, privacy
  *       levels offered, interactions turned off) and the author's suggestions
  *       (services/social/tiktok-approval.js). Read at every render.
- *   GET /tiktok/profile    — the TIKTOK window's account view: profile, the
+ *   GET /tiktok/profile[?account=tiktok-<n>] — the TIKTOK window's account view
+ *       of one of the house's TikTok accounts (its first when unnamed): profile, the
  *       four counts, the recent videos, and what the connection cannot read
  *       yet (services/social/tiktok-profile.js). Read on open and on REFRESH.
  *   GET /tiktok/image?src= — one TikTok picture (avatar, cover) through the
@@ -22,6 +23,7 @@ import { houseWallet } from '../services/house-served.js';
 import { tiktokCardView } from '../services/social/tiktok-approval.js';
 import { readTikTokProfile } from '../services/social/tiktok-profile.js';
 import { relayTikTokImage } from '../services/social/tiktok-image-relay.js';
+import { channelOfAccountId } from '../services/social/account-shape.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialTikTok');
@@ -43,7 +45,10 @@ router.get('/queue/:id/tiktok', async (req, res) => {
 router.get('/tiktok/profile', async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
   try {
-    const view = await readTikTokProfile(houseWallet(req.walletAddress));
+    // Which of the house's TikTok accounts (`?account=tiktok-2`); the first when unnamed.
+    const asked = typeof req.query.account === 'string' ? req.query.account : 'tiktok-1';
+    if (channelOfAccountId(asked) !== 'tiktok') return res.status(400).json({ error: `${asked} is not a TikTok account id` });
+    const view = await readTikTokProfile(houseWallet(req.walletAddress), { accountId: asked });
     if (view.ok) return res.json(view);
     return res.status(409).json({ error: view.detail, reconnect: Boolean(view.reconnect) });
   } catch (error) {

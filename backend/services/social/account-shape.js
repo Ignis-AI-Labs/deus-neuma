@@ -210,3 +210,61 @@ export const withoutAccount = (store, accountId) => {
   if (!Object.entries(accounts).some(([id, a]) => appIdOf(a, id) === appId)) delete apps[appId];
   return { ...store, apps, accounts };
 };
+
+// THE POSITION KEY. Holders (channel-bindings) and crews (sector-crew) were
+// keyed by channel id before accounts; each such record now IS the record of
+// `<channel>-1`, and every new record is keyed by its account. A key that is
+// neither (a crew sector that is no platform) passes through unchanged.
+
+/** The account a holder/crew key names (pure): `x` → `x-1`; `x-2` → `x-2`. */
+export const positionOf = (id) => (channelOfAccountId(id) ? id : getChannel(id) ? firstAccountId(id) : id);
+
+/** A store keyed by position, its pre-accounts channel keys read as `<channel>-1` (pure). */
+export const byPosition = (store) => {
+  const out = {};
+  for (const [key, value] of Object.entries(store || {})) {
+    const at = positionOf(key);
+    if (at === key || out[at] === undefined) out[at] = value;
+  }
+  return out;
+};
+
+/** The account a queue entry speaks as: its own, else `<channel>-1` (pure). */
+export const entryAccountId = (entry) => entry?.accountId || firstAccountId(entry?.channelId);
+
+/** The accounts on one platform a lane holds, from a house's bindings (pure). */
+export const heldAccounts = (bindings, channelId, neumaId) => Object.entries(byPosition(bindings))
+  .filter(([id, b]) => channelOfAccountId(id) === channelId && typeof neumaId === 'string' && neumaId && b?.neumaId === neumaId)
+  .map(([id]) => id)
+  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+/**
+ * Which of a lane's accounts an act speaks as (pure): the one it named, when
+ * that is one of them; the only one, when it named none; otherwise refused in
+ * words that list the choices.
+ * @param {string[]} held - heldAccounts output
+ * @param {unknown} asked - the account the act named, if any
+ * @param {string} channelName
+ * @returns {{ok: true, accountId: string}|{ok: false, error: string}}
+ */
+export const pickAccount = (held, asked, channelName) => {
+  if (asked !== undefined && asked !== null && asked !== '') {
+    return held.includes(asked)
+      ? { ok: true, accountId: asked }
+      : { ok: false, error: `you do not hold the ${channelName} account ${asked} — you hold ${held.length ? held.join(', ') : 'none'}` };
+  }
+  if (held.length === 1) return { ok: true, accountId: held[0] };
+  if (!held.length) return { ok: false, error: `you hold no ${channelName} account in your house` };
+  return { ok: false, error: `you hold ${held.length} ${channelName} accounts (${held.join(', ')}) — name the one this is for with account` };
+};
+
+/** The store with a patch on one APP's fields (pure). An emptied app is gone. */
+export const patchApp = (store, appId, patch) => {
+  const channel = getChannel(appId);
+  if (!channel) throw new Error(`not an app id: ${appId}`);
+  const next = mergeChannelCredential({ fields: appFieldsOf(channel) }, store.apps?.[appId], patch || {});
+  const apps = { ...store.apps };
+  if (next) apps[appId] = next;
+  else delete apps[appId];
+  return { ...store, apps };
+};

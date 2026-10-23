@@ -54,8 +54,8 @@ const STILL_PROCESSING = 'it may take a few minutes for the video to process and
  * @param {string} house
  * @returns {Promise<{ok: true, user: {id: string, displayName: string}}|{ok: false, detail: string}>}
  */
-export const readTikTokAccount = async (house, { signal } = {}) => {
-  const token = await tiktokAccessFor(house, { signal });
+export const readTikTokAccount = async (house, { signal, accountId } = {}) => {
+  const token = await tiktokAccessFor(house, { signal, accountId });
   return token.ok ? readTikTokUser(token.accessToken, { signal }) : token;
 };
 
@@ -65,8 +65,8 @@ export const readTikTokAccount = async (house, { signal } = {}) => {
  * @param {string} house
  * @returns {Promise<{ok: true, creator: ReturnType<typeof creatorView>}|{ok: false, status?: number, detail: string}>}
  */
-export const readTikTokCreator = async (house, { signal } = {}) => {
-  const token = await tiktokAccessFor(house, { signal });
+export const readTikTokCreator = async (house, { signal, accountId } = {}) => {
+  const token = await tiktokAccessFor(house, { signal, accountId });
   if (!token.ok) return { ok: false, status: token.status, detail: token.detail };
   const creator = await queryCreatorInfo(token.accessToken, { signal });
   return creator.ok ? { ok: true, creator: creatorView(creator.data) } : creator;
@@ -125,7 +125,7 @@ const videoOf = async (media) => {
  * Publish one video (or send it to the account's drafts). impure — disk + network.
  * @param {object|null} credentials - the house's resolved TikTok credentials
  * @param {string} text - the approved post text (caption and settings lines)
- * @param {{signal?: AbortSignal, media?: Array<{path: string}>, house?: string,
+ * @param {{signal?: AbortSignal, media?: Array<{path: string}>, house?: string, accountId?: string,
  *   tiktokConsent?: object|null, onTicket?: (publishId: string) => Promise<unknown>, chunkBytes?: number,
  *   baseDelayMs?: number, pollMs?: number, pollWindowMs?: number}} [opts]
  * @returns {Promise<{ok: true, id: string, text: string, url: string|null, postedAs?: object}
@@ -142,7 +142,7 @@ export const postToTikTok = async (credentials, text, opts = {}) => {
 
 // impure — the publish itself.
 const publishOne = async (text, {
-  signal, media = [], house, tiktokConsent, onTicket, chunkBytes, baseDelayMs, pollMs = POLL_MS, pollWindowMs = POLL_WINDOW_MS,
+  signal, media = [], house, accountId, tiktokConsent, onTicket, chunkBytes, baseDelayMs, pollMs = POLL_MS, pollWindowMs = POLL_WINDOW_MS,
 }) => {
   const parsed = parseTikTokDraft(text);
   if (!parsed.ok) return { ok: false, detail: parsed.detail };
@@ -153,7 +153,7 @@ const publishOne = async (text, {
   if (!plan.ok) return { ok: false, detail: `${plan.detail}; nothing was published` };
   const seconds = video.contentType === 'video/webm' ? null : await readVideoSeconds(video.path, video.size);
 
-  const token = await tiktokAccessFor(house, { signal });
+  const token = await tiktokAccessFor(house, { signal, accountId });
   if (!token.ok) return { ok: false, status: token.status, detail: token.detail };
   const creator = await queryCreatorInfo(token.accessToken, { signal });
   if (!creator.ok) return creator;

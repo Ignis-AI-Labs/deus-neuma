@@ -13,14 +13,14 @@ import { readTikTokCreator } from './tiktok-poster.js';
  * TikTok describes it now. impure — disk (the video's header) + network.
  * @param {string} house - the staging lane's house wallet
  * @param {{path: string}} video - the draft's one resolved video
- * @param {{signal?: AbortSignal}} [opts]
+ * @param {{signal?: AbortSignal, accountId?: string}} [opts] - accountId: the account the draft will post as
  * @returns {Promise<{ok: false, reason: string}
  *   |{ok: true, account: string|null, note: string|null}>}
  */
-export const tiktokStagingCheck = async (house, video, { signal } = {}) => {
+export const tiktokStagingCheck = async (house, video, { signal, accountId } = {}) => {
   const head = await readVideoHead(video.path);
   const seconds = head.ok && head.contentType !== 'video/webm' ? await readVideoSeconds(head.path, head.size) : null;
-  const read = await readTikTokCreator(house, { signal });
+  const read = await readTikTokCreator(house, { signal, accountId });
   if (!read.ok) {
     return { ok: true, account: null, note: `TikTok could not be asked about the account just now (${read.detail}); the video's length is checked again before it is sent` };
   }

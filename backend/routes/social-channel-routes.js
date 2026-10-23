@@ -29,6 +29,7 @@ import socialTikTokRouter from './social-tiktok-routes.js';
 import { tiktokApproval } from '../services/social/tiktok-approval.js';
 import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
+import { firstAccountId } from '../services/social/account-shape.js';
 import { readXAccount } from '../services/social/x-reader.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
 import { createLogger } from '../services/logger.js';
@@ -61,7 +62,7 @@ router.get('/', async (req, res) => {
     ]);
     const masked = await Promise.all(CHANNEL_CATALOG.map(async (channel) => ({
       ...(await maskHouseCredentials(wallet, channel, store)),
-      binding: bindings[channel.id] || null,
+      binding: bindings[firstAccountId(channel.id)] || null,
     })));
     // Only X has an account-proving reader today; new platforms join this
     // map as their readers land.

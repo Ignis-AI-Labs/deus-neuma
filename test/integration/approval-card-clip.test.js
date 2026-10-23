@@ -69,7 +69,9 @@ describe('a post card shows the forge render the being attached by id', () => {
     expect(receipt.status).toBe('denied');
     const card = kit.cards.at(-1);
     expect(card).toMatchObject({ type: 'tool:approval_request', tool: 'intents/social.queue' });
-    expect(card.renders).toEqual([{ imageId: clip.id, mime: 'video/mp4', laneId: CMO }]);
+    expect(card.renders).toEqual([{ imageId: clip.id, mime: 'video/mp4', laneId: CMO, path: expect.any(String) }]);
+    // The file's own place on disk rides the card, for its menu's SHOW IN FILES.
+    expect(await fs.realpath(card.renders[0].path)).toBe(clip.path);
     expect(card.media).toBeUndefined(); // no brand card rides this post
 
     const { segment, html } = cardHtml(card);
@@ -94,7 +96,8 @@ describe('a post card shows the forge render the being attached by id', () => {
     });
     for (let i = 0; i < 200 && !frames.length; i += 1) await new Promise((r) => setTimeout(r, 10));
     const [card] = frames;
-    expect(card.renders).toEqual([{ imageId: still.id, mime: 'image/png', laneId: CMO }]);
+    expect(card.renders).toEqual([{ imageId: still.id, mime: 'image/png', laneId: CMO, path: expect.any(String) }]);
+    expect(await fs.realpath(card.renders[0].path)).toBe(still.path);
     resolveToolApproval(connection, card.id, 'deny');
     expect(await deciding).toBe('deny');
 
@@ -105,7 +108,7 @@ describe('a post card shows the forge render the being attached by id', () => {
 
   test('the lookup reads only the asking lane\'s own manifest', () => {
     expect(approvalRenders(CMO, { media: [{ image: theirs.id }] })).toEqual([]);
-    expect(approvalRenders(OTHER, { media: [{ image: theirs.id }] })).toEqual([{ imageId: theirs.id, mime: 'video/mp4', laneId: OTHER }]);
+    expect(approvalRenders(OTHER, { media: [{ image: theirs.id }] })).toEqual([{ imageId: theirs.id, mime: 'video/mp4', laneId: OTHER, path: expect.any(String) }]);
     expect(approvalRenders(null, { media: [{ image: clip.id }] })).toEqual([]);
     expect(approvalRenders(CMO, { media: [{ path: '/cards/a.png' }] })).toEqual([]);
   });

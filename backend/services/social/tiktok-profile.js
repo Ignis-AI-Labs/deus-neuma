@@ -15,13 +15,13 @@ import {
 /**
  * Read the house's TikTok account. impure — credential store + network.
  * @param {string} house
- * @param {{signal?: AbortSignal}} [opts]
+ * @param {{signal?: AbortSignal, accountId?: string}} [opts] - accountId: which TikTok account (the first when absent)
  * @returns {Promise<{ok: true, account: object, videos: object[]|null, hasMore: boolean,
  *   videosError: string|null, missing: string[], reconnect: string|null, readAt: string}
  *   |{ok: false, status?: number, detail: string, reconnect?: boolean}>}
  */
-export const readTikTokProfile = async (house, { signal } = {}) => {
-  const token = await tiktokAccessFor(house, { signal });
+export const readTikTokProfile = async (house, { signal, accountId } = {}) => {
+  const token = await tiktokAccessFor(house, { signal, accountId });
   if (!token.ok) return token;
   const missing = missingProfileScopes(token.credentials?.grantedScope);
   const [user, list] = await Promise.all([

@@ -6,7 +6,8 @@
  * resolved in the ASKING lane's manifest only, so another lane's id shows
  * nothing. The desk fetches the bytes through the lane-scoped, authenticated
  * /api/v1/image-forge/images route, which re-checks ownership — this list is a
- * signpost, never the grant.
+ * signpost, never the grant. Each carries its file's path on disk, so the card's
+ * media menu can show it in files (media-menu.js), as the made chip's does.
  *
  * impure — reads the lane's image manifest.
  */
@@ -21,7 +22,7 @@ const RENDERS_MAX = 4;
 /**
  * @param {string|null|undefined} laneId the lane that filed the act
  * @param {Object|undefined} args the filed fields the card shows
- * @returns {Array<{imageId: string, mime: string, laneId: string}>}
+ * @returns {Array<{imageId: string, mime: string, laneId: string, path: string}>}
  */
 export const approvalRenders = (laneId, args) => {
   if (!laneId) return [];
@@ -32,7 +33,7 @@ export const approvalRenders = (laneId, args) => {
     return ids
       .map((id) => resolveImage(laneId, id))
       .filter((found) => found.ok)
-      .map(({ record }) => ({ imageId: record.imageId, mime: String(record.mime || 'image/png'), laneId }));
+      .map(({ record, path }) => ({ imageId: record.imageId, mime: String(record.mime || 'image/png'), laneId, path }));
   } catch (err) {
     // A manifest that cannot be read costs the preview, never the card.
     log.warn('the card shows no render preview: the lane manifest could not be read', { laneId, err: err.message });

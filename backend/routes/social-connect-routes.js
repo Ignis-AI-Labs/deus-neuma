@@ -9,14 +9,17 @@
  *            the plain reason it failed.
  *   DELETE → cancel a consent in progress.
  *
- * The house is the caller's own wallet: the tokens land in that house's
- * sealed channel credentials and nowhere else, and no response ever carries
- * a token. Every route requires the operator's Bearer token.
+ * The house is the caller's own wallet; `?account=<channel>-<n>` names which
+ * of its accounts the consent seals into (its first when unnamed), and each
+ * account may have its own consent waiting. The tokens land in that account's
+ * sealed credentials and nowhere else, and no response ever carries a token.
+ * Every route requires the operator's Bearer token.
  */
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { startYouTubeConnect, pollYouTubeConnect, cancelYouTubeConnect } from '../services/social/youtube-connect.js';
 import { startTikTokConnect, pollTikTokConnect, cancelTikTokConnect } from '../services/social/tiktok-connect.js';
+import { channelOfAccountId, firstAccountId } from '../services/social/account-shape.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialChannels.Connect');
@@ -30,13 +33,19 @@ const PATH = '/:channel(youtube|tiktok)/connect';
 
 router.use(PATH, requireAuth, (req, res, next) => {
   res.set('Cache-Control', 'private, no-store');
-  next();
+  const asked = req.query.account ?? req.body?.account;
+  const accountId = typeof asked === 'string' && asked ? asked : firstAccountId(req.params.channel);
+  if (channelOfAccountId(accountId) !== req.params.channel) {
+    return res.status(400).json({ error: `${accountId} is not a ${FLOWS[req.params.channel].name} account` });
+  }
+  req.accountId = accountId;
+  return next();
 });
 
 router.post(PATH, async (req, res) => {
   const flow = FLOWS[req.params.channel];
   try {
-    const started = await flow.start(req.walletAddress);
+    const started = await flow.start(req.walletAddress, req.accountId);
     if (!started.ok) return res.status(400).json({ error: started.error });
     res.json({ authUrl: started.authUrl });
   } catch (error) {
@@ -46,11 +55,11 @@ router.post(PATH, async (req, res) => {
 });
 
 router.get(PATH, (req, res) => {
-  res.json(FLOWS[req.params.channel].poll(req.walletAddress));
+  res.json(FLOWS[req.params.channel].poll(req.walletAddress, req.accountId));
 });
 
 router.delete(PATH, (req, res) => {
-  res.json({ cancelled: FLOWS[req.params.channel].cancel(req.walletAddress) });
+  res.json({ cancelled: FLOWS[req.params.channel].cancel(req.walletAddress, req.accountId) });
 });
 
 export default router;

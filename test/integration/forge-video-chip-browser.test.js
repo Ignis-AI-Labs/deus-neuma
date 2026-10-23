@@ -110,8 +110,8 @@ describe('the forge chip shows what the being made', () => {
 
   it('the post card plays the clip the being attached by id, and shows its still', async () => {
     expect(fixture.card.renders).toEqual([
-      { imageId: fixture.video, mime: 'video/mp4', laneId: LANE },
-      { imageId: fixture.still, mime: 'image/png', laneId: LANE },
+      { imageId: fixture.video, mime: 'video/mp4', laneId: LANE, path: expect.any(String) },
+      { imageId: fixture.still, mime: 'image/png', laneId: LANE, path: expect.any(String) },
     ]);
     const page = await browser.newPage();
     const errors = [];

@@ -36,7 +36,7 @@ import { channelBindings } from './channel-bindings.js';
 import { createLogger } from '../logger.js';
 import {
   isV2, emptyStore, channelOfAccountId, firstAccountId, storedFieldsOf, appIdOf, nextAccountId,
-  patchAccount, withAccountMeta, withoutAccount, accountMetaRefusal,
+  patchAccount, patchApp, withAccountMeta, withoutAccount, accountMetaRefusal,
 } from './account-shape.js';
 import { migrateV1 } from './account-migrate.js';
 
@@ -287,6 +287,30 @@ export const addAccount = async (wallet, channelId, meta = {}, companies = []) =
 export const setAccountFields = async (wallet, accountId, patch) => {
   if (!channelOfAccountId(accountId)) throw new Error(`not an account id: ${accountId}`);
   await mutateAccountStore(wallet, (store) => patchAccount(store, accountId, patch || {}));
+};
+
+/** Set (or clear) the fields of one of the house's apps. impure. */
+export const setAppFields = async (wallet, appId, patch) => {
+  if (!getChannel(appId)) throw new Error(`Unknown channel: ${appId}`);
+  await mutateAccountStore(wallet, (store) => patchApp(store, appId, patch || {}));
+};
+
+/**
+ * The house's developer apps, one per platform that has one, masked: which
+ * app fields are set and from where, never a value. impure.
+ * @param {string} wallet
+ * @param {object} [store]
+ */
+export const listApps = async (wallet, store) => {
+  const s = store || await loadAccountStore(wallet);
+  const out = [];
+  for (const channel of CHANNEL_CATALOG) {
+    const fields = channel.fields.filter((f) => f.app);
+    if (!fields.length) continue;
+    const env = await houseEnvFor(wallet, channel);
+    out.push(maskChannelCredentials({ ...channel, fields }, s.apps?.[channel.id], env));
+  }
+  return out;
 };
 
 /** Change an account's facts (company, label, expected handle). impure. */

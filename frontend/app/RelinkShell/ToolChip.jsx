@@ -90,6 +90,7 @@ const MadeImages = ({ images }) => {
             src={`${img.url}?laneId=${encodeURIComponent(img.laneId || '')}`}
             alt={String(img.mime).startsWith('video/') ? 'generated video' : 'generated image'}
             video={String(img.mime).startsWith('video/')}
+            media={img.path ? { path: img.path } : null}
           />
           <figcaption className="tool-chip-made-meta">
             {img.path ? (

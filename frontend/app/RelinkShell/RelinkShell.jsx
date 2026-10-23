@@ -35,6 +35,7 @@ import { useDeskFocus, FocusContext } from './use-desk-focus.js';
 import { normalizeFocus } from './desk-focus.js';
 import { ExplorerPanel } from './ExplorerPanel.jsx';
 import { PathOpener } from './PathOpener.jsx';
+import { MediaMenuHost } from './MediaMenuHost.jsx';
 import { NewStreamKey } from './new-stream-key.js';
 import { loadPanel, savePanel, clampPanelWidth, PANEL_WIDTH_DEFAULT } from '../windowing/window-storage.js';
 import { setDeskRegion } from '../windowing/use-window-frame.js';
@@ -345,6 +346,8 @@ export const RelinkShell = ({ wsService }) => {
                     {/* Ctrl+click a path a being named and land there. Renders
                         nothing until it has a refusal to report. */}
                     <PathOpener />
+                    {/* Every image and clip's right-click menu (media-menu.js). */}
+                    <MediaMenuHost />
                     <NewStreamKey />
                     <div className="relink-desk" ref={setDeskRegion}>
                       <WindowLayer />

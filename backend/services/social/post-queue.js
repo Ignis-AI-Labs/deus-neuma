@@ -29,6 +29,7 @@ import { validateDraft, queuedSecretRefusal, REPLY_LIVE_STANDINGS, REPLY_TTL_MS 
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
 import { approveThreadIn } from './queue-thread.js';
 import { tiktokApproveRefusal } from './tiktok-metadata.js';
+import { channelOfAccountId, firstAccountId } from './account-shape.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
 
@@ -157,7 +158,12 @@ export const createPostQueue = (opts = {}) => {
      *   authorNeumaId?: string|null, queuedBy: string}} draft
      */
     add(draft) {
-      const invalid = validateDraft(draft);
+      // THE ACCOUNT IT WILL SPEAK AS (campaign plan §2.4): every new entry
+      // names one; a draft that names none speaks as its platform's first
+      // account, and one that names another platform's account is refused.
+      const invalid = validateDraft(draft)
+        || (draft?.accountId != null && channelOfAccountId(draft.accountId) !== draft.channelId
+          ? `account ${draft.accountId} is not a ${draft.channelId} account` : null);
       if (invalid) return Promise.reject(new Error(invalid));
       return mutate(async () => {
         const entries = await load();
@@ -190,6 +196,7 @@ export const createPostQueue = (opts = {}) => {
         const entry = {
           id: crypto.randomBytes(8).toString('hex'),
           channelId: draft.channelId,
+          accountId: draft.accountId || firstAccountId(draft.channelId),
           text: draft.text.trim(),
           scheduledFor: draft.scheduledFor || null,
           campaignId: draft.campaignId?.trim() || null,

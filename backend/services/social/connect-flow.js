@@ -1,7 +1,7 @@
 // connect-flow.js — the desk's CONNECT for a channel whose key is a sign-in
 // (YouTube through Google, TikTok through Login Kit): one pending consent per
-// house, from the house's own app client to tokens sealed in that house's
-// channel credentials.
+// ACCOUNT of a house (several may wait at once), from the house's own app
+// client to tokens sealed in that account's credentials.
 //
 //   start → the loopback listener stands and the desk opens the consent URL
 //           in the system browser;
@@ -10,11 +10,14 @@
 //   poll  → the desk reads the outcome: pending, complete (with the account's
 //           name), or the plain reason it failed.
 //
-// One pending connect per house (keyed by its wallet); a new start cancels
-// the old one. The client is the house's own, resolved the same way every
-// channel field is (store > .env where the house may use it).
+// One pending connect per house ACCOUNT (keyed `wallet|accountId`); a new
+// start for the same account cancels its old one, never another account's.
+// The client is the house's one app for the platform, resolved the same way
+// every channel field is (store > .env where the house may use it).
 
 import { loadChannelCredentials, houseEnvFor } from './channel-credentials.js';
+import { loadAccountStore, setAccountFields, setAccountMeta } from './account-store.js';
+import { channelOfAccountId, firstAccountId } from './account-shape.js';
 import { getChannel } from './channel-registry.js';
 import { houseKey } from '../staff/cos-designation.js';
 
@@ -35,38 +38,68 @@ export const houseClientFor = async (wallet, channelId, keys) => {
 };
 
 /**
+ * Seal what a consent proved onto ITS account: the tokens, and the platform's
+ * own id for the person who signed in. The same platform user connected as a
+ * second account of this house is refused — one person, one account. impure.
+ * @param {string} house
+ * @param {string} accountId
+ * @param {Record<string, string>} fields - the tokens to seal
+ * @param {{id: string, name?: string}} who - the account the platform named
+ * @returns {Promise<?string>} the refusal, or null once sealed
+ */
+export const sealConnection = async (house, accountId, fields, who) => {
+  const store = await loadAccountStore(house);
+  const twin = Object.entries(store.accounts || {})
+    .find(([id, a]) => id !== accountId && a.channelId === channelOfAccountId(accountId) && a.platformUserId === String(who.id));
+  if (twin) return `that account is already connected here as ${twin[0]} — remove ${twin[0]} first, or CONNECT ${accountId} with a different account`;
+  await setAccountFields(house, accountId, fields);
+  const label = store.accounts?.[accountId]?.label;
+  await setAccountMeta(house, accountId, { platformUserId: String(who.id), ...(label ? {} : { label: String(who.name || '').slice(0, 120) }) }, []);
+  return null;
+};
+
+/**
  * One channel's CONNECT. impure — the flows live in memory.
  * @param {{needClient: string,
  *   resolveClient: (house: string) => Promise<object|null>,
  *   openConsent: (client: object) => Promise<{authUrl: string, done: Promise<object>, cancel: () => void}>,
- *   settle: (house: string, answer: object, client: object) => Promise<object>}} spec
+ *   settle: (house: string, answer: object, accountId: string) => Promise<object>}} spec
  */
 export const createConnectFlow = ({ needClient, resolveClient, openConsent, settle }) => {
   const pending = new Map();
+  const keyOf = (wallet, accountId) => `${houseKey(wallet)}|${accountId}`;
   return Object.freeze({
-    /** @returns {Promise<{ok: true, authUrl: string}|{ok: false, error: string}>} */
-    async start(wallet) {
+    /**
+     * @param {string} wallet
+     * @param {string} accountId - the house account the consent seals into
+     * @returns {Promise<{ok: true, authUrl: string}|{ok: false, error: string}>}
+     */
+    async start(wallet, accountId) {
       const house = houseKey(wallet);
       if (!house) return { ok: false, error: 'connecting a channel needs a signed-in house' };
+      const store = await loadAccountStore(house);
+      if (!store.accounts?.[accountId] && accountId !== firstAccountId(channelOfAccountId(accountId))) {
+        return { ok: false, error: `there is no account ${accountId} in this house — ADD ACCOUNT first` };
+      }
       const client = await resolveClient(house);
       if (!client) return { ok: false, error: needClient };
-      pending.get(house)?.consent.cancel();
+      pending.get(keyOf(house, accountId))?.consent.cancel();
       const consent = await openConsent(client);
       const flow = { consent, outcome: { status: 'pending' } };
-      pending.set(house, flow);
+      pending.set(keyOf(house, accountId), flow);
       consent.done
-        .then((answer) => (answer.ok ? settle(house, answer, client) : { status: 'error', error: answer.detail }))
+        .then((answer) => (answer.ok ? settle(house, answer, accountId) : { status: 'error', error: answer.detail }))
         .catch((err) => ({ status: 'error', error: err.message }))
         .then((outcome) => { flow.outcome = outcome; });
       return { ok: true, authUrl: consent.authUrl };
     },
     /** @returns {{status: 'pending'|'complete'|'error'|'idle', error?: string, channel?: object}} */
-    poll(wallet) {
-      return pending.get(houseKey(wallet))?.outcome || { status: 'idle' };
+    poll(wallet, accountId) {
+      return pending.get(keyOf(wallet, accountId))?.outcome || { status: 'idle' };
     },
-    /** Cancel the house's pending connect, if any. */
-    cancel(wallet) {
-      const flow = pending.get(houseKey(wallet));
+    /** Cancel the account's pending connect, if any. */
+    cancel(wallet, accountId) {
+      const flow = pending.get(keyOf(wallet, accountId));
       flow?.consent.cancel();
       return Boolean(flow);
     },

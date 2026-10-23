@@ -22,7 +22,8 @@ import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConver
 import { readXPost, readXListings, readXAccount } from './x-reader.js';
 import { channelBindings } from './channel-bindings.js';
 import { sectorCrew, canSendStaged } from '../sector-crew.js';
-import { resolveChannelCredential } from './channel-credentials.js';
+import { resolveAccountCredential } from './account-store.js';
+import { entryAccountId } from './account-shape.js';
 import { posterFor, postsOwnMedia } from './poster-registry.js';
 import { OWN_MEDIA_SENDS } from './own-media-sends.js';
 import { getChannel } from './channel-registry.js';
@@ -70,21 +71,21 @@ const normalizeText = (text) => String(text || '').replace(/\s+/g, ' ').trim().s
 const reconcileStuckSends = async (entries, nowMs) => {
   const stuck = entries.filter((e) => e.status === 'sending'
     && nowMs - Date.parse(e.sendingAt || e.decidedAt || e.createdAt || 0) > leaseFor(e));
-  // Each house's sends are judged against its OWN account's live posts — a
-  // video send against its own platform's record, never another platform's.
-  for (const house of new Set(stuck.map(entryHouse))) {
-    const theirs = stuck.filter((e) => entryHouse(e) === house);
-    const posts = theirs.filter((e) => !OWN_MEDIA_SENDS[e.channelId]);
-    if (posts.length) await reconcileHouseSends(house, posts);
-    for (const [channelId, { reconcile }] of Object.entries(OWN_MEDIA_SENDS)) {
-      await reconcile(house, theirs.filter((e) => e.channelId === channelId), { journal: journalSend, log });
-    }
+  // Each house's sends are judged against the live posts of the ACCOUNT they
+  // went out as — a video send against its own platform's record, never
+  // another platform's, and never another account's.
+  for (const key of new Set(stuck.map((e) => `${entryHouse(e)}|${entryAccountId(e)}`))) {
+    const [house, accountId] = key.split('|');
+    const theirs = stuck.filter((e) => entryHouse(e) === house && entryAccountId(e) === accountId);
+    const own = OWN_MEDIA_SENDS[theirs[0].channelId];
+    if (own) await own.reconcile(house, theirs, { journal: journalSend, log, accountId });
+    else await reconcileHouseSends(house, theirs, accountId);
   }
 };
 
-// impure — one house's lost sends, settled against that house's live posts.
-const reconcileHouseSends = async (house, stuck) => {
-  const recent = await readXListings({ kind: 'recent', limit: 25, wallet: house }).catch(() => null);
+// impure — one account's lost sends, settled against that account's live posts.
+const reconcileHouseSends = async (house, stuck, accountId) => {
+  const recent = await readXListings({ kind: 'recent', limit: 25, wallet: house, accountId }).catch(() => null);
   if (!recent?.ok) {
     log.warn('stuck-send reconciliation deferred — the live read failed', {
       count: stuck.length, detail: recent?.detail || 'no answer',
@@ -206,6 +207,8 @@ export const publishEntry = async (entry) => {
   // THE HOUSE the entry speaks for: its holder, its crew and its keys are
   // that house's own, never another's (social/house-positions.js).
   const house = entryHouse(entry);
+  // THE ACCOUNT it speaks as: its holder, its crew and its keys.
+  const accountId = entryAccountId(entry);
   // The binding law holds at SEND time. A witness-authored post (no
   // authorNeumaId) is the witness's own speech and needs no binding.
   if (entry.authorNeumaId) {
@@ -219,15 +222,15 @@ export const publishEntry = async (entry) => {
       channelBindings.load(house).catch(() => ({})),
       sectorCrew.load(house).catch(() => ({})),
     ]);
-    if (!canSendStaged(crewStore, bound, entry.channelId, entry.authorNeumaId)) {
-      const outcome = { ok: false, detail: 'the author is no longer on this channel\'s crew, or the channel has no holder — approval does not outlive membership' };
+    if (!canSendStaged(crewStore, bound, accountId, entry.authorNeumaId)) {
+      const outcome = { ok: false, detail: `the author is no longer on the crew of ${accountId}, or ${accountId} has no holder — approval does not outlive membership` };
       await postQueue.recordOutcome(entry.id, outcome);
       await journalSend(entry, outcome);
       return outcome;
     }
   }
 
-  const credentials = await resolveChannelCredential(house, entry.channelId).catch(() => null);
+  const credentials = await resolveAccountCredential(house, accountId).catch(() => null);
   const post = posterFor(entry.channelId);
   // A null credential needs no guard here: every poster and every reader
   // answers a missing credential with its own NAMED `{ok:false}` refusal
@@ -252,7 +255,7 @@ export const publishEntry = async (entry) => {
     }
     // The parent's LIVE post must still stand — same doctrine as the reply
     // lane's target check: a deleted parent is not answered by a fallback.
-    const standing = await readXPost(parent.postId, { wallet: house });
+    const standing = await readXPost(parent.postId, { wallet: house, accountId });
     if (!standing.ok) {
       const outcome = { ok: false, detail: `the parent's post no longer stands (${standing.detail}) — the thread post stays in the record, unsent` };
       await postQueue.recordOutcome(entry.id, outcome);
@@ -270,7 +273,7 @@ export const publishEntry = async (entry) => {
   // from the queue RIGHT NOW with this entry counting itself (approval did
   // not pre-authorize over-engagement).
   if (entry.kind === 'reply' && entry.reply?.toPostId) {
-    const target = await readXPost(entry.reply.toPostId, { wallet: house });
+    const target = await readXPost(entry.reply.toPostId, { wallet: house, accountId });
     if (!target.ok) {
       const outcome = { ok: false, detail: `the reply's target post no longer stands (${target.detail}) — the answer stays in the record, unsent` };
       await postQueue.recordOutcome(entry.id, outcome);
@@ -334,6 +337,7 @@ export const publishEntry = async (entry) => {
       // A video poster refreshes its sign-in in the house's own store, and
       // keeps its platform's ticket on the entry before any byte is sent.
       house,
+      accountId,
       // A TikTok post leaves with exactly the choices its approval recorded.
       tiktokConsent: entry.tiktokConsent ?? null,
       onTicket: async (ticket) => {
@@ -353,7 +357,7 @@ export const publishEntry = async (entry) => {
   // and warm from the lane's other reads; a failed lookup never blocks a
   // real publish — postedAs is simply absent, never invented.
   if (outcome.ok && entry.channelId === 'x') {
-    const account = await readXAccount({ wallet: house }).catch(() => null);
+    const account = await readXAccount({ wallet: house, accountId }).catch(() => null);
     if (account) outcome.postedAs = account;
   }
 

@@ -28,6 +28,7 @@ import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { REPLIES_LIST_TOOL, readReplyInbox } from './reply-inbox-tool.js';
 import { READ_TIKTOK_TOOL, readTikTokForBeing, tiktokReadRefusal } from './tiktok-read-tool.js';
+import { readAccountFor } from './read-account.js';
 
 // Same logger name as the seat it was cut from, so the read lane's warnings
 // keep their long-standing prefix in the operator's logs.
@@ -93,12 +94,13 @@ const READ_WINDOW = TOOL_RESULT_MAX_CHARS - 120;
 const READ_X_TOOL = Object.freeze({
   name: 'read_x',
   server: 'social',
-  description: 'Read from the house X account — args {what, limit?}. what: me (whose account this is), mentions (who is speaking to the house — each with the house\'s answer to it, if one stands: its queue id, standing and words), recent (what the house has said, up to 25 — each with the queue entry it went out as). You are handed exactly the number of posts you ask for, newest first, each one whole. If the ask does not fit your context window the oldest are held back rather than any post being cut in half — the answer names how many and why, so a short read is never a silent one. Research feeds the marketing team: if you surface a prospect, file a leads/add intent and let the CMO work it. Reading is research, never auto-engagement — this tool only reads.',
+  description: 'Read from a house X account — args {what, limit?, account?}. account: which of the house\'s X accounts (x-1, x-2…; unnamed = the one you hold, else the first). what: me (whose account this is), mentions (who is speaking to the house — each with the house\'s answer to it, if one stands: its queue id, standing and words), recent (what the house has said, up to 25 — each with the queue entry it went out as). You are handed exactly the number of posts you ask for, newest first, each one whole. If the ask does not fit your context window the oldest are held back rather than any post being cut in half — the answer names how many and why, so a short read is never a silent one. Research feeds the marketing team: if you surface a prospect, file a leads/add intent and let the CMO work it. Reading is research, never auto-engagement — this tool only reads.',
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({
       what: Object.freeze({ type: 'string', enum: Object.freeze(['me', 'mentions', 'recent']), description: 'me | mentions | recent' }),
       limit: Object.freeze({ type: 'number', description: 'How many posts to hand you, 1-25 (default 10). X pages a timeline in fives, so a smaller ask still costs a five-post fetch — but only what you asked for reaches you.' }),
+      account: Object.freeze({ type: 'string', description: 'Which house X account (x-1, x-2…) — unnamed: the one you hold, else the first' }),
     }),
     required: Object.freeze(['what']),
   }),
@@ -199,7 +201,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   }
 
   // Only the TikTok holder reads the house's TikTok account — refused before any card.
-  const notHolder = toolName === 'read_tiktok' ? await tiktokReadRefusal(companion?.neumaId) : null;
+  const notHolder = toolName === 'read_tiktok' ? await tiktokReadRefusal(companion?.neumaId, args?.account) : null;
   if (notHolder) {
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not the TikTok holder` });
     return { tool, status: 'denied', error: notHolder };
@@ -355,7 +357,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   }
 
   if (toolName === 'read_tiktok') {
-    const read = await readTikTokForBeing(companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW });
+    const read = await readTikTokForBeing(companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW, account: args?.account });
     _sendToolEvent(ws, companion, {
       tool, status: read.ok ? 'ok' : 'error', summary: read.ok ? `read the TikTok account and ${read.shown} video(s)` : `${toolName} — failed`, detail: read.ok ? undefined : read.error,
     });
@@ -376,15 +378,18 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   const signal = connection.activeTurn?.signal;
   // The being's own house's X account, read with that house's keys.
   const wallet = await houseOfLane(companion?.neumaId);
+  const picked = await readAccountFor(wallet, companion?.neumaId, args?.account, { id: 'x', name: 'X' });
+  if (!picked.ok) return { tool, status: 'error', error: picked.error };
+  const { accountId } = picked;
   const outcome = what === 'me'
-    ? await readXMe({ signal, wallet })
-    : await readXListings({ kind: what, limit, signal, wallet });
+    ? await readXMe({ signal, wallet, accountId })
+    : await readXListings({ kind: what, limit, signal, wallet, accountId });
 
   // ONE CANDIDATE PIPELINE (ruling, 2026-07-28): a being-driven mentions read
   // lands candidates through the exact path the listener tick runs, so a
   // reply the being just read is answerable immediately — no tick wait.
   if (outcome.ok && what === 'mentions') {
-    await materializeReplyCandidates(outcome.data, wallet).catch((err) => log.warn('read_x candidate materialization failed', { error: err.message }));
+    await materializeReplyCandidates(outcome.data, wallet, accountId).catch((err) => log.warn('read_x candidate materialization failed', { error: err.message }));
   }
 
   // The identifiers the being names a target with. The house's own postIds

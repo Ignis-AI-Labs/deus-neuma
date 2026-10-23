@@ -13,7 +13,8 @@
  */
 import { createLogger } from '../logger.js';
 import { neumaWorkspace } from '../../../core/index.js';
-import { channelBindings, canNeumaPost } from '../social/channel-bindings.js';
+import { channelBindings } from '../social/channel-bindings.js';
+import { heldAccounts, pickAccount } from '../social/account-shape.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { readTikTokProfile } from '../social/tiktok-profile.js';
 import { frameUntrustedSections } from '../untrusted-content.js';
@@ -23,8 +24,13 @@ const log = createLogger('Portal');
 export const READ_TIKTOK_TOOL = Object.freeze({
   name: 'read_tiktok',
   server: 'social',
-  description: 'Read the house\'s own TikTok account — args {}. You get the profile (name, @username, verified, bio, profile link), the four counts (followers, following, likes, videos) and the newest public videos (up to 20, newest first), each with its date, length, views, likes, comments, shares and link — the measure of what works. TikTok lists public videos only, so a private (only me) post is not among them. Reading only: nothing is posted or changed. Profile edits are made in TikTok itself.',
-  inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
+  description: 'Read a TikTok account of the house that you hold — args {account?}: name the account (tiktok-1, tiktok-2…) when you hold more than one. You get the profile (name, @username, verified, bio, profile link), the four counts (followers, following, likes, videos) and the newest public videos (up to 20, newest first), each with its date, length, views, likes, comments, shares and link — the measure of what works. TikTok lists public videos only, so a private (only me) post is not among them. Reading only: nothing is posted or changed. Profile edits are made in TikTok itself.',
+  inputSchema: Object.freeze({
+    type: 'object',
+    properties: Object.freeze({
+      account: Object.freeze({ type: 'string', description: 'Which TikTok account (tiktok-1, tiktok-2…) — only needed when you hold more than one' }),
+    }),
+  }),
 });
 
 const NOT_SHARED = 'not shared';
@@ -83,11 +89,15 @@ const renderTikTokRead = (read, { budget = null, token } = {}) => {
   return { text: draw(shown), shown };
 };
 
-// impure — the lane's house, when the lane holds TikTok there; else null.
-const holderHouse = async (neumaId) => {
+// impure — the lane's house and the TikTok account the read is for, when the
+// lane holds it there; else the refusal in words.
+const holderAccount = async (neumaId, asked) => {
   const house = await houseOfLane(neumaId);
   const bindings = house ? await channelBindings.load(house).catch(() => ({})) : {};
-  return canNeumaPost(bindings, 'tiktok', neumaId) ? house : null;
+  const held = heldAccounts(bindings, 'tiktok', neumaId);
+  if (!held.length) return { ok: false, error: NOT_HOLDER };
+  const pick = pickAccount(held, asked, 'TikTok');
+  return pick.ok ? { ok: true, house, accountId: pick.accountId } : pick;
 };
 
 const NOT_HOLDER = 'read_tiktok is the TikTok channel holder\'s read, and you do not hold TikTok in your house. Ask the holder for what you need, or your operator to bind you.';
@@ -99,20 +109,24 @@ const NOT_HOLDER = 'read_tiktok is the TikTok channel holder\'s read, and you do
  * @param {string} neumaId
  * @returns {Promise<string|null>}
  */
-export const tiktokReadRefusal = async (neumaId) => ((await holderHouse(neumaId)) ? null : NOT_HOLDER);
+export const tiktokReadRefusal = async (neumaId, asked) => {
+  const held = await holderAccount(neumaId, asked);
+  return held.ok ? null : held.error;
+};
 
 /**
  * Read the house's TikTok account for the lane that holds the channel; the
  * binding is read again here, after any card. impure — stores, network, the
  * being's journal.
  * @param {string} neumaId
- * @param {{signal?: AbortSignal, budget?: number}} [opts]
+ * @param {{signal?: AbortSignal, budget?: number, account?: string}} [opts]
+ *   account — which of the lane's TikTok accounts (needed when it holds several)
  * @returns {Promise<{ok: true, text: string, shown: number}|{ok: false, error: string}>}
  */
-export const readTikTokForBeing = async (neumaId, { signal, budget } = {}) => {
-  const house = await holderHouse(neumaId);
-  if (!house) return { ok: false, error: NOT_HOLDER };
-  const read = await readTikTokProfile(house, { signal });
+export const readTikTokForBeing = async (neumaId, { signal, budget, account } = {}) => {
+  const held = await holderAccount(neumaId, account);
+  if (!held.ok) return { ok: false, error: held.error };
+  const read = await readTikTokProfile(held.house, { signal, accountId: held.accountId });
   if (!read.ok) return { ok: false, error: `The TikTok read did not land: ${read.detail}.` };
   const drawn = renderTikTokRead(read, { budget });
   // What the being received is on its own record (the egress audit read_x keeps).

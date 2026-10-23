@@ -10,6 +10,7 @@ import {
   isSettled, postCountFor, queueStandingLabel, queueToneOf, queueWhenLabel,
 } from './campaigns-helpers.js';
 import { Lightbox } from './Lightbox.jsx';
+import { mediaMenuDoor } from './media-menu.js';
 import { XPostLink } from './XPostLink.jsx';
 import {
   approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
@@ -77,9 +78,12 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
     return () => { live = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [entryId, index]);
   const file = String(item.path || '').split('/').pop();
+  // Its menu (media-menu.js): the player's own options, and the way to the
+  // gallery and the folder the staged file lives in.
+  const door = url ? mediaMenuDoor({ kind: video ? 'video' : 'image', src: url, path: item.path, alt: item.alt || file }) : null;
   return (
     <div className="queue-media-item">
-      {url && video ? <video className="queue-media-video" src={url} controls preload="metadata" aria-label={`video ${file}`} /> : null}
+      {url && video ? <video className="queue-media-video" src={url} controls preload="metadata" aria-label={`video ${file}`} {...door} /> : null}
       {url && !video
         ? (
           <>
@@ -88,6 +92,7 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
               className="queue-media-zoom"
               aria-label={`view ${file} full size`}
               onClick={() => { uiSound('toggle'); setZoomed(true); }}
+              {...door}
             >
               <img className="queue-media-thumb" src={url} alt={item.alt || file} />
             </button>

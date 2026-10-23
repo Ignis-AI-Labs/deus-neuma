@@ -261,7 +261,7 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
       { id, text: 'intruder rewrite' }, channel);
 
     expect(result.status).toBe('denied');
-    expect(result.error).toContain('not on the X (Twitter) crew');
+    expect(result.error).toContain('not on the crew of X (Twitter) account x-1');
     expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
     const [entry] = await postQueue.load();
     expect(entry.text).toBe('not your calendar');

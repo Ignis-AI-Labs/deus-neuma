@@ -23,6 +23,7 @@ import { playSound } from '../../services/sound-engine.js';
 import { formatBytes } from '../../utils/format.js';
 import { StopRunButton, StopMemberButton } from './TeamRunControls.jsx';
 import { useTeamRunPhase } from './team-runs-context.js';
+import { mediaMenuDoor } from './media-menu.js';
 import '../../components/ToolActionChip/ToolActionChip.css';
 
 const STATE_GLYPHS = Object.freeze({
@@ -50,7 +51,11 @@ const imageMime = (file) => IMAGE_MIME[String(file).slice(String(file).lastIndex
 // The one file the witness opened, rendered by its kind.
 const DeliverableView = ({ view }) => {
   if (view.kind === 'image') {
-    return <img className="delivery-image" alt={view.file} src={`data:${imageMime(view.file)};base64,${view.base64}`} />;
+    const src = `data:${imageMime(view.file)};base64,${view.base64}`;
+    return (
+      <img className="delivery-image" alt={view.file} src={src} tabIndex={0}
+        {...mediaMenuDoor({ kind: 'image', src, name: String(view.file).split('/').pop(), alt: view.file })} />
+    );
   }
   if (view.kind === 'html' || view.kind === 'svg') {
     return (

@@ -19,16 +19,23 @@
 
 import { useEffect, useState } from 'react';
 import { authHeadersOrNull } from '../../utils/http.js';
+import { forgeImageIdOf, mediaMenuDoor } from './media-menu.js';
 import './AuthImage.css';
 
 /**
- * @param {{src: string, alt?: string, className?: string, onClick?: Function, video?: boolean}} props
+ * @param {{src: string, alt?: string, className?: string, onClick?: Function, video?: boolean,
+ *   media?: {path?: string, name?: string, mime?: string}, menu?: boolean}} props
  *   `src` is an app-relative authenticated URL, already carrying any query the
  *   route needs (e.g. `?laneId=…`). `video` plays the same bytes in a player —
  *   a forge render can be a clip with sound (video.ltx.i2v), not only a still.
+ *   Every loaded image and clip wears the media menu (media-menu.js): a forge
+ *   render's id is read from its URL, so it can open in the gallery; `media`
+ *   adds what only the caller knows (the file's path on disk). `menu={false}`
+ *   is for what is not content (a pairing code).
  */
-export const AuthImage = ({ src, alt = '', className, onClick, video = false }) => {
+export const AuthImage = ({ src, alt = '', className, onClick, video = false, media = null, menu = true }) => {
   const [url, setUrl] = useState(null);
+  const [mime, setMime] = useState('');
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -46,6 +53,7 @@ export const AuthImage = ({ src, alt = '', className, onClick, video = false }) 
         const blob = await res.blob();
         if (!alive) return;
         objectUrl = URL.createObjectURL(blob);
+        setMime(blob.type);
         setUrl(objectUrl);
       } catch {
         if (alive) setFailed(true);
@@ -60,6 +68,9 @@ export const AuthImage = ({ src, alt = '', className, onClick, video = false }) 
 
   if (failed) return <span className={`authimg-missing ${className || ''}`} title="could not load" aria-label={alt} />;
   if (!url) return <span className={`authimg-loading ${className || ''}`} aria-hidden="true" />;
-  if (video) return <video className={className} src={url} aria-label={alt} controls playsInline preload="metadata" />;
-  return <img className={className} src={url} alt={alt} onClick={onClick} />;
+  const door = menu
+    ? mediaMenuDoor({ kind: video ? 'video' : 'image', src: url, mime, imageId: forgeImageIdOf(src), alt, ...media })
+    : null;
+  if (video) return <video className={className} src={url} aria-label={alt} controls playsInline preload="metadata" {...door} />;
+  return <img className={className} src={url} alt={alt} onClick={onClick} tabIndex={door ? 0 : undefined} {...door} />;
 };

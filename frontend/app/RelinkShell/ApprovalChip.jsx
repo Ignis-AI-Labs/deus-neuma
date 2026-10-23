@@ -43,6 +43,7 @@ const ApprovalRenders = ({ renders }) => (
             src={`/api/v1/image-forge/images/${encodeURIComponent(render.imageId)}?laneId=${encodeURIComponent(render.laneId || '')}`}
             alt={video ? 'attached video' : 'attached image'}
             video={video}
+            media={render.path ? { path: render.path } : null}
           />
           <figcaption className="approval-render-what label-data">{video ? 'VIDEO' : 'IMAGE'}</figcaption>
         </figure>

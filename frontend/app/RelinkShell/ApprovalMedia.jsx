@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchIntentMediaUrl } from '../../services/social-channels-client.js';
+import { mediaMenuDoor } from './media-menu.js';
 
 /** Own the browser resources for one attachment set on a pending decision. */
 export const ApprovalMedia = ({ lane, namesJson }) => {
@@ -33,7 +34,8 @@ export const ApprovalMedia = ({ lane, namesJson }) => {
         <p key={`${index}:${name}`} role="status">Preview unavailable: {name}</p>
       ) : rows[index]?.url ? (
         <img key={`${index}:${name}`} src={rows[index].url}
-          alt={`Attachment: ${name}`} onError={() => failedImage(index)} />
+          alt={`Attachment: ${name}`} onError={() => failedImage(index)} tabIndex={0}
+          {...mediaMenuDoor({ kind: 'image', src: rows[index].url, name: String(name).split('/').pop(), alt: name })} />
       ) : <p key={`${index}:${name}`} role="status">Loading preview: {name}</p>)}
     </div>
   );

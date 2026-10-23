@@ -30,6 +30,7 @@ import { getSubstrateProfile } from './substrate-detector.js';
 import { readUsableCapacity } from './capacity-store.js';
 import { houseSeatFor, chargeOfTitle, seatLabelOf } from './house-titles.js';
 import { getChannel } from './social/channel-registry.js';
+import { channelOfAccountId, heldAccounts } from './social/account-shape.js';
 import { channelBindings } from './social/channel-bindings.js';
 import { houseOfLane } from './social/house-positions.js';
 import { sectorCrew, crewOf, sectorSection } from './sector-crew.js';
@@ -109,6 +110,12 @@ const _projectFilesSection = async (connection) => {
 // impure — THE SECTORS this being is seated on: who else works them, what
 // each holds, and who carries the keys. '' for a being on no crew, so an
 // unseated lane's prompt is byte-identical to before this existed.
+// pure — a sector's name: an account reads as its platform and its id.
+const sectorNameOf = (sectorId) => {
+  const channel = getChannel(channelOfAccountId(sectorId));
+  return channel ? `${channel.name} · ${sectorId}` : getChannel(sectorId)?.name || sectorId;
+};
+
 export const sectorSectionFor = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   if (!neumaId) return '';
@@ -121,7 +128,7 @@ export const sectorSectionFor = async (connection) => {
     ]);
     const sectors = Object.keys(crewStore).map((sectorId) => ({
       sectorId,
-      sectorName: getChannel(sectorId)?.name || sectorId,
+      sectorName: sectorNameOf(sectorId),
       members: crewOf(crewStore, sectorId),
       holderNeumaId: bindings?.[sectorId]?.neumaId || null,
     }));
@@ -263,8 +270,8 @@ const _replyCandidatesSection = async (connection) => {
   if (!neumaId) return '';
   try {
     const house = await houseOfLane(neumaId);
-    const bound = await channelBindings.bindingFor(house, 'x');
-    if (bound?.neumaId !== neumaId) return '';
+    // Any X account of the house this lane holds: the knock is the holder's.
+    if (!heldAccounts(await channelBindings.load(house), 'x', neumaId).length) return '';
     const [stored, queue] = await Promise.all([
       replyCandidatesOf(house).load(),
       houseEntries(house),

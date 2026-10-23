@@ -13,6 +13,7 @@ import { postQueue, validateDraft as validateQueueDraft, replyCountForConversati
 import { channelBindings } from '../social/channel-bindings.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { laneHouseEntries } from '../social/queue-house.js';
+import { entryAccountId, firstAccountId } from '../social/account-shape.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { replyCandidatesOf } from '../social/reply-candidates.js';
 import { postIdFrom, readXReplyTarget } from '../social/x-reader.js';
@@ -93,8 +94,10 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
-    const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before threading for it`;
+  // A follow-up speaks as its parent's account, and is gated by that account's crew.
+  const accountId = entryAccountId(parent);
+  if (!canStageForSector(crewStore, bindings, accountId, companion?.neumaId || null)) {
+    const error = `you are not on the crew of ${channel.name} account ${accountId} — ask your operator to add you to that sector before threading for it`;
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
     return { tool, status: 'denied', error };
   }
@@ -115,6 +118,7 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
   try {
     entry = await postQueue.add({
       channelId: channel.id,
+      accountId,
       text,
       campaignId,
       pillar,
@@ -244,8 +248,10 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
-    const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before answering for it`;
+  // An answer speaks as the account the reply was made to.
+  const accountId = candidate.accountId || firstAccountId(channel.id);
+  if (!canStageForSector(crewStore, bindings, accountId, companion?.neumaId || null)) {
+    const error = `you are not on the crew of ${channel.name} account ${accountId} — ask your operator to add you to that sector before answering for it`;
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
     return { tool, status: 'denied', error };
   }
@@ -279,6 +285,7 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   try {
     entry = await postQueue.add({
       channelId: channel.id,
+      accountId,
       text,
       campaignId,
       kind: 'reply',
@@ -343,8 +350,9 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
-    const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before deciding for it`;
+  const accountId = candidate.accountId || firstAccountId(channel.id);
+  if (!canStageForSector(crewStore, bindings, accountId, companion?.neumaId || null)) {
+    const error = `you are not on the crew of ${channel.name} account ${accountId} — ask your operator to add you to that sector before deciding for it`;
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
     return { tool, status: 'denied', error };
   }

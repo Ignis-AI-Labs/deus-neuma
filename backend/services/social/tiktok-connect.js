@@ -6,8 +6,7 @@
 // comma scopes, the registered /callback/ path on 127.0.0.1) and what its
 // tokens must prove (every scope granted, an account to name).
 
-import { setChannelCredential } from './channel-credentials.js';
-import { createConnectFlow, houseClientFor } from './connect-flow.js';
+import { createConnectFlow, houseClientFor, sealConnection } from './connect-flow.js';
 import { openOAuthLoopback } from './oauth-loopback.js';
 import {
   buildTikTokAuthorizeUrl, exchangeTikTokCode, mintTikTokPkce, missingTikTokScopes, tokenRecord, TIKTOK_CALLBACK_PATH,
@@ -34,15 +33,16 @@ const openTikTokConsent = ({ clientKey, clientSecret, timeoutMs }) => openOAuthL
 // impure — what the consent's tokens become: a checked, named, sealed
 // connection. Only posting's own permissions are required; the account
 // view's (profile, counts, videos) may be declined and the view says so.
-const settle = async (wallet, { tokens }) => {
+const settle = async (wallet, { tokens }, accountId) => {
   const missing = missingTikTokScopes(tokens.scope, TIKTOK_POSTING_SCOPES);
   if (missing.length) {
     return { status: 'error', error: `TikTok granted access without ${missing.join(' and ')}; check the app has Login Kit and Content Posting (Direct Post on), then CONNECT again and allow every permission` };
   }
   const me = await readTikTokUser(tokens.access_token);
   if (!me.ok) return { status: 'error', error: me.detail };
-  await setChannelCredential(wallet, 'tiktok', tokenRecord(tokens, Date.now()));
-  log.info('TikTok connected', { wallet, openId: me.user.id });
+  const refused = await sealConnection(wallet, accountId, tokenRecord(tokens, Date.now()), { id: me.user.id, name: me.user.displayName });
+  if (refused) return { status: 'error', error: refused };
+  log.info('TikTok connected', { wallet, accountId, openId: me.user.id });
   return { status: 'complete', channel: { id: me.user.id, title: me.user.displayName } };
 };
 
@@ -53,9 +53,9 @@ const flow = createConnectFlow({
   settle,
 });
 
-/** Begin a house's CONNECT. impure. */
-export const startTikTokConnect = (wallet) => flow.start(wallet);
-/** The house's connect outcome. impure. */
-export const pollTikTokConnect = (wallet) => flow.poll(wallet);
-/** Cancel the house's pending connect, if any. impure. */
-export const cancelTikTokConnect = (wallet) => flow.cancel(wallet);
+/** Begin a house account's CONNECT (its first TikTok account when unnamed). impure. */
+export const startTikTokConnect = (wallet, accountId = 'tiktok-1') => flow.start(wallet, accountId);
+/** The house account's connect outcome. impure. */
+export const pollTikTokConnect = (wallet, accountId = 'tiktok-1') => flow.poll(wallet, accountId);
+/** Cancel the house account's pending connect, if any. impure. */
+export const cancelTikTokConnect = (wallet, accountId = 'tiktok-1') => flow.cancel(wallet, accountId);
