@@ -118,4 +118,8 @@ describe('the model a person can talk to, named plainly', () => {
     expect(readyModelLabel(setup)).toBe('Qwen3.8-4B-Distill · Q4_K_M');
     expect(readyModelLabel({ providers: {} })).toBeNull();
   });
+  it('names nothing for a server launched from a file descriptor (it reports the descriptor)', () => {
+    const fd = { providers: { discovered: [{ provider: 'llama-server', endpoint: 'http://127.0.0.1:8089', models: ['/proc/self/fd/4'] }] } };
+    expect(readyModelLabel(fd)).toBeNull();
+  });
 });

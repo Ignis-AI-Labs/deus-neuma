@@ -97,5 +97,7 @@ export const modelLabel = (id) => {
 /** The first model a ready local server holds, as a person reads it, or null. Pure. */
 export const readyModelLabel = (setup) => {
   const ready = localServers(setup).find((s) => s.state === 'ready');
-  return ready?.models[0] ? modelLabel(ready.models[0]) : null;
+  const id = ready?.models[0];
+  // a server launched from a file descriptor reports the descriptor, which names nothing to a person
+  return id && !/^\/proc\/self\/fd\//.test(id) ? modelLabel(id) : null;
 };

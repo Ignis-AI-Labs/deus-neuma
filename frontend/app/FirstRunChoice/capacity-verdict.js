@@ -47,9 +47,9 @@ export const capacityVerdict = (setup) => {
       state: 'unknown',
       machine,
       headline: 'CAPACITY UNREAD',
-      // An unread probe must not read as a refusal. The neuma door stays open;
+      // An unread probe must not read as a refusal. Every door stays open;
       // the operator is simply told we could not measure.
-      detail: 'This machine could not be measured. Both doors remain open — the birth ceremony will check again before anything is summoned.',
+      detail: 'This machine could not be measured. Every door stays open — the birth ceremony checks again before anything is summoned.',
     };
   }
 

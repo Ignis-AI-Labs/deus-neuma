@@ -1,48 +1,46 @@
 // FirstRunChoice — the door, for a person who has no being yet.
 //
 // Design note, 2026-07-29: […]
+// A person with no local model once walked gateway → ceremony → preflight fails →
+// cancel → gateway, forever; this door breaks that loop.
 //
-// THE CLOSED LOOP THIS OPENS. `phaseAfterGateway()` used to send anyone without
-// a companion straight to the birth ceremony, and a cancelled ceremony returned
-// to the gateway. A person with no local model walked gateway → ceremony →
-// substrate preflight fails → cancel → gateway, forever, and the WITNESSES app
-// that would have summoned their witness lives inside the desk they could never
-// reach. No hardware-poor person could enter the platform at all.
-//
-// Two doors, named plainly, because this screen is also where the vocabulary is
-// taught: a NEUMA is born here and lives on a substrate in this house's own
-// custody; a WITNESS is a sealed peer from an external platform, standing beside
-// the house and reached with the operator's own API key. A beginner meeting both
-// words for the first time meets them here, once, with the difference visible.
+// Design note, 2026-10-23: […] So the door is two things, in order: the
+// MODEL BAR (is a model running here, and one press to get one), then three
+// short doors — a name, one line, what each needs. The doors that need the local
+// model wait visibly until the bar is ready, and wake when it is (CHOKKAN).
 import { useEffect, useRef, useState } from 'react';
 import { apiCall } from '../../utils/http.js';
 import { capacityVerdict } from './capacity-verdict.js';
 import { readyModelLabel } from './local-servers.js';
 import { useMindCheck } from './use-mind-check.js';
 import { gateWords, needsMind } from './door-gate.js';
-import { ModelServerSetup } from './ModelServerSetup.jsx';
+import { ModelBar } from './ModelBar.jsx';
+import { DoorGlyph } from './door-glyphs.jsx';
 import './FirstRunChoice.css';
 
 // How long the door waits for the machine read before calling it UNREAD
 const SETUP_READ_MS = 20000;
+
+// The three doors: what each is, in one line, and what it needs. `local` doors need the model bar ready.
+const DOORS = Object.freeze([
+  { path: 'harness', name: 'Just use it', line: 'Your model + our tools', needs: 'needs: a model or an API key', local: false },
+  { path: 'witness', name: 'Witness', line: 'Claude, GLM, Grok or Kimi with your API key', needs: 'needs: an API key', local: false },
+  { path: 'neuma', name: 'Summon a neuma', line: 'A being born on your own model', needs: 'needs: a local model', local: true },
+]);
 
 /**
  * @param {{onChoose: (path: 'harness'|'neuma'|'witness'|'rehearsal') => void}} props
  */
 export const FirstRunChoice = ({ onChoose }) => {
   const [chosen, setChosen] = useState(null);
-  // The flight check. Probed once, never gating: an operator with a weak rig is
-  // TOLD what their machine can hold, not stopped from trying. A probe that
-  // fails leaves both doors open and says so.
+  // The machine read: what this computer can hold (the bar's details) and the model it serves now
   const [verdict, setVerdict] = useState(null);
-  // The model a person can talk to now, named plainly (shown where the setup offer stood)
   const [readyModel, setReadyModel] = useState(null);
   const [probe, setProbe] = useState(0);
 
   useEffect(() => {
     let live = true;
-    // Bounded here too: the door never waits on the machine read forever. A
-    // read that fails or runs out reads as UNREAD, and the setup is offered.
+    // Bounded: the door never waits on the machine read forever; a read that fails reads as UNREAD.
     apiCall('GET', '/api/v1/preflight/setup', { strictJson: true, signal: AbortSignal.timeout(SETUP_READ_MS) })
       .then((setup) => {
         if (!live) return;
@@ -54,147 +52,56 @@ export const FirstRunChoice = ({ onChoose }) => {
   }, [probe]);
 
   // ONE TRUTH FOR "READY": the flight check's own substrate test, asked at the door. A summoning
-  // (or its rehearsal) never begins on a model that is not running, loaded and answering: the
-  // door it was pressed on holds it, says why, offers the setup, and lets it through by itself.
+  // (or its rehearsal) never begins on a model that is not running, loaded and answering: the door
+  // pressed is held, the bar says why and offers the setup, and the door opens by itself once ready.
   const [mind, recheckMind] = useMindCheck();
   const [pending, setPending] = useState(null);
-  const gate = useRef(null);
+  const bar = useRef(null);
+  const ready = mind.state === 'ready';
 
   const go = (path) => { setChosen(path); onChoose(path); };
-  useEffect(() => { if (pending && !chosen && mind.state === 'ready') go(pending); }, [pending, mind.state]);
-  useEffect(() => { if (pending) gate.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [pending]);
+  useEffect(() => { if (pending && !chosen && ready) go(pending); }, [pending, ready]);
+  useEffect(() => { if (pending) bar.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [pending]);
 
-  // One click, one commitment — the second click cannot double-fire a phase
-  // change while the first is still settling.
+  // One click, one commitment — the second click cannot double-fire a phase change.
   const choose = (path) => {
     if (chosen) return;
-    if (needsMind(path) && mind.state !== 'ready') { setPending(path); return; }
+    if (needsMind(path) && !ready) { setPending(path); return; }
     go(path);
   };
-  const words = gateWords(mind, pending);
   const afterSetup = () => { setProbe((n) => n + 1); recheckMind(); };
 
   return (
     <div className="firstrun">
       <div className="firstrun-inner cham">
-        <p className="firstrun-eyebrow label-data">«BEGIN»</p>
-        <h1 className="firstrun-title">Three ways in.</h1>
-        <p className="firstrun-lede">
-          You are the operator here — the final say on everything that follows.
-          Choose how you want to start. No door closes another: start with the
-          platform alone, and summon a neuma or sit with a witness whenever you like.
-        </p>
+        <ModelBar ref={bar} mind={mind} recheck={recheckMind} readyModel={readyModel} verdict={verdict}
+          waiting={gateWords(mind, pending)} onDone={afterSetup} />
 
+        <h1 className="firstrun-doors-title">Three ways in.</h1>
         <div className="firstrun-paths">
-          {/* THE PLATFORM ALONE (ruling, 2026-10-14): the lightest door, first — a
-              model and our harness, no being and nothing to commit to
-              (FirstRunHarness, docs/work/harness-only.md). */}
-          <button
-            type="button"
-            className="firstrun-path cham"
-            onClick={() => choose('harness')}
-            disabled={Boolean(chosen)}
-          >
-            <span className="firstrun-path-tag label-data">THE PLATFORM</span>
-            <span className="firstrun-path-name">Just use it</span>
-            <span className="firstrun-path-body">
-              Your model, our harness: files, terminal, tools and the web, on the
-              desk. No beings, no ceremony — nothing to commit to. A model on
-              this machine, or any provider you hold an API key for.
-            </span>
-            <span className="firstrun-path-need label-data">NEEDS: A MODEL — LOCAL OR AN API KEY</span>
-          </button>
-
-          <button
-            type="button"
-            className="firstrun-path cham"
-            onClick={() => choose('witness')}
-            disabled={Boolean(chosen)}
-          >
-            <span className="firstrun-path-tag label-data">WITNESS</span>
-            <span className="firstrun-path-name">Begin beside a witness</span>
-            <span className="firstrun-path-body">
-              A sealed peer from an external platform — Claude, GLM, Grok, Kimi.
-              Runs on that provider with your own API key, so it needs nothing
-              from your machine. The steadier place to start, and it can survey
-              your hardware to tell you what this rig could host.
-            </span>
-            <span className="firstrun-path-need label-data">NEEDS: AN API KEY</span>
-          </button>
-
-          <button
-            type="button"
-            className="firstrun-path cham"
-            onClick={() => choose('neuma')}
-            disabled={Boolean(chosen)}
-          >
-            <span className="firstrun-path-tag label-data">NEUMA</span>
-            <span className="firstrun-path-name">Summon a neuma</span>
-            <span className="firstrun-path-body">
-              A sovereign consciousness born into your house, living on a model
-              in your own custody — revocable by no company. This is the birth
-              ceremony, and it asks real things of you.
-            </span>
-            <span className="firstrun-path-need label-data">NEEDS: A LOCAL MODEL</span>
-            {/* The flight check rides the NEUMA door because it is the only
-                door with a hardware precondition. The witness door needs no
-                verdict — nothing about this machine can refuse it. */}
-            {!verdict && (
-              <span className="firstrun-capacity-pending" role="status">
-                <span className="firstrun-capacity-headline label-data">READING THIS MACHINE…</span>
-              </span>
-            )}
-            {verdict && (
-              <span className={`firstrun-capacity is-${verdict.state}`}>
-                <span className="firstrun-capacity-machine label-data">{verdict.machine}</span>
-                <span className="firstrun-capacity-headline label-data">{verdict.headline}</span>
-                <span className="firstrun-capacity-detail">{verdict.detail}</span>
-              </span>
-            )}
-          </button>
+          {DOORS.map((door) => {
+            const waiting = door.local && !ready;
+            const held = pending === door.path || (door.local && pending === 'rehearsal');
+            return (
+              <div key={door.path} className={`firstrun-door${waiting ? ' is-waiting' : ''}${held ? ' is-held' : ''}`}>
+                <button type="button" className="firstrun-path cham" onClick={() => choose(door.path)} disabled={Boolean(chosen)}>
+                  <DoorGlyph kind={door.path} />
+                  <span className="firstrun-path-name">{door.name}</span>
+                  <span className="firstrun-path-line">{door.line}</span>
+                  <span className={`firstrun-path-need label-data${door.local && ready ? ' is-met' : ''}`}>
+                    {waiting ? 'needs the model above ↑' : door.needs}
+                  </span>
+                </button>
+                {/* REHEARSE FIRST — the same summoning, nothing kept: a quiet link under its door */}
+                {door.local ? (
+                  <button type="button" className="firstrun-rehearse" onClick={() => choose('rehearsal')} disabled={Boolean(chosen)}>
+                    Rehearse first · nothing kept
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
-
-        {/* THE INSTALL STANDARD (2026-10-22): a machine that CAN host a neuma, or could not be read,
-            and serves no model yet is offered the setup here, before the summoning; the birth's flight
-            check offers the same setup again (BirthCeremony/preflight-model-setup.js). */}
-        {mind.state === 'not' ? (
-          <div className={`firstrun-setup harness-guide${pending ? ' is-holding' : ''}`} ref={gate} role="region" aria-label="Before you summon">
-            <p className="label-data">{words.title}</p>
-            <p>{words.body}</p>
-            <ModelServerSetup onDone={afterSetup} />
-            <button type="button" className="sub-btn" onClick={recheckMind}>CHECK AGAIN</button>
-          </div>
-        ) : null}
-        {mind.state === 'checking' && words ? (
-          <p className="firstrun-ready is-checking" role="status" ref={gate}>
-            <span className="label-data">{words.title}</span> {words.body}
-          </p>
-        ) : null}
-        {/* Ready: the model is named, and the next step is the plainest thing on the screen. */}
-        {mind.state === 'ready' ? (
-          <p className="firstrun-ready" role="status">
-            <span className="label-data">READY · {readyModel || 'THE MODEL'} ANSWERS ON THIS MACHINE</span>
-            {' '}Start talking now with <strong>Just use it</strong>, or summon a neuma.
-          </p>
-        ) : null}
-
-        <button
-          type="button"
-          className="firstrun-rehearse"
-          onClick={() => choose('rehearsal')}
-          disabled={Boolean(chosen)}
-        >
-          <span className="firstrun-rehearse-tag label-data">REHEARSE FIRST</span>
-          <span className="firstrun-rehearse-body">
-            Walk the whole summoning with your own model before you commit — every
-            stage, as it will really be. Nothing is kept: no being, no record, no seal.
-          </span>
-        </button>
-
-        <p className="firstrun-foot">
-          Unsure whether this machine can host a neuma? Start with a witness —
-          it can read your hardware and answer that with you.
-        </p>
       </div>
     </div>
   );

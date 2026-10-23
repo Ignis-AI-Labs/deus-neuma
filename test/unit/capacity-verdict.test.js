@@ -77,11 +77,11 @@ describe('capacityVerdict', () => {
 
   // An unread probe must never read as a refusal — that would shut the neuma
   // door on a capable machine because a fetch failed.
-  test('an unreadable probe leaves BOTH doors open and says so', () => {
+  test('an unreadable probe leaves every door open and says so', () => {
     const v = capacityVerdict(null);
     expect(v.state).toBe('unknown');
     expect(v.headline).toBe('CAPACITY UNREAD');
-    expect(v.detail).toContain('Both doors remain open');
+    expect(v.detail).toContain('Every door stays open');
     expect(v.detail).not.toMatch(/insufficient|below the floor/i);
   });
 

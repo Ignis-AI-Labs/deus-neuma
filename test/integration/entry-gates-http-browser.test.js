@@ -79,8 +79,10 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => window.ready);
 
-    // The first-run probe: the REAL setup status becomes a rendered verdict.
+    // The first-run probe: the REAL setup status becomes a rendered verdict, behind the model bar's details.
     await page.evaluate(() => window.showDoor());
+    const details = page.getByRole('button', { name: 'details' });
+    await details.click();
     const capacity = page.locator('.firstrun-capacity');
     await expect(capacity).toBeVisible({ timeout: 20_000 });
     expect(await capacity.getAttribute('class')).toMatch(/is-(ok|cpu|insufficient|unknown)/);
@@ -89,16 +91,16 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     const mind = await (await page.request.get(`${base}/mind`)).json();
     const flight = await (await page.request.get(`${base}/`)).json();
     expect(mind.ready).toBe(flight.checks.find((c) => c.id === 'substrate').status === 'pass');
-    // No model answers here (the sweep is pinned to a dead port): the door says so and offers the setup,
+    // No model answers here (the sweep is pinned to a dead port): the model bar says so, first,
     expect(mind.ready).toBe(false);
-    await expect(page.getByText('BEFORE YOU SUMMON · NO MODEL IS READY YET')).toBeVisible({ timeout: 20_000 });
-    // and SUMMON does not enter the ceremony: it is held right where it was pressed, with the reason.
+    await expect(page.getByTestId('door-bar')).toContainText('No model is running on this computer', { timeout: 20_000 });
+    // and SUMMON does not enter the ceremony: it is held, and the bar says it starts by itself.
     await page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).click();
-    await expect(page.getByText('THE SUMMONING WAITS HERE · NO MODEL IS READY YET')).toBeVisible();
-    await expect(page.getByText('the summoning begins by itself once it answers')).toBeVisible();
+    await expect(page.getByText('The summoning starts by itself once the model runs.')).toBeVisible();
+    await expect(page.getByTestId('door-bar')).toHaveClass(/is-holding/);
     expect(await page.evaluate(() => window.chosen)).toBeNull();
     // the doors that need no local model still open at once
-    await page.locator('.firstrun-path', { hasText: 'Begin beside a witness' }).click();
+    await page.locator('.firstrun-path', { hasText: 'Witness' }).click();
     expect(await page.evaluate(() => window.chosen)).toBe('witness');
     await page.evaluate(() => window.hideDoor());
 
@@ -112,13 +114,15 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     // capacityVerdict(null): CAPACITY UNREAD, both doors open, never a throw.
     preflightFailure = '500';
     await page.evaluate(() => window.showDoor());
+    await details.click();
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
-    await expect(page.getByText('Both doors remain open')).toBeVisible();
-    // A machine that could not be read is still offered the setup (it reads its own plan).
-    await expect(page.getByText('BEFORE YOU SUMMON · NO MODEL IS READY YET')).toBeVisible();
+    await expect(page.getByText('Every door stays open')).toBeVisible();
+    // A machine that could not be read still says no model runs, and offers a way on.
+    await expect(page.getByTestId('door-bar')).toContainText('No model is running on this computer');
     await page.evaluate(() => window.hideDoor());
     preflightFailure = 'drop';
     await page.evaluate(() => window.showDoor());
+    await details.click();
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
     await page.evaluate(() => window.hideDoor());
 

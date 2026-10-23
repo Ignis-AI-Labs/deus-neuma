@@ -1,5 +1,6 @@
 /* FirstRunChoice — the door. LINE & CYCLE: monochrome at rest, signal marks
-   the live thing, chamfers via .cham, never a border-radius. */
+   the live thing, chamfers via .cham, never a border-radius. The model bar's
+   own look is ModelBar.css. */
 
 .firstrun {
   position: fixed;
@@ -16,9 +17,11 @@
   max-width: 72rem;
   background: var(--color-surface);
   border: var(--border-width-thin) solid var(--color-border-primary);
-  padding: var(--space-10);
+  padding: var(--space-8);
 }
 
+/* The eyebrow, title and lede are shared with the witness and platform doors
+   (FirstRunWitness, FirstRunHarness), which load this sheet through the chooser. */
 .firstrun-eyebrow {
   color: var(--signal);
   margin: 0 0 var(--space-3);
@@ -41,25 +44,47 @@
   line-height: 1.6;
 }
 
+/* The chooser's own heading over its three doors, under the model bar */
+.firstrun-doors-title {
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: var(--text-2xl);
+  color: var(--color-heading);
+  margin: var(--space-8) 0 var(--space-4);
+}
+
 .firstrun-paths {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: var(--space-5);
 }
 
-/* A path is a button, not a card with a button inside it: the whole target is
+.firstrun-paths {
+  grid-template-rows: 1fr auto;
+}
+
+/* Each door is two rows of the shared grid (subgrid): the doors stand equal height,
+   and the Summon door's rehearse link sits beneath it without stretching it. */
+.firstrun-door {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+}
+
+/* A door is a button, not a card with a button inside it: the whole target is
    the choice, so a keyboard reaches it in one tab and a pointer cannot miss. */
 .firstrun-path {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   text-align: left;
   padding: var(--space-6);
   background: var(--color-glass);
   border: var(--border-width-thin) solid var(--color-border-primary);
   color: var(--color-text-primary);
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: border-color var(--snap), background var(--snap), opacity var(--snap);
 }
 
 .firstrun-path:hover:not(:disabled),
@@ -74,82 +99,94 @@
   cursor: default;
 }
 
-.firstrun-path-tag {
-  color: var(--signal);
+.firstrun-glyph {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: var(--space-2);
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.25;
+}
+
+.firstrun-path:hover:not(:disabled) .firstrun-glyph,
+.firstrun-path:focus-visible .firstrun-glyph {
+  stroke: var(--signal);
 }
 
 .firstrun-path-name {
   font-family: var(--font-voice);
   font-size: var(--text-xl);
   font-weight: var(--weight-light);
-  color: var(--color-heading);
+  color: var(--color-text-primary);
 }
 
-.firstrun-path-body {
+.firstrun-path-line {
   font-family: var(--font-voice);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  line-height: 1.6;
 }
 
-/* The precondition, stated on the face of the door rather than discovered
-   behind it — the whole point of this screen. */
+/* What the door needs, as a small chip on its face — never discovered behind it */
 .firstrun-path-need {
+  align-self: flex-start;
   margin-top: auto;
-  padding-top: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width-thin) solid var(--line);
   color: var(--color-text-tertiary);
-  border-top: var(--border-width-thin) solid var(--color-border-primary);
 }
 
-/* REHEARSE FIRST — a quieter third door under the two: the same ceremony,
-   nothing kept. Ink at rest; SIGNAL only on hover, like the paths. */
-.firstrun-rehearse {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-  margin-top: var(--space-4);
-  padding: var(--space-4) var(--space-6);
-  text-align: left;
-  background: transparent;
-  border: var(--border-width-thin) dashed var(--color-border-primary);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+.firstrun-path-need.is-met {
+  border-color: var(--signal-dim);
+  color: var(--signal);
 }
+
+/* A door that needs the model, while none runs: plainly waiting, still pressable
+   (the press is held at the bar and goes through by itself once it is ready) */
+.firstrun-door.is-waiting .firstrun-path:not(:hover):not(:focus-visible) {
+  opacity: 0.5;
+}
+
+.firstrun-door.is-waiting .firstrun-path-need {
+  color: var(--color-text-secondary);
+}
+
+.firstrun-door.is-held .firstrun-path {
+  opacity: 1;
+  border-color: var(--signal-dim);
+}
+
+/* REHEARSE FIRST — a quiet link under the Summon door */
+.firstrun-rehearse {
+  justify-self: start;
+  padding: var(--space-1) 0;
+  background: transparent;
+  border: none;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
 .firstrun-rehearse:hover:not(:disabled),
 .firstrun-rehearse:focus-visible {
-  background: var(--color-glass-hover);
-  border-color: var(--signal);
+  color: var(--signal);
   outline: none;
 }
-.firstrun-rehearse:disabled { opacity: 0.4; cursor: default; }
-.firstrun-rehearse-tag { color: var(--color-text-tertiary); }
-.firstrun-rehearse:hover:not(:disabled) .firstrun-rehearse-tag { color: var(--signal); }
-.firstrun-rehearse-body {
-  font-family: var(--font-voice);
-  font-size: var(--text-sm);
-  line-height: 1.6;
+
+.firstrun-rehearse:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.firstrun-foot {
-  font-family: var(--font-voice);
-  font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
-  margin: var(--space-8) 0 0;
-}
-
-/* THE FLIGHT CHECK — what this machine can actually hold. Informs the choice,
-   never gates it: `insufficient` uses --alert to be honest about the floor, but
-   the door stays clickable. */
-.firstrun-capacity,
-.firstrun-capacity-pending {
+/* THE MACHINE READ — what this computer can hold, inside the bar's details. It
+   informs, never gates: `insufficient` uses --alert to be honest about the floor. */
+.firstrun-capacity {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: var(--border-width-thin) solid var(--color-border-primary);
 }
 
 .firstrun-capacity-machine {
@@ -157,17 +194,11 @@
 }
 
 .firstrun-capacity-headline {
-  color: var(--signal);
+  color: var(--color-text-primary);
 }
 
 .firstrun-capacity.is-insufficient .firstrun-capacity-headline {
   color: var(--alert);
-}
-
-.firstrun-capacity.is-cpu .firstrun-capacity-headline,
-.firstrun-capacity.is-unknown .firstrun-capacity-headline,
-.firstrun-capacity-pending .firstrun-capacity-headline {
-  color: var(--color-text-secondary);
 }
 
 .firstrun-capacity-detail {
@@ -175,32 +206,4 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   line-height: 1.5;
-}
-
-/* The setup card (ModelServerSetup) for a capable machine that serves no model yet */
-.firstrun-setup {
-  margin-top: var(--space-4);
-}
-
-/* READY: a model runs here — the live state wears the signal, the sentence stays plain */
-.firstrun-ready {
-  margin: var(--space-4) 0 0;
-  padding: var(--space-3) var(--space-4);
-  border: var(--border-width-thin) solid var(--signal);
-  color: var(--color-text-secondary);
-}
-.firstrun-ready .label-data {
-  color: var(--signal);
-  margin-right: var(--space-2);
-}
-
-/* A summoning held at the door until its model answers: the gate it waits at is marked live */
-.firstrun-setup.is-holding {
-  border: var(--border-width-thin) solid var(--signal);
-}
-.firstrun-ready.is-checking {
-  border-color: var(--color-border-primary);
-}
-.firstrun-ready.is-checking .label-data {
-  color: var(--color-text-secondary);
 }

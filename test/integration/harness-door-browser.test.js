@@ -70,7 +70,7 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
     // the lightest door leads, and says what it asks
     const first = page.locator('.firstrun-path').first();
     await expect.poll(() => first.textContent()).toContain('Just use it');
-    expect(await first.textContent()).toContain('NEEDS: A MODEL — LOCAL OR AN API KEY');
+    expect(await first.textContent()).toContain('needs: a model or an API key');
     await first.click();
 
     // a machine that already serves a model starts on LOCAL (the house llama.cpp here is
