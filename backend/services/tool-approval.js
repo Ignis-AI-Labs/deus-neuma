@@ -134,7 +134,7 @@ export const approvalCoversOneAct = (connection) => Boolean(connection?._approva
  *   under the asker's lane, never the one-on-one being's.
  * @returns {Promise<'allow'|'always'|'deny'|'interrupted'>}
  */
-export const requestToolApproval = (connection, { tool, args, scope, surface, signal, lane }) =>
+export const requestToolApproval = (connection, { tool, label, args, scope, surface, signal, lane }) =>
   withOperationApproval(connection, () => new Promise((resolve) => {
     const id = randomUUID();
     const pending = _pending(connection);
@@ -213,6 +213,9 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
       id,
       ...(connection._runningToolOperation ? { operationId: connection._runningToolOperation.operation.id } : {}),
       tool,
+      // The act's name as a person reads it, when the wire name says less
+      // (intents/image.generate rendering a video reads video/generate).
+      ...(label && label !== tool ? { label } : {}),
       args: approvalPreview(args),
       // The preview is a window; past its cut the card offers the whole text.
       ...(approvalFullArgs(args) ? { fullArgs: approvalFullArgs(args) } : {}),

@@ -142,6 +142,7 @@ export default Object.freeze({
     newTabTitleAny: '今座っている誰かとの座談をもう一つ',
     tabsAria: '開いている座談',
     chatStamp: '新規チャット',
+    chatStarted: '{{when}} 開始',
     voiceSitting: '«音声座談»',
     theBeing: '存在',
     exit: '退出',

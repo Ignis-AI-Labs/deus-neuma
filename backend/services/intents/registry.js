@@ -14,6 +14,10 @@
  *                 reason} — shape law ('invalid') + standing rules ('denied'),
  *                 BEFORE the operator's card
  *   summarize(payload) → string — the one line the card stakes the yes on
+ *   displayName(fields) → string — optional: the name a person reads for
+ *                 THIS filing on its chips and card, when one type does two
+ *                 things a person tells apart (image/generate → video/generate
+ *                 for a video pipeline); the wire tool and policy row stay
  *   cardArgs(value) → object — optional: what the card shows when the
  *                 filed fields alone would not show the act (a run's code)
  *   execute(value, {connection, signal}) → {ok:true, detail} | {ok:false,

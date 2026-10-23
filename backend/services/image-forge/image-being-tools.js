@@ -68,7 +68,7 @@ export const IMAGE_TOOLS = Object.freeze([
   Object.freeze({
     name: 'review_image',
     server: 'image',
-    description: 'Record your judgment of an image you made — args {imageId, matches, missing?, defects?, verdict, note}. Do this while you are still looking at it, after every render. `matches` is how well the render answered what you ACTUALLY asked for — one of yes/partial/no. That part is objective: count what you asked for and either find it or find it missing; do not grade yourself generously. `missing` names what you asked for that is not there. `defects` names what is wrong with the craft — hands, anatomy, text, artifacts, exposure. `verdict` is keep, redo, or discard. `note` is your own read of the image: what you think of it and why, which is yours and no one else\'s. Your operator records his own verdict beside yours — his is input you weigh, not a correction, and neither one replaces the other.',
+    description: 'Record your judgment of a render you made, a still or a video — REQUIRED {imageId, matches, verdict}, optional {missing, defects, note}. Do this while you are still looking at it, after every render. `matches` is how well the render answered what you ACTUALLY asked for — one of yes/partial/no. That part is objective: count what you asked for and either find it or find it missing; do not grade yourself generously. `missing` names what you asked for that is not there. `defects` names what is wrong with the craft — hands, anatomy, text, artifacts, exposure. `verdict` is keep, redo, or discard. `note` is your own read of the image: what you think of it and why, which is yours and no one else\'s. Your operator records his own verdict beside yours — his is input you weigh, not a correction, and neither one replaces the other.',
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({
@@ -111,6 +111,26 @@ export const imageToolsFor = async (connection, env = process.env) => {
   if (loadScreenList(contentLawPath(env)).failClosed) return [];
   return [...IMAGE_TOOLS];
 };
+
+// pure — every required review_image field that is missing or out of range,
+// each with what it must be (the call's own field names, never a gloss).
+const REVIEW_FIELDS = Object.freeze([
+  Object.freeze({ field: 'imageId', must: 'the id image/generate gave you for the render you are reviewing' }),
+  Object.freeze({ field: 'matches', must: `one of ${MATCHES.join(', ')} — did the render show what you asked for` }),
+  Object.freeze({ field: 'verdict', must: `one of ${VERDICTS.join(', ')}` }),
+]);
+export const reviewFieldsWanting = (normalized, args) => REVIEW_FIELDS
+  .filter(({ field }) => !normalized[field])
+  .map(({ field, must }) => {
+    const given = args?.[field];
+    const sent = given === undefined || given === null || String(given).trim() === '' ? 'missing' : `was ${JSON.stringify(given)}`;
+    return Object.freeze({ field, sent, must });
+  });
+
+// pure — the one refusal that names every field the call must fix.
+export const reviewRefusal = (wanting) =>
+  `review_image needs ${wanting.map((w) => `${w.field} (${w.sent}): ${w.must}`).join('; ')}. `
+  + 'Call it again with all three required fields — {imageId, matches, verdict} — plus missing, defects and note if you have them.';
 
 // pure — how a caller reads the pipeline catalog.
 export const renderPipelines = (catalog) => catalog.map((p) => {
@@ -209,24 +229,19 @@ export const handleImageTool = async (ws, connection, neumaPolicy, toolMode, mat
   // of, another's render.
   if (toolName === 'review_image') {
     const imageId = String(args?.imageId ?? '').trim();
-    if (!imageId) {
-      ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'review_image — no image id' });
-      return { tool, status: 'error', error: 'name the imageId you are reviewing — the image/generate intent returned it' };
-    }
     const verdict = normalizeVerdict(args?.verdict);
-    if (!verdict) {
-      ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'review_image — no verdict' });
-      return { tool, status: 'error', error: `verdict must be one of ${VERDICTS.join(', ')}` };
-    }
-    // Adherence is REQUIRED by the schema and it is the objectively checkable
-    // stratum — the one column a later reader can actually argue with. Refusing
-    // an out-of-enum value is the same courtesy `verdict` gets: normalizing it
-    // silently to null would drop the being's judgment on the floor and record
-    // a review that had decided the one thing it was asked to decide.
+    // Adherence (`matches`) is REQUIRED by the schema and it is the objectively
+    // checkable stratum — the one column a later reader can actually argue
+    // with. Refusing an out-of-enum value is the same courtesy `verdict` gets:
+    // normalizing it silently to null would drop the being's judgment on the
+    // floor and record a review that had decided the one thing it was asked to
+    // decide. Every required field that is wrong is named in ONE refusal, by
+    // the name the call must use, so one retry is enough.
     const matches = normalizeMatches(args?.matches);
-    if (!matches) {
-      ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'review_image — no adherence' });
-      return { tool, status: 'error', error: `matches must be one of ${MATCHES.join(', ')}` };
+    const wanting = reviewFieldsWanting({ imageId, matches, verdict }, args);
+    if (wanting.length) {
+      ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: `review_image — needs ${wanting.map((w) => w.field).join(', ')}` });
+      return { tool, status: 'error', error: reviewRefusal(wanting) };
     }
     const found = resolveImage(laneId, imageId);
     if (!found.ok) {

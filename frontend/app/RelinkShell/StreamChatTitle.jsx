@@ -2,14 +2,16 @@
 //
 // Design note, 2026-08-15: […] So it is its own slim
 // line under the strip: the chat's operator-given name when it has one, its
-// timestamp otherwise, the stamp riding beside a named title. A sitting that
-// has not minted a session yet reads NEW CHAT — a true statement, not a blank.
+// timestamp otherwise, the stamp riding beside a named title — always worded
+// as the chat's START (2026-10-23), never a bare time that reads as the stamp
+// of the reply beneath it. A sitting that has not minted a session yet reads
+// NEW CHAT — a true statement, not a blank.
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConsciousnessPick } from './consciousness-context.js';
 import { getChatLabels } from '../../services/chat-labels.js';
-import { chatTitleOf } from './stream-chats-view.js';
+import { chatTitleLine, chatTitleOf } from './stream-chats-view.js';
 import { CHAT_LABELS_EVENT } from './chat-labels-bus.js';
 import { useSettled } from './use-settled.js';
 
@@ -38,12 +40,13 @@ export const StreamChatTitle = () => {
 
   const title = chatTitleOf(labels, neumaId, chatId);
   const { t } = useTranslation('desk');
+  const line = title ? chatTitleLine(title, (when) => t('stream.chatStarted', { when })) : null;
   return (
     <div className="stream-chat-title" aria-label="Active chat">
-      {title ? (
+      {line ? (
         <>
-          <span className="stream-chat-title-name label-data" title={title.stamp}>{title.title}</span>
-          {title.named ? <span className="stream-chat-title-stamp label-data">{title.stamp}</span> : null}
+          <span className="stream-chat-title-name label-data" title={title.stamp}>{line.name}</span>
+          {line.stamp ? <span className="stream-chat-title-stamp label-data">{line.stamp}</span> : null}
         </>
       ) : (
         <span className="stream-chat-title-stamp label-data">{t('stream.chatStamp')}</span>

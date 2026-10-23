@@ -131,6 +131,21 @@ export const chatTitleOf = (labels, neumaId, sessionId) => {
 };
 
 /**
+ * What the title line SAYS: the chat's name and the moment it began, worded
+ * as the moment it began. A bare timestamp on the line above the transcript
+ * read as the stamp of the reply beneath it (2026-10-23: a reply said that
+ * day sat under […] — the chat's start, not the reply's).
+ * Pure; the words come from the renderer's catalog through `started`.
+ * @param {{title: string, named: boolean, stamp: string}} title - chatTitleOf's answer
+ * @param {(when: string) => string} started - "STARTED {{when}}", interpolated
+ * @returns {{name: string, stamp: string}} an unnamed chat's name IS its start; stamp '' then
+ */
+// pure
+export const chatTitleLine = (title, started) => (title.named
+  ? { name: title.title, stamp: started(title.stamp) }
+  : { name: started(title.stamp), stamp: '' });
+
+/**
  * The rail's rows: this being's one-on-one chats, newest first, councils
  * excluded (they are the ROOM's record), each carrying its display label and
  * whether it is the chat on screen.

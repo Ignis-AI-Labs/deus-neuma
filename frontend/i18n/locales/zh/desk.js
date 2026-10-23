@@ -142,6 +142,7 @@ export default Object.freeze({
     newTabTitleAny: '与当前在座者再开一次坐谈',
     tabsAria: '打开的坐谈',
     chatStamp: '新聊天',
+    chatStarted: '始于 {{when}}',
     voiceSitting: '«语音坐谈»',
     theBeing: '存在',
     exit: '退出',

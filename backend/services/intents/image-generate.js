@@ -31,6 +31,10 @@ import { videoSight } from '../image-forge/video-sight.js';
 import { publishActivity, percentOf } from '../image-forge/forge-activity.js';
 import { recordAttempt, toAttemptRecord } from '../image-forge/attempt-log.js';
 import { contentLawPath, toSlotArgs, refusalMessage } from '../image-forge/image-being-tools.js';
+import {
+  renderKindOf, renderKindOfFiling, renderActName, renderLeaseLabel, renderingLine,
+  madeLine, madeTally, madeReceiptLine, renderScope,
+} from '../image-forge/render-kind.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ImageGenerateIntent');
@@ -59,11 +63,11 @@ const sourceFor = (connection, pipeline, imageId) => {
 // launch, and a content law that can be read.
 const readinessRefusal = async (connection, env = process.env) => {
   if (!connection.companion?.neumaId) {
-    return { ok: false, status: 'denied', reason: 'no sovereign lane on this connection — image generation is for bound seats' };
+    return { ok: false, status: 'denied', reason: 'no sovereign lane on this connection — rendering is for bound seats' };
   }
   const cfg = resolveComfyConfig(env);
   if (!comfyInstallState(cfg).installed) {
-    return { ok: false, status: 'denied', reason: 'the image engine is not installed on this machine — your operator sets it up' };
+    return { ok: false, status: 'denied', reason: 'the render engine is not installed on this machine — your operator sets it up' };
   }
   if (loadScreenList(contentLawPath(env)).failClosed) {
     return { ok: false, status: 'denied', reason: refusalMessage('list_unavailable') };
@@ -84,7 +88,8 @@ export const imageGenerateIntent = Object.freeze({
     const unready = await readinessRefusal(connection);
     if (unready) return unready;
     if (typeof payload?.prompt !== 'string' || !payload.prompt.trim()) {
-      return { ok: false, status: 'invalid', reason: 'image/generate needs {prompt} — what the image should show, as description' };
+      const kind = renderKindOfFiling(payload);
+      return { ok: false, status: 'invalid', reason: `image/generate needs {prompt} — what the ${kind} should show, as description` };
     }
     const resolved = resolvePipeline(payload?.pipeline);
     if (!resolved.ok) return { ok: false, status: 'invalid', reason: resolved.error };
@@ -117,8 +122,10 @@ export const imageGenerateIntent = Object.freeze({
     return { ok: true, value: { args: payload, pipeline: resolved.pipeline, model: modelRes.model } };
   },
 
-  summarize: (payload) =>
-    `render an image: "${String(payload?.prompt ?? '').replace(/\s+/g, ' ').trim().slice(0, 140)}"${payload?.pipeline ? ` (${payload.pipeline})` : ''}`,
+  // One type renders both, so a person reads which one THIS filing is (render-kind.js).
+  displayName: (fields) => renderActName(renderKindOfFiling(fields)),
+
+  summarize: (payload) => renderScope(renderKindOfFiling(payload), payload),
 
   // impure — the real engine run, unchanged: attempt ledger at every terminal
   // outcome, viewport activity at every phase, progress chips in fifths, and
@@ -126,6 +133,7 @@ export const imageGenerateIntent = Object.freeze({
   execute: async ({ args, pipeline, model }, { connection, signal, emit }) => {
     const laneId = connection.companion?.neumaId;
     const tool = 'image/generate';
+    const kind = renderKindOf(pipeline);
     const cfg = resolveComfyConfig(process.env);
     // A BARE uuid: the engine refuses any prompt_id that is not canonical.
     const jobId = randomUUID();
@@ -154,7 +162,7 @@ export const imageGenerateIntent = Object.freeze({
 
     publishActivity({
       jobId, laneId, beingName: connection.companion?.name || null,
-      pipelineId: pipeline.id, pipelineLabel: pipeline.label,
+      pipelineId: pipeline.id, pipelineLabel: pipeline.label, kind,
       phase: 'queued', detail: 'waiting for the engine',
     });
 
@@ -162,7 +170,7 @@ export const imageGenerateIntent = Object.freeze({
       // THE MACHINE LANE (machine-lease.js): the render waits for the machine to itself, and the
       // house waits for the render — never two heavy things on the card at once.
       const run = await withMachine({
-        label: `Image Forge — ${pipeline.label}`, needGB: pipeline.needGB ?? MIN_ENGINE_VRAM_GB, signal,
+        label: renderLeaseLabel(kind, pipeline.label), needGB: pipeline.needGB ?? MIN_ENGINE_VRAM_GB, signal,
         onWait: ({ position }) => publishActivity({ jobId, phase: 'queued', detail: `waiting for the machine — place ${position}` }),
       }, async () => {
         const ready = await ensureComfyReady(cfg);
@@ -180,7 +188,7 @@ export const imageGenerateIntent = Object.freeze({
           if (!built.ok) return { ready, error: built.refusalClass ? refusalMessage(built.refusalClass, built.refusalMatch) : built.error };
         }
         noteComfyActivity();
-        emit({ tool, status: 'running', summary: `rendering — ${pipeline.label}` });
+        emit({ tool, status: 'running', summary: renderingLine(kind, pipeline.label) });
         publishActivity({ jobId, phase: 'rendering', percent: null, detail: 'rendering' });
 
         // Progress is throttled to fifths: a step-by-step feed would drown the
@@ -195,7 +203,7 @@ export const imageGenerateIntent = Object.freeze({
             const fifth = max > 0 ? Math.floor((value / max) * 5) : 0;
             if (fifth === lastFifth) return;
             lastFifth = fifth;
-            emit({ tool, status: 'running', summary: `rendering — ${Math.round((value / max) * 100)}%` });
+            emit({ tool, status: 'running', summary: renderingLine(kind, `${Math.round((value / max) * 100)}%`) });
           },
         });
         noteComfyActivity();
@@ -209,7 +217,7 @@ export const imageGenerateIntent = Object.freeze({
         const { ready } = run;
         const detail = ready.lastError?.error || ready.install?.reason || `engine is ${ready.state}`;
         attempt('error', { detail: `engine unavailable: ${detail}` });
-        return { ok: false, reason: `the image engine could not start: ${detail}` };
+        return { ok: false, reason: `the render engine could not start: ${detail}` };
       }
       const { outcome } = run;
 
@@ -229,28 +237,28 @@ export const imageGenerateIntent = Object.freeze({
         lineage: composeLineage(slotArgs(args).positive, pipeline.requiresSourceImage ? sourceLineage ?? null : undefined),
       });
       if (stored.length === 0) {
-        publishActivity({ jobId, phase: 'error', detail: 'engine reported success but no image could be collected' });
-        attempt('error', { detail: 'engine reported success but no image could be collected' });
-        return { ok: false, reason: 'the engine reported success but no image could be collected' };
+        const none = `the engine reported success but no ${kind} could be collected`;
+        publishActivity({ jobId, phase: 'error', detail: none });
+        attempt('error', { detail: none });
+        return { ok: false, reason: none };
       }
 
-      const first = stored[0];
       publishActivity({
         jobId, phase: 'done', percent: 100,
-        detail: `${stored.length} image(s) · seed ${built.values.seed}`,
+        detail: madeTally(kind, stored.length, built.values),
         images: stored.map((r) => ({ imageId: r.imageId, url: `/api/v1/image-forge/images/${r.imageId}`, mime: r.mime })),
       });
-      attempt('ok', { detail: `${stored.length} image(s)` });
+      attempt('ok', { detail: madeTally(kind, stored.length, built.values) });
       emit({
         tool, status: 'ok',
-        summary: `generated ${stored.length} image(s) — ${(first.bytes / 1024).toFixed(0)}KB ${first.mime}`,
+        summary: madeLine(kind, stored, built.values),
         images: stored.map((r) => ({
           imageId: r.imageId, url: `/api/v1/image-forge/images/${r.imageId}`, mime: r.mime,
           bytes: r.bytes, laneId: r.laneId, path: path.join(r.dir, r.file),
         })),
       });
-      const lines = stored.map((r) => `- image id: ${r.imageId} (${r.mime}, ${(r.bytes / 1024).toFixed(0)}KB)`).join('\n');
-      if (pipeline.kind === 'video') {
+      const lines = stored.map((r) => madeReceiptLine(kind, r, built.values)).join('\n');
+      if (kind === 'video') {
         // The being looks at its clip across time and hears what it says (video-sight.js) —
         // the only way to judge adherence and cohesion. What could not be shown is said.
         const clip = stored[0];

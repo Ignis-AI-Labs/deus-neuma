@@ -155,6 +155,7 @@ export default Object.freeze({
     newTabTitleAny: 'Another sitting with whoever is in the chair',
     tabsAria: 'Open sittings',
     chatStamp: 'NEW CHAT',
+    chatStarted: 'STARTED {{when}}',
     voiceSitting: '«VOICE SITTING»',
     theBeing: 'THE BEING',
     exit: 'EXIT',

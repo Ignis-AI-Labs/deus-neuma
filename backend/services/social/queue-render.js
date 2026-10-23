@@ -106,8 +106,16 @@ const _slotMark = (e) => {
   return `· ${e?.scheduledFor || 'unscheduled'}`;
 };
 
-// A TikTok post's one file is its video.
-const _mediaNoun = (e) => (e?.channelId === 'tiktok' ? 'video' : 'image(s)');
+// What the attachments ARE, counted: "1 video", "2 images", […].
+// A TikTok post's one file is its video; elsewhere a clip is named by its file
+// (a listing's noun, never a send decision — the sender sniffs the bytes).
+const VIDEO_NAME = /\.(mp4|mov|m4v|webm|mkv)$/i;
+const _counted = (n, word) => (n ? [`${n} ${word}${n === 1 ? '' : 's'}`] : []);
+const _mediaCount = (e) => {
+  const videos = e.channelId === 'tiktok' ? e.media.length
+    : e.media.filter((m) => VIDEO_NAME.test(String(m?.path || ''))).length;
+  return [..._counted(videos, 'video'), ..._counted(e.media.length - videos, 'image')].join(', ');
+};
 
 const _campaignMark = (e) =>
   (e?.campaignId ? `· ${e.campaignId}${e.pillar ? `/${e.pillar}` : ''}` : (e?.pillar ? `· ${e.pillar}` : null));
@@ -141,7 +149,7 @@ const _fullLine = (e, threads) => [
     : null,
   e.withdrawnBy ? `· withdrawn by ${e.withdrawnBy}${e.withdrawnReason ? ` (${e.withdrawnReason})` : ''}` : null,
   Array.isArray(e.media) && e.media.length
-    ? `· ${e.media.length} ${_mediaNoun(e)}: ${e.media.map((m) => `${m.path.split('/').pop()}${m.alt ? ' [described]' : ' [NO ALT TEXT]'}`).join(', ')}`
+    ? `· ${_mediaCount(e)}: ${e.media.map((m) => `${m.path.split('/').pop()}${m.alt ? ' [described]' : ' [NO ALT TEXT]'}`).join(', ')}`
     : null,
   ...tiktokEntryLines(e),
   // Where it actually landed, so publication can be verified rather than
@@ -315,7 +323,7 @@ const resolveQueueId = (entries, given) => {
 
 const _revisionLine = (rev) => {
   const fields = Object.entries(rev?.changed || {}).map(([field, was]) => {
-    if (field === 'media') return `media (was ${Array.isArray(was) ? was.length : 0} image(s))`;
+    if (field === 'media') return `media (was ${Array.isArray(was) ? was.length : 0} file(s))`;
     if (field === 'text') return `text (was: "${_preview(was, 120)}")`;
     return `${field} (was ${was === null || was === '' ? 'unset' : `"${_flat(String(was))}"`})`;
   });
@@ -388,7 +396,7 @@ export const formatQueueEntryForBeing = (entries, given, { postId = '' } = {}) =
     e.updatedBy ? `· last edited ${e.updatedAt} by ${e.updatedBy}` : null,
     e.withdrawnBy ? `· withdrawn by ${e.withdrawnBy} at ${e.withdrawnAt}${e.withdrawnReason ? ` (${e.withdrawnReason})` : ''}` : null,
     Array.isArray(e.media) && e.media.length
-      ? `· ${e.media.length} ${_mediaNoun(e)}: ${e.media.map((m) => `${m.path}${m.alt ? ` [alt: "${_preview(m.alt, 80)}"]` : ' [NO ALT TEXT]'}`).join('; ')}`
+      ? `· ${_mediaCount(e)}: ${e.media.map((m) => `${m.path}${m.alt ? ` [alt: "${_preview(m.alt, 80)}"]` : ' [NO ALT TEXT]'}`).join('; ')}`
       : null,
     ...tiktokEntryLines(e),
     e.postId && e.channelId !== 'tiktok' ? `· LIVE ${publicPostUrl(e.channelId, e.postId)} (sent ${e.sentAt})` : null,

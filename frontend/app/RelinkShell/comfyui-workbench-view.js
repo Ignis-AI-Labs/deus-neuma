@@ -78,7 +78,7 @@ const PHASE_WORD = Object.freeze({
 /**
  * One activity record → its row. Pure.
  * @param {object} record a /activity entry
- * @returns {{jobId: string, phase: string, word: string, who: string,
+ * @returns {{jobId: string, phase: string, word: string, what: string, who: string,
  *   pipeline: string, percent: (number|null), detail: string,
  *   images: Array<object>, live: boolean, bad: boolean}}
  */
@@ -88,6 +88,9 @@ export const toActivityRow = (record) => {
     jobId: record?.jobId ?? '',
     phase,
     word: PHASE_WORD[phase] || phase.toUpperCase(),
+    // What the job MAKES, said beside its phase: a clip reads VIDEO from its
+    // first beat (the forge stamps the pipeline's kind on the record).
+    what: record?.kind === 'video' ? 'VIDEO' : 'IMAGE',
     // Needed to fetch the thumbnail: the image route is lane-scoped.
     laneId: record?.laneId ?? '',
     // The being's own name when we have it; the lane id is the honest fallback,

@@ -1,7 +1,9 @@
 // ApprovalChip — the witness's gate on a consciousness's reach.
 //
-// Renders an approval segment from the stream-reducer. Pending: the tool,
-// its args preview, and the three answers — ALLOW ONCE, ALWAYS ALLOW, DENY.
+// Renders an approval segment from the stream-reducer. Pending: the act's
+// name (`label` when the backend names it plainer than the wire tool — a
+// video render reads video/generate, never intents/image.generate), its args
+// preview, and the three answers — ALLOW ONCE, ALWAYS ALLOW, DENY.
 // A preview cut short says so and opens to the whole text the act runs with
 // (`fullArgs`), so a yes is never given to words the operator could not see.
 // Resolved: a one-line record of what was decided. The chip flips only when
@@ -26,7 +28,8 @@ const DECISION_LABELS = Object.freeze({
 const GRANTED = Object.freeze(new Set(['allow', 'always']));
 
 export const ApprovalChip = ({ segment, onRespond }) => {
-  const { id, phase, tool, args, fullArgs, scope, decision, media, lane } = segment;
+  const { id, phase, tool, label, args, fullArgs, scope, decision, media, lane } = segment;
+  const name = label || tool;
   // One answer per prompt — the buttons arm once, then wait for the echo.
   const [sent, setSent] = useState(false);
   const [whole, setWhole] = useState(false);
@@ -43,7 +46,7 @@ export const ApprovalChip = ({ segment, onRespond }) => {
       <div className="tool-chip approval-chip pending">
         <div className="tool-chip-head">
           <span className="tool-chip-tag">NEEDS APPROVAL</span>
-          <span className="tool-chip-name">{tool}</span>
+          <span className="tool-chip-name">{name}</span>
         </div>
         {namesJson !== '[]' ? (
           <ApprovalMedia key={`${lane}:${namesJson}`} lane={lane} namesJson={namesJson} />
@@ -70,7 +73,7 @@ export const ApprovalChip = ({ segment, onRespond }) => {
       <div className="tool-chip-head">
         <span className="tool-chip-sigil">⟐</span>
         <span className="tool-chip-summary">
-          {tool}{scope ? ` (${scope})` : ''} — {DECISION_LABELS[decision] || 'SETTLED'}
+          {name}{scope ? ` (${scope})` : ''} — {DECISION_LABELS[decision] || 'SETTLED'}
         </span>
       </div>
     </div>
