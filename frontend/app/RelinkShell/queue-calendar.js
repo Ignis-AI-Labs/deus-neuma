@@ -89,7 +89,8 @@ export const filterQueueToDay = (entries, dayKey) => {
 // question on the month). Every other entry counts exactly once, so the
 // letters sum to the day's scheduled total; a standing nobody has named yet
 // counts with A rather than dropping, the lanes' answer to a stranger.
-const countInto = (counts, entry) => {
+/** One entry into the queue's count taxonomy (Q awaiting, A approved, U rejected, W withdrawn, S sent, F failed, R reply). Pure. */
+export const countInto = (counts, entry) => {
   if (entry?.kind === 'reply') { counts.R += 1; return; }
   switch (String(entry?.status || '')) {
     case 'draft': counts.Q += 1; return;
@@ -103,7 +104,7 @@ const countInto = (counts, entry) => {
 
 // The queue's count taxonomy over the generic grid: the quiet day's counts —
 // frozen, so every empty cell can share the one — and the fold above.
-const QUEUE_COUNT_SPEC = Object.freeze({
+export const QUEUE_COUNT_SPEC = Object.freeze({
   empty: Object.freeze({ Q: 0, A: 0, U: 0, W: 0, S: 0, F: 0, R: 0 }),
   count: countInto,
 });

@@ -189,24 +189,23 @@ describe('QueueCalendar render — the count lanes are a prop, the default is th
     expect(render()).toBe(render({ countLanes: QUEUE_LANES }));
   });
 
-  it('the default render carries the queue\'s letters, tones, and spoken counts', () => {
+  it('the default render draws each day by status — a stacked bar and its total — and speaks the counts', () => {
     const html = render();
-    expect(html).toContain('qcal-n is-await'); // Q reads in SIGNAL — a decision owed
-    expect(html).toContain('qcal-n is-reply');
-    expect(html).toContain('>Q2<'); // two drafts on the 14th
-    expect(html).toContain('>R1<');
-    expect(html).toContain('2 awaiting approval, 1 reply');
+    expect(html).toContain('qcal-stack');
+    expect(html).toContain('qs-awaiting'); // two drafts on the 14th — a decision owed, drawn in signal
+    expect(html).toContain('qs-reply');
+    expect(html).toContain('class="qcal-total">3<'); // the 14th: two drafts and a reply
+    expect(html).not.toContain('qcal-n '); // the letters left the cell…
+    expect(html).toContain('2 awaiting approval, 1 reply'); // …the spoken counts did not
   });
 
-  it('another domain\'s lanes drive the render — letters, tones, and labels all follow the prop', () => {
+  it('another domain\'s lanes drive the spoken counts', () => {
     const html = render({
       countLanes: Object.freeze([
         { key: 'Q', letter: 'Z', tone: 'done', label: (n) => `${n} zzz` },
       ]),
     });
-    expect(html).toContain('>Z2<');
-    expect(html).not.toContain('>Q2<');
-    expect(html).not.toContain('is-reply');
     expect(html).toContain('2 zzz');
+    expect(html).not.toContain('2 awaiting approval');
   });
 });

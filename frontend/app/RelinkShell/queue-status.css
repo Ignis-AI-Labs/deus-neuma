@@ -1,0 +1,28 @@
+/* queue-status — the queue's statuses as colour, shared by every instrument
+   that draws them (PlatformHeader's strip, QueueCalendar's days, the house
+   board): ink for what went out, signal for what will, alert for what failed. */
+.qs-sent { --qs: var(--color-text-secondary); background: var(--qs); }
+.qs-scheduled { --qs: var(--signal); background: var(--qs); }
+.qs-awaiting { --qs: var(--signal-dim); background: transparent; box-shadow: inset 0 0 0 1px var(--signal); }
+.qs-failed { --qs: var(--alert); background: var(--qs); }
+.qs-reply { --qs: var(--color-text-disabled); background: var(--qs); }
+
+/* THE QUEUE'S MONTH (QueueCalendar.jsx): a day is a stacked bar of its
+   statuses and its total; the legend above lights the days holding one. */
+.qcal-marks:has(.qcal-stack) { flex-wrap: nowrap; align-items: center; gap: 6px; width: 100%; }
+.qcal-stack { flex: 1 1 auto; display: flex; height: 6px; gap: 1px; min-width: 0; }
+.qcal-stack i { display: block; min-width: 3px; }
+.qcal-total { font-weight: 400; font-size: 11px; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.qcal-cell.has-posts { background: var(--color-glass-light); }
+.qcal-cell.is-dim { opacity: 0.28; }
+.qcal-legend { display: flex; flex-wrap: wrap; gap: 4px; margin: var(--space-2) 0 0; }
+.qcal-legend-item {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+  background: none; border: var(--border-width-thin) solid var(--line);
+  font-family: var(--font-data); font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-tertiary); cursor: pointer;
+}
+.qcal-legend-item i { width: 10px; height: 6px; display: inline-block; }
+.qcal-legend-item b { font-weight: 400; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.qcal-legend-item:disabled { opacity: 0.4; cursor: default; }
+.qcal-legend-item:not(:disabled):hover, .qcal-legend-item.is-lit { border-color: var(--qs-lit, var(--line-hover)); color: var(--color-text-primary); }
+.qcal-legend-item.is-lit { box-shadow: inset 0 -2px 0 var(--signal); }

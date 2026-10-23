@@ -28,7 +28,9 @@ import { getCampaigns } from '../../services/campaigns-client.js';
 
 // The decision board, scoped to ONE platform's space when channelId is
 // given (its queue, its composer, its campaigns) — or the whole lane bare.
-export const CampaignQueueSection = ({ channelId = null, channelName = null }) => {
+export const CampaignQueueSection = ({
+  channelId = null, channelName = null, focus = null, onChanged = null,
+}) => {
   const [channels, setChannels] = useState(null);
   const [campaigns, setCampaigns] = useState(null);
   const [queue, setQueue] = useState(null);
@@ -41,7 +43,9 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
   const [folded, setFolded] = useState(false);
   // THE SECTION SPLIT (Design note, 2026-08-06: […]). KIND first, STANDING
   // second — the two axes the old five-tab strip confused.
-  const [section, setSection] = useState('posts');
+  // A console door (PlatformHeader.jsx) opens the board where it pointed:
+  // a day, the replies, or the month lit by one status.
+  const [section, setSection] = useState(focus?.section ?? 'posts');
   const [lane, setLane] = useState('queued');
   // THE COUNTDOWN (Design note, 2026-07-28: […]). The meta line's `now` was frozen at render;
   // a 30s tick keeps GOES OUT IN counting down to zero. Same calm rhythm as
@@ -53,10 +57,11 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
   // BACK returns to the month. `dayKey` null is the UNSCHEDULED bucket — a
   // day view like any other, it just has no date. The key is kept when going
   // back, so the month marks the day you came from.
-  const [view, setView] = useState('month'); // 'month' | 'day'
-  const [dayKey, setDayKey] = useState(null);
+  const [view, setView] = useState(focus && 'day' in focus ? 'day' : 'month'); // 'month' | 'day'
+  const [dayKey, setDayKey] = useState(focus?.day ?? null);
+  const [highlight, setHighlight] = useState(focus?.highlight ?? null);
   const [monthCursor, setMonthCursor] = useState(() => {
-    const d = new Date();
+    const d = focus?.day ? new Date(`${focus.day}T00:00:00`) : new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
@@ -71,6 +76,7 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
     ]);
     setChannels(board.channels);
     setQueue(staged.queue);
+    onChanged?.();
     setCampaigns(bench.campaigns);
     setReplies(inbound.replies);
     setLoadError(null);
@@ -279,6 +285,8 @@ export const CampaignQueueSection = ({ channelId = null, channelName = null }) =
                 straight into its section. */}
             {sectionStrip}
             <QueueCalendar
+              highlight={highlight}
+              onHighlight={(k) => { uiSound('toggle'); setHighlight(k); }}
               year={monthCursor.year}
               monthIndex={monthCursor.month}
               entries={scoped ? scoped.filter((e) => sectionOf(e) === 'posts') : scoped}

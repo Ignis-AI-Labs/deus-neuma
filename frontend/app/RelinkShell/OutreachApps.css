@@ -4,6 +4,8 @@
 
 .outreach-panel {
   outline: none;
+  /* the console head reflows on the window's width (PlatformConsole.css) */
+  container-type: inline-size;
 }
 
 /* A space's own boards — CAMPAIGNS / QUEUE — hang from this strip. Same

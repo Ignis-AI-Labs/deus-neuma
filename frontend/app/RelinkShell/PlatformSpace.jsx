@@ -15,6 +15,10 @@ import { useWindows } from '../windowing/use-windows.js';
 import { requestSettingsFocus } from './settings-focus.js';
 import { CampaignsSection } from './CampaignsSection.jsx';
 import { CampaignQueueSection } from './CampaignQueueSection.jsx';
+import { PlatformHeader } from './PlatformHeader.jsx';
+import { usePlatformPulse } from './use-platform-pulse.js';
+import { platformPulse, scopeQueue } from './platform-pulse.js';
+import './PlatformConsole.css';
 import {
   getChannelBoard, bindChannel, releaseChannel, getRosterForBinding,
   getChannelCrew, addCrewMember, removeCrewMember,
@@ -144,7 +148,7 @@ const ChannelStandingCard = ({ channel, roster, onChanged }) => {
 // grow into it. Crew members draft and STAGE into the queue below; only the
 // HOLDER's binding reaches the live keys, and nothing leaves without the
 // operator approving it there.
-const ChannelCrewCard = ({ channel, roster }) => {
+const ChannelCrewCard = ({ channel, roster, onCrew = null }) => {
   const [crew, setCrew] = useState([]);
   const [open, setOpen] = useState(false);
   const [pick, setPick] = useState('');
@@ -155,6 +159,7 @@ const ChannelCrewCard = ({ channel, roster }) => {
   useEffect(() => {
     getChannelCrew(channel.id).then(setCrew).catch(() => {});
   }, [channel.id]);
+  useEffect(() => { onCrew?.(crew.length); }, [crew.length, onCrew]);
 
   const act = async (fn) => {
     uiSound('toggle');
@@ -279,6 +284,11 @@ export const PlatformSpace = ({ channelId }) => {
   const [roster, setRoster] = useState([]);
   const [loadError, setLoadError] = useState(null);
   const [sub, setSub] = useState('campaigns');
+  const [standing, setStanding] = useState(false);
+  const [crewCount, setCrewCount] = useState(0);
+  // A console door's destination; `n` remounts the queue board on each press.
+  const [focus, setFocus] = useState({ n: 0 });
+  const pulseRead = usePlatformPulse();
 
   const refresh = async () => {
     const board = await getChannelBoard();
@@ -289,17 +299,38 @@ export const PlatformSpace = ({ channelId }) => {
   useEffect(() => {
     Promise.all([refresh(), getRosterForBinding().then(setRoster).catch(() => {})])
       .catch((e) => setLoadError(e.message));
+    getChannelCrew(channelId).then((c) => setCrewCount(c.length)).catch(() => {});
   }, []);
 
+  const openQueue = (to) => {
+    uiSound('toggle');
+    setSub('queue');
+    setFocus((f) => ({ ...to, n: f.n + 1 }));
+  };
+  const holder = roster.find((m) => m.neumaId === channel?.binding?.neumaId);
+  const pulse = pulseRead.queue ? platformPulse(scopeQueue(pulseRead.queue, channelId), pulseRead.now) : null;
+
   return (
-    <div className="outreach-panel settings">
+    <div className="outreach-panel settings" ref={pulseRead.watch}>
       {loadError ? <p className="settings-err">{loadError}</p> : null}
       {!channel && !loadError ? <p className="settings-note">Reading the channel board…</p> : null}
 
       {channel ? (
         <>
-          <ChannelStandingCard channel={channel} roster={roster} onChanged={refresh} />
-          <ChannelCrewCard channel={channel} roster={roster} />
+          {pulse ? (
+            <PlatformHeader
+              channel={channel} test={pulseRead.tests[channel.id] ?? null}
+              holderName={channel.binding ? (holder?.name || channel.binding.neumaId) : null}
+              crewCount={crewCount} pulse={pulse} now={pulseRead.now} onOpen={openQueue}
+              standingOpen={standing} onStanding={() => { uiSound('toggle'); setStanding((v) => !v); }}
+            />
+          ) : <p className="settings-note">Reading the queue…</p>}
+          {standing || !pulse ? (
+            <div className="pc-standing">
+              <ChannelStandingCard channel={channel} roster={roster} onChanged={refresh} />
+              <ChannelCrewCard channel={channel} roster={roster} onCrew={setCrewCount} />
+            </div>
+          ) : null}
 
           <div className="outreach-tabs" role="tablist" aria-label={`${channel.name} boards`}>
             {SUBS.map((s) => (
@@ -319,7 +350,8 @@ export const PlatformSpace = ({ channelId }) => {
           {/* Keyed by board so each mounts fresh on entry. */}
           {sub === 'campaigns'
             ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} />
-            : <CampaignQueueSection key={`queue-${channel.id}`} channelId={channel.id} channelName={channel.name} />}
+            : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={channel.name}
+                focus={focus.n ? focus : null} onChanged={pulseRead.refresh} />}
         </>
       ) : null}
     </div>
