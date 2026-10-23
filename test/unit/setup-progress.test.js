@@ -59,8 +59,10 @@ describe('barView', () => {
   test('ready names the model; a running job is a progress bar; a stopped one offers TRY AGAIN', () => {
     expect(barView({ mind: { state: 'ready' }, plan: null, job: null, error: '', readyModel: 'Qwen3.8-4B' }).line).toBe('Model ready · Qwen3.8-4B');
     expect(barView({ mind: { state: 'not' }, plan: okPlan, job: { state: 'running' }, error: '' }).view).toBe('setting');
-    expect(barView({ mind: { state: 'not' }, plan: okPlan, job: { state: 'failed', error: 'tar: exit 2' }, error: '' }))
-      .toEqual({ view: 'error', line: 'The setup stopped before it finished.', act: 'retry' });
+    const said = 'The download stopped before it finished. Check the internet connection, then press TRY AGAIN; it picks up where it stopped.';
+    expect(barView({ mind: { state: 'not' }, plan: okPlan, job: { state: 'failed', error: said, detail: 'terminated' }, error: '' }))
+      .toEqual({ view: 'error', line: said, act: 'retry' });
+    expect(barView({ mind: { state: 'not' }, plan: okPlan, job: { state: 'failed' }, error: '' }).line).toBe('The setup stopped before it finished.');
   });
   test('a plan that could not be read still says no model runs, and offers to read again', () => {
     expect(barView({ mind: { state: 'not' }, plan: null, job: null, error: 'HTTP 404' }))

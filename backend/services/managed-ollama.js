@@ -1,39 +1,52 @@
 // managed-ollama — set up a local model server for a person who has none, and keep it running.
-// impure (network, fs, child processes). The decisions are in managed-ollama-plan.js (pure).
+// impure (network, fs, child processes). The decisions are in managed-ollama-plan.js (pure); the
+// archive is fetched and unpacked by managed-ollama-download.js; the words are managed-ollama-errors.js.
 //
 // One job at a time, observed by polling (GET /api/v1/model-server/status):
-//   download → the pinned Ollama build, resumable, SHA-256 checked before anything runs it
-//   unpack   → under <data root>/model-server/ollama (no admin rights, nothing system-wide)
-//   start    → `ollama serve` on 127.0.0.1:11434 (NEUMA_OLLAMA_ENDPOINT moves it), models kept under
-//              <data root>/model-server/models
-//   pull     → the model the capacity check recommends, straight from Hugging Face (Ollama
-//              verifies every layer it pulls)
+//   check    → the plan, read from this machine
+//   download → the pinned Ollama build, resumable, SHA-256 checked on disk before anything runs it
+//   unpack   → under <home>/ollama (no admin rights, nothing system-wide)
+//   start    → `ollama serve` on its own loopback port, models kept under <home>/models
+//   pull     → the model the capacity check recommends, straight from Hugging Face
+//   verify   → the model answers a real message (it is loaded, and it speaks)
 //   adopt    → the platform's mind becomes that server and model, persisted (provider-choice.js)
-// An Ollama already on the machine is used as it is: started if it is installed but not running,
-// never downloaded twice. A managed server is started again at every boot (startManagedAtBoot)
-// and stopped with the backend.
+// A step that fails is tried again by the job itself before a person is told (one sentence, one act).
+// An Ollama already on the machine is used as it is when it is new enough: started if it is
+// installed but not running, never downloaded twice. A server the setup started is started again at
+// every boot (startManagedAtBoot) and stopped with the backend.
+//
+// ONE JOB, EVEN AT TWO PRESSES (2026-10-23): the job used to be marked running only after the plan
+// was read, so two presses started two jobs: one .part written twice (the […] a person saw), a twin that finished behind a "failed" screen, and one
+// record tmp renamed by both ("ENOENT … managed.json.<pid>.tmp"). The job is now running from the
+// instant it is asked for.
 
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import net from 'node:net';
 import path from 'node:path';
 import os from 'node:os';
-import zlib from 'node:zlib';
-import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { Readable, Transform } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import { getDataRoot } from './data-root.js';
-import { managedRecordPath, readManagedRecord } from './managed-ollama-record.js';
+import { readManagedRecord, writeManagedRecord } from './managed-ollama-record.js';
+import { obtainArchive, installArchive } from './managed-ollama-download.js';
+import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
 import { createLogger } from './logger.js';
 import { getSetupStatus } from './substrate-setup.js';
-import { saveProviderChoice } from './provider-choice.js';
-import { setConfig } from './llm-provider.js';
+import { loadProviderChoice, saveProviderChoice } from './provider-choice.js';
+import { getConfig, setConfig } from './llm-provider.js';
+import { sameEndpoint } from './provider-discovery.js';
 import { OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
 import {
   MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, ollamaAssetFor, pullProgress, versionAtLeast,
 } from './managed-ollama-plan.js';
 
+export { obtainArchive } from './managed-ollama-download.js';
+
 const log = createLogger('ManagedOllama');
+// the whole job, tried again once by itself (a download inside it is tried three times on its own)
+const JOB_TRIES = 2;
+// a port the platform's own server may move to when its own is held by another server
+const PORT_STEPS = 10;
 
 // impure — the platform's own endpoints, read at call time: 127.0.0.1:11434 unless
 // NEUMA_OLLAMA_ENDPOINT moves the platform's server to a port of its own
@@ -41,12 +54,11 @@ const endpoints = () => managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT);
 
 // impure — read at call time (packaged vs dev data roots)
 const root = () => path.join(getDataRoot(), 'model-server');
-const recordPath = managedRecordPath;
 // Where the server and the models are kept: the folder the person chose in the installer (kept in
 // the record), else beside the record. Models are large, so this is the person's choice.
 let chosenHome = null;
-const serverHome = () => chosenHome || readRecordQuiet()?.home || root();
-const readRecordQuiet = readManagedRecord;
+const serverHome = () => chosenHome || readManagedRecord()?.home || root();
+const modelsDir = () => path.join(serverHome(), 'models');
 const managedBin = () => {
   const asset = ollamaAssetFor(process.platform, process.arch);
   return asset ? path.join(serverHome(), 'ollama', asset.bin) : null;
@@ -54,12 +66,6 @@ const managedBin = () => {
 
 /** The record of what the platform set up, or null. impure */
 export const readRecord = readManagedRecord;
-const writeRecord = async (record) => {
-  await fsp.mkdir(root(), { recursive: true });
-  const tmp = `${recordPath()}.${process.pid}.tmp`;
-  await fsp.writeFile(tmp, JSON.stringify(record, null, 2));
-  await fsp.rename(tmp, recordPath());
-};
 
 /** An Ollama installed on this machine outside the platform, or null. impure */
 export const findSystemOllama = () => {
@@ -88,8 +94,9 @@ export const serverState = async (endpoint = endpoints().usual) => {
 
 /** Is an Ollama answering at this endpoint? impure */
 export const ollamaUp = async (endpoint = endpoints().usual) => (await serverState(endpoint)).up;
+const usable = (state) => state.up && versionAtLeast(state.version, MIN_OLLAMA_VERSION);
 
-/** Free bytes on the disk that holds the data root. impure */
+/** Free bytes on the disk that holds the server's home. impure */
 const freeBytes = async () => {
   let dir = serverHome();
   while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
@@ -100,14 +107,17 @@ const freeBytes = async () => {
 export const currentPlan = async () => {
   const setup = await getSetupStatus();
   const record = readRecord();
+  const own = record?.managed && record.endpoint ? { endpoint: record.endpoint, ...(await serverState(record.endpoint)) } : null;
+  const bin = managedBin();
   return installPlan({
     platform: process.platform,
     arch: process.arch,
     recommendation: setup.recommendation,
     running: await serverState(endpoints().usual),
+    own,
     endpoints: endpoints(),
     system: findSystemOllama(),
-    managedInstalled: Boolean(record?.managed && record.bin && fs.existsSync(record.bin)),
+    managedInstalled: Boolean(bin && fs.existsSync(bin)),
     freeBytes: await freeBytes(),
   });
 };
@@ -129,177 +139,159 @@ export const cancelJob = () => {
 };
 
 /**
- * Start setting up a model server. Refuses a second job. The route passes nothing (the plan is
- * read from this machine); a proof run may pass a plan of its own. impure
+ * Start setting up a model server, or return the job already running: the job is running from
+ * this call's first line, so a second press can never start a second job. The route passes
+ * nothing (the plan is read from this machine); a proof run may pass a plan of its own. impure
  */
 export const startJob = async ({ plan: given, home } = {}) => {
   if (job.state === 'running') return job;
   if (home) chosenHome = path.resolve(home);
-  const plan = given ?? await currentPlan();
-  if (!plan.supported) { update({ state: 'failed', error: plan.reason, plan }); return job; }
-  if (!plan.enoughDisk) {
-    update({ state: 'failed', plan, error: `Setting up needs about ${(plan.needBytes / 1e9).toFixed(1)} GB free; this disk has ${(plan.freeBytes / 1e9).toFixed(1)} GB. Free some space, then try again.` });
-    return job;
-  }
   abort = new AbortController();
-  update({ state: 'running', plan, step: plan.steps[0]?.id || 'adopt', completed: 0, total: 0, error: null, line: '' });
-  run(plan, abort.signal).catch((err) => {
-    const cancelled = abort?.signal.aborted;
-    log.warn('model server setup stopped', { error: err.message, cancelled });
-    update({ state: cancelled ? 'cancelled' : 'failed', error: cancelled ? 'Stopped. Start again to pick up where it left off.' : err.message });
+  const { signal } = abort;
+  update({ state: 'running', plan: null, step: 'check', completed: 0, total: 0, error: null, detail: null, line: 'Reading what this computer needs' });
+  runJob(given, signal).catch((err) => {
+    const cancelled = signal.aborted;
+    log.warn('model server setup stopped', { error: err.message, code: err.code, cancelled });
+    update(cancelled
+      ? { state: 'cancelled', error: 'Stopped. Press TRY AGAIN to pick up where it left off.', detail: null }
+      : { state: 'failed', ...plainFailure(err) });
   });
   return job;
 };
 
+/** The job: a plan read fresh for every try, and the work, tried again by itself once. impure */
+const runJob = async (given, signal) => {
+  let last = null;
+  for (let n = 1; n <= JOB_TRIES; n += 1) {
+    const plan = n === 1 && given ? given : await currentPlan();
+    update({ plan });
+    if (!plan.supported) throw setupFailure('UNSUPPORTED', plan.reason, plan.reason);
+    if (!plan.enoughDisk) {
+      const words = `This disk needs about ${(plan.needBytes / 1e9).toFixed(1)} GB free and has ${(plan.freeBytes / 1e9).toFixed(1)} GB. Free some space, then press TRY AGAIN.`;
+      throw setupFailure('DISK_SPACE', `need ${plan.needBytes} bytes, ${plan.freeBytes} free`, words);
+    }
+    try {
+      await run(plan, signal);
+      return;
+    } catch (err) {
+      if (signal.aborted || isFinal(err)) throw err;
+      last = err;
+      if (n < JOB_TRIES) {
+        log.warn('model server setup try failed; trying again', { attempt: n, error: err.message, code: err.code });
+        update({ step: 'check', completed: 0, total: 0, line: 'One step did not finish; trying it again' });
+      }
+    }
+  }
+  throw last;
+};
+
 const run = async (plan, signal) => {
-  const { endpoint } = plan;
-  const managed = plan.server === 'download' || plan.server === 'managed';
+  const { managed } = plan;
   let bin = null;
-  if (managed) bin = await ensureManagedServer(plan, signal);
+  if (plan.server === 'download' || plan.server === 'managed') bin = await ensureManagedServer(signal);
   else if (plan.server === 'installed') bin = findSystemOllama()?.bin;
+  else if (managed) bin = readRecord()?.bin || managedBin();
+  let { endpoint } = plan;
   if (plan.server !== 'running') {
     update({ step: 'start', completed: 0, total: 0, line: 'Starting the model server' });
-    await startServer(bin, managed, endpoint);
+    endpoint = await startServer(bin, managed, endpoint);
   }
-  const version = (await serverState(endpoint)).version;
-  if (!versionAtLeast(version, MIN_OLLAMA_VERSION)) {
-    throw new Error(`the model server answering at ${endpoint} is Ollama ${version || '(unknown)'}, older than ${MIN_OLLAMA_VERSION}; it cannot run this model`);
+  // Recorded the moment it runs: a try after this one, and the next boot, know the server is the
+  // platform's own and where it answers, even if the model never finished downloading
+  const record = { managed, bin, endpoint, ...(managed ? { home: serverHome(), modelsDir: modelsDir() } : {}) };
+  if (managed) await writeManagedRecord({ ...readRecord(), ...record });
+  const state = await serverState(endpoint);
+  if (!usable(state)) {
+    throw setupFailure('SERVER_OLD', `the model server answering at ${endpoint} is Ollama ${state.version || '(unknown)'}, older than ${MIN_OLLAMA_VERSION}`);
   }
-  if (!plan.model.ready) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
+  // what the server holds now, never what the plan saw: a models folder removed since is pulled again
+  const has = state.models.some((m) => m.toLowerCase() === plan.model.ref.toLowerCase());
+  if (!has) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
+  update({ step: 'verify', completed: 0, total: 0, line: `Checking that ${plan.model.name} answers` });
+  await modelAnswers(endpoint, plan.model.ref, signal);
   update({ step: 'adopt', line: 'Making it the platform\'s model server' });
   const choice = { provider: 'ollama', endpoint, model: plan.model.ref };
   setConfig(choice);
   await saveProviderChoice(choice, { chosenBy: 'operator' });
-  await writeRecord({
-    version,
-    managed,
-    bin,
-    endpoint,
-    ...(managed ? { home: serverHome(), modelsDir: path.join(serverHome(), 'models') } : {}),
-    model: plan.model.ref,
-    installedAt: new Date().toISOString(),
-  });
-  update({ state: 'done', step: 'done', line: `${plan.model.name} is ready on Ollama ${version}.` });
-  log.info('model server set up', { model: plan.model.ref, server: plan.server });
+  await writeManagedRecord({ version: state.version, ...record, model: plan.model.ref, installedAt: new Date().toISOString() });
+  update({ state: 'done', step: 'done', line: `${plan.model.name} is ready on Ollama ${state.version}.` });
+  log.info('model server set up', { model: plan.model.ref, server: plan.server, endpoint });
 };
 
-// ── download + unpack ────────────────────────────────────────────────────────
-const ensureManagedServer = async (plan, signal) => {
+/** The platform's own server on disk: kept if it is there, else downloaded, checked and unpacked. impure */
+const ensureManagedServer = async (signal) => {
   const asset = ollamaAssetFor(process.platform, process.arch);
   const bin = managedBin();
   if (fs.existsSync(bin)) return bin;
   await fsp.mkdir(serverHome(), { recursive: true });
   const archive = path.join(serverHome(), asset.name);
   update({ step: 'download', completed: 0, total: asset.size, line: `Downloading Ollama ${OLLAMA_VERSION}` });
-  await obtainArchive(asset, archive, signal);
+  const onBytes = (have) => {
+    if (Math.abs(have - (job.completed || 0)) > 8_000_000 || have === asset.size) update({ completed: have });
+  };
+  await obtainArchive(asset, archive, { signal, onBytes, onLine: (line) => update({ line }) });
   update({ step: 'unpack', completed: 0, total: 0, line: 'Unpacking' });
-  const dir = path.join(serverHome(), 'ollama');
-  const tmp = `${dir}.unpacking`;
-  await fsp.rm(tmp, { recursive: true, force: true });
-  await fsp.mkdir(tmp, { recursive: true });
-  await unpack(asset, archive, tmp);
-  if (!fs.existsSync(path.join(tmp, asset.bin))) throw new Error(`the Ollama archive did not hold ${asset.bin}`);
-  await fsp.rm(dir, { recursive: true, force: true });
-  await fsp.rename(tmp, dir);
-  if (process.platform !== 'win32') await fsp.chmod(bin, 0o755);
-  await fsp.rm(archive, { force: true });
-  return bin;
+  return installArchive(asset, archive, path.join(serverHome(), 'ollama'));
 };
 
-/** The SHA-256 of a file on disk, read as a stream. impure */
-const fileSha256 = async (file) => {
-  const hash = createHash('sha256');
-  await pipeline(fs.createReadStream(file), new Transform({ transform(c, _e, cb) { hash.update(c); cb(); } }));
-  return hash.digest('hex');
+// ── serve + pull + answer ────────────────────────────────────────────────────
+/** Is nothing listening on this loopback port? impure */
+const portFree = (port) => new Promise((resolve) => {
+  const s = net.createServer();
+  s.once('error', () => resolve(false));
+  s.listen(port, '127.0.0.1', () => s.close(() => resolve(true)));
+});
+
+/**
+ * Where the server should answer: the wanted endpoint, or the first port after it with nothing on
+ * it when the wanted one is held by something else (an outdated Ollama, another program). impure
+ * @returns {Promise<{endpoint: string, up: boolean}>} up: a usable Ollama already answers there
+ */
+const placeServer = async (wanted) => {
+  const base = Number(new URL(wanted).port);
+  for (let i = 0; i < PORT_STEPS; i += 1) {
+    const endpoint = `http://127.0.0.1:${base + i}`;
+    const state = await serverState(endpoint);
+    if (usable(state)) return { endpoint, up: true };
+    if (!state.up && await portFree(base + i)) return { endpoint, up: false };
+  }
+  throw setupFailure('SERVER_START', `ports ${base} to ${base + PORT_STEPS - 1} are all held by other programs`);
 };
 
 /**
- * The pinned archive, on disk. An archive already there is kept until its unpack succeeds, so a
- * retry after a later step failed never downloads it again: one whose SHA-256 matches the pin is
- * used as it is; one that does not is replaced; a partial download resumes. impure
- * @returns {Promise<'kept'|'downloaded'>}
+ * Start `ollama serve` as this backend's child and wait for it to answer. impure
+ * @returns {Promise<string>} the endpoint it answers on (moved past a port held by another server)
  */
-export const obtainArchive = async (asset, archive, signal) => {
-  if (fs.existsSync(archive)) {
-    update({ line: 'Checking the Ollama download already on this disk' });
-    if (await fileSha256(archive) === asset.sha256) return 'kept';
-    await fsp.rm(archive, { force: true });
-  }
-  await downloadVerified(asset, archive, signal);
-  return 'downloaded';
-};
-
-/** Download with resume; refuse anything that does not hash to the pinned SHA-256. impure */
-const downloadVerified = async (asset, dest, signal) => {
-  const part = `${dest}.part`;
-  let have = fs.existsSync(part) ? fs.statSync(part).size : 0;
-  if (have > asset.size) { await fsp.rm(part, { force: true }); have = 0; }
-  let hash = createHash('sha256');
-  if (have > 0) await pipeline(fs.createReadStream(part), new Transform({ transform(c, _e, cb) { hash.update(c); cb(); } }));
-  if (have < asset.size) {
-    const res = await fetch(asset.url, { signal, redirect: 'follow', headers: have ? { Range: `bytes=${have}-` } : {} });
-    if (have > 0 && res.status !== 206) { have = 0; hash = createHash('sha256'); }
-    if (!res.ok || !res.body) throw new Error(`the Ollama download answered HTTP ${res.status}`);
-    const count = new Transform({
-      transform(chunk, _e, cb) {
-        hash.update(chunk);
-        have += chunk.length;
-        if (have - (job.completed || 0) > 8_000_000 || have === asset.size) update({ completed: have });
-        cb(null, chunk);
-      },
-    });
-    await pipeline(Readable.fromWeb(res.body), count, fs.createWriteStream(part, { flags: have > 0 && res.status === 206 ? 'a' : 'w' }), { signal });
-  }
-  const got = hash.digest('hex');
-  if (got !== asset.sha256) {
-    await fsp.rm(part, { force: true });
-    throw new Error('the Ollama download did not match its published checksum, so it was discarded. Try again.');
-  }
-  await fsp.rename(part, dest);
-};
-
-// Windows' own bsdtar by its full path: a GNU tar earlier on the PATH (Git for Windows) cannot read a zip
-const TAR = process.platform === 'win32'
-  ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
-  : 'tar';
-
-/** Unpack with the system's own tar (Linux tar, Windows 10+ bsdtar). impure */
-const unpack = async (asset, archive, dir) => {
-  const tarRun = (args, input) => new Promise((resolve, reject) => {
-    const p = spawn(TAR, args, { stdio: [input ? 'pipe' : 'ignore', 'ignore', 'pipe'], windowsHide: true });
-    let err = '';
-    p.stderr.on('data', (d) => { err += d; });
-    p.on('error', reject);
-    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`unpacking failed (tar exit ${code}): ${err.trim().split('\n').pop() || ''}`))));
-    if (input) pipeline(fs.createReadStream(archive), zlib.createZstdDecompress(), p.stdin).catch(reject);
-  });
-  if (asset.format === 'zip') return tarRun(['-xf', archive, '-C', dir]);
-  if (typeof zlib.createZstdDecompress === 'function') return tarRun(['-x', '-C', dir], true);
-  return tarRun(['--zstd', '-xf', archive, '-C', dir]);
-};
-
-// ── serve + pull ─────────────────────────────────────────────────────────────
-/** Start `ollama serve` as this backend's child and wait for it to answer. impure */
-const startServer = async (bin, managed, endpoint = endpoints().usual) => {
-  if (await ollamaUp(endpoint)) return;
-  if (!bin) throw new Error('no Ollama to start');
+const startServer = async (bin, managed, wanted = endpoints().usual) => {
+  const { endpoint, up } = await placeServer(wanted);
+  if (up) return endpoint;
+  if (!bin) throw setupFailure('SERVER_START', 'no Ollama to start');
   await fsp.mkdir(serverHome(), { recursive: true });
-  const out = fs.openSync(path.join(serverHome(), 'ollama.log'), 'a');
+  const logFile = path.join(serverHome(), 'ollama.log');
+  const out = fs.openSync(logFile, 'a');
   // its default window is the one every request names, so no request reloads the model
   const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), OLLAMA_CONTEXT_LENGTH: String(OLLAMA_SERVED_CONTEXT) };
-  if (managed) env.OLLAMA_MODELS = readRecordQuiet()?.modelsDir || path.join(serverHome(), 'models');
+  if (managed) {
+    env.OLLAMA_MODELS = modelsDir();
+    await fsp.mkdir(env.OLLAMA_MODELS, { recursive: true });
+  }
   child = spawn(bin, ['serve'], { env, stdio: ['ignore', out, out], windowsHide: true });
-  child.on('exit', (code) => { log.info('ollama serve exited', { code }); child = null; });
+  fs.closeSync(out);
+  const mine = child;
+  let spawnError = null;
+  mine.on('error', (err) => { spawnError = err; });
+  mine.on('exit', (code) => { log.info('ollama serve exited', { code }); if (child === mine) child = null; });
   for (let i = 0; i < 60; i += 1) {
-    if (await ollamaUp(endpoint)) return;
-    if (!child) throw new Error(`the model server stopped while starting; its log is ${path.join(serverHome(), 'ollama.log')}`);
+    if (await ollamaUp(endpoint)) return endpoint;
+    if (spawnError) throw setupFailure('SERVER_START', `the model server could not be started (${bin}): ${spawnError.message}`);
+    if (mine.exitCode !== null || mine.signalCode !== null) throw setupFailure('SERVER_START', `the model server stopped while starting; its log is ${logFile}`);
     await new Promise((r) => setTimeout(r, 1000));
   }
-  throw new Error('the model server did not answer within a minute of starting');
+  throw setupFailure('SERVER_START', `the model server did not answer within a minute of starting; its log is ${logFile}`);
 };
 
 /** Pull a model through Ollama, reporting bytes across every layer. impure */
-const pullModel = async (ref, signal, endpoint = endpoints().usual, name = ref) => {
+const pullModel = async (ref, signal, endpoint, name = ref) => {
   const downloading = `Downloading the model, ${name}`;
   // Ollama's own words are layer digests ("pulling 3f2a1b..."); a person is told what is happening
   const said = (status) => (/^pulling/.test(status) ? downloading
@@ -307,47 +299,97 @@ const pullModel = async (ref, signal, endpoint = endpoints().usual, name = ref) 
       : /writing manifest|removing/.test(status) ? `Finishing ${name}`
         : status === 'success' ? `${name} is downloaded` : downloading);
   update({ step: 'pull', completed: 0, total: 0, line: downloading });
-  const res = await fetch(`${endpoint}/api/pull`, {
-    method: 'POST', signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: ref, stream: true }),
-  });
-  if (!res.ok || !res.body) throw new Error(`the model server refused the download (HTTP ${res.status})`);
   const layers = new Map();
-  let buffered = '';
   let finished = false;
-  for await (const chunk of res.body) {
-    buffered += Buffer.from(chunk).toString('utf8');
-    const lines = buffered.split('\n');
-    buffered = lines.pop();
-    for (const line of lines) {
-      const p = pullProgress(line);
-      if (!p) continue;
-      if (p.error) throw new Error(`the model download failed: ${p.error}`);
-      if (p.total) layers.set(p.status, { total: p.total, completed: p.completed || 0 });
-      if (p.status === 'success') finished = true;
-      const sum = [...layers.values()].reduce((a, l) => ({ total: a.total + l.total, completed: a.completed + l.completed }), { total: 0, completed: 0 });
-      update({ total: sum.total, completed: sum.completed, line: said(p.status) });
+  try {
+    const res = await fetch(`${endpoint}/api/pull`, {
+      method: 'POST', signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: ref, stream: true }),
+    });
+    if (!res.ok || !res.body) throw setupFailure('PULL_FAILED', `the model server refused the download (HTTP ${res.status})`);
+    let buffered = '';
+    for await (const chunk of res.body) {
+      buffered += Buffer.from(chunk).toString('utf8');
+      const lines = buffered.split('\n');
+      buffered = lines.pop();
+      for (const line of lines) {
+        const p = pullProgress(line);
+        if (!p) continue;
+        if (p.error) throw setupFailure('PULL_FAILED', `the model download failed: ${p.error}`);
+        if (p.total) layers.set(p.status, { total: p.total, completed: p.completed || 0 });
+        if (p.status === 'success') finished = true;
+        const sum = [...layers.values()].reduce((a, l) => ({ total: a.total + l.total, completed: a.completed + l.completed }), { total: 0, completed: 0 });
+        update({ total: sum.total, completed: sum.completed, line: said(p.status) });
+      }
     }
+  } catch (err) {
+    if (signal.aborted || err.code) throw err;
+    throw setupFailure('PULL_FAILED', `the model download stopped: ${err.message}`);
   }
-  if (!finished) throw new Error('the model download ended before it finished; start again to resume it');
+  if (!finished) throw setupFailure('PULL_FAILED', 'the model download ended before it finished');
 };
 
-/** At boot: a server the platform set up is started again, so the mind is there after a restart. impure */
+/** The model answers a real message: loaded into memory, and it speaks. impure */
+const modelAnswers = async (endpoint, model, signal) => {
+  let res;
+  try {
+    res = await fetch(`${endpoint}/api/chat`, {
+      method: 'POST',
+      signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]),
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model, stream: false, messages: [{ role: 'user', content: 'Reply with one word: ready' }], options: { num_predict: 256 } }),
+    });
+  } catch (err) {
+    if (signal.aborted) throw err;
+    throw setupFailure('MODEL_SILENT', `the model did not answer: ${err.message}`);
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw setupFailure('MODEL_SILENT', `the model did not answer (HTTP ${res.status}): ${body.error || ''}`.trim());
+  const said = `${body.message?.content || ''}${body.message?.thinking || ''}`.trim();
+  if (!said) throw setupFailure('MODEL_SILENT', 'the model answered with nothing');
+  return said;
+};
+
+/** The route follows the server to its new address, if the route pointed at its old one. impure */
+const followServer = async (record, was, endpoint) => {
+  await writeManagedRecord({ ...record, endpoint });
+  const choice = await loadProviderChoice();
+  if (choice?.provider === 'ollama' && sameEndpoint(choice.endpoint, was)) {
+    await saveProviderChoice({ provider: 'ollama', endpoint, model: choice.model }, { chosenBy: choice.chosenBy });
+  }
+  const config = getConfig();
+  if (config.provider === 'ollama' && sameEndpoint(config.endpoint, was)) setConfig({ provider: 'ollama', endpoint, model: config.model });
+};
+
+/**
+ * At boot: a server the setup started is started again, so the mind is there after a restart. One
+ * already answering there and new enough is used; one too old (an outdated Ollama's own service
+ * holding the port) is left alone and the platform's moves to the next free port, its route with it.
+ * impure
+ */
 export const startManagedAtBoot = async () => {
   const record = readRecord();
-  if (!record?.managed || !record.bin || !fs.existsSync(record.bin)) return;
-  const endpoint = record.endpoint || endpoints().usual;
-  if (await ollamaUp(endpoint)) return;
+  if (!record?.bin || (record.managed && !fs.existsSync(record.bin))) return;
+  const was = record.endpoint || endpoints().usual;
   try {
-    await startServer(record.bin, true, endpoint);
-    log.info('managed model server started', { version: record.version });
+    const endpoint = await startServer(record.bin, Boolean(record.managed), was);
+    if (!sameEndpoint(endpoint, was)) {
+      await followServer(record, was, endpoint);
+      log.info('model server moved past a port held by another server', { was, endpoint });
+    }
+    const state = await serverState(endpoint);
+    if (record.model && !state.models.some((m) => m.toLowerCase() === record.model.toLowerCase())) {
+      log.warn('the model the setup downloaded is missing from its server; the door offers it again', { model: record.model, endpoint });
+    }
+    log.info('managed model server ready', { version: state.version, endpoint });
   } catch (err) {
     log.warn('managed model server did not start', { error: err.message });
   }
 };
 
 // The managed server lives and dies with the backend. Only 'exit': a SIGINT/SIGTERM listener
-// would replace Node's default exit on those signals. A server orphaned by a hard kill is
-// found answering at the next boot and used as it is.
+// would replace Node's default exit on those signals (the desktop app stops the backend's whole
+// process group, the server with it). A server orphaned by a hard kill is found answering at the
+// next boot and used as it is.
 process.once('exit', () => { try { child?.kill(); } catch { /* already gone */ } });
 
 /** The home this module installs into, for the screen's honesty line. impure */

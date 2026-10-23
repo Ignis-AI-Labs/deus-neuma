@@ -112,39 +112,51 @@ export const pullableChoice = (recommendation) => {
  * What setting up a model server on this machine would take. Pure.
  * @param {{platform: string, arch: string, recommendation: object|null,
  *   running: {up: boolean, version: string|null, models: string[]},
+ *   own?: {endpoint: string, up: boolean, version: string|null, models: string[]}|null,
  *   system: {bin: string, version: string|null}|null, managedInstalled: boolean, freeBytes: number|null}} machine
- *   running: what answers on the usual port; system: an Ollama installed outside the platform;
- *   endpoints: the platform's own usual + next endpoint (managedEndpoints)
+ *   running: what answers on the usual port; own: what answers where the platform's own server
+ *   was set up (its record); system: an Ollama installed outside the platform; managedInstalled:
+ *   the platform's own server is on disk; endpoints: the platform's usual + next endpoint
  */
-export const installPlan = ({ platform, arch, recommendation: matched, running, system, managedInstalled, freeBytes, endpoints = managedEndpoints() }) => {
+export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints() }) => {
   const { choice: recommendation, note: choiceNote } = pullableChoice(matched);
   const ref = ollamaModelRef(recommendation);
   if (!ref) {
     return Object.freeze({ supported: false, reason: matched?.why || 'This machine is below the floor for a local model, so there is no model to set up.' });
   }
   const asset = ollamaAssetFor(platform, arch);
-  const runningOk = Boolean(running?.up && versionAtLeast(running.version, MIN_OLLAMA_VERSION));
+  const ok = (s) => Boolean(s?.up && versionAtLeast(s.version, MIN_OLLAMA_VERSION));
+  const ownOk = ok(own);
+  const runningOk = ok(running);
   const systemOk = Boolean(system && versionAtLeast(system.version, MIN_OLLAMA_VERSION));
   const notes = choiceNote ? [choiceNote] : [];
-  if (running?.up && !runningOk) notes.push(`An Ollama${running.version ? ` ${running.version}` : ''} is running here, too old for this model (it needs ${MIN_OLLAMA_VERSION} or newer). Deus Neuma sets up its own beside it and leaves yours as it is.`);
-  else if (system && !systemOk) notes.push(`An older Ollama${system.version ? ` (${system.version})` : ''} is installed here, too old for this model. Deus Neuma sets up its own ${OLLAMA_VERSION} beside it and leaves yours as it is.`);
-  const server = runningOk ? 'running' : systemOk && !running?.up ? 'installed' : managedInstalled ? 'managed' : 'download';
+  if (!ownOk && running?.up && !runningOk) notes.push(`An Ollama${running.version ? ` ${running.version}` : ''} is running here, too old for this model (it needs ${MIN_OLLAMA_VERSION} or newer). Deus Neuma sets up its own beside it and leaves yours as it is.`);
+  else if (!ownOk && !runningOk && system && !systemOk) notes.push(`An older Ollama${system.version ? ` (${system.version})` : ''} is installed here, too old for this model. Deus Neuma sets up its own ${OLLAMA_VERSION} beside it and leaves yours as it is.`);
+  const server = ownOk || runningOk ? 'running' : systemOk && !running?.up ? 'installed' : managedInstalled ? 'managed' : 'download';
   if (server === 'download' && !asset) {
     return Object.freeze({ supported: false, reason: `There is no Ollama build for ${platform} on ${arch}. Install a model server yourself (Ollama ${MIN_OLLAMA_VERSION} or newer, LM Studio or llama.cpp), then RECHECK.` });
   }
-  // the usual port is taken by an Ollama the platform will not use: its own answers on the next one
-  const endpoint = running?.up && !runningOk ? endpoints.alt : endpoints.usual;
-  const haveModel = runningOk && (running.models || []).some((m) => m.toLowerCase() === ref.toLowerCase());
+  // The platform's own server keeps the address it was set up on. A new one never shares the usual
+  // port with an Ollama the platform will not use: not one running there now, and not an outdated
+  // one installed here, whose own service can take that port at any boot.
+  const ownPort = own?.endpoint && !own.up ? own.endpoint
+    : running?.up || (system && !systemOk) ? endpoints.alt : endpoints.usual;
+  const endpoint = ownOk ? own.endpoint : runningOk || server === 'installed' ? endpoints.usual : ownPort;
+  const live = ownOk ? own : running;
+  const haveModel = (ownOk || runningOk) && (live.models || []).some((m) => m.toLowerCase() === ref.toLowerCase());
   const modelBytes = Math.round((Number(recommendation.sizeGB) || 0) * GB);
   const steps = [];
   if (server === 'download') steps.push({ id: 'download', label: `Download Ollama ${OLLAMA_VERSION}`, bytes: asset.size });
   if (server === 'download') steps.push({ id: 'unpack', label: 'Unpack it', bytes: 0 });
   if (server !== 'running') steps.push({ id: 'start', label: 'Start the model server', bytes: 0 });
   if (!haveModel) steps.push({ id: 'pull', label: `Download ${recommendation.model} (${recommendation.quant})`, bytes: modelBytes });
+  steps.push({ id: 'verify', label: 'Check that it answers', bytes: 0 });
   const needBytes = Math.round((server === 'download' ? asset.size * UNPACK_FACTOR : 0) + (haveModel ? 0 : modelBytes * MODEL_HEADROOM));
   return Object.freeze({
     supported: true,
     server,
+    // the platform's own server: started at every boot, its models kept under its own home
+    managed: server === 'download' || server === 'managed' || ownOk,
     endpoint,
     notes: Object.freeze(notes),
     model: Object.freeze({ ref, name: recommendation.model, quant: recommendation.quant, sizeGB: recommendation.sizeGB, ready: haveModel }),
@@ -173,5 +185,6 @@ export const pullProgress = (line) => {
 export const humanBytes = (n) => {
   if (!Number.isFinite(n) || n < 0) return '?';
   if (n >= GB) return `${(n / GB).toFixed(1)} GB`;
-  return `${Math.max(1, Math.round(n / 1_000_000))} MB`;
+  // nothing is 0 MB, never "1 MB" (a plan with nothing to download read "DOWNLOAD 1 MB", 2026-10-23)
+  return `${n > 0 ? Math.max(1, Math.round(n / 1_000_000)) : 0} MB`;
 };

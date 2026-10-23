@@ -43,6 +43,7 @@ const BarDetails = ({ verdict, mind, plan, home, job, error }) => (
     ) : null}
     {job?.line ? <p>{job.line}</p> : null}
     {job?.error ? <p>{job.error}</p> : null}
+    {job?.detail ? <p className="label-data">{job.detail}</p> : null}
     {error ? <p>{error}</p> : null}
   </div>
 );

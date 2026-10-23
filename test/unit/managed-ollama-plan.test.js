@@ -47,32 +47,36 @@ describe('the plan for each starting point', () => {
     const plan = installPlan(base());
     expect(plan.supported).toBe(true);
     expect(plan.server).toBe('download');
-    expect(plan.steps.map((s) => s.id)).toEqual(['download', 'unpack', 'start', 'pull']);
+    expect(plan.steps.map((s) => s.id)).toEqual(['download', 'unpack', 'start', 'pull', 'verify']);
+    expect(plan.managed).toBe(true);
     expect(plan.downloadBytes).toBe(ollamaAssetFor('linux', 'x64').size + 2.8e9);
     expect(plan.enoughDisk).toBe(true);
   });
   test('Ollama installed but stopped: start and pull, no download', () => {
     const plan = installPlan(base({ system: { bin: 'ollama', version: '0.41.0' } }));
     expect(plan.server).toBe('installed');
-    expect(plan.steps.map((s) => s.id)).toEqual(['start', 'pull']);
+    expect(plan.managed).toBe(false);
+    expect(plan.steps.map((s) => s.id)).toEqual(['start', 'pull', 'verify']);
   });
   test('Ollama running without the model: pull only', () => {
     const plan = installPlan(base({ running: { up: true, version: OLLAMA_VERSION, models: ['llama3:8b'] } }));
     expect(plan.server).toBe('running');
     expect(plan.endpoint).toBe(OLLAMA_ENDPOINT);
-    expect(plan.steps.map((s) => s.id)).toEqual(['pull']);
+    expect(plan.steps.map((s) => s.id)).toEqual(['pull', 'verify']);
   });
-  test('Ollama running with the model: nothing to download, only adopt', () => {
+  test('Ollama running with the model: nothing to download, only the answer check and adopt', () => {
     const plan = installPlan(base({ running: { up: true, version: OLLAMA_VERSION, models: ['hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M'] } }));
-    expect(plan.steps).toEqual([]);
+    expect(plan.steps.map((s) => s.id)).toEqual(['verify']);
+    expect(plan.downloadBytes).toBe(0);
     expect(plan.model.ready).toBe(true);
     expect(plan.needBytes).toBe(0);
   });
-  test('an outdated Ollama installed here is not used: the platform downloads its own and says why', () => {
-    // proven 2026-10-22: Ollama 0.24.0 could not load the recommended Qwen3.8 GGUF
+  test('an outdated Ollama installed here is not used: the platform downloads its own, off its port, and says why', () => {
+    // proven 2026-10-22: Ollama 0.24.0 could not load the recommended Qwen3.8 GGUF. Stopped now, its
+    // own service can take the usual port at any boot, so the platform's never shares it
     const plan = installPlan(base({ system: { bin: '/usr/local/sbin/ollama', version: '0.24.0' } }));
     expect(plan.server).toBe('download');
-    expect(plan.endpoint).toBe(OLLAMA_ENDPOINT);
+    expect(plan.endpoint).toBe(OLLAMA_ALT_ENDPOINT);
     expect(plan.notes[0]).toMatch(/older Ollama \(0\.24\.0\).*too old/);
   });
   test('an outdated Ollama RUNNING on the usual port: the platform\'s own runs beside it on the next port', () => {
@@ -90,6 +94,24 @@ describe('the plan for each starting point', () => {
     }
     expect(installPlan(base({ endpoints: moved })).endpoint).toBe('http://127.0.0.1:47434');
     expect(installPlan(base({ endpoints: moved, running: { up: true, version: '0.24.0', models: [] } })).endpoint).toBe('http://127.0.0.1:47435');
+  });
+  test('the platform\'s own server, up at its recorded address, is the one used: no download, no notes about others', () => {
+    const own = { endpoint: OLLAMA_ALT_ENDPOINT, up: true, version: OLLAMA_VERSION, models: ['hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M'] };
+    const plan = installPlan(base({ own, running: { up: true, version: '0.34.0', models: ['llama3:8b'] }, system: { bin: 'ollama', version: '0.34.0' }, managedInstalled: true }));
+    expect(plan).toMatchObject({ server: 'running', managed: true, endpoint: OLLAMA_ALT_ENDPOINT, downloadBytes: 0, needBytes: 0 });
+    expect(plan.steps.map((s) => s.id)).toEqual(['verify']);
+    expect(plan.notes).toEqual([]);
+  });
+  test('the platform\'s own server on disk but stopped: started again at its recorded address, no download', () => {
+    const own = { endpoint: 'http://127.0.0.1:47500', up: false, version: null, models: [] };
+    const plan = installPlan(base({ own, managedInstalled: true }));
+    expect(plan).toMatchObject({ server: 'managed', managed: true, endpoint: 'http://127.0.0.1:47500' });
+    expect(plan.steps.map((s) => s.id)).toEqual(['start', 'pull', 'verify']);
+  });
+  test('an outdated Ollama answering at the platform\'s recorded address is never taken for its own', () => {
+    const own = { endpoint: OLLAMA_ENDPOINT, up: true, version: '0.34.0', models: [] };
+    const plan = installPlan(base({ own, running: own, managedInstalled: true }));
+    expect(plan).toMatchObject({ server: 'managed', managed: true, endpoint: OLLAMA_ALT_ENDPOINT });
   });
   test('a running Ollama whose version cannot be read is not trusted either', () => {
     const plan = installPlan(base({ running: { up: true, version: null, models: [] } }));
@@ -154,5 +176,6 @@ describe('pull progress', () => {
   test('bytes read as a person reads them', () => {
     expect(humanBytes(2.8e9)).toBe('2.8 GB');
     expect(humanBytes(36_838_937)).toBe('37 MB');
+    expect(humanBytes(0)).toBe('0 MB');
   });
 });

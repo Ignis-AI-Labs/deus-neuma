@@ -55,6 +55,7 @@ export const ModelServerSetup = ({ onDone }) => {
       )}
       {job?.state === 'done' ? <p role="status">{job.line}</p> : null}
       {(job?.state === 'failed' || job?.state === 'cancelled') && job.error ? <p role="alert">{job.error}</p> : null}
+      {job?.state === 'failed' && job.detail ? <p className="harness-setup-note label-data">{job.detail}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
     </div>
   );

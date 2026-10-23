@@ -506,8 +506,10 @@ Founder rejected it as too minimal beside the product. The reading pieces it def
   gate: THE CONSOLE (monolith, true-share gauges, a row reader that names its row of how many and never
   shows a row's scores below the gate, the gate deliberating cell by cell to its «ANSWER»). What stays
   and what leaves: THE ROUTING MAP (rails 90°/45°, one port, a refused path cut at the boundary, never
-  understating what leaves). Many numbers others published: THE STRIP PLOT (the ruler; medians as
-  junctions; never a citation by itself). The System's own state: THE SYSTEM WINDOW. An inner page's own
+  understating what leaves). Many numbers others published: THE FIELD, small multiples (one panel per
+  board, one lane per maker, each score a tick at its true place on the ruler, the maker's range a bar
+  and its best a block; the panel's head names how far the best open-weight score stands from the top;
+  never a citation by itself; revised 2026-10-22, Founder: the single strip […]). The System's own state: THE SYSTEM WINDOW. An inner page's own
   structure: THE PAGE SEAL (one graduation per section, inscribed with their names).
 - **Motion on the web (19.5).** Arrival by cascade (420ms snap, 36ms stagger) and a figure's single
   scanline, below the fold only; deliberation once in view; cycles at seal rates (seed 6s, rings
@@ -537,6 +539,26 @@ Founder rejected it as too minimal beside the product. The reading pieces it def
   wider than 0.14em, and never carry a sentence. Nothing on the site is under 12px. All reading text
   meets WCAG AA contrast (4.5:1) on its ground. The type scale lives once in the site layer
   (deus-neuma-site `globals.css`, `--web-*`); no stylesheet sets its own size below it.
+- **THE STORY (Design note, 2026-10-22: […]; locked 2026-10-23).** The site's nav pages read as one story, in the nav's order: who you
+  meet, what you do together, what works beneath, what it measured, what stays yours, begin. Every one
+  is built from one kit (deus-neuma-site `src/app/site/story/`), so the story is the same thing in the
+  same place on every page:
+  - **The overview** opens the page: its one primary action first, if it has one; the story rail (the
+    six pages, this one marked, numbered); then the page's chapters as a numbered path of doors, each
+    with its one-line takeaway. Chapters are data, so the path and the heads cannot drift.
+  - **The chapter**: the numbered head, one statement at display size (Inter 200), then the answer by
+    shape (a figure, a flow, gauges or packed panels), the prose after it, detail folded one press
+    away. Never a wall of paragraphs.
+  - **Panels** pack facts side by side as chamfered panels, label in the data register; a limit or a
+    refusal is the same panel dashed (a cloud model as a neuma, what is not encrypted).
+  - **A flow** draws a process as numbered square nodes on one rail, packets showing direction; a
+    loop draws its return rail and names what ends it. Narrow screens read it top to bottom.
+  - **Gauges** are the few numbers a page stands on, before its charts (never repeating a figure that
+    already is the overview).
+  - **The way on**: every page but the last ends on one door, the next page of the story.
+  - **THE LOOK on the web**: a visitor may dress the site with the platform's own presets and
+    derivation (the strip's LOOK chip, the LOOK desk on /capabilities); the site wears dark dresses
+    only, and keeps the legibility floor's contrast under every dress.
 
 ## CHOKKAN — 直感, "INTUITION" (Design note, 2026-10-22 — locked for the site, beside SHINKEI and JŌHŌ SEKKEI
 

@@ -18,7 +18,8 @@ export const barView = ({ mind, plan, job, error, readyModel }) => {
   if (mind?.state === 'ready') return { view: 'ready', line: readyModel ? `Model ready · ${readyModel}` : 'Model ready', act: null };
   if (job?.state === 'running') return { view: 'setting', line: null, act: 'stop' };
   if (mind?.state === 'checking') return { view: 'checking', line: 'Checking the model…', act: null };
-  if (job?.state === 'failed') return { view: 'error', line: 'The setup stopped before it finished.', act: 'retry' };
+  // the backend's own sentence (plain words, ending in the act); its technical cause waits in details
+  if (job?.state === 'failed') return { view: 'error', line: job.error || 'The setup stopped before it finished.', act: 'retry' };
   if (job?.state === 'cancelled') return { view: 'error', line: 'The setup was stopped.', act: 'retry' };
   if (error && plan) return { view: 'error', line: error, act: 'retry' };
   if (error) return { view: 'none', line: NOT_RUNNING, act: 'reread', note: 'The setup plan could not be read.' };
