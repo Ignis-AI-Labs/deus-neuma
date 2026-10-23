@@ -137,10 +137,16 @@ export const toSlotArgs = (args) => {
   return prompt === undefined ? rest : { ...rest, positive: prompt };
 };
 
-// pure — the refusal a caller sees. Names the CLASS, never the term (FR-31),
-// and never hints at what would have passed. Exported for the image/generate
+// The slot a licence match sat in, in the being's words.
+const SLOT_WORDS = Object.freeze({ positive: 'your prompt', source: 'the words that made the source image' });
+
+// pure — the refusal a caller sees. The platform's law names the CLASS, never
+// the term (FR-31), and never hints at what would have passed. A model-licence
+// refusal guards no entrenched line, so given the screen's `match` it quotes the
+// word it read and where: a misread ordinary phrase is then plain to see and
+// reword (2026-10-23, "ripples expand"). Exported for the image/generate
 // intent, which screens at validate time with the same words.
-export const refusalMessage = (refusalClass) => {
+export const refusalMessage = (refusalClass, match = null) => {
   if (refusalClass === 'list_unavailable' || refusalClass === 'screen_error') {
     return 'The content law could not be read, so nothing can be generated. Your operator needs to look at this.';
   }
@@ -148,7 +154,10 @@ export const refusalMessage = (refusalClass) => {
     return 'Refused: how that image was made is not on record, so it cannot be used for sexual content. Make a new still first and start from that one.';
   }
   if (String(refusalClass).startsWith('licence:')) {
-    return `Refused by this pipeline's model licence (${refusalClass.slice(8)}): the model's publisher forbids it, so this pipeline cannot make it. Do not rephrase and retry here.`;
+    const head = `Refused by this pipeline's model licence (${refusalClass.slice(8)}): the model's publisher forbids it, so this pipeline cannot make it.`;
+    if (!match?.term) return `${head} Do not rephrase and retry here.`;
+    const slot = SLOT_WORDS[match.slot] ?? 'the text';
+    return `${head} The screen read "${match.term}" in "${match.where}" (${slot}). If those words are not what the licence forbids, reword that part and try again; if they are, this pipeline cannot make it — choose one whose licence allows it.`;
   }
   return `Refused by content law (${refusalClass}). This is a fixed boundary of the platform, not a setting — do not rephrase and retry.`;
 };

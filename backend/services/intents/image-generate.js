@@ -111,7 +111,7 @@ export const imageGenerateIntent = Object.freeze({
     });
     if (!built.ok) {
       return built.refusalClass
-        ? { ok: false, status: 'denied', reason: refusalMessage(built.refusalClass) }
+        ? { ok: false, status: 'denied', reason: refusalMessage(built.refusalClass, built.refusalMatch) }
         : { ok: false, status: 'invalid', reason: built.error };
     }
     return { ok: true, value: { args: payload, pipeline: resolved.pipeline, model: modelRes.model } };
@@ -177,7 +177,7 @@ export const imageGenerateIntent = Object.freeze({
             bytes, filename: `${jobId}${path.extname(source.path)}`, mime: source.record?.mime || 'image/png',
           });
           built = build(uploaded.name, sourceLineage);
-          if (!built.ok) return { ready, error: built.refusalClass ? refusalMessage(built.refusalClass) : built.error };
+          if (!built.ok) return { ready, error: built.refusalClass ? refusalMessage(built.refusalClass, built.refusalMatch) : built.error };
         }
         noteComfyActivity();
         emit({ tool, status: 'running', summary: `rendering — ${pipeline.label}` });

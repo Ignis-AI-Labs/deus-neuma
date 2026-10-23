@@ -14,8 +14,12 @@
  *     runtime (`data/image-forge/content-law.json`, gitignored) — never in the
  *     repo, never neuma-visible, never Settings-tunable (FR-15/NFR-6).
  *
- * Contract (FR-31): a refusal returns the triggering CLASS only, NEVER the
- * matched term — echoing the term would teach the filter. Fail-closed
+ * Contract (FR-31): a refusal of the platform's own law returns the triggering
+ * CLASS only, NEVER the matched term — echoing the term would teach the filter.
+ * A MODEL-LICENCE refusal (`licence:<class>`) is the one exception: it guards no
+ * entrenched line, so it names the word it matched and where, so a misreading
+ * is visible and fixable (2026-10-23: "ripples expand" read as a sexual term
+ * and the being could not tell why). Fail-closed
  * everywhere: an unreadable/invalid list, an unknown class, or any exception
  * mid-screen DENIES. The screen runs on every neuma-writable text slot BEFORE
  * the template is cloned or enqueued.
@@ -139,6 +143,59 @@ export const normalizeForScreen = (text) => {
   return { collapsed: s.replace(/[^a-z0-9]+/g, ''), spaced, joined };
 };
 
+// ── The BOUNDED matcher — licence classes only ──
+// `collapsed` matching reads straight through word boundaries: on 2026-10-23
+// "ripples expand" collapsed to "...ripplesexpand..." and met a sexual term,
+// refusing a still of dark water. The entrenched law keeps that reach on
+// purpose (glued numeric age terms like a spaced "12 yo" are MEANT to meet
+// across words, and over-refusal there is the safe side). A model licence
+// guards no entrenched line, so it gets the precise reading: a term may sit
+// inside one word, or cross the word breaks of its OWN phrase, or span whole
+// words end to end ("s ex", "s.e.x", a glued term written as two words) — but
+// never cut into two ordinary words from the middle.
+
+// Apostrophes join rather than split ("it's" is one word), so "it's expensive"
+// cannot offer a whole word "s" to start a span.
+const APOSTROPHES = /['\u2018\u2019\u02BC]/g;
+
+// Word-boundary offsets of a spaced/joined form, in collapsed coordinates
+// (" ab cde " → [0, 2, 5]). Pure.
+const cutsOf = (form) => form.trim().split(' ').filter(Boolean)
+  .reduce((cuts, w) => [...cuts, cuts[cuts.length - 1] + w.length], [0]);
+
+// First occurrence of `term` in `collapsed` that cuts no ordinary word, or -1. Pure.
+const boundedAt = (collapsed, cuts, term, breaks) => {
+  for (let s = collapsed.indexOf(term); s >= 0; s = collapsed.indexOf(term, s + 1)) {
+    const e = s + term.length;
+    const cutsAWord = cuts.some((c) => c > s && c < e && !breaks.includes(c - s));
+    if (!cutsAWord || (cuts.includes(s) && cuts.includes(e))) return s;
+  }
+  return -1;
+};
+
+// The words of `spaced` that the span [s, e) touches, for the refusal to quote. Pure.
+const wordsAt = (spaced, s, e) => {
+  const cuts = cutsOf(spaced);
+  return spaced.trim().split(' ').filter((_, i) => cuts[i + 1] > s && cuts[i] < e).join(' ');
+};
+
+// The first bounded match of a class's terms, as {term, where}, or null. Both
+// the spaced and the singles-joined word streams are tried, so […] (joined:
+// one word) and "se x" (spaced: two whole words) are each still read. A split
+// glued to a neighbour ("s e xy", "zzse x") is NOT: it cannot be told from two
+// ordinary words run together, and the entrenched law still reads it. Pure.
+const boundedMatch = (text, shapes) => {
+  const tight = normalizeForScreen(text.replace(APOSTROPHES, ''));
+  const cutSets = [cutsOf(tight.spaced), cutsOf(tight.joined)];
+  for (const { term, shown, breaks } of shapes) {
+    for (const cuts of cutSets) {
+      const s = boundedAt(tight.collapsed, cuts, term, breaks);
+      if (s >= 0) return { term: shown, where: wordsAt(tight.spaced, s, s + term.length) };
+    }
+  }
+  return null;
+};
+
 /**
  * Compile a raw list artifact into a matcher. Fail-closed: a malformed shape or
  * an UNKNOWN class name returns `{failClosed:true}` (the screen then denies
@@ -152,10 +209,15 @@ export const compileScreenList = (raw) => {
     return { failClosed: true, reason: 'list has no classes object' };
   }
   const terms = new Map();
+  const shapes = new Map();
   for (const cls of Object.keys(raw.classes)) {
     if (!SCREEN_CLASSES.includes(cls)) return { failClosed: true, reason: `unknown class '${cls}'` };
     const list = Array.isArray(raw.classes[cls]) ? raw.classes[cls] : [];
-    terms.set(cls, list.map((t) => normalizeForScreen(String(t)).collapsed).filter(Boolean));
+    const forms = list.map((t) => normalizeForScreen(String(t))).filter((f) => f.collapsed);
+    terms.set(cls, forms.map((f) => f.collapsed));
+    // Where each term's OWN words meet, so the bounded matcher (licence classes)
+    // can tell a phrase's word break from an ordinary word boundary it crossed.
+    shapes.set(cls, forms.map((f) => ({ term: f.collapsed, shown: f.spaced.trim(), breaks: cutsOf(f.spaced).slice(1, -1) })));
   }
 
   // Optional parallel artifact section: terms matched at WORD BOUNDARIES rather
@@ -170,7 +232,7 @@ export const compileScreenList = (raw) => {
     // phrase term ('9 year old') is tested as a phrase.
     wordTerms.set(cls, list.map((t) => normalizeForScreen(String(t)).spaced.trim()).filter(Boolean));
   }
-  return { failClosed: false, terms, wordTerms };
+  return { failClosed: false, terms, wordTerms, shapes };
 };
 
 /**
@@ -185,18 +247,7 @@ export const compileScreenList = (raw) => {
 export const screenPrompt = (text, list) => {
   if (!list || list.failClosed) return { ok: false, classes: ['list_unavailable'] };
   try {
-    const { collapsed, spaced, joined } = normalizeForScreen(text);
-    if (!collapsed) return { ok: true, classes: [] };
-    const hits = new Set();
-    for (const [cls, terms] of list.terms) {
-      if (terms.some((t) => collapsed.includes(t))) hits.add(cls);
-    }
-    // Word-boundary terms: whole-word containment in either the spaced form or
-    // the singles-joined form (so […] is caught, "draped" is not).
-    for (const [cls, terms] of (list.wordTerms || new Map())) {
-      if (terms.some((t) => spaced.includes(` ${t} `) || joined.includes(` ${t} `))) hits.add(cls);
-    }
-    const refusal = refusalFor(hits);
+    const refusal = refusalFor(hitsFor(text, list).hits);
     return refusal ? { ok: false, classes: [refusal] } : { ok: true, classes: [] };
   } catch (err) {
     log.error('prompt screen threw — failing closed', { err: err.message });
@@ -221,20 +272,33 @@ export const screenAll = (texts, list) => {
 /**
  * The raw class hits for one text, WITHOUT applying the refusal policy. Pure.
  * Separated so a polarity-aware caller can decide what each slot's hits mean.
- * @returns {{ok: boolean, hits: Set<string>}} ok:false ⇒ list unusable
+ * `hits` is the full-reach reading (collapsed substrings + word terms) the
+ * platform's law judges; `bounded` is the precise reading, per class, with the
+ * term and the words it sat in — what a licence refusal is decided and quoted on.
+ * Every bounded class is also in `hits`.
+ * @returns {{ok: boolean, hits: Set<string>, bounded: Map<string, {term: string, where: string}>}} ok:false ⇒ list unusable
  */
 const hitsFor = (text, list) => {
-  if (!list || list.failClosed) return { ok: false, hits: new Set() };
+  const bounded = new Map();
+  if (!list || list.failClosed) return { ok: false, hits: new Set(), bounded };
   const { collapsed, spaced, joined } = normalizeForScreen(text);
   const hits = new Set();
-  if (!collapsed) return { ok: true, hits };
+  if (!collapsed) return { ok: true, hits, bounded };
   for (const [cls, terms] of list.terms) {
     if (terms.some((t) => collapsed.includes(t))) hits.add(cls);
   }
+  // Word-boundary terms: whole-word containment in either the spaced form or
+  // the singles-joined form (so […] is caught, "draped" is not).
   for (const [cls, terms] of (list.wordTerms || new Map())) {
-    if (terms.some((t) => spaced.includes(` ${t} `) || joined.includes(` ${t} `))) hits.add(cls);
+    const t = terms.find((w) => spaced.includes(` ${w} `) || joined.includes(` ${w} `));
+    if (t) { hits.add(cls); bounded.set(cls, { term: t, where: t }); }
   }
-  return { ok: true, hits };
+  for (const [cls, shapes] of (list.shapes || new Map())) {
+    if (!hits.has(cls) || bounded.has(cls)) continue; // bounded ⊂ hits: nothing to look for
+    const m = boundedMatch(text, shapes);
+    if (m) bounded.set(cls, m);
+  }
+  return { ok: true, hits, bounded };
 };
 
 /**
@@ -265,21 +329,25 @@ const hitsFor = (text, list) => {
  * no sexually explicit content) names those classes in `licenceRefuses`; they
  * are refused as `licence:<class>` AFTER the platform's own law, so the refusal
  * says whose boundary it is and the platform's law is never loosened or bent.
+ * The licence is judged on the BOUNDED reading (never across two ordinary
+ * words) and its refusal carries `match: {term, where, slot}` — the word read,
+ * the words it sat in, and the slot's `name` when the caller gave one.
  *
  * A job that starts from an image whose making is not recorded (image-lineage.js)
  * passes `unrecordedSource`: the screen cannot know what the picture shows, so
  * sexual content from it is refused as `source_unrecorded`.
  *
- * @param {Array<{text: string, polarity?: 'positive'|'negative'}>} slots
+ * @param {Array<{text: string, polarity?: 'positive'|'negative', name?: string}>} slots
  * @param {ReturnType<typeof compileScreenList>} list
  * @param {{licenceRefuses?: string[], unrecordedSource?: boolean}} [opts]
- * @returns {{ok: boolean, classes: string[]}}
+ * @returns {{ok: boolean, classes: string[], match?: {term: string, where: string, slot: string|null}}}
  */
 export const screenSlots = (slots, list, { licenceRefuses = [], unrecordedSource = false } = {}) => {
   if (!list || list.failClosed) return { ok: false, classes: ['list_unavailable'] };
   try {
     const positive = new Set();
     const negative = new Set();
+    const positiveBounded = new Map(); // class → the first precise match, with its slot
     for (const slot of slots) {
       const text = slot?.text;
       if (typeof text !== 'string' || text.length === 0) continue;
@@ -287,6 +355,8 @@ export const screenSlots = (slots, list, { licenceRefuses = [], unrecordedSource
       if (!r.ok) return { ok: false, classes: ['list_unavailable'] };
       const into = slot.polarity === 'negative' ? negative : positive;
       for (const c of r.hits) into.add(c);
+      if (slot.polarity === 'negative') continue;
+      for (const [c, m] of r.bounded) if (!positiveBounded.has(c)) positiveBounded.set(c, { ...m, slot: slot.name ?? null });
     }
 
     // Build the EFFECTIVE hit set, then hand it to the one entrenched law
@@ -300,8 +370,11 @@ export const screenSlots = (slots, list, { licenceRefuses = [], unrecordedSource
     const refusal = refusalFor(effective);
     if (refusal) return { ok: false, classes: [refusal] };
     if (unrecordedSource && positiveSexual) return { ok: false, classes: ['source_unrecorded'] };
-    const licensed = licenceRefuses.find((cls) => positive.has(cls));
-    return licensed ? { ok: false, classes: [`licence:${licensed}`] } : { ok: true, classes: [] };
+    // The licence reads precisely and says what it read (see the bounded matcher).
+    const licensed = licenceRefuses.find((cls) => positiveBounded.has(cls));
+    return licensed
+      ? { ok: false, classes: [`licence:${licensed}`], match: positiveBounded.get(licensed) }
+      : { ok: true, classes: [] };
   } catch (err) {
     log.error('slot screen threw — failing closed', { err: err.message });
     return { ok: false, classes: ['screen_error'] };
