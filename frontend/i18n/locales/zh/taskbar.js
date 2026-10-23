@@ -19,6 +19,7 @@ export default Object.freeze({
   newInstance: '新建{{app}}',
   close: '关闭',
   closeAll: '关闭所有{{app}}窗口',
+  windowsOf: '已打开的{{app}}窗口',
   showNames: '显示名称',
   iconsOnly: '仅图标',
   position: '任务栏位置',

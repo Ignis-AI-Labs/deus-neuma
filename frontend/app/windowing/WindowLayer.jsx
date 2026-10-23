@@ -41,6 +41,7 @@ const WindowFrame = memo(({ w, app, focused, zIndex, dispatch }) => {
       title={app.makeTitle ? app.makeTitle(ordinal, w.payload) : app.title}
       controls={app.controls}
       focused={focused}
+      restoreKey={w.restored}
       z={zIndex}
       onFocus={onFocus}
       onClose={onClose}

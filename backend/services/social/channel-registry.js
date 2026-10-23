@@ -17,6 +17,8 @@ import { TIKTOK_POSTING_SCOPES } from './tiktok-oauth.js';
  * @property {string} env    .env bootstrap variable for this field
  * @property {string} [fallback] value used when neither store nor env carries one
  * @property {boolean} [connect] filled by the channel's CONNECT sign-in, never typed
+ * @property {boolean} [app] belongs to the developer APP (one per platform per
+ *   house), never to one account: a second account reuses it
  */
 
 /**
@@ -35,6 +37,11 @@ const field = (key, label, secret, env, fallback) =>
 // shows a CONNECT button for it, never an input.
 const connectField = (key, label, env) => Object.freeze({ ...field(key, label, true, env), connect: true });
 
+// A field of the developer APP (consumer key, OAuth client): stored once per
+// platform per house and shared by every account the app serves — the
+// platforms' own model (one app, many authorized accounts, one shared quota).
+const appField = (key, label, secret, env) => Object.freeze({ ...field(key, label, secret, env), app: true });
+
 /** @type {ReadonlyArray<ChannelEntry>} */
 export const CHANNEL_CATALOG = Object.freeze([
   Object.freeze({
@@ -42,8 +49,8 @@ export const CHANNEL_CATALOG = Object.freeze([
     name: 'X (Twitter)',
     maxChars: 280,
     fields: Object.freeze([
-      field('apiKey', 'API Key', true, 'X_API_KEY'),
-      field('apiSecret', 'API Key Secret', true, 'X_API_SECRET'),
+      appField('apiKey', 'API Key', true, 'X_API_KEY'),
+      appField('apiSecret', 'API Key Secret', true, 'X_API_SECRET'),
       field('accessToken', 'Access Token', true, 'X_ACCESS_TOKEN'),
       field('accessSecret', 'Access Token Secret', true, 'X_ACCESS_SECRET'),
     ]),
@@ -119,8 +126,8 @@ export const CHANNEL_CATALOG = Object.freeze([
     // The operator's OWN Google Cloud project, Desktop app client: their
     // quota, their consent screen. The refresh token comes from CONNECT.
     fields: Object.freeze([
-      field('clientId', 'OAuth Client ID (Desktop app)', false, 'YOUTUBE_CLIENT_ID'),
-      field('clientSecret', 'OAuth Client Secret', true, 'YOUTUBE_CLIENT_SECRET'),
+      appField('clientId', 'OAuth Client ID (Desktop app)', false, 'YOUTUBE_CLIENT_ID'),
+      appField('clientSecret', 'OAuth Client Secret', true, 'YOUTUBE_CLIENT_SECRET'),
       connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'YOUTUBE_REFRESH_TOKEN'),
     ]),
   }),
@@ -136,8 +143,8 @@ export const CHANNEL_CATALOG = Object.freeze([
     // Desktop + Content Posting. CONNECT fills the token pair; a refresh
     // replaces both before the access token's 24 hours run out.
     fields: Object.freeze([
-      field('clientKey', 'Client Key', false, 'TIKTOK_CLIENT_KEY'),
-      field('clientSecret', 'Client Secret', true, 'TIKTOK_CLIENT_SECRET'),
+      appField('clientKey', 'Client Key', false, 'TIKTOK_CLIENT_KEY'),
+      appField('clientSecret', 'Client Secret', true, 'TIKTOK_CLIENT_SECRET'),
       connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'TIKTOK_REFRESH_TOKEN'),
       connectField('accessToken', 'Access Token (set by CONNECT)', 'TIKTOK_ACCESS_TOKEN'),
       connectField('accessExpiresAt', 'Access Token Expiry (set by CONNECT)', 'TIKTOK_ACCESS_EXPIRES_AT'),
@@ -205,6 +212,7 @@ export const maskChannelCredentials = (channel, storeEntry, env) => Object.freez
       set: stored || fromEnv || hasFallback,
       source: stored ? 'store' : fromEnv ? 'env' : hasFallback ? 'default' : 'none',
       ...(f.connect ? { connect: true } : {}),
+      ...(f.app ? { app: true } : {}),
     });
   })),
 });

@@ -19,6 +19,7 @@ export default Object.freeze({
   newInstance: 'New {{app}}',
   close: 'Close',
   closeAll: 'Close all {{app}} windows',
+  windowsOf: 'Open {{app}} windows',
   showNames: 'Show names',
   iconsOnly: 'Icons only',
   position: 'Taskbar position',

@@ -57,6 +57,7 @@ describe('the CSS light-ups rise instead of switching on', () => {
     ['frontend/app/windowing/FloatingWindow.css', 'fwin-arrive'],
     ['frontend/app/windowing/FloatingWindow.css', 'fwin-sever'],
     ['frontend/app/RelinkShell/ArrivalVeil.css', 'arrivalLine'],
+    ['frontend/app/windowing/Taskbar.css', 'taskbar-rise'],
   ])('%s @keyframes %s begins dark', (file, name) => {
     expect(firstFrame(css(file), name)).toMatch(/opacity:\s*0\s*;/);
   });

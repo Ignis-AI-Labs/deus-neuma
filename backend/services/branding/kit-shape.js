@@ -177,3 +177,71 @@ export const ownerRefusals = (kit) => {
     ? []
     : [`owner "${kit.owner}" is not a neumaId — letters, digits, dash and underscore only`];
 };
+
+// THE COMPANY BLOCK (campaign plan §2.4, 2026-10-23). A kit already IS a
+// company; the block records what makes it one beyond its look: where it
+// sits in the house's tree (`parentId` — a core company heads its
+// subsidiaries; an unrelated client is its own top-level company), its site,
+// and its legal entity when it has one. Every field is optional, so every kit
+// on disk is a valid top-level company with nothing recorded yet.
+
+const KIT_ID = /^[a-z][a-z0-9-]{0,39}$/;
+const httpUrl = (v) => typeof v === 'string' && /^https?:\/\/[^\s]+$/i.test(v) && v.length <= 300;
+const shortText = (v, max = 120) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
+
+/**
+ * The company a kit is, normalized. Pure.
+ * @param {object} kit
+ * @param {string} brand - the kit's id (its directory name)
+ * @returns {{id: string, name: string, parentId: ?string, site: {url: ?string, links: string[]},
+ *   legalEntity: ?{name: string, jurisdiction: ?string}}}
+ */
+export const companyOf = (kit, brand) => {
+  const block = kit?.company && typeof kit.company === 'object' ? kit.company : {};
+  const legal = block.legalEntity && typeof block.legalEntity === 'object' ? block.legalEntity : null;
+  return Object.freeze({
+    id: brand,
+    name: kit?.name || brand,
+    parentId: KIT_ID.test(String(block.parentId ?? '')) && block.parentId !== brand ? block.parentId : null,
+    site: Object.freeze({
+      url: httpUrl(block.site?.url) ? block.site.url : null,
+      links: Object.freeze(Array.isArray(block.site?.links) ? block.site.links.filter(httpUrl) : []),
+    }),
+    legalEntity: legal && shortText(legal.name)
+      ? Object.freeze({ name: legal.name.trim(), jurisdiction: shortText(legal.jurisdiction) ? legal.jurisdiction.trim() : null })
+      : null,
+  });
+};
+
+/**
+ * What is wrong with a company block, named. Pure. Whether the parent exists
+ * (and the tree has no loop) is the house's question, answered where every
+ * company is in view (marketing/company-tree.js).
+ * @param {object} block
+ * @param {string} brand
+ * @returns {string[]}
+ */
+export const companyRefusals = (block, brand) => {
+  if (block === undefined || block === null) return [];
+  if (typeof block !== 'object' || Array.isArray(block)) return ['company must be an object'];
+  const out = [];
+  const allowed = ['parentId', 'site', 'legalEntity'];
+  for (const key of Object.keys(block)) if (!allowed.includes(key)) out.push(`company.${key} is not a company field (${allowed.join(', ')})`);
+  if (block.parentId !== undefined && block.parentId !== null) {
+    if (!KIT_ID.test(String(block.parentId))) out.push(`company.parentId "${block.parentId}" is not a company id`);
+    else if (block.parentId === brand) out.push('a company cannot be its own parent');
+  }
+  if (block.site !== undefined && block.site !== null) {
+    if (typeof block.site !== 'object' || Array.isArray(block.site)) out.push('company.site must be an object {url, links}');
+    else {
+      if (block.site.url !== undefined && block.site.url !== null && !httpUrl(block.site.url)) out.push('company.site.url must be a web address (https://…)');
+      if (block.site.links !== undefined && (!Array.isArray(block.site.links) || !block.site.links.every(httpUrl))) out.push('company.site.links must be a list of web addresses');
+    }
+  }
+  if (block.legalEntity !== undefined && block.legalEntity !== null) {
+    const legal = block.legalEntity;
+    if (typeof legal !== 'object' || Array.isArray(legal) || !shortText(legal.name)) out.push('company.legalEntity needs a name');
+    else if (legal.jurisdiction !== undefined && legal.jurisdiction !== null && !shortText(legal.jurisdiction)) out.push('company.legalEntity.jurisdiction must be short text');
+  }
+  return out;
+};

@@ -23,7 +23,7 @@ import { TabPortalHost } from './TabPortalHost.jsx';
 import { StripRegistrar } from './StripRegistrar.jsx';
 import { StreamPermissions } from './StreamPermissions.jsx';
 import { StreamTabs } from './StreamTabs.jsx';
-import { StreamChatTitle } from './StreamChatTitle.jsx';
+import { StreamChatTitle, StreamWindowLabel } from './StreamChatTitle.jsx';
 import { UnsealedNotice } from './UnsealedNotice.jsx';
 import { StreamChats } from './StreamChats.jsx';
 import { StreamRail } from './StreamRail.jsx';
@@ -466,6 +466,7 @@ export const chatApp = {
   // its OWN portal and sitting — else every stream window would draw the
   // same conversation (StreamWindowHost).
   multiInstance: true,
+  InstanceLabel: StreamWindowLabel, // each window's row in the taskbar's hover list
   // No `makeTitle` on purpose: the host wraps the whole frame, so ChatTitle
   // already reads THIS window's stream live — a title composed from the
   // spawn payload would be a snapshot false on the first switch.
