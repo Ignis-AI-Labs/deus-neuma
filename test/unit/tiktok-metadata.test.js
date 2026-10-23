@@ -13,7 +13,7 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
-  tiktokPkceChallenge, mintTikTokPkce, buildTikTokAuthorizeUrl, missingTikTokScopes, tokenRecord, TIKTOK_SCOPES,
+  tiktokPkceChallenge, mintTikTokPkce, buildTikTokAuthorizeUrl, missingTikTokScopes, tokenRecord, TIKTOK_SCOPES, TIKTOK_POSTING_SCOPES,
 } from '../../backend/services/social/tiktok-oauth.js';
 import {
   parseTikTokDraft, durationRefusal, buildPostInfo, chunkPlan, fileUploadSource, tiktokDraftRefusal, tiktokApproveRefusal,
@@ -57,14 +57,16 @@ describe('Login Kit for Desktop: PKCE in TikTok\'s hex form, the consent, the to
     const url = new URL(buildTikTokAuthorizeUrl({ clientKey: 'aw123', redirectUri: 'http://127.0.0.1:5555/callback/', challenge: 'c'.repeat(64), state: 's1' }));
     expect(`${url.origin}${url.pathname}`).toBe('https://www.tiktok.com/v2/auth/authorize/');
     expect(Object.fromEntries(url.searchParams)).toEqual({
-      client_key: 'aw123', response_type: 'code', scope: 'user.info.basic,video.publish,video.upload',
+      client_key: 'aw123', response_type: 'code', scope: 'user.info.basic,video.publish,video.upload,user.info.profile,user.info.stats,video.list',
       redirect_uri: 'http://127.0.0.1:5555/callback/', state: 's1', code_challenge: 'c'.repeat(64), code_challenge_method: 'S256',
     });
   });
 
   test('granted scopes are read comma-separated; the token record dates the access token', () => {
-    expect(missingTikTokScopes('user.info.basic,video.publish,video.upload')).toEqual([]);
-    expect(missingTikTokScopes('user.info.basic,video.upload')).toEqual(['video.publish']);
+    expect(missingTikTokScopes('user.info.basic,video.publish,video.upload')).toEqual(['user.info.profile', 'user.info.stats', 'video.list']);
+    expect(missingTikTokScopes('user.info.basic,video.publish,video.upload', TIKTOK_POSTING_SCOPES)).toEqual([]);
+    expect(missingTikTokScopes('video.list,user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload')).toEqual([]);
+    expect(missingTikTokScopes('user.info.basic,video.upload', TIKTOK_POSTING_SCOPES)).toEqual(['video.publish']);
     expect(missingTikTokScopes('')).toEqual([...TIKTOK_SCOPES]);
     expect(tokenRecord({ access_token: 'a', refresh_token: 'r', expires_in: 86400 }, Date.parse('2026-10-23T00:00:00Z')))
       .toEqual({ accessToken: 'a', refreshToken: 'r', accessExpiresAt: '2026-10-24T00:00:00.000Z' });

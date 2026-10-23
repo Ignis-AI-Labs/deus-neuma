@@ -91,7 +91,7 @@ describe('Login Kit for Desktop: loopback consent → token exchange → sealed 
     expect(`${auth.origin}${auth.pathname}`).toBe('https://www.tiktok.com/v2/auth/authorize/');
     const redirect = auth.searchParams.get('redirect_uri');
     expect(redirect).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/callback\/$/);
-    expect(auth.searchParams.get('scope')).toBe('user.info.basic,video.publish,video.upload');
+    expect(auth.searchParams.get('scope')).toBe('user.info.basic,video.publish,video.upload,user.info.profile,user.info.stats,video.list');
     expect(auth.searchParams.get('client_key')).toBe(CLIENT.clientKey);
     expect(auth.searchParams.get('code_challenge')).toMatch(/^[0-9a-f]{64}$/);
     expect(auth.searchParams.get('code_challenge_method')).toBe('S256');
@@ -115,7 +115,7 @@ describe('Login Kit for Desktop: loopback consent → token exchange → sealed 
 
     // Sealed: resolvable through the one door, the expiry 24h out, absent from the bytes on disk.
     const stored = await resolveChannelCredential(HOUSE, 'tiktok');
-    expect(stored).toMatchObject({ ...CLIENT, refreshToken: 'refresh-1', accessToken: 'access-1' });
+    expect(stored).toMatchObject({ ...CLIENT, refreshToken: 'refresh-1', accessToken: 'access-1', grantedScope: tiktok.state.grantedScope });
     expect(Date.parse(stored.accessExpiresAt) - before).toBeGreaterThan(86_000_000);
     const raw = await fs.readFile(channelCredentialsPath(HOUSE), 'utf8');
     for (const secret of ['refresh-1', 'access-1', CLIENT.clientSecret]) expect(raw).not.toContain(secret);

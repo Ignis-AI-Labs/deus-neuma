@@ -1,16 +1,27 @@
 /**
- * GET /api/v1/social-channels/queue/:id/tiktok — what a TikTok post's card
- * renders from: the house's TikTok account as creator info names it RIGHT
- * NOW (nickname, the privacy levels it offers, which interactions it turned
- * off) and the author's suggestions from the post's settings lines
- * (services/social/tiktok-approval.js). TikTok's guidelines require it read
- * at every render, so it is never cached. Mounted inside the social router,
- * so the session and the `/queue/:id` house door stand in front of it.
+ * The TikTok channel's own reads, mounted inside the social router (so the
+ * session stands in front of every one, and the `/queue/:id` house door in
+ * front of the first):
+ *
+ *   GET /queue/:id/tiktok  — what a TikTok post's card renders from: the
+ *       house's account as creator info names it RIGHT NOW (nickname, privacy
+ *       levels offered, interactions turned off) and the author's suggestions
+ *       (services/social/tiktok-approval.js). Read at every render.
+ *   GET /tiktok/profile    — the TIKTOK window's account view: profile, the
+ *       four counts, the recent videos, and what the connection cannot read
+ *       yet (services/social/tiktok-profile.js). Read on open and on REFRESH.
+ *   GET /tiktok/image?src= — one TikTok picture (avatar, cover) through the
+ *       narrow relay (services/social/tiktok-image-relay.js).
+ *
+ * Every answer about the account is the caller's own house's, and none is
+ * cached server-side.
  */
 import express from 'express';
 import { postQueue } from '../services/social/post-queue.js';
 import { houseWallet } from '../services/house-served.js';
 import { tiktokCardView } from '../services/social/tiktok-approval.js';
+import { readTikTokProfile } from '../services/social/tiktok-profile.js';
+import { relayTikTokImage } from '../services/social/tiktok-image-relay.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialTikTok');
@@ -27,6 +38,34 @@ router.get('/queue/:id/tiktok', async (req, res) => {
     log.error('TikTok card read failed', { id: req.params.id, error: error.message });
     return res.status(500).json({ error: 'Failed to read the TikTok account' });
   }
+});
+
+router.get('/tiktok/profile', async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const view = await readTikTokProfile(houseWallet(req.walletAddress));
+    if (view.ok) return res.json(view);
+    return res.status(409).json({ error: view.detail, reconnect: Boolean(view.reconnect) });
+  } catch (error) {
+    log.error('TikTok account read failed', { error: error.message });
+    return res.status(500).json({ error: 'Failed to read the TikTok account' });
+  }
+});
+
+router.get('/tiktok/image', async (req, res) => {
+  const out = await relayTikTokImage(req.query.src);
+  if (!out.ok) {
+    res.set('Cache-Control', 'no-store');
+    return res.status(out.status).json({ error: out.detail });
+  }
+  res.set({
+    'Content-Type': out.type,
+    'Content-Length': String(out.bytes.length),
+    'Cache-Control': 'private, max-age=3600',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'",
+  });
+  return res.end(out.bytes);
 });
 
 export default router;

@@ -25,7 +25,11 @@ export const tiktokApiRoot = () => process.env.NEUMA_TIKTOK_API_ROOT || 'https:/
 const tokenUrl = () => `${tiktokApiRoot()}/v2/oauth/token/`;
 
 /** The least posting needs: name the account, publish, and send to drafts. */
-export const TIKTOK_SCOPES = Object.freeze(['user.info.basic', 'video.publish', 'video.upload']);
+export const TIKTOK_POSTING_SCOPES = Object.freeze(['user.info.basic', 'video.publish', 'video.upload']);
+/** What the account view reads: username, bio and verified mark; the four counts; the videos. */
+export const TIKTOK_PROFILE_SCOPES = Object.freeze(['user.info.profile', 'user.info.stats', 'video.list']);
+/** Every permission a CONNECT asks for. Posting needs only its own three. */
+export const TIKTOK_SCOPES = Object.freeze([...TIKTOK_POSTING_SCOPES, ...TIKTOK_PROFILE_SCOPES]);
 /** The redirect path the developer app registers (`http://127.0.0.1:*\/callback/`). */
 export const TIKTOK_CALLBACK_PATH = '/callback/';
 
@@ -82,26 +86,30 @@ export const tiktokRefreshBody = ({ clientKey, clientSecret, refreshToken }) => 
 });
 
 /**
- * The scopes a consent asked for that were not granted (TikTok's `scope` is
- * comma-separated). Pure.
+ * The scopes of `wanted` that were not granted (TikTok's `scope` is
+ * comma-separated; a person may allow only some of them). Pure.
  * @param {string} granted
+ * @param {ReadonlyArray<string>} [wanted]
  * @returns {string[]}
  */
-export const missingTikTokScopes = (granted) => {
+export const missingTikTokScopes = (granted, wanted = TIKTOK_SCOPES) => {
   const have = new Set(String(granted || '').split(/[,\s]+/).filter(Boolean));
-  return TIKTOK_SCOPES.filter((s) => !have.has(s));
+  return wanted.filter((s) => !have.has(s));
 };
 
 /**
- * What a token answer becomes in the house's store: both tokens and the
- * moment the access token stops working. Pure.
- * @param {{access_token: string, refresh_token: string, expires_in: number}} data
+ * What a token answer becomes in the house's store: both tokens, the
+ * moment the access token stops working, and the permissions the person
+ * granted (kept only when TikTok names them, so an answer without them never
+ * erases the record). Pure.
+ * @param {{access_token: string, refresh_token: string, expires_in: number, scope?: string}} data
  * @param {number} nowMs
  */
 export const tokenRecord = (data, nowMs) => Object.freeze({
   accessToken: String(data.access_token),
   refreshToken: String(data.refresh_token),
   accessExpiresAt: new Date(nowMs + (Number(data.expires_in) || 0) * 1000).toISOString(),
+  ...(typeof data.scope === 'string' && data.scope ? { grantedScope: data.scope } : {}),
 });
 
 // impure — one form POST to the token endpoint; never throws.

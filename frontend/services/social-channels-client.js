@@ -145,6 +145,15 @@ export const approveQueuePost = (id, { scheduledFor, textSeen, tiktok } = {}) =>
 export const fetchTikTokCard = (id) => req(`/queue/${id}/tiktok`);
 
 /**
+ * The house's TikTok account as the TIKTOK window draws it: profile, the
+ * four counts, the recent videos, and what the connection cannot read yet.
+ * @returns {Promise<{ok: true, account: object, videos: object[]|null, hasMore: boolean,
+ *   videosError: string|null, missing: string[], reconnect: string|null, readAt: string}>}
+ */
+// impure
+export const fetchTikTokProfile = () => req('/tiktok/profile');
+
+/**
  * Decline a draft — it stays in the record, marked.
  * @param {string} id
  */

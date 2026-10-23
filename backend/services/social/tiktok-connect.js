@@ -11,6 +11,7 @@ import { createConnectFlow, houseClientFor } from './connect-flow.js';
 import { openOAuthLoopback } from './oauth-loopback.js';
 import {
   buildTikTokAuthorizeUrl, exchangeTikTokCode, mintTikTokPkce, missingTikTokScopes, tokenRecord, TIKTOK_CALLBACK_PATH,
+  TIKTOK_POSTING_SCOPES,
 } from './tiktok-oauth.js';
 import { readTikTokUser } from './tiktok-api.js';
 import { createLogger } from '../logger.js';
@@ -30,9 +31,11 @@ const openTikTokConsent = ({ clientKey, clientSecret, timeoutMs }) => openOAuthL
   timeoutMs,
 });
 
-// impure — what the consent's tokens become: a checked, named, sealed connection.
+// impure — what the consent's tokens become: a checked, named, sealed
+// connection. Only posting's own permissions are required; the account
+// view's (profile, counts, videos) may be declined and the view says so.
 const settle = async (wallet, { tokens }) => {
-  const missing = missingTikTokScopes(tokens.scope);
+  const missing = missingTikTokScopes(tokens.scope, TIKTOK_POSTING_SCOPES);
   if (missing.length) {
     return { status: 'error', error: `TikTok granted access without ${missing.join(' and ')}; check the app has Login Kit and Content Posting (Direct Post on), then CONNECT again and allow every permission` };
   }

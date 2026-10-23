@@ -1,7 +1,8 @@
 // tiktok-api.js — the TikTok Open API calls the channel needs: who the
 // connection speaks as (user info), what the account allows right now
-// (creator info), opening a publish (Direct Post or the inbox upload), and a
-// publish's status. Uploading the bytes is tiktok-upload.js.
+// (creator info), opening a publish (Direct Post or the inbox upload), a
+// publish's status, and the account view's reads (the profile's fields and
+// the recent videos). Uploading the bytes is tiktok-upload.js.
 //
 // Every call answers {ok:true, data} | {ok:false, status?, code?, detail,
 // reconnect?} and never throws. TikTok wraps answers as {data, error:{code}}
@@ -27,7 +28,7 @@ export const quoteBigIds = (raw) => String(raw).replace(
   /("publicaly_available_post_id"\s*:\s*\[)([^\]]*)(\])/g,
   (_, open, list, close) => `${open}${list.split(',').map((s) => s.trim()).filter(Boolean)
     .map((s) => (/^\d+$/.test(s) ? `"${s}"` : s)).join(',')}${close}`,
-);
+).replace(/("id"\s*:\s*)(\d{16,})(?=\s*[,}])/g, '$1"$2"');
 
 // impure — one authorised call; never throws.
 const call = async (method, pathAndQuery, accessToken, { body, signal } = {}) => {
@@ -95,3 +96,24 @@ export const initTikTokVideo = async (accessToken, { mode, postInfo, sourceInfo,
  */
 export const fetchPublishStatus = (accessToken, publishId, opts = {}) =>
   call('POST', '/v2/post/publish/status/fetch/', accessToken, { ...opts, body: { publish_id: publishId } });
+
+/**
+ * The account's own fields, as many as the connection's permissions allow
+ * (developers.tiktok.com/doc/tiktok-api-v2-get-user-info). impure — network.
+ * @param {string} accessToken
+ * @param {ReadonlyArray<string>} fields
+ * @returns {Promise<{ok: true, data: {user?: object}}|{ok: false, status?: number, code?: string, detail: string}>}
+ */
+export const readTikTokUserFields = (accessToken, fields, opts) =>
+  call('GET', `/v2/user/info/?fields=${fields.join(',')}`, accessToken, opts);
+
+/**
+ * The account's most recent public videos, newest first: one page
+ * (developers.tiktok.com/doc/tiktok-api-v2-video-list; max_count at most 20).
+ * impure — network.
+ * @param {string} accessToken
+ * @param {{fields: ReadonlyArray<string>, maxCount: number, signal?: AbortSignal}} args
+ * @returns {Promise<{ok: true, data: {videos?: object[], cursor?: number, has_more?: boolean}}|{ok: false, status?: number, code?: string, detail: string}>}
+ */
+export const listTikTokVideos = (accessToken, { fields, maxCount, signal }) =>
+  call('POST', `/v2/video/list/?fields=${fields.join(',')}`, accessToken, { body: { max_count: maxCount }, signal });

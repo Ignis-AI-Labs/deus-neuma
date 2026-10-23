@@ -3,7 +3,12 @@
  * that answers in the shapes TikTok documents (developers.tiktok.com, read
  * 2026-10-23) for the calls the TikTok channel makes:
  *   POST /v2/oauth/token/                         code exchange + refresh grant
- *   GET  /v2/user/info/                           the account (user.info.basic)
+ *   GET  /v2/user/info/                           the account: only the fields asked
+ *                                                 for, each refused unless its scope
+ *                                                 was granted (scope_not_authorized)
+ *   POST /v2/video/list/                          the recent videos (video.list)
+ *   GET  /cdn/<name>                              pictures, as TikTok's CDN would
+ *                                                 serve them (and ways it must not)
  *   POST /v2/post/publish/creator_info/query/     what the account allows
  *   POST /v2/post/publish/video/init/             Direct Post (FILE_UPLOAD)
  *   POST /v2/post/publish/inbox/video/init/       upload to drafts
@@ -34,6 +39,39 @@ const json = (res, status, body, headers = {}) => {
 const ok = (res, data) => json(res, 200, { data, error: { code: 'ok', message: '', log_id: 'log-1' } });
 const refuse = (res, status, code) => json(res, status, { data: {}, error: { code, message: code, log_id: 'log-2' } });
 
+// The scope that opens each user field (Get User Info reference).
+const FIELD_SCOPE = Object.freeze({
+  open_id: 'user.info.basic', union_id: 'user.info.basic', display_name: 'user.info.basic', avatar_url: 'user.info.basic',
+  username: 'user.info.profile', bio_description: 'user.info.profile', is_verified: 'user.info.profile',
+  profile_deep_link: 'user.info.profile', profile_web_link: 'user.info.profile',
+  follower_count: 'user.info.stats', following_count: 'user.info.stats', likes_count: 'user.info.stats', video_count: 'user.info.stats',
+});
+
+const standInUser = (root) => ({
+  open_id: 'open-1', union_id: 'union-1', display_name: 'Deus Neuma', avatar_url: `${root}/cdn/avatar.jpg`,
+  username: 'deusneuma', bio_description: 'Sovereign relationships with AI.', is_verified: true,
+  profile_deep_link: 'https://vm.tiktok.com/ZMstandin/', profile_web_link: 'https://www.tiktok.com/@deusneuma',
+  follower_count: 12345, following_count: 12, likes_count: 1500000, video_count: 3,
+});
+
+// Three videos, newest first; the first id is written raw as a 19-digit
+// int64, past what a JS number holds, to prove the platform keeps it exact.
+const STAND_IN_VIDEOS = Object.freeze([
+  { id: '7300000000000000003', raw: true, title: 'Forge night', video_description: 'Forge night — the armillary #aiart', create_time: 1761200000, cover: 'cover-3.webp', share_url: 'https://www.tiktok.com/@deusneuma/video/7300000000000000003', duration: 15, view_count: 2000, like_count: 150, comment_count: 12, share_count: 3 },
+  { id: '7300000000000000002', title: '', video_description: 'Second light', create_time: 1761100000, cover: 'cover-2.jpg', share_url: 'https://www.tiktok.com/@deusneuma/video/7300000000000000002', duration: 75, view_count: 500, like_count: 40, comment_count: 0, share_count: 1 },
+  { id: '7300000000000000001', title: 'First', video_description: 'First', create_time: 1761000000, cover: 'cover-1.jpg', share_url: 'https://www.tiktok.com/@deusneuma/video/7300000000000000001', duration: 8, view_count: 0, like_count: 0, comment_count: 0, share_count: 0 },
+]);
+
+/** The bytes the stand-in's CDN serves for each picture. */
+export const CDN_PICTURES = Object.freeze({
+  'avatar.jpg': Object.freeze({ type: 'image/jpeg', bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]) }),
+  'cover-1.jpg': Object.freeze({ type: 'image/jpeg', bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 9, 0xff, 0xd9]) }),
+  'cover-2.jpg': Object.freeze({ type: 'image/jpeg', bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 8, 0xff, 0xd9]) }),
+  'cover-3.webp': Object.freeze({ type: 'image/webp', bytes: Buffer.from('RIFF\x10\0\0\0WEBPVP8 ', 'latin1') }),
+  'evil.svg': Object.freeze({ type: 'image/svg+xml', bytes: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>') }),
+  'page.html': Object.freeze({ type: 'text/html', bytes: Buffer.from('<html>not a picture</html>') }),
+});
+
 /**
  * Stand the server. impure — a real listener on an ephemeral port.
  * @returns {Promise<{root: string, state: object, reset: () => void, close: () => Promise<void>}>}
@@ -43,6 +81,10 @@ export const startTikTokStandIn = async () => {
   const reset = () => Object.assign(state, {
     hits: [],
     tokenMode: 'ok', // 'ok' | 'no-publish-scope' | 'revoked'
+    // What the person allowed on TikTok's page; every token answer names it.
+    grantedScope: 'user.info.basic,user.info.profile,user.info.stats,video.list,video.publish,video.upload',
+    videos: STAND_IN_VIDEOS,
+    videoCode: 'ok',
     refreshCount: 0,
     creator: {
       creator_username: 'deusneuma', creator_nickname: 'Deus Neuma',
@@ -66,14 +108,58 @@ export const startTikTokStandIn = async () => {
       state.refreshCount += 1;
       return json(res, 200, {
         access_token: `access-r${state.refreshCount}`, refresh_token: `refresh-r${state.refreshCount}`,
-        expires_in: 86400, refresh_expires_in: 31536000, open_id: 'open-1', scope: 'user.info.basic,video.publish,video.upload', token_type: 'Bearer',
+        expires_in: 86400, refresh_expires_in: 31536000, open_id: 'open-1', scope: state.grantedScope, token_type: 'Bearer',
       });
     }
     return json(res, 200, {
       access_token: 'access-1', refresh_token: 'refresh-1', expires_in: 86400, refresh_expires_in: 31536000, open_id: 'open-1',
-      scope: state.tokenMode === 'no-publish-scope' ? 'user.info.basic,video.upload' : 'user.info.basic,video.publish,video.upload',
+      scope: state.tokenMode === 'no-publish-scope' ? 'user.info.basic,video.upload' : state.grantedScope,
       token_type: 'Bearer',
     });
+  };
+
+  const granted = () => new Set(state.grantedScope.split(','));
+
+  const onUser = (req, res, url, root) => {
+    const fields = String(url.searchParams.get('fields') || '').split(',').filter(Boolean);
+    state.hits.push({ leg: 'user', auth: req.headers.authorization, fields: fields.join(',') });
+    if (fields.some((f) => !granted().has(FIELD_SCOPE[f]))) return refuse(res, 401, 'scope_not_authorized');
+    const full = standInUser(root);
+    return ok(res, { user: Object.fromEntries(fields.filter((f) => f in full).map((f) => [f, full[f]])) });
+  };
+
+  const onVideos = async (req, res, url, root) => {
+    const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+    const fields = String(url.searchParams.get('fields') || '').split(',').filter(Boolean);
+    state.hits.push({ leg: 'videos', auth: req.headers.authorization, fields: fields.join(','), body });
+    if (!granted().has('video.list')) return refuse(res, 401, 'scope_not_authorized');
+    if (state.videoCode !== 'ok') return refuse(res, 429, state.videoCode);
+    if (!(body.max_count >= 1 && body.max_count <= 20)) return refuse(res, 400, 'invalid_params');
+    const page = state.videos.slice(0, body.max_count).map((v) => {
+      const full = { ...v, cover_image_url: `${root}/cdn/${v.cover}` };
+      return Object.fromEntries(fields.filter((f) => f in full).map((f) => [f, full[f]]));
+    });
+    // Written by hand so a raw-marked id leaves as a bare int64, as TikTok's would.
+    const videos = page.map((v, i) => (state.videos[i].raw && v.id ? JSON.stringify(v).replace(`"id":"${v.id}"`, `"id":${v.id}`) : JSON.stringify(v)));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(`{"data":{"videos":[${videos.join(',')}],"cursor":1761000000000,"has_more":${state.videos.length > body.max_count}},"error":{"code":"ok","message":"","log_id":"l"}}`);
+  };
+
+  const onCdn = (req, res, url, root) => {
+    const name = url.pathname.slice('/cdn/'.length);
+    state.hits.push({ leg: 'cdn', name, cookie: req.headers.cookie || null, authorization: req.headers.authorization || null, referer: req.headers.referer || null });
+    if (name === 'moved') { res.writeHead(302, { Location: `${root}/cdn/avatar.jpg` }); return res.end(); }
+    if (name === 'away') { res.writeHead(302, { Location: 'https://example.com/x.jpg' }); return res.end(); }
+    if (name === 'big.jpg') {
+      res.writeHead(200, { 'Content-Type': 'image/jpeg' }); // no length declared: the cap must count
+      const chunk = Buffer.alloc(256 * 1024, 7);
+      for (let i = 0; i < 20; i += 1) res.write(chunk);
+      return res.end();
+    }
+    const pic = CDN_PICTURES[name];
+    if (!pic) return json(res, 404, {});
+    res.writeHead(200, { 'Content-Type': pic.type, 'Content-Length': pic.bytes.length });
+    return res.end(pic.bytes);
   };
 
   const onInit = async (req, res, mode, root) => {
@@ -139,10 +225,9 @@ export const startTikTokStandIn = async () => {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://stand-in');
     if (url.pathname === '/v2/oauth/token/' && req.method === 'POST') return onToken(req, res);
-    if (url.pathname === '/v2/user/info/') {
-      state.hits.push({ leg: 'user', auth: req.headers.authorization, fields: url.searchParams.get('fields') });
-      return ok(res, { user: { open_id: 'open-1', display_name: 'Deus Neuma' } });
-    }
+    if (url.pathname === '/v2/user/info/') return onUser(req, res, url, root);
+    if (url.pathname === '/v2/video/list/' && req.method === 'POST') return onVideos(req, res, url, root);
+    if (url.pathname.startsWith('/cdn/')) return onCdn(req, res, url, root);
     if (url.pathname === '/v2/post/publish/creator_info/query/') {
       await readBody(req);
       state.hits.push({ leg: 'creator', auth: req.headers.authorization });

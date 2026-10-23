@@ -88,6 +88,7 @@ export const ChannelConnect = ({ channel, test, onConnected }) => {
         {connected
           ? <span className="settings-tag-ok label-data">{t('channelKeys.connect.connected', { channel: title || '…' })}</span>
           : <span className="settings-tag-dim label-data">{t('channelKeys.connect.notConnected')}</span>}
+        {connected && test?.profileNeeds ? <span className="settings-note">{test.profileNeeds}</span> : null}
         {waiting ? <span className="settings-note">{t(copy.waiting)}</span> : null}
         {!clientReady ? <span className="settings-note">{t(copy.needClient)}</span> : null}
         {error ? <span className="settings-err">{error}</span> : null}

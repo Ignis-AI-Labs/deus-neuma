@@ -97,7 +97,7 @@ router.get('/flight-test', async (req, res) => {
 // every /queue/:id act stands behind the house door (queue-house.js)
 router.use('/queue/:id', queueHouseGuard);
 router.use(socialThreadRouter); // PUT /queue/:id/approve-thread — the whole thread in one decision
-router.use(socialTikTokRouter); // GET /queue/:id/tiktok — what a TikTok post's card renders from
+router.use(socialTikTokRouter); // the TikTok reads: a post's card, the account view, its pictures
 router.get('/queue', async (req, res) => {
   try {
     const [entries, served] = await Promise.all([postQueue.load(), readServed()]);

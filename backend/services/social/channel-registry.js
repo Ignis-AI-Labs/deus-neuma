@@ -7,6 +7,8 @@
 // (backend/services/social/<id>-poster.js). Adding a platform means adding the
 // poster first, then the entry.
 
+import { TIKTOK_POSTING_SCOPES } from './tiktok-oauth.js';
+
 /**
  * @typedef {Object} ChannelField
  * @property {string} key    camelCase field name in the credential entry
@@ -139,6 +141,10 @@ export const CHANNEL_CATALOG = Object.freeze([
       connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'TIKTOK_REFRESH_TOKEN'),
       connectField('accessToken', 'Access Token (set by CONNECT)', 'TIKTOK_ACCESS_TOKEN'),
       connectField('accessExpiresAt', 'Access Token Expiry (set by CONNECT)', 'TIKTOK_ACCESS_EXPIRES_AT'),
+      // The permissions the person granted. A connection that recorded none
+      // was made before the account view, when CONNECT asked for posting's
+      // three alone: that is exactly what it holds.
+      Object.freeze({ ...connectField('grantedScope', 'Granted Permissions (set by CONNECT)', 'TIKTOK_GRANTED_SCOPE'), fallback: TIKTOK_POSTING_SCOPES.join(',') }),
     ]),
   }),
 ]);

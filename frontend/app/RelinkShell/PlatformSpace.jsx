@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { CampaignsSection } from './CampaignsSection.jsx';
 import { CampaignQueueSection } from './CampaignQueueSection.jsx';
+import { TikTokAccount } from './TikTokAccount.jsx';
 import { PlatformHeader } from './PlatformHeader.jsx';
 import { StandingPanel, StandingNotice } from './StandingPanel.jsx';
 import { usePlatformPulse } from './use-platform-pulse.js';
@@ -24,10 +25,16 @@ const SUBS = [
   { id: 'queue', label: 'QUEUE' },
 ];
 
+// A platform whose API reads the house's own account opens on an ACCOUNT
+// board: the account as the platform shows it (TikTok today).
+const ACCOUNT_BOARDS = Object.freeze({ tiktok: TikTokAccount });
+const subsFor = (channelId) => (ACCOUNT_BOARDS[channelId] ? [{ id: 'account', label: 'ACCOUNT' }, ...SUBS] : SUBS);
+
 export const PlatformSpace = ({ channelId }) => {
   const standing = usePlatformStanding(channelId);
   const { channel, holder, notice, loadError } = standing;
-  const [sub, setSub] = useState('campaigns');
+  const AccountBoard = ACCOUNT_BOARDS[channelId] || null;
+  const [sub, setSub] = useState(AccountBoard ? 'account' : 'campaigns');
   const [standingOpen, setStandingOpen] = useState(false);
   const [drawer, setDrawer] = useState(null);
   // A console door's destination; `n` remounts the queue board on each press.
@@ -66,7 +73,7 @@ export const PlatformSpace = ({ channelId }) => {
             ? <StandingPanel standing={standing} test={test} drawer={drawer} onDrawer={setDrawer} /> : null}
 
           <div className="outreach-tabs" role="tablist" aria-label={`${channel.name} boards`}>
-            {SUBS.map((s) => (
+            {subsFor(channel.id).map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -80,9 +87,9 @@ export const PlatformSpace = ({ channelId }) => {
             ))}
           </div>
 
-          {/* Keyed by board so each mounts fresh on entry. */}
-          {sub === 'campaigns'
-            ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} />
+          {/* Keyed by board so each mounts fresh on entry (the account re-reads on every entry). */}
+          {sub === 'account' && AccountBoard ? <AccountBoard key={`account-${channel.id}`} />
+            : sub === 'campaigns' ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} />
             : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={channel.name}
                 focus={focus.n ? focus : null} onChanged={pulseRead.refresh} />}
         </>

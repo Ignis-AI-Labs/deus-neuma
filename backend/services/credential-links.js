@@ -84,7 +84,7 @@ export const CREDENTIAL_LINKS = Object.freeze({
     tiktok: Object.freeze([
       link('https://developers.tiktok.com/apps/', 'TikTok developer apps', 'copy the app\'s client key and client secret here; a sandbox has its own pair'),
       link('https://developers.tiktok.com/doc/login-kit-desktop', 'Login Kit for Desktop', 'add Login Kit, platform Desktop, redirect URI http://127.0.0.1:*/callback/'),
-      link('https://developers.tiktok.com/doc/content-posting-api-get-started', 'Content Posting API', 'add Content Posting with Direct Post on; scopes user.info.basic, video.publish, video.upload'),
+      link('https://developers.tiktok.com/doc/content-posting-api-get-started', 'Content Posting API', 'add Content Posting with Direct Post on; under Scopes add all six: user.info.basic, user.info.profile, user.info.stats, video.list, video.publish, video.upload'),
       link('https://developers.tiktok.com/doc/add-a-sandbox', 'TikTok sandbox', 'add your TikTok account as a sandbox target user to test before review'),
     ]),
   }),

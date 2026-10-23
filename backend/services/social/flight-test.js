@@ -21,6 +21,7 @@ import { isSecureServiceUrl } from './bluesky-poster.js';
 import { GRAPH_VERSION } from './facebook-poster.js';
 import { readYouTubeChannel } from './youtube-poster.js';
 import { readTikTokAccount } from './tiktok-poster.js';
+import { missingProfileScopes, profileReconnectWords } from './tiktok-profile-view.js';
 
 const TTL_MS = 60 * 1000;
 const TIMEOUT_MS = 8 * 1000;
@@ -163,11 +164,16 @@ const probeYouTube = async (credentials, signal) => {
 
 // The account the house's TikTok sign-in speaks as, by its display name; the
 // probe refreshes the access token through the house's store when it is due.
+// A connection without the account view's permissions says so (`profileNeeds`).
 const probeTikTok = async (credentials, signal, wallet) => {
   if (!credentials) return unconfigured('TikTok');
   const me = await readTikTokAccount(wallet, { signal });
   if (!me.ok) return { ok: false, status: me.status, detail: me.detail };
-  return { ok: true, account: { id: me.user.id, name: me.user.displayName, title: me.user.displayName } };
+  return {
+    ok: true,
+    account: { id: me.user.id, name: me.user.displayName, title: me.user.displayName },
+    profileNeeds: profileReconnectWords(missingProfileScopes(credentials.grantedScope)),
+  };
 };
 
 const PROBES = Object.freeze({
