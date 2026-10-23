@@ -33,8 +33,11 @@ const plan = await M.currentPlan();
 if (!plan.supported) { say(`Model server: not set up. ${plan.reason} ${later}`); process.exit(1); }
 if (plan.model?.name) say(`The model for this PC: ${plan.model.name} (${plan.model.quant}), about ${plan.model.sizeGB} GB.`);
 for (const note of plan.notes || []) say(note);
-if (plan.steps.length === 0) { say(`Model server: ready (${plan.model.name}).`); process.exit(0); }
-say(`Setup will: ${plan.steps.map((s) => s.label).join(', ')}. Download ${gb(plan.downloadBytes)} in all.`);
+// Every plan ends with the answer check, so a machine already set up still runs the job: the check
+// proves the model speaks, and a passed check is exit 0 like any finished setup.
+const work = plan.steps.filter((s) => s.id !== 'verify');
+if (work.length === 0) say(`The model server and ${plan.model.name} are already set up. Checking that it answers.`);
+else say(`Setup will: ${plan.steps.map((s) => s.label).join(', ')}.${plan.downloadBytes > 0 ? ` Download ${gb(plan.downloadBytes)} in all.` : ''}`);
 // with a chosen folder the job itself checks that folder's drive; without one, the data root's
 if (!home && !plan.enoughDisk) { say(`Not enough disk space: it needs ${gb(plan.needBytes)} free, this disk has ${gb(plan.freeBytes)}. ${later}`); process.exit(1); }
 if (!process.argv.includes('--yes')) process.exit(0);
