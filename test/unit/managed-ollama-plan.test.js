@@ -5,8 +5,8 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
-  OLLAMA_ALT_ENDPOINT, OLLAMA_ENDPOINT, OLLAMA_VERSION, humanBytes, installPlan, managedEndpoints, ollamaAssetFor, ollamaModelRef,
-  ollamaPullable, pullProgress, versionAtLeast,
+  OLLAMA_ALT_ENDPOINT, OLLAMA_ENDPOINT, OLLAMA_VERSION, humanBytes, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor,
+  ollamaModelRef, ollamaPullable, pullProgress, versionAtLeast,
 } from '../../backend/services/managed-ollama-plan.js';
 
 const REC = Object.freeze({ model: 'Qwen3.8-4B (distilled)', quant: 'Q4_K_M', sizeGB: 2.8, source: 'empero-ai/Qwen3.8-4B-Distill-GGUF' });
@@ -177,5 +177,28 @@ describe('pull progress', () => {
     expect(humanBytes(2.8e9)).toBe('2.8 GB');
     expect(humanBytes(36_838_937)).toBe('37 MB');
     expect(humanBytes(0)).toBe('0 MB');
+  });
+});
+
+describe("the platform's own server: what it is started with (2026-10-23)", () => {
+  test('the fitted window as its default, one model and one slot', () => {
+    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1' });
+  });
+
+  test("the person's own slot and model settings stand", () => {
+    expect(managedServeEnv({ window: 20480, env: { OLLAMA_NUM_PARALLEL: '2', OLLAMA_MAX_LOADED_MODELS: '3' } }))
+      .toMatchObject({ OLLAMA_CONTEXT_LENGTH: '20480', OLLAMA_NUM_PARALLEL: '2', OLLAMA_MAX_LOADED_MODELS: '3' });
+  });
+
+  test('a card held by the driver guard is hidden from it: no CUDA device, no Vulkan', () => {
+    expect(managedServeEnv({ window: 32768, holdGpu: true })).toMatchObject({ CUDA_VISIBLE_DEVICES: '-1', OLLAMA_VULKAN: '0' });
+    expect(managedServeEnv({ window: 32768 })).not.toHaveProperty('CUDA_VISIBLE_DEVICES');
+  });
+
+  test("the plan carries the driver guard's words for the screen, and nothing when it has none", () => {
+    const held = { hold: true, checked: true, line: 'The graphics driver here is 572.70 …', link: 'https://www.nvidia.com/en-us/drivers/' };
+    expect(installPlan(base({ gpuGuard: held })).gpuDriver).toEqual(held);
+    expect(installPlan(base({ gpuGuard: { hold: false, checked: true } })).gpuDriver).toBeNull();
+    expect(installPlan(base()).gpuDriver).toBeNull();
   });
 });

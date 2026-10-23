@@ -9,6 +9,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { getDataRoot } from './data-root.js';
+import { OLLAMA_SERVED_CONTEXT, OLLAMA_WINDOW_FLOOR } from './ollama-window.js';
 
 /** The record's path, read at call time (packaged vs dev data roots). impure */
 export const managedRecordPath = () => path.join(getDataRoot(), 'model-server', 'managed.json');
@@ -16,6 +17,18 @@ export const managedRecordPath = () => path.join(getDataRoot(), 'model-server', 
 /** What the platform set up ({version, managed, bin, endpoint, home, modelsDir, model, …}), or null. impure */
 export const readManagedRecord = () => {
   try { return JSON.parse(fs.readFileSync(managedRecordPath(), 'utf8')); } catch { return null; }
+};
+
+/**
+ * The window an Ollama is served at on this machine: the one fitted to the card when the
+ * platform's own server last started (managed-ollama.js), else the usual one. Every chat to an
+ * Ollama names no more than this (llm-provider.js), so no request asks a card for more room than
+ * it was fitted to. impure (fs)
+ * @returns {number}
+ */
+export const servedOllamaWindow = () => {
+  const w = Number(readManagedRecord()?.window);
+  return Number.isInteger(w) && w >= OLLAMA_WINDOW_FLOOR && w <= OLLAMA_SERVED_CONTEXT ? w : OLLAMA_SERVED_CONTEXT;
 };
 
 /**

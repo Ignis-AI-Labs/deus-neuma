@@ -210,8 +210,11 @@ describe('model-capabilities.js', () => {
     });
 
     it('a trained window above the served one reads as the served window; a smaller one stays', () => {
-      expect(interpretOllamaShow({ model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(65536);
-      expect(interpretOllamaShow({ model_info: { 'qwen3.context_length': 40960 } }).contextWindow).toBe(40960);
+      expect(interpretOllamaShow({ model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(32768);
+      // a card that could hold less was fitted lower (ollama-window.js): the served window is that
+      expect(interpretOllamaShow({ model_info: { 'qwen35.context_length': 262144 } }, 20480).contextWindow).toBe(20480);
+      expect(interpretOllamaShow({ model_info: { 'qwen3.context_length': 40960 } }).contextWindow).toBe(32768);
+      expect(interpretOllamaShow({ model_info: { 'llama.context_length': 8192 } }).contextWindow).toBe(8192);
       // a window pinned in the Modelfile is the operator's decision and stands
       expect(interpretOllamaShow({ parameters: 'num_ctx 131072', model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(131072);
     });

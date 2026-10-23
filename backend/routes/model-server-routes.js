@@ -1,11 +1,13 @@
 // /api/v1/model-server — set up a local model server for a person who has none.
 // The plan is read from this machine (GET /plan); the install owner starts the setup
 // (POST /install), the screen polls its progress (GET /status), and may stop it (POST /cancel).
+// An NVIDIA driver older than its card needs keeps the model on the processor; the install owner
+// may choose to use the graphics card anyway, or go back (POST /gpu-driver).
 // The work is managed-ollama.js; the decisions are managed-ollama-plan.js.
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { requireInstallOwner } from '../services/install-owner.js';
-import { cancelJob, currentPlan, installHome, jobStatus, startJob } from '../services/managed-ollama.js';
+import { cancelJob, chooseGpuAnyway, currentPlan, installHome, jobStatus, startJob } from '../services/managed-ollama.js';
 import { createLogger } from '../services/logger.js';
 
 const router = express.Router();
@@ -36,6 +38,19 @@ router.get('/status', (req, res) => {
 
 router.post('/cancel', requireInstallOwner, (req, res) => {
   res.json({ cancelled: cancelJob(), job: jobStatus() });
+});
+
+router.post('/gpu-driver', requireInstallOwner, async (req, res) => {
+  const use = req.body?.useGpuAnyway;
+  if (typeof use !== 'boolean') return res.status(400).json({ error: 'useGpuAnyway must be true or false.' });
+  try {
+    const guard = await chooseGpuAnyway(use, req.walletAddress || null);
+    log.info('graphics driver choice', { useGpuAnyway: use, wallet: req.walletAddress, hold: guard.hold });
+    return res.json({ guard });
+  } catch (err) {
+    log.error('graphics driver choice failed', { error: err.message });
+    return res.status(500).json({ error: 'The choice could not be kept.' });
+  }
 });
 
 export default router;

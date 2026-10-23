@@ -9,6 +9,7 @@ import { useModelSetup } from './use-model-setup.js';
 import { barView, settingLine } from './model-bar-view.js';
 import { size } from './setup-words.js';
 import { StatusRing } from './door-glyphs.jsx';
+import { GpuDriverNotice } from './GpuDriverNotice.jsx';
 import './ModelBar.css';
 
 /** The setup's act, labelled with the model and the download it costs. Pure. */
@@ -68,6 +69,7 @@ export const ModelBar = ({ ref, mind, recheck, readyModel, verdict, waiting, onD
         <p className="door-bar-line" role="status" aria-live="polite">{line}</p>
         {bar.view === 'setting' ? <progress className="door-bar-progress" max={100} value={progress.pct ?? undefined} /> : null}
         {bar.note || waiting ? <p className="door-bar-note">{[bar.note, waiting].filter(Boolean).join(' ')}</p> : null}
+        <GpuDriverNotice notice={verdict?.driver ?? null} onChange={() => { reread(); onDone(); }} />
       </div>
       <div className="door-bar-act">
         {bar.act === 'setup' || bar.act === 'reading' ? (

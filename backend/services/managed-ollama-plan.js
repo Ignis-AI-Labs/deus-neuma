@@ -116,9 +116,10 @@ export const pullableChoice = (recommendation) => {
  *   system: {bin: string, version: string|null}|null, managedInstalled: boolean, freeBytes: number|null}} machine
  *   running: what answers on the usual port; own: what answers where the platform's own server
  *   was set up (its record); system: an Ollama installed outside the platform; managedInstalled:
- *   the platform's own server is on disk; endpoints: the platform's usual + next endpoint
+ *   the platform's own server is on disk; endpoints: the platform's usual + next endpoint;
+ *   gpuGuard: the driver guard (gpu-driver-guard.js), carried for the screen when it has words
  */
-export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints() }) => {
+export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints(), gpuGuard = null }) => {
   const { choice: recommendation, note: choiceNote } = pullableChoice(matched);
   const ref = ollamaModelRef(recommendation);
   if (!ref) {
@@ -165,6 +166,7 @@ export const installPlan = ({ platform, arch, recommendation: matched, running, 
     needBytes,
     freeBytes: freeBytes ?? null,
     enoughDisk: freeBytes == null || freeBytes >= needBytes,
+    gpuDriver: gpuGuard?.line ? gpuGuard : null,
   });
 };
 
@@ -188,3 +190,21 @@ export const humanBytes = (n) => {
   // nothing is 0 MB, never "1 MB" (a plan with nothing to download read "DOWNLOAD 1 MB", 2026-10-23)
   return `${n > 0 ? Math.max(1, Math.round(n / 1_000_000)) : 0} MB`;
 };
+
+/**
+ * The environment the platform's own `ollama serve` runs with, beside its address and models
+ * folder. Pure.
+ * - The window: its default is the one every request names, so no request reloads the model.
+ * - One model, one slot (2026-10-23): a second model or a second slot is a second share of the
+ *   card; the being runs one turn at a time. The person's own setting, if they made one, stands.
+ * - A card held by the driver guard (gpu-driver-guard.js) is hidden from the server: CUDA sees no
+ *   device and the Vulkan path is off, so the model is loaded on the processor only.
+ * @param {{window: number, holdGpu?: boolean, env?: Record<string, string|undefined>}} input
+ * @returns {Readonly<Record<string, string>>} the keys to set
+ */
+export const managedServeEnv = ({ window, holdGpu = false, env = {} }) => Object.freeze({
+  OLLAMA_CONTEXT_LENGTH: String(window),
+  OLLAMA_NUM_PARALLEL: env.OLLAMA_NUM_PARALLEL || '1',
+  OLLAMA_MAX_LOADED_MODELS: env.OLLAMA_MAX_LOADED_MODELS || '1',
+  ...(holdGpu ? { CUDA_VISIBLE_DEVICES: '-1', OLLAMA_VULKAN: '0' } : {}),
+});

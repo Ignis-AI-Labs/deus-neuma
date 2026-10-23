@@ -9,7 +9,7 @@
  * Pure functions, real inputs, real outputs — no mock in the claimed path.
  */
 import { describe, test, expect } from 'vitest';
-import { capacityVerdict, machineLine } from '../../frontend/app/FirstRunChoice/capacity-verdict.js';
+import { capacityVerdict, driverNotice, machineLine } from '../../frontend/app/FirstRunChoice/capacity-verdict.js';
 
 describe('machineLine', () => {
   test('names the GPU and its VRAM when there is one', () => {
@@ -100,5 +100,26 @@ describe('capacityVerdict with a model already running', () => {
     expect(ready.detail).toMatch(/^A model is already running on this machine — nothing to download\./);
     expect(ready.detail).not.toContain('GB to download');
     expect(capacityVerdict({ hardware, recommendation: rec, ready: false }).detail).toMatch(/^About 2\.8 GB to download\./);
+  });
+});
+
+describe('the graphics driver notice at the door (backend gpu-driver-guard.js)', () => {
+  const held = { hold: true, checked: true, floor: 580, have: 572.7, line: 'The graphics driver here is 572.70; …', link: 'https://www.nvidia.com/en-us/drivers/' };
+  const setup = (gpuDriver) => ({
+    hardware: { gpu: { name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU', vramGB: 12 }, memoryGB: 32, platform: 'win32', gpuDriver },
+    recommendation: { model: 'Qwen3.8-4B (distilled)', fit: 'comfortable', mode: 'gpu', why: 'x', sizeGB: 2.8 },
+  });
+
+  test('a held card rides the verdict with its words, link and state', () => {
+    expect(capacityVerdict(setup(held)).driver).toEqual({ line: held.line, link: held.link, hold: true, overridden: false });
+  });
+
+  test('a driver with nothing to say adds nothing to the verdict', () => {
+    expect(capacityVerdict(setup({ hold: false, checked: true, floor: 580, have: 581.57 }))).not.toHaveProperty('driver');
+    expect(driverNotice(null)).toBeNull();
+  });
+
+  test("the person's choice to use the card anyway is still said", () => {
+    expect(driverNotice({ gpuDriver: { hold: false, overridden: true, line: 'You chose …', link: held.link } })).toMatchObject({ hold: false, overridden: true });
   });
 });

@@ -51,6 +51,7 @@ export {
   getModels, isAuxiliaryModel, selectActiveModel, honestModelName, getActiveModel,
 } from './llm-selection.js';
 import { leaseForRequest, releasingWithBody } from './substrate-lease.js';
+import { servedOllamaWindow } from './managed-ollama-record.js';
 
 const log = createLogger('LLMProvider');
 
@@ -275,10 +276,12 @@ export const createStreamRequest = async (messages, options = {}) => {
   const headers = buildHeaders(config);
   // A close held from calling (close-prefix.js): on the local wire the tool-call opener is banned.
   const ban = options.banToolCalls && isLocalLlamaWire(config) ? await toolCallBan({ ...config, model }) : null;
-  // An Ollama is told its window on every request (model-capabilities.js OLLAMA_SERVED_CONTEXT)
-  const ollamaWindow = dialectOf(config) === 'ollama'
-    ? (await getRouteCapabilities(options.route || null).catch(() => null))?.contextWindow ?? null
-    : null;
+  // An Ollama is told its window on every request: the window it reported itself, else the one
+  // fitted to this card (ollama-window.js), never a guess from the model's name (262,144 for the 4B,
+  // 11.8 GB of GPU memory on a 12 GB laptop card, measured 2026-10-23)
+  const ollamaCaps = dialectOf(config) === 'ollama' ? await getRouteCapabilities(options.route || null).catch(() => ({})) : null;
+  const ollamaWindow = !ollamaCaps ? null
+    : String(ollamaCaps.contextWindowSource || '').startsWith('provider-runtime') ? ollamaCaps.contextWindow : servedOllamaWindow();
   const body = buildStreamBody(config, messages, {
     ...effectiveOptions, model, ...(ban ? { logitBias: ban } : {}), ...(ollamaWindow ? { contextWindow: ollamaWindow } : {}),
   });

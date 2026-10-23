@@ -34,24 +34,37 @@ const AMD_VENDOR = '0x1002';
 const BYTES_PER_GB = 1024 ** 3;
 
 /**
- * `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits`
- * → one GPU, or null. Pure.
+ * `nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits`
+ * → one GPU, or null. Pure. The driver version rides along when it is there (gpu-driver-guard.js).
  *
  * Unified-memory silicon (GB10, Jetson) answers "[N/A]" for memory.total
  * because its GPU memory IS system memory — say that, never "NaN GB".
  * @param {string} stdout
  * @param {number} systemRamBytes
- * @returns {{name:string, vramGB:number, unified:boolean, vendor:string}|null}
+ * @returns {{name:string, vramGB:number, unified:boolean, vendor:string, driver?:string}|null}
  */
 export const parseNvidiaSmi = (stdout, systemRamBytes) => {
   const line = String(stdout ?? '').trim().split('\n')[0];
   if (!line) return null;
-  const [name, vramMB] = line.split(',').map((s) => s.trim());
+  const [name, vramMB, driver] = line.split(',').map((s) => s.trim());
   if (!name) return null;
   const dedicated = Number.parseInt(vramMB, 10);
+  const withDriver = driver ? { driver } : {};
   return Number.isFinite(dedicated)
-    ? { name, vramGB: Math.round(dedicated / 1024), unified: false, vendor: 'nvidia' }
-    : { name, vramGB: Math.round(systemRamBytes / BYTES_PER_GB), unified: true, vendor: 'nvidia' };
+    ? { name, vramGB: Math.round(dedicated / 1024), unified: false, vendor: 'nvidia', ...withDriver }
+    : { name, vramGB: Math.round(systemRamBytes / BYTES_PER_GB), unified: true, vendor: 'nvidia', ...withDriver };
+};
+
+/**
+ * `nvidia-smi --query-gpu=memory.free,memory.total --format=csv,noheader,nounits` → bytes, or
+ * null (unified memory answers [N/A]). Pure.
+ * @param {string} stdout
+ * @returns {{freeBytes:number, totalBytes:number}|null}
+ */
+export const parseNvidiaMemory = (stdout) => {
+  const [free, total] = String(stdout ?? '').trim().split('\n')[0].split(',').map((s) => Number.parseInt(s, 10));
+  return Number.isFinite(free) && Number.isFinite(total) && total > 0
+    ? { freeBytes: free * 1024 * 1024, totalBytes: total * 1024 * 1024 } : null;
 };
 
 /**
@@ -114,27 +127,29 @@ export const parseWindowsVideoController = (stdout) => {
 /**
  * Windows display adapters from the driver registry → the card with the most memory, or null. Pure.
  *
- * One `name<TAB>bytes` line per adapter, from the display class key's
+ * One `name<TAB>bytes[<TAB>driver]` line per adapter, from the display class key's
  * `HardwareInformation.qwMemorySize` (64-bit: the true size of a 16 or 24 GB card, where WMI's
  * AdapterRAM stops at 4 GB) or `HardwareInformation.MemorySize`. Every adapter is read and the
- * largest wins, so a laptop's integrated graphics never stand in for its discrete card.
+ * largest wins, so a laptop's integrated graphics never stand in for its discrete card. The
+ * driver's own version (`DriverVersion`, e.g. 32.0.15.8157) rides along when it is there.
  * @param {string} stdout
- * @returns {{name:string, vramGB:number, unified:boolean, vendor:string}|null}
+ * @returns {{name:string, vramGB:number, unified:boolean, vendor:string, driver?:string}|null}
  */
 export const parseWindowsAdapters = (stdout) => {
   const cards = String(stdout ?? '').split(/\r?\n/).map((line) => {
-    const tab = line.lastIndexOf('\t');
-    if (tab <= 0) return null;
-    const name = line.slice(0, tab).trim();
-    const bytes = Number(line.slice(tab + 1).trim());
-    return name && Number.isFinite(bytes) && bytes > 0 ? { name, bytes } : null;
+    const [rawName, rawBytes, rawDriver] = line.split('\t');
+    if (rawBytes === undefined) return null;
+    const name = rawName.trim();
+    const bytes = Number(rawBytes.trim());
+    const driver = String(rawDriver ?? '').trim();
+    return name && Number.isFinite(bytes) && bytes > 0 ? { name, bytes, ...(driver ? { driver } : {}) } : null;
   }).filter(Boolean);
   const best = cards.reduce((a, c) => (!a || c.bytes > a.bytes ? c : a), null);
   if (!best || best.bytes < BYTES_PER_GB / 2) return null;
   const vendor = /amd|radeon|ati\b/i.test(best.name) ? 'amd'
     : /nvidia|geforce|quadro|rtx/i.test(best.name) ? 'nvidia'
       : /intel|arc/i.test(best.name) ? 'intel' : 'unknown';
-  return { name: best.name, vramGB: Math.round(best.bytes / BYTES_PER_GB), unified: false, vendor };
+  return { name: best.name, vramGB: Math.round(best.bytes / BYTES_PER_GB), unified: false, vendor, ...(best.driver ? { driver: best.driver } : {}) };
 };
 
 /** impure — one sysfs attribute, or undefined. Never throws. */
@@ -177,8 +192,18 @@ export const probeAmdLinux = async (root = '/sys/class/drm') => {
 
 /** impure — NVIDIA via nvidia-smi. Never throws. */
 const probeNvidia = async () => {
-  const r = await boundedExec('nvidia-smi', ['--query-gpu=name,memory.total', '--format=csv,noheader,nounits'], { timeoutMs: PROBE_MS });
+  const r = await boundedExec('nvidia-smi', ['--query-gpu=name,memory.total,driver_version', '--format=csv,noheader,nounits'], { timeoutMs: PROBE_MS });
   return r.ok ? parseNvidiaSmi(r.stdout, os.totalmem()) : null;
+};
+
+/**
+ * The NVIDIA card's free and total memory NOW, for fitting a model's window (ollama-window.js).
+ * Never cached: free memory moves. Asked only when a model server starts. impure. Never throws.
+ * @returns {Promise<{freeBytes:number, totalBytes:number}|null>}
+ */
+export const readNvidiaMemory = async () => {
+  const r = await boundedExec('nvidia-smi', ['--query-gpu=memory.free,memory.total', '--format=csv,noheader,nounits'], { timeoutMs: PROBE_MS });
+  return r.ok ? parseNvidiaMemory(r.stdout) : null;
 };
 
 /** impure — Windows, any vendor, via CIM. Never throws. */
@@ -197,7 +222,7 @@ const WINDOWS_ADAPTERS_PS = [
   "$b = $p.'HardwareInformation.qwMemorySize'; if (-not $b) { $b = $p.'HardwareInformation.MemorySize' };",
   'if ($b -is [byte[]]) { $b = [BitConverter]::ToUInt32($b, 0) };',
   // no double quotes: Node escapes them on a Windows command line and PowerShell 5.1 reads that unevenly
-  'if ($p.DriverDesc -and $b) { $p.DriverDesc + [char]9 + $b } }',
+  'if ($p.DriverDesc -and $b) { $p.DriverDesc + [char]9 + $b + [char]9 + $p.DriverVersion } }',
 ].join(' ');
 
 /** impure — Windows, every adapter's true memory from the driver registry. Never throws. */

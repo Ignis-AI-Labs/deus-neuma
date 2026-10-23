@@ -14,6 +14,7 @@ import { servableModelIds } from './local-server-models.js';
 import { withDeadline } from './bounded-exec.js';
 import { managedEndpoints } from './managed-ollama-plan.js';
 import { readManagedRecord } from './managed-ollama-record.js';
+import { currentDriverGuard } from './managed-ollama-gpu.js';
 
 const DISCOVERY_BUDGET_MS = 4000;
 
@@ -274,7 +275,7 @@ export const probeProviders = async () => {
  * @returns {Promise<{hardware:Object, recommendation:Object, providers:Object, ready:boolean}>}
  */
 export const getSetupStatus = async () => {
-  const [profile, providers] = await Promise.all([getSubstrateProfile(), probeProviders()]);
+  const [profile, providers, gpuDriver] = await Promise.all([getSubstrateProfile(), probeProviders(), currentDriverGuard()]);
   // any server holding a model, on the usual ports or found by the sweep
   const ready = providers.ollama.models.length > 0 || providers.lmStudio.models.length > 0
     || providers.discovered.some((d) => (d.models || []).length > 0);
@@ -283,6 +284,8 @@ export const getSetupStatus = async () => {
       gpu: profile.gpu,
       memoryGB: Math.round(profile.memory.totalGB),
       platform: profile.platform.os,
+      // an NVIDIA driver on Windows below its card's floor: said, with the update link (gpu-driver-guard.js)
+      gpuDriver,
     },
     // NEUMA_MODEL_BUDGET_GB caps the budget (a shared GPU, or a lighter model by choice)
     recommendation: recommendSubstrate(profile, { capGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null }),

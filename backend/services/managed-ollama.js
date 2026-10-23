@@ -27,7 +27,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { getDataRoot } from './data-root.js';
-import { readManagedRecord, writeManagedRecord } from './managed-ollama-record.js';
+import { readManagedRecord, servedOllamaWindow, writeManagedRecord } from './managed-ollama-record.js';
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
 import { createLogger } from './logger.js';
@@ -35,9 +35,10 @@ import { getSetupStatus } from './substrate-setup.js';
 import { loadProviderChoice, saveProviderChoice } from './provider-choice.js';
 import { getConfig, setConfig } from './llm-provider.js';
 import { sameEndpoint } from './provider-discovery.js';
-import { OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
+import { currentDriverGuard, fitManagedWindow, saveGpuAnyway } from './managed-ollama-gpu.js';
+import { _resetCapsCache } from './llm-runtime-cache.js';
 import {
-  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, ollamaAssetFor, pullProgress, versionAtLeast,
+  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, versionAtLeast,
 } from './managed-ollama-plan.js';
 
 export { obtainArchive } from './managed-ollama-download.js';
@@ -119,6 +120,7 @@ export const currentPlan = async () => {
     system: findSystemOllama(),
     managedInstalled: Boolean(bin && fs.existsSync(bin)),
     freeBytes: await freeBytes(),
+    gpuGuard: await currentDriverGuard(),
   });
 };
 
@@ -192,9 +194,12 @@ const run = async (plan, signal) => {
   else if (plan.server === 'installed') bin = findSystemOllama()?.bin;
   else if (managed) bin = readRecord()?.bin || managedBin();
   let { endpoint } = plan;
+  let started = false;
+  const guard = await currentDriverGuard();
+  const startedWindow = servedOllamaWindow();
   if (plan.server !== 'running') {
     update({ step: 'start', completed: 0, total: 0, line: 'Starting the model server' });
-    endpoint = await startServer(bin, managed, endpoint);
+    ({ endpoint, started } = await startServer(bin, managed, endpoint, { window: startedWindow, holdGpu: guard.hold }));
   }
   // Recorded the moment it runs: a try after this one, and the next boot, know the server is the
   // platform's own and where it answers, even if the model never finished downloading
@@ -207,15 +212,19 @@ const run = async (plan, signal) => {
   // what the server holds now, never what the plan saw: a models folder removed since is pulled again
   const has = state.models.some((m) => m.toLowerCase() === plan.model.ref.toLowerCase());
   if (!has) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
+  // fitted before the model is first loaded, so the card's free memory is the truth
+  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold });
+  await keepWindow(fit.window);
+  if (started && fit.window !== startedWindow) endpoint = await restartServer(bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
   update({ step: 'verify', completed: 0, total: 0, line: `Checking that ${plan.model.name} answers` });
-  await modelAnswers(endpoint, plan.model.ref, signal);
+  await modelAnswers(endpoint, plan.model.ref, signal, fit.window);
   update({ step: 'adopt', line: 'Making it the platform\'s model server' });
   const choice = { provider: 'ollama', endpoint, model: plan.model.ref };
   setConfig(choice);
   await saveProviderChoice(choice, { chosenBy: 'operator' });
-  await writeManagedRecord({ version: state.version, ...record, model: plan.model.ref, installedAt: new Date().toISOString() });
-  update({ state: 'done', step: 'done', line: `${plan.model.name} is ready on Ollama ${state.version}.` });
-  log.info('model server set up', { model: plan.model.ref, server: plan.server, endpoint });
+  await writeManagedRecord({ version: state.version, ...record, endpoint, model: plan.model.ref, window: fit.window, installedAt: new Date().toISOString() });
+  update({ state: 'done', step: 'done', line: [`${plan.model.name} is ready on Ollama ${state.version}.`, fit.line, guard.line].filter(Boolean).join(' ') });
+  log.info('model server set up', { model: plan.model.ref, server: plan.server, endpoint, window: fit.window, onGpu: fit.onGpu, gpuHeld: guard.hold });
 };
 
 /** The platform's own server on disk: kept if it is there, else downloaded, checked and unpacked. impure */
@@ -259,18 +268,20 @@ const placeServer = async (wanted) => {
 };
 
 /**
- * Start `ollama serve` as this backend's child and wait for it to answer. impure
- * @returns {Promise<string>} the endpoint it answers on (moved past a port held by another server)
+ * Start `ollama serve` as this backend's child and wait for it to answer: at the window fitted to
+ * the card, one model and one slot, the card hidden when the driver guard holds it
+ * (managed-ollama-plan.js managedServeEnv). impure
+ * @returns {Promise<{endpoint: string, started: boolean}>} where it answers (moved past a port held
+ *   by another server); started false: a usable Ollama already answered there
  */
-const startServer = async (bin, managed, wanted = endpoints().usual) => {
+const startServer = async (bin, managed, wanted = endpoints().usual, { window = servedOllamaWindow(), holdGpu = false } = {}) => {
   const { endpoint, up } = await placeServer(wanted);
-  if (up) return endpoint;
+  if (up) return { endpoint, started: false };
   if (!bin) throw setupFailure('SERVER_START', 'no Ollama to start');
   await fsp.mkdir(serverHome(), { recursive: true });
   const logFile = path.join(serverHome(), 'ollama.log');
   const out = fs.openSync(logFile, 'a');
-  // its default window is the one every request names, so no request reloads the model
-  const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), OLLAMA_CONTEXT_LENGTH: String(OLLAMA_SERVED_CONTEXT) };
+  const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
   if (managed) {
     env.OLLAMA_MODELS = modelsDir();
     await fsp.mkdir(env.OLLAMA_MODELS, { recursive: true });
@@ -282,12 +293,38 @@ const startServer = async (bin, managed, wanted = endpoints().usual) => {
   mine.on('error', (err) => { spawnError = err; });
   mine.on('exit', (code) => { log.info('ollama serve exited', { code }); if (child === mine) child = null; });
   for (let i = 0; i < 60; i += 1) {
-    if (await ollamaUp(endpoint)) return endpoint;
+    if (await ollamaUp(endpoint)) return { endpoint, started: true };
     if (spawnError) throw setupFailure('SERVER_START', `the model server could not be started (${bin}): ${spawnError.message}`);
     if (mine.exitCode !== null || mine.signalCode !== null) throw setupFailure('SERVER_START', `the model server stopped while starting; its log is ${logFile}`);
     await new Promise((r) => setTimeout(r, 1000));
   }
   throw setupFailure('SERVER_START', `the model server did not answer within a minute of starting; its log is ${logFile}`);
+};
+
+/**
+ * Record the window the card was fitted to. A new one drops the capability readings taken at the
+ * old one, or the next chat would name the old window and reload the model at it (seen in the
+ * 2026-10-23 proof run: refitted to 20,480, the next chat loaded at 32,768). impure
+ */
+const keepWindow = async (window) => {
+  const was = servedOllamaWindow();
+  await writeManagedRecord({ ...readRecord(), window });
+  if (window !== was) _resetCapsCache();
+};
+
+/** Stop the server this backend started, and wait until it has gone (its port is free). impure */
+const stopChild = async () => {
+  const mine = child;
+  if (!mine || mine.exitCode !== null || mine.signalCode !== null) return;
+  const gone = new Promise((resolve) => { mine.once('exit', resolve); });
+  mine.kill();
+  await Promise.race([gone, new Promise((resolve) => { setTimeout(resolve, 10_000); })]);
+};
+
+/** Start the server again with what it should serve now (a fitted window, the card held or not). impure */
+const restartServer = async (bin, managed, endpoint, opts) => {
+  await stopChild();
+  return (await startServer(bin, managed, endpoint, opts)).endpoint;
 };
 
 /** Pull a model through Ollama, reporting bytes across every layer. impure */
@@ -329,14 +366,14 @@ const pullModel = async (ref, signal, endpoint, name = ref) => {
 };
 
 /** The model answers a real message: loaded into memory, and it speaks. impure */
-const modelAnswers = async (endpoint, model, signal) => {
+const modelAnswers = async (endpoint, model, signal, window = servedOllamaWindow()) => {
   let res;
   try {
     res = await fetch(`${endpoint}/api/chat`, {
       method: 'POST',
       signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]),
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model, stream: false, messages: [{ role: 'user', content: 'Reply with one word: ready' }], options: { num_predict: 256 } }),
+      body: JSON.stringify({ model, stream: false, messages: [{ role: 'user', content: 'Reply with one word: ready' }], options: { num_predict: 256, num_ctx: window } }),
     });
   } catch (err) {
     if (signal.aborted) throw err;
@@ -371,14 +408,28 @@ export const startManagedAtBoot = async () => {
   if (!record?.bin || (record.managed && !fs.existsSync(record.bin))) return;
   const was = record.endpoint || endpoints().usual;
   try {
-    const endpoint = await startServer(record.bin, Boolean(record.managed), was);
+    const guard = await currentDriverGuard();
+    if (guard.hold) log.warn('the graphics driver is older than this card needs; the model runs on the processor', { have: guard.have, floor: guard.floor });
+    const window = servedOllamaWindow();
+    const managed = Boolean(record.managed);
+    const placed = await startServer(record.bin, managed, was, { window, holdGpu: guard.hold });
+    const { started } = placed;
+    let { endpoint } = placed;
     if (!sameEndpoint(endpoint, was)) {
       await followServer(record, was, endpoint);
       log.info('model server moved past a port held by another server', { was, endpoint });
     }
     const state = await serverState(endpoint);
-    if (record.model && !state.models.some((m) => m.toLowerCase() === record.model.toLowerCase())) {
+    const hasModel = Boolean(record.model) && state.models.some((m) => m.toLowerCase() === record.model.toLowerCase());
+    if (record.model && !hasModel) {
       log.warn('the model the setup downloaded is missing from its server; the door offers it again', { model: record.model, endpoint });
+    }
+    // Fitted at every start, before the model loads: the card's free memory is today's, not the setup's
+    if (started && hasModel) {
+      const fit = await fitManagedWindow(endpoint, record.model, { onGpu: !guard.hold });
+      await keepWindow(fit.window);
+      if (fit.window !== window) endpoint = await restartServer(record.bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
+      log.info('model window fitted to the graphics card', { window: fit.window, onGpu: fit.onGpu, line: fit.line });
     }
     log.info('managed model server ready', { version: state.version, endpoint });
   } catch (err) {
@@ -391,6 +442,20 @@ export const startManagedAtBoot = async () => {
 // process group, the server with it). A server orphaned by a hard kill is found answering at the
 // next boot and used as it is.
 process.once('exit', () => { try { child?.kill(); } catch { /* already gone */ } });
+
+/**
+ * The person's choice to use the graphics card despite an old driver (or to go back): kept, and
+ * the platform's own server started again so the choice takes effect now. impure
+ * @returns {Promise<object>} the driver guard as it stands after the choice
+ */
+export const chooseGpuAnyway = async (useGpuAnyway, wallet = null) => {
+  await saveGpuAnyway(useGpuAnyway, wallet);
+  if (child && readRecord()?.bin) {
+    await stopChild();
+    await startManagedAtBoot();
+  }
+  return currentDriverGuard();
+};
 
 /** The home this module installs into, for the screen's honesty line. impure */
 export const installHome = () => serverHome().replace(os.homedir(), '~');

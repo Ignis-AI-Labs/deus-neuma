@@ -31,13 +31,32 @@ export const machineLine = (hardware) => {
 };
 
 /**
- * The verdict for the NEUMA door: can this machine host a sovereign model?
- * Pure. Never blocks the choice — it informs it.
+ * The graphics driver's notice, when the machine read carries one: an NVIDIA driver on Windows
+ * below its card's floor (backend gpu-driver-guard.js), its words, the update link, whether the
+ * model is held on the processor. Pure.
+ * @param {object|null} hardware
+ * @returns {{line:string, link:string, hold:boolean, overridden:boolean}|null}
+ */
+export const driverNotice = (hardware) => {
+  const g = hardware?.gpuDriver;
+  return g?.line ? { line: g.line, link: g.link, hold: g.hold === true, overridden: g.overridden === true } : null;
+};
+
+/**
+ * The verdict for the NEUMA door: can this machine host a sovereign model? Pure. Never blocks
+ * the choice — it informs it. `driver` rides along only when the graphics driver has a notice.
  *
  * @param {object|null} setup from GET /api/v1/preflight/setup
- * @returns {{state:'ok'|'cpu'|'insufficient'|'unknown', machine:string, headline:string, detail:string}}
+ * @returns {{state:'ok'|'cpu'|'insufficient'|'unknown', machine:string, headline:string, detail:string, driver?:object}}
  */
 export const capacityVerdict = (setup) => {
+  const verdict = baseVerdict(setup);
+  const driver = driverNotice(setup?.hardware);
+  return driver ? { ...verdict, driver } : verdict;
+};
+
+// pure — the verdict on the machine's capacity alone
+const baseVerdict = (setup) => {
   const hardware = setup?.hardware || null;
   const rec = setup?.recommendation || null;
   const machine = machineLine(hardware);

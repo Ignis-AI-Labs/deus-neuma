@@ -44,8 +44,10 @@ describe('the window is read from what the serving actually reports', () => {
       capabilities: ['completion', 'tools', 'thinking'],
       details: { parameter_size: '751M' },
     };
-    const got = interpretOllamaShow(real);
+    const got = interpretOllamaShow(real, 65536);
     expect(got.contextWindow).toBe(40960);
+    // served at no more than the window fitted to this card (ollama-window.js, 32,768 by default)
+    expect(interpretOllamaShow(real).contextWindow).toBe(32768);
     // And Ollama SAYS the model reasons — the signal our probe is blind to.
     expect(got.thinks).toBe(true);
   });

@@ -5,11 +5,12 @@
 import { useEffect, useRef } from 'react';
 import { useModelSetup } from './use-model-setup.js';
 import { STEP_TEXT, size } from './setup-words.js';
+import { GpuDriverNotice } from './GpuDriverNotice.jsx';
 import './FirstRunHarness.css';
 
 /** @param {{onDone: () => void}} props */
 export const ModelServerSetup = ({ onDone }) => {
-  const { plan, home, job, error, progress: whole, start, stop } = useModelSetup({ onDone });
+  const { plan, home, job, error, progress: whole, start, stop, reread } = useModelSetup({ onDone });
   // The progress is what the person watches next: it comes into view when the work starts
   const progress = useRef(null);
   const working = job?.state === 'running';
@@ -34,6 +35,7 @@ export const ModelServerSetup = ({ onDone }) => {
         {plan.server === 'installed' ? ' Ollama is already installed here; it will be started.' : ''}
       </p>
       {(plan.notes || []).map((n) => <p key={n} className="harness-setup-note">{n}</p>)}
+      <GpuDriverNotice notice={plan.gpuDriver} onChange={reread} />
       <ul className="harness-setup-steps">
         {plan.steps.map((s) => <li key={s.id}>{s.label}{s.bytes ? ` · ${size(s.bytes)}` : ''}</li>)}
       </ul>
