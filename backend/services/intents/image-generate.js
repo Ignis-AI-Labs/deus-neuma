@@ -125,6 +125,10 @@ export const imageGenerateIntent = Object.freeze({
   // One type renders both, so a person reads which one THIS filing is (render-kind.js).
   displayName: (fields) => renderActName(renderKindOfFiling(fields)),
 
+  // A clip holds the machine for minutes and up to 40 GB of RAM, so it asks on
+  // its own row (Design note, 2026-10-23: ALWAYS for stills never covers a video.
+  policyToolFor: (fields) => (renderKindOfFiling(fields) === 'video' ? 'video.generate' : 'image.generate'),
+
   summarize: (payload) => renderScope(renderKindOfFiling(payload), payload),
 
   // impure — the real engine run, unchanged: attempt ledger at every terminal

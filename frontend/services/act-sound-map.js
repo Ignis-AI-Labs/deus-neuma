@@ -113,7 +113,7 @@ export const ACT_FAMILIES = Object.freeze({
     'staff.dispatch', // a charge sent to a housemate — word leaving the lane
     'team.post']), // word to a teammate — word leaving the lane, house.post narrowed to one run
   // Making an artifact — an image, a document.
-  actForge: Object.freeze(['image.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
+  actForge: Object.freeze(['image.generate', 'video.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
   // A mark on a ledger: noted, pinned, touched, proposed. Small by design.
   actMark: Object.freeze(['memory_pin', 'memory_unpin', 'lead_touch', 'memory.pin', 'memory.unpin', 'leads.touch', 'refinement.dial',
     'sovereignty.propose', // a filing that ends at "submitted" — the card is the act

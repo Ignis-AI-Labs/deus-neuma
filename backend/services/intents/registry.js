@@ -17,7 +17,11 @@
  *   displayName(fields) → string — optional: the name a person reads for
  *                 THIS filing on its chips and card, when one type does two
  *                 things a person tells apart (image/generate → video/generate
- *                 for a video pipeline); the wire tool and policy row stay
+ *                 for a video pipeline); the filed type stays
+ *   policyToolFor(fields) → string — optional: the ACTS row THIS filing
+ *                 asks on, when one type does two acts the operator grants
+ *                 apart (image/generate → video.generate for a video
+ *                 pipeline); every chip, card, grant and journal line uses it
  *   cardArgs(value) → object — optional: what the card shows when the
  *                 filed fields alone would not show the act (a run's code)
  *   execute(value, {connection, signal}) → {ok:true, detail} | {ok:false,

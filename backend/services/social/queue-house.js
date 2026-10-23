@@ -5,6 +5,7 @@
 // by id is refused (404, as if absent) when the entry is another house's.
 import { readServed, servedWallet, laneHouse, houseWallet } from '../house-served.js';
 import { postQueue } from './post-queue.js';
+import { houseOfLane } from './house-positions.js';
 
 /**
  * The house a queue entry belongs to: the wallet that approved (or staged) it
@@ -30,6 +31,22 @@ export const ofHouse = (snapshot, entries, wallet) => {
   const house = houseWallet(wallet);
   return house ? entries.filter((e) => queueEntryHouse(snapshot, e, { served: false }) === house) : [];
 };
+
+/**
+ * The queue as one house sees it: only its own entries. Every being-side read
+ * and act on the queue goes through this (or `laneHouseEntries`), never a bare
+ * `postQueue.load()` — the file is the machine's, the view is the house's.
+ * A wallet that is not a house sees nothing. impure (reads).
+ * @param {?string} wallet
+ * @returns {Promise<object[]>}
+ */
+export const houseEntries = async (wallet) => {
+  const [entries, served] = await Promise.all([postQueue.load(), readServed()]);
+  return ofHouse(served, entries, wallet);
+};
+
+/** The entries of a lane's own house (its owner's wallet). impure (reads). */
+export const laneHouseEntries = async (laneId) => houseEntries(await houseOfLane(laneId));
 
 /** Whether entry `id` exists and is this wallet's house's. impure (reads). */
 export const isHouseEntry = async (id, wallet) => {

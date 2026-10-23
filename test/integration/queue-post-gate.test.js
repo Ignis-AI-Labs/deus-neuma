@@ -298,7 +298,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
 
     const parent = await postQueue.add({
       channelId: 'x', text: 'the parent stands first', scheduledFor: '2999-01-01T09:00:00Z',
-      queuedBy: '0xTestWitness',
+      queuedBy: auth.address,
     });
     const result = await _handleNeumaSelfReply(serverWs, connection, null, 'ask', {
       parentQueueId: parent.id, text: 'the follow-up lands the CTA',
@@ -336,7 +336,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     expect(ghost.status).toBe('denied');
     expect(ghost.error).toContain('no queue entry');
 
-    const dead = await postQueue.add({ channelId: 'x', text: 'a failed parent', queuedBy: '0xTestWitness' });
+    const dead = await postQueue.add({ channelId: 'x', text: 'a failed parent', queuedBy: auth.address });
     await postQueue.approve(dead.id, { decidedBy: 'test' });
     await postQueue.claimForSend(dead.id);
     await postQueue.recordOutcome(dead.id, { ok: false, detail: 'the wire said no' });
@@ -352,7 +352,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
   }, 30000);
 
   test('INTERRUPTED — a barge-in that landed before staging holds it; nothing persists', async () => {
-    const parent = await postQueue.add({ channelId: 'x', text: 'the parent outlives the turn', queuedBy: '0xTestWitness' });
+    const parent = await postQueue.add({ channelId: 'x', text: 'the parent outlives the turn', queuedBy: auth.address });
     const controller = new AbortController();
     controller.abort();
     const connection = freshConnection({ activeTurn: { signal: controller.signal } });

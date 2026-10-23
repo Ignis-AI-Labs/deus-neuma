@@ -33,7 +33,8 @@ import { getChannel } from './social/channel-registry.js';
 import { channelBindings } from './social/channel-bindings.js';
 import { houseOfLane } from './social/house-positions.js';
 import { sectorCrew, crewOf, sectorSection } from './sector-crew.js';
-import { postQueue, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './social/post-queue.js';
+import { replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './social/post-queue.js';
+import { houseEntries } from './social/queue-house.js';
 import { formatQueueForBeing } from './social/queue-view.js';
 import { replyCandidatesOf, replyInboxRows } from './social/reply-candidates.js';
 import { replyBucketCounts } from '../../core/social/reply-inbox.js';
@@ -191,8 +192,8 @@ const _houseSeatSection = async (connection) => {
 };
 
 // The CMO of the lane's OWN house (the connection's wallet) reads that
-// house's bench and ledger — a same-named lane in another house is no CMO
-// here. The post queue is still machine-wide (slice C makes it per house).
+// house's bench, ledger and queue — a same-named lane in another house is no
+// CMO here, and another house's drafts are never on this calendar.
 const _cmoBriefingSection = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   const wallet = connection.walletAddress;
@@ -201,7 +202,7 @@ const _cmoBriefingSection = async (connection) => {
     if (!(await cmoDesignation.holds(wallet, neumaId))) return '';
     const [campaigns, queue, leads] = await Promise.all([
       campaignStoreFor(wallet).then((bench) => bench.load()),
-      postQueue.load(),
+      houseEntries(wallet),
       leadLedgerFor(wallet).then((ledger) => ledger.load()),
     ]);
     // The coming 7 days: live POSTS (drafts + approved) with a schedule
@@ -266,7 +267,7 @@ const _replyCandidatesSection = async (connection) => {
     if (bound?.neumaId !== neumaId) return '';
     const [stored, queue] = await Promise.all([
       replyCandidatesOf(house).load(),
-      postQueue.load(),
+      houseEntries(house),
     ]);
     const candidates = stored.filter((c) => !c.dismissed);
     if (!candidates.length) return '';

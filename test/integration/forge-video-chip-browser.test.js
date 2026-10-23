@@ -1,8 +1,8 @@
-// A forge VIDEO plays where the being made it: real Chromium, the PRODUCTION ToolChip and
-// AuthImage, the real authenticated lane-scoped /images route, a real mp4 on real disk.
+// A forge VIDEO plays where the being made it, and on the post card that carries it: real Chromium,
+// the PRODUCTION ToolChip, ApprovalChip and AuthImage, the real authenticated lane-scoped /images route, a real mp4 on real disk.
 // No provider, mock, spy or fake transport. A <video> that cannot decode its bytes fails
 // silently, so the proof is the media element's own metadata (duration, size).
-/* global window, document */
+/* global document, setTimeout, Buffer */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -17,6 +17,7 @@ import { generateChallenge, verifySignature, createSessionToken } from '../../ba
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import imageForgeRouter from '../../backend/routes/image-forge-routes.js';
 import { collectOutputs } from '../../backend/services/image-forge/image-store.js';
+import { requestToolApproval, resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
@@ -44,16 +45,30 @@ beforeAll(async () => {
   const video = store('job-v', 'job-v_00001_.mp4');
   const still = store('job-s', 'job-s_00001_.png');
   fixture = { token, laneId: LANE, video: video.imageId, still: still.imageId, videoMime: video.mime };
+  // The post card the real broker sends for a post carrying both renders by id (answered DENY).
+  const frames = [];
+  const seat = { companion: { name: 'ForgeVideo', neumaId: LANE }, ws: { readyState: 1, OPEN: 1, send: (s) => frames.push(JSON.parse(s)) } };
+  const deciding = requestToolApproval(seat, {
+    tool: 'intents/social.queue', label: 'social/queue', scope: 'stage a TikTok draft',
+    args: { channel: 'tiktok', text: 'Forge night', media: [{ image: video.imageId, alt: 'the clip' }, { image: still.imageId, alt: 'the still' }] },
+  });
+  for (let i = 0; i < 200 && !frames.length; i += 1) await new Promise((r) => setTimeout(r, 10));
+  fixture.card = frames[0];
+  resolveToolApproval(seat, fixture.card.id, 'deny');
+  await deciding;
   const app = express();
   app.use('/api/v1/image-forge', imageForgeRouter);
   vite = await createVite({
     configFile: false, root: REPO, cacheDir: path.join(tmp, 'vite-cache'), appType: 'custom',
     esbuild: { jsx: 'automatic' },
-    optimizeDeps: { entries: ['test/helpers/forge-video-chip-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
+    optimizeDeps: { entries: ['test/helpers/forge-video-chip-page.jsx', 'test/helpers/forge-video-approval-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
     server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (req, res) => res.type('html').send(
     `<!doctype html><script>window.chipFixture=${JSON.stringify(fixture)}</script><div id="root"></div><script type="module" src="/test/helpers/forge-video-chip-page.jsx"></script>`,
+  ));
+  app.get('/approval', (req, res) => res.type('html').send(
+    `<!doctype html><script>window.chipFixture=${JSON.stringify(fixture)}</script><div id="root"></div><script type="module" src="/test/helpers/forge-video-approval-page.jsx"></script>`,
   ));
   app.use(vite.middlewares);
   server = http.createServer(app);
@@ -89,6 +104,29 @@ describe('the forge chip shows what the being made', () => {
     expect(v.duration).toBeCloseTo(4.84, 1);
     await page.waitForFunction(() => document.querySelector('img.tool-chip-made-img')?.naturalWidth > 0, null, { timeout: 30000 });
     expect(await page.evaluate(() => document.querySelectorAll('video').length)).toBe(1);
+    expect(errors).toEqual([]);
+    await page.close();
+  }, 90000);
+
+  it('the post card plays the clip the being attached by id, and shows its still', async () => {
+    expect(fixture.card.renders).toEqual([
+      { imageId: fixture.video, mime: 'video/mp4', laneId: LANE },
+      { imageId: fixture.still, mime: 'image/png', laneId: LANE },
+    ]);
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(`http://127.0.0.1:${server.address().port}/approval`);
+    await page.waitForSelector('.approval-chip.pending video.approval-render-media', { timeout: 30000 });
+    await page.waitForFunction(() => document.querySelector('video.approval-render-media').readyState >= 1, null, { timeout: 30000 });
+    const v = await page.evaluate(() => {
+      const el = document.querySelector('video.approval-render-media');
+      return { duration: el.duration, width: el.videoWidth, height: el.videoHeight, controls: el.controls, src: el.src.slice(0, 5) };
+    });
+    expect(v).toMatchObject({ width: 1280, height: 704, controls: true, src: 'blob:' });
+    expect(v.duration).toBeCloseTo(4.84, 1);
+    await page.waitForFunction(() => document.querySelector('img.approval-render-media')?.naturalWidth > 0, null, { timeout: 30000 });
+    expect(await page.evaluate(() => [...document.querySelectorAll('.approval-render-what')].map((n) => n.textContent))).toEqual(['VIDEO', 'IMAGE']);
     expect(errors).toEqual([]);
     await page.close();
   }, 90000);

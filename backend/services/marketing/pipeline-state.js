@@ -12,7 +12,7 @@
 import { execFile } from 'node:child_process';
 import { stat, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { postQueue } from '../social/post-queue.js';
+import { houseEntries } from '../social/queue-house.js';
 import { ensureBeingGround } from '../house-workspace.js';
 
 import { ALGORITHM_REPOS, algorithmSyncStampPath } from './algorithm-locations.js';
@@ -49,8 +49,10 @@ const algorithmPulse = async () => {
 // SAME posture (one computation, never a maintained copy). Placeholders
 // (the CoS audit's G4 — staging that holds a slot without copy) count
 // SEPARATELY: an operator decision is waiting only when real copy waits.
-export const queuePosture = async () => {
-  const entries = await postQueue.load();
+// The posture is ONE house's (the wallet's): the queue file is the machine's,
+// and a briefing that counted another house's drafts as […] would put a stranger's copy in this operator's lap.
+export const queuePosture = async (wallet) => {
+  const entries = await houseEntries(wallet);
   const now = Date.now();
   const by = { draft: 0, approved: 0, sending: 0, sent: 0, failed: 0, rejected: 0, withdrawn: 0 };
   let nextScheduled = null;
@@ -97,7 +99,7 @@ const cardGround = async (wallet, laneId) => {
  */
 export const computePipelineState = async ({ laneId = null, wallet = null } = {}) => {
   const [queue, weekly, ground, algorithm] = await Promise.all([
-    queuePosture().catch(() => ({ error: 'queue store unreadable' })),
+    queuePosture(wallet).catch(() => ({ error: 'queue store unreadable' })),
     // The weekly plan is the house's own (no wallet, no house, no slot).
     wallet
       ? import('./weekly-plan.js').then(({ weeklyPlanStoreFor }) => weeklyPlanStoreFor(wallet)).then((plan) => plan.todaysSlot()).catch(() => null)

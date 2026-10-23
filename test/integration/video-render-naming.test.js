@@ -137,7 +137,7 @@ describe('a video filing reads video on every chip and card the desk shows', () 
     expect(receipt.status).toBe('error');
     expect(receipt.error).toContain("'video.ltx.i2v' starts from one of your own images");
     const chip = timeline.find((f) => f.type === 'tool:usage');
-    expect(chip).toMatchObject({ tool: 'intents/image.generate', summary: 'video/generate — invalid' });
+    expect(chip).toMatchObject({ tool: 'intents/video.generate', summary: 'video/generate — invalid' });
     const html = deskHtml(timeline);
     expect(html).toContain('video/generate — invalid');
     expect(html).not.toContain('image/generate');
@@ -150,8 +150,8 @@ describe('a video filing reads video on every chip and card the desk shows', () 
     expect(receipt.status).toBe('denied');
     const html = deskHtml(timeline);
     if (card) {
-      // The wire tool and the grant row never moved; the person reads the act.
-      expect(card).toMatchObject({ tool: 'intents/image.generate', label: 'video/generate' });
+      // A clip asks on its own grant row; the person reads the act.
+      expect(card).toMatchObject({ tool: 'intents/video.generate', label: 'video/generate' });
       expect(card.scope).toBe(`render a video from image ${still.imageId}: "the water ripples outward" (video.ltx.i2v)`);
       expect(timeline.at(-1)).toMatchObject({ type: 'tool:usage', summary: 'video/generate — denied by operator' });
       expect(html).toContain('video/generate (render a video from image');
@@ -162,7 +162,7 @@ describe('a video filing reads video on every chip and card the desk shows', () 
       expect(timeline.at(-1)).toMatchObject({ summary: 'video/generate — denied' });
     }
     expect(html).toContain('video/generate');
-    expect(html).not.toContain('intents/image.generate');
+    expect(html).not.toContain('intents/video.generate');
     expect(html).not.toContain('image/generate');
   }, 30_000);
 

@@ -43,7 +43,7 @@ export const chipHandlers = Object.freeze({
   APPROVAL_REQUEST: (state, action) =>
     mapStreamingSegments({ ...state, thinking: false }, (segments) => [
       ...segments,
-      { kind: 'approval', phase: 'pending', id: action.id, tool: action.tool, label: action.label || '', args: action.args || '', fullArgs: action.fullArgs || '', scope: action.scope || '', media: action.media || [], lane: action.lane || null, decision: null },
+      { kind: 'approval', phase: 'pending', id: action.id, tool: action.tool, label: action.label || '', args: action.args || '', fullArgs: action.fullArgs || '', scope: action.scope || '', media: action.media || [], renders: action.renders || [], lane: action.lane || null, decision: null },
     ], action.at, action.take),
 
   // Settled server-side (witness answer, timeout, interrupt, close) —

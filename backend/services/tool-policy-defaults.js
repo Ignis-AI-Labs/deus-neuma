@@ -252,8 +252,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   // gate. Generating is the image/generate INTENT (Stage 3) — an acting act
   // that also SEIZES A SHARED RESOURCE — the GPU, for seconds to a minute, on
   // the same card the substrate lives on — so it asks the operator by default
-  // (one ALWAYS grant persists per being). Observe mode holds it, like every
-  // acting act.
+  // (one ALWAYS grant persists per being; a video asks on intents/video.generate,
+  // granted apart). Observe mode holds it, like every acting act.
   // Reviewing is neither: it is a being recording a judgment about its own
   // work. Asking the operator for permission to hold an opinion would be the
   // wrong shape, and gating it would make the one habit we most want to form
@@ -407,6 +407,9 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'legal.scan', 'legal.assess', 'legal.file',
       'email.send',
       'media.save', 'web.download', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
+      // A video render (image/generate on a video pipeline) asks on its own row:
+      // it holds the machine for minutes, so ALWAYS for stills never covers it.
+      'video.generate',
       'vault.publish',
       'tasks.add', 'tasks.update', 'tasks.focus', 'tasks.take', 'tasks.operator-add', 'tasks.operator-update', 'tasks.operator-drop',
       'leads.add', 'leads.touch',

@@ -14,6 +14,7 @@ import { ACT_REFUSALS, grantAlwaysAllow, refusalForDecision } from '../act-gate.
 import { capturePolicyGrant } from '../policy-grant-context.js';
 import { requestToolApproval } from '../tool-approval.js';
 import { postQueue, QUEUE_STATUSES } from '../social/post-queue.js';
+import { laneHouseEntries, houseEntries } from '../social/queue-house.js';
 import {
   selectQueueForBeing, drawQueueSelection, formatQueueEntryForBeing,
   QUEUE_VIEWS, QUEUE_ORDERS, QUEUE_KINDS, PAGE_DEFAULT, PAGE_MAX,
@@ -176,7 +177,9 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     }
     let entries;
     try {
-      entries = await postQueue.load();
+      // The lane's OWN house's entries only (#583): another house's post is
+      // […] here, exactly as the routes answer it.
+      entries = await laneHouseEntries(companion?.neumaId);
     } catch (err) {
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: 'queue_cancel — failed', detail: err.message });
       return { tool, status: 'error', error: err.message };
@@ -254,7 +257,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
 
   if (toolName === 'queue_list') {
     try {
-      const entries = await postQueue.load();
+      const entries = await laneHouseEntries(companion?.neumaId);
       // A bad filter refuses with its own reason rather than answering "nothing
       // matched" — an empty page and an unreadable query look identical from
       // inside a turn, and one of them is a lie.
@@ -302,7 +305,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
 
   if (toolName === 'queue_get') {
     try {
-      const entries = await postQueue.load();
+      const entries = await laneHouseEntries(companion?.neumaId);
       // A queue id, or the X post itself — its id or x.com link — which resolves to
       // the house's post it is, or the house's answer to it.
       const found = formatQueueEntryForBeing(entries, args?.id, { postId: postIdFrom(args?.id) });
@@ -391,7 +394,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   let readOpts = { retrievedAt: new Date().toISOString() };
   if (outcome.ok && what !== 'me') {
     const [queueEntries, candidateRows] = await Promise.all([
-      postQueue.load().catch(() => []),
+      houseEntries(wallet).catch(() => []),
       what === 'mentions' ? replyCandidatesOf(wallet).load().catch(() => []) : [],
     ]);
     // Every post the house sent, linked to the queue entry it went out as.

@@ -2,8 +2,8 @@
  * WHAT A RENDER IS, in the words a person reads (Design note, 2026-10-23: […]).
  *
  * One filed type, `image/generate`, renders stills AND videos. The wire name
- * stays: saved intents, the operator's standing grants on
- * `intents/image.generate` and beings' habits all ride it. What a person (or a
+ * stays: saved intents and beings' habits ride it (a video asks on its own
+ * grant row, `intents/video.generate` — image-generate.js). What a person (or a
  * being) READS is decided here, by the pipeline's own `kind` in the registry:
  * a video pipeline reads video everywhere, every other kind (still, portrait,
  * form) reads image. Pure — no IO, no clock.

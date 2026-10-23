@@ -209,6 +209,8 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     await postQueue.add({
       channelId: 'x', text: 'the weekly signal drops Friday',
       scheduledFor: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      // The shape the social/queue intent writes: the author's lane names the house.
+      authorNeumaId: LANE_A,
       queuedBy: LANE_A,
     });
     await (await ledger()).add({ name: 'Real Prospect', contact: 'prospect@example.com', addedBy: LANE_A });

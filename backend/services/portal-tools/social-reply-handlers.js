@@ -12,6 +12,7 @@ import { resolvePostMedia } from '../social/post-media.js';
 import { postQueue, validateDraft as validateQueueDraft, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from '../social/post-queue.js';
 import { channelBindings } from '../social/channel-bindings.js';
 import { houseOfLane } from '../social/house-positions.js';
+import { laneHouseEntries } from '../social/queue-house.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { replyCandidatesOf } from '../social/reply-candidates.js';
 import { postIdFrom, readXReplyTarget } from '../social/x-reader.js';
@@ -63,7 +64,7 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
   // THE PARENT GATE — real, on this channel, and able to publish. A being
   // cannot thread onto a post that does not exist, belongs to another
   // platform, or can never go out.
-  const queueNow = await postQueue.load().catch(() => null);
+  const queueNow = await laneHouseEntries(companion?.neumaId).catch(() => null);
   if (!queueNow) {
     const error = 'the campaign queue is unreadable — the parent cannot be proven, so nothing stages';
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — queue unreadable` });
@@ -225,7 +226,7 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
 
   // Gate 2 — the cap, counted from the real queue this instant, per (person,
   // conversation).
-  const queueNow = await postQueue.load().catch(() => null);
+  const queueNow = await laneHouseEntries(companion?.neumaId).catch(() => null);
   if (!queueNow) {
     const error = 'the campaign queue is unreadable — the cap cannot be counted, so nothing stages';
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — queue unreadable` });

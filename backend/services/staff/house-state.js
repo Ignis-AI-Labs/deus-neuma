@@ -262,7 +262,7 @@ export const computeHouseState = async ({ wallet = null, laneId = null } = {}) =
   const [plan, runs, queue, leads, ownInbox, campaigns, failures] = await Promise.all([
     laneId ? neumaWorkspace.readPlanRecord(laneId).catch(() => null) : Promise.resolve(null),
     wallet ? listRuns(wallet).catch(() => []) : Promise.resolve([]),
-    queuePosture().catch(() => ({ error: 'queue store unreadable' })),
+    queuePosture(wallet).catch(() => ({ error: 'queue store unreadable' })),
     leadCounts(wallet),
     ground.root ? peekUnread(ground.root, laneId).catch(() => ({ count: 0 })) : Promise.resolve({ count: 0 }),
     campaignFold(wallet),

@@ -25,6 +25,7 @@ import { logToolCall } from './tool-sandbox.js';
 import { recordAct } from './act-ledger.js';
 import { withOperationApproval } from './turn-operation-checkpoint.js';
 import { linePlace } from './substrate-lease.js';
+import { approvalRenders } from './image-forge/approval-renders.js';
 
 
 /** Decisions an operator may send. Everything else is rejected at the boundary. */
@@ -208,13 +209,14 @@ export const requestToolApproval = (connection, { tool, label, args, scope, surf
       }
     };
 
+    const renders = approvalRenders((lane ? lane.laneId : connection.companion?.neumaId) || null, args);
     const frame = {
       type: 'tool:approval_request',
       id,
       ...(connection._runningToolOperation ? { operationId: connection._runningToolOperation.operation.id } : {}),
       tool,
       // The act's name as a person reads it, when the wire name says less
-      // (intents/image.generate rendering a video reads video/generate).
+      // (an image/generate filing rendering a video reads video/generate).
       ...(label && label !== tool ? { label } : {}),
       args: approvalPreview(args),
       // The preview is a window; past its cut the card offers the whole text.
@@ -222,6 +224,8 @@ export const requestToolApproval = (connection, { tool, label, args, scope, surf
       // The card images behind the yes — the desk renders them on the chip
       // (posting-pipeline-v2: approve with eyes).
       ...(approvalMedia(args).length ? { media: approvalMedia(args) } : {}),
+      // The being's own forge renders it attached by id — a clip plays on the card.
+      ...(renders.length ? { renders } : {}),
       ...(scope ? { scope } : {}),
       // Which desk surface raises the gate — the council room renders its
       // own chip; the one-on-one stream ignores council-surfaced asks (one

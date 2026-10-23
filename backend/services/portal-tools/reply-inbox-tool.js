@@ -8,7 +8,7 @@
  *
  * A local read of the house's own record: no egress, no change to anything.
  */
-import { postQueue } from '../social/post-queue.js';
+import { houseEntries } from '../social/queue-house.js';
 import { replyCandidatesOf, replyInboxRows, REPLY_CATEGORIES } from '../social/reply-candidates.js';
 import { selectReplyInbox, REPLY_BUCKETS, INBOX_PAGE } from '../../../core/social/reply-inbox.js';
 import { frameUntrustedSections } from '../untrusted-content.js';
@@ -105,7 +105,7 @@ export const renderReplyInbox = (page, args, { budget = READ_WINDOW, token } = {
  * @returns {Promise<{ ok: true, text: string, summary: string } | { ok: false, error: string }>}
  */
 export const readReplyInbox = async (args, house) => {
-  const [candidates, queue] = await Promise.all([replyCandidatesOf(house).load(), postQueue.load()]);
+  const [candidates, queue] = await Promise.all([replyCandidatesOf(house).load(), houseEntries(house)]);
   const page = selectReplyInbox(replyInboxRows(candidates, queue), args || {}, { categories: REPLY_CATEGORIES });
   if (!page.ok) return page;
   const drawn = renderReplyInbox(page, args);

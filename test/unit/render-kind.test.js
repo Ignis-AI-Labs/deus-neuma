@@ -86,7 +86,12 @@ describe('the words a person reads', () => {
 describe('the image/generate intent speaks the map (the real type module)', () => {
   test('displayName and the card summary follow the pipeline', () => {
     expect(imageGenerateIntent.name).toBe('image/generate'); // the wire type never moved
-    expect(imageGenerateIntent.policyTool).toBe('image.generate'); // nor the grant row
+    expect(imageGenerateIntent.policyTool).toBe('image.generate'); // a still's grant row never moved
+    // A clip asks on its own row (2026-10-23): ALWAYS for stills never covers it.
+    expect(imageGenerateIntent.policyToolFor({ pipeline: 'video.ltx.i2v', prompt: 'x', image: 'i1' })).toBe('video.generate');
+    expect(imageGenerateIntent.policyToolFor({ pipeline: 'video.wan.i2v', prompt: 'x', image: 'i1' })).toBe('video.generate');
+    expect(imageGenerateIntent.policyToolFor({ prompt: 'x' })).toBe('image.generate');
+    expect(imageGenerateIntent.policyToolFor({ pipeline: 'no.such.pipeline', prompt: 'x' })).toBe('image.generate');
     expect(imageGenerateIntent.displayName({ pipeline: 'video.wan.i2v', prompt: 'x', image: 'i1' })).toBe('video/generate');
     expect(imageGenerateIntent.displayName({ prompt: 'x' })).toBe('image/generate');
     expect(imageGenerateIntent.summarize({ pipeline: 'video.wan.i2v', prompt: 'slow push in', image: 'i1' }))

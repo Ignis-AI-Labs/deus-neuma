@@ -8,6 +8,7 @@
  */
 import { resolvePostMedia } from '../social/post-media.js';
 import { postQueue, previewUpdate } from '../social/post-queue.js';
+import { laneHouseEntries } from '../social/queue-house.js';
 import { channelBindings } from '../social/channel-bindings.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
@@ -15,6 +16,15 @@ import { gateAct } from '../act-gate.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 
 // --- Queue editing (#208) --------------------------------------------------
+
+// The entry an edit names, as the lane's own house sees the queue (#583): an
+// entry of another house is absent, and one on another platform is refused —
+// `queue_update_to_x` edits X posts, never a TikTok post by its id. pure.
+const _editTarget = (entries, id, channel) => {
+  const entry = entries.find((e) => e.id === id);
+  if (entry && entry.channelId !== channel.id) return { entry: null, refusal: `that post is not a ${channel.name} post` };
+  return { entry, refusal: null };
+};
 
 // The diff the operator DECIDES on (pure): every changed field as {was, now} —
 // the chip shows what the copy WAS, never just the patch.
@@ -89,13 +99,14 @@ export const handleNeumaQueueUpdate = async (ws, connection, neumaPolicy, toolMo
   };
 
   // The diff the operator will read, computed against the queue as it stands.
-  const entries = await postQueue.load().catch(() => null);
+  const entries = await laneHouseEntries(companion?.neumaId).catch(() => null);
   if (!entries) {
     const error = 'the campaign queue is unreadable — nothing was edited';
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — queue unreadable` });
     return { tool, status: 'error', error };
   }
-  const preview = previewUpdate(entries.find((e) => e.id === id), patch);
+  const target = _editTarget(entries, id, channel);
+  const preview = target.refusal ? { ok: false, error: target.refusal } : previewUpdate(target.entry, patch);
   if (!preview.ok) {
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — refused`, detail: preview.error });
     return { tool, status: 'error', error: preview.error };
@@ -148,7 +159,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
     return { tool, status: 'error', error };
   }
 
-  const entries = await postQueue.load().catch(() => null);
+  const entries = await laneHouseEntries(companion?.neumaId).catch(() => null);
   if (!entries) {
     const error = 'the campaign queue is unreadable — nothing was edited';
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — queue unreadable` });
@@ -181,7 +192,8 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
       ...(u.pillar !== undefined ? { pillar: u.pillar } : {}),
       ...(media !== undefined ? { media } : {}),
     };
-    const preview = previewUpdate(entries.find((e) => e.id === id), patch);
+    const target = _editTarget(entries, id, channel);
+    const preview = target.refusal ? { ok: false, error: target.refusal } : previewUpdate(target.entry, patch);
     if (!preview.ok) {
       results[i] = { id, ok: false, error: preview.error };
       continue;

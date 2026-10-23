@@ -15,7 +15,9 @@
 //     The walk is the platform's own lane listing (listNeuma), so a ground
 //     marked by lane.json (the house ground, a witness lane) is never a lane;
 //   - credential-bearing stores are mode 0600 (a credentials file readable
-//     by other users is a leak that needs no exploit);
+//     by other users is a leak that needs no exploit) — the machine's
+//     settings AND this house's own realm dir, where its social channel keys
+//     live (social-channel-credentials.json, house-positions.js);
 //   - no env-style file at the repo root (.env, .env.*, *.env, env.*) holds
 //     a plaintext key (the sweep covers TRACKED files; env files are
 //     gitignored by law, so the house probe is the only eye on them — and it
@@ -34,6 +36,8 @@ import { join } from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { getSettingsDir } from '../data-root.js';
+import { walletDir } from '../user-realm.js';
+import { houseKey } from '../staff/cos-designation.js';
 import { verifyLaneOwnership } from '../lane-ownership.js';
 import { scanText } from './secret-sweep.js';
 import { secretLinkFindings } from './secret-link-findings.js';
@@ -253,6 +257,17 @@ export const runHouseProbe = async ({ wallet, workspace, repoRoot, settingsDir, 
   const settingsFiles = (await listDir(settings)).filter((d) => d.isFile() && SENSITIVE_STORE_NAMES.test(d.name));
   for (const file of settingsFiles) {
     const finding = await modeFinding(join(settings, file.name), `data/settings/${file.name}`);
+    if (finding) findings.push(finding);
+  }
+
+  // The house's own credential stores (its social channel keys): mode bits,
+  // under the house's realm dir. A caller with no house has none.
+  const houseDir = houseKey(wallet) ? walletDir(houseKey(wallet)) : null;
+  const houseFiles = houseDir
+    ? (await listDir(houseDir)).filter((d) => d.isFile() && SENSITIVE_STORE_NAMES.test(d.name))
+    : [];
+  for (const file of houseFiles) {
+    const finding = await modeFinding(join(houseDir, file.name), `house/${file.name}`);
     if (finding) findings.push(finding);
   }
 

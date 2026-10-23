@@ -245,6 +245,10 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
 
   test('NO CROSS-ROUTING — a being off the sector crew is refused before any chip', async () => {
     const id = await stage('not your calendar');
+    // A lane of the SAME house, off the crew: the crew gate is what refuses it
+    // (a lane of another house never sees the entry at all, #583).
+    await workspace.create('someotherneuma');
+    await ownLane('someotherneuma');
     const connection = {
       ws: serverWs,
       companion: { name: 'Intruder', neumaId: 'someotherneuma' },
