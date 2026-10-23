@@ -58,6 +58,17 @@ const nameUnplacedLegacy = async () => {
 };
 
 /**
+ * What is wrong with a pasted key, in the person's words, or null (pure). A
+ * developer page shows a secret as a row of dots until it is revealed, and
+ * copying it then copies the dots (2026-10-23: a TikTok secret saved as 17 •).
+ * @param {string} value - already trimmed
+ * @returns {string|null}
+ */
+export const pastedKeyProblem = (value) => (/^[•●·∙*]+$/.test(value)
+  ? 'that is the hidden placeholder (dots), not the key — reveal it on the developer page (the eye or arrow beside it), then copy it'
+  : null);
+
+/**
  * Merge a credential patch onto an existing entry, keeping only the channel's
  * declared fields (pure). An empty-string value clears that field so the UI
  * can wipe a stored secret. Returns null when nothing worth persisting remains.

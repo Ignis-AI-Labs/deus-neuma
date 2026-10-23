@@ -136,6 +136,16 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     expect(board.body.channels.find((c) => c.id === 'telegram').configured).toBe(false);
   });
 
+  test('a copied row of mask dots is refused in words; edge whitespace is trimmed before sealing', async () => {
+    const { loadChannelCredentials } = await import('../../backend/services/social/channel-credentials.js');
+    const put = (id, fields) => request(app).put(`/api/v1/social-channels/${id}/credentials`).set(witness.header).send({ fields });
+    const dots = await put('tiktok', { clientKey: 'sbawkey123', clientSecret: '•••••••••••••••••' });
+    expect([dots.status, dots.body.error]).toEqual([400, expect.stringMatching(/^Client Secret: that is the hidden placeholder \(dots\)/)]);
+    expect((await loadChannelCredentials(witness.address)).tiktok).toBeUndefined();
+    expect((await put('telegram', { botToken: '  bot-tok\n', chatId: '\t7 ' })).status).toBe(200);
+    expect((await loadChannelCredentials(witness.address)).telegram).toEqual({ botToken: 'bot-tok', chatId: '7' });
+  });
+
   test('DELETE credentials forgets the stored entry', async () => {
     await request(app)
       .put('/api/v1/social-channels/discord/credentials').set(witness.header)

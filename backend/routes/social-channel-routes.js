@@ -16,7 +16,7 @@ import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { CHANNEL_CATALOG, getChannel } from '../services/social/channel-registry.js';
 import {
-  loadChannelCredentials, setChannelCredential, removeChannelCredential, maskHouseCredentials,
+  loadChannelCredentials, setChannelCredential, removeChannelCredential, maskHouseCredentials, pastedKeyProblem,
 } from '../services/social/channel-credentials.js';
 import { channelBindings } from '../services/social/channel-bindings.js';
 import { sectorCrew } from '../services/sector-crew.js';
@@ -374,8 +374,15 @@ router.put('/:channelId/credentials', async (req, res) => {
   if (Object.values(fields).some((v) => typeof v !== 'string')) {
     return res.status(400).json({ error: 'Each field value must be a string' });
   }
+  // A pasted key carries no meaningful edge whitespace; a copied row of dots is no key at all.
+  const pasted = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim()]));
+  const bad = Object.entries(pasted).map(([k, v]) => [k, pastedKeyProblem(v)]).find(([, why]) => why);
+  if (bad) {
+    const label = req.channel.fields.find((f) => f.key === bad[0])?.label || bad[0];
+    return res.status(400).json({ error: `${label}: ${bad[1]}` });
+  }
   try {
-    await setChannelCredential(req.walletAddress, req.channel.id, fields);
+    await setChannelCredential(req.walletAddress, req.channel.id, pasted);
     const store = await loadChannelCredentials(req.walletAddress);
     log.info('Channel credentials updated', { channel: req.channel.id, wallet: req.walletAddress });
     res.json(await maskHouseCredentials(req.walletAddress, req.channel, store));
