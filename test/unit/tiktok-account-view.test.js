@@ -24,7 +24,7 @@ import { getChannel, maskChannelCredentials, resolveChannelCredentials } from '.
 import {
   formatCount, exactCount, durationLabel, postedLabel, relayedImage, viewShares,
 } from '../../frontend/utils/tiktok-account-view.js';
-import { ChannelKeysSection } from '../../frontend/app/RelinkShell/ChannelKeysSection.jsx';
+import { renderAccountCard } from '../helpers/account-card-kit.js';
 import { TikTokAccountBoard } from '../../frontend/app/RelinkShell/TikTokAccount.jsx';
 
 const POSTING_ONLY = 'user.info.basic,video.publish,video.upload';
@@ -173,12 +173,8 @@ describe('the picture relay\'s rules', () => {
 
 describe('the Settings card says when the account view needs RECONNECT', () => {
   test('connected without the view\'s permissions: the sentence beside the account; with them: none', () => {
-    const tiktok = getChannel('tiktok');
     const store = { clientKey: 'k', clientSecret: 's', refreshToken: 'rt', accessToken: 'at', accessExpiresAt: '2099-01-01T00:00:00.000Z' };
-    const render = (test) => renderToStaticMarkup(createElement(ChannelKeysSection, {
-      channels: [maskChannelCredentials(tiktok, store, {})], tests: { tiktok: test }, error: null, onChanged: async () => {},
-      onRetest: () => {}, stateFilter: '', openKey: 'channel:tiktok', onOpen: () => {},
-    }));
+    const render = (test) => renderAccountCard('tiktok', store, test);
     const words = profileReconnectWords(missingProfileScopes(POSTING_ONLY));
     const old = render({ ok: true, account: { id: 'open-1', name: 'Deus Neuma', title: 'Deus Neuma' }, profileNeeds: words });
     expect(old).toContain('CONNECTED · Deus Neuma');

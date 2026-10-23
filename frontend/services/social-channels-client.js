@@ -96,12 +96,13 @@ export const getFlightTests = ({ fresh = false } = {}) =>
 
 /**
  * Stage a witness-authored draft into the queue. campaignId ties the draft
- * to a campaign on the bench, same as the being-tools' field.
- * @param {{channelId: string, text: string, scheduledFor?: string, campaignId?: string}} draft
+ * to a campaign on the bench, same as the being-tools' field; accountId names
+ * which of the house's accounts speaks (its platform's first when absent).
+ * @param {{channelId: string, accountId?: string, text: string, scheduledFor?: string, campaignId?: string}} draft
  */
 // impure
-export const stageQueuePost = ({ channelId, text, scheduledFor, campaignId }) =>
-  req('/queue', { method: 'POST', body: { channelId, text, scheduledFor, campaignId } });
+export const stageQueuePost = ({ channelId, accountId, text, scheduledFor, campaignId }) =>
+  req('/queue', { method: 'POST', body: { channelId, accountId, text, scheduledFor, campaignId } });
 
 /**
  * Approve a draft. For a POST this arms it for the scheduler (optionally
@@ -212,28 +213,6 @@ export const fetchQueueMediaUrl = async (entryId, index) => {
   const blob = await res.blob();
   return { url: URL.createObjectURL(blob), type: blob.type };
 };
-
-/**
- * Begin the house's CONNECT for a sign-in channel (youtube, tiktok): the
- * backend's loopback listener stands and this answers the platform's consent
- * URL to open in the system browser.
- * @param {string} channelId
- * @returns {Promise<{authUrl: string}>}
- */
-// impure
-export const startChannelConnect = (channelId) => req(`/${channelId}/connect`, { method: 'POST' });
-
-/**
- * A CONNECT's outcome: pending, complete (with the account), error, or idle.
- * @param {string} channelId
- * @returns {Promise<{status: string, error?: string, channel?: {id: string, title: string}}>}
- */
-// impure
-export const pollChannelConnect = (channelId) => req(`/${channelId}/connect`);
-
-/** Cancel a CONNECT in progress. */
-// impure
-export const cancelChannelConnect = (channelId) => req(`/${channelId}/connect`, { method: 'DELETE' });
 
 /**
  * The wallet's own roster, for the holder picker — one auth envelope for

@@ -29,7 +29,7 @@ import { getCampaigns } from '../../services/campaigns-client.js';
 // The decision board, scoped to ONE platform's space when channelId is
 // given (its queue, its composer, its campaigns) — or the whole lane bare.
 export const CampaignQueueSection = ({
-  channelId = null, channelName = null, focus = null, onChanged = null,
+  channelId = null, channelName = null, focus = null, onChanged = null, entryFilter = null,
 }) => {
   const [channels, setChannels] = useState(null);
   const [campaigns, setCampaigns] = useState(null);
@@ -108,8 +108,9 @@ export const CampaignQueueSection = ({
   // In the day view the SAME lanes run over the day's slice — the calendar is
   // a navigator over the whole board, so every lane sees the same day filter,
   // and the calendar's own counts come from the same channel-scoped queue.
+  // A platform window's company picker narrows it to that company's accounts.
   const scoped = queue
-    ? queue.filter((e) => !channelId || e.channelId === channelId)
+    ? queue.filter((e) => (!channelId || e.channelId === channelId) && (!entryFilter || entryFilter(e)))
     : null;
   // The thread's parent join — a self-reply reads beneath its parent, so
   // every card can name the entry it follows.

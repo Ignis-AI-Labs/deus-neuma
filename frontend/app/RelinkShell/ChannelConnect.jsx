@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uiSound } from '../../services/ui-sound.js';
-import { startChannelConnect, pollChannelConnect, cancelChannelConnect } from '../../services/social-channels-client.js';
+import { startAccountConnect, pollAccountConnect, cancelAccountConnect } from '../../services/social-accounts-client.js';
 
 const POLL_MS = 1500;
 
@@ -28,8 +28,9 @@ const COPY = Object.freeze({
  * @param {object} props.channel the masked board entry (fields carry `set`, `connect`)
  * @param {object|null} props.test the channel's flight test (account.title names the account)
  * @param {() => Promise<void>} props.onConnected reload the board and re-test
+ * @param {string} [props.accountId] which of the house's accounts signs in (its first when unnamed)
  */
-export const ChannelConnect = ({ channel, test, onConnected }) => {
+export const ChannelConnect = ({ channel, test, onConnected, accountId = `${channel.id}-1` }) => {
   const { t } = useTranslation('settingsApi');
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState(null);
@@ -47,7 +48,7 @@ export const ChannelConnect = ({ channel, test, onConnected }) => {
     let alive = true;
     let timer = null;
     const tick = async () => {
-      const r = await pollChannelConnect(channel.id).catch((e) => ({ status: 'error', error: e.message }));
+      const r = await pollAccountConnect(channel.id, accountId).catch((e) => ({ status: 'error', error: e.message }));
       if (!alive) return;
       if (r.status === 'pending') { timer = setTimeout(tick, POLL_MS); return; }
       setWaiting(false);
@@ -61,13 +62,13 @@ export const ChannelConnect = ({ channel, test, onConnected }) => {
     };
     timer = setTimeout(tick, POLL_MS);
     return () => { alive = false; clearTimeout(timer); };
-  }, [waiting, channel.id, t]);
+  }, [waiting, channel.id, accountId, t]);
 
   const start = async () => {
     uiSound('activate');
     setError(null);
     try {
-      const { authUrl } = await startChannelConnect(channel.id);
+      const { authUrl } = await startAccountConnect(channel.id, accountId);
       window.open(authUrl, '_blank', 'noopener');
       setWaiting(true);
     } catch (e) {
@@ -78,7 +79,7 @@ export const ChannelConnect = ({ channel, test, onConnected }) => {
   const cancel = async () => {
     uiSound('deny');
     setWaiting(false);
-    await cancelChannelConnect(channel.id).catch(() => null);
+    await cancelAccountConnect(channel.id, accountId).catch(() => null);
   };
 
   return (

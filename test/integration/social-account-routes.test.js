@@ -16,6 +16,7 @@
  */
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import path from 'path';
+import process from 'process';
 import fs from 'fs/promises';
 import express from 'express';
 import request from 'supertest';

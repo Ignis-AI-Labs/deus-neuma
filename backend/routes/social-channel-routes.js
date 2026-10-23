@@ -174,10 +174,12 @@ router.put('/replies/:postId/:act(bin|restore)', async (req, res) => {
 router.post('/queue', async (req, res) => {
   // campaignId ties the witness's own draft to a campaign on the bench —
   // the same field the being-tools carry; the store validates it.
-  const { channelId, text, scheduledFor, campaignId } = req.body || {};
+  // accountId names which of the house's accounts on the platform speaks
+  // (its first when unnamed); the store refuses another platform's account.
+  const { channelId, accountId, text, scheduledFor, campaignId } = req.body || {};
   try {
     const entry = await postQueue.add({
-      channelId, text, scheduledFor, campaignId, authorNeumaId: null, queuedBy: req.walletAddress,
+      channelId, accountId, text, scheduledFor, campaignId, authorNeumaId: null, queuedBy: req.walletAddress,
     });
     log.info('Post staged', { id: entry.id, channel: channelId, wallet: req.walletAddress });
     res.status(201).json({ entry });

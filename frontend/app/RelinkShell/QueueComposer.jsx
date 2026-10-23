@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { Select } from './Select.jsx';
 import { stageQueuePost, updateQueuePost } from '../../services/social-channels-client.js';
+import { useHouseAccounts } from './accounts/use-house-accounts.js';
+import { accountsByCompany, handleOf } from './accounts/account-words.js';
 
 // A datetime-local input speaks LOCAL wall time without a zone; an entry's
 // scheduledFor is ISO. The conversion lives here so an EDIT seed shows the
@@ -28,6 +30,13 @@ const toLocalInput = (iso) => {
 export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed = null, hidden = false, onChanged }) => {
   const [channelId, setChannelId] = useState(fixedChannelId || '');
   const [campaignId, setCampaignId] = useState('');
+  // WHO SPEAKS: company → account. One account on the platform is taken;
+  // with several, the operator chooses before anything is staged.
+  const [accountId, setAccountId] = useState('');
+  const house = useHouseAccounts();
+  const accountOptions = accountsByCompany(house.accounts, house.companies, channelId)
+    .flatMap((g) => g.accounts.map((a) => ({ value: a.id, label: `${g.name} · ${a.id}${handleOf(a) ? ` ${handleOf(a)}` : ''}` })));
+  const speaker = accountId || (accountOptions.length === 1 ? accountOptions[0].value : '');
   const [text, setText] = useState('');
   const [when, setWhen] = useState('');
   const [busy, setBusy] = useState(false);
@@ -69,6 +78,7 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
       } else {
         await stageQueuePost({
           channelId,
+          ...(speaker ? { accountId: speaker } : {}),
           text,
           scheduledFor: when ? new Date(when).toISOString() : undefined,
           ...(campaignId ? { campaignId } : {}),
@@ -108,6 +118,19 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
           />
         </div>
       )}
+      {!seed?.editId && accountOptions.length > 1 ? (
+        <div className="settings-control">
+          <Select
+            fill
+            ariaLabel="Account"
+            value={speaker}
+            onChange={setAccountId}
+            disabled={busy}
+            placeholder="— which account speaks —"
+            options={accountOptions}
+          />
+        </div>
+      ) : null}
       {campaignOptions.length ? (
         <div className="settings-control">
           <Select
@@ -152,7 +175,7 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
           <input className="settings-input" type="datetime-local" value={when}
             onChange={(e) => setWhen(e.target.value)} disabled={busy} />
         )}
-        <button type="button" className="settings-set" disabled={busy || !channelId || !text.trim()}
+        <button type="button" className="settings-set" disabled={busy || !channelId || !text.trim() || (!seed?.editId && accountOptions.length > 1 && !speaker)}
           onClick={stage}>
           {seed?.editId ? 'SAVE EDIT' : 'STAGE DRAFT'}
         </button>

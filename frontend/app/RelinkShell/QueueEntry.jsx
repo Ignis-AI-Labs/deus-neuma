@@ -12,6 +12,8 @@ import {
 import { Lightbox } from './Lightbox.jsx';
 import { mediaMenuDoor } from './media-menu.js';
 import { XPostLink } from './XPostLink.jsx';
+import { AccountChip } from './accounts/AccountChip.jsx';
+import { entryAccountId } from './accounts/account-words.js';
 import {
   approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
 } from '../../services/social-channels-client.js';
@@ -167,8 +169,11 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   const channel = channels?.find((c) => c.id === entry.channelId) || null;
   const channelName = channel?.name || entry.channelId;
   // THE ACCOUNT THIS GOES OUT ON (Design note, 2026-07-28: […]). A sent post reads who it WENT OUT as (postedAs, stamped at send);
-  // everything live reads the channel's current account — never a guess.
-  const accountHandle = entry.postedAs?.username || channel?.account?.username || null;
+  // everything live reads the channel's current account — never a guess. The
+  // board names its platform's FIRST account only, so a post on another
+  // account never borrows that one's handle (its chip names its own).
+  const firstAccount = entryAccountId(entry) === `${entry.channelId}-1`;
+  const accountHandle = entry.postedAs?.username || (firstAccount ? channel?.account?.username : null) || null;
   const campaignName = entry.campaignId
     ? (campaigns?.find((c) => c.id === entry.campaignId)?.name || null)
     : null;
@@ -296,6 +301,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
             {standing}
           </span>
           <span className="settings-v"><span className="settings-sec-tags">
+            <AccountChip entry={entry} />
             {entry.kind === 'reply' ? <span className="settings-tag-dim">REPLY</span> : null}
             {entry.kind === 'self-reply' ? <span className="settings-tag-dim">THREAD</span> : null}
             {campaignName ? <span className="settings-tag-dim">{campaignName}</span> : null}

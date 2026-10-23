@@ -18,6 +18,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 import path from 'path';
+import process from 'process';
 import { standTwoHouses, HOUSE_A, HOUSE_B } from '../helpers/house-office-kit.js';
 import { writeOwner } from '../helpers/audit-auth.js';
 import { __test } from '../../backend/services/portal-test-surface.js';

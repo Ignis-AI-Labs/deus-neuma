@@ -1,3 +1,4 @@
+/* global URL, fetch, URLSearchParams, setTimeout */
 /**
  * ACCOUNT PLUMBING — holders, crews, queue entries, keys, token refresh,
  * CONNECT, readers and flight checks, each per ACCOUNT (campaign plan slice
@@ -18,10 +19,11 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } fr
 import http from 'http';
 import fs from 'fs/promises';
 import path from 'path';
+import process from 'process';
 import express from 'express';
 import request from 'supertest';
 import { standTwoHouses, HOUSE_A, HOUSE_B } from '../helpers/house-office-kit.js';
-import { writeOwner, fullAuth } from '../helpers/audit-auth.js';
+import { fullAuth } from '../helpers/audit-auth.js';
 import { startTikTokStandIn } from '../helpers/tiktok-stand-in.js';
 import { housePositionFile } from '../../backend/services/social/house-positions.js';
 import { channelBindings, canNeumaPost } from '../../backend/services/social/channel-bindings.js';

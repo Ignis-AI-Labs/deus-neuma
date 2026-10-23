@@ -18,6 +18,9 @@ import { StandingPanel, StandingNotice } from './StandingPanel.jsx';
 import { usePlatformPulse } from './use-platform-pulse.js';
 import { usePlatformStanding } from './use-platform-standing.js';
 import { platformPulse, scopeQueue } from './platform-pulse.js';
+import { AccountStrip } from './accounts/AccountStrip.jsx';
+import { useHouseAccounts } from './accounts/use-house-accounts.js';
+import { entryAccountId } from './accounts/account-words.js';
 import './PlatformConsole.css';
 
 const SUBS = [
@@ -39,6 +42,13 @@ export const PlatformSpace = ({ channelId }) => {
   const [drawer, setDrawer] = useState(null);
   // A console door's destination; `n` remounts the queue board on each press.
   const [focus, setFocus] = useState({ n: 0 });
+  // The company the boards below show ('' = every company's accounts).
+  const [companyId, setCompanyId] = useState('');
+  const house = useHouseAccounts();
+  const shownAccounts = companyId
+    ? new Set(house.accounts.filter((a) => a.channelId === channelId && a.companyId === companyId).map((a) => a.id))
+    : null;
+  const ofCompany = (e) => !shownAccounts || shownAccounts.has(entryAccountId(e));
   const pulseRead = usePlatformPulse();
 
   const openQueue = (to) => {
@@ -71,6 +81,8 @@ export const PlatformSpace = ({ channelId }) => {
           ) : null}
           {standingOpen || !pulse
             ? <StandingPanel standing={standing} test={test} drawer={drawer} onDrawer={setDrawer} /> : null}
+          <AccountStrip channelId={channel.id} companyId={companyId} roster={standing.roster}
+            onCompany={(id) => { uiSound('toggle'); setCompanyId(id); }} />
 
           <div className="outreach-tabs" role="tablist" aria-label={`${channel.name} boards`}>
             {subsFor(channel.id).map((s) => (
@@ -90,7 +102,7 @@ export const PlatformSpace = ({ channelId }) => {
           {/* Keyed by board so each mounts fresh on entry (the account re-reads on every entry). */}
           {sub === 'account' && AccountBoard ? <AccountBoard key={`account-${channel.id}`} />
             : sub === 'campaigns' ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} />
-            : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={channel.name}
+            : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={channel.name} entryFilter={ofCompany}
                 focus={focus.n ? focus : null} onChanged={pulseRead.refresh} />}
         </>
       ) : null}

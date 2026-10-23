@@ -13,22 +13,11 @@ import { describe, expect, test } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import '../../frontend/i18n/index.js';
-import { ChannelKeysSection } from '../../frontend/app/RelinkShell/ChannelKeysSection.jsx';
 import { TikTokPostSettings } from '../../frontend/app/RelinkShell/TikTokPostSettings.jsx';
 import { EMPTY_CHOICE, creatorView, choiceBlockers, readChoice } from '../../frontend/utils/tiktok-consent.js';
-import { getChannel, maskChannelCredentials } from '../../backend/services/social/channel-registry.js';
+import { renderAccountCard } from '../helpers/account-card-kit.js';
 
-const tiktok = getChannel('tiktok');
-const render = (store, test = null) => renderToStaticMarkup(createElement(ChannelKeysSection, {
-  channels: [maskChannelCredentials(tiktok, store, {})],
-  tests: test ? { tiktok: test } : {},
-  error: null,
-  onChanged: async () => {},
-  onRetest: () => {},
-  stateFilter: '',
-  openKey: 'channel:tiktok',
-  onOpen: () => {},
-}));
+const render = (store, test = null) => renderAccountCard('tiktok', store, test);
 
 describe('the TikTok card', () => {
   test('nothing saved: the client key and secret inputs only, CONNECT waits for them', () => {
