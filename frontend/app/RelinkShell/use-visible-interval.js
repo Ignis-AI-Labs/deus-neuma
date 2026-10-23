@@ -53,6 +53,15 @@ export const createVisibleInterval = ({ run, ms, setTimer, clearTimer, page: pag
 export const isShowing = (entry) => Boolean(entry?.isIntersecting)
   && entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0;
 
+// The observer's thresholds. A node that mounts ON its clip's edge reports
+// "intersecting, zero area" (isShowing: no); under a lone 0 threshold its later
+// zero -> some-pixels change crosses nothing, the observer never calls back and
+// the poll stays dead on screen (#584). The second step fires on that change.
+// Not Number.MIN_VALUE: Chromium keeps thresholds as 32-bit floats, where it
+// rounds to 0 and the step vanishes (measured); 1e-6 survives, and any one
+// pixel row of a real board is far above it.
+const SHOWS_ANY_PIXELS = Object.freeze([0, 1e-6]);
+
 /**
  * impure — React hook over the gate: document visibility + an
  * IntersectionObserver on the element the returned CALLBACK REF lands on (a
@@ -111,7 +120,7 @@ export const useVisibleInterval = (callback, ms, { enabled = true, key = null } 
       gateRef.current?.setOnScreen(screenRef.current);
     };
     const io = typeof IntersectionObserver === 'function'
-      ? new IntersectionObserver((entries) => { inView = entries.some(isShowing); report(); })
+      ? new IntersectionObserver((entries) => { inView = entries.some(isShowing); report(); }, { threshold: SHOWS_ANY_PIXELS })
       : null;
     const ro = typeof ResizeObserver === 'function'
       ? new ResizeObserver((entries) => {
