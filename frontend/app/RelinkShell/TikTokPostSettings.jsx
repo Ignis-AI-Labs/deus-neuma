@@ -20,6 +20,8 @@ import './TikTokPostSettings.css';
 const PRIVATE_UNTIL_REVIEW = 'TikTok keeps posts private until the app passes its review.';
 const DRAFTS_NOTE = 'This video goes to the TikTok app\'s inbox: finish the post there, and turn the AI-generated label on.';
 const ACCOUNT_OFF = 'Turned off in this account\'s TikTok settings';
+const AI_LABEL_NOTE = 'Every house post carries TikTok\'s AI-generated label.';
+const PROMOTION_QUESTION = 'Does this video promote yourself, a brand, product or service?';
 const POLICY_LINKS = Object.freeze({
   branded: { href: BRANDED_CONTENT_URL, words: 'Branded Content Policy' },
   music: { href: MUSIC_USAGE_URL, words: 'Music Usage Confirmation' },
@@ -33,11 +35,21 @@ const Toggle = ({ on, disabled, title, onFlip, children }) => (
   </button>
 );
 
-const Row = ({ k, children, suggestion }) => (
-  <div className="settings-row tt-row">
-    <span className="settings-k">{k}</span>
-    <span className="tt-controls">{children}</span>
-    {suggestion ? <span className="tt-suggest">SUGGESTED · {suggestion}</span> : null}
+// One choice: its name, the control, and what it means — the words sit beside
+// the control while the card is wide and fold under it when narrow, never
+// past the card's edge (TikTokPostSettings.css).
+const Row = ({ k, children, help, suggestion }) => (
+  <div className="tt-row">
+    <span className="settings-k tt-k">{k}</span>
+    <div className="tt-cell">
+      <span className="tt-controls">{children}</span>
+      {help || suggestion ? (
+        <span className="tt-aside">
+          {help ? <span className="tt-help">{help}</span> : null}
+          {suggestion ? <span className="tt-suggest">SUGGESTED · {suggestion}</span> : null}
+        </span>
+      ) : null}
+    </div>
   </div>
 );
 
@@ -92,15 +104,13 @@ const PostChoices = ({ creator, suggested, choice, setChoice, blockers }) => {
         <Toggle on={choice.allow.duet} disabled={creator.duetDisabled} title={creator.duetDisabled ? ACCOUNT_OFF : undefined} onFlip={() => flipAllow('duet')}>DUET</Toggle>
         <Toggle on={choice.allow.stitch} disabled={creator.stitchDisabled} title={creator.stitchDisabled ? ACCOUNT_OFF : undefined} onFlip={() => flipAllow('stitch')}>STITCH</Toggle>
       </Row>
-      <Row k="AI-generated">
+      <Row k="AI-generated" help={AI_LABEL_NOTE}>
         <span className="tt-fixed">ON · ALWAYS</span>
-        <span className="settings-tag-dim">every house post carries TikTok&apos;s AI-generated label</span>
       </Row>
-      <Row k="Promotion" suggestion={words.promotion}>
+      <Row k="Promotion" help={PROMOTION_QUESTION} suggestion={words.promotion}>
         <Toggle on={c.on} onFlip={() => setCommercial(c.on ? { on: false, yourBrand: false, branded: false } : { on: true })}>
           {c.on ? 'DISCLOSED' : 'NOT DISCLOSED'}
         </Toggle>
-        <span className="settings-tag-dim">does this video promote yourself, a brand, product or service?</span>
       </Row>
       {c.on ? (
         <Row k="">

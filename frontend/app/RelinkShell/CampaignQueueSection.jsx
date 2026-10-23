@@ -29,7 +29,7 @@ import { getCampaigns } from '../../services/campaigns-client.js';
 // The decision board, scoped to ONE platform's space when channelId is
 // given (its queue, its composer, its campaigns) — or the whole lane bare.
 export const CampaignQueueSection = ({
-  channelId = null, channelName = null, focus = null, onChanged = null, entryFilter = null,
+  channelId = null, channelName = null, focus = null, onChanged = null, calm = null, entryFilter = null,
 }) => {
   const [channels, setChannels] = useState(null);
   const [campaigns, setCampaigns] = useState(null);
@@ -69,17 +69,25 @@ export const CampaignQueueSection = ({
   // failure it has already recovered from. The bench read is soft: a queue
   // without campaign names is still a queue. The inbound read is soft the
   // same way: a lane without the replies record is still the lane.
-  const refresh = async () => {
+  // A BACKGROUND read (the poll) waits while the person works the window
+  // (calm-gate.js — a being's edit landing under the pointer re-laid the card
+  // and closed its open menu, 2026-10-23); a read after their own act lands.
+  const refresh = async ({ background = false } = {}) => {
     const [board, staged, bench, inbound] = await Promise.all([
       getChannelBoard(), getPostQueue(), getCampaigns().catch(() => ({ campaigns: [] })),
       getReplyCandidates().catch(() => ({ replies: [] })),
     ]);
-    setChannels(board.channels);
-    setQueue(staged.queue);
-    onChanged?.();
-    setCampaigns(bench.campaigns);
-    setReplies(inbound.replies);
-    setLoadError(null);
+    const apply = () => {
+      setChannels(board.channels);
+      setQueue(staged.queue);
+      onChanged?.();
+      setCampaigns(bench.campaigns);
+      setReplies(inbound.replies);
+      setLoadError(null);
+    };
+    if (!calm) apply();
+    else if (background) calm.offer('queue', apply);
+    else calm.now('queue', apply);
   };
 
   useEffect(() => { getRosterForBinding().then(setRoster).catch(() => {}); }, []);
@@ -95,7 +103,7 @@ export const CampaignQueueSection = ({
   // (use-visible-interval.js) and read at once on return.
   const loaded = useRef(false);
   const watch = useVisibleInterval(() => {
-    refresh().then(
+    refresh({ background: loaded.current }).then(
       () => { loaded.current = true; },
       (e) => { if (!loaded.current) setLoadError(e.message); },
     );

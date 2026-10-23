@@ -367,7 +367,7 @@ const CampaignMaterial = ({ campaign, onChanged }) => {
 // which also carries the CMO designation — one seat, one place to set it.
 // Each platform requires its own approach, so its campaigns live in its
 // own space (ruling, 2026-07-23).
-export const CampaignsSection = ({ channelId = null }) => {
+export const CampaignsSection = ({ channelId = null, calm = null }) => {
   const [campaigns, setCampaigns] = useState(null);
   const [statuses, setStatuses] = useState([]);
   const [cmo, setCmoState] = useState(null);
@@ -380,16 +380,23 @@ export const CampaignsSection = ({ channelId = null }) => {
 
   // A successful read always clears a stale error — the board never shows a
   // failure it has already recovered from.
-  const refresh = async () => {
+  // A being's act (below) is BACKGROUND news: it waits while the person works
+  // the window (calm-gate.js); the first read and their own edits land at once.
+  const refresh = async ({ background = false } = {}) => {
     const [board, cmoRes, channelBoard, staged] = await Promise.all([
       getCampaigns(), getCmo(), getChannelBoard(), getPostQueue(),
     ]);
-    setCampaigns(board.campaigns);
-    setStatuses(board.statuses);
-    setCmoState(cmoRes.cmo);
-    setChannels(channelBoard.channels || []);
-    setQueue(staged.queue);
-    setLoadError(null);
+    const apply = () => {
+      setCampaigns(board.campaigns);
+      setStatuses(board.statuses);
+      setCmoState(cmoRes.cmo);
+      setChannels(channelBoard.channels || []);
+      setQueue(staged.queue);
+      setLoadError(null);
+    };
+    if (!calm) apply();
+    else if (background) calm.offer('campaigns', apply);
+    else calm.now('campaigns', apply);
   };
 
   useEffect(() => {
@@ -402,7 +409,7 @@ export const CampaignsSection = ({ channelId = null }) => {
   // and the panel went on saying […], which
   // is a confident lie about work that had already happened.
   useEffect(() => {
-    const onChanged = () => { refresh().catch((e) => setLoadError(e.message)); };
+    const onChanged = () => { refresh({ background: true }).catch((e) => setLoadError(e.message)); };
     window.addEventListener('neuma:campaigns-changed', onChanged);
     return () => window.removeEventListener('neuma:campaigns-changed', onChanged);
   }, []);

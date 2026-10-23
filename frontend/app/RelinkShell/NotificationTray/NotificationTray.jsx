@@ -26,6 +26,10 @@ import { KIND, STANDING } from '../../../../core/runtime/notification-record.js'
 
 /** How long a toast stays up before it retires into the panel. */
 const TOAST_MS = 6000;
+/** A toast that has just risen takes no press yet: one that slid under the
+ *  pointer mid-click would raise another window over the one the person was
+ *  working in (Design note, 2026-10-23: a running chat […]). The press lands on what was beneath, as they meant it. */
+const TOAST_GRACE_MS = 700;
 
 const BellGlyph = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -89,7 +93,7 @@ const agoLabel = (ts, nowMs) => {
  * escape test must render directly. The tray around it only decides WHEN a card
  * is shown, which is a click and an effect, and belongs to the e2e lane.
  */
-export const NotificationCard = ({ record, nowMs, onActivate, onDismiss, compact = false }) => {
+export const NotificationCard = ({ record, nowMs, onActivate, onDismiss, compact = false, arriving = false }) => {
   const target = notificationTarget(record);
   const actionable = Boolean(target);
   const classes = [
@@ -98,6 +102,7 @@ export const NotificationCard = ({ record, nowMs, onActivate, onDismiss, compact
     isAlert(record) ? 'is-alert' : '',
     record.standing === STANDING.witness ? 'is-witness' : '',
     compact ? 'is-toast' : '',
+    arriving ? 'is-arriving' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -147,6 +152,9 @@ const NotificationTrayView = () => {
   const windows = useWindows();
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [arriving, setArriving] = useState(() => new Set());
+  const graceTimers = useRef(new Set());
+  useEffect(() => () => { for (const t of graceTimers.current) clearTimeout(t); }, []);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const seenRef = useRef(new Set());
 
@@ -176,6 +184,15 @@ const NotificationTrayView = () => {
     if (fresh.length === 0) return undefined;
     for (const rec of fresh) seenRef.current.add(rec.id);
     setToasts((prev) => [...fresh, ...prev].slice(0, 3));
+    // Its grace outlives this effect: a record arriving inside the grace must
+    // not leave the earlier toast unpressable.
+    const ids = fresh.map((rec) => rec.id);
+    setArriving((prev) => new Set([...prev, ...ids]));
+    const grace = setTimeout(() => {
+      graceTimers.current.delete(grace);
+      setArriving((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
+    }, TOAST_GRACE_MS);
+    graceTimers.current.add(grace);
     const timer = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => !fresh.some((f) => f.id === t.id)));
     }, TOAST_MS);
@@ -246,6 +263,7 @@ const NotificationTrayView = () => {
             onActivate={activate}
             onDismiss={dismiss}
             compact
+            arriving={arriving.has(record.id)}
           />
         ))}
       </div>

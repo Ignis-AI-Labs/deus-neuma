@@ -18,10 +18,12 @@ export const useTikTokApproval = (entry) => {
   const live = entry.channelId === 'tiktok' && entry.status === 'draft';
   const [card, setCard] = useState(null);
   const [choice, setChoice] = useState(EMPTY_CHOICE);
+  // A re-read (the being edited the words) keeps the card it has until the
+  // new answer lands: blanking it unmounted every control on the card under
+  // the person's pointer and closed the menu they had open (2026-10-23).
   useEffect(() => {
     if (!live) return undefined;
     let mounted = true;
-    setCard(null);
     fetchTikTokCard(entry.id)
       .then((c) => { if (mounted) setCard(c); })
       .catch((err) => { if (mounted) setCard({ error: err.message }); });

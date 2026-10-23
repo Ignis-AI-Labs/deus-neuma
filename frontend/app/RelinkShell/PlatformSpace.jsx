@@ -17,6 +17,7 @@ import { PlatformHeader } from './PlatformHeader.jsx';
 import { StandingPanel, StandingNotice } from './StandingPanel.jsx';
 import { usePlatformPulse } from './use-platform-pulse.js';
 import { usePlatformStanding } from './use-platform-standing.js';
+import { useCalmGate } from './use-calm-gate.js';
 import { platformPulse, scopeQueue } from './platform-pulse.js';
 import { AccountStrip } from './accounts/AccountStrip.jsx';
 import { useHouseAccounts } from './accounts/use-house-accounts.js';
@@ -49,7 +50,10 @@ export const PlatformSpace = ({ channelId }) => {
     ? new Set(house.accounts.filter((a) => a.channelId === channelId && a.companyId === companyId).map((a) => a.id))
     : null;
   const ofCompany = (e) => !shownAccounts || shownAccounts.has(entryAccountId(e));
-  const pulseRead = usePlatformPulse();
+  // Background news (polls, a being's acts) waits while the person works this
+  // window — it never re-lays what they are pointing at (calm-gate.js).
+  const calm = useCalmGate();
+  const pulseRead = usePlatformPulse({ calm });
 
   const openQueue = (to) => {
     uiSound('toggle');
@@ -60,7 +64,7 @@ export const PlatformSpace = ({ channelId }) => {
   const test = channel ? (pulseRead.tests[channel.id] ?? null) : null;
 
   return (
-    <div className="outreach-panel settings" ref={pulseRead.watch}>
+    <div className="outreach-panel settings" ref={pulseRead.watch} {...calm.handlers}>
       {loadError ? <p className="settings-err">{loadError}</p> : null}
       {!channel && !loadError ? <p className="settings-note">Reading the channel board…</p> : null}
 
@@ -101,9 +105,9 @@ export const PlatformSpace = ({ channelId }) => {
 
           {/* Keyed by board so each mounts fresh on entry (the account re-reads on every entry). */}
           {sub === 'account' && AccountBoard ? <AccountBoard key={`account-${channel.id}`} />
-            : sub === 'campaigns' ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} />
+            : sub === 'campaigns' ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} calm={calm} />
             : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={channel.name} entryFilter={ofCompany}
-                focus={focus.n ? focus : null} onChanged={pulseRead.refresh} />}
+                focus={focus.n ? focus : null} onChanged={pulseRead.refresh} calm={calm} />}
         </>
       ) : null}
     </div>

@@ -9,21 +9,78 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* The rows reflow on the CARD's width, not the window's. */
+  container: tt-card / inline-size;
 }
 
-.tt-row { align-items: center; flex-wrap: wrap; }
+/* LINE & CYCLE row: the choice's name in its own column, then one cell that
+   holds the control and what it means. Every track can shrink to nothing
+   (minmax 0), so no word can push the row past the card's edge. */
+.tt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 104px) minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: baseline;
+}
+
+.tt-k { overflow-wrap: anywhere; }
+
+/* The words stand beside the control while there is room for a readable
+   measure (the 200px basis), and fold under it, full width, when there is not. */
+.tt-cell {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+}
 
 .tt-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tt-aside {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* What a row means: a sentence, so the voice register, small and quiet. */
+.tt-help {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+/* Narrow card: the name stands above its control instead of beside it. */
+@container tt-card (max-width: 380px) {
+  .tt-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-1);
+  }
 }
 
 .tt-account {
   font-family: var(--font-data);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+}
+
+.tt-controls > span,
+.tt-settings .settings-v {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 /* The author's settings lines, offered beside the control, never chosen for you. */
@@ -33,6 +90,7 @@
   font-size: 10px;
   letter-spacing: 0.14em;
   color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
 }
 
 /* Greyed when the account itself turned the interaction off. */
