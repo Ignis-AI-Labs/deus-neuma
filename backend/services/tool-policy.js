@@ -218,7 +218,7 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   'security_posture', 'security_threats_list', 'security_threat_get',
   'security_attack_surface', 'security_telemetry',
   'legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api', 'bench_list', 'bench_status',
-  'media_library', 'map_read', 'read_architecture', 'read_history', 'read_x',
+  'media_library', 'map_read', 'read_architecture', 'read_history', 'read_x', 'read_tiktok',
   'retrieve_result', 'image_search',
   // The filesystem lane — the five primitives (organ spellings are internal)
   'read', 'list', 'search',

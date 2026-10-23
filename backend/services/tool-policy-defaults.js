@@ -312,8 +312,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   // state the operator already owns — it opens by right, so a being can check
   // what is already staged before staging a duplicate. Everything that SPEAKS
   // keeps its gate: posting and staging are INTENTS (their rows sit on the
-  // `intents` server), and `read_x` is EGRESS on the house's credentials, so
-  // it asks. The DYNAMIC reply names — queue_reply_to_*, queue_self_reply_to_*,
+  // `intents` server), and `read_x` / `read_tiktok` are EGRESS on the house's credentials, so
+  // they ask. The DYNAMIC reply names — queue_reply_to_*, queue_self_reply_to_*,
   // reply_dismiss_*, queue_update_to_* — hold no row here on purpose:
   // checkToolAccess fails closed to approval_required for any unnamed tool,
   // so every staged reply pauses on the operator's chip by default, and an
@@ -321,7 +321,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   social: {
     allowed: ['queue_list', 'queue_get', 'replies_list'],
     denied: [],
-    requireApproval: ['read_x', 'queue_cancel'],
+    requireApproval: ['read_x', 'read_tiktok', 'queue_cancel'],
   },
   // The being's own working list, and the house lead ledger. Listing is pure
   // observation (same law as the vault and the inbox); every mutation is a

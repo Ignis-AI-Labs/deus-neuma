@@ -26,6 +26,7 @@ import { houseOfLane } from '../social/house-positions.js';
 import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { REPLIES_LIST_TOOL, readReplyInbox } from './reply-inbox-tool.js';
+import { READ_TIKTOK_TOOL, readTikTokForBeing, tiktokReadRefusal } from './tiktok-read-tool.js';
 
 // Same logger name as the seat it was cut from, so the read lane's warnings
 // keep their long-standing prefix in the operator's logs.
@@ -123,7 +124,8 @@ const QUEUE_CANCEL_TOOL = Object.freeze({
 });
 
 const SOCIAL_TOOLS = Object.freeze([QUEUE_LIST_TOOL, QUEUE_GET_TOOL, READ_X_TOOL, QUEUE_CANCEL_TOOL, REPLIES_LIST_TOOL]);
-const SOCIAL_TOOL_NAMES = new Set(SOCIAL_TOOLS.map((t) => t.name));
+// read_tiktok is advertised to the TikTok holder alone (channelToolsFor); it is handled here.
+const SOCIAL_TOOL_NAMES = new Set([...SOCIAL_TOOLS, READ_TIKTOK_TOOL].map((t) => t.name));
 
 // Does this parsed call target a social read tool? (accepts both dialects)
 const _isSocialTool = (match) =>
@@ -191,6 +193,13 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
       return { tool, status: 'error', error };
     }
     cancelTarget = entry;
+  }
+
+  // Only the TikTok holder reads the house's TikTok account — refused before any card.
+  const notHolder = toolName === 'read_tiktok' ? await tiktokReadRefusal(companion?.neumaId) : null;
+  if (notHolder) {
+    _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not the TikTok holder` });
+    return { tool, status: 'denied', error: notHolder };
   }
 
   if (access === 'approval_required') {
@@ -340,6 +349,14 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: 'queue_cancel — failed', detail: err.message });
       return { tool, status: 'error', error: err.message };
     }
+  }
+
+  if (toolName === 'read_tiktok') {
+    const read = await readTikTokForBeing(companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW });
+    _sendToolEvent(ws, companion, {
+      tool, status: read.ok ? 'ok' : 'error', summary: read.ok ? `read the TikTok account and ${read.shown} video(s)` : `${toolName} — failed`, detail: read.ok ? undefined : read.error,
+    });
+    return read.ok ? { tool, status: 'ok', content: read.text } : { tool, status: 'error', error: read.error };
   }
 
   // read_x — the reader never throws; a broken lane answers with the honest

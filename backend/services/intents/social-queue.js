@@ -18,6 +18,9 @@ import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { postQueue, validateDraft as validateQueueDraft } from '../social/post-queue.js';
 import { resolvePostMedia } from '../social/post-media.js';
+import { parseTikTokDraft } from '../social/tiktok-metadata.js';
+import { tiktokStagingCheck } from '../social/tiktok-staging.js';
+import { queueDescriptionFor, tiktokStagedWords, TIKTOK_VIDEO_FIX } from './social-queue-guide.js';
 
 // impure — the channels this lane may STAGE for: crewed (or held) AND
 // credentialed, in the lane's own house (house-positions.js). The queue
@@ -37,15 +40,21 @@ const stageableChannels = async (laneId) => {
   return out;
 };
 
+const DESCRIPTION = 'Stage a post as a DRAFT in the channel\'s campaign queue — nothing is published now; your operator decides the draft, and it goes out at scheduledFor (ISO-8601) once approved. Use this for planned content and calendars.';
+
+// pure — a refused TikTok draft names the way forward when its video is the problem.
+const withVideoFix = (channelId, reason) => (channelId === 'tiktok' ? `${reason}. ${TIKTOK_VIDEO_FIX}` : reason);
+
 export const socialQueueIntent = Object.freeze({
   name: 'social/queue',
   // The ACTS policy row this intent rides (`intents` server in tool-policy).
   policyTool: 'social.queue',
-  fieldsForPrompt: '{channel, text, scheduledFor?, campaignId?, pillar?, media?}',
-  descriptionForPrompt: 'Stage a post as a DRAFT in the channel\'s campaign queue — nothing is published now; your operator decides the draft, and it goes out at scheduledFor (ISO-8601) once approved. Use this for planned content and calendars.',
+  fieldsForPrompt: '{channel, text, scheduledFor?, campaignId?, pillar?, media?: [{image|path, alt}]}',
+  descriptionForPrompt: DESCRIPTION,
+  // The contract carries the rules of exactly the channels this lane may stage for.
   availableFor: async ({ laneId }) => {
     const channels = await stageableChannels(laneId);
-    return channels.length ? { channels } : null;
+    return channels.length ? { channels, descriptionForPrompt: queueDescriptionFor(DESCRIPTION, channels) } : null;
   },
 
   // impure — media authorization reads the disk; the crew/binding stores are
@@ -61,13 +70,13 @@ export const socialQueueIntent = Object.freeze({
     const pillar = (typeof payload?.pillar === 'string' && payload.pillar.trim()) || '';
 
     const resolvedMedia = await resolvePostMedia(connection, payload?.media, { channelId: channel.id });
-    if (!resolvedMedia.ok) return { ok: false, status: 'invalid', reason: `media refused: ${resolvedMedia.detail}` };
+    if (!resolvedMedia.ok) return { ok: false, status: 'invalid', reason: withVideoFix(channel.id, `media refused: ${resolvedMedia.detail}`) };
     const media = resolvedMedia.media;
 
     // The queue's own validator guards this door — the rules a draft must meet
     // are identical whether it arrives from a being or over REST.
     const invalid = validateQueueDraft({ channelId: channel.id, text, scheduledFor, campaignId, pillar, media });
-    if (invalid) return { ok: false, status: 'invalid', reason: invalid };
+    if (invalid) return { ok: false, status: 'invalid', reason: media.length === 1 ? invalid : withVideoFix(channel.id, invalid) };
 
     // SECTOR CREW gate. Staging is WORK, not custody: anyone the operator put
     // on this sector's crew may draft into the queue, and the holder may too.
@@ -80,7 +89,14 @@ export const socialQueueIntent = Object.freeze({
     if (!canStageForSector(crewStore, bindings, channel.id, connection.companion?.neumaId || null)) {
       return { ok: false, status: 'denied', reason: `you are not on the ${channel.name} crew — ask your operator to add you to that sector before staging posts for it` };
     }
-    return { ok: true, value: { channel, text, scheduledFor, campaignId, pillar, media } };
+    // TikTok: the account it will post as, and a too-long video refused now, before any card.
+    let tiktok = null;
+    if (channel.id === 'tiktok') {
+      const checked = await tiktokStagingCheck(house, media[0], { signal: connection.activeTurn?.signal });
+      if (!checked.ok) return { ok: false, status: 'invalid', reason: checked.reason };
+      tiktok = { mode: parseTikTokDraft(text).meta.mode, account: checked.account, note: checked.note };
+    }
+    return { ok: true, value: { channel, text, scheduledFor, campaignId, pillar, media, tiktok } };
   },
 
   // The one line the operator's card stakes the decision on. Pure.
@@ -93,7 +109,7 @@ export const socialQueueIntent = Object.freeze({
   },
 
   // impure — the real queue store. Publishing stays the scheduler's act.
-  execute: async ({ channel, text, scheduledFor, campaignId, pillar, media }, { connection }) => {
+  execute: async ({ channel, text, scheduledFor, campaignId, pillar, media, tiktok }, { connection }) => {
     const author = connection.companion?.neumaId || null;
     let entry;
     try {
@@ -110,6 +126,7 @@ export const socialQueueIntent = Object.freeze({
     } catch (err) {
       return { ok: false, reason: `The draft could not be staged: ${err.message}.` };
     }
+    if (tiktok) return { ok: true, detail: tiktokStagedWords({ id: entry.id, scheduledFor, ...tiktok }) };
     return {
       ok: true,
       detail: `Staged draft ${entry.id} for ${channel.name}${scheduledFor ? `, scheduled for ${scheduledFor}` : ''}. Nothing is published yet — your operator decides this draft, and it goes out only if they approve.`,

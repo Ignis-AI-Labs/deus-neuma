@@ -20,7 +20,7 @@ import { catalogEntryOf } from '../closed-book.js';
 
 // Observation that reaches off the machine, or moves a cursor: not a self-read.
 const NOT_SELF_READS = Object.freeze(new Set([
-  'web_search', 'web_fetch', 'platform_data', 'read_x', 'image_search',
+  'web_search', 'web_fetch', 'platform_data', 'read_x', 'read_tiktok', 'image_search',
   'chain_chains', 'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders',
   'post_check',
 ]));

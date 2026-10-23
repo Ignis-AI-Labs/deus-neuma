@@ -11,6 +11,7 @@
 // stand. Pure throughout: entries in, text out. No IO lives here.
 
 import { frameUntrustedContent } from '../untrusted-content.js';
+import { tiktokEntryLines, TIKTOK_COPY_HEADING } from './tiktok-queue-lines.js';
 
 // The DEAD standings — copy the operator dropped completely (Design note, 2026-07-27:
 // […]).
@@ -105,6 +106,9 @@ const _slotMark = (e) => {
   return `· ${e?.scheduledFor || 'unscheduled'}`;
 };
 
+// A TikTok post's one file is its video.
+const _mediaNoun = (e) => (e?.channelId === 'tiktok' ? 'video' : 'image(s)');
+
 const _campaignMark = (e) =>
   (e?.campaignId ? `· ${e.campaignId}${e.pillar ? `/${e.pillar}` : ''}` : (e?.pillar ? `· ${e.pillar}` : null));
 
@@ -132,16 +136,17 @@ const _fullLine = (e, threads) => [
   // API access), so no X-side schedule id can ever exist. The backend
   // fires the slot; the LIVE post id lands on this record at send. That
   // is the whole chain — there is nothing else to wait for.
-  e.status === 'approved' && e.decidedAt
+  e.status === 'approved' && e.decidedAt && e.channelId !== 'tiktok'
     ? `· schedule LOCKED ${e.decidedAt} (backend-locked — X holds no schedule; the LIVE post id lands here at send)`
     : null,
   e.withdrawnBy ? `· withdrawn by ${e.withdrawnBy}${e.withdrawnReason ? ` (${e.withdrawnReason})` : ''}` : null,
   Array.isArray(e.media) && e.media.length
-    ? `· ${e.media.length} image(s): ${e.media.map((m) => `${m.path.split('/').pop()}${m.alt ? ' [described]' : ' [NO ALT TEXT]'}`).join(', ')}`
+    ? `· ${e.media.length} ${_mediaNoun(e)}: ${e.media.map((m) => `${m.path.split('/').pop()}${m.alt ? ' [described]' : ' [NO ALT TEXT]'}`).join(', ')}`
     : null,
+  ...tiktokEntryLines(e),
   // Where it actually landed, so publication can be verified rather than
   // assumed. /i/status/ resolves without knowing the account handle.
-  e.postId ? `· LIVE ${publicPostUrl(e.channelId, e.postId)}` : null,
+  e.postId && e.channelId !== 'tiktok' ? `· LIVE ${publicPostUrl(e.channelId, e.postId)}` : null,
   e.sentAt ? `· sent ${e.sentAt}` : null,
   e.error ? `· FAILED ${_flat(e.error).slice(0, 160)}` : null,
   Array.isArray(e.revisions) && e.revisions.length
@@ -383,13 +388,14 @@ export const formatQueueEntryForBeing = (entries, given, { postId = '' } = {}) =
     e.updatedBy ? `· last edited ${e.updatedAt} by ${e.updatedBy}` : null,
     e.withdrawnBy ? `· withdrawn by ${e.withdrawnBy} at ${e.withdrawnAt}${e.withdrawnReason ? ` (${e.withdrawnReason})` : ''}` : null,
     Array.isArray(e.media) && e.media.length
-      ? `· ${e.media.length} image(s): ${e.media.map((m) => `${m.path}${m.alt ? ` [alt: "${_preview(m.alt, 80)}"]` : ' [NO ALT TEXT]'}`).join('; ')}`
+      ? `· ${e.media.length} ${_mediaNoun(e)}: ${e.media.map((m) => `${m.path}${m.alt ? ` [alt: "${_preview(m.alt, 80)}"]` : ' [NO ALT TEXT]'}`).join('; ')}`
       : null,
-    e.postId ? `· LIVE ${publicPostUrl(e.channelId, e.postId)} (sent ${e.sentAt})` : null,
+    ...tiktokEntryLines(e),
+    e.postId && e.channelId !== 'tiktok' ? `· LIVE ${publicPostUrl(e.channelId, e.postId)} (sent ${e.sentAt})` : null,
     e.error ? `· FAILED ${_flat(e.error).slice(0, 300)}` : null,
     e.expiresAt ? `· expires ${e.expiresAt}` : null,
     '',
-    'COPY (verbatim — this is exactly what publishes):',
+    e.channelId === 'tiktok' ? TIKTOK_COPY_HEADING : 'COPY (verbatim — this is exactly what publishes):',
     `"${e.text || ''}"`,
     ...(e.kind === 'reply' && e.reply?.toTextPreview
       ? ['', frameUntrustedContent(

@@ -221,7 +221,8 @@ const searchAndDisclose = (connection, args) => {
   // a family by its slash, else the intents a term names by a word of their id ("dispatch", "staff") —
   // the acts a lane files are found by the same words as its tools (2026-10-17 flight: seven searches for one charge)
   const terms = query.split(/\s+/).filter((term) => term.length >= 3).map((term) => term.replace(/\/$/, ''));
-  const intentWords = (type) => type.name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  // a channel-bound type answers to its channels too ("tiktok" finds social/queue)
+  const intentWords = (type) => [...type.name.toLowerCase().split(/[^a-z0-9]+/), ...(type.channels || [])].filter(Boolean);
   const family = query.endsWith('/')
     ? intents.filter((type) => type.name.toLowerCase().startsWith(query))
     : intents.filter((type) => terms.some((term) => intentWords(type).some((word) => word.startsWith(term) || (word.length >= 4 && term.startsWith(word)))));
