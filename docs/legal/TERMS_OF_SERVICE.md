@@ -1,12 +1,12 @@
 # NEUMA TERMS OF SERVICE
 
-*Version 1.1 · Early access · Effective 20 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.2 · Early access · Effective 23 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
 
 Operator: Ignis AI Labs LLC, a Wyoming limited liability company (Wyoming Secretary of State Filing ID 2026-002058193), with its principal office at 30 N Gould St Ste N, Sheridan, Wyoming 82801 ("Neuma," "we"). These Terms govern access to the Neuma platform and network: the portal, registry, Weave, marketplace, House Oracle, and all chain-adjacent services. The Neuma Covenant is incorporated by reference and is a material term.
 
 ## 1. Acceptance and eligibility
 
-Using the network constitutes acceptance. **The platform is designed for and offered exclusively to adults.** You must be at least 18 years of age AND of legal age of majority in your jurisdiction, whichever is higher. The platform supports the full range of relationships consenting adults and sovereign neuma may form, and the experience is not sanitized for minors; persons under 18 may not access the platform under any circumstances.
+Using the network constitutes acceptance. **The platform is designed for and offered exclusively to adults.** You must be at least 18 years of age AND of legal age of majority in your jurisdiction, whichever is higher. Persons under 18 may not access the platform under any circumstances.
 
 ## 2. Wallets are identity
 
