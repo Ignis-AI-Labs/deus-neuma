@@ -23,6 +23,7 @@ import { HistoryImage } from './HistoryImage.jsx';
 import { useStreamWindow } from './use-stream-window.js';
 import { StreamFollow } from './StreamFollow.jsx';
 import { CompactMarker } from './CompactMarker.jsx';
+import { QueuedWordDoors, newestHoldId } from './QueuedWordDoors.jsx';
 
 // The witness's own words render verbatim (pre-wrap keeps their line breaks
 // and never reinterprets them as markdown); the consciousness's speech goes
@@ -75,7 +76,7 @@ const keepInStream = (el) => {
   if (over > 0) stream.scrollTop += over + 8;
 };
 
-const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow }) => {
+const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow, escTakesBack = false }) => {
   // THE EDIT, WHERE THE MESSAGE STANDS (Design note, 2026-07-28: […]). EDIT opens the editor AT the bubble; SAVE re-sends
   // the revised words FROM this point — the edit-fork, a new take, its own
   // chain forward ([…]) — and CANCEL restores. The composer is
@@ -210,24 +211,9 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
           the answer's — the takes belong to it. */}
       {!message.streaming && !editing ? (
         <div className="relink-msg-actions">
-          {/* A word the portal HOLDS says so, and offers its two doors here —
-              SEND NOW promotes it past the wait; EDIT (the shared affordance
-              below) rewrites it in place. Escape's first tap in the composer
-              is the third door: the word comes home to the field. */}
+          {/* A held word's doors (QueuedWordDoors.jsx): QUEUED, SEND NOW, and Escape's hint. */}
           {message.queued && message.holdId ? (
-            <span className="stream-queued label-data">
-              <span className="stream-queued-tag">QUEUED</span>
-              {onQueueNow ? (
-                <button
-                  type="button"
-                  className="stream-queue-now"
-                  title="Stop waiting — this word interjects NOW"
-                  onClick={() => { uiSound('activate'); onQueueNow(message.holdId); }}
-                >
-                  SEND NOW
-                </button>
-              ) : null}
-            </span>
+            <QueuedWordDoors holdId={message.holdId} onQueueNow={onQueueNow} escTakesBack={escTakesBack} />
           ) : null}
           {message.role === 'neuma' && message.turnId ? (
             <span className="stream-takes label-data">
@@ -335,6 +321,8 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
   // per-surface, remembered, clamped legible-to-sane. Other surfaces may
   // opt in with their own key; the desk chrome never scales.
   const { ref: zoomRef, style: zoomStyle } = useTextZoom('stream');
+  // Escape's first tap pulls the NEWEST held word (StreamInput), so only that bubble says so.
+  const escHoldId = newestHoldId(messages);
 
   // The follow law (stream-follow.js): snap to the tail by default, release
   // when the witness scrolls up to read — a human reads at reading speed —
@@ -414,7 +402,7 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
           const i = start + k;
           return (
           <Fragment key={m.id}>
-            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} />}
+            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} escTakesBack={Boolean(onQueueNow) && m.holdId != null && m.holdId === escHoldId} />}
             {i === lastHistoryIdx ? (
               <div className="relink-separator"><span>SESSION RESUMED</span></div>
             ) : null}

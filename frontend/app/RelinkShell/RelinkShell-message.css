@@ -29,6 +29,7 @@
 .stream-queued-tag { font-family: var(--font-data); font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary); }
 .stream-queue-now { background: transparent; border: none; padding: 0; font-family: var(--font-data); font-size: 9px; letter-spacing: 0.16em; color: var(--signal); cursor: pointer; transition: color var(--snap); }
 .stream-queue-now:hover { color: var(--color-text-primary); }
+.stream-queue-esc { margin-left: 10px; font-family: var(--font-data); font-size: 9px; letter-spacing: 0.16em; color: var(--color-text-tertiary, var(--color-text-secondary)); }
 .relink-msg--user.is-queued .relink-edit { opacity: 1; }
 
 .relink-msg:hover .relink-copy,
