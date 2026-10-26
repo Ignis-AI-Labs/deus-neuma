@@ -10,6 +10,7 @@ import { EmptyState } from './empty-state.jsx';
 import { Select } from './Select.jsx';
 import { TriageOverview } from './TriageOverview.jsx';
 import { ageTag } from './triage-view.js';
+import { Fact } from './report-fact.jsx';
 import {
   MATTER_STATUSES,
   severityLoud, statusOwes, statusLabel, areaLabel, seatLine, holderNameFor, runLine, reportsOf,
@@ -71,17 +72,17 @@ const MatterDetail = ({ matter, onClose }) => {
         <button type="button" className="sec-detail-close label-data" onClick={onClose}>CLOSE</button>
       </div>
       <p className="sec-detail-title">{matter.title}</p>
-      {matter.summary ? <p className="sec-detail-summary legal-pre">{matter.summary}</p> : null}
-      {matter.regimes?.length ? <p className="sec-detail-line label-data">LAW TO READ — {matter.regimes.join(' · ')}</p> : null}
-      {matter.affected?.length ? (
-        <ul className="legal-affected">
-          {matter.affected.map((a) => <li key={a} className="label-data">{a}</li>)}
-        </ul>
-      ) : null}
-      <p className="sec-detail-line label-data">
-        FIRST SEEN {formatDateTime(matter.ingestedAt)} · LAST SEEN {formatDateTime(matter.lastSeenAt)}
-        {matter.reviewBy ? ` · REVIEW BY ${matter.reviewBy}` : ''}
-      </p>
+      <dl className="sec-facts">
+        {matter.regimes?.length ? <Fact label="LAW TO READ">{matter.regimes.join(' · ')}</Fact> : null}
+        {matter.affected?.length ? (
+          <Fact label="AFFECTED">
+            <ul className="legal-affected">{matter.affected.map((a) => <li key={a}>{a}</li>)}</ul>
+          </Fact>
+        ) : null}
+        <Fact label="SEEN">{formatDateTime(matter.ingestedAt)} → {formatDateTime(matter.lastSeenAt)}</Fact>
+        {matter.reviewBy ? <Fact label="REVIEW BY">{matter.reviewBy}</Fact> : null}
+      </dl>
+      {matter.summary ? <p className="sec-detail-text legal-pre">{matter.summary}</p> : null}
       <p className="sec-detail-reports label-data">THE PRAETOR&#39;S READINGS</p>
       {reports.length === 0 ? (
         <p className="sec-report-empty label-data">NOT YET READ.</p>
@@ -97,7 +98,7 @@ const MatterDetail = ({ matter, onClose }) => {
               <p className="sec-report-body">{h.assessment}</p>
               {h.citations?.length ? (
                 <ul className="legal-citations">
-                  {h.citations.map((c) => <li key={c} className="label-data">{c}</li>)}
+                  {h.citations.map((c) => <li key={c}>{c}</li>)}
                 </ul>
               ) : null}
             </li>
@@ -153,8 +154,10 @@ export const LegalBody = ({
                 <button type="button" className={`sec-row tri-edge-${m.severity}${detail?.id === m.id ? ' is-open' : ''}`} onClick={() => onPickMatter(m)}>
                   <span className={`sec-tag label-data ${severityLoud(m.severity) ? 'is-loud' : ''}`}>{String(m.severity).toUpperCase()}</span>
                   <span className={`sec-tag label-data ${statusOwes(m.status) ? 'is-loud' : ''}`}>{statusLabel(m.status)}</span>
-                  <span className="sec-row-id label-data">{areaLabel(m.area)}</span>
-                  <span className="sec-row-title">{m.title}</span>
+                  <span className="sec-row-what">
+                    <span className="sec-row-title">{m.title}</span>
+                    <span className="sec-row-id label-data">{areaLabel(m.area)}</span>
+                  </span>
                   <span className="sec-row-where label-data">{m.repo || ''}</span>
                   <span className="sec-row-age label-data" title="days since first seen">{ageTag(m.ingestedAt, now)}</span>
                 </button>

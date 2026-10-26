@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import { openDockApp } from './helpers/dock.js';
 import { setupIsolatedHouse, openDesk, settledShot as shot } from './helpers/isolated-house.js';
+import { underFloor } from './helpers/legibility.js';
 
 /**
  * End-to-end THE SECURITY WINDOW (2026-10-19) — the CSO office on the desk:
@@ -26,17 +27,6 @@ import { setupIsolatedHouse, openDesk, settledShot as shot } from './helpers/iso
  * pressed (it would read real repos and speak to OSV). Shots:
  * test/e2e/shots/security-*.png
  */
-
-// THE FLOOR (Design note, 2026-10-26: […]): every visible word in
-// the window, measured in the real browser — the element that holds the text, its computed size. [] = all legible.
-const underFloor = (root) => root.evaluate((el) => [...el.querySelectorAll('*')].flatMap((n) => {
-  if (![...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())) return [];
-  const box = n.getBoundingClientRect();
-  const cs = getComputedStyle(n);
-  if (!box.width || !box.height || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return [];
-  const px = parseFloat(cs.fontSize);
-  return px < 13 ? [`${px}px <${n.tagName.toLowerCase()} class="${n.className}"> ${n.textContent.trim().slice(0, 40)}`] : [];
-}));
 
 const CSO = { id: 'e2e-sec-bizulen', name: 'Bizulen', utc: '2026-08-10T12:00:00.000Z' };
 const MEMBERS = [CSO];

@@ -1,6 +1,0 @@
-Added
-- Right-click any picture or video on the desk to open one menu for it. This works on the renders a being makes, post and approval cards, the gallery, the image viewer, pasted pictures, attachments, share cards and brand marks. A long press or the keyboard menu key (Shift+F10) opens it too.
-- A video's menu keeps everything the player's own options had: View full screen, Picture in picture, Play or Pause, Mute, Loop, Show controls, Playback speed (0.25× to 2×) and Download. A picture's menu has View full screen, Download and Copy image.
-- New in the menu: Open in gallery. It opens the GALLERY on that exact picture or video, in the folder where it is kept, so you can look through the pictures and videos around it.
-- New in the menu: Show in files. It opens the Explorer down to the file's folder, with the file in view. It never changes the Explorer's focus, so when the Explorer is focused on another folder the item is left out. In the desktop app, Show in file manager opens the folder in your computer's own file manager. Copy path copies where the file is on disk.
-- Options that can't work for a picture or video are left out of the menu. For example, a pasted picture that was never saved as a file has no Show in files or Copy path.

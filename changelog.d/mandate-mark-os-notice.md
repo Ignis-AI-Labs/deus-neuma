@@ -1,4 +1,0 @@
-Added
-- While a marketing mandate is on, the notifications button carries a small, still square of its own. Hover it to see that the CMO is acting for you, when the mandate ends, and that WITHDRAW is in the notifications corner. It goes away when the mandate is withdrawn or ends. A paused mandate is still listed with the decisions waiting on you.
-- When a new decision starts waiting on you while the desk is hidden, minimized or behind another window, your computer shows one desktop notification naming the kind of decision, who is asking and its title. Click it to bring the desk forward on that decision. Each decision notifies once.
-- A DESKTOP ALERTS switch at the foot of the notifications panel turns desktop notifications on or off. It is on by default and only appears where desktop notifications can work. In a browser the desk never asks for notification permission itself.

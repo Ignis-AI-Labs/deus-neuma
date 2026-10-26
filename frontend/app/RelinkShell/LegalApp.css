@@ -1,7 +1,9 @@
 /* LegalApp — the LEGAL window: the SECURITY window's grammar (SecurityApp.css
    carries the head, strip, ledger rows, and detail) plus what law adds —
    the seat, a matter's evidence lines, and the citations a reading rests on.
-   LINE & CYCLE: monochrome at rest; loud only where something owes action. */
+   LINE & CYCLE: monochrome at rest; loud only where something owes action.
+   LEGIBILITY (Design note, 2026-10-26: nothing under 13px — labels 13px, reading 14px;
+   legal-window.spec.js measures every visible word. */
 
 .legal-empty { color: var(--color-text-disabled); }
 
@@ -14,13 +16,13 @@
 }
 .legal-sec-head {
   margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-size: var(--text-label);
+  letter-spacing: 0.12em;
   color: var(--color-text-tertiary);
 }
 .legal-note {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--color-text-secondary);
 }
@@ -44,9 +46,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-data);
+  font-size: var(--text-label);
   color: var(--color-text-secondary);
   overflow-wrap: anywhere;
 }
-.legal-citations { border-left: 1px solid var(--signal-dim); }
+.legal-affected { padding: 0; }
+.legal-citations { margin-top: var(--space-1); border-left: 1px solid var(--signal-dim); }

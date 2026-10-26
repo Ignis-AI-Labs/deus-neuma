@@ -9,6 +9,7 @@ import { EmptyState } from './empty-state.jsx';
 import { TriageOverview } from './TriageOverview.jsx';
 import { ageTag } from './triage-view.js';
 import { Markdown } from './Markdown.jsx';
+import { Fact } from './report-fact.jsx';
 import {
   THREAT_STATUSES,
   severityLoud, statusOwes, statusLabel, reportLabel, reportActor, evidenceLine, runLine, seatLine, hostLine,
@@ -20,14 +21,6 @@ export const SecurityIcon = () => (
     <path d="M8 1.5 L14 3.5 V8 C14 12 11 14.5 8 15 C5 14.5 2 12 2 8 V3.5 Z" />
     <path d="M5.5 8 L7.5 10 L10.5 6" />
   </svg>
-);
-
-// one fact of the report: a label and its value, on one row of the facts grid
-const Fact = ({ label, children }) => (
-  <>
-    <dt className="label-data">{label}</dt>
-    <dd>{children}</dd>
-  </>
 );
 
 // THE REPORT — one threat whole, and the office's verdicts in order.

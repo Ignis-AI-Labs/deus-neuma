@@ -23,7 +23,7 @@
   border-left: var(--border-width-medium) solid var(--alert);
   background: var(--alert-tint);
 }
-.tri-must-head { font-size: 13px; letter-spacing: 0.16em; color: var(--alert); }
+.tri-must-head { font-size: var(--text-label); letter-spacing: 0.16em; color: var(--alert); }
 .tri-must-count {
   display: grid;
   grid-template-columns: auto auto;
@@ -43,8 +43,8 @@
 .tri-must-count.is-high b { color: var(--color-text-primary); }
 .tri-must-count.is-zero b { color: var(--color-text-disabled); }
 .tri-must-count span { font-size: var(--text-sm); letter-spacing: 0.14em; }
-.tri-must-count small { font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
-.tri-must-sub { flex: 1 1 260px; font-size: 13px; letter-spacing: 0.12em; color: var(--alert-dim); line-height: 1.5; }
+.tri-must-count small { font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.tri-must-sub { flex: 1 1 260px; font-size: var(--text-label); letter-spacing: 0.12em; color: var(--alert-dim); line-height: 1.5; }
 .tri-must.is-clear { border-left-color: var(--signal-dim); background: var(--color-glass-light); }
 .tri-must-calm { font-size: var(--text-sm); letter-spacing: 0.14em; color: var(--signal); }
 .tri-must.is-clear .tri-must-sub { color: var(--color-text-tertiary); }
@@ -68,7 +68,7 @@
   background: var(--color-glass-light);
   min-width: 0;
 }
-.tri-card-head { margin: 0; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.tri-card-head { margin: 0; font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
 
 /* severity × status */
 .tri-matrix { border-collapse: separate; border-spacing: 2px; width: 100%; table-layout: auto; }
@@ -79,7 +79,7 @@
   border: none;
   padding: 0 4px 2px;
   font-family: var(--font-data);
-  font-size: 13px;
+  font-size: var(--text-label);
   letter-spacing: 0.02em;
   line-height: 1.25;
   color: var(--color-text-secondary);
@@ -94,7 +94,7 @@
   padding: 3px 4px;
   border: none;
   font-family: var(--font-data);
-  font-size: 13px;
+  font-size: var(--text-label);
   letter-spacing: 0.06em;
   color: var(--color-void);
   cursor: pointer;
@@ -136,18 +136,18 @@
 }
 .tri-row:hover:not(.is-static), .tri-row.is-lit { border-color: var(--line-hover); }
 .tri-row.is-static { cursor: default; }
-.tri-row-name { font-size: 13px; letter-spacing: 0.06em; overflow-wrap: anywhere; }
+.tri-row-name { font-size: var(--text-label); letter-spacing: 0.06em; overflow-wrap: anywhere; }
 .tri-row-n { font-size: var(--text-sm); color: var(--color-text-primary); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.tri-row-n small { font-size: 13px; color: var(--color-text-disabled); }
+.tri-row-n small { font-size: var(--text-label); color: var(--color-text-disabled); }
 .tri-bar { display: flex; height: 10px; background: var(--color-glass-hover); }
 .tri-bar i { display: block; height: 100%; border-right: 1px solid var(--color-void); }
 
-.tri-legend { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); margin: 0; font-size: 13px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.tri-legend { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); margin: 0; font-size: var(--text-label); letter-spacing: 0.08em; color: var(--color-text-tertiary); }
 .tri-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .tri-legend i { width: 10px; height: 10px; display: inline-block; }
 
 /* the active filters, and the way back */
-.tri-showing { margin: 0; font-size: 13px; letter-spacing: 0.14em; color: var(--color-text-tertiary); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.tri-showing { margin: 0; font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-tertiary); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .tri-showing b { font-weight: 400; color: var(--color-text-primary); }
 .tri-showing button {
   margin-left: auto;
@@ -155,7 +155,7 @@
   background: none;
   border: var(--border-width-thin) solid var(--line);
   font-family: var(--font-data);
-  font-size: 13px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   color: var(--signal);
   cursor: pointer;

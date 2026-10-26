@@ -1,3 +1,0 @@
-Added
-- A SOCIAL CHECK window in MARKETING shows whether every account the house uses is ready to speak: its keys, that it answers as the right account, its company, who holds it, its crew, permissions, how long its sign-in lasts, that no other account, company or house shares its keys, that its keys file is locked, that posts say they are AI-made, the company's site, and that the app's daily limits cover what is planned. It reads N OF M ACCOUNTS CLEAR for the house and for each company, opens on what needs a fix, and says each fix in plain words. Accounts and platforms you do not use stand apart as optional and never count against you.
-- The marketing seat can run the same check, after you allow it.
