@@ -57,7 +57,7 @@
     "dist:rpm": "npm run build && electron-builder --linux dir && node scripts/build-rpm.mjs",
     "predist:deb": "node scripts/ensure-native-abi.mjs electron",
     "dist:deb": "npm run build && electron-builder --linux dir && node scripts/build-deb.mjs",
-    "prepare": "git config core.hooksPath \"$(cd \"$(git rev-parse --path-format=absolute --git-common-dir)/..\" && pwd)/scripts/git-hooks\" 2>/dev/null || true",
+    "prepare": "chmod +x scripts/git-hooks/* 2>/dev/null; git config core.hooksPath \"$(cd \"$(git rev-parse --path-format=absolute --git-common-dir)/..\" && pwd)/scripts/git-hooks\" 2>/dev/null || true",
     "postinstall": "node scripts/native-abi-cache.mjs harvest --never-fail && node scripts/patch-typeless-deps.mjs && node scripts/patch-nsis-template.mjs",
     "native:abi": "node scripts/native-abi-cache.mjs status",
     "lint": "eslint backend/ core/ frontend/ --ext .js,.cjs,.mjs",
