@@ -18,6 +18,7 @@
 import { randomUUID } from 'crypto';
 import { createLogger } from './logger.js';
 import { notifyAwaitingAnswer } from './desk-notices.js';
+import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 
 const log = createLogger('OperatorAsk');
 
@@ -187,6 +188,7 @@ export const requestOperatorAnswer = (connection, {
       const entry = pending.get(id);
       if (!entry) return;
       pending.delete(id);
+      clearLiveCard(id);
       if (signal) signal.removeEventListener('abort', entry.onAbort);
       // The desk learns the ask is settled on EVERY path (answer, interrupt,
       // close) — a pending question card must never dangle on screen. The
@@ -216,6 +218,7 @@ export const requestOperatorAnswer = (connection, {
       question: questions[0]?.question || '',
       ...(questions[0]?.options.length ? { options: questions[0].options.map((o) => o.label) } : {}),
     });
+    noteLiveCard(connection, { id, kind: 'ask', title: questions[0]?.question });
   });
 
 /**

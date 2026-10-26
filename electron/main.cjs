@@ -13,6 +13,7 @@
 //   ipc-handlers.cjs   — every renderer-facing IPC registration + the app menu
 //   tray.cjs           — the corner tab + the once-per-install "still running" notice
 //   update-bar.cjs     — the desk's update bar + WHAT'S NEW (what auto-update.cjs found)
+//   connections-main.cjs — the CONNECTIONS switches main applies (spellcheck)
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
@@ -24,6 +25,7 @@ const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
 const { registerUpdateBar } = require('./update-bar.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
+const { registerConnections } = require('./connections-main.cjs');
 
 // Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
 // shows an app's notices (the update alert) only under its shortcut's ID, and "open at login" is the
@@ -57,6 +59,8 @@ if (!app.requestSingleInstanceLock()) {
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).
     guardAppSessions(session, getOrigin);
+    // Spellcheck's dictionary fetch is off until the person turns it on — set before any page exists.
+    registerConnections({ app, ipcMain, session });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.

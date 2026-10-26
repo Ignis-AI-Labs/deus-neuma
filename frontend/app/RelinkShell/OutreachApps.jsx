@@ -1,45 +1,29 @@
-// OutreachApps — the platform roster behind the MARKETING and COMMUNITY
-// dock sections (Design note, 2026-07-28: two layers — open platforms are marketed
-// through; private circles are community-managed, never advertised to).
-// Every channel is its own separate space, navigated from the dock like any
-// other app — never tabs buried inside one vague window.
+// OutreachApps — the windows behind the MARKETING and COMMUNITY dock sections
+// (Design note, 2026-07-28: two layers — open platforms are marketed through; private
+// circles are community-managed, never advertised to).
 //
-// One window per platform — X, TELEGRAM, DISCORD, FACEBOOK, MASTODON,
-// BLUESKY — each carrying that platform's standing, campaigns, and queue
-// (PlatformSpace). Beside them: the CMO seat (the deliberately house-wide
-// campaigns) and LEADS (the funnel, one book for the house).
-// A new platform (TikTok, YouTube, Reddit…) lands its poster + catalog
-// entry, then one descriptor line here — its window renders itself.
+// MARKETING is ONE window (marketing-panel-plan.md §5, ruling 2026-10-24:
+// "less is more"): the CMO's office, zoomed down the company tree, holding
+// what were its own windows — each public platform is its ACCOUNT level, the
+// social check its ACCOUNTS tab, the brand kits its BRAND tab, the leads its
+// LEADS tab. Their old ids open MARKETING at that place
+// (windowing/retired-windows.js).
+//
+// COMMUNITY keeps one window per platform — TELEGRAM, DISCORD — each that
+// platform's space (PlatformSpace), exactly as before.
 
 import './OutreachApps.css';
 import './OutreachApps-card.css';
 import { AppTitle } from './app-title.jsx';
 import { PlatformSpace } from './PlatformSpace.jsx';
-import { CampaignsSection } from './CampaignsSection.jsx';
-import { LeadsSection } from './LeadsSection.jsx';
-import { BrandKitsSection } from './brandkits/BrandKitsSection.jsx';
+import { MarketingOffice } from './marketing/MarketingOffice.jsx';
+import { MarketingTitle } from './marketing/MarketingTitle.jsx';
 import { BrandMark } from './brand-marks.jsx';
 
 const MarketingIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
     <path d="M4 14V2.5" />
     <path d="M4 3h8l-2 2.5L12 8H4" />
-  </svg>
-);
-
-// A swatch card — the kit as a physical thing you set up once and work from.
-const BrandKitIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-    <rect x="2" y="2.5" width="12" height="11" rx="1" />
-    <path d="M2 6h12" />
-    <circle cx="5" cy="9.5" r="1.3" fill="currentColor" stroke="none" />
-    <path d="M8.5 9h4M8.5 11.5h3" />
-  </svg>
-);
-
-const LeadsIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-    <path d="M2.5 3h11L9.5 8v5l-3 1.5V8L2.5 3z" />
   </svg>
 );
 
@@ -56,60 +40,22 @@ const marketingApp = {
   label: 'MARKETING',
   labelKey: 'apps.marketing',
   icon: <MarketingIcon />,
-  title: <AppTitle label="MARKETING" labelKey="apps.marketing" />,
-  // The CMO seat and the campaigns that deliberately span platforms — a
-  // campaign that runs on one platform belongs in that platform's window.
+  // The CMO's office: the title names the seat's holder, never the chat's focus.
+  title: <MarketingTitle />,
+  // Zoomed down the company tree (marketing-panel-plan.md §2): HOUSE › company
+  // › subsidiary › PLATFORM account, each company level on BOARD · CAMPAIGNS ·
+  // ACCOUNTS · BRAND · LEADS, the CMO seat and MANDATE at HOUSE (MarketingOffice.jsx).
   Body: () => (
     <div className="outreach-panel settings">
-      <CampaignsSection channelId={null} />
+      <MarketingOffice />
     </div>
   ),
   storageKey: 'outreach-marketing',
 };
 
-// The brand kits themselves — every managed company's standing instruction for
-// what it says, how it looks, and what may never be claimed on its behalf. It
-// sits in MARKETING rather than in a platform window because a kit is not a
-// channel: one kit governs every channel a company speaks through, and the work
-// that reads it (campaigns, cards, pressed documents) starts here.
-const brandKitsApp = {
-  label: 'BRAND KITS',
-  labelKey: 'apps.brandKits',
-  icon: <BrandKitIcon />,
-  title: <AppTitle label="BRAND KITS" labelKey="apps.brandKits" />,
-  Body: () => (
-    <div className="outreach-panel settings">
-      <BrandKitsSection />
-    </div>
-  ),
-  storageKey: 'outreach-brand-kits',
-};
-
-const leadsApp = {
-  label: 'LEADS',
-  labelKey: 'apps.leads',
-  icon: <LeadsIcon />,
-  title: <AppTitle label="LEADS" labelKey="apps.leads" />,
-  Body: () => (
-    <div className="outreach-panel settings">
-      <LeadsSection />
-    </div>
-  ),
-  storageKey: 'outreach-leads',
-};
-
 // Registry entries, keyed by window id — spread into the shell's REGISTRY.
 export const outreachApps = {
-  x: platformApp('x', 'X', <BrandMark id="x" />),
   telegram: platformApp('telegram', 'TELEGRAM', <BrandMark id="telegram" />),
   discord: platformApp('discord', 'DISCORD', <BrandMark id="discord" />),
-  facebook: platformApp('facebook', 'FACEBOOK', <BrandMark id="facebook" />),
-  mastodon: platformApp('mastodon', 'MASTODON', <BrandMark id="mastodon" />),
-  bluesky: platformApp('bluesky', 'BLUESKY', <BrandMark id="bluesky" />),
-  linkedin: platformApp('linkedin', 'LINKEDIN', <BrandMark id="linkedin" />),
-  youtube: platformApp('youtube', 'YOUTUBE', <BrandMark id="youtube" />),
-  tiktok: platformApp('tiktok', 'TIKTOK', <BrandMark id="tiktok" />),
   marketing: marketingApp,
-  brandKits: brandKitsApp,
-  leads: leadsApp,
 };

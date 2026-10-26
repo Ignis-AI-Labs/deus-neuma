@@ -38,6 +38,7 @@ const WindowFrame = memo(({ w, app, focused, zIndex, dispatch }) => {
   const frame = (
     <FloatingWindow
       storageKey={ordinal >= 2 ? w.id : (app.storageKey || w.id)}
+      windowId={w.id}
       title={app.makeTitle ? app.makeTitle(ordinal, w.payload) : app.title}
       controls={app.controls}
       focused={focused}

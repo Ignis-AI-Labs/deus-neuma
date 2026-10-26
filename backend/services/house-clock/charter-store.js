@@ -25,8 +25,11 @@ import { createWriteChain } from '../write-chain.js';
 import { GLOBAL_DEFAULTS } from '../tool-policy-defaults.js';
 import { intentTypes } from '../intents/registry.js';
 import { normalizeCharter } from './charter-shape.js';
+import { readCharter, charterFileOf as fileOf } from './charter-read.js';
 
-const fileOf = (wallet) => path.join(walletDir(wallet), 'house-charter.json');
+// The read lives in its own leaf (charter-read.js): a reader that only needs the
+// record (the WAITING ON YOU account) must not pull the write path's imports in.
+export { readCharter };
 const historyOf = (wallet) => path.join(walletDir(wallet), 'house-charter-history.jsonl');
 
 // One chain for the store: a PUT and an approve must never interleave their
@@ -40,28 +43,6 @@ export class CharterError extends Error {
     this.status = status;
   }
 }
-
-/**
- * The house's charter, or null when none was ever written. impure. A corrupt
- * file THROWS — read as "no charter" it would silently stop every wake, and
- * that is the operator's switch to throw, not a parse error's.
- * @param {string} wallet
- * @returns {Promise<?Object>}
- */
-export const readCharter = async (wallet) => {
-  let raw;
-  try {
-    raw = await fs.readFile(fileOf(wallet), 'utf8');
-  } catch (err) {
-    if (err.code === 'ENOENT') return null;
-    throw err;
-  }
-  const record = JSON.parse(raw);
-  if (!record || typeof record !== 'object' || !Number.isInteger(record.version)) {
-    throw new Error('house-charter: the stored charter is not a charter record');
-  }
-  return record;
-};
 
 const now = () => new Date().toISOString();
 

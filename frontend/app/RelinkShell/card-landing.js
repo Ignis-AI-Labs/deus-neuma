@@ -8,6 +8,12 @@
 // window reads (and clears) its own on mount, and also subscribes for later
 // landings fired while it is already open. house-clock-focus.js's idiom, one
 // slot per app, so a TEAMS landing is never taken by the GALLERY.
+//
+// A landing for a public platform's window (a post's card, its STANDING) is
+// MARKETING's now: that platform's space is its account level
+// (retired-windows.js), so the latch is MARKETING's.
+
+import { MARKETING_WINDOW, marketingLandingOf } from '../windowing/retired-windows.js';
 
 const EVENT = 'neuma:card-landing';
 const pending = new Map();
@@ -19,8 +25,11 @@ const pending = new Map();
  */
 // impure — module latch + DOM event
 export const requestCardLanding = (appId, item) => {
-  pending.set(appId, item);
-  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(EVENT, { detail: { appId, item } }));
+  const moved = marketingLandingOf(appId, item);
+  const to = moved ? MARKETING_WINDOW : appId;
+  const what = moved || item;
+  pending.set(to, what);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(EVENT, { detail: { appId: to, item: what } }));
 };
 
 /**

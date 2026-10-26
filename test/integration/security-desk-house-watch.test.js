@@ -12,7 +12,7 @@
  * walked and never gets a house on disk; a house is never walked twice; a
  * house backend pinned to another ground never takes the owner's house.
  */
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { standTwoHouses } from '../helpers/house-office-kit.js';
@@ -20,6 +20,11 @@ import { writeOwner } from '../helpers/audit-auth.js';
 import { recordFirstLocalOwner } from '../../backend/services/install-owner.js';
 import { securityHouses, tickSecurityHouses, readScanState } from '../../backend/services/security/security-scheduler.js';
 import { APP_ROOT } from '../../backend/services/security/app-inventory.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['security-watch']);
+afterAll(() => connections.restore());
 
 const OWNER = '0x0d0d00000000000000000000000000000000d0d0';
 const STRANGER = '0x5e5e00000000000000000000000000000000e5e5';

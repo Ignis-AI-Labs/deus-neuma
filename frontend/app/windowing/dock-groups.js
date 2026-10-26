@@ -83,19 +83,16 @@ export const DOCK_GROUPS = Object.freeze([
     band('TALK', ['chat', 'chats']),
     band('WORK', ['staff', 'houseclock', 'projects', 'teams', 'todo', 'workflow']),
     band('CRAFT', ['comfyui', 'files', 'gallery', 'terminal']),
-    band('WATCH', ['security', 'legal', 'witnesses']),
+    band('WATCH', ['security', 'legal', 'treasury', 'witnesses']),
     band('MEASURE', ['bench']),
   ]),
 
-  // TWO LAYERS (Design note, 2026-07-28: […]). MARKETING is the open-platform layer — X first, the other
-  // public platforms in the same format — beside the CMO seat (house-wide
-  // campaigns) and LEADS (the funnel). A new public platform's window joins
-  // here when its posting lane lands.
-  // `brandKits` rides here rather than in a platform window: a kit is not a
-  // channel. One kit governs every channel a company speaks through, and the
-  // work that reads it — campaigns, cards, pressed documents — starts in this
-  // section (Design note, 2026-08-31: […]).
-  plain('marketing', 'MARKETING', ['bluesky', 'brandKits', 'facebook', 'leads', 'linkedin', 'marketing', 'mastodon', 'tiktok', 'x', 'youtube']),
+  // TWO LAYERS (Design note, 2026-07-28: […]). MARKETING is the open-platform layer, and it is ONE window
+  // (ruling, 2026-10-24: […]): every public platform is an account
+  // level inside it, the social check its ACCOUNTS tab, the brand kits its
+  // BRAND tab, the leads its LEADS tab (marketing-panel-plan.md §5). The old
+  // windows' ids open it at their place (retired-windows.js).
+  plain('marketing', 'MARKETING', ['marketing']),
 
   // COMMUNITY is the private-circles layer: Telegram and Discord are
   // community management — member care, announcements, moderation — never

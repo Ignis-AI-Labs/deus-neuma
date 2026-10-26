@@ -12,6 +12,7 @@ import { Select } from '../Select.jsx';
 import { CompanyPicker } from './CompanyPicker.jsx';
 import { useHouseAccounts } from './use-house-accounts.js';
 import { accountsByCompany, handleOf } from './account-words.js';
+import { DoorButton } from '../doors/DoorButton.jsx';
 import './accounts.css';
 
 const NO_HOLDER = '';
@@ -27,7 +28,7 @@ export const AccountStrip = ({ channelId, companyId, onCompany, roster }) => {
   const house = useHouseAccounts();
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
-  const groups = accountsByCompany(house.accounts, house.companies, channelId);
+  const groups = accountsByCompany(house.accounts, house.companies, channelId).filter((g) => g.accounts.length);
   const holders = [
     { value: NO_HOLDER, label: 'no holder — nobody posts' },
     ...(roster || []).filter((m) => m.participantKind !== 'witness').map((m) => ({ value: m.neumaId, label: m.name || m.neumaId })),
@@ -45,7 +46,8 @@ export const AccountStrip = ({ channelId, companyId, onCompany, roster }) => {
     setBusy(null);
   };
   if (!groups.length) {
-    return <p className="settings-note account-strip">No accounts on this platform yet — add one in Settings → API → Channel keys.</p>;
+    // A direction is a press, never a phrase: + ACCOUNT opens this platform's Channel keys row.
+    return <p className="settings-note account-strip">NO ACCOUNTS <DoorButton door={{ kind: 'keys', channelId, add: true }} /></p>;
   }
   return (
     <div className="account-strip" aria-label="accounts">

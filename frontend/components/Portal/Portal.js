@@ -126,8 +126,8 @@ export class Portal {
       });
     });
 
-    // Sound is opt-in — the witness gives the world its voice here,
-    // before the ceremony, so emergence can be heard
+    // Sound is on by default; the witness can quiet the world here,
+    // before the ceremony, and the choice is remembered
     soundToggle.addEventListener('click', () => {
       const on = toggleSound();
       soundToggle.textContent = `SOUND: ${on ? 'ON' : 'OFF'}`;

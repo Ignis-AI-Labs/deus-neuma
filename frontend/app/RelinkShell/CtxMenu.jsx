@@ -46,9 +46,10 @@ export const CtxMenuRows = ({ items, sel, onHover, onPick }) => items.map((it, i
  *   items: Array<{kind:'item'|'separator', id?:string, label?:string, danger?:boolean, checked?:boolean, stay?:boolean}>,
  *   onAct: (id: string) => void,
  *   onClose: () => void,
- * }} props
+ *   className?: string,
+ * }} props - `className` lets a host's register ride the menu (a type floor)
  */
-export const CtxMenu = ({ at, items, onAct, onClose }) => {
+export const CtxMenu = ({ at, items, onAct, onClose, className = '' }) => {
   const [sel, setSel] = useState(-1);
   const [pos, setPos] = useState(at);
   const boxRef = useRef(null);
@@ -99,7 +100,7 @@ export const CtxMenu = ({ at, items, onAct, onClose }) => {
     >
       <div
         ref={boxRef}
-        className="cmenu"
+        className={className ? `cmenu ${className}` : 'cmenu'}
         role="menu"
         style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
         onMouseDown={(e) => e.stopPropagation()}

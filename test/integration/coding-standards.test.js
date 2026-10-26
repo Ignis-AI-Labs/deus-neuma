@@ -24,12 +24,15 @@ afterAll(async () => { await fs.rm(root, { recursive: true, force: true }); });
 describe('packaged standards integrity', () => {
   test('every canonical core and module is verified, including routing and source identity', async () => {
     const bundle = await readStandardsBundle();
-    expect(bundle.manifest.version).toBe('2.0.0');
-    expect(Object.keys(bundle.documents)).toHaveLength(17);
+    expect(bundle.manifest.version).toBe('2.4.0');
+    expect(Object.keys(bundle.documents)).toHaveLength(19);
+    expect(bundle.manifest.core).toContain('DESIGN');
+    for (const term of ['SHINKEI 真計', 'JŌHŌ SEKKEI 情報設計', 'CHOKKAN 直感', 'the stranger test', 'Less text, not less data', 'Every number the person needs stays on screen', 'Density is never decoration.', "**Show, don't tell**", 'Every problem is a door']) expect(bundle.documents.DESIGN).toContain(term);
+    expect(formatStandards(bundle)).toMatch(/Core rules \(also readable individually\): [^\n]*\bDESIGN\b/);
     expect(bundle.documents.BRANCHING).toContain('operator');
     expect(bundle.documents.TESTING).toContain('No module replacement');
     expect(Object.isFrozen(bundle.manifest.core)).toBe(true);
-    expect(execFileSync(process.execPath, [script, 'check'], { encoding: 'utf8' })).toContain('17 standards verified');
+    expect(execFileSync(process.execPath, [script, 'check'], { encoding: 'utf8' })).toContain('19 standards verified');
   });
 
   test.each(['POLICY', 'BRANCHING', 'SECURITY_CHECKLIST'])('changed %s content is refused by runtime and CLI', async (name) => {

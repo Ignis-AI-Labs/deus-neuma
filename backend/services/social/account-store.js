@@ -199,6 +199,22 @@ export const loadAccountStore = async (wallet) => {
 };
 
 /**
+ * A house's store exactly as it stands on disk — never migrated, never
+ * written: the read-only readers (the social check's live script, the
+ * campaign benchmark) open it through here. A v1 store reads as its v2 view
+ * in memory, its accounts UNSORTED (the real migration names the company when
+ * it runs). impure (read).
+ * @param {string} wallet
+ * @returns {Promise<{store: object, shape: 'none'|'v1'|'v2'}>}
+ */
+export const peekAccountStore = async (wallet) => {
+  if (!houseKey(wallet)) return { store: emptyStore(), shape: 'none' };
+  const { raw, store } = await readSealed(wallet);
+  if (raw === null) return { store: emptyStore(), shape: 'none' };
+  return isV2(store) ? { store, shape: 'v2' } : { store: migrateV1(store).store, shape: 'v1' };
+};
+
+/**
  * Change a house's store under the write chain: `fn(store)` returns the next
  * store, or the same object to write nothing. impure.
  * @returns {Promise<object>} the store as written

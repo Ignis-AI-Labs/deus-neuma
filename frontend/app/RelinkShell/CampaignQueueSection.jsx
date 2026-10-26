@@ -14,12 +14,13 @@ import {
   AWAITING_LABEL, QUEUE_LANES, QUEUE_SECTIONS, filterQueueToDay, isSettled, sectionOf, shiftDayKey,
   splitLaneIntoGroups, splitQueueIntoSections,
   replyNeedsAttention,
-  queueById,
+  queueById, laneOf, queueDayKey,
 } from './campaigns-helpers.js';
 import { QueueCalendar } from './QueueCalendar.jsx';
 import { QueueEntry } from './QueueEntry.jsx';
 import { QueueComposer } from './QueueComposer.jsx';
 import { RepliesBoard } from './RepliesBoard.jsx';
+import { StatusMark } from './StatusMark.jsx';
 import {
   getChannelBoard, getRosterForBinding,
   getPostQueue, getReplyCandidates,
@@ -28,9 +29,16 @@ import { getCampaigns } from '../../services/campaigns-client.js';
 
 // The decision board, scoped to ONE platform's space when channelId is
 // given (its queue, its composer, its campaigns) — or the whole lane bare.
+// On MARKETING's account level (`accountId` given) the level says which board
+// this is, so the board names no heading of its own, its composer speaks as
+// that account, its month leaves the counts its head already draws
+// (`monthAbove`: 'YYYY-MM', the month the head counts), and its open
+// decisions carry the mark alone — the band above counts them (SDT-6).
 export const CampaignQueueSection = ({
-  channelId = null, channelName = null, focus = null, onChanged = null, calm = null, entryFilter = null,
+  channelId = null, channelName = null, focus = null, onChanged = null, calm = null, entryFilter = null, reload = 0,
+  accountId = undefined, monthAbove = null,
 }) => {
+  const atAccount = accountId !== undefined;
   const [channels, setChannels] = useState(null);
   const [campaigns, setCampaigns] = useState(null);
   const [queue, setQueue] = useState(null);
@@ -59,6 +67,13 @@ export const CampaignQueueSection = ({
   // back, so the month marks the day you came from.
   const [view, setView] = useState(focus && 'day' in focus ? 'day' : 'month'); // 'month' | 'day'
   const [dayKey, setDayKey] = useState(focus?.day ?? null);
+  // A door onto ONE post (a mandate's SEE IT, a failed post's door) opens the lane, and the day, that hold it.
+  const landedEntry = focus?.entryId && queue ? queue.find((e) => e.id === focus.entryId) : null;
+  useEffect(() => {
+    if (!landedEntry) return;
+    setLane(laneOf(landedEntry.status));
+    setDayKey(queueDayKey(landedEntry, queueById(queue)));
+  }, [landedEntry?.id]);
   const [highlight, setHighlight] = useState(focus?.highlight ?? null);
   const [monthCursor, setMonthCursor] = useState(() => {
     const d = focus?.day ? new Date(`${focus.day}T00:00:00`) : new Date();
@@ -80,7 +95,8 @@ export const CampaignQueueSection = ({
     const apply = () => {
       setChannels(board.channels);
       setQueue(staged.queue);
-      onChanged?.();
+      // `own`: this read follows the person's own act (theirs lands at once everywhere it shows)
+      onChanged?.({ own: !background });
       setCampaigns(bench.campaigns);
       setReplies(inbound.replies);
       setLoadError(null);
@@ -91,6 +107,9 @@ export const CampaignQueueSection = ({
   };
 
   useEffect(() => { getRosterForBinding().then(setRoster).catch(() => {}); }, []);
+  // A decision taken above the board (the window's WAITING ON YOU band) is the
+  // person's own act: the board re-reads at once.
+  useEffect(() => { if (reload) refresh().catch((e) => setLoadError(e.message)); }, [reload]);
 
   // The board must SEE the send (Design note, 2026-07-27: a post that had already
   // gone out still read APPROVED — the transition worked, the desk's read
@@ -272,16 +291,16 @@ export const CampaignQueueSection = ({
       campaigns={campaigns} onChanged={refresh} onRevise={revise} onEdit={edit}
       onNotice={setActNotice} folded={folded}
       // Declined copy IS the work when you are looking at it — you are there
-      // to read and revise it, so it opens. Other finished copy folds.
-      startOpen={(lane === 'withdrawn' && entry.status === 'rejected') || !isSettled(entry.status)}
+      // to read and revise it, so it opens; so does a post that did not send,
+      // since its fix (a door, TRY AGAIN, REVISE) is on its card. Other finished copy folds.
+      startOpen={(lane === 'withdrawn' && entry.status === 'rejected') || entry.status === 'failed' || !isSettled(entry.status)}
       now={now} />
   );
 
   return (
     <section className="settings-sec" ref={watch}>
-      <div className="label-data settings-h">
-        {channelName ? `QUEUE — ${channelName.toUpperCase()}` : 'CAMPAIGN QUEUE'}
-      </div>
+      {channelName ? <div className="label-data settings-h">QUEUE — {channelName.toUpperCase()}</div>
+        : channelId ? null : <div className="label-data settings-h">CAMPAIGN QUEUE</div>}
       {loadError ? <p className="settings-err">{loadError}</p> : null}
       {actNotice ? <p className="settings-err">{actNotice}</p> : null}
       {!lanes && !loadError ? <p className="settings-note">Reading the queue…</p> : null}
@@ -294,6 +313,7 @@ export const CampaignQueueSection = ({
                 straight into its section. */}
             {sectionStrip}
             <QueueCalendar
+              legend={monthAbove !== `${monthCursor.year}-${String(monthCursor.month + 1).padStart(2, '0')}`}
               highlight={highlight}
               onHighlight={(k) => { uiSound('toggle'); setHighlight(k); }}
               year={monthCursor.year}
@@ -344,6 +364,7 @@ export const CampaignQueueSection = ({
                 role="tab"
                 aria-selected={lane === l.id}
                 className={`queue-lane label-data${lane === l.id ? ' is-on' : ''}`}
+                title={l.note[section]}
                 onClick={() => { uiSound('toggle'); setLane(l.id); }}
               >
                 {l.label}
@@ -351,19 +372,24 @@ export const CampaignQueueSection = ({
               </button>
             ))}
           </div>
-          <p className="settings-note">{laneSpec.note[section]}</p>
           {here.length === 0
             ? <p className="settings-note">{laneSpec.empty[section]}</p> : null}
           {/* WHAT IS OWED, AT THE TOP — the whole SECTION's open decisions,
               whichever lane is showing, with the count said out loud. */}
           {awaitingEntries.length ? (
             <div className="queue-decisions">
-              <div className="label-data queue-decisions-h">
-                <span>{AWAITING_LABEL}</span>
-                <span className="queue-decisions-n">
-                  {readyEntries.length} WAITING ON YOU
-                </span>
-              </div>
+              {atAccount ? (
+                <div className="label-data queue-decisions-h" title={`${AWAITING_LABEL.toLowerCase()} · ${readyEntries.length} waiting on you`}>
+                  <StatusMark status="draft" />
+                </div>
+              ) : (
+                <div className="label-data queue-decisions-h">
+                  <span>{AWAITING_LABEL}</span>
+                  <span className="queue-decisions-n">
+                    {readyEntries.length} WAITING ON YOU
+                  </span>
+                </div>
+              )}
               {placeholderEntries.length ? (
                 <p className="settings-note label-data">
                   {placeholderEntries.length} PLACEHOLDER{placeholderEntries.length === 1 ? '' : 'S'} —
@@ -375,13 +401,10 @@ export const CampaignQueueSection = ({
           ) : null}
           {foldable > 0 ? (
             <div className="settings-control queue-fold-bar">
-              <button type="button" className="settings-set"
+              <button type="button" className="settings-set" title="anything awaiting your decision stays open"
                 onClick={() => { uiSound('toggle'); setFolded(!folded); }}>
                 {folded ? `EXPAND ALL (${foldable})` : `COLLAPSE ALL (${foldable})`}
               </button>
-              <span className="settings-note">
-                Anything awaiting your decision stays open.
-              </span>
             </div>
           ) : null}
           {record.map((group) => (
@@ -405,7 +428,7 @@ export const CampaignQueueSection = ({
           there. In the month view it waits hidden — mounted, so a
           half-written post survives a zoom out to the calendar and back. */}
       <QueueComposer channels={channels} campaigns={campaigns} seed={seed}
-        fixedChannelId={channelId}
+        fixedChannelId={channelId} fixedAccountId={atAccount ? accountId : null}
         hidden={view !== 'day' || lane !== 'queued' || (section === 'replies' && !seed?.editId)}
         onChanged={async () => { setSeed(null); await refresh(); }} />
       <div className="settings-control">

@@ -47,7 +47,8 @@ const legacyThreatsPath = () =>
 export const THREAT_LAYERS = Object.freeze(['software', 'hardware', 'house']);
 // `injection` rows are sightings filed by the turn (injection-sightings.js),
 // never by a scan: no scan scope names them, so the watch never closes one.
-export const THREAT_SOURCES = Object.freeze(['osv', 'secret-sweep', 'host-probe', 'house-probe', 'manual', 'injection', 'self-check']);
+// `treasury` rows are the Quaestor's flags (intents/treasury-acts.js) — the same.
+export const THREAT_SOURCES = Object.freeze(['osv', 'secret-sweep', 'host-probe', 'house-probe', 'manual', 'injection', 'self-check', 'treasury']);
 export const THREAT_STATUSES = Object.freeze(['new', 'not_affected', 'confirmed', 'mitigated', 'needs_operator']);
 export const THREAT_SEVERITIES = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 

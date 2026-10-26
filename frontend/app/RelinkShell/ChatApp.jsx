@@ -72,7 +72,7 @@ const ChatTitle = () => {
   );
 };
 
-// The witness gives the world its voice — opt-in, persisted. Settings ›
+// The world's voice — on by default, off by the witness's choice, persisted. Settings ›
 // GENERAL holds the same switch, so this one follows the pref rather than
 // the state it happened to mount with.
 const SoundToggle = () => {

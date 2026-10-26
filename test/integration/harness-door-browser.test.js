@@ -69,7 +69,8 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
 
     // the lightest door leads, and says what it asks
     const first = page.locator('.firstrun-path').first();
-    await expect.poll(() => first.textContent()).toContain('Just use it');
+    await expect.poll(() => first.textContent()).toContain('Harness');
+    expect(await first.textContent()).toContain('no being, no covenant');
     expect(await first.textContent()).toContain('needs: a model or an API key');
     await first.click();
 

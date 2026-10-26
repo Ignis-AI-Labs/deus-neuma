@@ -3,22 +3,64 @@
 
 /* --- Mnemonic display --- */
 
+/* The screen that shows the phrase is wider than the other picker screens (four words across, six
+   rows) and never taller than the window: it scrolls inside itself, so Continue is always reachable
+   on a small laptop. Keyed on the grid it holds, so no other picker screen changes. */
+.wallet-picker-panel:has(.wallet-picker-mnemonic) {
+  width: min(460px, 94vw);
+  max-height: 94vh;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+}
+
+.wallet-picker-panel:has(.wallet-picker-mnemonic) .wallet-picker-header {
+  margin-bottom: var(--space-3);
+}
+
+.wallet-picker-panel:has(.wallet-picker-mnemonic) .wallet-picker-context {
+  line-height: 1.4;
+  margin-bottom: var(--space-3);
+}
+
 .wallet-picker-mnemonic {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-  padding: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: color-mix(in srgb, var(--color-white) 3%, transparent);
   border: var(--border-width-thin) solid color-mix(in srgb, var(--color-white) 8%, transparent);
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+/* hidden: only the numbers and dots are in the page (wallet-backup-panel.js) */
+.wallet-picker-mnemonic.is-hidden .mnemonic-word {
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+.wallet-picker-reveal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.wallet-picker-reveal .wallet-picker-backup-btn {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-4);
+}
+
+.wallet-picker-reveal-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 
 .mnemonic-word {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--font-mono, monospace);
   font-size: var(--text-xs);
   color: var(--color-text-primary);

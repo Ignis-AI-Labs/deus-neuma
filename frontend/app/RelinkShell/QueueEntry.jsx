@@ -7,12 +7,17 @@
 import { useEffect, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import {
-  isSettled, postCountFor, queueStandingLabel, queueToneOf, queueWhenLabel,
+  isSettled, postCountFor, queueToneOf, queueWhenLabel,
 } from './campaigns-helpers.js';
+import { StatusMark } from './StatusMark.jsx';
 import { Lightbox } from './Lightbox.jsx';
 import { mediaMenuDoor } from './media-menu.js';
 import { XPostLink } from './XPostLink.jsx';
-import { AccountChip } from './accounts/AccountChip.jsx';
+import { AccountMark } from './accounts/AccountMark.jsx';
+import { LegalChip } from './legal-chip/LegalChip.jsx';
+import { Bar } from './hud-instruments.jsx';
+import { CountdownMark } from './CountdownMark.jsx';
+import { cardWhen } from './queue-when.js';
 import { entryAccountId } from './accounts/account-words.js';
 import {
   approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
@@ -20,6 +25,8 @@ import {
 import { threadOf } from './queue-thread-view.js';
 import { TikTokPostSettings } from './TikTokPostSettings.jsx';
 import { useTikTokApproval } from './use-tiktok-approval.js';
+import { GroupDecision, PostAddress } from './campaigns/QueueEntryCampaign.jsx';
+import { QueueFailedFix } from './QueueFailedFix.jsx';
 
 // Whether an attached CARD still matches the brand it was drawn from.
 //
@@ -167,7 +174,6 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
     ? (roster.find((m) => m.neumaId === entry.authorNeumaId)?.name || entry.authorNeumaId)
     : 'you';
   const channel = channels?.find((c) => c.id === entry.channelId) || null;
-  const channelName = channel?.name || entry.channelId;
   // THE ACCOUNT THIS GOES OUT ON (Design note, 2026-07-28: […]). A sent post reads who it WENT OUT as (postedAs, stamped at send);
   // everything live reads the channel's current account — never a guess. The
   // board names its platform's FIRST account only, so a post on another
@@ -183,10 +189,15 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   // shown as the POST it is, measured against the platform's own ceiling
   // (Design note, 2026-07-27: […]).
   const tone = queueToneOf(entry.status);
-  const whenLabel = queueWhenLabel(entry, now);
+  // WHEN, once (show-dont-tell finding 8): a slot ahead as a countdown mark, a settled post as its moment.
+  const when = cardWhen(entry, now, queueWhenLabel);
+  const failure = entry.status === 'failed' && entry.error ? entry.error : null;
+  const whenShown = Boolean(when.ahead || when.at || when.line || failure);
   const count = postCountFor(entry, channel);
   const standing = (
-    <span className={`queue-standing is-${tone}`}>{queueStandingLabel(entry)}</span>
+    <span className={`queue-standing is-${tone}`}>
+      <StatusMark entry={entry} named title={entry.status === 'sent' && entry.postId ? `SENT · post ${entry.postId}` : undefined} />
+    </span>
   );
 
   // A decision that is still open NEVER folds, even under COLLAPSE ALL — a fold
@@ -272,6 +283,8 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
        being's to stage, with the exchange in front of it. */
   ) : (shown && isSettled(entry.status) && entry.status !== 'sent') ? (
     <>
+      {/* A failed post's fix by its cause: the keys row, TRY AGAIN, a hand-over (QueueFailedFix.jsx). */}
+      {entry.status === 'failed' ? <QueueFailedFix entry={entry} roster={roster} busy={busy} act={act} /> : null}
       {entry.kind !== 'reply' ? (
         <button type="button" className="settings-set" disabled={busy}
           onClick={() => { uiSound('toggle'); onRevise(entry); }}>
@@ -286,7 +299,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   ) : null;
 
   return (
-    <div className={`queue-card cham is-${tone}`}>
+    <div className={`queue-card cham is-${tone}`} data-entry-id={entry.id}>
       <div className="cham-in queue-card-in">
         <button
           type="button"
@@ -294,14 +307,14 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
           aria-expanded={shown}
           onClick={() => { uiSound('toggle'); setOpen(!shown); }}
         >
+          {/* WHO SPEAKS, once: the account (its platform, handle, company and id on hover), its standing, its author. */}
           <span className="queue-entry-id">
-            <span className="settings-k">
-              {channelName}{accountHandle ? ` @${accountHandle}` : ''} · {author}
-            </span>
+            <AccountMark entry={entry} handle={accountHandle} />
             {standing}
+            <span className="settings-k queue-entry-author">{author}</span>
           </span>
           <span className="settings-v"><span className="settings-sec-tags">
-            <AccountChip entry={entry} />
+            <LegalChip legal={entry.legal} />
             {entry.kind === 'reply' ? <span className="settings-tag-dim">REPLY</span> : null}
             {entry.kind === 'self-reply' ? <span className="settings-tag-dim">THREAD</span> : null}
             {campaignName ? <span className="settings-tag-dim">{campaignName}</span> : null}
@@ -355,12 +368,6 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
                 <p className="queue-preview-text">{parentEntry.text}</p>
               </div>
             ) : null}
-            <div className="queue-preview-head">
-              <span className="queue-preview-author">{author}</span>
-              <span className="queue-preview-via">
-                {accountHandle ? `@${accountHandle} · ` : ''}{entry.kind === 'reply' ? `${channelName} · ANSWERS` : channelName}
-              </span>
-            </div>
             <p className="queue-preview-text">{entry.text}</p>
             {entry.media?.length ? (
               // The attachments themselves — the witness decides the images,
@@ -374,12 +381,14 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
             ) : null}
             {tiktok ? <TikTokPostSettings entry={entry} state={tiktok} /> : null}
             <div className="queue-preview-foot">
-              {/* The spacer keeps the count right-aligned, as it was when the
-                  meta line carried text. */}
-              <span className="queue-entry-meta" />
-              <span className={`queue-preview-count${count.over ? ' is-over' : ''}`}>
-                {count.count}{count.limit !== null ? ` / ${count.limit}` : ''}
-              </span>
+              {/* Its length against the platform's own ceiling, as a bar (the limit is the bar's end); the count beside it. */}
+              {count.limit !== null ? (
+                <span className={`queue-length${count.over ? ' is-over' : ''}`} role="img"
+                  aria-label={`${count.count} of ${count.limit} characters${count.over ? ` — ${count.count - count.limit} over` : ''}`}
+                  title={`${count.count} of ${count.limit} characters${count.over ? ` — ${count.count - count.limit} over the platform's limit` : ''}`}>
+                  <Bar name="" value={count.count} max={count.limit} text={String(count.count)} tone={count.over ? 'hot' : 'live'} />
+                </span>
+              ) : <span className="queue-preview-count">{count.count}</span>}
             </div>
           </div>
         ) : (
@@ -389,15 +398,17 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
             {entry.text.length > 90 ? `${entry.text.slice(0, 90)}…` : entry.text}
           </p>
         )}
-        {(whenLabel || actions) && (pending || shown) ? (
+        {(whenShown || actions) && (pending || shown) ? (
           <div className="queue-entry-foot">
             <span className="queue-entry-meta">
-              {whenLabel}
-              {entry.status === 'failed' && entry.error ? ` — ${entry.error}` : ''}
+              {when.ahead ? <CountdownMark ahead={when.ahead} title={when.title} /> : when.at || when.line || null}
+              {failure ? `${when.at || when.line ? ' — ' : ''}${failure}` : ''}
             </span>
             {actions ? <span className="queue-entry-actions">{actions}</span> : null}
           </div>
         ) : null}
+        <GroupDecision entry={entry} onChanged={onChanged} />
+        <PostAddress entry={entry} />
         {error ? <p className="settings-err">{error}</p> : null}
       </div>
     </div>

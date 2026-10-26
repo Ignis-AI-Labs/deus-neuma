@@ -54,6 +54,8 @@ import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { writeJsonAtomic } from '../user-realm.js';
 import { resolvePolicy, checkToolAccess, applyToolMode, normalizeToolMode, GLOBAL_DEFAULTS } from '../tool-policy.js';
 import { OPTIO_OFFICE_INTENTS } from '../tool-policy-defaults.js';
+import { mandateRenderAccess } from '../marketing/mandate/mandate-act.js';
+import { tripMandateForLane } from '../marketing/mandate/mandate-tripwire.js';
 import { cosDesignation } from '../staff/cos-designation.js';
 import { applyProtocolGuard, holdForWake } from '../protocol-guard.js';
 import { requestToolApproval } from '../tool-approval.js';
@@ -204,6 +206,8 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
     const reason = payload?.type == null
       ? 'the intent file has no "type" field — every intent must declare "type" as one of the types your INTENTS prompt section lists (e.g. "type": "social/queue")'
       : `unknown intent type "${payload.type}" — the INTENTS section of your prompt lists the types you may file`;
+    // A being filing a mandate act is reaching for its own grant: the mandate's widen tripwire.
+    if (/mandate/i.test(String(payload?.type ?? ''))) await tripMandateForLane({ wallet: connection.walletAddress, laneId, kind: 'widen', detail: `the CMO filed a "${String(payload.type).slice(0, 60)}" intent` });
     await writeResult(dir, name, { status: 'invalid', reason });
     await logToolCall(neumaWorkspace, laneId, 'intents', name, payload, 'denied', reason);
     emit({ tool: `intents/${payload?.type || 'unknown'}`, status: 'denied', summary: `intent — unknown type`, detail: reason });
@@ -242,7 +246,9 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   const baseAccess = await optioOfficeAccess(connection, checkToolAccess(policy, 'intents', policyTool), policyTool, ownRow);
   const explicit = ownRow === 'allowed';
   // A house wake's charter sends its escalated acts back to the operator, grant or none.
-  const access = holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, policyTool), mode, 'intents', policyTool, explicit), 'intents', policyTool);
+  const guarded = applyProtocolGuard(applyToolMode(baseAccess, mode, policyTool), mode, 'intents', policyTool, explicit);
+  // THE MANDATE answers a render's card when it covers renders (marketing/mandate/); a wake's holds still stand over it.
+  const access = holdForWake(connection, await mandateRenderAccess(connection, guarded, policyTool, type.summarize(payload)), 'intents', policyTool);
   if (access === 'denied') {
     if (baseAccess !== 'denied') return null; // observe: watching, not acting
     await writeResult(dir, name, { status: 'denied', reason: ACT_REFUSALS.policyDenied.error });

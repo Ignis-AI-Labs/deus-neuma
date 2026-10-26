@@ -117,7 +117,7 @@ const ownedLanes = async (wallet) => {
 // else the being's own name from its DNA (none of today's owner records
 // carries one) — never the lane id when either is written (2026-10-18 flight
 // finding). Null when neither is.
-const laneName = async (neumaId, owner) => {
+export const laneName = async (neumaId, owner) => {
   if (owner && typeof owner.name === 'string' && owner.name.trim()) return owner.name.trim();
   const dna = await neumaWorkspace.readDNA(neumaId).catch(() => null);
   const own = dna?.identity?.name || dna?.name;

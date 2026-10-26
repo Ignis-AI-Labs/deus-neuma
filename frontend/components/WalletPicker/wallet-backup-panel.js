@@ -10,6 +10,9 @@ import { uiSound } from '../../services/ui-sound.js';
 import { encryptMnemonicToKeystore } from '../../services/EmbeddedWallet.js';
 
 export const BACKUP_PASSWORD_MIN = 12;
+const HIDDEN_WORD = '••••••';
+// shown words go back into hiding if the person walks away: long enough to copy 24 words by hand
+const AUTO_HIDE_MS = 3 * 60_000;
 
 /** pure — the backup file's name, dated so several backups never collide. */
 export const backupFileName = (date = new Date()) =>
@@ -55,12 +58,19 @@ export const showRecoveryPhrase = (panel, { mnemonic, password, onContinue }) =>
   const context = node('p', { class: 'wallet-picker-context' }, madeForMe
     ? `Your key is made and kept by this computer — nothing to remember. These ${words.length} words are the only way to recover it on another machine, or if this computer's keychain is ever reset. You can show them again any time from the WALLET window.`
     : `Write down these ${words.length} words and keep them somewhere safe and private. They are the only way to recover this wallet if you forget your password.`);
-  const grid = node('div', { class: 'wallet-picker-mnemonic' });
-  words.forEach((w, i) => {
+  // The words stay out of the page until the person shows them: someone may be watching the screen,
+  // and a hidden word is not in the page text at all (a blur would still be there to copy or capture).
+  const grid = node('div', { class: 'wallet-picker-mnemonic is-hidden' });
+  const wordTexts = words.map((_, i) => {
+    const text = document.createTextNode(HIDDEN_WORD);
     const word = node('span', { class: 'mnemonic-word' });
-    word.append(node('span', { class: 'mnemonic-index' }, String(i + 1)), document.createTextNode(w));
+    word.append(node('span', { class: 'mnemonic-index' }, String(i + 1)), text);
     grid.append(word);
+    return text;
   });
+  const reveal = node('div', { class: 'wallet-picker-reveal' });
+  const revealBtn = node('button', { class: 'wallet-picker-backup-btn', id: 'wp-reveal', type: 'button', 'aria-pressed': 'false' }, 'Show the words');
+  reveal.append(revealBtn, node('span', { class: 'wallet-picker-reveal-hint' }, 'Hidden so no one nearby can read them.'));
   const lede = node('p', { class: 'wallet-picker-backup-lede' },
     `Or save a backup file, locked with ${madeForMe ? 'a password you choose' : 'your wallet password'}. Keep the file and the password: together they bring this wallet back on any computer (Import Wallet → restore from a backup file).`);
   const fields = node('div', { class: 'wallet-picker-backup-fields' });
@@ -76,7 +86,7 @@ export const showRecoveryPhrase = (panel, { mnemonic, password, onContinue }) =>
   const confirm = node('label', { class: 'wallet-picker-confirm-label' });
   confirm.append(node('input', { type: 'checkbox', id: 'wp-saved-check' }), document.createTextNode(' I have saved my recovery phrase or a backup file'));
   const proceed = node('button', { class: 'wallet-picker-submit', id: 'wp-continue', disabled: '' }, 'Continue');
-  panel.replaceChildren(header, context, grid, lede, ...(madeForMe ? [fields] : []), actions,
+  panel.replaceChildren(header, context, reveal, grid, lede, ...(madeForMe ? [fields] : []), actions,
     node('div', { class: 'wallet-picker-note', id: 'wp-backup-msg', role: 'status' }), confirm, proceed);
   if (madeForMe) {
     const later = node('button', { class: 'wallet-picker-create wallet-picker-restore', id: 'wp-later', type: 'button' });
@@ -87,6 +97,23 @@ export const showRecoveryPhrase = (panel, { mnemonic, password, onContinue }) =>
   const msgEl = panel.querySelector('#wp-backup-msg');
   const checkbox = panel.querySelector('#wp-saved-check');
   const continueBtn = panel.querySelector('#wp-continue');
+
+  let hideTimer = null;
+  const setShown = (shown) => {
+    clearTimeout(hideTimer);
+    wordTexts.forEach((text, i) => { text.textContent = shown ? words[i] : HIDDEN_WORD; });
+    grid.classList.toggle('is-hidden', !shown);
+    revealBtn.textContent = shown ? 'Hide the words' : 'Show the words';
+    revealBtn.setAttribute('aria-pressed', String(shown));
+    if (shown) hideTimer = setTimeout(() => setShown(false), AUTO_HIDE_MS);
+  };
+  revealBtn.addEventListener('click', () => { uiSound('toggle'); setShown(grid.classList.contains('is-hidden')); });
+  // minimized or switched away from: hidden again (switching to a notes app to type them in stays shown)
+  const onVisibility = () => {
+    if (!grid.isConnected) document.removeEventListener('visibilitychange', onVisibility);
+    else if (document.hidden) setShown(false);
+  };
+  document.addEventListener('visibilitychange', onVisibility);
 
   panel.querySelector('#wp-copy').addEventListener('click', async () => {
     try {

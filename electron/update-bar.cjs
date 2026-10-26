@@ -20,7 +20,7 @@ const BUNDLED_NOTES = path.join('build', 'release-notes.md');
 // electron-updater writes this the first time an install asks the feed (AppUpdater
 // getOrCreateStagingUserId): its presence means the install ran before the seen record existed.
 const ASKED_FEED_MARK = '.updaterId';
-const ACTIONS = Object.freeze(['restart', 'download', 'later', 'seen']);
+const ACTIONS = Object.freeze(['restart', 'download', 'later', 'seen', 'check']);
 
 // impure — a missing or unreadable file reads as null; nothing here may cost a boot
 const readText = (file) => {
@@ -94,6 +94,8 @@ const registerUpdateBar = ({ ipcMain, BrowserWindow, shell, app, autoUpdate, lau
   ipcMain.handle('update:state', () => snapshot());
   ipcMain.handle('update:act', (_event, action) => {
     if (!ACTIONS.includes(action)) return { ok: false, reason: 'unknown act' };
+    // The person's Check now (Settings → Security → Connections): asked even while the update check is off
+    if (action === 'check') return autoUpdate.checkNow().then((result) => { publish(); return result; });
     const { bar } = snapshot();
     if (action === 'seen') {
       if (!whatsNew) return { ok: true };

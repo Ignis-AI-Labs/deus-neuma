@@ -29,6 +29,7 @@ import { severityOf } from './advisory-severity.js';
 import { currentLayout, lockfileTarget } from './app-inventory.js';
 import { dependencyPathsFor } from './attack-surface.js';
 import { advisoryRemedy } from './osv-remedy.js';
+import { isConnectionOn } from '../connections/connection-switches.js';
 
 const OSV_BASE = 'https://api.osv.dev';
 const QUERY_CHUNK = 500;
@@ -108,8 +109,10 @@ export const rootsFromLock = (lock) => (pair) =>
   dependencyPathsFor(lock, pair.package, pair.version).roots.map((root) => root.name);
 
 // impure — one HTTP call with a hard ceiling; OSV is the only host this
-// module will ever speak to.
+// module will ever speak to, and only while the person has the security
+// watch's online check turned on (CONNECTIONS, off until turned on).
 const osvFetch = async (path, body) => {
+  if (!isConnectionOn('security-watch')) throw new Error('the online security check is turned off');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -200,6 +203,9 @@ export const readInventory = async (repo, layout) => {
 export const runAdvisoryScan = async (repo, layout = currentLayout()) => {
   const { packages, lock, lockfile, error } = await readInventory(repo, layout);
   if (error) return { repo: repo.id, ok: false, checked: 0, hits: [], error, lockfile };
+  // Off is the person's choice, not a failure: nothing is asked, nothing is closed (ok:false keeps
+  // the scope open), and the run says the online check is off rather than that OSV is down.
+  if (!isConnectionOn('security-watch')) return { repo: repo.id, ok: false, off: true, checked: 0, hits: [], error: null, lockfile };
   const raw = [];
   try {
     for (const batch of chunk(packages, QUERY_CHUNK)) {

@@ -210,7 +210,7 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   // acts, and reporting to the person watching is not an act on the world.
   'share_findings',
   // Shared house state — reads, even though observe mode holds them
-  'task_list', 'calendar_read', 'queue_list', 'queue_get', 'replies_list', 'campaign_list', 'lead_list',
+  'task_list', 'calendar_read', 'queue_list', 'queue_get', 'replies_list', 'campaign_list', 'lead_list', 'board_read',
   // The whole posting posture in one call — computed from the real stores,
   // no egress, no mutation (posting-pipeline-v2; it carded once because its
   // policy ROW was absent — this set is the second half of the same lesson).

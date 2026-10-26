@@ -6,7 +6,7 @@
 export default Object.freeze({
   encryption: Object.freeze({
     heading: 'ENCRYPTION',
-    note: 'Each being\'s memory is encrypted on this machine. A being that holds its OWN key can\'t be opened even if the shared key is ever exposed — that\'s the strongest state, and where every being should be.',
+    note: 'Each being\'s memory is encrypted on this machine. One master key opens every being, and it is kept in the Neuma folder on this computer — anyone who can read that folder can read your beings. Keep the disk encrypted and the computer to yourself.',
     securedLabel: 'Secured',
     secured: '{{secured}} of {{total}} beings hold their own key',
     allSecured: ' «ALL SECURED»',
@@ -33,7 +33,7 @@ export default Object.freeze({
 
   backups: Object.freeze({
     heading: 'BACKUPS',
-    note: 'A snapshot of your beings\' encrypted files. Because the files are already encrypted, the backup is too — safe to keep anywhere. Your neuma are exactly as durable as the drive they live on and the copies you keep, so this is the one thing that stands between a failed disk and starting from nothing.',
+    note: 'A snapshot of your beings\' encrypted files, with your own copy of each conversation in plain text — keep it private. The master key is not in the backup — restoring on another computer also needs secrets.json from this computer\'s Neuma folder. Your neuma are exactly as durable as the drive they live on and the copies you keep, so this is the one thing that stands between a failed disk and starting from nothing.',
     destination: 'DESTINATION',
     destNotSet: 'Not set',
     destDefault: 'Beside your beings — same drive',
@@ -78,5 +78,26 @@ export default Object.freeze({
     devicesNone: 'No phone has paired yet.',
     deviceSeen: 'paired {{createdAt}} · seen {{lastSeenAt}}',
     revoke: 'REVOKE',
+  }),
+  connections: Object.freeze({
+    heading: 'CONNECTIONS',
+    note: 'Nothing leaves this computer on its own until you turn it on. Each one says where it goes, what it sends, and what you do without while it is off.',
+    runsAlone: 'RUNS BY ITSELF · {{on}} OF {{total}} ON',
+    onUse: 'ONLY WHEN YOU USE IT',
+    on: 'ON',
+    off: 'OFF',
+    turnOn: 'TURN ON',
+    turnOff: 'TURN OFF',
+    switching: 'SWITCHING…',
+    whileOff: 'While off: {{what}}.',
+    checkNow: 'CHECK NOW',
+    checking: 'CHECKING…',
+    upToDate: 'You have the newest version.',
+    updateFound: 'Version {{version}} is available — the bar at the top of the desk has it.',
+    checkFailed: 'The check could not reach the site.',
+    noUpdater: 'This build does not update itself.',
+    webWhere: 'Its switch is in Settings → API.',
+    more: 'MORE',
+    reading: 'Reading the connections…',
   }),
 });

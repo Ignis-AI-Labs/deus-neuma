@@ -21,6 +21,7 @@ import memoryRouter from './memory-routes.js';
 import llmRouter from './llm-routes.js';
 import attachmentRouter from './attachment-routes.js';
 import webRouter from './web-routes.js';
+import connectionRouter from './connection-routes.js';
 import skillRouter from './skill-routes.js';
 import { getConnectionCount } from './portal-routes.js';
 import { terminalAgentsRouter } from './terminal-routes.js';
@@ -31,16 +32,25 @@ import socialRouter from './social-routes.js';
 import socialChannelRouter from './social-channel-routes.js';
 import socialConnectRouter from './social-connect-routes.js';
 import socialAccountRouter from './social-account-routes.js';
+import socialGroupRouter from './social-group-routes.js';
+import marketingLinkRouter from './marketing-link-routes.js';
+import marketingResultsRouter from './marketing-results-routes.js';
+import marketingBoardRouter from './marketing-board-routes.js';
+import marketingOfficeRouter from './marketing-office-routes.js';
 import companyRouter from './company-routes.js';
+import companyLinkRouter from './company-link-routes.js';
 import leadRouter from './lead-routes.js';
 import campaignRouter from './campaign-routes.js';
 import csoRouter from './cso-routes.js';
 import legalRouter from './legal-routes.js';
 import staffRouter from './staff-routes.js';
 import houseClockRouter from './house-clock-routes.js';
+import waitingRouter from './waiting-routes.js';
+import mandateRouter from './mandate-routes.js';
 import benchRouter from './bench-routes.js';
 import chainRouter from './chain-routes.js';
 import moneyInRouter from './money-in-routes.js';
+import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
@@ -153,7 +163,19 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/social-channels', socialConnectRouter);
   // The house's apps and accounts (many per platform, each under a company).
   app.use('/api/v1/social-channels', socialAccountRouter);
+  // APPROVE GROUP: one asset on several accounts, one press (campaign slice 6).
+  app.use('/api/v1/social-channels', socialGroupRouter);
+  // The house's tracked links and its site counter (campaign slice 7).
+  app.use('/api/v1/marketing/links', marketingLinkRouter);
+  // What the house's posts did, read back by the stats sweep (campaign slice 9).
+  app.use('/api/v1/marketing/results', marketingResultsRouter);
+  // Each zoom level's MARKETING board, laid out by the operator (marketing panel slice 3).
+  app.use('/api/v1/marketing/board', marketingBoardRouter);
+  // The board's new panels' own reads: the weekly plan, what changed in a company (slice 4).
+  app.use('/api/v1/marketing/office', marketingOfficeRouter);
   app.use('/api/v1/companies', companyRouter);
+  // A company's site, pages and repos the CMO proposed — each waits on the operator's APPROVE.
+  app.use('/api/v1/company-links', companyLinkRouter);
   app.use('/api/v1/social-channels', socialChannelRouter);
   app.use('/api/v1/leads', leadRouter);
   app.use('/api/v1/campaigns', campaignRouter);
@@ -173,6 +195,10 @@ export const mountApiRoutes = (app) => {
   // The house clock: the charter that lets the house wake itself, its queue
   // and its ledger. Router-level requireAuth inside; the house is the caller's.
   app.use('/api/v1/house-clock', houseClockRouter);
+  // Everything waiting on the operator, one read — the desk's WAITING ON YOU.
+  app.use('/api/v1/waiting', waitingRouter);
+  // The CMO's MANDATE: grant, withdraw, resume, renew, DONE FOR YOU. Router-level requireAuth inside.
+  app.use('/api/v1/mandate', mandateRouter);
 
   // The bench plane: the operator's window onto the sovereign benchmark
   // harness — read + launch + watch. Router-level requireAuth inside.
@@ -186,6 +212,11 @@ export const mountApiRoutes = (app) => {
   // receive-only, read-only. Router-level requireAuth inside; the house is
   // the caller's wallet.
   app.use('/api/v1/money-in', moneyInRouter);
+
+  // The Quaestor's office: the house's money read whole (wallets, pending
+  // spends as cards, history, money in, budgets) — oversight only; nothing
+  // here moves money. Router-level requireAuth inside; the house is the caller's.
+  app.use('/api/v1/treasury', treasuryRouter);
 
   // The box's one email account: named outward speech. Same governance as the
   // channel board — credentials + single-holder binding. requireAuth inside.
@@ -243,6 +274,7 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);
   app.use('/api/v1/web', webRouter);
+  app.use('/api/v1/connections', connectionRouter);
   app.use('/api/v1/map', mapRouter);
   app.use('/api/v1/residency', residencyRouter);
   app.use('/api/v1/meditation', meditationRouter);

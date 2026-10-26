@@ -20,6 +20,7 @@ import { execFile } from 'child_process';
 import path from 'path';
 import { detectRepo } from './repo-detect.js';
 import { porcelainPath } from './git-porcelain-path.js';
+import { withoutBackendSecrets } from './agent-terminal-environment.js';
 
 // A giant status (ten thousand touched files) is still single-digit MB; past
 // this the repo is pathological and the probe fails honestly, never an OOM.
@@ -34,7 +35,7 @@ const gitProbe = (dir, args) => new Promise((resolve, reject) => {
     {
       timeout: STATUS_TIMEOUT_MS,
       maxBuffer: STATUS_MAX_BUFFER,
-      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+      env: { ...withoutBackendSecrets(process.env), GIT_OPTIONAL_LOCKS: '0' },
     },
     (error, out) => (error ? reject(error) : resolve(out)),
   );

@@ -14,6 +14,7 @@
  *   GET|PUT /accounts/:accountId/crew         who WORKS it {neumaId, kind?, remit?}
  *   DELETE /accounts/:accountId/crew/:neumaId release a crew member
  *   GET    /accounts/flight-test[?fresh=1]   every account proven with its own keys
+ *   GET    /accounts/house-check[?fresh=1]   the house social check (in-use accounts, roll-up, OPTIONAL)
  *   PUT    /apps/:channelId                  the app's fields {fields}
  *
  * Every answer is the caller's own house and masked: key NAMES and where each
@@ -32,6 +33,7 @@ import {
   loadAccountStore, listAccounts, listApps, addAccount, setAccountFields, setAccountMeta, setAppFields, removeAccount,
 } from '../services/social/account-store.js';
 import { runAccountFlightTests } from '../services/social/flight-test.js';
+import { runHouseCheck } from '../services/social/house-check/house-check-facts.js';
 import { listCompanies } from '../services/marketing/companies.js';
 import { createLogger } from '../services/logger.js';
 
@@ -96,6 +98,17 @@ router.get('/accounts/flight-test', async (req, res) => {
   } catch (error) {
     log.error('account flight tests failed', { error: error.message });
     res.status(500).json({ error: 'Failed to run the flight tests' });
+  }
+});
+
+// THE HOUSE SOCIAL CHECK (campaign plan §6.1): every account in use checked
+// and rolled up per company → tree → house; the rest OPTIONAL, never counted.
+router.get('/accounts/house-check', async (req, res) => {
+  try {
+    res.json({ check: await runHouseCheck(req.walletAddress, { fresh: req.query.fresh === '1' }) });
+  } catch (error) {
+    log.error('house social check failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to run the house\'s social check' });
   }
 });
 

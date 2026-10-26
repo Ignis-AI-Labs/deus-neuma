@@ -125,6 +125,19 @@ export const stageQueuePost = ({ channelId, accountId, text, scheduledFor, campa
 export const approveQueueThread = (id, textsSeen) =>
   req(`/queue/${id}/approve-thread`, { method: 'PUT', body: { textsSeen } });
 
+/**
+ * APPROVE GROUP — every waiting post of a group (one asset on several
+ * accounts) in one press, each copy as read (textsSeen). A TikTok post rides
+ * only with its card's choices (`tiktok[id]`); otherwise it is named in
+ * `ownCard` and waits for its own card.
+ * @param {string} groupId
+ * @param {Record<string, string>} textsSeen
+ * @param {Record<string, object>} [tiktok]
+ */
+// impure
+export const approveQueueGroup = (groupId, textsSeen, tiktok = undefined) =>
+  req(`/queue/groups/${encodeURIComponent(groupId)}/approve`, { method: 'PUT', body: { textsSeen, ...(tiktok ? { tiktok } : {}) } });
+
 // impure — `tiktok` carries the choices made on a TikTok post's card.
 export const approveQueuePost = (id, { scheduledFor, textSeen, tiktok } = {}) =>
   req(`/queue/${id}/approve`, {
@@ -193,6 +206,10 @@ export const updateQueuePost = (id, patch) =>
 // impure
 export const removeQueuePost = (id) =>
   req(`/queue/${id}`, { method: 'DELETE' });
+
+/** TRY AGAIN: a failed post the platform stumbled on, back to DRAFT — it sends only once approved again. */
+export const retryQueuePost = (id) =>
+  req(`/queue/${id}/retry`, { method: 'PUT' });
 
 /**
  * One staged attachment's bytes as a LOCAL object URL, with the type the

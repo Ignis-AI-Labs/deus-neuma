@@ -61,9 +61,17 @@ files:
   # The version's release notes, when the release flow placed them: the app's first launch on a new version shows them as WHAT'S NEW
   # (electron/update-bar.cjs). Absent in a build without notes; nothing else reads it.
   - build/release-notes.md
-  # The backend imports this ONE frontend module (council-session.js →
-  # stripToolBlocks); everything else under frontend/ is dev-only source.
+  # The few frontend modules the backend imports (council-session.js →
+  # stripToolBlocks; the TikTok poster's consent rules; the marketing board lines and the
+  # folds they pull in); everything else under frontend/ is dev-only source.
+  # test/unit/packaged-frontend-imports.test.js fails when a backend import is missing here:
+  # the 2026-10-24 installer booted to […] without them.
   - frontend/utils/tool-stream-filter.js
+  - frontend/utils/tiktok-consent.js
+  - frontend/app/RelinkShell/marketing/marketing-board.js
+  - frontend/app/RelinkShell/marketing/board-edit.js
+  - frontend/app/RelinkShell/marketing/platform-fold.js
+  - frontend/app/RelinkShell/marketing-overview/overview-fold.js
   # The voice engine registry imports this manifest; the engines themselves
   # (Python sidecars + 54GB of models) are host-provisioned at runtime, never
   # shipped — voice on a clean host is its own slice.

@@ -118,8 +118,10 @@ export const pullableChoice = (recommendation) => {
  *   was set up (its record); system: an Ollama installed outside the platform; managedInstalled:
  *   the platform's own server is on disk; endpoints: the platform's usual + next endpoint;
  *   gpuGuard: the driver guard (gpu-driver-guard.js), carried for the screen when it has words
+ *   verify: false leaves out the answer check, which loads the model (the installer's plan: an
+ *   install downloads, it never loads a model onto the card)
  */
-export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints(), gpuGuard = null }) => {
+export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints(), gpuGuard = null, verify = true }) => {
   const { choice: recommendation, note: choiceNote } = pullableChoice(matched);
   const ref = ollamaModelRef(recommendation);
   if (!ref) {
@@ -151,7 +153,7 @@ export const installPlan = ({ platform, arch, recommendation: matched, running, 
   if (server === 'download') steps.push({ id: 'unpack', label: 'Unpack it', bytes: 0 });
   if (server !== 'running') steps.push({ id: 'start', label: 'Start the model server', bytes: 0 });
   if (!haveModel) steps.push({ id: 'pull', label: `Download ${recommendation.model} (${recommendation.quant})`, bytes: modelBytes });
-  steps.push({ id: 'verify', label: 'Check that it answers', bytes: 0 });
+  if (verify) steps.push({ id: 'verify', label: 'Check that it answers', bytes: 0 });
   const needBytes = Math.round((server === 'download' ? asset.size * UNPACK_FACTOR : 0) + (haveModel ? 0 : modelBytes * MODEL_HEADROOM));
   return Object.freeze({
     supported: true,
@@ -169,6 +171,18 @@ export const installPlan = ({ platform, arch, recommendation: matched, running, 
     gpuDriver: gpuGuard?.line ? gpuGuard : null,
   });
 };
+
+/**
+ * The sentence a finished setup ends on. A setup that only downloaded says the model loads at the
+ * person's first message, not that it answered. Pure.
+ * @param {{name: string, version: string|null, loaded: boolean, notes?: Array<string|null|undefined>}} done
+ */
+export const setupDoneLine = ({ name, version, loaded, notes = [] }) => [
+  loaded
+    ? `${name} is ready on Ollama ${version}.`
+    : `${name} is downloaded and Ollama ${version} is ready. The model loads when Deus Neuma first opens, not before.`,
+  ...notes,
+].filter(Boolean).join(' ');
 
 /** One line of Ollama's streamed /api/pull: status, and bytes when it reports them. Pure. */
 export const pullProgress = (line) => {
@@ -199,6 +213,8 @@ export const humanBytes = (n) => {
  *   card; the being runs one turn at a time. The person's own setting, if they made one, stands.
  * - A card held by the driver guard (gpu-driver-guard.js) is hidden from the server: CUDA sees no
  *   device and the Vulkan path is off, so the model is loaded on the processor only.
+ * - Ollama's own cloud models are off (2026-10-24): they send prompts to Ollama's servers, and a
+ *   neuma lives only on a model in the operator's custody (docs/protocols/sovereignty-boundary.md).
  * @param {{window: number, holdGpu?: boolean, env?: Record<string, string|undefined>}} input
  * @returns {Readonly<Record<string, string>>} the keys to set
  */
@@ -206,5 +222,6 @@ export const managedServeEnv = ({ window, holdGpu = false, env = {} }) => Object
   OLLAMA_CONTEXT_LENGTH: String(window),
   OLLAMA_NUM_PARALLEL: env.OLLAMA_NUM_PARALLEL || '1',
   OLLAMA_MAX_LOADED_MODELS: env.OLLAMA_MAX_LOADED_MODELS || '1',
+  OLLAMA_NO_CLOUD: env.OLLAMA_NO_CLOUD || '1',
   ...(holdGpu ? { CUDA_VISIBLE_DEVICES: '-1', OLLAMA_VULKAN: '0' } : {}),
 });

@@ -112,6 +112,11 @@ export const CREDENTIAL_LINKS = Object.freeze({
     elevenlabs: link('https://elevenlabs.io/app/settings/api-keys', 'ElevenLabs API keys'),
     hume: link('https://platform.hume.ai/settings/keys', 'Hume API keys'),
   }),
+  // The house's site counter (tracked links): the token is the site Worker's
+  // own secret, set once by whoever deploys the site.
+  marketing: Object.freeze({
+    'site-counter': link('https://developers.cloudflare.com/workers/configuration/secrets/', 'Cloudflare Worker secrets', 'the token is the site Worker\'s GO_API_TOKEN secret (wrangler secret put GO_API_TOKEN); paste the same value here'),
+  }),
   research: Object.freeze({
     courtlistener: link('https://www.courtlistener.com/', 'CourtListener', 'free; sign in or create an account, then your profile has the API token'),
     'api-data-gov': link('https://api.data.gov/signup/', 'api.data.gov key', 'free; one key for Congress.gov, GovInfo and Regulations.gov'),

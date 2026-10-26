@@ -1,0 +1,9 @@
+/* CountdownMark — the hourglass, the distance in signal, the moment in ink;
+   '—' quiet when nothing is ahead. The data register at the label floor. */
+
+.cdm { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; font-family: var(--font-data);
+  font-size: var(--text-label, 13px); letter-spacing: 0.06em; color: var(--color-text-secondary); white-space: nowrap; }
+.cdm-glyph { align-self: center; flex: none; fill: none; stroke: currentColor; stroke-width: 1.2; color: var(--signal); }
+.cdm-rel { font-weight: 400; color: var(--signal); font-variant-numeric: tabular-nums; }
+.cdm-at { overflow: hidden; text-overflow: ellipsis; }
+.cdm.is-none .cdm-glyph, .cdm.is-none .cdm-rel { color: var(--color-text-disabled); }

@@ -3,8 +3,11 @@
 // scrolling. The boards are read once (use-api-credentials.js)
 // and handed to the map and to every section; a state on the map filters the
 // rows below, a tile opens its row, and only one row stands open at a time.
+// A deep link to one account (`channel-keys/<platform>/<account>`, the house
+// social check's KEYS and CONNECT doors) opens its platform's row and brings
+// the account's own row into view, marked.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { useApiCredentials } from './use-api-credentials.js';
 import { credentialItems } from './credential-view.js';
@@ -13,8 +16,15 @@ import { ChannelKeysSection } from './ChannelKeysSection.jsx';
 import { EmailSection } from './EmailSection.jsx';
 import { WebSection } from './WebSection.jsx';
 import { ServiceKeysSection } from './ServiceKeysSection.jsx';
+import { revealCard } from './waiting/waiting-jump.js';
 
-export const ApiTab = () => {
+// pure — the platform and account a deep link names, or null.
+const accountFocus = (focus) => {
+  const [section, channelId, accountId] = String(focus ?? '').split('/');
+  return section === 'channel-keys' && channelId ? { channelId, accountId: accountId || null } : null;
+};
+
+export const ApiTab = ({ focus = null }) => {
   const board = useApiCredentials();
   const [stateFilter, setStateFilter] = useState('');
   const [openKey, setOpenKey] = useState(null);
@@ -27,6 +37,13 @@ export const ApiTab = () => {
     onOpen(key);
   };
   const shared = { stateFilter, openKey, onOpen };
+  useEffect(() => {
+    const to = accountFocus(focus);
+    if (!to) return;
+    setStateFilter('');
+    setOpenKey(`channel:${to.channelId}`);
+    if (to.accountId) revealCard(`.account-row[data-account="${to.accountId.replace(/["\\]/g, '')}"]`);
+  }, [focus]);
 
   return (
     <>

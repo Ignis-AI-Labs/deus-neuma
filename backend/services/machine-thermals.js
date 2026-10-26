@@ -7,11 +7,12 @@
  * clocks against their maximums, PCIe link, and the driver's own clock-limit
  * reasons), `sensors -j` (every hwmon chip with its own high/critical limits:
  * CPU, memory DIMMs, NVMe, board, network, case fans, rails), cpufreq (governor,
- * energy preference, turbo) and the bench-fans service. A reading at or past its
+ * energy preference, turbo), each NVMe drive's model (/sys/class/nvme) and the
+ * bench-fans service. A reading at or past its
  * chip's own high mark is flagged — the limits are the hardware's, never ours.
  */
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
 
@@ -102,6 +103,38 @@ export const thermalAlerts = ({ readings = [], clockReasons = [] }) => {
   return alerts;
 };
 
+const degC = (text, label) => num(new RegExp(`^\\s*${label}\\s*:\\s*(-?[\\d.]+) C\\s*$`, 'm').exec(text)?.[1]);
+
+/**
+ * pure — the GPU's OWN temperature marks from `nvidia-smi -q -d TEMPERATURE`:
+ * its max operating temperature (high) and its slowdown temperature (crit).
+ * Current drivers state them as T.Limit offsets from the live headroom ([…] = 56° below max operating; slowdown spec -2 =
+ * 2° past it); older drivers state them in °C outright. Null when unstated.
+ */
+export const parseGpuTempLimits = (text) => {
+  const t = String(text ?? '');
+  const now = degC(t, 'GPU Current Temp');
+  const headroom = degC(t, 'GPU Current T\\.Limit Temp');
+  const offset = (spec) => {
+    const v = degC(t, `GPU ${spec} T\\.Limit Temp Specification`);
+    return Number.isFinite(now) && Number.isFinite(headroom) && Number.isFinite(v) ? now + headroom - v : null;
+  };
+  const stated = (spec) => degC(t, `GPU ${spec} Temp`);
+  return Object.freeze({
+    maxOperatingC: offset('Max Operating') ?? stated('Max Operating'),
+    slowdownC: offset('Slowdown') ?? stated('Slowdown'),
+    shutdownC: offset('Shutdown') ?? stated('Shutdown'),
+  });
+};
+
+/** pure — an NVMe PCI address (0000:05:00.0) → the chip name `sensors` gives its hwmon (nvme-pci-0500: bus, then device<<3|function). */
+export const nvmeChipOf = (address) => {
+  const m = /^[0-9a-f]{4}:([0-9a-f]{2}):([0-9a-f]{2})\.([0-7])$/i.exec(String(address ?? '').trim());
+  if (!m) return null;
+  const devfn = (parseInt(m[2], 16) << 3) | Number(m[3]);
+  return `nvme-pci-${m[1].toLowerCase()}${devfn.toString(16).padStart(2, '0')}`;
+};
+
 const run = (bin, args) => execFileAsync(bin, args, { timeout: PROBE_MS, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 })
   .then(({ stdout }) => stdout).catch(() => null);
 const readText = (path) => readFile(path, 'utf8').then((s) => s.trim()).catch(() => null);
@@ -129,6 +162,17 @@ const readCpu = async () => {
   });
 };
 
+/** impure — each NVMe drive's model, keyed by the chip name its temperatures arrive under. */
+const readDrives = async () => {
+  const names = await readdir('/sys/class/nvme').catch(() => []);
+  const drives = await Promise.all(names.filter((n) => /^nvme\d+$/.test(n)).map(async (device) => {
+    const [model, address] = await Promise.all([readText(`/sys/class/nvme/${device}/model`), readText(`/sys/class/nvme/${device}/address`)]);
+    const chip = nvmeChipOf(address);
+    return chip ? Object.freeze({ chip, device, model: model || null }) : null;
+  }));
+  return drives.filter(Boolean);
+};
+
 /** impure — the bench-fans service: running, and whether it is holding the fans at full now. */
 const readFanService = async () => {
   const active = (await run('systemctl', ['is-active', 'bench-fans.service']))?.trim() ?? null;
@@ -137,12 +181,14 @@ const readFanService = async () => {
 
 /** impure — the whole machine, read live. Fields a machine cannot answer read null. */
 export const readMachineThermals = async () => {
-  const [gpuCsv, perf, sensorsJson, cpu, fanService] = await Promise.all([
+  const [gpuCsv, perf, sensorsJson, cpu, fanService, drives] = await Promise.all([
     run('nvidia-smi', [`--query-gpu=${GPU_FIELDS.join(',')}`, '--format=csv,noheader,nounits']),
-    run('nvidia-smi', ['-q', '-d', 'PERFORMANCE']),
+    // One spawn for both: the clock-limit reasons and the GPU's own temperature marks.
+    run('nvidia-smi', ['-q', '-d', 'PERFORMANCE,TEMPERATURE']),
     run('sensors', ['-j']),
     readCpu(),
     readFanService(),
+    readDrives(),
   ]);
   let json;
   try { json = sensorsJson ? JSON.parse(sensorsJson) : null; } catch { json = null; }
@@ -151,9 +197,10 @@ export const readMachineThermals = async () => {
   const clockReasons = perf ? parseClockReasons(perf) : [];
   return Object.freeze({
     at: new Date().toISOString(),
-    gpu: gpu ? { ...gpu, clockReasons } : null,
+    gpu: gpu ? { ...gpu, clockReasons, tempLimits: parseGpuTempLimits(perf) } : null,
     cpu,
     readings,
+    drives,
     fanService,
     alerts: thermalAlerts({ readings, clockReasons }),
   });

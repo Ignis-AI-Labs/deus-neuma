@@ -14,6 +14,7 @@ import { CharterSection } from './CharterSection.jsx';
 import { NowSection, LedgerSection } from './WakeSections.jsx';
 import { AsksSection } from './AsksSection.jsx';
 import { MoneyInSection } from './MoneyInSection.jsx';
+import { MandateChip } from '../mandate/MandateChip.jsx';
 
 export const HouseClockIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -48,6 +49,8 @@ const Head = ({ charter, readiness, residency, busy, error, pollError, onPause, 
         disabled={busy || !sw.enabled} title={sw.title} onClick={onPause}>
         {sw.label}
       </button>
+      {/* The CMO's MANDATE stands beside the house's own clock, WITHDRAW one press away. */}
+      <MandateChip />
       {wake ? (
         <p className="hclock-residency label-data">
           <button type="button" className={`hclock-switch label-data${wake.on ? ' is-on' : ''}`} aria-pressed={wake.on}

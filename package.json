@@ -1,6 +1,6 @@
 {
   "name": "neuma",
-  "version": "0.1.70",
+  "version": "0.1.71",
   "license": "FSL-1.1-ALv2",
   "description": "Deus Neuma — sovereign relationships with AI.",
   "homepage": "https://deusneuma.ai",
@@ -58,7 +58,7 @@
     "predist:deb": "node scripts/ensure-native-abi.mjs electron",
     "dist:deb": "npm run build && electron-builder --linux dir && node scripts/build-deb.mjs",
     "prepare": "git config core.hooksPath \"$(cd \"$(git rev-parse --path-format=absolute --git-common-dir)/..\" && pwd)/scripts/git-hooks\" 2>/dev/null || true",
-    "postinstall": "node scripts/native-abi-cache.mjs harvest --never-fail && node scripts/patch-typeless-deps.mjs",
+    "postinstall": "node scripts/native-abi-cache.mjs harvest --never-fail && node scripts/patch-typeless-deps.mjs && node scripts/patch-nsis-template.mjs",
     "native:abi": "node scripts/native-abi-cache.mjs status",
     "lint": "eslint backend/ core/ frontend/ --ext .js,.cjs,.mjs",
     "dist:win": "npm run build && electron-builder --win",

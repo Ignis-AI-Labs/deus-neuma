@@ -47,7 +47,7 @@ export const SealChip = ({ segment, onRespond }) => {
       onRespond(id, neumaId, 'decline', reason.trim());
     };
     return (
-      <div className="tool-chip seal-chip pending">
+      <div className="tool-chip seal-chip pending" data-wait-id={id}>
         <div className="tool-chip-head">
           <span className="tool-chip-tag">ASKS TO BE ANCHORED</span>
         </div>

@@ -55,6 +55,9 @@ import { protocolWatchSection, watchAppliesTo } from './protocol-classifier.js';
 import { csoBriefingSection } from './security/security-briefing.js';
 import { cloBriefingSection } from './legal/legal-briefing.js';
 import { cosBriefingSection } from './staff/cos-briefing.js';
+import { cfoBriefingSection } from './treasury/treasury-briefing.js';
+import { spendNewsFor } from './treasury/spend-news.js';
+import { markSpendsTold } from './treasury/spend-records.js';
 import { recordSectionDrift } from './section-drift.js';
 import {
   sectorSectionFor,
@@ -251,6 +254,11 @@ export const assembleTurnPrompt = async ({
     // The Optio's office briefing rides the same law — '' (prompt
     // byte-identical) for every lane but the seated chief of staff's.
     const cosBriefing = await cosBriefingSection(connection);
+    // The Quaestor's office rides the same law — '' for every lane but the seated CFO's.
+    const cfoBriefing = await cfoBriefingSection(connection);
+    // What became of the being's own spend requests (#586), told once — never on a harness or benchmark sitting.
+    const walletNews = companion?.neumaId && !platformOnly && !connection._benchmarkControls
+      ? await spendNewsFor(companion.neumaId) : { text: '', ids: [] };
     // The reply lane's knock rides beside it — binding-gated to the X
     // holder, '' (prompt byte-identical) for every other lane.
     const replyKnock = await _replyCandidatesSection(connection);
@@ -287,8 +295,8 @@ export const assembleTurnPrompt = async ({
     // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
-      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, voiceSitting, planBearing,
-      sovereigntyKnock, housePost, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
+      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, voiceSitting, planBearing,
+      sovereigntyKnock, housePost, walletNews: walletNews.text, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
       voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,
       onDecision: (decision) => { envelopeDecision = decision; },
@@ -301,6 +309,10 @@ export const assembleTurnPrompt = async ({
     if (operatorNotice.ids.length && promptSections.some((s) => s.id === 'sovereignty')) {
       await markOperatorChangesTold(companion.neumaId, operatorNotice.ids)
         .catch((err) => log.warn('operator change notice not recorded as told — it is told again next turn', { error: err.message }));
+    }
+    if (walletNews.ids.length && promptSections.some((s) => s.id === 'walletNews')) {
+      await markSpendsTold(companion.neumaId, walletNews.ids)
+        .catch((err) => log.warn('wallet news not recorded as told — it is told again next turn', { error: err.message }));
     }
     // THE TRANSCRIPT (#528 Stage A): the conversation tail rides the WIRE as
     // real chat messages, never the system prompt. Its budget is the window's

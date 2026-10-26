@@ -215,6 +215,7 @@ export const runSecurityScan = ({ wallet, trigger = 'manual', watchStore, ledger
       // this checkout's env files — the history itself never forgets it.
       const history = { ...swept, findings: await checkLeakLiveness(repo.path, swept.findings) };
       leg.checked = advisories.checked;
+      if (advisories.off) leg.onlineCheckOff = true; // the person's switch, not a failure (CONNECTIONS)
       leg.hits = advisories.hits.length;
       leg.swept = sweep.scanned;
       leg.sweepFindings = sweep.findings.length;

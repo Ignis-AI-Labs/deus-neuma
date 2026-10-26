@@ -1,0 +1,104 @@
+/* TreasuryApp — the TREASURY window (the Quaestor's office). Rides the
+   SECURITY/LEGAL office shell (SecurityApp.css, LegalApp.css); these are its
+   own pieces: the overview tiles, the flight marks, the wallet and history
+   rows, a Quaestor's flag. Monochrome at rest; signal for OK and live
+   decisions, alert only for what is failing or could hurt. */
+
+.tre-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tre-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.tre-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--snap);
+}
+.tre-tile:hover { border-color: var(--line-hover); }
+.tre-tile-n {
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.tre-tile.is-loud .tre-tile-n { color: var(--signal); }
+.tre-tile-l { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.tre-tile-s { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+.tre-sec {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.tre-h {
+  margin: 0 0 var(--space-2);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+.tre-line {
+  margin: 0 0 var(--space-2);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.tre-marks, .tre-rows { list-style: none; margin: 0; padding: 0; }
+.tre-mark {
+  display: grid;
+  grid-template-columns: 4.5rem 7rem 1fr;
+  gap: var(--space-2);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-glass-hover);
+}
+.tre-mark-w, .tre-mark-l { font-size: 10px; letter-spacing: 0.14em; }
+.tre-mark-l { color: var(--color-text-secondary); }
+.tre-mark-t { font-size: var(--text-xs); color: var(--color-text-secondary); }
+.tre-mark.is-ok .tre-mark-w { color: var(--signal); }
+.tre-mark.is-warn .tre-mark-w { color: var(--color-text-primary); }
+.tre-mark.is-fail .tre-mark-w,
+.tre-mark.is-fail .tre-mark-t { color: var(--alert); }
+.tre-mark.is-unread .tre-mark-w { color: var(--color-text-tertiary); }
+
+.tre-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-glass-hover);
+}
+.tre-row-who { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-primary); }
+.tre-row-who.is-loud, .tre-row-s.is-loud { color: var(--alert); }
+.tre-row-v { font-size: 10px; letter-spacing: 0.08em; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.tre-row-s { font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.tre-row-q { font-family: var(--font-voice); font-size: var(--text-xs); color: var(--color-text-secondary); }
+
+.tre-flag { background: var(--line); margin: 0 0 var(--space-3); }
+.tre-flag-in {
+  background: var(--color-glass);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+.tre-flag-t { flex: 1 1 12rem; font-size: var(--text-sm); color: var(--color-text-primary); }
+.tre-flag-d { flex: 1 1 100%; font-size: var(--text-xs); color: var(--color-text-secondary); }
+.tre-flag-m { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }

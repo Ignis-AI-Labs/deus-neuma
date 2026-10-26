@@ -209,7 +209,7 @@ const walkGates = async (page) => {
   const wpUnlock = page.locator('#wp-submit');
   const commit = page.locator('#accept-commitment');
   const begin = page.locator('#preflight-begin');
-  const neumaDoor = page.locator('.firstrun-path', { hasText: 'Summon a neuma' }); // a first run asks how to begin
+  const neumaDoor = page.locator('[data-door="neuma"] .firstrun-path'); // a first run asks how to begin
   const composer = page.locator('textarea').first();
   let summoned = false;
   while (Date.now() < deadline) {

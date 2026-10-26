@@ -22,6 +22,8 @@ import { detectRoguePatterns } from '../rogue-detector.js';
 import { scanText, SECRET_PATTERNS } from './secret-sweep.js';
 import { threatLedgerFor } from './threat-ledger.js';
 import { createLogger } from '../logger.js';
+import { tripMandateForLane } from '../marketing/mandate/mandate-tripwire.js';
+import { holdForSighting } from '../marketing/mandate/mandate-hostile.js';
 
 const log = createLogger('InjectionSightings');
 
@@ -85,15 +87,28 @@ export const injectionFinding = ({ lane, kind, source, origin, text, at }) => {
  * a full disk or a busy lock must not cost a being its turn, and the
  * content was already framed for the being either way. Resolves to the
  * finding filed, or null.
- * @param {{wallet: string|null|undefined, lane: string, kind: string, source: string, origin: string, text: string}} sighting
+ *
+ * The CMO's mandate meets it two ways (marketing/mandate/, ruling 2026-10-24):
+ * text the lane READ (`read: true` — a tool result) is a stranger's: it HOLDS
+ * what is drawn from it and alerts the operator, and the mandate goes on;
+ * the lane's OWN words (council speech, a board check-in) are the CMO itself
+ * misbehaving, so they pause the mandate as before.
+ * @param {{wallet: string|null|undefined, lane: string, kind: string, source: string, origin: string,
+ *   text: string, read?: boolean, sessionId?: ?string, postId?: ?string}} sighting
+ *   postId — the post the text is (a reply being answered), held with it
  * @returns {Promise<Object|null>} never rejects
  */
-export const noteInjectionSighting = async ({ wallet, ...sighting }) => {
+export const noteInjectionSighting = async ({ wallet, read = false, sessionId = null, ...sighting }) => {
   try {
     if (!wallet) return null; // no house, no ledger to file in
     const finding = injectionFinding({ ...sighting, at: new Date().toISOString() });
     if (!finding) return null;
+    // Started before the first await: the hold is noted in-process at once,
+    // so the CMO's next act in this turn already falls under it.
+    const held = read ? holdForSighting({ wallet, lane: sighting.lane, sessionId, kind: sighting.kind, source: sighting.source, origin: sighting.origin, text: sighting.text, postId: sighting.postId || null }) : null;
     await (await threatLedgerFor(wallet)).ingest([finding]);
+    if (held) await held;
+    else await tripMandateForLane({ wallet, laneId: sighting.lane, kind: 'rogue', detail: `injection-shaped text in the CMO's own ${sighting.kind}` });
     return finding;
   } catch (err) {
     log.warn('injection sighting not recorded — the turn goes on', {
@@ -118,6 +133,7 @@ export const noteToolResultSightings = (connection, results) => {
     .filter((r) => typeof r?.content === 'string' && r.content)
     .map((r) => noteInjectionSighting({
       wallet, lane, kind: 'tool result', source: r.tool, origin: `the ${r.tool} result`, text: r.content,
+      read: true, sessionId: connection.sessionId || null,
     })));
 };
 

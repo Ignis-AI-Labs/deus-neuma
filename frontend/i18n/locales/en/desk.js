@@ -37,6 +37,7 @@ export default Object.freeze({
     refinement: 'NITE',
     security: 'SECURITY',
     legal: 'LEGAL',
+    treasury: 'TREASURY',
     settings: 'SETTINGS',
     sheet: 'RECORD',
     skills: 'SKILLS',

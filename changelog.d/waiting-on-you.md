@@ -1,0 +1,3 @@
+Added
+- Whenever something waits for your decision, a WAITING ON YOU mark stands at the top of the desk. It shows how many decisions wait and how long the oldest has waited, and it stays until each one is decided. Press it to see the list, oldest first. Press a row to go straight to that card, in its chat, in the house clock, on a platform's queue or in a being's proposals.
+- Each platform window now opens with its own WAITING ON YOU band, above everything else. It lists that platform's posts and replies waiting for you. APPROVE is there when the whole post is shown and nothing else rides on the yes. OPEN takes you to the card itself.

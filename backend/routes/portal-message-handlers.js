@@ -282,9 +282,12 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
         .filter((id) => isValidId(id));
       if (ids.length === 0) break;
-      markNotificationsRead(connection.walletAddress, ids, Date.now())
+      // `dismiss` takes the cards out of the tray too (the × and CLEAR), on
+      // every desk and after a reload; the records stay in the file.
+      const dismiss = message.dismiss === true;
+      markNotificationsRead(connection.walletAddress, ids, Date.now(), { dismiss })
         .then(() => {
-          sendToWallet(connection.walletAddress, { type: 'notification:read', ids });
+          sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', ids });
         })
         .catch((error) => {
           log.error('Notification read-marking failed', { error: error.message, count: ids.length });

@@ -26,6 +26,7 @@ import { recordAct } from './act-ledger.js';
 import { withOperationApproval } from './turn-operation-checkpoint.js';
 import { linePlace } from './substrate-lease.js';
 import { approvalRenders } from './image-forge/approval-renders.js';
+import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 
 
 /** Decisions an operator may send. Everything else is rejected at the boundary. */
@@ -149,6 +150,7 @@ export const requestToolApproval = (connection, { tool, label, args, scope, surf
       if (!entry) return;
       pending.delete(id);
       _parked.delete(id);
+      clearLiveCard(id);
       if (signal) signal.removeEventListener('abort', entry.onAbort);
       // The client learns the request is settled on EVERY path (decision,
       // interrupt, close) — a pending prompt must never dangle on screen.
@@ -270,6 +272,8 @@ export const requestToolApproval = (connection, { tool, label, args, scope, surf
     }
 
     _safeSend(connection.ws, frame);
+    // On the operator's screen now: the desk's WAITING ON YOU counts it until it settles.
+    noteLiveCard(connection, { id, kind: 'approval', title: label || tool, lane, surface });
   }));
 
 /**

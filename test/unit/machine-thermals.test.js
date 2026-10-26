@@ -3,7 +3,7 @@
  * flagged against each chip's OWN limits. Real outputs captured on this rig.
  */
 import { describe, expect, test } from 'vitest';
-import { parseClockReasons, parseGpuRow, parseSensors, thermalAlerts, thermalState } from '../../backend/services/machine-thermals.js';
+import { nvmeChipOf, parseClockReasons, parseGpuRow, parseGpuTempLimits, parseSensors, thermalAlerts, thermalState } from '../../backend/services/machine-thermals.js';
 
 // `sensors -j`, trimmed, this rig 2026-10-20 under an AA-Omniscience arm.
 const SENSORS = {
@@ -62,5 +62,30 @@ describe('machine thermals', () => {
       'GPU clocks limited by: SW Thermal Slowdown',
     ]);
     expect(thermalAlerts({ readings: [], clockReasons: ['Reliability'] })).toEqual([]);
+  });
+
+  // `nvidia-smi -q -d PERFORMANCE,TEMPERATURE`, this rig 2026-10-24 (driver 615.71.09): the marks as T.Limit offsets.
+  const TEMPS = `${PERF}    Temperature
+        GPU Current Temp                               : 37 C
+        GPU Current Max Temp                           : N/A
+        GPU Current T.Limit Temp                       : 56 C
+        GPU Shutdown T.Limit Temp Specification        : -5 C
+        GPU Slowdown T.Limit Temp Specification        : -2 C
+        GPU Max Operating T.Limit Temp Specification   : 0 C
+        GPU Target Temperature Specification           : N/A
+`;
+  test('the GPU’s own temperature marks: T.Limit offsets from the live headroom, or °C as older drivers state them', () => {
+    expect(parseGpuTempLimits(TEMPS)).toEqual({ maxOperatingC: 93, slowdownC: 95, shutdownC: 98 });
+    expect(parseGpuTempLimits('        GPU Shutdown Temp                 : 96 C\n        GPU Slowdown Temp                 : 93 C\n        GPU Max Operating Temp            : 88 C\n'))
+      .toEqual({ maxOperatingC: 88, slowdownC: 93, shutdownC: 96 });
+    expect(parseGpuTempLimits(PERF)).toEqual({ maxOperatingC: null, slowdownC: null, shutdownC: null });
+    // the counters section still ends the reasons when the temperatures follow it
+    expect(parseClockReasons(TEMPS)).toEqual(['SW Thermal Slowdown', 'Reliability']);
+  });
+  test('an NVMe PCI address names the chip its temperatures arrive under', () => {
+    expect(nvmeChipOf('0000:05:00.0')).toBe('nvme-pci-0500');
+    expect(nvmeChipOf('0000:85:00.0')).toBe('nvme-pci-8500');
+    expect(nvmeChipOf('0000:00:1f.4')).toBe('nvme-pci-00fc');
+    expect(nvmeChipOf('nonsense')).toBeNull();
   });
 });

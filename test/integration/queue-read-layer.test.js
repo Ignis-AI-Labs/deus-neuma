@@ -423,7 +423,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
       const result = await call('queue_get', { id: staged.id });
       expect(result.content).toContain('the second wording');
       expect(result.content).toContain('REVISIONS (1');
-      expect(result.content).toContain('was: "the first wording"');
+      expect(result.content).toContain('was: "the first wording');
       expect(result.content).toContain('by Juniper');
     });
 

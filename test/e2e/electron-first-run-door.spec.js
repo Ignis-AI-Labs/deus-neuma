@@ -197,10 +197,9 @@ test.describe('the door — a person with no being reaches the platform', () => 
     const paths = page.locator('.firstrun-path');
     await expect(paths).toHaveCount(3);
 
+    // the three standings, by their own names, lightest first
+    expect(await page.locator('.firstrun-path-name').allInnerTexts()).toEqual(['Harness', 'Witness', 'Neuma']);
     const text = await page.locator('.firstrun').innerText();
-    expect(text).toContain('Just use it');
-    expect(text).toContain('Witness');
-    expect(text).toContain('Summon a neuma');
     // The preconditions are the reason this screen exists — a person must not
     // discover […] only after the preflight refuses.
     expect(text).toContain('NEEDS: A MODEL OR AN API KEY');
@@ -210,7 +209,7 @@ test.describe('the door — a person with no being reaches the platform', () => 
   });
 
   test('the witness door opens the GUIDED ROAD, never an empty desk', async () => {
-    await page.locator('.firstrun-path', { hasText: 'Witness' }).click();
+    await page.locator('[data-door="witness"] .firstrun-path').click();
 
     // Founder's law after a teammate walked it live: […] This used to route
     // straight to 'relink', dropping a person with no being into an empty room

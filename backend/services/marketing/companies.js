@@ -28,7 +28,7 @@ const readCompanies = async (wallet) => {
  * The house's companies in tree order (each root, then its subsidiaries).
  * impure.
  * @param {string} wallet
- * @returns {Promise<Array<{id, name, parentId, rootId, depth, problem, site, legalEntity, where}>>}
+ * @returns {Promise<Array<{id, name, parentId, rootId, depth, problem, site, legalEntity, repos, where}>>}
  */
 export const listCompanies = async (wallet) => treeOrder(settleTree(await readCompanies(wallet)));
 
@@ -39,7 +39,7 @@ export const listCompanies = async (wallet) => treeOrder(settleTree(await readCo
  * edit (kit-store's law). impure.
  * @param {string} wallet
  * @param {string} companyId
- * @param {object} block - {parentId?, site?, legalEntity?}
+ * @param {object} block - {parentId?, site?, legalEntity?, repos?}
  */
 export const setCompanyBlock = async (wallet, companyId, block) => {
   const refusals = companyRefusals(block, companyId);
@@ -56,6 +56,20 @@ export const setCompanyBlock = async (wallet, companyId, block) => {
   const written = await writeKit(companyId, wallet, { ...kit.kit, company: block });
   if (!written.ok) return written;
   return { ok: true, company: (await listCompanies(wallet)).find((c) => c.id === companyId) };
+};
+
+/**
+ * Record a company's code repos, keeping the rest of its block as it stands
+ * (company-repos.js; marketing/company-sources.js grants their reading). impure.
+ * @param {string} wallet
+ * @param {string} companyId
+ * @param {Array<{path?: string, remote?: string, role?: string}>} repos
+ */
+export const setCompanyRepos = async (wallet, companyId, repos) => {
+  const kit = await readKit(companyId, wallet);
+  if (!kit.ok) return { ok: false, error: kit.error };
+  const block = kit.kit.company && typeof kit.kit.company === 'object' ? kit.kit.company : {};
+  return setCompanyBlock(wallet, companyId, { ...block, repos });
 };
 
 /**

@@ -34,7 +34,7 @@
   align-items: baseline;
   gap: var(--space-2);
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -75,7 +75,7 @@
 
 .queue-preview-count {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.12em;
   color: var(--color-text-tertiary);
 }
@@ -96,8 +96,14 @@
   color: var(--color-text-secondary);
 }
 
-/* What would not fit is flagged, never hidden. */
-.queue-preview-count.is-over { color: var(--alert); }
+/* THE LENGTH — the post's length as a bar against the platform's own ceiling
+   (the bar's end is the limit), its count beside it; what would not fit is
+   flagged in the alert tone, never hidden. */
+.queue-length { flex: 0 1 220px; min-width: 120px; margin-left: auto; --hud-type-value: var(--text-label); }
+.queue-length .hud-bar { grid-template-columns: 1fr auto; }
+.queue-length .hud-bar-name { display: none; }
+.queue-length .hud-bar-track { height: 4px; }
+.queue-length.is-over .hud-bar-text { color: var(--alert); }
 
 /* The attachments, as the attachments — a staged draft is decided with eyes:
    the real thumbnail (its bytes fetched with auth behind the preview route),
@@ -153,7 +159,7 @@
 
 .queue-media-alt {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.1em;
   color: var(--color-text-tertiary);
   overflow-wrap: anywhere;
@@ -172,7 +178,7 @@
   flex-direction: column;
   gap: 2px;
   font-family: var(--font-data);
-  font-size: 12px;
+  font-size: var(--text-label);
   letter-spacing: 0.1em;
   padding: var(--space-1) var(--space-2);
   border: 1px solid currentColor;
@@ -186,7 +192,7 @@
    says WHAT moved so the operator can judge whether it matters to this post. */
 .queue-media-kit em {
   font-family: var(--font-voice);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-style: normal;
   letter-spacing: 0;
   line-height: 1.5;
@@ -213,9 +219,12 @@
   overflow-wrap: anywhere;
 }
 
+/* Who wrote it, after the account it speaks as and its standing. */
+.queue-entry-author { color: var(--color-text-tertiary); }
+
 /* The standing chip — data register, one tone per class of truth. */
 .queue-standing {
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   padding: 1px var(--space-1);
   border: 1px solid transparent;
@@ -259,7 +268,7 @@
 
 .queue-entry-meta {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.12em;
   color: var(--color-text-tertiary);
 }
@@ -269,5 +278,7 @@
 
 .queue-entry-actions {
   display: inline-flex;
+  flex-wrap: wrap; /* a failed post's doors beside REVISE and REMOVE wrap on a narrow window, never spill */
   gap: var(--space-2);
+  max-width: 100%;
 }

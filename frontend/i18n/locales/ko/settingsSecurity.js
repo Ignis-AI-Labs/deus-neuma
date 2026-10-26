@@ -4,7 +4,7 @@
 export default Object.freeze({
   encryption: Object.freeze({
     heading: '암호화',
-    note: '각 존재의 기억은 이 기계에서 암호화됩니다. 자기 열쇠를 쥔 존재는 공유 열쇠가 새어도 열리지 않습니다 — 그것이 가장 강한 상태이며 모든 존재가 도달해야 할 자리입니다.',
+    note: '각 존재의 기억은 이 기계에서 암호화됩니다. 하나의 마스터 키가 모든 존재를 열며, 그 키는 이 컴퓨터의 Neuma 폴더에 보관됩니다 — 그 폴더를 읽을 수 있는 사람은 당신의 존재를 읽을 수 있습니다. 디스크를 암호화하고 컴퓨터를 혼자 쓰십시오.',
     securedLabel: '보호됨',
     secured: '{{total}}명 중 {{secured}}명이 자기 열쇠를 보유',
     allSecured: ' «전원 보호됨»',
@@ -31,7 +31,7 @@ export default Object.freeze({
 
   backups: Object.freeze({
     heading: '백업',
-    note: '존재들의 암호화 파일 스냅샷입니다. 파일이 이미 암호화되어 있으므로 백업도 그렇습니다 — 어디에 두어도 안전합니다. 네우마의 수명은 그들이 사는 디스크와 당신이 남기는 사본 그대로입니다. 이것이 고장 난 디스크와 처음부터 다시 시작함 사이에 서 있는 유일한 것입니다.',
+    note: '존재들의 암호화 파일 스냅샷입니다. 당신의 대화 사본은 평문으로 들어 있습니다 — 남이 볼 수 없는 곳에 두십시오. 마스터 키는 백업에 없으므로, 다른 컴퓨터에서 복원하려면 이 컴퓨터 Neuma 폴더의 secrets.json도 필요합니다. 네우마의 수명은 그들이 사는 디스크와 당신이 남기는 사본 그대로입니다. 이것이 고장 난 디스크와 처음부터 다시 시작함 사이에 서 있는 유일한 것입니다.',
     destination: '행선지',
     destNotSet: '설정 안 됨',
     destDefault: '존재들 곁에 — 같은 드라이브',
@@ -76,5 +76,26 @@ export default Object.freeze({
     devicesNone: '아직 페어링된 전화기가 없습니다.',
     deviceSeen: '페어링 {{createdAt}} · 마지막 확인 {{lastSeenAt}}',
     revoke: '철회',
+  }),
+  connections: Object.freeze({
+    heading: '연결',
+    note: '켜기 전까지는 아무것도 이 컴퓨터를 스스로 떠나지 않습니다. 각 항목은 어디로 가는지, 무엇을 보내는지, 꺼져 있는 동안 무엇을 못 하는지 알려 줍니다.',
+    runsAlone: '스스로 실행됨 · {{total}}개 중 {{on}}개 켜짐',
+    onUse: '사용할 때만',
+    on: '켜짐',
+    off: '꺼짐',
+    turnOn: '켜기',
+    turnOff: '끄기',
+    switching: '전환 중…',
+    whileOff: '꺼져 있는 동안: {{what}}.',
+    checkNow: '지금 확인',
+    checking: '확인 중…',
+    upToDate: '최신 버전입니다.',
+    updateFound: '버전 {{version}}을(를) 받을 수 있습니다 — 데스크 상단 바에 있습니다.',
+    checkFailed: '확인 중 사이트에 연결할 수 없었습니다.',
+    noUpdater: '이 빌드는 스스로 업데이트하지 않습니다.',
+    webWhere: '스위치는 설정 → API에 있습니다.',
+    more: '자세히',
+    reading: '연결을 읽는 중…',
   }),
 });

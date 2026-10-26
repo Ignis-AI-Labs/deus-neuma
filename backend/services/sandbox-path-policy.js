@@ -13,10 +13,12 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { isSecretFile } from './secret-path-classifier.js';
+import { secretsFilePath } from './secret-provisioning.js';
 import { secretLinkReason } from './secret-inodes.js';
 // Re-exported for the filesystem organ, which is at the size cap and keeps one policy import.
 export { secretLinkReason };
 import { platformWallWriteReason, platformWriteWalls } from './platform-write-walls.js';
+import { foldName, wallSpelling } from './wall-spelling.js';
 
 // Denied path patterns — tools cannot access these (reads OR writes). Split in
 // two on 2026-07-26 (THE FOCUS GROUND) because a single substring list cannot
@@ -51,13 +53,16 @@ const INSTALL_PATTERNS = [
 // runner, and a desk each start with a different cwd, and an install root that
 // moves with the working directory would silently stop protecting the install.
 const NEUMA_INSTALL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const INSTALL_ROOT_FOLDED = foldName(NEUMA_INSTALL_ROOT);
 
 // pure — the denied patterns that apply to a path: always the secret-shaped
 // ones, plus the install-protecting ones when the path lies inside the Neuma
-// installation. Exported for the tests that prove both halves.
+// installation, in any spelling a volume opens as it. Exported for the tests
+// that prove both halves.
 export const deniedPatternsFor = (resolvedPath) => {
-  const underInstall = resolvedPath === NEUMA_INSTALL_ROOT
-    || resolvedPath.startsWith(NEUMA_INSTALL_ROOT + path.sep);
+  const folded = foldName(resolvedPath);
+  const underInstall = folded === INSTALL_ROOT_FOLDED
+    || folded.startsWith(INSTALL_ROOT_FOLDED + path.sep);
   return underInstall ? [...SECRET_PATTERNS, ...INSTALL_PATTERNS] : SECRET_PATTERNS;
 };
 
@@ -101,11 +106,19 @@ const isLaneState = (parts) => {
   return LANE_STATE_FILES.some((file) => file === rel || file.startsWith(`${rel}/`));
 };
 
+// pure — does a write at `target` hold `place` (the place itself or a
+// directory above it)? Moving or replacing a directory moves everything below
+// it, so the parent of a lane or a ground is as walled as the lane (#587:
+// move the parent aside, rewrite the policy where it now lies, move it back).
+const holds = (target, place) => segmentsBelow(target, place) !== null;
+
 /**
  * Does a WRITE reach platform state — the install's settings, the realm, the
  * operator's login persistence (platform-write-walls.js) or a lane's own
- * state? Case-folded, so a case-insensitive volume cannot be asked for
- * `Config/` instead. Pure when `walls` is given; by default the walls are
+ * state, or a directory above any of them? Both sides in one spelling
+ * (wall-spelling.js: NFC, full case fold), so a case- or normalization-
+ * insensitive volume cannot be asked for `Config/` or `lane.jſon` instead.
+ * Pure when `walls` is given; by default the walls are
  * resolved at the call (impure: env, realm root, disk), never at import.
  * @param {string} filePath
  * @param {{ grounds?: string[], lanes?: string[], walls?: Array<{ path: string, reason: string }> }} where -
@@ -117,16 +130,17 @@ const isLaneState = (parts) => {
 export const laneStateWriteReason = (filePath, { grounds = [], lanes = [], walls = platformWriteWalls() } = {}) => {
   const walled = platformWallWriteReason(filePath, walls);
   if (walled) return walled;
-  const target = path.resolve(filePath).toLowerCase();
-  const fold = (p) => path.resolve(p).toLowerCase();
+  const target = wallSpelling(filePath);
   for (const lane of lanes) {
-    const parts = segmentsBelow(fold(lane), target);
+    if (holds(target, wallSpelling(lane))) return LANE_STATE_REFUSAL;
+    const parts = segmentsBelow(wallSpelling(lane), target);
     if (parts && isLaneState(parts)) return LANE_STATE_REFUSAL;
   }
   for (const ground of grounds) {
-    const parts = segmentsBelow(fold(ground), target);
+    if (holds(target, wallSpelling(ground))) return LANE_STATE_REFUSAL;
+    const parts = segmentsBelow(wallSpelling(ground), target);
     if (!parts) continue;
-    if (parts.length === 0 || (parts.length === 1 && GROUND_STATE_FILE.test(parts[0]))) return LANE_STATE_REFUSAL;
+    if (parts.length === 1 && GROUND_STATE_FILE.test(parts[0])) return LANE_STATE_REFUSAL;
     if (LANE_ID_FOLDED.test(parts[0]) && isLaneState(parts.slice(1))) return LANE_STATE_REFUSAL;
   }
   return null;
@@ -141,7 +155,7 @@ export const laneStateWriteReason = (filePath, { grounds = [], lanes = [], walls
  * and keep substring matching. Comparison happens in forward slashes — on
  * Windows every slash-bearing pattern otherwise missed (SEC-036 #226).
  *
- * pure. `normalized` must be lowercased and `path.normalize`d; either
+ * pure. `normalized` must be folded (wall-spelling.js) and `path.normalize`d; either
  * platform's separators are accepted. Exported so the guard is provable.
  *
  * @param {string} normalized lowercased, normalized path
@@ -272,7 +286,7 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
     return { allowed: false, reason: 'Invalid path' };
   }
 
-  const normalized = path.normalize(filePath).toLowerCase();
+  const normalized = foldName(path.normalize(filePath));
 
   // Check denied patterns. Which list applies depends on where the path lies:
   // inside the Neuma installation the full list holds (install state is
@@ -291,6 +305,12 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
     if (normalized.endsWith(ext)) {
       return { allowed: false, reason: `Access denied: ${ext} files`, deniedPattern: ext };
     }
+  }
+
+  // The platform's own key file opens every being; it carries a pattern no card
+  // can lift (sensitive-grants.js NEVER_REQUESTABLE), unlike a project's .env.
+  if (foldName(path.resolve(filePath)) === foldName(path.resolve(secretsFilePath()))) {
+    return { allowed: false, reason: 'Access denied: the platform\'s own keys', deniedPattern: 'platform keys' };
   }
 
   if (isSecretFile(normalized)) {

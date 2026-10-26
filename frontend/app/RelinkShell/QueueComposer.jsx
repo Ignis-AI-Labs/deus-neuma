@@ -26,8 +26,9 @@ const toLocalInput = (iso) => {
 // its queue_post tool). Local datetime converts to ISO before it travels.
 // Inside a platform's space the channel IS the space (fixedChannelId) — no
 // channel picker; the campaign picker offers that platform's campaigns and
-// the deliberately house-wide ones.
-export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed = null, hidden = false, onChanged }) => {
+// the deliberately house-wide ones. On one account's level the account IS the
+// level too (fixedAccountId): no account picker, the draft speaks as it.
+export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, fixedAccountId = null, seed = null, hidden = false, onChanged }) => {
   const [channelId, setChannelId] = useState(fixedChannelId || '');
   const [campaignId, setCampaignId] = useState('');
   // WHO SPEAKS: company → account. One account on the platform is taken;
@@ -36,7 +37,8 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
   const house = useHouseAccounts();
   const accountOptions = accountsByCompany(house.accounts, house.companies, channelId)
     .flatMap((g) => g.accounts.map((a) => ({ value: a.id, label: `${g.name} · ${a.id}${handleOf(a) ? ` ${handleOf(a)}` : ''}` })));
-  const speaker = accountId || (accountOptions.length === 1 ? accountOptions[0].value : '');
+  const speaker = fixedAccountId || accountId || (accountOptions.length === 1 ? accountOptions[0].value : '');
+  const picksAccount = !fixedAccountId && !seed?.editId && accountOptions.length > 1;
   const [text, setText] = useState('');
   const [when, setWhen] = useState('');
   const [busy, setBusy] = useState(false);
@@ -118,7 +120,7 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
           />
         </div>
       )}
-      {!seed?.editId && accountOptions.length > 1 ? (
+      {picksAccount ? (
         <div className="settings-control">
           <Select
             fill
@@ -175,7 +177,7 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, seed
           <input className="settings-input" type="datetime-local" value={when}
             onChange={(e) => setWhen(e.target.value)} disabled={busy} />
         )}
-        <button type="button" className="settings-set" disabled={busy || !channelId || !text.trim() || (!seed?.editId && accountOptions.length > 1 && !speaker)}
+        <button type="button" className="settings-set" disabled={busy || !channelId || !text.trim() || (picksAccount && !speaker)}
           onClick={stage}>
           {seed?.editId ? 'SAVE EDIT' : 'STAGE DRAFT'}
         </button>

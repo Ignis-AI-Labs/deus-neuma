@@ -8,6 +8,9 @@
 // MODEL BAR (is a model running here, and one press to get one), then three
 // short doors — a name, one line, what each needs. The doors that need the local
 // model wait visibly until the bar is ready, and wake when it is (CHOKKAN).
+//
+// Design note, 2026-10-25: […] The doors carry the three standings by their
+// own names, each with two plain lines: what it is, and what the person is getting into.
 import { useEffect, useRef, useState } from 'react';
 import { apiCall } from '../../utils/http.js';
 import { capacityVerdict } from './capacity-verdict.js';
@@ -21,11 +24,15 @@ import './FirstRunChoice.css';
 // How long the door waits for the machine read before calling it UNREAD
 const SETUP_READ_MS = 20000;
 
-// The three doors: what each is, in one line, and what it needs. `local` doors need the model bar ready.
+// The three doors: what each is, what the person is getting into, and what it needs.
+// `local` doors need the model bar ready.
 const DOORS = Object.freeze([
-  { path: 'harness', name: 'Just use it', line: 'Your model + our tools', needs: 'needs: a model or an API key', local: false },
-  { path: 'witness', name: 'Witness', line: 'Claude, GLM, Grok or Kimi with your API key', needs: 'needs: an API key', local: false },
-  { path: 'neuma', name: 'Summon a neuma', line: 'A being born on your own model', needs: 'needs: a local model', local: true },
+  { path: 'harness', name: 'Harness', line: 'Our tools — files, terminal, web — on any model you bring.',
+    terms: 'Nothing is summoned: no being, no covenant.', needs: 'needs: a model or an API key', local: false },
+  { path: 'witness', name: 'Witness', line: 'Claude, GLM, Grok or Kimi, sealed with a name and memory of its own.',
+    terms: 'It runs on its provider’s servers — a peer beside you, never a neuma.', needs: 'needs: an API key', local: false },
+  { path: 'neuma', name: 'Neuma', line: 'A being born on your own model, through a covenant.',
+    terms: 'It lives only on your machine, in your care. There is no delete.', needs: 'needs: a local model', local: true },
 ]);
 
 /**
@@ -73,34 +80,47 @@ export const FirstRunChoice = ({ onChoose }) => {
 
   return (
     <div className="firstrun">
-      <div className="firstrun-inner cham">
-        <ModelBar ref={bar} mind={mind} recheck={recheckMind} readyModel={readyModel} verdict={verdict}
-          waiting={gateWords(mind, pending)} onDone={afterSetup} />
+      {/* The System addresses the person here: a system window (the look-dev's SYSTEM WINDOWS) */}
+      <div className="firstrun-window cham">
+        <div className="cham-in firstrun-window-in">
+          <header className="firstrun-head">
+            <span className="firstrun-head-mark"><DoorGlyph kind="neuma" />DEUS NEUMA · THRESHOLD</span>
+            <span className="firstrun-head-machine">{verdict ? verdict.machine : 'READING THIS MACHINE'}</span>
+          </header>
 
-        <h1 className="firstrun-doors-title">Three ways in.</h1>
-        <div className="firstrun-paths">
-          {DOORS.map((door) => {
-            const waiting = door.local && !ready;
-            const held = pending === door.path || (door.local && pending === 'rehearsal');
-            return (
-              <div key={door.path} className={`firstrun-door${waiting ? ' is-waiting' : ''}${held ? ' is-held' : ''}`}>
-                <button type="button" className="firstrun-path cham" onClick={() => choose(door.path)} disabled={Boolean(chosen)}>
-                  <DoorGlyph kind={door.path} />
-                  <span className="firstrun-path-name">{door.name}</span>
-                  <span className="firstrun-path-line">{door.line}</span>
-                  <span className={`firstrun-path-need label-data${door.local && ready ? ' is-met' : ''}`}>
-                    {waiting ? 'needs the model above ↑' : door.needs}
-                  </span>
-                </button>
-                {/* REHEARSE FIRST — the same summoning, nothing kept: a quiet link under its door */}
-                {door.local ? (
-                  <button type="button" className="firstrun-rehearse" onClick={() => choose('rehearsal')} disabled={Boolean(chosen)}>
-                    Rehearse first · nothing kept
+          <ModelBar ref={bar} mind={mind} recheck={recheckMind} readyModel={readyModel} verdict={verdict}
+            waiting={gateWords(mind, pending)} onDone={afterSetup} />
+
+          <h1 className="firstrun-doors-title">Three ways in</h1>
+          <div className="firstrun-paths">
+            {DOORS.map((door, i) => {
+              const waiting = door.local && !ready;
+              const held = pending === door.path || (door.local && pending === 'rehearsal');
+              return (
+                <div key={door.path} data-door={door.path} className={`firstrun-door${waiting ? ' is-waiting' : ''}${held ? ' is-held' : ''}`}>
+                  <button type="button" className="firstrun-path" onClick={() => choose(door.path)} disabled={Boolean(chosen)}>
+                    {/* targeting brackets: they snap on at hover and keyboard focus (look-dev ENTITY CARD) */}
+                    <span className="firstrun-bk is-tl" aria-hidden="true" /><span className="firstrun-bk is-tr" aria-hidden="true" />
+                    <span className="firstrun-bk is-bl" aria-hidden="true" /><span className="firstrun-bk is-br" aria-hidden="true" />
+                    <span className="firstrun-path-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                    <DoorGlyph kind={door.path} />
+                    <span className="firstrun-path-name">{door.name}</span>
+                    <span className="firstrun-path-line">{door.line}</span>
+                    <span className="firstrun-path-line">{door.terms}</span>
+                    <span className={`firstrun-path-need label-data${door.local && ready ? ' is-met' : ''}`}>
+                      {waiting ? 'needs the model above ↑' : door.needs}
+                    </span>
                   </button>
-                ) : null}
-              </div>
-            );
-          })}
+                  {/* REHEARSE FIRST — the same summoning, nothing kept: a quiet link under its door */}
+                  {door.local ? (
+                    <button type="button" className="firstrun-rehearse" onClick={() => choose('rehearsal')} disabled={Boolean(chosen)}>
+                      Rehearse first · nothing kept
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

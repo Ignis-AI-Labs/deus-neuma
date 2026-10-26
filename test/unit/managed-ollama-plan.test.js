@@ -6,7 +6,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   OLLAMA_ALT_ENDPOINT, OLLAMA_ENDPOINT, OLLAMA_VERSION, humanBytes, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor,
-  ollamaModelRef, ollamaPullable, pullProgress, versionAtLeast,
+  ollamaModelRef, ollamaPullable, pullProgress, setupDoneLine, versionAtLeast,
 } from '../../backend/services/managed-ollama-plan.js';
 
 const REC = Object.freeze({ model: 'Qwen3.8-4B (distilled)', quant: 'Q4_K_M', sizeGB: 2.8, source: 'empero-ai/Qwen3.8-4B-Distill-GGUF' });
@@ -182,7 +182,12 @@ describe('pull progress', () => {
 
 describe("the platform's own server: what it is started with (2026-10-23)", () => {
   test('the fitted window as its default, one model and one slot', () => {
-    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1' });
+    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1' });
+  });
+
+  test("Ollama's cloud models are off by default (prompts stay on this PC); the person's own setting stands", () => {
+    expect(managedServeEnv({ window: 32768 }).OLLAMA_NO_CLOUD).toBe('1');
+    expect(managedServeEnv({ window: 32768, env: { OLLAMA_NO_CLOUD: '0' } }).OLLAMA_NO_CLOUD).toBe('0');
   });
 
   test("the person's own slot and model settings stand", () => {
@@ -200,5 +205,26 @@ describe("the platform's own server: what it is started with (2026-10-23)", () =
     expect(installPlan(base({ gpuGuard: held })).gpuDriver).toEqual(held);
     expect(installPlan(base({ gpuGuard: { hold: false, checked: true } })).gpuDriver).toBeNull();
     expect(installPlan(base()).gpuDriver).toBeNull();
+  });
+});
+
+describe('an install downloads and never loads a model (2026-10-24)', () => {
+  test('the installer plan has no answer check; the app plan keeps it', () => {
+    expect(installPlan(base({ verify: false })).steps.map((s) => s.id)).toEqual(['download', 'unpack', 'start', 'pull']);
+    expect(installPlan(base()).steps.at(-1).id).toBe('verify');
+  });
+
+  test('a machine already set up has nothing to do at install, not a hidden model load', () => {
+    const ref = ollamaModelRef(REC);
+    const running = { up: true, version: OLLAMA_VERSION, models: [ref] };
+    expect(installPlan(base({ running, verify: false })).steps).toEqual([]);
+  });
+
+  test('the done line says downloaded, not answered, when nothing was loaded', () => {
+    const line = setupDoneLine({ name: 'Qwen3.8-4B', version: '0.40.7', loaded: false, notes: [undefined, 'Update your driver.'] });
+    expect(line).toContain('downloaded');
+    expect(line).toContain('first opens');
+    expect(line).toContain('Update your driver.');
+    expect(setupDoneLine({ name: 'Qwen3.8-4B', version: '0.40.7', loaded: true })).toBe('Qwen3.8-4B is ready on Ollama 0.40.7.');
   });
 });

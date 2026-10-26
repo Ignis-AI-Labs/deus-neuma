@@ -1,0 +1,6 @@
+Added
+- When a being asks to spend from its wallet, the request now appears in WAITING ON YOU and as a spend card: who asks and why, in its own words, the exact amount, the chain, the recipient (with a plain warning the first time money would go to that address), the wallet it leaves and what that wallet holds after, the limits that apply, and how long is left before the request expires.
+- Approving a spend still takes your wallet's signature and the being's key password. Denying it moves nothing, and you can leave a note for the being.
+- A being is now told what happened to each of its spend requests: approved and sent, declined (with your note), failed, or expired without a decision.
+- A new TREASURY window shows the house's money in one place: every wallet with its balance on Base and Ethereum, spends waiting on you, every past spend with its reason, money received, campaign budgets, the GPU's power draw, and a check that the house's money is safe.
+- You can seat one of your beings as the house's Quaestor, the treasury officer. It reviews pending spends, so you see its recommendation on each card, and it flags anything that looks wrong. It can never sign, send, or change who your beings may pay.

@@ -15,7 +15,7 @@ export const isHarness = (companion) =>
  *  the way across is ENTER AS (Settings), never a being pulled into this desk. */
 export const BEING_APPS = Object.freeze([
   'house', 'witnesses', 'refinement', 'sovereignty', 'innerlife', 'teams', 'workflow', 'avatar', 'vessel', 'sheet', 'voice',
-  'legal', 'staff', 'houseclock', 'x', 'telegram', 'discord', 'facebook', 'mastodon', 'bluesky', 'linkedin', 'youtube', 'tiktok', 'marketing', 'leads',
+  'legal', 'treasury', 'staff', 'houseclock', 'telegram', 'discord', 'marketing',
 ]);
 
 /** The app registry this desk shows for its companion. */

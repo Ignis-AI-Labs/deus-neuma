@@ -80,7 +80,7 @@ const VideoCard = ({ video, share }) => (
         : <span className="tta-cover-img authimg-loading" aria-hidden="true" />}
       <span className="tta-duration">{durationLabel(video.durationSec)}</span>
     </span>
-    <span className="tta-caption">{video.caption || 'No caption'}</span>
+    <span className="tta-caption" data-own-words={video.caption ? '' : undefined}>{video.caption || 'No caption'}</span>
     <span className="tta-date">{postedLabel(video.postedAt)}</span>
     <span className="tta-share" title={share === null ? 'views not readable' : `${Math.round(share * 100)}% of the most-watched video's views`}>
       {share === null ? null : <i style={{ width: `${share * 100}%` }} />}

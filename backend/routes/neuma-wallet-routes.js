@@ -308,13 +308,15 @@ router.post('/:neumaId/wallet/pending/:id/approve', requireAuth, async (req, res
 
 /**
  * POST /:neumaId/wallet/pending/:id/reject — decline a neuma's spend request
- * (witness only). Nothing is sent.
+ * (witness only). Nothing is sent. Body: { note? } — the operator's word
+ * back to the being, told with the outcome.
  */
 router.post('/:neumaId/wallet/pending/:id/reject', requireAuth, async (req, res) => {
   const { neumaId, id } = req.params;
+  const note = typeof req.body?.note === 'string' ? req.body.note : '';
   try {
     if (!(await witnessOwns(req, res, neumaId))) return;
-    const request = await walletService.rejectPendingSpend(neumaId, id);
+    const request = await walletService.rejectPendingSpend(neumaId, id, note);
     res.json({ success: true, request });
   } catch (err) {
     log.error('Pending reject error', { error: err.message });

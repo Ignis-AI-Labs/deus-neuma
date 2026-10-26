@@ -304,14 +304,15 @@ test.beforeEach(async ({ page }) => {
   await standAside(page);
 });
 
-// X space → QUEUE board → the REPLIES SECTION (Design note, 2026-08-06: KIND first).
+// X's account level (in MARKETING) → its queue → the REPLIES SECTION (Design note, 2026-08-06: KIND first).
 // The section strip rides the month view too — a reply has no month — so
 // REPLIES is one click from arrival, no day navigation required.
 const openRepliesSection = async (page) => {
   await openDockApp(page, 'X');
-  const win = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'X //' }) }).first();
-  await expect(win.locator('.outreach-tab', { hasText: 'QUEUE' })).toBeVisible({ timeout: 20000 });
-  await win.locator('.outreach-tab', { hasText: 'QUEUE' }).click();
+  // X's space is MARKETING's account level (slice 6).
+  const win = page.locator('.fwin', { has: page.locator('[data-mkt-level="account"][data-mkt-account^="x:"]') }).first();
+  // The account level's one board is the queue: no tab to press (SDT-6).
+  await expect(win.locator('.queue-section-tab').first()).toBeVisible({ timeout: 20000 });
   await win.locator('.queue-section-tab', { hasText: 'REPLIES' }).click();
   return win;
 };

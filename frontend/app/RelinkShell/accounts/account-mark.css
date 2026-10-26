@@ -1,0 +1,14 @@
+/* AccountMark — a platform's mark and a handle, in the data register at the
+   13px label floor. The mark takes the text's ink; an account under no
+   company takes the warning ink. */
+
+.acm { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-family: var(--font-data); font-size: var(--text-label, 13px);
+  letter-spacing: 0.04em; color: var(--color-text-secondary); white-space: nowrap; }
+.acm svg { flex: none; }
+.acm-name { overflow: hidden; text-overflow: ellipsis; }
+.acm.is-unsorted { color: var(--alert-dim); }
+
+/* On the desk the mark is its account's door: a bare press, underlined on hover (rises ≥160ms — no-flash). */
+.acm.is-door { background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: left;
+  border-bottom: var(--border-width-thin, 1px) solid transparent; transition: color 200ms ease, border-color 200ms ease; }
+.acm.is-door:hover, .acm.is-door:focus-visible { color: var(--color-text-primary); border-bottom-color: currentColor; }

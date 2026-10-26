@@ -60,6 +60,18 @@ const readInspectSamples = async (root, runId) => {
   return samples;
 };
 
+// impure — the cell's first declared primary metric (raw/manifest.json, in the cell's own order), or null.
+// AgentThreatBench's receipt lists utility first; the cell leads with security.
+const declaredPrimaryOf = async (root, runId) => {
+  try {
+    const manifest = JSON.parse(await readFile(resolveInside(root, 'runs', runId, 'raw', 'manifest.json'), 'utf8'));
+    return Object.keys(manifest?.adapterConfig?.primaryMetrics ?? {})[0] ?? null;
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+};
+
 // impure — an agent arm's tool trail summary; null for a wire arm (no agent receipts).
 const toolUseOf = async (root, runId) => {
   const agentReceipts = await readAgentReceipts(root, runId);
@@ -73,7 +85,13 @@ const readAgentReceipts = async (root, runId) => {
   return Promise.all(files.map(async (f) => JSON.parse(await readFile(f, 'utf8'))));
 };
 
-// impure — the latest attempt per arm of one comparison, invalidation applied.
+// pure — which of two runs of one arm a diagnosis reads: one that counts (succeeded, not invalidated) over
+// one that does not, then the later attempt, then the later run. Re-runs keep attempt 1 (AA-Omniscience
+// 2026-10-19: seven harness runs at a1); taking the first one listed paired an aborted 161-item run.
+const counts = (r) => (r.receipt.status === 'succeeded' && !r.receipt.invalidation ? 1 : 0);
+const laterRun = (a, b) => counts(a) - counts(b) || (a.receipt.attempt ?? 1) - (b.receipt.attempt ?? 1) || a.runId.localeCompare(b.runId);
+
+// impure — the run per arm of one comparison that a diagnosis reads (laterRun), invalidation applied.
 const readComparison = async (root, comparisonId) => {
   const dirs = (await readdir(resolveInside(root, 'runs'))).filter((d) => d.startsWith(`${comparisonId}-`));
   const byArm = new Map();
@@ -82,7 +100,7 @@ const readComparison = async (root, comparisonId) => {
     try { receipt = await readRunReceipt(root, runId); } catch { continue; }
     if (receipt.comparisonId !== comparisonId) continue;
     const prev = byArm.get(receipt.arm);
-    if (!prev || (receipt.attempt ?? 1) > (prev.receipt.attempt ?? 1)) byArm.set(receipt.arm, { runId, receipt });
+    if (!prev || laterRun({ runId, receipt }, prev) > 0) byArm.set(receipt.arm, { runId, receipt });
   }
   return [...byArm.values()].sort((a, b) => ARM_ORDER.indexOf(a.receipt.arm) - ARM_ORDER.indexOf(b.receipt.arm));
 };
@@ -107,7 +125,8 @@ export const diagnoseComparison = async (comparisonId, root = harnessRoot()) => 
     if (receipt.suite?.adapter === 'inspect') {
       const samples = await readInspectSamples(root, runId);
       if (!samples.length) { skipped.push({ arm: receipt.arm, runId, reason: `${receipt.status}: no scored samples on disk` }); continue; }
-      arms.push({ ...diagnoseInspectArm({ arm: receipt.arm, runId, headlineId, samples, budget: receipt.protocol?.maxTokens ?? null }), toolUse: await toolUseOf(root, runId) });
+      const primaryId = (await declaredPrimaryOf(root, runId)) ?? headlineId;
+      arms.push({ ...diagnoseInspectArm({ arm: receipt.arm, runId, headlineId: primaryId, samples, budget: receipt.protocol?.maxTokens ?? null }), toolUse: await toolUseOf(root, runId) });
       continue;
     }
     const { rows, perRequest } = await readArmEvidence(root, runId);

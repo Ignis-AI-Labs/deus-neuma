@@ -1,13 +1,17 @@
 # build-windows.ps1 - build the Deus Neuma Windows installer on a Windows PC, the proven road.
 #
-# Run in PowerShell (no admin, no Visual Studio needed):
+# Run in PowerShell (the winget installs below ask Windows for permission):
 #   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 [-Ref origin/dev] [-Dir $HOME\deus-neuma-build] [-Install]
+# This is what BUILDS the installer. A person who only RUNS Deus Neuma needs none of it: not Git, not Node,
+# not Python, not Visual Studio (the app carries its own Node; the installer's System check lists what a PC needs).
 #
 # What it does, and why each step exists (docs: BUILDING.md, the release runbook):
 #   1. preflight: 64-bit Windows, disk space, Git and Node 22+ (installed with winget if missing), the npm registry
-#   2. clones or updates the public repository and checks out -Ref, in -Dir (never your own checkout)
-#   3. npm ci, then the OFFICIAL Electron prebuild of better-sqlite3: node-gyp would need Visual Studio,
-#      and a module built for plain Node fails silently in the app (the platform database turns into a no-op)
+#   2. clones or updates the public repository and checks out -Ref, in -Dir (never your own checkout);
+#      with -Here it builds the checkout the script lives in instead, uncommitted work and all
+#   3. npm ci, then better-sqlite3 for Electron: the OFFICIAL prebuild when one exists for this Electron, else
+#      compiled here (Python 3 and the Visual Studio C++ Build Tools, installed with winget if missing). A module
+#      built for plain Node fails silently in the app (the platform database turns into a no-op)
 #   4. seeds electron-builder's winCodeSign cache by hand: its archive holds two macOS symlinks that
 #      Windows refuses to create without admin or Developer Mode, which stops the NSIS step
 #   5. builds the frontend and the NSIS installer (no publish, no native rebuild)
@@ -22,7 +26,8 @@ param(
   [string]$Dir = (Join-Path $HOME 'deus-neuma-build'),
   [string]$Repo = 'https://github.com/Ignis-AI-Labs/deus-neuma.git',
   [string]$CopyTo = '',
-  [switch]$Install
+  [switch]$Install,
+  [switch]$Here
 )
 $ErrorActionPreference = 'Stop'
 # Windows PowerShell 5.1 may default to TLS 1.0, which GitHub and npm refuse
@@ -40,15 +45,23 @@ function Refresh-Path {
   $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 }
 function Node-Major { if (Get-Command node -ErrorAction SilentlyContinue) { [int]((node -p 'process.versions.node').Split('.')[0]) } else { 0 } }
-function Ensure($what, $id, [scriptblock]$ok, $why) {
+# Windows ships a `python` alias that only opens the Microsoft Store: it answers to the name and is no Python
+function Python-Ok { try { [bool]((& python --version 2>&1 | Out-String) -match '^Python 3\.') } catch { $false } }
+function Cpp-Tools-Ok {
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+  (Test-Path $vswhere) -and [bool](& $vswhere -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
+}
+function Ensure($what, $id, [scriptblock]$ok, $why, [string[]]$extra = @()) {
   if (& $ok) { return }
   Write-Host "   $what is needed ($why)." -ForegroundColor Yellow
   if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Fail "$what is missing and winget is not available to install it. Install 'App Installer' from the Microsoft Store (it provides winget), then run this again."
   }
   Write-Host "   Installing $what with winget. If Windows asks for permission, click Yes."
-  & winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements
+  & winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements @extra
   Refresh-Path
+  # winget can hand back control while the installer (Visual Studio's above all) is still finishing in the background
+  for ($waited = 0; -not (& $ok) -and $waited -lt 1200; $waited += 10) { Start-Sleep 10; Refresh-Path }
   if (-not (& $ok)) { Fail "$what still is not available after installing. Open a new PowerShell window and run this again." }
   Write-Host "   $what installed."
 }
@@ -61,24 +74,43 @@ try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 15 'https://registry.npmjs.
 catch { Fail 'the build downloads its packages from registry.npmjs.org, which cannot be reached. Check the internet connection and run this again.' }
 Write-Host "   64-bit Windows - $free GB free - git $((git --version) -replace 'git version ','') - node $(node -p 'process.versions.node') - npm registry reachable"
 
-Step 2 "source: $Ref of $Repo"
-if (-not (Test-Path (Join-Path $Dir '.git'))) { Run git @('clone', $Repo, $Dir) }
-Set-Location $Dir
-Run git @('remote', 'set-url', 'origin', $Repo)
-Run git @('fetch', '--quiet', 'origin')
-Run git @('checkout', '--quiet', '--detach', $Ref)
-Run git @('clean', '-fdxq', '-e', 'node_modules')
+if ($Here) {
+  # -Here builds this checkout as it stands (uncommitted work included): nothing is cloned, checked out or cleaned
+  Step 2 'source: this checkout, as it stands'
+  Set-Location (Split-Path $PSScriptRoot -Parent)
+} else {
+  Step 2 "source: $Ref of $Repo"
+  if (-not (Test-Path (Join-Path $Dir '.git'))) { Run git @('clone', $Repo, $Dir) }
+  Set-Location $Dir
+  Run git @('remote', 'set-url', 'origin', $Repo)
+  Run git @('fetch', '--quiet', 'origin')
+  Run git @('checkout', '--quiet', '--detach', $Ref)
+  Run git @('clean', '-fdxq', '-e', 'node_modules')
+}
 $version = node -p "require('./package.json').version"
 Write-Host "   $(git log -1 --format='%h %s') - version $version"
 
-Step 3 'dependencies, with the Electron prebuild of better-sqlite3'
+Step 3 'dependencies, with better-sqlite3 built for Electron'
 Run npm @('ci', '--no-audit', '--no-fund')
 $electron = node -p "require('./node_modules/electron/package.json').version"
 Push-Location node_modules\better-sqlite3
-Run npx @('--yes', 'prebuild-install', '--runtime=electron', "--target=$electron", '--arch=x64', '--platform=win32')
+& npx --yes prebuild-install --runtime=electron "--target=$electron" --arch=x64 --platform=win32
+$prebuilt = ($LASTEXITCODE -eq 0)
 Pop-Location
-Set-Content -NoNewline -Path node_modules\.native-abi -Value 'electron'
-Write-Host "   better-sqlite3 for Electron $electron"
+if ($prebuilt) {
+  Write-Host "   better-sqlite3 for Electron $electron (the official prebuild)"
+} else {
+  # A module built for plain Node fails silently in the app (the platform database turns into a no-op),
+  # so with no prebuild for this Electron it is compiled here, with the repo's pinned @electron/rebuild.
+  Write-Host "   no official better-sqlite3 prebuild for Electron ${electron}: compiling it" -ForegroundColor Yellow
+  Ensure 'Python 3' 'Python.Python.3.12' { Python-Ok } 'node-gyp, which compiles better-sqlite3, runs on it'
+  Ensure 'Visual Studio 2022 C++ Build Tools' 'Microsoft.VisualStudio.2022.BuildTools' { Cpp-Tools-Ok } 'the C++ compiler that builds better-sqlite3 for Electron' @('--override', '--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive')
+  Run (Join-Path $PWD 'node_modules\.bin\electron-rebuild.cmd') @('-f', '--only', 'better-sqlite3', '-v', $electron, '--arch', 'x64')
+  # --only: node-pty ships its own Windows prebuild, and compiling it needs a helper script the package lacks
+  Write-Host "   better-sqlite3 compiled for Electron $electron"
+}
+# the marker scripts\ensure-native-abi.mjs reads: the exact runtime, never the bare family
+Set-Content -NoNewline -Path node_modules\.native-abi -Value "electron@$electron"
 
 Step 4 'electron-builder winCodeSign cache'
 $cache = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\winCodeSign\winCodeSign-2.6.0'
@@ -94,6 +126,8 @@ Write-Host "   $cache"
 
 Step 5 'build the frontend and the NSIS installer'
 Remove-Item -Recurse -Force release -ErrorAction SilentlyContinue
+# electron-builder's installer template crashes on some fresh installs (scripts\nsis-template-patch.mjs says why); never make an installer from it unpatched
+Run node @('scripts/patch-nsis-template.mjs', '--check')
 Run npm @('run', 'build')
 Run npx @('--yes', 'electron-builder', '--win', '--publish', 'never', '-c.npmRebuild=false')
 

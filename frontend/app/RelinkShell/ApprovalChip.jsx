@@ -68,7 +68,7 @@ export const ApprovalChip = ({ segment, onRespond }) => {
       onRespond(id, choice);
     };
     return (
-      <div className="tool-chip approval-chip pending">
+      <div className="tool-chip approval-chip pending" data-wait-id={id}>
         <div className="tool-chip-head">
           <span className="tool-chip-tag">NEEDS APPROVAL</span>
           <span className="tool-chip-name">{name}</span>

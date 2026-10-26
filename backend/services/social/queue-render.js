@@ -117,8 +117,12 @@ const _mediaCount = (e) => {
   return [..._counted(videos, 'video'), ..._counted(e.media.length - videos, 'image')].join(', ');
 };
 
-const _campaignMark = (e) =>
-  (e?.campaignId ? `· ${e.campaignId}${e.pillar ? `/${e.pillar}` : ''}` : (e?.pillar ? `· ${e.pillar}` : null));
+// Its place in a campaign: campaign/angle (pillar on older entries), its group, and — once sent — its address.
+const _campaignMark = (e) => [
+  e?.campaignId ? `· ${e.campaignId}${e.pillar ? `/${e.pillar}` : ''}` : (e?.pillar ? `· ${e.pillar}` : null),
+  e?.groupId ? `· group ${e.groupId}` : null,
+  e?.url ? `· ${e.url}` : null,
+].filter(Boolean).join(' ') || null;
 
 // --- Rendering -------------------------------------------------------------
 

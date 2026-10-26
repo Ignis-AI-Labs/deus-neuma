@@ -83,6 +83,7 @@ import { securityApp } from './SecurityApp.jsx';
 import { staffApp } from './StaffApp.jsx';
 import { houseClockApp } from './house-clock/HouseClockApp.jsx';
 import { legalApp } from './LegalApp.jsx';
+import { treasuryApp } from './TreasuryApp.jsx';
 import { benchApp } from './BenchApp.jsx';
 import { useCouncilStream } from './use-council-stream.js';
 import { useDeskTabs } from './use-desk-tabs.js';
@@ -95,12 +96,14 @@ import { useFilesWatch } from './use-files-watch.js';
 import { useNotifications } from './use-notifications.js';
 import { NotificationsContext } from './notifications-context.js';
 import { NotificationTray } from './NotificationTray/NotificationTray.jsx';
+import { useWaiting, WaitingContext } from './waiting/use-waiting.js';
+import { WaitingJumps } from './waiting/WaitingJumps.jsx';
 import { PlatformVersion } from './PlatformVersion.jsx';
 import { UpdateBar } from './UpdateBar.jsx';
 import { deskRegistryFor, isHarness } from '../harness-mode.js';
 
 // Voice and the 3D body are held back from the early release (coming-later.js).
-const REGISTRY = withoutComingLater({ chat: chatApp, house: houseApp, refinement: refinementApp, sovereignty: sovereigntyApp, innerlife: innerLifeApp, teams: teamsApp, workflow: workflowApp, todo: todoApp, avatar: avatarApp, vessel: vesselApp, chats: chatsApp, sheet: sheetApp, stats: statsApp, skills: skillsApp, contextmap: contextMapApp, map: mapApp, db: dataApp, files: filesApp, editor: editorApp, pdf: pdfApp, image: imageApp, terminal: terminalApp, comfyui: comfyUIWorkbenchApp, gallery: galleryApp, projects: projectsApp, substrate: substrateApp, wallet: walletApp, voice: voiceApp, settings: settingsApp, security: securityApp, legal: legalApp, staff: staffApp, houseclock: houseClockApp, bench: benchApp, ...outreachApps, witnesses: witnessesApp });
+const REGISTRY = withoutComingLater({ chat: chatApp, house: houseApp, refinement: refinementApp, sovereignty: sovereigntyApp, innerlife: innerLifeApp, teams: teamsApp, workflow: workflowApp, todo: todoApp, avatar: avatarApp, vessel: vesselApp, chats: chatsApp, sheet: sheetApp, stats: statsApp, skills: skillsApp, contextmap: contextMapApp, map: mapApp, db: dataApp, files: filesApp, editor: editorApp, pdf: pdfApp, image: imageApp, terminal: terminalApp, comfyui: comfyUIWorkbenchApp, gallery: galleryApp, projects: projectsApp, substrate: substrateApp, wallet: walletApp, voice: voiceApp, settings: settingsApp, security: securityApp, legal: legalApp, treasury: treasuryApp, staff: staffApp, houseclock: houseClockApp, bench: benchApp, ...outreachApps, witnesses: witnessesApp });
 
 const shortWallet = () => formatAddress(localStorage.getItem('walletAddress'), { prefix: 'OPERATOR ' });
 
@@ -262,6 +265,10 @@ export const RelinkShell = ({ wsService }) => {
   // passed in so suppression can tell […] from
   // […] — the whole point.
   const notifications = useNotifications(wsService);
+  // WAITING ON YOU (#585): every decision owed by this house, one account for
+  // the notification tray's mark and section (bottom-right, with the MANDATE
+  // row) and every platform window's band.
+  const waiting = useWaiting(wsService);
   // What the strip shows for this window's lens — project name + working
   // folder, bare folder + branch, or nothing (exactly a no-project desk).
   const stripLabel = focusLabel(deskFocus.focus, projects.projects);
@@ -331,6 +338,7 @@ export const RelinkShell = ({ wsService }) => {
 
       <TabsContext.Provider value={tabs}>
       <NotificationsContext.Provider value={notifications}>
+      <WaitingContext.Provider value={waiting}>
       <ConsciousnessProvider value={consciousness}>
         <CompositionContext.Provider value={composition}>
           <CouncilContext.Provider value={council}>
@@ -356,6 +364,8 @@ export const RelinkShell = ({ wsService }) => {
                           manager because a card's click raises a window, and
                           above the dock's band rather than beside it. */}
                       <NotificationTray />
+                      {/* A WAITING ON YOU row's jump, carried out where windows open. */}
+                      <WaitingJumps />
                     </div>
                   </WindowManager>
                 </div>
@@ -365,6 +375,7 @@ export const RelinkShell = ({ wsService }) => {
           </CouncilContext.Provider>
         </CompositionContext.Provider>
       </ConsciousnessProvider>
+      </WaitingContext.Provider>
       </NotificationsContext.Provider>
       </TabsContext.Provider>
 

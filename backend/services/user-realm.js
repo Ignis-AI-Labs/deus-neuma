@@ -104,12 +104,12 @@ const chatPath = (wallet, neumaId) => {
 // impure
 export const appendChat = async (wallet, neumaId, neumaName, turns) => {
   const file = chatPath(wallet, neumaId);
-  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const ts = new Date().toISOString();
   const lines = turns
     .map((t) => JSON.stringify({ ts, neuma: neumaName || null, role: t.role, content: t.content }) + '\n')
     .join('');
-  await fs.appendFile(file, lines);
+  await fs.appendFile(file, lines, { mode: 0o600 });
 };
 
 /** List the witness's chat logs (one per neuma) with sizes. */
@@ -175,10 +175,10 @@ export const realmStats = async (wallet) => {
  */
 // impure
 export const writeJsonAtomic = async (file, value) => {
-  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   try {
-    await fs.writeFile(tmp, JSON.stringify(value, null, 2));
+    await fs.writeFile(tmp, JSON.stringify(value, null, 2), { mode: 0o600 });
     await fs.rename(tmp, file);
   } catch (err) {
     // A failed write leaves no half-file AND no temp litter behind.

@@ -38,6 +38,7 @@ const MaxIcon = ({ maxed }) =>
 
 export const FloatingWindow = ({
   storageKey,
+  windowId,
   title,
   controls,
   focused = false,
@@ -118,6 +119,7 @@ export const FloatingWindow = ({
           zIndex: z,
         }}
         onPointerDownCapture={onFocus}
+        data-window-id={windowId}
       >
         {lit || leaving ? <span className="fwin-light" aria-hidden="true" onAnimationEnd={() => setLit(false)} /> : null}
         <span className="fwin-brackets" aria-hidden="true" />

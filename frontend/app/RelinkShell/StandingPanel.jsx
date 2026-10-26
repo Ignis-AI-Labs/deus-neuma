@@ -9,12 +9,11 @@
 // CMO by default, "change" offers only the marketing-seated, and with no CMO
 // the cell says so and points to where the seat is given.
 
-import { useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
-import { Select } from './Select.jsx';
 import { useWindows } from '../windowing/use-windows.js';
-import { requestSettingsFocus } from './settings-focus.js';
+import { openDoor } from './doors/open-door.js';
 import { keysStanding } from './platform-standing.js';
+import { CrewDrawer } from './CrewDrawer.jsx';
 import './PlatformStanding.css';
 
 /** One fact of the standing: its state drawn on the edge, its value, its act. */
@@ -99,54 +98,17 @@ const HolderChooser = ({ holder, busy, onBind, onRelease }) => (
   </div>
 );
 
-/** The crew: who works this platform beside its holder. */
-const CrewDrawer = ({ channel, roster, crew, busy, onAdd, onRemove }) => {
-  const [pick, setPick] = useState('');
-  const [remit, setRemit] = useState('');
-  const memberOf = (id) => roster.find((m) => m.neumaId === id) || null;
-  const seated = new Set(crew.map((m) => m.neumaId));
-  const available = roster.filter((m) => !seated.has(m.neumaId));
-  return (
-    <div className="ps-drawer" role="group" aria-label="the crew">
-      <span className="ps-drawer-k">CREW — draft and stage; only the holder&rsquo;s keys reach {channel.name}</span>
-      {crew.length ? (
-        <ul className="ps-crew">
-          {crew.map((m) => (
-            <li key={m.neumaId}>
-              <b>{memberOf(m.neumaId)?.name || m.neumaId}</b>
-              <span>{m.kind === 'witness' ? 'WITNESS' : 'NEUMA'}{m.remit ? ` · ${m.remit}` : ''}</span>
-              <Act link disabled={busy} onClick={() => onRemove(m.neumaId)}>release</Act>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <div className="ps-crew-add">
-        <Select fill ariaLabel={`Add to the ${channel.name} crew`} value={pick} onChange={setPick}
-          disabled={busy || available.length === 0}
-          placeholder={available.length === 0 ? '— everyone available is seated —' : '— add a neuma or witness —'}
-          options={available.map((m) => ({ value: m.neumaId, label: `${m.name || m.neumaId}${m.participantKind === 'witness' ? ' · witness' : ''}` }))} />
-        <input className="settings-input" placeholder="What they hold here (optional)" value={remit}
-          onChange={(e) => setRemit(e.target.value)} disabled={busy || !pick} />
-        <Act disabled={busy || !pick} onClick={async () => {
-          await onAdd({ neumaId: pick, kind: memberOf(pick)?.participantKind === 'witness' ? 'witness' : 'neuma', remit });
-          setPick('');
-          setRemit('');
-        }}>ADD</Act>
-      </div>
-    </div>
-  );
-};
-
 /**
- * The announcement that the window bound the platform by itself — said
- * plainly, with the way to change it and the way to put it away.
+ * The announcement that the window bound the platform by itself: who holds it
+ * and by which seat, with the way to change it and the way to put it away; the
+ * reason rides its hover (show-dont-tell-audit.md finding 28).
  * @param {{notice: {name: string, seat: string}, channelName: string, onChange: () => void, onDismiss: () => void}} props
  */
 export const StandingNotice = ({ notice, channelName, onChange, onDismiss }) => (
-  <p className="ps-notice" role="status">
+  <p className="ps-notice" role="status"
+    title={`bound automatically, because ${notice.name} holds the ${notice.seat} seat and the keys are set`}>
     <span className="ps-notice-tag">«NOTICE»</span>
-    <span><b>{notice.name}</b> now holds {channelName} — bound automatically, because {notice.name} holds
-      the {notice.seat} seat and the keys are set.</span>
+    <span><b>{notice.name}</b> holds {channelName} · {notice.seat}</span>
     <Act link onClick={onChange}>change</Act>
     <Act link onClick={onDismiss}>dismiss</Act>
   </p>
@@ -157,17 +119,18 @@ export const StandingNotice = ({ notice, channelName, onChange, onDismiss }) => 
  *   test: ?object, drawer: ?string, onDrawer: (d: ?string) => void}} props
  */
 export const StandingPanel = ({ standing, test, drawer, onDrawer }) => {
-  const { dispatch } = useWindows();
+  const windows = useWindows();
   const { channel, roster, crew, holder, busy, error } = standing;
   const toggle = (d) => { uiSound('toggle'); onDrawer(drawer === d ? null : d); };
-  const open = (id) => { uiSound('toggle'); dispatch({ type: 'OPEN', id }); };
   const pressed = (fn) => (...args) => { uiSound('toggle'); return fn(...args); };
   return (
     <section className="ps" aria-label={`${channel.name} standing`}>
       <div className="ps-cells">
-        <KeysCell channel={channel} test={test} onManage={() => { open('settings'); requestSettingsFocus('channel-keys'); }} />
+        {/* Each lands on its exact place (doors/): this platform's Channel keys row; MARKETING's SEAT. */}
+        <KeysCell channel={channel} test={test} onManage={() => { uiSound('toggle'); openDoor({ kind: 'keys', channelId: channel.id }, windows); }} />
         {holder
-          ? <HolderCell holder={holder} open={drawer === 'holder'} onChange={() => toggle('holder')} onSeat={() => open('marketing')} />
+          ? <HolderCell holder={holder} open={drawer === 'holder'} onChange={() => toggle('holder')}
+            onSeat={() => { uiSound('toggle'); openDoor({ kind: 'marketing', tab: 'seat', reveal: '[data-cmo-row]' }, windows); }} />
           : <Cell k="HOLDER" tone="idle" value="—" sub="reading the house" />}
         <Cell k="CREW" tone={crew.length ? 'ready' : 'idle'} value={crew.length}
           sub={crew.length ? crew.map((m) => roster.find((r) => r.neumaId === m.neumaId)?.name || m.neumaId).join(' · ') : 'no one works it yet'}>

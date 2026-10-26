@@ -32,6 +32,7 @@ import { readServed, houseWallet, servesLane } from '../house-served.js';
 import { queueEntryHouse } from './queue-house.js';
 import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
+import { mandateLetsSend, mandateAfterSend } from '../marketing/mandate/mandate-act.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('PostScheduler');
@@ -445,10 +446,14 @@ export const schedulerTick = async (nowMs = Date.now()) => {
       // (The reply expiry check that used to sit here moved to the per-tick
       // sweep above — duePosts no longer surfaces replies at all under the
       // 2026-08-06 reply-clock law, so a check here would be dead code.)
+      // A post decided under a MANDATE leaves only while that mandate stands (mandate-act.js).
+      if (!(await mandateLetsSend(e))) continue;
       const claimed = await postQueue.claimForSend(e.id);
       if (!claimed.ok) continue; // another tick took it, or state moved — not ours
       try {
-        outcomes.push(await publishEntry(claimed.entry));
+        const outcome = await publishEntry(claimed.entry);
+        outcomes.push(outcome);
+        await mandateAfterSend(claimed.entry, outcome);
       } catch (err) {
         // Acceptance may have preceded a store failure. Keep the sending lease
         // so reconciliation can establish the outcome without a duplicate post.

@@ -17,11 +17,11 @@
 // audited). Every other way of reaching these records is refused with the way
 // that works. The rest of dna/ and soul/ stays the being's own ordinary files.
 
-import path from 'path';
 import { assertPatchAllowed } from '../../core/identity/dna-protected.js';
 import { isEnvelope } from '../../core/workspace/workspace-crypto.js';
 import { canonicalJson } from '../../core/shared/plain-data-canonical.js';
 import { LANE_ID_FOLDED, realpathOfNearestExisting, segmentsBelow } from './sandbox-path-policy.js';
+import { wallSpelling } from './wall-spelling.js';
 
 const RECORD_FILES = Object.freeze({ 'dna/active.json': 'dna', 'soul/soul.json': 'soul' });
 // The directories that hold a record: moving one moves the record with it.
@@ -53,13 +53,12 @@ const recordKind = (parts) => {
  * @returns {{ kind: 'dna'|'soul'|'history'|'holder', own: boolean }|null}
  */
 const identityRecordOf = (filePath, { lane = null, grounds = [] } = {}) => {
-  const target = path.resolve(filePath).toLowerCase();
-  const fold = (p) => path.resolve(p).toLowerCase();
-  const own = lane ? segmentsBelow(fold(lane), target) : null;
+  const target = wallSpelling(filePath);
+  const own = lane ? segmentsBelow(wallSpelling(lane), target) : null;
   const ownKind = own && recordKind(own);
   if (ownKind) return { kind: ownKind, own: true };
   for (const ground of grounds) {
-    const parts = segmentsBelow(fold(ground), target);
+    const parts = segmentsBelow(wallSpelling(ground), target);
     const kind = parts && parts.length > 1 && LANE_ID_FOLDED.test(parts[0]) && recordKind(parts.slice(1));
     if (kind) return { kind, own: false };
   }

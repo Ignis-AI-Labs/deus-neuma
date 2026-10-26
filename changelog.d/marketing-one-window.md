@@ -1,0 +1,5 @@
+Changed
+- The marketing windows are now one window. MARKETING holds everything that had its own window: each public platform (X, Facebook, Mastodon, Bluesky, LinkedIn, YouTube, TikTok) is an account inside it, the social check is its ACCOUNTS tab, brand kits are its BRAND tab, and leads are its LEADS tab. Telegram and Discord keep their own windows under COMMUNITY.
+- An account opens inside MARKETING under its company, for example HOUSE › your company › X. You see the platform's next post and month, its keys, holder and crew, the account's holder, its board where the platform has one (TikTok), and its queue. Campaigns stay with the company, so a CAMPAIGNS button there takes you to that company's campaigns.
+- An account's mark is now a button that opens that account. It works the same everywhere: on the board, in a platform panel's title, in NEXT 7 DAYS and on the ACCOUNTS cards.
+- Saved layouts, pins, notifications and links that named one of the old windows now open MARKETING at the same place.

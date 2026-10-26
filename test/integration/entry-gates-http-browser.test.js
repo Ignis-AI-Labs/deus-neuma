@@ -95,12 +95,12 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     expect(mind.ready).toBe(false);
     await expect(page.getByTestId('door-bar')).toContainText('No model is running on this computer', { timeout: 20_000 });
     // and SUMMON does not enter the ceremony: it is held, and the bar says it starts by itself.
-    await page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).click();
+    await page.locator('[data-door="neuma"] .firstrun-path').click();
     await expect(page.getByText('The summoning starts by itself once the model runs.')).toBeVisible();
     await expect(page.getByTestId('door-bar')).toHaveClass(/is-holding/);
     expect(await page.evaluate(() => window.chosen)).toBeNull();
     // the doors that need no local model still open at once
-    await page.locator('.firstrun-path', { hasText: 'Witness' }).click();
+    await page.locator('[data-door="witness"] .firstrun-path').click();
     expect(await page.evaluate(() => window.chosen)).toBe('witness');
     await page.evaluate(() => window.hideDoor());
 

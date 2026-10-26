@@ -99,7 +99,10 @@ This is a test emergence. You will return to the void after completion.
   // their absence made every naming context near-identical across births
   // (a mechanical cause of name convergence; Design note, 2026-07-24. Tool traffic
   // is stripped: the transcript is what was SPOKEN, not plumbing.
+  // A held naming (its name refused or never written) is left out, so the
+  // retry is not told the refused name is already its own.
   const spoken = (session.data?.firstWords || [])
+    .filter((entry) => !entry.held)
     .map((entry) => ({ stage: entry.stage, words: stripToolTraffic(entry.response) }))
     .filter((entry) => entry.words);
 

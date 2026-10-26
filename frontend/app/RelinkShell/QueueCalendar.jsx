@@ -10,6 +10,7 @@
 
 import { buildMonthGrid, filterQueueToDay } from './campaigns-helpers.js';
 import { MonthCalendar } from './MonthCalendar.jsx';
+import { statusMark } from './post-status-marks.js';
 import './queue-status.css';
 
 // The queue's count lanes, in render order. Each lane: `key` indexes the
@@ -28,7 +29,9 @@ const QUEUE_COUNT_LANES = Object.freeze([
 ]);
 
 // The statuses a day is drawn by, in stacking order (queue-status.css colours them).
-const DAY_PARTS = Object.freeze([['S', 'sent', 'SENT'], ['A', 'scheduled', 'SCHEDULED'], ['Q', 'awaiting', 'AWAITING'], ['F', 'failed', 'FAILED'], ['R', 'reply', 'REPLIES']]);
+// A status's name is the one table's (post-status-marks.js); replies are not a post status.
+const DAY_PARTS = Object.freeze([['S', 'sent', statusMark('sent').name], ['A', 'scheduled', statusMark('approved').name],
+  ['Q', 'awaiting', statusMark('draft').name], ['F', 'failed', statusMark('failed').name], ['R', 'reply', 'REPLIES']]);
 const dayTotal = (counts) => DAY_PARTS.reduce((t, [k]) => t + (counts[k] || 0), 0);
 
 /** A day as one stacked bar of its statuses and its total — read without decoding letters. */
@@ -64,13 +67,14 @@ const MonthLegend = ({ weeks, highlight, onHighlight }) => {
 export const QueueCalendar = ({
   year, monthIndex, entries, now, selectedKey,
   onPick, onPrevMonth, onNextMonth, onToday,
-  countLanes = QUEUE_COUNT_LANES, highlight = null, onHighlight = null,
+  countLanes = QUEUE_COUNT_LANES, highlight = null, onHighlight = null, legend = true,
 }) => {
   const unscheduled = filterQueueToDay(entries, null).length;
   const weeks = buildMonthGrid(year, monthIndex, entries, { now });
   return (
     <>
-      <MonthLegend weeks={weeks} highlight={highlight} onHighlight={onHighlight} />
+      {/* `legend` false where a head above already draws this month's counts (MARKETING's account level). */}
+      {legend ? <MonthLegend weeks={weeks} highlight={highlight} onHighlight={onHighlight} /> : null}
       <MonthCalendar
         year={year}
         monthIndex={monthIndex}

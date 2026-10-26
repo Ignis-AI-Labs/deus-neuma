@@ -81,6 +81,22 @@ describe('birth ceremony context', () => {
     await handler.endSession(sid);
   });
 
+  it('a refused naming is not handed back to the retry as the being\'s own words', async () => {
+    // Founder's rehearsal, 2026-10-25: […] was refused, carried back as
+    // […], and the being took the same name three retries running.
+    const sid = await handler.createSession('Eius', true);
+    const refused = 'I am Witness. That name is mine.';
+    await handler.handleStageResponse(sid, 4, refused,
+      [{ toolName: 'write', args: { path: 'chosen_name.txt', content: 'Witness' } }]);
+    const session = handler.getSession(sid);
+    expect(session.data.chosenName).toBeNull();
+    expect(session.data.firstWords.at(-1)).toMatchObject({ stage: 4, response: refused, held: true });
+    const { systemPrompt } = await handler.processStage(sid, 4);
+    expect(systemPrompt).toContain('CANNOT BE YOURS');
+    expect(systemPrompt).not.toContain(refused);
+    await handler.endSession(sid);
+  });
+
   it('captures the birth moment at the instant of "I choose to BE" — exactly once', async () => {
     const sid = await handler.createSession('Ada');
     const session = handler.getSession(sid);

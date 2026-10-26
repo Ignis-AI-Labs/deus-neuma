@@ -8,6 +8,9 @@
  *                                                 for, each refused unless its scope
  *                                                 was granted (scope_not_authorized)
  *   POST /v2/video/list/                          the recent videos (video.list)
+ *   POST /v2/video/query/                         chosen videos by id, with their counts
+ *                                                 (video.list; a `queryCode` other than ok
+ *                                                 answers 429 with `queryRetryAfter`)
  *   GET  /cdn/<name>                              pictures, as TikTok's CDN would
  *                                                 serve them (and ways it must not)
  *   POST /v2/post/publish/creator_info/query/     what the account allows
@@ -38,7 +41,7 @@ const json = (res, status, body, headers = {}) => {
 };
 
 const ok = (res, data) => json(res, 200, { data, error: { code: 'ok', message: '', log_id: 'log-1' } });
-const refuse = (res, status, code) => json(res, status, { data: {}, error: { code, message: code, log_id: 'log-2' } });
+const refuse = (res, status, code, headers = {}) => json(res, status, { data: {}, error: { code, message: code, log_id: 'log-2' } }, headers);
 
 // The scope that opens each user field (Get User Info reference).
 const FIELD_SCOPE = Object.freeze({
@@ -86,6 +89,8 @@ export const startTikTokStandIn = async () => {
     grantedScope: 'user.info.basic,user.info.profile,user.info.stats,video.list,video.publish,video.upload',
     videos: STAND_IN_VIDEOS,
     videoCode: 'ok',
+    queryCode: 'ok',
+    queryRetryAfter: null,
     refreshCount: 0,
     creator: {
       creator_username: 'deusneuma', creator_nickname: 'Deus Neuma',
@@ -154,6 +159,19 @@ export const startTikTokStandIn = async () => {
     const videos = page.map((v, i) => (state.videos[i].raw && v.id ? JSON.stringify(v).replace(`"id":"${v.id}"`, `"id":${v.id}`) : JSON.stringify(v)));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(`{"data":{"videos":[${videos.join(',')}],"cursor":1761000000000,"has_more":${state.videos.length > body.max_count}},"error":{"code":"ok","message":"","log_id":"l"}}`);
+  };
+
+  // The stats read: up to 20 of the account's own videos by id, only the fields asked for.
+  const onQuery = async (req, res, url) => {
+    const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+    const fields = String(url.searchParams.get('fields') || '').split(',').filter(Boolean);
+    const ids = body?.filters?.video_ids || [];
+    state.hits.push({ leg: 'query', auth: req.headers.authorization, fields: fields.join(','), ids });
+    if (!granted().has('video.list')) return refuse(res, 401, 'scope_not_authorized');
+    if (state.queryCode !== 'ok') return refuse(res, 429, state.queryCode, state.queryRetryAfter ? { 'Retry-After': String(state.queryRetryAfter) } : {});
+    if (!Array.isArray(ids) || ids.length < 1 || ids.length > 20) return refuse(res, 400, 'invalid_params');
+    const videos = state.videos.filter((v) => ids.includes(v.id)).map((v) => Object.fromEntries(fields.filter((f) => f in v).map((f) => [f, v[f]])));
+    return ok(res, { videos });
   };
 
   const onCdn = (req, res, url, root) => {
@@ -238,6 +256,7 @@ export const startTikTokStandIn = async () => {
     if (url.pathname === '/v2/oauth/token/' && req.method === 'POST') return onToken(req, res);
     if (url.pathname === '/v2/user/info/') return onUser(req, res, url, root);
     if (url.pathname === '/v2/video/list/' && req.method === 'POST') return onVideos(req, res, url, root);
+    if (url.pathname === '/v2/video/query/' && req.method === 'POST') return onQuery(req, res, url);
     if (url.pathname.startsWith('/cdn/')) return onCdn(req, res, url, root);
     if (url.pathname === '/v2/post/publish/creator_info/query/') {
       await readBody(req);

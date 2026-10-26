@@ -20,8 +20,10 @@ import { realSessionToken, serveDoor, shotPath, wordsOnScreen } from '../helpers
 const HOUSE_MODEL = 'http://127.0.0.1:8089';
 const ENV = ['NEUMA_DATA_ROOT', 'NEUMA_DISCOVERY_PORTS'];
 const VIEWPORTS = Object.freeze([{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]);
-// The door used to put 445 words in front of a first-run person with no model; it must stay lean
-const WORD_CAP = 80;
+// The door used to put 445 words in front of a first-run person with no model; it must stay lean.
+// Design note, 2026-10-25, asked for each door to say what it is and what the person is getting into (two
+// plain lines each, ~120 words on this screen with them): the cap holds that, not a word more.
+const WORD_CAP = 130;
 
 test('the model bar: no model, setting up, ready — and the door it holds opens by itself', async () => {
   const saved = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
@@ -61,10 +63,10 @@ test('the model bar: no model, setting up, ready — and the door it holds opens
       // the act names the model and the download, both read from this machine's real plan
       expect(await setUp(page).textContent()).toMatch(/^SET UP .+ · \d+(\.\d)? GB$/);
       // the doors that need the local model wait, pointing at the bar; the others do not
-      const summon = page.locator('.firstrun-door', { hasText: 'Summon a neuma' });
+      const summon = page.locator('.firstrun-door[data-door="neuma"]');
       await pw(summon).toHaveClass(/is-waiting/);
       await pw(summon).toContainText('needs the model above');
-      await pw(page.locator('.firstrun-door', { hasText: 'Witness' })).not.toHaveClass(/is-waiting/);
+      await pw(page.locator('.firstrun-door[data-door="witness"]')).not.toHaveClass(/is-waiting/);
       await page.screenshot({ path: shotPath(`door-no-model-${viewport.width}`) });
       if (viewport.width === 1366) {
         const words = await wordsOnScreen(page);
@@ -106,7 +108,7 @@ test('the model bar: no model, setting up, ready — and the door it holds opens
     await working.screenshot({ path: shotPath('door-stopped-1366') });
 
     // ── THE GATE ── Summon pressed while no model runs is held, then goes through by itself ─────
-    await working.locator('.firstrun-path', { hasText: 'Summon a neuma' }).click();
+    await working.locator('[data-door="neuma"] .firstrun-path').click();
     await pw(bar(working)).toContainText('The summoning starts by itself once the model runs.');
     expect(await working.evaluate(() => window.chosen)).toBeNull();
     setConfig({ provider: 'custom', endpoint: HOUSE_MODEL, model: models.data[0].id });
@@ -120,13 +122,13 @@ test('the model bar: no model, setting up, ready — and the door it holds opens
       await pw(bar(page)).toHaveClass(/is-ready/, { timeout: 120_000 });
       await pw(page.locator('.door-bar-line')).toHaveText(/^Model ready/);
       await pw(setUp(page)).toHaveCount(0);
-      const summon = page.locator('.firstrun-door', { hasText: 'Summon a neuma' });
+      const summon = page.locator('.firstrun-door[data-door="neuma"]');
       await pw(summon).not.toHaveClass(/is-waiting/);
       await pw(summon.locator('.firstrun-path-need')).toHaveClass(/is-met/);
       await page.screenshot({ path: shotPath(`door-ready-${viewport.width}`) });
       if (viewport.width === 1366) {
         process.stdout.write(`[door] words on screen, ready, ${viewport.width}: ${(await wordsOnScreen(page)).length}\n`);
-        await page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).click();
+        await page.locator('[data-door="neuma"] .firstrun-path').click();
         expect(await page.evaluate(() => window.chosen)).toBe('neuma');
       }
       await page.close();

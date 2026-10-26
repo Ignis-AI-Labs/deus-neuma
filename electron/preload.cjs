@@ -144,7 +144,8 @@ contextBridge.exposeInMainWorld('neuma', {
   },
   // The desk's update bar and WHAT'S NEW (electron/update-bar.cjs). `state` reads what to show,
   // `onChange` hears every change and returns its own unsubscribe, `act` sends the one choice
-  // made ('restart' | 'download' | 'later' | 'seen'); main re-checks every act against the offer.
+  // made ('restart' | 'download' | 'later' | 'seen' | 'check'); main re-checks every act against the
+  // offer, except 'check' — the person's own Check now, asked even while the update check is off.
   update: {
     state: () => ipcRenderer.invoke('update:state'),
     act: (action) => ipcRenderer.invoke('update:act', action),
@@ -153,6 +154,11 @@ contextBridge.exposeInMainWorld('neuma', {
       ipcRenderer.on('update:changed', handler);
       return () => ipcRenderer.removeListener('update:changed', handler);
     },
+  },
+  // CONNECTIONS (electron/connections-main.cjs): the panel tells main a switch changed, so the
+  // spellcheck switch lands on every session at once.
+  connections: {
+    changed: () => ipcRenderer.invoke('connections:changed'),
   },
   // App-level hotkeys (electron/hotkeys.cjs), for the Settings legend. Data
   // only — rebinding stays main's business.

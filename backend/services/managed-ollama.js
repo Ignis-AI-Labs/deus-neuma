@@ -31,6 +31,7 @@ import { readManagedRecord, servedOllamaWindow, writeManagedRecord } from './man
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
 import { createLogger } from './logger.js';
+import { withoutBackendSecrets } from './agent-terminal-environment.js';
 import { getSetupStatus } from './substrate-setup.js';
 import { loadProviderChoice, saveProviderChoice } from './provider-choice.js';
 import { getConfig, setConfig } from './llm-provider.js';
@@ -38,7 +39,7 @@ import { sameEndpoint } from './provider-discovery.js';
 import { currentDriverGuard, fitManagedWindow, saveGpuAnyway } from './managed-ollama-gpu.js';
 import { _resetCapsCache } from './llm-runtime-cache.js';
 import {
-  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, versionAtLeast,
+  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, setupDoneLine, versionAtLeast,
 } from './managed-ollama-plan.js';
 
 export { obtainArchive } from './managed-ollama-download.js';
@@ -105,7 +106,7 @@ const freeBytes = async () => {
 };
 
 /** What setting up a server here would take, read from this machine now. impure */
-export const currentPlan = async () => {
+export const currentPlan = async ({ verify = true } = {}) => {
   const setup = await getSetupStatus();
   const record = readRecord();
   const own = record?.managed && record.endpoint ? { endpoint: record.endpoint, ...(await serverState(record.endpoint)) } : null;
@@ -121,6 +122,7 @@ export const currentPlan = async () => {
     managedInstalled: Boolean(bin && fs.existsSync(bin)),
     freeBytes: await freeBytes(),
     gpuGuard: await currentDriverGuard(),
+    verify,
   });
 };
 
@@ -143,15 +145,18 @@ export const cancelJob = () => {
 /**
  * Start setting up a model server, or return the job already running: the job is running from
  * this call's first line, so a second press can never start a second job. The route passes
- * nothing (the plan is read from this machine); a proof run may pass a plan of its own. impure
+ * nothing (the plan is read from this machine); a proof run may pass a plan of its own.
+ * loadModel false is the installer's job: download the server and the model, start the server
+ * with the card hidden from it, and never load the model (no window fit, no answer check); the
+ * first load is the app's own first check of it (GET /api/v1/preflight/mind). impure
  */
-export const startJob = async ({ plan: given, home } = {}) => {
+export const startJob = async ({ plan: given, home, loadModel = true } = {}) => {
   if (job.state === 'running') return job;
   if (home) chosenHome = path.resolve(home);
   abort = new AbortController();
   const { signal } = abort;
   update({ state: 'running', plan: null, step: 'check', completed: 0, total: 0, error: null, detail: null, line: 'Reading what this computer needs' });
-  runJob(given, signal).catch((err) => {
+  runJob(given, signal, loadModel).catch((err) => {
     const cancelled = signal.aborted;
     log.warn('model server setup stopped', { error: err.message, code: err.code, cancelled });
     update(cancelled
@@ -162,10 +167,10 @@ export const startJob = async ({ plan: given, home } = {}) => {
 };
 
 /** The job: a plan read fresh for every try, and the work, tried again by itself once. impure */
-const runJob = async (given, signal) => {
+const runJob = async (given, signal, loadModel) => {
   let last = null;
   for (let n = 1; n <= JOB_TRIES; n += 1) {
-    const plan = n === 1 && given ? given : await currentPlan();
+    const plan = n === 1 && given ? given : await currentPlan({ verify: loadModel });
     update({ plan });
     if (!plan.supported) throw setupFailure('UNSUPPORTED', plan.reason, plan.reason);
     if (!plan.enoughDisk) {
@@ -173,7 +178,7 @@ const runJob = async (given, signal) => {
       throw setupFailure('DISK_SPACE', `need ${plan.needBytes} bytes, ${plan.freeBytes} free`, words);
     }
     try {
-      await run(plan, signal);
+      await run(plan, signal, loadModel);
       return;
     } catch (err) {
       if (signal.aborted || isFinal(err)) throw err;
@@ -187,7 +192,21 @@ const runJob = async (given, signal) => {
   throw last;
 };
 
-const run = async (plan, signal) => {
+/**
+ * Fit the window to the card, then have the model answer once: the first time it is loaded.
+ * Fitted before the load, so the card's free memory is the truth. impure
+ */
+const loadAndAnswer = async (plan, signal, { bin, endpoint, started, guard, startedWindow }) => {
+  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold });
+  await keepWindow(fit.window);
+  let at = endpoint;
+  if (started && fit.window !== startedWindow) at = await restartServer(bin, plan.managed, endpoint, { window: fit.window, holdGpu: guard.hold });
+  update({ step: 'verify', completed: 0, total: 0, line: `Checking that ${plan.model.name} answers` });
+  await modelAnswers(at, plan.model.ref, signal, fit.window);
+  return Object.freeze({ fit, endpoint: at });
+};
+
+const run = async (plan, signal, loadModel) => {
   const { managed } = plan;
   let bin = null;
   if (plan.server === 'download' || plan.server === 'managed') bin = await ensureManagedServer(signal);
@@ -199,7 +218,8 @@ const run = async (plan, signal) => {
   const startedWindow = servedOllamaWindow();
   if (plan.server !== 'running') {
     update({ step: 'start', completed: 0, total: 0, line: 'Starting the model server' });
-    ({ endpoint, started } = await startServer(bin, managed, endpoint, { window: startedWindow, holdGpu: guard.hold }));
+    // a download needs no graphics card: an install starts the server with the card hidden from it
+    ({ endpoint, started } = await startServer(bin, managed, endpoint, { window: startedWindow, holdGpu: guard.hold || !loadModel }));
   }
   // Recorded the moment it runs: a try after this one, and the next boot, know the server is the
   // platform's own and where it answers, even if the model never finished downloading
@@ -212,19 +232,15 @@ const run = async (plan, signal) => {
   // what the server holds now, never what the plan saw: a models folder removed since is pulled again
   const has = state.models.some((m) => m.toLowerCase() === plan.model.ref.toLowerCase());
   if (!has) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
-  // fitted before the model is first loaded, so the card's free memory is the truth
-  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold });
-  await keepWindow(fit.window);
-  if (started && fit.window !== startedWindow) endpoint = await restartServer(bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
-  update({ step: 'verify', completed: 0, total: 0, line: `Checking that ${plan.model.name} answers` });
-  await modelAnswers(endpoint, plan.model.ref, signal, fit.window);
+  const loaded = loadModel ? await loadAndAnswer(plan, signal, { bin, endpoint, started, guard, startedWindow }) : null;
+  if (loaded) endpoint = loaded.endpoint;
   update({ step: 'adopt', line: 'Making it the platform\'s model server' });
   const choice = { provider: 'ollama', endpoint, model: plan.model.ref };
   setConfig(choice);
   await saveProviderChoice(choice, { chosenBy: 'operator' });
-  await writeManagedRecord({ version: state.version, ...record, endpoint, model: plan.model.ref, window: fit.window, installedAt: new Date().toISOString() });
-  update({ state: 'done', step: 'done', line: [`${plan.model.name} is ready on Ollama ${state.version}.`, fit.line, guard.line].filter(Boolean).join(' ') });
-  log.info('model server set up', { model: plan.model.ref, server: plan.server, endpoint, window: fit.window, onGpu: fit.onGpu, gpuHeld: guard.hold });
+  await writeManagedRecord({ version: state.version, ...record, endpoint, model: plan.model.ref, ...(loaded ? { window: loaded.fit.window } : {}), installedAt: new Date().toISOString() });
+  update({ state: 'done', step: 'done', line: setupDoneLine({ name: plan.model.name, version: state.version, loaded: Boolean(loaded), notes: [loaded?.fit.line, guard.line] }) });
+  log.info('model server set up', { model: plan.model.ref, server: plan.server, endpoint, window: loaded?.fit.window ?? null, onGpu: loaded?.fit.onGpu ?? null, gpuHeld: guard.hold, loaded: Boolean(loaded) });
 };
 
 /** The platform's own server on disk: kept if it is there, else downloaded, checked and unpacked. impure */
@@ -281,7 +297,7 @@ const startServer = async (bin, managed, wanted = endpoints().usual, { window = 
   await fsp.mkdir(serverHome(), { recursive: true });
   const logFile = path.join(serverHome(), 'ollama.log');
   const out = fs.openSync(logFile, 'a');
-  const env = { ...process.env, OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
+  const env = { ...withoutBackendSecrets(process.env), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
   if (managed) {
     env.OLLAMA_MODELS = modelsDir();
     await fsp.mkdir(env.OLLAMA_MODELS, { recursive: true });

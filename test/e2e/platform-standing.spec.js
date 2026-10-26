@@ -6,15 +6,15 @@ import { setupIsolatedHouse, openDesk, settledShot as shot } from './helpers/iso
 import { CHANNEL_CATALOG } from '../../backend/services/social/channel-registry.js';
 
 /**
- * End-to-end THE HOLDER FOLLOWS THE SEAT (2026-10-23) — a platform window's
- * standing as three cells (KEYS · HOLDER · CREW), on Facebook and X, in the
- * three states the operator meets:
+ * End-to-end THE HOLDER FOLLOWS THE SEAT (2026-10-23) — an account level's
+ * standing as three marks in its head (KEYS · HOLDER · CREW, SDT-6), on
+ * Facebook and X, in the three states the operator meets:
  *   1. no keys            — the seated CMO waits for them; nothing is bound
  *   2. keys + CMO         — the window binds the CMO through the real binding
- *                           route, says so plainly, and "change" offers only
- *                           the marketing-seated (the CMO, the platform crew)
- *   3. no CMO             — […] + SEAT A CMO,
- *                           which opens MARKETING where the seat is given
+ *                           route, says so plainly, and the holder mark offers
+ *                           only the marketing-seated (the CMO, the platform crew)
+ *   3. no CMO             — the holder mark in fault + SEAT A CMO, which opens
+ *                           MARKETING where the seat is given
  *
  * Own backend child, own vite, real challenge-sign-verify auth, real disk
  * (isolated-house.js). No mock anywhere (RULE 0). SAFETY LAW (the 10-21
@@ -93,20 +93,17 @@ test.beforeAll(async () => {
 test.use({ viewport: { width: 1500, height: 1000 } });
 test.describe.configure({ mode: 'serial' });
 
-// impure — open a platform's window full size, its standing unfolded.
+// impure — open a platform's account level (MARKETING) full size: its head carries the standing as marks (SDT-6).
 const openStanding = async (page, p) => {
   await openDockApp(page, p.label);
-  const panel = page.locator('.outreach-panel', { has: page.locator('.pc-name', { hasText: p.name }) });
-  await expect(panel.locator('.pc-head')).toBeVisible();
+  // The platform's own space — MARKETING's account level holds it inside MARKETING's panel (slice 6): the innermost.
+  const panel = page.locator(`[data-mkt-level="account"][data-mkt-account^="${p.id}:"] .outreach-panel`).last();
+  const head = panel.locator('.pc-head');
+  await expect(head).toBeVisible();
   const win = page.locator('.fwin', { has: panel });
   await win.locator('.fwin-bar').dblclick();
-  const btn = panel.locator('.pc-standing-btn');
-  if ((await btn.getAttribute('aria-expanded')) !== 'true') await btn.click();
-  await expect(btn).toHaveText('CLOSE STANDING');
-  const standing = panel.locator(`.ps[aria-label="${p.name} standing"]`);
-  await expect(standing).toBeVisible();
-  const cell = (k) => standing.locator(`.ps-cell[aria-label="${k}"]`);
-  return { panel, win, standing, cell };
+  const mark = (k) => head.locator(`[data-standing="${k}"]`);
+  return { panel, win, head, mark };
 };
 const closeWindow = async (win) => {
   await win.locator('.fwin-ctl-close').click();
@@ -118,15 +115,14 @@ test('1 · no keys: the CMO waits for them, nothing is bound, KEYS is what block
   page.on('pageerror', (e) => crashes.push(e.message));
   await openDesk(page, stack, BASUNORR);
   for (const p of PLATFORMS) {
-    const { win, cell, panel } = await openStanding(page, p);
-    await expect(cell('KEYS')).toHaveAttribute('data-tone', 'blocked');
-    await expect(cell('KEYS').locator('.ps-cell-v')).toHaveText('Not connected');
-    await expect(cell('KEYS').getByRole('button', { name: 'MANAGE KEYS' })).toBeVisible();
-    await expect(cell('HOLDER')).toHaveAttribute('data-tone', 'idle');
-    await expect(cell('HOLDER').locator('.ps-cell-v')).toHaveText(BASUNORR.name);
-    await expect(cell('HOLDER').locator('.ps-cell-sub')).toHaveText('CMO · holds it once the keys are set');
-    await expect(cell('CREW').locator('.ps-cell-v')).toHaveText('1');
-    await expect(cell('CREW').locator('.ps-cell-sub')).toHaveText(GALEN.name);
+    const { win, head, mark, panel } = await openStanding(page, p);
+    await expect(mark('keys')).toHaveClass(/is-fault/);
+    await expect(mark('keys')).toHaveAttribute('title', 'KEYS · not set');
+    await expect(head.getByRole('button', { name: 'SET KEYS' })).toBeVisible();
+    await expect(mark('holder')).toHaveClass(/is-warm/);
+    await expect(mark('holder')).toHaveAttribute('title', `HOLDER · ${BASUNORR.name} (CMO) holds it once the keys are set`);
+    await expect(mark('crew')).toHaveText('1');
+    await expect(mark('crew')).toHaveAttribute('title', new RegExp(`^CREW · ${GALEN.name} — `));
     await expect(panel.locator('.ps-notice')).toHaveCount(0);
     expect(await bindingOf(p.id), 'no keys, no auto-bind').toBeNull();
     await shot(win, `standing-${p.id}-1-no-keys`);
@@ -135,7 +131,7 @@ test('1 · no keys: the CMO waits for them, nothing is bound, KEYS is what block
   expect(crashes, crashes.join(' | ')).toEqual([]);
 });
 
-test('2 · keys set + a CMO: bound to the CMO through the binding route, said plainly; change offers only marketing seats', async ({ page }) => {
+test('2 · keys set + a CMO: bound to the CMO through the binding route, said plainly; the holder offers only marketing seats', async ({ page }) => {
   const crashes = [];
   page.on('pageerror', (e) => crashes.push(e.message));
   for (const p of PLATFORMS) await api('PUT', `/api/v1/social-channels/${p.id}/credentials`, { fields: p.fields });
@@ -144,24 +140,22 @@ test('2 · keys set + a CMO: bound to the CMO through the binding route, said pl
 
   await openDesk(page, stack, BASUNORR);
   for (const p of PLATFORMS) {
-    const { win, cell, panel, standing } = await openStanding(page, p);
+    const { win, head, mark, panel } = await openStanding(page, p);
     const notice = panel.locator('.ps-notice');
-    await expect(notice).toContainText('«NOTICE»');
-    await expect(notice).toContainText(`${BASUNORR.name} now holds ${p.name} — bound automatically, because ${BASUNORR.name} holds the CMO seat and the keys are set.`);
-    await expect(cell('HOLDER')).toHaveAttribute('data-tone', 'ready');
-    await expect(cell('HOLDER').locator('.ps-cell-v')).toHaveText(BASUNORR.name);
-    await expect(cell('HOLDER').locator('.ps-cell-sub')).toHaveText('CMO');
-    await expect(cell('KEYS')).toHaveAttribute('data-tone', 'ready');
-    await expect(cell('KEYS').locator('.ps-cell-v')).toHaveText(`Connected · ${p.account}`);
-    await expect(cell('KEYS').getByRole('button')).toHaveCount(0);
-    await expect(panel.locator('.pc-fact', { hasText: 'HOLDER' })).toContainText(BASUNORR.name);
+    await expect(notice).toContainText(`«NOTICE»${BASUNORR.name} holds ${p.name} · CMO`);
+    await expect(notice).toHaveAttribute('title', `bound automatically, because ${BASUNORR.name} holds the CMO seat and the keys are set`);
+    await expect(mark('holder')).toHaveText(BASUNORR.name);
+    await expect(mark('holder')).toHaveClass(/is-ok/);
+    await expect(mark('keys')).toHaveClass(/is-ok/);
+    await expect(mark('keys')).toHaveAttribute('title', `KEYS · proven as ${p.account}`);
+    await expect(head.getByRole('button', { name: /SET KEYS|FIX KEYS/ })).toHaveCount(0);
     // the binding is the record's, made by the real route — not a display
     expect(await bindingOf(p.id)).toMatchObject({ neumaId: BASUNORR.id });
     await shot(win, `standing-${p.id}-2-cmo-auto-held`);
 
-    // change: the marketing seats only — the CMO (held) and the crew; Ash never
-    await cell('HOLDER').getByRole('button', { name: 'change' }).click();
-    const chooser = standing.locator('.ps-drawer[aria-label="choose the holder"]');
+    // the holder, in place: the marketing seats only — the CMO (held) and the crew; Ash never
+    await mark('holder').click();
+    const chooser = panel.locator('.ps-drawer[aria-label="the holder"]');
     const choices = chooser.locator('.ps-choice');
     await expect(choices).toHaveCount(3);
     await expect(choices.nth(0)).toHaveText(`${BASUNORR.name}CMO`);
@@ -175,7 +169,7 @@ test('2 · keys set + a CMO: bound to the CMO through the binding route, said pl
   expect(crashes, crashes.join(' | ')).toEqual([]);
 });
 
-test('3 · no CMO: one plain line and SEAT A CMO, nothing auto-bound', async ({ page }) => {
+test('3 · no CMO: the holder mark opens with SEAT A CMO, nothing auto-bound', async ({ page }) => {
   const crashes = [];
   page.on('pageerror', (e) => crashes.push(e.message));
   for (const p of PLATFORMS) await api('DELETE', `/api/v1/social-channels/${p.id}/binding`);
@@ -183,31 +177,30 @@ test('3 · no CMO: one plain line and SEAT A CMO, nothing auto-bound', async ({ 
 
   await openDesk(page, stack, BASUNORR);
   for (const p of PLATFORMS) {
-    const { win, cell, panel } = await openStanding(page, p);
-    await expect(cell('HOLDER')).toHaveAttribute('data-tone', 'blocked');
-    await expect(cell('HOLDER').locator('.ps-cell-v')).toHaveText('No one holds the marketing seat yet');
-    await expect(cell('HOLDER').getByRole('button', { name: 'SEAT A CMO' })).toBeVisible();
-    await expect(cell('KEYS')).toHaveAttribute('data-tone', 'ready');
+    const { win, head, mark, panel } = await openStanding(page, p);
+    await expect(mark('holder')).toHaveClass(/is-fault/);
+    await expect(mark('holder')).toHaveAttribute('title', /no one holds the marketing seat yet/);
+    await expect(head.getByRole('button', { name: 'SEAT A CMO' })).toBeVisible();
+    await expect(mark('keys')).not.toHaveClass(/is-fault/);
     await expect(panel.locator('.ps-notice')).toHaveCount(0);
     await shot(win, `standing-${p.id}-3-no-cmo`);
     expect(await bindingOf(p.id), 'no CMO, no auto-bind').toBeNull();
-    // the crew stays offered for a deliberate change — still never Ash
-    await cell('HOLDER').getByRole('button', { name: 'change' }).click();
-    const choices = panel.locator('.ps-drawer[aria-label="choose the holder"] .ps-choice');
+    // the crew stays offered for a deliberate choice — still never Ash
+    await mark('holder').click();
+    const choices = panel.locator('.ps-drawer[aria-label="the holder"] .ps-choice');
     await expect(choices).toHaveCount(1);
     await expect(choices.first()).toHaveText(`${GALEN.name}CREW`);
     if (p.id === 'facebook') {
-      // MANAGE CREW opens the crew beneath; releasing Galen empties it on the record
-      await cell('CREW').getByRole('button', { name: 'MANAGE CREW' }).click();
+      // the crew mark opens the crew in place; releasing Galen empties it on the record
+      await mark('crew').click();
       const crew = panel.locator('.ps-drawer[aria-label="the crew"]');
       await expect(crew.locator('.ps-crew li')).toHaveCount(1);
       await expect(crew.locator('.ps-crew li')).toContainText(`${GALEN.name}NEUMA · campaign drafts`);
       await crew.getByRole('button', { name: 'release' }).click();
-      await expect(cell('CREW').locator('.ps-cell-v')).toHaveText('0');
-      await expect(cell('CREW')).toHaveAttribute('data-tone', 'idle');
+      await expect(mark('crew')).toHaveText('0');
       expect((await api('GET', `/api/v1/social-channels/${p.id}/crew`)).crew).toEqual([]);
       // SEAT A CMO opens MARKETING, where the seat is given
-      await cell('HOLDER').getByRole('button', { name: 'SEAT A CMO' }).click();
+      await head.getByRole('button', { name: 'SEAT A CMO' }).click();
       await expect(page.locator('.settings-k', { hasText: 'CHIEF MARKETING OFFICER' })).toBeVisible();
     }
     await closeWindow(win);

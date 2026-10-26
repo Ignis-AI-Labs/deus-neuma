@@ -36,6 +36,7 @@ import { socialPostIntent } from './social-post.js';
 import { socialQueueIntent } from './social-queue.js';
 import { securityIntents } from './security-acts.js';
 import { legalIntents } from './legal-acts.js';
+import { treasuryIntents } from './treasury-acts.js';
 import { emailSendIntent } from './email-send.js';
 import { walletSendIntent } from './wallet-send.js';
 import { mediaSaveIntent } from './media-save.js';
@@ -60,8 +61,10 @@ import { sovereigntyConsentIntent } from './sovereignty-consent.js';
 import { vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent } from './vault-acts.js';
 import { taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent } from './task-acts.js';
 import { leadAddIntent, leadTouchIntent } from './lead-acts.js';
-import { campaignCreateIntent, campaignUpdateIntent } from './campaign-acts.js';
+import { campaignCreateIntent, campaignUpdateIntent, campaignAskIntent } from './campaign-acts.js';
 import { marketingPlanIntent } from './marketing-plan.js';
+import { marketingBoardArrangeIntent } from './marketing-board-arrange.js';
+import { marketingCompanyLinksIntent } from './marketing-company-links.js';
 import {
   memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
   memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
@@ -69,7 +72,7 @@ import {
 
 const TYPES = new Map(
   [
-    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, emailSendIntent, walletSendIntent,
+    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent,
     mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
@@ -81,8 +84,8 @@ const TYPES = new Map(
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
-    campaignCreateIntent, campaignUpdateIntent,
-    marketingPlanIntent,
+    campaignCreateIntent, campaignUpdateIntent, campaignAskIntent,
+    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent,
     memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
     memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
   ].map((t) => [t.name, t]),

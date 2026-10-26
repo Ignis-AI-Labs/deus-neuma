@@ -244,12 +244,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 
-const tiktokWin = (page) => page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'TIKTOK //' }) });
+// TikTok's space is MARKETING's account level (slice 6): the window is MARKETING's, standing on it.
+const tiktokWin = (page) => page.locator('.fwin', { has: page.locator('[data-mkt-level="account"][data-mkt-account^="tiktok:"]') });
 
-/** Stand the TIKTOK window at a given rect (its saved geometry), and reload. */
+/** Stand MARKETING (TikTok's account level) at a given rect (its saved geometry), and reload. */
 const placeTikTok = async (page, rect) => {
   await page.evaluate(({ a, r }) => {
-    localStorage.setItem(`${a.toLowerCase()}:win:outreach-tiktok`, JSON.stringify({ ...r, maxed: false }));
+    localStorage.setItem(`${a.toLowerCase()}:win:outreach-marketing`, JSON.stringify({ ...r, maxed: false }));
   }, { a: addr, r: rect });
   await page.reload();
   await expect(page.locator('.relink-input-field')).toBeEnabled({ timeout: 15000 });
@@ -282,7 +283,7 @@ test('every row of the TikTok card and the ACCOUNT board stays inside the card a
     const win = tiktokWin(page);
     expect(Math.round((await win.boundingBox()).width)).toBe(w);
     // THE ACCOUNT board — the window opens on it.
-    const account = win.locator('.outreach-panel');
+    const account = win.locator('[data-mkt-level="account"] .outreach-panel');
     await expect(win.locator('.outreach-tab.is-on')).toHaveText('ACCOUNT');
     await expect(account.locator('.tta-head')).toBeVisible({ timeout: 20000 });
     await page.waitForTimeout(800);

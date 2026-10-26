@@ -187,9 +187,15 @@ export const changeCoOwner = async ({ wallet, add }) => {
   return writeRecord({ ...record, coOwners });
 };
 
-// impure — is this request from this computer's own desk? The app-level gate
-// stamps the scope; a router mounted without it is judged by the same decision.
-const isLocalDesk = (req) => (req.accessScope ?? upgradeAccess(req).scope) === 'local';
+/**
+ * Is this request from this computer's own desk — a loopback peer, no
+ * forwarding, a loopback Host (remote/access-scope.js) — never a paired phone
+ * or a tunnel? The app-level gate stamps the scope; a router mounted without
+ * it is judged by the same decision. impure (reads the remote store's cache).
+ * @param {import('express').Request} req
+ * @returns {boolean}
+ */
+export const isLocalDesk = (req) => (req.accessScope ?? upgradeAccess(req).scope) === 'local';
 
 /**
  * The caller's standing on this machine. impure (fs).

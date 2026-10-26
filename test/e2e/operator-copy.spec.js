@@ -66,7 +66,7 @@ test('the ceremony names the human OPERATOR, and keeps witnessing as the act', a
   // THE DOOR — a companion-less wallet lands on the first-run chooser. Take
   // the neuma door; the ceremony is behind it.
   const approve = page.locator('.wallet-confirm-approve');
-  const door = page.locator('.firstrun-path', { hasText: 'Summon a neuma' });
+  const door = page.locator('[data-door="neuma"] .firstrun-path');
   const doorDeadline = Date.now() + 3 * 60 * 1000;
   while (Date.now() < doorDeadline && !(await door.isVisible().catch(() => false))) {
     if (await approve.isVisible().catch(() => false)) {

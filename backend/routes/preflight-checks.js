@@ -43,8 +43,9 @@ const PROVIDER_NAMES = Object.freeze({
 
 
 // impure — probes the LLM substrate (provider reachable + model loaded).
-// `adoptedFrom` marks the one permitted self-heal recursion (see below).
-export const checkSubstrate = async (adoptedFrom = null) => {
+// `adoptedFrom` marks the one permitted self-heal recursion (see below);
+// `probe` is handed to probeLiveness (the door passes a cold-load budget).
+export const checkSubstrate = async (adoptedFrom = null, probe = {}) => {
   const config = getConfig();
   const reachable = await reachSubstrate();
   if (!reachable) {
@@ -86,7 +87,7 @@ export const checkSubstrate = async (adoptedFrom = null) => {
       if (target) {
         const adopted = { provider: target.id, endpoint: target.endpoint, model: target.models[0] };
         setLlmConfig(adopted);
-        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint });
+        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint }, probe);
         // Remembered only once the adopted server has answered: a choice that
         // never reached a mind must not outlive this run as the house's mind.
         if (checked.status === 'pass') {
@@ -149,7 +150,7 @@ export const checkSubstrate = async (adoptedFrom = null) => {
   //
   // So the flight check now makes the model speak, and judges it on the visible
   // words a ceremony would actually receive.
-  const liveness = await probeLiveness();
+  const liveness = await probeLiveness(probe);
   if (!liveness.alive) {
     return {
       ...row('substrate', 'Consciousness Substrate', 'fail',

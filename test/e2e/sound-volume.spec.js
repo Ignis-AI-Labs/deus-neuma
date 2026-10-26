@@ -227,24 +227,24 @@ test('silence is a level a witness can choose — the dial reaches zero', async 
 });
 
 test('the settings switch and the chat header SND button hold the SAME truth', async ({ page }) => {
-  // The desk starts silent — sound is opt-in — and the header says so.
+  // The desk starts with sound ON — the default since 2026-10-25 — and the header says so.
   const snd = page.locator('.relink-snd').filter({ hasText: /^SND (ON|OFF)$/ }).first();
-  await expect(snd).toHaveText('SND OFF');
+  await expect(snd).toHaveText('SND ON');
 
-  // Voice given from the header, THEN settings opened: the section reads the
+  // Quieted from the header, THEN settings opened: the section reads the
   // preference, not a stale default.
   await snd.click();
-  await expect(snd).toHaveText('SND ON');
+  await expect(snd).toHaveText('SND OFF');
   const win = await openSettings(page);
   const toggle = win.locator('.settings-desk-toggle', { hasText: 'SOUND —' });
-  await expect(toggle).toHaveText('SOUND — ON');
-  expect((await engineLevel(page)).on).toBe(true);
+  await expect(toggle).toHaveText('SOUND — OFF');
+  expect((await engineLevel(page)).on).toBe(false);
 
-  // And taking it back from SETTINGS reaches the header button live — it
+  // And giving it back from SETTINGS reaches the header button live — it
   // follows the preference now, not the state it mounted with.
   await toggle.click();
-  await expect(toggle).toHaveText('SOUND — OFF');
-  await expect(snd).toHaveText('SND OFF');
-  expect((await engineLevel(page)).on).toBe(false);
+  await expect(toggle).toHaveText('SOUND — ON');
+  await expect(snd).toHaveText('SND ON');
+  expect((await engineLevel(page)).on).toBe(true);
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });

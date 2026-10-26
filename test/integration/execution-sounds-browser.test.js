@@ -39,7 +39,8 @@ test('history command stays readable and every execution sound has audible, dist
     expect(await chip.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true);
     await page.getByRole('button', { name: 'Show action detail' }).click();
     expect(await page.locator('.tool-chip-detail').textContent()).toBe('stdout: build complete');
-    await page.getByRole('button', { name: 'SOUND — OFF', exact: true }).click();
+    // Sound is on by default (2026-10-25): the switch already reads ON.
+    expect(await page.getByRole('button', { name: 'SOUND — ON', exact: true }).count()).toBe(1);
     for (const cue of EXECUTION_CUES) {
       const row = page.locator(`[data-cue="${cue}"]`);
       expect(await row.count()).toBe(1);

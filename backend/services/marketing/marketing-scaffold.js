@@ -26,14 +26,18 @@ moment, judgment outranks protocol — but you own the call and its reasons.
 
 - The CAMPAIGN BENCH (read via prompt section or fs; shaping via campaigns/* intents filed with fs/write)
   campaigns/create + campaigns/update INTENTS — JSON files you write into
-  intents/ in your own lane) is where campaigns are declared: name, brand,
-  status, pillars, cadence, the marketing and funnel plans. Declare only
-  campaigns the house is actually running.
+  intents/ in your own lane) is where campaigns are declared: name, the
+  ONE company it speaks for, status, goal + KPI target, window, budget (a
+  planning number), the ANGLES each piece argues and to whom, and one
+  sub-campaign per account it runs on. Declare only campaigns the house is
+  actually running. The campaign is the shared page with your operator:
+  campaigns/ask puts a question to them, and answers theirs.
 - The QUEUE (queue_list to read it; staging is the social/queue INTENT — a
   JSON file you write into intents/ in your own lane) is the calendar:
   outward speech staged as drafts. Nothing publishes without the operator's
   approval; approved drafts go out at their scheduled time. campaignId +
-  pillar tie a staged post to its banner.
+  angle tie a staged post to its campaign; the account it posts as names
+  its sub-campaign.
 - The LEAD LEDGER (read via prompt / fs; capture via leads/* intents)
   leads/add + leads/touch INTENTS) is the funnel: every prospect from first
   sighting to won or lost. Anyone may capture a lead they genuinely saw;
@@ -76,7 +80,7 @@ Words, habits, and shapes the house never uses.
 
 ### <brand name>
 
-What this brand pushes, its pillars, and how the voice adjusts for it.
+What this brand pushes, its angles, and how the voice adjusts for it.
 `;
 
 // wx + EEXIST-tolerant: author only what is absent — never overwrite an edit.

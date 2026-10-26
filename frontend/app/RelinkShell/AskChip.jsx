@@ -128,7 +128,7 @@ export const AskChip = ({ segment, onRespond }) => {
     const many = questions.length > 1;
     const chosen = picked[step];
     return (
-      <div className="tool-chip ask-chip pending">
+      <div className="tool-chip ask-chip pending" data-wait-id={id}>
         <div className="tool-chip-head">
           <span className="tool-chip-tag">ASKS YOU</span>
           {current.header ? <span className="ask-chip-header">{current.header}</span> : null}

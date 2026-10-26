@@ -39,11 +39,13 @@ import { seedShippedPacks, seedLanded } from './services/skill-packs.js';
 import { broadcastStorageWarning, localTurnSnapshot } from './routes/portal-routes.js';
 import { startMeditationScheduler } from './services/meditation/meditation-scheduler.js';
 import { startPostScheduler } from './services/social/post-scheduler.js';
+import { startStatsSweep } from './services/social/stats/stats-sweep.js';
 import { startStatusScheduler } from './services/staff/status-sweep.js';
 import { startHouseClock } from './services/house-clock/house-clock.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
+import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
 import { startBenchWatchdog, stopBenchWatchdog } from './services/bench/bench-watchdog.js';
 import { settleLostChains } from './services/bench/bench-matched.js';
@@ -271,11 +273,17 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopPostScheduler = startGuarded('post scheduler', startPostScheduler);
     // Reply lane — watch who answers the house's posts on X.
     stopReplyListener = startGuarded('reply listener', startReplyListener);
+    // The stats sweep — what the house's posts did, read back on a decaying
+    // schedule, read-only; NEUMA_STATS_SWEEP=0 keeps it down.
+    startGuarded('stats sweep', startStatsSweep);
     // The CSO's standing watch — the 24-hour dependency/secret/host/house scan.
     stopSecurityScheduler = startGuarded('security scheduler', startSecurityScheduler);
     // The CLO's standing watch — licences shipped, the house's papers, and
     // what the new work touches, every 24 hours.
     stopLegalScheduler = startGuarded('legal scheduler', startLegalScheduler);
+    // The claims check — every waiting draft read against its company's kit;
+    // what needs a legal reading is filed with the CLO office. It flags, never holds.
+    startGuarded('claims review', startDraftReview);
     // The money-in watch — what the house received, every 10 minutes, read-only.
     stopMoneyIn = startGuarded('money-in watch', startMoneyInScheduler);
     // The Optio office's cadence — standing status checks on open charges.

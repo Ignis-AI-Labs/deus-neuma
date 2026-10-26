@@ -79,6 +79,12 @@
   margin-top: var(--space-2);
 }
 
+/* A realm's display must not override its hidden attribute (the queue composer
+   stays mounted, hidden, outside the QUEUED day view — #595). */
+.settings-realm[hidden] {
+  display: none;
+}
+
 .settings-row {
   display: flex;
   align-items: baseline;

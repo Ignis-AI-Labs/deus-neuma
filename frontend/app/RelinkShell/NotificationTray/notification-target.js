@@ -102,6 +102,11 @@ export const notificationTarget = (record) => {
     case KIND.legalAlert:
       return { appId: 'legal', payload: null };
 
+    // A paused mandate is decided in the MARKETING window, where its
+    // RESUME and WITHDRAW stand beside what it did.
+    case KIND.mandateAlert:
+      return { appId: 'marketing', payload: null };
+
     // A benchmark settled, or the bench watch saw it stuck: the BENCH window,
     // where its arms, receipts and failure report stand.
     case KIND.benchDone:
@@ -192,6 +197,9 @@ export const cardLanding = (record) => {
       return named(ref.runId) ? { appId: 'workflow', item: { runId: ref.runId } } : null;
     case 'gallery':
       return named(ref.imageId) ? { appId: 'gallery', item: { imageId: ref.imageId } } : null;
+    // A paused mandate is decided at the MARKETING window's SEAT.
+    case 'marketing':
+      return { appId: 'marketing', item: { seat: true } };
     default:
       return null;
   }

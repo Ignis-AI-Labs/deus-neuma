@@ -31,6 +31,9 @@ import { computePipelineState } from '../../backend/services/marketing/pipeline-
 import { runHouseProbe } from '../../backend/services/security/house-probe.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 
+// The AI disclosure line a being's words carry at staging (social/disclosure-line.js).
+const AI = (t) => `${t}\n\nMade with AI.`;
+
 const { _handleSocialTool, _handleNeumaQueueUpdate, _handleNeumaQueueBulkUpdate, _handleNeumaSelfReply, _cmoBriefingSection } = __test;
 const ALPHA = 'alpha-cmo';
 const BETA = 'beta-cmo';
@@ -123,7 +126,7 @@ describe('one queue file, two houses — a being reaches only its own house\'s p
     const bulk = await _handleNeumaQueueBulkUpdate(serverWs, laneOf(ALPHA, HOUSE_A), null, 'auto',
       { updates: [{ id: theirs.id, text: 'bulk across houses' }] }, x);
     expect(bulk.results[0]).toMatchObject({ id: theirs.id, ok: false, error: 'no such queued post' });
-    expect((await entryOf(theirs.id)).text).toBe('beta words stay beta words');
+    expect((await entryOf(theirs.id)).text).toBe(AI('beta words stay beta words'));
 
     // The same house edits its own post — the gate is the house, not the tool.
     const mine = await stage(ALPHA, 'alpha words');
@@ -139,7 +142,7 @@ describe('one queue file, two houses — a being reaches only its own house\'s p
       { id: telegram.id, text: 'edited through the X tool' }, x);
     expect(refused.status).toBe('error');
     expect(refused.error).toBe('that post is not a X (Twitter) post');
-    expect((await entryOf(telegram.id)).text).toBe('a telegram line');
+    expect((await entryOf(telegram.id)).text).toBe(AI('a telegram line'));
   });
 
   test('a follow-up cannot thread onto another house\'s post', async () => {

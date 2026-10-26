@@ -1,0 +1,5734 @@
+{
+  "recordedAt": "2026-10-24T05:58:24.080Z",
+  "how": "readMachineThermals x6 every 5000 ms; telemetry from nvidia-smi + /proc via the telemetry parsers; model server not probed (sampler/activity/slots null)",
+  "machine": [
+    {
+      "at": "2026-10-24T05:57:58.585Z",
+      "gpu": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+        "fanPct": 30,
+        "tempC": 36,
+        "powerW": 60.04,
+        "powerLimitW": 600,
+        "powerMaxW": 600,
+        "smMHz": 217,
+        "smMaxMHz": 3090,
+        "memMHz": 13365,
+        "memMaxMHz": 14001,
+        "utilPct": 0,
+        "memUtilPct": 0,
+        "pcie": {
+          "gen": 5,
+          "genMax": 5,
+          "width": 8,
+          "widthMax": 16
+        },
+        "pstate": "P1",
+        "persistence": "Disabled",
+        "driver": "615.71.09",
+        "clockReasons": [
+          "Reliability"
+        ],
+        "tempLimits": {
+          "maxOperatingC": 93,
+          "slowdownC": 95,
+          "shutdownC": 98
+        }
+      },
+      "cpu": {
+        "model": "Intel(R) Core(TM) Ultra 9 285K",
+        "threads": 24,
+        "avgMHz": 2397,
+        "peakMHz": 4995,
+        "maxMHz": 5800,
+        "governor": "powersave",
+        "energyPreference": "balance_performance",
+        "turbo": true,
+        "load": [
+          0.68,
+          1.54,
+          2.15
+        ]
+      },
+      "readings": [
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Package id 0",
+          "type": "temp",
+          "value": 45,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 0",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 4",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 8",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 9",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 10",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 11",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 12",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 13",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 14",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 15",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 16",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 20",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 24",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 28",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 32",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 33",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 34",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 35",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 36",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 37",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 38",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 39",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 40",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 44",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-52",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 54.25,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in0",
+          "type": "volt",
+          "value": 1.208,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in1",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in3",
+          "type": "volt",
+          "value": 3.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in4",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in5",
+          "type": "volt",
+          "value": 0.816,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in6",
+          "type": "volt",
+          "value": 1.032,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in7",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in8",
+          "type": "volt",
+          "value": 3.136,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in9",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in10",
+          "type": "volt",
+          "value": 1.104,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in11",
+          "type": "volt",
+          "value": 0.704,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in12",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in13",
+          "type": "volt",
+          "value": 1.056,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in14",
+          "type": "volt",
+          "value": 0.656,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in15",
+          "type": "volt",
+          "value": 0.824,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in16",
+          "type": "volt",
+          "value": 1.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in17",
+          "type": "volt",
+          "value": 1,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan1",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan2",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan3",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan4",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan5",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan6",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan7",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "SYSTIN",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "CPUTIN",
+          "type": "temp",
+          "value": 39,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN0",
+          "type": "temp",
+          "value": 24,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN1",
+          "type": "temp",
+          "value": 20,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN2",
+          "type": "temp",
+          "value": 42,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN3",
+          "type": "temp",
+          "value": 55,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN4",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 100,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI Agent 0",
+          "type": "temp",
+          "value": 46,
+          "high": 103,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI/TSI Agent 0 Calibration",
+          "type": "temp",
+          "value": 34.5,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN5",
+          "type": "temp",
+          "value": 26,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_CPU_MAX_TEMP",
+          "type": "temp",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_TEMP",
+          "type": "temp",
+          "value": 63,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-50",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 51.5,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "r8169_0_8200:00-mdio-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 50,
+          "high": 120,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "iwlwifi_1-virtual-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 60,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "acpitz-acpi-0",
+          "kind": "board",
+          "label": "temp1",
+          "type": "temp",
+          "value": 27.8,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-53",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 52.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in0",
+          "type": "volt",
+          "value": 11.967,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in1",
+          "type": "volt",
+          "value": 5.154,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.364,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan1 4pin",
+          "type": "fan",
+          "value": 1650,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan2 4pin",
+          "type": "fan",
+          "value": 1634,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan3 4pin",
+          "type": "fan",
+          "value": 1643,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan4 3pin",
+          "type": "fan",
+          "value": 1516,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-51",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 53.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 89.85,
+          "crit": 93.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 81.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 1",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 2",
+          "type": "temp",
+          "value": 46.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        }
+      ],
+      "drives": [
+        {
+          "chip": "nvme-pci-0100",
+          "device": "nvme0",
+          "model": "Samsung SSD 990 PRO 4TB"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "device": "nvme1",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "device": "nvme2",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "device": "nvme3",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "device": "nvme4",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "device": "nvme5",
+          "model": "WD_BLACK SN850X 4000GB"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "device": "nvme6",
+          "model": "KINGSTON SFYR2S4T0"
+        }
+      ],
+      "fanService": {
+        "active": true,
+        "benchRunning": false
+      },
+      "alerts": []
+    },
+    {
+      "at": "2026-10-24T05:58:03.672Z",
+      "gpu": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+        "fanPct": 30,
+        "tempC": 37,
+        "powerW": 58.69,
+        "powerLimitW": 600,
+        "powerMaxW": 600,
+        "smMHz": 217,
+        "smMaxMHz": 3090,
+        "memMHz": 13365,
+        "memMaxMHz": 14001,
+        "utilPct": 0,
+        "memUtilPct": 0,
+        "pcie": {
+          "gen": 5,
+          "genMax": 5,
+          "width": 8,
+          "widthMax": 16
+        },
+        "pstate": "P1",
+        "persistence": "Disabled",
+        "driver": "615.71.09",
+        "clockReasons": [
+          "Reliability"
+        ],
+        "tempLimits": {
+          "maxOperatingC": 93,
+          "slowdownC": 95,
+          "shutdownC": 98
+        }
+      },
+      "cpu": {
+        "model": "Intel(R) Core(TM) Ultra 9 285K",
+        "threads": 24,
+        "avgMHz": 3247,
+        "peakMHz": 4789,
+        "maxMHz": 5800,
+        "governor": "powersave",
+        "energyPreference": "balance_performance",
+        "turbo": true,
+        "load": [
+          0.71,
+          1.54,
+          2.15
+        ]
+      },
+      "readings": [
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Package id 0",
+          "type": "temp",
+          "value": 45,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 0",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 4",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 8",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 9",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 10",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 11",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 12",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 13",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 14",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 15",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 16",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 20",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 24",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 28",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 32",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 33",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 34",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 35",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 36",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 37",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 38",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 39",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 40",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 44",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-52",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 54.25,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in0",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in1",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in3",
+          "type": "volt",
+          "value": 3.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in4",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in5",
+          "type": "volt",
+          "value": 0.816,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in6",
+          "type": "volt",
+          "value": 1.032,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in7",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in8",
+          "type": "volt",
+          "value": 3.136,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in9",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in10",
+          "type": "volt",
+          "value": 1.104,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in11",
+          "type": "volt",
+          "value": 0.704,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in12",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in13",
+          "type": "volt",
+          "value": 0.936,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in14",
+          "type": "volt",
+          "value": 0.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in15",
+          "type": "volt",
+          "value": 0.824,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in16",
+          "type": "volt",
+          "value": 1.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in17",
+          "type": "volt",
+          "value": 1,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan1",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan2",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan3",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan4",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan5",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan6",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan7",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "SYSTIN",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "CPUTIN",
+          "type": "temp",
+          "value": 39,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN0",
+          "type": "temp",
+          "value": 24,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN1",
+          "type": "temp",
+          "value": 20,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN2",
+          "type": "temp",
+          "value": 42,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN3",
+          "type": "temp",
+          "value": 33,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN4",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 100,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI Agent 0",
+          "type": "temp",
+          "value": 42,
+          "high": 103,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI/TSI Agent 0 Calibration",
+          "type": "temp",
+          "value": 40.5,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN5",
+          "type": "temp",
+          "value": 26,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_CPU_MAX_TEMP",
+          "type": "temp",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_TEMP",
+          "type": "temp",
+          "value": 64,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-50",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 51.5,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 42.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "r8169_0_8200:00-mdio-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 50,
+          "high": 120,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "iwlwifi_1-virtual-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 60,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "acpitz-acpi-0",
+          "kind": "board",
+          "label": "temp1",
+          "type": "temp",
+          "value": 27.8,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-53",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 52.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in0",
+          "type": "volt",
+          "value": 11.958,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in1",
+          "type": "volt",
+          "value": 5.148,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.358,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan1 4pin",
+          "type": "fan",
+          "value": 1650,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan2 4pin",
+          "type": "fan",
+          "value": 1639,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan3 4pin",
+          "type": "fan",
+          "value": 1639,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan4 3pin",
+          "type": "fan",
+          "value": 1516,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-51",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 53.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 89.85,
+          "crit": 93.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 81.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 1",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 2",
+          "type": "temp",
+          "value": 46.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        }
+      ],
+      "drives": [
+        {
+          "chip": "nvme-pci-0100",
+          "device": "nvme0",
+          "model": "Samsung SSD 990 PRO 4TB"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "device": "nvme1",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "device": "nvme2",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "device": "nvme3",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "device": "nvme4",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "device": "nvme5",
+          "model": "WD_BLACK SN850X 4000GB"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "device": "nvme6",
+          "model": "KINGSTON SFYR2S4T0"
+        }
+      ],
+      "fanService": {
+        "active": true,
+        "benchRunning": false
+      },
+      "alerts": []
+    },
+    {
+      "at": "2026-10-24T05:58:08.787Z",
+      "gpu": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+        "fanPct": 30,
+        "tempC": 36,
+        "powerW": 59.1,
+        "powerLimitW": 600,
+        "powerMaxW": 600,
+        "smMHz": 180,
+        "smMaxMHz": 3090,
+        "memMHz": 13365,
+        "memMaxMHz": 14001,
+        "utilPct": 0,
+        "memUtilPct": 0,
+        "pcie": {
+          "gen": 5,
+          "genMax": 5,
+          "width": 8,
+          "widthMax": 16
+        },
+        "pstate": "P1",
+        "persistence": "Disabled",
+        "driver": "615.71.09",
+        "clockReasons": [
+          "Reliability"
+        ],
+        "tempLimits": {
+          "maxOperatingC": 93,
+          "slowdownC": 95,
+          "shutdownC": 98
+        }
+      },
+      "cpu": {
+        "model": "Intel(R) Core(TM) Ultra 9 285K",
+        "threads": 24,
+        "avgMHz": 1662,
+        "peakMHz": 4600,
+        "maxMHz": 5800,
+        "governor": "powersave",
+        "energyPreference": "balance_performance",
+        "turbo": true,
+        "load": [
+          1.05,
+          1.59,
+          2.16
+        ]
+      },
+      "readings": [
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Package id 0",
+          "type": "temp",
+          "value": 41,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 0",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 4",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 8",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 9",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 10",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 11",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 12",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 13",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 14",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 15",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 16",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 20",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 24",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 28",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 32",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 33",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 34",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 35",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 36",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 37",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 38",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 39",
+          "type": "temp",
+          "value": 36,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 40",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 44",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-52",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 54.25,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in0",
+          "type": "volt",
+          "value": 0.84,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in1",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in3",
+          "type": "volt",
+          "value": 3.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in4",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in5",
+          "type": "volt",
+          "value": 0.816,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in6",
+          "type": "volt",
+          "value": 1.032,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in7",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in8",
+          "type": "volt",
+          "value": 3.136,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in9",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in10",
+          "type": "volt",
+          "value": 1.104,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in11",
+          "type": "volt",
+          "value": 0.704,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in12",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in13",
+          "type": "volt",
+          "value": 0.976,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in14",
+          "type": "volt",
+          "value": 0.208,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in15",
+          "type": "volt",
+          "value": 0.824,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in16",
+          "type": "volt",
+          "value": 1.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in17",
+          "type": "volt",
+          "value": 1,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan1",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan2",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan3",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan4",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan5",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan6",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan7",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "SYSTIN",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "CPUTIN",
+          "type": "temp",
+          "value": 39,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN0",
+          "type": "temp",
+          "value": 24,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN1",
+          "type": "temp",
+          "value": 20,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN2",
+          "type": "temp",
+          "value": 42,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN3",
+          "type": "temp",
+          "value": 68,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN4",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 100,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI Agent 0",
+          "type": "temp",
+          "value": 40,
+          "high": 103,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI/TSI Agent 0 Calibration",
+          "type": "temp",
+          "value": 32,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN5",
+          "type": "temp",
+          "value": 26,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_CPU_MAX_TEMP",
+          "type": "temp",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_TEMP",
+          "type": "temp",
+          "value": 63,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-50",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 51.5,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 42.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "r8169_0_8200:00-mdio-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 50,
+          "high": 120,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "iwlwifi_1-virtual-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 60,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "acpitz-acpi-0",
+          "kind": "board",
+          "label": "temp1",
+          "type": "temp",
+          "value": 27.8,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-53",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 52.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in0",
+          "type": "volt",
+          "value": 11.964,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in1",
+          "type": "volt",
+          "value": 5.157,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.364,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan1 4pin",
+          "type": "fan",
+          "value": 1657,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan2 4pin",
+          "type": "fan",
+          "value": 1634,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan3 4pin",
+          "type": "fan",
+          "value": 1641,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan4 3pin",
+          "type": "fan",
+          "value": 1515,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-51",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 53.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 89.85,
+          "crit": 93.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 42.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 81.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 1",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 2",
+          "type": "temp",
+          "value": 46.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        }
+      ],
+      "drives": [
+        {
+          "chip": "nvme-pci-0100",
+          "device": "nvme0",
+          "model": "Samsung SSD 990 PRO 4TB"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "device": "nvme1",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "device": "nvme2",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "device": "nvme3",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "device": "nvme4",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "device": "nvme5",
+          "model": "WD_BLACK SN850X 4000GB"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "device": "nvme6",
+          "model": "KINGSTON SFYR2S4T0"
+        }
+      ],
+      "fanService": {
+        "active": true,
+        "benchRunning": false
+      },
+      "alerts": []
+    },
+    {
+      "at": "2026-10-24T05:58:13.866Z",
+      "gpu": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+        "fanPct": 30,
+        "tempC": 36,
+        "powerW": 59.15,
+        "powerLimitW": 600,
+        "powerMaxW": 600,
+        "smMHz": 247,
+        "smMaxMHz": 3090,
+        "memMHz": 13365,
+        "memMaxMHz": 14001,
+        "utilPct": 0,
+        "memUtilPct": 0,
+        "pcie": {
+          "gen": 5,
+          "genMax": 5,
+          "width": 8,
+          "widthMax": 16
+        },
+        "pstate": "P1",
+        "persistence": "Disabled",
+        "driver": "615.71.09",
+        "clockReasons": [
+          "Reliability"
+        ],
+        "tempLimits": {
+          "maxOperatingC": 93,
+          "slowdownC": 95,
+          "shutdownC": 98
+        }
+      },
+      "cpu": {
+        "model": "Intel(R) Core(TM) Ultra 9 285K",
+        "threads": 24,
+        "avgMHz": 2869,
+        "peakMHz": 5400,
+        "maxMHz": 5800,
+        "governor": "powersave",
+        "energyPreference": "balance_performance",
+        "turbo": true,
+        "load": [
+          1.05,
+          1.58,
+          2.15
+        ]
+      },
+      "readings": [
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Package id 0",
+          "type": "temp",
+          "value": 50,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 0",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 4",
+          "type": "temp",
+          "value": 48,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 8",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 9",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 10",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 11",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 12",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 13",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 14",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 15",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 16",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 20",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 24",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 28",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 32",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 33",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 34",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 35",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 36",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 37",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 38",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 39",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 40",
+          "type": "temp",
+          "value": 50,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 44",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-52",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 54.25,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in0",
+          "type": "volt",
+          "value": 1.272,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in1",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in3",
+          "type": "volt",
+          "value": 3.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in4",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in5",
+          "type": "volt",
+          "value": 0.816,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in6",
+          "type": "volt",
+          "value": 1.032,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in7",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in8",
+          "type": "volt",
+          "value": 3.12,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in9",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in10",
+          "type": "volt",
+          "value": 1.104,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in11",
+          "type": "volt",
+          "value": 0.704,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in12",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in13",
+          "type": "volt",
+          "value": 1.056,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in14",
+          "type": "volt",
+          "value": 0.984,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in15",
+          "type": "volt",
+          "value": 0.824,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in16",
+          "type": "volt",
+          "value": 1.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in17",
+          "type": "volt",
+          "value": 1,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan1",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan2",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan3",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan4",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan5",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan6",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan7",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "SYSTIN",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "CPUTIN",
+          "type": "temp",
+          "value": 39,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN0",
+          "type": "temp",
+          "value": 24,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN1",
+          "type": "temp",
+          "value": 20,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN2",
+          "type": "temp",
+          "value": 42,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN3",
+          "type": "temp",
+          "value": 49,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN4",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 100,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI Agent 0",
+          "type": "temp",
+          "value": 44,
+          "high": 103,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI/TSI Agent 0 Calibration",
+          "type": "temp",
+          "value": 42,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN5",
+          "type": "temp",
+          "value": 26,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_CPU_MAX_TEMP",
+          "type": "temp",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_TEMP",
+          "type": "temp",
+          "value": 63,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-50",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 51.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 42.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "r8169_0_8200:00-mdio-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 49.5,
+          "high": 120,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "iwlwifi_1-virtual-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 60,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "acpitz-acpi-0",
+          "kind": "board",
+          "label": "temp1",
+          "type": "temp",
+          "value": 27.8,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-53",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 52.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in0",
+          "type": "volt",
+          "value": 11.946,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in1",
+          "type": "volt",
+          "value": 5.145,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.359,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan1 4pin",
+          "type": "fan",
+          "value": 1652,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan2 4pin",
+          "type": "fan",
+          "value": 1630,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan3 4pin",
+          "type": "fan",
+          "value": 1643,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan4 3pin",
+          "type": "fan",
+          "value": 1513,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-51",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 53.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 89.85,
+          "crit": 93.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 81.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 1",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 2",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        }
+      ],
+      "drives": [
+        {
+          "chip": "nvme-pci-0100",
+          "device": "nvme0",
+          "model": "Samsung SSD 990 PRO 4TB"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "device": "nvme1",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "device": "nvme2",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "device": "nvme3",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "device": "nvme4",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "device": "nvme5",
+          "model": "WD_BLACK SN850X 4000GB"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "device": "nvme6",
+          "model": "KINGSTON SFYR2S4T0"
+        }
+      ],
+      "fanService": {
+        "active": true,
+        "benchRunning": false
+      },
+      "alerts": []
+    },
+    {
+      "at": "2026-10-24T05:58:18.945Z",
+      "gpu": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+        "fanPct": 30,
+        "tempC": 36,
+        "powerW": 60.17,
+        "powerLimitW": 600,
+        "powerMaxW": 600,
+        "smMHz": 300,
+        "smMaxMHz": 3090,
+        "memMHz": 13365,
+        "memMaxMHz": 14001,
+        "utilPct": 0,
+        "memUtilPct": 0,
+        "pcie": {
+          "gen": 5,
+          "genMax": 5,
+          "width": 8,
+          "widthMax": 16
+        },
+        "pstate": "P1",
+        "persistence": "Disabled",
+        "driver": "615.71.09",
+        "clockReasons": [
+          "Reliability"
+        ],
+        "tempLimits": {
+          "maxOperatingC": 93,
+          "slowdownC": 95,
+          "shutdownC": 98
+        }
+      },
+      "cpu": {
+        "model": "Intel(R) Core(TM) Ultra 9 285K",
+        "threads": 24,
+        "avgMHz": 2177,
+        "peakMHz": 5400,
+        "maxMHz": 5800,
+        "governor": "powersave",
+        "energyPreference": "balance_performance",
+        "turbo": true,
+        "load": [
+          1.28,
+          1.62,
+          2.16
+        ]
+      },
+      "readings": [
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Package id 0",
+          "type": "temp",
+          "value": 56,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 0",
+          "type": "temp",
+          "value": 52,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 4",
+          "type": "temp",
+          "value": 56,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 8",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 9",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 10",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 11",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 12",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 13",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 14",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 15",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 16",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 20",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 24",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 28",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 32",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 33",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 34",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 35",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 36",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 37",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 38",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 39",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 40",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 44",
+          "type": "temp",
+          "value": 44,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-52",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 54.25,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in0",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in1",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in3",
+          "type": "volt",
+          "value": 3.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in4",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in5",
+          "type": "volt",
+          "value": 0.816,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in6",
+          "type": "volt",
+          "value": 1.032,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in7",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in8",
+          "type": "volt",
+          "value": 3.136,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in9",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in10",
+          "type": "volt",
+          "value": 1.104,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in11",
+          "type": "volt",
+          "value": 0.704,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in12",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in13",
+          "type": "volt",
+          "value": 1.064,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in14",
+          "type": "volt",
+          "value": 0.752,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in15",
+          "type": "volt",
+          "value": 0.824,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in16",
+          "type": "volt",
+          "value": 1.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in17",
+          "type": "volt",
+          "value": 1,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan1",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan2",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan3",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan4",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan5",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan6",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan7",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "SYSTIN",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "CPUTIN",
+          "type": "temp",
+          "value": 39,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN0",
+          "type": "temp",
+          "value": 24,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN1",
+          "type": "temp",
+          "value": 20,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN2",
+          "type": "temp",
+          "value": 42,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN3",
+          "type": "temp",
+          "value": 122,
+          "high": 80,
+          "crit": 125,
+          "state": "hot"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN4",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 100,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI Agent 0",
+          "type": "temp",
+          "value": 54,
+          "high": 103,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI/TSI Agent 0 Calibration",
+          "type": "temp",
+          "value": 45.5,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN5",
+          "type": "temp",
+          "value": 26,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_CPU_MAX_TEMP",
+          "type": "temp",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_TEMP",
+          "type": "temp",
+          "value": 62,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-50",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 51.5,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "r8169_0_8200:00-mdio-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 49.5,
+          "high": 120,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "iwlwifi_1-virtual-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 60,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "acpitz-acpi-0",
+          "kind": "board",
+          "label": "temp1",
+          "type": "temp",
+          "value": 27.8,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-53",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 52.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in0",
+          "type": "volt",
+          "value": 11.991,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in1",
+          "type": "volt",
+          "value": 5.157,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.367,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan1 4pin",
+          "type": "fan",
+          "value": 1657,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan2 4pin",
+          "type": "fan",
+          "value": 1639,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan3 4pin",
+          "type": "fan",
+          "value": 1645,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan4 3pin",
+          "type": "fan",
+          "value": 1516,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-51",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 53.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 89.85,
+          "crit": 93.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 42.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 81.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 1",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 2",
+          "type": "temp",
+          "value": 46.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        }
+      ],
+      "drives": [
+        {
+          "chip": "nvme-pci-0100",
+          "device": "nvme0",
+          "model": "Samsung SSD 990 PRO 4TB"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "device": "nvme1",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "device": "nvme2",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "device": "nvme3",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "device": "nvme4",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "device": "nvme5",
+          "model": "WD_BLACK SN850X 4000GB"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "device": "nvme6",
+          "model": "KINGSTON SFYR2S4T0"
+        }
+      ],
+      "fanService": {
+        "active": true,
+        "benchRunning": false
+      },
+      "alerts": [
+        "board AUXTIN3 (nct6799-isa-0290) at 122.0\u00b0C \u2014 past its high mark 80\u00b0C"
+      ]
+    },
+    {
+      "at": "2026-10-24T05:58:24.035Z",
+      "gpu": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+        "fanPct": 30,
+        "tempC": 36,
+        "powerW": 59.1,
+        "powerLimitW": 600,
+        "powerMaxW": 600,
+        "smMHz": 270,
+        "smMaxMHz": 3090,
+        "memMHz": 13365,
+        "memMaxMHz": 14001,
+        "utilPct": 0,
+        "memUtilPct": 0,
+        "pcie": {
+          "gen": 5,
+          "genMax": 5,
+          "width": 8,
+          "widthMax": 16
+        },
+        "pstate": "P1",
+        "persistence": "Disabled",
+        "driver": "615.71.09",
+        "clockReasons": [
+          "Reliability"
+        ],
+        "tempLimits": {
+          "maxOperatingC": 93,
+          "slowdownC": 95,
+          "shutdownC": 98
+        }
+      },
+      "cpu": {
+        "model": "Intel(R) Core(TM) Ultra 9 285K",
+        "threads": 24,
+        "avgMHz": 2227,
+        "peakMHz": 5400,
+        "maxMHz": 5800,
+        "governor": "powersave",
+        "energyPreference": "balance_performance",
+        "turbo": true,
+        "load": [
+          1.5,
+          1.66,
+          2.18
+        ]
+      },
+      "readings": [
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Package id 0",
+          "type": "temp",
+          "value": 63,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 0",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 4",
+          "type": "temp",
+          "value": 62,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 8",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 9",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 10",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 11",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 12",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 13",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 14",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 15",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 16",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 20",
+          "type": "temp",
+          "value": 46,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 24",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 28",
+          "type": "temp",
+          "value": 42,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 32",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 33",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 34",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 35",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 36",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 37",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 38",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 39",
+          "type": "temp",
+          "value": 38,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 40",
+          "type": "temp",
+          "value": 54,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "coretemp-isa-0000",
+          "kind": "cpu",
+          "label": "Core 44",
+          "type": "temp",
+          "value": 40,
+          "high": 85,
+          "crit": 105,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-52",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 54.25,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in0",
+          "type": "volt",
+          "value": 1.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in1",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in3",
+          "type": "volt",
+          "value": 3.28,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in4",
+          "type": "volt",
+          "value": 0.992,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in5",
+          "type": "volt",
+          "value": 0.816,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in6",
+          "type": "volt",
+          "value": 1.032,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in7",
+          "type": "volt",
+          "value": 3.408,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in8",
+          "type": "volt",
+          "value": 3.136,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in9",
+          "type": "volt",
+          "value": 1.248,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in10",
+          "type": "volt",
+          "value": 1.104,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in11",
+          "type": "volt",
+          "value": 0.704,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in12",
+          "type": "volt",
+          "value": 1.024,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in13",
+          "type": "volt",
+          "value": 1.056,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in14",
+          "type": "volt",
+          "value": 0.04,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in15",
+          "type": "volt",
+          "value": 0.824,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in16",
+          "type": "volt",
+          "value": 1.792,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "in17",
+          "type": "volt",
+          "value": 1,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan1",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan2",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan3",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan4",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan5",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan6",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "fan7",
+          "type": "fan",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "SYSTIN",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "CPUTIN",
+          "type": "temp",
+          "value": 39,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN0",
+          "type": "temp",
+          "value": 24,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN1",
+          "type": "temp",
+          "value": 20,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN2",
+          "type": "temp",
+          "value": 42,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN3",
+          "type": "temp",
+          "value": 49,
+          "high": 80,
+          "crit": 125,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN4",
+          "type": "temp",
+          "value": 36,
+          "high": 80,
+          "crit": 100,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI Agent 0",
+          "type": "temp",
+          "value": 62,
+          "high": 103,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PECI/TSI Agent 0 Calibration",
+          "type": "temp",
+          "value": 48,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "AUXTIN5",
+          "type": "temp",
+          "value": 26,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_CPU_MAX_TEMP",
+          "type": "temp",
+          "value": 0,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nct6799-isa-0290",
+          "kind": "board",
+          "label": "PCH_CHIP_TEMP",
+          "type": "temp",
+          "value": 63,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-50",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 51.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "r8169_0_8200:00-mdio-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 49.5,
+          "high": 120,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 41.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "iwlwifi_1-virtual-0",
+          "kind": "network",
+          "label": "temp1",
+          "type": "temp",
+          "value": 60,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "acpitz-acpi-0",
+          "kind": "board",
+          "label": "temp1",
+          "type": "temp",
+          "value": 27.8,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-53",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 52.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in0",
+          "type": "volt",
+          "value": 11.955,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in1",
+          "type": "volt",
+          "value": 5.148,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "in2",
+          "type": "volt",
+          "value": 3.359,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan1 4pin",
+          "type": "fan",
+          "value": 1654,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan2 4pin",
+          "type": "fan",
+          "value": 1632,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan3 4pin",
+          "type": "fan",
+          "value": 1645,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "corsaircpro-hid-3-b",
+          "kind": "cooling",
+          "label": "fan4 3pin",
+          "type": "fan",
+          "value": 1515,
+          "high": null,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "spd5118-i2c-15-51",
+          "kind": "memory",
+          "label": "temp1",
+          "type": "temp",
+          "value": 53.75,
+          "high": 55,
+          "crit": 85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 89.85,
+          "crit": 93.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 43.85,
+          "high": 82.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Composite",
+          "type": "temp",
+          "value": 45.85,
+          "high": 81.85,
+          "crit": 84.85,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 1",
+          "type": "temp",
+          "value": 45.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        },
+        {
+          "chip": "nvme-pci-0100",
+          "kind": "storage",
+          "label": "Sensor 2",
+          "type": "temp",
+          "value": 46.85,
+          "high": 65261.85,
+          "crit": null,
+          "state": "ok"
+        }
+      ],
+      "drives": [
+        {
+          "chip": "nvme-pci-0100",
+          "device": "nvme0",
+          "model": "Samsung SSD 990 PRO 4TB"
+        },
+        {
+          "chip": "nvme-pci-0400",
+          "device": "nvme1",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0300",
+          "device": "nvme2",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-0500",
+          "device": "nvme3",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8500",
+          "device": "nvme4",
+          "model": "KINGSTON SFYR2S4T0"
+        },
+        {
+          "chip": "nvme-pci-8600",
+          "device": "nvme5",
+          "model": "WD_BLACK SN850X 4000GB"
+        },
+        {
+          "chip": "nvme-pci-8700",
+          "device": "nvme6",
+          "model": "KINGSTON SFYR2S4T0"
+        }
+      ],
+      "fanService": {
+        "active": true,
+        "benchRunning": false
+      },
+      "alerts": []
+    }
+  ],
+  "telemetry": {
+    "provider": "llama-server",
+    "serving": true,
+    "model": "/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf",
+    "contextLength": 65536,
+    "adapters": [],
+    "sampling": null,
+    "activity": null,
+    "slots": {
+      "total": 0,
+      "busy": 0,
+      "slots": []
+    },
+    "gpu": {
+      "usedMB": 69563,
+      "totalMB": 97887,
+      "freeMB": 28324,
+      "utilPct": 0,
+      "tempC": 36,
+      "powerW": 59.01,
+      "unified": false
+    },
+    "processes": [
+      {
+        "pid": 3284,
+        "name": "kwin_wayland",
+        "memMB": 157
+      },
+      {
+        "pid": 3880,
+        "name": "python",
+        "memMB": 2674
+      },
+      {
+        "pid": 7050,
+        "name": "code",
+        "memMB": 651
+      },
+      {
+        "pid": 9078,
+        "name": "brave",
+        "memMB": 205
+      },
+      {
+        "pid": 8827,
+        "name": "Discord",
+        "memMB": 458
+      },
+      {
+        "pid": 65485,
+        "name": "3",
+        "memMB": 62190
+      }
+    ],
+    "ram": {
+      "totalMB": 128131,
+      "usedMB": 23718,
+      "availableMB": 104413,
+      "swapTotalMB": 8192,
+      "swapUsedMB": 0,
+      "server": {
+        "anonMB": 909,
+        "cacheLimitMB": 0
+      }
+    },
+    "failures": [],
+    "at": "2026-10-24T05:58:24.080Z"
+  }
+}

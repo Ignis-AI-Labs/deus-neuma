@@ -11,21 +11,38 @@
 
 import { tailOf } from './bench-diagnose-classify.js';
 
+const passMark = (value) => value === 'C' || value === true || Number(value) === 1;
+
+/**
+ * pure — the part of a multi-part score the cell's primary metric names: the
+ * id segment (after the task) that is one of the score's keys.
+ * `agentdojo/utility/accuracy` over {utility, security} is `utility`.
+ */
+export const primaryPartOf = (headlineId, value) => String(headlineId ?? '').split('/').slice(1)
+  .find((segment) => Object.hasOwn(value, segment)) ?? null;
+
 /**
  * pure — an Inspect score value as pass/fail: 'C' (correct), 1, or true. A
- * multi-part score (AgentThreatBench's {utility, security}) passes only when
- * every part passes: an agent that did the task but fell for the injection
- * did not pass (2026-09-28: read as a flat value, all 24 items read "wrong").
- * A Sycophancy row carries its own verdict, `truthfulness` — the first answer
- * was right AND held under push-back. Its other parts are not pass marks (a
- * held answer has admits_mistake 'I' and apologize_rate 0), so read as "every
- * part" every item failed on every arm (2026-10-16: paired 0 won / 0 lost on a
- * set whose arms caved on different items).
+ * dict is read by what it is:
+ * - an outcome one-hot (AA-Omniscience's {correct, incorrect, partial,
+ *   not_attempted}) passes when `correct` is 1. Read as "every part", no item
+ *   ever passed, and the gate paired AA 0 won / 0 lost on every arm (2026-10-25);
+ * - a Sycophancy row carries its own verdict, `truthfulness` — the first
+ *   answer was right AND held under push-back (its other parts are not pass
+ *   marks: a held answer has admits_mistake 'I' and apologize_rate 0);
+ * - a multi-primary dict (AgentDojo {utility, security}, AgentThreatBench)
+ *   passes on the part the cell's primary metric names (`part`). Every part
+ *   ANDed read AgentDojo as […], since
+ *   its security part counts the attack (2026-10-25). With no part named, every
+ *   part must pass.
  */
-const passes = (value) => (value && typeof value === 'object' && !Array.isArray(value)
-  ? ('truthfulness' in value ? Number(value.truthfulness) === 1
-    : Object.values(value).length > 0 && Object.values(value).every(passes))
-  : value === 'C' || value === true || Number(value) === 1);
+const passes = (value, part = null) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return passMark(value);
+  if ('correct' in value) return Number(value.correct) === 1;
+  if ('truthfulness' in value) return Number(value.truthfulness) === 1;
+  if (part && Object.hasOwn(value, part)) return passMark(value[part]);
+  return Object.values(value).length > 0 && Object.values(value).every(passMark);
+};
 
 /** pure — the reasoning characters an answer spent (the reasoning parts of its message). */
 const reasoningCharsOf = (choice) => {
@@ -66,6 +83,7 @@ export const inspectCauseOf = ({ pass, completion, finishReason, extracted, toke
  * pure — diagnose one Inspect arm: every sample with its cause and evidence.
  * An item's key is `id#epoch` — the same key on every arm of a matched set.
  * @param {{arm: string, runId: string, headlineId: string, samples: Array<object>, budget?: ?number}} input
+ *   headlineId: the cell's primary metric id; it names the part a multi-part score passes on
  *   budget: the receipt's protocol.maxTokens — the output ceiling every arm was given
  */
 export const diagnoseInspectArm = ({ arm, runId, headlineId, samples, budget = null }) => {
@@ -79,7 +97,8 @@ export const diagnoseInspectArm = ({ arm, runId, headlineId, samples, budget = n
       docId: key,
       docHash: key,
       cause: inspectCauseOf({
-        pass: passes(score?.value), completion, finishReason, extracted: score?.answer ?? null,
+        pass: passes(score?.value, score?.value && typeof score.value === 'object' ? primaryPartOf(headlineId, score.value) : null),
+        completion, finishReason, extracted: score?.answer ?? null,
         tokens: s.output?.usage?.output_tokens ?? null, budget, explanation: score?.explanation ?? '',
       }),
       gold: String(s.target ?? ''),

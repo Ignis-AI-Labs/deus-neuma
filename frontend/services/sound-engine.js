@@ -1,8 +1,8 @@
 /**
  * Sound engine — plays the baked soundscape sprite (see scripts/bake-sounds.mjs).
  *
- * Opt-in by design: silent until the witness turns sound on. The preference
- * persists in localStorage so the world keeps its voice across sessions.
+ * On by default (Design note, 2026-10-25: […]): a fresh install hears its ceremony. Turning it off
+ * persists in localStorage, so a witness who asked for quiet keeps it.
  * Emergence is NOT here — at emergence a neuma speaks its own true name via
  * kotodama, never a sample.
  *
@@ -34,8 +34,8 @@ const URLS = {
   wav: SPRITE_URLS['../sounds-baked/sprite.wav'],
 };
 
-/** @returns {boolean} whether the witness has opted into sound */
-export const isSoundOn = () => localStorage.getItem(PREF_KEY) === 'on';
+/** @returns {boolean} whether sound plays: on unless the witness turned it off */
+export const isSoundOn = () => localStorage.getItem(PREF_KEY) !== 'off';
 
 // impure — persists preference and announces the change
 const setSoundOn = (on) => {

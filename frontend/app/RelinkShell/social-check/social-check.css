@@ -1,0 +1,152 @@
+/* social-check.css — the SOCIAL CHECK window (campaign plan §6.1; SHOW,
+   DON'T TELL). LINE & CYCLE: monochrome at rest, the alert register only
+   where a fix is owed. A check is a shape: filled clear, a struck triangle
+   for a fix, a broken ring not proven, a bar where nothing is reported. Every
+   label meets the 13px floor; light only rises (no-flash law). */
+
+.social-check { container-type: inline-size; font-size: 13px; }
+.social-check .settings-h,
+.social-check .settings-note,
+.social-check .settings-err,
+.social-check .settings-set,
+.social-check .settings-input { font-size: 13px; }
+
+.social-check-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.sc-headline { margin-right: auto; }
+.sc-checked { font-family: var(--font-data); color: var(--color-text-tertiary); }
+.sc-held { font-family: var(--font-data); letter-spacing: 0.08em; color: var(--signal); }
+
+.sc-body { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* The guided path: numbered steps, each a door. */
+.sc-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  border: 1px solid var(--alert-dim);
+}
+.sc-step {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.sc-step:hover, .sc-step:focus-visible { border-color: var(--color-text-secondary); }
+.sc-step-n { font-family: var(--font-data); color: var(--alert); }
+.sc-step-x { font-family: var(--font-data); color: var(--color-text-tertiary); }
+
+/* The overview: each company, its tally, its account cards. */
+.social-check-overview { display: flex; flex-direction: column; gap: var(--space-2); }
+.social-check-company { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.social-check-company.depth-1 { padding-left: var(--space-3); }
+.social-check-company.depth-2 { padding-left: calc(var(--space-3) * 2); }
+.social-check-company.depth-3 { padding-left: calc(var(--space-3) * 3); }
+.sc-company-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-family: var(--font-data);
+}
+.social-check-name { min-width: 0; overflow-wrap: anywhere; color: var(--color-text-secondary); }
+.social-check-tally { margin-left: auto; color: var(--color-text-tertiary); }
+
+.sc-cards { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.sc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  transition: border-color var(--snap);
+}
+.sc-card.is-fail { border-color: var(--alert-dim); }
+.sc-card.is-focused { flex-basis: 100%; border-color: var(--color-text-secondary); }
+.sc-card.is-focused.is-fail { border-color: var(--alert); }
+
+.sc-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+/* The account's mark is its door; the rest of the row is the press that opens its fixes. */
+.sc-card-top { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.sc-card-top > .sc-card-head { flex: 1 1 auto; }
+.sc-verdict { font-size: 14px; line-height: 1; color: var(--color-text-secondary); }
+.sc-verdict.is-fail { color: var(--alert); }
+.sc-verdict.is-optional { color: var(--color-text-tertiary); margin-right: 6px; }
+
+.sc-marks { display: flex; flex-wrap: wrap; gap: 4px; }
+.sc-check { display: inline-flex; padding: 2px; cursor: help; }
+.sc-mark { display: block; overflow: visible; }
+.sc-mark .sc-fill { fill: currentColor; }
+.sc-mark .sc-ring { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.sc-mark .sc-line { stroke: currentColor; stroke-width: 1.5; }
+.sc-mark .sc-cut { stroke: var(--color-void); stroke-width: 1.6; stroke-linecap: square; }
+.sc-mark.is-pass { color: var(--color-text-secondary); }
+.sc-mark.is-fail { color: var(--alert); }
+.sc-mark.is-unknown { color: var(--color-text-secondary); }
+.sc-mark.is-na { color: var(--color-text-tertiary); }
+
+/* A focused card's fixes: title, door, hand-over. */
+.sc-fixes { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sc-fix {
+  display: grid;
+  grid-template-columns: auto minmax(12ch, 24ch) 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.sc-fix-mark { display: inline-flex; }
+.sc-fix-title { min-width: 0; overflow-wrap: anywhere; color: var(--color-text-primary); cursor: help; }
+.sc-fix-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-width: 0; }
+.sc-door, .sc-door-alt, .sc-hand { min-height: 36px; }
+.sc-hand { border-color: var(--signal); color: var(--signal); }
+.sc-handed { font-family: var(--font-data); color: var(--signal); }
+.sc-handle-fix { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.sc-at { font-family: var(--font-data); color: var(--color-text-secondary); }
+.sc-handle-in { width: 18ch; max-width: 100%; min-width: 8ch; }
+
+/* A narrow window stacks each fix: the title, then its acts. */
+@container (max-width: 520px) {
+  .sc-fix { grid-template-columns: auto 1fr; }
+  .sc-fix-acts { grid-column: 1 / -1; }
+}
+
+/* OPTIONAL: apart, folded, never counted — an inventory, so a list. */
+.sc-optional { padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.sc-optional-head { font-family: var(--font-data); letter-spacing: 0.08em; color: var(--color-text-tertiary); cursor: pointer; list-style: none; }
+.sc-optional-head::-webkit-details-marker { display: none; }
+.sc-optional-head b { color: var(--color-text-secondary); font-weight: 400; }
+.sc-inventory { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.sc-inventory li { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); }

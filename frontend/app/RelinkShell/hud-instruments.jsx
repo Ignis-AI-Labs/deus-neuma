@@ -36,16 +36,23 @@ export const Dial = ({ label, ratio, value, unit, sub, marks = [], tone, title }
   );
 };
 
-/** A sparkline of the poll window (`span` names how long it is), with the current numeral and its scale top stated. */
-export const Trace = ({ label, values, capacity, span, unit, floor, current, digits = 0 }) => {
+/**
+ * A sparkline of the poll window (`span` names how long it is), with the
+ * current numeral and its scale top stated; `note` states a limit beside the
+ * numeral (a part's own mark). `head={false}` drops the label and numeral
+ * where a shared legend names the trace and its reading stands beside it.
+ */
+export const Trace = ({ label, values, capacity, span, unit, floor, current, digits = 0, note, head = true }) => {
   const max = traceMax(values, floor);
   const now = Number.isFinite(current) ? current.toFixed(digits) : '—';
   return (
     <div className="hud-trace">
-      <div className="hud-trace-head">
-        <span className="hud-label">{label}</span>
-        <span className="hud-trace-now">{now}<span className="hud-unit">{unit}</span></span>
-      </div>
+      {head ? (
+        <div className="hud-trace-head">
+          <span className="hud-label">{label}</span>
+          <span className="hud-trace-now">{now}<span className="hud-unit">{unit}</span>{note ? <span className="hud-trace-note">{note}</span> : null}</span>
+        </div>
+      ) : null}
       <svg className="hud-trace-plot" viewBox="0 0 160 36" preserveAspectRatio="none" aria-hidden="true">
         <path className="hud-trace-mid" d="M 0 18 L 160 18" />
         <path className="hud-trace-line" d={tracePath(values, capacity, 160, 36, max)} />
@@ -75,8 +82,12 @@ export const Bar = ({ name, value, max, marks = [], text, tone, title }) => {
   );
 };
 
-/** One whole split into its parts (each part's share of `total`), with a legend. */
-export const StackBar = ({ parts, total, marks = [] }) => (
+/**
+ * One whole split into its parts (each part's share of `total`), with a
+ * legend; `legend={false}` drops it where one shared legend names the parts
+ * of several bars once.
+ */
+export const StackBar = ({ parts, total, marks = [], legend = true }) => (
   <div className="hud-stack">
     <div className="hud-stack-track">
       {parts.map((p) => (
@@ -84,11 +95,13 @@ export const StackBar = ({ parts, total, marks = [] }) => (
       ))}
       {marks.map((m) => <span key={m.key} className={`hud-stack-mark is-${m.kind}`} style={{ left: `${(ratioOf(m.at, total) ?? 0) * 100}%` }} title={m.label} />)}
     </div>
-    <div className="hud-legend">
-      {parts.map((p) => (
-        <span key={p.key} className="hud-legend-item"><i className={`hud-swatch is-${p.tone}`} />{p.label}<b>{p.text}</b></span>
-      ))}
-    </div>
+    {legend ? (
+      <div className="hud-legend">
+        {parts.map((p) => (
+          <span key={p.key} className="hud-legend-item"><i className={`hud-swatch is-${p.tone}`} />{p.label}<b>{p.text}</b></span>
+        ))}
+      </div>
+    ) : null}
   </div>
 );
 
@@ -115,12 +128,12 @@ export const SegRing = ({ label, busy, total }) => (
   </figure>
 );
 
-/** A vertical thermometer on a shared °C axis, with the chip's own high and crit marks. */
-export const Thermo = ({ row, axis }) => {
+/** A vertical thermometer on a shared °C axis, with the chip's own high and crit marks; `tone` overrides the state's. */
+export const Thermo = ({ row, axis, tone }) => {
   const at = (v) => `${(ratioOf(v, axis) ?? 0) * 100}%`;
   return (
-    <figure className={`hud-thermo is-${heatTone(row.state)}`} title={row.title}>
-      <span className="hud-thermo-value">{Number.isFinite(row.value) ? row.value.toFixed(1) : '—'}<span className="hud-unit">°</span></span>
+    <figure className={`hud-thermo is-${tone ?? heatTone(row.state)}`} title={row.title}>
+      <span className="hud-thermo-value">{Number.isFinite(row.value) ? row.value.toFixed(1) : '—'}</span>
       <span className="hud-thermo-tube">
         <span className="hud-thermo-fill" style={{ transform: `scaleY(${ratioOf(row.value, axis) ?? 0})` }} />
         {row.high ? <span className="hud-thermo-mark is-high" style={{ bottom: at(row.high) }} /> : null}

@@ -248,6 +248,11 @@ router.get('/setup', async (req, res) => {
   }
 });
 
+// The door's check is the FIRST load after a boot: Founder's laptop, 2026-10-25, just restarted, took
+// 23 s to start the model server and 35 s more before the 45 s probe gave up and the door said not
+// ready; a recheck answered in 9 s. Room for a cold load, still inside the door's own 120 s wait.
+export const DOOR_PROBE_MS = 100_000;
+
 /**
  * GET /mind — is the mind a being will run on ready? THE SAME TEST as the flight check's
  * substrate row (checkSubstrate: the resolved provider route reachable, its model loaded, and
@@ -256,7 +261,7 @@ router.get('/setup', async (req, res) => {
  */
 router.get('/mind', async (req, res) => {
   try {
-    const row = await checkSubstrate();
+    const row = await checkSubstrate(null, { timeoutMs: DOOR_PROBE_MS });
     res.json({
       ready: row.status === 'pass',
       // a route nobody chose (the factory default) names nothing a person set up: no detail then

@@ -1,0 +1,89 @@
+/* The CMO's MANDATE — LINE & CYCLE: monochrome at rest; SIGNAL while it acts
+   for the operator (live), ALERT when a tripwire paused it. WITHDRAW wears the
+   alert line always: it is the way out, so it is the plainest thing here.
+   The GRANT screen is a danger act (ruling, 2026-10-24): it wears the alert
+   line whole, and its button is red and must be held. 13px floor; no flash,
+   no pulse — the hold's fill rises over the whole hold, never faster. */
+
+/* The desk strip is pointer-events:none; the chip opts back in, like WAITING ON YOU beside it. */
+.mandate-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 13px; letter-spacing: 0.16em; white-space: nowrap; pointer-events: auto; }
+.mandate-chip-k { display: inline-flex; align-items: center; gap: 6px; background: var(--color-void); border: 1px solid var(--line); color: var(--color-white); padding: 2px 8px; font: inherit; cursor: pointer; transition: border-color var(--snap); }
+.mandate-chip[data-tone='live'] .mandate-chip-k { border-color: var(--signal-dim); color: var(--signal); }
+.mandate-chip[data-tone='alert'] .mandate-chip-k { border-color: var(--alert-dim); color: var(--alert); }
+.mandate-chip-mark { width: 6px; height: 6px; background: currentColor; display: inline-block; }
+.mandate-chip-err { color: var(--alert); }
+
+.mandate-withdraw { background: var(--alert-tint); border: 1px solid var(--alert); color: var(--alert); font-family: var(--font-data); font-size: 13px; letter-spacing: 0.08em; padding: 2px 10px; cursor: pointer; }
+.mandate-withdraw:disabled { opacity: 0.6; cursor: progress; }
+.mandate-link { background: none; border: 1px solid var(--line); color: var(--color-white); font-family: var(--font-data); font-size: 13px; padding: 2px 10px; cursor: pointer; }
+.mandate-link:hover, .mandate-chip-k:hover { border-color: var(--line-hover); }
+
+.mandate { border: 1px solid var(--line); padding: 10px 12px; margin: 0 0 12px; display: grid; gap: 8px; }
+.mandate-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--font-data); font-size: 13px; letter-spacing: 0.06em; }
+.mandate-head[data-tone='live'] { color: var(--signal); }
+.mandate-head[data-tone='alert'] { color: var(--alert); }
+.mandate-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.mandate-paused { color: var(--alert); font-family: var(--font-data); font-size: 13px; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mandate-h { margin: 6px 0 2px; font-family: var(--font-data); font-size: 13px; letter-spacing: 0.08em; opacity: 0.7; }
+.mandate-empty { margin: 0; font-size: var(--text-sm); opacity: 0.7; }
+
+.mandate-grant { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.mandate-accounts, .mandate-feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mandate-accounts li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mandate-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.mandate-toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--line); color: var(--color-white); font-family: var(--font-data); font-size: 13px; padding: 3px 8px; cursor: pointer; }
+.mandate-toggle em { font-style: normal; opacity: 0.6; }
+.mandate-toggle.is-off { cursor: default; opacity: 0.5; }
+.mandate-toggle-box { width: 8px; height: 8px; border: 1px solid currentColor; display: inline-block; }
+.mandate-toggle[aria-pressed='true'], .mandate-toggle[aria-checked='true'] { border-color: var(--signal-dim); color: var(--signal); }
+.mandate-toggle[aria-pressed='true'] .mandate-toggle-box, .mandate-toggle[aria-checked='true'] .mandate-toggle-box { background: currentColor; }
+.mandate-pace { font-family: var(--font-data); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.mandate-pace input { width: 3.5em; background: none; border: 1px solid var(--line); color: var(--color-white); font: inherit; padding: 1px 4px; }
+.mandate-never { display: flex; flex-wrap: wrap; gap: 6px; }
+.mandate-never-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.06em; padding: 2px 8px; cursor: default; }
+.mandate-glyph { flex: 0 0 auto; display: block; }
+
+/* the grant protocol — a danger act */
+.mandate-grant.is-danger { border: 1px solid var(--alert-dim); border-left: 3px solid var(--alert); padding: 8px 10px; }
+.mandate-danger { margin: 0; color: var(--alert); font-family: var(--font-voice); font-size: var(--text-sm); font-weight: 600; }
+.mandate-term-end { font-family: var(--font-data); font-size: 13px; color: var(--alert); align-self: center; }
+.mandate-marks { display: grid; gap: 4px; }
+.mandate-marks-co { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mandate-marks-k { font-family: var(--font-data); font-size: 13px; letter-spacing: 0.08em; min-width: 9em; opacity: 0.8; }
+.mandate-mark-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--alert-dim); color: var(--color-white); font-family: var(--font-data); font-size: 13px; padding: 1px 6px; }
+.mandate-mark-chip b { color: var(--alert); font-weight: 400; font-variant-numeric: tabular-nums; }
+.mandate-mark-chip[data-on='true'] .mandate-toggle-box { background: var(--alert); border-color: var(--alert); }
+.mandate-mark-chip[data-on='false'] { opacity: 0.5; }
+.mandate-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.mandate-checks li { display: grid; grid-template-columns: 1.4em minmax(12em, auto) 1fr auto; gap: 8px; align-items: baseline; font-size: 13px; }
+.mandate-check-mark { font-family: var(--font-data); text-align: center; }
+.mandate-check-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mandate-check-marks .mandate-check-mark { min-width: 1.6em; padding: 1px 4px; border: 1px solid var(--line); font-size: var(--text-label); cursor: default; }
+.mandate-check-mark[data-tone='ready'] { color: var(--color-white); }
+.mandate-check-mark[data-tone='alert'] { color: var(--alert); }
+.mandate-check-mark[data-tone='idle'] { opacity: 0.6; }
+.mandate-check-label { font-family: var(--font-data); letter-spacing: 0.04em; }
+.mandate-check-words { opacity: 0.85; overflow-wrap: anywhere; }
+.mandate-check-wait, .mandate-desk-only { margin: 0; font-family: var(--font-data); font-size: 13px; color: var(--alert); }
+.mandate-hold { position: relative; overflow: hidden; justify-self: start; min-width: 18em; background: var(--alert-tint); border: 1px solid var(--alert); color: var(--alert); font-family: var(--font-data); font-size: 13px; letter-spacing: 0.1em; padding: 8px 16px; cursor: pointer; user-select: none; touch-action: none; }
+.mandate-hold:disabled { background: none; border-color: var(--alert-dim); opacity: 0.5; cursor: not-allowed; }
+.mandate-hold-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--alert-dim); transition: none; }
+.mandate-hold[data-holding='true'] .mandate-hold-fill { width: 100%; transition: width 2000ms linear; }
+.mandate-hold-words { position: relative; }
+.mandate-holds { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mandate-standing { display: grid; gap: 6px; }
+.mandate-left { max-width: 34em; }
+.mandate-marks-k.is-inline { min-width: 0; margin-left: 6px; }
+.mandate-trip { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 22px; border: 1px solid var(--line); color: var(--color-text-secondary); cursor: default; }
+.mandate-trip.is-hold { border-style: dashed; }
+.mandate-holds li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.mandate-row { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; border-bottom: 1px solid var(--grid); padding: 3px 0; font-size: 13px; }
+.mandate-row-when { font-family: var(--font-data); opacity: 0.6; }
+.mandate-row-what em { font-style: normal; opacity: 0.7; }
+.mandate-row-tag { font-family: var(--font-data); letter-spacing: 0.06em; }
+.mandate-row-text { grid-column: 2 / 4; overflow-wrap: anywhere; opacity: 0.85; }
+.mandate-row-text.is-err { color: var(--alert); }
+.mandate-row-acts { grid-column: 2 / 4; display: inline-flex; gap: 8px; }
+.mandate-row-acts a, .mandate-row-acts button { background: none; border: none; padding: 0; color: var(--signal); font-family: var(--font-data); font-size: 13px; cursor: pointer; text-decoration: none; }
+.mandate-row-acts:empty { display: none; }

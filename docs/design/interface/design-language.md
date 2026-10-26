@@ -105,7 +105,7 @@ language never gestures toward it.
 
 | Source | What we take | What we leave |
 | ------ | ------------ | ------------- |
-| Evangelion / NERV | Hard geometry, oversized type as graphic element, data-density as decoration, theatrical alert states | The chaos, the 90s CRT grain |
+| Evangelion / NERV | Hard geometry, oversized type as graphic element, theatrical alert states | The chaos, density as decoration, the 90s CRT grain |
 | Metal Gear Solid | Codec restraint — mono type, corner targeting brackets, frequency numerals, tactical calm | Green phosphor retro |
 | Ghost in the Shell | Layered translucent data, depth — the interface as a dive surface | Hologram noise, glitch effects |
 | Solo Leveling | "The System" — floating windows with crisp luminous edges, status panels with authority | Heavy gradients, particle spam |
@@ -234,6 +234,59 @@ This section binds every surface: desk, ceremony, CLI and site. On the site it
 is applied through the web rules under WEB → CHOKKAN (site), which add the
 first-screen questions, a process drawn as steps, plain words for terms of
 art, and the legibility floor.
+
+## LESS TEXT, NOT LESS DATA — where JŌHŌ SEKKEI and CHOKKAN meet
+
+Design note, 2026-10-24: *[…]* And, the same day: *[…]*
+
+JŌHŌ SEKKEI puts the picture before the words; CHOKKAN makes the way obvious.
+Together they ask for less text carrying the same data — all of it.
+
+1. **Every word earns its place.** If removing a word loses nothing, it goes:
+   a label that repeats its value, a heading that repeats the window, a
+   sentence that restates the figure beside it.
+2. **Marks carry what words used to.** Gauges, bars, shade, position and icons
+   say what a sentence would. One shared legend or unit replaces a label
+   repeated on every row; human names replace codes.
+3. **Density is never decoration.** A surface is as dense as its moment's
+   information demands (the density ladder), never dense to look technical.
+4. **Every number stays on screen.** Less text never means less data: every
+   number the person needs stays in view, and so does an open critical, a
+   missing reading, a limit or a refusal's reason. Only genuine noise (an
+   unconnected input, say) folds, one press away and marked as folded.
+5. **Less to say, too.** A person never has to type or say what the system
+   already knows; one press or one short phrase does the job.
+6. **Everywhere a person reads:** desk, ceremony, site, CLI output, errors and
+   refusals, reports, and every message the platform or an AI agent writes to a
+   person. A neuma's own voice stays its own; this binds what is written for
+   the operator to read, never how a being speaks.
+
+## SHOW, DON'T TELL — the next step, still SHINKEI
+
+Design note, 2026-10-24: *[…]* *[…]* *[…]*
+
+LESS TEXT keeps all the data in fewer words. SHOW, DON'T TELL moves the
+meaning out of words wherever a mark can carry it. Every mark stays true.
+
+1. **Visual first.** A mark, shape, position, colour, gauge or picture says
+   it: the universal language (CHOKKAN). Text only where no mark can.
+2. **Then the fewest words.** Five words beat a paragraph. Never say it twice.
+3. **Lists are for inventory.** Lists and tables serve stock, audits, ledgers
+   and logs, not status. Fine status is one mark per item (eleven CLEAR rows
+   become eleven marks, each named on hover); only what needs attention opens.
+4. **Every problem is a door.** A fix takes the person to the exact place it
+   is done, or does it in place. Unfinished setup is a guided path, step after
+   step, never a sentence of directions: […] is a press, not
+   a phrase.
+5. **Hand it over.** If a house member (a neuma or an agent) can do the fix,
+   one press hands it to the member responsible, prompt drafted. The operator
+   still sees it and stays in command.
+6. **Efficient language is efficient code.** KISS for words: say it once, the
+   shortest true way.
+7. **Artistic, never decorative.** Beauty that carries information; no mark
+   without meaning.
+8. **Patterns repeat.** The same mark means the same thing on every surface,
+   so the mind learns it once (CHOKKAN 4).
 
 ## SOUND REGISTER (reserved — Founder's domain)
 
@@ -523,7 +576,7 @@ Founder rejected it as too minimal beside the product. The reading pieces it def
   SPECIMEN first). Comparison (a cited fact in every cell, "last verified", their column marked as
   theirs, rows where they win stay, "source-available", never "open source"). Guides (numbered steps,
   exact commands in a hairline well with one ghost control). The way in (at most one filled control per
-  view). Claims close with a source line; limits are said beside strengths. Labels are 11px or more.
+  view). Claims close with a source line; limits are said beside strengths. Labels are 13px or more.
 - **The social plates** (X banner, link preview) are ratified with THE CODE (above).
 - **JŌHŌ SEKKEI on the web (Design note, 2026-10-22: the text is too small and hard to follow; locked for the
   site).** Every page is designed by the questions its reader brings, and answers them by shape before
@@ -709,6 +762,8 @@ permitted, climbing requires the demand to be real.
 - [ ] JŌHŌ SEKKEI: the overview answers what / where / how much / how long by shape; every count filters; open criticals and highs stand at the top.
 - [ ] CHOKKAN (every surface): with every word covered, the purpose still reads; the next step and the way back are the plainest things on screen; one decision per moment; every press answers; the stranger test passes.
 - [ ] CHOKKAN (site): where am I / what is this / what next in the first screen; a process drawn as steps; one primary action per view; plain words; legibility floor met (reading 18px, labels 13px, nothing under 12px).
+- [ ] LESS TEXT, NOT LESS DATA: every number the person needs is on screen; marks carry what words used to; one legend or unit, not repeated labels; human names, not codes; only genuine noise folds, and is marked; they never have to say what the system already knows.
+- [ ] SHOW, DON'T TELL: a mark says it before a word does; fine status is marks, lists only for inventory; every problem opens where it is fixed, or fixes in place; setup is a guided path; a fix a house member can do hands over in one press; one mark, one meaning, everywhere.
 - [ ] Every element belongs to a plane; the level's plane allowance holds.
 - [ ] Reduced-motion final states exist and were viewed with my own eyes.
 
@@ -786,9 +841,10 @@ A refined container must be comfortably readable at its normal window size and
 100% reading scale. Density yields before legibility: reflow cards, group data,
 or disclose secondary detail instead of shrinking text to fit.
 
-- Use at least 14px-equivalent type for working content and controls; reserve
-  12–13px-equivalent type for supporting metadata. Respect the shared reading
-  scale and test at 200%; no fixed-height clipping.
+- Use at least 14px-equivalent type for working content and controls. Labels
+  and supporting metadata are at least 13px-equivalent — the one label floor for
+  desk, ceremony and site. Respect the shared reading scale and test at 200%; no
+  fixed-height clipping.
 - Use primary/secondary contrast for information people need to read. Tertiary
   text is not a default for buttons, balances, role explanations or navigation.
 - Keep names, roles, status and actions in a consistent hierarchy. Sentence case

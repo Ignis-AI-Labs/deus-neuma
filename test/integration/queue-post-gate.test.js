@@ -34,6 +34,9 @@ import { channelBindings } from '../../backend/services/social/channel-bindings.
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
+// The AI disclosure line a being's words carry at staging (social/disclosure-line.js).
+const AI = (t) => `${t}\n\nMade with AI.`;
+
 const { _handleNeumaSelfReply, _postToolsFor } = __test;
 const NEUMA_ID = 'queuegateecho';
 const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'];
@@ -184,7 +187,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       channelId: 'x',
-      text: 'first staged calendar entry',
+      text: AI('first staged calendar entry'),
       scheduledFor: '2999-01-01T09:00:00Z',
       authorNeumaId: NEUMA_ID,
       queuedBy: NEUMA_ID,
@@ -234,7 +237,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     expect(receipts[0].status).toBe('ok');
     const entries = await postQueue.load();
     expect(entries.at(-1)).toMatchObject({
-      text: 'crew draft', authorNeumaId: 'witness-openai-Kagipem', status: 'draft',
+      text: AI('crew draft'), authorNeumaId: 'witness-openai-Kagipem', status: 'draft',
     });
 
     // ...and the crew member is offered the EDIT lane only — never the
@@ -310,7 +313,7 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     const child = entries.find((e) => e.kind === 'self-reply');
     expect(child).toMatchObject({
       channelId: 'x',
-      text: 'the follow-up lands the CTA',
+      text: AI('the follow-up lands the CTA'),
       thread: { parentId: parent.id },
       scheduledFor: null, // it inherits the parent's moment — never its own
       authorNeumaId: NEUMA_ID,

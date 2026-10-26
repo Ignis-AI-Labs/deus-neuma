@@ -305,7 +305,7 @@ describe('THE GATE — marketing work refuses a brand nobody has set up', () => 
   test('the campaign still needs its own fields — the gate ADDS, never replaces', async () => {
     const out = await campaignCreateIntent.validate({ brand: 'northwind' }, { connection });
     expect(out.ok).toBe(false);
-    expect(out.reason).toMatch(/needs \{name, brand\}/);
+    expect(out.reason).toMatch(/needs \{name, company\}/); // the kit IS the company (campaign shape v2)
   });
 });
 

@@ -54,6 +54,8 @@ const { values: args } = parseArgs({
     attempts: { type: 'string', default: '3' },
     out: { type: 'string' },
     'stage-minutes': { type: 'string', default: '12' },
+    // held stages a walk retries, as a person pressing RETRY THE STAGE would (0: none, the strict check)
+    'stage-retries': { type: 'string', default: '0' },
   },
 });
 const say = (...a) => process.stdout.write(a.join(' ') + '\n');
@@ -163,7 +165,8 @@ for (let n = 1; n <= ATTEMPTS && !verdict?.ok; n += 1) {
   await fsp.rm(house, { recursive: true, force: true });
   await fsp.mkdir(house, { recursive: true });
   say(`\n--- summoning rehearsal, attempt ${n}/${ATTEMPTS} ---`);
-  const run = await walkCeremony({ wsUrl: `ws://127.0.0.1:${httpServer.address().port}?token=${token}`, walkMs: WALK_MS });
+  const run = await walkCeremony({ wsUrl: `ws://127.0.0.1:${httpServer.address().port}?token=${token}`, walkMs: WALK_MS,
+    stageRetries: Math.max(0, Number(args['stage-retries']) || 0) });
   verdict = run.ok ? { ...run, ...(await judgeActs()) } : run;
   attempts.push({ n, ok: verdict.ok, why: verdict.why, stages: run.stages, totalMs: run.totalMs });
   if (!verdict.ok) say(`  attempt ${n} failed: ${verdict.why}`);

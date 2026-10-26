@@ -18,6 +18,7 @@ import { isSecretFile } from './secret-path-classifier.js';
 import { secretLinkReason } from './secret-inodes.js';
 import { matchesDeniedPattern } from './sandbox-path-policy.js';
 import { getRealmRoot } from './user-realm.js';
+import { foldName } from './wall-spelling.js';
 import { getWorkspacesRoot, getWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
 
 // The secret-shaped walls of the being sandbox that mean a secret on the
@@ -30,7 +31,12 @@ const HOUSE_REASON = "it is another house's data";
 const GROUND_REASON = "it holds every house's data — the explorer never moves or deletes it";
 
 // pure — is `inner` the same as or below `outer`?
-const within = (inner, outer) => inner === outer || inner.startsWith(outer + path.sep);
+// Compared in the wall spelling (wall-spelling.js): a case- or normalization-insensitive volume
+// (macOS) opens one file under many spellings, so the walls fold every name the same way (#589).
+const within = (inner, outer) => {
+  const [i, o] = [foldName(inner), foldName(outer)];
+  return i === o || i.startsWith(o + path.sep);
+};
 
 /**
  * Is this path secret-shaped? Pure.
@@ -38,7 +44,7 @@ const within = (inner, outer) => inner === outer || inner.startsWith(outer + pat
  * @returns {boolean}
  */
 const isSecretPlace = (target) => {
-  const normalized = path.normalize(target).toLowerCase();
+  const normalized = foldName(path.normalize(target));
   const parts = normalized.split(/[\\/]/).filter(Boolean);
   return parts.some((part) => isSecretFile(part))
     || /keypair/i.test(parts.at(-1) || '')
@@ -71,16 +77,19 @@ const laneOwner = (laneDir) => {
   }
 };
 
-// impure — does this path lie in another house's realm dir or lane?
+// impure — does this path lie in another house's realm dir or lane? The lane's
+// folder is read as typed and as folded, so a respelling never hides its owner.
 const isOtherHouse = (target, reader) => {
   const realm = path.resolve(getRealmRoot());
-  if (within(target, realm) && target !== realm) {
-    const top = path.relative(realm, target).split(path.sep)[0].toLowerCase();
+  if (within(target, realm) && foldName(target) !== foldName(realm)) {
+    const top = foldName(path.relative(foldName(realm), foldName(target)).split(path.sep)[0]);
     if (WALLET_DIR.test(top) && top !== reader) return true;
   }
   for (const ground of [getWorkspacesRoot(), getWitnessesRoot()].map((g) => path.resolve(g))) {
-    if (!within(target, ground) || target === ground) continue;
-    const owner = laneOwner(path.join(ground, path.relative(ground, target).split(path.sep)[0]));
+    if (!within(target, ground) || foldName(target) === foldName(ground)) continue;
+    const segment = (t, g) => path.relative(g, t).split(path.sep)[0];
+    const owner = laneOwner(path.join(ground, segment(target, ground)))
+      ?? laneOwner(path.join(ground, segment(foldName(target), foldName(ground))));
     if (owner && owner !== reader) return true;
   }
   return false;

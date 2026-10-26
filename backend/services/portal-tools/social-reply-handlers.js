@@ -19,6 +19,8 @@ import { replyCandidatesOf } from '../social/reply-candidates.js';
 import { postIdFrom, readXReplyTarget } from '../social/x-reader.js';
 import { gateAct } from '../act-gate.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
+import { publishEntry } from '../social/post-scheduler.js';
+import { replyMandateFor, sendReplyUnderMandate } from '../marketing/mandate/mandate-act.js';
 
 // impure — stage a FOLLOW-UP to one of the house's own queued posts: the
 // thread lane (Founder/Kagipem 2026-07-29). The same machinery as the
@@ -259,7 +261,11 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   // The ACTS gate on the act of staging (act-gate.js) — its OWN row, so an
   // ALWAYS granted here never unlocks post_to_x or queue_post_to_x. An
   // interrupt that landed while the card waited stops the staging too.
-  const gate = await gateAct(connection, {
+  // THE MANDATE (marketing/mandate/): with replies granted, an in-scope answer needs no card.
+  const mandated = await replyMandateFor({
+    laneId: companion?.neumaId || null, accountId, sessionId: connection.sessionId || null, postId: candidate.postId, answering: candidate.text,
+  });
+  const gate = mandated ? { ok: true } : await gateAct(connection, {
     server: 'social', tool: toolName,
     cardArgs: {
       text,
@@ -308,10 +314,13 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: content });
     return { tool, status: 'error', error: content };
   }
-  const content = `Staged reply draft ${entry.id} answering @${candidate.username || 'the account'}. Nothing is published yet — your operator decides this answer, and the moment they approve it, it goes out.`;
+  const sent = mandated ? await sendReplyUnderMandate({ laneId: companion.neumaId, entry, publish: publishEntry, sessionId: connection.sessionId || null }) : null;
+  const content = sent?.covered
+    ? `Answered @${candidate.username || 'the account'} under your mandate (${entry.id}): ${sent.outcome?.ok ? `live as post ${sent.outcome.id}` : `the send did not land — ${sent.outcome?.detail || 'unknown'}`}. Your operator sees it in DONE FOR YOU.`
+    : `Staged reply draft ${entry.id} answering @${candidate.username || 'the account'}. Nothing is published yet — your operator decides this answer, and the moment they approve it, it goes out.${sent?.tripped ? ` Your mandate is now PAUSED (${sent.reason}).` : sent?.held ? ` Your mandate does not cover this one (${sent.reason}).` : ''}`;
   _sendToolEvent(ws, companion, {
     tool, status: 'ok',
-    summary: `reply queued for ${channel.name} (draft ${entry.id})`,
+    summary: sent?.covered ? `reply sent under your mandate (${entry.id})` : `reply queued for ${channel.name} (draft ${entry.id})`,
     detail: content,
   });
   return { tool, status: 'ok', content };

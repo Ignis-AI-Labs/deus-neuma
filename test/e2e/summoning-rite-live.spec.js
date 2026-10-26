@@ -87,7 +87,7 @@ test('a rehearsal walks THE SUMMONING RITE: the living piece, the measure, the f
       if (await enabled('#preflight-begin')) await page.locator('#preflight-begin').click({ force: true }).catch(() => {});
       else if (await seen('#pf-apply')) await page.locator('#pf-apply').click({ force: true }).catch(() => {});
     } else if (await seen('.firstrun-path')) {
-      await page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).first().click({ force: true }).catch(() => {});
+      await page.locator('[data-door="neuma"] .firstrun-path').first().click({ force: true }).catch(() => {});
     }
     await page.waitForTimeout(500);
   }

@@ -45,7 +45,7 @@
 !ifndef BUILD_UNINSTALLER
   ; the Finish page (electron-builder inserts it, with its own launch-as-the-person function)
   !define MUI_FINISHPAGE_TITLE "Deus Neuma is installed"
-  !define MUI_FINISHPAGE_TEXT "Deus Neuma ${VERSION} is installed on this PC.$\r$\n$\r$\nDeus Neuma is for adults only (18+).$\r$\n$\r$\nClick Finish to close this wizard."
+  !define MUI_FINISHPAGE_TEXT "Deus Neuma ${VERSION} is installed on this PC.$\r$\n$\r$\nWhat happens next: Deus Neuma opens and walks you through the first steps. The first time it opens, the model loads into your PC's memory, which can take a minute. After that it is quick. If you ever want it gone, Settings > Apps removes everything.$\r$\n$\r$\nDeus Neuma is for adults only (18+).$\r$\n$\r$\nClick Finish to close this wizard."
   !define MUI_FINISHPAGE_RUN_TEXT "Launch Deus Neuma"
   ; the install log stays on screen, "Completed", until the person clicks Next
   !define MUI_FINISHPAGE_NOAUTOCLOSE
@@ -100,6 +100,10 @@ Var PfOS
 Var PfRam
 Var PfGpu
 Var PfGpuGB
+Var PfDriver
+Var PfDriverFloor
+Var PfDriverOld
+Var PfVc
 Var PfOllama
 Var PfOllamaRunning
 Var PfLmStudio
@@ -170,7 +174,7 @@ Var PfBold
     ; read the PC once: hidden, read-only (build/installer-preflight.ps1), the 64-bit PowerShell
     ${If} $PfDone != 1
       InitPluginsDir
-      File "/oname=$PLUGINSDIR\preflight.ps1" "${BUILD_RESOURCES_DIR}/installer-preflight.ps1"
+      File "/oname=$PLUGINSDIR\preflight.ps1" "${BUILD_RESOURCES_DIR}\installer-preflight.ps1"
       ${DisableX64FSRedirection}
       nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\preflight.ps1" "$PLUGINSDIR\preflight.txt"'
       ${EnableX64FSRedirection}
@@ -180,6 +184,10 @@ Var PfBold
       ${ConfigRead} "$PLUGINSDIR\preflight.txt" "ramGB=" $PfRam
       ${ConfigRead} "$PLUGINSDIR\preflight.txt" "gpu=" $PfGpu
       ${ConfigRead} "$PLUGINSDIR\preflight.txt" "gpuGB=" $PfGpuGB
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "gpuDriver=" $PfDriver
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "driverFloor=" $PfDriverFloor
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "driverOld=" $PfDriverOld
+      ${ConfigRead} "$PLUGINSDIR\preflight.txt" "vcRuntime=" $PfVc
       ${ConfigRead} "$PLUGINSDIR\preflight.txt" "ollama=" $PfOllama
       ${ConfigRead} "$PLUGINSDIR\preflight.txt" "ollamaRunning=" $PfOllamaRunning
       ${ConfigRead} "$PLUGINSDIR\preflight.txt" "lmstudio=" $PfLmStudio
@@ -223,6 +231,10 @@ Var PfBold
     ${Else}
       StrCpy $3 "None with its own memory found. A smaller model runs on the processor."
     ${EndIf}
+    ; an NVIDIA driver below its card's floor: the app keeps the model off the card until it is updated
+    ${If} $PfDriverOld == 1
+      StrCpy $3 "$PfGpu: driver $PfDriver is older than the $PfDriverFloor it needs. The model stays off the card until you update it."
+    ${EndIf}
     ${DnRow} 38u "Graphics card" "$3"
 
     ${If} $PfDiskGB >= 40
@@ -243,6 +255,12 @@ Var PfBold
     ${Else}
       StrCpy $3 "None yet. Setup installs Ollama and the model for you (next page)."
     ${EndIf}
+    ; the server setup installs loads the Visual C++ runtime; one already here brings its own
+    ${If} $PfVc == 0
+    ${AndIf} $PfOllama == ""
+    ${AndIf} $PfOllamaRunning != 1
+      StrCpy $3 "Needs the Visual C++ runtime (missing). Get it: aka.ms/vs/17/release/vc_redist.x64.exe, then reinstall."
+    ${EndIf}
     ${DnRow} 76u "Model server" "$3"
 
     ${If} $PfOnline == 1
@@ -254,6 +272,8 @@ Var PfBold
 
     ${If} $PfDiskGB < 5
       StrCpy $3 "This drive is too full for Deus Neuma. Click Back and choose a folder on another drive."
+    ${ElseIf} $PfDriverOld == 1
+      StrCpy $3 "Update the graphics driver from NVIDIA (nvidia.com/drivers). Until then the model runs on the processor, slower. Click Next to choose what to install."
     ${ElseIf} $PfGpuGB < 8
     ${AndIf} $PfRam < 16
     ${AndIf} $PfRam > 0
@@ -288,7 +308,7 @@ Var PfBold
     ${NSD_CreateCheckbox} 0 16u 100% 12u "Local model server and the model for this PC (recommended)"
     Pop $CbModel
     ${NSD_SetState} $CbModel $CompModel
-    ${NSD_CreateLabel} 12u 29u -12u 28u "Ollama, kept in a folder you choose next (no admin rights), and the model that fits this PC: about 3 to 35 GB to download. An Ollama you already have is used if it is new enough."
+    ${NSD_CreateLabel} 12u 29u -12u 28u "The AI Deus Neuma thinks with. It runs on your PC, so your conversations stay private. Setup downloads Ollama (what runs it), the model that fits this PC (3 to 35 GB), and Microsoft's runtime if missing."
     Pop $0
 
     ${NSD_CreateCheckbox} 0 60u 100% 12u "Benchmarks kit (coming in a later update)"
@@ -431,14 +451,24 @@ Var PfBold
     ${EndIf}
     ${If} $CompModel == ${BST_CHECKED}
       WriteRegStr HKCU "${DN_REG}" "ModelHome" "$ModelHome"
-      DetailPrint "Setting up the local model server and the model for this PC, in $ModelHome."
+      DetailPrint "What is happening: Deus Neuma thinks with an AI model that runs on YOUR PC, so your conversations stay with you."
+      DetailPrint "A model server (Ollama) runs the model, and the model itself is a large file. Both go in $ModelHome."
+      ${If} $PfVc == 0
+        InitPluginsDir
+        File "/oname=$PLUGINSDIR\runtime.ps1" "${BUILD_RESOURCES_DIR}\installer-runtime.ps1"
+        ${DisableX64FSRedirection}
+        nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\runtime.ps1"'
+        ${EnableX64FSRedirection}
+        Pop $0
+      ${EndIf}
+      DetailPrint "Only downloads happen now. Nothing is loaded onto your graphics card until Deus Neuma first opens."
       DetailPrint "This downloads several GB and can take a while. Every step is shown below."
       System::Call 'Kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", t "1")i'
       nsExec::ExecToLog '"$appExe" "$INSTDIR\resources\app\backend\cli\setup-model-server.mjs" --yes --home "$ModelHome"'
       Pop $0
       System::Call 'Kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", t "")i'
       ${If} $0 == 0
-        DetailPrint "The local model server and the model are ready."
+        DetailPrint "The local model server and the model are downloaded. The model starts when Deus Neuma first opens."
       ${Else}
         DetailPrint "The local model server could not be set up now. Deus Neuma will offer it again when it first starts."
       ${EndIf}
@@ -454,10 +484,24 @@ Var PfBold
     DeleteRegValue HKCU "${DN_RUN}" "${APP_ID}"
     ReadRegStr $0 HKCU "${DN_REG}" "ModelHome"
     ${If} $0 != ""
-    ${AndIf} ${FileExists} "$0\*.*"
-      MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 "Also remove the local model server and the downloaded models in:$\r$\n$0$\r$\n$\r$\nThey can be large. Choose No to keep them for a later install." IDNO +3
-        RMDir /r "$0"
-        DetailPrint "Removed the model folder $0."
+      ; The model server the setup started lives in that folder. Stopped first, it cannot hold the folder's
+      ; files open, nor go on running after Deus Neuma is gone. Matched by the folder (read from the
+      ; environment, so no path is ever quoted into the command), never by name alone: the person's own
+      ; Ollama elsewhere is left running. This is 32-bit code on 64-bit Windows: the 64-bit PowerShell and
+      ; WMI are used because a 32-bit one cannot read the path of a 64-bit process.
+      System::Call 'Kernel32::SetEnvironmentVariable(t "DN_MODEL_HOME", t "$0")i'
+      ${DisableX64FSRedirection}
+      nsExec::ExecToLog `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -WindowStyle Hidden -Command "Get-CimInstance Win32_Process -Filter \"Name='ollama.exe'\" | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$env:DN_MODEL_HOME, 'OrdinalIgnoreCase') } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force }"`
+      ${EnableX64FSRedirection}
+      Pop $1
+      System::Call 'Kernel32::SetEnvironmentVariable(t "DN_MODEL_HOME", t "")i'
+      ${If} ${FileExists} "$0\*.*"
+        ; /SD IDNO: a silent uninstall keeps the models (a message box would otherwise wait for ever)
+        ${If} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 "Also remove the local model server and the downloaded models in:$\r$\n$0$\r$\n$\r$\nThey can be large. Choose No to keep them for a later install." /SD IDNO IDYES`
+          RMDir /r "$0"
+          DetailPrint "Removed the model folder $0."
+        ${EndIf}
+      ${EndIf}
     ${EndIf}
     DeleteRegKey HKCU "${DN_REG}"
   ${EndIf}

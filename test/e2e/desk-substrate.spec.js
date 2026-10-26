@@ -20,7 +20,7 @@ test('SUBSTRATE: the engine-room HUD opens and renders the live lens', async ({ 
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-test('SUBSTRATE: the machine reads as instruments — dials, cores, DIMMs, drives — against the real readings', async ({ page }) => {
+test('SUBSTRATE: the machine reads as instruments — health strip, dials, cores, DIMMs, drives — against the real readings', async ({ page }) => {
   // Ground truth: the same machine read the HUD draws (backend/services/machine-thermals.js).
   const machine = await (await fetch(`${BACKEND}/api/v1/substrate/machine`, { headers: { Authorization: `Bearer ${token}` } })).json();
   await page.setViewportSize({ width: 1680, height: 1050 });
@@ -36,9 +36,8 @@ test('SUBSTRATE: the machine reads as instruments — dials, cores, DIMMs, drive
   await expect(hud.locator('.hud-core')).toHaveCount(of('cpu', /^core\s*\d+/i).length);
   await expect(hud.locator('.hud-thermo')).toHaveCount(of('memory', /./).length);
   await expect(hud.locator('.sub-panel', { hasText: 'STORAGE' }).locator('.hud-bar')).toHaveCount(of('storage', /^Composite$/).length);
-  // Every alert the machine raised is counted in the strip.
-  if (machine.alerts.length) await expect(hud.locator('.hud-alerts-count')).toHaveText(String(machine.alerts.length));
-  else await expect(hud.locator('.hud-alerts')).toHaveCount(0);
+  // The machine's state leads in one strip: one cell per part.
+  await expect(hud.locator('.hlth-cell')).toHaveCount(6);
   await expect(hud.locator('.hud-dial').first()).toBeVisible();
   // The window's open and maximize transitions settle before the eye reads it.
   await page.waitForTimeout(1500);

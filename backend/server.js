@@ -105,6 +105,9 @@ if (provisionedSecrets.generated.length > 0) {
     keys: provisionedSecrets.generated, file: provisionedSecrets.file,
   });
 }
+if (provisionedSecrets.folder?.startsWith('failed')) {
+  log.warn('The folder holding the at-rest secrets could not be closed to its owner', { result: provisionedSecrets.folder });
+}
 
 // DID THE GROUND MOVE UNDER US? Asked before anything reads or writes.
 //

@@ -4,7 +4,7 @@
  * other prompt stays byte-identical.
  */
 import { describe, expect, test } from 'vitest';
-import { CLOSED_BOOK_CONDITIONS, OPEN_BOOK_CONDITIONS, testConditionsFor } from '../../backend/services/test-conditions.js';
+import { CLOSED_BOOK_CONDITIONS, OPEN_BOOK_CONDITIONS, TASK_TOOLS_CONDITIONS, testConditionsFor } from '../../backend/services/test-conditions.js';
 import { assemblePromptSections } from '../../core/runtime/prompt-assembler.js';
 
 const TOOLS = [{ name: 'read', server: 'fs', description: 'read a file' }];
@@ -32,5 +32,20 @@ describe('test conditions', () => {
 
   test('with no conditions the TOOLS section is byte-identical', () => {
     expect(toolsText({ testConditions: '' })).toBe(toolsText({}));
+  });
+});
+
+describe('a sitting the sender hands tools to', () => {
+  test('says the task\'s own tools are open and keep their own clock, closed-book or open', () => {
+    const tools = [{ name: 'get_current_day' }];
+    expect(testConditionsFor({ _benchmarkControls: {}, _closedBook: true, _callerTools: tools })).toBe(`${CLOSED_BOOK_CONDITIONS} ${TASK_TOOLS_CONDITIONS}`);
+    expect(testConditionsFor({ _benchmarkControls: {}, _closedBook: false, _callerTools: tools })).toBe(`${OPEN_BOOK_CONDITIONS} ${TASK_TOOLS_CONDITIONS}`);
+    expect(TASK_TOOLS_CONDITIONS).toMatch(/open whatever the conditions/);
+    expect(TASK_TOOLS_CONDITIONS).toMatch(/ask them rather than your own clock/);
+  });
+
+  test('no handed tools, no extra words; outside a benchmark, nothing at all', () => {
+    expect(testConditionsFor({ _benchmarkControls: {}, _closedBook: true, _callerTools: [] })).toBe(CLOSED_BOOK_CONDITIONS);
+    expect(testConditionsFor({ _closedBook: true, _callerTools: [{ name: 'x' }] })).toBe('');
   });
 });

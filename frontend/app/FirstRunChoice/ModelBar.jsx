@@ -63,7 +63,7 @@ export const ModelBar = ({ ref, mind, recheck, readyModel, verdict, waiting, onD
   const blocked = bar.act === 'setup' && !plan?.enoughDisk;
 
   return (
-    <section ref={ref} className={`door-bar cham is-${bar.view}${waiting ? ' is-holding' : ''}`} aria-label="Model" data-testid="door-bar">
+    <section ref={ref} className={`door-bar is-${bar.view}${waiting ? ' is-holding' : ''}`} aria-label="Model" data-testid="door-bar">
       <StatusRing view={bar.view} pct={progress.pct} />
       <div className="door-bar-state">
         <p className="door-bar-line" role="status" aria-live="polite">{line}</p>

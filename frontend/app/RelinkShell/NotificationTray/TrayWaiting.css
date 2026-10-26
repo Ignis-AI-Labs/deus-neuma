@@ -1,0 +1,125 @@
+/* WAITING ON YOU in the notification tray (TrayWaiting.jsx). LINE & CYCLE:
+   one steady signal for "this needs you" — a still diamond, never a pulse
+   (no-flash law) — and ink for what is settled. The diamond and the row
+   rules (.waiting-chip-mark, .waiting-row*) are shared with the platform
+   bands in Waiting.css. */
+
+/* ── the bell's own mark ──────────────────────────────────────────────── */
+
+.ntray-wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 8px;
+  margin-right: 2px;
+  border-right: var(--border-width-thin) solid var(--signal-dim);
+  color: var(--signal);
+}
+.ntray-wait-n {
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.ntray-wait.is-unread { color: var(--alert); border-right-color: var(--alert-dim); }
+.ntray-wait.is-unread .waiting-chip-mark { background: var(--alert); }
+
+/* the CMO's MANDATE while it is active, beside the bell: obvious at a glance
+   (ruling, 2026-10-24) — the alert colour, its days left, WITHDRAW one press.
+   No transition, no animation (no-flash law); gone the moment it ends. */
+.ntray-bell-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ntray-mandate-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 8px;
+  background: var(--color-void);
+  border: var(--border-width-thin) solid var(--alert);
+  color: var(--alert);
+  font-family: var(--font-data);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.ntray-mandate-k { background: none; border: none; padding: 0; color: inherit; font: inherit; letter-spacing: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+.ntray-mandate-sq {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: var(--border-width-thin) solid var(--alert);
+}
+.ntray-mandate-mark .mandate-withdraw { font-size: 13px; }
+
+/* a bell owed a decision stands in full signal, distinct from unread news */
+.ntray-bell.is-owed { border-color: var(--signal); }
+
+/* ── the section, first in the opened tray ────────────────────────────── */
+
+.ntray-wait-sec {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 55%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: var(--border-width-thin) solid var(--line);
+}
+/* signal only while a decision is owed: a standing MANDATE alone is ink */
+.ntray-wait-sec.is-owed {
+  border-bottom-color: var(--signal-dim);
+  box-shadow: inset 3px 0 0 var(--signal);
+  background: var(--signal-faint);
+}
+.ntray-wait-sec:empty { display: none; }
+
+.ntray-wait-h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+.ntray-wait-h b { font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+.ntray-wait-old { margin-left: auto; color: var(--signal-dim); }
+.ntray-wait-h.is-unread { color: var(--alert); }
+
+.ntray-wait-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.ntray-wait-gap {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--alert);
+}
+
+.ntray-sec-h {
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.ntray-mandate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* ── an arrival's toast ───────────────────────────────────────────────── */
+
+.ntray-card.is-toast.is-waiting { border-color: var(--signal-dim); border-left-color: var(--signal); }
+.ntray-card.is-waiting .ntray-card-kind { display: inline-flex; align-items: center; gap: 6px; }
+
+/* A row with a SEE IT door: the row's own press first, the door beside it. */
+.ntray-wait-rows li.has-door { display: flex; align-items: center; gap: 6px; }
+.ntray-wait-rows li.has-door .waiting-row { flex: 1 1 auto; min-width: 0; }

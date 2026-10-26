@@ -44,6 +44,9 @@ import { campaignStoreFor, formatCampaignsForBeing } from './marketing/campaign-
 import { cmoDesignation } from './marketing/cmo-designation.js';
 import { withRunLiveness } from '../../core/tasks/plan-record.js';
 import { isLaneRunning } from './team-run-live.js';
+import { readMandateRecord } from './marketing/mandate/mandate-store.js';
+import { mandateBriefingLine } from './marketing/mandate/mandate-words.js';
+import { sourcesBriefingLine } from './marketing/company-sources.js';
 
 const log = createLogger('Portal');
 
@@ -207,11 +210,17 @@ const _cmoBriefingSection = async (connection) => {
   if (!neumaId) return '';
   try {
     if (!(await cmoDesignation.holds(wallet, neumaId))) return '';
-    const [campaigns, queue, leads] = await Promise.all([
+    const [campaigns, queue, leads, mandateRecord, sourcesLine] = await Promise.all([
       campaignStoreFor(wallet).then((bench) => bench.load()),
       houseEntries(wallet),
       leadLedgerFor(wallet).then((ledger) => ledger.load()),
+      // THE MANDATE rides as ONE line; its whole guidance is mandate_read (load on demand).
+      readMandateRecord(wallet).catch(() => null),
+      // So do the COMPANY SOURCES: counts only; the reading is company_updates.
+      sourcesBriefingLine(wallet, neumaId).catch(() => ''),
     ]);
+    const mandateLine = mandateRecord?.current?.laneId === neumaId || mandateRecord?.past?.[0]?.laneId === neumaId
+      ? mandateBriefingLine(mandateRecord) : '';
     // The coming 7 days: live POSTS (drafts + approved) with a schedule
     // inside the week, plus the count of unscheduled post drafts still
     // awaiting the operator's decision. REPLIES are counted apart (Founder
@@ -240,6 +249,10 @@ const _cmoBriefingSection = async (connection) => {
     return [
       '## CMO office',
       'You hold the CMO office — the house defers marketing to you; feed the other teams what they need.',
+      'THE BOARD: lay your operator\'s MARKETING board out for what they need to see for each company (board_read, marketing/board-arrange); the panels they pinned are theirs.',
+      'COMPANY LINKS: propose a company\'s site and links with marketing/company-links; your operator approves each change.',
+      ...(mandateLine ? [mandateLine] : []),
+      ...(sourcesLine ? [sourcesLine] : []),
       '',
       '### Campaign bench',
       formatCampaignsForBeing(campaigns),

@@ -22,6 +22,8 @@
 // Pure throughout. Locating a kit on disk is kit-locate.js; reading it is
 // brand-tokens.js.
 
+import { reposOf, repoRefusals } from './company-repos.js';
+
 /** The colour roles a kit may declare. `bg`, `ink` and `accent` are required
  *  by `tokenRefusals` — every template rests on them. The rest are optional and
  *  a renderer that wants one must tolerate its absence. */
@@ -183,7 +185,8 @@ export const ownerRefusals = (kit) => {
 // sits in the house's tree (`parentId` — a core company heads its
 // subsidiaries; an unrelated client is its own top-level company), its site,
 // and its legal entity when it has one. Every field is optional, so every kit
-// on disk is a valid top-level company with nothing recorded yet.
+// on disk is a valid top-level company with nothing recorded yet. `repos`
+// (2026-10-24) lists the code it is built from (company-repos.js).
 
 const KIT_ID = /^[a-z][a-z0-9-]{0,39}$/;
 const httpUrl = (v) => typeof v === 'string' && /^https?:\/\/[^\s]+$/i.test(v) && v.length <= 300;
@@ -194,7 +197,7 @@ const shortText = (v, max = 120) => typeof v === 'string' && v.trim().length > 0
  * @param {object} kit
  * @param {string} brand - the kit's id (its directory name)
  * @returns {{id: string, name: string, parentId: ?string, site: {url: ?string, links: string[]},
- *   legalEntity: ?{name: string, jurisdiction: ?string}}}
+ *   legalEntity: ?{name: string, jurisdiction: ?string}, repos: Array<{path: ?string, remote: ?string, role: string}>}}
  */
 export const companyOf = (kit, brand) => {
   const block = kit?.company && typeof kit.company === 'object' ? kit.company : {};
@@ -210,6 +213,7 @@ export const companyOf = (kit, brand) => {
     legalEntity: legal && shortText(legal.name)
       ? Object.freeze({ name: legal.name.trim(), jurisdiction: shortText(legal.jurisdiction) ? legal.jurisdiction.trim() : null })
       : null,
+    repos: reposOf(block),
   });
 };
 
@@ -225,7 +229,7 @@ export const companyRefusals = (block, brand) => {
   if (block === undefined || block === null) return [];
   if (typeof block !== 'object' || Array.isArray(block)) return ['company must be an object'];
   const out = [];
-  const allowed = ['parentId', 'site', 'legalEntity'];
+  const allowed = ['parentId', 'site', 'legalEntity', 'repos'];
   for (const key of Object.keys(block)) if (!allowed.includes(key)) out.push(`company.${key} is not a company field (${allowed.join(', ')})`);
   if (block.parentId !== undefined && block.parentId !== null) {
     if (!KIT_ID.test(String(block.parentId))) out.push(`company.parentId "${block.parentId}" is not a company id`);
@@ -243,5 +247,6 @@ export const companyRefusals = (block, brand) => {
     if (typeof legal !== 'object' || Array.isArray(legal) || !shortText(legal.name)) out.push('company.legalEntity needs a name');
     else if (legal.jurisdiction !== undefined && legal.jurisdiction !== null && !shortText(legal.jurisdiction)) out.push('company.legalEntity.jurisdiction must be short text');
   }
+  out.push(...repoRefusals(block.repos));
   return out;
 };

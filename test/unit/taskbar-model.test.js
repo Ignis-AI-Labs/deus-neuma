@@ -12,7 +12,7 @@ import {
 const app = (label, extra = {}) => ({ label, ...extra });
 const ENTRIES = [
   ['chat', app('STREAM')], ['chats', app('CHATS')], ['files', app('FILES')], ['terminal', app('TERMINAL')],
-  ['house', app('HOUSE')], ['voice', app('VOICE')], ['x', app('X')], ['wallet', app('WALLET')],
+  ['house', app('HOUSE')], ['voice', app('VOICE')], ['marketing', app('MARKETING')], ['wallet', app('WALLET')],
   ['substrate', app('SUBSTRATE')], ['settings', app('SETTINGS')], ['newthing', app('NEW THING')],
 ];
 const IDS = ENTRIES.map(([id]) => id);
@@ -72,5 +72,10 @@ describe('the bar', () => {
     expect(p.edge).toBe(DEFAULT_PREFS.edge);
     expect(normalizePrefs(null, IDS).pins).toEqual(DEFAULT_PREFS.pins.filter((id) => IDS.includes(id)));
     expect(normalizePrefs({ pins: [], labels: true, edge: 'left' }, IDS)).toMatchObject({ pins: [], labels: true, edge: 'left' });
+  });
+
+  test('a pin on a window MARKETING took in pins MARKETING, once, where it stood', () => {
+    expect(normalizePrefs({ pins: ['x', 'chat', 'tiktok', 'brandKits', 'marketing'] }, IDS).pins).toEqual(['marketing', 'chat']);
+    expect(normalizePrefs({ pins: ['files', 'socialCheck'] }, IDS).pins).toEqual(['files', 'marketing']);
   });
 });

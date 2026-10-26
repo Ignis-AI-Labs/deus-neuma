@@ -24,6 +24,7 @@ export default Object.freeze({
     refinement: 'NITE',
     security: 'セキュリティ',
     legal: '法務',
+    treasury: '財務',
     settings: '設定',
     sheet: '記録',
     skills: 'スキル',

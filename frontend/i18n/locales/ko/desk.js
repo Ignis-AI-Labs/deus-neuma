@@ -24,6 +24,7 @@ export default Object.freeze({
     refinement: 'NITE',
     security: '보안',
     legal: '법무',
+    treasury: '재무',
     settings: '설정',
     sheet: '기록',
     skills: '스킬',

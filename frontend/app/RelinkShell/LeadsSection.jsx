@@ -1,177 +1,68 @@
-// LeadsSection — the witness's view of the house lead ledger inside Settings.
+// LeadsSection — the house lead ledger, as MARKETING's LEADS shows it
+// (show-dont-tell-audit.md finding 5): the funnel first (LeadFunnel — every
+// stage's count a door that narrows the list), then one row per lead
+// (LeadRow — stage mark, who, how to reach them, holder by name, last note;
+// the acts behind ⋯; a lead no one holds one press to the CMO). The ledger's
+// law stands: every change lands as one recorded touch on the lead's
+// append-only history, the same law the beings' lead acts follow. The funnel
+// is recorded, not policed.
 //
-// The return current of the outreach machine: every prospect the house is
-// working, grouped by where it stands. Every change the witness makes here
-// lands as one recorded touch on the lead's append-only history — same law
-// the beings' lead tools follow. The funnel is recorded, not policed.
+// impure — the ledger, the channel board and the roster are read here.
 
 import { useEffect, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
-import { Select } from './Select.jsx';
-import {
-  getLeadBoard, captureLead, touchLead, removeLead,
-} from '../../services/leads-client.js';
+import { getLeadBoard } from '../../services/leads-client.js';
+import { getChannelBoard, getRosterForBinding } from '../../services/social-channels-client.js';
+import { useCmoSeat } from './marketing/use-cmo-seat.js';
+import { LeadFunnel } from './leads/LeadFunnel.jsx';
+import { LeadRow } from './leads/LeadRow.jsx';
+import { LeadComposer } from './leads/LeadComposer.jsx';
+import { LEAD_STAGES, funnelOf, leadsAt, leadHandTo } from './leads/lead-view.js';
+import './leads/leads.css';
 
-const LANES = ['x', 'telegram', 'discord', 'mastodon', 'bluesky', 'facebook', 'linkedin', 'email', 'other'];
-
-const LeadCard = ({ lead, statuses, onChanged }) => {
-  const [status, setStatus] = useState(lead.status);
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-
-  // The select tracks the LIVE lead — a server-side move (a neuma's touch,
-  // another window) must never be silently overwritten from a stale dropdown.
-  useEffect(() => setStatus(lead.status), [lead.id, lead.status]);
-
-  const act = async (fn) => {
-    uiSound('toggle');
-    setBusy(true);
-    setError(null);
-    try {
-      await fn();
-      setNote('');
-      await onChanged();
-    } catch (e) {
-      setError(e.message);
-    }
-    setBusy(false);
-  };
-
-  const lastNote = [...(lead.touches || [])].reverse().find((t) => t.note)?.note;
-
-  return (
-    <div className="settings-realm">
-      <div className="settings-row">
-        <span className="settings-k">{lead.name || lead.contact}</span>
-        <span className="settings-v">
-          {(lead.status || '').toUpperCase()}
-          <span className="settings-sec-tags">
-            {lead.channelId !== 'other' ? <span className="settings-tag-dim">via {lead.channelId}</span> : null}
-            {lead.ownerNeumaId
-              ? <span className="settings-tag-dim">HELD BY {lead.ownerNeumaId}</span>
-              : <span className="settings-tag-dim">unheld</span>}
-          </span>
-        </span>
-      </div>
-      {lead.contact && lead.name ? <p className="settings-note">{lead.contact}</p> : null}
-      {lastNote ? <p className="settings-note">{lastNote}</p> : null}
-      <div className="settings-control">
-        <Select
-          fill
-          ariaLabel="Lead status"
-          value={status}
-          onChange={setStatus}
-          disabled={busy}
-          options={statuses.map((s) => ({ value: s, label: s }))}
-        />
-        <input className="settings-input" placeholder="What happened? (the touch the record keeps)"
-          value={note} onChange={(e) => setNote(e.target.value)} disabled={busy} />
-        <button type="button" className="settings-set" disabled={busy || (status === lead.status && !note.trim())}
-          onClick={() => act(() => touchLead(lead.id, {
-            ...(status !== lead.status ? { status } : {}),
-            ...(note.trim() ? { note: note.trim() } : {}),
-          }))}>
-          TOUCH
-        </button>
-        <button type="button" className="settings-set is-danger" disabled={busy}
-          onClick={() => {
-            // A removal is permanent — the whole touch history goes with it.
-            if (window.confirm(`Remove lead "${lead.name || lead.contact}"? This drops it and its history from the ledger.`)) {
-              act(() => removeLead(lead.id));
-            }
-          }}>
-          REMOVE
-        </button>
-      </div>
-      {error ? <p className="settings-err">{error}</p> : null}
-    </div>
-  );
-};
-
-// Capture a lead by hand — the beings capture through their lead_add tool.
-const LeadComposer = ({ onChanged }) => {
-  const [draft, setDraft] = useState({ name: '', contact: '', channelId: 'other', source: '' });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-
-  const capture = async () => {
-    uiSound('toggle');
-    setBusy(true);
-    setError(null);
-    try {
-      await captureLead(draft);
-      setDraft({ name: '', contact: '', channelId: 'other', source: '' });
-      await onChanged();
-    } catch (e) {
-      setError(e.message);
-    }
-    setBusy(false);
-  };
-
-  return (
-    <div className="settings-realm">
-      <div className="settings-control">
-        <input className="settings-input" placeholder="Who they are"
-          value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} disabled={busy} />
-        <input className="settings-input" placeholder="How to reach them"
-          value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} disabled={busy} />
-      </div>
-      <div className="settings-control">
-        <Select
-          fill
-          ariaLabel="Lead lane"
-          value={draft.channelId}
-          onChange={(v) => setDraft({ ...draft, channelId: v })}
-          disabled={busy}
-          options={LANES.map((l) => ({ value: l, label: l }))}
-        />
-        <input className="settings-input" placeholder="Where this lead came from"
-          value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} disabled={busy} />
-        <button type="button" className="settings-set"
-          disabled={busy || (!draft.name.trim() && !draft.contact.trim())}
-          onClick={capture}>
-          CAPTURE
-        </button>
-      </div>
-      {error ? <p className="settings-err">{error}</p> : null}
-    </div>
-  );
-};
+// Where a lead can surface: every platform the catalog carries (read from
+// the channel board, never a hand-kept copy), plus the email lane and other.
+const lanesOf = (channels) => [...channels.map((c) => ({ value: c.id, label: c.name || c.id })), { value: 'email', label: 'email' }, { value: 'other', label: 'other' }];
 
 export const LeadsSection = () => {
   const [leads, setLeads] = useState(null);
-  const [statuses, setStatuses] = useState([]);
+  const [statuses, setStatuses] = useState(LEAD_STAGES);
+  const [lanes, setLanes] = useState(() => lanesOf([]));
+  const [roster, setRoster] = useState([]);
+  const [stage, setStage] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const seat = useCmoSeat();
 
   const refresh = async () => {
     const board = await getLeadBoard();
     setLeads(board.leads);
-    setStatuses(board.statuses);
+    if (board.statuses?.length) setStatuses(board.statuses);
   };
 
   useEffect(() => {
     refresh().catch((e) => setLoadError(e.message));
+    getChannelBoard().then((b) => setLanes(lanesOf(b.channels || []))).catch(() => {});
+    getRosterForBinding().then(setRoster).catch(() => {});
   }, []);
 
-  return (
-    <section className="settings-sec">
-      <div className="label-data settings-h">LEADS</div>
-      <p className="settings-note">
-        The house lead ledger — every prospect being worked, from first
-        sighting to won or lost. Your neuma capture and move leads through
-        their lead tools; every change lands on the lead&apos;s permanent touch
-        history under whoever made it.
-      </p>
+  const narrow = (next) => { uiSound('toggle'); setStage(next); };
+  const shown = leads ? leadsAt(leads, stage) : [];
 
+  return (
+    <section className="settings-sec leads">
       {loadError ? <p className="settings-err">{loadError}</p> : null}
       {!leads && !loadError ? <p className="settings-note">Reading the ledger…</p> : null}
-      {leads?.length === 0 ? <p className="settings-note">No leads yet — the field is open.</p> : null}
-
-      {leads?.map((lead) => (
-        <LeadCard key={lead.id} lead={lead} statuses={statuses} onChanged={refresh} />
-      ))}
-      <LeadComposer onChanged={refresh} />
+      {leads ? <LeadFunnel funnel={funnelOf(leads, statuses)} stage={stage} onStage={narrow} /> : null}
+      {leads?.length === 0 ? <p className="settings-note">NO LEADS</p> : null}
+      {shown.length ? (
+        <ul className="lead-rows" aria-label="leads">
+          {shown.map((lead) => (
+            <LeadRow key={lead.id} lead={lead} stages={statuses} roster={roster} onChanged={refresh}
+              handTo={leadHandTo(lead, seat.cmo, roster)} />
+          ))}
+        </ul>
+      ) : null}
+      <LeadComposer lanes={lanes} onChanged={refresh} />
     </section>
   );
 };

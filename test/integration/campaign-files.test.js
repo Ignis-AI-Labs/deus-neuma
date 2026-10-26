@@ -26,7 +26,7 @@ let campaignId;
 beforeEach(async () => {
   dir = await createTempDir('campaign-files');
   store = createCampaignStore({ path: path.join(dir, 'campaigns.json') });
-  const c = await store.add({ name: 'Umbrae Market Depth', brand: 'Umbrae', channelId: 'x' });
+  const c = await store.add({ name: 'Umbrae Market Depth', companyId: 'umbrae' });
   campaignId = c.id;
 });
 

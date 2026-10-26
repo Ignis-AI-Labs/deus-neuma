@@ -32,6 +32,22 @@ export const agentTerminalEnvironment = (env, platform) => {
   return result;
 };
 
+// The backend's own secrets: what opens every being's files, what signs the
+// operator's sessions, and the keys the backend loaded for itself. A process the
+// backend starts for the operator inherits none of them.
+export const BACKEND_SECRET_KEYS = Object.freeze([
+  'AUTH_SECRET', 'DNA_ENCRYPTION_KEY', 'DNA_ENCRYPTION_KEY_PREVIOUS', 'DEPLOYER_PRIVATE_KEY',
+  'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'XAI_API_KEY', 'LLM_API_KEY', 'ELEVENLABS_API_KEY',
+  'ETH_RPC_URL', 'BASE_MAINNET_RPC_URL',
+]);
+
+/** The operator's own environment minus the backend's secrets. Pure; the input is never mutated. */
+export const withoutBackendSecrets = (env) => {
+  const result = { ...env };
+  for (const key of BACKEND_SECRET_KEYS) delete result[key];
+  return result;
+};
+
 // A helper that fetches (npx, uv sync, a model download) needs the operator's
 // proxy and trust settings; none of them is a backend secret.
 const NETWORK_KEYS = Object.freeze(new Set([

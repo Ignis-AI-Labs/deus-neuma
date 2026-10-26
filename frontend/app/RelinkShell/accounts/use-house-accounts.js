@@ -32,7 +32,9 @@ export const loadHouseAccounts = async ({ force = false } = {}) => {
 };
 
 /**
- * impure — {apps, accounts, companies, error, refresh}
+ * impure — {apps, accounts, companies, known, error, refresh}; `known` once
+ * a read has answered, or failed with its error (an empty house and an
+ * unread one are not the same).
  */
 export const useHouseAccounts = () => {
   const [snap, setSnap] = useState(state);
@@ -41,5 +43,5 @@ export const useHouseAccounts = () => {
     loadHouseAccounts().catch(() => null);
     return () => { listeners.delete(setSnap); };
   }, []);
-  return { ...(snap.data || EMPTY), error: snap.error, refresh: () => loadHouseAccounts({ force: true }) };
+  return { ...(snap.data || EMPTY), known: Boolean(snap.data || snap.error), error: snap.error, refresh: () => loadHouseAccounts({ force: true }) };
 };

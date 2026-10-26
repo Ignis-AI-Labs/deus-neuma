@@ -31,7 +31,25 @@ const shownWords = (page) => page.evaluate(() => Array.from(document.querySelect
 test('a key made for you: choose a backup password, the file restores the same words', async ({ page }) => {
   await page.goto(`http://localhost:${ctx.fport}/?noboot=1`);
   await render(page, null);
+
+  // hidden by default: numbers and dots only, no word anywhere in the page text
+  await expect(page.locator('.mnemonic-word')).toHaveCount(24);
+  const hiddenText = await page.locator('#proof-panel').innerText();
+  for (const word of PHRASE.split(' ')) expect(hiddenText).not.toMatch(new RegExp(`\\b${word}\\b`));
+  await expect(page.locator('#wp-reveal')).toHaveText('Show the words');
+  await page.locator('#wp-reveal').click();
   expect(await shownWords(page)).toBe(PHRASE);
+  await page.locator('#wp-reveal').click();
+  expect(await shownWords(page)).not.toContain(PHRASE.split(' ')[0]);
+  await page.locator('#wp-reveal').click();
+  expect(await shownWords(page)).toBe(PHRASE);
+
+  // the whole screen fits a small laptop: Continue is reachable inside a 1366x600 window
+  await page.setViewportSize({ width: 1366, height: 600 });
+  await page.evaluate(() => document.querySelector('#proof-panel').classList.add('wallet-picker-panel'));
+  const fits = await page.evaluate(() => { const p = document.querySelector('#proof-panel'); return p.getBoundingClientRect().height <= window.innerHeight; });
+  expect(fits).toBe(true);
+  await page.locator('#wp-continue').scrollIntoViewIfNeeded();
   await expect(page.locator('#wp-later')).toBeVisible();
 
   // refused: too short, then mismatched — nothing downloads

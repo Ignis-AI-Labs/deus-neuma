@@ -6,6 +6,10 @@
 // (update-bar.cjs → UpdateBar.jsx) with WHAT'S NEW; the desk itself is never
 // interrupted — the restart that installs happens only on the person's press.
 //
+// OFF UNTIL THE PERSON TURNS IT ON (Design note, 2026-10-25: […]). The bargain above holds only once the update check
+// is switched on in Settings → Security → Connections (electron/connections.cjs); until then the
+// timers ask nothing, and the person's own Check now (checkNow) is the one request made.
+//
 // THE FEED IS THE DEUS NEUMA SITE, AND IT IS PUBLIC (Design note, 2026-10-03: […]; the licence
 // gate was removed the same day — […]). The app
 // asks HTTPS deusneuma.ai only, with no credential of any kind; the feed is
@@ -49,6 +53,8 @@ const {
   unfitForPlatform,
 } = require('./release-signature.cjs');
 const { notesText } = require('./update-notes.cjs');
+const path = require('path');
+const connections = require('./connections.cjs');
 
 const FEED_URL = 'https://deusneuma.ai/updates/';
 const DOWNLOADS_PAGE = 'https://deusneuma.ai/download/';
@@ -156,7 +162,7 @@ const trayUpdateEntry = ({ form, ready, availableVersion }) => {
 
 // Module-level live state — main.cjs is a singleton process, and the tray menu
 // rebuild needs to reach it without main holding an updater reference.
-let live = null; // { form, updater, shell } after a successful init
+let live = null; // { form, updater, shell, check } after a successful init
 // notes: the verified offer's releaseNotes — the SIGNED feed's text, never the bare offer's
 let state = { form: 'dev', ready: false, availableVersion: null, notes: null };
 let timers = [];
@@ -165,6 +171,17 @@ let timers = [];
 const updateOffer = () => ({ ...state });
 
 // impure — the one restart that installs: only on the person's press (tray, or the desk's bar)
+/**
+ * The person's own "Check now": asked even while the update check is switched off, because the
+ * person asked. impure — one feed request.
+ * @returns {Promise<{ok: boolean, version?: string|null, reason?: string}>}
+ */
+const checkNow = async () => {
+  if (!live) return { ok: false, reason: 'this build does not update itself' };
+  const checked = await live.check();
+  return { ok: checked, version: state.availableVersion };
+};
+
 const restartToUpdate = () => {
   if (!live || !state.ready) return false;
   live.updater.quitAndInstall(false, true);
@@ -348,8 +365,13 @@ const init = ({
     log.warn(`[neuma] auto-update unavailable: ${error.message}`);
     return { form };
   }
-  live = { form, updater, shell };
-  configureUpdater(updater, form, feedUrl);
+  try {
+    configureUpdater(updater, form, feedUrl);
+  } catch (error) {
+    // A malformed NEUMA_UPDATE_FEED_URL threw here and quit the whole app at launch.
+    log.warn(`[neuma] update feed unusable — no update checks: ${error.message}`);
+    return { form };
+  }
   // Chromium's stack, as electron-updater's own requests use (system proxy included); no cookies.
   const { net } = require('electron');
   const { check } = wireUpdater({
@@ -365,9 +387,16 @@ const init = ({
     platform,
   });
 
+  live = { form, updater, shell, check };
+
+  // OFF UNTIL TURNED ON (CONNECTIONS, Design note, 2026-10-25: the timers ask the person's switch at every
+  // tick, so turning it on or off in Settings takes effect without a restart, and nothing is asked
+  // of the site while it is off.
+  const dataRoot = connections.dataRootFor({ env, isPackaged: app.isPackaged, home: app.getPath('home'), repoRoot: path.join(__dirname, '..') });
+  const scheduled = () => (connections.isOn('update-check', { env, dataRoot }) ? check() : false);
   timers = [
-    setTimeout(check, FIRST_CHECK_DELAY_MS),
-    setInterval(check, CHECK_INTERVAL_MS),
+    setTimeout(scheduled, FIRST_CHECK_DELAY_MS),
+    setInterval(scheduled, CHECK_INTERVAL_MS),
   ];
   timers.forEach((t) => t.unref?.());
 
@@ -394,6 +423,7 @@ module.exports = {
   trayUpdateEntry,
   trayItems,
   updateOffer,
+  checkNow,
   restartToUpdate,
   siteVerdict,
   wireUpdater,

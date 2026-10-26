@@ -56,7 +56,7 @@
 /* What a row means: a sentence, so the voice register, small and quiet. */
 .tt-help {
   font-family: var(--font-voice);
-  font-size: var(--text-xs);
+  font-size: var(--text-label);
   line-height: 1.45;
   color: var(--color-text-tertiary);
   overflow-wrap: anywhere;
@@ -72,7 +72,7 @@
 
 .tt-account {
   font-family: var(--font-data);
-  font-size: var(--text-xs);
+  font-size: var(--text-label);
   color: var(--color-text-secondary);
 }
 
@@ -87,7 +87,7 @@
 .tt-suggest,
 .tt-label {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   color: var(--color-text-tertiary);
   overflow-wrap: anywhere;
@@ -106,7 +106,7 @@
 /* The AI label is a fact, not a control: no frame, no press. */
 .tt-fixed {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--signal);
 }
@@ -117,7 +117,7 @@
 .tt-blocker {
   margin: 0;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   color: var(--color-text-secondary);
 }

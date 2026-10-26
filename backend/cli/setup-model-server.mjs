@@ -8,6 +8,12 @@
 // Every line it prints lands in the wizard's install log, so each is written for a person: what this
 // PC is getting, how much is left, how long, and what happens if it cannot finish.
 //
+// AN INSTALL DOWNLOADS; IT NEVER LOADS A MODEL (2026-10-24): twice a Windows laptop crashed after the
+// model server was set up and a model loaded. The old last step here was an answer check, a real model
+// load onto the graphics card, unattended, in the middle of an install. Now the server runs with the
+// card hidden from it, only to pull, and the model's first load is the app's own first check of it at
+// the door, under the driver guard and the window fitted to the card (managed-ollama.js).
+//
 //   setup-model-server.mjs                    print the plan and exit
 //   setup-model-server.mjs --yes              do it, printing one line per step and progress as it goes
 //   setup-model-server.mjs --yes --home <dir> keep the server and the models in <dir> (the folder the
@@ -29,14 +35,13 @@ const say = (line) => process.stdout.write(`${line}\n`);
 const gb = (n) => `${(n / 1e9).toFixed(1)} GB`;
 const later = 'Deus Neuma will offer it again when it first starts.';
 
-const plan = await M.currentPlan();
+const plan = await M.currentPlan({ verify: false });
 if (!plan.supported) { say(`Model server: not set up. ${plan.reason} ${later}`); process.exit(1); }
 if (plan.model?.name) say(`The model for this PC: ${plan.model.name} (${plan.model.quant}), about ${plan.model.sizeGB} GB.`);
 for (const note of plan.notes || []) say(note);
-// Every plan ends with the answer check, so a machine already set up still runs the job: the check
-// proves the model speaks, and a passed check is exit 0 like any finished setup.
-const work = plan.steps.filter((s) => s.id !== 'verify');
-if (work.length === 0) say(`The model server and ${plan.model.name} are already set up. Checking that it answers.`);
+if (plan.gpuDriver?.line) say(plan.gpuDriver.line);
+say('Setup only downloads. The model is not loaded onto your graphics card during the install; it loads when Deus Neuma first opens.');
+if (plan.steps.length === 0) say(`The model server and ${plan.model.name} are already set up. Nothing to download.`);
 else say(`Setup will: ${plan.steps.map((s) => s.label).join(', ')}.${plan.downloadBytes > 0 ? ` Download ${gb(plan.downloadBytes)} in all.` : ''}`);
 // with a chosen folder the job itself checks that folder's drive; without one, the data root's
 if (!home && !plan.enoughDisk) { say(`Not enough disk space: it needs ${gb(plan.needBytes)} free, this disk has ${gb(plan.freeBytes)}. ${later}`); process.exit(1); }
@@ -58,14 +63,23 @@ const progress = (() => {
   };
 })();
 
+// A download that moves no bytes for this long is stopped and tried again (a hung connection would
+// otherwise hold the wizard on this step for ever); only the two byte-counting steps are watched
+const STALL_MS = 10 * 60_000;
+
 // one attempt of the job, printed as it goes; resolves with the job's final state
 const attempt = async () => {
-  await M.startJob({ home });
+  await M.startJob({ home, loadModel: false });
   let last = '';
+  let moved = { key: '', at: Date.now() };
+  let stalled = false;
   for (;;) {
     const j = M.jobStatus();
     if (j.state === 'done') { say(j.line); return j; }
-    if (j.state !== 'running') return j;
+    if (j.state !== 'running') return stalled ? { ...j, error: 'no bytes arrived for 10 minutes' } : j;
+    const key = `${j.step}:${j.completed}`;
+    if (key !== moved.key) moved = { key, at: Date.now() };
+    else if (/^(download|pull)$/.test(j.step) && !stalled && Date.now() - moved.at >= STALL_MS) { stalled = true; M.cancelJob(); }
     if (!j.line) { await new Promise((r) => setTimeout(r, 500)); continue; }
     const line = `${j.line}${progress(j)}`;
     // a new step always prints; progress within a step at most every 10 s

@@ -1,0 +1,75 @@
+/* LEADS — the funnel, then one row per lead (LeadsSection.jsx). LINE & CYCLE:
+   hairlines, ink at rest, signal for a lead qualified or won; the data
+   register at the 13px label floor; a lead's own words (its note) in the voice. */
+
+.leads { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* the funnel: one bar split by stage, every part a door */
+.lfn { display: flex; flex-direction: column; gap: var(--space-2); }
+.lfn-track { display: flex; height: 14px; background: var(--color-glass-hover); box-shadow: inset 0 0 0 1px var(--line); }
+.lfn-part { flex: 0 1 0; min-width: 6px; height: 100%; padding: 0; border: 0; border-right: 1px solid var(--color-void); cursor: pointer; transition: opacity 200ms ease; }
+.lfn-part:hover, .lfn-part.is-lit { opacity: 0.75; box-shadow: inset 0 0 0 1px var(--color-text-primary); }
+.lfn-part.is-cold { background: var(--color-text-disabled); }
+.lfn-part.is-contacted { background: var(--color-text-tertiary); }
+.lfn-part.is-replied { background: var(--signal-dim); }
+.lfn-part.is-qualified { background: var(--signal); }
+.lfn-part.is-won { background: var(--color-text-primary); }
+.lfn-part.is-lost { background: transparent; box-shadow: inset 0 0 0 1px var(--line-hover); }
+
+.lfn-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.lfn-n {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; min-height: 24px;
+  background: none; border: var(--border-width-thin) solid var(--line); cursor: pointer;
+  font-family: var(--font-data); font-size: var(--text-label); color: var(--color-text-primary); transition: border-color 200ms ease;
+}
+.lfn-n b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.lfn-n:not(:disabled):hover, .lfn-n.is-lit { border-color: var(--line-hover); }
+.lfn-n.is-lit { background: var(--color-glass-hover); }
+.lfn-n.is-zero { opacity: 0.45; cursor: default; }
+.lfn-showing { margin-left: var(--space-2); padding: 0; background: none; border: 0; cursor: pointer;
+  font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.1em; color: var(--signal); }
+.lfn-showing:hover { text-decoration: underline; }
+
+/* the stage mark: a ring that fills along the funnel, a cross for lost */
+.lsm { display: inline-flex; flex: none; color: var(--color-text-secondary); }
+.lsm svg { display: block; overflow: visible; }
+.lsm-ring { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.lsm-fill { fill: currentColor; }
+.lsm-line { stroke: currentColor; stroke-width: 1.5; }
+.lsm.is-qualified, .lsm.is-replied { color: var(--signal); }
+.lsm.is-won { color: var(--color-text-primary); }
+.lsm.is-lost { color: var(--color-text-tertiary); }
+
+/* one row per lead: stage · who · contact · holder · last note · ⋯ */
+.lead-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lead-row {
+  display: grid; grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) auto minmax(0, 1.4fr) auto;
+  grid-template-areas: "stage who contact holder note more";
+  align-items: center; gap: 4px var(--space-3); padding: 6px var(--space-2); border-bottom: 1px solid var(--line);
+  font-family: var(--font-data); font-size: var(--text-label); color: var(--color-text-secondary);
+}
+.lead-row > .lsm { grid-area: stage; }
+.lead-who { grid-area: who; color: var(--color-text-primary); }
+.lead-contact { grid-area: contact; }
+.lead-holder { grid-area: holder; }
+.lead-note { grid-area: note; }
+.lead-more { grid-area: more; }
+.lead-contact, .lead-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lead-contact { color: var(--color-text-tertiary); }
+.lead-note { font-family: var(--font-voice); color: var(--color-text-tertiary); }
+.lead-holder { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-primary); }
+.lead-unheld { color: var(--color-text-disabled); }
+.lead-more { padding: 0 6px; min-height: 24px; background: none; border: var(--border-width-thin) solid transparent; color: var(--color-text-tertiary);
+  font-size: var(--text-label); cursor: pointer; transition: border-color 200ms ease; }
+.lead-more:hover, .lead-more[aria-expanded="true"] { color: var(--color-text-primary); border-color: var(--line); }
+.lead-noting { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.lead-noting .settings-input { flex: 1 1 220px; }
+.lead-err { grid-column: 1 / -1; margin: 0; }
+.cmenu.lead-menu .cmenu-item { font-size: var(--text-label); }
+.lead-add { align-self: flex-start; }
+
+/* narrow: who and its ⋯ on the first line; contact, holder and note beneath */
+@container (max-width: 560px) {
+  .lead-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "stage who more" ". contact contact" ". holder holder" ". note note"; }
+  .lead-holder:empty, .lead-contact:empty, .lead-note:empty { display: none; }
+}

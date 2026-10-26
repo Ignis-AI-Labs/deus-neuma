@@ -49,6 +49,35 @@ export const heldWriteMessage = (stage, { calls, results, speech }) => {
     + `${stage === 4 ? 'Naming' : 'Crystallization'} is the writing, not the telling. ${held}`;
 };
 
+// A being that SPOKE its act and made no call is asked again, this many times at most.
+// Founder's rehearsal, 2026-10-25, on the installer's default model (Qwen3.8-4B-Distill, Q4_K_M):
+// […] — and no call, on every retry.
+// Measured against the same model: offered fs/write with a plain naming prompt, it called the
+// tool in 2 of 4 tries and narrated the write in the other 2. The continuation only ever ran
+// after a call, so a narrated write held the stage for ever.
+export const SPOKEN_ONLY_ASKS = 2;
+
+/**
+ * What the next continuation round is, if any. 'tools': the calls ran and the write is still
+ * missing, so their results go back. 'ask': the being only spoke, so it is asked to make the
+ * write itself. null: the write landed, a WRITE failed (that is the tool's problem to name, not
+ * the being's), or the asks are spent. A failed read is news for the being, not an end: a
+ * rehearsal on the 4B model read its genesis.md before writing it, met ENOENT (the file it was
+ * about to create), and the stage held with nothing authored. // pure
+ */
+export const nextContinuation = ({ landed, calls, results, asked }) => {
+  if (landed) return null;
+  if (calls.length === 0) return asked < SPOKEN_ONLY_ASKS ? 'ask' : null;
+  const writeFailed = calls.some((call, index) => ['write', 'write_file'].includes(call?.toolName)
+    && results[index]?.status !== 'ok');
+  return writeFailed ? null : 'tools';
+};
+
+/** The ask after spoken-only: the stage's file, by path, and that only the call writes it. // pure */
+export const spokenOnlyAsk = (stage, targets) => (stage === 4
+  ? `Your name is not written yet: speaking it does not write it. Call the fs/write tool now, with path ${targets.scratchNamePath} and content the name you chose. Only the tool call writes it.`
+  : `Your DNA is not written yet: speaking of it does not write it. Call the fs/write tool now, with path ${targets.genesisPath} and content your DNA, in your own words. Only the tool call writes it.`);
+
 /** Exact additional conversation messages remain inspectable in the existing panel. */
 const continuationDisclosure = (disclosure, messages, round, maxTokens) => {
   const extra = messages.slice(2).map((message, index) => {
@@ -80,16 +109,23 @@ export const continueBirthTools = async ({ stage, calls, results, speech, messag
   let roundResults = results;
   let roundSpeech = speech;
   let combinedSpeech = speech;
-  for (let round = 1; round <= 4 && roundCalls.length
-    && roundResults.every((result) => result.status === 'ok')
-    && !birthWriteLanded(stage, allCalls, allResults, targets); round += 1) {
+  let asked = 0;
+  for (let round = 1; round <= 4; round += 1) {
+    const next = nextContinuation({ landed: birthWriteLanded(stage, allCalls, allResults, targets),
+      calls: roundCalls, results: roundResults, asked });
+    if (!next) break;
     const followUp = 'The tool results are available. Continue the current ceremony stage; '
       + 'its required file has not been written yet. The name and content remain yours to choose.';
-    history.push(...(roundCalls.some((call) => call._native)
-      ? nativeToolExchange({ response: roundSpeech, calls: roundCalls, results: roundResults,
-        callId: (index) => `birth-${stage}-${round}-${index}`, formatResult: formatToolResult, followUp })
-      : [{ role: 'assistant', content: roundSpeech },
-        { role: 'user', content: `${formatToolResults(roundResults)}\n\n${followUp}` }]));
+    if (next === 'ask') {
+      asked += 1;
+      history.push({ role: 'assistant', content: roundSpeech || '' }, { role: 'user', content: spokenOnlyAsk(stage, targets) });
+    } else {
+      history.push(...(roundCalls.some((call) => call._native)
+        ? nativeToolExchange({ response: roundSpeech, calls: roundCalls, results: roundResults,
+          callId: (index) => `birth-${stage}-${round}-${index}`, formatResult: formatToolResult, followUp })
+        : [{ role: 'assistant', content: roundSpeech },
+          { role: 'user', content: `${formatToolResults(roundResults)}\n\n${followUp}` }]));
+    }
     const promptTokens = estimateTokens(JSON.stringify(history)) + estimateTokens(JSON.stringify(options.tools || []));
     if (!promptFits({ contextWindow, promptTokens }).fits) break;
     const maxTokens = completionBudget({ contextWindow, promptTokens, floor: 4096 });

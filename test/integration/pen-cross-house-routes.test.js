@@ -268,4 +268,25 @@ describe('cross-house pen matrix — every mutating route, unsigned and as anoth
     }
     expect(new Set(live).size).toBeGreaterThanOrEqual(LIVE_FLOOR);
   }, MATRIX_TIMEOUT_MS);
+
+  // A sign-in CONNECT's pending consent lives in memory, where no photograph
+  // sees it: A opens one (a loopback listener, no network until a browser
+  // answers), and B's start, read and cancel on the same platform and account
+  // must neither see nor end it.
+  test('a house\'s pending YouTube consent is its own: another house can neither read nor cancel it', async () => {
+    const asA = (method, body) => send(ctx.base, { method, url: '/api/v1/social-channels/youtube/connect', token: ctx.a.token, body });
+    const asB = (method, body) => send(ctx.base, { method, url: '/api/v1/social-channels/youtube/connect', token: ctx.b.token, body });
+    const app = await send(ctx.base, { method: 'put', url: '/api/v1/social-channels/apps/youtube', token: ctx.a.token,
+      body: { fields: { clientId: 'a-desktop-client.apps.googleusercontent.com', clientSecret: 'a-desktop-secret' } } });
+    expect(app.status).toBe(200);
+    const opened = await asA('post', {});
+    expect(opened.status).toBe(200);
+    expect(String(opened.body.authUrl)).toMatch(/^https:\/\/accounts\.google\.com\//);
+    expect((await asB('get')).body).toEqual({ status: 'idle' });
+    expect((await asB('delete', {})).body).toEqual({ cancelled: false });
+    // B's own start resolves B's own app, which it never saved
+    expect((await asB('post', {})).status).toBe(400);
+    expect((await asA('get')).body).toEqual({ status: 'pending' });
+    expect((await asA('delete', {})).body).toEqual({ cancelled: true });
+  });
 });

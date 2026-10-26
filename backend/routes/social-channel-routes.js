@@ -21,17 +21,21 @@ import {
 import { channelBindings } from '../services/social/channel-bindings.js';
 import { sectorCrew } from '../services/sector-crew.js';
 import { postQueue } from '../services/social/post-queue.js';
+import { placeDraft } from '../services/social/queue-placement.js';
+import { trackLinks, bindTrackedLinks } from '../services/social/queue-links.js';
 import { publishEntry } from '../services/social/post-scheduler.js';
 import { ofHouse, isHouseEntry, queueHouseGuard } from '../services/social/queue-house.js';
 import { readServed } from '../services/house-served.js';
 import socialThreadRouter from './social-thread-routes.js';
 import socialTikTokRouter from './social-tiktok-routes.js';
+import socialRetryRouter from './social-retry-routes.js';
 import { tiktokApproval } from '../services/social/tiktok-approval.js';
 import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
 import { firstAccountId } from '../services/social/account-shape.js';
 import { readXAccount } from '../services/social/x-reader.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
+import { withLegalFlags } from '../services/marketing/draft-review.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialChannels');
@@ -99,15 +103,16 @@ router.get('/flight-test', async (req, res) => {
 router.use('/queue/:id', queueHouseGuard);
 router.use(socialThreadRouter); // PUT /queue/:id/approve-thread — the whole thread in one decision
 router.use(socialTikTokRouter); // the TikTok reads: a post's card, the account view, its pictures
+router.use(socialRetryRouter); // PUT /queue/:id/retry — TRY AGAIN: a failed post back to draft, never sent from there
 router.get('/queue', async (req, res) => {
   try {
     const [entries, served] = await Promise.all([postQueue.load(), readServed()]);
-    res.json({
-      queue: await withCardFreshness(ofHouse(served, entries, req.walletAddress), {
-        wallet: req.walletAddress,
-        onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
-      }),
+    const fresh = await withCardFreshness(ofHouse(served, entries, req.walletAddress), {
+      wallet: req.walletAddress,
+      onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
     });
+    // The claims check's LEGAL flag rides each waiting post; it flags, never holds.
+    res.json({ queue: await withLegalFlags(fresh, req.walletAddress).catch((err) => { log.warn('legal flags skipped', { error: err.message }); return fresh; }) });
   } catch (error) {
     log.error('Queue read failed', { error: error.message });
     res.status(500).json({ error: 'Failed to read the post queue' });
@@ -176,13 +181,21 @@ router.post('/queue', async (req, res) => {
   // the same field the being-tools carry; the store validates it.
   // accountId names which of the house's accounts on the platform speaks
   // (its first when unnamed); the store refuses another platform's account.
-  const { channelId, accountId, text, scheduledFor, campaignId } = req.body || {};
+  // angle and group place it in a campaign and a group (queue-placement.js).
+  const { channelId, accountId, text, scheduledFor, campaignId, angle, group } = req.body || {};
   try {
+    const placed = await placeDraft(req.walletAddress, { accountId: accountId || firstAccountId(channelId), campaignId, angle, group });
+    if (placed.error) return res.status(400).json({ error: placed.error });
+    const tracked = typeof text === 'string' && getChannel(channelId)
+      ? await trackLinks(req.walletAddress, { channelId, accountId: accountId || firstAccountId(channelId), text, campaignId: placed.campaignId, angleId: placed.angleId })
+      : { text, codes: [], note: null };
     const entry = await postQueue.add({
-      channelId, accountId, text, scheduledFor, campaignId, authorNeumaId: null, queuedBy: req.walletAddress,
+      channelId, accountId, text: tracked.text, scheduledFor, campaignId: placed.campaignId, pillar: placed.pillar,
+      angleId: placed.angleId, groupId: placed.groupId, authorNeumaId: null, queuedBy: req.walletAddress,
     });
-    log.info('Post staged', { id: entry.id, channel: channelId, wallet: req.walletAddress });
-    res.status(201).json({ entry });
+    await bindTrackedLinks(req.walletAddress, tracked.codes, entry.id);
+    log.info('Post staged', { id: entry.id, channel: channelId, wallet: req.walletAddress, tracked: tracked.codes.length });
+    res.status(201).json({ entry, links: { codes: tracked.codes, note: tracked.note } });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

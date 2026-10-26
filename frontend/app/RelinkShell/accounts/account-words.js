@@ -36,6 +36,30 @@ export const postsAsWords = (entry, accounts, companies) => {
 };
 
 /**
+ * What an AccountMark shows for one account (show-dont-tell audit, pattern 2):
+ * its platform, its handle — else its number on that platform ("#1"), never
+ * the bare code — and, on hover, its company, platform and id. An account
+ * under no company is `unsorted`: it waits on the operator.
+ * @param {{accountId: string, channelId?: string, postedAs?: string}} who - `postedAs`: the handle a sent post went out as
+ * @param {ReadonlyArray<object>} accounts
+ * @param {ReadonlyArray<object>} companies
+ * @returns {{channelId: string, text: string, title: string, unsorted: boolean}}
+ */
+export const accountMarkWords = ({ accountId, channelId, postedAs }, accounts, companies) => {
+  const id = String(accountId || '');
+  const account = (accounts || []).find((a) => a.id === id) || null;
+  const channel = account?.channelId || channelId || id.replace(/-\d+$/, '');
+  const handle = postedAs ? `@${String(postedAs).replace(/^@/, '')}` : handleOf(account);
+  const number = id.startsWith(`${channel}-`) ? `#${id.slice(channel.length + 1)}` : id;
+  return {
+    channelId: channel,
+    text: handle || number,
+    title: `${companyNameOf(account?.companyId, companies)} · ${account?.channelName || channel} · account ${id}`,
+    unsorted: !account?.companyId,
+  };
+};
+
+/**
  * The company choices in tree order, a subsidiary indented under its parent.
  * @param {ReadonlyArray<{id: string, name: string, depth?: number}>} companies
  * @returns {Array<{value: string, label: string}>}
