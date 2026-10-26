@@ -145,8 +145,10 @@ export const SecurityBody = ({
               >
                 <span className={`sec-tag label-data ${severityLoud(e.severity) ? 'is-loud' : ''}`}>{String(e.severity).toUpperCase()}</span>
                 <span className={`sec-tag label-data ${statusOwes(e.status) ? 'is-loud' : ''}`}>{statusLabel(e.status)}</span>
-                <span className="sec-row-id label-data">{e.externalId}</span>
-                <span className="sec-row-title">{e.title}</span>
+                <span className="sec-row-what">
+                  <span className="sec-row-title">{e.title}</span>
+                  <span className="sec-row-id label-data">{e.externalId}</span>
+                </span>
                 <span className="sec-row-where label-data">{e.repo || e.layer}</span>
                 <span className="sec-row-age label-data" title="days since first seen">{ageTag(e.ingestedAt, now)}</span>
               </button>

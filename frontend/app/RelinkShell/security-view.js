@@ -57,7 +57,7 @@ export const reportActor = (by) => {
 };
 
 /** The characters of a threat's text the ledger keeps (threat-lifecycle.js SUMMARY_MAX — a test holds them equal). */
-export const LEDGER_TEXT_KEPT = 2000;
+export const LEDGER_TEXT_KEPT = 64_000;
 
 // a heading line opens a section: "### Details"
 const HEADING = /^#{1,6}\s+(.*?)\s*#*\s*$/;

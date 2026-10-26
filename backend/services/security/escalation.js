@@ -14,6 +14,19 @@ import { scanText } from './secret-sweep.js';
 
 const execFileP = promisify(execFile);
 
+// GitHub refuses an issue body over 65,536 characters; the threat's text gets this much of it, the frame the rest.
+export const ISSUE_TEXT_ROOM = 48_000;
+
+// pure — the threat's text as the issue carries it: whole when it fits, else its head and the door to the whole.
+const issueText = (threat) => {
+  const text = threat.summary || threat.title;
+  if (text.length <= ISSUE_TEXT_ROOM) return text;
+  const whole = threat.source === 'osv' && /^[A-Za-z0-9-]+$/.test(threat.externalId || '')
+    ? `https://osv.dev/vulnerability/${threat.externalId}`
+    : `the security ledger, entry ${threat.id}`;
+  return `${text.slice(0, ISSUE_TEXT_ROOM)}\n\n_(cut at ${ISSUE_TEXT_ROOM.toLocaleString('en-US')} characters to fit a GitHub issue — the whole text: ${whole})_`;
+};
+
 // pure — the Rule 7 escalation body, assembled from the ledger entry alone.
 export const escalationBody = (threat) => [
   `## Metadata`,
@@ -34,7 +47,7 @@ export const escalationBody = (threat) => [
   ``,
   `## Summary`,
   ``,
-  threat.summary || threat.title,
+  issueText(threat),
   ``,
   `## Assessment`,
   ``,

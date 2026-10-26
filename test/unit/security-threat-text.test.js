@@ -107,7 +107,7 @@ describe('the threat detail, rendered for real', () => {
 
   it('a text the ledger cut says so, with the source named; a short house finding has no fold and no source', () => {
     const cutText = `### Summary\nLead.\n\n### Details\n${'word '.repeat(SUMMARY_MAX)}`.slice(0, SUMMARY_MAX);
-    expect(render({ ...ENTRY, summary: cutText })).toContain('CUT AT 2,000 CHARACTERS — WHOLE AT THE SOURCE');
+    expect(render({ ...ENTRY, summary: cutText })).toContain(`CUT AT ${SUMMARY_MAX.toLocaleString('en-US')} CHARACTERS — WHOLE AT THE SOURCE`);
     const house = render({ ...ENTRY, source: 'house', layer: 'house', repo: null, externalId: 'house:plaintext-secret:.env.test', summary: 'A secret pattern matches inside .env.test.', remedy: '', affected: [] });
     expect(house).toContain('A secret pattern matches inside .env.test.');
     expect(house).not.toContain('<details');

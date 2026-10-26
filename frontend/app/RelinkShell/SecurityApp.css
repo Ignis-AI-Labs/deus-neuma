@@ -1,5 +1,7 @@
 /* SecurityApp — the SECURITY window. LINE & CYCLE: monochrome at rest;
-   loud tags only where something still owes action or can hurt. */
+   loud tags only where something still owes action or can hurt. LEGIBILITY
+   (Design note, 2026-10-26: […]): nothing in this window reads under 13px — labels 13px, reading
+   14px; security-app.spec.js measures every visible word. */
 
 .sec {
   flex: 1 1 auto;
@@ -17,13 +19,13 @@
   border-bottom: 1px solid var(--line);
 }
 .sec-head-label {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
 .sec-head-seat {
   flex: 1 1 auto;
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   color: var(--signal);
 }
@@ -31,7 +33,7 @@
   background: transparent;
   border: 1px solid var(--line);
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.16em;
   padding: 4px var(--space-3);
   cursor: pointer;
@@ -43,7 +45,7 @@
 .sec-error {
   margin: 0;
   padding: var(--space-2) var(--space-4);
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   color: var(--alert);
 }
@@ -57,7 +59,7 @@
 }
 .sec-strip-line {
   margin: 0;
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   color: var(--color-text-secondary);
 }
@@ -73,7 +75,7 @@
 }
 .sec-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: var(--space-2);
   width: 100%;
   background: transparent;
@@ -86,22 +88,16 @@
 }
 .sec-row:hover { border-color: var(--line); background: var(--color-glass-light); }
 .sec-row.is-open { border-color: var(--signal-dim); }
-.sec-row-id { font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); white-space: nowrap; }
-.sec-row-title {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: var(--font-voice);
-  font-size: var(--text-xs, 12px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.sec-row-where { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); white-space: nowrap; }
+/* what the threat is: its title, and under it the id it is known by — both whole, wrapping rather than cut */
+.sec-row-what { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sec-row-title { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); line-height: var(--leading-tight); }
+.sec-row-id { font-size: 13px; letter-spacing: 0.06em; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.sec-row-where { font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); white-space: nowrap; }
 
 /* Loudness law: a tag is loud only while it can hurt or still owes action. */
 .sec-tag {
-  font-size: 8.5px;
-  letter-spacing: 0.12em;
+  font-size: 13px;
+  letter-spacing: 0.08em;
   color: var(--color-text-disabled);
   border: 1px solid var(--line);
   padding: 1px 6px;
@@ -119,7 +115,7 @@
   gap: var(--space-3);
 }
 .sec-detail .label-data { font-size: 13px; letter-spacing: 0.12em; }
-.sec-detail .sec-tag { font-size: 13px; padding: 1px 8px; }
+.sec-detail .sec-tag { padding: 1px 8px; }
 .sec-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .sec-detail-id { color: var(--color-text-primary); }
 .sec-detail-where { flex: 1 1 auto; }
@@ -163,6 +159,10 @@
   line-height: var(--leading-relaxed);
   max-width: 88ch;
 }
+/* the advisory's code reads at the floor too (the shared markdown sets it smaller for chat) */
+.sec-detail-text .relink-md code,
+.sec-detail-text .relink-md pre code,
+.sec-detail-text .relink-copy { font-size: 13px; }
 .sec-detail-more { margin-top: var(--space-2); }
 .sec-detail-more > summary { cursor: pointer; color: var(--color-text-secondary); }
 .sec-detail-more > summary:hover { color: var(--signal); }
@@ -190,13 +190,13 @@
 }
 .sec-watch-head {
   margin: 0 0 var(--space-1);
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
-.sec-watch-line { margin: 0; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-secondary); }
-.sec-watch-run { margin: 0; font-size: 9px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.sec-watch-line { margin: 0; font-size: 13px; letter-spacing: 0.1em; color: var(--color-text-secondary); }
+.sec-watch-run { margin: 0; font-size: 13px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
 
 /* the triage overview sits in the office's own gutter (triage.css) */
 .sec > .tri { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
-.sec-row-age { flex: 0 0 auto; min-width: 44px; text-align: right; font-size: 9px; color: var(--color-text-disabled); font-variant-numeric: tabular-nums; }
+.sec-row-age { flex: 0 0 auto; min-width: 52px; text-align: right; font-size: 13px; color: var(--color-text-disabled); font-variant-numeric: tabular-nums; }

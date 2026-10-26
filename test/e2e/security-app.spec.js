@@ -27,6 +27,17 @@ import { setupIsolatedHouse, openDesk, settledShot as shot } from './helpers/iso
  * test/e2e/shots/security-*.png
  */
 
+// THE FLOOR (Design note, 2026-10-26: […]): every visible word in
+// the window, measured in the real browser — the element that holds the text, its computed size. [] = all legible.
+const underFloor = (root) => root.evaluate((el) => [...el.querySelectorAll('*')].flatMap((n) => {
+  if (![...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())) return [];
+  const box = n.getBoundingClientRect();
+  const cs = getComputedStyle(n);
+  if (!box.width || !box.height || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return [];
+  const px = parseFloat(cs.fontSize);
+  return px < 13 ? [`${px}px <${n.tagName.toLowerCase()} class="${n.className}"> ${n.textContent.trim().slice(0, 40)}`] : [];
+}));
+
 const CSO = { id: 'e2e-sec-bizulen', name: 'Bizulen', utc: '2026-08-10T12:00:00.000Z' };
 const MEMBERS = [CSO];
 
@@ -172,6 +183,7 @@ test('the security window: the dangerous first, a verdict reopened, the watch cl
   }
   await expect(tri.locator('.tri-showing')).toContainText('SHOWING 6 OF 6 THREATS');
   await shot(win, 'security-01-ledger');
+  expect(await underFloor(sec)).toEqual([]);
 
   // a count is a door: the critical cell narrows the ledger to exactly it; a second press returns all
   await cell('1 CRITICAL NEW').click();
@@ -253,10 +265,12 @@ test('the security window: the dangerous first, a verdict reopened, the watch cl
   await expect(advisory.locator('h3').first()).toBeHidden();
   await expect(detail.locator('.sec-facts')).toContainText('osv.dev/vulnerability/GHSA-e2e-crit-0001');
   await shot(win, 'security-06-remedy');
+  expect(await underFloor(sec)).toEqual([]);
   await advisory.locator('.sec-detail-more > summary').click();
   await expect(advisory.locator('h3').first()).toHaveText('Details');
   await expect(advisory.locator('pre')).toContainText('__proto__');
   await shot(win, 'security-09-advisory');
+  expect(await underFloor(sec)).toEqual([]);
 
   // A CLAIM PROVEN — the CSO's mitigated, then the watch's VERIFIED row and stamp
   await rows.filter({ hasText: VERIFIED.externalId }).click();

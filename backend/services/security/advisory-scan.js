@@ -95,7 +95,7 @@ export const findingFor = (repoId, group, { vuln, error }, rootsOf = () => []) =
     externalId: group.id,
     title: shipped ? base : `${DEV_ONLY_PREFIX}${base}`,
     severity: severityOf(vuln || { id: group.id }),
-    summary: vuln ? String(vuln.details || '').slice(0, 2000) : `detail fetch failed: ${error}`,
+    summary: vuln ? String(vuln.details || '') : `detail fetch failed: ${error}`, // whole — the ledger holds the ceiling
     affected: group.affected,
     shipped,
     publishedAt: (vuln && vuln.published) || group.modified,
