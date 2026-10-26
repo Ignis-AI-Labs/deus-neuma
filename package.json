@@ -83,15 +83,15 @@
     "@modelcontextprotocol/server-filesystem": "2026.7.10",
     "@modelcontextprotocol/server-memory": "2026.8.31",
     "@pixiv/three-vrm": "3.5.3",
-    "@supabase/supabase-js": "^2.95.3",
+    "@supabase/supabase-js": "2.95.3",
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
     "ajv": "8.20.0",
-    "astronomy-engine": "^2.1.19",
+    "astronomy-engine": "2.1.19",
     "better-sqlite3": "12.11.1",
     "codemirror": "6.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "cors": "2.8.5",
+    "dotenv": "16.6.1",
     "electron-updater": "6.8.9",
     "ethers": "6.17.0",
     "express": "4.22.3",
@@ -99,8 +99,8 @@
     "i18next": "26.4.2",
     "js-yaml": "4.3.2",
     "markdown-it": "14.3.3",
-    "multer": "2.4.0",
-    "node-fetch": "^3.3.2",
+    "multer": "2.5.0",
+    "node-fetch": "3.3.2",
     "node-pty": "1.1.0",
     "pdfjs-dist": "6.2.108",
     "qrcode": "1.5.4",
@@ -112,29 +112,34 @@
     "three": "0.184.0",
     "wordnet-db": "3.1.14",
     "ws": "8.22.0",
-    "yargs": "^18.0.0",
-    "zod": "^4.3.6"
+    "yargs": "18.0.0",
+    "zod": "4.6.7"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "overrides": {
+    "express@4.22.3": {
+      "body-parser": "1.20.9"
+    }
   },
   "devDependencies": {
     "@electron/rebuild": "4.1.0",
     "@eslint/eslintrc": "3.3.7",
     "@eslint/js": "10.0.1",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "1.60.0",
     "@vitejs/plugin-react": "4.7.0",
-    "@vitest/coverage-v8": "^4.0.18",
-    "chalk": "^5.6.0",
-    "concurrently": "^8.2.0",
+    "@vitest/coverage-v8": "4.0.18",
+    "chalk": "5.6.0",
+    "concurrently": "8.2.2",
     "electron": "44.9.0",
-    "electron-builder": "^25.0.0",
+    "electron-builder": "25.1.8",
     "eslint": "10.10.0",
     "eslint-plugin-jsdoc": "64.3.6",
     "natural": "8.1.0",
-    "supertest": "^7.2.2",
-    "vite": "^5.0.0",
-    "vitest": "^4.0.18"
+    "supertest": "7.2.2",
+    "vite": "5.4.19",
+    "vitest": "4.0.18"
   },
   "repository": {
     "type": "git",
