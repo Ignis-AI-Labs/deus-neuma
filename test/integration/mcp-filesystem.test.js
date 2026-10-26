@@ -10,6 +10,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { FILESYSTEM_SERVER_SPEC } from '../helpers/mcp-fs-server-spec.js';
 
 // The MCPService class under test
 import { mcpService } from '../../backend/services/mcp.js';
@@ -31,7 +32,7 @@ describe('MCP Filesystem Integration', () => {
     await mcpService.connectToServer(
       SERVER_NAME,
       'npx',
-      ['-y', '@modelcontextprotocol/server-filesystem', tempDir],
+      ['-y', FILESYSTEM_SERVER_SPEC, tempDir],
       {}
     );
   }, 30000); // npx may need to download the package

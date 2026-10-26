@@ -17,6 +17,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { FILESYSTEM_SERVER_SPEC } from '../helpers/mcp-fs-server-spec.js';
 import { mcpService } from '../../backend/services/mcp.js';
 import { createSandboxedCallTool } from '../../backend/services/tool-sandbox.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
@@ -36,7 +37,7 @@ describe('sandbox team workspace — one arena, byte-metered (gnosis, no mock)',
     lane = path.resolve(house, 'lead-being');
     // The real server can reach BOTH the house and the arena — the sandbox
     // (with the team workspace in force) is the only thing that confines.
-    await mcpService.connectToServer(SERVER, 'npx', ['-y', '@modelcontextprotocol/server-filesystem', house, arena], {});
+    await mcpService.connectToServer(SERVER, 'npx', ['-y', FILESYSTEM_SERVER_SPEC, house, arena], {});
   }, 60000);
 
   afterAll(async () => {

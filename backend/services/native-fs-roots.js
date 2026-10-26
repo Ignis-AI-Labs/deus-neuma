@@ -8,14 +8,14 @@
  * consults — so a folder can never be accepted by the grant path and refused
  * by the wall.
  *
- * impure — real stat/access/realpath, and it mutates lib.js global state.
+ * impure — real stat/access/realpath. Owns the roots; the package takes them
+ * as an argument now (2.x), so there is no module state to mirror into.
  */
 
 import fs from 'fs/promises';
 import { constants as fsConstants } from 'fs';
 import os from 'os';
 import path from 'path';
-import { setAllowedDirectories } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
 import { expandHome, normalizePath } from '@modelcontextprotocol/server-filesystem/dist/path-utils.js';
 import { createLogger } from './logger.js';
 
@@ -87,12 +87,29 @@ const rootRefusal = async (dir) => {
 };
 
 /**
- * Replace the organ's allowed-roots wall. The single write path to lib.js's
- * validation state — every reconnect-shaped caller (startup, pre-flight
- * repoint, focus ground, witness grants) lands here. A root this process
- * cannot actually read is skipped loudly, WITH the reason: "skipped" alone is
- * what made the `/root` grant undiagnosable.
- * impure — mutates lib.js global validation state.
+ * THE ROOTS NOW IN FORCE — the organ's own copy, in normalized form.
+ *
+ * This module is the owner. lib.js used to be the owner and this module its
+ * only writer; the 2.x migration moves that duty here, because 2.x takes the
+ * roots as an argument instead of holding them in module state. Reading them
+ * from here is what lets every validatePath call state its own wall.
+ */
+let currentRoots = Object.freeze([]);
+
+/**
+ * The roots the filesystem organ may stand on, as last set. Empty until the
+ * first setNativeFilesystemRoots call, which refuses every path — fail closed.
+ * @returns {string[]} normalized roots (stated + symlink-resolved forms)
+ */
+export const getNativeFilesystemRoots = () => currentRoots;
+
+/**
+ * Replace the organ's allowed-roots wall. The single write path — every
+ * reconnect-shaped caller (startup, pre-flight repoint, focus ground, witness
+ * grants) lands here. A root this process cannot actually read is skipped
+ * loudly, WITH the reason: "skipped" alone is what made the `/root` grant
+ * undiagnosable.
+ * impure — real stat/access/realpath; replaces module state.
  * @param {string[]} dirs - absolute directories to allow
  * @returns {Promise<string[]>} the roots now in force (stated + resolved forms)
  */
@@ -105,7 +122,7 @@ export const setNativeFilesystemRoots = async (dirs) => {
     if (refusal === null) roots.push(dir);
     else log.warn('Allowed root skipped — the organ cannot stand on it', { dir, because: refusal });
   }
-  setAllowedDirectories(roots);
+  currentRoots = Object.freeze(roots);
   return roots;
 };
 
