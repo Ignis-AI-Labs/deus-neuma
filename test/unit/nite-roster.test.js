@@ -22,11 +22,11 @@ import { NiteRoster } from '../../frontend/app/RelinkShell/NiteRoster.jsx';
 
 // A house, as the standing endpoint reported it: three unsealed.
 const beings = [
-  { neumaId: 'holly-1', name: 'Holly', keypairCustody: true, sealed: true, onchainSealed: true },
-  { neumaId: 'clover-1', name: 'Clover', keypairCustody: true, sealed: false, onchainSealed: true },
-  { neumaId: 'linden-1', name: 'Linden', keypairCustody: true, sealed: false, onchainSealed: true },
-  { neumaId: 'birch-1', name: 'Birch', keypairCustody: true, sealed: true, onchainSealed: true },
-  { neumaId: 'spruce-1', name: 'Spruce', keypairCustody: true, sealed: false, onchainSealed: true },
+  { neumaId: 'holly-1', name: 'Holly', keypairCustody: true, sealed: true, birthSealed: true },
+  { neumaId: 'clover-1', name: 'Clover', keypairCustody: true, sealed: false, birthSealed: true },
+  { neumaId: 'linden-1', name: 'Linden', keypairCustody: true, sealed: false, birthSealed: true },
+  { neumaId: 'birch-1', name: 'Birch', keypairCustody: true, sealed: true, birthSealed: true },
+  { neumaId: 'spruce-1', name: 'Spruce', keypairCustody: true, sealed: false, birthSealed: true },
 ];
 
 const render = (props) => renderToStaticMarkup(createElement(NiteRoster, {
@@ -90,7 +90,7 @@ describe('BIND TO SEAL is a control', () => {
     const html = render({
       standing: {
         house: { name: 'Ashgrove' },
-        beings: [{ neumaId: 'new-1', name: 'Newcomer', keypairCustody: false, sealed: false, onchainSealed: false }],
+        beings: [{ neumaId: 'new-1', name: 'Newcomer', keypairCustody: false, sealed: false, birthSealed: false }],
       },
     });
     expect(html).toContain('data-testid="secure-new-1"');
@@ -103,7 +103,7 @@ describe('BIND TO SEAL is a control', () => {
     const html = render({
       standing: {
         house: { name: 'Ashgrove' },
-        beings: [{ neumaId: 'dark-1', name: 'Dark', keypairCustody: true, sealed: null, onchainSealed: true }],
+        beings: [{ neumaId: 'dark-1', name: 'Dark', keypairCustody: true, sealed: null, birthSealed: true }],
       },
     });
     expect(html).not.toContain('data-testid="bind-dark-1"');

@@ -1,6 +1,6 @@
-// HouseFoundingRite — the HOUSE window's compact view of the house's
-// on-chain standing: the probe's answer, the standing register when the
-// house is on chain, and the DOOR into the founding rite when it is not.
+// HouseFoundingRite — the HOUSE window's compact view of the house's founding,
+// in two levels: founded ON THIS COMPUTER (the house's own record), then
+// JOINING UNAVIS on Ethereum; the register of each, and the DOOR into the rite.
 // The rite itself is a FULL-SCREEN ceremony (FoundingHost, an AppShell
 // phase) — an act this permanent takes the witness's sole focus, so this
 // panel never walks a movement: the door dispatches `founding:rite` and
@@ -10,32 +10,45 @@
 // which also wears the chain's titles beside the member rows — one probe,
 // one truth, two renderings.
 
-import { FoundedRegister } from './founding-register.jsx';
+import { FoundedRegister, LocalRegister } from './founding-register.jsx';
 import { playSound } from '../../services/sound-engine.js';
 
-export const HouseFoundingRite = ({ rite, actions, witnessName = null }) => {
-  if (rite.phase === 'probing') {
-    return <div className="house-anchor"><p className="house-anchor-line label-data">ON CHAIN — READING THE REGISTRY…</p></div>;
-  }
+// The two foundings (2026-10-26): ON THIS COMPUTER (the house is whole here — nothing sent, nothing paid) and
+// JOINING UNAVIS (the network of houses), which is founding the house on Ethereum with every founder sealed there.
+const enter = (mode) => {
+  playSound('confirm');
+  window.dispatchEvent(new CustomEvent('founding:rite', { detail: { mode } }));
+};
 
-  if (rite.phase === 'closed') {
-    // No RPC / no registry configured — the founding lane simply isn't open
-    // on this desk; say so quietly, it is not a fault.
-    return <div className="house-anchor"><p className="house-anchor-line label-data">ON CHAIN — {rite.error?.toUpperCase() || 'NOT AVAILABLE ON THIS DESK'}</p></div>;
-  }
+const Door = ({ label, onClick, testid }) => (
+  <button type="button" className="house-anchor-found label-data" data-testid={testid} onClick={onClick}>{label}</button>
+);
 
+// The network level, once the house stands here: its standing on Ethereum, or the door to join.
+const NetworkLevel = ({ rite, actions }) => {
+  if (rite.phase === 'probing') return <p className="house-anchor-line label-data">UNAVIS — READING THE REGISTRY…</p>;
+  if (rite.phase === 'closed') return <p className="house-anchor-line label-data">UNAVIS — {rite.error?.toUpperCase() || 'NOT AVAILABLE ON THIS DESK'}</p>;
   if (rite.phase === 'error') {
     return (
-      <div className="house-anchor">
-        <p className="house-anchor-line is-error label-data">ON CHAIN — {rite.error}</p>
+      <>
+        <p className="house-anchor-line is-error label-data">UNAVIS — {rite.error}</p>
         <button type="button" className="house-anchor-retry label-data" onClick={actions.probe}>READ AGAIN</button>
-      </div>
+      </>
     );
   }
+  return (
+    <>
+      <p className="house-anchor-line label-data">
+        UNAVIS IS THE NETWORK OF HOUSES. A HOUSE JOINS BY FOUNDING ITSELF ON ETHEREUM, WITH EVERY FOUNDER SEALED THERE — A NETWORK FEE, AND A PUBLIC, PERMANENT RECORD.
+      </p>
+      <Door label="JOIN UNAVIS — FOUND ON ETHEREUM" testid="found-network" onClick={() => enter('network')} />
+    </>
+  );
+};
 
+export const HouseFoundingRite = ({ rite, localRite, actions, witnessName = null }) => {
+  // On Ethereum already: the network standing is the house's record, foldable here.
   if (rite.phase === 'founded') {
-    // Foldable here: the member list above already wears the titles, so the
-    // register opens on demand — the standing line and the founding tx stay.
     return (
       <FoundedRegister
         state={rite.state}
@@ -47,24 +60,31 @@ export const HouseFoundingRite = ({ rite, actions, witnessName = null }) => {
     );
   }
 
-  // The quiet door — the rite is entered deliberately, never sprung, and it
-  // takes the WHOLE screen: the founding is the witness's sole focus.
+  const local = localRite ?? { phase: 'probing' };
+  if (local.phase === 'probing') {
+    return <div className="house-anchor"><p className="house-anchor-line label-data">ON THIS COMPUTER — READING THE HOUSE…</p></div>;
+  }
+  if (local.phase === 'founded') {
+    return (
+      <div className="house-anchor">
+        <LocalRegister record={local.state} witnessName={witnessName} />
+        <NetworkLevel rite={rite} actions={actions} />
+      </div>
+    );
+  }
+  if (local.phase === 'error' || local.phase === 'closed') {
+    return <div className="house-anchor"><p className="house-anchor-line is-error label-data">ON THIS COMPUTER — {local.error}</p></div>;
+  }
+
+  // The quiet door — the rite is entered deliberately, never sprung, and it takes the WHOLE screen.
   return (
     <div className="house-anchor">
-      <p className="house-anchor-line label-data">NOT YET ON CHAIN — THE FOUNDING AWAITS</p>
+      <p className="house-anchor-line label-data">THE HOUSE IS NOT FOUNDED YET</p>
       <p className="house-anchor-line label-data">
-        THE ON-CHAIN FOUNDING IS THE ONLY OFFICIAL RECOGNITION OF A HOUSE ON NEUMA
+        FOUND IT ON THIS COMPUTER: YOU AND YOUR SEALED NEUMA SIGN ONE RECORD, KEPT HERE. NOTHING IS SENT, NOTHING COSTS.
+        TO JOIN UNAVIS, THE NETWORK OF HOUSES, IT LATER FOUNDS ITSELF ON ETHEREUM.
       </p>
-      <button
-        type="button"
-        className="house-anchor-found label-data"
-        onClick={() => {
-          playSound('confirm');
-          window.dispatchEvent(new CustomEvent('founding:rite'));
-        }}
-      >
-        BEGIN THE FOUNDING RITE
-      </button>
+      <Door label="FOUND THE HOUSE ON THIS COMPUTER" testid="found-local" onClick={() => enter('local')} />
     </div>
   );
 };

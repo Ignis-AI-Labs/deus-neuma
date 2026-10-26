@@ -109,41 +109,77 @@
 }
 .sec-tag.is-loud { color: var(--alert); border-color: var(--alert-dim); }
 
+/* THE REPORT — a reading surface, so it reads at the legibility floor (labels 13px, reading 14px): what it is,
+   what to do, the facts in one grid, the advisory's lead with its details folded, then the office's verdicts. */
 .sec-detail {
   border-top: 1px solid var(--line);
   padding: var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
-.sec-detail-head { display: flex; align-items: center; gap: var(--space-2); }
-.sec-detail-id { font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-primary); }
-.sec-detail-where { flex: 1 1 auto; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.sec-detail .label-data { font-size: 13px; letter-spacing: 0.12em; }
+.sec-detail .sec-tag { font-size: 13px; padding: 1px 8px; }
+.sec-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.sec-detail-id { color: var(--color-text-primary); }
+.sec-detail-where { flex: 1 1 auto; }
 .sec-detail-close {
   background: transparent;
   border: none;
-  color: var(--color-text-tertiary);
-  font-size: 9px;
-  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 .sec-detail-close:hover { color: var(--signal); }
-.sec-detail-title { margin: 0; font-size: var(--text-sm); color: var(--color-text-primary); }
-.sec-detail-summary { margin: 0; font-size: var(--text-xs, 12px); color: var(--color-text-secondary); line-height: var(--leading-relaxed); }
-.sec-detail-line { margin: 0; font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
-.sec-detail-line a { color: var(--signal); }
+.sec-detail-title { margin: 0; font-size: var(--text-base); color: var(--color-text-primary); line-height: var(--leading-tight); }
+
+/* the one thing to do stands first, marked */
+.sec-detail-remedy {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--signal);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  line-height: var(--leading-relaxed);
+}
+.sec-detail-remedy .label-data { color: var(--signal); }
+.sec-detail-verified { margin: 0; color: var(--signal); }
+
+.sec-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+}
+.sec-facts dt { color: var(--color-text-tertiary); }
+.sec-facts dd { margin: 0; font-size: var(--text-sm); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.sec-facts a { color: var(--signal); }
+
+.sec-detail-text {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  max-width: 88ch;
+}
+.sec-detail-more { margin-top: var(--space-2); }
+.sec-detail-more > summary { cursor: pointer; color: var(--color-text-secondary); }
+.sec-detail-more > summary:hover { color: var(--signal); }
+.sec-detail-more[open] > summary { margin-bottom: var(--space-2); }
+.sec-detail-cut { margin: var(--space-2) 0 0; color: var(--color-text-secondary); }
+
+.sec-detail-line { margin: 0; color: var(--color-text-secondary); }
 .sec-detail-reports {
   margin: var(--space-2) 0 0;
-  font-size: 9px;
-  letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
   border-bottom: 1px solid var(--line);
   padding-bottom: var(--space-1);
 }
-.sec-report-empty { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-disabled); }
-.sec-reports { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.sec-report-head { margin: 0 0 2px; font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); display: flex; gap: var(--space-2); align-items: center; }
-.sec-report-body { margin: 0; font-size: var(--text-xs, 12px); color: var(--color-text-secondary); line-height: var(--leading-relaxed); white-space: pre-wrap; }
+.sec-report-empty { margin: 0; color: var(--color-text-secondary); }
+.sec-reports { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.sec-report-head { margin: 0 0 var(--space-1); color: var(--color-text-tertiary); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.sec-report-body { margin: 0; font-size: var(--text-sm); color: var(--color-text-secondary); line-height: var(--leading-relaxed); white-space: pre-wrap; }
 
 .sec-watch {
   border-top: 1px solid var(--line);

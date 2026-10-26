@@ -104,6 +104,8 @@ router.get('/standing', async (req, res) => {
         sealedAt: seal?.sealedAt || null,
         keypairCustody: setup ? setup.keypairCustody : null,
         onchainSealed: setup ? setup.onchainSealed : null,
+        // sealed on this computer or on Ethereum: either completes the birth (birth-setup-state.js)
+        birthSealed: setup ? (setup.localSealed || setup.onchainSealed) : null,
         unreadable: !setup || !seal,
       });
     }

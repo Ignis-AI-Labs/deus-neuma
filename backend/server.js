@@ -11,6 +11,7 @@ import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
 import { loadConfig, getAllowedOrigins, isProduction } from './config.js';
 import { ensureSecrets } from './services/secret-provisioning.js';
+import { receiveDeskKeys } from './services/desk-keys.js';
 import { createLogger } from './services/logger.js';
 import {
   DNAVaultServiceDefault as DNAVaultService, DevModeCache,
@@ -35,6 +36,7 @@ import { apiLimiter } from './services/rate-limiter.js';
 import { bootServer } from './server-boot.js';
 import { applyWorkspaceSettings } from './services/workspace-settings.js';
 import { applyRealmSettings } from './services/user-realm-settings.js';
+import { sealChatCopies } from './services/user-realm.js';
 import { applyFileSettings } from './services/user-files-settings.js';
 import { installRemoteGate, mountRemoteRoutes, attachRemoteTunnelTarget } from './services/remote/wire.js';
 import { attachUpgradeRouter } from './services/ws-upgrade-router.js';
@@ -43,6 +45,8 @@ import { attachUpgradeRouter } from './services/ws-upgrade-router.js';
 
 // Self-provision stable at-rest secrets on a fresh (packaged) install, before
 // config reads them. Explicit env (.env / Electron-injected) always wins.
+// A packaged desk hands the keys over its channel (key-lock); then nothing is provisioned here.
+await receiveDeskKeys();
 const provisionedSecrets = ensureSecrets();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -105,6 +109,10 @@ if (provisionedSecrets.generated.length > 0) {
     keys: provisionedSecrets.generated, file: provisionedSecrets.file,
   });
 }
+// Chat copies written before they were locked are sealed once, before any exchange can append.
+const sealedChats = await sealChatCopies();
+if (sealedChats.files || sealedChats.failed.length) log.info('Sealed the chat copies written before the lock', sealedChats);
+
 if (provisionedSecrets.folder?.startsWith('failed')) {
   log.warn('The folder holding the at-rest secrets could not be closed to its owner', { result: provisionedSecrets.folder });
 }

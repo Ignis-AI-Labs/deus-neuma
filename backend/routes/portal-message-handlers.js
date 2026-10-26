@@ -35,6 +35,8 @@ import {
   birthEncryptKeypair, birthSealPreflight, birthSealSign, birthSealConfirm,
   houseFoundPreflight, houseFoundSign, houseFoundConfirm,
 } from './portal-seal-handlers.js';
+import { birthLocalSealOffer, birthLocalSealSign } from './portal-local-seal-handlers.js';
+import { houseFoundLocalPreflight, houseFoundLocalSign } from './portal-house-local-handlers.js';
 import {
   councilOpen, councilSpeak, councilResumeFrame, councilListFrame,
   councilInterruptFrame, councilOrderFrame, councilCloseFrame,
@@ -339,6 +341,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       await birthEncryptKeypair(connection, message);
       break;
 
+    case 'birth:local_seal_offer':
+      await birthLocalSealOffer(connection, message);
+      break;
+
+    case 'birth:local_seal_sign':
+      await birthLocalSealSign(connection, message);
+      break;
+
     case 'birth:seal_preflight':
       await birthSealPreflight(connection, message);
       break;
@@ -349,6 +359,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
 
     case 'birth:seal_confirm':
       await birthSealConfirm(connection, message);
+      break;
+
+    case 'house:found_local_preflight':
+      await houseFoundLocalPreflight(connection, message);
+      break;
+
+    case 'house:found_local_sign':
+      await houseFoundLocalSign(connection, message);
       break;
 
     case 'house:found_preflight':

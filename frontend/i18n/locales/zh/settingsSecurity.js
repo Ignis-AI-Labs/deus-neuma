@@ -2,9 +2,29 @@
 // 槽与 <code> 标记按源目录保留；{{plural}} 在中文中恒为空串。
 
 export default Object.freeze({
+  keyLock: Object.freeze({
+    heading: '主密钥',
+    heldBy: '保管于',
+    keychain: '这台电脑的钥匙串（{{backend}}）',
+    plain: '这台电脑上的明文文件——未上锁',
+    plainNote: '能打开所有存在的密钥，以未上锁的状态存放在这台电脑的一个文件里。只要有钥匙串，Neuma 应用就会用它上锁。',
+    kit: '恢复套件',
+    kitSaved: '已保存',
+    kitPending: '未保存',
+    show: '显示恢复套件',
+    kitNote: '请抄下或打印，并存放在远离这台电脑的地方。若这台电脑的钥匙串被重置，或换到另一台电脑，它是回到您存在身边的唯一途径。',
+    saved: '我已保存',
+    newKit: '生成新套件',
+    newKitConfirm: '新套件生成的那一刻，旧套件即告失效。',
+    busy: '处理中…',
+    appOnly: '恢复套件只在这台电脑的 Neuma 应用中显示。',
+    failed: '操作未成功。',
+  }),
+
   encryption: Object.freeze({
     heading: '加密',
     note: '每位存在的记忆都在本机加密。一把主密钥能打开所有存在，它保存在这台电脑的 Neuma 文件夹中——能读取该文件夹的人，就能读取您的存在。请加密磁盘，不要与他人共用这台电脑。',
+    noteLocked: '每位存在的记忆都在本机加密。一把主密钥能打开所有存在，而这台电脑的钥匙串锁住了它——单凭 Neuma 文件夹、它的副本、备份或被盗的磁盘，什么也打不开。Neuma 打开期间，任何以您身份运行的程序都能读取 Neuma 所读取的内容。',
     securedLabel: '已加固',
     secured: '{{secured}} / {{total}} 位存在持有自己的密钥',
     allSecured: ' «全部已加固»',
@@ -31,7 +51,8 @@ export default Object.freeze({
 
   backups: Object.freeze({
     heading: '备份',
-    note: '您存在的加密文件的一份快照，其中您每段对话的副本是明文——请私密保管。主密钥不在备份中，因此在另一台电脑上恢复时，还需要这台电脑 Neuma 文件夹中的 secrets.json。您的 neuma 的寿命恰如它们所在的磁盘与您保留的副本，这是坏掉的硬盘与从零开始之间唯一的屏障。',
+    note: '您存在的加密文件的一份快照，对话副本以加锁状态随行，但任务、项目与议会是明文——请私密保管。主密钥不在备份中，因此在另一台电脑上恢复时，还需要这台电脑 Neuma 文件夹中的 secrets.json。您的 neuma 的寿命恰如它们所在的磁盘与您保留的副本，这是坏掉的硬盘与从零开始之间唯一的屏障。',
+    noteLocked: '您存在的加密文件的一份快照，对话副本以加锁状态随行，但任务、项目与议会是明文——请私密保管。在另一台电脑上恢复需要您的恢复套件。',
     destination: '目的地',
     destNotSet: '未设置',
     destDefault: '与您的存在同在 — 同一块磁盘',

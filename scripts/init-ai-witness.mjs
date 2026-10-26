@@ -188,7 +188,7 @@ try {
   process.exit(1);
 }
 
-// --- arg parser (matches rotate-workspace-key.js convention) ---
+// --- arg parser (--flag value pairs) ---
 
 function parseArgs(argv) {
   const out = {};

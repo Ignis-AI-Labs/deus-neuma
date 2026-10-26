@@ -75,6 +75,11 @@ export const ensureSecrets = ({ env = process.env } = {}) => {
 
   const file = secretsFilePath();
   const stored = readSecrets(file);
+  // A keychain-locked record (electron/key-lock) holds no plain key: minting one
+  // here would strand every being encrypted under the locked one.
+  if (stored.v === 2 && MANAGED.some(({ env: envKey }) => !env[envKey])) {
+    throw new Error(`${file} is locked by the desk's keychain — start Neuma from the app, or set the keys in the environment`);
+  }
   const generated = [];
   let dirty = false;
 

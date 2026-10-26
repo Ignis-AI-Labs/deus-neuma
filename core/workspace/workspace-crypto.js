@@ -16,7 +16,7 @@
  * comma-separated previous secrets. On decrypt, the current key is tried
  * first; if it fails the GCM auth check, each previous key is tried in
  * order. This enables operator-driven key rotation with a re-encrypt
- * script (see `scripts/rotate-workspace-key.js`) without downtime.
+ * pass (`scripts/rekey-house.mjs`, which also gives every being a new key).
  *
  * Envelope v2 (compressed — the archive lane):
  * `_enc: 2` with `z: 'gzip'` means the ciphertext protects gzip(JSON bytes)

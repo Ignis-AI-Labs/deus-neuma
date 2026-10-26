@@ -17,7 +17,7 @@
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
-const { app, BrowserWindow, Notification, dialog, ipcMain, shell, session } = require('electron');
+const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, session } = require('electron');
 const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
@@ -26,6 +26,7 @@ const autoUpdate = require('./auto-update.cjs');
 const { registerUpdateBar } = require('./update-bar.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
 const { registerConnections } = require('./connections-main.cjs');
+const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
 
 // Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
 // shows an app's notices (the update alert) only under its shortcut's ID, and "open at login" is the
@@ -61,11 +62,15 @@ if (!app.requestSingleInstanceLock()) {
     guardAppSessions(session, getOrigin);
     // Spellcheck's dictionary fetch is off until the person turns it on — set before any page exists.
     registerConnections({ app, ipcMain, session });
+    registerKeyLockIpc({ ipcMain, safeStorage });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.
     if (!(await resolveStartupPort())) return;
     try {
+      // The at-rest keys open BEFORE the backend exists; a person who quits the
+      // unlock window gets no backend at all (key-lock-main.cjs).
+      if ((await openAtRestKeys({ app, safeStorage })) === null) { app.quit(); return; }
       await startBackend({ onRestarted: deskWindows.reloadDesks });
       await waitForBackend();
       await deskWindows.bootFirstDesk();

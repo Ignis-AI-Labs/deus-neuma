@@ -28,6 +28,7 @@
 // impure — store reads.
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../logger.js';
+import { keyLockWaitingItems } from './key-lock-item.js';
 import { laneName } from '../house-titles.js';
 import { liveCardsFor } from './live-cards.js';
 import { readAsks } from '../house-clock/wake-ledger.js';
@@ -108,5 +109,6 @@ export const readWaiting = async (wallet) => {
   ]);
   const money = await read('treasury', () => treasuryWaitingItems(lanes, wallet, names), gaps);
   const links = await read('link-changes', async () => (await openLinkChanges(wallet)).map((c) => linkChangeItem(c, names)), gaps);
-  return Object.freeze({ ...foldWaiting([...cards, ...asks, ...charter, ...queue, ...proposals, ...campaignAsks, ...mandate, ...money, ...links]), gaps, mandate: standing });
+  const kit = await read('key-lock', () => keyLockWaitingItems(wallet), gaps);
+  return Object.freeze({ ...foldWaiting([...cards, ...asks, ...charter, ...queue, ...proposals, ...campaignAsks, ...mandate, ...money, ...links, ...kit]), gaps, mandate: standing });
 };

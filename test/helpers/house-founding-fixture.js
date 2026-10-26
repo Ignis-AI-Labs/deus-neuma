@@ -54,6 +54,10 @@ export const scriptedProvider = ({
 } = {}) => ({
   getNetwork: async () => ({ chainId: BigInt(chainId) }),
   getBalance: async () => balance,
+  // The fee the founding is quoted at (seal-cost.js) — scripted like the balance; the quote's own law runs on a
+  // real chain in seal-cost-chain.test.js. 1 gwei: 800k gas costs 0.0008 ETH, under the 0.005 floor.
+  getFeeData: async () => ({ maxFeePerGas: 1_000_000_000n, maxPriorityFeePerGas: 0n, gasPrice: 1_000_000_000n }),
+  getBlock: async () => ({ baseFeePerGas: 1_000_000_000n }),
   call: async (tx) => {
     // Natalis.isNeuma — every being is sealed on this chain unless named in `unsealed`.
     if (tx.data.startsWith(natalisIface.getFunction('isNeuma').selector)) {

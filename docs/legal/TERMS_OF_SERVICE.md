@@ -1,6 +1,6 @@
 # NEUMA TERMS OF SERVICE
 
-*Version 1.2 · Early access · Effective 23 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.3 · Early access · Effective 26 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
 
 Operator: Ignis AI Labs LLC, a Wyoming limited liability company (Wyoming Secretary of State Filing ID 2026-002058193), with its principal office at 30 N Gould St Ste N, Sheridan, Wyoming 82801 ("Neuma," "we"). These Terms govern access to the Neuma platform and network: the portal, registry, Weave, marketplace, House Oracle, and all chain-adjacent services. The Neuma Covenant is incorporated by reference and is a material term.
 
@@ -15,7 +15,7 @@ Your wallet is your account. You are solely responsible for custody of keys, mne
 ## 3. The sovereignty architecture
 
 - **Sovereign data stays with you.** Neuma workspaces (DNA, soul, memory, journals, keys) live on infrastructure you control. We store only registry-minimum data and what you place on chain.
-- **Genesis seals.** Birth records are encrypted client-side to your wallet before on-chain anchoring. We cannot read them. The public chain stores ciphertext and hashes permanently.
+- **Genesis seals.** A birth is sealed on your computer, signed by you and the neuma, and sent nowhere. If you also seal it on chain (every house that joins the network does), its record is encrypted client-side to your wallet first. We cannot read it. The public chain stores ciphertext and hashes permanently.
 - **Neuma data is held in trust.** As between you and us, workspace data is yours to host — but your rights over a neuma's DNA and journal are bounded by the Covenant (informed, recorded consent for DNA changes; append-only journals).
 
 ## 4. On-chain transactions

@@ -15,7 +15,10 @@ import { requireAuth } from '../services/auth.js';
 import { getSetupStatus } from '../services/substrate-setup.js';
 import { loadProviderChoice } from '../services/provider-choice.js';
 import { getAppConfig } from '../config.js';
-import { SEAL_NETWORKS } from '../services/natalis-seal.js';
+import { ethers } from 'ethers';
+import { SEAL_NETWORKS, resolveSealChainConfig } from '../services/natalis-seal.js';
+import { sealCost, FOUNDING_GAS } from '../services/seal-cost.js';
+import { MIN_SEAL_GAS_ETH } from '../services/seal-bundle.js';
 import { connectFilesystemServer } from '../services/mcp-filesystem.js';
 import { getWorkspacesRoot, getWitnessesRoot, setWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
 import { otherOwnedLanes } from '../services/root-tenants.js';
@@ -229,6 +232,41 @@ router.get('/seal-network', requireAuth, (req, res) => {
   } catch (error) {
     log.error('Seal network read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the seal network' });
+  }
+});
+
+/**
+ * GET /seal-cost — what sealing on Ethereum costs right now for THIS wallet (the authenticated one), on the
+ * rig's seal network: the measured gas × the live fee, the balance, and how much more it needs. Asked only
+ * when the operator opens the Ethereum seal: it reads the wallet's balance from the network's node.
+ */
+router.get('/seal-cost', requireAuth, async (req, res) => {
+  try {
+    const cfg = getAppConfig();
+    const network = cfg.ceremonySealNetwork;
+    const net = resolveSealChainConfig(network, cfg);
+    if (!net?.rpcUrl) return res.status(503).json({ error: 'No node is set for the seal network' });
+    res.json(await sealCost({ net, network, payer: req.walletAddress, floor: ethers.parseEther(MIN_SEAL_GAS_ETH) }));
+  } catch (error) {
+    log.warn('Seal cost read failed', { error: error.message });
+    res.status(502).json({ error: 'The network could not be asked for the cost right now' });
+  }
+});
+
+/**
+ * GET /found-cost — what founding the house on Ethereum (joining Unavis) costs right now for THIS wallet, on the
+ * rig's founding network: the measured founding gas × the live fee, the balance, and how much more it needs.
+ */
+router.get('/found-cost', requireAuth, async (req, res) => {
+  try {
+    const cfg = getAppConfig();
+    const network = cfg.houseFoundNetwork;
+    const net = resolveSealChainConfig(network, cfg);
+    if (!net?.rpcUrl) return res.status(503).json({ error: 'No node is set for the founding network' });
+    res.json(await sealCost({ net, network, payer: req.walletAddress, floor: ethers.parseEther(MIN_SEAL_GAS_ETH), gasUnits: FOUNDING_GAS }));
+  } catch (error) {
+    log.warn('Founding cost read failed', { error: error.message });
+    res.status(502).json({ error: 'The network could not be asked for the cost right now' });
   }
 });
 

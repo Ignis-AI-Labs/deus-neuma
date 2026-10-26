@@ -12,6 +12,7 @@ import { encodeStreamTransfer, openSittingActions } from '../stream-tab-transfer
 import { requestHouseClockTab } from '../house-clock/house-clock-focus.js';
 import { requestCardLanding } from '../card-landing.js';
 import { requestBrandSection } from '../brandkits/brand-landing.js';
+import { requestSettingsFocus } from '../settings-focus.js';
 import { cardSelector } from './waiting-view.js';
 import { MARKETING_WINDOW, isMarketingPlatform } from '../../windowing/retired-windows.js';
 
@@ -45,6 +46,7 @@ export const jumpActions = (item, windows) => {
 const latchLanding = (item) => {
   const w = item?.where || {};
   if (w.app === 'houseclock') requestHouseClockTab(w.tab || 'asks');
+  else if (w.app === 'settings' && w.focus) requestSettingsFocus(w.focus);
   else if (w.app === 'sovereignty') requestCardLanding('sovereignty', { neumaId: w.neumaId, proposalId: w.proposalId });
   else if (w.channelId) requestCardLanding(w.channelId, { entryId: w.entryId, section: w.section, ...(w.accountId ? { accountId: w.accountId } : {}) });
   // A company's proposed links land on its BRAND tab, at SITE & CODE, where their card stands.

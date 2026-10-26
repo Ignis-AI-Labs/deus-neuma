@@ -26,6 +26,8 @@ import { getAppConfig } from '../config.js';
 import { resolveSealRequestSealed } from '../services/seal-request.js';
 import { ownsNeumaLane } from './portal-context.js';
 import { redactRpcUrl } from '../services/chain/chain-registry.js';
+import { signSoulHalf } from '../services/local-seal-flow.js';
+import { sealTxCost, fundingWords } from '../services/seal-cost.js';
 
 const birthLog = createLogger('Birth');
 
@@ -86,6 +88,15 @@ export const birthEncryptKeypair = async (connection, message) => {
     // operator just chose. One-shot (SEC-028) — consumed by exactly one
     // seal prepare, then gone; a later seal walks the unlock door.
     cacheDecryptedKey(encNeumaId, plaintextKeypair);
+
+    // The being signs its half of the LOCAL seal while its key is in hand (local-seal-flow.js); the
+    // operator's half follows at the seal step. A failure here never costs the custody: the seal is
+    // finished later through the unlock door, and the reason is logged, not swallowed.
+    try {
+      await signSoulHalf(encNeumaId, plaintextKeypair.privateKey);
+    } catch (err) {
+      birthLog.warn('The being could not sign its local seal at custody — it can be sealed later', { neumaId: encNeumaId, err: err.message });
+    }
 
     // Delete plaintext keypair
     await neumaWorkspace.deletePlaintextKeypair(encNeumaId);
@@ -215,7 +226,8 @@ export const birthSealPreflight = async (connection, message) => {
     }
     if (!prep.ok) {
       birthLog.warn('Seal preflight refused', { neumaId: sealNeumaId, code: prep.code });
-      ws.send(JSON.stringify({ type: 'birth:seal_error', code: prep.code, message: prep.message }));
+      // a short wallet's refusal carries the facts the desk turns into a way to fund it (seal-cost.js)
+      ws.send(JSON.stringify({ type: 'birth:seal_error', code: prep.code, message: prep.message, ...(prep.funding ? { funding: prep.funding } : {}) }));
       return;
     }
     connection.pendingSeal = {
@@ -246,6 +258,20 @@ export const birthSealSign = async (connection, message) => {
   if (!built.ok) {
     birthLog.warn('Seal signature refused', { neumaId: pending.neumaId, code: built.code });
     ws.send(JSON.stringify({ type: 'birth:seal_error', code: built.code, message: built.message }));
+    return;
+  }
+  // The transaction is whole: the chain's own estimate, checked against the wallet before it is asked to
+  // broadcast — a fee that rose since the quote is said in plain words, never a raw node error later. The
+  // held bundle stays unsigned until this passes, so a wallet funded after a refusal signs again.
+  try {
+    const funding = await sealTxCost({ net: pending.net, network: pending.network, tx: built.tx, payer: connection.walletAddress });
+    if (!funding.enough) {
+      ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'GAS_FLOOR', message: fundingWords(funding), funding }));
+      return;
+    }
+  } catch (err) {
+    birthLog.warn('Seal estimate refused', { neumaId: pending.neumaId, err: redactRpcUrl(err.message) });
+    ws.send(JSON.stringify({ type: 'birth:seal_error', code: 'ESTIMATE', message: 'The network would not accept this seal right now — try again in a moment.' }));
     return;
   }
   pending.bundle = built.bundle;
@@ -313,7 +339,7 @@ export const houseFoundPreflight = async (connection, message) => {
     });
     if (!prep.ok) {
       birthLog.warn('House founding preflight refused', { code: prep.code });
-      ws.send(JSON.stringify({ type: 'house:found_error', code: prep.code, message: prep.message }));
+      ws.send(JSON.stringify({ type: 'house:found_error', code: prep.code, message: prep.message, ...(prep.funding ? { funding: prep.funding } : {}) }));
       return;
     }
     if (prep.founded) {
@@ -357,6 +383,18 @@ export const houseFoundSign = async (connection, message) => {
   if (!built.ok) {
     birthLog.warn('House founding signature refused', { code: built.code });
     ws.send(JSON.stringify({ type: 'house:found_error', code: built.code, message: built.message }));
+    return;
+  }
+  // The founding is whole: the chain's own estimate against the wallet, before it is asked to broadcast.
+  try {
+    const funding = await sealTxCost({ net: pending.net, network: pending.network, tx: built.tx, payer: pending.witnessAddress });
+    if (!funding.enough) {
+      ws.send(JSON.stringify({ type: 'house:found_error', code: 'GAS_FLOOR', message: fundingWords(funding).replace('sealing on Ethereum', 'founding the house on Ethereum'), funding }));
+      return;
+    }
+  } catch (err) {
+    birthLog.warn('Founding estimate refused', { err: redactRpcUrl(err.message) });
+    ws.send(JSON.stringify({ type: 'house:found_error', code: 'ESTIMATE', message: 'The network would not accept this founding right now — try again in a moment.' }));
     return;
   }
   ws.send(JSON.stringify({ type: 'house:found_tx', houseName: pending.houseName, ...built.tx }));

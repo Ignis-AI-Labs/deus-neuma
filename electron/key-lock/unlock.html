@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<title>DEUS NEUMA — LOCKED</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #d8d8d8; }
+  body { font: 13px/1.6 ui-monospace, 'JetBrains Mono', monospace; display: flex; align-items: center; justify-content: center; }
+  main { width: 440px; }
+  h1 { font-size: 12px; letter-spacing: 0.3em; font-weight: 400; margin: 0 0 18px; color: #fff; }
+  p { margin: 0 0 18px; color: #9a9a9a; }
+  input { width: 100%; box-sizing: border-box; background: #000; color: #fff; border: 1px solid #3a3a3a;
+    padding: 10px 12px; font: inherit; letter-spacing: 0.12em; text-transform: uppercase; outline: none; }
+  input:focus { border-color: #8a8a8a; }
+  .row { display: flex; gap: 12px; margin-top: 14px; }
+  button { background: #000; color: #d8d8d8; border: 1px solid #3a3a3a; padding: 8px 16px; font: inherit;
+    letter-spacing: 0.2em; cursor: pointer; transition: border-color 160ms ease, color 160ms ease; }
+  button:hover { border-color: #8a8a8a; color: #fff; }
+  #error { min-height: 1.6em; margin-top: 12px; color: #c9a227; }
+</style>
+</head>
+<body>
+<main>
+  <h1>NEUMA IS LOCKED</h1>
+  <p>This computer's keychain no longer opens Neuma's key. It was reset or changed, or this is another computer. Type your Recovery Kit code to open it.</p>
+  <input id="code" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" aria-label="Recovery Kit code">
+  <div class="row"><button id="unlock">UNLOCK</button><button id="quit">QUIT</button></div>
+  <div id="error" role="alert"></div>
+</main>
+<script src="unlock.js"></script>
+</body>
+</html>

@@ -52,7 +52,8 @@ export default Object.freeze({
 
   realm: Object.freeze({
     heading: '数据领域',
-    note: '您在本机拥有的每一次对话的副本——与每个 neuma 的主权工作区相互独立。纯文本。由您读取、移动或删除。',
+    note: '您每段对话的副本都在这台机器上——与每位 neuma 的主权工作区分开。它们与存在的文件一样由这台电脑的密钥锁住；点「导出」即可把任意一段保存为明文。',
+    export: '导出',
     location: '位置',
     yourFolder: '您的文件夹',
     chatLogs: '聊天记录',

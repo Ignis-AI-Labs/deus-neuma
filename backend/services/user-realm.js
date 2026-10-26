@@ -18,6 +18,7 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import { isTempPath } from './workspace-settings.js';
+import { decryptEnvelope, encryptEnvelope, isEnvelope } from '../../core/workspace/workspace-crypto.js';
 
 const NEW_ROOT = path.join(os.homedir(), '.neuma', 'realm');
 const LEGACY_ROOT = path.join(os.homedir(), '.kenorie', 'realm');
@@ -106,8 +107,9 @@ export const appendChat = async (wallet, neumaId, neumaName, turns) => {
   const file = chatPath(wallet, neumaId);
   await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const ts = new Date().toISOString();
+  // Each line sealed under the install's key, like the beings' own files; EXPORT reads it back (chatText).
   const lines = turns
-    .map((t) => JSON.stringify({ ts, neuma: neumaName || null, role: t.role, content: t.content }) + '\n')
+    .map((t) => JSON.stringify(encryptEnvelope({ ts, neuma: neumaName || null, role: t.role, content: t.content })) + '\n')
     .join('');
   await fs.appendFile(file, lines, { mode: 0o600 });
 };
@@ -131,6 +133,9 @@ export const listChats = async (wallet) => {
   }
 };
 
+// pure (given the key) — a chat line back to its turn: sealed lines open, a line from before the lock reads as it is
+const openLine = (record) => (isEnvelope(record) ? decryptEnvelope(record) : record);
+
 /** Read a neuma's chat log (last `limit` turns). For the history viewer. */
 // impure
 export const readChat = async (wallet, neumaId, { limit = 200 } = {}) => {
@@ -141,13 +146,57 @@ export const readChat = async (wallet, neumaId, { limit = 200 } = {}) => {
     // record — in practice only the tail line can tear (a crash mid-append);
     // the sovereign workspace's JSONL reader applies the same tolerance.
     const lines = content.trim().split('\n').filter(Boolean)
-      .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+      .map((l) => { try { return openLine(JSON.parse(l)); } catch { return null; } })
       .filter(Boolean);
     return limit ? lines.slice(-limit) : lines;
   } catch (err) {
     if (err.code === 'ENOENT') return [];
     throw err;
   }
+};
+
+/**
+ * One conversation as plain text — the person's own copy, readable outside the app. Pure.
+ * @param {Array<{ts: string, neuma: ?string, role: string, content: string}>} turns
+ * @returns {string}
+ */
+export const chatText = (turns) => turns
+  .map((t) => `${t.ts} · ${t.role === 'user' ? 'you' : (t.neuma || t.role)}\n${t.content}\n`)
+  .join('\n');
+
+/**
+ * Seal every chat copy written before the lock: each plain line becomes an
+ * envelope; the file is replaced only after every line opens back to what it
+ * was. impure (fs, crypto).
+ * @returns {Promise<{files: number, lines: number, failed: string[]}>}
+ */
+export const sealChatCopies = async () => {
+  const done = { files: 0, lines: 0, failed: [] };
+  let wallets;
+  try { wallets = await fs.readdir(realmRoot, { withFileTypes: true }); } catch { return done; }
+  for (const w of wallets.filter((d) => d.isDirectory())) {
+    const dir = path.join(realmRoot, w.name, 'chats');
+    let files;
+    try { files = (await fs.readdir(dir)).filter((f) => f.endsWith('.jsonl')); } catch { continue; }
+    for (const f of files) {
+      const file = path.join(dir, f);
+      try {
+        const rows = (await fs.readFile(file, 'utf8')).split('\n').filter(Boolean).map((l) => JSON.parse(l));
+        const plain = rows.filter((r) => !isEnvelope(r)).length;
+        if (plain === 0) continue;
+        const sealed = rows.map((r) => (isEnvelope(r) ? r : encryptEnvelope(r)));
+        if (JSON.stringify(sealed.map(openLine)) !== JSON.stringify(rows.map(openLine))) throw new Error('a sealed line did not open back');
+        const tmp = `${file}.${process.pid}.seal.tmp`;
+        await fs.writeFile(tmp, sealed.map((r) => JSON.stringify(r)).join('\n') + '\n', { mode: 0o600 });
+        await fs.rename(tmp, file);
+        done.files += 1;
+        done.lines += plain;
+      } catch (err) {
+        done.failed.push(`${file}: ${err.message}`);
+      }
+    }
+  }
+  return done;
 };
 
 /** Realm summary for the "prove it's local" panel. */

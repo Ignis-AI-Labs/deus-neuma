@@ -77,7 +77,7 @@
       "to": "Ethereum",
       "when": "only if you choose it",
       "sends": "an encrypted record, your address and signatures, permanently",
-      "detail": "Sealing a birth or founding a house on Ethereum is a public, permanent transaction, made only if you choose it: an encrypted record, your address and your signatures are written to the chain for good.",
+      "detail": "Sealing a birth is done on this computer by default: the being and you each sign its birth record, and nothing leaves your machine. Writing the seal to Ethereum as well is a public, permanent transaction, made only if you choose it: an encrypted record, your address and your signatures are written to the chain for good. Opening that choice reads your wallet's balance from a public Ethereum node and the price of ETH from CoinGecko, to show what it costs.",
       "control": "choice"
     },
     {

@@ -55,9 +55,14 @@ describe('a retried finalize and the being\'s own key', () => {
     const events = [];
     expect((await finalize(neumaId, events)).completed).toBe(true);
     expect(events.some((e) => e.type === 'birth:complete')).toBe(true);
-    // The same key the seal derives — never a new one.
-    expect(await workspace.readNeumaDEK(neumaId)).toEqual(
-      (await import('../../core/workspace/workspace-crypto.js')).unwrapDEK(JSON.parse(written)));
+    // A fresh random key of its own (nothing was sealed under the lost one: the
+    // DNA write is what failed), and the DNA the retry wrote opens under it.
+    const crypto = await import('../../core/workspace/workspace-crypto.js');
+    const now = await workspace.readNeumaDEK(neumaId);
+    expect(now.length).toBe(32);
+    expect(now.equals(crypto.unwrapDEK(JSON.parse(written)))).toBe(false);
+    const dna = JSON.parse(await fs.readFile(path.join(root, neumaId, 'dna', 'active.json'), 'utf8'));
+    expect(crypto.decryptEnvelope(dna, { key: now })).toBeTruthy();
   });
 
   it('a DEK already written is never rewritten', async () => {

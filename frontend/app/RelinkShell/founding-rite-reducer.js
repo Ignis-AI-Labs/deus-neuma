@@ -26,12 +26,13 @@ export const INITIAL_RITE = Object.freeze({
   status: '',           // the walk's live line
   result: null,         // { txHash, blockNumber, … } once founded here
   marks: { offer: null, revealed: 0 },
+  funding: null,        // a short wallet's facts (GAS_FLOOR), shown as the way to fund it
 });
 
 export const foundingRiteReducer = (state, action) => {
   switch (action.type) {
     case 'PROBING':
-      return { ...state, phase: 'probing', movement: null };
+      return { ...state, phase: 'probing', movement: null, funding: null };
     case 'FOUNDED':
       return { ...state, phase: 'founded', movement: null, state: action.state };
     case 'OPEN':
@@ -49,13 +50,14 @@ export const foundingRiteReducer = (state, action) => {
     case 'CLOSED':
       return { ...state, phase: 'closed', error: action.error, code: action.code };
     case 'ERROR':
-      return { ...state, phase: 'error', movement: null, error: action.error, code: action.code };
+      return { ...state, phase: 'error', movement: null, error: action.error, code: action.code, funding: action.funding ?? null };
     case 'BEGIN':
       return { ...state, movement: 'call' };
     case 'TO_NAMES':
       return { ...state, movement: 'names' };
     case 'WALKING':
-      return { ...state, movement: 'walking', status: '' };
+      // a walk restarted after a refusal (a wallet funded since) returns the rite to its open founding
+      return { ...state, phase: state.open ? 'open' : state.phase, movement: 'walking', status: '', funding: null };
     case 'STATUS':
       return { ...state, status: action.status };
     case 'MARKS_OFFER':

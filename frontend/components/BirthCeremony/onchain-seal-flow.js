@@ -60,6 +60,13 @@ export const signSealPayload = (innerPayload, witnessAddress) =>
   requestUnlockAware({ method: 'personal_sign', params: [innerPayload, witnessAddress] });
 
 /**
+ * personal_sign the local seal's plain-words message (core/identity/local-seal.js): the wallet signs it as
+ * UTF-8 text and its confirm window shows the words. A signature, not a transaction: no money moves.
+ */
+export const signSealMessage = (message, witnessAddress) =>
+  requestUnlockAware({ method: 'personal_sign', params: [message, witnessAddress] });
+
+/**
  * Broadcast the encoded seal transaction from the witness's wallet (she pays
  * the gas; the contract records only the signed parties). Resolves to the
  * transaction hash once broadcast.

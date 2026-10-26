@@ -22,6 +22,7 @@ export const KIND_LABEL = Object.freeze({
   'treasury-flag': 'TREASURY FLAG',
   mandate: 'MANDATE',
   'link-change': 'LINKS',
+  security: 'SECURITY',
 });
 
 /** The most copy a band row shows whole — and so the most it may approve in one press. */

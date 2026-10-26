@@ -37,10 +37,10 @@ describe('user-realm storage', () => {
       { role: 'assistant', content: 'still here' },
     ]);
 
-    // The file is on disk, plaintext, under <root>/<wallet>/chats/<neuma>.jsonl
+    // The file is on disk under <root>/<wallet>/chats/<neuma>.jsonl, sealed: no word in the clear
     const file = path.join(root, WALLET.toLowerCase(), 'chats', `${NEUMA}.jsonl`);
     const raw = await fs.readFile(file, 'utf8');
-    expect(raw).toContain('greetings, witness');
+    expect(raw).not.toContain('greetings, witness');
 
     const chats = await listChats(WALLET);
     expect(chats).toHaveLength(1);

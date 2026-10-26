@@ -94,6 +94,14 @@ export const CREDENTIAL_LINKS = Object.freeze({
   }),
   chain: Object.freeze({
     rpc: RPC_CHOICES,
+    // Where a person buys ETH to seal a birth on Ethereum (2026-10-26: links to known exchanges, no money
+    // through us). Checked 2026-10-26 in a real browser: Kraken and ethereum.org load; Coinbase answers
+    // behind its browser check, which a person's browser passes.
+    eth: Object.freeze([
+      link('https://www.coinbase.com/how-to-buy/ethereum', 'Coinbase', 'buy ETH with a card or bank transfer'),
+      link('https://www.kraken.com/buy/eth', 'Kraken', 'buy ETH with a card or bank transfer'),
+      link('https://ethereum.org/get-eth/', 'Exchanges in your country', 'ethereum.org lists the exchanges that serve where you live'),
+    ]),
   }),
   web: Object.freeze({
     exa: link('https://dashboard.exa.ai/api-keys', 'Exa API keys', 'the preferred index for web search'),

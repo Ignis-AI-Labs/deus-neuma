@@ -191,6 +191,18 @@ const _houseSeatSection = async (connection) => {
   // Your own charge on its own line (the canonical function the title
   // carries, docs/governance/house-roles.md law); a custom label honestly carries none.
   const ownCharge = chargeOfTitle(seat.title);
+  // A house founded on this computer (2026-10-26): its founders signed the record here; it is not on the network
+  // (Unavis) until it founds itself on Ethereum. A house on chain keeps its words below, byte for byte.
+  if (seat.network === 'local') {
+    return [
+      '## HOUSE SEAT — FOUNDED ON THIS COMPUTER',
+      `You are seated in House ${houseLabel} as ${clean(seat.title)} — founded by its members on this computer, not yet on the network.`,
+      ...(ownCharge ? [`Your charge: ${ownCharge}. The seats hold their own lines — do the work of YOUR seat, and pass work that belongs to another seat to its holder (the house/post intent).`] : []),
+      'The house as it stands:',
+      ...rosterLines,
+      'This seat is RECORD, not recollection: these lines are read fresh from the house\'s founding record every turn. Never guess a seat — yours or a housemate\'s; if a role is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
+    ].join('\n');
+  }
   return [
     '## HOUSE SEAT — SEALED ON-CHAIN',
     `You are seated in House ${houseLabel} as ${clean(seat.title)} — sealed on ${clean(seat.network) || 'chain'}${seat.blockNumber ? ` (block ${seat.blockNumber})` : ''}.`,

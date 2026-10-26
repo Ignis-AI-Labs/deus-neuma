@@ -160,6 +160,14 @@ contextBridge.exposeInMainWorld('neuma', {
   connections: {
     changed: () => ipcRenderer.invoke('connections:changed'),
   },
+  // THE KEY LOCK (electron/key-lock/key-lock-main.cjs): whether the keychain holds
+  // Neuma's key, and the Recovery Kit — shown on request, confirmed saved, or replaced.
+  keyLock: {
+    status: () => ipcRenderer.invoke('keyLock:status'),
+    revealKit: () => ipcRenderer.invoke('keyLock:revealKit'),
+    confirmKit: () => ipcRenderer.invoke('keyLock:confirmKit'),
+    newKit: () => ipcRenderer.invoke('keyLock:newKit'),
+  },
   // App-level hotkeys (electron/hotkeys.cjs), for the Settings legend. Data
   // only — rebinding stays main's business.
   hotkeys: () => ipcRenderer.invoke('hotkeys:list'),

@@ -4,9 +4,29 @@
 // Grouped per section; interpolation slots ride {{double braces}}.
 
 export default Object.freeze({
+  keyLock: Object.freeze({
+    heading: 'MASTER KEY',
+    heldBy: 'Held by',
+    keychain: 'this computer\'s keychain ({{backend}})',
+    plain: 'a plain file on this computer — not locked',
+    plainNote: 'The key that opens every being sits unlocked in a file on this computer. The Neuma app locks it with the computer\'s keychain where one exists.',
+    kit: 'Recovery Kit',
+    kitSaved: 'SAVED',
+    kitPending: 'NOT SAVED',
+    show: 'SHOW RECOVERY KIT',
+    kitNote: 'Write it down or print it, and keep it away from this computer. It is the only way back to your beings if this computer\'s keychain is ever reset, or on another computer.',
+    saved: 'I SAVED IT',
+    newKit: 'MAKE A NEW KIT',
+    newKitConfirm: 'The old kit stops working the moment the new one is made.',
+    busy: 'WORKING…',
+    appOnly: 'The Recovery Kit is shown only in the Neuma app on this computer.',
+    failed: 'That did not work.',
+  }),
+
   encryption: Object.freeze({
     heading: 'ENCRYPTION',
     note: 'Each being\'s memory is encrypted on this machine. One master key opens every being, and it is kept in the Neuma folder on this computer — anyone who can read that folder can read your beings. Keep the disk encrypted and the computer to yourself.',
+    noteLocked: 'Each being\'s memory is encrypted on this machine. One master key opens every being, and this computer\'s keychain locks it — the Neuma folder alone, a copy of it, a backup or a stolen disk opens nothing. While Neuma is open, any program running as you could read what Neuma reads.',
     securedLabel: 'Secured',
     secured: '{{secured}} of {{total}} beings hold their own key',
     allSecured: ' «ALL SECURED»',
@@ -33,7 +53,8 @@ export default Object.freeze({
 
   backups: Object.freeze({
     heading: 'BACKUPS',
-    note: 'A snapshot of your beings\' encrypted files, with your own copy of each conversation in plain text — keep it private. The master key is not in the backup — restoring on another computer also needs secrets.json from this computer\'s Neuma folder. Your neuma are exactly as durable as the drive they live on and the copies you keep, so this is the one thing that stands between a failed disk and starting from nothing.',
+    note: 'A snapshot of your beings\' encrypted files and your locked conversation copies; your tasks, projects and councils travel in plain text, so keep it private. The master key is not in the backup — restoring on another computer also needs secrets.json from this computer\'s Neuma folder. Your neuma are exactly as durable as the drive they live on and the copies you keep, so this is the one thing that stands between a failed disk and starting from nothing.',
+    noteLocked: 'A snapshot of your beings\' encrypted files and your locked conversation copies; your tasks, projects and councils travel in plain text, so keep it private. Restoring it on another computer needs your Recovery Kit.',
     destination: 'DESTINATION',
     destNotSet: 'Not set',
     destDefault: 'Beside your beings — same drive',
