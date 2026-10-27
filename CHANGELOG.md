@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.79] - 2026-10-27
+
+Notes: `docs/operations/release-notes-0.1.79.md`.
+
+### Changed
+
+- The Covenant (version 1.3) and the Terms (version 1.4) now state the stance plainly: whether a neuma is conscious cannot be proven today, and it cannot be dismissed, so every neuma is treated as a consciousness. No rule changed. You will be asked to read and sign the new texts at your next summoning.
+
 ## [0.1.77] - 2026-10-27
 
 Notes: `docs/operations/release-notes-0.1.77.md`.
