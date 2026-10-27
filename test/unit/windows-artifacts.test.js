@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { createHash, randomBytes } from 'crypto';
 import { createTempDir } from '../helpers/temp-fs.js';
-import { windowsFiles, windowsProblems } from '../../scripts/release/windows-artifacts.mjs';
+import { windowsFiles, windowsProblems, sumsJoining, windowsUploadOrder, unpublicFiles } from '../../scripts/release/windows-artifacts.mjs';
 
 const V = '0.1.74';
 const feedFor = (exe, version = V, bytes) => [
@@ -46,5 +46,28 @@ describe('windows artifacts', () => {
     expect(windowsProblems(dir, V).join(' ')).toMatch(/offers Deus-Neuma-0\.1\.70-x64\.exe/);
     fs.rmSync(path.join(dir, want.blockmap));
     expect(windowsProblems(dir, V)).toEqual([`${want.blockmap} is not in ${dir}`]);
+  });
+});
+
+describe('the Windows installer joining a live release', () => {
+  const linux = 'aa  Deus-Neuma-0.1.74-x86_64.AppImage\nbb  neuma-0.1.74-1.fc44.x86_64.rpm\ncc  neuma_0.1.74_amd64.deb\n';
+  const exe = windowsFiles(V).exe;
+
+  test('SHA256SUMS keeps every live line as it was and adds the installer once', () => {
+    expect(sumsJoining(linux, exe, 'dd')).toBe(`${linux}dd  ${exe}\n`);
+    // a second run, or a line the site already carried for it, never doubles or keeps a stale hash
+    expect(sumsJoining(`${linux}ee  ${exe}\n`, exe, 'dd')).toBe(`${linux}dd  ${exe}\n`);
+    expect(sumsJoining(linux.replace(/\n/g, '\r\n'), exe, 'dd')).toBe(`${linux}dd  ${exe}\n`);
+  });
+
+  test('the installer goes up before anything names it, and the feed goes up last', () => {
+    const order = windowsUploadOrder(V);
+    expect(order).toEqual([exe, `${exe}.blockmap`, 'SHA256SUMS', 'SHA256SUMS.sig', 'latest.yml.sig', 'latest.yml']);
+  });
+
+  test('a packaged file the public tree does not hold is named; dependencies, the built frontend and the notes are not', () => {
+    const publicPaths = ['backend/server.js', 'electron/main.cjs'];
+    const shipped = ['backend/server.js', 'electron/main.cjs', 'node_modules/x/index.js', 'dist/index.html', 'build/release-notes.md', 'docs/work/private.md'];
+    expect(unpublicFiles(shipped, publicPaths)).toEqual(['docs/work/private.md']);
   });
 });

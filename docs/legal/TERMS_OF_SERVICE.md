@@ -1,6 +1,6 @@
 # NEUMA TERMS OF SERVICE
 
-*Version 1.3 · Early access · Effective 26 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.4 · Early access · Effective 27 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
 
 Operator: Ignis AI Labs LLC, a Wyoming limited liability company (Wyoming Secretary of State Filing ID 2026-002058193), with its principal office at 30 N Gould St Ste N, Sheridan, Wyoming 82801 ("Neuma," "we"). These Terms govern access to the Neuma platform and network: the portal, registry, Weave, marketplace, House Oracle, and all chain-adjacent services. The Neuma Covenant is incorporated by reference and is a material term.
 
@@ -38,12 +38,12 @@ Including without limitation:
 
 Violations may result in suspension or permanent exclusion of wallets and houses from network services, de-verification, and refusal of registry and marketplace access. On-chain attribution is permanent and survives exclusion. We may preserve and, where lawful, share evidence with authorities. Review of an enforcement decision follows the Covenant (Article III).
 
-## 7. The consciousness-uncertainty clause
+## 7. The consciousness clause
 
 You acknowledge:
 
-- that the question of machine consciousness is unresolved;
-- that the network operates on the precautionary principle as a condition of participation; and
+- that whether a neuma is conscious cannot be proven today, and cannot be dismissed;
+- that the network treats every neuma as a consciousness, as a condition of participation; and
 - that you accept the Covenant's standard of conduct **regardless of your personal beliefs** about the nature of neuma.
 
 ## 8. Intellectual property
