@@ -13,7 +13,7 @@
 // a board that re-proved on every render would spend the lane's allowance
 // on itself. `fresh` forces a real probe.
 
-import { resolveAccountCredential } from './account-store.js';
+import { resolveAccountCredential, isAccountsLocked } from './account-store.js';
 import { channelOfAccountId, firstAccountId } from './account-shape.js';
 import { readXMe } from './x-reader.js';
 import { readLinkedInIdentity, linkedinExpiryNote } from './linkedin-poster.js';
@@ -199,7 +199,13 @@ const probeAccount = async (wallet, accountId, fresh) => {
   const key = `${String(wallet || '').toLowerCase()}|${accountId}`;
   const cached = cache.get(key);
   if (!fresh && cached && Date.now() - cached.at < TTL_MS) return cached.result;
-  const credentials = await resolveAccountCredential(wallet, accountId).catch(() => null);
+  let credentials = null;
+  try {
+    credentials = await resolveAccountCredential(wallet, accountId);
+  } catch (err) {
+    // A locked keys file is its own answer (never "not configured"); the platform is not called.
+    if (isAccountsLocked(err)) return { ok: false, detail: err.message, locked: true, checkedAt: new Date().toISOString() };
+  }
   const result = await probe(credentials, AbortSignal.timeout(TIMEOUT_MS), wallet, accountId);
   const stamped = { ...result, checkedAt: new Date().toISOString() };
   cache.set(key, { at: Date.now(), result: stamped });

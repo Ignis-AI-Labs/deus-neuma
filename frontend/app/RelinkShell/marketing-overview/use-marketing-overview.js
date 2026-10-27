@@ -58,5 +58,9 @@ export const useMarketingOverview = ({ calm = null } = {}) => {
     return () => window.removeEventListener('neuma:campaigns-changed', onChanged);
   }, [refresh]);
 
-  return { data, errors, loading, refresh, accounts: house.accounts, companies: house.companies, known: house.known, houseError: house.error, waiting: waiting?.account || null };
+  // `locked` — the house's keys file can't be opened (account-store.js ACCOUNTS_LOCKED): its accounts read as none, by name.
+  return {
+    data, errors, loading, refresh, accounts: house.accounts, companies: house.companies, known: house.known, houseError: house.error,
+    locked: house.locked || null, waiting: waiting?.account || null,
+  };
 };

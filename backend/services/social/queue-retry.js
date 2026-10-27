@@ -7,10 +7,11 @@
 // a being's: post-queue.js `restage` is reached only from the operator's
 // route (social-retry-routes.js).
 //
-// A post refused for its keys or its words is not retried: those doors are
-// elsewhere (the keys row, REVISE).
+// A post held for its keys (refused, or the keys file locked) went nowhere
+// either: once its keys are fixed it may return the same way (canTryAgain).
+// A post refused for its words is not retried: its door is REVISE.
 
-import { sendFailureCause, SEND_FAILURE } from './send-failure.js';
+import { canTryAgain } from './send-failure.js';
 
 /** How many past failures one entry keeps. */
 const ATTEMPTS_MAX = 10;
@@ -28,8 +29,8 @@ const CLEARED = Object.freeze(['error', 'errorStatus', 'failedAt', 'decidedBy', 
  * @returns {?{error: string}}
  */
 export const restageFailed = (entry, { by, at }) => {
-  if (sendFailureCause(entry) !== SEND_FAILURE.retry) {
-    return { error: 'this post did not fail on a passing platform error — revise it, or fix what refused it' };
+  if (!canTryAgain(entry)) {
+    return { error: 'this post did not fail on a passing platform error or its keys — revise it, or fix what refused it' };
   }
   const attempt = {
     failedAt: entry.failedAt || null,

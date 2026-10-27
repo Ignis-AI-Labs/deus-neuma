@@ -1,13 +1,14 @@
 // failed-post-door — a FAILED post's fix, by why it failed (send-failure.js;
-// show-dont-tell-audit.md finding 29): the keys refused → that account's
-// Channel keys row; the house's own law held it → the platform's STANDING;
+// show-dont-tell-audit.md finding 29): the keys refused, or the house's keys
+// file locked → that account's Channel keys row (TRY AGAIN beside it, for
+// once they are fixed: canTryAgain); the house's own law held it → the platform's STANDING;
 // the platform stumbled → TRY AGAIN; the words or media refused → REVISE,
 // and, where the member who wrote it is this house's, HAND TO them.
 //
 // `failedPostDoor` is the descriptor any surface that shows a failed post
 // draws (the post card, the BOARD's post row): a door and its press. Pure.
 
-import { sendFailureCause } from '../../../../backend/services/social/send-failure.js';
+import { sendFailureCause, canTryAgain } from '../../../../backend/services/social/send-failure.js';
 
 /** The card's own door for a post, when the fix happens on its card (TRY AGAIN, REVISE). */
 const cardDoor = (entry) => ({ kind: 'queue', channelId: entry.channelId, entryId: entry.id });
@@ -16,11 +17,19 @@ const cardDoor = (entry) => ({ kind: 'queue', channelId: entry.channelId, entryI
  * A failed post's door and its press (≤3 words), or null when the post did
  * not fail, or failed for a reason no door fixes (its card says why). Pure.
  * @param {?{id: string, status: string, channelId: string, accountId?: string, error?: string, errorStatus?: number}} entry
- * @returns {?{cause: string, door: {kind: string}, label: string}}
+ * @returns {?{cause: string, door: {kind: string}, label: string, again: boolean}}
+ *   again — TRY AGAIN stands beside the door (nothing went out)
  */
 export const failedPostDoor = (entry) => {
+  const door = failedDoorOf(entry);
+  return door ? { ...door, again: canTryAgain(entry) } : null;
+};
+
+const failedDoorOf = (entry) => {
   const cause = sendFailureCause(entry);
-  if (cause === 'keys') return { cause, door: { kind: 'keys', channelId: entry.channelId, accountId: entry.accountId || null }, label: 'FIX KEYS' };
+  const keys = { kind: 'keys', channelId: entry.channelId, accountId: entry.accountId || null };
+  if (cause === 'locked') return { cause, door: keys, label: 'KEYS LOCKED' };
+  if (cause === 'keys') return { cause, door: keys, label: 'FIX KEYS' };
   if (cause === 'standing') return { cause, door: { kind: 'standing', channelId: entry.channelId, drawer: 'holder' }, label: 'HOLDER' };
   if (cause === 'retry') return { cause, door: cardDoor(entry), label: 'TRY AGAIN' };
   if (cause === 'content') return { cause, door: cardDoor(entry), label: 'REVISE' };

@@ -5,30 +5,29 @@
  * works (tiktok-profile.js reads it; the desk's ACCOUNT board reads the same).
  *
  * The house's account and nobody else's, read with the house's own sign-in:
- * the lane's house is its owner's wallet, and only the lane bound to TikTok in
- * that house may read it — advertised to the holder alone
- * (social-queue-tools.js channelToolsFor) and re-checked here at every call.
- * It leaves the machine on the house's credentials, so it asks like read_x
+ * the lane's house is its owner's wallet. Reading is every lane's in that
+ * house, as every platform's read is (platform-read-tools.js);
+ * it was the holder's alone until then. Posting stays the holder's. It leaves
+ * the machine on the house's credentials, so it asks like read_x
  * (tool-policy-defaults.js, `social` row). The handler is social-read-tools.js.
  */
 import { createLogger } from '../logger.js';
 import { neumaWorkspace } from '../../../core/index.js';
-import { channelBindings } from '../social/channel-bindings.js';
-import { heldAccounts, pickAccount } from '../social/account-shape.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { readTikTokProfile } from '../social/tiktok-profile.js';
 import { frameUntrustedSections } from '../untrusted-content.js';
+import { readAccountFor } from './read-account.js';
 
 const log = createLogger('Portal');
 
 export const READ_TIKTOK_TOOL = Object.freeze({
   name: 'read_tiktok',
   server: 'social',
-  description: 'Read a TikTok account of the house that you hold — args {account?}: name the account (tiktok-1, tiktok-2…) when you hold more than one. You get the profile (name, @username, verified, bio, profile link), the four counts (followers, following, likes, videos) and the newest public videos (up to 20, newest first), each with its date, length, views, likes, comments, shares and link — the measure of what works. TikTok lists public videos only, so a private (only me) post is not among them. Reading only: nothing is posted or changed. Profile edits are made in TikTok itself.',
+  description: 'Read a TikTok account of the house — args {account?}: name the account (tiktok-1, tiktok-2…) when the house has more than one; the one you hold, else the first, by default. You get the profile (name, @username, verified, bio, profile link), the four counts (followers, following, likes, videos) and the newest public videos (up to 20, newest first), each with its date, length, views, likes, comments, shares and link — the measure of what works. TikTok lists public videos only, so a private (only me) post is not among them. Every agent of the house may read it; posting stays with the account\'s holder and your operator\'s approval. Reading only: nothing is posted or changed. Profile edits are made in TikTok itself.',
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({
-      account: Object.freeze({ type: 'string', description: 'Which TikTok account (tiktok-1, tiktok-2…) — only needed when you hold more than one' }),
+      account: Object.freeze({ type: 'string', description: 'Which TikTok account (tiktok-1, tiktok-2…) — only needed when the house has more than one' }),
     }),
   }),
 });
@@ -89,42 +88,24 @@ const renderTikTokRead = (read, { budget = null, token } = {}) => {
   return { text: draw(shown), shown };
 };
 
-// impure — the lane's house and the TikTok account the read is for, when the
-// lane holds it there; else the refusal in words.
-const holderAccount = async (neumaId, asked) => {
+// impure — the lane's house and which of its TikTok accounts the read is for.
+const accountToRead = async (neumaId, asked) => {
   const house = await houseOfLane(neumaId);
-  const bindings = house ? await channelBindings.load(house).catch(() => ({})) : {};
-  const held = heldAccounts(bindings, 'tiktok', neumaId);
-  if (!held.length) return { ok: false, error: NOT_HOLDER };
-  const pick = pickAccount(held, asked, 'TikTok');
+  if (!house) return { ok: false, error: 'read_tiktok reads your own house\'s account, and your lane has no house' };
+  const pick = await readAccountFor(house, neumaId, asked, { id: 'tiktok', name: 'TikTok' });
   return pick.ok ? { ok: true, house, accountId: pick.accountId } : pick;
 };
 
-const NOT_HOLDER = 'read_tiktok is the TikTok channel holder\'s read, and you do not hold TikTok in your house. Ask the holder for what you need, or your operator to bind you.';
-
 /**
- * Why this lane may not read the house's TikTok account, or null — asked
- * before the operator's card, so no card is raised for a read that cannot run.
- * impure — stores.
- * @param {string} neumaId
- * @returns {Promise<string|null>}
- */
-export const tiktokReadRefusal = async (neumaId, asked) => {
-  const held = await holderAccount(neumaId, asked);
-  return held.ok ? null : held.error;
-};
-
-/**
- * Read the house's TikTok account for the lane that holds the channel; the
- * binding is read again here, after any card. impure — stores, network, the
- * being's journal.
+ * Read the house's TikTok account for a lane of that house. impure — stores,
+ * network, the being's journal.
  * @param {string} neumaId
  * @param {{signal?: AbortSignal, budget?: number, account?: string}} [opts]
- *   account — which of the lane's TikTok accounts (needed when it holds several)
+ *   account — which of the house's TikTok accounts (needed when it has several)
  * @returns {Promise<{ok: true, text: string, shown: number}|{ok: false, error: string}>}
  */
 export const readTikTokForBeing = async (neumaId, { signal, budget, account } = {}) => {
-  const held = await holderAccount(neumaId, account);
+  const held = await accountToRead(neumaId, account);
   if (!held.ok) return { ok: false, error: held.error };
   const read = await readTikTokProfile(held.house, { signal, accountId: held.accountId });
   if (!read.ok) return { ok: false, error: `The TikTok read did not land: ${read.detail}.` };

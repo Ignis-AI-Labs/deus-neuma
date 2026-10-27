@@ -57,12 +57,22 @@ describe('restageFailed', () => {
     expect(entry.attempts[9].error).toBe('X answered HTTP 503');
   });
 
-  it('refuses a refusal of the keys or the words, and leaves the entry as it was', () => {
-    for (const error of ['Unauthorized', 'duplicate content', 'fetch failed']) {
-      const entry = failed({ error, errorStatus: error === 'Unauthorized' ? 401 : undefined });
+  it('refuses a refusal of the words, or a send whose outcome is unknown, and leaves the entry as it was', () => {
+    for (const error of ['duplicate content', 'fetch failed']) {
+      const entry = failed({ error });
       const before = JSON.stringify(entry);
       expect(restageFailed(entry, { by: 'w', at: 'now' })).toEqual({ error: expect.stringContaining('did not fail on a passing platform error') });
       expect(JSON.stringify(entry)).toBe(before);
+    }
+  });
+
+  it('a post held for its keys — refused, missing, or the keys file locked — went nowhere, so it may go back once fixed', () => {
+    for (const [error, errorStatus] of [['Unauthorized', 401], ['X credentials are not configured', undefined],
+      ['the house\'s keys file can\'t be opened with this desk\'s key — nothing was sent, and the file is untouched', undefined]]) {
+      const entry = failed({ error, errorStatus });
+      expect(restageFailed(entry, { by: 'w', at: 'now' })).toBeNull();
+      expect(entry.status).toBe('draft');
+      expect(entry.attempts.at(-1).error).toBe(error);
     }
   });
 });

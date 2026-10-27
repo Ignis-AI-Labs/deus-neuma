@@ -16,6 +16,15 @@ export const MARKETING_WINDOW = 'marketing';
 /** The public platforms whose windows are now MARKETING's account level. */
 export const MARKETING_PLATFORMS = Object.freeze(['x', 'facebook', 'mastodon', 'bluesky', 'linkedin', 'youtube', 'tiktok']);
 
+/**
+ * Each platform's name. The launcher still lists every platform (Founder
+ * 2026-10-27: […]): a tile opens MARKETING on that
+ * platform, and a pin of one stays a pin of that platform.
+ */
+export const PLATFORM_LABELS = Object.freeze({
+  x: 'X', facebook: 'Facebook', mastodon: 'Mastodon', bluesky: 'Bluesky', linkedin: 'LinkedIn', youtube: 'YouTube', tiktok: 'TikTok',
+});
+
 const TAB_OF = Object.freeze({ socialCheck: 'accounts', brandKits: 'brand', leads: 'leads' });
 
 /** Whether a platform's space lives in MARKETING now (COMMUNITY's do not). */
@@ -78,5 +87,9 @@ export const migrateOpenSet = (list) => {
   return { list: out, landing };
 };
 
-/** App ids (a launcher's pins) with every retired window as MARKETING, once, in place. */
-export const migrateAppIds = (ids) => [...new Set((Array.isArray(ids) ? ids : []).map((id) => (retiredPlace(id) ? MARKETING_WINDOW : id)))];
+/**
+ * App ids (a launcher's pins) with every retired window as MARKETING, once, in
+ * place. A platform stays itself: its launcher tile opens MARKETING on it.
+ */
+export const migrateAppIds = (ids) => [...new Set((Array.isArray(ids) ? ids : [])
+  .map((id) => (retiredPlace(id) && !isMarketingPlatform(id) ? MARKETING_WINDOW : id)))];

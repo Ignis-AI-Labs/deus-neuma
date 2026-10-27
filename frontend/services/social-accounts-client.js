@@ -48,3 +48,12 @@ const connectPath = (channelId, accountId) =>
 export const startAccountConnect = (channelId, accountId) => req(connectPath(channelId, accountId), { method: 'POST' });
 export const pollAccountConnect = (channelId, accountId) => req(connectPath(channelId, accountId));
 export const cancelAccountConnect = (channelId, accountId) => req(connectPath(channelId, accountId), { method: 'DELETE' });
+
+/**
+ * Unlock the house's keys file sealed under an old key: the key opens it once and it is sealed again
+ * under this desk's (house-unlock.js). The key travels up once and is never stored or sent back. impure.
+ */
+export const unlockHouseKeys = (key) => req('/api/v1/social-channels/accounts/unlock', { method: 'POST', body: { key } });
+
+/** The old key is gone: the locked keys file steps aside (kept read-only) and the keys start empty. impure. */
+export const startFreshKeys = () => req('/api/v1/social-channels/accounts/start-fresh', { method: 'POST' });

@@ -40,7 +40,9 @@ const useHouseCheck = (calm) => {
     setBusy(true);
     setError(null);
     try {
-      const { check } = await getHouseCheck({ fresh });
+      const { check, locked } = await getHouseCheck({ fresh });
+      // The house's keys file can't be opened: no account can be checked — said, never "checking…" forever.
+      if (locked) throw new Error('▲ KEYS LOCKED — no account can be checked until the keys file opens');
       const apply = () => { setRead(check); setHeld(false); };
       if (fresh) setHeld(!calm.offer('check', apply));
       else calm.now('check', apply);

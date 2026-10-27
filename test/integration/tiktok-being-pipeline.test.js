@@ -6,7 +6,7 @@
  * by id through the social/queue intent (the real sweep → the real queue,
  * landing a `draft`), is refused in words that name the way forward, follows
  * the entry with queue_get, and reads its house's own TikTok account with
- * read_tiktok behind the operator's card. The operator approves on the real
+ * read_tiktok behind the operator's card — as may every lane of the house. The operator approves on the real
  * route with the card's choices; the real scheduler tick sends exactly them.
  *
  * Real: the intent sweep, the tool catalog + tool_search, the platform
@@ -73,10 +73,12 @@ describe('the TikTok draft shape is read on demand, by the lanes that can reach 
     expect(found.tools.map((t) => t.id)).toContain('social/read_tiktok');
   });
 
-  test('a housemate off the TikTok crew is offered neither the TikTok rules nor the account read', async () => {
+  test('a housemate off the TikTok crew is offered the account read, never the TikTok rules', async () => {
     const other = kit.connectionFor(OTHER);
     expect(await intentSectionFor(other)).not.toContain('tiktok');
-    expect((await platformToolsFor(other)).tools.map((t) => t.name)).not.toContain('read_tiktok');
+    const names = (await platformToolsFor(other)).tools.map((t) => t.name);
+    expect(names).toContain('read_tiktok');
+    expect(names).not.toContain('queue_update_to_tiktok');
   });
 });
 
@@ -119,17 +121,12 @@ describe('a video from the being\'s own store is staged as a draft — never app
     expect((await queued()).map((e) => e.id)).toEqual([staged.id]);
   });
 
-  test('a lane off the TikTok crew is refused at staging, and its account read is refused before any card', async () => {
+  test('a lane off the TikTok crew is refused at staging', async () => {
     const other = kit.connectionFor(OTHER);
     const receipt = await kit.file(other, 'not-mine', { type: 'social/queue', channel: 'tiktok', text: CAPTION, media: [{ image: otherVideo.id }] });
     expect(receipt.status).toBe('denied');
     expect(receipt.error).toMatch(/you are not on the TikTok crew/);
-    const userLegs = legsOf(kit, 'user').length;
-    const read = await call(other, 'read_tiktok');
-    expect(read.status).toBe('denied');
-    expect(read.error).toMatch(/you do not hold TikTok in your house/);
     expect(kit.cards).toEqual([]);
-    expect(legsOf(kit, 'user')).toHaveLength(userLegs);
     expect((await queued()).map((e) => e.id)).toEqual([staged.id]);
   });
 });
@@ -185,6 +182,16 @@ describe('the holder reads its own house\'s TikTok account, behind the operator\
     const read = await call(kit.connectionFor(CMO), 'read_tiktok');
     expect(read.status).toBe('denied');
     expect(legsOf(kit, 'user')).toHaveLength(userLegs);
+  });
+
+  test('a housemate off the TikTok crew reads the same account, behind the same card', async () => {
+    kit.decide = () => 'allow';
+    const cards = kit.cards.length;
+    const read = await call(kit.connectionFor(OTHER), 'read_tiktok');
+    expect(kit.cards.slice(cards).map((c) => c.tool)).toEqual(['social/read_tiktok']);
+    expect(read.status).toBe('ok');
+    expect(read.content).toContain('@deusneuma');
+    expect(legsOf(kit, 'user').at(-1).auth).toBe('Bearer access-A');
   });
 
   test('another house\'s holder reads ITS house\'s account, with its own sign-in — never this one', async () => {

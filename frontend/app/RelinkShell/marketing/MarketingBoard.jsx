@@ -52,7 +52,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
  * @param {?object} props.calm - the window's calm gate (use-calm-gate.js): a board changed elsewhere waits on it
  */
 export const MarketingBoard = ({ read, scope, companyId, tiles, filter, onFilter, reading, onOpenCampaign, onTab, onZoom, onLoose, calm }) => {
-  const { data, errors, refresh, accounts, companies, waiting } = read;
+  const { data, errors, refresh, accounts, companies, waiting, locked } = read;
   const { view: mandateView, error: mandateError } = useMandate();
   const [all, setAll] = useState(false);
   // One clock per read, so the picture is the same until the next read.
@@ -86,8 +86,8 @@ export const MarketingBoard = ({ read, scope, companyId, tiles, filter, onFilter
   }), [accounts, companies]);
   const choices = useMemo(() => ({ capability: data?.results?.capability || {}, platforms, names }), [data, platforms, names]);
 
-  const cells = useMemo(() => (data ? marketingHealth({ data, errors, waiting, mandate: { view: mandateView, error: mandateError }, accounts, scope, now }) : null),
-    [data, errors, waiting, mandateView, mandateError, accounts, scope, now]);
+  const cells = useMemo(() => (data ? marketingHealth({ data, errors, waiting, mandate: { view: mandateView, error: mandateError }, accounts, locked, scope, now }) : null),
+    [data, errors, waiting, mandateView, mandateError, accounts, locked, scope, now]);
   const defaults = useMemo(() => (view ? defaultBoard({ companyId, tiles: tiles.length, campaignIds: view.cards.map((c) => c.id), platforms }) : []),
     [view, companyId, tiles.length, platforms]);
   const stored = useBoard({ level: levelKey(companyId), calm });

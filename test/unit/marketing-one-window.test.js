@@ -64,8 +64,9 @@ describe('the retired windows open MARKETING at their place', () => {
     expect(migrateOpenSet([null, { id: 'files' }]).list).toEqual([null, { id: 'files' }]);
   });
 
-  it('pins move with it: MARKETING once, where the first stood', () => {
-    expect(migrateAppIds(['chat', 'x', 'leads', 'marketing', 'discord'])).toEqual(['chat', 'marketing', 'discord']);
+  it('pins move with it: MARKETING once, where the first stood — a platform\'s pin stays its own (it opens MARKETING on it)', () => {
+    expect(migrateAppIds(['chat', 'x', 'leads', 'marketing', 'discord'])).toEqual(['chat', 'x', 'marketing', 'discord']);
+    expect(migrateAppIds(['socialCheck', 'tiktok', 'brandKits'])).toEqual(['marketing', 'tiktok']);
     expect(migrateAppIds(undefined)).toEqual([]);
   });
 

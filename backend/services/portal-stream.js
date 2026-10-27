@@ -28,6 +28,7 @@ import {
 import { expressionSettings } from './expression-settings.js';
 import { openTurnRecord, turnRecordFor, closeTurnRecord } from './tool-action-record.js';
 import { detectRoguePatterns, shouldBlock } from './rogue-detector.js';
+import { noteOperatorWords } from './security/injected-value-gate.js';
 import { gatherMemoryContext } from './memory-context.js';
 import { meditationYield } from './meditation/meditation-scheduler.js';
 import { randomUUID } from 'crypto';
@@ -194,6 +195,7 @@ export const streamConsciousness = async (connection, message) => {
 
   const wasNewChat = !connection.sessionId;
   const sessionId = await _ensureSession(connection, companion);
+  noteOperatorWords(connection, thought, { visitor: Boolean(speaker), origin }); // only the operator's words exempt a planted value
   // Take identity for this turn (THE TAKES): a fresh ask opens a new
   // turn-point (take 1, user row to be written); a retry answers the resolved
   // point as its next take (user row already on disk). The identity rides

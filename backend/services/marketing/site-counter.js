@@ -12,7 +12,7 @@
 //
 // impure — the credential store and the network.
 
-import { loadAccountStore, mutateAccountStore } from '../social/account-store.js';
+import { loadAccountStore, mutateAccountStore, isAccountsLocked } from '../social/account-store.js';
 import { publishBody } from './link-codes.js';
 
 const TIMEOUT_MS = 8000;
@@ -27,8 +27,18 @@ const tokenOf = async (wallet) => {
   return typeof token === 'string' && token.trim() ? token.trim() : null;
 };
 
-/** Whether this house can publish and read its codes — never the token itself. impure. */
-export const siteCounterStatus = async (wallet) => ({ configured: Boolean(await tokenOf(wallet)), root: siteCounterRoot() });
+/**
+ * Whether this house can publish and read its codes — never the token itself;
+ * `locked` when the house's keys file can't be opened (never read as "not set up"). impure.
+ */
+export const siteCounterStatus = async (wallet) => {
+  try {
+    return { configured: Boolean(await tokenOf(wallet)), root: siteCounterRoot() };
+  } catch (err) {
+    if (isAccountsLocked(err)) return { configured: false, locked: { why: err.message }, root: siteCounterRoot() };
+    throw err;
+  }
+};
 
 /**
  * Seal (or clear, with '') the house's site token. impure.

@@ -99,6 +99,7 @@ html[data-taskbar-edge='top'] .ntray {
 }
 
 .ntray-panel-head {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -137,6 +138,7 @@ html[data-taskbar-edge='top'] .ntray {
 
 /* DESKTOP ALERTS — the switch for notices that leave the app (OsNoticeToggle.jsx) */
 .ntray-panel-foot {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   padding: var(--space-1, 0.25rem) var(--space-2);
@@ -164,7 +166,10 @@ html[data-taskbar-edge='top'] .ntray {
 }
 .ntray-os-toggle[aria-pressed='true'] .ntray-os-box { background: currentColor; }
 
+/* The one part that gives way when the panel is full: it scrolls, the waiting section and head above it never shrink. */
 .ntray-panel-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

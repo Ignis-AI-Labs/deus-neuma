@@ -22,15 +22,14 @@ import { youtubeApiRoot } from '../youtube-api.js';
 import { tiktokAccessFor } from '../tiktok-token.js';
 import { tiktokApiRoot } from '../tiktok-oauth.js';
 import { normalizeInstanceUrl } from '../mastodon-poster.js';
-import { GRAPH_VERSION } from '../facebook-poster.js';
+import { facebookApiRoot } from '../facebook-poster.js';
+import { blueskyAppViewRoot } from '../bluesky-poster.js';
 import { backoffMs, untilQuotaResetMs } from './stats-schedule.js';
 import { fromX, fromYouTube, fromTikTok, fromMastodon, fromBluesky, fromFacebook } from './stats-metrics.js';
 
 const PER_CALL_CAP = 20;
 const DAY = 24 * 60 * 60 * 1000;
 const xRoot = () => process.env.NEUMA_X_API_ROOT || 'https://api.x.com/2';
-const blueskyRoot = () => process.env.NEUMA_BLUESKY_API_ROOT || 'https://public.api.bsky.app';
-const facebookRoot = () => process.env.NEUMA_FACEBOOK_API_ROOT || `https://graph.facebook.com/${GRAPH_VERSION}`;
 const chunks = (list, size) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, (i + 1) * size));
 
 // impure — one JSON request; the headers a backoff reads ride along.
@@ -158,7 +157,7 @@ const readFacebook = async (house, accountId, posts) => {
   const credentials = await resolveAccountCredential(house, accountId);
   if (!credentials) return { ok: false, kind: 'unavailable', detail: `${accountId} has no Page token` };
   const fields = 'reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares';
-  return readEach(posts, 'Facebook', (p) => request(`${facebookRoot()}/${encodeURIComponent(p.postId)}?fields=${encodeURIComponent(fields)}`, {
+  return readEach(posts, 'Facebook', (p) => request(`${facebookApiRoot()}/${encodeURIComponent(p.postId)}?fields=${encodeURIComponent(fields)}`, {
     headers: { Authorization: `Bearer ${credentials.accessToken}` },
   }), fromFacebook);
 };
@@ -169,7 +168,7 @@ const readBluesky = async (_house, _accountId, posts) => {
   for (const batch of chunks(posts, 25)) {
     const q = new URLSearchParams();
     for (const p of batch) q.append('uris', p.postId);
-    const res = await request(`${blueskyRoot()}/xrpc/app.bsky.feed.getPosts?${q}`);
+    const res = await request(`${blueskyAppViewRoot()}/xrpc/app.bsky.feed.getPosts?${q}`);
     if (res.status === 429) return slowDown(res, 'account', 'Bluesky asked the house to slow down');
     if (!res.ok) return failed(res, 'Bluesky');
     const ids = byPost(batch);

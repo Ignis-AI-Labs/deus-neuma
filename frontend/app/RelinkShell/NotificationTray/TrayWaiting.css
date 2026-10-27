@@ -58,10 +58,11 @@
 
 /* ── the section, first in the opened tray ────────────────────────────── */
 
+/* It keeps its own height (never squeezed to a sliver by a long list beneath it — the list is what
+   scrolls, NotificationTray.css), up to a cap of its own past which it scrolls. */
 .ntray-wait-sec {
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 55%;
+  flex: none;
+  max-height: min(30vh, 240px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;

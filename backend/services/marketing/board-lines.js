@@ -26,7 +26,9 @@ const companyOf = (level) => (level === HOUSE_LEVEL ? null : level);
  * account has none — zoom-fold.js houseTiles; at a company its subsidiaries). Pure.
  * @param {{level: string, companies: object[], campaigns: object[], accounts: object[]}} ctx
  */
-const levelView = ({ level, companies, campaigns, accounts }) => {
+const levelView = ({ level, companies, campaigns, accounts: read }) => {
+  // null — the keys file is locked and the accounts can't be read (board-house.js); the lines say LOCKED.
+  const accounts = read || [];
   const scope = scopeOf(companies, companyOf(level));
   const here = accounts.filter((a) => inScope(scope, a.companyId));
   const known = new Set(companies.map((c) => c.id));
@@ -96,7 +98,8 @@ export const boardLines = ({ ctx, saved, dropped = [] }) => {
     `platforms here: ${view.platforms.map((p) => `${p} ${CAPABILITY[p]?.reports.length ? CAPABILITY[p].reports.join(',') : 'reports none (links only)'}`).join(' · ') || 'none'}`,
     `campaigns here: ${view.campaigns.map((c) => `${c.id} ${c.name} (${c.companyId || 'no company'}, ${c.status})`).join(' · ') || 'none'}`,
     `companies here: ${view.companies.map((c) => `${c.id} ${c.name}`).join(' · ') || 'none'}`,
-    `accounts here: ${view.accounts.map((a) => `${a.id}${a.companyId ? ` ${a.companyId}` : ''}`).join(' · ') || 'none'}`,
+    ctx.locked ? `accounts here: LOCKED — ${ctx.locked.why}; no layout can be saved until it opens`
+      : `accounts here: ${view.accounts.map((a) => `${a.id}${a.companyId ? ` ${a.companyId}` : ''}`).join(' · ') || 'none'}`,
   ].join('\n');
 };
 

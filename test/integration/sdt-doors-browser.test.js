@@ -220,13 +220,14 @@ describe('SDT-2 — every MARKETING problem is a door to its exact place', () =>
     await page.close();
   }, 150000);
 
-  it('a post refused for its keys: FIX KEYS opens that account\'s own row in Settings → API, marked', async () => {
+  it('a post refused for its keys: FIX KEYS opens that account\'s own row in Settings → API, marked; TRY AGAIN stands for after', async () => {
     const { page, errors } = await openDesk();
     await openCard(page, 'f2');
     const card = xLevel(page).locator('.queue-card[data-entry-id="f2"]');
     await card.waitFor({ timeout: 30000 });
     await landed(card);
-    expect(await card.getByRole('button', { name: 'TRY AGAIN' }).count()).toBe(0);
+    // Nothing of it went out (the platform refused the keys): once they are fixed it may go back (send-failure.js canTryAgain).
+    expect(await card.getByRole('button', { name: 'TRY AGAIN' }).count()).toBe(1);
     await card.locator('[data-door="keys"]').click();
     const row = win(page, 'settings').locator('.account-row[data-account="x-1"]');
     await row.waitFor({ timeout: 30000 });

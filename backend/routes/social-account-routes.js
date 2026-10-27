@@ -16,6 +16,11 @@
  *   GET    /accounts/flight-test[?fresh=1]   every account proven with its own keys
  *   GET    /accounts/house-check[?fresh=1]   the house social check (in-use accounts, roll-up, OPTIONAL)
  *   PUT    /apps/:channelId                  the app's fields {fields}
+ *   POST   /accounts/unlock                  the keys file sealed under an old key: {key} opens it once and
+ *                                             it is sealed again under this desk's (house-unlock.js); the key
+ *                                             is never stored, logged or sent back
+ *   POST   /accounts/start-fresh             the old key is gone: the locked file steps aside (kept
+ *                                             read-only) and the keys start empty, to be pasted again
  *
  * Every answer is the caller's own house and masked: key NAMES and where each
  * is set, never a value. CONNECT for a sign-in platform is
@@ -30,11 +35,12 @@ import { sectorCrew } from '../services/sector-crew.js';
 import { pastedKeyProblem } from '../services/social/channel-credentials.js';
 import { channelOfAccountId } from '../services/social/account-shape.js';
 import {
-  loadAccountStore, listAccounts, listApps, addAccount, setAccountFields, setAccountMeta, setAppFields, removeAccount,
+  loadAccountStore, listAccounts, listApps, addAccount, setAccountFields, setAccountMeta, setAppFields, removeAccount, isAccountsLocked,
 } from '../services/social/account-store.js';
 import { runAccountFlightTests } from '../services/social/flight-test.js';
 import { runHouseCheck } from '../services/social/house-check/house-check-facts.js';
 import { listCompanies } from '../services/marketing/companies.js';
+import { unlockHouseStores, startFreshKeys } from '../services/house-unlock.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialChannels.Accounts');
@@ -43,6 +49,11 @@ router.use(['/accounts', '/apps'], requireAuth, (req, res, next) => {
   res.set('Cache-Control', 'private, no-store');
   next();
 });
+
+// A locked keys file (account-store.js ACCOUNTS_LOCKED) is answered by its name, never a bare 500:
+// a read stands as an empty, LOCKED house; a write is refused (423) and nothing is written.
+const locked = (error) => ({ why: error.message });
+const refuseLocked = (res, error) => res.status(423).json({ error: error.message, locked: locked(error) });
 
 const companyIdsOf = async (wallet) => (await listCompanies(wallet)).map((c) => c.id);
 
@@ -69,6 +80,7 @@ router.param('accountId', async (req, res, next, accountId) => {
     req.account = account;
     return next();
   } catch (error) {
+    if (isAccountsLocked(error)) return refuseLocked(res, error);
     return next(error);
   }
 });
@@ -80,24 +92,51 @@ router.get('/accounts', async (req, res) => {
     const [apps, accounts, bindings, companies] = await Promise.all([
       listApps(wallet, store), listAccounts(wallet, store), channelBindings.load(wallet), listCompanies(wallet),
     ]);
-    res.json({
+    return res.json({
       apps,
       accounts: accounts.map((a) => ({ ...a, binding: bindings[a.id] || null })),
       companies,
     });
   } catch (error) {
+    if (isAccountsLocked(error)) {
+      const companies = await listCompanies(wallet).catch(() => []);
+      return res.json({ apps: [], accounts: [], companies, locked: locked(error) });
+    }
     log.error('accounts read failed', { error: error.message });
-    res.status(500).json({ error: 'Failed to read the house\'s accounts' });
+    return res.status(500).json({ error: 'Failed to read the house\'s accounts' });
+  }
+});
+
+router.post('/accounts/unlock', async (req, res) => {
+  try {
+    const result = await unlockHouseStores(req.walletAddress, req.body?.key);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    return res.json({ unlocked: true, already: Boolean(result.already), moved: result.moved, left: result.left });
+  } catch (error) {
+    log.error('unlock failed', { error: error.message });
+    return res.status(500).json({ error: 'The unlock did not finish — press UNLOCK again with the same key: it picks up where it stopped' });
+  }
+});
+
+router.post('/accounts/start-fresh', async (req, res) => {
+  try {
+    const result = await startFreshKeys(req.walletAddress);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    return res.json({ fresh: true });
+  } catch (error) {
+    log.error('fresh start failed', { error: error.message });
+    return res.status(500).json({ error: 'The fresh start did not finish — the keys file is where it was' });
   }
 });
 
 router.get('/accounts/flight-test', async (req, res) => {
   try {
     const accountIds = (await listAccounts(req.walletAddress)).map((a) => a.id);
-    res.json({ tests: await runAccountFlightTests({ wallet: req.walletAddress, accountIds, fresh: req.query.fresh === '1' }) });
+    return res.json({ tests: await runAccountFlightTests({ wallet: req.walletAddress, accountIds, fresh: req.query.fresh === '1' }) });
   } catch (error) {
+    if (isAccountsLocked(error)) return res.json({ tests: {}, locked: locked(error) });
     log.error('account flight tests failed', { error: error.message });
-    res.status(500).json({ error: 'Failed to run the flight tests' });
+    return res.status(500).json({ error: 'Failed to run the flight tests' });
   }
 });
 
@@ -105,10 +144,11 @@ router.get('/accounts/flight-test', async (req, res) => {
 // and rolled up per company → tree → house; the rest OPTIONAL, never counted.
 router.get('/accounts/house-check', async (req, res) => {
   try {
-    res.json({ check: await runHouseCheck(req.walletAddress, { fresh: req.query.fresh === '1' }) });
+    return res.json({ check: await runHouseCheck(req.walletAddress, { fresh: req.query.fresh === '1' }) });
   } catch (error) {
+    if (isAccountsLocked(error)) return res.json({ check: null, locked: locked(error) });
     log.error('house social check failed', { error: error.message });
-    res.status(500).json({ error: 'Failed to run the house\'s social check' });
+    return res.status(500).json({ error: 'Failed to run the house\'s social check' });
   }
 });
 
@@ -121,6 +161,7 @@ router.post('/accounts', async (req, res) => {
     log.info('account opened', { accountId: added.accountId, companyId: companyId ?? null, wallet: req.walletAddress });
     return res.status(201).json({ accountId: added.accountId });
   } catch (error) {
+    if (isAccountsLocked(error)) return refuseLocked(res, error);
     log.error('account open failed', { error: error.message });
     return res.status(500).json({ error: 'Failed to open the account' });
   }
@@ -133,6 +174,7 @@ router.patch('/accounts/:accountId', async (req, res) => {
     log.info('account changed', { accountId: req.account.id, keys: Object.keys(req.body || {}), wallet: req.walletAddress });
     return res.json({ account: (await listAccounts(req.walletAddress)).find((a) => a.id === req.account.id) });
   } catch (error) {
+    if (isAccountsLocked(error)) return refuseLocked(res, error);
     log.error('account change failed', { accountId: req.account.id, error: error.message });
     return res.status(500).json({ error: 'Failed to change the account' });
   }
@@ -146,6 +188,7 @@ router.put('/accounts/:accountId/credentials', async (req, res) => {
     log.info('account keys updated', { accountId: req.account.id, fields: Object.keys(pasted.fields), wallet: req.walletAddress });
     return res.json({ account: (await listAccounts(req.walletAddress)).find((a) => a.id === req.account.id) });
   } catch (error) {
+    if (isAccountsLocked(error)) return refuseLocked(res, error);
     log.error('account key write failed', { accountId: req.account.id, error: error.message });
     return res.status(500).json({ error: 'Failed to store the keys' });
   }
@@ -158,6 +201,7 @@ router.delete('/accounts/:accountId', async (req, res) => {
     log.info('account removed', { accountId: req.account.id, removed, wallet: req.walletAddress });
     return res.json({ removed });
   } catch (error) {
+    if (isAccountsLocked(error)) return refuseLocked(res, error);
     log.error('account removal failed', { accountId: req.account.id, error: error.message });
     return res.status(500).json({ error: 'Failed to remove the account' });
   }
@@ -230,6 +274,7 @@ router.put('/apps/:channelId', async (req, res) => {
     log.info('app keys updated', { channelId: channel.id, fields: Object.keys(pasted.fields), wallet: req.walletAddress });
     return res.json({ app: (await listApps(req.walletAddress)).find((a) => a.id === channel.id) });
   } catch (error) {
+    if (isAccountsLocked(error)) return refuseLocked(res, error);
     log.error('app key write failed', { channelId: channel.id, error: error.message });
     return res.status(500).json({ error: 'Failed to store the app keys' });
   }

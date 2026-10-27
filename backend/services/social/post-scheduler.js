@@ -22,7 +22,7 @@ import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConver
 import { readXPost, readXListings, readXAccount } from './x-reader.js';
 import { channelBindings } from './channel-bindings.js';
 import { sectorCrew, canSendStaged } from '../sector-crew.js';
-import { resolveAccountCredential } from './account-store.js';
+import { resolveAccountCredential, isAccountsLocked, LOCKED_SEND_DETAIL } from './account-store.js';
 import { entryAccountId } from './account-shape.js';
 import { posterFor, postsOwnMedia } from './poster-registry.js';
 import { OWN_MEDIA_SENDS } from './own-media-sends.js';
@@ -231,7 +231,19 @@ export const publishEntry = async (entry) => {
     }
   }
 
-  const credentials = await resolveAccountCredential(house, accountId).catch(() => null);
+  let credentials = null;
+  try {
+    credentials = await resolveAccountCredential(house, accountId);
+  } catch (err) {
+    // THE LOCKED KEYS FILE (account-store.js): the send stops here, before any platform call, and says
+    // so in words send-failure.js reads as `locked` — never […].
+    if (isAccountsLocked(err)) {
+      const outcome = { ok: false, detail: LOCKED_SEND_DETAIL };
+      await postQueue.recordOutcome(entry.id, outcome);
+      await journalSend(entry, outcome);
+      return outcome;
+    }
+  }
   const post = posterFor(entry.channelId);
   // A null credential needs no guard here: every poster and every reader
   // answers a missing credential with its own NAMED `{ok:false}` refusal

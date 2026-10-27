@@ -99,3 +99,21 @@
 .mkt-crumb-handle { text-transform: none; letter-spacing: 0.04em; }
 /* The platform's space sits in MARKETING's own scroll: no second padding, no second scroller. */
 .mkt-body > .outreach-panel.settings { padding: 0; overflow: visible; flex: none; }
+
+/* ── the platform row: every platform, always in view (platform-row.js) ───── */
+.mkt-platforms { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+.mkt-platform { display: inline-flex; align-items: center; gap: 5px; padding: 2px var(--space-2); background: none; font: inherit;
+  font-size: var(--text-label, 13px); letter-spacing: 0.08em; color: var(--color-text-secondary); cursor: pointer;
+  border: var(--border-width-thin) solid var(--line); transition: color 200ms ease, border-color 200ms ease; /* rises ≥160ms (no-flash.js) */ }
+.mkt-platform svg { flex: none; width: 16px; height: 16px; }
+.mkt-platform:hover, .mkt-platform:focus-visible { color: var(--color-text-primary); border-color: var(--signal-dim); }
+.mkt-platform-mark { font-style: normal; }
+.mkt-platform.is-clear .mkt-platform-mark { color: var(--signal); }
+.mkt-platform.is-failing .mkt-platform-mark, .mkt-platform.is-locked .mkt-platform-mark { color: var(--alert); }
+.mkt-platform.is-idle .mkt-platform-mark { color: var(--color-text-tertiary); }
+.mkt-platform.is-none { color: var(--color-text-tertiary); border-style: dashed; }
+.mkt-platform.is-locked { border-color: var(--alert-dim); }
+/* KEYS LOCKED: said once above the row, with its door */
+.mkt-locked { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-1) var(--space-2);
+  font-size: 13px; letter-spacing: 0.12em; color: var(--alert); box-shadow: inset 3px 0 0 var(--alert); }
+.mkt-locked i { font-style: normal; }

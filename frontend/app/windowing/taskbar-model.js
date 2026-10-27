@@ -15,15 +15,16 @@
 //
 // Pure — no React/DOM — so every decision is unit-provable.
 
-import { migrateAppIds } from './retired-windows.js';
+import { migrateAppIds, MARKETING_PLATFORMS } from './retired-windows.js';
 
 /** The launcher's categories, in order. Membership by registry id. */
 export const LAUNCHER_CATEGORIES = Object.freeze([
   { id: 'beings', apps: ['avatar', 'house', 'innerlife', 'refinement', 'sovereignty', 'vessel', 'voice'] },
   { id: 'work', apps: ['chat', 'chats', 'staff', 'houseclock', 'projects', 'teams', 'todo', 'workflow'] },
   { id: 'create', apps: ['files', 'terminal', 'comfyui', 'gallery'] },
-  // MARKETING holds every public platform, the brand kits and the leads (retired-windows.js).
-  { id: 'reach', apps: ['marketing', 'discord', 'telegram'] },
+  // MARKETING holds every public platform, the brand kits and the leads (retired-windows.js); each platform
+  // still has its own tile, opening MARKETING on it (Dock.jsx platform entries).
+  { id: 'reach', apps: ['marketing', ...MARKETING_PLATFORMS, 'discord', 'telegram'] },
   { id: 'know', apps: ['sheet', 'skills', 'contextmap', 'map', 'db', 'stats'] },
   { id: 'system', apps: ['settings', 'substrate', 'wallet', 'security', 'legal', 'treasury', 'witnesses', 'bench'] },
 ].map((c) => Object.freeze({ ...c, apps: Object.freeze(c.apps) })));

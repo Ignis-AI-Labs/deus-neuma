@@ -7,21 +7,22 @@
 // test, so SET is the most it can be; a value is never seen here.
 
 /** The states, in the order the operator should look at them. */
-export const CREDENTIAL_STATES = Object.freeze(['failing', 'missing', 'set', 'proven', 'keyless']);
+export const CREDENTIAL_STATES = Object.freeze(['locked', 'failing', 'missing', 'set', 'proven', 'keyless']);
 
 export const STATE_LABEL = Object.freeze({
-  failing: 'FAILING', missing: 'NOT SET', set: 'SET', proven: 'PROVEN', keyless: 'NO KEY NEEDED',
+  locked: 'LOCKED', failing: 'FAILING', missing: 'NOT SET', set: 'SET', proven: 'PROVEN', keyless: 'NO KEY NEEDED',
 });
 
-/** pure — a channel: proven or failing by its flight test, else set or not. */
+/** pure — a channel: LOCKED while the house's keys file can't be opened; else proven or failing by its flight test, else set or not. */
 export const channelItem = (channel, test) => {
-  const state = !channel.configured ? 'missing'
+  const state = channel.locked ? 'locked' : !channel.configured ? 'missing'
     : test?.ok === true ? 'proven'
       : test?.ok === false ? 'failing'
         : 'set';
   const detail = state === 'proven' ? (test.account?.name ? `@${test.account.name}` : 'answered')
     : state === 'failing' ? test.detail
-      : state === 'set' ? 'not yet tested' : null;
+      : state === 'set' ? 'not yet tested'
+        : state === 'locked' ? 'the keys file can\'t be opened' : null;
   return Object.freeze({ key: `channel:${channel.id}`, id: channel.id, name: channel.name, group: 'CHANNELS', state, detail });
 };
 

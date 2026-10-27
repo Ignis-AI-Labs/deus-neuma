@@ -72,9 +72,48 @@ const nameUnplacedLegacy = async () => {
   });
 };
 
+/**
+ * THE LOCKED STORE. A store this desk's key cannot open (sealed under another
+ * key, or damaged) is ACCOUNTS_LOCKED: a named state, never an empty house.
+ * Every read throws it, every write refuses (mutateAccountStore reads first),
+ * so nothing ever writes over the file; the surfaces show it as locked and
+ * keep every platform in view (a broken store never hides the way to fix it).
+ */
+export const ACCOUNTS_LOCKED = 'ACCOUNTS_LOCKED';
+
+/** Whether an error is the locked store. Pure. */
+export const isAccountsLocked = (err) => err?.code === ACCOUNTS_LOCKED;
+
+/** What a send held by the locked store records (send-failure.js reads it as `locked`). */
+export const LOCKED_SEND_DETAIL = 'the house\'s keys file can\'t be opened with this desk\'s key — nothing was sent, and the file is untouched';
+
+const lockedError = (why) => Object.assign(new Error(why), { code: ACCOUNTS_LOCKED });
+
+// impure — say once per house per process that its store is locked (every read meets it).
+const lockedNamed = new Set();
+const nameLocked = (wallet, cause) => {
+  if (lockedNamed.has(houseKey(wallet))) return;
+  lockedNamed.add(houseKey(wallet));
+  log.error('the house\'s keys file can\'t be opened — every account reads as locked until it can; nothing will write over it', {
+    house: houseKey(wallet), cause: cause.message,
+  });
+};
+
+// impure (one log line) — the sealed text opened, or the locked error naming why.
+const openSealed = (wallet, raw) => {
+  try {
+    return parseAndDecrypt(raw);
+  } catch (err) {
+    nameLocked(wallet, err);
+    throw lockedError(err instanceof SyntaxError
+      ? 'the house\'s keys file can\'t be read — it is damaged; it is untouched'
+      : 'the house\'s keys file can\'t be opened with the key this desk holds — it was sealed under another key; it is untouched');
+  }
+};
+
 // impure — the sealed file and what it decrypts to; {raw: null} when absent. A
-// file that fails to decrypt is surfaced, never swallowed, so a rotated master
-// key can't silently wipe every stored account on the next save.
+// file that fails to decrypt is surfaced as ACCOUNTS_LOCKED, never swallowed,
+// so a rotated master key can't silently wipe every stored account on the next save.
 const readSealed = async (wallet) => {
   let raw;
   try {
@@ -83,7 +122,7 @@ const readSealed = async (wallet) => {
     if (err.code === 'ENOENT') return { raw: null, store: null };
     throw err;
   }
-  const store = parseAndDecrypt(raw);
+  const store = openSealed(wallet, raw);
   if (!store || typeof store !== 'object' || Array.isArray(store)) {
     throw new Error('channel-credentials: decrypted store is not an object');
   }

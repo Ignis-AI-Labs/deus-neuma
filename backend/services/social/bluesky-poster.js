@@ -3,6 +3,10 @@
 // createRecord into app.bsky.feed.post. Zero-dependency: plain fetch, pure
 // record builder proven with real inputs and outputs.
 
+// The public AppView the house's READS use (no sign-in), behind an env door
+// (NEUMA_BLUESKY_API_ROOT) so tests aim the real reads at a local server.
+export const blueskyAppViewRoot = () => process.env.NEUMA_BLUESKY_API_ROOT || 'https://public.api.bsky.app';
+
 /**
  * Build the app.bsky.feed.post record for one post (pure — timestamp injected
  * so the builder is deterministic and testable).

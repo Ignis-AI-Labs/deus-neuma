@@ -14,7 +14,8 @@ import { previewQueueMedia } from './social-queue-media.js';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
-import { CHANNEL_CATALOG, getChannel } from '../services/social/channel-registry.js';
+import { getChannel } from '../services/social/channel-registry.js';
+import { isAccountsLocked } from '../services/social/account-store.js';
 import {
   loadChannelCredentials, setChannelCredential, removeChannelCredential, maskHouseCredentials, pastedKeyProblem,
 } from '../services/social/channel-credentials.js';
@@ -33,7 +34,7 @@ import { tiktokApproval } from '../services/social/tiktok-approval.js';
 import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
 import { firstAccountId } from '../services/social/account-shape.js';
-import { readXAccount } from '../services/social/x-reader.js';
+import { readChannelBoard } from '../services/social/channel-board.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
 import { withLegalFlags } from '../services/marketing/draft-review.js';
 import { createLogger } from '../services/logger.js';
@@ -51,33 +52,13 @@ router.param('channelId', (req, res, next, channelId) => {
   next();
 });
 
-// The full board: every channel's masked credential state + its holder, and
-// — where the lane can prove it — the ACCOUNT it speaks as (Design note, 2026-07-28:
-// […]). The
-// account read is cached and only attempted when the channel is configured;
-// null means unproven, never invented.
-// The board is the caller's HOUSE: its own keys, its own holders.
+// The full board — the caller's HOUSE: its own keys, its own holders (social/channel-board.js).
 router.get('/', async (req, res) => {
-  const wallet = req.walletAddress;
   try {
-    const [store, bindings] = await Promise.all([
-      loadChannelCredentials(wallet),
-      channelBindings.load(wallet),
-    ]);
-    const masked = await Promise.all(CHANNEL_CATALOG.map(async (channel) => ({
-      ...(await maskHouseCredentials(wallet, channel, store)),
-      binding: bindings[firstAccountId(channel.id)] || null,
-    })));
-    // Only X has an account-proving reader today; new platforms join this
-    // map as their readers land.
-    const x = masked.find((c) => c.id === 'x');
-    if (x?.configured) {
-      x.account = await readXAccount({ wallet }).catch(() => null);
-    }
-    res.json({ channels: masked });
+    return res.json(await readChannelBoard(req.walletAddress));
   } catch (error) {
     log.error('Channel board read failed', { error: error.message });
-    res.status(500).json({ error: 'Failed to read channel state' });
+    return res.status(500).json({ error: 'Failed to read channel state' });
   }
 });
 
@@ -401,10 +382,11 @@ router.put('/:channelId/credentials', async (req, res) => {
     await setChannelCredential(req.walletAddress, req.channel.id, pasted);
     const store = await loadChannelCredentials(req.walletAddress);
     log.info('Channel credentials updated', { channel: req.channel.id, wallet: req.walletAddress });
-    res.json(await maskHouseCredentials(req.walletAddress, req.channel, store));
+    return res.json(await maskHouseCredentials(req.walletAddress, req.channel, store));
   } catch (error) {
+    if (isAccountsLocked(error)) return res.status(423).json({ error: error.message, locked: { why: error.message } });
     log.error('Channel credential write failed', { channel: req.channel.id, error: error.message });
-    res.status(500).json({ error: 'Failed to store credentials' });
+    return res.status(500).json({ error: 'Failed to store credentials' });
   }
 });
 
@@ -414,10 +396,11 @@ router.delete('/:channelId/credentials', async (req, res) => {
   try {
     const removed = await removeChannelCredential(req.walletAddress, req.channel.id);
     log.info('Channel credentials removed', { channel: req.channel.id, wallet: req.walletAddress, removed });
-    res.json({ removed });
+    return res.json({ removed });
   } catch (error) {
+    if (isAccountsLocked(error)) return res.status(423).json({ error: error.message, locked: { why: error.message } });
     log.error('Channel credential removal failed', { channel: req.channel.id, error: error.message });
-    res.status(500).json({ error: 'Failed to remove credentials' });
+    return res.status(500).json({ error: 'Failed to remove credentials' });
   }
 });
 

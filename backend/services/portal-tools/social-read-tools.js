@@ -27,7 +27,7 @@ import { houseOfLane } from '../social/house-positions.js';
 import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { REPLIES_LIST_TOOL, readReplyInbox } from './reply-inbox-tool.js';
-import { READ_TIKTOK_TOOL, readTikTokForBeing, tiktokReadRefusal } from './tiktok-read-tool.js';
+import { PLATFORM_READ_NAMES, readPlatformForBeing } from './platform-read-tools.js';
 import { readAccountFor } from './read-account.js';
 
 // Same logger name as the seat it was cut from, so the read lane's warnings
@@ -127,8 +127,9 @@ const QUEUE_CANCEL_TOOL = Object.freeze({
 });
 
 const SOCIAL_TOOLS = Object.freeze([QUEUE_LIST_TOOL, QUEUE_GET_TOOL, READ_X_TOOL, QUEUE_CANCEL_TOOL, REPLIES_LIST_TOOL]);
-// read_tiktok is advertised to the TikTok holder alone (channelToolsFor); it is handled here.
-const SOCIAL_TOOL_NAMES = new Set([...SOCIAL_TOOLS, READ_TIKTOK_TOOL].map((t) => t.name));
+// The platform account reads (read_youtube, read_tiktok…) are advertised per
+// connected platform (channelToolsFor); they are handled here.
+const SOCIAL_TOOL_NAMES = new Set([...SOCIAL_TOOLS.map((t) => t.name), ...PLATFORM_READ_NAMES]);
 
 // Does this parsed call target a social read tool? (accepts both dialects)
 const _isSocialTool = (match) =>
@@ -200,17 +201,11 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     cancelTarget = entry;
   }
 
-  // Only the TikTok holder reads the house's TikTok account — refused before any card.
-  const notHolder = toolName === 'read_tiktok' ? await tiktokReadRefusal(companion?.neumaId, args?.account) : null;
-  if (notHolder) {
-    _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not the TikTok holder` });
-    return { tool, status: 'denied', error: notHolder };
-  }
-
   if (access === 'approval_required') {
     const cardArgs = toolName === 'read_x'
       ? { what: args?.what, ...(args?.limit !== undefined ? { limit: args.limit } : {}) }
       : toolName === 'queue_get' ? { id: args?.id }
+        : PLATFORM_READ_NAMES.has(toolName) ? (args?.account ? { account: args.account } : {})
         : (toolName === 'queue_list' || toolName === 'replies_list') ? { ...(args && typeof args === 'object' ? args : {}) }
           : cancelTarget ? {
             id: cancelTarget.id,
@@ -356,10 +351,10 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     }
   }
 
-  if (toolName === 'read_tiktok') {
-    const read = await readTikTokForBeing(companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW, account: args?.account });
+  if (PLATFORM_READ_NAMES.has(toolName)) {
+    const read = await readPlatformForBeing(toolName, companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW, account: args?.account });
     _sendToolEvent(ws, companion, {
-      tool, status: read.ok ? 'ok' : 'error', summary: read.ok ? `read the TikTok account and ${read.shown} video(s)` : `${toolName} — failed`, detail: read.ok ? undefined : read.error,
+      tool, status: read.ok ? 'ok' : 'error', summary: read.ok ? read.summary : `${toolName} — failed`, detail: read.ok ? undefined : read.error,
     });
     return read.ok ? { tool, status: 'ok', content: read.text } : { tool, status: 'error', error: read.error };
   }

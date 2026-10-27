@@ -1,6 +1,7 @@
 // QueueFailedFix — a FAILED post's fix on its own card, by why it failed
-// (doors/failed-post-door.js): FIX KEYS or HOLDER → the place that refused it;
-// TRY AGAIN in place, where the platform only stumbled (the post returns to
+// (doors/failed-post-door.js): FIX KEYS, KEYS LOCKED or HOLDER → the place
+// that refused it; TRY AGAIN in place, where nothing went out — the platform
+// stumbled, or the keys held it and are fixed now (the post returns to
 // draft and goes out again through the same APPROVE every draft takes —
 // once, on this press, never on its own); and, where the platform refused the
 // words, HAND TO the member of this house who wrote it, the ask drafted in
@@ -37,14 +38,14 @@ export const QueueFailedFix = ({ entry, roster, busy, act }) => {
   };
   return (
     <>
-      {fix.cause === 'retry' ? (
+      {fix.again ? (
         <button type="button" className="settings-set door-btn is-try" disabled={busy}
           title="it goes back to your decision and out again on your approval — nothing else is sent"
           onClick={() => act(() => tryAgain(entry))}>
           TRY AGAIN
         </button>
       ) : null}
-      {fix.cause === 'keys' || fix.cause === 'standing' ? <DoorButton door={fix.door} label={fix.label} /> : null}
+      {fix.cause === 'keys' || fix.cause === 'locked' || fix.cause === 'standing' ? <DoorButton door={fix.door} label={fix.label} /> : null}
       {handTo && windows?.dispatch ? (
         <button type="button" className="settings-set door-btn" disabled={busy}
           title={`${handTo.name}'s chat opens with the ask drafted; you send it`} onClick={hand}>

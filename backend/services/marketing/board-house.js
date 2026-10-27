@@ -6,7 +6,7 @@
 
 import { listCompanies } from './companies.js';
 import { campaignStoreFor } from './campaign-store.js';
-import { listAccounts } from '../social/account-store.js';
+import { listAccounts, isAccountsLocked } from '../social/account-store.js';
 import { HOUSE_LEVEL, boardRefusals } from './board-shape.js';
 
 /** A level a board may be named by: "house", or a company id. */
@@ -18,9 +18,17 @@ export const BOARD_LEVEL = /^[a-z0-9][a-z0-9_-]{0,63}$/;
  * @param {string} level - "house" or a company id
  */
 export const boardHouseOf = async (wallet, level) => {
-  const [companies, campaigns, accounts] = await Promise.all([listCompanies(wallet), (await campaignStoreFor(wallet)).load(), listAccounts(wallet)]);
+  // A locked keys file (account-store.js): the accounts are unknown (null), never none — a saved panel on
+  // one is kept, not dropped, and `locked` refuses any new layout until the file opens (board-store.js save).
+  const accountsOrLocked = listAccounts(wallet).catch((err) => {
+    if (isAccountsLocked(err)) return { locked: { why: err.message } };
+    throw err;
+  });
+  const [companies, campaigns, accounts] = await Promise.all([listCompanies(wallet), (await campaignStoreFor(wallet)).load(), accountsOrLocked]);
+  if (!Array.isArray(accounts)) return { level, companies, campaigns, accounts: null, locked: accounts.locked };
   return { level, companies, campaigns, accounts: accounts.map((a) => ({ id: a.id, channelId: a.channelId, companyId: a.companyId ?? null })) };
 };
+
 
 /** Why a level is not this house's, or null. Pure. */
 export const levelRefusal = (ctx) => (ctx.level === HOUSE_LEVEL ? null : boardRefusals([], ctx)[0] || null);

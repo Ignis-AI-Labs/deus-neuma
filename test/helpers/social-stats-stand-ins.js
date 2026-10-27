@@ -10,11 +10,20 @@
  *            modes: ok | quota (403 quotaExceeded) | scope (403 insufficientPermissions)
  *   Mastodon GET  /api/v1/statuses/:id
  *   Bluesky  GET  /xrpc/app.bsky.feed.getPosts?uris=
+ * And the ACCOUNT reads the read_<platform> tools make (platform-read-tools.js),
+ * answering from `state.accounts`:
+ *   YouTube  GET  /youtube/v3/channels?mine=true · /youtube/v3/playlistItems · /youtube/v3/videos (+contentDetails, status)
+ *   Facebook GET  /:pageId?fields= · /:pageId/posts
+ *   Mastodon GET  /api/v1/accounts/verify_credentials · /api/v1/accounts/:id/statuses
+ *   Bluesky  GET  /xrpc/app.bsky.actor.getProfile · /xrpc/app.bsky.feed.getAuthorFeed
  * Counts are whatever `state.counts[postId]` holds. They are NOT the platforms:
  * whether the real ones answer is proven by scripts/stats-verify.mjs on the
  * owner's own accounts.
  */
 import http from 'http';
+import { URL } from 'node:url';
+
+import { ACCOUNTS, accountRoute } from './social-account-stand-ins.js';
 
 const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { 'Content-Type': 'application/json', ...headers });
@@ -23,10 +32,13 @@ const json = (res, status, body, headers = {}) => {
 
 /** @returns {Promise<{root: string, state: object, close: () => Promise<void>}>} */
 export const startStatsStandIns = async () => {
-  const state = { x: 'ok', youtube: 'ok', counts: {}, hits: [], me: { id: '101', username: 'northwind_x' } };
+  const state = { x: 'ok', youtube: 'ok', counts: {}, hits: [], auth: [], me: { id: '101', username: 'northwind_x' }, accounts: JSON.parse(JSON.stringify(ACCOUNTS)) };
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://stand-in');
     state.hits.push(`${req.method} ${url.pathname}`);
+    state.auth.push(req.headers.authorization || null);
+    const account = accountRoute(state, req.method, url);
+    if (account) return json(res, account.status, account.body);
     if (url.pathname === '/2/users/me') return json(res, 200, { data: state.me });
     if (url.pathname === '/2/tweets') {
       const fields = url.searchParams.get('tweet.fields') || '';

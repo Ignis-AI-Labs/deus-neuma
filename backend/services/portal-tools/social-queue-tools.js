@@ -14,7 +14,7 @@ import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { REPLY_CAP_PER_CONVERSATION } from '../social/post-queue.js';
 import { ownMediaChannel } from '../social/poster-registry.js';
-import { READ_TIKTOK_TOOL } from './tiktok-read-tool.js';
+import { PLATFORM_READ_TOOLS } from './platform-read-tools.js';
 
 // --- Neuma-initiated social posts became INTENTS (Stage 2 of the
 // being-tool-surface doctrine): publishing (social/post) and staging
@@ -271,6 +271,9 @@ export const channelToolsFor = async (neumaId) => {
   return CHANNEL_CATALOG
     .filter((c) => configured.has(c.id))
     .flatMap((c) => {
+      // Reading a connected platform is every lane's in the house: each
+      // platform its own read, equally (platform-read-tools.js).
+      const read = PLATFORM_READ_TOOLS[c.id] ? [PLATFORM_READ_TOOLS[c.id]] : [];
       const holds = canNeumaPost(bindings, c.id, neumaId);
       // The reply lane is the HOLDER's engagement lane: the being that is
       // told about the candidates (the notification is binding-gated too) is
@@ -278,15 +281,14 @@ export const channelToolsFor = async (neumaId) => {
       // staging rights ride (#208) — shaping the calendar is crew work, and an
       // edit is governed exactly like a staging.
       if (holds) return [
+        ...read,
         _channelQueueUpdateTool(c), _channelQueueBulkUpdateTool(c),
         ...(c.id === 'x' ? [X_QUEUE_REPLY_TOOL, X_QUEUE_SELF_REPLY_TOOL, X_REPLY_DISMISS_TOOL] : []),
-        // The holder reads its house's own TikTok account (tiktok-read-tool.js).
-        ...(c.id === 'tiktok' ? [READ_TIKTOK_TOOL] : []),
       ];
       return canStageForSector(crewStore, bindings, c.id, neumaId)
-        ? [_channelQueueUpdateTool(c), _channelQueueBulkUpdateTool(c),
+        ? [...read, _channelQueueUpdateTool(c), _channelQueueBulkUpdateTool(c),
           ...(c.id === 'x' ? [X_QUEUE_SELF_REPLY_TOOL] : [])]
-        : [];
+        : read;
     });
 };
 

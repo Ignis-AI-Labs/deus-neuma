@@ -116,6 +116,8 @@ const platformRefusals = (scope, { level, companies, accounts = [] }, { reportin
   if (!cap) return [`"${scope.platform}" is not a platform the house reads (one of: ${Object.keys(CAPABILITY).join(', ')})`];
   if (reporting && !cap.reports.length) return [`${scope.platform} reports no post numbers to rank by: ${cap.why}`];
   if (scope.accountId === undefined || scope.accountId === null) return [];
+  // null — the house's accounts can't be read (its keys file is locked): an account is never judged gone on that.
+  if (accounts === null) return [];
   const account = accounts.find((a) => a.id === scope.accountId);
   if (!account) return [`there is no account "${scope.accountId}" in this house`];
   if (account.channelId !== scope.platform) return [`account "${scope.accountId}" is on ${account.channelId}, not ${scope.platform}`];

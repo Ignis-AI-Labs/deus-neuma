@@ -32,6 +32,11 @@ describe('the launcher', () => {
     expect(work).toEqual([...work].sort());
   });
 
+  test('REACH lists every public platform beside MARKETING, so none is ever out of reach', () => {
+    const reach = LAUNCHER_CATEGORIES.find((c) => c.id === 'reach').apps;
+    for (const id of ['marketing', 'x', 'facebook', 'mastodon', 'bluesky', 'linkedin', 'youtube', 'tiktok', 'discord', 'telegram']) expect(reach).toContain(id);
+  });
+
   test('no app is claimed by two categories', () => {
     const all = LAUNCHER_CATEGORIES.flatMap((c) => c.apps);
     expect(new Set(all).size).toBe(all.length);
@@ -74,8 +79,8 @@ describe('the bar', () => {
     expect(normalizePrefs({ pins: [], labels: true, edge: 'left' }, IDS)).toMatchObject({ pins: [], labels: true, edge: 'left' });
   });
 
-  test('a pin on a window MARKETING took in pins MARKETING, once, where it stood', () => {
-    expect(normalizePrefs({ pins: ['x', 'chat', 'tiktok', 'brandKits', 'marketing'] }, IDS).pins).toEqual(['marketing', 'chat']);
+  test('a pin on a window MARKETING took in pins MARKETING, once, where it stood — a platform\'s pin stays its own tile', () => {
+    expect(normalizePrefs({ pins: ['x', 'chat', 'tiktok', 'brandKits', 'marketing'] }, [...IDS, 'x', 'tiktok']).pins).toEqual(['x', 'chat', 'tiktok', 'marketing']);
     expect(normalizePrefs({ pins: ['files', 'socialCheck'] }, IDS).pins).toEqual(['files', 'marketing']);
   });
 });

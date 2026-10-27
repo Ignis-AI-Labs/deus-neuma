@@ -14,6 +14,11 @@
 //   LEADS      the lead ledger (the house's one book)
 //   SEAT       the CMO and the MANDATE — the house's alone
 //
+// Under the tabs, at every level (the account level too), the PLATFORM ROW
+// (platform-row.js): every platform, whatever its accounts are doing, each a
+// door to its account level — a locked or broken keys file never hides them,
+// and KEYS LOCKED says so above them with its door.
+//
 // The deepest level is one platform ACCOUNT (account-level.js): the
 // platform's space narrowed to it (PlatformSpace: console head, standing,
 // account board, queue). Every AccountMark, a PLATFORM panel's title, a NEXT
@@ -46,6 +51,8 @@ import { HOUSE, TABS, settlePlace, pathOf, houseTiles, childTiles, landingPlace 
 import { readZoom, writeZoom } from './zoom-memory.js';
 import { ZoomPath, OfficeTabs } from './ZoomPath.jsx';
 import { CmoRow } from './CmoRow.jsx';
+import { platformRow } from './platform-row.js';
+import { PlatformRow, LockedKeys } from './PlatformRow.jsx';
 import './MarketingOffice.css';
 
 const sameIds = (a, b) => Boolean(a && b) && a.length === b.length && a.every((id) => b.includes(id));
@@ -53,7 +60,7 @@ const sameIds = (a, b) => Boolean(a && b) && a.length === b.length && a.every((i
 export const MarketingOffice = () => {
   const calm = useCalmGate();
   const read = useMarketingOverview({ calm });
-  const { data, companies, accounts, known, houseError } = read;
+  const { data, companies, accounts, known, houseError, locked } = read;
   const [place, setPlace] = useState(() => ({ ...HOUSE, ...(readZoom() || {}) }));
   const [landing, setLanding] = useState(() => takeCardLanding('marketing'));
   const [filter, setFilter] = useState({});
@@ -87,6 +94,8 @@ export const MarketingOffice = () => {
     const house = { companies, accounts, check: data.check, campaigns: data.campaigns, queue: data.queue };
     return here.companyId ? childTiles(here.companyId, house) : houseTiles(house);
   }, [data, companies, accounts, here.companyId]);
+
+  const row = useMemo(() => platformRow({ accounts, check: data?.check ?? null, scope, locked }), [accounts, data, scope, locked]);
 
   const go = (next) => { uiSound('toggle'); setPlace(next); setFilter({}); };
   const zoom = (companyId) => go({ companyId, tab: 'board', campaignId: null });
@@ -136,6 +145,8 @@ export const MarketingOffice = () => {
         </div>
         {reading.error ? <p className="settings-err">{reading.error}</p> : null}
         {account ? null : <OfficeTabs tabs={here.companyId ? TABS.company : TABS.house} on={here.tab} onTab={tab} />}
+        {locked ? <LockedKeys locked={locked} onUnlocked={() => read.refresh()} /> : null}
+        <PlatformRow row={row} onOpen={(at) => go({ companyId: here.companyId, tab: 'board', campaignId: null, account: at })} />
       </div>
       {account ? (
         <div className="mkt-body" data-mkt-level="account" data-mkt-account={accountKey}>

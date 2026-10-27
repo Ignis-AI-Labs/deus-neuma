@@ -14,7 +14,8 @@
 // ACCOUNTS cards; the account level shows one head (standing as marks, the
 // month once — show-dont-tell SDT-6), its holder and crew in place, and its
 // queue, narrowed to the account; the standing and queue doors land on it exactly;
-// the launcher's REACH shows MARKETING beside COMMUNITY alone; 13px and no
+// the launcher's REACH shows MARKETING, every public platform (each opening
+// MARKETING on it — Design note, 2026-10-27: […]) and COMMUNITY; 13px and no
 // spill at 1400 / 720 / 420.
 /* global window */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -204,16 +205,27 @@ describe('MARKETING slice 6 — one window', () => {
     await page.close();
   }, 120000);
 
-  it('the launcher\'s REACH: MARKETING beside COMMUNITY\'s TELEGRAM and DISCORD, nothing else', async () => {
+  it('the launcher\'s REACH: MARKETING, every public platform, and COMMUNITY\'s TELEGRAM and DISCORD', async () => {
     const { page, errors } = await openDesk();
     await page.locator('.taskbar-launcher').click();
     const reach = page.locator('.launcher-section[data-category="reach"] .launcher-tile');
     await reach.first().waitFor();
-    expect((await reach.evaluateAll((els) => els.map((el) => el.dataset.appId))).sort()).toEqual(['discord', 'marketing', 'telegram']);
-    expect(await page.locator('.launcher-tile[data-app-id="x"], .launcher-tile[data-app-id="brandKits"], .launcher-tile[data-app-id="leads"], .launcher-tile[data-app-id="socialCheck"]').count()).toBe(0);
+    expect((await reach.evaluateAll((els) => els.map((el) => el.dataset.appId))).sort())
+      .toEqual(['bluesky', 'discord', 'facebook', 'linkedin', 'marketing', 'mastodon', 'telegram', 'tiktok', 'x', 'youtube']);
+    expect(await page.locator('.launcher-tile[data-app-id="brandKits"], .launcher-tile[data-app-id="leads"], .launcher-tile[data-app-id="socialCheck"]').count()).toBe(0);
     await page.locator('.launcher').screenshot({ path: path.join(SHOTS, 'dock-after.png') });
     await page.locator('.launcher-tile[data-app-id="marketing"]').click();
     await atHouseBoard(page);
+    expect(errors).toEqual([]);
+    await page.close();
+  }, 120000);
+
+  it('a platform\'s tile opens MARKETING on that platform — one window, never its own', async () => {
+    const { page, errors } = await openDesk();
+    await page.locator('.taskbar-launcher').click();
+    await page.locator('.launcher-tile[data-app-id="tiktok"]').click();
+    await page.locator(`${OFFICE} [data-mkt-level="account"][data-mkt-account^="tiktok:"]`).waitFor({ timeout: 60000 });
+    expect(await page.locator('[data-window-id="tiktok"]').count()).toBe(0);
     expect(errors).toEqual([]);
     await page.close();
   }, 120000);

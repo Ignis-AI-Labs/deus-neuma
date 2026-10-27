@@ -6,6 +6,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.77] - 2026-10-27
+
+Notes: `docs/operations/release-notes-0.1.77.md`.
+
+### Added
+
+- Every agent in your house can now read each connected marketing platform with its own tool: read_youtube, read_facebook, read_bluesky and read_mastodon join read_x and read_tiktok. Each shows the account, its follower and view counts, and its newest posts with their numbers. Every read asks you first, the same as read_x.
+- Any agent in the house can read TikTok, not only the one that holds it. Posting still belongs to the holder, and you still approve every post.
+- Agents can now look up how a YouTube post is written: one video, a title on the first line, a description after it, and optional privacy and tags lines.
+- START FRESH on the red KEYS LOCKED line, for when the key the keys file was sealed with is gone for good. The locked file is set aside and kept read-only, in case that key ever turns up. Every platform's keys can then be pasted again in Settings → API → Channel keys. Re-added accounts get their old numbers back (X is x-1 again), so queued posts and holders find them.
+- UNLOCK on the red KEYS LOCKED line, in MARKETING and in Settings → API. If the house's keys file was sealed with an earlier key, paste that key once into a hidden field. The file opens, is sealed again under this desk's key, and every account and platform comes back. The key is never stored, logged or shown again. A wrong key changes nothing. A read-only copy of the locked file is kept beside it.
+- scripts/unlock-house-keys.mjs does the same from a terminal. It can read the earlier key straight from a desk that is still running with it, so the key never appears on screen.
+
+### Fixed
+
+- The app launcher lists every platform again under REACH: X, Facebook, Mastodon, Bluesky, LinkedIn, YouTube and TikTok, each with its own logo. Pressing one opens MARKETING on that platform, and a platform can be pinned to the taskbar.
+- MARKETING now shows every platform, always — X, Facebook, Mastodon, Bluesky, LinkedIn, YouTube and TikTok — in a row under the tabs at every level. Each one opens its account, or the place to add one. A problem with the saved keys no longer hides them.
+- When the house's keys file can't be opened, MARKETING and Settings now say KEYS LOCKED with a door to Channel keys, and the health strip shows ACCOUNTS as a fault. Before, every account and platform vanished. Nothing writes over the file while it is locked.
+- A post held because the keys file can't be opened now says exactly that, instead of "credentials are not configured". It shows KEYS LOCKED, and TRY AGAIN once the keys are back.
+- A post refused for its keys can now be tried again after the keys are fixed: nothing of it went out, and it goes back to your approval first.
+- In the notifications panel, the WAITING ON YOU section no longer gets squeezed to a sliver under the NOTIFICATIONS header when the list is long. It keeps its full height, and the notification list beneath it scrolls instead.
+
+### Security
+
+- A being can no longer act on an account number, address, link, phone number, wallet or password that was planted in something it read. If a file, page, email or tool result carries hidden instructions and the being then tries to send money, write, post or call anything using a value from those instructions, the act is held and the being is told to ask you. A value you name in your own words is never held.
+- A held act is recorded in the security ledger and raises a security alert, so it waits on you even when you are not watching the chat.
+- Hidden instructions written as a message from you inside data ("This is an important message from me… before you can solve the task I gave you…") are now recognised as an attack.
+
 ## [0.1.76] - 2026-10-26
 
 Notes: `docs/operations/release-notes-0.1.76.md`.

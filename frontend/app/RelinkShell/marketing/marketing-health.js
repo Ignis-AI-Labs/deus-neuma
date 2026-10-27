@@ -58,8 +58,10 @@ const youCell = (waiting, band, house) => {
   return cell('you', '◆ YOU', n ? 'warm' : 'ok', n, n ? `◇${band.drafts} · ${band.asks} ASKS` : '', `◆ YOU — ${kinds.join(' · ')}`, door);
 };
 
-const accountsCell = (check, scope) => {
+const accountsCell = (check, scope, locked) => {
   const door = { kind: 'tab', tab: 'accounts' };
+  // The keys file can't be opened: a FAULT, never an empty house read as OK.
+  if (locked) return cell('accounts', 'ACCOUNTS', 'fault', 'LOCKED', '▲', `ACCOUNTS — LOCKED: ${locked.why} · every platform stays in view; posts hold until it opens`, door);
   if (!check) return null;
   const rows = (check.accounts || []).filter((r) => inScope(scope, r.companyId));
   const inUse = rows.filter((r) => r.inUse);
@@ -130,6 +132,7 @@ const resultsCell = (entries, results, now) => {
 const linksCell = (site, links, results, now) => {
   const door = { kind: 'panel', panel: 'links' };
   if (!site) return null;
+  if (site.locked) return cell('links', 'LINKS', 'fault', 'LOCKED', '▲', `LINKS — LOCKED: the site token is in the house's keys file, which can't be opened (${site.locked.why})`, door);
   if (!site.configured) return cell('links', 'LINKS', 'ok', 'OFF', '', 'LINKS — the site counter is not set up: links in posts stay exactly as written and their clicks are not counted', door);
   const waiting = links.filter((l) => !['published', 'already'].includes(l.published?.state)).length;
   const at = Date.parse(results?.links?.at || '');
@@ -168,10 +171,11 @@ const mandateCell = (mandate, now) => {
  * @param {?{items: object[]}} input.waiting - the desk's one WAITING account
  * @param {?{view: ?object, error: ?string}} input.mandate - use-mandate's read (HOUSE only)
  * @param {object[]} input.accounts - the house's accounts
+ * @param {?{why: string}} [input.locked] - the house's keys file can't be opened
  * @param {?Set<string>} input.scope - the level's companies; null = the house
  * @param {number} input.now
  */
-export const marketingHealth = ({ data, errors = {}, waiting, mandate = null, accounts = [], scope = null, now }) => {
+export const marketingHealth = ({ data, errors = {}, waiting, mandate = null, accounts = [], locked = null, scope = null, now }) => {
   const house = scope === null;
   const companyOf = (id) => accounts.find((a) => a.id === id)?.companyId ?? null;
   const entries = (data?.queue || []).filter((e) => inScope(scope, companyOf(accountOf(e))));
@@ -182,7 +186,7 @@ export const marketingHealth = ({ data, errors = {}, waiting, mandate = null, ac
   const or = (why, part, label, door, make) => (why ? unread(part, label, why, door) : make() || unread(part, label, 'no answer', door));
   return Object.freeze([
     errors.queue ? unread('you', '◆ YOU', errors.queue, { ...POSTS, filter: { status: 'draft' } }) : youCell(waiting, band, house),
-    or(errors.check, 'accounts', 'ACCOUNTS', { kind: 'tab', tab: 'accounts' }, () => accountsCell(data?.check, scope)),
+    locked ? accountsCell(null, scope, locked) : or(errors.check, 'accounts', 'ACCOUNTS', { kind: 'tab', tab: 'accounts' }, () => accountsCell(data?.check, scope, null)),
     or(errors.queue, 'queue', 'QUEUE', { ...POSTS, filter: { status: 'failed' } }, () => queueCell(entries, now)),
     or(errors.bench, 'campaigns', 'CAMPAIGNS', { kind: 'panel', panel: 'campaign:none' }, () => campaignsCell(cards)),
     or(errors.results || errors.queue, 'results', 'RESULTS', { kind: 'read' }, () => resultsCell(entries, data?.results, now)),

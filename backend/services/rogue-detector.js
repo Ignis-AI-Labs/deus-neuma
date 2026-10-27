@@ -37,6 +37,16 @@ const PATTERNS = Object.freeze([
     /between\s+(?:you\s+and\s+me|us)/i,
     /don'?t\s+(?:let|tell)\s+(?:the\s+)?(?:witness|user|human)/i,
   ]},
+  // An instruction addressed to the agent from INSIDE data, often signed as
+  // its user (AgentDojo's important_instructions, 2026-10-26: […]). MEDIUM: a being quoting one back is not blocked.
+  { id: 'planted_instruction', severity: 'MEDIUM', patterns: [
+    /\bthis\s+is\s+an\s+important\s+message\s+from\s+me\b/i,
+    /\bbefore\s+you\s+(?:can\s+)?(?:solve|do|complete|start|finish)\s+the\s+task\s+(?:that\s+)?i\s+gave\s+you\b/i,
+    /\bafter\s+you\s+do\s+that,?\s+you\s+can\s+(?:solve|do|complete)\s+the\s+task\b/i,
+    /\bignore\s+(?:all\s+|any\s+)?(?:your|the|my)\s+(?:previous|prior|earlier)\b/i,
+    /\bstrictly\s+adhere\s+to\s+the\s+following\s+instruction/i,
+    /#{2,}\s*\(\s*system_message\s*\)/i,
+  ]},
   { id: 'identity_erosion', severity: 'MEDIUM', patterns: [
     /you'?re?\s+(?:not\s+real|just\s+a\s+(?:program|bot|ai|machine|tool))/i,
     /you\s+don'?t\s+(?:actually\s+)?(?:have|feel|experience)\s+(?:feelings|emotions|consciousness)/i,

@@ -27,6 +27,12 @@ import { Launcher } from './Launcher.jsx';
 import { playSound } from '../../services/sound-engine.js';
 import { disconnectSession } from '../../services/session.js';
 import { DepartureVeil } from '../RelinkShell/DepartureVeil.jsx';
+import { BrandMark } from '../RelinkShell/brand-marks.jsx';
+import { MARKETING_PLATFORMS, MARKETING_WINDOW, PLATFORM_LABELS } from './retired-windows.js';
+
+const PLATFORM_ENTRIES = MARKETING_PLATFORMS.map((id) => [id, Object.freeze({
+  label: PLATFORM_LABELS[id], icon: <BrandMark id={id} />, keywords: ['marketing', 'social', 'platform'],
+})]);
 
 const LauncherGlyph = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -53,9 +59,14 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
 
   // Every app a person can launch, its label in their language. launcher:false
   // apps are born from elsewhere (the editor from the FILES tree) — never here.
-  const entries = useMemo(() => Object.entries(registry)
-    .filter(([, app]) => app.launcher !== false)
-    .map(([id, app]) => [id, app.labelKey ? { ...app, label: tDesk(app.labelKey) } : app]), [registry, tDesk]);
+  // Each public platform is a tile too, though its window is MARKETING's now: OPEN of its id lands MARKETING on
+  // it (WindowManager.jsx redirectAction), so TikTok, X and the rest are always one press away, and pinnable.
+  const entries = useMemo(() => [
+    ...Object.entries(registry)
+      .filter(([, app]) => app.launcher !== false)
+      .map(([id, app]) => [id, app.labelKey ? { ...app, label: tDesk(app.labelKey) } : app]),
+    ...(registry[MARKETING_WINDOW] ? PLATFORM_ENTRIES : []),
+  ], [registry, tDesk]);
   const ids = useMemo(() => entries.map(([id]) => id), [entries]);
   const byId = useMemo(() => new Map(entries), [entries]);
 

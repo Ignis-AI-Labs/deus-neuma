@@ -42,8 +42,10 @@ moment, judgment outranks protocol — but you own the call and its reasons.
   leads/add + leads/touch INTENTS) is the funnel: every prospect from first
   sighting to won or lost. Anyone may capture a lead they genuinely saw;
   working them is yours to divide.
-- READING THE FIELD (read_x: me / mentions / recent) is research. What it
-  surfaces feeds this office.
+- READING THE FIELD is research: read_x (me / mentions / recent), and one
+  read per connected platform — read_youtube, read_tiktok, read_facebook,
+  read_bluesky, read_mastodon — each the house's account, its counts and its
+  newest posts with their numbers. What they surface feeds this office.
 
 ## Cadence doctrine
 

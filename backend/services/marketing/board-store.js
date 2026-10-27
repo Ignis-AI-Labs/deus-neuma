@@ -81,10 +81,12 @@ export const createBoardStore = ({ path }) => {
      * Record one level's board whole. impure.
      * @param {string} level
      * @param {Array<object>} panels
-     * @param {{setBy: 'operator'|'cmo', companies: Array<object>, campaigns: Array<object>, accounts?: Array<object>}} ctx - the house as it stands
+     * @param {{setBy: 'operator'|'cmo', companies: Array<object>, campaigns: Array<object>, accounts?: Array<object>, locked?: ?{why: string}}} ctx - the house as it stands
      * @returns {Promise<{ok: true, panels: object[]} | {ok: false, reasons: string[]}>}
      */
-    save(level, panels, { setBy, companies, campaigns, accounts = [] }) {
+    save(level, panels, { setBy, companies, campaigns, accounts = [], locked = null }) {
+      // The house's accounts can't be read (its keys file is locked): no board is judged, so none is saved.
+      if (locked) return Promise.resolve({ ok: false, reasons: [`the house's accounts can't be read — ${locked.why}`] });
       if (!BOARD_SETTERS.includes(setBy)) return Promise.resolve({ ok: false, reasons: [`a board is set by ${BOARD_SETTERS.join(' or ')}`] });
       const shape = boardRefusals(panels, { level, companies, campaigns, accounts });
       if (shape.length) return Promise.resolve({ ok: false, reasons: shape });

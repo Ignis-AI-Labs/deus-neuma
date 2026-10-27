@@ -17,6 +17,7 @@ import { CredentialRow } from './CredentialMap.jsx';
 import { channelItem, passesState } from './credential-view.js';
 import { AccountsList } from './accounts/AccountsList.jsx';
 import { useHouseAccounts } from './accounts/use-house-accounts.js';
+import { UnlockKeys } from './accounts/UnlockKeys.jsx';
 
 // One platform: its app once, then its accounts (accounts/AccountsList.jsx).
 const ChannelKeysCard = ({ channel, item, open, onToggle, house, tests, onChanged, onRetest }) => (
@@ -59,6 +60,13 @@ export const ChannelKeysSection = ({ channels, tests, error, onChanged, onRetest
       <p className="settings-note">{t('channelKeys.note')}</p>
 
       {error ? <p className="settings-err">{error}</p> : null}
+      {/* The keys file can't be opened (account-store.js ACCOUNTS_LOCKED): every platform stays listed, LOCKED, and nothing writes over the file. */}
+      {house.locked ? (
+        <div className="settings-err unlock-keys-row" role="alert" data-keys-locked title={house.locked.why}>
+          <span>▲ KEYS LOCKED — the keys file can&rsquo;t be opened with this desk&rsquo;s key. It is untouched; nothing will write over it.</span>
+          <UnlockKeys onUnlocked={changed} />
+        </div>
+      ) : null}
       {!channels && !error ? <p className="settings-note">{t('channelKeys.reading')}</p> : null}
 
       {rows.map(({ channel, item }) => (

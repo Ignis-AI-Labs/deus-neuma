@@ -14,6 +14,7 @@ import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { campaignStoreFor, validateCampaign, CAMPAIGN_STATUSES } from '../services/marketing/campaign-store.js';
 import { campaignContextFor } from '../services/marketing/campaign-context.js';
+import { isAccountsLocked } from '../services/social/account-store.js';
 import { GOAL_KINDS, KPI_METRICS } from '../services/marketing/campaign-shape.js';
 import { companyForBrand } from '../services/marketing/campaign-upgrade.js';
 import { cmoDesignation } from '../services/marketing/cmo-designation.js';
@@ -60,6 +61,7 @@ router.post('/', async (req, res) => {
     log.info('Campaign declared', { id: campaign.id, wallet: req.walletAddress });
     res.status(201).json({ campaign });
   } catch (error) {
+    if (isAccountsLocked(error)) return res.status(423).json({ error: error.message, locked: { why: error.message } });
     log.error('Campaign declaration failed', { error: error.message });
     res.status(500).json({ error: 'Failed to declare the campaign' });
   }
@@ -133,6 +135,7 @@ router.put('/:id', async (req, res) => {
     log.info('Campaign updated', { id: req.params.id, wallet: req.walletAddress });
     res.json({ campaign: result.campaign });
   } catch (error) {
+    if (isAccountsLocked(error)) return res.status(423).json({ error: error.message, locked: { why: error.message } });
     log.error('Campaign update failed', { id: req.params.id, error: error.message });
     res.status(500).json({ error: 'Failed to update the campaign' });
   }

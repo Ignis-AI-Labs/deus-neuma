@@ -6,7 +6,7 @@
  *
  * Proven: a post the platform stumbled on returns to DRAFT, the same entry,
  * its failure kept — nothing sent; it goes out again only through the
- * ordinary APPROVE; a refusal of the keys is refused here and left as it was;
+ * ordinary APPROVE; a refusal of the words is refused here and left as it was;
  * another house's post is not this house's to retry (404); no session, no
  * retry (401); and a second press on a draft does nothing.
  */
@@ -49,7 +49,7 @@ beforeAll(async () => {
   [a, b] = [await fullAuth(), await fullAuth()];
   await fs.writeFile(process.env.NEUMA_SOCIAL_POST_QUEUE_PATH, `${JSON.stringify([
     failed('stumbled', a.address, { error: 'X answered HTTP 503', errorStatus: 503, decidedUnder: 'md_old' }),
-    failed('refused', a.address, { error: 'Unauthorized', errorStatus: 401 }),
+    failed('refused', a.address, { error: 'HTTP 403: duplicate content', errorStatus: 403 }),
     failed('theirs', b.address, { error: 'X answered HTTP 503', errorStatus: 503 }),
   ], null, 2)}\n`);
   const app = express();
@@ -79,7 +79,7 @@ describe('PUT /queue/:id/retry — TRY AGAIN, the operator\'s own press', () => 
     expect((await entry('theirs')).status).toBe('failed');
   });
 
-  it('a refusal of the keys is refused, the entry untouched — its door is the keys row', async () => {
+  it('a refusal of the words is refused, the entry untouched — its door is REVISE', async () => {
     const before = await entry('refused');
     const res = await put(a, 'refused', 'retry');
     expect(res.status).toBe(409);

@@ -109,7 +109,7 @@ export const ACT_FAMILIES = Object.freeze({
   // it keeps platform_data out of READ_TOOLS.
   // The chain reads ride the same wire-law: every verb leaves the machine for
   // the operator's own keyed RPC — egress, journaled, never a local recall.
-  actReach: Object.freeze(['web_fetch', 'read_x', 'read_tiktok', 'request_file_access', 'platform_data',
+  actReach: Object.freeze(['web_fetch', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
     'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders',
     'web.download']), // bytes fetched from outside the house
   // Something LEFT the house in the operator's name. The intents (Stage 2/3)
