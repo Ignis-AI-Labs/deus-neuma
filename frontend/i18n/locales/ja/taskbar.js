@@ -19,6 +19,7 @@ export default Object.freeze({
   newInstance: '新しい{{app}}',
   close: '閉じる',
   closeAll: '{{app}}のウィンドウをすべて閉じる',
+  windowsOf: '開いている{{app}}のウィンドウ',
   showNames: '名前を表示',
   iconsOnly: 'アイコンのみ',
   position: 'タスクバーの位置',

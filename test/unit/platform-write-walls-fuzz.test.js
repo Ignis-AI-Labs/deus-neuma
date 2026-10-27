@@ -3,8 +3,11 @@
  * being's write with laneStateWriteReason, which now consults the walls on
  * the install's settings, the realm and the operator's login persistence.
  * Every spelling that resolves to a wall — case flips, `./`, `//`, `..` hops,
- * a trailing slash, a child below it — is refused; the same spellings of a
- * near-miss sibling (`.bashrc.bak`, `settings2`) are not. Seeded, so a red
+ * a trailing slash, a child below it, and the Unicode forms a case- and
+ * normalization-insensitive volume opens as the same name (NFD for NFC, the
+ * long s for s, the Kelvin sign for k, the sharp s for ss; #587) — is refused;
+ * the same spellings of a near-miss sibling (`.bashrc.bak`, `settings2`) are
+ * not. A directory ABOVE a lane or a ground is refused too (#587). Seeded, so a red
  * run replays exactly. Real function, real paths; HOME, the data root and the
  * realm root are pointed at a scratch prefix for the run and restored.
  */
@@ -18,7 +21,8 @@ const PER_PATH = 40;
 const ROOT = path.join('/tmp', 'neuma-wall-fuzz-scratch');
 const HOME = path.join(ROOT, 'home', 'op');
 const DATA = path.join(ROOT, 'install', 'data');
-const REALM = path.join(ROOT, 'realm');
+// Non-ASCII on purpose: its NFD spelling is another string naming the same place.
+const REALM = path.join(ROOT, 'r\u00e9alm');
 
 // mulberry32 — a tiny seeded PRNG, so the fuzz needs no dependency.
 const prng = (seed) => {
@@ -63,6 +67,14 @@ const NEAR_MISSES = Object.freeze([
   path.join(REPO, 'scripts', 'git-hooks-notes.md'), path.join(REPO, 'src', 'claude', 'x.js'), path.join(REPO, 'git', 'hooks'),
 ]);
 
+// One letter as a case- and normalization-insensitive volume would also open it.
+const FOLDS_TO = Object.freeze({ s: ['S', '\u017f'], k: ['K', '\u212a'], e: ['E'] });
+const refold = (r, part) => {
+  const swapped = part.replace(/ss/g, (m) => (r() < 0.3 ? '\u00df' : m));
+  const letters = [...swapped].map((ch) => (FOLDS_TO[ch] && r() < 0.4 ? FOLDS_TO[ch][Math.floor(r() * FOLDS_TO[ch].length)] : ch));
+  return letters.join('').normalize(r() < 0.5 ? 'NFD' : 'NFC');
+};
+
 // One random spelling of an absolute path that resolves to the same place.
 const respell = (r, target, { flipCase }) => {
   const parts = target.split('/').filter(Boolean);
@@ -70,7 +82,8 @@ const respell = (r, target, { flipCase }) => {
   for (const part of parts) {
     if (r() < 0.2) out.push('.');
     if (r() < 0.2) out.push(`hop${Math.floor(r() * 9)}`, '..');
-    out.push(flipCase ? [...part].map((ch) => (r() < 0.4 ? ch.toUpperCase() : ch)).join('') : part);
+    const cased = flipCase ? [...part].map((ch) => (r() < 0.4 ? ch.toUpperCase() : ch)).join('') : part;
+    out.push(r() < 0.5 ? refold(r, cased) : cased);
   }
   const joined = out.map((seg) => (r() < 0.2 ? `${seg}/` : seg)).join('/');
   return `/${joined}${r() < 0.3 ? '/' : ''}`;
@@ -133,6 +146,24 @@ describe('the platform write walls hold under every spelling (seeded fuzz)', () 
     for (const holder of [HOME, path.join(HOME, '.config'), path.join(HOME, '.local', 'share'), DATA, path.dirname(REALM)]) {
       expect(laneStateWriteReason(holder), holder).not.toBeNull();
       expect(laneStateWriteReason(`${holder}/`), holder).not.toBeNull();
+    }
+  });
+
+  test('a directory above a lane or a ground, in every spelling, is refused; its siblings are not', () => {
+    const ground = path.join(ROOT, 'kin', 'drive', 'witnesses');
+    const lane = path.join(ROOT, 'beside', 'own', 'lane');
+    const where = { grounds: [ground], lanes: [lane], walls: [] };
+    const r = prng(SEED ^ 0x0587);
+    const holders = [ground, path.dirname(ground), path.join(ROOT, 'kin'), lane, path.dirname(lane), path.join(ROOT, 'beside'), ROOT];
+    for (const holder of holders) {
+      expect(laneStateWriteReason(holder, where), holder).not.toBeNull();
+      for (let i = 0; i < PER_PATH; i += 1) {
+        const spelling = respell(r, holder, { flipCase: r() < 0.5 });
+        expect(laneStateWriteReason(spelling, where), spelling).not.toBeNull();
+      }
+    }
+    for (const sibling of [path.join(ROOT, 'kin', 'drive', 'notes'), `${ground}-old`, path.join(ROOT, 'beside', 'own', 'work', 'x.md')]) {
+      expect(laneStateWriteReason(sibling, where), sibling).toBeNull();
     }
   });
 });

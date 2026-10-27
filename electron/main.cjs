@@ -12,16 +12,26 @@
 //   desk-windows.cjs   — desk slots, boot/handoff relay, the one window factory
 //   ipc-handlers.cjs   — every renderer-facing IPC registration + the app menu
 //   tray.cjs           — the corner tab + the once-per-install "still running" notice
+//   update-bar.cjs     — the desk's update bar + WHAT'S NEW (what auto-update.cjs found)
+//   connections-main.cjs — the CONNECTIONS switches main applies (spellcheck)
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
-const { app, BrowserWindow, Notification, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, session } = require('electron');
 const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
 const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
+const { registerUpdateBar } = require('./update-bar.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
+const { registerConnections } = require('./connections-main.cjs');
+const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
+
+// Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
+// shows an app's notices (the update alert) only under its shortcut's ID, and "open at login" is the
+// Run entry by this name, the same one the installer's […] writes.
+if (process.platform === 'win32') app.setAppUserModelId('ai.neuma.app');
 
 const deskWindows = createDeskWindows({
   getOrigin,
@@ -46,19 +56,28 @@ if (!app.requestSingleInstanceLock()) {
     // must never load ahead of its handlers, and the wallet store opens before
     // any window exists.
     registerIpcHandlers({ deskWindows });
+    const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate });
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).
     guardAppSessions(session, getOrigin);
+    // Spellcheck's dictionary fetch is off until the person turns it on — set before any page exists.
+    registerConnections({ app, ipcMain, session });
+    registerKeyLockIpc({ ipcMain, safeStorage });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.
     if (!(await resolveStartupPort())) return;
     try {
+      // The at-rest keys open BEFORE the backend exists; a person who quits the
+      // unlock window gets no backend at all (key-lock-main.cjs).
+      if ((await openAtRestKeys({ app, safeStorage })) === null) { app.quit(); return; }
       await startBackend({ onRestarted: deskWindows.reloadDesks });
       await waitForBackend();
       await deskWindows.bootFirstDesk();
       tray.ensureTray(); // the corner tab — present from the first desk onward
-      autoUpdate.init({ app, shell, Notification, refreshTray: tray.rebuildTrayMenu });
+      // An offer that changes reaches the tray and every desk's bar together.
+      const refreshTray = () => { tray.rebuildTrayMenu(); updateBar.publish(); };
+      autoUpdate.init({ app, shell, Notification, refreshTray });
     } catch (err) {
       dialog.showErrorBox('Deus Neuma', `Could not start the local backend.\n\n${err.message}`);
       app.quit();

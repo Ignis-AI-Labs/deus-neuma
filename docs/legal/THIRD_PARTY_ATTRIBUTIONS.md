@@ -69,6 +69,16 @@ from its publisher's repository. Licences read from each Hugging Face model card
 | Qwen3.8-4B (distilled) | empero-ai/Qwen3.8-4B-Distill-GGUF | Apache-2.0 | |
 | Qwen3.5-4B | lmstudio-community/Qwen3.5-4B-GGUF | Apache-2.0 | |
 
+## Model server set up on first run (NOT shipped)
+
+When a machine has no model server, first run offers to set one up
+(`backend/services/managed-ollama.js`): the official Ollama build for the platform is downloaded from
+its GitHub release, checked against its published SHA-256, and kept under the platform's data folder.
+
+| Component | Source | Licence | Notes |
+| --- | --- | --- | --- |
+| Ollama 0.40.7 | github.com/ollama/ollama (release v0.40.7) | MIT | Downloaded at setup, not bundled; the version and checksums are pinned in `managed-ollama-plan.js`. |
+
 ## Image & Video Forge (models the pack recognises — NOT shipped)
 
 The Software ships **no** image or video model weights and **not** ComfyUI.
@@ -105,7 +115,7 @@ workflow are stripped.
 
 | Marks | Source | Licence | Notes |
 | ----- | ------ | ------- | ----- |
-| X, Telegram, Discord, Facebook, Mastodon, Bluesky | Simple Icons 16.35.0 | CC0 1.0 (the SVG paths) | Drawn single-colour in `frontend/app/RelinkShell/brand-marks.jsx`. |
+| X, Telegram, Discord, Facebook, Mastodon, Bluesky, YouTube, TikTok | Simple Icons 16.35.0 | CC0 1.0 (the SVG paths) | Drawn single-colour in `frontend/app/RelinkShell/brand-marks.jsx`. |
 | LinkedIn "in" | drawn in-house (absent from Simple Icons) | — | Same file. |
 
 Each logo remains the trademark of its owner. The desk shows a mark only to

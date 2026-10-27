@@ -4,12 +4,13 @@
 // founding-rite-reducer. The consuming component is presentational only.
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { probeHouseFounding, driveHouseFounding } from './house-founding-drive.js';
+import { probeHouseFounding, driveHouseFounding, driveLocalFounding } from './house-founding-drive.js';
 import { unlockNeumaKey } from './wallet-client.js';
 import { playSound } from '../../services/sound-engine.js';
 import { INITIAL_RITE, foundingRiteReducer, allMarksRevealed } from './founding-rite-reducer.js';
 
-export const useFoundingRite = (wsService) => {
+// `mode`: 'network' — joining Unavis, founded on Ethereum — or 'local', founded on this computer (2026-10-26).
+export const useFoundingRite = (wsService, mode = 'network') => {
   const [rite, dispatch] = useReducer(foundingRiteReducer, INITIAL_RITE);
   // The rite's gate: resolving this is the operator's PLACE YOUR MARK step;
   // rejecting it is her stepping back.
@@ -24,20 +25,20 @@ export const useFoundingRite = (wsService) => {
     // the wsService dep re-arms this callback, and the effect re-probes.
     if (!wsService) return;
     dispatch({ type: 'PROBING' });
-    const out = await probeHouseFounding({ wsService, signal: abortRef.current?.signal });
+    const out = await probeHouseFounding({ wsService, signal: abortRef.current?.signal, mode });
     if (out.code === 'ABORTED') return;
     if (out.founded) dispatch({ type: 'FOUNDED', state: out.state });
     else if (out.open) dispatch({ type: 'OPEN', open: out.open });
     else dispatch({ type: 'CLOSED', error: out.error, code: out.code });
-  }, [wsService]);
+  }, [wsService, mode]);
 
   // Re-read the roster WITHOUT leaving the rite — an unlocked being steps
   // from the excluded doors into the founders.
   const refreshOpen = useCallback(async () => {
     if (!wsService) return;
-    const out = await probeHouseFounding({ wsService, signal: abortRef.current?.signal });
+    const out = await probeHouseFounding({ wsService, signal: abortRef.current?.signal, mode });
     if (out.open) dispatch({ type: 'OPEN_REFRESH', open: out.open });
-  }, [wsService]);
+  }, [wsService, mode]);
 
   useEffect(() => {
     abortRef.current = new AbortController();
@@ -87,7 +88,7 @@ export const useFoundingRite = (wsService) => {
   const gatherMarks = async () => {
     playSound('confirm');
     dispatch({ type: 'WALKING' });
-    const out = await driveHouseFounding({
+    const out = await (mode === 'local' ? driveLocalFounding : driveHouseFounding)({
       wsService,
       titles: rite.titles,
       onStatus: (status) => dispatch({ type: 'STATUS', status }),
@@ -113,7 +114,7 @@ export const useFoundingRite = (wsService) => {
       dispatch({ type: 'TO_NAMES' });
       await refreshOpen();
     } else {
-      dispatch({ type: 'ERROR', error: out.error, code: out.code });
+      dispatch({ type: 'ERROR', error: out.error, code: out.code, funding: out.funding });
     }
   };
 

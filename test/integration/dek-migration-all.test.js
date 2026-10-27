@@ -22,7 +22,7 @@ import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/work
 import { migrateBeing } from '../../core/workspace/migrate-being.js';
 import { migrateAllBeings, enumerateBeings, sweepHadProblems } from '../../core/workspace/migrate-all.js';
 import {
-  encryptEnvelope, decryptEnvelope, deriveKeyFromSecret, deriveNeumaDEK, resetWorkspaceCryptoKey,
+  encryptEnvelope, decryptEnvelope, deriveKeyFromSecret, resetWorkspaceCryptoKey,
 } from '../../core/workspace/workspace-crypto.js';
 
 const KEY = 's4d-all-migration-key-long-enough';
@@ -101,7 +101,7 @@ describe('#117 S4d — migrateAllBeings (house-wide sweep)', () => {
     expect(sweepHadProblems(sweep.summary)).toBe(true); // the skip needs an eye
 
     // aaaaaaaa is now DEK-isolated and reads back under its OWN DEK.
-    const dek = deriveNeumaDEK(deriveKeyFromSecret(KEY), 'aaaaaaaa'.repeat(64).slice(0, 64).replace(/[^0-9a-f]/g, '0'));
+    const dek = await workspace.readNeumaDEK('aaaaaaaa');
     const aDnaRaw = JSON.parse(await fs.readFile(path.join(house, 'aaaaaaaa', 'dna', 'active.json'), 'utf8'));
     expect(decryptEnvelope(aDnaRaw, { key: dek })).toEqual({ neumaId: 'aaaaaaaa', dna: 1 });
     // …and no longer opens under the shared master (the isolation this closes).

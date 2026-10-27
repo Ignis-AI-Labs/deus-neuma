@@ -17,6 +17,7 @@ import { openablePath } from './path-link.js';
 import { openPathMenu, pathMenuAnchor } from './path-menu.js';
 import { CopyWord } from './copy-word.jsx';
 import { codeBlockText } from './copy-text.js';
+import { isShortCell } from './table-cell.js';
 import './RelinkMarkdown.css';
 
 
@@ -54,6 +55,13 @@ const PathSpan = ({ path, children, ...props }) => (
 
 const COMPONENTS = {
   a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+  // A table stands in its own frame (Design note, 2026-10-24: […]) — the frame scrolls sideways when the table is wider
+  // than the message, so the table stays a table and no column is crushed.
+  table: ({ node, ...props }) => (
+    <div className="relink-md-table"><table {...props} /></div>
+  ),
+  th: ({ node, ...props }) => <th {...props} className={isShortCell(node) ? 'relink-md-short' : undefined} />,
+  td: ({ node, ...props }) => <td {...props} className={isShortCell(node) ? 'relink-md-short' : undefined} />,
   // A fenced block carries its own COPY (Design note, 2026-08-27: […]) — the whole-reply COPY takes
   // the framing prose with it; the block alone is what pastes into the room
   // it was written for. Hover-revealed, same register as the message's own.

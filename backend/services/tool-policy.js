@@ -210,7 +210,7 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   // acts, and reporting to the person watching is not an act on the world.
   'share_findings',
   // Shared house state — reads, even though observe mode holds them
-  'task_list', 'calendar_read', 'queue_list', 'queue_get', 'replies_list', 'campaign_list', 'lead_list',
+  'task_list', 'calendar_read', 'queue_list', 'queue_get', 'replies_list', 'campaign_list', 'lead_list', 'board_read',
   // The whole posting posture in one call — computed from the real stores,
   // no egress, no mutation (posting-pipeline-v2; it carded once because its
   // policy ROW was absent — this set is the second half of the same lesson).
@@ -218,7 +218,8 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   'security_posture', 'security_threats_list', 'security_threat_get',
   'security_attack_surface', 'security_telemetry',
   'legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api', 'bench_list', 'bench_status',
-  'media_library', 'map_read', 'read_architecture', 'read_history', 'read_x',
+  'media_library', 'map_read', 'read_architecture', 'read_history', 'read_x', 'read_tiktok',
+  'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon',
   'retrieve_result', 'image_search',
   // The filesystem lane — the five primitives (organ spellings are internal)
   'read', 'list', 'search',

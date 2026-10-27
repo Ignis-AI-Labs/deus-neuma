@@ -28,12 +28,14 @@ export const normalizeInstanceUrl = (instanceUrl) => {
  * @param {{instanceUrl: string, accessToken: string}|null} credentials
  * @param {string} text
  * @param {{signal?: AbortSignal}} [opts]
- * @returns {Promise<{ok: true, id: string}|{ok: false, status?: number, detail: string}>}
+ * @returns {Promise<{ok: true, id: string, url?: string}|{ok: false, status?: number, detail: string}>}
  */
 // impure — network
 export const postToMastodon = async (credentials, text, { signal } = {}) => {
   if (!credentials) return { ok: false, detail: 'Mastodon credentials are not configured' };
-  const origin = normalizeInstanceUrl(credentials.instanceUrl);
+  // The API root rides an env door (NEUMA_MASTODON_API_ROOT, the flight test's
+  // own) so the platform's tests aim the REAL call at a local stand-in.
+  const origin = process.env.NEUMA_MASTODON_API_ROOT || normalizeInstanceUrl(credentials.instanceUrl);
   if (!origin) return { ok: false, detail: 'the configured instance URL is not a valid https origin' };
   try {
     const res = await fetch(`${origin}/api/v1/statuses`, {
@@ -47,7 +49,8 @@ export const postToMastodon = async (credentials, text, { signal } = {}) => {
     });
     const body = await res.json().catch(() => ({}));
     if (res.ok && body?.id) {
-      return { ok: true, id: String(body.id) };
+      // The status's own address, as the instance names it (kept as the post's permalink).
+      return { ok: true, id: String(body.id), ...(/^https:\/\//.test(String(body.url || '')) ? { url: String(body.url) } : {}) };
     }
     return { ok: false, status: res.status, detail: body?.error || `HTTP ${res.status}` };
   } catch (err) {

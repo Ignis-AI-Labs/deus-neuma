@@ -14,6 +14,14 @@
  *                 reason} — shape law ('invalid') + standing rules ('denied'),
  *                 BEFORE the operator's card
  *   summarize(payload) → string — the one line the card stakes the yes on
+ *   displayName(fields) → string — optional: the name a person reads for
+ *                 THIS filing on its chips and card, when one type does two
+ *                 things a person tells apart (image/generate → video/generate
+ *                 for a video pipeline); the filed type stays
+ *   policyToolFor(fields) → string — optional: the ACTS row THIS filing
+ *                 asks on, when one type does two acts the operator grants
+ *                 apart (image/generate → video.generate for a video
+ *                 pipeline); every chip, card, grant and journal line uses it
  *   cardArgs(value) → object — optional: what the card shows when the
  *                 filed fields alone would not show the act (a run's code)
  *   execute(value, {connection, signal}) → {ok:true, detail} | {ok:false,
@@ -28,6 +36,7 @@ import { socialPostIntent } from './social-post.js';
 import { socialQueueIntent } from './social-queue.js';
 import { securityIntents } from './security-acts.js';
 import { legalIntents } from './legal-acts.js';
+import { treasuryIntents } from './treasury-acts.js';
 import { emailSendIntent } from './email-send.js';
 import { walletSendIntent } from './wallet-send.js';
 import { mediaSaveIntent } from './media-save.js';
@@ -52,8 +61,10 @@ import { sovereigntyConsentIntent } from './sovereignty-consent.js';
 import { vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent } from './vault-acts.js';
 import { taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent } from './task-acts.js';
 import { leadAddIntent, leadTouchIntent } from './lead-acts.js';
-import { campaignCreateIntent, campaignUpdateIntent } from './campaign-acts.js';
+import { campaignCreateIntent, campaignUpdateIntent, campaignAskIntent } from './campaign-acts.js';
 import { marketingPlanIntent } from './marketing-plan.js';
+import { marketingBoardArrangeIntent } from './marketing-board-arrange.js';
+import { marketingCompanyLinksIntent } from './marketing-company-links.js';
 import {
   memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
   memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
@@ -61,7 +72,7 @@ import {
 
 const TYPES = new Map(
   [
-    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, emailSendIntent, walletSendIntent,
+    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent,
     mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
@@ -73,8 +84,8 @@ const TYPES = new Map(
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
-    campaignCreateIntent, campaignUpdateIntent,
-    marketingPlanIntent,
+    campaignCreateIntent, campaignUpdateIntent, campaignAskIntent,
+    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent,
     memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
     memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
   ].map((t) => [t.name, t]),

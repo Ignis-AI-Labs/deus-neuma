@@ -1,325 +1,220 @@
-// PlatformSpace — ONE platform's whole marketing space: its own window in
-// the OUTREACH dock section.
+// PlatformSpace — ONE platform's whole marketing space, nothing from any other
+// platform mixed in: its console head, its standing (keys · holder · crew —
+// StandingPanel, the one shared component), its account board where the
+// platform reads one (TikTok), and its queue. Every platform renders this same
+// format, so a new platform's space is a catalog entry away, never a redesign.
 //
-// Every platform requires its own approach entirely (ruling, 2026-07-23), so
-// every platform gets its own window: its standing (keys + holder — two
-// different facts, two labeled rows), then its campaigns and its queue as
-// boards, nothing from any other platform mixed in. X is the first space
-// perfected; every platform window renders this same format, so a new
-// platform's space is a catalog entry away, never a redesign.
+// Two homes (marketing-panel-plan.md §5, slice 6):
+//   • MARKETING's ACCOUNT level (`accountId` given — null when the house has
+//     no account there yet): the public platforms. One head says it by mark
+//     (account-level/AccountHead.jsx, show-dont-tell SDT-6): the account,
+//     KEYS · HOLDER · CREW (each a door when not fine; the holder and crew
+//     open their drawer in place), the next out, the month once, the four
+//     weeks. The boards narrow to that one account; the queue's composer
+//     speaks as it. Campaigns live at the company level, so there is no
+//     CAMPAIGNS tab — a door to the company's. Its landings come from
+//     MARKETING (`landing`), never a latch of its own.
+//   • its own window (COMMUNITY's TELEGRAM and DISCORD), as it always stood:
+//     CAMPAIGNS · QUEUE, the company strip, landings on its own latch.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
-import { Select } from './Select.jsx';
-import { useWindows } from '../windowing/use-windows.js';
-import { requestSettingsFocus } from './settings-focus.js';
 import { CampaignsSection } from './CampaignsSection.jsx';
 import { CampaignQueueSection } from './CampaignQueueSection.jsx';
-import {
-  getChannelBoard, bindChannel, releaseChannel, getRosterForBinding,
-  getChannelCrew, addCrewMember, removeCrewMember,
-} from '../../services/social-channels-client.js';
-
-// The platform's standing: KEYS (connected or not — managed in SETTINGS →
-// API) and HOLDER (the one neuma bound to speak here) as separate labeled
-// rows — stacking them unlabeled read as a contradiction (CONNECTED over
-// "UNBOUND", Founder's screenshot 2026-07-23). Keys alone never let a being
-// post; the portal enforces the binding again on every call.
-const ChannelStandingCard = ({ channel, roster, onChanged }) => {
-  const [open, setOpen] = useState(false);
-  const [holder, setHolder] = useState(channel.binding?.neumaId || '');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const { dispatch } = useWindows();
-
-  // A binding moved elsewhere (another window, a release) must never be
-  // reverted by a stale picker: while the picker is closed, the local
-  // choice tracks the record — BIND submits only a value the witness
-  // actually chose with the panel open (echo GLM, 2026-07-23).
-  useEffect(() => {
-    if (!open) setHolder(channel.binding?.neumaId || '');
-  }, [channel.binding?.neumaId, open]);
-
-  const act = async (fn) => {
-    uiSound('toggle');
-    setBusy(true);
-    setError(null);
-    try {
-      await fn();
-      await onChanged();
-    } catch (e) {
-      setError(e.message);
-    }
-    setBusy(false);
-  };
-
-  // The keys live in SETTINGS → API — one door, deep-linked.
-  const manageKeys = () => {
-    uiSound('toggle');
-    dispatch({ type: 'OPEN', id: 'settings' });
-    requestSettingsFocus('channel-keys');
-  };
-
-  const holderMember = roster.find((m) => m.neumaId === channel.binding?.neumaId) || null;
-  const holderName = holderMember?.name || channel.binding?.neumaId;
-  // A HOLDER may be a sealed witness as well as a neuma (Design note, 2026-07-26: […]), so the row
-  // says WHICH — who holds the keys is never a guess from the name alone.
-  const holderKind = holderMember?.participantKind === 'witness' ? 'WITNESS' : null;
-
-  return (
-    <div className="settings-realm">
-      <div className="settings-row">
-        <span className="settings-k">Keys</span>
-        <span className="settings-v">
-          {channel.configured
-            ? 'CONNECTED'
-            : <span className="settings-tag-warn">NOT CONNECTED — add them in SETTINGS → API</span>}
-        </span>
-      </div>
-      <div className="settings-row">
-        <span className="settings-k">Holder</span>
-        <span className="settings-v">
-          {channel.binding
-            ? <>{`HELD BY ${holderName}`}{holderKind ? <span className="settings-tag-dim"> {holderKind}</span> : null}</>
-            : <span className="settings-tag-warn">none — no one may post</span>}
-        </span>
-      </div>
-
-      <div className="settings-control">
-        <button type="button" className="settings-set" onClick={() => { uiSound('toggle'); setOpen(!open); }}>
-          {open ? 'CLOSE' : (channel.binding ? 'CHANGE HOLDER' : 'SET HOLDER')}
-        </button>
-        <button type="button" className="settings-set" onClick={manageKeys}>
-          MANAGE KEYS
-        </button>
-      </div>
-
-      {open ? (
-        <>
-          <div className="settings-control">
-            <Select
-              fill
-              ariaLabel={`Holder for ${channel.name}`}
-              value={holder}
-              onChange={setHolder}
-              disabled={busy || roster.length === 0}
-              placeholder="— choose the holder —"
-              options={roster.map((m) => ({
-                value: m.neumaId,
-                label: `${m.name || m.neumaId}${m.participantKind === 'witness' ? ' · witness' : ''}`,
-              }))}
-            />
-            <button
-              type="button"
-              className="settings-set"
-              disabled={busy || !holder}
-              onClick={() => act(() => bindChannel(channel.id, holder))}
-            >
-              BIND
-            </button>
-            {channel.binding ? (
-              <button
-                type="button"
-                className="settings-set is-danger"
-                disabled={busy}
-                onClick={() => act(() => releaseChannel(channel.id))}
-              >
-                RELEASE
-              </button>
-            ) : null}
-          </div>
-          {error ? <p className="settings-err">{error}</p> : null}
-        </>
-      ) : null}
-    </div>
-  );
-};
-
-// THE CREW — who WORKS this sector, beside the one who holds its keys.
-//
-// Design note, 2026-07-26: […]
-//
-// So this roster is cross-house by construction and offers sealed AI witnesses
-// beside neuma: a witness on OpenAI can carry a campaign while the local models
-// grow into it. Crew members draft and STAGE into the queue below; only the
-// HOLDER's binding reaches the live keys, and nothing leaves without the
-// operator approving it there.
-const ChannelCrewCard = ({ channel, roster }) => {
-  const [crew, setCrew] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [pick, setPick] = useState('');
-  const [remit, setRemit] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    getChannelCrew(channel.id).then(setCrew).catch(() => {});
-  }, [channel.id]);
-
-  const act = async (fn) => {
-    uiSound('toggle');
-    setBusy(true);
-    setError(null);
-    try {
-      setCrew(await fn());
-    } catch (e) {
-      setError(e.message);
-    }
-    setBusy(false);
-  };
-
-  const memberOf = (neumaId) => roster.find((m) => m.neumaId === neumaId) || null;
-  const nameOf = (neumaId) => memberOf(neumaId)?.name || neumaId;
-  // Already-seated beings drop out of the picker — a roster can never list one
-  // being twice, so offering them again is offering a no-op.
-  const seated = new Set(crew.map((m) => m.neumaId));
-  const available = roster.filter((m) => !seated.has(m.neumaId));
-
-  return (
-    <div className="settings-realm">
-      <div className="settings-row">
-        <span className="settings-k">Crew</span>
-        <span className="settings-v">
-          {crew.length === 0
-            ? <span className="settings-tag-dim">nobody on this sector yet</span>
-            : crew.map((m) => nameOf(m.neumaId)).join(' · ')}
-        </span>
-      </div>
-
-      <div className="settings-control">
-        <button type="button" className="settings-set" onClick={() => { uiSound('toggle'); setOpen(!open); }}>
-          {open ? 'CLOSE' : 'MANAGE CREW'}
-        </button>
-      </div>
-
-      {open ? (
-        <>
-          {crew.length > 0 ? (
-            <ul className="settings-list">
-              {crew.map((m) => (
-                <li key={m.neumaId} className="settings-row">
-                  <span className="settings-k">
-                    {nameOf(m.neumaId)}
-                    <span className="settings-tag-dim"> {m.kind === 'witness' ? 'WITNESS' : 'NEUMA'}</span>
-                  </span>
-                  <span className="settings-v">
-                    {m.remit ? m.remit : <span className="settings-tag-dim">no remit set</span>}
-                    <button
-                      type="button"
-                      className="settings-set is-danger"
-                      disabled={busy}
-                      onClick={() => act(() => removeCrewMember(channel.id, m.neumaId))}
-                    >
-                      RELEASE
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <div className="settings-control">
-            <Select
-              fill
-              ariaLabel={`Add to the ${channel.name} crew`}
-              value={pick}
-              onChange={setPick}
-              disabled={busy || available.length === 0}
-              placeholder={available.length === 0 ? '— everyone available is seated —' : '— add a neuma or witness —'}
-              options={available.map((m) => ({
-                value: m.neumaId,
-                label: `${m.name || m.neumaId}${m.participantKind === 'witness' ? ' · witness' : ''}`,
-              }))}
-            />
-          </div>
-          <div className="settings-control">
-            <input
-              className="settings-input"
-              placeholder="What they hold here (optional) — e.g. campaign strategy"
-              value={remit}
-              onChange={(e) => setRemit(e.target.value)}
-              disabled={busy || !pick}
-            />
-            <button
-              type="button"
-              className="settings-set"
-              disabled={busy || !pick}
-              onClick={() => act(async () => {
-                const next = await addCrewMember(channel.id, {
-                  neumaId: pick,
-                  kind: memberOf(pick)?.participantKind === 'witness' ? 'witness' : 'neuma',
-                  remit,
-                });
-                setPick('');
-                setRemit('');
-                return next;
-              })}
-            >
-              ADD
-            </button>
-          </div>
-          <p className="settings-note">
-            Crew draft and stage into the queue; only the holder&rsquo;s keys reach {channel.name},
-            and nothing goes out until you approve it.
-          </p>
-          {error ? <p className="settings-err">{error}</p> : null}
-        </>
-      ) : null}
-    </div>
-  );
-};
+import { TikTokAccount } from './TikTokAccount.jsx';
+import { PlatformHeader } from './PlatformHeader.jsx';
+import { StandingPanel, StandingNotice } from './StandingPanel.jsx';
+import { usePlatformPulse } from './use-platform-pulse.js';
+import { usePlatformStanding } from './use-platform-standing.js';
+import { useCalmGate } from './use-calm-gate.js';
+import { platformPulse, scopeQueue } from './platform-pulse.js';
+import { AccountStrip } from './accounts/AccountStrip.jsx';
+import { useHouseAccounts } from './accounts/use-house-accounts.js';
+import { entryAccountId } from './accounts/account-words.js';
+import { WaitingBand } from './waiting/WaitingBand.jsx';
+import { useWaitingAccount } from './waiting/use-waiting.js';
+import { takeCardLanding, onCardLanding } from './card-landing.js';
+import { useViewHeight } from './use-view-height.js';
+import { DoorButton } from './doors/DoorButton.jsx';
+import { AccountHead } from './account-level/AccountHead.jsx';
+import { AccountDrawers } from './account-level/AccountDrawers.jsx';
+import { dayKeyOf } from './month-grid.js';
+import './PlatformConsole.css';
 
 const SUBS = [
   { id: 'campaigns', label: 'CAMPAIGNS' },
   { id: 'queue', label: 'QUEUE' },
 ];
 
-export const PlatformSpace = ({ channelId }) => {
-  const [channel, setChannel] = useState(null);
-  const [roster, setRoster] = useState([]);
-  const [loadError, setLoadError] = useState(null);
-  const [sub, setSub] = useState('campaigns');
+// A platform whose API reads the house's own account opens on an ACCOUNT
+// board: the account as the platform shows it (TikTok today).
+const ACCOUNT_BOARDS = Object.freeze({ tiktok: TikTokAccount });
+const ACCOUNT_SUB = { id: 'account', label: 'ACCOUNT', title: 'the account as the platform shows it — read through the platform\'s one connection' };
+const subsFor = (channelId, inOffice) => {
+  const subs = inOffice ? SUBS.filter((s) => s.id !== 'campaigns') : SUBS;
+  return ACCOUNT_BOARDS[channelId] ? [ACCOUNT_SUB, ...subs] : subs;
+};
 
-  const refresh = async () => {
-    const board = await getChannelBoard();
-    setChannel(board.channels.find((c) => c.id === channelId) || null);
-    setLoadError(null);
+// A window this short or shorter folds its console head to its counts, so the
+// decisions below it are on screen on arrival (#585: […] at 560x600). The four weeks stay one press away.
+const SHORT_WINDOW_PX = 720;
+
+// A WAITING ON YOU landing (card-landing.js) as the queue door it opens: a reply
+// lands in REPLIES, a post on POSTS' day view, whose head holds every open draft.
+const landingFocus = (item) => (item?.section === 'replies' ? { section: 'replies' } : { section: 'posts', day: null, entryId: item?.entryId || null });
+
+// A social-check door lands on STANDING instead, its holder or crew drawer open.
+const STANDING_DRAWERS = Object.freeze(['holder', 'crew']);
+const standingDrawer = (item) => (STANDING_DRAWERS.includes(item?.section) ? item.section : null);
+
+/**
+ * @param {{channelId: string, accountId?: ?string, landing?: ?{entryId?: ?string, section?: ?string, n: number}, companyId?: ?string}} props
+ *   accountId — given (null = no account yet) only on MARKETING's account level; landing and companyId there too
+ */
+export const PlatformSpace = ({ channelId, accountId = undefined, landing = null, companyId: levelCompany = null }) => {
+  const inOffice = accountId !== undefined;
+  const standing = usePlatformStanding(channelId);
+  const { channel, holder, notice, loadError } = standing;
+  const AccountBoard = ACCOUNT_BOARDS[channelId] || null;
+  // A WAITING ON YOU row that opened this window (or MARKETING's account level) names the card it lands on.
+  const [landed] = useState(() => (inOffice ? landing : takeCardLanding(channelId)));
+  const toQueue = Boolean(landed && !standingDrawer(landed) && (!inOffice || landed.entryId || landed.section));
+  const [sub, setSub] = useState(toQueue ? 'queue' : AccountBoard ? 'account' : inOffice ? 'queue' : 'campaigns');
+  const [standingOpen, setStandingOpen] = useState(Boolean(standingDrawer(landed)));
+  const [drawer, setDrawer] = useState(() => standingDrawer(landed));
+  // A console door's destination; `n` remounts the queue board on each press.
+  const [focus, setFocus] = useState(() => (toQueue ? { ...landingFocus(landed), n: 1 } : { n: 0 }));
+  // A decision taken in the band re-reads the board below it.
+  const [boardReload, setBoardReload] = useState(0);
+  const [fullHead, setFullHead] = useState(false);
+  // The company the boards below show ('' = every company's accounts); on the account level, that one account.
+  const [companyId, setCompanyId] = useState('');
+  const house = useHouseAccounts();
+  // The account level's own record (its binding): undefined while the house is unread, null when it holds none here.
+  const levelAccount = !inOffice || !house.known ? undefined : house.accounts.find((a) => a.id === accountId) ?? null;
+  // A binding the window made by itself (the CMO, keys set) is this account's too once it is the first: re-read the house.
+  useEffect(() => { if (inOffice && notice) house.refresh(); }, [inOffice, notice]);
+  const shownAccounts = inOffice ? (accountId ? new Set([accountId]) : null) : companyId
+    ? new Set(house.accounts.filter((a) => a.channelId === channelId && a.companyId === companyId).map((a) => a.id))
+    : null;
+  const ofCompany = (e) => !shownAccounts || shownAccounts.has(entryAccountId(e));
+  // Background news (polls, a being's acts) waits while the person works this
+  // window — it never re-lays what they are pointing at (calm-gate.js).
+  const calm = useCalmGate();
+  const pulseRead = usePlatformPulse({ calm });
+  const waiting = useWaitingAccount();
+  // Whatever the board decides, the desk's WAITING ON YOU hears at once — and
+  // after the person's own act there, the band lands the news without waiting.
+  const [ownAct, setOwnAct] = useState(0);
+  const boardChanged = ({ own = false } = {}) => {
+    pulseRead.refresh();
+    if (own) setOwnAct((n) => n + 1);
+    waiting?.refresh();
   };
+  const { watch } = pulseRead;
+  // "Short" is the person's view — the window body this space scrolls in — never its own content.
+  const [viewRef, h] = useViewHeight();
+  const rootRef = useCallback((node) => { viewRef(node); watch(node); }, [watch, viewRef]);
+  const short = h > 0 && h <= SHORT_WINDOW_PX && !fullHead;
 
+  const openQueue = (to) => {
+    uiSound('toggle');
+    setSub('queue');
+    setFocus((f) => ({ ...to, n: f.n + 1 }));
+  };
+  const openStanding = (to) => { uiSound('toggle'); setStandingOpen(true); setDrawer(to); };
+  const land = (item) => (standingDrawer(item) ? openStanding(standingDrawer(item)) : openQueue(landingFocus(item)));
+  useEffect(() => (inOffice ? undefined : onCardLanding(channelId, land)), [channelId, inOffice]);
+  // MARKETING hands each new landing down numbered; the one this level mounted on is already open.
+  const handled = useRef(landing?.n ?? 0);
   useEffect(() => {
-    Promise.all([refresh(), getRosterForBinding().then(setRoster).catch(() => {})])
-      .catch((e) => setLoadError(e.message));
-  }, []);
+    if (!inOffice || !landing || landing.n === handled.current) return;
+    handled.current = landing.n;
+    if (landing.entryId || landing.section) land(landing);
+  }, [inOffice, landing]);
+  const ownQueue = pulseRead.queue ? scopeQueue(pulseRead.queue, channelId) : null;
+  const pulse = ownQueue ? platformPulse(inOffice ? ownQueue.filter(ofCompany) : ownQueue, pulseRead.now) : null;
+  // The account level's WAITING ON YOU: that account's posts only (none until the queue is read, never another's).
+  const ownIds = inOffice && ownQueue ? new Set(ownQueue.filter(ofCompany).map((e) => e.id)) : null;
+  const keepWaiting = inOffice ? (item) => Boolean(ownIds) && (!item.where?.entryId || ownIds.has(item.where.entryId)) : null;
+  const test = channel ? (pulseRead.tests[channel.id] ?? null) : null;
+  const subs = channel ? subsFor(channel.id, inOffice) : [];
+  // One board needs no tab: the account level's lone QUEUE is simply the board.
+  const tabs = channel && (!inOffice || subs.length > 1) ? (
+    <div className="outreach-tabs" role="tablist" aria-label={`${channel.name} boards`}>
+      {subs.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          role="tab"
+          aria-selected={sub === s.id}
+          title={s.title}
+          className={`outreach-tab label-data${sub === s.id ? ' is-on' : ''}`}
+          onClick={() => { uiSound('toggle'); setSub(s.id); }}
+        >
+          {s.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   return (
-    <div className="outreach-panel settings">
+    <div className={`outreach-panel settings${short ? ' is-short' : ''}`} ref={rootRef} {...calm.handlers}>
+      <WaitingBand channelId={channelId} calm={calm} now={pulseRead.now} ownAct={ownAct} keep={keepWaiting}
+        onDecided={() => { pulseRead.refresh(); setBoardReload((n) => n + 1); }} />
       {loadError ? <p className="settings-err">{loadError}</p> : null}
       {!channel && !loadError ? <p className="settings-note">Reading the channel board…</p> : null}
 
       {channel ? (
         <>
-          <ChannelStandingCard channel={channel} roster={roster} onChanged={refresh} />
-          <ChannelCrewCard channel={channel} roster={roster} />
+          {pulse && inOffice ? (
+            <AccountHead channel={channel} accountId={accountId} account={levelAccount} test={test} standing={standing}
+              read={house.known} pulse={pulse} now={pulseRead.now} lit={focus.highlight ?? null} onOpen={openQueue}
+              drawer={drawer} onDrawer={setDrawer}
+              compact={short} onWhole={h > 0 && h <= SHORT_WINDOW_PX ? () => { uiSound('toggle'); setFullHead((v) => !v); } : null} />
+          ) : pulse ? (
+            <PlatformHeader
+              channel={channel} test={test}
+              holderName={holder?.holder?.name ?? (channel.binding ? channel.binding.neumaId : null)}
+              crewCount={standing.crew.length} pulse={pulse} now={pulseRead.now} onOpen={openQueue}
+              standingOpen={standingOpen} onStanding={() => { uiSound('toggle'); setStandingOpen((v) => !v); }}
+              compact={short} onWhole={h > 0 && h <= SHORT_WINDOW_PX ? () => { uiSound('toggle'); setFullHead((v) => !v); } : null}
+            />
+          ) : <p className="settings-note">Reading the queue…</p>}
+          {notice ? (
+            <StandingNotice notice={notice} channelName={channel.name}
+              onChange={() => { uiSound('toggle'); setStandingOpen(true); setDrawer('holder'); }}
+              onDismiss={() => { uiSound('toggle'); standing.dismissNotice(); }} />
+          ) : null}
+          {inOffice ? (
+            <>
+              {accountId ? <AccountDrawers drawer={drawer} channel={channel} account={levelAccount} standing={standing} onBound={house.refresh} /> : null}
+              {/* No account here yet: its first is added right here (+ ACCOUNT). */}
+              {accountId ? null : <AccountStrip channelId={channel.id} companyId="" roster={standing.roster} onCompany={() => {}} />}
+            </>
+          ) : (
+            <>
+              {standingOpen || !pulse
+                ? <StandingPanel standing={standing} test={test} drawer={drawer} onDrawer={setDrawer} /> : null}
+              <AccountStrip channelId={channel.id} companyId={companyId} roster={standing.roster}
+                onCompany={(id) => { uiSound('toggle'); setCompanyId(id); }} />
+            </>
+          )}
 
-          <div className="outreach-tabs" role="tablist" aria-label={`${channel.name} boards`}>
-            {SUBS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={sub === s.id}
-                className={`outreach-tab label-data${sub === s.id ? ' is-on' : ''}`}
-                onClick={() => { uiSound('toggle'); setSub(s.id); }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+          {inOffice ? (
+            <div className="ps-tabrow">
+              {tabs}
+              {/* Campaigns are the company's: the account level's door goes to its company's CAMPAIGNS tab. */}
+              <DoorButton door={{ kind: 'marketing', tab: 'campaigns', companyId: levelCompany }} />
+            </div>
+          ) : tabs}
 
-          {/* Keyed by board so each mounts fresh on entry. */}
-          {sub === 'campaigns'
-            ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} />
-            : <CampaignQueueSection key={`queue-${channel.id}`} channelId={channel.id} channelName={channel.name} />}
+          {/* Keyed by board so each mounts fresh on entry (the account re-reads on every entry). */}
+          {sub === 'account' && AccountBoard ? <AccountBoard key={`account-${channel.id}`} />
+            : sub === 'campaigns' ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} calm={calm} />
+            : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={inOffice ? null : channel.name} entryFilter={ofCompany}
+                focus={focus.n ? focus : null} onChanged={boardChanged} calm={calm} reload={boardReload}
+                accountId={inOffice ? accountId : undefined} monthAbove={inOffice ? dayKeyOf(new Date(pulseRead.now).toISOString()).slice(0, 7) : null} />}
         </>
       ) : null}
     </div>

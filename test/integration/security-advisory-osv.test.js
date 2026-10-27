@@ -7,11 +7,16 @@
  * Requires network egress to api.osv.dev. If the box is offline the test
  * fails LOUDLY — a watch that cannot reach its source is not a watch.
  */
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterAll } from 'vitest';
 import path from 'path';
 import { createTempDir, writeJSON } from '../helpers/temp-fs.js';
 import { fetchOsvBatch, fetchVulnDetail, runAdvisoryScan } from '../../backend/services/security/advisory-scan.js';
 import { createThreatLedger } from '../../backend/services/security/threat-ledger.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['security-watch']);
+afterAll(() => connections.restore());
 
 const MINIMIST_GHSA = 'GHSA-xvch-5gv4-984h';
 

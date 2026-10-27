@@ -6,6 +6,10 @@
 const GRAPH_VERSION = 'v21.0';
 export { GRAPH_VERSION };
 
+// The READ root rides an env door (NEUMA_FACEBOOK_API_ROOT) so the platform's
+// tests aim the real reads at a local server; production never sets it.
+export const facebookApiRoot = () => process.env.NEUMA_FACEBOOK_API_ROOT || `https://graph.facebook.com/${GRAPH_VERSION}`;
+
 /**
  * Build the page-feed request for one post (pure). The token rides the
  * Authorization header, never the URL or body.

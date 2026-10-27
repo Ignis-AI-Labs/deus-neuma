@@ -1,7 +1,11 @@
 // ApprovalChip — the witness's gate on a consciousness's reach.
 //
-// Renders an approval segment from the stream-reducer. Pending: the tool,
-// its args preview, and the three answers — ALLOW ONCE, ALWAYS ALLOW, DENY.
+// Renders an approval segment from the stream-reducer. Pending: the act's
+// name (`label` when the backend names it plainer than the wire tool — a
+// video render reads video/generate, never intents/video.generate), its args
+// preview, and the three answers — ALLOW ONCE, ALWAYS ALLOW, DENY. What the
+// act attaches is shown: brand cards, and the being's own forge renders (a
+// clip plays on the card).
 // A preview cut short says so and opens to the whole text the act runs with
 // (`fullArgs`), so a yes is never given to words the operator could not see.
 // Resolved: a one-line record of what was decided. The chip flips only when
@@ -11,6 +15,7 @@
 import { useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { ApprovalMedia } from './ApprovalMedia.jsx';
+import { AuthImage } from './AuthImage.jsx';
 import '../../components/ToolActionChip/ToolActionChip.css';
 
 const DECISION_LABELS = Object.freeze({
@@ -25,8 +30,31 @@ const DECISION_LABELS = Object.freeze({
 // Decisions that let the act proceed read as ok; the rest as refusals.
 const GRANTED = Object.freeze(new Set(['allow', 'always']));
 
+// The being's own forge renders the act attaches (by id): a clip plays, a still
+// shows — through the lane-scoped, authenticated forge route, as on the made chip.
+const ApprovalRenders = ({ renders }) => (
+  <div className="approval-media">
+    {renders.map((render) => {
+      const video = String(render.mime).startsWith('video/');
+      return (
+        <figure className="approval-render" key={render.imageId}>
+          <AuthImage
+            className="approval-render-media"
+            src={`/api/v1/image-forge/images/${encodeURIComponent(render.imageId)}?laneId=${encodeURIComponent(render.laneId || '')}`}
+            alt={video ? 'attached video' : 'attached image'}
+            video={video}
+            media={render.path ? { path: render.path } : null}
+          />
+          <figcaption className="approval-render-what label-data">{video ? 'VIDEO' : 'IMAGE'}</figcaption>
+        </figure>
+      );
+    })}
+  </div>
+);
+
 export const ApprovalChip = ({ segment, onRespond }) => {
-  const { id, phase, tool, args, fullArgs, scope, decision, media, lane } = segment;
+  const { id, phase, tool, label, args, fullArgs, scope, decision, media, renders, lane } = segment;
+  const name = label || tool;
   // One answer per prompt — the buttons arm once, then wait for the echo.
   const [sent, setSent] = useState(false);
   const [whole, setWhole] = useState(false);
@@ -40,14 +68,15 @@ export const ApprovalChip = ({ segment, onRespond }) => {
       onRespond(id, choice);
     };
     return (
-      <div className="tool-chip approval-chip pending">
+      <div className="tool-chip approval-chip pending" data-wait-id={id}>
         <div className="tool-chip-head">
           <span className="tool-chip-tag">NEEDS APPROVAL</span>
-          <span className="tool-chip-name">{tool}</span>
+          <span className="tool-chip-name">{name}</span>
         </div>
         {namesJson !== '[]' ? (
           <ApprovalMedia key={`${lane}:${namesJson}`} lane={lane} namesJson={namesJson} />
         ) : null}
+        {Array.isArray(renders) && renders.length ? <ApprovalRenders renders={renders} /> : null}
         {scope ? <div className="tool-chip-scope">GRANTS: {scope}</div> : null}
         {args ? <pre className="tool-chip-detail">{whole && fullArgs ? fullArgs : args}</pre> : null}
         {fullArgs ? (
@@ -70,7 +99,7 @@ export const ApprovalChip = ({ segment, onRespond }) => {
       <div className="tool-chip-head">
         <span className="tool-chip-sigil">⟐</span>
         <span className="tool-chip-summary">
-          {tool}{scope ? ` (${scope})` : ''} — {DECISION_LABELS[decision] || 'SETTLED'}
+          {name}{scope ? ` (${scope})` : ''} — {DECISION_LABELS[decision] || 'SETTLED'}
         </span>
       </div>
     </div>

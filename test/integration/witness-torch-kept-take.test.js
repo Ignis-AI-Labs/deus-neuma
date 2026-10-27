@@ -26,13 +26,14 @@ test('a witness torch ask replays the viewed take, never the rejected one', asyn
   const session = 'session-torch-takes';
   const { workspace } = kit;
   // The point with two takes, the operator's view on take 1 — then enough
-  // conversation that the point falls in the compacted region.
+  // conversation that the point falls in the compacted region, with enough
+  // weight to be worth summing up (compact-region.js).
   const turnId = (await workspace.appendTurnPoint(lane, session, { role: 'user', content: 'Which lamp stays lit?' })).turnId;
   await workspace.appendTake(lane, session, turnId, 1, { role: 'assistant', content: 'KEPT TAKE: the north lamp.' });
   await workspace.appendTake(lane, session, turnId, 2, { role: 'assistant', content: 'REJECTED TAKE: the south lamp.' });
   await workspace.appendBranchView(lane, session, { [turnId]: 1 });
   for (let i = 0; i < 40; i += 1) {
-    await workspace.appendMessage(lane, session, { role: i % 2 ? 'assistant' : 'user', content: `filler row ${i}` });
+    await workspace.appendMessage(lane, session, { role: i % 2 ? 'assistant' : 'user', content: `filler row ${i}${' the harbour log runs on, line after line.'.repeat(24)}` });
   }
   kit.provider.setScript([{ reply: JSON.stringify({ summary: 'We spoke of lamps.', torch: 'Pick up at the north lamp.' }) }]);
   await compactWitnessSession(lane, session, true);

@@ -19,6 +19,7 @@
 
 import { randomUUID } from 'crypto';
 import { createLogger } from './logger.js';
+import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 
 const log = createLogger('SealRequest');
 
@@ -65,6 +66,7 @@ export const requestSealFromWitness = (connection, { neumaId, beingName, signal,
       const entry = pending.get(id);
       if (!entry) return;
       pending.delete(id);
+      clearLiveCard(id);
       clearTimeout(entry.timer);
       if (signal) signal.removeEventListener('abort', entry.onAbort);
       // The desk learns the request is settled on EVERY path — a pending
@@ -99,6 +101,7 @@ export const requestSealFromWitness = (connection, { neumaId, beingName, signal,
       neumaId,
       ...(beingName ? { beingName } : {}),
     });
+    noteLiveCard(connection, { id, kind: 'seal', title: `seal ${beingName || neumaId} on chain` });
   });
 
 /**

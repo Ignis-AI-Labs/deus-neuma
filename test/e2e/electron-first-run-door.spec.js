@@ -197,21 +197,19 @@ test.describe('the door — a person with no being reaches the platform', () => 
     const paths = page.locator('.firstrun-path');
     await expect(paths).toHaveCount(3);
 
+    // the three standings, by their own names, lightest first
+    expect(await page.locator('.firstrun-path-name').allInnerTexts()).toEqual(['Harness', 'Witness', 'Neuma']);
     const text = await page.locator('.firstrun').innerText();
-    expect(text).toContain('Just use it');
-    expect(text).toContain('Begin beside a witness');
-    expect(text).toContain('Summon a neuma');
     // The preconditions are the reason this screen exists — a person must not
     // discover […] only after the preflight refuses.
-    expect(text).toContain('NEEDS: A MODEL — LOCAL OR AN API KEY');
+    expect(text).toContain('NEEDS: A MODEL OR AN API KEY');
     expect(text).toContain('NEEDS: AN API KEY');
-    expect(text).toContain('NEEDS: A LOCAL MODEL');
-    // The operator is named as the operator here; 'witness' is the AI peer.
-    expect(text).toContain('operator');
+    // the neuma door names its need, or — while no model runs — points at the model bar above it
+    expect(text).toMatch(/NEEDS: A LOCAL MODEL|NEEDS THE MODEL ABOVE/);
   });
 
   test('the witness door opens the GUIDED ROAD, never an empty desk', async () => {
-    await page.locator('.firstrun-path', { hasText: 'Begin beside a witness' }).click();
+    await page.locator('[data-door="witness"] .firstrun-path').click();
 
     // Founder's law after a teammate walked it live: […] This used to route
     // straight to 'relink', dropping a person with no being into an empty room

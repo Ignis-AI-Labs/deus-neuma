@@ -12,11 +12,15 @@ import { resolvePostMedia } from '../social/post-media.js';
 import { postQueue, validateDraft as validateQueueDraft, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from '../social/post-queue.js';
 import { channelBindings } from '../social/channel-bindings.js';
 import { houseOfLane } from '../social/house-positions.js';
+import { laneHouseEntries } from '../social/queue-house.js';
+import { entryAccountId, firstAccountId } from '../social/account-shape.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { replyCandidatesOf } from '../social/reply-candidates.js';
 import { postIdFrom, readXReplyTarget } from '../social/x-reader.js';
 import { gateAct } from '../act-gate.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
+import { publishEntry } from '../social/post-scheduler.js';
+import { replyMandateFor, sendReplyUnderMandate } from '../marketing/mandate/mandate-act.js';
 
 // impure — stage a FOLLOW-UP to one of the house's own queued posts: the
 // thread lane (Founder/Kagipem 2026-07-29). The same machinery as the
@@ -63,7 +67,7 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
   // THE PARENT GATE — real, on this channel, and able to publish. A being
   // cannot thread onto a post that does not exist, belongs to another
   // platform, or can never go out.
-  const queueNow = await postQueue.load().catch(() => null);
+  const queueNow = await laneHouseEntries(companion?.neumaId).catch(() => null);
   if (!queueNow) {
     const error = 'the campaign queue is unreadable — the parent cannot be proven, so nothing stages';
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — queue unreadable` });
@@ -92,8 +96,10 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
-    const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before threading for it`;
+  // A follow-up speaks as its parent's account, and is gated by that account's crew.
+  const accountId = entryAccountId(parent);
+  if (!canStageForSector(crewStore, bindings, accountId, companion?.neumaId || null)) {
+    const error = `you are not on the crew of ${channel.name} account ${accountId} — ask your operator to add you to that sector before threading for it`;
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
     return { tool, status: 'denied', error };
   }
@@ -114,6 +120,7 @@ export const handleNeumaSelfReply = async (ws, connection, neumaPolicy, toolMode
   try {
     entry = await postQueue.add({
       channelId: channel.id,
+      accountId,
       text,
       campaignId,
       pillar,
@@ -225,7 +232,7 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
 
   // Gate 2 — the cap, counted from the real queue this instant, per (person,
   // conversation).
-  const queueNow = await postQueue.load().catch(() => null);
+  const queueNow = await laneHouseEntries(companion?.neumaId).catch(() => null);
   if (!queueNow) {
     const error = 'the campaign queue is unreadable — the cap cannot be counted, so nothing stages';
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — queue unreadable` });
@@ -243,8 +250,10 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
-    const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before answering for it`;
+  // An answer speaks as the account the reply was made to.
+  const accountId = candidate.accountId || firstAccountId(channel.id);
+  if (!canStageForSector(crewStore, bindings, accountId, companion?.neumaId || null)) {
+    const error = `you are not on the crew of ${channel.name} account ${accountId} — ask your operator to add you to that sector before answering for it`;
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
     return { tool, status: 'denied', error };
   }
@@ -252,7 +261,11 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   // The ACTS gate on the act of staging (act-gate.js) — its OWN row, so an
   // ALWAYS granted here never unlocks post_to_x or queue_post_to_x. An
   // interrupt that landed while the card waited stops the staging too.
-  const gate = await gateAct(connection, {
+  // THE MANDATE (marketing/mandate/): with replies granted, an in-scope answer needs no card.
+  const mandated = await replyMandateFor({
+    laneId: companion?.neumaId || null, accountId, sessionId: connection.sessionId || null, postId: candidate.postId, answering: candidate.text,
+  });
+  const gate = mandated ? { ok: true } : await gateAct(connection, {
     server: 'social', tool: toolName,
     cardArgs: {
       text,
@@ -278,6 +291,7 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   try {
     entry = await postQueue.add({
       channelId: channel.id,
+      accountId,
       text,
       campaignId,
       kind: 'reply',
@@ -300,10 +314,13 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: content });
     return { tool, status: 'error', error: content };
   }
-  const content = `Staged reply draft ${entry.id} answering @${candidate.username || 'the account'}. Nothing is published yet — your operator decides this answer, and the moment they approve it, it goes out.`;
+  const sent = mandated ? await sendReplyUnderMandate({ laneId: companion.neumaId, entry, publish: publishEntry, sessionId: connection.sessionId || null }) : null;
+  const content = sent?.covered
+    ? `Answered @${candidate.username || 'the account'} under your mandate (${entry.id}): ${sent.outcome?.ok ? `live as post ${sent.outcome.id}` : `the send did not land — ${sent.outcome?.detail || 'unknown'}`}. Your operator sees it in DONE FOR YOU.`
+    : `Staged reply draft ${entry.id} answering @${candidate.username || 'the account'}. Nothing is published yet — your operator decides this answer, and the moment they approve it, it goes out.${sent?.tripped ? ` Your mandate is now PAUSED (${sent.reason}).` : sent?.held ? ` Your mandate does not cover this one (${sent.reason}).` : ''}`;
   _sendToolEvent(ws, companion, {
     tool, status: 'ok',
-    summary: `reply queued for ${channel.name} (draft ${entry.id})`,
+    summary: sent?.covered ? `reply sent under your mandate (${entry.id})` : `reply queued for ${channel.name} (draft ${entry.id})`,
     detail: content,
   });
   return { tool, status: 'ok', content };
@@ -342,8 +359,9 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
     channelBindings.load(house).catch(() => ({})),
     sectorCrew.load(house).catch(() => ({})),
   ]);
-  if (!canStageForSector(crewStore, bindings, channel.id, companion?.neumaId || null)) {
-    const error = `you are not on the ${channel.name} crew — ask your operator to add you to that sector before deciding for it`;
+  const accountId = candidate.accountId || firstAccountId(channel.id);
+  if (!canStageForSector(crewStore, bindings, accountId, companion?.neumaId || null)) {
+    const error = `you are not on the crew of ${channel.name} account ${accountId} — ask your operator to add you to that sector before deciding for it`;
     _sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — not on the crew` });
     return { tool, status: 'denied', error };
   }

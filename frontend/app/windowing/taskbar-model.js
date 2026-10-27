@@ -15,14 +15,18 @@
 //
 // Pure — no React/DOM — so every decision is unit-provable.
 
+import { migrateAppIds, MARKETING_PLATFORMS } from './retired-windows.js';
+
 /** The launcher's categories, in order. Membership by registry id. */
 export const LAUNCHER_CATEGORIES = Object.freeze([
   { id: 'beings', apps: ['avatar', 'house', 'innerlife', 'refinement', 'sovereignty', 'vessel', 'voice'] },
   { id: 'work', apps: ['chat', 'chats', 'staff', 'houseclock', 'projects', 'teams', 'todo', 'workflow'] },
-  { id: 'create', apps: ['files', 'terminal', 'comfyui', 'gallery', 'brandKits'] },
-  { id: 'reach', apps: ['x', 'bluesky', 'facebook', 'linkedin', 'mastodon', 'marketing', 'leads', 'discord', 'telegram'] },
+  { id: 'create', apps: ['files', 'terminal', 'comfyui', 'gallery'] },
+  // MARKETING holds every public platform, the brand kits and the leads (retired-windows.js); each platform
+  // still has its own tile, opening MARKETING on it (Dock.jsx platform entries).
+  { id: 'reach', apps: ['marketing', ...MARKETING_PLATFORMS, 'discord', 'telegram'] },
   { id: 'know', apps: ['sheet', 'skills', 'contextmap', 'map', 'db', 'stats'] },
-  { id: 'system', apps: ['settings', 'substrate', 'wallet', 'security', 'legal', 'witnesses', 'bench'] },
+  { id: 'system', apps: ['settings', 'substrate', 'wallet', 'security', 'legal', 'treasury', 'witnesses', 'bench'] },
 ].map((c) => Object.freeze({ ...c, apps: Object.freeze(c.apps) })));
 
 /** The tray's fixed launchers — the rig and the wallet, always one click away. */
@@ -45,7 +49,8 @@ export const DEFAULT_PREFS = Object.freeze({ pins: DEFAULT_PINS, labels: false, 
 export const normalizePrefs = (raw, knownIds) => {
   const known = new Set(knownIds);
   const r = raw && typeof raw === 'object' ? raw : {};
-  const pins = Array.isArray(r.pins) ? r.pins : DEFAULT_PREFS.pins;
+  // A pin on a window MARKETING took in pins MARKETING (retired-windows.js), never vanishes.
+  const pins = Array.isArray(r.pins) ? migrateAppIds(r.pins) : DEFAULT_PREFS.pins;
   return Object.freeze({
     pins: Object.freeze([...new Set(pins.filter((id) => typeof id === 'string' && known.has(id)))]),
     labels: r.labels === true,

@@ -7,6 +7,8 @@
 // (backend/services/social/<id>-poster.js). Adding a platform means adding the
 // poster first, then the entry.
 
+import { TIKTOK_POSTING_SCOPES } from './tiktok-oauth.js';
+
 /**
  * @typedef {Object} ChannelField
  * @property {string} key    camelCase field name in the credential entry
@@ -14,6 +16,9 @@
  * @property {boolean} secret masked in every API response when true
  * @property {string} env    .env bootstrap variable for this field
  * @property {string} [fallback] value used when neither store nor env carries one
+ * @property {boolean} [connect] filled by the channel's CONNECT sign-in, never typed
+ * @property {boolean} [app] belongs to the developer APP (one per platform per
+ *   house), never to one account: a second account reuses it
  */
 
 /**
@@ -22,10 +27,20 @@
  * @property {string} name
  * @property {number} maxChars platform's own post-length ceiling (advisory — the API is the authority)
  * @property {ReadonlyArray<ChannelField>} fields
+ * @property {boolean} [queueOnly] posts only through the operator-approved queue, never instantly
  */
 
 const field = (key, label, secret, env, fallback) =>
   Object.freeze({ key, label, secret, env, ...(fallback !== undefined ? { fallback } : {}) });
+
+// A field the channel's CONNECT sign-in writes (a refresh token): the desk
+// shows a CONNECT button for it, never an input.
+const connectField = (key, label, env) => Object.freeze({ ...field(key, label, true, env), connect: true });
+
+// A field of the developer APP (consumer key, OAuth client): stored once per
+// platform per house and shared by every account the app serves — the
+// platforms' own model (one app, many authorized accounts, one shared quota).
+const appField = (key, label, secret, env) => Object.freeze({ ...field(key, label, secret, env), app: true });
 
 /** @type {ReadonlyArray<ChannelEntry>} */
 export const CHANNEL_CATALOG = Object.freeze([
@@ -34,8 +49,8 @@ export const CHANNEL_CATALOG = Object.freeze([
     name: 'X (Twitter)',
     maxChars: 280,
     fields: Object.freeze([
-      field('apiKey', 'API Key', true, 'X_API_KEY'),
-      field('apiSecret', 'API Key Secret', true, 'X_API_SECRET'),
+      appField('apiKey', 'API Key', true, 'X_API_KEY'),
+      appField('apiSecret', 'API Key Secret', true, 'X_API_SECRET'),
       field('accessToken', 'Access Token', true, 'X_ACCESS_TOKEN'),
       field('accessSecret', 'Access Token Secret', true, 'X_ACCESS_SECRET'),
     ]),
@@ -99,6 +114,46 @@ export const CHANNEL_CATALOG = Object.freeze([
       field('tokenExpiresAt', 'Token Expiry (ISO date — the verify script prints it)', false, 'LINKEDIN_TOKEN_EXPIRES_AT'),
     ]),
   }),
+  Object.freeze({
+    id: 'youtube',
+    name: 'YouTube',
+    // The queue's own text ceiling; the title and description limits are
+    // YouTube's and are judged in youtube-metadata.js.
+    maxChars: 4000,
+    // A video is approved by the operator who has SEEN it: YouTube posts ride
+    // the campaign queue only, never the instant post.
+    queueOnly: true,
+    // The operator's OWN Google Cloud project, Desktop app client: their
+    // quota, their consent screen. The refresh token comes from CONNECT.
+    fields: Object.freeze([
+      appField('clientId', 'OAuth Client ID (Desktop app)', false, 'YOUTUBE_CLIENT_ID'),
+      appField('clientSecret', 'OAuth Client Secret', true, 'YOUTUBE_CLIENT_SECRET'),
+      connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'YOUTUBE_REFRESH_TOKEN'),
+    ]),
+  }),
+  Object.freeze({
+    id: 'tiktok',
+    name: 'TikTok',
+    // The caption's own limit (2200) is TikTok's, judged in tiktok-metadata.js;
+    // this ceiling leaves room for the settings lines around it.
+    maxChars: 2400,
+    // The operator approves a video they have SEEN: queue only, never instant.
+    queueOnly: true,
+    // The company's OWN TikTok developer app (or its sandbox): Login Kit for
+    // Desktop + Content Posting. CONNECT fills the token pair; a refresh
+    // replaces both before the access token's 24 hours run out.
+    fields: Object.freeze([
+      appField('clientKey', 'Client Key', false, 'TIKTOK_CLIENT_KEY'),
+      appField('clientSecret', 'Client Secret', true, 'TIKTOK_CLIENT_SECRET'),
+      connectField('refreshToken', 'Refresh Token (set by CONNECT)', 'TIKTOK_REFRESH_TOKEN'),
+      connectField('accessToken', 'Access Token (set by CONNECT)', 'TIKTOK_ACCESS_TOKEN'),
+      connectField('accessExpiresAt', 'Access Token Expiry (set by CONNECT)', 'TIKTOK_ACCESS_EXPIRES_AT'),
+      // The permissions the person granted. A connection that recorded none
+      // was made before the account view, when CONNECT asked for posting's
+      // three alone: that is exactly what it holds.
+      Object.freeze({ ...connectField('grantedScope', 'Granted Permissions (set by CONNECT)', 'TIKTOK_GRANTED_SCOPE'), fallback: TIKTOK_POSTING_SCOPES.join(',') }),
+    ]),
+  }),
 ]);
 
 /**
@@ -156,6 +211,8 @@ export const maskChannelCredentials = (channel, storeEntry, env) => Object.freez
       secret: f.secret,
       set: stored || fromEnv || hasFallback,
       source: stored ? 'store' : fromEnv ? 'env' : hasFallback ? 'default' : 'none',
+      ...(f.connect ? { connect: true } : {}),
+      ...(f.app ? { app: true } : {}),
     });
   })),
 });

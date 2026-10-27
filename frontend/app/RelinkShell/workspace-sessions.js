@@ -42,6 +42,16 @@ import { foldForDisplay } from './branch-view.js';
  * @param {string} raw the record's own content, tool blocks and all
  * @returns {Array<Object>}
  */
+/**
+ * A lazy item (left out by the display view, session-display.js) gets the
+ * address the desk fetches it by: lane, session, point, take, part and index.
+ * Everything else passes untouched. Pure.
+ * @param {Array<*>} items
+ * @param {object} at - { neumaId, sessionId, turnId, take?, part }
+ */
+const addressLazy = (items, at) => items.map((it, index) => (it && typeof it === 'object' && it.lazy
+  ? { ...it, ref: { ...at, index } } : it));
+
 const rebaseMarks = (entries, raw) =>
   entries.map((t) => (Number.isFinite(t?.mark)
     ? { ...t, mark: stripToolBlocks(String(raw ?? '').slice(0, t.mark)).length }
@@ -53,10 +63,32 @@ const rebaseMarks = (entries, raw) =>
 const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake']);
 const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: m.origin } : {});
 
+// A compaction summary row as the display carries it: the counts the marker
+// states, and the words it shows. Pure.
+const compactedRow = (m) => ({
+  role: 'system',
+  compacted: true,
+  content: typeof m.content === 'string' ? m.content : '',
+  ...(m.timestamp ? { at: m.timestamp } : {}),
+  ...(Number.isInteger(m.originalCount) ? { originalCount: m.originalCount } : {}),
+  ...(Number.isInteger(m.compactionCount) ? { compactionCount: m.compactionCount } : {}),
+  ...(m.authoredBy ? { authoredBy: m.authoredBy } : {}),
+});
+
+// What a compaction kept word for word: the spoken rows after its summary that
+// were already said when it ran (a later turn was never part of the fold). Pure.
+const withKeptCount = (m, i, all) => {
+  if (!m.compacted || !m.at) return m;
+  const ranAt = Date.parse(m.at);
+  const kept = all.slice(i + 1)
+    .filter((r) => (r.role === 'user' || r.role === 'assistant') && r.at && Date.parse(r.at) <= ranAt).length;
+  return { ...m, kept };
+};
+
 // FOLD FIRST, then slice (2026-08-31): the prompt's tail is fold-then-slice
 // (memory-context.js) — folding after the slice dropped superseded takes
 // INSIDE the window and the desk showed fewer rows than the being had.
-export const toDisplayMessages = (messages, limit = 50) =>
+export const toDisplayMessages = (messages, limit = 50, where = {}) =>
   foldForDisplay(Array.isArray(messages) ? messages : [])
     .map((entry) => {
       if (entry.kind === 'user') {
@@ -69,13 +101,15 @@ export const toDisplayMessages = (messages, limit = 50) =>
           ...platformOrigin(m),
           // Images the witness shared persist on the user record — they ride
           // into history so a resumed session still shows what was shown.
-          ...(Array.isArray(m.images) && m.images.length > 0 ? { images: m.images } : {}),
+          ...(Array.isArray(m.images) && m.images.length > 0
+            ? { images: addressLazy(m.images, { ...where, turnId: m.turnId, part: 'image' }) } : {}),
           // Shared FILES too (Design note, 2026-09-17: […]) — the record kept the docs; the display
           // fold must not be the place they vanish.
           ...(Array.isArray(m.docs) && m.docs.length > 0 ? { docs: m.docs } : {}),
         };
       }
       if (entry.kind === 'takes') {
+        const at = { ...where, turnId: entry.turnId };
         const takes = entry.takes.map((t, i) => ({
           takeIndex: i + 1,
           content: stripToolBlocks(t.content),
@@ -84,11 +118,11 @@ export const toDisplayMessages = (messages, limit = 50) =>
           // rebuilds its settled chips from them (never re-executed), so the
           // history is exactly as the witness left it, tool calls and all.
           ...(Array.isArray(t.tools) && t.tools.length > 0
-            ? { tools: rebaseMarks(t.tools, t.content) } : {}),
+            ? { tools: addressLazy(rebaseMarks(t.tools, t.content), { ...at, take: i + 1, part: 'tool' }) } : {}),
           // THE THOUGHT TRAIL persists per take — the reasoning a turn
           // streamed outlives the reload, bubbles back where it streamed.
           ...(Array.isArray(t.thoughts) && t.thoughts.length > 0
-            ? { thoughts: rebaseMarks(t.thoughts, t.content) } : {}),
+            ? { thoughts: addressLazy(rebaseMarks(t.thoughts, t.content), { ...at, take: i + 1, part: 'thought' }) } : {}),
           // The declared affect persists per take — the revelation outlives
           // the reload (Campaign 6).
           ...(typeof t.affect === 'string' && t.affect ? { affect: t.affect } : {}),
@@ -111,6 +145,8 @@ export const toDisplayMessages = (messages, limit = 50) =>
       // it was said rides into history — the stream stamps each message so a
       // returning witness can track the conversation they weren't here for.
       const m = entry.record;
+      // A compaction's summary row stands in the chat as its marker (compact-marker.js).
+      if (m?.role === 'system' && m.compacted === true) return compactedRow(m);
       if (m?.role !== 'user' && m?.role !== 'assistant') return null;
       return {
         role: m.role,
@@ -126,11 +162,12 @@ export const toDisplayMessages = (messages, limit = 50) =>
           ? { affect: m.affect } : {}),
       };
     })
-    .filter((m) => m && (m.content || m.images || (m.tools && m.tools.length > 0)
+    .filter((m) => m && (m.compacted || m.content || m.images || (m.tools && m.tools.length > 0)
       || (m.thoughts && m.thoughts.length > 0)
       || (m.takes && m.takes.some((t) => t.content || (t.tools && t.tools.length > 0)
         || (t.thoughts && t.thoughts.length > 0)))))
-    .slice(-limit);
+    .slice(-limit)
+    .map(withKeptCount);
 
 /**
  * List a neuma's session ids, newest first.
@@ -171,9 +208,9 @@ export const loadSessionMessagesStrict = async (neumaId, sessionId, limit = 50) 
   const headers = authHeaders();
   if (!neumaId || !sessionId || !headers) return [];
   try {
-    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}`, { headers });
+    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}?view=display`, { headers });
     if (!Array.isArray(body?.messages)) return [];
-    return toDisplayMessages(body.messages, limit);
+    return toDisplayMessages(body.messages, limit, { neumaId, sessionId });
   } catch (err) {
     if (!err?.http) throw err;
     throw new Error(`session load failed: HTTP ${err.http}`, { cause: err });
@@ -192,9 +229,9 @@ export const loadSessionMessages = async (neumaId, sessionId, limit = 50) => {
   try {
     const headers = authHeaders();
     if (!neumaId || !sessionId || !headers) return [];
-    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}`, { headers });
+    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/sessions/${sessionId}?view=display`, { headers });
     if (!Array.isArray(body?.messages)) return [];
-    return toDisplayMessages(body.messages, limit);
+    return toDisplayMessages(body.messages, limit, { neumaId, sessionId });
   } catch {
     return [];
   }

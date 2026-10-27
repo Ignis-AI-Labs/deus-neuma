@@ -26,6 +26,11 @@ import { permittedFeedUrl, readPlatformFeed } from '../../backend/services/platf
 import {
   PLATFORM_FEED_TOOLS, isPlatformFeedTool, platformFeedToolsFor, handlePlatformFeedTool,
 } from '../../backend/services/platform-feed/platform-feed-tools.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// Public platform data is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['platform-data']);
+afterAll(() => connections.restore());
 
 // Real bodies, captured live 2026-08-30 00:12.
 const LIVE_PLATFORM = {

@@ -56,7 +56,7 @@ describe('the failure signal (G2) and the staging split (G4)', () => {
 
     // The staging split (G4): the placeholder never counts as a decision
     // waiting — the real draft does.
-    const posture = await queuePosture();
+    const posture = await queuePosture(WALLET);
     expect(posture.pendingApproval).toBe(1);
     expect(posture.placeholders).toBe(1);
 

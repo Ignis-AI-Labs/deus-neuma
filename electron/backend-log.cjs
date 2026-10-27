@@ -52,7 +52,9 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const openBackendLog = (home) => {
   try {
     const { current, previous } = logPaths(home);
-    fs.mkdirSync(logDir(home), { recursive: true });
+    // Owner-only: this is often the first thing to create ~/.neuma, the folder
+    // that holds the at-rest key.
+    fs.mkdirSync(logDir(home), { recursive: true, mode: 0o700 });
 
     // Last run's file becomes .prev. The failure an operator reports is
     // usually one launch old — they hit it, quit, reopened, and only then

@@ -122,6 +122,27 @@ describe('notification store on real disk', () => {
     expect(onDisk.split('\n').filter(Boolean)).toHaveLength(1);
   });
 
+  it('a dismissed card leaves the list for good, and its record stays on disk', async () => {
+    await appendNotification(ALICE, rec('d1', { ts: T0 + 1 }));
+    await appendNotification(ALICE, rec('d2', { ts: T0 + 2 }));
+    await appendNotification(ALICE, rec('d3', { ts: T0 + 3 }));
+    expect(await markNotificationsRead(ALICE, ['d1', 'd3'], T0 + 5, { dismiss: true })).toBe(2);
+
+    const { records, unread } = await readNotifications(ALICE);
+    expect(records.map((r) => r.id)).toEqual(['d2']);
+    expect(unread).toBe(1);
+    const onDisk = await fs.readFile(notificationPath(ALICE), 'utf8');
+    expect(onDisk).toContain('"id":"d1"');
+    expect(onDisk).toContain('"marker":"dismiss"');
+  });
+
+  it('a dismissed card no longer takes a place in the read window', async () => {
+    for (let i = 0; i < 5; i += 1) await appendNotification(ALICE, rec(`w${i}`, { ts: T0 + i }));
+    await markNotificationsRead(ALICE, ['w4', 'w3'], T0 + 10, { dismiss: true });
+    const { records } = await readNotifications(ALICE, { limit: 2 });
+    expect(records.map((r) => r.id)).toEqual(['w2', 'w1']);
+  });
+
   it('read state survives a restart too', async () => {
     await appendNotification(ALICE, rec('s1'));
     await markNotificationsRead(ALICE, ['s1'], T0 + 1);

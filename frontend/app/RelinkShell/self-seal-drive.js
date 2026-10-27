@@ -39,7 +39,8 @@ export const driveSelfSeal = ({ wsService, neumaId, onStatus = () => {} }) =>
       if (!mine(data)) return;
       // The code rides along so the card can open the right door — KEY_LOCKED
       // becomes an inline password unlock, not a curl instruction.
-      done({ ok: false, error: data.message || data.code || 'Seal refused', code: data.code });
+      // a short wallet's refusal carries its funding facts, so the card can show the way to fund it
+      done({ ok: false, error: data.message || data.code || 'Seal refused', code: data.code, funding: data.funding || null });
     };
 
     const onReady = async (data) => {

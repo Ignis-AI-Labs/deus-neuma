@@ -19,6 +19,8 @@
 // separate copies of the host pin for one day; two walls that must agree are a
 // drift waiting to happen.
 
+import { isConnectionOn } from '../connections/connection-switches.js';
+
 const ALLOWED_HOSTS = Object.freeze(['umbrae.io', 'www.umbrae.io', 'localhost', '127.0.0.1']);
 
 /** Is this a URL this client is permitted to read? (pure) */
@@ -58,6 +60,10 @@ const feedUrl = (path) => `${feedOrigin().replace(/\/+$/, '')}${path}`;
 export const getGuardedJson = async (url, { signal, timeoutMs = 15000 } = {}) => {
   if (!permittedFeedUrl(url)) {
     return { ok: false, error: `refusing to read ${url} — this client reads the Umbrae public feeds and nothing else` };
+  }
+  // Off until the person turns it on (CONNECTIONS): nothing is asked of the platform while it is off.
+  if (!isConnectionOn('platform-data')) {
+    return { ok: false, error: 'public platform data is turned off on this computer — the operator can turn it on in Settings → Security → Connections' };
   }
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);

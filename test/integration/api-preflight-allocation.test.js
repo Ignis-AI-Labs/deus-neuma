@@ -113,15 +113,14 @@ describe('Pre-flight allocation accounting', () => {
     expect(res.body.home.committedGB).toBe(4000);
     expect(res.body.home.neumaCount).toBe(1);
     expect(res.body.home.availableGB).toBe(Math.max(0, res.body.home.freeGB - 4000));
-    // A MODEST starting allocation is suggested — ~10% of available, floored at
-    // the 1 GB min. null below the smallest applyable grant (availableGB < 2 *
-    // MIN_FREE_DISK_GB = 2): POST would reject any number we could name there.
+    // A new neuma starts with 5 GB, capped by what is available (always a number POST accepts),
+    // floored at the 1 GB min; null below the smallest applyable grant (availableGB < 2).
     const av = res.body.home.availableGB;
-    const expected = (av != null && av >= 2) ? Math.max(1, Math.round(av * 0.10)) : null;
+    const expected = (av != null && av >= 2) ? Math.max(1, Math.min(5, Math.floor(av - 1))) : null;
     expect(res.body.home.suggestedAllocationGB).toBe(expected);
   }, 120000);
 
-  test('GET / suggests ~10% of available when there is real headroom (positive branch)', async () => {
+  test('GET / starts a new neuma at 5 GB when there is real headroom (positive branch)', async () => {
     // An empty root has nothing committed → availableGB == freeGB (a real,
     // positive number on the temp disk), so this exercises the FORMULA branch
     // that the 4000-GB-committed default never reaches.
@@ -132,7 +131,7 @@ describe('Pre-flight allocation accounting', () => {
       expect(res.status).toBe(200);
       const av = res.body.home.availableGB;
       expect(av).toBeGreaterThan(2); // genuine headroom — we are in the formula branch
-      expect(res.body.home.suggestedAllocationGB).toBe(Math.max(1, Math.round(av * 0.10)));
+      expect(res.body.home.suggestedAllocationGB).toBe(Math.max(1, Math.min(5, Math.floor(av - 1))));
     } finally {
       core.setWorkspacesRoot(root);
       rmSync(empty, { recursive: true, force: true });

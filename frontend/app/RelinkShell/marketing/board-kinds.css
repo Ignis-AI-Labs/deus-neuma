@@ -1,0 +1,75 @@
+/* board-kinds — the MARKETING board's slice-4 panels (KindPanels.jsx,
+   KindPanelsLog.jsx): PLATFORM, TOP POSTS, FUNNEL, NEXT 7 DAYS, COMPANY WATCH,
+   CMO LOG. LINE & CYCLE: ink at rest, signal for a live reading, alert only
+   for what waits; every label at the 13px floor (--text-label); light rises
+   ≥160ms (no-flash.js). The instruments carry their own styles
+   (hud-instruments.css). */
+
+.mkk-plat { display: inline-flex; align-items: center; gap: 5px; }
+.mkk-plat svg { flex: none; }
+/* A platform named on the board is its account level's door, like every AccountMark (rises ≥160ms — no-flash). */
+.mkk-plat.is-door { background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; letter-spacing: inherit; cursor: pointer;
+  border-bottom: var(--border-width-thin, 1px) solid transparent; transition: color 200ms ease, border-color 200ms ease; }
+.mkk-plat.is-door:hover, .mkk-plat.is-door:focus-visible { color: var(--color-text-primary); border-bottom-color: currentColor; }
+.mkk-door { font-size: var(--text-label); }
+
+/* ── PLATFORM: one trace per metric, side by side as the panel allows ── */
+.mkk-traces { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: var(--space-3); }
+.mkk-trace { display: block; min-width: 0; }
+
+/* ── TOP POSTS: who, where it stands, its first words; its number on one axis ── */
+.mkk-top { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); --hud-bar-name: 2.4ch; }
+.mkk-top-row { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mkk-top-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-width: 0; }
+.mkk-own { min-width: 0; font-family: var(--font-voice); font-size: 14px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+
+/* ── FUNNEL: one key, four steps on one axis ── */
+.mkk-funnel { display: flex; flex-direction: column; gap: var(--space-2); }
+.mkk-funnel-key { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: var(--text-label); letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.mkk-key { display: inline-flex; align-items: center; gap: 5px; }
+.mkk-step { display: grid; grid-template-columns: minmax(70px, max-content) minmax(0, 1fr) minmax(48px, max-content); align-items: center; gap: var(--space-2); }
+.mkk-step-name { font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.mkk-step-total { font-size: 15px; font-weight: 300; color: var(--color-text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ── NEXT 7 DAYS: lanes on the week, today shaded, now ticked ── */
+/* One grid for the whole week, so every lane's track starts at the same edge. */
+.mkk-week { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: var(--space-1) var(--space-2); }
+.mkk-week-days, .mkk-lane { display: contents; }
+.mkk-week > .mkb-empty { grid-column: 1 / -1; }
+.mkk-week-axis { position: relative; height: 18px; }
+.mkk-week-day { position: absolute; top: 0; transform: translateX(-50%); font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.mkk-week-day.is-today { color: var(--signal); }
+.mkk-lane-name { font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-secondary); min-width: 0; overflow: hidden; }
+.mkk-lane-track { position: relative; height: 24px; box-shadow: inset 0 0 0 1px var(--line);
+  background: repeating-linear-gradient(90deg, transparent 0, transparent calc(100% / 7 - 1px), var(--line) calc(100% / 7 - 1px), var(--line) calc(100% / 7)); }
+.mkk-today { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / 7); background: var(--signal-dim); opacity: 0.35; }
+.mkk-now { position: absolute; top: -2px; bottom: -2px; left: var(--mkk-now); width: 1px; background: var(--signal); }
+.mkk-week-post { position: absolute; top: 50%; transform: translate(-50%, -50%); display: inline-flex; padding: 2px; background: var(--color-void);
+  border: var(--border-width-thin) solid transparent; cursor: pointer; transition: border-color 200ms ease; }
+.mkk-week-post:hover, .mkk-week-post:focus-visible { border-color: var(--signal); }
+
+/* ── COMPANY WATCH: counts by kind, then the newest changes ── */
+.mkk-site { align-self: flex-end; margin-top: calc(-1 * var(--space-1)); }
+.mkk-watch-counts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); font-size: var(--text-label); color: var(--color-text-secondary); }
+.mkk-wk, .mkk-watch-unread { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+.mkk-wk i, .mkk-watch-unread i, .mkk-wk-mark { font-style: normal; color: var(--color-text-tertiary); }
+.mkk-wk.is-security i, .mkk-watch-row.is-security .mkk-wk-mark { color: var(--alert); }
+.mkk-watch-unread { color: var(--alert-dim); }
+.mkk-watch { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.mkk-watch-row { display: grid; grid-template-columns: 1.4ch minmax(0, 1fr) max-content max-content; align-items: baseline; gap: var(--space-2); }
+.mkk-wk-mark { font-size: 15px; text-align: center; }
+.mkk-when { font-size: var(--text-label); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+
+/* ── CMO LOG: rows of marks and counts, each a door ── */
+.mkk-log { display: flex; flex-direction: column; gap: var(--space-1); }
+.mkk-log-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: 3px var(--space-1); background: none; border: 0;
+  font: inherit; font-size: var(--text-label); color: var(--color-text-secondary); text-align: left; transition: background 200ms ease; }
+button.mkk-log-row { cursor: pointer; }
+button.mkk-log-row:hover:not(:disabled), button.mkk-log-row:focus-visible { background: var(--signal-dim); }
+button.mkk-log-row:disabled { cursor: default; }
+.mkk-log-row .hud-label { min-width: 9ch; font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.mkk-log-row b { font-size: 15px; font-weight: 300; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.mkk-acts, .mkk-plan { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.mkk-ask { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+.mkk-plan i { display: inline-flex; justify-content: center; width: 2.2ch; font-style: normal; color: var(--color-text-disabled); box-shadow: inset 0 0 0 1px var(--line); }
+.mkk-plan i.is-on { color: var(--color-void); background: var(--signal); box-shadow: none; }

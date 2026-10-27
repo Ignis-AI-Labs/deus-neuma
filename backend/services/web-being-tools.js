@@ -209,8 +209,9 @@ export const renderPage = (page, retrievedAt = null) => {
   return `${meta}\n${frameUntrustedContent(`the web page at ${page.url}`, body)}`;
 };
 
-// impure — the reading list is part of the record; non-blocking, never silent
-const journalWebCall = async (connection, tool, detail, status) => {
+// impure — the reading list is part of the record; non-blocking, never silent.
+// company_updates journals its site reads through this same door.
+export const journalWebCall = async (connection, tool, detail, status) => {
   const neumaId = connection?.companion?.neumaId;
   if (!neumaId) return;
   // The OPERATOR's copy too (SEC-035): what a being read from the web is never answered only by

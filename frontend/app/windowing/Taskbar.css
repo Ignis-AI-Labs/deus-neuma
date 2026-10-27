@@ -128,6 +128,32 @@ html[data-taskbar-edge='top'] .relink-main { padding-top: 56px; }
   color: var(--color-text-tertiary);
 }
 
+/* THE HOVER LIST (DockInstances.jsx) — a multi-window app's open windows, in a
+   drop-up off the bar beside its button (inline place: instance-cycle.js
+   listPlace). The dock's own menu rows and marks; it rises over 160ms, the
+   no-flash floor, never on at full in one frame. */
+.taskbar-instances {
+  bottom: auto;
+  z-index: 3;
+  min-width: 200px;
+  max-width: 280px;
+  animation: taskbar-rise 160ms ease-out;
+}
+.taskbar-instance-label {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.taskbar-instance-being { flex: 0 0 auto; }
+.taskbar-instance-sep { flex: 0 0 auto; color: var(--color-text-tertiary); }
+.taskbar-instance-chat { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@keyframes taskbar-rise {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ── THE LAUNCHER ─────────────────────────────────────────────────────────── */
 
 .launcher {
@@ -220,4 +246,5 @@ html[data-taskbar-edge='top'] .relink-main { padding-top: 56px; }
 
 @media (prefers-reduced-motion: reduce) {
   .taskbar-launcher, .taskbar-app, .launcher-tile { transition: none; }
+  .taskbar-instances { animation: none; }
 }

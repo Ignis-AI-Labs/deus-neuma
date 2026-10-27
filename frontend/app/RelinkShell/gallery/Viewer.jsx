@@ -12,6 +12,7 @@ import { useLean } from './use-lean.js';
 import { FIT, displayPercent, transformOf } from './viewer-zoom.js';
 import { forgeRefOf } from './verdict-view.js';
 import { ImageVerdict } from './ImageVerdict.jsx';
+import { mediaMenuDoor } from '../media-menu.js';
 
 // A broken tile has to still LOOK like a tile — the grid must not reflow around
 // a failure, and a silent blank square is indistinguishable from a black image.
@@ -38,7 +39,7 @@ const isTyping = (target) =>
 // bound on the dialog itself and it takes focus on open, so the shortcuts
 // cannot leak into the desk behind it — and a key struck while the cursor is
 // in the note field belongs to the note, not to the gallery.
-export const Viewer = ({ item, position, onClose, onStep }) => {
+export const Viewer = ({ item, path = null, position, onClose, onStep }) => {
   const ref = useRef(null);
   const stageRef = useRef(null);
   const artRef = useRef(null);
@@ -51,6 +52,11 @@ export const Viewer = ({ item, position, onClose, onStep }) => {
   const hasAccount = Boolean(forgeRefOf(item));
 
   const [account, setAccount] = useState(true);
+  // The work's own menu (media-menu.js): the gallery is already here, so it
+  // offers the folder on disk, the bytes and the player — never itself.
+  const door = mediaMenuDoor({
+    kind: item.kind, src: fileSrc(item), path, name: item.name, mime: item.mime, inGallery: true,
+  });
 
   // The lens (shared with the Lightbox). The wheel is suspended for videos:
   // nothing to lean into.
@@ -128,6 +134,7 @@ export const Viewer = ({ item, position, onClose, onStep }) => {
               alt={item.name}
               style={{ transform: transformOf(view) }}
               draggable="false"
+              {...door}
               onError={markMissing}
               onLoad={(e) => {
                 clearMissing(e);
@@ -141,7 +148,7 @@ export const Viewer = ({ item, position, onClose, onStep }) => {
           // threw that away and made a large video sit black until every byte
           // had landed.
           // eslint-disable-next-line jsx-a11y/media-has-caption -- operator's own local media
-          : <video className="gallery-viewer-media" src={fileSrc(item)} controls autoPlay loop />}
+          : <video className="gallery-viewer-media" src={fileSrc(item)} controls autoPlay loop {...door} />}
 
         {/* Walking the room by hand. Withdrawn while the operator is leaning
             in, because there a drag is a pan and an edge is somewhere to grab,

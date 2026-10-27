@@ -50,6 +50,8 @@ const HouseBody = () => {
   // The on-chain standing lives HERE (not inside the anchor panel) so the
   // chain's titles ride beside the member rows — one probe, one truth.
   const { rite, actions } = useFoundingRite(wsService);
+  // …and the founding on this computer (2026-10-26), the house's own record before any network
+  const { rite: localRite } = useFoundingRite(wsService, 'local');
   const { seats, confirmed } = seatEvidence(rite);
   const [space, setSpace] = useState(() => spaceOf(localStorage.getItem(SPACE_KEY)));
   const chooseSpace = (next) => {
@@ -131,9 +133,9 @@ const HouseBody = () => {
     summoning: <SummoningSpace cards={cards} onSummon={onSummon} onRehearse={onRehearse} />,
     gather: <GatherSpace held={rows.length} onTeam={onTeams} onCouncil={onCouncil} />,
     seats: (
-      <SheetSection code="04" title="SEATS" aside="THE HOUSE'S ORDER, AND ITS STANDING ON CHAIN">
-        <HouseSeatReference phase={rite.phase} hasSeats={cards.some((card) => card.title)} onRetry={actions.probe} />
-        {wsService ? <HouseFoundingRite rite={rite} actions={actions} witnessName={witnessName} /> : null}
+      <SheetSection code="04" title="SEATS" aside="THE HOUSE'S ORDER: FOUNDED HERE, AND ON THE NETWORK">
+        <HouseSeatReference phase={rite.phase} localFounded={localRite.phase === 'founded'} hasSeats={cards.some((card) => card.title)} onRetry={actions.probe} />
+        {wsService ? <HouseFoundingRite rite={rite} localRite={localRite} actions={actions} witnessName={witnessName} /> : null}
       </SheetSection>
     ),
     grounds: (

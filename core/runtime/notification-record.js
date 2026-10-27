@@ -165,6 +165,12 @@ export const KIND = Object.freeze({
   // the machine's own state; the honest reason rides the detail.
   postFailed: 'post_failed',
 
+  // The CMO's MANDATE paused on a tripwire, or could not be paused (Founder
+  // 2026-10-24: the operator can withdraw that capacity at any point). System
+  // standing — the machine reports what its tripwire saw; the operator
+  // resumes or withdraws.
+  mandateAlert: 'mandate_alert',
+
   // THE HOUSE TRAIL (ruling, 2026-09-15): the operator watches dispatches move.
   // A dispatch filed by the office is one card; the seat's ack is its answer.
   // Neuma standing — a being is the actor; the operator is the reader.

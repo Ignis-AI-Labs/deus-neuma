@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
+import { mayTakeFocus } from './calm-gate.js';
 import '../../components/ToolActionChip/ToolActionChip.css';
 
 const UNANSWERED_LABELS = Object.freeze({
@@ -51,8 +52,13 @@ export const AskChip = ({ segment, onRespond }) => {
   const last = step === questions.length - 1;
 
   // The line takes focus as each question arrives, so answering never needs
-  // the mouse — including on the very first question of a five-part set.
-  useEffect(() => { inputRef.current?.focus(); }, [step]);
+  // the mouse — including on the very first question of a five-part set —
+  // unless the person is typing in another window: a running chat never
+  // pulls the caret out of their work (calm-gate.js).
+  useEffect(() => {
+    const el = inputRef.current;
+    if (el && mayTakeFocus(document.activeElement, el.closest('.fwin'), document.body)) el.focus();
+  }, [step]);
 
   const send = useCallback((finalAnswers) => {
     if (sent) return;
@@ -122,7 +128,7 @@ export const AskChip = ({ segment, onRespond }) => {
     const many = questions.length > 1;
     const chosen = picked[step];
     return (
-      <div className="tool-chip ask-chip pending">
+      <div className="tool-chip ask-chip pending" data-wait-id={id}>
         <div className="tool-chip-head">
           <span className="tool-chip-tag">ASKS YOU</span>
           {current.header ? <span className="ask-chip-header">{current.header}</span> : null}

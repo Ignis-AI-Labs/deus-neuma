@@ -1,0 +1,17 @@
+/* OutreachApps-floor — the 13px label floor (design-language.md § Legibility:
+   labels and supporting metadata are at least 13px) across every window the
+   marketing work opens: MARKETING, each platform's window, BRAND KITS, LEADS
+   and the social check all stand in `.outreach-panel` (OutreachApps.jsx). The
+   shared classes they borrow — the settings register, the data label, the
+   select, the empty state, the month grid, the waiting rows — keep their own sizes elsewhere;
+   here they meet the floor. Form fields keep theirs: what a person typed
+   stays as it is. Each window's own styles say var(--text-label) directly. */
+
+.outreach-panel :is(
+  .label-data, .settings-k, .settings-v, .settings-set, .settings-err, .settings-warn, .settings-sec-tags,
+  .settings-tab, .settings-key, .settings-files li, .settings-hk-title, .settings-hk-hint, .settings-board-h,
+  .settings-provider-row, .settings-provider-filter,
+  .settings-look-name, .settings-look-hint, .settings-look-group-h, .settings-look-group-note,
+  .lc-sel-trigger, .lc-sel-opt, .empty-state, .empty-state small,
+  .qcal-weekday, .qcal-cell, .qcal-counts, .waiting-row-kind, .waiting-row-meta, .waiting-row-title
+) { font-size: var(--text-label); }

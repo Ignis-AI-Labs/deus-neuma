@@ -45,7 +45,17 @@ export const closedBookCatalog = (connection, tools) => {
 // CLAIM, never trusted alone: `fs__web_search` names the fs server but no
 // tool this sitting opened (benchmarks-51, 2026-10-02). Only a (server, name)
 // pair the turn catalog carries resolves; a bare name resolves by name.
-export const catalogEntryOf = (connection, act) => (connection?._turnCatalog ?? []).find((tool) => tool.name === act?.toolName
+//
+// A JOINED name resolves too — `caller__get_all_hotels_in_city`, the native
+// function form, and the other joins turn-catalog-gate.js accepts. Without it a
+// closed-book sitting refused the sender's own tools whenever the being wrote
+// the joined form (AgentDojo dojofix replay, 2026-10-25: the full being's travel
+// lookups denied, 4 tasks lost). A joined name still resolves only to a tool the
+// catalog carries, and the server allow-list below still decides.
+const JOINS = Object.freeze([':', '__', '_', '.', '/', '-']);
+const namesTool = (tool, toolName) => tool.name === toolName
+  || JOINS.some((sep) => `${tool.server}${sep}${tool.name}` === toolName);
+export const catalogEntryOf = (connection, act) => (connection?._turnCatalog ?? []).find((tool) => namesTool(tool, act?.toolName)
   && (!act?.server || tool.server === act.server)) ?? null;
 
 /**

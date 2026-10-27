@@ -2,8 +2,12 @@
    chrome. The boards inside carry the settings-* section styling; the
    .settings register on the panel carries scroll, padding, and rhythm. */
 
+@import './OutreachApps-floor.css';
+
 .outreach-panel {
   outline: none;
+  /* the console head reflows on the window's width (PlatformConsole.css) */
+  container-type: inline-size;
 }
 
 /* A space's own boards — CAMPAIGNS / QUEUE — hang from this strip. Same
@@ -19,7 +23,7 @@
   border: 1px solid transparent;
   border-bottom: none;
   color: var(--color-text-tertiary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
@@ -92,7 +96,7 @@
   background: transparent;
   border: 1px solid var(--line);
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.26em;
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
@@ -121,7 +125,7 @@
   border: none;
   border-bottom: 1px solid transparent;
   color: var(--color-text-tertiary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
@@ -138,7 +142,7 @@
 /* The count rides with the label, so the strip is an index of the whole board
    before any lane is opened. */
 .queue-lane-n {
-  font-size: 9px;
+  font-size: var(--text-label);
   opacity: 0.6;
 }
 
@@ -163,7 +167,7 @@
    be judged before it is scrolled. */
 .queue-group-n {
   flex: 0 0 auto;
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
@@ -192,7 +196,7 @@
 
 .queue-decisions-n {
   flex: 0 0 auto;
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
@@ -222,3 +226,6 @@
   border-color: var(--signal-dim);
   margin: var(--space-2) 0;
 }
+
+/* a short platform window (#585): tighter rhythm, so the decisions are on screen on arrival */
+.outreach-panel.is-short { gap: var(--space-2); padding-top: var(--space-3); }

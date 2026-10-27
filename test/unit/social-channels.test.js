@@ -276,6 +276,8 @@ describe('poster pure cores', () => {
       bluesky: { service: 'https://bsky.social', identifier: 'i', appPassword: 'p' },
       facebook: { pageId: '1', accessToken: 't' },
       linkedin: { personUrn: 'urn:li:person:1', accessToken: 't', tokenExpiresAt: '2099-01-01T00:00:00.000Z' },
+      youtube: { clientId: 'c', clientSecret: 's', refreshToken: 'r' },
+      tiktok: { clientKey: 'k', clientSecret: 's', refreshToken: 'r', accessToken: 'a', accessExpiresAt: '2099-01-01T00:00:00.000Z' },
     };
     for (const [id, post] of Object.entries(POSTERS)) {
       const controller = new AbortController();

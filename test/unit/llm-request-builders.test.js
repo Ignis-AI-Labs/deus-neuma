@@ -276,3 +276,13 @@ describe('on the wire, through the real createStreamRequest', () => {
     expect(lastRequest.body.messages[0]).toEqual({ role: 'system', content: 'STABLE HEAD\n\nVOLATILE TAIL' });
   });
 });
+
+// An Ollama is told the window it serves, so a long prompt is never cut by its own default.
+describe('the Ollama window', () => {
+  const OLLAMA = { provider: 'ollama', endpoint: 'http://127.0.0.1:11434', model: 'qwen', temperature: 0.7, maxTokens: 512 };
+  test('a known window rides as num_ctx; an unknown one is not invented', () => {
+    expect(buildStreamBody(OLLAMA, TURN, { contextWindow: 65536 }).options).toEqual({ temperature: 0.7, num_predict: 512, num_ctx: 65536 });
+    expect(buildStreamBody(OLLAMA, TURN, {}).options).toEqual({ temperature: 0.7, num_predict: 512 });
+    expect(buildStreamBody(OLLAMA, TURN, { contextWindow: 0 }).options.num_ctx).toBeUndefined();
+  });
+});

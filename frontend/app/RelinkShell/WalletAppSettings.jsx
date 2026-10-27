@@ -6,12 +6,10 @@
 
 import { useEffect, useState } from 'react';
 import { WalletAllowlistSection } from './WalletAllowlistSection.jsx';
-import {
-  setThreshold,
-  approvePendingSpend, rejectPendingSpend, resetNeumaKeyPassword,
-} from './wallet-client.js';
+import { setThreshold, resetNeumaKeyPassword } from './wallet-client.js';
+import { getSpendCards } from '../../services/treasury-client.js';
+import { SpendCard } from './spend/SpendCard.jsx';
 import { EmptyState } from './empty-state.jsx';
-import { formatAddress } from '../../utils/format.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { useCopyAddress } from './use-copy-address.js';
 import { Leader } from './WalletAppSend.jsx';
@@ -55,61 +53,40 @@ const ThresholdSection = ({ neumaId, threshold, onChange }) => {
 };
 
 // --- Exact pending transfer decisions (neuma settings) ---
+// Each request is its SPEND card (spend/SpendCard.jsx) — the same card the
+// TREASURY window shows, read whole from the treasury (amount, recipient
+// standing, balance after, limits, time left, the Quaestor's review).
 
 const PendingSpendSection = ({ neumaId, requests, onChange, onApproved }) => {
-  const [password, setPassword] = useState('');
-  const [busyId, setBusyId] = useState(null);
+  const [cards, setCards] = useState([]);
+  const [seated, setSeated] = useState(false);
+  const [readAtMs, setReadAtMs] = useState(() => Date.now());
   const [result, setResult] = useState('');
   const [error, setError] = useState(null);
 
-  const approve = async (request) => {
-    if (!password) { setError('Enter the neuma key password.'); return; }
-    uiSound('activate');
-    setBusyId(request.id); setError(null); setResult('');
-    const r = await approvePendingSpend(neumaId, request, password);
-    setBusyId(null);
-    if (!r.ok) { setError(r.error); return; }
-    setPassword('');
-    setResult(`SENT — transaction ${r.hash}.`);
-    onChange(requests.filter((item) => item.id !== request.id));
-    await onApproved();
-  };
+  useEffect(() => {
+    if (!requests.length) { setCards([]); return; }
+    getSpendCards()
+      .then((r) => { setCards(r.spends.filter((c) => c.neumaId === neumaId)); setSeated(r.seated); setReadAtMs(Date.now()); setError(null); })
+      .catch((e) => setError(e.message));
+  }, [neumaId, requests]);
 
-  const reject = async (request) => {
-    uiSound('deny');
-    setBusyId(request.id); setError(null); setResult('');
-    const r = await rejectPendingSpend(neumaId, request.id);
-    setBusyId(null);
-    if (!r.ok) { setError(r.error); return; }
-    setResult('REJECTED — no funds moved.');
-    onChange(requests.filter((item) => item.id !== request.id));
+  const decided = async (card, outcome) => {
+    setResult(outcome.kind === 'approved' ? `SENT — transaction ${outcome.hash}.` : 'DENIED — no funds moved. The being is told.');
+    onChange(requests.filter((item) => item.id !== card.id));
+    if (outcome.kind === 'approved') await onApproved();
   };
 
   return (
     <section className="wal-sec">
       <h3 className="wal-h label-data">PENDING TRANSFERS</h3>
       <p className="wal-note">
-        Every request is bound to its exact recipient and amount. APPROVE asks your wallet to sign it,
-        then uses the neuma key once to broadcast. REJECT never unlocks the key.
+        Every request is bound to its exact recipient and amount. SIGN &amp; APPROVE asks your wallet to sign it,
+        then uses the neuma key once to broadcast. DENY never unlocks the key.
       </p>
-      {requests.length === 0 ? <EmptyState title="NO TRANSFERS AWAITING YOUR DECISION." /> : (
-        <>
-          <input className="wal-in wal-in-wide" type="password" placeholder="neuma key password"
-            value={password} onChange={(event) => setPassword(event.target.value)} />
-          <ul className="wal-list">
-            {requests.map((request) => (
-              <li key={request.id} className="wal-row cham">
-                <div className="wal-row-in cham-in">
-                  <span className="wal-addr">{request.value} ETH → {formatAddress(request.to)}</span>
-                  <span className="wal-label">{request.memo || 'No reason supplied'}</span>
-                  <button className="wal-btn" onClick={() => approve(request)} disabled={busyId !== null}>APPROVE</button>
-                  <button className="wal-x" onClick={() => reject(request)} disabled={busyId !== null}>REJECT</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {requests.length === 0 ? <EmptyState title="NO TRANSFERS AWAITING YOUR DECISION." /> : cards.map((card) => (
+        <SpendCard key={card.id} card={card} readAtMs={readAtMs} now={Date.now()} seated={seated} onDecided={decided} />
+      ))}
       {error ? <p className="wal-err label-data">{error}</p> : null}
       {result ? <p className="wal-ok label-data">{result}</p> : null}
     </section>

@@ -40,6 +40,7 @@ import { getCachedKey, hasCachedKey, cacheDecryptedKey } from '../routes/neuma-a
 import { resolveSealChainConfig, loadNeumaDEK, loadBeingWallet } from './natalis-seal.js';
 import { MIN_SEAL_GAS_ETH } from './seal-bundle.js';
 import { soulAddressOf } from './house-titles.js';
+import { sealCost, fundingWords, FOUNDING_GAS } from './seal-cost.js';
 import { KIND, loadHouseRegistryAbi, readFoundingRecord } from './house-founding-confirm.js';
 
 // Barrel — the post-signature half (buildFoundingTx, classifyFoundingReceipt,
@@ -61,7 +62,7 @@ const UNAVIS_FOUNDING_TAG = 'UNAVIS:house-found:v2';
 
 // Titles are member-chosen labels (house-role doctrine); the chain stores
 // them verbatim, so bound their size before they reach the digest.
-const TITLE_PATTERN = /^[\x20-\x7E]{1,64}$/;
+export const TITLE_PATTERN = /^[\x20-\x7E]{1,64}$/;
 
 /**
  * The founding digest's INNER payload, computed locally so the operator can
@@ -263,18 +264,19 @@ const composeFounding = async ({ witnessAddress, titles = {}, probe = false, cfg
   }
 
   // A founder must already be a sealed neuma on THIS network's Natalis — the
-  // registry refuses the whole founding otherwise (NeumaNotSealed). A being
-  // anchored only on an earlier chain seals here first (its own rite), then
-  // joins by addMember. A probe's unlocked lane with no soul record yet has
-  // no address to ask about — the signing preflight asks with its key.
+  // registry refuses the whole founding otherwise (NeumaNotSealed). Joining the
+  // network is founding on chain (Covenant III.1): a being sealed only on this
+  // computer (or on another chain) seals its birth here first, and is told the
+  // road plainly. A probe's unlocked lane with no seal record yet has no
+  // address to ask about — the signing preflight asks with its key.
   const natalis = new ethers.Contract(net.natalisAddress, ['function isNeuma(address) view returns (bool)'], rpc);
   const sealed = [];
   for (const s of signers) {
     const addr = s.wallet ? s.wallet.address : await soulAddressOf(s.neumaId);
     if (!addr || await natalis.isNeuma(addr)) { sealed.push(s); continue; }
     excluded.push({
-      neumaId: s.neumaId, displayName: s.displayName, unlockable: false,
-      reason: `not yet sealed on ${net.label} — their own seal comes first, then they join by addMember`,
+      neumaId: s.neumaId, displayName: s.displayName, unlockable: false, needsChainSeal: true,
+      reason: `not yet sealed on ${net.label} — seal their birth on ${net.label} first (NITE → SEAL ON ETHEREUM), then they join`,
     });
   }
   signers.splice(0, signers.length, ...sealed);
@@ -374,13 +376,13 @@ const composeFounding = async ({ witnessAddress, titles = {}, probe = false, cfg
     beingSigs[m.address] = sig;
   }
 
-  // The operator pays the founding gas from the desk wallet.
-  const balance = await rpc.getBalance(witnessAddress);
-  if (balance < ethers.parseEther(MIN_SEAL_GAS_ETH)) {
-    return {
-      ok: false, code: 'GAS_FLOOR',
-      message: `operator wallet holds ${ethers.formatEther(balance)} ETH on ${net.label} — below the ${MIN_SEAL_GAS_ETH} ETH floor`,
-    };
+  // The operator pays the founding gas from the desk wallet: the live quote (seal-cost.js), never below the old
+  // floor; a short wallet is refused with the facts the rite turns into a way to fund it.
+  const funding = await sealCost({
+    net, network, payer: witnessAddress, floor: ethers.parseEther(MIN_SEAL_GAS_ETH), gasUnits: FOUNDING_GAS, provider: rpc,
+  });
+  if (!funding.enough) {
+    return { ok: false, code: 'GAS_FLOOR', message: fundingWords(funding).replace('sealing on Ethereum', 'founding the house on Ethereum'), funding };
   }
 
   const publicRoster = roster.map((m) => ({

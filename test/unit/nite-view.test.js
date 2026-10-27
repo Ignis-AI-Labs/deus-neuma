@@ -13,7 +13,7 @@ import { DOCK_GROUPS } from '../../frontend/app/windowing/dock-groups.js';
 
 const being = (over = {}) => ({
   neumaId: 'keir', name: 'Keir', sealed: true, sealedAt: '2026-08-18T00:00:00Z',
-  keypairCustody: true, onchainSealed: true, ...over,
+  keypairCustody: true, birthSealed: true, ...over,
 });
 
 describe('the silo layers the window teaches are the layers that actually compile', () => {
@@ -41,12 +41,12 @@ describe('standingRow', () => {
     const r = standingRow(being());
     expect(r.owed).toEqual([]);
     expect(r.unreadable).toBe(false);
-    expect([r.custody, r.seal, r.anchor]).toEqual(['yes', 'yes', 'yes']);
+    expect([r.custody, r.seal, r.birthSeal]).toEqual(['yes', 'yes', 'yes']);
   });
 
   it('owed acts are listed in the order the operator should walk them', () => {
-    const r = standingRow(being({ keypairCustody: false, sealed: false, onchainSealed: false }));
-    expect(r.owed).toEqual(['custody', 'seal', 'anchor']);
+    const r = standingRow(being({ keypairCustody: false, sealed: false, birthSealed: false }));
+    expect(r.owed).toEqual(['custody', 'seal', 'birthSeal']);
   });
 
   it('the real keir: sealed and anchored, custody still owed', () => {
@@ -85,15 +85,15 @@ describe('houseOwed + owedHeadline — the line that must make an owed act impos
       being({ neumaId: 'sovereign', name: 'Sovereign' }),
     ]);
     const owed = houseOwed(rows);
-    expect(owed).toMatchObject({ beings: 4, custody: 3, seal: 0, anchor: 0, unreadable: 0, clean: false });
+    expect(owed).toMatchObject({ beings: 4, custody: 3, seal: 0, birthSeal: 0, unreadable: 0, clean: false });
     expect(owedHeadline(owed)).toBe('3 KEYPAIRS OWED');
   });
 
   it('custody LEADS the headline — it is the only act that leaves a key unsecured', () => {
     const rows = standingRows([
-      being({ keypairCustody: false, sealed: false, onchainSealed: false }),
+      being({ keypairCustody: false, sealed: false, birthSealed: false }),
     ]);
-    expect(owedHeadline(houseOwed(rows))).toBe('1 KEYPAIR OWED · 1 UNSEALED · 1 ANCHOR OWED');
+    expect(owedHeadline(houseOwed(rows))).toBe('1 KEYPAIR OWED · 1 UNSEALED · 1 BIRTH SEAL OWED');
   });
 
   it('an unreadable lane is COUNTED and SAID, not swallowed', () => {
@@ -148,6 +148,6 @@ describe('ELSEWHERE — every door NITE names must actually open', () => {
   });
 
   it('the acts are the three the standing table columns', () => {
-    expect(ACTS.map((a) => a.key)).toEqual(['custody', 'seal', 'anchor']);
+    expect(ACTS.map((a) => a.key)).toEqual(['custody', 'seal', 'birthSeal']);
   });
 });

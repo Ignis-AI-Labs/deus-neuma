@@ -142,16 +142,21 @@ describe('marketing/plan — author, approve, lock; and the standing surface', (
     const now = Date.now();
     const earlier = new Date(now + 3600000 + 7 * 3600000).toISOString().replace('Z', '+07:00');
     const later = new Date(now + 7200000).toISOString();
+    // Each entry authored by the house's CMO lane — the shape the queue
+    // intent writes — so the posture (one house's) counts them.
     await fs.writeFile(QUEUE_PATH, JSON.stringify([
       { status: 'draft', scheduledFor: later },
       { status: 'approved', scheduledFor: earlier },
       { status: 'sent', scheduledFor: new Date(now + 1000).toISOString() },
       { status: 'draft', scheduledFor: new Date(now - 1000).toISOString() },
       { status: 'approved', scheduledFor: 'invalid' },
-    ]));
-    const state = await computePipelineState();
+    ].map((e) => ({ ...e, authorNeumaId: CMO_LANE }))));
+    const state = await computePipelineState({ laneId: CMO_LANE, wallet: WALLET });
     expect(state.queue.nextScheduled).toBe(earlier);
     expect(state.queue.counts).toMatchObject({ draft: 2, approved: 2, sent: 1 });
+    // Another house, or none, counts none of this house's queue.
+    expect((await computePipelineState({ laneId: CMO_LANE, wallet: OTHER_HOUSE })).queue.counts.draft).toBe(0);
+    expect((await computePipelineState()).queue.counts.draft).toBe(0);
   });
 
   test('(d) the designated CMO\'s turn OPENS with the pipeline tools disclosed', async () => {

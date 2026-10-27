@@ -56,7 +56,8 @@ export const intentSectionFor = async (connection, { searchable = true } = {}) =
         available.push({
           name: type.name,
           fieldsForPrompt: type.fieldsForPrompt,
-          descriptionForPrompt: type.descriptionForPrompt,
+          // a type may answer with the contract for exactly what this lane can reach (social/queue's channels)
+          descriptionForPrompt: detail.descriptionForPrompt || type.descriptionForPrompt,
           channels: detail.channels || [],
         });
       }

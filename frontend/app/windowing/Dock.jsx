@@ -16,7 +16,10 @@ import './Taskbar.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWindows } from './use-windows.js';
-import { appIdOf, frontmostInstanceId } from './window-manager-reducer.js';
+import { appIdOf } from './window-manager-reducer.js';
+import { clickTarget, instanceRows, listPlace } from './instance-cycle.js';
+import { useHoverIntent } from './use-hover-intent.js';
+import { DockInstances } from './DockInstances.jsx';
 import { setBarEdge } from './use-window-frame.js';
 import { BAR_EDGES, TRAY_APPS, barItems, movePin, normalizePrefs, togglePin } from './taskbar-model.js';
 import { loadTaskbarPrefs, saveTaskbarPrefs } from './taskbar-storage.js';
@@ -24,6 +27,12 @@ import { Launcher } from './Launcher.jsx';
 import { playSound } from '../../services/sound-engine.js';
 import { disconnectSession } from '../../services/session.js';
 import { DepartureVeil } from '../RelinkShell/DepartureVeil.jsx';
+import { BrandMark } from '../RelinkShell/brand-marks.jsx';
+import { MARKETING_PLATFORMS, MARKETING_WINDOW, PLATFORM_LABELS } from './retired-windows.js';
+
+const PLATFORM_ENTRIES = MARKETING_PLATFORMS.map((id) => [id, Object.freeze({
+  label: PLATFORM_LABELS[id], icon: <BrandMark id={id} />, keywords: ['marketing', 'social', 'platform'],
+})]);
 
 const LauncherGlyph = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -50,9 +59,14 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
 
   // Every app a person can launch, its label in their language. launcher:false
   // apps are born from elsewhere (the editor from the FILES tree) — never here.
-  const entries = useMemo(() => Object.entries(registry)
-    .filter(([, app]) => app.launcher !== false)
-    .map(([id, app]) => [id, app.labelKey ? { ...app, label: tDesk(app.labelKey) } : app]), [registry, tDesk]);
+  // Each public platform is a tile too, though its window is MARKETING's now: OPEN of its id lands MARKETING on
+  // it (WindowManager.jsx redirectAction), so TikTok, X and the rest are always one press away, and pinnable.
+  const entries = useMemo(() => [
+    ...Object.entries(registry)
+      .filter(([, app]) => app.launcher !== false)
+      .map(([id, app]) => [id, app.labelKey ? { ...app, label: tDesk(app.labelKey) } : app]),
+    ...(registry[MARKETING_WINDOW] ? PLATFORM_ENTRIES : []),
+  ], [registry, tDesk]);
   const ids = useMemo(() => entries.map(([id]) => id), [entries]);
   const byId = useMemo(() => new Map(entries), [entries]);
 
@@ -63,6 +77,7 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
   const [now, setNow] = useState(() => new Date());
   const [departing, setDeparting] = useState(false);
   const navRef = useRef(null);
+  const hover = useHoverIntent();
 
   // The person's prefs: saved on change; the bar's edge moves the desk's bounds.
   useEffect(() => { saveTaskbarPrefs(prefs); }, [prefs]);
@@ -87,24 +102,57 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
   };
   const countOf = (id) => openAppIds.filter((a) => a === id).length;
 
-  const closeAll = () => { setLauncher(false); setMenu(null); };
+  const closeAll = () => { setLauncher(false); setMenu(null); hover.hide(); };
 
-  // Open-or-raise: a multi-instance app raises its frontmost window; a panel
-  // app (FILES) toggles the desk's rail.
+  // Open-or-raise: a panel app (FILES) toggles the desk's rail; a multi-window
+  // app steps through its windows, one per click (instance-cycle.js — Founder,
+  // 2026-10-23: […]), restoring a minimized one
+  // when its turn comes; anything else opens or raises its one window.
   const raiseOrOpen = (id) => {
     if (registry[id]?.panel) { onPanelToggle?.(id); return; }
-    const front = registry[id]?.multiInstance ? frontmostInstanceId(state.windows, id) : null;
-    dispatch(front ? { type: 'FOCUS', id: front } : { type: 'OPEN', id });
+    const next = registry[id]?.multiInstance ? clickTarget(state.windows, state.focusedId, id) : null;
+    dispatch(next ? { type: 'FOCUS', id: next.id, restore: next.restore } : { type: 'OPEN', id });
+  };
+
+  // THE HOVER LIST: a multi-window app's button, with two or more open, lists
+  // them in a drop-up on a rested pointer or on keyboard focus. Never while the
+  // launcher, a menu or a drag has the bar.
+  const listable = (id) => Boolean(registry[id]?.multiInstance) && countOf(id) > 1 && !launcher && !menu && !dragId;
+  const placeFor = (el) => listPlace(prefs.edge, el.getBoundingClientRect(), navRef.current.getBoundingClientRect());
+  const inList = (node) => Boolean(node && navRef.current?.querySelector('.taskbar-instances')?.contains(node));
+  const listButton = (id) => navRef.current?.querySelector(`.taskbar-app[data-app-id="${id}"]`);
+  const hoverBind = (id) => ({
+    onPointerEnter: (e) => { if (e.pointerType !== 'touch' && listable(id)) hover.enter(id, placeFor(e.currentTarget)); },
+    onPointerLeave: hover.leave,
+    onFocus: (e) => { if (e.currentTarget.matches(':focus-visible') && listable(id)) hover.show(id, placeFor(e.currentTarget)); },
+    onBlur: (e) => { if (hover.open?.id === id && !inList(e.relatedTarget)) hover.hide(); },
+    // Into the list from the button: the arrow that points at it.
+    onKeyDown: (e) => {
+      const into = { bottom: 'ArrowUp', top: 'ArrowDown', left: 'ArrowRight' }[prefs.edge];
+      if (e.key !== into || hover.open?.id !== id) return;
+      e.preventDefault();
+      const list = navRef.current?.querySelector('.taskbar-instances');
+      (list?.querySelector('.dock-menu-item.is-focused') || list?.querySelector('.dock-menu-item'))?.focus();
+    },
+  });
+  const pickInstance = (windowId) => {
+    playSound('menuClose');
+    dispatch({ type: 'FOCUS', id: windowId, restore: true });
+    hover.hide();
   };
   const open = (id) => {
     playSound(stateOf(id) === 'closed' ? 'menuOpen' : 'menuClose');
     raiseOrOpen(id);
-    closeAll();
+    // An open hover list STAYS: its focused mark moving to the window this
+    // click raised is the click's answer, read where the eye already is.
+    setLauncher(false);
+    setMenu(null);
   };
 
   const toggleLauncher = () => {
     playSound(launcher ? 'menuClose' : 'menuOpen');
     setMenu(null);
+    hover.hide();
     setLauncher((v) => !v);
   };
 
@@ -113,7 +161,7 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
   useEffect(() => {
     const onKey = (e) => {
       if (e.code === 'Space' && e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); toggleLauncher(); }
-      else if (e.key === 'Escape' && (launcher || menu)) closeAll();
+      else if (e.key === 'Escape' && (launcher || menu || hover.open)) closeAll();
     };
     const onDown = (e) => { if ((launcher || menu) && navRef.current && !navRef.current.contains(e.target)) closeAll(); };
     window.addEventListener('keydown', onKey);
@@ -125,6 +173,7 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
     e.preventDefault();
     e.stopPropagation();
     playSound('menuOpen');
+    hover.hide();
     setMenu({ kind, id, x: e.clientX, y: e.clientY });
   };
 
@@ -187,7 +236,10 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
         onDragOver={isPinned ? (e) => onDragOver(e, id) : undefined}
         onDragEnd={() => setDragId(null)}
         aria-pressed={s !== 'closed'}
+        aria-haspopup={app.multiInstance ? 'menu' : undefined}
+        aria-expanded={app.multiInstance ? hover.open?.id === id : undefined}
         title={app.label}
+        {...(app.multiInstance ? hoverBind(id) : null)}
       >
         <span className="taskbar-app-icon">{app.icon}</span>
         {prefs.labels ? <span className="taskbar-app-label label-data">{app.label}</span> : null}
@@ -198,6 +250,7 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
   };
 
   const menuApp = menu?.kind === 'app' ? byId.get(menu.id) : null;
+  const listApp = hover.open && listable(hover.open.id) ? byId.get(hover.open.id) : null;
 
   return (
     <nav
@@ -216,6 +269,19 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
           onNewDesk={newDesk}
           onDisconnect={disconnect}
           onClose={closeAll}
+        />
+      ) : null}
+
+      {listApp ? (
+        <DockInstances
+          app={listApp}
+          rows={instanceRows(state.windows, state.focusedId, hover.open.id)}
+          place={hover.open.place}
+          onPick={pickInstance}
+          onEnter={hover.keep}
+          onLeave={hover.leave}
+          onBlur={(e) => { if (!inList(e.relatedTarget) && e.relatedTarget !== listButton(hover.open.id)) hover.hide(); }}
+          onEscape={() => { listButton(hover.open.id)?.focus(); hover.hide(); }}
         />
       ) : null}
 

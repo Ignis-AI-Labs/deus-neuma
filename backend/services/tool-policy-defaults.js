@@ -252,8 +252,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   // gate. Generating is the image/generate INTENT (Stage 3) — an acting act
   // that also SEIZES A SHARED RESOURCE — the GPU, for seconds to a minute, on
   // the same card the substrate lives on — so it asks the operator by default
-  // (one ALWAYS grant persists per being). Observe mode holds it, like every
-  // acting act.
+  // (one ALWAYS grant persists per being; a video asks on intents/video.generate,
+  // granted apart). Observe mode holds it, like every acting act.
   // Reviewing is neither: it is a being recording a judgment about its own
   // work. Asking the operator for permission to hold an opinion would be the
   // wrong shape, and gating it would make the one habit we most want to form
@@ -303,17 +303,22 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // house's own posture, computed, no egress, no mutation. Its card was
     // the last friction between the CMO and the decision (live report
     // 2026-09-03: […]).
-    allowed: ['campaign_list', 'pipeline_state'],
+    // mandate_read / board_read: the CMO seat's own mandate, its operator's board — reads, no egress, no card.
+    // company_updates: a read of the repos the operator let this lane read (the
+    // grant was the operator's yes); its site part rides the web_fetch card.
+    allowed: ['campaign_list', 'pipeline_state', 'mandate_read', 'company_updates', 'board_read'],
     denied: [],
     // The bench mutations are the campaigns/* INTENTS now (Stage 3 batch 4).
-    requireApproval: [],
+    // social_check proves each account live on the house's credentials —
+    // egress, so it asks, like read_x.
+    requireApproval: ['social_check'],
   },
   // The sector lane. Reading the campaign queue is observation of local
   // state the operator already owns — it opens by right, so a being can check
   // what is already staged before staging a duplicate. Everything that SPEAKS
   // keeps its gate: posting and staging are INTENTS (their rows sit on the
-  // `intents` server), and `read_x` is EGRESS on the house's credentials, so
-  // it asks. The DYNAMIC reply names — queue_reply_to_*, queue_self_reply_to_*,
+  // `intents` server), and the platform reads (`read_x`, `read_<platform>`) are EGRESS on the house's credentials, so
+  // they ask. The DYNAMIC reply names — queue_reply_to_*, queue_self_reply_to_*,
   // reply_dismiss_*, queue_update_to_* — hold no row here on purpose:
   // checkToolAccess fails closed to approval_required for any unnamed tool,
   // so every staged reply pauses on the operator's chip by default, and an
@@ -321,7 +326,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   social: {
     allowed: ['queue_list', 'queue_get', 'replies_list'],
     denied: [],
-    requireApproval: ['read_x', 'queue_cancel'],
+    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel'],
   },
   // The being's own working list, and the house lead ledger. Listing is pure
   // observation (same law as the vault and the inbox); every mutation is a
@@ -397,6 +402,15 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // operator (validate re-verifies the seat and every ask) — it answers and
       // grants nothing, so it rides a wake with no card.
       'house.review-packet',
+      // campaigns.ask: the seated CMO's word to its operator on a campaign (or
+      // its answer to theirs) — nothing leaves the house and nothing changes
+      // the campaign's declaration, so it carries no card (validate re-verifies
+      // the seat).
+      'campaigns.ask',
+      // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
+      'marketing.board-arrange', 'marketing.company-links',
+      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy.
+      'treasury.review', 'treasury.flag',
     ],
     denied: [],
     requireApproval: [
@@ -407,6 +421,9 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'legal.scan', 'legal.assess', 'legal.file',
       'email.send',
       'media.save', 'web.download', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
+      // A video render (image/generate on a video pipeline) asks on its own row:
+      // it holds the machine for minutes, so ALWAYS for stills never covers it.
+      'video.generate',
       'vault.publish',
       'tasks.add', 'tasks.update', 'tasks.focus', 'tasks.take', 'tasks.operator-add', 'tasks.operator-update', 'tasks.operator-drop',
       'leads.add', 'leads.touch',
@@ -447,6 +464,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     denied: [],
     requireApproval: [],
   },
+  // The Quaestor's office: the treasury read, the seated CFO's alone; it moves nothing.
+  treasury: { allowed: ['treasury_board'], denied: [], requireApproval: [] },
   // The connected benchmarks repository (bench/bench-being-tools.js). Listing
   // and status are reads; a launch is a GPU job of minutes to hours — it asks.
   bench: {

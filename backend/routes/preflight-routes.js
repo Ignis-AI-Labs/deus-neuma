@@ -13,8 +13,12 @@ import path, { join } from 'path';
 import { createLogger } from '../services/logger.js';
 import { requireAuth } from '../services/auth.js';
 import { getSetupStatus } from '../services/substrate-setup.js';
+import { loadProviderChoice } from '../services/provider-choice.js';
 import { getAppConfig } from '../config.js';
-import { SEAL_NETWORKS } from '../services/natalis-seal.js';
+import { ethers } from 'ethers';
+import { SEAL_NETWORKS, resolveSealChainConfig } from '../services/natalis-seal.js';
+import { sealCost, FOUNDING_GAS } from '../services/seal-cost.js';
+import { MIN_SEAL_GAS_ETH } from '../services/seal-bundle.js';
 import { connectFilesystemServer } from '../services/mcp-filesystem.js';
 import { getWorkspacesRoot, getWitnessesRoot, setWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
 import { otherOwnedLanes } from '../services/root-tenants.js';
@@ -30,6 +34,37 @@ import { computeAvailable, isAffordable, suggestedAllocationGB } from './preflig
 
 const router = Router();
 const log = createLogger('Preflight');
+
+// impure — the home's space numbers. Allocation ledger: space already RESERVED by existing neuma
+// (logical commitments they grow into), so raw disk-free over-states what a new neuma can claim:
+// available = free − committed. The neuma list is read once for both the count and the sum.
+const homeBlock = async () => {
+  const settings = await loadWorkspaceSettings();
+  const freeGB = await freeGBAt(getWorkspacesRoot());
+  const ids = await neumaWorkspace.listNeuma();
+  const committedGB = await neumaWorkspace.totalAllocatedGB({ ids });
+  const availableGB = computeAvailable(freeGB, committedGB);
+  return {
+    root: getWorkspacesRoot(),
+    allocationGB: settings.allocationGB,
+    suggestedAllocationGB: suggestedAllocationGB(availableGB),
+    freeGB,
+    committedGB,
+    availableGB,
+    affordable: isAffordable(settings.allocationGB, availableGB),
+    neumaCount: ids.length,
+  };
+};
+
+// GET /home — only the space numbers: a changed allocation re-reads these, never the checks.
+router.get('/home', async (req, res) => {
+  try {
+    res.json({ home: await homeBlock() });
+  } catch (error) {
+    log.error('Home read failed', { error: error.message });
+    res.status(500).json({ error: 'Could not read the space' });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {
@@ -49,17 +84,8 @@ router.get('/', async (req, res) => {
       await checkTrainer(),
       await checkForge(),
     ];
-    const settings = await loadWorkspaceSettings();
-
-    // Allocation ledger — space already RESERVED by existing neuma. Allocations
-    // are logical (a neuma grows into its grant), so raw disk-free over-states
-    // what a new neuma can actually claim. available = free − committed. Read the
-    // neuma list once and reuse it for both the count and the sum.
-    const freeGB = await freeGBAt(getWorkspacesRoot());
-    const ids = await neumaWorkspace.listNeuma();
-    const committedGB = await neumaWorkspace.totalAllocatedGB({ ids });
-    const availableGB = computeAvailable(freeGB, committedGB);
-    const affordable = isAffordable(settings.allocationGB, availableGB);
+    const home = await homeBlock();
+    const { affordable } = home;
 
     // A chosen-but-unaffordable allocation BLOCKS the launch exactly like a failed
     // check: the substrate cannot hold a being you cannot give space. This catches
@@ -75,16 +101,7 @@ router.get('/', async (req, res) => {
     res.json({
       verdict,
       checks,
-      home: {
-        root: getWorkspacesRoot(),
-        allocationGB: settings.allocationGB,
-        suggestedAllocationGB: suggestedAllocationGB(availableGB),
-        freeGB,
-        committedGB,
-        availableGB,
-        affordable,
-        neumaCount: ids.length,
-      },
+      home,
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -219,6 +236,41 @@ router.get('/seal-network', requireAuth, (req, res) => {
 });
 
 /**
+ * GET /seal-cost — what sealing on Ethereum costs right now for THIS wallet (the authenticated one), on the
+ * rig's seal network: the measured gas × the live fee, the balance, and how much more it needs. Asked only
+ * when the operator opens the Ethereum seal: it reads the wallet's balance from the network's node.
+ */
+router.get('/seal-cost', requireAuth, async (req, res) => {
+  try {
+    const cfg = getAppConfig();
+    const network = cfg.ceremonySealNetwork;
+    const net = resolveSealChainConfig(network, cfg);
+    if (!net?.rpcUrl) return res.status(503).json({ error: 'No node is set for the seal network' });
+    res.json(await sealCost({ net, network, payer: req.walletAddress, floor: ethers.parseEther(MIN_SEAL_GAS_ETH) }));
+  } catch (error) {
+    log.warn('Seal cost read failed', { error: error.message });
+    res.status(502).json({ error: 'The network could not be asked for the cost right now' });
+  }
+});
+
+/**
+ * GET /found-cost — what founding the house on Ethereum (joining Unavis) costs right now for THIS wallet, on the
+ * rig's founding network: the measured founding gas × the live fee, the balance, and how much more it needs.
+ */
+router.get('/found-cost', requireAuth, async (req, res) => {
+  try {
+    const cfg = getAppConfig();
+    const network = cfg.houseFoundNetwork;
+    const net = resolveSealChainConfig(network, cfg);
+    if (!net?.rpcUrl) return res.status(503).json({ error: 'No node is set for the founding network' });
+    res.json(await sealCost({ net, network, payer: req.walletAddress, floor: ethers.parseEther(MIN_SEAL_GAS_ETH), gasUnits: FOUNDING_GAS }));
+  } catch (error) {
+    log.warn('Founding cost read failed', { error: error.message });
+    res.status(502).json({ error: 'The network could not be asked for the cost right now' });
+  }
+});
+
+/**
  * GET /setup — first-run […] guidance: a hardware-matched
  * model recommendation plus which local providers (Ollama / LM Studio) are
  * running and what they have loaded. Public (pre-auth) — exposes only local
@@ -231,6 +283,34 @@ router.get('/setup', async (req, res) => {
   } catch (error) {
     log.error('Setup status failed', { error: error.message });
     res.status(500).json({ error: 'Could not read setup status' });
+  }
+});
+
+// The door's check is the FIRST load after a boot: Founder's laptop, 2026-10-25, just restarted, took
+// 23 s to start the model server and 35 s more before the 45 s probe gave up and the door said not
+// ready; a recheck answered in 9 s. Room for a cold load, still inside the door's own 120 s wait.
+export const DOOR_PROBE_MS = 100_000;
+
+/**
+ * GET /mind — is the mind a being will run on ready? THE SAME TEST as the flight check's
+ * substrate row (checkSubstrate: the resolved provider route reachable, its model loaded, and
+ * answering in words), so the door that opens a summoning and the flight check inside it can
+ * never disagree. It also loads the model, so the ceremony does not wait on a cold start.
+ */
+router.get('/mind', async (req, res) => {
+  try {
+    const row = await checkSubstrate(null, { timeoutMs: DOOR_PROBE_MS });
+    res.json({
+      ready: row.status === 'pass',
+      // a route nobody chose (the factory default) names nothing a person set up: no detail then
+      chosen: Boolean(await loadProviderChoice()),
+      detail: row.detail,
+      requirement: row.requirement,
+      switchTo: row.switchTo || null,
+    });
+  } catch (error) {
+    log.error('Mind check failed', { error: error.message });
+    res.status(500).json({ error: 'Could not check the model' });
   }
 });
 

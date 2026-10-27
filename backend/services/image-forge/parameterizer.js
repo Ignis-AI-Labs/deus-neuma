@@ -152,7 +152,7 @@ export const resolveSlots = (pipeline, args) => {
  * @param {string} [p.outputGroup] output subfolder — 'neuma' for real jobs, a
  *   `samples/...` group for in-repo lab scripts. NOT a slot: unreachable from
  *   caller args, and sanitized regardless.
- * @returns {{ok: true, graph: object, values: object} | {ok: false, error: string, refusalClass?: string}}
+ * @returns {{ok: true, graph: object, values: object} | {ok: false, error: string, refusalClass?: string, refusalMatch?: {term: string, where: string, slot: string|null}}}
  */
 export const parameterize = ({
   pipeline, model, args, jobId, screenList, fallbackSeed,
@@ -170,18 +170,23 @@ export const parameterize = ({
   // is treated as positive — the conservative default.
   const screened = Object.entries(pipeline.slots)
     .filter(([, spec]) => spec.screened)
-    .map(([name, spec]) => ({ text: v[name], polarity: spec.polarity === 'negative' ? 'negative' : 'positive' }))
+    .map(([name, spec]) => ({ name, text: v[name], polarity: spec.polarity === 'negative' ? 'negative' : 'positive' }))
     .filter((s) => typeof s.text === 'string' && s.text.length > 0);
   // A job that starts from an image is judged WITH what made that image
   // (image-lineage.js): a picture cannot launder a prompt the law refuses.
-  if (pipeline.requiresSourceImage === true && typeof sourceLineage === 'string' && sourceLineage) screened.push({ text: sourceLineage, polarity: 'positive' });
+  if (pipeline.requiresSourceImage === true && typeof sourceLineage === 'string' && sourceLineage) screened.push({ name: 'source', text: sourceLineage, polarity: 'positive' });
   const verdict = screenSlots(screened, screenList, {
     licenceRefuses: pipeline.licenceRefuses ?? [],
     unrecordedSource: pipeline.requiresSourceImage === true && !(typeof sourceLineage === 'string' && sourceLineage),
   });
   if (!verdict.ok) {
-    // The class only — echoing the matched term would teach the filter.
-    return { ok: false, error: 'refused by content law', refusalClass: verdict.classes[0] };
+    // The class only — echoing the matched term would teach the filter. A model-
+    // licence refusal alone carries what it matched (screenSlots), so a misread
+    // ordinary word can be seen and reworded.
+    return {
+      ok: false, error: 'refused by content law', refusalClass: verdict.classes[0],
+      ...(verdict.match ? { refusalMatch: verdict.match } : {}),
+    };
   }
 
   if (pipeline.requiresSourceImage && !sourceImageName) {

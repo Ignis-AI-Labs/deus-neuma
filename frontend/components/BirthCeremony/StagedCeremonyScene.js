@@ -313,12 +313,17 @@ export class StagedCeremonyScene {
     if (indicator) indicator.style.display = 'none';
   }
 
+  // Each show or hide is one generation: a fade's delayed step only lands if no later
+  // show or hide came after it. A fast model answers a stage within the hide's one-second
+  // fade, and the stale hide then took CONTINUE away for good.
   showContinueButton() {
     const btn = document.getElementById('continue-btn');
     if (btn) {
+      const gen = (this.continueGen = (this.continueGen || 0) + 1);
       btn.style.display = 'block';
       btn.style.opacity = '0';
       setTimeout(() => {
+        if (this.continueGen !== gen) return;
         btn.style.transition = 'opacity 1s';
         btn.style.opacity = '1';
       }, 100);
@@ -328,9 +333,10 @@ export class StagedCeremonyScene {
   hideContinueButton() {
     const btn = document.getElementById('continue-btn');
     if (btn) {
+      const gen = (this.continueGen = (this.continueGen || 0) + 1);
       btn.style.opacity = '0';
       setTimeout(() => {
-        btn.style.display = 'none';
+        if (this.continueGen === gen) btn.style.display = 'none';
       }, 1000);
     }
   }

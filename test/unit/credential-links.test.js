@@ -60,6 +60,17 @@ describe('linksFor — the desk\'s read of the map', () => {
     expect(linksFor(map, { family: 'channel', id: 'bluesky' })[0].url).toBe('https://bsky.app/settings/app-passwords');
     expect(linksFor(map, { family: 'chain', id: 'rpc' }).length).toBe(CREDENTIAL_LINKS.chain.rpc.length);
   });
+  test('YouTube: the three Google Cloud steps in order, each with its plain hint (answered by hand 2026-10-23)', () => {
+    const steps = linksFor(map, { family: 'channel', id: 'youtube' });
+    expect(steps.map((l) => l.url)).toEqual([
+      'https://console.cloud.google.com/apis/library/youtube.googleapis.com',
+      'https://console.cloud.google.com/auth/branding',
+      'https://console.cloud.google.com/apis/credentials',
+    ]);
+    for (const l of steps) expect(l.note.length).toBeGreaterThan(0);
+    expect(steps[1].note).toMatch(/set the consent screen to In production/);
+    expect(steps[2].note).toMatch(/Desktop app/);
+  });
   test('no map yet, or an unknown credential: nothing, never a broken link', () => {
     expect(linksFor(null, { provider: 'openai' })).toEqual([]);
     expect(linksFor(map, { family: 'channel', id: 'myspace' })).toEqual([]);

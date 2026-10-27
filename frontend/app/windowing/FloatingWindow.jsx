@@ -38,9 +38,11 @@ const MaxIcon = ({ maxed }) =>
 
 export const FloatingWindow = ({
   storageKey,
+  windowId,
   title,
   controls,
   focused = false,
+  restoreKey,
   z,
   onFocus,
   onClose,
@@ -52,6 +54,8 @@ export const FloatingWindow = ({
   // section height animates only during the toggle (is-shading), so resize
   // stays instant.
   const [collapsed, setCollapsed] = useState(false);
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
   const [shading, setShading] = useState(false);
   const barRef = useRef(null);
   const [headerH, setHeaderH] = useState(40);
@@ -64,6 +68,17 @@ export const FloatingWindow = ({
     setCollapsed((c) => !c);
     window.setTimeout(() => setShading(false), 320);
   };
+  // The taskbar raised this window on its turn (FOCUS with `restore`): a
+  // shaded window opens, the same shading it would take from its own button.
+  // A stamp, never a boolean — each ask is a fresh number, so a second click
+  // on a window shaded again since the first still answers.
+  useEffect(() => {
+    if (restoreKey === undefined || !collapsedRef.current) return undefined;
+    setShading(true);
+    setCollapsed(false);
+    const id = window.setTimeout(() => setShading(false), 320);
+    return () => window.clearTimeout(id);
+  }, [restoreKey]);
   const onToggleMax = () => {
     uiSound('toggle');
     toggleMax();
@@ -104,6 +119,7 @@ export const FloatingWindow = ({
           zIndex: z,
         }}
         onPointerDownCapture={onFocus}
+        data-window-id={windowId}
       >
         {lit || leaving ? <span className="fwin-light" aria-hidden="true" onAnimationEnd={() => setLit(false)} /> : null}
         <span className="fwin-brackets" aria-hidden="true" />

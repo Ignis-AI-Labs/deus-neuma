@@ -69,6 +69,7 @@ import { toolRepeatEvent } from './tool-repeat-event.js';
 import { withBenchmarkGroundMirror } from './benchmark-exec-bridge.js';
 import { noteWorkingSetCall } from './sitting-disclosure.js';
 import { fitRead } from './read-room.js';
+import { tripMandateForLane } from './marketing/mandate/mandate-tripwire.js';
 
 const log = createLogger('Portal');
 
@@ -276,12 +277,9 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
       });
       if (!argsCheck.safe) {
         results.push({ tool: toolLabel, status: 'unsafe_args', error: argsCheck.reason });
-        _sendToolEvent(ws, companion, {
-          tool: toolLabel,
-          status: 'unsafe_args',
-          summary: `${toolName} — blocked`,
-          detail: argsCheck.reason,
-        });
+        _sendToolEvent(ws, companion, { tool: toolLabel, status: 'unsafe_args', summary: `${toolName} — blocked`, detail: argsCheck.reason });
+        // A blocked call by the CMO pauses its mandate (marketing/mandate/) — never throws.
+        await tripMandateForLane({ wallet: connection.walletAddress, laneId: companion?.neumaId, kind: /mandate|tool-policy/.test(argsCheck.reason + JSON.stringify(args ?? {})) ? 'widen' : 'rogue', detail: `${toolLabel} was blocked: ${argsCheck.reason}` });
         continue;
       }
 

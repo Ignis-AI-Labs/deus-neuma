@@ -20,17 +20,16 @@ const req = async (path, init = {}) => {
 };
 
 /**
- * Every campaign plus the status vocabulary the board groups by.
- * @returns {Promise<{campaigns: Array<object>, statuses: string[]}>}
+ * Every campaign plus the vocabulary the board renders against.
+ * @returns {Promise<{campaigns: Array<object>, statuses: string[], goalKinds: string[], kpiMetrics: string[]}>}
  */
 // impure
 export const getCampaigns = () => req('');
 
 /**
- * Open one campaign.
- * @param {{name: string, brand: string, status?: string, pillars?: string[],
- *   cadence?: string, marketingPlan?: string, funnelPlan?: string,
- *   notes?: string}} campaign
+ * Open one campaign (shape v2: companyId, goal, kpi, window, budget, angles,
+ * subs, cadence, the plans, notes).
+ * @param {object} campaign
  */
 // impure
 export const createCampaign = (campaign) =>
@@ -89,3 +88,20 @@ export const attachCampaignFile = (id, path) =>
 /** Untie a file from a campaign. The file itself is never touched. impure. */
 export const detachCampaignFile = (id, path) =>
   req(`/${id}/files`, { method: 'DELETE', body: { path } });
+
+/**
+ * The operator asks the CMO something on a campaign. impure.
+ * @param {string} id
+ * @param {string} text
+ */
+export const askOnCampaign = (id, text) =>
+  req(`/${id}/asks`, { method: 'POST', body: { text } });
+
+/**
+ * The operator answers the CMO's ask (or withdraws their own). impure.
+ * @param {string} id
+ * @param {string} askId
+ * @param {string} [answer]
+ */
+export const settleCampaignAsk = (id, askId, answer = '') =>
+  req(`/${id}/asks/${encodeURIComponent(askId)}`, { method: 'PUT', body: { answer } });

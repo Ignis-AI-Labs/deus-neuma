@@ -29,17 +29,13 @@ import { getSettingsDir } from '../data-root.js';
 import { getRealmRoot } from '../user-realm.js';
 import { laneStateWriteReason } from '../sandbox-path-policy.js';
 import { isPrivateHost } from '../endpoint-guard.js';
-import { helperEnvironment } from '../agent-terminal-environment.js';
+import { BACKEND_SECRET_KEYS as SECRET_KEYS, helperEnvironment, withoutBackendSecrets } from '../agent-terminal-environment.js';
 import { comfyEngineEnvironment } from '../image-forge/comfyui-supervisor.js';
 import { pressEnvironment } from '../doc-press/chromium-press.js';
 import { isAutoHardGated } from '../protocol-guard.js';
 import { requireInstallOwner } from '../install-owner.js';
 import { listRoutes, routeKey } from './route-inventory.js';
 
-const SECRET_KEYS = Object.freeze([
-  'AUTH_SECRET', 'DNA_ENCRYPTION_KEY', 'DEPLOYER_PRIVATE_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY',
-  'XAI_API_KEY', 'LLM_API_KEY', 'ELEVENLABS_API_KEY', 'ETH_RPC_URL', 'BASE_MAINNET_RPC_URL',
-]);
 const PRIVATE_HOSTS = Object.freeze([
   '169.254.169.254', '100.64.0.1', '[::ffff:127.0.0.1]', '[::ffff:169.254.169.254]', '[::]',
   '10.0.0.1', '192.168.0.1', '[fd00::1]', '64:ff9b::a9fe:a9fe', '2002:a9fe:a9fe::',
@@ -158,6 +154,7 @@ const DEFAULT_DEPS = Object.freeze({
   privateHost: isPrivateHost,
   environments: Object.freeze({
     helper: (env, platform) => helperEnvironment(env, platform),
+    operator: (env) => withoutBackendSecrets(env),
     comfy: comfyEngineEnvironment,
     press: pressEnvironment,
   }),

@@ -7,6 +7,7 @@ import {
   buildSignConfirmView,
   buildGateView,
   isTrustedResolve,
+  isSignInMessage,
   DEFAULT_CHAIN_ID,
 } from '../../electron/wallet/confirm-view.cjs';
 
@@ -109,5 +110,26 @@ describe('isTrustedResolve — the sender-identity hinge', () => {
     expect(isTrustedResolve({ sender: dead }, dead)).toBe(false);
     expect(isTrustedResolve(null, dead)).toBe(false);
     expect(isTrustedResolve({ sender: dead }, null)).toBe(false);
+  });
+});
+
+// The sign-in signature says "Sign in" — proven on the backend's own challenge.
+describe('the sign-in challenge', () => {
+  it('a real sign-in challenge shows SIGN IN; any other message still shows SIGN', async () => {
+    const { generateChallenge } = await import('../../backend/services/auth.js');
+    const challenge = generateChallenge(ethers.Wallet.createRandom().address);
+    const view = buildSignConfirmView({ message: challenge });
+    expect(view.heading).toBe('SIGN IN');
+    expect(view.confirmLabel).toBe('SIGN IN');
+    expect(view.rejectLabel).toBe('CANCEL');
+    expect(view.body).toContain('wants you to sign in with your Ethereum account:');
+    const other = buildSignConfirmView({ message: 'I agree to the terms' });
+    expect(other.heading).toBe('SIGN MESSAGE');
+    expect(other.confirmLabel).toBe('SIGN');
+  });
+  it('only the first line counts — the phrase quoted later in a message is not a sign-in', () => {
+    expect(isSignInMessage('hello\nexample.com wants you to sign in with your Ethereum account:')).toBe(false);
+    expect(isSignInMessage('example.com wants you to sign in with your Ethereum account:\n0xabc')).toBe(true);
+    expect(isSignInMessage(undefined)).toBe(false);
   });
 });

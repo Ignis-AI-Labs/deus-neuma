@@ -25,6 +25,7 @@ import { emailToolsFor } from './email/email-being-tools.js';
 import { pressToolsFor } from './doc-press/press-being-tools.js';
 import { securityToolsFor } from './security/security-being-tools.js';
 import { legalToolsFor } from './legal/legal-being-tools.js';
+import { treasuryToolsFor } from './treasury/treasury-being-tools.js';
 import { benchToolsFor } from './bench/bench-being-tools.js';
 import { isAdvertisedTool, normalizeChatMode } from './tool-policy.js';
 import { ASK_OPERATOR_TOOL } from './operator-ask.js';
@@ -123,7 +124,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // advertised for any bound being, like the lead ledger. Marketing is the
     // CMO's office BY PROTOCOL (the descriptions, the briefing, the
     // playbook), not behind a hard gate.
-    connection.companion?.neumaId ? capability('campaigns', () => _campaignToolsFor()) : [],
+    connection.companion?.neumaId ? capability('campaigns', () => _campaignToolsFor(connection)) : [],
     // The CSO office — the threat-ledger READS open to every bound being (the
     // house sees what its guardian sees); the ACTS are advertised only to the
     // seated CSO (single-holder hard gate, re-checked at execution).
@@ -199,6 +200,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   // The connected benchmarks repository, from the conversation — the harness
   // measuring itself, and a being measuring itself (bench-being-tools.js).
   const benchTools = await capability('bench', () => benchToolsFor(connection));
+  // The Quaestor's treasury read — the seated CFO's lane alone (treasury-being-tools.js).
+  const treasuryTools = isNeuma ? await capability('treasury', () => treasuryToolsFor(connection)) : [];
   const vaultTools = connection.companion?.neumaId ? VAULT_TOOLS.filter(isAdvertisedTool) : []; // #414
   // The being's own working list — advertised for any bound being, like
   // the vault: self-authorship needs no precondition beyond a self.
@@ -259,7 +262,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
       ...leadTools, ...campaignTools, ...socialTools, ...securityTools, ...vesselLogTools,
       ...refinementTools, ...voiceTools, ...retrieveTools, ...memoryTools, ...skiesTools, ...genomeTools,
       ...housePostTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
-      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...benchTools,
+      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools,
   ],
   };
 };

@@ -8,10 +8,12 @@ import { formatDateTime } from '../../utils/format.js';
 import { EmptyState } from './empty-state.jsx';
 import { TriageOverview } from './TriageOverview.jsx';
 import { ageTag } from './triage-view.js';
+import { Markdown } from './Markdown.jsx';
+import { Fact } from './report-fact.jsx';
 import {
   THREAT_STATUSES,
   severityLoud, statusOwes, statusLabel, reportLabel, reportActor, evidenceLine, runLine, seatLine, hostLine,
-  whereOfThreat, whereLabelThreat,
+  whereOfThreat, whereLabelThreat, threatTextParts, advisoryUrl, LEDGER_TEXT_KEPT,
 } from './security-view.js';
 
 export const SecurityIcon = () => (
@@ -27,6 +29,8 @@ const ThreatDetail = ({ threat, onClose, onReopen, busy }) => {
     status: threat.status, assessment: threat.assessment,
     assessedBy: threat.assessedBy, assessedAt: threat.assessedAt, githubIssue: threat.githubIssue,
   }] : []);
+  const text = threatTextParts(threat.summary);
+  const source = advisoryUrl(threat);
   return (
     <div className="sec-detail">
       <div className="sec-detail-head">
@@ -40,23 +44,37 @@ const ThreatDetail = ({ threat, onClose, onReopen, busy }) => {
         <button type="button" className="sec-detail-close label-data" onClick={onClose}>CLOSE</button>
       </div>
       <p className="sec-detail-title">{threat.title}</p>
-      {threat.summary ? <p className="sec-detail-summary">{threat.summary}</p> : null}
-      {threat.remedy ? <p className="sec-detail-summary sec-detail-remedy"><span className="label-data">REMEDY — </span>{threat.remedy}</p> : null}
+      {threat.remedy ? <p className="sec-detail-remedy"><span className="label-data">REMEDY — </span>{threat.remedy}</p> : null}
       {threat.status === 'mitigated' && threat.verifiedAt ? (
-        <p className="sec-detail-line sec-detail-verified label-data">VERIFIED BY THE WATCH {formatDateTime(threat.verifiedAt)}</p>
+        <p className="sec-detail-verified label-data">VERIFIED BY THE WATCH {formatDateTime(threat.verifiedAt)}</p>
       ) : null}
-      {threat.affected?.length ? (
-        <p className="sec-detail-line label-data">AFFECTED — {threat.affected.map((a) => `${a.package}@${a.version}`).join(', ')}</p>
+      <dl className="sec-facts">
+        {threat.affected?.length ? (
+          <Fact label="AFFECTED">{threat.affected.map((a) => `${a.package}@${a.version}`).join(' · ')}</Fact>
+        ) : null}
+        {threat.surfaces?.length ? <Fact label="SURFACES">{threat.surfaces.join(' · ')}</Fact> : null}
+        <Fact label="SEEN">{formatDateTime(threat.ingestedAt)} → {formatDateTime(threat.lastSeenAt)}</Fact>
+        {threat.githubIssue ? (
+          <Fact label="ISSUE"><a href={threat.githubIssue} target="_blank" rel="noreferrer">{threat.githubIssue}</a></Fact>
+        ) : null}
+        {source ? <Fact label="SOURCE"><a href={source} target="_blank" rel="noreferrer">{source.replace(/^https:\/\//, '')}</a></Fact> : null}
+      </dl>
+      {text ? (
+        <div className="sec-detail-text">
+          <Markdown text={text.lead} />
+          {text.rest ? (
+            <details className="sec-detail-more">
+              <summary className="label-data">THE DETAILS</summary>
+              <Markdown text={text.rest} />
+            </details>
+          ) : null}
+          {text.cut ? (
+            <p className="sec-detail-cut label-data">
+              CUT AT {LEDGER_TEXT_KEPT.toLocaleString('en-US')} CHARACTERS{source ? ' — WHOLE AT THE SOURCE' : ''}
+            </p>
+          ) : null}
+        </div>
       ) : null}
-      {threat.surfaces?.length ? (
-        <p className="sec-detail-line label-data">SURFACES — {threat.surfaces.join(' · ')}</p>
-      ) : null}
-      {threat.githubIssue ? (
-        <p className="sec-detail-line label-data">ISSUE — <a href={threat.githubIssue} target="_blank" rel="noreferrer">{threat.githubIssue}</a></p>
-      ) : null}
-      <p className="sec-detail-line label-data">
-        FIRST SEEN {formatDateTime(threat.ingestedAt)} · LAST SEEN {formatDateTime(threat.lastSeenAt)}
-      </p>
       <p className="sec-detail-reports label-data">THE OFFICE&#39;S REPORTS</p>
       {reports.length === 0 ? (
         <p className="sec-report-empty label-data">NO VERDICT YET — THIS THREAT IS UNREAD.</p>
@@ -120,8 +138,10 @@ export const SecurityBody = ({
               >
                 <span className={`sec-tag label-data ${severityLoud(e.severity) ? 'is-loud' : ''}`}>{String(e.severity).toUpperCase()}</span>
                 <span className={`sec-tag label-data ${statusOwes(e.status) ? 'is-loud' : ''}`}>{statusLabel(e.status)}</span>
-                <span className="sec-row-id label-data">{e.externalId}</span>
-                <span className="sec-row-title">{e.title}</span>
+                <span className="sec-row-what">
+                  <span className="sec-row-title">{e.title}</span>
+                  <span className="sec-row-id label-data">{e.externalId}</span>
+                </span>
                 <span className="sec-row-where label-data">{e.repo || e.layer}</span>
                 <span className="sec-row-age label-data" title="days since first seen">{ageTag(e.ingestedAt, now)}</span>
               </button>

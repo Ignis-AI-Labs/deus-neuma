@@ -28,4 +28,4 @@
 import './BrandKits.css';
 import { BrandKitsShell } from './BrandKitsShell.jsx';
 
-export const BrandKitsSection = () => <BrandKitsShell />;
+export const BrandKitsSection = ({ brand = null }) => <BrandKitsShell brand={brand} />;

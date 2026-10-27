@@ -21,6 +21,7 @@ import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { menuEntry } from './linux-menu-entry.mjs';
+import { packageDescription } from './installer-license.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const UNPACKED = join(ROOT, 'release', 'linux-unpacked');
@@ -56,7 +57,7 @@ AutoReqProv: no
 ${REQUIRES.map((r) => `Requires: ${r}`).join('\n')}
 
 %description
-${pkg.description}
+${packageDescription(pkg.description)}
 
 %install
 mkdir -p %{buildroot}/opt/NEUMA %{buildroot}/usr/bin \\

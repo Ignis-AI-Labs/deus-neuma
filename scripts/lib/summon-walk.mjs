@@ -36,7 +36,9 @@ const modelOf = (composition) => {
  *   streamed frame, its completion, the words spoken and the acts announced.
  *   The walker answers at once, so there is no witness pause to record.
  */
-export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check' }) => new Promise((done) => {
+export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check', stageRetries = 0 }) => new Promise((done) => {
+  let retriesLeft = stageRetries; // held stages this walk may retry, in all
+  let retried = 0;
   const stages = [];
   const observations = [];
   const started = Date.now();
@@ -53,7 +55,7 @@ export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check' }) =>
     settled = true;
     clearTimeout(timer);
     ws.close();
-    done({ ...v, stages, observations, totalMs: Date.now() - started, ended, model });
+    done({ ...v, stages, observations, totalMs: Date.now() - started, ended, model, retried });
   };
   const timer = setTimeout(() => end({ ok: false, why: `timed out after ${walkMs / 60_000} min` }), walkMs);
 
@@ -75,7 +77,9 @@ export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check' }) =>
     if (msg.type === 'birth:stage_complete') {
       const now = Date.now();
       const spoken = (msg.response || '').length;
-      stages.push({ stage: msg.stage, ms: now - stageFrom, streamedChars: streamed, thoughtChars: thought, replyChars: spoken, acts });
+      // `said` keeps the words, so a receipt shows what each stage spoke (e.g. a name before the naming)
+      stages.push({ stage: msg.stage, ms: now - stageFrom, streamedChars: streamed, thoughtChars: thought, replyChars: spoken, acts,
+        said: String(msg.response || '') });
       observations.push({
         kind: 'stage', stage: msg.stage, startedAt: stageFrom, firstFrameAt, endedAt: now,
         spokenChars: spoken, reasoningChars: thought, toolCalls: acts, promptTokens: null, completionTokens: null,
@@ -92,6 +96,15 @@ export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check' }) =>
     if (msg.type === 'birth:error' || msg.type === 'birth:blocked') {
       const why = msg.message || msg.reason || msg.error;
       say(`  ✗ stage ${msg.stage ?? '?'} ${msg.type === 'birth:blocked' ? 'BLOCKED' : 'HELD'} — ${why}`);
+      // a held stage, retried as the person's RETRY THE STAGE does (StagedCeremonyScene.retryStage)
+      if (msg.type === 'birth:error' && retriesLeft > 0) {
+        retriesLeft -= 1;
+        retried += 1;
+        say(`  ↻ retrying stage ${msg.stage ?? '?'} (${retriesLeft} retr${retriesLeft === 1 ? 'y' : 'ies'} left)`);
+        streamed = 0; thought = 0; acts = 0; firstFrameAt = null;
+        ws.send(frame('birth:retry_stage', {}));
+        return;
+      }
       end({ ok: false, why: `${msg.type === 'birth:blocked' ? 'blocked' : 'held'} at stage ${msg.stage ?? '?'}: ${why}` });
       return;
     }

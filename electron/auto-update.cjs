@@ -2,8 +2,13 @@
 //
 // THE BARGAIN (ruling, 2026-08-11): […] A packaged NEUMA checks shortly after boot and every
 // 30 minutes, downloads in the background, and installs on the next quit. The
-// operator's only surface is a tray entry and one quiet OS notice — the desk
-// itself is never interrupted.
+// operator sees one quiet OS notice, a tray entry, and a slim bar on the desk
+// (update-bar.cjs → UpdateBar.jsx) with WHAT'S NEW; the desk itself is never
+// interrupted — the restart that installs happens only on the person's press.
+//
+// OFF UNTIL THE PERSON TURNS IT ON (Design note, 2026-10-25: […]). The bargain above holds only once the update check
+// is switched on in Settings → Security → Connections (electron/connections.cjs); until then the
+// timers ask nothing, and the person's own Check now (checkNow) is the one request made.
 //
 // THE FEED IS THE DEUS NEUMA SITE, AND IT IS PUBLIC (Design note, 2026-10-03: […]; the licence
 // gate was removed the same day — […]). The app
@@ -47,9 +52,12 @@ const {
   releasePublicKey,
   unfitForPlatform,
 } = require('./release-signature.cjs');
+const { notesText } = require('./update-notes.cjs');
+const path = require('path');
+const connections = require('./connections.cjs');
 
 const FEED_URL = 'https://deusneuma.ai/updates/';
-const DOWNLOADS_PAGE = 'https://deusneuma.ai/download';
+const DOWNLOADS_PAGE = 'https://deusneuma.ai/download/';
 const FEED_HOSTS = Object.freeze(['deusneuma.ai', 'www.deusneuma.ai']);
 // A launch checks after the desk settles; an always-on desk is never more
 // than 30 minutes behind a release that has passed the feed-live gate.
@@ -154,9 +162,31 @@ const trayUpdateEntry = ({ form, ready, availableVersion }) => {
 
 // Module-level live state — main.cjs is a singleton process, and the tray menu
 // rebuild needs to reach it without main holding an updater reference.
-let live = null; // { form, updater, shell } after a successful init
-let state = { ready: false, availableVersion: null };
+let live = null; // { form, updater, shell, check } after a successful init
+// notes: the verified offer's releaseNotes — the SIGNED feed's text, never the bare offer's
+let state = { form: 'dev', ready: false, availableVersion: null, notes: null };
 let timers = [];
+
+/** The update on offer right now, as data the desk's bar reads (update-bar.cjs). */
+const updateOffer = () => ({ ...state });
+
+// impure — the one restart that installs: only on the person's press (tray, or the desk's bar)
+/**
+ * The person's own "Check now": asked even while the update check is switched off, because the
+ * person asked. impure — one feed request.
+ * @returns {Promise<{ok: boolean, version?: string|null, reason?: string}>}
+ */
+const checkNow = async () => {
+  if (!live) return { ok: false, reason: 'this build does not update itself' };
+  const checked = await live.check();
+  return { ok: checked, version: state.availableVersion };
+};
+
+const restartToUpdate = () => {
+  if (!live || !state.ready) return false;
+  live.updater.quitAndInstall(false, true);
+  return true;
+};
 
 /**
  * What the tray gains right now: one entry, or nothing. Safe to call before
@@ -165,13 +195,11 @@ let timers = [];
 // impure — the click closures act on the live updater/shell
 const trayItems = () => {
   if (!live) return [];
-  const entry = trayUpdateEntry({ form: live.form, ...state });
+  const entry = trayUpdateEntry(state);
   if (!entry) return [];
   return [{
     label: entry.label,
-    click: () => (entry.action === 'restart'
-      ? live.updater.quitAndInstall(false, true)
-      : live.shell.openExternal(DOWNLOADS_PAGE)),
+    click: () => (entry.action === 'restart' ? restartToUpdate() : live.shell.openExternal(DOWNLOADS_PAGE)),
   }];
 };
 
@@ -231,6 +259,7 @@ const wireUpdater = ({
   platform = process.platform,
 }) => {
   const publicKey = releasePublicKey(publicKeyText);
+  state = { form, ready: false, availableVersion: null, notes: null };
   const noticed = new Set(); // one OS notice per kind per version per run
   const announce = (key, { title, body }, silent) => {
     if (noticed.has(key)) return;
@@ -266,7 +295,7 @@ const wireUpdater = ({
       announce(`unfit ${info.version}`, unfitNoticeFor(info.version), true);
       return;
     }
-    state.availableVersion = info.version;
+    state = { ...state, availableVersion: info.version, notes: notesText(verdict.signed?.releaseNotes) };
     if (form === 'self') {
       // A failed download is dispatched as the updater's 'error' event, logged below.
       updater.downloadUpdate().catch(() => {});
@@ -281,7 +310,8 @@ const wireUpdater = ({
     verifying = verifyOffer(info).finally(() => { verifying = null; });
   });
   updater.on('update-downloaded', (info) => {
-    state = { ready: true, availableVersion: info.version };
+    const notes = state.availableVersion === info.version ? state.notes : null;
+    state = { ...state, ready: true, availableVersion: info.version, notes };
     announce(info.version, noticeFor(form, info.version), false);
     refreshTray();
   });
@@ -335,8 +365,13 @@ const init = ({
     log.warn(`[neuma] auto-update unavailable: ${error.message}`);
     return { form };
   }
-  live = { form, updater, shell };
-  configureUpdater(updater, form, feedUrl);
+  try {
+    configureUpdater(updater, form, feedUrl);
+  } catch (error) {
+    // A malformed NEUMA_UPDATE_FEED_URL threw here and quit the whole app at launch.
+    log.warn(`[neuma] update feed unusable — no update checks: ${error.message}`);
+    return { form };
+  }
   // Chromium's stack, as electron-updater's own requests use (system proxy included); no cookies.
   const { net } = require('electron');
   const { check } = wireUpdater({
@@ -352,9 +387,16 @@ const init = ({
     platform,
   });
 
+  live = { form, updater, shell, check };
+
+  // OFF UNTIL TURNED ON (CONNECTIONS, Design note, 2026-10-25: the timers ask the person's switch at every
+  // tick, so turning it on or off in Settings takes effect without a restart, and nothing is asked
+  // of the site while it is off.
+  const dataRoot = connections.dataRootFor({ env, isPackaged: app.isPackaged, home: app.getPath('home'), repoRoot: path.join(__dirname, '..') });
+  const scheduled = () => (connections.isOn('update-check', { env, dataRoot }) ? check() : false);
   timers = [
-    setTimeout(check, FIRST_CHECK_DELAY_MS),
-    setInterval(check, CHECK_INTERVAL_MS),
+    setTimeout(scheduled, FIRST_CHECK_DELAY_MS),
+    setInterval(scheduled, CHECK_INTERVAL_MS),
   ];
   timers.forEach((t) => t.unref?.());
 
@@ -380,6 +422,9 @@ module.exports = {
   unfitNoticeFor,
   trayUpdateEntry,
   trayItems,
+  updateOffer,
+  checkNow,
+  restartToUpdate,
   siteVerdict,
   wireUpdater,
   init,

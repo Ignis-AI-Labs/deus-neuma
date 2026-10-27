@@ -16,6 +16,7 @@ import { createWorkspacePlaceRouter } from './workspace-place-routes.js';
 import { activePins } from '../../core/memory/pin-ledger.js';
 import { buildNeumaRecord } from '../../core/runtime/neuma-record.js';
 import { takeCounts } from '../../core/workspace/branch-view.js';
+import { slimForDisplay } from '../../core/workspace/session-display.js';
 import { readSkies } from '../../core/cosmos/skies-record.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { requireAuth } from '../services/auth.js';
@@ -229,11 +230,26 @@ router.get('/:id/sessions/:sessionId', async (req, res) => {
     // takes included — the desk needs every take locally to switch views
     // without a refetch) plus the per-point take counts. The FOLD to the
     // viewed take happens reader-side (the desk's branch-view mirror, the
-    // same law as the prompt seams).
-    res.json({ messages, takeCounts: takeCounts(messages) });
+    // same law as the prompt seams). `?view=display` slims the heavy parts
+    // (session-display.js) — the desk fetches them per turn when opened.
+    const rows = req.query.view === 'display' ? slimForDisplay(messages) : messages;
+    res.json({ messages: rows, takeCounts: takeCounts(messages) });
   } catch (error) {
     log.error('Session read', { error: error.message });
     res.status(500).json({ error: 'Failed to read session' });
+  }
+});
+
+// One point's full rows (every take) — what the display view left out of it:
+// thought text, tool detail, pasted images. Fetched when the desk opens one.
+router.get('/:id/sessions/:sessionId/turns/:turnId', async (req, res) => {
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(req.params.turnId)) return res.status(400).json({ error: 'bad turnId' });
+  try {
+    const messages = await workspace.readSession(req.params.id, req.params.sessionId);
+    res.json({ rows: messages.filter((m) => m?.turnId === req.params.turnId) });
+  } catch (error) {
+    log.error('Session turn read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read session turn' });
   }
 });
 

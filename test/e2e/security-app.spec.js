@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import { openDockApp } from './helpers/dock.js';
 import { setupIsolatedHouse, openDesk, settledShot as shot } from './helpers/isolated-house.js';
+import { underFloor } from './helpers/legibility.js';
 
 /**
  * End-to-end THE SECURITY WINDOW (2026-10-19) — the CSO office on the desk:
@@ -32,7 +33,13 @@ const MEMBERS = [CSO];
 
 const CRITICAL = {
   layer: 'software', source: 'osv', repo: 'neuma', externalId: 'GHSA-e2e-crit-0001', severity: 'critical',
-  title: 'Prototype pollution in deep-merge', summary: 'A crafted key reaches Object.prototype.',
+  title: 'Prototype pollution in deep-merge',
+  // the shape OSV serves for a GitHub advisory: ### sections and a fenced PoC — the detail renders it as structure
+  summary: [
+    '### Summary', 'A **crafted key** reaches `Object.prototype` through `merge()`.', '',
+    '### Details', 'The merge walks every own key, `__proto__` included, and assigns through it.', '',
+    '### PoC', '```javascript', 'merge({}, { __proto__: { polluted: true } });', '```',
+  ].join('\r\n'),
   affected: [{ package: 'deep-merge', version: '1.0.0' }], shipped: true,
   remedy: 'upgrade deep-merge 1.0.0 → ≥1.0.1 (shipped, direct dependency — bump it in package.json)',
 };
@@ -166,6 +173,7 @@ test('the security window: the dangerous first, a verdict reopened, the watch cl
   }
   await expect(tri.locator('.tri-showing')).toContainText('SHOWING 6 OF 6 THREATS');
   await shot(win, 'security-01-ledger');
+  expect(await underFloor(sec)).toEqual([]);
 
   // a count is a door: the critical cell narrows the ledger to exactly it; a second press returns all
   await cell('1 CRITICAL NEW').click();
@@ -240,7 +248,19 @@ test('the security window: the dangerous first, a verdict reopened, the watch cl
   const remedy = detail.locator('.sec-detail-remedy');
   await expect(remedy).toBeVisible();
   await expect(remedy).toHaveText(`REMEDY — ${CRITICAL.remedy}`);
+  // the advisory reads as structure: its Summary leads, its Details and PoC fold until asked for
+  const advisory = detail.locator('.sec-detail-text');
+  await expect(advisory.locator('strong')).toHaveText('crafted key');
+  await expect(advisory).not.toContainText('###');
+  await expect(advisory.locator('h3').first()).toBeHidden();
+  await expect(detail.locator('.sec-facts')).toContainText('osv.dev/vulnerability/GHSA-e2e-crit-0001');
   await shot(win, 'security-06-remedy');
+  expect(await underFloor(sec)).toEqual([]);
+  await advisory.locator('.sec-detail-more > summary').click();
+  await expect(advisory.locator('h3').first()).toHaveText('Details');
+  await expect(advisory.locator('pre')).toContainText('__proto__');
+  await shot(win, 'security-09-advisory');
+  expect(await underFloor(sec)).toEqual([]);
 
   // A CLAIM PROVEN — the CSO's mitigated, then the watch's VERIFIED row and stamp
   await rows.filter({ hasText: VERIFIED.externalId }).click();

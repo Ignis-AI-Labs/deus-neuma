@@ -17,9 +17,14 @@
  *
  * Last run green: 2026-08-30 (Claude Opus 5).
  */
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, afterAll } from 'vitest';
 import { FEEDS, FEED_NAMES } from '../../backend/services/platform-feed/platform-feed-sources.js';
 import { readPlatformFeed } from '../../backend/services/platform-feed/platform-feed-read.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// Public platform data is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['platform-data']);
+afterAll(() => connections.restore());
 
 // The platform is a real service on the other side of a real network. These
 // reads are cached at 30-300s upstream, so they are cheap, but they are not

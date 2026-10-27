@@ -31,8 +31,8 @@ flowchart TD
 ```
 
 - **Canonical policy:** the sibling coding-standards repository, version 2.0.0
-  at adoption. Maintain semantic changes there; Neuma consumes an explicit pin.
-- **Packaged copy:** `backend/services/coding-standards/bundle/`. Its 17 Markdown
+  at adoption, 2.4.0 now (DESIGN joined the core in 2.2.0; 2.3.0 added the less-to-read rule, which 2.3.1 corrects to […]; 2.4.0 adds "show, don't tell"). Maintain semantic changes there; Neuma consumes an explicit pin.
+- **Packaged copy:** `backend/services/coding-standards/bundle/`. Its 19 Markdown
   files are byte-identical to the source. `source-manifest.json` preserves the
   original inventory and routing. `manifest.json` records module hashes plus a
   content digest covering the original manifest and ordered module contents.
@@ -161,15 +161,17 @@ report it unavailable; they continue using their verified pin. No network access
 automatic imports, policy rewrites or per-inference freshness reports are added.
 The cadence is followed through harness instructions; it is not a hosted scheduler.
 
-Latest forced upstream comparison: **2026-09-07 14:41**. The current working files
-in `/workspace/repos/project-kofemim/` match Neuma's packaged **Ignis 2.0.0**
-exactly: all **17 standards**, core order, module routing and receipt. A fresh
-staged import was verified and compared with the installed bundle; no refresh
-was needed. Upstream generated instructions also passed `build --check`.
+Latest forced upstream comparison: **2026-10-24 16:24**. The pin was
+refreshed from 2.3.1 to **Ignis 2.4.0** (coding-standards `b19298e`) by a staged
+import into a new directory, verified, then installed: all **19 standards**, with
+DESIGN (SHINKEI 真計 "true measure", JŌHŌ SEKKEI 情報設計 "information design",
+CHOKKAN 直感 "intuition", […], and "show, don't tell") in the core and
+INSTALLERS among the modules. Upstream passed `check_standards.py`. Earlier the same day:
+2.0.0 to 2.2.0 (12:37), 2.2.0 to 2.3.0 (13:20) and 2.3.0 to 2.3.1 (13:55).
 
 The [installed receipt](../../backend/services/coding-standards/bundle/manifest.json)
 records source digest
-`d7e2ecd3d36aa28ce7394a9131c8c3d88b21bccb3c60b50121b3a91ba5fa27fa`.
+`03a38c424060a10c6a3dc9b6b2115591f214012aa05e67e671ed0c6e241da724`.
 Compare content as well as version on subsequent checks: a working-copy policy
 edit can precede a version bump. This confirms synchronization, not completion
 of the remaining enforcement work below.

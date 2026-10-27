@@ -26,7 +26,7 @@ const MANAGED = Object.freeze([
 ]);
 
 /** Resolve the secrets file path (overridable for packaging/tests). */
-const secretsFilePath = () =>
+export const secretsFilePath = () =>
   process.env.NEUMA_SECRETS_FILE || path.join(os.homedir(), '.neuma', 'secrets.json');
 
 const readSecrets = (file) => {
@@ -43,17 +43,43 @@ const writeSecrets = (file, data) => {
 };
 
 /**
+ * Close the folder holding the secrets file to its owner (0700): the key is only
+ * as private as the folder around it, and the shell's log writer can create
+ * ~/.neuma first under the ordinary umask. A folder someone else owns is left
+ * as it is. impure (fs).
+ * @param {string} dir
+ * @returns {'closed'|'already'|'skipped'|string} what happened; `failed: <code>` when it could not
+ */
+const closeFolder = (dir) => {
+  if (process.platform === 'win32') return 'skipped';
+  try {
+    const st = fs.statSync(dir);
+    if ((st.mode & 0o077) === 0) return 'already';
+    if (st.uid !== process.getuid()) return 'skipped';
+    fs.chmodSync(dir, 0o700);
+    return 'closed';
+  } catch (err) {
+    return err.code === 'ENOENT' ? 'skipped' : `failed: ${err.code || err.message}`;
+  }
+};
+
+/**
  * Ensure the at-rest secrets exist in process.env before config loads. Skipped
  * under NODE_ENV=test (tests use ephemeral per-process defaults). Idempotent.
  * @param {{ env?: Object }} [opts] - inject env for testing
- * @returns {{ generated: string[], file: (string|null) }} which keys were freshly
- *   generated, and the file written (null if nothing changed)
+ * @returns {{ generated: string[], file: (string|null), folder?: string }} which keys were freshly
+ *   generated, the file written (null if nothing changed), and what closing its folder did
  */
 export const ensureSecrets = ({ env = process.env } = {}) => {
   if (env.NODE_ENV === 'test') return { generated: [], file: null };
 
   const file = secretsFilePath();
   const stored = readSecrets(file);
+  // A keychain-locked record (electron/key-lock) holds no plain key: minting one
+  // here would strand every being encrypted under the locked one.
+  if (stored.v === 2 && MANAGED.some(({ env: envKey }) => !env[envKey])) {
+    throw new Error(`${file} is locked by the desk's keychain — start Neuma from the app, or set the keys in the environment`);
+  }
   const generated = [];
   let dirty = false;
 
@@ -68,5 +94,5 @@ export const ensureSecrets = ({ env = process.env } = {}) => {
   }
 
   if (dirty) writeSecrets(file, stored);
-  return { generated, file: dirty ? file : null };
+  return { generated, file: dirty ? file : null, folder: closeFolder(path.dirname(file)) };
 };

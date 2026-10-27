@@ -8,7 +8,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { requireAuth } from '../services/auth.js';
 import { createLogger } from '../services/logger.js';
-import { getRealmRoot, setRealmRoot, realmStats, listChats } from '../services/user-realm.js';
+import { getRealmRoot, setRealmRoot, realmStats, listChats, readChat, chatText } from '../services/user-realm.js';
 import { getChatLabels, setChatLabel } from '../services/user-chat-labels.js';
 import { getCouncilLabels, setCouncilLabel } from '../services/user-council-labels.js';
 import { autotitleCouncils } from '../services/chat-titler.js';
@@ -92,6 +92,18 @@ router.get('/chats', async (req, res) => {
   } catch (error) {
     log.error('Realm chats list failed', { error: error.message });
     res.status(500).json({ error: 'Could not list chats' });
+  }
+});
+
+// GET /chats/:neumaId/export — one conversation as plain text: the person's own copy, readable anywhere.
+// The copy is sealed on disk; only its owner's session opens it (walletDir is the caller's own).
+router.get('/chats/:neumaId/export', async (req, res) => {
+  try {
+    const turns = await readChat(req.walletAddress, req.params.neumaId, { limit: 0 });
+    res.json({ neumaId: req.params.neumaId, text: chatText(turns), turns: turns.length });
+  } catch (error) {
+    log.warn('Realm chat export failed', { error: error.message });
+    res.status(/Invalid/.test(error.message) ? 400 : 500).json({ error: 'Could not export that conversation' });
   }
 });
 

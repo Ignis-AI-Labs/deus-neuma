@@ -127,21 +127,43 @@ body.mod-open .relink-md code.relink-md-path:hover {
   margin: 0.8em 0;
 }
 
-.relink-md table {
+/* A table sizes its columns to their words (Design note, 2026-10-24: […],
+   […]). The body's break-word made every cell's narrowest width one
+   letter, so short columns were crushed while a long one took the room.
+   Inside a cell a word only breaks when it cannot fit at all (break-word
+   never shrinks the narrowest width); a link may break anywhere, so a long
+   URL gives way instead of widening the table. Wider than the message, the
+   table scrolls inside its own frame. */
+.relink-md-table {
   margin: 0.6em 0;
-  border-collapse: collapse;
-  display: block;
   max-width: 100%;
   overflow-x: auto;
 }
 
+.relink-md table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
 .relink-md th,
 .relink-md td {
-  border: 1px solid var(--line);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: manual;
 }
+
+.relink-md th:first-child,
+.relink-md td:first-child { padding-left: 0; }
+
+/* A short cell (table-cell.js) reads as one unit: one line, its column
+   sized to it. */
+.relink-md .relink-md-short { white-space: nowrap; }
+
+.relink-md td a { overflow-wrap: anywhere; }
 
 .relink-md th {
   font-family: var(--font-data);
@@ -150,8 +172,11 @@ body.mod-open .relink-md code.relink-md-path:hover {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
-  background: var(--color-glass-light);
+  border-bottom-color: var(--line-hover);
+  vertical-align: bottom;
 }
+
+.relink-md tbody tr:last-child td { border-bottom: none; }
 
 .relink-md del {
   color: var(--color-text-tertiary);

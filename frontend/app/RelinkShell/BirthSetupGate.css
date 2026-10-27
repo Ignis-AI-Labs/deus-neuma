@@ -101,3 +101,10 @@
   font-size: var(--text-xs);
   color: var(--signal);
 }
+
+/* the Ethereum walkthrough needs room for its QR and address; a short window scrolls inside the card */
+.birth-setup-card {
+  max-width: 620px;
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
+}

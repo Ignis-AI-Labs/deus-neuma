@@ -1,0 +1,35 @@
+/* doors.css — the one door mark (DoorButton.jsx): the label floor (13px,
+   --text-label), a hairline press like every settings control, the arrow
+   in signal once it is pointed at. Light rises, never jumps (no-flash). */
+
+.door-btn {
+  display: inline-block;
+  vertical-align: middle;
+  min-height: 32px;
+  line-height: 30px;
+  font-size: var(--text-label);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.door-btn .door-arrow { color: var(--color-text-tertiary); transition: color var(--snap); }
+.door-btn:hover:not(:disabled) .door-arrow { color: var(--signal); }
+.door-btn.is-shut {
+  font-family: var(--font-data);
+  color: var(--color-text-secondary);
+  padding: 0;
+  min-height: 0;
+}
+
+/* In a window's title bar: the title's own register, a door only on its arrow and hover. */
+.door-btn.is-bar {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+.door-btn.is-bar:hover { color: var(--signal); }
+
+/* A hand-over drafted: the member's chat holds the ask; nothing is sent until the operator sends it. */
+.door-handed { font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.12em; color: var(--signal); }

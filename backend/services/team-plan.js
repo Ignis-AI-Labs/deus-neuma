@@ -25,6 +25,7 @@ import { safeChatId } from '../../core/tasks/task-chat.js';
 import { planRecordFrom, materializePlanTasks } from '../../core/tasks/plan-record.js';
 import { ensureFilesystemRoots } from './mcp-filesystem.js';
 import { notifyAwaitingAnswer } from './desk-notices.js';
+import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 import { createLogger } from './logger.js';
 import { normalizeStepFiles } from './team-step-files.js';
 import { normalizeClock, normalizeCheckIn, describeClock, NO_CLOCK, DEFAULT_CHECK_IN_MINUTES } from './team-clock.js';
@@ -258,6 +259,7 @@ export const requestPlanApproval = (connection, { name, goal, steps, workspace =
       const entry = pending.get(id);
       if (!entry) return;
       pending.delete(id);
+      clearLiveCard(id);
       if (signal) signal.removeEventListener('abort', entry.onAbort);
       // The desk learns the card settled on EVERY path — no dangling buttons.
       _safeSend(connection.ws, {
@@ -303,6 +305,7 @@ export const requestPlanApproval = (connection, { name, goal, steps, workspace =
         needs: [...(s.needs || [])],
       })),
     });
+    noteLiveCard(connection, { id, kind: 'plan', title: name || goal });
   });
 
 /**

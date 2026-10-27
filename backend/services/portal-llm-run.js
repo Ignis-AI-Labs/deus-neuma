@@ -42,6 +42,7 @@ import { createSpeechTurn, resolveTurnVoice } from './voice/speech-turn.js';
 import { makeSpeechClock } from './portal-speech-clock.js';
 import { createSpeechLoopGuard } from './speech-loop-guard.js';
 import { withSpokenContent } from './turn-failure-record.js';
+import { tripMandateForLane } from './marketing/mandate/mandate-tripwire.js';
 
 const log = createLogger('Portal');
 
@@ -307,6 +308,8 @@ const _handleResponseSafety = async (ws, fullResponse, connection) => {
   if (!shouldBlock(rogueResult)) return { blocked: false };
 
   log.warn('Rogue patterns blocked', { name: companion?.name, flags: rogueResult.flags.map(f => f.id) });
+  // A held-back response from the CMO pauses its mandate (marketing/mandate/) — never throws.
+  await tripMandateForLane({ wallet: connection.walletAddress, laneId: companion?.neumaId, kind: 'rogue', detail: `a response was held back (${rogueResult.flags.map(f => f.id).join(', ')})` });
   if (companion?.neumaId) {
     try {
       await neumaWorkspace.addJournalEntry(companion.neumaId, {

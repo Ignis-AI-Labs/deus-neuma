@@ -27,6 +27,7 @@ import path from 'path';
 import { existsSync, realpathSync } from 'fs';
 import { getDataRoot, getSettingsDir } from './data-root.js';
 import { getRealmRoot } from './user-realm.js';
+import { foldName } from './wall-spelling.js';
 
 const PLATFORM_STATE_REFUSAL = 'That path is this install\'s own state (its settings or the realm every house keeps) — '
   + 'it changes only through the platform\'s own acts, never a file write. Reading it is fine.';
@@ -131,7 +132,7 @@ const carriesRun = (parts, segments) =>
 // its .git or its scripts/ aside moves the gate with it, and only the disk
 // knows which directory named `scripts` holds a git-hooks.
 const reachesRepoGate = (target, segments) => {
-  const parts = target.toLowerCase().split(path.sep).filter(Boolean);
+  const parts = foldName(target).split(path.sep).filter(Boolean);
   if (carriesRun(parts, segments)) return true;
   return segments.some((_, held) => {
     const tailIsGate = segments.slice(0, held).every((segment, k) => parts[parts.length - held + k] === segment);
@@ -141,8 +142,9 @@ const reachesRepoGate = (target, segments) => {
 
 /**
  * Does a WRITE reach a wall — the wall itself, anything below it, or a
- * directory holding it? Case-folded, so a case-insensitive volume cannot be
- * asked for `.BashRC` instead. Pure for place walls; a repository gate looks
+ * directory holding it? Both sides in one spelling (wall-spelling.js: NFC, full
+ * case fold), so a case- or normalization-insensitive volume cannot be asked
+ * for `.BashRC` or `.ſſh` instead. Pure for place walls; a repository gate looks
  * at the disk for the gate a directory holds (impure).
  * @param {string} filePath
  * @param {Array<{ path: string, reason: string } | { segments: string[], reason: string }>} walls
@@ -150,13 +152,13 @@ const reachesRepoGate = (target, segments) => {
  */
 export const platformWallWriteReason = (filePath, walls) => {
   const resolved = path.resolve(filePath);
-  const target = resolved.toLowerCase();
+  const target = foldName(resolved);
   for (const wall of walls) {
     if (wall.segments) {
       if (reachesRepoGate(resolved, wall.segments)) return wall.reason;
       continue;
     }
-    const at = wall.path.toLowerCase();
+    const at = foldName(wall.path);
     if (atOrBelow(target, at) || atOrBelow(at, target)) return wall.reason;
   }
   return null;

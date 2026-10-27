@@ -205,7 +205,7 @@ export const createReplyCandidates = (opts = {}) => {
      * @param {{postId: string, conversationId?: string|null, authorId?: string|null,
      *   username?: string|null, verified: boolean, verifiedType?: string|null,
      *   text: string, postCreatedAt?: string|null, category?: string,
-     *   inReplyToPostId?: string|null, substance?: string}} candidate
+     *   inReplyToPostId?: string|null, substance?: string, accountId?: string|null}} candidate
      * @returns {Promise<{added: boolean, candidate: object}>}
      */
     add(candidate) {
@@ -216,6 +216,10 @@ export const createReplyCandidates = (opts = {}) => {
           let grew = false;
           if (!existing.inReplyToPostId && candidate.inReplyToPostId) {
             existing.inReplyToPostId = String(candidate.inReplyToPostId);
+            grew = true;
+          }
+          if (!existing.accountId && candidate.accountId) {
+            existing.accountId = String(candidate.accountId);
             grew = true;
           }
           if (!existing.substance) {
@@ -250,6 +254,9 @@ export const createReplyCandidates = (opts = {}) => {
           substance: candidate.substance === 'substantive' || candidate.substance === 'low-effort'
             ? candidate.substance
             : assessSubstance(candidate.text),
+          // WHICH of the house's X accounts was answered — the one an answer
+          // speaks as. Null on a record from before accounts (its first).
+          accountId: candidate.accountId ? String(candidate.accountId) : null,
           firstSeenAt: new Date().toISOString(),
         };
         entries.push(entry);

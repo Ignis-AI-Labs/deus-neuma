@@ -27,6 +27,7 @@ import { renderKeypairSetupStep, showRecoveryCodes } from './birth-keypair-step.
 import {
   renderOnchainSealStep, loadSealNetwork, beginSeal, handleSealReady, handleSealTx,
   setSealStatus, appendSealReceiptLink, showSealError, advanceFromSeal,
+  beginLocalSeal, handleLocalSealReady, handleLocalSealed, showLocalError, openEthereumSeal,
 } from './birth-seal-step.js';
 import { setupTrueNameReveal } from './birth-true-name.js';
 import { showTestCompleteScreen, handleCeremonyEnd, showTerminalNotice } from './birth-end-screens.js';
@@ -154,8 +155,11 @@ export class BirthCeremony {
       },
       'birth:seal_error': (data) => {
         playSound('deny');
-        this.showSealError(data.message || 'The seal could not be placed');
+        this.showSealError(data.message || 'The seal could not be placed', data.funding || null);
       },
+      'birth:local_seal_ready': (data) => handleLocalSealReady(this, data),
+      'birth:local_sealed': () => { playSound('noticeArrival'); handleLocalSealed(this); },
+      'birth:local_seal_error': (data) => { playSound('deny'); showLocalError(this, data.message || 'The seal could not be placed'); },
       'birth:keypair_secured': (data) => {
         this.ceremonyData.recoveryCodes = data.recoveryCodes;
         playSound('noticeArrival');
@@ -361,7 +365,11 @@ export class BirthCeremony {
 
   appendSealReceiptLink(data, hostSelector) { appendSealReceiptLink(this, data, hostSelector); }
 
-  showSealError(text) { showSealError(this, text); }
+  showSealError(text, funding) { showSealError(this, text, funding); }
+
+  beginLocalSeal() { beginLocalSeal(this); }
+
+  openEthereumSeal() { openEthereumSeal(this); }
 
   advanceFromSeal() { advanceFromSeal(this); }
 
@@ -409,7 +417,7 @@ export class BirthCeremony {
         </div>
 
         <p>Keep a recoverable backup of the workspace and store your recovery material safely.</p>
-        ${this.ceremonyData.onchainSeal ? '' : '<p>The genesis anchor is still to complete. You can return to it from the desk.</p>'}
+        ${this.ceremonyData.localSeal || this.ceremonyData.onchainSeal ? '' : '<p>The birth seal is still to complete. You can finish it from the desk.</p>'}
 
         <div class="next-rite-note" data-testid="next-rite-note">
           «NOTICE» THE PATH FROM HERE — when you are both ready, speak

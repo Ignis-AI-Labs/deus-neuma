@@ -28,7 +28,7 @@ const STRANGER = '0x66eb7f88a509b4180bd32a1ebc032f4e79a4eecf';
 // (core/wallet/keypair-custody.js isSealed): ciphertext + tag on both.
 const ENVELOPE = { ciphertext: 'a'.repeat(64), tag: 'b'.repeat(32), iv: 'c'.repeat(24) };
 
-const lane = (root, id, { name, custody, anchor } = {}) => {
+const lane = (root, id, { name, custody, anchor, local } = {}) => {
   mkdirSync(path.join(root, id, 'identity'), { recursive: true });
   mkdirSync(path.join(root, id, 'keys'), { recursive: true });
   writeFileSync(path.join(root, id, 'owner.json'), JSON.stringify({ wallet: WALLET, claimedAt: 1781285164704 }));
@@ -53,6 +53,12 @@ const lane = (root, id, { name, custody, anchor } = {}) => {
       schema: 'neuma-onchain-seal/1', txHash: `0x${'e'.repeat(64)}`,
     }));
   }
+  if (local) {
+    // both halves of the seal on this computer (the probe reads shape; the flow verifies before writing)
+    writeFileSync(path.join(root, id, 'identity', 'local-seal.json'), JSON.stringify({
+      schema: 'neuma-local-seal/1', soul: { signature: `0x${'f'.repeat(130)}` }, witness: { signature: `0x${'a'.repeat(130)}` },
+    }));
+  }
 };
 
 describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
@@ -69,6 +75,7 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
     lane(root, 'sovereign', { name: 'Sovereign', custody: true, anchor: true });
     lane(root, 'alder', { name: 'Alder', custody: true, anchor: false });
     lane(root, 'nameless', { custody: true, anchor: true });
+    lane(root, 'rowan', { name: 'Rowan', custody: true, local: true });
 
     const { createSessionToken } = await import('../../backend/services/auth.js');
     token = createSessionToken(WALLET);
@@ -128,13 +135,13 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
     const res = await get(token);
     expect(res.status).toBe(200);
     // localeCompare is case-insensitive, so the nameless lane sorts by its id.
-    expect(res.body.beings.map((b) => b.name)).toEqual(['Alder', 'nameless', 'Sovereign', 'Wynn']);
+    expect(res.body.beings.map((b) => b.name)).toEqual(['Alder', 'nameless', 'Rowan', 'Sovereign', 'Wynn']);
     expect(res.body.house.name).toBeTruthy();
   });
 
   test('WYNN: sealed and anchored, custody OWED — the lane that motivated this surface', async () => {
     const wynn = byId((await get(token)).body, 'wynn');
-    expect(wynn).toMatchObject({ sealed: true, keypairCustody: false, onchainSealed: true, unreadable: false });
+    expect(wynn).toMatchObject({ sealed: true, keypairCustody: false, onchainSealed: true, birthSealed: true, unreadable: false });
     // writeVoiceSeal stamps the receipt itself — a write-once seal marks THE
     // MOMENT, and a caller-supplied instant is correctly ignored. So the claim
     // is that a real instant came back, not that our fixture's one survived.
@@ -143,12 +150,17 @@ describe('GET /api/v1/roster/standing — the whole house, in one read', () => {
 
   test('SOVEREIGN: nothing owed — custody done, sealed, anchored', async () => {
     expect(byId((await get(token)).body, 'sovereign'))
-      .toMatchObject({ sealed: true, keypairCustody: true, onchainSealed: true });
+      .toMatchObject({ sealed: true, keypairCustody: true, onchainSealed: true, birthSealed: true });
+  });
+
+  test('ROWAN: sealed on this computer only — the birth seal stands, nothing on chain, nothing owed', async () => {
+    expect(byId((await get(token)).body, 'rowan'))
+      .toMatchObject({ keypairCustody: true, onchainSealed: false, birthSealed: true });
   });
 
   test('ALDER: custody done but never sealed and never anchored', async () => {
     expect(byId((await get(token)).body, 'alder'))
-      .toMatchObject({ sealed: false, keypairCustody: true, onchainSealed: false });
+      .toMatchObject({ sealed: false, keypairCustody: true, onchainSealed: false, birthSealed: false });
   });
 
   test('the private key never leaves the server — the standing carries STATE, never material', async () => {

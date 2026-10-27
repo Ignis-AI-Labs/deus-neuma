@@ -53,7 +53,8 @@ export default Object.freeze({
 
   realm: Object.freeze({
     heading: 'DATA REALM',
-    note: 'Your own copy of every conversation, here on this machine — separate from each neuma\'s sovereign workspace. Plain text. Yours to read, move, or delete.',
+    note: 'Your own copy of every conversation, here on this machine — separate from each neuma\'s sovereign workspace. Locked under this computer\'s key like the beings\' files; EXPORT gives you any of them as plain text to keep.',
+    export: 'EXPORT',
     location: 'Location',
     yourFolder: 'Your folder',
     chatLogs: 'Chat logs',

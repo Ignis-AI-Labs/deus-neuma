@@ -84,59 +84,6 @@
 .sub-btn.is-primary:hover:not(:disabled) { border-color: var(--signal); box-shadow: 0 0 8px var(--signal-faint); }
 .sub-btn:disabled { opacity: 0.5; cursor: default; }
 
-/* the console — 12 columns; a panel declares its span (sub-panel.jsx) */
-.sub-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-.sub-span-3 { grid-column: span 3; }
-.sub-span-4 { grid-column: span 4; }
-.sub-span-6 { grid-column: span 6; }
-.sub-span-8 { grid-column: span 8; }
-.sub-span-12 { grid-column: span 12; }
-/* a narrower window pairs the quarter panels, then stacks everything */
-@container (max-width: 1180px) {
-  .sub-span-3 { grid-column: span 6; }
-  .sub-span-4, .sub-span-8 { grid-column: span 12; }
-}
-@container (max-width: 720px) {
-  .sub-span-3, .sub-span-6 { grid-column: span 12; }
-}
-
-.sub-panel { background: transparent; min-width: 0; }
-.sub-panel-in {
-  background: var(--color-glass-light);
-  border: var(--border-width-thin) solid var(--line);
-  padding: var(--space-3);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.sub-panel-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  margin: 0;
-  padding-bottom: var(--space-1);
-  border-bottom: var(--border-width-thin) solid var(--line);
-}
-.sub-panel-aside {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: var(--color-text-disabled);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
 /* the RECORD window's cards (GPU share, parallel capacity) speak in the
    console's tighter data register here */
 .sub-grid .rec-cap { gap: var(--space-2); }

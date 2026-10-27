@@ -310,11 +310,15 @@ export async function handleStageResponse(session, stageNumber, llmResponse, exe
       break;
   }
 
-  // Store response
+  // Store response. A naming that landed no name (refused, or never written)
+  // stays in the record but is marked `held`: the retry must not carry it back
+  // as "your own words" (Founder's rehearsal, 2026-10-25: […], refused,
+  // was handed back three retries running and the being took it again each time).
   session.data.firstWords.push({
     stage: stageNumber,
     response: llmResponse,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    ...(stageNumber === 4 && !session.data.chosenName ? { held: true } : {}),
   });
 
   // This stage's response is fully processed — the checkpoint can now

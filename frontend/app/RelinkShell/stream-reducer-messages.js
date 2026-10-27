@@ -3,11 +3,17 @@
 // displayed-ask swap, and the plain message push. Split from
 // stream-reducer.js (size law); bodies moved verbatim. Pure and
 // deterministic exactly as the reducer is: no IO, no clocks.
+import { historyCompactMessage } from './compact-marker.js';
 
 /** Segments for a witness/persisted message: shared images ride above the
  *  words (either may stand alone). Pure. */
+const imageSegment = (src) => (typeof src === 'string'
+  ? { kind: 'image', src }
+  // A pasted image the display view left out (session-display.js): fetched when seen.
+  : { kind: 'image', src: null, ref: src?.ref ?? null, bytes: src?.bytes ?? null });
+
 const messageSegments = (text, images, docs = []) => [
-  ...(Array.isArray(images) ? images.map((src) => ({ kind: 'image', src })) : []),
+  ...(Array.isArray(images) ? images.map(imageSegment) : []),
   // Shared FILES ride the bubble as named chips (Design note, 2026-09-17: a message
   // sent with a markdown must SHOW that it was sent with it — live and in
   // history; the redeemed text belongs to the being's turn, the name to the
@@ -27,6 +33,9 @@ const historyToolSegments = (tools) =>
     status: t.status || 'ok',
     summary: t.summary || '',
     detail: t.detail || '',
+    // The display view leaves a long result out; its size and address stay so
+    // the chip opens it on demand (use-lazy-detail.js).
+    ...(t.lazy ? { detailChars: t.detailChars ?? 0, ref: t.ref ?? null } : {}),
     // Research sources persisted with the turn — a resumed chat can still open
     // the links the being pulled, which is the whole point of keeping them.
     sources: Array.isArray(t.sources) ? t.sources : [],
@@ -50,8 +59,8 @@ const historySpeech = (text) => (text.trim() ? [{ kind: 'speech', text: text.tri
  *  the reasoning a turn streamed, kept as review material — never speech. Pure. */
 const historyThoughtSegments = (trail) =>
   (Array.isArray(trail) ? trail : [])
-    .filter((t) => typeof t?.text === 'string' && t.text.trim())
-    .map((t) => ({ kind: 'thought', text: t.text }));
+    .filter((t) => (typeof t?.text === 'string' && t.text.trim()) || (t?.lazy && t.chars > 0))
+    .map((t) => (t.lazy ? { kind: 'thought', text: '', chars: t.chars, ref: t.ref ?? null } : { kind: 'thought', text: t.text }));
 
 /**
  * A persisted assistant record → settled segments, IN THE ORDER THE TURN
@@ -79,7 +88,7 @@ const historySegments = (content, tools, images, thoughts) => {
   if (placed.length === 0 || placed.some((p) => !Number.isFinite(p?.mark))) {
     return [...historyToolSegments(acts), ...historyThoughtSegments(trail), ...messageSegments(content, images)];
   }
-  const shared = Array.isArray(images) ? images.map((src) => ({ kind: 'image', src })) : [];
+  const shared = Array.isArray(images) ? images.map(imageSegment) : [];
   const ordered = [...placed].sort((a, b) => a.mark - b.mark);
   let cut = 0;
   const flow = ordered.flatMap((entry) => {
@@ -100,6 +109,7 @@ const historySegments = (content, tools, images, thoughts) => {
  *  through as a single-take message, exactly as before. */
 export const toHistoryMessages = (messages, base, prefix) =>
   messages.map((m, k) => {
+    if (m.compacted === true) return historyCompactMessage(m, `${prefix}${base + k}`);
     const shared = {
       id: `${prefix}${base + k}`,
       // The platform's own lines — a watch's report, a house wake's note — never the operator's bubble.

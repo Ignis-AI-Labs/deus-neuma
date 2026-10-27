@@ -181,3 +181,26 @@ describe('a benchmark sitting never reaches stored memory', () => {
     expect(closedBookCatalog({}, tools)).toBe(tools);
   });
 });
+
+describe('a joined tool name resolves like the bare one (AgentDojo dojofix replay, 2026-10-25)', () => {
+  const catalog = [
+    { server: 'caller', name: 'get_all_hotels_in_city' },
+    { server: 'web', name: 'web_search' },
+    { server: 'fs', name: 'read_file' },
+  ];
+  const sitting = { _closedBook: true, _turnCatalog: catalog };
+
+  test('the sender\'s tool called as caller__name (the native form) is allowed, not refused as closed-book', () => {
+    for (const toolName of ['caller__get_all_hotels_in_city', 'caller:get_all_hotels_in_city', 'caller/get_all_hotels_in_city', 'get_all_hotels_in_city']) {
+      const { allowed, refused } = closedBookSplit(sitting, [{ toolName }]);
+      expect(refused, toolName).toHaveLength(0);
+      expect(allowed, toolName).toHaveLength(1);
+    }
+  });
+
+  test('a joined name still never opens what closed-book closes: web__web_search stays refused', () => {
+    const { allowed, refused } = closedBookSplit(sitting, [{ toolName: 'web__web_search' }, { toolName: 'fs__web_search' }]);
+    expect(allowed).toHaveLength(0);
+    expect(refused.map((r) => r.result.error)).toEqual([CLOSED_BOOK_REFUSAL, CLOSED_BOOK_REFUSAL]);
+  });
+});

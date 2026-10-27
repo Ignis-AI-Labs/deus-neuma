@@ -22,6 +22,19 @@ export default Object.freeze({
       save: 'キーを保存',
       forget: 'キーを消す',
     }),
+    connect: Object.freeze({
+      label: '接続',
+      connect: '接続する',
+      reconnect: '再接続',
+      cancel: 'キャンセル',
+      connected: '接続済み · {{channel}}',
+      notConnected: '未接続',
+      waiting: 'ブラウザで Google のサインインを完了してください…',
+      needClient: '先に OAuth クライアント ID とシークレットを保存してから、接続してください。',
+      failed: '接続は完了しませんでした。',
+      tiktokWaiting: 'ブラウザで TikTok のサインインを完了してください…',
+      tiktokNeedClient: '先に TikTok のクライアントキーとシークレットを保存してから、接続してください。',
+    }),
   }),
 
   email: Object.freeze({

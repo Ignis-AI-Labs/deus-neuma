@@ -80,19 +80,29 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
 
   test('declare → bench → edit → remove: the whole walk under the caller wallet', async () => {
     const declared = await request(app).post('/api/v1/campaigns').set(witness.header).send({
-      name: 'First Light', brand: 'Neuma', pillars: ['craft', 'proof'], cadence: 'weekly',
+      name: 'First Light', companyId: 'ignis', pillars: ['craft', 'proof'], cadence: 'weekly',
+      goal: { kind: 'downloads', label: 'Linux installs' },
+      kpi: { metric: 'conversions', target: 500, by: '2026-12-01' },
+      window: { start: '2026-11-01', end: '2026-12-01' },
     });
     expect(declared.status).toBe(201);
     expect(declared.body.campaign).toMatchObject({
-      name: 'First Light', brand: 'Neuma', status: 'active',
-      pillars: ['craft', 'proof'], cadence: 'weekly',
+      v: 2, name: 'First Light', companyId: 'ignis', status: 'active', cadence: 'weekly',
+      goal: { kind: 'downloads', label: 'Linux installs' },
+      kpi: { metric: 'conversions', target: 500, by: '2026-12-01' },
+      window: { start: '2026-11-01', end: '2026-12-01' },
+      subs: [], asks: [],
     });
+    // Pillars an old caller sends are read as angle names.
+    expect(declared.body.campaign.angles.map((a) => a.name)).toEqual(['craft', 'proof']);
+    expect(declared.body.campaign.log.map((l) => l.what)).toEqual(['declared']);
     expect(declared.body.campaign.id).toMatch(/^[0-9a-f]{16}$/);
 
     const bench = await request(app).get('/api/v1/campaigns').set(witness.header);
     expect(bench.status).toBe(200);
     expect(bench.body.campaigns).toHaveLength(1);
-    expect(bench.body.statuses).toEqual(['active', 'paused', 'done']);
+    expect(bench.body.statuses).toEqual(['draft', 'active', 'paused', 'done']);
+    expect(bench.body.goalKinds).toContain('downloads');
 
     const edited = await request(app).put(`/api/v1/campaigns/${declared.body.campaign.id}`).set(witness.header).send({
       status: 'paused', notes: 'holding for the launch window',
@@ -101,6 +111,9 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
     expect(edited.body.campaign.status).toBe('paused');
     expect(edited.body.campaign.notes).toBe('holding for the launch window');
     expect(edited.body.campaign.name).toBe('First Light'); // untouched fields hold
+    expect(edited.body.campaign.angles).toEqual(declared.body.campaign.angles);
+    expect(edited.body.campaign.log.at(-1).what).toBe('status active → paused; changed notes');
+    expect(edited.body.campaign.log.at(-1).by.toLowerCase()).toBe(witness.address.toLowerCase());
     expect(Date.parse(edited.body.campaign.updatedAt)).toBeGreaterThanOrEqual(Date.parse(declared.body.campaign.updatedAt));
 
     const removed = await request(app).delete(`/api/v1/campaigns/${declared.body.campaign.id}`).set(witness.header);
@@ -108,48 +121,74 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
     expect((await request(app).get('/api/v1/campaigns').set(witness.header)).body.campaigns).toEqual([]);
   });
 
-  test('a campaign belongs to ONE platform — channelId rides the walk, unknown channels are refused', async () => {
-    // Declared on X: each platform is its own space, its own approach.
+  test('a campaign runs on its company\'s accounts — one sub per account; another company\'s account is refused', async () => {
+    const { addAccount } = await import('../../backend/services/social/account-store.js');
+    const { listCompanies } = await import('../../backend/services/marketing/companies.js');
+    const companies = (await listCompanies(witness.address)).map((c) => c.id);
+    expect((await addAccount(witness.address, 'x', { companyId: 'ignis', label: 'ignis on X' }, companies)).accountId).toBe('x-1');
+    expect((await addAccount(witness.address, 'x', { companyId: 'umbrae', label: 'umbrae on X' }, companies)).accountId).toBe('x-2');
+
     const onX = await request(app).post('/api/v1/campaigns').set(witness.header).send({
-      name: 'Umbrae on X', brand: 'Ignis', channelId: 'x',
+      name: 'Ignis on X', companyId: 'ignis', angles: [{ name: 'proof' }],
+      subs: [{ account: 'x-1', cadence: '1/day', angles: ['proof'] }],
     });
     expect(onX.status).toBe(201);
-    expect(onX.body.campaign.channelId).toBe('x');
+    expect(onX.body.campaign.subs).toEqual([{ accountId: 'x-1', role: '', cadence: '1/day', angleIds: ['proof'] }]);
 
-    // Declared without a platform: an honest house-wide push, not a default lie.
-    const houseWide = await request(app).post('/api/v1/campaigns').set(witness.header).send({
-      name: 'The Founding Story', brand: 'Ignis',
+    const crossed = await request(app).post('/api/v1/campaigns').set(witness.header).send({
+      name: 'Crossed', companyId: 'ignis', subs: [{ account: 'x-2' }],
     });
-    expect(houseWide.status).toBe(201);
-    expect(houseWide.body.campaign.channelId).toBeNull();
+    expect(crossed.status).toBe(400);
+    expect(crossed.body.error).toBe('account x-2 belongs to umbrae, not ignis — a campaign runs only on its own company\'s accounts');
+    const widened = await request(app).put(`/api/v1/campaigns/${onX.body.campaign.id}`).set(witness.header)
+      .send({ subs: [{ account: 'x-1' }, { account: 'x-2' }] });
+    expect(widened.status).toBe(400);
+    expect(widened.body.error).toContain('belongs to umbrae');
 
-    // A platform the catalog does not carry is refused at the door.
-    const unknown = await request(app).post('/api/v1/campaigns').set(witness.header).send({
-      name: 'Ghost push', brand: 'Ignis', channelId: 'myspace',
-    });
-    expect(unknown.status).toBe(400);
-    expect(unknown.body.error).toContain('Unknown channel');
+    // The single platform field is gone, and an old caller is told so in words.
+    const old = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'Old', companyId: 'ignis', channelId: 'x' });
+    expect(old.status).toBe(400);
+    expect(old.body.error).toMatch(/no longer belong to one platform/);
+    const ghost = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'Ghost', companyId: 'ignis', channelId: 'myspace' });
+    expect(ghost.body.error).toContain('Unknown channel');
+    // Removing an angle drops it from the subs that named it.
+    const trimmed = await request(app).put(`/api/v1/campaigns/${onX.body.campaign.id}`).set(witness.header).send({ angles: [] });
+    expect(trimmed.status).toBe(200);
+    expect(trimmed.body.campaign.subs[0].angleIds).toEqual([]);
+  });
 
-    // Moving a campaign between platforms is an edit like any other; empty
-    // string returns it to house-wide.
-    const moved = await request(app).put(`/api/v1/campaigns/${onX.body.campaign.id}`).set(witness.header).send({ channelId: 'telegram' });
-    expect(moved.status).toBe(200);
-    expect(moved.body.campaign.channelId).toBe('telegram');
-    const widened = await request(app).put(`/api/v1/campaigns/${onX.body.campaign.id}`).set(witness.header).send({ channelId: '' });
-    expect(widened.status).toBe(200);
-    expect(widened.body.campaign.channelId).toBeNull();
-    const refused = await request(app).put(`/api/v1/campaigns/${onX.body.campaign.id}`).set(witness.header).send({ channelId: 'myspace' });
-    expect(refused.status).toBe(400);
+  test('asks both ways: the operator asks, withdraws; the log records each', async () => {
+    const made = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'Asks', companyId: 'ignis' });
+    const id = made.body.campaign.id;
+    const asked = await request(app).post(`/api/v1/campaigns/${id}/asks`).set(witness.header).send({ text: 'Draft three hooks for Thursday' });
+    expect(asked.status).toBe(201);
+    const [ask] = asked.body.campaign.asks;
+    expect(ask).toMatchObject({ from: 'operator', state: 'open', text: 'Draft three hooks for Thursday' });
+    expect(ask.by.toLowerCase()).toBe(witness.address.toLowerCase());
+    expect((await request(app).post(`/api/v1/campaigns/${id}/asks`).set(witness.header).send({ text: '  ' })).status).toBe(400);
+    const withdrawn = await request(app).put(`/api/v1/campaigns/${id}/asks/${ask.id}`).set(witness.header).send({});
+    expect(withdrawn.status).toBe(200);
+    expect(withdrawn.body.campaign.asks[0].state).toBe('done');
+    expect(withdrawn.body.campaign.log.map((l) => l.what)).toEqual([
+      'declared', 'the operator asked: Draft three hooks for Thursday', 'the operator withdrew their ask: Draft three hooks for Thursday',
+    ]);
+    expect((await request(app).post('/api/v1/campaigns/ghost/asks').set(witness.header).send({ text: 'x' })).status).toBe(404);
   });
 
   test('bad declarations and bad edits are refused at the door', async () => {
-    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ brand: 'Neuma' })).status).toBe(400);
-    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light' })).status).toBe(400);
-    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', brand: 'N', status: 'maybe' })).status).toBe(400);
-    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', brand: 'N', pillars: ['craft', 7] })).status).toBe(400);
-    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', brand: 'N', pillars: 'craft' })).status).toBe(400);
+    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ companyId: 'ignis' })).status).toBe(400);
+    const noCompany = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light' });
+    expect(noCompany.status).toBe(400);
+    expect(noCompany.body.error).toMatch(/needs its company/);
+    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', companyId: 'nobody' })).status).toBe(400);
+    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', companyId: 'ignis', status: 'maybe' })).status).toBe(400);
+    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', companyId: 'ignis', pillars: ['craft', 7] })).status).toBe(400);
+    expect((await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'F', companyId: 'ignis', pillars: 'craft' })).status).toBe(400);
 
-    const ok = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', brand: 'Neuma' });
+    // A brand naming a company of the house is read as that company.
+    const ok = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', brand: 'Ignis' });
+    expect(ok.status).toBe(201);
+    expect(ok.body.campaign.companyId).toBe('ignis');
     const badStatus = await request(app).put(`/api/v1/campaigns/${ok.body.campaign.id}`).set(witness.header).send({ status: 'maybe' });
     expect(badStatus.status).toBe(400);
     expect(badStatus.body.error).toContain('Unknown status');
@@ -180,7 +219,7 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
   test('two houses: each operator\'s bench and seat are its own; another house\'s DELETE never unseats', async () => {
     const { witnessFor } = await import('../helpers/witness.js');
     const other = await witnessFor(process.env.WORKSPACES_ROOT, 'linden');
-    await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', brand: 'Neuma' });
+    await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', companyId: 'ignis' });
     expect((await request(app).put('/api/v1/campaigns/cmo').set(witness.header).send({ laneId: 'hazel' })).status).toBe(200);
 
     // House B sees an empty bench and no CMO — never house A's.
@@ -211,7 +250,7 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
     const bench = path.join(process.env.NEUMA_REALM_ROOT, witness.address.toLowerCase(), 'offices', 'marketing', 'marketing-campaigns.json');
     await fs.mkdir(path.dirname(bench), { recursive: true });
     await fs.writeFile(bench, '{"not":"an array"}');
-    const res = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', brand: 'Neuma' });
+    const res = await request(app).post('/api/v1/campaigns').set(witness.header).send({ name: 'First Light', companyId: 'ignis' });
     expect(res.status).toBe(500);
     expect(res.body.error).toContain('Failed to declare');
   });
@@ -227,6 +266,8 @@ describe('Campaign routes (/api/v1/campaigns)', () => {
       ['delete', '/api/v1/campaigns/cmo'],
       ['put', '/api/v1/campaigns/some-id'],
       ['delete', '/api/v1/campaigns/some-id'],
+      ['post', '/api/v1/campaigns/some-id/asks'],
+      ['put', '/api/v1/campaigns/some-id/asks/an-ask'],
     ]) {
       const res = await request(app)[method](url);
       expect(res.status).toBe(401);

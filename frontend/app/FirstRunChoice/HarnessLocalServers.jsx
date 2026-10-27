@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { apiCall } from '../../utils/http.js';
 import { localGuide } from './local-servers.js';
+import { ModelServerSetup } from './ModelServerSetup.jsx';
 
 const STATE_TEXT = Object.freeze({
   ready: (s) => `READY · ${s.models.length} MODEL${s.models.length === 1 ? '' : 'S'}${s.loaded === 0 ? ' · LOADS ON FIRST USE' : ''}`,
@@ -87,6 +88,7 @@ export const HarnessLocalServers = ({ servers, setup, checking, chosen, onChoose
         <div className="harness-guide">
           {machine ? <p className="label-data">YOUR MACHINE · {machine}</p> : null}
           <p>{guide}</p>
+          {servers.some((s) => s.state === 'ready') ? null : <ModelServerSetup onDone={onRecheck} />}
         </div>
       ) : null}
     </div>

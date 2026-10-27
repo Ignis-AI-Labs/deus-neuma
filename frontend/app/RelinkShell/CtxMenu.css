@@ -54,6 +54,17 @@
   color: var(--alert);
 }
 
+.cmenu-item.is-checked::after {
+  /* A setting that is on carries its mark at the right edge: a small square
+     in the row's own ink (monochrome at rest), never a tick glyph. */
+  content: '';
+  float: right;
+  width: 6px;
+  height: 6px;
+  margin: 0.35em 0 0 var(--space-3);
+  background: currentColor;
+}
+
 .cmenu-sep {
   height: 1px;
   margin: var(--space-1) 0;

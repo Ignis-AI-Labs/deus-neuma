@@ -26,6 +26,13 @@
   pointer-events: auto;
 }
 
+/* The bar on the left or top edge leaves the bottom-right corner free: the
+   tray settles into it, where notifications come up in every desktop. */
+html[data-taskbar-edge='left'] .ntray,
+html[data-taskbar-edge='top'] .ntray {
+  bottom: var(--space-4, 1rem);
+}
+
 /* ── the bell ─────────────────────────────────────────────────────────── */
 
 .ntray-bell {
@@ -66,6 +73,17 @@
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-2);
+  /* The lane itself takes no press — only a settled card does, so the gaps
+     between toasts and a card still rising pass the press to what is beneath. */
+  pointer-events: none;
+}
+
+.ntray-toasts .ntray-card.is-toast {
+  pointer-events: auto;
+}
+
+.ntray-toasts .ntray-card.is-arriving {
+  pointer-events: none;
 }
 
 /* ── the panel ────────────────────────────────────────────────────────── */
@@ -81,6 +99,7 @@
 }
 
 .ntray-panel-head {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -117,7 +136,40 @@
   cursor: default;
 }
 
+/* DESKTOP ALERTS — the switch for notices that leave the app (OsNoticeToggle.jsx) */
+.ntray-panel-foot {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-1, 0.25rem) var(--space-2);
+  border-top: var(--border-width-thin) solid var(--line);
+}
+.ntray-os-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--line-hover);
+  cursor: pointer;
+}
+.ntray-os-toggle:hover { color: var(--color-white); }
+.ntray-os-box {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border: var(--border-width-thin) solid currentColor;
+}
+.ntray-os-toggle[aria-pressed='true'] .ntray-os-box { background: currentColor; }
+
+/* The one part that gives way when the panel is full: it scrolls, the waiting section and head above it never shrink. */
 .ntray-panel-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

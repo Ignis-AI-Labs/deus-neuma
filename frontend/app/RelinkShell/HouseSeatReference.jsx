@@ -1,9 +1,12 @@
 import { TitleLegend } from './TitleLegend.jsx';
 
 /** Seat reference and lookup state, separate from each member's actual assignment. */
-export const HouseSeatReference = ({ phase, hasSeats, onRetry }) => (
+export const HouseSeatReference = ({ phase, hasSeats, onRetry, localFounded = false }) => (
   <div className="house-seat-reference">
-    {phase !== 'founded' ? <div className="house-seat-status" role="status">
+    {phase !== 'founded' && localFounded ? <div className="house-seat-status" role="status">
+      <span>Seats as founded on this computer. The house is not on the network (Unavis) yet.</span>
+    </div> : null}
+    {phase !== 'founded' && !localFounded ? <div className="house-seat-status" role="status">
       <span>{phase === 'probing' ? (hasSeats ? 'Showing recorded seats while checking the registry…' : 'Loading seat assignments…') : hasSeats
         ? 'Showing the last loaded seats from saved records. Live registry verification is unavailable.'
         : 'Seat assignments are unavailable. The registry has not returned a confirmed roster.'}</span>

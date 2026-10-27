@@ -10,25 +10,33 @@
  */
 
 import { previewIntentMedia } from './social-intent-media.js';
+import { previewQueueMedia } from './social-queue-media.js';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
-import { CHANNEL_CATALOG, getChannel } from '../services/social/channel-registry.js';
+import { getChannel } from '../services/social/channel-registry.js';
+import { isAccountsLocked } from '../services/social/account-store.js';
 import {
-  loadChannelCredentials, setChannelCredential, removeChannelCredential, maskHouseCredentials,
+  loadChannelCredentials, setChannelCredential, removeChannelCredential, maskHouseCredentials, pastedKeyProblem,
 } from '../services/social/channel-credentials.js';
 import { channelBindings } from '../services/social/channel-bindings.js';
 import { sectorCrew } from '../services/sector-crew.js';
 import { postQueue } from '../services/social/post-queue.js';
+import { placeDraft } from '../services/social/queue-placement.js';
+import { trackLinks, bindTrackedLinks } from '../services/social/queue-links.js';
 import { publishEntry } from '../services/social/post-scheduler.js';
 import { ofHouse, isHouseEntry, queueHouseGuard } from '../services/social/queue-house.js';
 import { readServed } from '../services/house-served.js';
+import socialThreadRouter from './social-thread-routes.js';
+import socialTikTokRouter from './social-tiktok-routes.js';
+import socialRetryRouter from './social-retry-routes.js';
+import { tiktokApproval } from '../services/social/tiktok-approval.js';
 import { replyCandidatesOf, replyInboxRows } from '../services/social/reply-candidates.js';
 import { runFlightTests } from '../services/social/flight-test.js';
-import { reverifyMediaFile } from '../services/social/media-source.js';
-import { readMediaFile } from '../services/social/x-media.js';
-import { readXAccount } from '../services/social/x-reader.js';
+import { firstAccountId } from '../services/social/account-shape.js';
+import { readChannelBoard } from '../services/social/channel-board.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
+import { withLegalFlags } from '../services/marketing/draft-review.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialChannels');
@@ -44,33 +52,13 @@ router.param('channelId', (req, res, next, channelId) => {
   next();
 });
 
-// The full board: every channel's masked credential state + its holder, and
-// — where the lane can prove it — the ACCOUNT it speaks as (Design note, 2026-07-28:
-// […]). The
-// account read is cached and only attempted when the channel is configured;
-// null means unproven, never invented.
-// The board is the caller's HOUSE: its own keys, its own holders.
+// The full board — the caller's HOUSE: its own keys, its own holders (social/channel-board.js).
 router.get('/', async (req, res) => {
-  const wallet = req.walletAddress;
   try {
-    const [store, bindings] = await Promise.all([
-      loadChannelCredentials(wallet),
-      channelBindings.load(wallet),
-    ]);
-    const masked = await Promise.all(CHANNEL_CATALOG.map(async (channel) => ({
-      ...(await maskHouseCredentials(wallet, channel, store)),
-      binding: bindings[channel.id] || null,
-    })));
-    // Only X has an account-proving reader today; new platforms join this
-    // map as their readers land.
-    const x = masked.find((c) => c.id === 'x');
-    if (x?.configured) {
-      x.account = await readXAccount({ wallet }).catch(() => null);
-    }
-    res.json({ channels: masked });
+    return res.json(await readChannelBoard(req.walletAddress));
   } catch (error) {
     log.error('Channel board read failed', { error: error.message });
-    res.status(500).json({ error: 'Failed to read channel state' });
+    return res.status(500).json({ error: 'Failed to read channel state' });
   }
 });
 
@@ -94,53 +82,29 @@ router.get('/flight-test', async (req, res) => {
 // The whole queue — drafts awaiting decision, the schedule, and the history.
 // every /queue/:id act stands behind the house door (queue-house.js)
 router.use('/queue/:id', queueHouseGuard);
+router.use(socialThreadRouter); // PUT /queue/:id/approve-thread — the whole thread in one decision
+router.use(socialTikTokRouter); // the TikTok reads: a post's card, the account view, its pictures
+router.use(socialRetryRouter); // PUT /queue/:id/retry — TRY AGAIN: a failed post back to draft, never sent from there
 router.get('/queue', async (req, res) => {
   try {
     const [entries, served] = await Promise.all([postQueue.load(), readServed()]);
-    res.json({
-      queue: await withCardFreshness(ofHouse(served, entries, req.walletAddress), {
-        wallet: req.walletAddress,
-        onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
-      }),
+    const fresh = await withCardFreshness(ofHouse(served, entries, req.walletAddress), {
+      wallet: req.walletAddress,
+      onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
     });
+    // The claims check's LEGAL flag rides each waiting post; it flags, never holds.
+    res.json({ queue: await withLegalFlags(fresh, req.walletAddress).catch((err) => { log.warn('legal flags skipped', { error: err.message }); return fresh; }) });
   } catch (error) {
     log.error('Queue read failed', { error: error.message });
     res.status(500).json({ error: 'Failed to read the post queue' });
   }
 });
 
-// One staged attachment's BYTES — the witness's preview thumbnails are the
-// only reader. The send-time re-check doctrine applies here too: the stored
-// path must still resolve to the exact real path staging authorised, and the
-// bytes must still sniff as an image — a file swapped or gutted since
-// staging is a 404, never a stream. Private and never cached: these are
-// drafts awaiting a decision, not public media.
+// A being's own card, before it is staged (social-intent-media.js), and one
+// staged attachment's BYTES for the operator's preview (social-queue-media.js).
+// Private and never cached: drafts awaiting a decision, not public media.
 router.get('/intent-media', previewIntentMedia);
-
-router.get('/queue/:id/media/:index', async (req, res) => {
-  try {
-    const entries = await postQueue.load();
-    const entry = entries.find((e) => e.id === req.params.id);
-    const index = Number.parseInt(req.params.index, 10);
-    const item = entry && Number.isInteger(index) && index >= 0
-      ? entry.media?.[index]
-      : null;
-    if (!item) return res.status(404).json({ error: 'no such media on that queue entry' });
-    const verified = await reverifyMediaFile(item.path);
-    if (!verified.ok) {
-      return res.status(404).json({ error: `the staged media no longer stands — ${verified.detail}` });
-    }
-    const read = await readMediaFile(verified.path);
-    if (!read.ok) {
-      return res.status(404).json({ error: `the staged media is unreadable — ${read.detail}` });
-    }
-    res.set({ 'Content-Type': read.contentType, 'Cache-Control': 'private, no-store' });
-    res.send(read.content);
-  } catch (error) {
-    log.error('Queue media preview failed', { id: req.params.id, error: error.message });
-    res.status(500).json({ error: 'Failed to read the staged media' });
-  }
-});
+router.get('/queue/:id/media/:index', previewQueueMedia);
 
 // THE INBOUND HALF OF THE REPLY LANE (Design note, 2026-07-28: […]).
 // Every reply to the house's OWN posts that the listener landed, each
@@ -196,13 +160,23 @@ router.put('/replies/:postId/:act(bin|restore)', async (req, res) => {
 router.post('/queue', async (req, res) => {
   // campaignId ties the witness's own draft to a campaign on the bench —
   // the same field the being-tools carry; the store validates it.
-  const { channelId, text, scheduledFor, campaignId } = req.body || {};
+  // accountId names which of the house's accounts on the platform speaks
+  // (its first when unnamed); the store refuses another platform's account.
+  // angle and group place it in a campaign and a group (queue-placement.js).
+  const { channelId, accountId, text, scheduledFor, campaignId, angle, group } = req.body || {};
   try {
+    const placed = await placeDraft(req.walletAddress, { accountId: accountId || firstAccountId(channelId), campaignId, angle, group });
+    if (placed.error) return res.status(400).json({ error: placed.error });
+    const tracked = typeof text === 'string' && getChannel(channelId)
+      ? await trackLinks(req.walletAddress, { channelId, accountId: accountId || firstAccountId(channelId), text, campaignId: placed.campaignId, angleId: placed.angleId })
+      : { text, codes: [], note: null };
     const entry = await postQueue.add({
-      channelId, text, scheduledFor, campaignId, authorNeumaId: null, queuedBy: req.walletAddress,
+      channelId, accountId, text: tracked.text, scheduledFor, campaignId: placed.campaignId, pillar: placed.pillar,
+      angleId: placed.angleId, groupId: placed.groupId, authorNeumaId: null, queuedBy: req.walletAddress,
     });
-    log.info('Post staged', { id: entry.id, channel: channelId, wallet: req.walletAddress });
-    res.status(201).json({ entry });
+    await bindTrackedLinks(req.walletAddress, tracked.codes, entry.id);
+    log.info('Post staged', { id: entry.id, channel: channelId, wallet: req.walletAddress, tracked: tracked.codes.length });
+    res.status(201).json({ entry, links: { codes: tracked.codes, note: tracked.note } });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -263,8 +237,13 @@ router.put('/queue/:id/approve', async (req, res) => {
           : { ok: false, ...(outcome.pending ? { pending: true } : {}), detail: outcome.detail },
       });
     }
+    // A TikTok post's approval IS the person's consent to its card's choices,
+    // judged against the account as TikTok describes it right now.
+    const tiktok = target?.channelId === 'tiktok' ? await tiktokApproval(req.walletAddress, target, req.body?.tiktok) : null;
+    if (tiktok && !tiktok.ok) return res.status(409).json({ error: tiktok.detail });
     const result = await postQueue.approve(req.params.id, {
       decidedBy: req.walletAddress, scheduledFor: req.body?.scheduledFor,
+      ...(tiktok ? { tiktokConsent: tiktok.consent, textSeen: req.body?.textSeen } : {}),
     });
     if (!result.ok) return res.status(409).json({ error: result.error });
     log.info('Post approved', { id: req.params.id, wallet: req.walletAddress });
@@ -392,14 +371,22 @@ router.put('/:channelId/credentials', async (req, res) => {
   if (Object.values(fields).some((v) => typeof v !== 'string')) {
     return res.status(400).json({ error: 'Each field value must be a string' });
   }
+  // A pasted key carries no meaningful edge whitespace; a copied row of dots is no key at all.
+  const pasted = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim()]));
+  const bad = Object.entries(pasted).map(([k, v]) => [k, pastedKeyProblem(v)]).find(([, why]) => why);
+  if (bad) {
+    const label = req.channel.fields.find((f) => f.key === bad[0])?.label || bad[0];
+    return res.status(400).json({ error: `${label}: ${bad[1]}` });
+  }
   try {
-    await setChannelCredential(req.walletAddress, req.channel.id, fields);
+    await setChannelCredential(req.walletAddress, req.channel.id, pasted);
     const store = await loadChannelCredentials(req.walletAddress);
     log.info('Channel credentials updated', { channel: req.channel.id, wallet: req.walletAddress });
-    res.json(await maskHouseCredentials(req.walletAddress, req.channel, store));
+    return res.json(await maskHouseCredentials(req.walletAddress, req.channel, store));
   } catch (error) {
+    if (isAccountsLocked(error)) return res.status(423).json({ error: error.message, locked: { why: error.message } });
     log.error('Channel credential write failed', { channel: req.channel.id, error: error.message });
-    res.status(500).json({ error: 'Failed to store credentials' });
+    return res.status(500).json({ error: 'Failed to store credentials' });
   }
 });
 
@@ -409,10 +396,11 @@ router.delete('/:channelId/credentials', async (req, res) => {
   try {
     const removed = await removeChannelCredential(req.walletAddress, req.channel.id);
     log.info('Channel credentials removed', { channel: req.channel.id, wallet: req.walletAddress, removed });
-    res.json({ removed });
+    return res.json({ removed });
   } catch (error) {
+    if (isAccountsLocked(error)) return res.status(423).json({ error: error.message, locked: { why: error.message } });
     log.error('Channel credential removal failed', { channel: req.channel.id, error: error.message });
-    res.status(500).json({ error: 'Failed to remove credentials' });
+    return res.status(500).json({ error: 'Failed to remove credentials' });
   }
 });
 

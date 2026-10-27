@@ -12,7 +12,7 @@ import os from 'os';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import { createLogger } from './logger.js';
-import { agentTerminalEnvironment } from './agent-terminal-environment.js';
+import { agentTerminalEnvironment, withoutBackendSecrets } from './agent-terminal-environment.js';
 
 const log = createLogger('Terminal');
 // THE TERMINAL REGISTRY (friction-map D3) — keyed by a stable terminal id,
@@ -107,7 +107,7 @@ export const spawnTerminal = (ws, { wallet, cwd, cols = 80, rows = 24, launch = 
       cols,
       rows,
       cwd: cwd || os.homedir(),
-      env: launch ? agentTerminalEnvironment(process.env, process.platform) : { ...process.env },
+      env: launch ? agentTerminalEnvironment(process.env, process.platform) : withoutBackendSecrets(process.env),
     });
   } catch (err) {
     log.error('PTY spawn failed', { err: err.message, launch: launch?.id ?? null });

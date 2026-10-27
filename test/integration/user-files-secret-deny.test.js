@@ -105,6 +105,21 @@ describe('the file explorer never serves or writes secrets or another house\'s d
     expect((await read(alpha, lane)).status).toBe(200);
   });
 
+  test('a respelled path never slips a wall (#589: case, long-s, decomposed forms fold like macOS volumes do)', async () => {
+    // Another house's lane, its realm dir and a secret folder, each under a spelling a
+    // case-/normalization-insensitive volume opens as the same file.
+    const respell = (p) => p.replace('alphalane', 'ALPHALANE');
+    const lane = respell(path.join(workspaces, 'alphalane', 'journal.md'));
+    expect((await as(beta, request(app).put('/api/v1/user/files/write')).send({ path: lane, content: 'beta was here' })).status).toBe(403);
+    const chat = path.join(realm, alpha.address.toUpperCase().replace('0X', '0x'), 'chat.json');
+    expect((await as(beta, request(app).put('/api/v1/user/files/write')).send({ path: chat, content: '{}' })).status).toBe(403);
+    const longS = path.join(folder, 'keyſ', 'keypair.json');
+    expect((await as(beta, request(app).put('/api/v1/user/files/write')).send({ path: longS, content: '{}' })).status).toBe(403);
+    const nfd = path.join(folder, '.env').normalize('NFD').replace('.env', '.ENV');
+    expect((await as(beta, request(app).put('/api/v1/user/files/write')).send({ path: nfd, content: 'x' })).status).toBe(403);
+    expect(await fs.readFile(path.join(workspaces, 'alphalane', 'journal.md'), 'utf8')).toBe('alpha house words\n');
+  });
+
   test('the realm and the neuma home are never deleted or moved through the explorer', async () => {
     const del = await as(alpha, request(app).delete('/api/v1/user/files/entry')).send({ path: realm });
     expect(del.status).toBe(403);

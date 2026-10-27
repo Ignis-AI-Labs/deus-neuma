@@ -82,3 +82,22 @@ export const endpointToStore = (server, providers) => {
 
 /** The model a ready server offers for the ModelPicker. */
 export const serverModels = (server) => (server?.models || []).map((id) => ({ id, name: id }));
+
+/**
+ * A model id as a person reads it: Ollama's Hugging Face form loses its host, owner and
+ * "-GGUF" (hf.co/org/Qwen3.8-4B-Distill-GGUF:Q4_K_M → Qwen3.8-4B-Distill · Q4_K_M). Pure.
+ * @param {string} id
+ * @returns {string}
+ */
+export const modelLabel = (id) => {
+  const m = /^hf\.co\/[^/]+\/([^:]+?)(?:-GGUF)?(?::(.+))?$/i.exec(String(id || ''));
+  return m ? `${m[1]}${m[2] ? ` · ${m[2]}` : ''}` : String(id || '');
+};
+
+/** The first model a ready local server holds, as a person reads it, or null. Pure. */
+export const readyModelLabel = (setup) => {
+  const ready = localServers(setup).find((s) => s.state === 'ready');
+  const id = ready?.models[0];
+  // a server launched from a file descriptor reports the descriptor, which names nothing to a person
+  return id && !/^\/proc\/self\/fd\//.test(id) ? modelLabel(id) : null;
+};

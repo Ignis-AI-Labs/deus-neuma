@@ -24,6 +24,7 @@ import { isWitness } from './house-members.js';
 import { playSound } from '../../services/sound-engine.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { atTail } from './stream-follow.js';
+import { StreamFollow } from './StreamFollow.jsx';
 import { actFilePath } from './act-link.js';
 import { useWindows } from '../windowing/use-windows.js';
 import { ApprovalChip } from './ApprovalChip.jsx';
@@ -345,28 +346,8 @@ const CouncilSitting = ({ council, connected }) => {
         {state.error ? (
           <p className="council-error label-data">{state.error.message}</p>
         ) : null}
-        {/* The follow control, pinned at the transcript's bottom edge —
-            released, the room streams on without yanking the reader;
-            ▼ LIVE returns to the tail. */}
-        <div className="stream-follow-dock">
-          <button
-            type="button"
-            className="stream-follow label-data"
-            data-on={following ? 'true' : undefined}
-            title={following
-              ? 'Following the live tail — click to read freely (scrolling up releases it too)'
-              : 'Jump to the live tail and follow again'}
-            onClick={() => {
-              if (following) { setFollowing(false); return; }
-              setFollowing(true);
-              const el = tailRef.current;
-              if (el) el.scrollTop = el.scrollHeight;
-            }}
-          >
-            {following ? 'FOLLOWING ▼' : '▼ LIVE'}
-          </button>
-        </div>
       </div>
+      <StreamFollow following={following} setFollowing={setFollowing} scroller={tailRef} />
 
       {/* The stream's OWN composer carries the traffic light at the send
           itself: while a member is speaking the draft has two gears — the

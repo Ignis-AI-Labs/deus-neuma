@@ -353,6 +353,8 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
         ...(connection._benchmarkControls
           ? {
               memory: 'ephemeral', extraCalls: connection._benchmarkExtraCalls ?? [], toolTrail: connection._benchmarkToolTrail ?? [],
+              // Acts held for carrying a value planted by injected text (security/injected-value-gate.js).
+              taintHeld: connection._taintHeld ?? 0,
               // THE HARNESS ARM declares itself: the platform with every identity layer off.
               identityLayers: connection._benchmarkControls.platformOnly === true ? 'off' : 'on',
             }

@@ -118,7 +118,10 @@ describe('the marketing office — one per house (real tmp disk)', () => {
 
     houses.asHouse(HOUSE_B); // even opened from house B's process first
     expect(await (await campaignStoreFor(HOUSE_B)).load()).toEqual([]);
-    expect(await (await campaignStoreFor(HOUSE_A)).load()).toEqual(campaigns);
+    // The first-shape bench lands in A's house and is moved to shape v2 there.
+    expect(await (await campaignStoreFor(HOUSE_A)).load()).toMatchObject([
+      { id: 'c1', v: 2, name: 'Legacy Bench', brand: 'neuma', status: 'active', angles: [], subs: [], migratedFrom: { v: 1, pillars: [] } },
+    ]);
     expect(await (await leadLedgerFor(HOUSE_B)).load()).toEqual([]);
     expect(await (await leadLedgerFor(HOUSE_A)).load()).toEqual(leads);
     expect(await (await weeklyPlanStoreFor(HOUSE_B)).load()).toBeNull();

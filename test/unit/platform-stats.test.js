@@ -25,6 +25,11 @@ import {
 } from '../../backend/services/branding/platform-stats.js';
 import { loadTemplate } from '../../backend/services/branding/brand-tokens.js';
 import { fieldRefusals } from '../../backend/services/branding/card-svg.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// Public platform data is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['platform-data']);
+afterAll(() => connections.restore());
 
 // Recorded live, 2026-08-29. Note what it does NOT have: no `lock` block (the
 // route on disk returns one; production had not shipped it yet) and no

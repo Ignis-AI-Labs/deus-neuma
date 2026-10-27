@@ -19,6 +19,7 @@ export default Object.freeze({
   newInstance: '새 {{app}}',
   close: '닫기',
   closeAll: '{{app}} 창 모두 닫기',
+  windowsOf: '열린 {{app}} 창',
   showNames: '이름 표시',
   iconsOnly: '아이콘만',
   position: '작업 표시줄 위치',

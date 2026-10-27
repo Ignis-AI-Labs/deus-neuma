@@ -1,0 +1,11 @@
+/* A campaign's page (CampaignPage.jsx): its head on one line, its picture —
+   the BOARD's own campaign instruments — then its facts as chips. 13px
+   floor (--text-label); the chips wrap, never run sideways. */
+.campaign-page { display: grid; gap: var(--space-2); min-width: 0; }
+.campaign-page-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-family: var(--font-data); font-size: var(--text-label); }
+.campaign-page-name { font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere; }
+.campaign-page-edit { margin-left: auto; }
+.campaign-picture { gap: 0; }
+.campaign-facts, .campaign-files { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.campaign-facts span, .campaign-file { overflow-wrap: anywhere; border: 1px solid var(--line); padding: 1px 6px; font-family: var(--font-data); font-size: var(--text-label); }
+.campaign-file { display: inline-flex; align-items: center; gap: 6px; }

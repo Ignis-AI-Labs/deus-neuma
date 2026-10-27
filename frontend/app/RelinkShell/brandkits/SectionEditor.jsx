@@ -11,11 +11,18 @@ import { ColourEditor } from './ColourEditor.jsx';
 import { TypographyEditor } from './TypographyEditor.jsx';
 import { MarksSection } from './MarksSection.jsx';
 import { RawEditor } from './RawEditor.jsx';
+import { CompanySources } from './CompanySources.jsx';
+import { useKit } from './kit-context.js';
 
 export const RAW_SECTION = 'raw';
+// The company's SITE & CODE is no kit field: it is saved on its own (the
+// companies route), the moment the owner changes it.
+export const SOURCES_SECTION = 'sources';
 
 export const SectionEditor = ({ section, progress }) => {
+  const { brand, roster } = useKit();
   if (section?.id === RAW_SECTION) return <RawEditor />;
+  if (section?.id === SOURCES_SECTION) return <CompanySources companyId={brand} roster={roster} />;
   if (!section) return null;
   const gaps = progress?.gaps || [];
 

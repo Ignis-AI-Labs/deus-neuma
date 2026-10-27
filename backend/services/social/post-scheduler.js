@@ -22,14 +22,17 @@ import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConver
 import { readXPost, readXListings, readXAccount } from './x-reader.js';
 import { channelBindings } from './channel-bindings.js';
 import { sectorCrew, canSendStaged } from '../sector-crew.js';
-import { resolveChannelCredential } from './channel-credentials.js';
-import { posterFor } from './poster-registry.js';
+import { resolveAccountCredential, isAccountsLocked, LOCKED_SEND_DETAIL } from './account-store.js';
+import { entryAccountId } from './account-shape.js';
+import { posterFor, postsOwnMedia } from './poster-registry.js';
+import { OWN_MEDIA_SENDS } from './own-media-sends.js';
 import { getChannel } from './channel-registry.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { readServed, houseWallet, servesLane } from '../house-served.js';
 import { queueEntryHouse } from './queue-house.js';
 import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
+import { mandateLetsSend, mandateAfterSend } from '../marketing/mandate/mandate-act.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('PostScheduler');
@@ -41,6 +44,8 @@ export const TICK_MS = 60 * 1000;
 // before the outcome could record). Fifteen minutes is generous for one POST
 // call and tight enough that a real loss surfaces the same hour.
 const SEND_LEASE_MS = 15 * 60 * 1000;
+// pure — a video streams for as long as its size takes, so its lease is longer.
+const leaseFor = (entry) => OWN_MEDIA_SENDS[entry.channelId]?.leaseMs ?? SEND_LEASE_MS;
 
 // An approved post this far past its slot is overdue — logged, loudly, once
 // per tick (the board's OVERDUE meta tells the same story on the desk).
@@ -66,16 +71,22 @@ const normalizeText = (text) => String(text || '').replace(/\s+/g, ' ').trim().s
  */
 const reconcileStuckSends = async (entries, nowMs) => {
   const stuck = entries.filter((e) => e.status === 'sending'
-    && nowMs - Date.parse(e.sendingAt || e.decidedAt || e.createdAt || 0) > SEND_LEASE_MS);
-  // Each house's sends are judged against its OWN account's live posts.
-  for (const house of new Set(stuck.map(entryHouse))) {
-    await reconcileHouseSends(house, stuck.filter((e) => entryHouse(e) === house));
+    && nowMs - Date.parse(e.sendingAt || e.decidedAt || e.createdAt || 0) > leaseFor(e));
+  // Each house's sends are judged against the live posts of the ACCOUNT they
+  // went out as — a video send against its own platform's record, never
+  // another platform's, and never another account's.
+  for (const key of new Set(stuck.map((e) => `${entryHouse(e)}|${entryAccountId(e)}`))) {
+    const [house, accountId] = key.split('|');
+    const theirs = stuck.filter((e) => entryHouse(e) === house && entryAccountId(e) === accountId);
+    const own = OWN_MEDIA_SENDS[theirs[0].channelId];
+    if (own) await own.reconcile(house, theirs, { journal: journalSend, log, accountId });
+    else await reconcileHouseSends(house, theirs, accountId);
   }
 };
 
-// impure — one house's lost sends, settled against that house's live posts.
-const reconcileHouseSends = async (house, stuck) => {
-  const recent = await readXListings({ kind: 'recent', limit: 25, wallet: house }).catch(() => null);
+// impure — one account's lost sends, settled against that account's live posts.
+const reconcileHouseSends = async (house, stuck, accountId) => {
+  const recent = await readXListings({ kind: 'recent', limit: 25, wallet: house, accountId }).catch(() => null);
   if (!recent?.ok) {
     log.warn('stuck-send reconciliation deferred — the live read failed', {
       count: stuck.length, detail: recent?.detail || 'no answer',
@@ -197,6 +208,8 @@ export const publishEntry = async (entry) => {
   // THE HOUSE the entry speaks for: its holder, its crew and its keys are
   // that house's own, never another's (social/house-positions.js).
   const house = entryHouse(entry);
+  // THE ACCOUNT it speaks as: its holder, its crew and its keys.
+  const accountId = entryAccountId(entry);
   // The binding law holds at SEND time. A witness-authored post (no
   // authorNeumaId) is the witness's own speech and needs no binding.
   if (entry.authorNeumaId) {
@@ -210,15 +223,27 @@ export const publishEntry = async (entry) => {
       channelBindings.load(house).catch(() => ({})),
       sectorCrew.load(house).catch(() => ({})),
     ]);
-    if (!canSendStaged(crewStore, bound, entry.channelId, entry.authorNeumaId)) {
-      const outcome = { ok: false, detail: 'the author is no longer on this channel\'s crew, or the channel has no holder — approval does not outlive membership' };
+    if (!canSendStaged(crewStore, bound, accountId, entry.authorNeumaId)) {
+      const outcome = { ok: false, detail: `the author is no longer on the crew of ${accountId}, or ${accountId} has no holder — approval does not outlive membership` };
       await postQueue.recordOutcome(entry.id, outcome);
       await journalSend(entry, outcome);
       return outcome;
     }
   }
 
-  const credentials = await resolveChannelCredential(house, entry.channelId).catch(() => null);
+  let credentials = null;
+  try {
+    credentials = await resolveAccountCredential(house, accountId);
+  } catch (err) {
+    // THE LOCKED KEYS FILE (account-store.js): the send stops here, before any platform call, and says
+    // so in words send-failure.js reads as `locked` — never […].
+    if (isAccountsLocked(err)) {
+      const outcome = { ok: false, detail: LOCKED_SEND_DETAIL };
+      await postQueue.recordOutcome(entry.id, outcome);
+      await journalSend(entry, outcome);
+      return outcome;
+    }
+  }
   const post = posterFor(entry.channelId);
   // A null credential needs no guard here: every poster and every reader
   // answers a missing credential with its own NAMED `{ok:false}` refusal
@@ -243,7 +268,7 @@ export const publishEntry = async (entry) => {
     }
     // The parent's LIVE post must still stand — same doctrine as the reply
     // lane's target check: a deleted parent is not answered by a fallback.
-    const standing = await readXPost(parent.postId, { wallet: house });
+    const standing = await readXPost(parent.postId, { wallet: house, accountId });
     if (!standing.ok) {
       const outcome = { ok: false, detail: `the parent's post no longer stands (${standing.detail}) — the thread post stays in the record, unsent` };
       await postQueue.recordOutcome(entry.id, outcome);
@@ -261,7 +286,7 @@ export const publishEntry = async (entry) => {
   // from the queue RIGHT NOW with this entry counting itself (approval did
   // not pre-authorize over-engagement).
   if (entry.kind === 'reply' && entry.reply?.toPostId) {
-    const target = await readXPost(entry.reply.toPostId, { wallet: house });
+    const target = await readXPost(entry.reply.toPostId, { wallet: house, accountId });
     if (!target.ok) {
       const outcome = { ok: false, detail: `the reply's target post no longer stands (${target.detail}) — the answer stays in the record, unsent` };
       await postQueue.recordOutcome(entry.id, outcome);
@@ -293,7 +318,21 @@ export const publishEntry = async (entry) => {
   // Replies ride the same path — their media was resolved and witnessed at
   // stage time like any post's.
   let mediaIds = [];
-  if (post && Array.isArray(entry.media) && entry.media.length) {
+  const ownMedia = [];
+  if (post && Array.isArray(entry.media) && entry.media.length && postsOwnMedia(entry.channelId)) {
+    // The upload IS the post (a video): the poster takes the re-verified
+    // paths itself, so nothing is uploaded ahead of the irreversible act.
+    for (const item of entry.media) {
+      const verified = await reverifyMediaFile(item.path);
+      if (!verified.ok) {
+        const refused = { ok: false, detail: `media refused — ${verified.detail}` };
+        await postQueue.recordOutcome(entry.id, refused);
+        await journalSend(entry, refused);
+        return refused;
+      }
+      ownMedia.push({ path: verified.path });
+    }
+  } else if (post && Array.isArray(entry.media) && entry.media.length) {
     const uploaded = await uploadEntryMedia(credentials, entry);
     if (!uploaded.ok) {
       await postQueue.recordOutcome(entry.id, uploaded);
@@ -307,6 +346,17 @@ export const publishEntry = async (entry) => {
   const outcome = post
     ? await post(credentials, entry.text, {
       mediaIds,
+      media: ownMedia,
+      // A video poster refreshes its sign-in in the house's own store, and
+      // keeps its platform's ticket on the entry before any byte is sent.
+      house,
+      accountId,
+      // A TikTok post leaves with exactly the choices its approval recorded.
+      tiktokConsent: entry.tiktokConsent ?? null,
+      onTicket: async (ticket) => {
+        const kept = await postQueue.recordSendTicket(entry.id, ticket);
+        if (!kept.ok) throw new Error(kept.error);
+      },
       // The reply's linkage rides to the wire — the poster turns it into
       // in_reply_to_tweet_id; a plain post carries none. A self-reply
       // answers its parent's live post (the thread law, resolved above).
@@ -320,10 +370,16 @@ export const publishEntry = async (entry) => {
   // and warm from the lane's other reads; a failed lookup never blocks a
   // real publish — postedAs is simply absent, never invented.
   if (outcome.ok && entry.channelId === 'x') {
-    const account = await readXAccount({ wallet: house }).catch(() => null);
+    const account = await readXAccount({ wallet: house, accountId }).catch(() => null);
     if (account) outcome.postedAs = account;
   }
 
+  // Accepted but not yet settled (TikTok still processing): the entry keeps
+  // its sending lease and its ticket, and the reconciler settles it.
+  if (outcome.pending) {
+    log.info('queued post accepted, outcome pending', { id: entry.id, channel: entry.channelId, detail: outcome.detail });
+    return outcome;
+  }
   await postQueue.recordOutcome(entry.id, outcome);
   await journalSend(entry, outcome);
   const channel = getChannel(entry.channelId);
@@ -402,10 +458,14 @@ export const schedulerTick = async (nowMs = Date.now()) => {
       // (The reply expiry check that used to sit here moved to the per-tick
       // sweep above — duePosts no longer surfaces replies at all under the
       // 2026-08-06 reply-clock law, so a check here would be dead code.)
+      // A post decided under a MANDATE leaves only while that mandate stands (mandate-act.js).
+      if (!(await mandateLetsSend(e))) continue;
       const claimed = await postQueue.claimForSend(e.id);
       if (!claimed.ok) continue; // another tick took it, or state moved — not ours
       try {
-        outcomes.push(await publishEntry(claimed.entry));
+        const outcome = await publishEntry(claimed.entry);
+        outcomes.push(outcome);
+        await mandateAfterSend(claimed.entry, outcome);
       } catch (err) {
         // Acceptance may have preceded a store failure. Keep the sending lease
         // so reconciliation can establish the outcome without a duplicate post.

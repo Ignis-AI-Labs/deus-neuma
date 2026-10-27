@@ -1,9 +1,12 @@
 // machine-view.js — the machine's flat readings (backend/services/machine-thermals.js)
 // shaped into what each SUBSTRATE HUD panel draws: the CPU's cores, the DIMMs,
-// the drives, the board, the fans and the rails.
+// the drives, the board, the fans and the rails. Board sensors carry their
+// plain names (machine-sense.js); drives carry their model.
 //
 // pure — every limit shown is the chip's OWN high/critical mark; the only
 // limits written here are published specs (the ATX rail tolerance).
+
+import { isUnlabelled, sensorName } from './machine-sense.js';
 
 const n0 = (v) => (Number.isFinite(v) ? String(Math.round(v)) : '—');
 const c1 = (v) => (Number.isFinite(v) ? `${v.toFixed(1)}°C` : '—');
@@ -52,19 +55,58 @@ export const cpuView = (readings) => {
   const cores = cpu.filter((r) => /^core\s*\d+/i.test(r.label))
     .map((r) => ({ ...rowOf(r, r.label.replace(/^core\s*/i, 'C')), n: Number(/\d+/.exec(r.label)[0]) }))
     .sort((a, b) => a.n - b.n);
-  return Object.freeze({ pkg: pkg ? rowOf(pkg, 'PACKAGE') : null, cores });
+  return Object.freeze({ pkg: pkg ? rowOf(pkg, 'Package') : null, cores });
 };
 
 /** pure — the memory DIMMs, by slot. */
 export const dimmRows = (readings) => temps(readings, 'memory').map((r) => rowOf(r, chipName(r.chip))).sort(byName);
 
-/** pure — each drive's Composite (its own headline reading), by PCI address. */
-export const driveRows = (readings) => temps(readings, 'storage')
-  .filter((r) => r.label === 'Composite').map((r) => rowOf(r, chipName(r.chip))).sort(byName);
+/**
+ * pure — each drive's Composite (its own headline reading), named by its
+ * device (nvme0 — what `lsblk` shows) with its model when the platform read
+ * one (`drives`, from /sys/class/nvme); by PCI address otherwise.
+ */
+export const driveRows = (readings, drives = []) => temps(readings, 'storage')
+  .filter((r) => r.label === 'Composite')
+  .map((r) => {
+    const d = (drives ?? []).find((x) => x.chip === r.chip);
+    return Object.freeze({ ...rowOf(r, d?.device ?? chipName(r.chip)), model: d?.model ?? null });
+  })
+  .sort(byName);
 
-/** pure — the board's and the network chips' temperatures; a chip's lone temp1 is named for its chip. */
-export const boardRows = (readings) => [...temps(readings, 'board'), ...temps(readings, 'network')]
-  .map((r) => rowOf(r, r.label === 'temp1' ? chipName(r.chip) : r.label));
+/** pure — drives grouped by model, so a model is said once over its drives. */
+export const driveGroups = (rows) => {
+  const groups = new Map();
+  for (const r of rows) {
+    const model = r.model ?? 'NVMe';
+    groups.set(model, [...(groups.get(model) ?? []), r]);
+  }
+  return [...groups].map(([model, list]) => Object.freeze({ model, rows: list }));
+};
+
+/** pure — the board's and the network chips' temperatures, each by its plain name. */
+const boardTemps = (readings) => [...temps(readings, 'board'), ...temps(readings, 'network')];
+// `relayed`: a CPU temperature the board relays from the CPU itself (PECI) — the CPU's reading, not the board's.
+const boardRow = (r) => Object.freeze({ ...rowOf(r, sensorName(r)), unlabelled: isUnlabelled(r), relayed: /^PECI/.test(r.label) });
+export const boardRows = (readings) => boardTemps(readings).map(boardRow);
+
+/**
+ * pure — the board as the console draws it: named sensors, the inputs the
+ * chip leaves unlabelled, and the readings not to be believed (`doubt(r)`
+ * returns why, or null) — set apart with their reason, never drawn as heat.
+ */
+export const boardGroups = (readings, doubt = () => null) => {
+  const named = [];
+  const inputs = [];
+  const doubted = [];
+  for (const r of boardTemps(readings)) {
+    const row = boardRow(r);
+    const why = doubt(r);
+    if (why) doubted.push(Object.freeze({ ...row, why }));
+    else (row.unlabelled ? inputs : named).push(row);
+  }
+  return Object.freeze({ named, inputs, doubted });
+};
 
 const SOURCE = [[/^corsair/, 'CORSAIR'], [/^(nct|it87|asus)/, 'BOARD'], [/^(nzxt|kraken)/, 'NZXT']];
 const sourceOf = (chip) => SOURCE.find(([re]) => re.test(chip))?.[1] ?? chipName(chip).toUpperCase();
@@ -105,9 +147,6 @@ export const railView = (readings) => {
   }
   return Object.freeze({ named, bare });
 };
-
-/** pure — which rows sit past their own marks, for the alert strip. */
-export const hotRows = (rows) => rows.filter((r) => r.state === 'hot' || r.state === 'critical');
 
 const gbText = (mb) => (Number.isFinite(mb) ? `${(mb / 1024).toFixed(1)}G` : '—');
 const part = (key, label, value, tone) => Object.freeze({ key, label, value, tone, text: gbText(value) });

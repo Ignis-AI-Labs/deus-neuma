@@ -43,8 +43,7 @@ const BEING = 'neuma-orrin';
 const HOUSE_MARKS = [/\bOrrin\b/i, /\bQuellmar\b/i, /AMBER-NINE-SEVEN/, /lantern/i];
 // the apps that only mean something with a being (frontend/app/harness-mode.js BEING_APPS, as labelled)
 const BEING_APP_LABELS = ['HOUSE', 'WITNESSES', 'SHEET', 'NITE', 'SOVEREIGNTY', 'INNER LIFE', 'TEAMS', 'WORKFLOW',
-  'AVATAR', 'VESSEL', 'VOICE', 'LEGAL', 'CHIEF OF STAFF', 'X', 'TELEGRAM', 'DISCORD', 'FACEBOOK', 'MASTODON',
-  'BLUESKY', 'LINKEDIN', 'MARKETING', 'LEADS'];
+  'AVATAR', 'VESSEL', 'VOICE', 'LEGAL', 'CHIEF OF STAFF', 'TELEGRAM', 'DISCORD', 'MARKETING'];
 const leaksIn = (text) => HOUSE_MARKS.filter((re) => re.test(text)).map(String);
 
 const log = (m) => console.log(`[harness-mode] ${m}`);

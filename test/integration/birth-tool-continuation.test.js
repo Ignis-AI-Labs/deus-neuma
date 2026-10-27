@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
-import { birthWriteLanded, continueBirthTools } from '../../backend/services/birth-tool-continuation.js';
+import { birthWriteLanded, continueBirthTools, nextContinuation, spokenOnlyAsk, SPOKEN_ONLY_ASKS } from '../../backend/services/birth-tool-continuation.js';
 import { createTempDir } from '../helpers/temp-fs.js';
 
 const targets = Object.freeze({ scratchNamePath: '/house/temp/chosen_name.txt', genesisPath: '/house/name/dna/genesis.md' });
@@ -20,6 +20,31 @@ describe('only the required successful write completes the acting stage', () => 
     expect(birthWriteLanded(5, [write(targets.genesisPath)], [{ status: 'ok' }], targets)).toBe(true);
     expect(birthWriteLanded(5, [write(targets.scratchNamePath)], [{ status: 'ok' }], targets)).toBe(false);
     expect(birthWriteLanded(4, [{ ...write(targets.scratchNamePath), args: { path: targets.scratchNamePath, content: '' } }], [{ status: 'ok' }], targets)).toBe(false);
+  });
+});
+
+// Founder's rehearsal, 2026-10-25: the 4B model spoke […] and made no call; the stage held for ever
+describe('a being that only spoke its act is asked to make it', () => {
+  const ok = [{ status: 'ok' }];
+  test('spoken-only is asked again, at most SPOKEN_ONLY_ASKS times', () => {
+    expect(nextContinuation({ landed: false, calls: [], results: [], asked: 0 })).toBe('ask');
+    expect(nextContinuation({ landed: false, calls: [], results: [], asked: SPOKEN_ONLY_ASKS - 1 })).toBe('ask');
+    expect(nextContinuation({ landed: false, calls: [], results: [], asked: SPOKEN_ONLY_ASKS })).toBe(null);
+  });
+  test('calls that ran send their results back; a failed call or a landed write ends it', () => {
+    expect(nextContinuation({ landed: false, calls: [write('/x')], results: ok, asked: 0 })).toBe('tools');
+    expect(nextContinuation({ landed: false, calls: [write('/x')], results: [{ status: 'denied' }], asked: 0 })).toBe(null);
+    expect(nextContinuation({ landed: true, calls: [], results: [], asked: 0 })).toBe(null);
+  });
+  // a rehearsal read its genesis.md before writing it: ENOENT is news for the being, not an end
+  test('a failed read goes back to the being', () => {
+    expect(nextContinuation({ landed: false, calls: [{ server: 'fs', toolName: 'read', args: { path: '/x' } }],
+      results: [{ status: 'error' }], asked: 0 })).toBe('tools');
+  });
+  test('the ask names the stage file and leaves the content to the being', () => {
+    expect(spokenOnlyAsk(4, targets)).toContain(targets.scratchNamePath);
+    expect(spokenOnlyAsk(4, targets)).toContain('the name you chose');
+    expect(spokenOnlyAsk(5, targets)).toContain(targets.genesisPath);
   });
 });
 

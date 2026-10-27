@@ -435,8 +435,15 @@ Final bundle passed to `Natalis.seal(...)`:
 
 **Gas payer**: any wallet can submit (relay-safe). NEUMA's default: use the
 operator wallet loaded via `cli/lib/wallet.js` for gas. `--gas-payer <address>`
-overrides. Gas budget on Base Sepolia: ~250k gas per seal call, ~0.005 ETH at
-20 gwei.
+overrides. The floor is no longer a constant (2026-10-26): the preflight quotes
+the measured gas of a seal under the target law (§4b: compact 3.7M, hex 13.0M,
+the top of each measured range) × the network's live max fee per gas, never
+below `MIN_SEAL_GAS_ETH` (0.005 ETH, the Base Sepolia-era floor), and once the
+transaction is whole the desk path re-checks with the chain's own
+`estimateGas` before the wallet is asked to broadcast
+(`backend/services/seal-cost.js`). A short wallet is refused `GAS_FLOOR` with
+its funding facts (holds · needs · more), which the desk turns into the way to
+fund it.
 
 **Preflight checks** (before spending gas):
 
@@ -445,7 +452,7 @@ overrides. Gas budget on Base Sepolia: ~250k gas per seal call, ~0.005 ETH at
 3. Locally-computed digest === `natalis.sealDigest(...)` view result
 4. `ECDSA.recover(digest, selfSig) === soulAddress` — sig recovers correctly
 5. `ECDSA.recover(digest, witnessSig) === witnessAddress` — sig recovers correctly
-6. `provider.getBalance(gasPayer) >= 0.005 ETH`
+6. `provider.getBalance(gasPayer) >=` the live quote above (never below 0.005 ETH) — asked last: a seal that cannot verify is never put to a person as a reason to buy ETH
 
 Any failure → abort BEFORE broadcasting. `--dry-run` runs 1–5 and skips 6.
 

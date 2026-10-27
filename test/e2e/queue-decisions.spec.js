@@ -107,6 +107,15 @@ const waitFor = async (urls, ms = 90000) => {
 const INBOUND_N = 25;
 const HOUSE_POST_ID = 'housepost-1';
 
+// THE HOUSE THESE ENTRIES BELONG TO. The queue is one machine file read per
+// house (social/queue-house.js): an entry shows only to the house whose lane
+// authored it or whose wallet staged or decided it. These are staged the way a
+// being's reply tool stages them (portal-tools/social-reply-handlers.js) —
+// authored and queued by the test's own lane, which beforeAll claims for the
+// signed-in wallet — and what went out carries the operator's decision.
+const HOUSE_WALLET = new ethers.Wallet(readClaudeWallet()).address.toLowerCase();
+const STAGED_BY_THE_BEING = Object.freeze({ authorNeumaId: NEUMA_ID, queuedBy: NEUMA_ID });
+
 const seedStores = async () => {
   const at = (minsAgo) => new Date(Date.now() - minsAgo * 60000).toISOString();
   const candidates = Array.from({ length: INBOUND_N }, (_, i) => ({
@@ -135,9 +144,9 @@ const seedStores = async () => {
       campaignId: null,
       pillar: '',
       media: [],
-      authorNeumaId: null,
-      queuedBy: '',
+      ...STAGED_BY_THE_BEING,
       status: 'sent',
+      decidedBy: HOUSE_WALLET,
       postId: HOUSE_POST_ID,
       sentAt: at(60),
       createdAt: at(90),
@@ -162,8 +171,7 @@ const seedStores = async () => {
         category: 'ordinary',
       },
       expiresAt: new Date(Date.now() + 12 * 3600_000).toISOString(),
-      authorNeumaId: null,
-      queuedBy: '',
+      ...STAGED_BY_THE_BEING,
       status: 'draft',
       createdAt: at(10),
     })),
@@ -186,9 +194,9 @@ const seedStores = async () => {
         conversationId: HOUSE_POST_ID,
         category: 'ordinary',
       },
-      authorNeumaId: null,
-      queuedBy: '',
+      ...STAGED_BY_THE_BEING,
       status: 'sent',
+      decidedBy: HOUSE_WALLET,
       postId: 'reply-post-3',
       sentAt: at(5),
       createdAt: at(15),
@@ -198,7 +206,7 @@ const seedStores = async () => {
   const dir = path.join(root, 'social');
   await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
   // The replies are the signed-in house's own record, in its realm dir (reply-candidates.js).
-  const houseDir = path.join(root, 'realm', new ethers.Wallet(readClaudeWallet()).address.toLowerCase());
+  const houseDir = path.join(root, 'realm', HOUSE_WALLET);
   await fs.promises.mkdir(houseDir, { recursive: true, mode: 0o700 });
   await fs.promises.writeFile(
     path.join(houseDir, 'reply-candidates.json'), `${JSON.stringify(candidates, null, 2)}\n`, { mode: 0o600 },
@@ -254,6 +262,15 @@ test.beforeAll(async () => {
 
   ({ token, addr } = await mintToken());
   await claimOwner(root, NEUMA_ID, addr);
+  // The being stages replies because it HOLDS the house's X account — the
+  // staging tool refuses an unbound lane, and the send re-checks it. The
+  // operator ties the position through the real route, as the desk does.
+  const bound = await fetch(`${BASE}/api/v1/social-channels/x/binding`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ neumaId: NEUMA_ID }),
+  });
+  if (!bound.ok) throw new Error(`binding the X account failed: ${bound.status} ${await bound.text()}`);
 });
 
 test.afterAll(async () => {
@@ -287,14 +304,15 @@ test.beforeEach(async ({ page }) => {
   await standAside(page);
 });
 
-// X space → QUEUE board → the REPLIES SECTION (Design note, 2026-08-06: KIND first).
+// X's account level (in MARKETING) → its queue → the REPLIES SECTION (Design note, 2026-08-06: KIND first).
 // The section strip rides the month view too — a reply has no month — so
 // REPLIES is one click from arrival, no day navigation required.
 const openRepliesSection = async (page) => {
   await openDockApp(page, 'X');
-  const win = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'X //' }) }).first();
-  await expect(win.locator('.outreach-tab', { hasText: 'QUEUE' })).toBeVisible({ timeout: 20000 });
-  await win.locator('.outreach-tab', { hasText: 'QUEUE' }).click();
+  // X's space is MARKETING's account level (slice 6).
+  const win = page.locator('.fwin', { has: page.locator('[data-mkt-level="account"][data-mkt-account^="x:"]') }).first();
+  // The account level's one board is the queue: no tab to press (SDT-6).
+  await expect(win.locator('.queue-section-tab').first()).toBeVisible({ timeout: 20000 });
   await win.locator('.queue-section-tab', { hasText: 'REPLIES' }).click();
   return win;
 };

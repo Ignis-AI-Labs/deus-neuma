@@ -19,6 +19,11 @@ import fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { createTempDir, writeJSON } from '../helpers/temp-fs.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['security-watch']);
+afterAll(() => connections.restore());
 
 const execFileP = promisify(execFile);
 

@@ -13,6 +13,8 @@ import { channelBindings, canNeumaPost } from '../social/channel-bindings.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { sectorCrew, canStageForSector } from '../sector-crew.js';
 import { REPLY_CAP_PER_CONVERSATION } from '../social/post-queue.js';
+import { ownMediaChannel } from '../social/poster-registry.js';
+import { PLATFORM_READ_TOOLS } from './platform-read-tools.js';
 
 // --- Neuma-initiated social posts became INTENTS (Stage 2 of the
 // being-tool-surface doctrine): publishing (social/post) and staging
@@ -111,7 +113,22 @@ const X_REPLY_DISMISS_TOOL = Object.freeze({
 // decision — it returns to draft; a schedule-only edit preserves it), and
 // the operator's chip shows the DIFF — what each field WAS — never just the
 // patch.
-const _queueMediaSchema = () => Object.freeze({
+// A channel whose post IS its video (TikTok, YouTube) takes one: by the id of
+// the being's own render, or by path.
+const _videoMediaSchema = (video) => Object.freeze({
+  type: 'array',
+  description: `The ${video.name} post's ONE video: [{image, alt}] with image the id image/generate gave you for one of your own renders, or [{path, alt}] with the absolute path of a video in a folder your operator has open.`,
+  items: Object.freeze({
+    type: 'object',
+    properties: Object.freeze({
+      image: Object.freeze({ type: 'string', description: 'The id of one of your own videos (image/generate gave it)' }),
+      path: Object.freeze({ type: 'string', description: 'Absolute path to an MP4, MOV or WebM inside an open folder' }),
+      alt: Object.freeze({ type: 'string', description: 'What the video shows' }),
+    }),
+  }),
+});
+
+const _queueMediaSchema = (channel) => (ownMediaChannel(channel?.id) ? _videoMediaSchema(ownMediaChannel(channel.id)) : Object.freeze({
   type: 'array',
   description: 'Optional images to attach (up to 4). Each is {path, alt}: path is the ABSOLUTE path of an image file inside a folder your operator has open, and alt describes it for people who cannot see it. Always write alt text — an undescribed image is a post part of your audience cannot read.',
   items: Object.freeze({
@@ -122,7 +139,7 @@ const _queueMediaSchema = () => Object.freeze({
     }),
     required: Object.freeze(['path']),
   }),
-});
+}));
 
 const _channelQueueUpdateTool = (channel) => Object.freeze({
   name: `queue_update_to_${channel.id}`,
@@ -136,7 +153,7 @@ const _channelQueueUpdateTool = (channel) => Object.freeze({
       scheduledFor: Object.freeze({ type: 'string', description: 'The new ISO-8601 publish time — or null to unschedule' }),
       campaignId: Object.freeze({ type: 'string', description: 'The campaign this post belongs to — or null to detach' }),
       pillar: Object.freeze({ type: 'string', description: 'The content pillar this post speaks from' }),
-      media: _queueMediaSchema(),
+      media: _queueMediaSchema(channel),
     }),
     required: Object.freeze(['id']),
   }),
@@ -254,6 +271,9 @@ export const channelToolsFor = async (neumaId) => {
   return CHANNEL_CATALOG
     .filter((c) => configured.has(c.id))
     .flatMap((c) => {
+      // Reading a connected platform is every lane's in the house: each
+      // platform its own read, equally (platform-read-tools.js).
+      const read = PLATFORM_READ_TOOLS[c.id] ? [PLATFORM_READ_TOOLS[c.id]] : [];
       const holds = canNeumaPost(bindings, c.id, neumaId);
       // The reply lane is the HOLDER's engagement lane: the being that is
       // told about the candidates (the notification is binding-gated too) is
@@ -261,13 +281,14 @@ export const channelToolsFor = async (neumaId) => {
       // staging rights ride (#208) — shaping the calendar is crew work, and an
       // edit is governed exactly like a staging.
       if (holds) return [
+        ...read,
         _channelQueueUpdateTool(c), _channelQueueBulkUpdateTool(c),
         ...(c.id === 'x' ? [X_QUEUE_REPLY_TOOL, X_QUEUE_SELF_REPLY_TOOL, X_REPLY_DISMISS_TOOL] : []),
       ];
       return canStageForSector(crewStore, bindings, c.id, neumaId)
-        ? [_channelQueueUpdateTool(c), _channelQueueBulkUpdateTool(c),
+        ? [...read, _channelQueueUpdateTool(c), _channelQueueBulkUpdateTool(c),
           ...(c.id === 'x' ? [X_QUEUE_SELF_REPLY_TOOL] : [])]
-        : [];
+        : read;
     });
 };
 

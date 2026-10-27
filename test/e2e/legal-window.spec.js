@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { setupPerfStack, initPerfSession, perf } from './helpers/perf-harness.js';
 import { passDeskGates } from './helpers/desk-gates.js';
 import { openDockApp } from './helpers/dock.js';
+import { underFloor } from './helpers/legibility.js';
 
 const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 
@@ -49,7 +50,12 @@ test('the LEGAL window: the watch runs, its matters open whole, the seat is held
   await expect(detail).toBeVisible();
   await expect(detail).toContainText("THE PRAETOR'S READINGS");
   await expect(detail).toContainText('NOT YET READ.');
+  await expect(detail.locator('.sec-facts')).toContainText('SEEN');
+  await detail.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1200); // the window's raise settles before the eye reads it
   await page.screenshot({ path: path.join(SHOTS, 'legal-window.png') });
+  // THE FLOOR: every visible word in the window, the matter open, reads at 13px or more
+  expect(await underFloor(win.locator('.legal'))).toEqual([]);
   await detail.getByRole('button', { name: 'CLOSE' }).click();
 
   // the overview: the where-bar for NEW WORK narrows the ledger to build matters only
@@ -57,6 +63,7 @@ test('the LEGAL window: the watch runs, its matters open whole, the seat is held
   await win.locator('.tri-must').scrollIntoViewIfNeeded();
   await page.waitForTimeout(1200); // the window's raise settles before the eye reads it
   await page.screenshot({ path: path.join(SHOTS, 'legal-triage.png') });
+  expect(await underFloor(win.locator('.legal'))).toEqual([]);
   await win.locator('.tri-row', { hasText: 'NEW WORK · NEUMA' }).click();
   await expect(win.locator('.tri-showing')).toContainText('NEW WORK · NEUMA');
   const shown = await win.locator('.sec-row-id').allInnerTexts();

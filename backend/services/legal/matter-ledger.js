@@ -41,8 +41,8 @@ const DEFAULT_LEGACY_PATH = join(getSettingsDir(), 'legal-matters.json');
 const legacyMattersPath = () =>
   process.env.NEUMA_LEGAL_MATTERS_PATH || DEFAULT_LEGACY_PATH;
 
-export const MATTER_AREAS = Object.freeze(['license', 'posture', 'product', 'regulation']);
-export const MATTER_SOURCES = Object.freeze(['license-scan', 'posture-probe', 'build-watch', 'research', 'manual']);
+export const MATTER_AREAS = Object.freeze(['license', 'posture', 'product', 'regulation', 'marketing']);
+export const MATTER_SOURCES = Object.freeze(['license-scan', 'posture-probe', 'build-watch', 'research', 'manual', 'campaign-review']);
 export const MATTER_STATUSES = Object.freeze(['new', 'no_issue', 'concern', 'resolved', 'needs_counsel', 'needs_operator']);
 export const MATTER_SEVERITIES = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 
@@ -208,6 +208,8 @@ export const createMatterLedger = ({ path, journal = null }) => {
             area: f.area,
             source: f.source,
             repo: f.repo || null,
+            // A campaign-review matter names the company whose words it read.
+            ...(typeof f.companyId === 'string' && f.companyId ? { companyId: f.companyId } : {}),
             externalId: f.externalId.trim(),
             title: f.title.trim(),
             severity: f.severity || 'unknown',

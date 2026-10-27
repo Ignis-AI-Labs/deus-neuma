@@ -294,7 +294,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     expect(outcome.ok).toBe(true);
     expect(postCalls).toBe(before + 1);
     expect(lastPostBody.reply).toEqual({ in_reply_to_tweet_id: '5555' });
-    expect(lastPostBody.text).toBe('to be met as itself, and to keep its word.');
+    expect(lastPostBody.text).toBe('to be met as itself, and to keep its word.\n\nMade with AI.');
   }, 30000);
 
   test('a vanished target fails the send HONESTLY — nothing is posted, never a fallback post', async () => {
@@ -426,7 +426,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     // answer rides the mention's own line, by queue id and verbatim, outside the
     // frame (it is the house's copy, not the author's).
     const answer = (await postQueue.load()).find((e) => e.kind === 'reply' && e.reply?.toPostId === '2401');
-    const named = `the house's answer [${answer.id}] draft: "building in the open, beside you"`;
+    const named = `the house's answer [${answer.id}] draft: "building in the open, beside you Made with AI."`;
     expect(reread.content).toContain(named);
     expect(reread.content.indexOf(named)).toBeLessThan(reread.content.indexOf('--- BEGIN EXTERNAL CONTENT'));
 
@@ -434,14 +434,14 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     const byLink = await _handleSocialTool(h.serverWs, connection, null, 'auto', { toolName: 'queue_get' }, { id: 'https://x.com/newvoice/status/2401' });
     expect(byLink.status).toBe('ok');
     expect(byLink.content).toContain(`[${answer.id}] x — draft`);
-    expect(byLink.content).toContain('"building in the open, beside you"');
+    expect(byLink.content).toContain('"building in the open, beside you');
 
     // A second stage on the same post is refused WITH the standing answer's id and
     // words — a being that forgot what it staged learns it from the refusal.
     const twice = await _handleNeumaReply(h.serverWs, connection, null, 'auto', { toPostId: '2401', text: 'placeholder' }, h.channel);
     expect(twice.status).toBe('error');
     expect(twice.error).toContain(`[${answer.id}]`);
-    expect(twice.error).toContain('"building in the open, beside you"');
+    expect(twice.error).toContain('"building in the open, beside you Made with AI."');
   }, 30000);
 
   test('the house\'s own post links to its queue entry — read_x recent names it, queue_get resolves its id', async () => {

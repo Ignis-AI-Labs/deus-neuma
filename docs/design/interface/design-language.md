@@ -105,7 +105,7 @@ language never gestures toward it.
 
 | Source | What we take | What we leave |
 | ------ | ------------ | ------------- |
-| Evangelion / NERV | Hard geometry, oversized type as graphic element, data-density as decoration, theatrical alert states | The chaos, the 90s CRT grain |
+| Evangelion / NERV | Hard geometry, oversized type as graphic element, theatrical alert states | The chaos, density as decoration, the 90s CRT grain |
 | Metal Gear Solid | Codec restraint — mono type, corner targeting brackets, frequency numerals, tactical calm | Green phosphor retro |
 | Ghost in the Shell | Layered translucent data, depth — the interface as a dive surface | Hologram noise, glitch effects |
 | Solo Leveling | "The System" — floating windows with crisp luminous edges, status panels with authority | Heavy gradients, particle spam |
@@ -190,6 +190,103 @@ Reference implementations: the SUBSTRATE window
 (`frontend/app/RelinkShell/hud-instruments.jsx`, `MachinePanels.jsx`) and the
 triage overview shared by SECURITY and LEGAL (`TriageOverview.jsx`,
 `triage-view.js`). Reuse them before drawing a new instrument.
+
+## CHOKKAN — 直感, "INTUITION"
+
+*Choku* (直, direct) + *kan* (感, sense): understood directly, without being
+explained. The third and final principle, locked 2026-10-22. SHINKEI makes
+every mark true and JŌHŌ SEKKEI puts the picture first; CHOKKAN makes it
+obvious. Whoever arrives, whatever language they do or do not speak, knows at
+once what is happening, what they are about to do, and how to get from
+point A to point B.
+
+Collapsing a complex structure into a simple surface is an art, and this
+principle makes it a duty: the complexity is ours to carry, never the
+operator's to decode.
+
+1. **Understood without words.** Shape, position, state and motion say what
+   is happening; a label confirms it and never carries it alone. Cover every
+   word on the surface and its purpose should still be clear.
+2. **The next step is the plainest thing on screen.** Every surface makes
+   three things obvious: where you are, what you can do, and what happens
+   when you do it. The way back is always in view.
+3. **One decision per moment.** A structure may be deep, but the surface
+   shows only the choice the moment asks for. The depth opens on demand and
+   is never dumped on arrival. Fewer steps and fewer choices win, and every
+   extra step has to earn its place.
+4. **One gesture, one meaning, everywhere.** The same control looks the same,
+   sits in the same place and does the same thing in every window. A press
+   on a count filters everywhere (JŌHŌ SEKKEI), and a chamfered window is a
+   window everywhere. Something learnt once is known for good.
+5. **Every act answers.** A press shows at once that it was taken, then
+   shows working, done or refused, each with its reason. Nothing waits in
+   silence (LOADING), and nothing acts without showing it.
+6. **The stranger test.** Put the surface in front of someone who has never
+   seen it and does not read its language. Within a few seconds they can say
+   what it is for and what they would press next. If they can't, the
+   surface fails review, however true and well informed it is.
+
+CHOKKAN never thins the truth to look simple. A simplification that hides a
+real state breaks SHINKEI, and one that buries what needs the operator breaks
+JŌHŌ SEKKEI. The art is finding the simple form that still carries all of it.
+
+This section binds every surface: desk, ceremony, CLI and site. On the site it
+is applied through the web rules under WEB → CHOKKAN (site), which add the
+first-screen questions, a process drawn as steps, plain words for terms of
+art, and the legibility floor.
+
+## LESS TEXT, NOT LESS DATA — where JŌHŌ SEKKEI and CHOKKAN meet
+
+Design note, 2026-10-24: *[…]* And, the same day: *[…]*
+
+JŌHŌ SEKKEI puts the picture before the words; CHOKKAN makes the way obvious.
+Together they ask for less text carrying the same data — all of it.
+
+1. **Every word earns its place.** If removing a word loses nothing, it goes:
+   a label that repeats its value, a heading that repeats the window, a
+   sentence that restates the figure beside it.
+2. **Marks carry what words used to.** Gauges, bars, shade, position and icons
+   say what a sentence would. One shared legend or unit replaces a label
+   repeated on every row; human names replace codes.
+3. **Density is never decoration.** A surface is as dense as its moment's
+   information demands (the density ladder), never dense to look technical.
+4. **Every number stays on screen.** Less text never means less data: every
+   number the person needs stays in view, and so does an open critical, a
+   missing reading, a limit or a refusal's reason. Only genuine noise (an
+   unconnected input, say) folds, one press away and marked as folded.
+5. **Less to say, too.** A person never has to type or say what the system
+   already knows; one press or one short phrase does the job.
+6. **Everywhere a person reads:** desk, ceremony, site, CLI output, errors and
+   refusals, reports, and every message the platform or an AI agent writes to a
+   person. A neuma's own voice stays its own; this binds what is written for
+   the operator to read, never how a being speaks.
+
+## SHOW, DON'T TELL — the next step, still SHINKEI
+
+Design note, 2026-10-24: *[…]* *[…]* *[…]*
+
+LESS TEXT keeps all the data in fewer words. SHOW, DON'T TELL moves the
+meaning out of words wherever a mark can carry it. Every mark stays true.
+
+1. **Visual first.** A mark, shape, position, colour, gauge or picture says
+   it: the universal language (CHOKKAN). Text only where no mark can.
+2. **Then the fewest words.** Five words beat a paragraph. Never say it twice.
+3. **Lists are for inventory.** Lists and tables serve stock, audits, ledgers
+   and logs, not status. Fine status is one mark per item (eleven CLEAR rows
+   become eleven marks, each named on hover); only what needs attention opens.
+4. **Every problem is a door.** A fix takes the person to the exact place it
+   is done, or does it in place. Unfinished setup is a guided path, step after
+   step, never a sentence of directions: […] is a press, not
+   a phrase.
+5. **Hand it over.** If a house member (a neuma or an agent) can do the fix,
+   one press hands it to the member responsible, prompt drafted. The operator
+   still sees it and stays in command.
+6. **Efficient language is efficient code.** KISS for words: say it once, the
+   shortest true way.
+7. **Artistic, never decorative.** Beauty that carries information; no mark
+   without meaning.
+8. **Patterns repeat.** The same mark means the same thing on every surface,
+   so the mind learns it once (CHOKKAN 4).
 
 ## SOUND REGISTER (reserved — Founder's domain)
 
@@ -462,8 +559,10 @@ Founder rejected it as too minimal beside the product. The reading pieces it def
   gate: THE CONSOLE (monolith, true-share gauges, a row reader that names its row of how many and never
   shows a row's scores below the gate, the gate deliberating cell by cell to its «ANSWER»). What stays
   and what leaves: THE ROUTING MAP (rails 90°/45°, one port, a refused path cut at the boundary, never
-  understating what leaves). Many numbers others published: THE STRIP PLOT (the ruler; medians as
-  junctions; never a citation by itself). The System's own state: THE SYSTEM WINDOW. An inner page's own
+  understating what leaves). Many numbers others published: THE FIELD, small multiples (one panel per
+  board, one lane per maker, each score a tick at its true place on the ruler, the maker's range a bar
+  and its best a block; the panel's head names how far the best open-weight score stands from the top;
+  never a citation by itself; revised 2026-10-22, Founder: the single strip […]). The System's own state: THE SYSTEM WINDOW. An inner page's own
   structure: THE PAGE SEAL (one graduation per section, inscribed with their names).
 - **Motion on the web (19.5).** Arrival by cascade (420ms snap, 36ms stagger) and a figure's single
   scanline, below the fold only; deliberation once in view; cycles at seal rates (seed 6s, rings
@@ -477,8 +576,59 @@ Founder rejected it as too minimal beside the product. The reading pieces it def
   SPECIMEN first). Comparison (a cited fact in every cell, "last verified", their column marked as
   theirs, rows where they win stay, "source-available", never "open source"). Guides (numbered steps,
   exact commands in a hairline well with one ghost control). The way in (at most one filled control per
-  view). Claims close with a source line; limits are said beside strengths. Labels are 11px or more.
+  view). Claims close with a source line; limits are said beside strengths. Labels are 13px or more.
 - **The social plates** (X banner, link preview) are ratified with THE CODE (above).
+- **JŌHŌ SEKKEI on the web (Design note, 2026-10-22: the text is too small and hard to follow; locked for the
+  site).** Every page is designed by the questions its reader brings, and answers them by shape before
+  words: overview first (one panel or figure that answers the page's question at a glance), then the
+  path, then the detail. Prose is the drill-down, never the overview. A process (download, check,
+  install, give it a model, summon) is drawn as numbered steps, one panel each; a choice that depends on
+  the reader (their graphics card, their system) is answered by picking it, not by decoding a table; a
+  comparison is a chart on a stated axis before it is a table. Packed panels on a grid, never a scroll
+  of paragraphs. SHINKEI binds every mark on the web as on the desk.
+- **Legibility on the web (locked 2026-10-22).** Reading text (Inter) is at least 18px with line-height
+  1.65 and a measure of 60–72ch; secondary reading ink is at least 0.82 white; a lead is at least 22px.
+  Data in tables and readouts is at least 15px. Labels (mono, uppercase) are at least 13px, tracked no
+  wider than 0.14em, and never carry a sentence. Nothing on the site is under 12px. All reading text
+  meets WCAG AA contrast (4.5:1) on its ground. The type scale lives once in the site layer
+  (deus-neuma-site `globals.css`, `--web-*`); no stylesheet sets its own size below it.
+- **THE STORY (Design note, 2026-10-22: […]; locked 2026-10-23).** The site's nav pages read as one story, in the nav's order: who you
+  meet, what you do together, what works beneath, what it measured, what stays yours, begin. Every one
+  is built from one kit (deus-neuma-site `src/app/site/story/`), so the story is the same thing in the
+  same place on every page:
+  - **The overview** opens the page: its one primary action first, if it has one; the story rail (the
+    six pages, this one marked, numbered); then the page's chapters as a numbered path of doors, each
+    with its one-line takeaway. Chapters are data, so the path and the heads cannot drift.
+  - **The chapter**: the numbered head, one statement at display size (Inter 200), then the answer by
+    shape (a figure, a flow, gauges or packed panels), the prose after it, detail folded one press
+    away. Never a wall of paragraphs.
+  - **Panels** pack facts side by side as chamfered panels, label in the data register; a limit or a
+    refusal is the same panel dashed (a cloud model as a neuma, what is not encrypted).
+  - **A flow** draws a process as numbered square nodes on one rail, packets showing direction; a
+    loop draws its return rail and names what ends it. Narrow screens read it top to bottom.
+  - **Gauges** are the few numbers a page stands on, before its charts (never repeating a figure that
+    already is the overview).
+  - **The way on**: every page but the last ends on one door, the next page of the story.
+  - **THE LOOK on the web**: a visitor may dress the site with the platform's own presets and
+    derivation (the strip's LOOK chip, the LOOK desk on /capabilities); the site wears dark dresses
+    only, and keeps the legibility floor's contrast under every dress.
+
+## CHOKKAN — 直感, "INTUITION" (Design note, 2026-10-22 — locked for the site, beside SHINKEI and JŌHŌ SEKKEI
+
+SHINKEI makes every mark true; JŌHŌ SEKKEI puts the measure first; CHOKKAN makes the way through
+obvious. A newcomer who has never heard of a neuma finds their way without being taught.
+
+1. **Where am I, what is this, what do I do next** — every page answers all three within its first
+   screen.
+2. **One path.** A page that leads somewhere shows the whole way as steps, marks where the reader is,
+   and keeps the next step in view.
+3. **One primary action per view**, where the eye ends; every other control is secondary.
+4. **Plain words first.** A term of art (quant, GGUF, SHA-256, RPC) is said in plain words where it
+   first appears, or kept off the page.
+5. **Same thing, same place, same name** on every page.
+6. **Ask, don't make them decode.** What depends on the reader's machine is chosen from what they
+   have; the page answers with their file, their model and their next step.
+
 
 ## SIGIL REGISTER (study 07) — RATIFIED 2026-09-30, Founder
 
@@ -542,7 +692,9 @@ each one checkable in review.
 3. **Choose instruments by measurement.** From the measurement table. If
    nothing real is measured, no instrument may appear.
 4. **Check permissions.** The negative rules below. They are absolute.
-5. **Run the SHINKEI checklist.** Every box, pass/fail, before ship.
+5. **Run the SHINKEI checklist**, which covers JŌHŌ SEKKEI and CHOKKAN too.
+   Every box gets a pass or a fail before ship, and that includes the
+   stranger test.
 
 ### The density ladder
 
@@ -608,6 +760,10 @@ permitted, climbing requires the demand to be real.
 - [ ] Every loop is a genuinely continuous process, or a labeled drill.
 - [ ] Density level counted and within budget (components + instruments).
 - [ ] JŌHŌ SEKKEI: the overview answers what / where / how much / how long by shape; every count filters; open criticals and highs stand at the top.
+- [ ] CHOKKAN (every surface): with every word covered, the purpose still reads; the next step and the way back are the plainest things on screen; one decision per moment; every press answers; the stranger test passes.
+- [ ] CHOKKAN (site): where am I / what is this / what next in the first screen; a process drawn as steps; one primary action per view; plain words; legibility floor met (reading 18px, labels 13px, nothing under 12px).
+- [ ] LESS TEXT, NOT LESS DATA: every number the person needs is on screen; marks carry what words used to; one legend or unit, not repeated labels; human names, not codes; only genuine noise folds, and is marked; they never have to say what the system already knows.
+- [ ] SHOW, DON'T TELL: a mark says it before a word does; fine status is marks, lists only for inventory; every problem opens where it is fixed, or fixes in place; setup is a guided path; a fix a house member can do hands over in one press; one mark, one meaning, everywhere.
 - [ ] Every element belongs to a plane; the level's plane allowance holds.
 - [ ] Reduced-motion final states exist and were viewed with my own eyes.
 
@@ -685,9 +841,10 @@ A refined container must be comfortably readable at its normal window size and
 100% reading scale. Density yields before legibility: reflow cards, group data,
 or disclose secondary detail instead of shrinking text to fit.
 
-- Use at least 14px-equivalent type for working content and controls; reserve
-  12–13px-equivalent type for supporting metadata. Respect the shared reading
-  scale and test at 200%; no fixed-height clipping.
+- Use at least 14px-equivalent type for working content and controls. Labels
+  and supporting metadata are at least 13px-equivalent — the one label floor for
+  desk, ceremony and site. Respect the shared reading scale and test at 200%; no
+  fixed-height clipping.
 - Use primary/secondary contrast for information people need to read. Tertiary
   text is not a default for buttons, balances, role explanations or navigation.
 - Keep names, roles, status and actions in a consistent hierarchy. Sentence case

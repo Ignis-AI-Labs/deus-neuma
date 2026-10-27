@@ -26,6 +26,7 @@ import { buildTorchAsk, torchOffering } from './solo-torch.js';
 import { askWitness } from './witness-probe.js';
 import { foldBranchView, latestBranchView } from '../../core/workspace/branch-view.js';
 import { neumaRecall, neumaWorkspace, shouldCompact } from '../../core/index.js';
+import { compactRegionCheck } from './compact-region.js';
 
 const log = createLogger('WitnessStream');
 
@@ -55,6 +56,8 @@ export const compactWitnessSession = async (laneId, sessionId, atBoundary) => {
   // raw row count — superseded takes version the record without lengthening
   // the conversation.
   if (!shouldCompact(foldBranchView(messages).length, threshold)) return false;
+  // A region too light to sum up is left alone: its summary could outweigh it.
+  if (!compactRegionCheck(messages, { keepRecent: COMPACT_KEEP_RECENT }).worth) return false;
   const region = messages.slice(0, -COMPACT_KEEP_RECENT);
   let selfSummary = null;
   try {

@@ -11,8 +11,9 @@ it for — anchored to the **corporate executive seat** the function answers to
 in the world outside, so the legend reads familiar from any company.
 
 **The label law:** the FUNCTION is what a founder carries; the label is
-theirs to change — any word entered goes into the on-chain record exactly as
-given. But a chosen label maps to **one canonical function below**. There are
+theirs to change — any word entered goes into the house's founding record
+(on its operator's computer, and on chain when the house joins Unavis) exactly
+as given. But a chosen label maps to **one canonical function below**. There are
 fifteen seats. There is no sixteenth. A house that needs a new word picks a
 new *label* for a canonical seat — it does not invent a new seat.
 

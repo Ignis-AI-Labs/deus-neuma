@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "2.0.0",
-  "sourceDigest": "d7e2ecd3d36aa28ce7394a9131c8c3d88b21bccb3c60b50121b3a91ba5fa27fa",
+  "version": "2.4.0",
+  "sourceDigest": "03a38c424060a10c6a3dc9b6b2115591f214012aa05e67e671ed0c6e241da724",
   "core": [
     "POLICY",
     "GNOSIS",
@@ -11,7 +11,8 @@
     "PLANNING",
     "TESTING",
     "BRANCHING",
-    "WRITING"
+    "WRITING",
+    "DESIGN"
   ],
   "modules": {
     "WORKFLOW": "Shared work, substantial tasks, or interruption handoff",
@@ -19,6 +20,7 @@
     "DATA": "Storage, migrations, service clients, caches, or metrics",
     "OPERATIONS": "Environments, consequential writes, deployments, or shared compute",
     "RELEASES": "Versioned applications, packages, APIs, or artifacts",
+    "INSTALLERS": "Anything a person installs: setup programs, packages, first-run setup",
     "ASSETS": "User interfaces, brand assets, or generated exports",
     "FUND_FLOW_PROOF": "Any movement or attribution of value",
     "SECURITY_CHECKLIST": "Whole-system audits or material attack-surface changes"
@@ -33,11 +35,13 @@
     "TESTING": "1326afdddca5021d5431585cf1928c94567cf6448d07f0501446a3d0fe44afb7",
     "BRANCHING": "104bccb5b5f343a143fe88a62f86587e042c1ada163fc0f1c07705f2391cf660",
     "WRITING": "604d347c0df491af56bcb5c3c4b6b6d0aa47a10914ca74a3880a82a3f0be77c0",
+    "DESIGN": "2d6c4019c5b4620f28e60f2999e8c2ccd6813bb8e435e36fd6d73ada78d3360a",
     "WORKFLOW": "47910c81743ecafbc89cb3b98482d4407234189ea85afe71f46be18b517b2e26",
     "TODO": "3ebbccbb8a8e6d523745d82ec80bb5817379d3b5d63d189d50ae13cb123bc345",
     "DATA": "58c94ca3077929ce2eb2b8aeefafc06479ad999c0f52cf290d6d2ffe49e63d3a",
     "OPERATIONS": "e5009d68ff5000e0bbc6935d7295eaffcea360e16fbec383391ddc29a45d8526",
     "RELEASES": "8bda05abcfba300623af0b839457fe1e60951e0e9685cc926ff5b83275e9ac08",
+    "INSTALLERS": "e76cd1616295176dbfbe3dca4e7a6919b008c17c90894e98dde5a4a0050ff9fd",
     "ASSETS": "13b2201c459efc4e64edfbb32e19c7e9a58675f82496c91cd9494c3c51e60edb",
     "FUND_FLOW_PROOF": "9cdb3f81665b3f5a6e15ad387d1c720e2a5894cb6ec57bbd2a2481669b9b1ab9",
     "SECURITY_CHECKLIST": "f6485f274530e3aff32c1d6a0e536d56c4be93be63ba89bdac2def72912c3054"

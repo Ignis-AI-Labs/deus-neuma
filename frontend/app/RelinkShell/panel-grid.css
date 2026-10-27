@@ -1,0 +1,63 @@
+/* panel-grid — the chamfered instrument panel (sub-panel.jsx) and the
+   12-column console it is laid on: a panel declares its span, a narrower
+   window pairs the quarter panels, then stacks everything. Shared by every
+   console built this way (SUBSTRATE, the MARKETING board); the container is
+   the window's own (container-type on its body). Labels meet the 13px floor
+   (design-language.md § Legibility). */
+
+.sub-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.sub-span-3 { grid-column: span 3; }
+.sub-span-4 { grid-column: span 4; }
+.sub-span-6 { grid-column: span 6; }
+.sub-span-8 { grid-column: span 8; }
+.sub-span-12 { grid-column: span 12; }
+/* a narrower window pairs the quarter panels, then stacks everything */
+@container (max-width: 1180px) {
+  .sub-span-3 { grid-column: span 6; }
+  .sub-span-4, .sub-span-8 { grid-column: span 12; }
+}
+@container (max-width: 720px) {
+  .sub-span-3, .sub-span-6 { grid-column: span 12; }
+}
+
+.sub-panel { background: transparent; min-width: 0; }
+.sub-panel-in {
+  background: var(--color-glass-light);
+  border: var(--border-width-thin) solid var(--line);
+  padding: var(--space-3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sub-panel-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  margin: 0;
+  padding-bottom: var(--space-1);
+  border-bottom: var(--border-width-thin) solid var(--line);
+}
+.sub-panel-aside {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* the legible register: raised to the floor inside every panel */
+.sub-panel .sub-panel-in { gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
+.sub-panel .sub-panel-title { font-size: 13px; color: var(--color-text-secondary); flex-wrap: wrap; }
+.sub-panel .sub-panel-aside { font-size: 13px; letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.sub-panel-name { display: inline-flex; align-items: center; gap: var(--space-2); }

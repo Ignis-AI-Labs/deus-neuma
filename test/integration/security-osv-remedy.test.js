@@ -7,10 +7,15 @@
  *
  * When api.osv.dev cannot be reached the suite SKIPS and its title says why.
  */
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, afterAll } from 'vitest';
 import { createTempDir, writeJSON } from '../helpers/temp-fs.js';
 import { fetchVulnDetail, runAdvisoryScan } from '../../backend/services/security/advisory-scan.js';
 import { fixedVersionFor } from '../../backend/services/security/osv-remedy.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['security-watch']);
+afterAll(() => connections.restore());
 
 const R292 = 'GHSA-r292-9mhp-454m';
 

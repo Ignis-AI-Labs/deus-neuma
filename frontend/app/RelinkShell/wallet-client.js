@@ -282,11 +282,12 @@ export const approvePendingSpend = async (neumaId, request, password) => {
   }
 };
 
-export const rejectPendingSpend = async (neumaId, requestId) => {
+/** Deny one request — nothing moves; the optional note goes back to the being with the outcome. */
+export const rejectPendingSpend = async (neumaId, requestId, note = '') => {
   try {
     const headers = authHeadersOrNull();
     if (!headers) return { ok: false, error: 'Not authenticated.' };
-    await apiCall('POST', `${base(neumaId)}/pending/${encodeURIComponent(requestId)}/reject`, { headers, body: {}, errorPrefix: 'The request was not rejected.' });
+    await apiCall('POST', `${base(neumaId)}/pending/${encodeURIComponent(requestId)}/reject`, { headers, body: note ? { note } : {}, errorPrefix: 'The request was not rejected.' });
     return { ok: true };
   } catch (err) {
     if (!err.http) return { ok: false, error: 'Could not reach the platform.' };

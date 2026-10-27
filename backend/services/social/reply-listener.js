@@ -25,6 +25,7 @@ import { readXListings, isReplyToUs, isVerifiedAuthor } from './x-reader.js';
 import { replyCandidatesOf, categorizeCandidate, assessSubstance } from './reply-candidates.js';
 import { channelBindings } from './channel-bindings.js';
 import { readServed, laneHouse } from '../house-served.js';
+import { channelOfAccountId } from './account-shape.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ReplyListener');
@@ -78,16 +79,17 @@ const candidateFromMention = (tweet, author) => ({
  * @param {{tweets?: Array, users?: Array, me?: object|null}} read the mentions
  *   read's payload
  * @param {string} house - the operator wallet whose account was read: its replies land in its own record
+ * @param {?string} [accountId] - which of the house's X accounts was read (the one an answer speaks as)
  * @returns {Promise<{landed: number}>}
  */
-export const materializeReplyCandidates = async ({ tweets, users, me } = {}, house) => {
+export const materializeReplyCandidates = async ({ tweets, users, me } = {}, house, accountId = null) => {
   const myId = me?.id;
   if (!myId) return { landed: 0 };
   const userById = Object.fromEntries((users || []).map((u) => [u.id, u]));
   let landed = 0;
   for (const tweet of tweets || []) {
     if (!isReplyToUs(tweet, myId)) continue;
-    const { added } = await replyCandidatesOf(house).add(candidateFromMention(tweet, userById[tweet.author_id] || null));
+    const { added } = await replyCandidatesOf(house).add({ ...candidateFromMention(tweet, userById[tweet.author_id] || null), accountId });
     if (added) landed += 1;
   }
   return { landed };
@@ -115,18 +117,23 @@ export const replyListenerTick = async () => {
     log.warn('reply listener could not read the houses it serves', { error: err.message });
     return { ok: false, detail: err.message };
   }
-  const houses = [];
+  // Every X ACCOUNT a house here holds, each read with its own keys.
+  const accounts = [];
   for (const house of served.houses) {
-    const holder = await channelBindings.bindingFor(house, 'x').catch(() => null);
-    if (holder?.neumaId && laneHouse(served, holder.neumaId, house)) houses.push(house);
+    const bindings = await channelBindings.load(house).catch(() => ({}));
+    for (const [accountId, holder] of Object.entries(bindings)) {
+      if (channelOfAccountId(accountId) === 'x' && holder?.neumaId && laneHouse(served, holder.neumaId, house)) {
+        accounts.push({ house, accountId });
+      }
+    }
   }
-  if (!houses.length) {
+  if (!accounts.length) {
     return { ok: true, skipped: 'X is not held by a house this backend serves', landed: 0 };
   }
   let landed = 0;
   let seen = 0;
-  for (const house of houses) {
-    const one = await listenFor(house);
+  for (const { house, accountId } of accounts) {
+    const one = await listenFor(house, accountId);
     if (!one.ok) return one;
     landed += one.landed;
     seen += one.seen;
@@ -134,11 +141,11 @@ export const replyListenerTick = async () => {
   return { ok: true, landed, seen };
 };
 
-// impure — one house's mentions read with its own keys, its replies landed.
-const listenFor = async (house) => {
+// impure — one house account's mentions read with its own keys, its replies landed.
+const listenFor = async (house, accountId) => {
   let read;
   try {
-    read = await readXListings({ kind: 'mentions', limit: 25, wallet: house });
+    read = await readXListings({ kind: 'mentions', limit: 25, wallet: house, accountId });
   } catch (err) {
     log.warn('reply listener read threw', { error: err.message });
     return { ok: false, detail: err.message };
@@ -162,7 +169,7 @@ const listenFor = async (house) => {
     return { ok: false, status: read.status, detail: read.detail };
   }
   const { tweets, users, me } = read.data;
-  const { landed } = await materializeReplyCandidates({ tweets, users, me }, house);
+  const { landed } = await materializeReplyCandidates({ tweets, users, me }, house, accountId);
   if (!me?.id) return { ok: false, detail: 'the account lookup returned no id' };
   if (landed > 0) log.info('reply candidates landed', { landed, seen: tweets.length });
   return { ok: true, landed, seen: tweets.length };

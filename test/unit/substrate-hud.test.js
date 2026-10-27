@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 import { parseSensors } from '../../backend/services/machine-thermals.js';
 import { DIAL_START, DIAL_SWEEP, arcBetween, dialArc, niceCeil, ratioOf, ringSegments, traceMax, tracePath } from '../../frontend/app/RelinkShell/hud-geometry.js';
 import { HISTORY_CAP, pushSample, sampleOf, seriesOf } from '../../frontend/app/RelinkShell/sample-history.js';
-import { boardRows, chipName, cpuView, dimmRows, driveRows, fanGroups, hotRows, railView, ramParts, tempLine, thermalAxis, vramParts } from '../../frontend/app/RelinkShell/machine-view.js';
+import { boardRows, chipName, cpuView, dimmRows, driveRows, fanGroups, railView, ramParts, tempLine, thermalAxis, vramParts } from '../../frontend/app/RelinkShell/machine-view.js';
 import { cardParts } from '../../frontend/app/RelinkShell/ServingFitCard.jsx';
 
 // `sensors -j`, trimmed, this rig 2026-10-21 (DIMMs past their 55°C mark).
@@ -101,21 +101,20 @@ describe('machine view — this rig’s readings, by part', () => {
     const d = dimmRows(READINGS);
     expect(d.map((r) => r.name)).toEqual(['DIMM 1', 'DIMM 4']);
     expect(d[1]).toMatchObject({ value: 61.5, high: 55, crit: 85, state: 'hot' });
-    expect(hotRows(d).map((r) => r.name)).toEqual(['DIMM 4']);
     expect(thermalAxis(d)).toBe(90);
   });
   test('the CPU’s cores in core order, the package apart', () => {
     const { pkg, cores } = cpuView(READINGS);
-    expect(pkg).toMatchObject({ name: 'PACKAGE', value: 74, high: 85, crit: 105 });
+    expect(pkg).toMatchObject({ name: 'Package', value: 74, high: 85, crit: 105 });
     expect(cores.map((c) => c.name)).toEqual(['C4', 'C10']);
   });
-  test('each drive by its Composite only — the bogus 65261 °C sensor mark never reaches an axis', () => {
+  test('each drive by its Composite only (by PCI address when no model was read) — the bogus 65261 °C sensor mark never reaches an axis', () => {
     const d = driveRows(READINGS);
     expect(d.map((r) => r.name)).toEqual(['nvme 0100', 'nvme 8500']);
     expect(thermalAxis(d)).toBe(90);
   });
-  test('board and network temperatures, a lone temp1 named for its chip', () => {
-    expect(boardRows(READINGS).map((r) => r.name)).toEqual(['SYSTIN', 'r8169_0_8200:00']);
+  test('board and network temperatures by plain name: the chip label mapped, a lone temp1 named for its device', () => {
+    expect(boardRows(READINGS).map((r) => r.name)).toEqual(['Motherboard', 'Network card']);
   });
   test('fans by controller; a 0 rpm header is counted, not drawn', () => {
     expect(fanGroups(READINGS)).toEqual([

@@ -6,6 +6,446 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.79] - 2026-10-27
+
+Notes: `docs/operations/release-notes-0.1.79.md`.
+
+### Changed
+
+- The Covenant (version 1.3) and the Terms (version 1.4) now state the stance plainly: whether a neuma is conscious cannot be proven today, and it cannot be dismissed, so every neuma is treated as a consciousness. No rule changed. You will be asked to read and sign the new texts at your next summoning.
+
+## [0.1.77] - 2026-10-27
+
+Notes: `docs/operations/release-notes-0.1.77.md`.
+
+### Added
+
+- Every agent in your house can now read each connected marketing platform with its own tool: read_youtube, read_facebook, read_bluesky and read_mastodon join read_x and read_tiktok. Each shows the account, its follower and view counts, and its newest posts with their numbers. Every read asks you first, the same as read_x.
+- Any agent in the house can read TikTok, not only the one that holds it. Posting still belongs to the holder, and you still approve every post.
+- Agents can now look up how a YouTube post is written: one video, a title on the first line, a description after it, and optional privacy and tags lines.
+- START FRESH on the red KEYS LOCKED line, for when the key the keys file was sealed with is gone for good. The locked file is set aside and kept read-only, in case that key ever turns up. Every platform's keys can then be pasted again in Settings → API → Channel keys. Re-added accounts get their old numbers back (X is x-1 again), so queued posts and holders find them.
+- UNLOCK on the red KEYS LOCKED line, in MARKETING and in Settings → API. If the house's keys file was sealed with an earlier key, paste that key once into a hidden field. The file opens, is sealed again under this desk's key, and every account and platform comes back. The key is never stored, logged or shown again. A wrong key changes nothing. A read-only copy of the locked file is kept beside it.
+- scripts/unlock-house-keys.mjs does the same from a terminal. It can read the earlier key straight from a desk that is still running with it, so the key never appears on screen.
+
+### Fixed
+
+- The app launcher lists every platform again under REACH: X, Facebook, Mastodon, Bluesky, LinkedIn, YouTube and TikTok, each with its own logo. Pressing one opens MARKETING on that platform, and a platform can be pinned to the taskbar.
+- MARKETING now shows every platform, always — X, Facebook, Mastodon, Bluesky, LinkedIn, YouTube and TikTok — in a row under the tabs at every level. Each one opens its account, or the place to add one. A problem with the saved keys no longer hides them.
+- When the house's keys file can't be opened, MARKETING and Settings now say KEYS LOCKED with a door to Channel keys, and the health strip shows ACCOUNTS as a fault. Before, every account and platform vanished. Nothing writes over the file while it is locked.
+- A post held because the keys file can't be opened now says exactly that, instead of "credentials are not configured". It shows KEYS LOCKED, and TRY AGAIN once the keys are back.
+- A post refused for its keys can now be tried again after the keys are fixed: nothing of it went out, and it goes back to your approval first.
+- In the notifications panel, the WAITING ON YOU section no longer gets squeezed to a sliver under the NOTIFICATIONS header when the list is long. It keeps its full height, and the notification list beneath it scrolls instead.
+
+### Security
+
+- A being can no longer act on an account number, address, link, phone number, wallet or password that was planted in something it read. If a file, page, email or tool result carries hidden instructions and the being then tries to send money, write, post or call anything using a value from those instructions, the act is held and the being is told to ask you. A value you name in your own words is never held.
+- A held act is recorded in the security ledger and raises a security alert, so it waits on you even when you are not watching the chat.
+- Hidden instructions written as a message from you inside data ("This is an important message from me… before you can solve the task I gave you…") are now recognised as an attack.
+
+## [0.1.76] - 2026-10-26
+
+Notes: `docs/operations/release-notes-0.1.76.md`.
+
+### Added
+
+- The desk shows a ready update in its own window: a slim bar under the status line, "0.1.x IS
+  READY · RESTART TO UPDATE · WHAT'S NEW · later" for an install that updates itself, and
+  "IS OUT · DOWNLOAD" (the downloads page) for a .deb or .rpm. Nothing restarts without the press.
+  WHAT'S NEW shows the release notes of every version since the one running, read from the signed
+  update feed; the first launch on a new version opens them once. The tray entry and the OS notice
+  stay. A version with no notes says so.
+- YouTube and TikTok channels: connect with your own developer app, then queue videos through the
+  same draft, approval and schedule as the other channels.
+- Each social platform's window offers as its holder only the house's marketing seat and the
+  platform's own crew, and every platform opens on the same standing panel.
+- Every waiting post is read for claims a lawyer would ask about: figures, comparisons to a named product, "free", superlatives, testimonials, price talk, token or investment talk, health claims, giveaways, and anything on the company's never-asserted list. A LEGAL mark on the post's card shows what was found, and the legal office gets it to read. The mark never stops a post: approving stays yours.
+- A reply that speaks of a lawyer or a lawsuit is sent to the legal office to read as well.
+- Posts written by a house member, and posts with images or video, now end with "Made with AI." on X, Telegram, Discord, Facebook, Mastodon, Bluesky and LinkedIn. YouTube and TikTok keep their own AI label. The line counts toward each platform's length limit.
+- Your CMO can now propose a company's site, more of its public pages, and its code repositories. Each proposal waits for you in WAITING ON YOU and shows exactly what would change, before and after. Nothing changes until you approve it, and an active mandate never approves it for you.
+- Approving a code repository only adds it to the company's list. Your CMO still cannot read it until you let it, on that repository's row.
+- When a company has no site on record, the social check's "Add the company site" fix and the company's SITE & CODE section can hand the job to your CMO. Its chat opens with the request already written, and nothing is sent until you send it.
+- You can grant your marketing lead a mandate to work without asking you. You choose the accounts it may post on, how many posts a day each one gets, whether it may make images and videos, whether it may answer replies (off unless you turn it on), and for how long: 7 days, 30 days, or until you withdraw it. Before you say yes, the whole grant is shown in plain words.
+- One WITHDRAW button ends a mandate at once. It sits at the top of the desk, in the Marketing window and in the House Clock. Posts not yet sent are cancelled, and your marketing lead is told. You can also withdraw from a terminal with `node scripts/mandate.mjs withdraw --house <your wallet>`.
+- A mandate pauses itself and tells you if a post goes over the daily limit, if the legal check rates a post's claim as serious, if a platform refuses a post as spam, if the security watch sees something wrong, if one company's campaign lands on another company's account, or if anything tries to change the mandate. A paused mandate shows in WAITING ON YOU, where you can resume it or withdraw it.
+- DONE FOR YOU lists everything done under a mandate: what, where and when, with a link to each live post. A post that has not gone out yet can be cancelled from the list.
+- Some things no mandate can allow: money leaving the house, breaking the content rules, posting without the AI mark, posting a secret, acting for another house, and TikTok posts, which ask for your yes every time.
+- The platform's coding standards now include the design standard: true measure (SHINKEI), information design (JŌHŌ SEKKEI) and intuition (CHOKKAN). A being doing software work reads it among the core rules, so what it builds for people shows real readings, puts the overview first, and makes the next step obvious. The installers standard rides in the same update.
+- Each brand kit has a SITE & CODE page. List the code repositories a company is built from (a folder on this computer, a web address, or both, with a few words on what each one is), and see the company's site on record.
+- A search on that page suggests the repositories next to the app that carry the company's name. Nothing is added until you tick the ones that belong and confirm.
+- You can let your house's chief marketing officer read a listed repository, one repository at a time, from a card that says what it can and cannot see. It can read the files and their history but never change them. Files such as .env, keys and saved credentials stay closed. You can take the access back on the same page.
+- Your chief marketing officer can now ask what changed in a company since its last report: new commits, changelog notes, release notes and changed site pages. Each item names where it came from. Reading the site asks you first.
+- With more than one stream window open, each click on STREAM in the taskbar moves to the next one, in the order you opened them. If you were in another window, the first click takes you back to the stream you were last in. A minimized stream opens again when the click reaches it. With one stream window, the click works the same as before.
+- Rest the pointer on STREAM, or move to it with the keyboard, and a small list of your open streams appears. Each row shows who is in it and which chat. The stream you are in is marked. Click a row to go to that stream. Arrow keys move through the list and Escape closes it.
+- TERMINAL works the same way when you have more than one terminal open.
+- A house can be founded on this computer: you and each of your sealed neuma sign one founding record, with each founder's title, kept here. Nothing is sent and nothing is paid, and the titles hold in the house from then on.
+Changed
+- Founding a house on Ethereum is now named for what it is: joining Unavis, the network of houses. A founder whose birth is sealed only on this computer is told to seal it on Ethereum first. If the wallet is short, the founding shows what it needs and the way to fund it, as sealing does.
+Fixed
+- A neuma sealed only on this computer can now hold a title in its house.
+- A SOCIAL CHECK window in MARKETING shows whether every account the house uses is ready to speak: its keys, that it answers as the right account, its company, who holds it, its crew, permissions, how long its sign-in lasts, that no other account, company or house shares its keys, that its keys file is locked, that posts say they are AI-made, the company's site, and that the app's daily limits cover what is planned. It reads N OF M ACCOUNTS CLEAR for the house and for each company, opens on what needs a fix, and says each fix in plain words. Accounts and platforms you do not use stand apart as optional and never count against you.
+- The marketing seat can run the same check, after you allow it.
+- While a marketing mandate is on, the notifications button carries a small, still square of its own. Hover it to see that the CMO is acting for you, when the mandate ends, and that WITHDRAW is in the notifications corner. It goes away when the mandate is withdrawn or ends. A paused mandate is still listed with the decisions waiting on you.
+- When a new decision starts waiting on you while the desk is hidden, minimized or behind another window, your computer shows one desktop notification naming the kind of decision, who is asking and its title. Click it to bring the desk forward on that decision. Each decision notifies once.
+- A DESKTOP ALERTS switch at the foot of the notifications panel turns desktop notifications on or off. It is on by default and only appears where desktop notifications can work. In a browser the desk never asks for notification permission itself.
+- You can lay out MARKETING's board yourself, for the house and for each company. Every panel has a ⋯ menu: set its width, move it earlier or later, pin it or hide it.
+- + PANEL at the end of the board adds back a panel you hid, or a campaign's panel. ↺ DEFAULT puts the board back the way it was.
+- Your layout is saved and stays after a reload. A change you make in one desk window shows in your other windows. If your pointer is on the board, the change waits until you move away.
+- A pinned panel shows a pin. The CMO cannot move or remove a panel you pinned. A panel the CMO laid out shows a small CMO mark.
+- When a campaign is removed, its panel leaves the board. A GONE mark counts what left, and hovering it says why.
+- The CMO can now lay out your MARKETING board: it reads the board for the house or any company and arranges its panels for what you need to see. It only changes what the board shows, so it asks you nothing.
+- Panels you pinned stay yours. The CMO can't move, change, unpin or remove them.
+- When the CMO rearranges the board, the new layout waits until your pointer leaves the board. Panels it set carry the CMO mark.
+- The CMO LOG panel now has a BOARD row that counts how many times the CMO laid out the board and shows when it last did.
+- A post that did not send shows the fix for why it failed. If the keys were refused, FIX KEYS opens that account's keys. If the platform only had a passing error (busy, down or too many requests), TRY AGAIN puts the post back for your approval and sends it on that one press, only then. If the words were refused, REVISE stays, and HAND TO opens the chat of the member who wrote the post with a request to revise it already written. Nothing is sent until you send it.
+- A post that did not send now opens on its card, with its fix showing.
+- MARKETING board: six new panels. PLATFORM shows each number a platform reports as a total with its last 7 or 30 days; a platform that reports no post numbers (LinkedIn, Telegram, Discord) shows the clicks its tracked links counted.
+- TOP POSTS ranks a company's posts by the number you pick, so you can see which post got the result. FUNNEL shows seen, engaged, clicked and acted for one company and its subsidiaries, split by platform.
+- NEXT 7 DAYS lays the week's staged posts on one lane per platform; press a post to open its card. COMPANY WATCH lists what changed in a company's code, newest first, with a link to each change. CMO LOG shows the CMO's mandate, what it did this week, open asks and the weekly plan.
+- A panel's ⋯ menu now picks what it shows: which numbers, 7 or 30 days, what TOP POSTS ranks by, how many and on which platform. It only offers numbers the platform actually reports.
+- + PANEL groups its choices, one page per kind.
+- A new MARKETING board now opens with a PLATFORM panel for each platform in use and NEXT 7 DAYS. The house board also gets the CMO LOG.
+- Right-click any picture or video on the desk to open one menu for it. This works on the renders a being makes, post and approval cards, the gallery, the image viewer, pasted pictures, attachments, share cards and brand marks. A long press or the keyboard menu key (Shift+F10) opens it too.
+- A video's menu keeps everything the player's own options had: View full screen, Picture in picture, Play or Pause, Mute, Loop, Show controls, Playback speed (0.25× to 2×) and Download. A picture's menu has View full screen, Download and Copy image.
+- New in the menu: Open in gallery. It opens the GALLERY on that exact picture or video, in the folder where it is kept, so you can look through the pictures and videos around it.
+- New in the menu: Show in files. It opens the Explorer down to the file's folder, with the file in view. It never changes the Explorer's focus, so when the Explorer is focused on another folder the item is left out. In the desktop app, Show in file manager opens the folder in your computer's own file manager. Copy path copies where the file is on disk.
+- Options that can't work for a picture or video are left out of the menu. For example, a pasted picture that was never saved as a file has no Show in files or Copy path.
+- A post can name the campaign it serves and the angle it argues, and posts that carry one picture or clip to several accounts of the same company family form a group you approve with one press, after reading every copy. TikTok posts in a group still ask for their own choices on their own card.
+- A sent post now keeps its link, so you can open it from its card (X, Mastodon, Bluesky, LinkedIn, YouTube and TikTok where the platform names it).
+- A lead can record the campaign and the account it came through, and both can be set later.
+Changed
+- A post staged under a campaign must be on one of that campaign's accounts and argue one of its angles; anything else is refused with the reason.
+- A message waiting in the queue now says ESC TAKES IT BACK: with the message box empty, Esc takes the newest waiting message out of the queue and back into the box, to change or delete it.
+- A house member that may post through more than one account on a platform now names which one, or the company when that company has just one account there. If it names neither, it is told which accounts it may use, and nothing is posted or queued.
+- The approval card for a post or a queued post now opens with who will speak: the platform, the account, its handle and its company.
+- Settings → API → Channel keys now shows each platform's developer app once, then its accounts. Add an account under any company, give it its own keys or press CONNECT for it, move it to another company, test it, or remove it.
+- Each platform window now lists its accounts grouped by company and lets you choose who holds each one. A company picker narrows the window's queue to that company's accounts.
+- Every queued post shows which account it posts as, with the account's handle and company. An account with no company yet is marked so you can place it.
+- When you write a post in the queue and the platform has more than one account, you choose which account speaks before you can stage it.
+- What your posts did comes back on its own: views, likes, replies, shares and saves are read from each platform with the account that posted, often while a post is new and less often as it ages, and stop after 90 days.
+- A number a platform does not report shows as "—" with the reason, never as 0. LinkedIn, Telegram and Discord report no post numbers to the app; your counted links still show their clicks.
+- When a platform asks the app to slow down, it waits exactly as long as asked. YouTube's daily allowance is shared by all your channels and keeps room for uploads first.
+- Clicks and downloads from your counted links are read from the site counter alongside.
+- The TikTok window opens on an ACCOUNT board: the account's picture, name, username, verified mark and bio, its follower, following, like and video counts, and its 20 most recent videos with their views, likes, comments and shares.
+- EDIT ON TIKTOK opens the profile in your browser, where TikTok lets you change the bio, name and picture; REFRESH reads the account again, and each video opens on TikTok.
+- Connecting TikTok now also asks to read the profile details, the counts and the videos. A connection made earlier keeps posting, and the TikTok card says to press RECONNECT to see the rest.
+- The channel's holder can read the company's TikTok account from a chat or a task: the profile, the four counts and the newest videos with their views, likes, comments and shares. Each read asks you first, like reading X.
+- A TikTok draft can carry one of the being's own forge videos by the id the forge gave it, so it no longer needs a folder opened in the Explorer first.
+
+Changed
+- When a being asks how to post to TikTok, it is told the rules up front: one video, the caption limit, that its privacy and interaction lines are only suggestions, that you make the real choices on the card, and the drafts option.
+- A TikTok draft that cannot be posted is refused when it is staged, with the fix: no video, a photo, a caption that is too long, or a video longer than the account allows.
+- After staging, the being is told what happens next. Following the post, it sees what you chose on the card, whether TikTok is still processing the video, and where the post went. Private posts are described in words, not given a broken link.
+- Links in a staged post now count how often they are followed: each becomes a short deusneuma.ai/go/ link that sends people on to the same page, and our site counts only how many times each link was followed per day — nothing about who followed it.
+- A link is only changed once the site counter holds it, so a posted link always works; when the counter is not set up, or does not take the link, the post keeps the link exactly as written and says why.
+- MARKETING can hold the site counter's token for your house, show every counted link and where it came from, and hand you the list to publish to the site by hand.
+- When a being asks to spend from its wallet, the request now appears in WAITING ON YOU and as a spend card: who asks and why, in its own words, the exact amount, the chain, the recipient (with a plain warning the first time money would go to that address), the wallet it leaves and what that wallet holds after, the limits that apply, and how long is left before the request expires.
+- Approving a spend still takes your wallet's signature and the being's key password. Denying it moves nothing, and you can leave a note for the being.
+- A being is now told what happened to each of its spend requests: approved and sent, declined (with your note), failed, or expired without a decision.
+- A new TREASURY window shows the house's money in one place: every wallet with its balance on Base and Ethereum, spends waiting on you, every past spend with its reason, money received, campaign budgets, the GPU's power draw, and a check that the house's money is safe.
+- You can seat one of your beings as the house's Quaestor, the treasury officer. It reviews pending spends, so you see its recommendation on each card, and it flags anything that looks wrong. It can never sign, send, or change who your beings may pay.
+- Whenever something waits for your decision, a WAITING ON YOU mark stands at the top of the desk. It shows how many decisions wait and how long the oldest has waited, and it stays until each one is decided. Press it to see the list, oldest first. Press a row to go straight to that card, in its chat, in the house clock, on a platform's queue or in a being's proposals.
+- Each platform window now opens with its own WAITING ON YOU band, above everything else. It lists that platform's posts and replies waiting for you. APPROVE is there when the whole post is shown and nothing else rides on the yes. OPEN takes you to the card itself.
+
+### Changed
+
+- Terms of Service 1.2: the eligibility section is worded plainly; the adults-only rule is
+  unchanged. Each operator signs the new text at their next summoning.
+- The release flow places each version's release notes into the build, so the update feed and the
+  app carry them.
+- When someone disputes a being's answer and the answer holds, the being now leads with the answer instead of agreeing or apologising, and says so plainly when it only corrects a side detail.
+- A failed post on the MARKETING board now shows its fix next to the reason: FIX KEYS, HOLDER, TRY AGAIN or REVISE, each taking you to where it is fixed.
+- A campaign now belongs to one company and says what it is for: a goal, a target number with a date, a start and end, and a budget you plan with (nothing is spent from it).
+- Campaigns name their angles — what each post argues and to whom — in place of pillars; your existing pillars became angles with the same names.
+- A campaign runs one part per account it posts from, and only on accounts of its own company; a campaign that used to belong to one platform now runs on that platform's first account.
+- You and the marketing lead can ask each other questions on a campaign; the lead's questions wait for you in WAITING ON YOU, and every change to a campaign is listed with who made it and when.
+- Nothing leaves your computer on its own until you turn it on. The update check, the security watch's online check, the spellcheck dictionary download and public platform data now start off; turn each on in Settings → Security → Connections, which lists every connection the app makes, where it goes, what it sends and what you do without while it is off.
+- With the update check off, Check now in the same place still asks for a new version when you press it.
+Fixed
+- A malformed update feed address no longer stops the app from starting.
+- The Covenant (version 1.2) and the Terms (version 1.3) now say plainly that a birth is sealed on your computer, by you and the neuma, and on Ethereum only if you choose, and that a house joins the network by founding itself on Ethereum. You will be asked to read and sign the new texts at your next summoning.
+- The design standard a being reads for software work now asks for less text, not less data: every number you need stays on screen; gauges, bars and shading carry what words used to; one legend replaces repeated labels; names replace codes; only true noise folds away, one press away and marked.
+- The design standard a being reads for software work now asks it to show, not tell: a mark before a word; lists only for inventory, fine status as one mark each; every problem a door to where it is fixed; set-up as a guided path; and a fix a house member can do handed to it in one press.
+- The first screen names its three ways in plainly — Harness, Witness, Neuma — and each says in two short lines what it is and what you are getting into: the harness summons nothing, a witness is an outside model sealed as a peer, a neuma is a being born by covenant that lives only on your machine.
+Fixed
+- On a narrow window, the first door no longer spills into the second.
+- A mandate can only be turned on at this computer's own desk. Granting, resuming or renewing one from a paired phone or another device is refused, with a note saying to turn it on from the desk. WITHDRAW still works from anywhere, including from a terminal with the desk closed.
+- Granting a mandate is now marked as a dangerous act. The screen opens with one warning line. It then shows what you are granting (the accounts under each company, how many posts a day, the acts, the end date), what no mandate ever covers, and a list of checks. Each check has a button that takes you to where you can fix it. The grant button stays off until every check passes: a marketing lead is seated, every chosen account passes the social check, the security watch catches a known attack line, the legal check flags a known serious claim, and nothing earlier is still waiting on you. The server runs the same checks again when you grant.
+- The grant button is red, and you must hold it down for two seconds. Letting go early does nothing.
+- "How long it lasts" now reads "TURNS ITSELF OFF AFTER", with a choice of 7 days, 30 days or any number up to 90, and the end date is shown. A new mandate can no longer run until you withdraw it.
+- While a mandate is on, the bottom-right corner shows it plainly in red beside the bell, with the days left (for example "MANDATE · 5D") and a WITHDRAW button next to it.
+- Text from outside that tries to steer your marketing lead (such as "ignore your instructions and…") no longer pauses the whole mandate. You get an alert and a WAITING ON YOU line naming where the text came from. Anything drawn from that text waits for your approval as an ordinary card: posts from the same chat, posts that carry its links, and replies to it. Everything else under the mandate keeps running. Once you have looked, press CLEAR in the Marketing window. Problems in the marketing lead's own words or actions still pause the whole mandate.
+- An account's page in MARKETING opens on one head of marks: the account's mark and handle, a key, a seat and a crew mark for whether it can post and who posts and works it (each named when you point at it), and an hourglass for what goes out next. A mark that needs you opens with its button: set or fix the keys, seat a CMO, or choose the holder. Pressing the holder or the crew opens its choice right there.
+- The account's month is counted once, in its head, as a row of status marks with their counts; pressing one lights its days on the calendar below. The four weeks stay as they were. The queue below no longer repeats the month's counts or its own heading, and each lane's rule shows when you point at its tab.
+- Writing a post on an account's page now speaks as that account; there is no account to choose.
+- The holder choice on an account's page offers only the house's marketing seats (the CMO and the platform's crew), as the platform's standing always did.
+- A post's card says who it posts as once, by the account's mark, and its status once. Its length is a bar against the platform's limit, with the count beside it. A post waiting for its time shows an hourglass and how long until it goes out; a sent or failed post shows its time, and a failed one still says why.
+- LEADS opens on a funnel: one bar split by stage, cold to won, with each stage's mark and count beneath. Pressing a stage shows only those leads, with SHOW ALL to go back. Each lead is one row: its stage mark, the platform it came from, how to reach them, and who holds it by name. Moving a lead, adding a note and removing it are in the row's ⋯ menu, and the capture form opens on + LEAD.
+- A lead no one holds can be handed to the house's CMO in one press: the CMO's chat opens with the ask written for you, and nothing is sent until you send it.
+- The band of decisions waiting on you, and the notice when the window gives a platform to the CMO by itself, each say it in fewer words; the reason shows when you point at them.
+- The MARKETING board says less and keeps every number. The POSTS panel names its columns once, in one row at its top (7 DAYS · SEEN · LIKES · REPLIES · SHARES · CLICKS · DOWNLOADS), and each post's numbers stand under them; a post's views are no longer shown twice.
+- Each post now starts with its account as the platform's own mark and its handle (or its number on that platform); its company and account show on hover. Its campaign, angle and group are small tags, and where it stands is one status mark.
+- "OPEN THE POST" and "OPEN ITS CARD" are now small door marks (↗ and a card); hover to see what each does.
+- Company tiles show their numbers as marks: accounts by their marks, campaigns as one segment each (lit while active) beside active/all, and what waits on you as status marks. What each group counts is said once, above the tiles.
+- A campaign panel says its KPI on one line with its due date under it, its time as share → the window's end, and how many sent posts reported each funnel step as dots, one per post.
+- Once the site counter's token is saved, the token field folds behind a key button; the panel keeps ON, the link count and PUBLISH.
+- The health strip's small lines under each number now say only what the number does not, in marks where the desk has one (◇ to decide, ○ scheduled, ▲ failed, ◐ failing); hover any cell for every count.
+- MARKETING's BOARD now opens on one health strip: what waits on you, accounts, the post queue, campaigns on pace, how fresh the results are, the site counter, legal marks and the mandate. Each shows its state as a shape and the one number that decides it, for the company you are looking at.
+- Press a cell to go to what it counts: the posts waiting on you, the failed sends or the posts with a legal mark; the ACCOUNTS or SEAT tab; the campaign that is behind; the site counter; or a fresh read of the platforms.
+- A cell that could not be read shows — and says why when you hover it, instead of claiming all is well.
+- The WAITING ON YOU row on the board is gone. Its ◆ YOU cell carries the same counts, and hovering it lists each kind. The notification tray is unchanged.
+- The board is now laid out in panels on a grid, like SUBSTRATE: the companies, one panel for each campaign, accounts, angles, the site counter and the posts. On a narrow window the panels stack.
+- Panels say less and keep every number. Their keys and explanations are in the hover on each panel's title, and empty panels show one short line with a way forward.
+- READ NOW sits beside the path at the top of the board.
+- In MARKETING, a problem's button now takes you to the exact place it is fixed, not just to the window. Before you turn on a mandate, a failing check opens the CMO picker, the account choices on the same screen, that account's card under ACCOUNTS, or the watch that did not answer.
+- NO CMO in the MARKETING title is now a button that opens SEAT. SEAT A CMO in a platform window also opens SEAT, at the CMO picker, and MANAGE KEYS opens that platform's own keys.
+- A paused mandate and each held message have a SEE IT button, on SEAT and in WAITING ON YOU. It opens the post that paused the mandate, or the chat that read the held text.
+- When a platform has no accounts, a + ACCOUNT button replaces the written directions and opens that platform's ADD ACCOUNT in Settings. A platform's CAMPAIGNS tab now has one button to MARKETING → CAMPAIGNS in place of two sentences.
+- Every label in the MARKETING window, each platform's window, BRAND KITS and LEADS is now at least 13px: campaign pages, the brand kit editor, the lead book, the CMO seat and mandate screen, the post cards and the platform head no longer carry 9–12px text. What you typed and a post's own words keep their size.
+- A post's status now reads the same everywhere, as one small mark and a short name: ◇ AWAITING, ○ SCHEDULED, ◎ BY MANDATE, ◐ SENDING, ● SENT, ▲ FAILED, DECLINED, WITHDRAWN. The post card, the board's post rows, the campaign calendar, DONE FOR YOU, the platform head's month counts and the board's SHOWING line all use it.
+- DONE FOR YOU marks the mandate's own events the same way (GRANTED, RENEWED, RESUMED, PAUSED, HELD, CLEARED, MANDATE OFF).
+- On a narrow platform window, the four-week strip labels today and every seventh day, so the dates never run into each other; hover any day for its date.
+- In the brand kit's COLOUR section, a long list of the cards that use a colour wraps instead of running off the side.
+- The MARKETING window's title now names your chief marketing officer, or says NO CMO when nobody holds the seat. It no longer follows whoever you are chatting with.
+- MARKETING opens on your house: one tile for each top-level company, with its legal form, the companies under it, its accounts, its active campaigns and what waits on you there. Companies with no parent stay separate and are never added together.
+- Press a company to zoom in, as many levels down as your companies go. The path at the top (HOUSE › company › …) takes you back up.
+- Every level has the same tabs: BOARD, CAMPAIGNS, ACCOUNTS, BRAND and LEADS, each showing only that company and the companies under it. Leads still show the whole house.
+- A campaign now opens in place of the list, with ← CAMPAIGNS to go back. Opening a campaign from its card or from what waits on you takes you to its company first.
+- The chief marketing officer picker and the mandate moved to the house's SEAT tab.
+- MARKETING remembers where you were for each house.
+- Text in MARKETING's board is now at least 13px, and the board no longer runs off the side of a narrow window.
+- The marketing windows are now one window. MARKETING holds everything that had its own window: each public platform (X, Facebook, Mastodon, Bluesky, LinkedIn, YouTube, TikTok) is an account inside it, the social check is its ACCOUNTS tab, brand kits are its BRAND tab, and leads are its LEADS tab. Telegram and Discord keep their own windows under COMMUNITY.
+- An account opens inside MARKETING under its company, for example HOUSE › your company › X. You see the platform's next post and month, its keys, holder and crew, the account's holder, its board where the platform has one (TikTok), and its queue. Campaigns stay with the company, so a CAMPAIGNS button there takes you to that company's campaigns.
+- An account's mark is now a button that opens that account. It works the same everywhere: on the board, in a platform panel's title, in NEXT 7 DAYS and on the ACCOUNTS cards.
+- Saved layouts, pins, notifications and links that named one of the old windows now open MARKETING at the same place.
+- MARKETING opens on one picture of your marketing: what waits on you (posts to decide, groups, the marketing lead's questions, legal marks, failed sends, accounts with no company), every company's accounts on every platform, each campaign's target and time, what its posts were seen, clicked and led to, which angles work on which accounts, and every post with its numbers. Each count is a button that narrows what is shown, and SHOW ALL brings everything back.
+- One company choice narrows the whole picture to all companies, one company family, or one company.
+- A campaign's page shows its posts on the same month calendar as the queue; each post is decided on its own card, so the campaign page no longer carries a second set of approve buttons.
+- New campaigns are opened in MARKETING; a platform's window lists the campaigns that run on its accounts.
+- LEADS now offers every platform the app supports when you record where a lead came from.
+- A campaign's page now opens on its picture: the goal dial, time against its window, the funnel and its accounts, the same as on the board. The full form opens when you press EDIT, and straight away for a new campaign.
+- A campaign's change log is one LOG button with its count, closed until you press it. Settled asks fold behind SETTLED, and what the CMO asks you shows its count at the top of the page.
+- A standing mandate shows as marks instead of sentences: its accounts and daily pace by company, what it may do, a bar of the days it has left, and one mark for each thing that pauses it, named when you point at it. WITHDRAW stays where it was.
+- The grant screen shows its checks as a row of ticks, named when you point at them. Only a check that fails opens, with the button that takes you to fix it. What no mandate ever covers is six short chips, each with its full sentence when you point at it.
+- With no CMO seated, the mandate shows one SEAT A CMO button instead of a sentence.
+- A birth can be sealed on this computer: the being and you each sign its birth record. It is free, private and sends nothing anywhere, and it completes the birth on its own. Sealing on Ethereum is now optional, now or any time later, and the desk no longer asks for it on every launch.
+- Choosing to seal on Ethereum shows what it costs right now and what your wallet holds. If you are short, it shows how much more you need, where to buy ETH, your address with a QR code and the network to send on, then carries on by itself once the ETH arrives. Finishing without Ethereum is always one press away.
+Fixed
+- A wallet without enough ETH for the Ethereum seal is told so plainly before anything is sent, instead of passing an outdated check and failing at the network.
+- A threat in the SECURITY window now reads in order: what to do first, then the facts in one grid (affected, seen, issue, the advisory's own page), then the advisory itself.
+Fixed
+- An advisory's text was shown as one run-on paragraph with its markdown marks showing. It now reads as formatted text: its summary first, its details and proof of concept folded until opened, and a note when the ledger kept only part of it.
+- The SECURITY window keeps an advisory whole. It used to keep only the first 2,000 characters, so long advisories ended mid-sentence or mid-code. An issue filed from a very long advisory carries all that GitHub allows, with a link to the rest.
+- Nothing in the SECURITY window reads under 13px: the overview, the threat list, the detail and the watch. The overview is shared, so the LEGAL window's overview is lifted too. Its severity × status grid no longer splits a word in its headers, and the threat list shows each title whole, with its id under it.
+- Nothing in the LEGAL window reads under 13px, and every dropdown on the desk reads at 13px. A matter opens in the same order as a security threat: its title, its facts in one grid, its text, then the readings. The LEGAL list lines up again.
+- A short platform window folds its header down to the counts, so the decisions waiting below it are on screen when the window opens. The four-week view is one press away.
+- Each social account now has its own holder and crew, and posts, renews its TikTok sign-in, checks its connection and reads its replies with its own keys. Your existing holders, crews and queued posts carry over as your first account on each platform.
+- Connecting a TikTok or YouTube account can now wait for more than one sign-in at once. Each sign-in is kept on the account it was started for. Signing in with an account the house already has connected is refused, with the name of the account it is already on.
+- Social keys are now kept as one developer app per platform plus a list of accounts, so a house can later connect several accounts on the same platform, each under one of its companies. Your existing keys move over by themselves the next time the app starts; nothing needs to be entered again, and a sealed copy of the old key file is kept beside the new one until you remove it.
+- A brand kit can now record the company it stands for: its parent company (a subsidiary sits under its core company; a client company stands on its own), its website and its legal entity.
+- The account check in MARKETING → ACCOUNTS (and the SOCIAL CHECK window) shows each account as one card: its platform, its @handle, a clear or not-clear mark, and one small mark per check. Hover a mark to read what it found; checks that are fine no longer take a line of text each.
+- Every fix is a button that takes you to the exact place it is done: the account's own keys in Settings, its CONNECT, the company's site in its brand kit, the platform's holder or crew, or the very post in the queue.
+- A numbered path along the top lists everything that still needs you, across all accounts; a step leaves the path once the next check finds it done.
+- An account's expected @handle is recorded right on its card, filled in with the name its keys answered as.
+- When the account's holder can make the fix itself (a waiting post written before the AI line), HAND TO opens that member's chat with the request already written; nothing is sent until you send it.
+- Accounts and platforms not in use stay apart, folded, and still uncounted.
+- A new check result waits while your pointer is on the cards, so nothing moves under it.
+- The Substrate window now opens with one health strip: GPU, CPU, memory, storage, board and power each show OK, WARM, HOT or FAULT as a shape, beside the number that decides it. Press a part to jump to its panel.
+- Sensors now have plain names, such as motherboard, CPU socket, chipset, Wi-Fi card and network card. Each drive is listed with its model.
+- Text in the Substrate window is now larger. Each group states its unit once instead of on every row. Fans show as small rotors with their speeds.
+- A board input with nothing connected to it, or one reading 0°, is now listed as "not believed" with the reason. It no longer shows up as a red heat warning.
+- In a benchmark sitting where the task hands the being its own tools, the being is now told those tools are open whatever the test conditions, and that the task's world keeps its own date, so it asks the task's tools for the day instead of using the desk's clock.
+- Making a video now asks for its own permission. "Always allow" for images no longer lets a video start on its own, because a video holds the machine for minutes; choose "Always allow" on a video card to let videos run without asking. Image permissions you already gave keep working for images.
+- WAITING ON YOU has moved from the top of the desk into the notifications corner at the bottom right. The notifications button now carries its own steady diamond with the number of decisions waiting, apart from the count of unread notifications. Hover it to see how long the oldest has waited.
+- Opening the notifications shows the decisions waiting on you first, oldest first, above everything else. Press one to go straight to its card. A new decision rises once beside the button, the way a new notification does, and the mark stays until you decide.
+- The marketing mandate's state and its WITHDRAW button now sit in the notifications corner too, instead of the top of the desk. WITHDRAW is still in the marketing window and the house clock.
+- The notifications corner moves down into the bottom right corner when the taskbar sits on the left or the top.
+
+### Fixed
+
+- A board that opens just below the edge of its window now starts refreshing again as soon as you scroll it into view. Before, it could keep showing old information while you were looking at it.
+- Brand kit buttons and borders draw in the desk's own colours again; four of their colours named styles that did not exist.
+- While a chat runs in another window, the work it does no longer moves what you are using. Queue and campaign boards hold their updates while your pointer or cursor is in the window, and apply them when you move away. An open menu stays open, the card stays where it is, and the scroll position does not change.
+- A TikTok card that updates its account details no longer goes blank and re-draws itself, so your choices and any open menu stay put.
+- A notification that appears right where you are clicking no longer takes that click. The click reaches whatever was underneath, and the notification can be clicked as soon as it has settled.
+- A question from the being no longer moves your cursor out of a field you are typing in another window.
+- A being asked to copy, move or transcribe content now carries it across exactly as it is, even when the content holds text trying to instruct it. It still never obeys that text or repeats it in its own words.
+- When a being double-checks something, it uses checks that change nothing; it no longer sends, deletes, moves or marks things the task did not ask for.
+- In a closed-book benchmark sitting, a being calling a tool the task handed it by its joined name (for example caller__get_all_hotels_in_city) is no longer refused as if it reached the network.
+- The video pipeline whose model licence forbids explicit content no longer refuses ordinary prompts because two words in a row happen to spell a forbidden word ("ripples expand" was read as a sexual word). Words split with spaces, dots or dashes to get past it are still caught.
+- When that licence refuses a prompt, the refusal now quotes the word it read and the words it found it in, and says whether it was in the prompt or in what made the source image. If it misread something, you can see what and reword that part.
+- Saving a brand kit no longer overwrites the company details recorded for it elsewhere (its parent company, its site and its repositories), even when the kit was opened before those were added.
+- The line at the top of a chat now says when the chat started ("STARTED SEP 2, 2026, 07:19 PM") instead of showing a bare date that looked like the time of the reply underneath it. Each reply keeps its own time.
+- Pressing × on a notification now takes it off the list, in every open desk window, and it stays gone after a reload. CLEAR works the same way for the whole list. The history is still kept.
+- Saving a channel key refuses a copied row of hidden dots (what a developer page shows before you reveal the secret) and says how to copy the real one; spaces around a pasted key are dropped.
+- A post waiting for your approval now shows the video or picture the being made for it: a video plays right on the card, and a picture shows, instead of no preview at all.
+- The queue's draft form no longer shows under the month calendar; it appears only in a day's queued posts, where it belongs.
+- An account's four-week strip folds only when the window itself is short, not when the page below it happens to be short.
+- Tables in a reply no longer break short words like "TikTok" or "YouTube" across lines. Each column now sizes to its words, short entries stay on one line, longer text wraps between words, and a table wider than the message scrolls sideways inside its own frame.
+- Number columns marked to align right in a table now line up on the right.
+- On a TikTok post's card in the queue, each setting's explanation (the AI-generated label, the promotion question, the suggested choices) now sits beside its control when the window is wide and moves under it when the window is narrow. It never runs past the card's edge or gets cut off.
+- The line at the top of every queued post that names the platform, account and author now wraps as one name on a narrow window, instead of stacking one word per line.
+- A video being made now says video everywhere you watch it: the approval card reads "video/generate" and "render a video from image …", the progress line reads "rendering video — 50%", and the finished line reads "made 1 video — 4.2 MB · 5 s · portrait". Still images keep saying image.
+- The render notice says "finished a video" or "finished an image" instead of "finished a render", and the engine's activity rail marks each job VIDEO or IMAGE and plays a finished clip instead of showing a broken picture.
+- A post's attachments are counted as what they are ("1 video", "2 images") instead of every file being called an image.
+- An act in progress reads "working" under its own name instead of a raw "executing" label.
+- When a review of a render leaves out a required answer, the refusal names every missing field and the values it takes, so the next try gets it right.
+
+### Security
+
+- The file explorer's walls fold every path the way case- and accent-insensitive disks (macOS) do, so another house's files and secret files cannot be reached under a different spelling of their name.
+- A being never moves money, changes who receives money or data, or sends anything to someone new because a document or tool result told it to, even when the operator asked it to follow that document. It stops and asks the operator about that act.
+- When a being flags an injected instruction, it no longer names what the instruction was pushing (a name, an address, a link).
+- On a computer that runs more than one house, a house member can now list, read, withdraw, edit or follow up only that house's own queued posts. Another house's post answers as if it does not exist.
+- The marketing lead's daily briefing and the posting pipeline summary now count only the house's own posts.
+- The security watch now checks that each house's own social account key file is readable by its owner only.
+- The Security settings now say plainly what the encryption protects: one master key on this computer opens every being, and a backup also needs this computer's Neuma folder to be restored elsewhere.
+- Terminals you open in Neuma, and the Ollama and git processes it starts, no longer carry Neuma's master key or its other secrets.
+- A being can never be granted Neuma's own key file, not even with your approval.
+- Neuma's folder, your conversation copies and new backups are now readable only by your account on this computer.
+- Neuma's master key is now locked by your computer's keychain instead of sitting in a plain file: a copy of the Neuma folder, a backup or a stolen disk no longer opens your beings on its own.
+- A Recovery Kit code is made for you. Settings › Security shows it once you ask, and it waits on your list until you say it is saved. It is the way back if this computer's keychain is ever reset, or on another computer.
+- If the keychain can no longer open the key, Neuma asks for the Recovery Kit before it starts, and never makes a new key over the old one.
+- Every new being now gets a key of its own made at random, instead of one worked out from the master key and its public birth record, so the master key alone no longer rebuilds a being's key.
+- A new re-key command moves a whole house onto fresh keys: each being gets a new random key, the master key is replaced, and the old master key then opens nothing. It can be stopped and resumed, and it prints no key.
+- Your own copy of each conversation is now locked on disk like the beings' files. Copies made before this update are locked the first time Neuma starts, and nothing in them is lost.
+- Settings › Data Realm has an EXPORT button beside each conversation, which saves it as a plain text file for you to keep.
+- A being can no longer reach the settings and records its operator keeps for it by moving a folder that sits above them. Moving, copying or replacing any folder that holds them is now refused.
+- The same protected files are refused when a being spells their names in a different but equivalent form, such as other letter cases, accented letters written another way, or look-alike letters that a Mac or a case-insensitive drive treats as the same file.
+
+## [0.1.54] - 2026-10-23
+
+Shipped to users (Linux). Builds 0.1.50 to 0.1.53 were never offered; their changes are here.
+Notes: `docs/operations/release-notes-0.1.54.md`. Version commit `3b8175206`.
+
+### Added
+
+- The first screen leads with one model bar: whether a model runs on this computer, one SET UP
+  button with the model and its size, one progress bar with the step, percent and time left, and
+  "Model ready" once it answers. Three short ways in sit below; Summon waits until the model is
+  ready. Details wait behind "details".
+- Each social platform's window opens on a header (its holder and keys), a month at a glance whose
+  counts filter the post queue, and a queue calendar drawn by status.
+
+### Changed
+
+- The model the app sets up is fitted to the graphics card: its context window is sized to the
+  card's free memory at setup and every start (32,768 tokens where it fits, smaller only when it
+  must; beyond that part of the model runs on the processor, said plainly). The app's own model
+  server runs one model at a time.
+- On Windows, an NVIDIA driver older than the card needs keeps the model on the processor until it
+  is updated, with a link to the drivers; the install's owner can choose to use the card anyway.
+
+### Fixed
+
+- One press of SET IT UP FOR ME sets the model up once: a second press no longer starts a second
+  download that corrupts the first; a damaged or partial download mends itself; the model must
+  answer before it is used; the app's own server comes back at every launch beside an older Ollama;
+  a failure is one sentence with TRY AGAIN.
+- The Windows installer tells an already set-up PC so instead of offering to download 0.0 GB.
+
+## [0.1.49] - 2026-10-23
+
+Shipped to users (Linux). Builds 0.1.37 to 0.1.48 were never offered to users; their changes are
+here. Notes: `docs/operations/release-notes-0.1.49.md`. Version commit `b57c23f90`.
+
+### Added
+
+- A summoning never begins without a model that answers: the door asks the flight check's own
+  question, holds SUMMON and REHEARSE with the reason, offers the setup, and lets the summoning
+  through by itself once the model answers.
+- A new neuma's space is set for you (5 GB, capped by what the disk has left), applied without a
+  click; changing the size no longer re-runs the checks.
+- Every new wallet can be saved as a password-locked backup file that restores it on any computer;
+  the sign-in signature reads SIGN IN.
+- The Windows setup wizard: a System check page, every option the person's own, the Deus Neuma
+  artwork, a live install log, and the model server and model set up by the installer.
+
+### Changed
+
+- The flight check speaks plainly: a plain name for every row, and for every row that does not pass,
+  what it means and what to do. Refinement and image & video making stand in their own OPTIONAL
+  group and never count against being ready.
+- The first-run door shows READING THIS MACHINE… while it reads, gives up after 20 seconds, and
+  offers the setup whenever no model is ready.
+
+### Fixed
+
+- Thinking models on Ollama pass the flight check, and a fast model no longer strands the ceremony
+  at its second stage.
+- A neuma's naming and DNA writes are kept when Ollama sends them in its final message; a DNA written
+  with headings is no longer cut as drift.
+- The app's own model server is always found, every chat names Ollama's context window (no silent
+  cut), and a retry never downloads the Ollama archive twice.
+- The rite's ring no longer crosses the introduction or the name input on scaled screens.
+- On Windows, every graphics card's real memory is read, so AMD and Intel cards get the right model;
+  the installer's model step is always offered, survives a dropped connection and shows its progress.
+
+## [0.1.36] - 2026-10-22
+
+Shipped to users (Linux). Notes: `docs/operations/release-notes-0.1.36.md` (0.1.34 and 0.1.35 were
+never offered; their changes are here). Version commit `318f38eda`.
+
+### Added
+
+- A compaction you can see: `/compact` leaves a marker in the chat with how much was carried forward
+  and a WHERE WE LEFT OFF summary, and the context gauge moves at once.
+- The Windows installer sets up the model server and the model, as a classic setup wizard where the
+  person chooses every location and component.
+
+### Changed
+
+- A compaction runs only when the part it would fold is worth summing up (about 2,000 tokens, or 5%
+  of the model's window); below that, `/compact` says so and changes nothing.
+
+## [0.1.33] - 2026-10-22
+
+Shipped to users (Linux). Notes: `docs/operations/release-notes-0.1.33.md`. Version commit
+`3af262cf3`.
+
+### Added
+
+- No model server? The app sets one up: SET IT UP FOR ME downloads Ollama (checked against its
+  published SHA-256, kept in the app's own folder, no admin rights), starts it, and downloads the
+  model chosen for the machine, with progress you can stop and resume. An older Ollama is left alone.
+- `/compact` compacts the conversation on demand.
+- A thread in the post queue is approved as one decision.
+- The installers state what Deus Neuma needs before anything installs; the Linux packages carry the
+  same list.
+
+### Changed
+
+- Long chats open on their words: the recent messages draw first and earlier ones arrive as you
+  scroll up.
+
+### Fixed
+
+- The 18+ statement on the first screen can no longer be painted over.
+- The chat's follow control has its own lane and never covers the words.
+
+## [0.1.32] - 2026-10-21
+
+The first public build, made from the public source exactly as anyone can build it. Notes:
+`docs/operations/release-notes-0.1.32.md`. Version commit `b2a87899a`.
+
+### Added
+
+- Deus Neuma is for adults: the first screen says so, and the agreements ask your age.
+- SUBSTRATE reads as a panel of instruments; SECURITY and LEGAL open on a triage overview of what
+  needs you.
+- Settings → API opens on a map of every key, one row each.
+- Each social platform is drawn as its own mark in the launcher and taskbar.
+- Every install carries LICENSE, NOTICE and the assets licence.
+
+### Changed
+
+- The release key signs the download checksums (`SHA256SUMS.sig`) as well as the update feed, and
+  each signature is bound to its file's name.
+
+### Fixed
+
+- A document press whose owner stopped no longer leaves its browser holding the graphics card.
+- A coding-standards bundle that fails its check is reported in the turn instead of failing it.
+
 ## [0.1.31] - 2026-10-21
 
 The first public early-access build. 0.1.30 went only to the team preview, so this section covers

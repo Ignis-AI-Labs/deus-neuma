@@ -23,6 +23,7 @@ import { trainerReadiness } from '../services/trainer-readiness.js';
 import { probeCeremonyRoad } from '../services/ceremony-road.js';
 import { probeMachine } from '../services/machine-probe.js';
 import { forgeCapacity } from '../services/image-forge/forge-capacity.js';
+import { currentDriverGuard } from '../services/managed-ollama-gpu.js';
 import {
   MIN_FREE_DISK_GB, RECOMMENDED_FREE_DISK_GB, freeGBAt,
 } from '../services/storage-health.js';
@@ -42,8 +43,9 @@ const PROVIDER_NAMES = Object.freeze({
 
 
 // impure — probes the LLM substrate (provider reachable + model loaded).
-// `adoptedFrom` marks the one permitted self-heal recursion (see below).
-export const checkSubstrate = async (adoptedFrom = null) => {
+// `adoptedFrom` marks the one permitted self-heal recursion (see below);
+// `probe` is handed to probeLiveness (the door passes a cold-load budget).
+export const checkSubstrate = async (adoptedFrom = null, probe = {}) => {
   const config = getConfig();
   const reachable = await reachSubstrate();
   if (!reachable) {
@@ -85,7 +87,7 @@ export const checkSubstrate = async (adoptedFrom = null) => {
       if (target) {
         const adopted = { provider: target.id, endpoint: target.endpoint, model: target.models[0] };
         setLlmConfig(adopted);
-        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint });
+        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint }, probe);
         // Remembered only once the adopted server has answered: a choice that
         // never reached a mind must not outlive this run as the house's mind.
         if (checked.status === 'pass') {
@@ -148,7 +150,7 @@ export const checkSubstrate = async (adoptedFrom = null) => {
   //
   // So the flight check now makes the model speak, and judges it on the visible
   // words a ceremony would actually receive.
-  const liveness = await probeLiveness();
+  const liveness = await probeLiveness(probe);
   if (!liveness.alive) {
     return {
       ...row('substrate', 'Consciousness Substrate', 'fail',
@@ -292,6 +294,9 @@ export const checkGpu = async () => {
   const gpu = profile.gpu
     ? `${profile.gpu.name}${Number.isFinite(profile.gpu.vramGB) ? ` (${profile.gpu.vramGB} GB VRAM)` : ' (VRAM size unreadable)'}`
     : 'none detected';
+  // an NVIDIA driver on Windows below its card's floor is said here, with the update link
+  const driver = await currentDriverGuard();
+  if (driver.line) return row('gpu', 'GPU', 'warn', `${gpu} · driver ${driver.have.toFixed(2)}`, `${driver.line} ${driver.link}`);
   return row('gpu', 'GPU', profile.gpu ? 'pass' : 'warn', gpu,
     'Optional — accelerates local models');
 };

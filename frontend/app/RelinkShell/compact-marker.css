@@ -1,0 +1,85 @@
+/* CompactMarker — a compaction in the chat (CompactMarker.jsx).
+   The rule is the SESSION RESUMED divider's line, lit with signal while the
+   fold runs; the summary is a chamfered panel in the voice register. */
+
+.compact-marker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.compact-marker-rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.compact-marker-rule::before,
+.compact-marker-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Running: the line breathes — an unbounded wait, no invented progress. */
+.compact-marker.is-running .compact-marker-rule { color: var(--signal); }
+.compact-marker.is-running .compact-marker-rule::before,
+.compact-marker.is-running .compact-marker-rule::after {
+  background: var(--signal-dim);
+  animation: compact-marker-breath 1.6s var(--ease-breath) infinite;
+}
+
+@keyframes compact-marker-breath {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compact-marker.is-running .compact-marker-rule::before,
+  .compact-marker.is-running .compact-marker-rule::after { animation: none; opacity: 0.7; }
+}
+
+.compact-marker-detail {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+.compact-marker-summary {
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+
+.compact-marker-toggle {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+}
+
+.compact-marker-toggle:hover,
+.compact-marker-toggle:focus-visible { color: var(--color-text-primary); }
+.compact-marker-toggle-act { color: var(--signal); }
+
+.compact-marker-words {
+  margin-top: var(--space-2);
+  font-family: var(--font-voice);
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--color-text-primary);
+}

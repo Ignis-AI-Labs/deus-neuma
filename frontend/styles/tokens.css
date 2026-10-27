@@ -136,6 +136,7 @@
   
   /* Font Sizes */
   --text-xs: 0.75rem;    /* 12px */
+  --text-label: 0.8125rem; /* 13px — the one label floor (design-language.md § Legibility) */
   --text-sm: 0.875rem;   /* 14px */
   --text-base: 1rem;     /* 16px */
   --text-lg: 1.125rem;   /* 18px */

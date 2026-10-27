@@ -9,6 +9,9 @@
 
 import { getChannel } from './channel-registry.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
+import { youtubeDraftRefusal } from './youtube-metadata.js';
+import { tiktokDraftRefusal } from './tiktok-metadata.js';
+import { withDisclosureLine, DISCLOSURE_LINE } from './disclosure-line.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -112,7 +115,7 @@ export const replyCountForConversation = (entries, toUserId, conversationId) =>
  *   campaignId?: string, pillar?: string, kind?: string, reply?: object,
  *   expiresAt?: string|null}} draft
  */
-export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder } = {}) => {
+export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder, authorNeumaId } = {}) => {
   if (!getChannel(channelId || '')) return `Unknown channel: ${channelId}`;
   if (placeholder != null && typeof placeholder !== 'boolean') {
     return 'placeholder must be a boolean';
@@ -123,9 +126,23 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   // THE CHANNEL'S OWN CEILING (x-card-pipeline move 3): X allows 280 — the
   // wall belongs HERE at staging, stated with the count, not at the API after
   // the operator has already approved the post once or twice.
+  // The AI disclosure line the post will carry (disclosure-line.js) counts too.
   const channel = getChannel(channelId || '');
-  if (channel?.maxChars && t.length > channel.maxChars) {
-    return `the post is ${t.length} characters — ${channel.name || channelId} allows at most ${channel.maxChars}`;
+  const shown = withDisclosureLine({ channelId, text: t, authorNeumaId, media });
+  if (channel?.maxChars && shown.length > channel.maxChars) {
+    const line = shown.length > t.length ? ` and the disclosure line "${DISCLOSURE_LINE}" adds ${shown.length - t.length}` : '';
+    return `the post is ${t.length} characters${line} — ${channel.name || channelId} allows at most ${channel.maxChars}`;
+  }
+  // A YouTube post is one video and its title — refused here, at staging,
+  // so a text-only draft never reaches the operator's approval.
+  if (channelId === 'youtube') {
+    const refusal = youtubeDraftRefusal({ text: t, media, kind });
+    if (refusal) return refusal;
+  }
+  // A TikTok post likewise: one video and its caption and settings.
+  if (channelId === 'tiktok') {
+    const refusal = tiktokDraftRefusal({ text: t, media, kind });
+    if (refusal) return refusal;
   }
   if (scheduledFor != null && Number.isNaN(Date.parse(scheduledFor))) {
     return 'scheduledFor must be an ISO-8601 time';

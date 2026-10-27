@@ -310,7 +310,7 @@ describe('the culture media lane (real loopback + real broker + real disk, gnosi
     });
     expect(receipts[0].status).toBe('ok');
     const queue = await postQueue.load();
-    const staged = queue.find((e) => e.text === 'the culture, attached');
+    const staged = queue.find((e) => e.text === 'the culture, attached\n\nMade with AI.');
     expect(staged).toBeTruthy();
     expect(staged.media).toHaveLength(1);
     expect(staged.media[0].path).toBe(mediaPath);

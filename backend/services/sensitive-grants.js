@@ -14,12 +14,13 @@ export const SENSITIVE_TIERS = Object.freeze(['read', 'edit']);
  * NEVER requestable — no card exists for these, because no consent story
  * does: another being's sovereign state (the operator cannot grant a being
  * into someone else's lane), `.git/` internals (remote-token injection —
- * AI-SEC-005), key custody, ownership claims, and the policy file that gates
- * this very system (self-modification).
+ * AI-SEC-005), key custody, the platform's own key file (it opens every
+ * being), ownership claims, and the policy file that gates this very system
+ * (self-modification).
  */
 export const NEVER_REQUESTABLE = Object.freeze([
   'data/dna/', 'data/dna-cache/', 'data/memory-store/',
-  '.git/', 'keys/', 'keys/keypair', 'owner.json', 'config/tool-policy.json',
+  '.git/', 'keys/', 'keys/keypair', 'platform keys', 'owner.json', 'config/tool-policy.json',
 ]);
 
 const normalize = (value) => String(value || '').toLowerCase().replace(/\\/g, '/').replace(/\/+$/u, '');

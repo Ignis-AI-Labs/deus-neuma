@@ -108,7 +108,11 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     // CMO briefing — so it stays.
     // pipeline_state joined the reads 2026-09-08 (6f1b91f57, posting-pipeline-v2):
     // the one computed posture call — a read, so it has no intent either.
-    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state']);
+    // social_check joined 2026-10-24 (campaign plan slice 11): the house social
+    // check, a read that proves accounts live, so it asks.
+    // company_updates joined 2026-10-24 (company sources): what changed in a
+    // company, read from the repos the operator let the lane read.
+    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state', 'social_check', 'mandate_read', 'company_updates']);
     // queue_cancel joined the family 2026-07-26: staged copy goes stale and a
     // being must be able to pull its own dead draft, not merely report it.
     // queue_get joined 2026-08-03: the list gives the month, but an edit made
@@ -121,7 +125,7 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
 
   test('ADVERTISING — the bench READ is all that is offered; a seated CMO changes no access', async () => {
     await cmoDesignation.designate(WALLET, LANE_A);
-    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state']);
+    expect((await _campaignToolsFor()).map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state', 'social_check', 'mandate_read', 'company_updates']);
     // The office is carried in language, not gates: the bench description
     // names the CMO's office as the lead the house defers to. It rides the
     // READ now — the mutations it used to ride left with the catalog cut.
@@ -129,7 +133,7 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     expect(list.description).toMatch(/CMO/);
     // THE CUT (#414): create/update are `campaigns/*` intents, so neither is
     // advertised and neither dispatches.
-    expect(CAMPAIGN_TOOLS.map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state']);
+    expect(CAMPAIGN_TOOLS.map((t) => t.name)).toEqual(['campaign_list', 'pipeline_state', 'social_check']);
     for (const retired of ['campaign_create', 'campaign_update']) {
       expect(_isCampaignTool({ toolName: retired }), `${retired} still dispatches`).toBe(false);
       expect(retiredToolHint(retired)).toContain(`campaigns/${retired.replace('campaign_', '')}`);
@@ -145,14 +149,15 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     const granted = granting('campaigns.create', 'campaigns.update');
 
     const [created] = await viaIntent(connection, 'campaigns/create',
-      { name: 'First Light', brand: 'neuma', pillars: ['craft', 'proof'], cadence: 'weekly' },
+      { name: 'First Light', company: 'neuma', pillars: ['craft', 'proof'], cadence: 'weekly' },
       'ask', granted);
     expect(created.status).toBe('ok');
     const [stored] = await (await bench()).load();
     expect(stored).toMatchObject({
-      name: 'First Light', brand: 'neuma', status: 'active',
-      pillars: ['craft', 'proof'], cadence: 'weekly',
+      v: 2, name: 'First Light', companyId: 'neuma', status: 'active', cadence: 'weekly',
     });
+    expect(stored.angles.map((a) => a.name)).toEqual(['craft', 'proof']);
+    expect(stored.log[0]).toMatchObject({ by: LANE_A, what: 'declared' });
 
     // The READ is still a tool — the prompt replacement is CMO-only, so every
     // other being would have been left with no way to see the bench at all.
@@ -170,9 +175,16 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     await (await bench()).remove(stored.id);
   }, 30000);
 
-  test('QUEUE — campaignId and pillar ride a staged draft into the REAL queue file', async () => {
+  test('QUEUE — a campaign (named by its prefix) and its angle ride a staged draft into the REAL queue file', async () => {
     const connection = freshConnection(LANE_A);
     serverWs.__connection = connection;
+    // The campaign must be the house's own (slice 6): the draft names it, and its angle by name;
+    // the account it posts as is the company's own.
+    const { addAccount } = await import('../../backend/services/social/account-store.js');
+    const { campaignContextFor } = await import('../../backend/services/marketing/campaign-context.js');
+    expect((await addAccount(WALLET, 'x', { companyId: 'neuma' }, ['neuma'])).accountId).toBe('x-1');
+    const banner = await (await bench()).add({ name: 'First Light', companyId: 'neuma', angles: ['craft'], subs: [{ account: 'x-1' }] },
+      await campaignContextFor(WALLET));
 
     // Staging is a filed INTENT now (Stage 2) — the being writes the file,
     // the sweep settles it into the same queue store. AUTO's protocol guard
@@ -184,7 +196,7 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     await fs.mkdir(intentsDir, { recursive: true });
     await fs.writeFile(path.join(intentsDir, 'banner-draft.json'), JSON.stringify({
       type: 'social/queue', channel: 'x',
-      text: 'speech under a banner', campaignId: 'cmp-first-light', pillar: 'craft',
+      text: 'speech under a banner', campaignId: banner.id.slice(0, 8), angle: 'craft',
     }));
     const receipts = await sweepIntents(connection, {
       mode: 'ask', lanePolicy: granting('social.queue'), emit: () => {},
@@ -195,12 +207,15 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       channelId: 'x',
-      text: 'speech under a banner',
-      campaignId: 'cmp-first-light',
+      // A being's words carry the AI disclosure line (social/disclosure-line.js).
+      text: 'speech under a banner\n\nMade with AI.',
+      campaignId: banner.id,
+      angleId: 'craft',
       pillar: 'craft',
       status: 'draft',
     });
     await postQueue.remove(entries[0].id);
+    await (await bench()).remove(banner.id);
   }, 30000);
 
   test('BRIEFING — only the seated CMO carries the office section, built from the REAL stores', async () => {
@@ -209,6 +224,8 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     await postQueue.add({
       channelId: 'x', text: 'the weekly signal drops Friday',
       scheduledFor: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      // The shape the social/queue intent writes: the author's lane names the house.
+      authorNeumaId: LANE_A,
       queuedBy: LANE_A,
     });
     await (await ledger()).add({ name: 'Real Prospect', contact: 'prospect@example.com', addedBy: LANE_A });

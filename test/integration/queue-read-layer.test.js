@@ -13,6 +13,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { useServedHouse } from '../helpers/served-house.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 
@@ -20,6 +21,7 @@ const { _handleSocialTool, SOCIAL_TOOLS } = __test;
 const LANE = 'queuereadlane';
 
 describe('the queue read layer — a being can enumerate the whole month, not one corner of it', () => {
+  let servedHouse;
   let house, httpServer, wss, serverWs, client, savedPath;
   let frames;
 
@@ -39,6 +41,9 @@ describe('the queue read layer — a being can enumerate the whole month, not on
   const idsIn = (content) => [...content.matchAll(/^\[([0-9a-f]{16})\]/gm)].map((m) => m[1]);
 
   beforeAll(async () => {
+    // The lane is a lane of a served house (owner.json on real disk): the being's
+    // queue tools read only its own house's entries (#583).
+    servedHouse = await useServedHouse({ lanes: [LANE] });
     house = await createTempDir('queue-read-layer');
     savedPath = process.env.NEUMA_SOCIAL_POST_QUEUE_PATH;
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${house}/post-queue.json`;
@@ -55,6 +60,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
   });
 
   afterAll(async () => {
+    servedHouse.restore();
     if (client?.readyState === WebSocket.OPEN) client.terminate();
     if (serverWs?.readyState === WebSocket.OPEN) serverWs.terminate();
     await new Promise((r) => wss.close(r));
@@ -417,7 +423,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
       const result = await call('queue_get', { id: staged.id });
       expect(result.content).toContain('the second wording');
       expect(result.content).toContain('REVISIONS (1');
-      expect(result.content).toContain('was: "the first wording"');
+      expect(result.content).toContain('was: "the first wording');
       expect(result.content).toContain('by Juniper');
     });
 

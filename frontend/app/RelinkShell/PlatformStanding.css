@@ -1,0 +1,87 @@
+/* PlatformStanding — a platform's standing (StandingPanel.jsx) in the console
+   head's register (PlatformConsole.css): hairline panel, data type, each fact
+   a cell whose left edge draws its state — signal when it is ready, alert only
+   when posting is blocked by it, ink when it is settled or waiting. */
+
+.ps {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--color-glass-light);
+  font-family: var(--font-data);
+}
+.ps-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+@container (max-width: 640px) {
+  .ps-cells { grid-template-columns: 1fr; }
+}
+
+.ps-cell {
+  --ps: var(--line);
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  padding: 8px 12px 8px 14px;
+  box-shadow: inset 0 0 0 1px var(--line), inset 3px 0 0 var(--ps);
+}
+.ps-cell.is-ready { --ps: var(--signal); }
+.ps-cell.is-blocked { --ps: var(--alert); box-shadow: inset 0 0 0 1px var(--alert-dim), inset 3px 0 0 var(--ps); }
+.ps-cell-k { font-size: var(--text-label); letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.ps-cell-v {
+  font-size: var(--text-sm); letter-spacing: 0.04em; color: var(--color-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ps-cell.is-ready .ps-cell-v { color: var(--signal); }
+.ps-cell.is-blocked .ps-cell-v { color: var(--alert); }
+.ps-cell[aria-label="CREW"] .ps-cell-v { font-size: var(--text-xl); font-weight: 200; line-height: 1; font-variant-numeric: tabular-nums; }
+.ps-cell-sub {
+  font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-tertiary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ps-cell-act { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
+
+.ps-btn {
+  padding: 3px 10px; background: none; cursor: pointer;
+  border: var(--border-width-thin) solid var(--line); color: var(--color-text-secondary);
+  font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.14em;
+}
+.ps-btn:hover:not(:disabled), .ps-btn[aria-pressed="true"] { color: var(--color-text-primary); border-color: var(--line-hover); }
+.ps-cell.is-blocked .ps-btn { color: var(--alert); border-color: var(--alert-dim); }
+.ps-link {
+  padding: 0; background: none; border: none; cursor: pointer;
+  font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.12em;
+  color: var(--color-text-tertiary); text-decoration: underline; text-underline-offset: 3px;
+}
+.ps-link:hover:not(:disabled), .ps-link[aria-pressed="true"] { color: var(--color-text-primary); }
+.ps-btn:disabled, .ps-link:disabled { opacity: 0.45; cursor: default; }
+
+/* the drill-down beneath the cells: one at a time */
+.ps-drawer { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.ps-drawer-k { font-size: var(--text-label); letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.ps-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.ps-choice {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 12px; min-width: 120px;
+  background: none; border: var(--border-width-thin) solid var(--line); cursor: pointer; font-family: var(--font-data);
+}
+.ps-choice b { font-size: var(--text-label); font-weight: 400; letter-spacing: 0.04em; color: var(--color-text-primary); }
+.ps-choice span { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.ps-choice:hover:not(:disabled) { border-color: var(--line-hover); }
+.ps-choice.is-on { border-color: var(--signal-dim); cursor: default; }
+.ps-choice.is-on b { color: var(--signal); }
+.ps-choice.is-release:hover:not(:disabled) { border-color: var(--alert-dim); }
+.ps-choice.is-release:hover:not(:disabled) b { color: var(--alert); }
+.ps-choice:disabled:not(.is-on) { opacity: 0.45; cursor: default; }
+
+.ps-crew { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ps-crew li { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--text-label); }
+.ps-crew li b { font-weight: 400; color: var(--color-text-primary); }
+.ps-crew li span { flex: 1 1 auto; font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.ps-crew-add { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.ps-crew-add .settings-input { flex: 1 1 200px; }
+
+/* the announcement that the window bound a platform by itself */
+.ps-notice {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--space-3);
+  margin: 0 0 var(--space-3); padding: 8px 14px;
+  box-shadow: inset 0 0 0 1px var(--signal-dim), inset 3px 0 0 var(--signal);
+  font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.04em; color: var(--color-text-secondary);
+}
+.ps-notice-tag { color: var(--signal); letter-spacing: 0.14em; font-size: var(--text-label); }
+.ps-notice b { font-weight: 400; color: var(--color-text-primary); }

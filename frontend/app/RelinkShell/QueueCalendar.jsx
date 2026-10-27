@@ -10,6 +10,8 @@
 
 import { buildMonthGrid, filterQueueToDay } from './campaigns-helpers.js';
 import { MonthCalendar } from './MonthCalendar.jsx';
+import { statusMark } from './post-status-marks.js';
+import './queue-status.css';
 
 // The queue's count lanes, in render order. Each lane: `key` indexes the
 // cell's counts object (a count the grid never folded is undefined → the
@@ -26,30 +28,74 @@ const QUEUE_COUNT_LANES = Object.freeze([
   { key: 'R', letter: 'R', tone: 'reply', label: (n) => `${n} ${n === 1 ? 'reply' : 'replies'}` },
 ]);
 
+// The statuses a day is drawn by, in stacking order (queue-status.css colours them).
+// A status's name is the one table's (post-status-marks.js); replies are not a post status.
+const DAY_PARTS = Object.freeze([['S', 'sent', statusMark('sent').name], ['A', 'scheduled', statusMark('approved').name],
+  ['Q', 'awaiting', statusMark('draft').name], ['F', 'failed', statusMark('failed').name], ['R', 'reply', 'REPLIES']]);
+const dayTotal = (counts) => DAY_PARTS.reduce((t, [k]) => t + (counts[k] || 0), 0);
+
+/** A day as one stacked bar of its statuses and its total — read without decoding letters. */
+const DayMarks = ({ counts }) => {
+  const total = dayTotal(counts);
+  if (!total) return null;
+  return (
+    <>
+      <span className="qcal-stack">
+        {DAY_PARTS.filter(([k]) => counts[k] > 0).map(([k, tone]) => <i key={k} className={`qs-${tone}`} style={{ flexGrow: counts[k] }} />)}
+      </span>
+      <b className="qcal-total">{total}</b>
+    </>
+  );
+};
+
+/** The month's statuses as doors: one lights the days that hold it, again clears. */
+const MonthLegend = ({ weeks, highlight, onHighlight }) => {
+  const sums = Object.fromEntries(DAY_PARTS.map(([k]) => [k, weeks.flat().reduce((t, c) => t + (c.counts?.[k] || 0), 0)]));
+  return (
+    <div className="qcal-legend" role="group" aria-label="this month by status">
+      {DAY_PARTS.map(([k, tone, label]) => (
+        <button key={k} type="button" className={`qcal-legend-item${highlight === k ? ' is-lit' : ''}`}
+          disabled={!sums[k] || !onHighlight} aria-pressed={highlight === k}
+          onClick={() => onHighlight(highlight === k ? null : k)}>
+          <i className={`qs-${tone}`} /><b>{sums[k]}</b>{label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export const QueueCalendar = ({
   year, monthIndex, entries, now, selectedKey,
   onPick, onPrevMonth, onNextMonth, onToday,
-  countLanes = QUEUE_COUNT_LANES,
+  countLanes = QUEUE_COUNT_LANES, highlight = null, onHighlight = null, legend = true,
 }) => {
   const unscheduled = filterQueueToDay(entries, null).length;
+  const weeks = buildMonthGrid(year, monthIndex, entries, { now });
   return (
-    <MonthCalendar
-      year={year}
-      monthIndex={monthIndex}
-      weeks={buildMonthGrid(year, monthIndex, entries, { now })}
-      countLanes={countLanes}
-      selectedKey={selectedKey}
-      onPick={onPick}
-      onPrevMonth={onPrevMonth}
-      onNextMonth={onNextMonth}
-      onToday={onToday}
-      extra={unscheduled > 0 ? (
-        // The bucket is a day view like any other — it just has no date, so
-        // it lives beside the grid rather than inside it.
-        <button type="button" className="settings-set" onClick={() => onPick(null)}>
-          UNSCHEDULED ({unscheduled})
-        </button>
-      ) : null}
-    />
+    <>
+      {/* `legend` false where a head above already draws this month's counts (MARKETING's account level). */}
+      {legend ? <MonthLegend weeks={weeks} highlight={highlight} onHighlight={onHighlight} /> : null}
+      <MonthCalendar
+        year={year}
+        monthIndex={monthIndex}
+        weeks={weeks}
+        countLanes={countLanes}
+        selectedKey={selectedKey}
+        onPick={onPick}
+        onPrevMonth={onPrevMonth}
+        onNextMonth={onNextMonth}
+        onToday={onToday}
+        quietCounts
+        renderMarks={(cell) => <DayMarks counts={cell.counts} />}
+        cellClass={(cell) => [dayTotal(cell.counts) ? 'has-posts' : '', highlight && !(cell.counts[highlight] > 0) ? 'is-dim' : ''].join(' ').trim()}
+        extra={unscheduled > 0 ? (
+          // The bucket is a day view like any other — it just has no date, so
+          // it lives beside the grid rather than inside it.
+          <button type="button" className="settings-set" onClick={() => onPick(null)}>
+            UNSCHEDULED ({unscheduled})
+          </button>
+        ) : null}
+      />
+    </>
   );
 };

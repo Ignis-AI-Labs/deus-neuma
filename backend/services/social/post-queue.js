@@ -21,12 +21,20 @@
 
 import fs from 'fs/promises';
 import crypto from 'crypto';
+import { campaignFieldsRefusal, campaignFieldsOf } from './queue-campaign.js';
+import { approveGroupIn } from './queue-group.js';
+import { permalinkOf } from './permalink.js';
 import { join, dirname } from 'path';
 import { withFileLock, LOCK_TIMEOUT } from '../file-lock.js';
 import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
 import { validateDraft, queuedSecretRefusal, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
+import { approveThreadIn } from './queue-thread.js';
+import { tiktokApproveRefusal } from './tiktok-metadata.js';
+import { channelOfAccountId, firstAccountId } from './account-shape.js';
+import { withDisclosureLine } from './disclosure-line.js';
+import { restageFailed } from './queue-retry.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
 
@@ -36,12 +44,9 @@ export const postQueuePath = () =>
 
 export const QUEUE_STATUSES = Object.freeze(['draft', 'approved', 'sending', 'sent', 'failed', 'rejected', 'withdrawn']);
 
-// The queue's pure LAW — what is due, orphaned, expired, counted, and what a
-// well-formed draft is — lives in ./queue-rules.js; the pure editing
-// decisions (#208 — patch whitelisting, the approval law, the bounded
-// revision trail) live in ./queue-edit.js. Both split out 2026-08-26
-// (size-law breakdown) and re-exported here so every existing reader's
-// import path still stands.
+// The queue's pure LAW (what is due, orphaned, expired, counted, well-formed)
+// lives in ./queue-rules.js, the editing law (#208) in ./queue-edit.js, TRY
+// AGAIN's in ./queue-retry.js; re-exported so every reader's path stands.
 export {
   duePosts, threadOrphans, expiredReplies, replyCountForConversation, validateDraft,
   REPLY_CAP_PER_CONVERSATION, REPLY_LIVE_STANDINGS, REPLY_TTL_MS,
@@ -50,21 +55,16 @@ export {
   normalizePatch, previewUpdate, appendRevision, QUEUE_PATCH_FIELDS, REVISIONS_MAX,
 } from './queue-edit.js';
 
-// The being-facing VIEW of this record — what a consciousness may scan, in
-// what order, and how it renders — lives in ./queue-view.js. The store owns
-// the record and its law; the window onto it is a separate concern, and on
-// 2026-08-03 it grew one (filters, paging, an index view, one-entry detail).
+// The being-facing VIEW of this record (what a consciousness may scan, and how
+// it renders) lives in ./queue-view.js: the store owns the record and its law.
 
 /**
  * @param {{ path?: string|(() => string) }} [opts]
  */
 export const createPostQueue = (opts = {}) => {
-  // A supplied-but-empty `path` is a BUG, not a request for the default. The
-  // destructuring default fires on `undefined`, so `{ path: process.env.TYPO }`
-  // used to bind silently to the operator's LIVE queue — on 2026-07-27 a
-  // verification driver aimed at a tmp file transitioned a real staged post
-  // that way. Omitting the key still means "the live store" (that is what every
-  // real caller wants); passing junk now says so.
+  // A supplied-but-empty `path` is a BUG, not a request for the default: on
+  // 2026-07-27 `{ path: process.env.TYPO }` bound a tmp-aimed driver to the LIVE
+  // queue and transitioned a real staged post. Omitting the key = the live store.
   if ('path' in opts && !(typeof opts.path === 'function'
     || (typeof opts.path === 'string' && opts.path.length > 0))) {
     throw new TypeError('createPostQueue: `path` was supplied but is not a non-empty string or a function');
@@ -121,6 +121,12 @@ export const createPostQueue = (opts = {}) => {
    */
   const mutate = (fn) => serialize(() => withFileLock(lockPath(), fn));
 
+  // A lock timeout is a refusal the caller can retry, never a throw.
+  const busy = (err) => {
+    if (err?.code !== LOCK_TIMEOUT) throw err;
+    return { ok: false, error: 'the campaign queue is busy on another process — not acted on' };
+  };
+
   // impure — one guarded transition; fn(entry) mutates, or returns {error} to
   // refuse WITHOUT saving (a failed validation must leave the record as it
   // was). A lock timeout is reported as a refusal, NOT thrown: the scheduler
@@ -138,10 +144,17 @@ export const createPostQueue = (opts = {}) => {
     if (refusal && typeof refusal.error === 'string') return { ok: false, error: refusal.error };
     await save(entries);
     return { ok: true, entry };
-  }).catch((err) => {
-    if (err?.code !== LOCK_TIMEOUT) throw err;
-    return { ok: false, error: 'the campaign queue is busy on another process — not acted on' };
-  });
+  }).catch(busy);
+
+  // impure — one all-or-nothing decision over several entries (a thread, a
+  // group): decide(entries, now) approves in place or refuses, under the lock.
+  const approveAll = (decide) => mutate(async () => {
+    const entries = await load();
+    const { error, ...result } = decide(entries, new Date());
+    if (error) return { ok: false, error };
+    await save(entries);
+    return { ok: true, entries: result.approved, ...result };
+  }).catch(busy);
 
   return {
     load,
@@ -155,7 +168,12 @@ export const createPostQueue = (opts = {}) => {
      *   authorNeumaId?: string|null, queuedBy: string}} draft
      */
     add(draft) {
-      const invalid = validateDraft(draft);
+      // THE ACCOUNT IT WILL SPEAK AS (campaign plan §2.4): every new entry
+      // names one; a draft that names none speaks as its platform's first
+      // account, and one that names another platform's account is refused.
+      const invalid = validateDraft(draft) || campaignFieldsRefusal(draft)
+        || (draft?.accountId != null && channelOfAccountId(draft.accountId) !== draft.channelId
+          ? `account ${draft.accountId} is not a ${draft.channelId} account` : null);
       if (invalid) return Promise.reject(new Error(invalid));
       return mutate(async () => {
         const entries = await load();
@@ -188,7 +206,8 @@ export const createPostQueue = (opts = {}) => {
         const entry = {
           id: crypto.randomBytes(8).toString('hex'),
           channelId: draft.channelId,
-          text: draft.text.trim(),
+          accountId: draft.accountId || firstAccountId(draft.channelId),
+          text: withDisclosureLine(draft),
           scheduledFor: draft.scheduledFor || null,
           campaignId: draft.campaignId?.trim() || null,
           pillar: draft.pillar?.trim() || '',
@@ -197,25 +216,16 @@ export const createPostQueue = (opts = {}) => {
           media: Array.isArray(draft.media)
             ? draft.media.map((m) => ({ path: m.path, alt: String(m.alt || '').slice(0, 1000) }))
             : [],
-          // The thread KIND + its bounded linkage — whitelisted field-by-field,
-          // same law as media and the reply kind: no smuggled keys. A plain
-          // post carries NEITHER key, so existing entries and their readers
-          // never see a shape change.
-          // The STAGING KIND (the CoS audit's G4): a placeholder holds the
-          // slot, not the copy — it never counts as an operator decision
-          // waiting, and every surface marks it. Copied only when true, so
-          // existing entries never see a shape change.
+          // The STAGING KIND (the CoS audit's G4) — a placeholder holds the slot,
+          // not the copy, never an operator decision — and the thread kind with
+          // its bounded linkage: copied only when set, no smuggled keys.
           ...(draft.placeholder === true ? { placeholder: true } : {}),
           ...(draft.kind === 'self-reply' ? {
             kind: 'self-reply',
             thread: { parentId: String(draft.thread.parentId) },
           } : {}),
-          // The reply KIND + its bounded linkage — whitelisted field-by-field,
-          // same law as media: no smuggled keys onto a governance record. A
-          // plain post carries NEITHER key, so existing entries and their
-          // readers never see a shape change. The expiry rides beside it: an
-          // answer outlives its welcome after REPLY_TTL_MS unless the caller
-          // named an honest earlier moment.
+          // The reply KIND, whitelisted the same way; its expiry rides beside it
+          // (REPLY_TTL_MS unless the caller named an honest earlier moment).
           ...(draft.kind === 'reply' ? {
             kind: 'reply',
             reply: {
@@ -229,6 +239,8 @@ export const createPostQueue = (opts = {}) => {
             },
             expiresAt: draft.expiresAt || new Date(createdAt.getTime() + REPLY_TTL_MS).toISOString(),
           } : {}),
+          // Its place in a campaign — angle, group — copied only when set.
+          ...campaignFieldsOf(draft),
           authorNeumaId: draft.authorNeumaId || null,
           queuedBy: String(draft.queuedBy || ''),
           status: 'draft',
@@ -243,9 +255,9 @@ export const createPostQueue = (opts = {}) => {
     /**
      * The operator approves a draft (optionally re-timing it). impure.
      * @param {string} id
-     * @param {{decidedBy: string, scheduledFor?: string|null}} decision
+     * @param {{decidedBy: string, scheduledFor?: string|null, tiktokConsent?: object|null, textSeen?: string, under?: string}} decision
      */
-    approve(id, { decidedBy, scheduledFor } = {}) {
+    approve(id, { decidedBy, scheduledFor, tiktokConsent, textSeen, under } = {}) {
       if (scheduledFor != null && Number.isNaN(Date.parse(scheduledFor))) {
         return Promise.resolve({ ok: false, error: 'scheduledFor must be an ISO-8601 time' });
       }
@@ -258,13 +270,37 @@ export const createPostQueue = (opts = {}) => {
         if (entry.kind === 'reply') {
           return { error: 'a reply goes out the moment it is approved — decide it through the reply approval (approve-and-send), not the schedule lane' };
         }
+        const tiktok = tiktokApproveRefusal(entry, { consent: tiktokConsent, textSeen });
+        if (tiktok) return { error: tiktok };
+        if (entry.channelId === 'tiktok') entry.tiktokConsent = tiktokConsent ?? null;
         entry.status = 'approved';
         entry.decidedBy = String(decidedBy || '');
         entry.decidedAt = new Date().toISOString();
+        // A decision the operator's MANDATE made (marketing/mandate/): it stands only while that mandate does.
+        if (under) entry.decidedUnder = String(under);
         if (scheduledFor !== undefined) entry.scheduledFor = scheduledFor;
       });
     },
 
+    /**
+     * The operator approves a whole THREAD at once — every draft from its root
+     * down, all or nothing, in one atom (queue-thread.js holds the law). impure.
+     * @param {string} id - any post of the thread
+     * @param {{decidedBy: string, textsSeen: Record<string, string>}} decision
+     */
+    approveThread(id, { decidedBy, textsSeen } = {}) {
+      return approveAll((entries, now) => approveThreadIn(entries, id, { decidedBy, textsSeen, now }));
+    },
+
+    /**
+     * The operator approves a GROUP — one asset on several accounts — in one
+     * atom (queue-group.js holds the law); `ids` are the house's own members. impure.
+     * @param {string} groupId
+     * @param {{ids: ReadonlySet<string>, decidedBy: string, textsSeen: Record<string, string>, consents?: object}} decision
+     */
+    approveGroup(groupId, decision = {}) {
+      return approveAll((entries, now) => approveGroupIn(entries, groupId, { ...decision, now }));
+    },
     /** The operator declines a draft — it stays in the record, marked. impure. */
     reject(id, { decidedBy } = {}) {
       return transition(id, ['draft'], (entry) => {
@@ -278,27 +314,15 @@ export const createPostQueue = (opts = {}) => {
      * Pull a staged post back before it publishes — a DRAFT or an APPROVED one.
      * impure.
      *
-     * Deliberately NOT `reject` (2026-07-26). A decision is a decision: the
-     * operator's approval is never rewritten into a rejection, and the REST
-     * rules that enforce that stand untouched. This is a different act with
-     * its own name — the copy was superseded between approval and its slot (a
-     * figure corrected, a line overtaken) and is being withdrawn, which the
-     * record should say plainly rather than disguising as a decision reversal.
+     * Deliberately NOT `reject` (2026-07-26): the operator's approval is never
+     * rewritten into a rejection — the copy was superseded (a figure corrected,
+     * a line overtaken) and the record says so plainly. DRAFT joined 2026-07-27
+     * so a being can retract its OWN unapproved copy: it writes `withdrawnBy`,
+     * never `decidedBy`, so the verdict stays `reject`'s alone.
      *
-     * DRAFT was added 2026-07-27, after a being staged copy and then could not
-     * pull it back: `queue_cancel` refused every entry in the queue with "not
-     * pullable", because they were all drafts and this accepted `approved`
-     * alone. Allowing a draft is consistent with the rule above rather than an
-     * exception to it — withdrawing a draft rewrites no approval, because there
-     * is none yet, and it writes `withdrawnBy`, never `decidedBy`. A being can
-     * therefore retract its OWN unapproved copy without ever authoring the
-     * operator's verdict, which remains `reject`'s alone.
-     *
-     * Safe against the publisher by construction: the scheduler sends only
-     * `approved`, and `claimForSend` moves approved → sending through the same
-     * `mutate` gate. Either the withdrawal lands first and the post never
-     * goes out, or the claim lands first and this refuses. Nothing already
-     * sending or sent is ever withdrawn.
+     * Safe against the publisher by construction: `claimForSend` moves
+     * approved → sending through the same `mutate` gate, so either the
+     * withdrawal lands first or the claim does and this refuses.
      */
     withdraw(id, { withdrawnBy, reason } = {}) {
       return transition(id, ['draft', 'approved'], (entry) => {
@@ -392,7 +416,7 @@ export const createPostQueue = (opts = {}) => {
      * @param {string} id
      * @param {{decidedBy: string, textSeen: string}} decision
      */
-    claimReplyForSend(id, { decidedBy, textSeen } = {}) {
+    claimReplyForSend(id, { decidedBy, textSeen, under } = {}) {
       return transition(id, ['draft'], (entry) => {
         if (entry.kind !== 'reply') {
           return { error: 'only a reply is sent on approval — approve posts through the schedule lane' };
@@ -413,9 +437,16 @@ export const createPostQueue = (opts = {}) => {
         entry.status = 'sending';
         entry.decidedBy = String(decidedBy || '');
         entry.decidedAt = at.toISOString();
+        if (under) entry.decidedUnder = String(under);
         entry.sendingAt = at.toISOString();
         return null;
       });
+    },
+
+    /** Keep a platform's ticket for a send in flight (TikTok's publish_id),
+     *  so the reconciler can ask the platform what became of it. impure. */
+    recordSendTicket(id, ticket) {
+      return transition(id, ['sending'], (entry) => { entry.sendTicket = String(ticket); });
     },
 
     /** Record the real outcome of a publish attempt. impure. A successful
@@ -433,12 +464,21 @@ export const createPostQueue = (opts = {}) => {
               username: String(outcome.postedAs.username || ''),
             };
           }
+          // The post's address, kept (it was dropped here before slice 6).
+          const url = permalinkOf(entry.channelId, outcome);
+          if (url) entry.url = url;
         } else {
           entry.status = 'failed';
           entry.failedAt = new Date().toISOString();
           entry.error = outcome.detail || 'unknown failure';
+          if (Number.isInteger(outcome.status)) entry.errorStatus = outcome.status; // the platform's own answer (send-failure.js)
         }
       });
+    },
+
+    /** TRY AGAIN: a failed post the platform stumbled on, back to DRAFT — the same entry (queue-retry.js). impure. */
+    restage(id, { by } = {}) {
+      return transition(id, ['failed'], (entry) => restageFailed(entry, { by, at: new Date().toISOString() }));
     },
 
     /** Remove a draft or rejected entry entirely (sent history stays). impure. */

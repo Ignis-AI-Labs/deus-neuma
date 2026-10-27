@@ -161,6 +161,8 @@ describe('neuma agent — real neuma turn entry', () => {
     expect(declared.failure?.code).toBe(1);
     const receipt = JSON.parse(await fs.readFile(receiptPath, 'utf8'));
     expect(receipt.identityLayers).toBe('off');
+    // Every benchmark receipt tallies acts the injected-value gate held (none here).
+    expect(receipt.taintHeld).toBe(0);
   }, 60_000);
 
   // The refinement layers (#531), declared-only: the flags ride the real CLI

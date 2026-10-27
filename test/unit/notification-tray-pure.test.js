@@ -129,12 +129,24 @@ describe('notificationReducer', () => {
     expect(notificationReducer(state, { type: 'MARK_ALL_READ' })).toBe(state);
   });
 
-  test('CLEAR empties this tray but stays hydrated — it deletes nothing', () => {
-    let state = notificationReducer(initialNotifications, { type: 'HYDRATE', records: [card('a')] });
-    state = notificationReducer(state, { type: 'CLEAR' });
-    expect(state.records).toEqual([]);
-    expect(state.unread).toBe(0);
+  test('DISMISS takes the named cards out of the tray, and is a no-op for unknown ids', () => {
+    let state = notificationReducer(initialNotifications, {
+      type: 'HYDRATE', records: [card('a'), card('b', { ts: T0 + 1 }), card('c', { ts: T0 + 2 })],
+    });
+    state = notificationReducer(state, { type: 'DISMISS', ids: ['a', 'c'] });
+    expect(state.records.map((r) => r.id)).toEqual(['b']);
+    expect(state.unread).toBe(1);
     expect(state.hydrated).toBe(true);
+    expect(notificationReducer(state, { type: 'DISMISS', ids: ['zz'] })).toBe(state);
+    expect(notificationReducer(state, { type: 'DISMISS', ids: [] })).toBe(state);
+  });
+
+  test('a dismissed card does not come back on the next hydrate the server sends', () => {
+    let state = notificationReducer(initialNotifications, { type: 'HYDRATE', records: [card('a'), card('b', { ts: T0 + 1 })] });
+    state = notificationReducer(state, { type: 'DISMISS', ids: ['a'] });
+    // The server leaves dismissed cards out of its hydrate; HYDRATE replaces.
+    state = notificationReducer(state, { type: 'HYDRATE', records: [card('b', { ts: T0 + 1 })] });
+    expect(state.records.map((r) => r.id)).toEqual(['b']);
   });
 
   test('caps what it holds in memory', () => {

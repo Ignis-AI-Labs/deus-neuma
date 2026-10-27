@@ -130,7 +130,7 @@ export const CharterSection = ({ charter, history, names, draft, busy, optio = n
       ) : <EmptyState title="WRITE A CHARTER TO LET THE HOUSE WAKE ITSELF" />}
       <div className="hclock-actions">
         {status.key === 'pending' ? (
-          <button type="button" className="hclock-btn is-primary label-data" disabled={busy} onClick={() => onApprove(charter.version)}>
+          <button type="button" className="hclock-btn is-primary label-data" data-charter-pending disabled={busy} onClick={() => onApprove(charter.version)}>
             {`APPROVE VERSION ${charter.version}`}
           </button>
         ) : null}

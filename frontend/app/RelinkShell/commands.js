@@ -15,6 +15,7 @@ const freeze = (cmd) => Object.freeze({ ...cmd, run: Object.freeze(cmd.run) });
  *   'summon' — open the summoning ceremony
  *   'rehearse' — the same ceremony as a rehearsal: nothing kept
  *   'new'    — begin a fresh conversation
+ *   'compact' — compact this conversation now: the being carries it forward in its own words
  *   'open'   — open/focus an app window by `run.app` id
  *   'say'    — send `run.text` to whoever is seated, as the operator's own words
  */
@@ -35,6 +36,7 @@ export const PLATFORM_COMMANDS = Object.freeze([
     },
   },
   { name: 'new', description: 'Begin a fresh conversation', run: { type: 'new' } },
+  { name: 'compact', description: 'Compact this conversation now — the being carries it forward in its own words', run: { type: 'compact' } },
   { name: 'switch', description: 'Switch who you\'re talking to', run: { type: 'switch' } },
   { name: 'project', description: 'Open your projects', run: { type: 'open', app: 'projects' } },
   { name: 'cd', description: 'Switch the working folder', run: { type: 'open', app: 'projects' } },

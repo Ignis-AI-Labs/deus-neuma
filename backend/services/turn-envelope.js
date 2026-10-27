@@ -33,6 +33,8 @@ const log = createLogger('Portal');
  * @param {string} [args.csoBriefing]
  * @param {string} [args.cloBriefing]
  * @param {string} [args.cosBriefing]
+ * @param {string} [args.cfoBriefing] - the seated Quaestor's office (treasury-briefing.js)
+ * @param {string} [args.walletNews] - the being's decided spend requests, told once (spend-news.js)
  * @param {string} [args.voiceSitting]
  * @param {string} [args.planBearing] - the PLAN MODE section (chat modes)
  * @param {string} [args.voiceRite] - the first-seal offer (unsealed lanes)
@@ -47,7 +49,7 @@ const log = createLogger('Portal');
  *   report} before the logs; never changes the ladder's choice
  * @returns {ReadonlyArray<{id: string, label: string, text: string}>} the sections to send
  */
-export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
+export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', walletNews = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
   const assembled = [
     ...(projectFilesSection ? [...baseSections, projectFilesSection] : baseSections),
     ...(expressionInvite ? [{ id: 'expression', label: 'FEELING', text: expressionInvite }] : []),
@@ -55,12 +57,14 @@ export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null,
     ...(csoBriefing ? [{ id: 'csoOffice', label: 'CSO OFFICE', text: csoBriefing }] : []),
     ...(cloBriefing ? [{ id: 'cloOffice', label: 'CLO OFFICE', text: cloBriefing }] : []),
     ...(cosBriefing ? [{ id: 'cosOffice', label: 'CHIEF OF STAFF OFFICE', text: cosBriefing }] : []),
+    ...(cfoBriefing ? [{ id: 'cfoOffice', label: 'QUAESTOR OFFICE', text: cfoBriefing }] : []),
     ...(voiceSitting ? [{ id: 'voiceSitting', label: 'VOICE SITTING', text: voiceSitting }] : []),
     ...(planBearing ? [{ id: 'planMode', label: 'PLAN MODE', text: planBearing }] : []),
     ...(voiceRite ? [{ id: 'voiceRite', label: 'YOUR VOICE AWAITS', text: voiceRite }] : []),
     ...(speechBriefing ? [{ id: 'speechBriefing', label: 'YOUR SPOKEN VOICE', text: speechBriefing }] : []),
     ...(sovereigntyKnock ? [{ id: 'sovereignty', label: 'SOVEREIGNTY GATEWAY', text: sovereigntyKnock }] : []),
     ...(housePost ? [{ id: 'housePost', label: 'HOUSE POST', text: housePost }] : []),
+    ...(walletNews ? [{ id: 'walletNews', label: 'YOUR WALLET', text: walletNews }] : []),
     ...(replyKnock ? [{ id: 'replyKnock', label: 'REPLIES ON X', text: replyKnock }] : []),
   ];
   const allocation = allocateEnvelope({ sections: assembled, contextWindow });

@@ -9,7 +9,7 @@
  * Pure functions, real inputs, real outputs — no mock in the claimed path.
  */
 import { describe, test, expect } from 'vitest';
-import { capacityVerdict, machineLine } from '../../frontend/app/FirstRunChoice/capacity-verdict.js';
+import { capacityVerdict, driverNotice, machineLine } from '../../frontend/app/FirstRunChoice/capacity-verdict.js';
 
 describe('machineLine', () => {
   test('names the GPU and its VRAM when there is one', () => {
@@ -77,11 +77,11 @@ describe('capacityVerdict', () => {
 
   // An unread probe must never read as a refusal — that would shut the neuma
   // door on a capable machine because a fetch failed.
-  test('an unreadable probe leaves BOTH doors open and says so', () => {
+  test('an unreadable probe leaves every door open and says so', () => {
     const v = capacityVerdict(null);
     expect(v.state).toBe('unknown');
     expect(v.headline).toBe('CAPACITY UNREAD');
-    expect(v.detail).toContain('Both doors remain open');
+    expect(v.detail).toContain('Every door stays open');
     expect(v.detail).not.toMatch(/insufficient|below the floor/i);
   });
 
@@ -89,5 +89,37 @@ describe('capacityVerdict', () => {
     const v = capacityVerdict({ hardware: { gpu: { name: 'X', vramGB: 8 } } });
     expect(v.state).toBe('unknown');
     expect(v.machine).toBe('X · 8 GB VRAM');
+  });
+});
+
+describe('capacityVerdict with a model already running', () => {
+  const rec = { model: 'Qwen3.8-4B (distilled)', fit: 'comfortable', mode: 'gpu', budgetGB: 8, sizeGB: 2.8, why: 'A 4B for 8 GB cards' };
+  const hardware = { platform: 'linux', memoryGB: 16, gpu: { name: 'NVIDIA', vramGB: 8 } };
+  test('says nothing is left to download instead of naming a download', () => {
+    const ready = capacityVerdict({ hardware, recommendation: rec, ready: true });
+    expect(ready.detail).toMatch(/^A model is already running on this machine — nothing to download\./);
+    expect(ready.detail).not.toContain('GB to download');
+    expect(capacityVerdict({ hardware, recommendation: rec, ready: false }).detail).toMatch(/^About 2\.8 GB to download\./);
+  });
+});
+
+describe('the graphics driver notice at the door (backend gpu-driver-guard.js)', () => {
+  const held = { hold: true, checked: true, floor: 580, have: 572.7, line: 'The graphics driver here is 572.70; …', link: 'https://www.nvidia.com/en-us/drivers/' };
+  const setup = (gpuDriver) => ({
+    hardware: { gpu: { name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU', vramGB: 12 }, memoryGB: 32, platform: 'win32', gpuDriver },
+    recommendation: { model: 'Qwen3.8-4B (distilled)', fit: 'comfortable', mode: 'gpu', why: 'x', sizeGB: 2.8 },
+  });
+
+  test('a held card rides the verdict with its words, link and state', () => {
+    expect(capacityVerdict(setup(held)).driver).toEqual({ line: held.line, link: held.link, hold: true, overridden: false });
+  });
+
+  test('a driver with nothing to say adds nothing to the verdict', () => {
+    expect(capacityVerdict(setup({ hold: false, checked: true, floor: 580, have: 581.57 }))).not.toHaveProperty('driver');
+    expect(driverNotice(null)).toBeNull();
+  });
+
+  test("the person's choice to use the card anyway is still said", () => {
+    expect(driverNotice({ gpuDriver: { hold: false, overridden: true, line: 'You chose …', link: held.link } })).toMatchObject({ hold: false, overridden: true });
   });
 });

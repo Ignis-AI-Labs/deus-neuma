@@ -19,6 +19,7 @@ import { isNewProjectChat } from './project-space.js';
 import { focusProject } from './desk-focus.js';
 import { announceFileChange } from './files-refresh.js';
 import { announceCampaignChange } from './campaign-refresh.js';
+import { announceBoardArrangement } from './marketing/board-change.js';
 import { shouldAnnounceStorage } from './storage-warning.js';
 import { TOOL_MODES, CHAT_MODES } from './stream-preferences.js';
 import { isBootActive } from '../Opening/opening-state.js';
@@ -123,6 +124,7 @@ export const createStreamHandlers = ({
     // campaign board the same way. Without this the board kept saying
     // "No campaigns yet" over a campaign the operator had just created.
     announceCampaignChange(data);
+    announceBoardArrangement(data); // …and the CMO's arrangement of the MARKETING board
     dispatchAfterSpeech(lifecycleAction('tool:usage', data));
   };
   // impure — preserve sound-before-flush ordering while translation stays pure.
@@ -337,6 +339,8 @@ export const createStreamHandlers = ({
     ['consciousness:provider-retry', onProviderRetry],
     ['substrate:line', onSubstrateLine],
     ['watch:fired', onWatchFired],
+    // A /compact, drawn in the thread where it happened (compact-marker.js).
+    ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     ['tool:usage', onTool],
     ['tool:approval_request', cardHandler('tool:approval_request')],
     ['tool:approval_resolved', cardHandler('tool:approval_resolved')],

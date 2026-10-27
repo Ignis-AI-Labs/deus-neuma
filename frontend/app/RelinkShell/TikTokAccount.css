@@ -1,0 +1,67 @@
+/* TikTokAccount — the TIKTOK window's ACCOUNT board (TikTokAccount.jsx), in
+   the console head's register (PlatformConsole.css): hairline panels, data
+   type for instruments, voice type for what the account itself wrote. Ink at
+   rest; signal only on the bar that measures views. A count TikTok did not
+   give reads as a dimmed dash. */
+
+.tta { display: flex; flex-direction: column; gap: var(--space-3); font-family: var(--font-data); }
+
+.tta-head {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--color-glass-light);
+}
+.tta-id { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-3); align-items: start; }
+@container (max-width: 640px) {
+  .tta-id { grid-template-columns: auto minmax(0, 1fr); }
+  .tta-acts { grid-column: 1 / -1; }
+}
+.tta-avatar { width: 64px; height: 64px; object-fit: cover; border: 1px solid var(--line); }
+.tta-names { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tta-name { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-lg); letter-spacing: 0.04em; color: var(--color-text-primary); }
+.tta-verified { color: var(--color-text-primary); flex: none; }
+.tta-handle { font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.tta-bio {
+  margin: 4px 0 0; font-family: var(--font-voice); font-size: var(--text-sm); line-height: 1.45;
+  color: var(--color-text-secondary); white-space: pre-line; overflow-wrap: anywhere;
+}
+.tta-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
+.tta-edit { color: var(--color-text-primary); border-color: var(--line-hover); }
+.tta-read { font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-disabled); }
+
+.tta-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+@container (max-width: 520px) {
+  .tta-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.tta-count {
+  display: flex; flex-direction: column; gap: 2px; padding: 6px 12px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.tta-count b { font-size: var(--text-2xl); font-weight: 200; line-height: 1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.tta-count span { font-size: var(--text-label); letter-spacing: 0.16em; color: var(--color-text-tertiary); }
+.tta-count.is-unread b { color: var(--color-text-disabled); }
+
+.tta-k { display: block; margin-bottom: var(--space-2); font-size: var(--text-label); letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.tta-videos ul {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3);
+  margin: 0; padding: 0; list-style: none;
+}
+.tta-video { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tta-cover { position: relative; display: block; aspect-ratio: 9 / 16; border: 1px solid var(--line); overflow: hidden; }
+.tta-cover-img { width: 100%; height: 100%; object-fit: cover; }
+.tta-duration {
+  position: absolute; right: 4px; bottom: 4px; padding: 1px 5px;
+  font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-primary); background: var(--color-background);
+}
+.tta-caption {
+  font-family: var(--font-voice); font-size: var(--text-xs); line-height: 1.4; color: var(--color-text-secondary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.tta-caption:not([data-own-words]) { font-size: var(--text-label); }
+.tta-date { font-size: var(--text-label); letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.tta-share { display: block; height: 3px; background: var(--line); }
+.tta-share i { display: block; height: 100%; background: var(--signal); }
+.tta-video-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 8px; font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.tta-video-counts b { font-size: var(--text-label); font-weight: 400; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.tta-open { align-self: flex-start; }

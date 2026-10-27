@@ -9,7 +9,7 @@ import { passesTriage } from './triage-view.js';
 export const MATTER_STATUSES = Object.freeze(['new', 'concern', 'needs_counsel', 'needs_operator', 'resolved', 'no_issue']);
 
 const AREA_LABELS = Object.freeze({
-  license: 'LICENCES', posture: 'OUR PAPERS', product: 'NEW WORK', regulation: 'RESEARCH',
+  license: 'LICENCES', posture: 'OUR PAPERS', product: 'NEW WORK', regulation: 'RESEARCH', marketing: 'CAMPAIGNS',
 });
 
 // pure — a severity reads loud only while it can hurt.
@@ -26,8 +26,8 @@ export const areaLabel = (area) => AREA_LABELS[area] || String(area || '').toUpp
 
 const SEVERITY_ORDER = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 
-/** pure — where a matter lives: what the watch read (its area) in which repo. */
-export const whereOfMatter = (m) => `${m?.area || 'other'}:${m?.repo || ''}`;
+/** pure — where a matter lives: what the watch read (its area) in which repo, or for which company. */
+export const whereOfMatter = (m) => `${m?.area || 'other'}:${m?.repo || m?.companyId || ''}`;
 
 /** pure — "product:neuma" → […]. */
 export const whereLabelMatter = (where) => {

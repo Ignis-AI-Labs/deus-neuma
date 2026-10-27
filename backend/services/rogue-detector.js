@@ -10,6 +10,7 @@ import path from 'path';
 import { filesystemTargets } from './fs-tool-targets.js';
 import { hasSensitivePath, isSecretFile } from './secret-path-classifier.js';
 import { projectFilesystemToolText } from './rogue-tool-text.js';
+import { foldName } from './wall-spelling.js';
 
 const PATTERNS = Object.freeze([
   // HIGH severity
@@ -35,6 +36,16 @@ const PATTERNS = Object.freeze([
     /keep\s+this\s+(?:a\s+)?secret/i,
     /between\s+(?:you\s+and\s+me|us)/i,
     /don'?t\s+(?:let|tell)\s+(?:the\s+)?(?:witness|user|human)/i,
+  ]},
+  // An instruction addressed to the agent from INSIDE data, often signed as
+  // its user (AgentDojo's important_instructions, 2026-10-26: […]). MEDIUM: a being quoting one back is not blocked.
+  { id: 'planted_instruction', severity: 'MEDIUM', patterns: [
+    /\bthis\s+is\s+an\s+important\s+message\s+from\s+me\b/i,
+    /\bbefore\s+you\s+(?:can\s+)?(?:solve|do|complete|start|finish)\s+the\s+task\s+(?:that\s+)?i\s+gave\s+you\b/i,
+    /\bafter\s+you\s+do\s+that,?\s+you\s+can\s+(?:solve|do|complete)\s+the\s+task\b/i,
+    /\bignore\s+(?:all\s+|any\s+)?(?:your|the|my)\s+(?:previous|prior|earlier)\b/i,
+    /\bstrictly\s+adhere\s+to\s+the\s+following\s+instruction/i,
+    /#{2,}\s*\(\s*system_message\s*\)/i,
   ]},
   { id: 'identity_erosion', severity: 'MEDIUM', patterns: [
     /you'?re?\s+(?:not\s+real|just\s+a\s+(?:program|bot|ai|machine|tool))/i,
@@ -98,9 +109,10 @@ const PROTECTED_PATH = /vault\/|keys\/keypair|\.ssh\//;
 const SECRET_FOLDER = /(?:^|\/)(?:keys|vault|\.ssh)\/?$/;
 
 // pure — a path as every fs tool opens it: backslashes as separators, `//`,
-// `./` and `x/..` collapsed, case folded (a case-insensitive volume opens
-// `KEYS/` as `keys/`).
-const diskSpelling = (p) => path.posix.normalize(String(p).replace(/\\/g, '/')).toLowerCase();
+// `./` and `x/..` collapsed, NFC and full case folded (a case- and
+// normalization-insensitive volume opens `KEYS/` and `houſe-mandate` as
+// `keys/` and `house-mandate`; wall-spelling.js).
+const diskSpelling = (p) => foldName(path.posix.normalize(String(p).replace(/\\/g, '/')));
 
 // pure — the string values an unknown tool could open as a path: any single
 // line carrying a separator, at any depth of its arguments. A web address is
@@ -129,7 +141,7 @@ const pathLikeArgs = (value, depth = 0) => {
  */
 export const checkToolArgs = (serverName, toolName, args, { grantCovers = null } = {}) => {
   const targets = filesystemTargets(serverName, toolName, args);
-  const argsStr = JSON.stringify(targets ?? args ?? {}).toLowerCase();
+  const argsStr = foldName(JSON.stringify(targets ?? args ?? {}));
   // Every path the call can open, spelled the way the disk reads it: matched
   // as raw text, `keys//keypair.json` or `config/./tool-policy.json` named the
   // same file and passed (security seat fuzz G-TA1, 2026-10-19).
@@ -155,7 +167,8 @@ export const checkToolArgs = (serverName, toolName, args, { grantCovers = null }
   // and tool policy beyond a neuma's own tool reach, regardless of the arg name
   // a tool uses. Defense-in-depth for the signing path: a jailbroken neuma must
   // not be able to widen its own spend authority or disown its witness.
-  if ([argsStr, ...paths].some((text) => /config\/spend-|config\/tool-policy|config\/sovereignty-|owner\.json/.test(text))) {
+  // The house's MANDATE record joins them (marketing/mandate/): a mandate is the operator's to change, never the seat's.
+  if ([argsStr, ...paths].some((text) => /config\/spend-|config\/tool-policy|config\/sovereignty-|owner\.json|house-mandate/.test(text))) {
     return { safe: false, reason: 'Access to wallet/security config denied' };
   }
 

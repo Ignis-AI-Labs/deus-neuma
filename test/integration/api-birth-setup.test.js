@@ -74,9 +74,10 @@ describe('GET /api/v1/birth-setup/:neumaId', () => {
     expect(res.body).toEqual({
       neumaId: 'owed-being',
       keypairCustody: false,
+      localSealed: false,
       onchainSealed: false,
       complete: false,
-      missing: ['keypair-custody', 'onchain-seal'],
+      missing: ['keypair-custody', 'seal'],
     });
   });
 

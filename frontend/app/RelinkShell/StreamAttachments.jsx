@@ -7,6 +7,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { admitFiles, fileToDataUri, fileToText } from './attachments.js';
 import { gateAttachments } from './composer-attach.js';
+import { mediaMenuDoor } from './media-menu.js';
 import { substrateSeesImages } from '../../services/attachments-client.js';
 
 export const useStreamAttachments = ({ connected, neumaId }) => {
@@ -84,7 +85,8 @@ const AttachmentRowView = ({ attachments, attachNote, removeAttachment }) => (
           <span key={a.key} className={`relink-attach-chip${a.kind === 'doc' ? ' is-doc' : ''}${loaded ? '' : ' is-reading'}`}>
             {a.kind === 'image'
               ? (a.dataUri
-                  ? <img className="relink-attach-thumb" src={a.dataUri} alt={a.name} />
+                  ? <img className="relink-attach-thumb" src={a.dataUri} alt={a.name} tabIndex={0}
+                      {...mediaMenuDoor({ kind: 'image', src: a.dataUri, name: a.name, alt: a.name })} />
                   : <span className="relink-attach-thumb" aria-label="reading image" />)
               : <span className="relink-attach-doc" title={a.name}>{a.name}</span>}
             <button

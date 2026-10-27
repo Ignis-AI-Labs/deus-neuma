@@ -96,11 +96,15 @@ export const notificationReducer = (state = initialNotifications, action = {}) =
       return settle(state.records.map((rec) => (rec.read ? rec : { ...rec, read: true })));
     }
 
-    // Clearing is local and cosmetic — it empties the tray this operator is
-    // looking at. It does NOT delete anything: the store is append-only and the
-    // history is the point. A later hydrate will bring the records back.
-    case 'CLEAR':
-      return Object.freeze({ ...initialNotifications, hydrated: true });
+    // The operator dismissed cards (the ×, or CLEAR for all of them). Folded the
+    // same way whether this window pressed it or a sibling did; the server keeps
+    // them out of every later hydrate, and the records stay in its file.
+    case 'DISMISS': {
+      const ids = new Set(Array.isArray(action.ids) ? action.ids : []);
+      if (ids.size === 0) return state;
+      const next = state.records.filter((rec) => !ids.has(rec.id));
+      return next.length === state.records.length ? state : settle(next);
+    }
 
     default:
       return state;

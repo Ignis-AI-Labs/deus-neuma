@@ -12,7 +12,7 @@ describe('a harness desk', () => {
   });
 
   it('shows no being apps on a harness desk, and every app on a being\'s', () => {
-    const registry = { chat: 1, files: 2, terminal: 3, house: 4, refinement: 5, sheet: 6, x: 7, settings: 8 };
+    const registry = { chat: 1, files: 2, terminal: 3, house: 4, refinement: 5, sheet: 6, marketing: 7, settings: 8 };
     expect(Object.keys(deskRegistryFor(registry, { neumaId: 'harness-1' }))).toEqual(['chat', 'files', 'terminal', 'settings']);
     expect(deskRegistryFor(registry, { neumaId: 'keir' })).toBe(registry);
     expect(BEING_APPS).toContain('house'); // the beings are the full platform's; ENTER AS is the way across

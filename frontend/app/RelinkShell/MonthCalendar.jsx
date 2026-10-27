@@ -34,12 +34,15 @@ const Count = ({ n, tone, letter }) => (
  *   selectedKey?: ?string, onPick: (key: string) => void,
  *   onPrevMonth: () => void, onNextMonth: () => void, onToday: () => void,
  *   navClass?: string, emptyLabel?: string, extra?: any, renderMarks?: (cell: object) => any,
- *   head?: boolean}} props — `head: false` when the host carries its own navigator
+ *   head?: boolean, quietCounts?: boolean, cellClass?: (cell: object) => string}} props — `head: false`
+ *   when the host carries its own navigator; `quietCounts` when renderMarks draws the counts itself (the
+ *   letters leave the cell, the spoken label keeps them); `cellClass` adds a domain's class to a day.
  */
 export const MonthCalendar = ({
   year, monthIndex, weeks, countLanes, selectedKey = null,
   onPick, onPrevMonth, onNextMonth, onToday,
   navClass = 'settings-set', emptyLabel = 'nothing scheduled', extra = null, renderMarks = null, head = true,
+  quietCounts = false, cellClass = null,
 }) => {
   const monthLabel = new Date(year, monthIndex, 1)
     .toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -66,18 +69,20 @@ export const MonthCalendar = ({
             <button
               key={cell.key}
               type="button"
-              className={`qcal-cell${cell.today ? ' is-today' : ''}${selectedKey === cell.key ? ' is-on' : ''}`}
+              className={`qcal-cell${cell.today ? ' is-today' : ''}${selectedKey === cell.key ? ' is-on' : ''}${cellClass ? ` ${cellClass(cell)}` : ''}`}
               aria-pressed={selectedKey === cell.key}
               aria-label={cellLabel(cell, countLanes, emptyLabel)}
               onClick={() => onPick(cell.key)}
             >
               <span className="qcal-day">{cell.date}</span>
               {renderMarks ? <span className="qcal-marks">{renderMarks(cell)}</span> : null}
-              <span className="qcal-counts">
-                {countLanes.map((lane) => (
-                  <Count key={lane.key} n={cell.counts[lane.key]} tone={lane.tone} letter={lane.letter} />
-                ))}
-              </span>
+              {quietCounts ? null : (
+                <span className="qcal-counts">
+                  {countLanes.map((lane) => (
+                    <Count key={lane.key} n={cell.counts[lane.key]} tone={lane.tone} letter={lane.letter} />
+                  ))}
+                </span>
+              )}
             </button>
           )
         ))}

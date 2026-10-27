@@ -200,8 +200,8 @@ describe('prepareBirthSeal — assembly reaches preflight; the held bundle is tw
     // network 'base' must (1) demand wire chainId 8453 and (2) ask the
     // MAINNET contract's sealDigest view — the captured eth_call destination
     // proves the per-network resolution reached the chain layer. The wrong
-    // digest answer stops the flow at the LAST gate, after every prior
-    // mainnet-lane gate ran.
+    // digest answer stops the flow at the digest gate, after every prior
+    // mainnet-lane gate ran and before the wallet's funding is asked.
     const askedContracts = [];
     const out = await prepareBirthSeal({
       neumaId: NEUMA_ID, network: 'base', witnessAddress: WITNESS.address, cfg,

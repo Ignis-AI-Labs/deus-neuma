@@ -23,6 +23,12 @@
 // channel-bindings.js (0700 dir / 0600 file, atomic rename), because it names
 // beings and sits beside the sealed credential stores.
 //
+// ONE CREW PER ACCOUNT (campaign plan §2.4, 2026-10-23): a social sector is
+// an account (`x-1`, `x-2`); a sector recorded before accounts under its
+// channel id (`x`) is the crew of `<channel>-1`, and a channel id asked of
+// any function here means that account. A sector that is no platform keeps
+// its own id.
+//
 // ONE ROSTER PER HOUSE (social/house-positions.js): a house's sectors are its
 // own, in its operator's realm dir, and only its operator seats a lane on
 // them — a lane that operator owns (a neuma, or a witness lane it
@@ -35,6 +41,7 @@ import { getSettingsDir } from './data-root.js';
 import { createWriteChain } from './write-chain.js';
 import { houseKey } from './staff/cos-designation.js';
 import { housePositionFile, houseOfLane } from './social/house-positions.js';
+import { positionOf, byPosition } from './social/account-shape.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'sector-crew.json');
 
@@ -61,7 +68,7 @@ export const MEMBER_KINDS = Object.freeze(['neuma', 'witness']);
  * @returns {Array<{neumaId: string, kind: string, remit: string}>}
  */
 export const crewOf = (store, sectorId) => {
-  const members = store?.[sectorId]?.members;
+  const members = byPosition(store)[positionOf(sectorId)]?.members;
   return Array.isArray(members) ? members : [];
 };
 
@@ -93,7 +100,7 @@ export const isCrewMember = (store, sectorId, neumaId) =>
  */
 export const canStageForSector = (crewStore, bindings, sectorId, neumaId) => {
   if (typeof neumaId !== 'string' || neumaId.length === 0) return false;
-  if (bindings?.[sectorId]?.neumaId === neumaId) return true;
+  if (byPosition(bindings)[positionOf(sectorId)]?.neumaId === neumaId) return true;
   return isCrewMember(crewStore, sectorId, neumaId);
 };
 
@@ -117,7 +124,7 @@ export const canStageForSector = (crewStore, bindings, sectorId, neumaId) => {
  * @returns {boolean}
  */
 export const canSendStaged = (crewStore, bindings, sectorId, authorNeumaId) => {
-  const holder = bindings?.[sectorId]?.neumaId;
+  const holder = byPosition(bindings)[positionOf(sectorId)]?.neumaId;
   if (typeof holder !== 'string' || holder.length === 0) return false;
   return canStageForSector(crewStore, bindings, sectorId, authorNeumaId);
 };
@@ -173,7 +180,7 @@ export const withMember = (store, sectorId, rawMember) => {
   const members = existing === -1
     ? [...current, member]
     : current.map((m, i) => (i === existing ? member : m));
-  return { ...(store || {}), [sectorId]: { members } };
+  return { ...byPosition(store), [positionOf(sectorId)]: { members } };
 };
 
 /**
@@ -185,7 +192,7 @@ export const withMember = (store, sectorId, rawMember) => {
  */
 export const withoutMember = (store, sectorId, neumaId) => {
   const members = crewOf(store, sectorId).filter((m) => m.neumaId !== neumaId);
-  return { ...(store || {}), [sectorId]: { members } };
+  return { ...byPosition(store), [positionOf(sectorId)]: { members } };
 };
 
 /**
@@ -255,14 +262,14 @@ export const createSectorCrew = ({ path = sectorCrewPath, seed = async () => ({}
     try {
       raw = await fs.readFile(target(), 'utf8');
     } catch (err) {
-      if (err.code === 'ENOENT') return seed();
+      if (err.code === 'ENOENT') return byPosition(await seed());
       throw err;
     }
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error('sector-crew: store is not an object');
     }
-    return parsed;
+    return byPosition(parsed);
   };
 
   const save = async (store) => {

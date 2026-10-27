@@ -52,7 +52,7 @@ test('the threshold over the rite: the covenant read and signed, the vessel insp
   const deadline = Date.now() + 6 * 60 * 1000;
   while (Date.now() < deadline && !(await covenant.isVisible().catch(() => false))) {
     const sign = page.locator('.wallet-confirm-approve').first();
-    const door = page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).first();
+    const door = page.locator('[data-door="neuma"] .firstrun-path').first();
     if (await sign.isVisible().catch(() => false)) await sign.click({ force: true }).catch(() => {});
     else if (await door.isVisible().catch(() => false)) await door.click({ force: true }).catch(() => {});
     await page.waitForTimeout(500);

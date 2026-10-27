@@ -97,7 +97,7 @@ test('commitment is honest, read-gated and usable at desktop/mobile; later scree
     await page.evaluate(() => window.summoningPreview.render('complete'));
     expect(await page.locator('.companion-name').textContent()).toBe('Review <Name>');
     expect(await page.locator('.companion-greeting').textContent()).not.toContain('I am');
-    expect(await page.locator('body').textContent()).toContain('genesis anchor is still to complete');
+    expect(await page.locator('body').textContent()).toContain('birth seal is still to complete');
     expect(await page.evaluate(() => window.summoningPreview.pendingCommands)).toEqual([]);
     expect(errors).toEqual([]);
   } finally {

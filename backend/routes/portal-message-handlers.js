@@ -26,6 +26,7 @@ import { portalConnections } from './portal-connections.js';
 import { sendToWallet } from './portal-send.js';
 import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace } from './portal-context.js';
 import { portalResume, portalNewSession, companionManifest } from './portal-bind-handlers.js';
+import { handleCompactRequest } from '../services/portal-compact.js';
 import {
   birthStart, birthRetryStage, birthNextStage, birthInterrupted,
   birthResume, birthResumeCompletion, birthAbandon,
@@ -34,6 +35,8 @@ import {
   birthEncryptKeypair, birthSealPreflight, birthSealSign, birthSealConfirm,
   houseFoundPreflight, houseFoundSign, houseFoundConfirm,
 } from './portal-seal-handlers.js';
+import { birthLocalSealOffer, birthLocalSealSign } from './portal-local-seal-handlers.js';
+import { houseFoundLocalPreflight, houseFoundLocalSign } from './portal-house-local-handlers.js';
 import {
   councilOpen, councilSpeak, councilResumeFrame, councilListFrame,
   councilInterruptFrame, councilOrderFrame, councilCloseFrame,
@@ -241,6 +244,11 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       ws.send(JSON.stringify({ type: 'tool:mode', mode: connection.toolMode }));
       break;
 
+    case 'session:compact':
+      // The operator's /compact — the boundary's own torch-passing, on their word.
+      await handleCompactRequest(connection);
+      break;
+
     case 'session:purpose':
       // The operator's declared purpose for this sitting (work / conversation).
       // CLIENT-ORIGINATED ONLY — no being tool may ever write purpose (threat
@@ -276,9 +284,12 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
         .filter((id) => isValidId(id));
       if (ids.length === 0) break;
-      markNotificationsRead(connection.walletAddress, ids, Date.now())
+      // `dismiss` takes the cards out of the tray too (the × and CLEAR), on
+      // every desk and after a reload; the records stay in the file.
+      const dismiss = message.dismiss === true;
+      markNotificationsRead(connection.walletAddress, ids, Date.now(), { dismiss })
         .then(() => {
-          sendToWallet(connection.walletAddress, { type: 'notification:read', ids });
+          sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', ids });
         })
         .catch((error) => {
           log.error('Notification read-marking failed', { error: error.message, count: ids.length });
@@ -330,6 +341,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       await birthEncryptKeypair(connection, message);
       break;
 
+    case 'birth:local_seal_offer':
+      await birthLocalSealOffer(connection, message);
+      break;
+
+    case 'birth:local_seal_sign':
+      await birthLocalSealSign(connection, message);
+      break;
+
     case 'birth:seal_preflight':
       await birthSealPreflight(connection, message);
       break;
@@ -340,6 +359,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
 
     case 'birth:seal_confirm':
       await birthSealConfirm(connection, message);
+      break;
+
+    case 'house:found_local_preflight':
+      await houseFoundLocalPreflight(connection, message);
+      break;
+
+    case 'house:found_local_sign':
+      await houseFoundLocalSign(connection, message);
       break;
 
     case 'house:found_preflight':

@@ -1,0 +1,12 @@
+/* level-mark — a level as a shape (level-mark.jsx): shape carries the
+   level, colour only confirms it. */
+
+.lvl-mark { flex: 0 0 auto; display: block; overflow: visible; }
+.lvl-ring { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.lvl-fill { fill: currentColor; }
+.lvl-cut { stroke: var(--color-void); stroke-width: 2; stroke-linecap: square; }
+.lvl-line { stroke: currentColor; stroke-width: 1.5; }
+.lvl-mark.is-ok { color: var(--color-text-secondary); }
+.lvl-mark.is-unknown { color: var(--color-text-tertiary); }
+.lvl-mark.is-warm { color: var(--alert-dim); }
+.lvl-mark.is-hot, .lvl-mark.is-fault { color: var(--alert); }

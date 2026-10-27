@@ -32,6 +32,7 @@ import { HotkeysSection } from './HotkeysSection.jsx';
 import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
+import { ConnectionsSection } from './ConnectionsSection.jsx';
 import { RemoteSection } from './RemoteSection.jsx';
 import { DocPressSection } from './DocPressSection.jsx';
 import { ApiTab } from './SettingsApiTab.jsx';
@@ -70,6 +71,7 @@ const ModelsTab = ({ focus }) => (
 // before it is a convenience (docs/security/remote-surface.md).
 const SecurityTab = () => (
   <>
+    <ConnectionsSection />
     <SecuritySection />
     <RemoteSection />
   </>
@@ -90,7 +92,9 @@ const TABS = [
   { id: 'security', Body: SecurityTab },
 ];
 
-// A deep-link target names a SECTION; the map says which tab carries it.
+// A deep-link target names a SECTION (and may go on to a row inside it:
+// `channel-keys/<platform>/<account>`); the map says which tab carries it.
+const tabOfFocus = (target) => TAB_OF_FOCUS[String(target ?? '').split('/')[0]];
 const TAB_OF_FOCUS = Object.freeze({
   look: 'look',
   pins: 'memory',
@@ -100,16 +104,17 @@ const TAB_OF_FOCUS = Object.freeze({
   email: 'api',
   web: 'api',
   security: 'security',
+  connections: 'security',
 });
 
 const SettingsBody = () => {
   // The latch is read ONCE here (the window mounts async after the command
   // fires) and handed down — sections keep their own scroll behavior.
   const [focus, setFocus] = useState(() => takeSettingsFocus());
-  const [tab, setTab] = useState(() => TAB_OF_FOCUS[focus] || 'general');
+  const [tab, setTab] = useState(() => tabOfFocus(focus) || 'general');
   useEffect(() => onSettingsFocus((target) => {
     setFocus(target);
-    if (TAB_OF_FOCUS[target]) setTab(TAB_OF_FOCUS[target]);
+    if (tabOfFocus(target)) setTab(tabOfFocus(target));
   }), []);
 
   const active = TABS.find((tabDef) => tabDef.id === tab) || TABS[0];

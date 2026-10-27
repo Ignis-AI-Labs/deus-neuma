@@ -25,6 +25,8 @@ import { logToolCall } from './tool-sandbox.js';
 import { recordAct } from './act-ledger.js';
 import { withOperationApproval } from './turn-operation-checkpoint.js';
 import { linePlace } from './substrate-lease.js';
+import { approvalRenders } from './image-forge/approval-renders.js';
+import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 
 
 /** Decisions an operator may send. Everything else is rejected at the boundary. */
@@ -134,7 +136,7 @@ export const approvalCoversOneAct = (connection) => Boolean(connection?._approva
  *   under the asker's lane, never the one-on-one being's.
  * @returns {Promise<'allow'|'always'|'deny'|'interrupted'>}
  */
-export const requestToolApproval = (connection, { tool, args, scope, surface, signal, lane }) =>
+export const requestToolApproval = (connection, { tool, label, args, scope, surface, signal, lane }) =>
   withOperationApproval(connection, () => new Promise((resolve) => {
     const id = randomUUID();
     const pending = _pending(connection);
@@ -148,6 +150,7 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
       if (!entry) return;
       pending.delete(id);
       _parked.delete(id);
+      clearLiveCard(id);
       if (signal) signal.removeEventListener('abort', entry.onAbort);
       // The client learns the request is settled on EVERY path (decision,
       // interrupt, close) — a pending prompt must never dangle on screen.
@@ -208,17 +211,23 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
       }
     };
 
+    const renders = approvalRenders((lane ? lane.laneId : connection.companion?.neumaId) || null, args);
     const frame = {
       type: 'tool:approval_request',
       id,
       ...(connection._runningToolOperation ? { operationId: connection._runningToolOperation.operation.id } : {}),
       tool,
+      // The act's name as a person reads it, when the wire name says less
+      // (an image/generate filing rendering a video reads video/generate).
+      ...(label && label !== tool ? { label } : {}),
       args: approvalPreview(args),
       // The preview is a window; past its cut the card offers the whole text.
       ...(approvalFullArgs(args) ? { fullArgs: approvalFullArgs(args) } : {}),
       // The card images behind the yes — the desk renders them on the chip
       // (posting-pipeline-v2: approve with eyes).
       ...(approvalMedia(args).length ? { media: approvalMedia(args) } : {}),
+      // The being's own forge renders it attached by id — a clip plays on the card.
+      ...(renders.length ? { renders } : {}),
       ...(scope ? { scope } : {}),
       // Which desk surface raises the gate — the council room renders its
       // own chip; the one-on-one stream ignores council-surfaced asks (one
@@ -263,6 +272,8 @@ export const requestToolApproval = (connection, { tool, args, scope, surface, si
     }
 
     _safeSend(connection.ws, frame);
+    // On the operator's screen now: the desk's WAITING ON YOU counts it until it settles.
+    noteLiveCard(connection, { id, kind: 'approval', title: label || tool, lane, surface });
   }));
 
 /**

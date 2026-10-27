@@ -3,7 +3,7 @@ import {
   QUEUE_LANES, QUEUE_SECTIONS, isSettled, laneOf,
   orderQueueForBoard, sectionOf, splitLaneIntoGroups,
   splitQueueIntoSections,
-  postCountFor, postLengthOf, queueStandingLabel, queueToneOf, queueWhenLabel,
+  postCountFor, postLengthOf, queueToneOf, queueWhenLabel,
   xPostUrl,
 } from '../../frontend/app/RelinkShell/campaigns-helpers.js';
 
@@ -352,23 +352,6 @@ describe('queueToneOf — the rail and chip register', () => {
   it('failed wants an eye; everything settled is history', () => {
     expect(queueToneOf('failed')).toBe('failed');
     for (const s of ['sent', 'rejected', 'withdrawn', 'unknown', '']) expect(queueToneOf(s)).toBe('done');
-  });
-});
-
-describe('queueStandingLabel — the chip speaks the lanes\' vocabulary', () => {
-  it('names every standing the queue can hold', () => {
-    expect(queueStandingLabel({ status: 'draft' })).toBe('AWAITS YOUR DECISION');
-    expect(queueStandingLabel({ status: 'approved' })).toBe('APPROVED');
-    expect(queueStandingLabel({ status: 'sending' })).toBe('SENDING…');
-    expect(queueStandingLabel({ status: 'sent' })).toBe('SENT');
-    expect(queueStandingLabel({ status: 'sent', postId: 'abc123' })).toBe('SENT (abc123)');
-    expect(queueStandingLabel({ status: 'failed' })).toBe('DID NOT SEND');
-    expect(queueStandingLabel({ status: 'rejected' })).toBe('DECLINED');
-    expect(queueStandingLabel({ status: 'withdrawn' })).toBe('WITHDRAWN');
-  });
-  it('an unknown standing still reads something, uppercased', () => {
-    expect(queueStandingLabel({ status: 'quarantined' })).toBe('QUARANTINED');
-    expect(queueStandingLabel({})).toBe('UNKNOWN');
   });
 });
 

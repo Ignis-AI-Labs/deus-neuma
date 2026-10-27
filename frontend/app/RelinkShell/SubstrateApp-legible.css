@@ -1,0 +1,106 @@
+/* SubstrateApp-legible — the SUBSTRATE window read at a glance: the health
+   strip, the level marks, and the console's type raised to the legibility
+   floor (labels ≥ 13px; design-language.md § WEB → CHOKKAN). The instruments
+   take their sizes from the custom properties set here (hud-instruments.css). */
+
+.sub-body {
+  --hud-type-label: 13px;
+  --hud-type-small: 13px;
+  --hud-type-tiny: 13px;
+  --hud-type-value: 15px;
+  --hud-type-dial: 19px;
+  --hud-dial: 88px;
+  --hud-bar-name: 132px;
+  --hud-bar-text: minmax(76px, max-content);
+  --hud-quiet: var(--color-text-tertiary);
+}
+.sub-body .hud-label { letter-spacing: 0.1em; }
+.sub-body .hud-dial-label { letter-spacing: 0.1em; }
+.sub-body .hud-bar-name { letter-spacing: 0.02em; color: var(--color-text-secondary); }
+.sub-body .hud-bar-track { height: 10px; }
+.sub-body .hud-chip { padding: 3px 8px; }
+.sub-body .hud-legend-item { letter-spacing: 0.04em; }
+.sub-body .hud-trace-scale { letter-spacing: 0.06em; }
+.sub-body .sub-provider,
+.sub-body .sub-fail-ctx,
+.sub-body .sub-fail-ts,
+.sub-body .sub-empty-row { font-size: 13px; }
+.sub-body .sub-grid .rec-line { font-size: 13px; letter-spacing: 0.08em; }
+.sub-body .sub-grid .rec-note { font-size: 13px; }
+
+/* ── panel parts ── */
+.hud-label-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.hud-group { display: flex; flex-direction: column; gap: 6px; }
+.hud-group + .hud-group { padding-top: var(--space-1); }
+.hud-trace-note { margin-left: var(--space-2); font-size: 13px; font-weight: 400; color: var(--color-text-tertiary); letter-spacing: 0.06em; }
+.sub-body .hud-cores { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 3px; }
+.sub-body .hud-core { padding: 4px 0 3px; gap: 1px; }
+.sub-body .hud-thermo-tube { height: 72px; width: 14px; }
+.sub-body .hud-thermos { gap: var(--space-4); }
+
+/* the core heatmap's key: the shade's own scale, 0° to the cores' high mark */
+.hud-heatkey { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 13px; color: var(--color-text-tertiary); }
+.hud-heatkey i {
+  width: 72px;
+  height: 10px;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--signal) 55%, transparent));
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* the inputs a chip leaves unlabelled: small multiples, number over input */
+.hud-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 3px; }
+.hud-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0 3px;
+  font-family: var(--font-data);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.hud-input b { font-weight: 400; font-size: 15px; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.hud-input i { font-style: normal; font-size: 13px; color: var(--color-text-tertiary); }
+.hud-input.is-hot, .hud-input.is-crit { box-shadow: inset 0 0 0 1px var(--alert); }
+.hud-input.is-warm { box-shadow: inset 0 0 0 1px var(--alert-dim); }
+
+/* a fold says it opens: + closed, − open */
+.sub-body .hud-more summary::before { content: '+'; width: 1ch; margin-right: 6px; color: var(--color-text-secondary); font-family: var(--font-data); font-size: 13px; }
+.sub-body .hud-more[open] summary::before { content: '−'; }
+.sub-body .hud-more summary { display: flex; align-items: center; }
+
+/* readings not believed: set apart, struck through, never toned as heat */
+.hud-doubt summary { gap: var(--space-2); }
+.hud-doubt-mark {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  background: repeating-linear-gradient(135deg, var(--color-text-tertiary) 0 1px, transparent 1px 4px);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.hud-doubt-list { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.hud-doubt-list li {
+  display: grid;
+  grid-template-columns: 112px 64px 1fr;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+.hud-doubt-list b { font-weight: 400; color: var(--color-text-secondary); text-decoration: line-through; text-decoration-color: var(--color-text-tertiary); }
+
+/* fans as rotors: a turning fan's rpm beside it, idle headers as hollow rings */
+.sub-body .hud-fans { gap: 4px var(--space-2); }
+.sub-body .hud-fans-src { min-width: 64px; letter-spacing: 0.06em; }
+.sub-body .hud-fan { gap: 3px; font-size: 14px; }
+/* a rail's readout is its volts and its drift: room for both */
+.sub-body .hud-drift { grid-template-columns: 52px 1fr 124px; }
+.hud-rotor { display: block; flex: 0 0 auto; }
+.hud-rotor.is-idle { color: var(--color-text-tertiary); }
+.sub-body .hud-fan.is-idle { gap: 3px; color: var(--color-text-tertiary); }
+.sub-body .hud-fan.is-idle b { margin-left: 4px; color: var(--color-text-tertiary); }
+
+/* units ride beside their numbers at the floor too, and the shared model bar
+   in this window's header reads at the same floor */
+.sub-body .hud-unit { font-size: max(13px, 0.62em); }
+.sub-body .ignite-control * { font-size: 13px; }
+/* a proper name (a drive's model) keeps its own case */
+.sub-body .hud-label.is-name { text-transform: none; letter-spacing: 0.02em; color: var(--color-text-secondary); }

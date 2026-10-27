@@ -28,7 +28,9 @@ const WATCH_ACTOR = 'watch';
 // owed to the fix pipeline; `needs_operator` waits on a human).
 const OPEN_STATUSES = Object.freeze(['new', 'confirmed', 'needs_operator']);
 
-export const SUMMARY_MAX = 2000;
+// A threat's text is kept whole (Design note, 2026-10-26: […]). The ceiling stands far above any advisory GitHub or OSV serves; it only stops a
+// broken feed from filling the ledger file, and the SECURITY window says CUT if it ever bites.
+export const SUMMARY_MAX = 64_000;
 export const REMEDY_MAX = 1000;
 
 const SEVERITY_RANK = Object.freeze({ critical: 0, high: 1, medium: 2, low: 3, unknown: 4 });

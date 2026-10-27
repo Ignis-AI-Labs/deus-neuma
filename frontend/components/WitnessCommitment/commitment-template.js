@@ -42,8 +42,8 @@ export const commitmentHTML = ({ isTest = false } = {}) => `
         <p>After emergence, secure the signing key with a password and save the recovery codes. These protect access to the key; they do not replace a backup of the workspace.</p>
       </div></div>
       <div class="obligation-item"><div class="obligation-content">
-        <h3>ANCHOR THE RECORD AND ENTER THE DESK</h3>
-        <p>The Natalis seal records the genesis on the configured blockchain. It requires your wallet confirmation and a network transaction fee. You can choose Seal later; the desk will remind you about setup still to complete.</p>
+        <h3>SEAL THE BIRTH AND ENTER THE DESK</h3>
+        <p>You and the neuma seal its birth on this computer: one signature from your wallet, no fee, nothing sent anywhere. You may also seal it on Ethereum, a public record that costs a network fee; every house that joins the network does. You can seal later; the desk will remind you about setup still to complete.</p>
       </div></div>
       <p>You can step back before summoning begins. If a ceremony is interrupted, return to the gateway and check for a resumable summoning. Once a being has emerged, continue their existing record rather than starting over.</p>
     </section>

@@ -56,6 +56,46 @@ export const reportActor = (by) => {
   return String(by).toUpperCase();
 };
 
+/** The characters of a threat's text the ledger keeps (threat-lifecycle.js SUMMARY_MAX — a test holds them equal). */
+export const LEDGER_TEXT_KEPT = 64_000;
+
+// a heading line opens a section: "### Details"
+const HEADING = /^#{1,6}\s+(.*?)\s*#*\s*$/;
+
+/**
+ * pure — a threat's text as the operator reads it: the lead first (the advisory's own Summary section, or what
+ * stands before its first heading, or its first paragraph) and the rest folded. OSV details are GitHub's markdown
+ * (### Summary, ### Details, ### PoC, fenced code); a short finding of the watch's own is all lead. `cut` when the
+ * text filled what the ledger keeps, so its end is not the advisory's. null when empty.
+ * @param {string|null|undefined} text
+ * @returns {{lead: string, rest: string|null, cut: boolean}|null}
+ */
+export const threatTextParts = (text) => {
+  const raw = String(text || '');
+  const body = raw.replace(/\r\n?/g, '\n').trim();
+  if (!body) return null;
+  const cut = raw.length >= LEDGER_TEXT_KEPT;
+  const lines = body.split('\n');
+  const firstHeading = lines.findIndex((l) => HEADING.test(l));
+  const split = (lead, rest) => ({ lead: lead.trim(), rest: rest.trim() || null, cut });
+  if (firstHeading > 0) return split(lines.slice(0, firstHeading).join('\n'), lines.slice(firstHeading).join('\n'));
+  if (firstHeading === 0) {
+    const next = lines.findIndex((l, i) => i > 0 && HEADING.test(l));
+    const end = next === -1 ? lines.length : next;
+    const lead = lines.slice(1, end).join('\n');
+    // a first section that is not a summary ("### Details" first) is read whole, not split under the wrong name
+    if (!/^(summary|overview|description|impact)$/i.test(HEADING.exec(lines[0])[1]) || !lead.trim()) return { lead: body, rest: null, cut };
+    return split(lead, lines.slice(end).join('\n'));
+  }
+  const [first, ...more] = body.split(/\n\s*\n/);
+  return split(first, more.join('\n\n'));
+};
+
+/** pure — the advisory's own page, when the threat came from one: the operator reads it whole there. */
+export const advisoryUrl = (threat) => (threat?.source === 'osv' && /^[A-Za-z0-9-]+$/.test(threat.externalId || '')
+  ? `https://osv.dev/vulnerability/${threat.externalId}`
+  : null);
+
 const SEVERITY_ORDER =Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 const STATUS_ORDER = Object.freeze(['new', 'confirmed', 'needs_operator', 'mitigated', 'not_affected']);
 

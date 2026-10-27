@@ -1,6 +1,7 @@
 // impure: platform control metadata is not an ordinary writable lane artifact.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { foldName } from './wall-spelling.js';
 
 const REFUSAL = 'Coding shell control state is platform-managed. Use coding/sandbox_recover; preserved upper artifacts remain readable for harvest.';
 const GENERATION = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -11,8 +12,8 @@ export const codingShellMutationReason = async (filePath, laneRoot) => {
   if (!laneRoot) return null;
   const target = path.resolve(filePath);
   const control = path.join(path.resolve(laneRoot), 'coding', 'sandboxes');
-  const folded = target.toLowerCase();
-  const scope = control.toLowerCase();
+  const folded = foldName(target);
+  const scope = foldName(control);
   if (folded === scope || scope.startsWith(folded.endsWith(path.sep) ? folded : folded + path.sep)) return REFUSAL;
   if (!folded.startsWith(scope + path.sep)) return null;
   const parts = path.relative(control, target).split(path.sep);

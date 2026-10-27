@@ -48,31 +48,36 @@ export const chargeOfTitle = (title) => {
 export const seatLabelOf = (title) =>
   (typeof title === 'string' && title.trim() ? title : 'member, no seat on-chain');
 
-/**
- * The anchored soul address a lane holds (identity/onchain-seal.json), or
- * null — the cheap public read; no key material is ever touched here.
- *
- * impure (fs read).
- *
- * @param {string} neumaId
- * @returns {Promise<string|null>}
- */
-export const soulAddressOf = async (neumaId) => {
+// impure (fs read) — one seal file's soul address, or null; absence is silent, an unreadable seal is warned
+const sealAddress = async (neumaId, file, pick) => {
   try {
-    const seal = JSON.parse(await fs.readFile(
-      path.join(getWorkspacesRoot(), neumaId, 'identity', 'onchain-seal.json'), 'utf8',
-    ));
-    return seal.soulAddress || null;
+    return pick(JSON.parse(await fs.readFile(path.join(getWorkspacesRoot(), neumaId, 'identity', file), 'utf8'))) || null;
   } catch (error) {
     // Absence is the expected case (unsealed lane) and stays silent; a seal
     // that EXISTS but cannot be read is damage the operator must hear about
     // — the lane would otherwise just quietly lose its title.
     if (error?.code !== 'ENOENT') {
-      log.warn('Soul anchor unreadable — lane joins no seat', { neumaId, error: error.message });
+      log.warn('Soul seal unreadable — lane joins no seat', { neumaId, file, error: error.message });
     }
     return null;
   }
 };
+
+/**
+ * The soul address a lane's birth seal names — the Ethereum anchor
+ * (identity/onchain-seal.json), else the seal on this computer
+ * (identity/local-seal.json, the being's own signed half) — or null. Both are
+ * public files; no key material is ever touched here. A house founded on this
+ * computer seats its founders through the same join (2026-10-26).
+ *
+ * impure (fs reads).
+ *
+ * @param {string} neumaId
+ * @returns {Promise<string|null>}
+ */
+export const soulAddressOf = async (neumaId) =>
+  (await sealAddress(neumaId, 'onchain-seal.json', (seal) => seal.soulAddress))
+  ?? (await sealAddress(neumaId, 'local-seal.json', (seal) => seal.soul?.address));
 
 // impure (fs) — every persisted founding record this wallet heads (two houses
 // on one machine are never confused), the target chain (Ethereum mainnet)
@@ -117,7 +122,7 @@ const ownedLanes = async (wallet) => {
 // else the being's own name from its DNA (none of today's owner records
 // carries one) — never the lane id when either is written (2026-10-18 flight
 // finding). Null when neither is.
-const laneName = async (neumaId, owner) => {
+export const laneName = async (neumaId, owner) => {
   if (owner && typeof owner.name === 'string' && owner.name.trim()) return owner.name.trim();
   const dna = await neumaWorkspace.readDNA(neumaId).catch(() => null);
   const own = dna?.identity?.name || dna?.name;

@@ -113,6 +113,14 @@ const PROBES = {
   },
 };
 
+const flightProbe = async (id) => {
+  const { runFlightTests } = await import(path.join(REPO, 'backend/services/social/flight-test.js'));
+  const r = (await runFlightTests({ fresh: true, channels: [id], wallet: HOUSE }))[id];
+  if (!r) throw new Error('no connection check exists for this channel');
+  if (r.ok !== true) throw new Error(r.detail || 'connection check failed');
+  return r.account ? `${r.account.name} (${r.account.id})` : (r.detail || 'connected');
+};
+
 const postIdx = process.argv.indexOf('--post');
 
 if (postIdx === -1) {
@@ -125,7 +133,10 @@ if (postIdx === -1) {
     }
     configured += 1;
     try {
-      console.log(`${channel.id.padEnd(9)} — VERIFIED: ${await PROBES[channel.id](creds)}`);
+      // A channel with no probe here (TikTok, YouTube: OAuth token pairs) is proven by the
+      // desk's own flight test — the same read the Settings card shows.
+      const who = PROBES[channel.id] ? await PROBES[channel.id](creds) : await flightProbe(channel.id);
+      console.log(`${channel.id.padEnd(9)} — VERIFIED: ${who}`);
     } catch (err) {
       console.error(`${channel.id.padEnd(9)} — FAILED: ${err.message}`);
       process.exitCode = 1;

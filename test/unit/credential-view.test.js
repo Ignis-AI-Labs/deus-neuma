@@ -50,10 +50,15 @@ describe('a credential state is only what the board proves', () => {
     expect(emailItem(null)).toBeNull();
   });
 
+  test('a channel on a locked keys file is LOCKED, whatever its test said', () => {
+    const item = channelItem({ id: 'x', name: 'X (Twitter)', configured: false, locked: true }, { ok: false, detail: 'not configured' });
+    expect(item).toMatchObject({ state: 'locked', detail: 'the keys file can\'t be opened' });
+  });
+
   test('counts, groups and the filter over the whole tab', () => {
     const items = credentialItems(BOARD);
     expect(items).toHaveLength(9);
-    expect(stateCounts(items)).toEqual({ failing: 1, missing: 2, set: 4, proven: 1, keyless: 1 });
+    expect(stateCounts(items)).toEqual({ locked: 0, failing: 1, missing: 2, set: 4, proven: 1, keyless: 1 });
     expect(groupItems(items).map((g) => [g.group, g.items.length])).toEqual([
       ['CHANNELS', 4], ['WEB SEARCH', 3], ['CHAIN RPC', 1], ['EMAIL', 1],
     ]);

@@ -15,6 +15,7 @@ const { openBackendLog } = require('./backend-log.cjs');
 const { registerKspCapture } = require('./ksp-capture.cjs');
 const { resolvePort, portMovedNotice } = require('./port-resolve.cjs');
 const { backendExitNotice } = require('./backend-exit.cjs');
+const { attachBackend, lockActive } = require('./key-lock/key-lock-main.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const SERVER = path.join(ROOT, 'backend', 'server.js');
@@ -133,6 +134,8 @@ const startBackend = ({ onRestarted }) => {
       NEUMA_DESK_PID: String(process.pid),
       // Stable, self-provisioned at-rest secrets (see secret-provisioning.js)
       NEUMA_SECRETS_FILE: process.env.NEUMA_SECRETS_FILE || path.join(neumaHome, 'secrets.json'),
+      // Locked by the keychain: the keys come over the IPC channel, never this env (key-lock-main.cjs).
+      ...(lockActive() ? { NEUMA_KEYS_VIA_IPC: '1' } : {}),
       // ⚠ NEUMA_DATA_ROOT / NEUMA_VAULT_ROOT ARE SET ONLY FOR THE PACKAGED APP.
       //
       // In a PACKAGED install the install tree is read-only, so runtime-writable
@@ -199,6 +202,7 @@ const startBackend = ({ onRestarted }) => {
     ...(process.platform === 'win32' ? {} : { detached: true }),
   });
   registerKspCapture(backend);
+  attachBackend(backend);
   // Only a backend that came up speaks here: one that dies before it reports
   // its port fails the caller's await, and the caller says so.
   let served = false;
