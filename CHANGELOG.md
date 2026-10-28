@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.88] - 2026-10-28
+
+Notes: `docs/operations/release-notes-0.1.88.md`.
+
+### Changed
+
+- The Privacy Notice now says exactly what the app and the website do. We hold no account and no central copy of anything, and nothing you or your neuma say is sent to us. It lists the only ways data leaves your computer: downloads and updates, connections you turn on or use, what you choose to put on chain, what you write to us, and the website. Version 1.0 wrongly said a name and email were collected at the ceremony and stored by us. You read the new version at your next summoning.
+
 ## [0.1.87] - 2026-10-28
 
 Notes: `docs/operations/release-notes-0.1.87.md`.
