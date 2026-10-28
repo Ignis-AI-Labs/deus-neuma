@@ -17,6 +17,7 @@ const { revealBackendLog } = require('./backend-log.cjs');
 const { APP_HOTKEYS, buildAppMenuTemplate } = require('./hotkeys.cjs');
 const { cleanNotifyText, activationOf } = require('./notify-text.cjs');
 const { dragIcon } = require('./drag-icon.cjs');
+const { define } = require('./dictionary.cjs');
 const { primaryBounds } = require('./primary-placement.cjs');
 
 // impure — register every handler on ipcMain. `deskWindows` is the
@@ -214,6 +215,17 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // menu, and answers a shown menu with the chosen action.
   ipcMain.on('contextmenu:ready', (event) => markMenuReady(event.sender));
   ipcMain.on('contextmenu:action', (event, action) => applyMenuAction(event.sender, action));
+  // DEFINE — a word's meaning from the offline dictionary (dictionary.cjs).
+  // Read-only and local; the word is re-validated there, and a database that
+  // cannot be read says so instead of answering "no entry".
+  ipcMain.handle('dictionary:define', (_event, word) => {
+    if (typeof word !== 'string' || word.length > 64) return { word: '', entries: [], error: 'Not a word.' };
+    try {
+      return define(word);
+    } catch (err) {
+      return { word, entries: [], error: `The dictionary could not be read: ${err.message}` };
+    }
+  });
 
   // A desk spawns a sibling desk. The opener hands over its auth token so
   // the new desk wakes authenticated (one-shot relay — see desk-boot.cjs);

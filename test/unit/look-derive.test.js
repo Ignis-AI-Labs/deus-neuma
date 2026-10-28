@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, test, expect } from 'vitest';
 import {
   deriveLookVars, isSameLook, isValidLook, STOCK_LOOK, LOOK_KNOBS, LOOK_VAR_NAMES,
@@ -8,17 +9,25 @@ import {
 describe('look-derive.js', () => {
   test('the stock look derives exactly the tokens.css values', () => {
     const vars = deriveLookVars(STOCK_LOOK);
-    expect(vars['--color-void']).toBe('#000000');
-    expect(vars['--color-surface']).toBe('rgba(0, 0, 0, 0.98)');
-    expect(vars['--color-text-primary']).toBe('rgba(255, 255, 255, 0.95)');
-    expect(vars['--color-text-secondary']).toBe('rgba(255, 255, 255, 0.7)');
-    expect(vars['--line']).toBe('rgba(255, 255, 255, 0.18)');
-    expect(vars['--line-hover']).toBe('rgba(255, 255, 255, 0.4)');
-    expect(vars['--grid']).toBe('rgba(255, 255, 255, 0.02)');
-    expect(vars['--color-input-fill']).toBe('rgba(255, 255, 255, 0.08)');
-    expect(vars['--signal']).toBe('#5FE9FF');
-    expect(vars['--signal-dim']).toBe('rgba(95, 233, 255, 0.5)');
-    expect(vars['--signal-faint']).toBe('rgba(95, 233, 255, 0.18)');
+    expect(vars['--color-void']).toBe('#11161D');
+    expect(vars['--color-surface']).toBe('rgba(24, 32, 42, 0.98)');
+    expect(vars['--color-heading']).toBe('#E9B872');
+    expect(vars['--color-text-primary']).toBe('rgba(228, 234, 240, 0.95)');
+    expect(vars['--color-text-secondary']).toBe('rgba(228, 234, 240, 0.7)');
+    expect(vars['--line']).toBe('rgba(228, 234, 240, 0.18)');
+    expect(vars['--line-hover']).toBe('rgba(228, 234, 240, 0.4)');
+    expect(vars['--grid']).toBe('rgba(228, 234, 240, 0.02)');
+    expect(vars['--color-input-fill']).toBe('rgba(228, 234, 240, 0.08)');
+    expect(vars['--signal']).toBe('#4FD6E8');
+    expect(vars['--signal-dim']).toBe('rgba(79, 214, 232, 0.5)');
+    expect(vars['--signal-faint']).toBe('rgba(79, 214, 232, 0.18)');
+  });
+
+  test('tokens.css carries exactly what CYBERDECK derives — the stylesheet and the knobs never drift', () => {
+    const css = readFileSync(new URL('../../frontend/styles/tokens.css', import.meta.url), 'utf8');
+    const root = css.slice(css.indexOf(':root'), css.indexOf('}', css.indexOf(':root')));
+    const declared = Object.fromEntries([...root.matchAll(/\s(--[\w-]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]));
+    for (const [name, value] of Object.entries(deriveLookVars(STOCK_LOOK))) expect(declared[name], name).toBe(value);
   });
 
   test('a custom look re-derives the whole ramp from its own channels', () => {
@@ -40,8 +49,9 @@ describe('look-derive.js', () => {
   test('HEAD derives the heading register: explicit hex verbatim, absent falls to ink at the stock relationship', () => {
     const withHead = deriveLookVars({ ground: '#0A0403', panel: '#160906', ink: '#FFF3E9', trim: '#FF7A45', head: '#FFC9A3' });
     expect(withHead['--color-heading']).toBe('#FFC9A3');
-    const legacy = deriveLookVars(STOCK_LOOK);
-    expect(legacy['--color-heading']).toBe('rgba(255, 255, 255, 0.7)');
+    const { head: _stockHead, ...headless } = STOCK_LOOK;
+    const legacy = deriveLookVars(headless);
+    expect(legacy['--color-heading']).toBe('rgba(228, 234, 240, 0.7)');
   });
 
   test('BODY, ITAL, EMPH, LINE claim their families; unclaimed they ride the ink', () => {
@@ -55,8 +65,8 @@ describe('look-derive.js', () => {
     expect(claimed['--line']).toBe('rgba(138, 122, 106, 0.18)');
     expect(claimed['--color-border-primary']).toBe('rgba(138, 122, 106, 0.2)');
     const legacy = deriveLookVars(STOCK_LOOK);
-    expect(legacy['--color-text-primary']).toBe('rgba(255, 255, 255, 0.95)');
-    expect(legacy['--line']).toBe('rgba(255, 255, 255, 0.18)');
+    expect(legacy['--color-text-primary']).toBe('rgba(228, 234, 240, 0.95)');
+    expect(legacy['--line']).toBe('rgba(228, 234, 240, 0.18)');
     expect(legacy['--color-italic']).toBeUndefined();
     expect(legacy['--color-emphasis']).toBeUndefined();
   });
@@ -110,7 +120,7 @@ describe('look-derive.js', () => {
   });
 
   test('isSameLook compares case-insensitively and refuses malformed shapes', () => {
-    expect(isSameLook(STOCK_LOOK, { ground: '#000000', panel: '#000000', ink: '#ffffff', trim: '#5fe9ff' })).toBe(true);
+    expect(isSameLook(STOCK_LOOK, { ground: '#11161d', panel: '#18202a', ink: '#e4eaf0', trim: '#4fd6e8', head: '#e9b872' })).toBe(true);
     expect(isSameLook(STOCK_LOOK, { ...STOCK_LOOK, trim: '#FF7A45' })).toBe(false);
     expect(isSameLook(STOCK_LOOK, null)).toBe(false);
     expect(isSameLook(STOCK_LOOK, {})).toBe(false);

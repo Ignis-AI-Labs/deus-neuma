@@ -6,6 +6,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.83] - 2026-10-28
+
+Notes: `docs/operations/release-notes-0.1.83.md`.
+
+### Added
+
+- Right-click a selected word and choose Define to read what it means, right where you are: an offline dictionary (no internet needed) shows its meanings, examples and other words for it. Ask in chat drafts a question about the word, in the sentence you read it in, into that chat's message box for you to send.
+- Settings › Sound has a Voice choice: Sci-fi (the sounds the app has always had, still the default) or Soft, a gentler set of calm taps and chimes, if you prefer it.
+- Text size can be changed before you ever reach Settings: a small Aa button in the corner of the sign-in, first-run and ceremony screens uses the same setting as Settings › Look.
+
+### Changed
+
+- The default look is now Cyberdeck: a deep blue-slate background with cool white text, cyan for what is live and a soft amber on headings, in place of pure black and neon. The original black look is still available as Void, and a neutral charcoal as Stone, in Settings › Look.
+- App windows open on your chosen look's background instead of flashing black first.
+- The birth rite has more atmosphere: the room is wider and brighter, and as each stage is measured a few gentle notes rise beneath it, so every measure lands like something found.
+- The music of the birth rite is calm instead of eerie: no deep rumble, no booming hits, no wind, and every note played on a pleasant interval so chords never clash. Each being still has its own tonic, notes and song.
+- The soundboard in Settings › Sound is grouped by who is acting (your controls, notices, a being at work) and names every sound by what it means; sounds nothing in the app plays are no longer listed.
+- Windows, tabs and headings are easier to tell apart: the title bar and the tab row each sit on their own shade, the open tab joins the page beneath it with a coloured top edge, window names and section headings wear the heading colour, and the chat's started line is larger and clearer.
+
+### Fixed
+
+- At a large text size, the sign-in screen scrolls instead of cutting off its buttons.
+
 ## [0.1.82] - 2026-10-28
 
 Notes: `docs/operations/release-notes-0.1.82.md`.

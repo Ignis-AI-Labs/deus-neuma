@@ -11,10 +11,11 @@ const { primaryBounds } = require('./primary-placement.cjs');
 const path = require('node:path');
 const { SLOT_ARG_PREFIX, lowestFreeSlot, hiddenDeskSlot } = require('./desk-slots.cjs');
 const { BOOT_CLAIM_TTL_MS, sanitizeBootPayload } = require('./desk-boot.cjs');
-const { buildContextMenuTemplate } = require('./context-menu.cjs');
+const { buildContextMenuTemplate, nativeItemsOf } = require('./context-menu.cjs');
 const { clampWebviewPreferences } = require('./webview-guard.cjs');
 const { noDeskOnScreen } = require('./notify-text.cjs');
 const { externalUrlFor, staysOnDesk } = require('./desk-links.cjs');
+const { readLookTheme } = require('./wallet/look-theme.cjs');
 
 /** Height of the window-controls band on Windows/Linux (base.css reads it back as env(titlebar-area-height)). */
 const TITLE_BAND_PX = 32;
@@ -183,7 +184,8 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
       ...primaryBounds({ width: 1280, height: 832 }),
       minWidth: 960,
       minHeight: 640,
-      backgroundColor: '#000000', // the void — no white flash on load
+      // the operator's own ground (CYBERDECK when undressed) — no flash on load
+      backgroundColor: readLookTheme()?.ground || '#11161D',
       // The armillary on the taskbar — without it a dev desk shows the window
       // manager's generic icon (packaged builds also get it from the installer).
       icon: path.join(__dirname, '..', 'build', 'icon.png'),
@@ -269,7 +271,7 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
         win.webContents.send('contextmenu:show', { x: params.x, y: params.y, items });
         return;
       }
-      const template = items.map((item) => {
+      const template = nativeItemsOf(items).map((item) => {
         switch (item.kind) {
           case 'suggestion':
             return { label: item.word, click: () => win.webContents.replaceMisspelling(item.word) };

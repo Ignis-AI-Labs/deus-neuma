@@ -15,6 +15,10 @@ describe('itemLabel', () => {
     expect(itemLabel({ kind: 'add-to-dictionary', word: 'neuma' })).toBe('ADD “neuma” TO DICTIONARY');
   });
 
+  it('define quotes the word, keeping its own case', () => {
+    expect(itemLabel({ kind: 'define', word: 'Pedantic' })).toBe('DEFINE “Pedantic”');
+  });
+
   it('edit roles use the chrome labels', () => {
     expect(itemLabel({ kind: 'role', role: 'selectAll' })).toBe('SELECT ALL');
     expect(itemLabel({ kind: 'role', role: 'cut' })).toBe(ROLE_LABELS.cut);

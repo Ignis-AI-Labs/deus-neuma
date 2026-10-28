@@ -12,7 +12,7 @@
 .hd-mast {
   border-bottom: 1px solid var(--line);
   background:
-    linear-gradient(to bottom, rgba(95, 233, 255, 0.035), transparent 60%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--signal) 3.5%, transparent), transparent 60%),
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px);
 }
 .hd-file {
@@ -100,7 +100,7 @@
   box-shadow: 0 0 12px 0 var(--soul, transparent);
   opacity: .85;
 }
-.hd .house-seats-card.is-linked { border-color: var(--signal-dim); background: rgba(95, 233, 255, 0.03); }
+.hd .house-seats-card.is-linked { border-color: var(--signal-dim); background: color-mix(in srgb, var(--signal) 3%, transparent); }
 .hd .house-seats-row .hd-light-dot { margin-right: 10px; vertical-align: middle; }
 
 /* A DOOR — what it opens, what it is, and why not when it cannot. */
@@ -114,7 +114,7 @@
   border: 1px solid var(--line);
   background: var(--color-glass-light);
 }
-.hd-door.is-primary { border-color: var(--signal-faint); background: linear-gradient(135deg, rgba(95, 233, 255, 0.06), transparent 55%); }
+.hd-door.is-primary { border-color: var(--signal-faint); background: linear-gradient(135deg, color-mix(in srgb, var(--signal) 6%, transparent), transparent 55%); }
 /* registration ticks on the summoning door — the dossier plate's corners */
 .hd-door.is-primary::before,
 .hd-door.is-primary::after { content: ''; position: absolute; width: 14px; height: 14px; pointer-events: none; }
@@ -133,7 +133,7 @@
   cursor: pointer;
   transition: color 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
 }
-.hd-door-act:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); background: rgba(95, 233, 255, 0.04); }
+.hd-door-act:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); background: color-mix(in srgb, var(--signal) 4%, transparent); }
 .hd-door-act:disabled { opacity: .4; cursor: default; }
 .hd-door.is-primary .hd-door-act { border-color: var(--signal-dim); color: var(--signal); }
 .hd-door-mark { font-family: var(--font-data); font-size: 1.125rem; line-height: 1; }

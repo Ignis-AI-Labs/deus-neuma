@@ -25,7 +25,7 @@ import { isThinkProbe, respondThinkProbe } from '../../helpers/think-probe.js';
 
 export const SENDER = 'e2e-perf'; // the lane the perf desk is bound to
 export const MATE = 'e2e-mate';
-export const SIGNAL = 'rgb(95, 233, 255)';
+export const SIGNAL = 'rgb(79, 214, 232)';
 export const ALERT = 'rgb(255, 85, 51)';
 const WAKE_HEAD = '[A WAKE';
 const TRIGGER = /POST-TRIGGER-(\d)/g;

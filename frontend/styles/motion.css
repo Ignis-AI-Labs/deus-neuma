@@ -52,7 +52,7 @@
   z-index: 5;
   pointer-events: none;
   background: linear-gradient(to bottom,
-    transparent 0%, var(--signal-faint) 46%, rgba(95, 233, 255, 0.5) 50%, transparent 51%);
+    transparent 0%, var(--signal-faint) 46%, var(--signal-dim) 50%, transparent 51%);
   opacity: 0;
   transform: translateY(-100%);
   animation: kx-scan var(--dur-scan) linear;

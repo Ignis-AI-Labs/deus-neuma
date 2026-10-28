@@ -7,15 +7,22 @@
      ALERT means warnings only. Lines snap, cycles
      breathe. Chamfers replace border-radius on
      structural panels (TR+BL diagonal pairing).
+     CYBERDECK is the stock dress (Design note, 2026-10-28:
+     […]): a deep blue-slate ground, cool white
+     ink, CYAN for what is live, a soft AMBER on the
+     headings. STONE (neutral charcoal) and VOID (pure
+     black) are presets on THE LOOK's shelf. Every
+     value below is what look-derive.js derives from
+     CYBERDECK's knobs.
      ============================================ */
-  --signal: #5FE9FF;
-  --signal-dim: rgba(95, 233, 255, 0.5);
-  --signal-faint: rgba(95, 233, 255, 0.18);
+  --signal: #4FD6E8;
+  --signal-dim: rgba(79, 214, 232, 0.5);
+  --signal-faint: rgba(79, 214, 232, 0.18);
   --alert: #FF5533;
   --alert-dim: rgba(255, 85, 51, 0.55);
-  --line: rgba(255, 255, 255, 0.18);
-  --line-hover: rgba(255, 255, 255, 0.40);
-  --grid: rgba(255, 255, 255, 0.02);
+  --line: rgba(228, 234, 240, 0.18);
+  --line-hover: rgba(228, 234, 240, 0.4);
+  --grid: rgba(228, 234, 240, 0.02);
   --cut: 12px;                 /* structural chamfer */
   --cut-sm: 6px;               /* control chamfer */
   --snap: 140ms linear;        /* lines snap — deterministic */
@@ -26,9 +33,9 @@
      COLORS
      ============================================ */
   /* Primary Palette */
-  --color-void: #000000;
-  --color-pure-black: #000000;
-  --color-white: #FFFFFF;
+  --color-void: #11161D;
+  --color-pure-black: #11161D;
+  --color-white: #E4EAF0;
 
   /* RGB Accent Colors */
   --color-cyan: #00FFFF;
@@ -89,34 +96,34 @@
   
   /* Semantic Colors */
   --color-background: var(--color-void);
-  --color-surface: rgba(0, 0, 0, 0.98);
-  --color-surface-elevated: rgba(0, 0, 0, 0.95);
+  --color-surface: rgba(24, 32, 42, 0.98);
+  --color-surface-elevated: rgba(24, 32, 42, 0.95);
   
   /* Text Colors */
   /* Section headings are their OWN register — THE LOOK's HEAD knob
-     overrides this; stock rides the secondary ink so nothing shifts. */
-  --color-heading: var(--color-text-secondary);
-  --color-text-primary: rgba(255, 255, 255, 0.95);
-  --color-text-secondary: rgba(255, 255, 255, 0.70);
-  --color-text-tertiary: rgba(255, 255, 255, 0.50);
-  --color-text-disabled: rgba(255, 255, 255, 0.30);
+     overrides this; stock (CYBERDECK) titles them in its soft amber. */
+  --color-heading: #E9B872;
+  --color-text-primary: rgba(228, 234, 240, 0.95);
+  --color-text-secondary: rgba(228, 234, 240, 0.7);
+  --color-text-tertiary: rgba(228, 234, 240, 0.5);
+  --color-text-disabled: rgba(228, 234, 240, 0.3);
   /* ITAL / EMPH — claimed voices; stock inherits the body so nothing shifts. */
   --color-italic: inherit;
   --color-emphasis: var(--color-text-primary);
 
   
   /* Border Colors */
-  --color-border-primary: rgba(255, 255, 255, 0.2);
-  --color-border-hover: rgba(255, 255, 255, 0.4);
-  --color-border-focus: rgba(255, 255, 255, 0.6);
+  --color-border-primary: rgba(228, 234, 240, 0.2);
+  --color-border-hover: rgba(228, 234, 240, 0.4);
+  --color-border-focus: rgba(228, 234, 240, 0.6);
   
   /* Glass Effects */
-  --color-glass: rgba(0, 0, 0, 0.5);
-  --color-glass-light: rgba(255, 255, 255, 0.02);
-  --color-void-veil: rgba(0, 0, 0, 0.18);               /* scanline/darkening overlay — tracks the void */
-  --color-glass-hover: rgba(255, 255, 255, 0.05);
-  --color-input-fill: rgba(255, 255, 255, 0.08);        /* text-box surface — visible against the void */
-  --color-input-fill-focus: rgba(255, 255, 255, 0.12);  /* text-box surface, focused */
+  --color-glass: rgba(17, 22, 29, 0.5);
+  --color-glass-light: rgba(228, 234, 240, 0.02);
+  --color-void-veil: rgba(17, 22, 29, 0.18);            /* scanline/darkening overlay — tracks the void */
+  --color-glass-hover: rgba(228, 234, 240, 0.05);
+  --color-input-fill: rgba(228, 234, 240, 0.08);        /* text-box surface — visible against the void */
+  --color-input-fill-focus: rgba(228, 234, 240, 0.12);  /* text-box surface, focused */
   
   /* ============================================
      TYPOGRAPHY
@@ -207,9 +214,9 @@
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
   
   /* Glow Shadows */
-  --glow-cyan: 0 0 20px rgba(0, 255, 255, 0.3);
+  --glow-cyan: 0 0 20px rgba(79, 214, 232, 0.3);
   --glow-magenta: 0 0 20px rgba(255, 0, 255, 0.3);
-  --glow-white: 0 0 20px rgba(255, 255, 255, 0.1);
+  --glow-white: 0 0 20px rgba(228, 234, 240, 0.1);
   
   /* ============================================
      ANIMATIONS

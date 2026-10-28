@@ -182,6 +182,8 @@ contextBridge.exposeInMainWorld('neuma', {
       return () => ipcRenderer.removeListener('contextmenu:show', handler);
     },
     act: (action) => ipcRenderer.send('contextmenu:action', action),
+    // DEFINE's card asks main for the word's meaning (offline dictionary)
+    define: (word) => ipcRenderer.invoke('dictionary:define', word),
   },
   // Witness wallet — the renderer calls these; the key never crosses this
   // bridge. `request` is the EIP-1193 surface; the rest is wallet management.

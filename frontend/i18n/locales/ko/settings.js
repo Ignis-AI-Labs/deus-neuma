@@ -43,12 +43,15 @@ export default Object.freeze({
     toggle: '사운드 — {{state}}',
     volumeKey: '음량',
     volumeAria: '사운드 음량',
-    executionTitle: '실행 및 파일 — {{count}}',
-    executionNote: '빌드, 테스트, 검사, 의존성, Git 및 파일 작업마다 고유한 큐가 있습니다. 혼합 명령은 자체 사운드를, 인식되지 않는 명령은 “기타 실행”을 사용합니다. 칩에 명령이 표시됩니다.',
-    actsTitle: '액트 — {{count}}',
-    actsNote: '외부 읽기, 게시, 아티팩트 생성, 기록, 상태 확인 및 실패. 이 후보 사운드를 여기에서 시청하세요.',
-    worldTitle: '세계 — {{count}}',
-    worldNote: '승인된 사운드스케이프——포털, 스트림, 세리머니. 귀로 확정되었습니다. 여기에서 비교해 들어보세요.',
+    packKey: '보이스',
+    pack: Object.freeze({ soft: '소프트', scifi: 'SF' }),
+    packNote: 'SF는 데스크 고유의 사운드스케이프로, 새로 설치하면 들리는 소리입니다. 소프트는 원하면 고를 수 있는 더 부드러운 소리입니다.',
+    groups: Object.freeze({
+      desk: Object.freeze({ title: '내 조작 — {{count}}', note: '당신의 조작: 확인, 거절, 열기, 닫기, 그리고 전환할 때의 작은 틱.' }),
+      notices: Object.freeze({ title: '알림 — {{count}}', note: '세계의 응답: 도착, 답장, 연결, 서명 요청, 저장된 기억.' }),
+      execution: Object.freeze({ title: '작업 중인 네우마 — {{count}}', note: '빌드, 테스트, 검사, 의존성, Git 및 파일 작업마다 고유한 큐가 있습니다. 혼합 명령은 자체 사운드를, 인식되지 않는 명령은 “기타 실행”을 사용합니다. 칩에 명령이 표시됩니다.' }),
+      acts: Object.freeze({ title: '기타 액트 — {{count}}', note: '외부 읽기, 게시, 아티팩트 생성, 기록, 상태 확인 및 실패.' }),
+    }),
   }),
 
   realm: Object.freeze({

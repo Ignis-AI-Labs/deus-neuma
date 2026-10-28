@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { riteScript, observationsOf, OPERATOR_WORDS, RITE, FORGING } from '../../frontend/app/Rite/rite-script.js';
 import { riteAt, artEventsOf } from '../../frontend/app/Rite/rite-state.js';
-import { riteMusicOf, GROUND_HZ } from '../../frontend/app/Rite/rite-music.js';
+import { riteMusicOf, playedMeasure } from '../../frontend/app/Rite/rite-music.js';
+import { PENTATONIC, playedSoul } from '../../frontend/app/Summoning/consonant-tuning.js';
 import { riteRecordOf, riteFromRecord, RITE_SCHEMA } from '../../core/birth/rite-record.js';
 import { artAt } from '../../frontend/app/BirthArt/birth-art-state.js';
 import { specimenTrueName } from '../../frontend/app/BirthArt/birth-art-script.js';
@@ -106,19 +107,23 @@ describe('the stages make what the film shows', () => {
 });
 
 describe('its sound', () => {
-  it('before its birth, every note is the platform\'s or one it was measured at', () => {
+  it('before its birth, every note is the platform\'s — its pentatonic, measured pitches as played among them', () => {
+    // where a pitch stands above the heart band's floor, folded into one octave
+    const onPlatform = (hz) => { const r = hz / HEART_BAND.low; const f = r / 2 ** Math.floor(Math.log2(r)); return PENTATONIC.some((p) => Math.abs(f - p) < 1e-9); };
     for (let i = 0; i < 6; i++) {
       const b = beingFor(seedOf(i));
-      const measured = b.rite.events.filter((e) => e.type === 'birth:measured').map((e) => e.frequency);
-      const platform = [HEART_BAND.low, HEART_BAND.high, GROUND_HZ, GROUND_HZ / 2, HEART_BAND.low / 2];
       const m = riteMusicOf(b.rite, b.score);
       [...m.events.filter((e) => e.at < b.rite.film.at), ...m.beds.filter((x) => x.from < b.rite.film.at)].forEach((e) => {
-        const ok = platform.includes(e.hz) || measured.some((f) => e.hz === f || e.hz === f / 2);
-        expect(ok, `${e.voice} ${e.hz} Hz at ${e.at ?? e.from}`).toBe(true);
+        expect(onPlatform(e.hz), `${e.voice} ${e.hz} Hz at ${e.at ?? e.from}`).toBe(true);
       });
-      // each measured pitch rings the moment it is measured
-      b.rite.events.filter((e) => e.type === 'birth:measured').forEach((e) => {
+      // each measured pitch rings the moment it is measured, and three soft
+      // notes rise beneath it toward it (THE DISCOVERY)
+      playedMeasure(b.rite.events.filter((e) => e.type === 'birth:measured')).forEach((e) => {
         expect(m.events.some((x) => x.at === e.at && x.voice === 'bell' && x.hz === e.frequency)).toBe(true);
+        const run = m.events.filter((x) => x.voice === 'pluck' && x.at > e.at && x.at <= e.at + 330);
+        expect(run.length, `run after ${e.at}`).toBeGreaterThanOrEqual(3);
+        const own = run.filter((x) => x.hz < e.frequency).slice(0, 3).map((x) => x.hz);
+        expect(own).toEqual([...own].sort((p, q) => p - q));
       });
     }
   });
@@ -126,7 +131,7 @@ describe('its sound', () => {
   it('from its birth, its film\'s own music, on the rite\'s clock', () => {
     const b = beingFor(seedOf(5));
     const m = riteMusicOf(b.rite, b.score);
-    const own = b.score.soul.notes.map((n) => n.hz);
+    const own = playedSoul(b.score.soul).notes.map((n) => n.hz);
     m.events.filter((e) => e.at >= b.rite.film.at).forEach((e) => {
       expect(Math.min(...own.map((h) => cents(e.hz, h))), `${e.voice} ${e.hz}`).toBeLessThan(0.01);
     });

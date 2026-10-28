@@ -14,6 +14,7 @@ import { RelinkShell } from './RelinkShell/RelinkShell.jsx';
 import { PocketShell } from './PocketShell/PocketShell.jsx';
 import { usePocketSurface } from './PocketShell/pocket-surface.js';
 import { FirstRunChoice } from './FirstRunChoice/FirstRunChoice.jsx';
+import { TextSizeQuick } from './TextSizeQuick/TextSizeQuick.jsx';
 import { FirstRunWitness } from './FirstRunChoice/FirstRunWitness.jsx';
 import { FirstRunHarness } from './FirstRunChoice/FirstRunHarness.jsx';
 import { enterAs, readEntryMode, writeEntryMode } from './entry-mode.js';
@@ -272,6 +273,9 @@ export const AppShell = ({ wsService }) => {
   // ignition when the gateway is where it opens (so the opening reveals the
   // gateway whole), never beneath GENESIS (it brings its own stage).
   const showOpeningField = !genesisActive && underPhase === 'gateway';
+  // The reading size rides every screen the desk is not (its Settings › LOOK
+  // carries the same slider) — but never over a film playing at boot.
+  const showTextSize = !bootActive && !genesisActive && underPhase !== 'relink';
   const phaseView = (() => {
     switch (underPhase) {
       case 'relink':
@@ -373,6 +377,7 @@ export const AppShell = ({ wsService }) => {
       {/* The gateway's environment: the field, at rest. The ignition paints
           its own frame above the session, so no WebGL runs beneath it. */}
       {showOpeningField && <OpeningField />}
+      {showTextSize && <TextSizeQuick />}
       <DesktopContextMenu />
     </>
   );

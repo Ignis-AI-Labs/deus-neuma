@@ -17,6 +17,8 @@ NOT COVERED BY THE LICENSE ABOVE
 - Third-party components keep their own licences: npm dependencies (see
   node_modules/*/LICENSE after install), and the fonts under
   backend/services/branding/fonts/ (SIL Open Font License, texts alongside).
+- The offline dictionary behind DEFINE is WordNet 3.1, Copyright Princeton
+  University, under the WordNet License (node_modules/wordnet-db/LICENSE).
 - No AI model weights and no ComfyUI are included. The image and video forge
   drives a ComfyUI and models the operator installs separately, under their
   publishers' own licences (see docs/legal/THIRD_PARTY_ATTRIBUTIONS.md).

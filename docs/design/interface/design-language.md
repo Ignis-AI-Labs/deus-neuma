@@ -326,29 +326,39 @@ in miniature, and it recurs at every scale (avatar frames, dials, the portal its
 ## MATERIAL
 
 ### Ground
-- **Void black `#000000`** is the only background. No dark-gray surfaces —
-  elevation is expressed by hairlines and light, not by lighter fills.
+- **CYBERDECK `#11161D`** — a deep blue-slate — is the stock ground (Founder,
+  2026-10-28: […]; not everybody likes pure
+  black). Panels lift barely (`#18202A`); ink is a cool white (`#E4EAF0`).
+  Elevation is still expressed by hairlines and light, not by stacked fills.
+  STONE (`#1B1C1F`, neutral charcoal) and **Void black `#000000`** (VOID)
+  remain on THE LOOK's shelf, whole, for anyone who wants them. Every stock
+  value below is what `frontend/utils/look-derive.js` derives from
+  CYBERDECK's knobs.
 - Structural zones may carry a **fine grid texture** (24px cell, white at ≤2%)
   to read as instrument paper. Living zones (where circles operate) stay pure void.
 
-### Light (white opacity ramp — does the structural work)
+### Light (ink opacity ramp — does the structural work)
 | Role | Value |
 | ---- | ----- |
-| Emphasis text / active line | `#FFFFFF` |
-| Primary text | `rgba(255,255,255,0.95)` |
-| Secondary text | `rgba(255,255,255,0.70)` |
-| Tertiary / labels | `rgba(255,255,255,0.50)` |
-| Hairline default | `rgba(255,255,255,0.18)` |
-| Hairline hover | `rgba(255,255,255,0.40)` |
-| Grid texture | `rgba(255,255,255,0.02)` |
+| Emphasis text / active line | `#E4EAF0` |
+| Primary text | `rgba(228,234,240,0.95)` |
+| Secondary text | `rgba(228,234,240,0.70)` |
+| Tertiary / labels | `rgba(228,234,240,0.50)` |
+| Hairline default | `rgba(228,234,240,0.18)` |
+| Hairline hover | `rgba(228,234,240,0.40)` |
+| Grid texture | `rgba(228,234,240,0.02)` |
+| Section headings (stock) | soft amber `#E9B872` |
 
 ### Signal (accent discipline — the big change from the current UI)
 The current four-color full-saturation RGB set (cyan/magenta/yellow/green pulses)
 is **demoted**. One signal color carries the brand; one alert color is reserved
 for warnings and gets to be theatrical (the Eva move); success stays quiet.
 
-- **Signal** — live data, focus, the neuma's voice. Candidate studies on the
-  look-dev sheet: SIGNAL CYAN `#5FE9FF` / SYSTEM VIOLET `#9D7BFF` / EVA AMBER `#FFB347`.
+- **Signal** — live data, focus, the neuma's voice. Stock is CYBERDECK's cyan
+  `#4FD6E8` — the old SIGNAL CYAN `#5FE9FF`, a step calmer (it rides whole
+  with VOID); headings carry a soft amber `#E9B872`, the EVA AMBER study
+  turned down, so the deck has its two-tone without color-heaviness.
+  Earlier studies on the look-dev sheet: SYSTEM VIOLET `#9D7BFF` / EVA AMBER `#FFB347`.
 - **Alert `#FF5533`** — warnings only. Never decorative. When it appears, it means something.
 - **Success `#00FF88`** — kept, used sparingly at reduced opacity.
 - Magenta and yellow are retired from UI chrome.
