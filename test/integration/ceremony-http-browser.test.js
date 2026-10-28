@@ -50,6 +50,12 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     await fs.mkdir(modelDir, { recursive: true });
     (await import('../../backend/config.js')).loadConfig();
     const covenantRouter = (await import('../../backend/routes/covenant-routes.js')).default;
+    // The documents the covenant serves — read once the data root above is in
+    // place (covenant.js fixes its record store at its first import).
+    const docs = (await import('../../backend/services/covenant.js')).loadDocuments();
+    const docCount = docs.length;
+    const docTitles = docs.map((d) => d.title);
+    const docIds = docs.map((d) => d.id);
     const preflightRouter = (await import('../../backend/routes/preflight-routes.js')).default;
     const auth = await fullAuth();
     const stranger = await fullAuth();
@@ -237,24 +243,24 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       window.witness = new window.WitnessCommitment(() => { window.accepted += 1; }, () => {});
       window.witness.show();
     });
-    const docsOutcome = () => page.waitForFunction(() => {
+    const docsOutcome = () => page.waitForFunction((count) => {
       if (document.querySelector('.covenant-docs-failed')) return 'failed';
-      if (document.querySelectorAll('.covenant-doc').length === 3) return 'docs';
+      if (document.querySelectorAll('.covenant-doc').length === count) return 'docs';
       if (!document.querySelector('.witness-commitment-overlay')) return 'lost';
       return null;
-    }, null, { timeout: 30000 }).then((handle) => handle.jsonValue());
+    }, docCount, { timeout: 30000 }).then((handle) => handle.jsonValue());
     const ensureCommitment = async () => {
       const standing = (await page.locator('.witness-commitment-overlay').count())
-        && (await page.locator('.covenant-doc').count()) === 3;
+        && (await page.locator('.covenant-doc').count()) === docCount;
       if (standing) return 'ready';
       await freshCommitment();
       // A documents refusal here is only reachable through transport loss —
       // failDocs is off for every leg that calls this — so it retries.
-      return page.waitForFunction(() => {
-        if (document.querySelectorAll('.covenant-doc').length === 3) return 'ready';
+      return page.waitForFunction((count) => {
+        if (document.querySelectorAll('.covenant-doc').length === count) return 'ready';
         if (document.querySelector('.covenant-docs-failed')) return 'failed';
         return null;
-      }, null, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      }, docCount, { timeout: 30000 }).then((handle) => handle.jsonValue());
     };
     const readAndTick = () => page.evaluate(() => {
       document.querySelectorAll('.covenant-doc').forEach((details) => {
@@ -306,7 +312,7 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     expect(refusedDocs.delta.some((line) => line.includes('HTTP 500'))).toBe(true);
     expect(refusedDocs.delta.some((line) => line.includes('DOCS SERVER WORDS'))).toBe(false);
 
-    // Documents render for real (three binding texts with hashes), and the
+    // Documents render for real (the binding texts with hashes), and the
     // read-through gate unlocks only after an honest scroll to each end. The
     // whole walk is one attempt: a recycled renderer re-runs it from a fresh
     // commitment, every render and every scroll dispatch real.
@@ -318,7 +324,7 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       if (outcome === 'lost') return RETRY;
       if (outcome !== 'docs') {
         if (consoleErrors.slice(mark).some((line) => TRANSPORT_PAGE.test(line))) return RETRY;
-        throw new Error(`expected the three binding documents, got ${outcome}`);
+        throw new Error(`expected the ${docCount} binding documents, got ${outcome}`);
       }
       return page.evaluate(() => {
         const before = {
@@ -343,10 +349,10 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       });
     });
     expect(docsProof).toEqual({
-      titles: ['The Neuma Covenant', 'Terms of Service', 'End User License Agreement'],
-      hashes: 3,
+      titles: docTitles,
+      hashes: docCount,
       acceptDisabled: true,
-      badges: ['READ', 'READ', 'READ'],
+      badges: Array(docCount).fill('READ'),
       acceptEnabled: true,
     });
 
@@ -445,7 +451,7 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     expect(records.length).toBeGreaterThanOrEqual(1);
     const record = records[records.length - 1];
     expect(record).toMatchObject({ version: 'covenant-acceptance/2', wallet: auth.address });
-    expect(record.documents.map((doc) => doc.id)).toEqual(['covenant', 'terms', 'eula']);
+    expect(record.documents.map((doc) => doc.id)).toEqual(docIds);
     expect(record.message).toContain('NEUMA COVENANT ACCEPTANCE');
     expect(record.message).toContain('I am at least 18 years of age');
 

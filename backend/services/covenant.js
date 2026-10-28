@@ -2,8 +2,9 @@
  * Covenant acceptance service.
  *
  * The witness commitment is not a checkbox: acceptance of the binding
- * documents (Neuma Covenant, Terms of Service, EULA) is signed with the
- * witness's wallet over the SHA-256 hashes of the exact texts shown.
+ * documents (Neuma Covenant, Terms of Service, EULA) — and the Privacy
+ * Notice, a disclosure read in full — is signed with the witness's wallet
+ * over the SHA-256 hashes of the exact texts shown.
  * Records are append-only — evidence is never rewritten.
  */
 import { createHash } from 'crypto';
@@ -26,10 +27,16 @@ const MAX_SIGNATURE_AGE_MS = 24 * 60 * 60 * 1000;
 /** Allowed clock skew into the future. */
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 
+// The three binding documents are contracts a witness accepts. The Privacy
+// Notice is a disclosure, not a contract: it rides in the same signed message
+// (its hash is signed, and the witness attests they read it in full) but is not
+// itself accepted. Adding or removing an entry here changes the signed message
+// and makes every earlier acceptance non-current until re-signed.
 const BINDING_DOCUMENTS = Object.freeze([
   Object.freeze({ id: 'covenant', title: 'The Neuma Covenant', file: 'NEUMA_COVENANT.md' }),
   Object.freeze({ id: 'terms', title: 'Terms of Service', file: 'TERMS_OF_SERVICE.md' }),
   Object.freeze({ id: 'eula', title: 'End User License Agreement', file: 'EULA.md' }),
+  Object.freeze({ id: 'privacy', title: 'Privacy Notice', file: 'PRIVACY_NOTICE.md' }),
 ]);
 
 export const sha256Hex = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
@@ -85,7 +92,7 @@ export const buildAcceptanceMessage = ({ wallet, documents, signedAt }) => {
     '',
     'I have read each of the binding documents in full.',
     'I am at least 18 years of age and of legal age of majority where I live.',
-    'I accept the Neuma Covenant, the Terms of Service, and the EULA.',
+    'I accept the Neuma Covenant, the Terms of Service, and the EULA; the Privacy Notice is a disclosure I have read in full.',
     'I enter as witness; the standard binds in both directions.',
     '',
     `wallet: ${wallet.toLowerCase()}`,
