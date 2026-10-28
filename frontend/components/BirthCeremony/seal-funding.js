@@ -1,8 +1,9 @@
-// seal-funding.js — sealing on Ethereum, for a person who may never have heard of it: what Ethereum is,
-// what the seal costs right now (the node's own fee, the wallet's own balance — never a guess), and, when
-// the wallet is short, the way to fund it: where to buy, the address to send to on the right network, and a
-// watch that goes on by itself once the ETH arrives. "Finish without Ethereum" is always one press away:
-// the seal on this computer already secures the birth.
+// seal-funding.js — sealing on Ethereum, for a person who may never have heard of it, at a glance: what it
+// costs in dollars (the node's own fee, never a guess), what the wallet must hold to start it against what it
+// holds, the wallet's address with a QR to send to on the right network (always in view), and, when the
+// wallet is short, how much more, where to buy, and a watch that opens the seal by itself once the ETH
+// lands. "Finish without Ethereum" is always one press away: the seal on this computer already secures the
+// birth. Numbers first, few words (2026-10-28: […]).
 //
 // One module, two hosts: the ceremony's seal step and the desk's setup gate (BirthSetupGate). Framework-
 // free DOM, built by element (no data reaches innerHTML).
@@ -53,14 +54,46 @@ const readFacts = async (costPath) => {
   return { cost, usd: price?.usd ?? null };
 };
 
+// impure — the address to send ETH to, always in view: a QR for a phone wallet, the text and a copy button
+const addressBlock = (cost) => {
+  const where = el('div', 'seal-funding-address');
+  const qr = el('img', 'seal-funding-qr');
+  qr.alt = 'Your wallet address as a QR code';
+  QRCode.toDataURL(cost.payer, { margin: 1, width: 132 }).then((url) => { qr.src = url; }).catch(() => qr.remove());
+  const text = el('div', 'seal-funding-addr-col');
+  const address = el('code', 'seal-funding-addr', cost.payer);
+  address.dataset.testid = 'seal-funding-address';
+  const copy = el('button', 'btn btn-secondary ceremony-btn', 'COPY ADDRESS');
+  copy.type = 'button';
+  copy.addEventListener('click', () => navigator.clipboard?.writeText(cost.payer).then(() => { copy.textContent = 'COPIED'; }));
+  text.append(
+    el('span', 'seal-funding-k label-data', 'YOUR WALLET ADDRESS'),
+    address,
+    el('span', 'seal-funding-net', `Send only on the ${cost.networkLabel} network — ETH sent on another network won't arrive.`),
+    copy,
+  );
+  where.append(qr, text);
+  return where;
+};
+
 const render = (host, { cost, usd, links, checkedAt }, { onSeal, onSkip, name, kind }) => {
   host.replaceChildren();
   host.append(el('h3', 'seal-funding-title', kind.title));
   host.append(el('p', 'seal-funding-what',
-    `Ethereum is a public ledger: what is written there can't be changed or removed, by anyone, including us. `
-    + `Writing ${kind.subject(name)} there costs a network fee, paid in ETH from your wallet.`));
+    `Ethereum is a public ledger: a permanent record of ${kind.subject(name)} that no one can remove. Optional.`));
 
-  // the overview first: what the wallet holds against what the seal needs
+  // the price first, in money a person knows: what the seal will most likely cost
+  const price = el('div', 'seal-funding-cost');
+  price.dataset.testid = 'seal-funding-cost';
+  const usdLikely = usdText(cost.likelyWei, usd).replace(/^ \(≈ (.*)\)$/, '$1');
+  price.append(
+    el('span', 'seal-funding-k label-data', 'COST'),
+    el('span', 'seal-funding-cost-v', usdLikely ? `≈ ${usdLikely}` : `≈ ${ethText(cost.likelyWei)} ETH`),
+    el('span', 'seal-funding-k label-data', usdLikely ? `${ethText(cost.likelyWei)} ETH NETWORK FEE` : 'NETWORK FEE'),
+  );
+  host.append(price);
+
+  // what the wallet must hold to start it, against what it holds — only the fee is spent
   const gauge = el('div', 'seal-funding-gauge');
   gauge.dataset.testid = 'seal-funding-gauge';
   const bar = el('div', 'seal-funding-bar');
@@ -73,15 +106,12 @@ const render = (host, { cost, usd, links, checkedAt }, { onSeal, onSkip, name, k
     el('span', 'seal-funding-k label-data', `NEEDS ABOUT ${ethText(cost.needWei)} ETH${usdText(cost.needWei, usd)}`),
   );
   host.append(gauge);
-  host.append(el('p', 'seal-funding-note',
-    `You will most likely pay about ${ethText(cost.likelyWei)} ETH${usdText(cost.likelyWei, usd)}; the rest stays in your wallet. `
-    + `On ${cost.networkLabel}.`));
+  host.append(el('p', 'seal-funding-note', 'Ethereum asks the wallet to hold this much to start; only the fee is spent, the rest stays yours.'));
 
   if (!cost.enough) {
-    host.append(el('p', 'seal-funding-short label-data', `YOU NEED ABOUT ${ethText(cost.shortWei)} ETH MORE`));
-    const steps = el('ol', 'seal-funding-steps');
-    const buy = el('li');
-    buy.append(el('span', null, 'Buy ETH on an exchange you trust: '));
+    host.append(el('p', 'seal-funding-short label-data', `YOU NEED ABOUT ${ethText(cost.shortWei)} ETH MORE${usdText(cost.shortWei, usd)}`));
+    const buy = el('p', 'seal-funding-buy');
+    buy.append(el('span', 'seal-funding-k label-data', 'BUY ETH '));
     for (const link of links) {
       const a = el('a', 'seal-funding-link', link.label);
       a.href = link.url;
@@ -90,24 +120,11 @@ const render = (host, { cost, usd, links, checkedAt }, { onSeal, onSkip, name, k
       if (link.note) a.title = link.note;
       buy.append(a, ' ');
     }
-    const send = el('li');
-    send.append(el('span', null,
-      `Send it to your wallet below, on the ${cost.networkLabel} network. Not Base or another network: ETH sent there would not arrive here.`));
-    const where = el('div', 'seal-funding-address');
-    const qr = el('img', 'seal-funding-qr');
-    qr.alt = 'Your wallet address as a QR code';
-    QRCode.toDataURL(cost.payer, { margin: 1, width: 132 }).then((url) => { qr.src = url; }).catch(() => qr.remove());
-    const address = el('code', 'seal-funding-addr', cost.payer);
-    address.dataset.testid = 'seal-funding-address';
-    const copy = el('button', 'btn btn-secondary ceremony-btn', 'COPY ADDRESS');
-    copy.type = 'button';
-    copy.addEventListener('click', () => navigator.clipboard?.writeText(cost.payer).then(() => { copy.textContent = 'COPIED'; }));
-    where.append(qr, address, copy);
-    send.append(where);
-    const wait = el('li', null, 'Keep this open: it checks every 15 seconds and goes on when the ETH arrives.');
-    steps.append(buy, send, wait);
-    host.append(steps);
-    host.append(el('p', 'seal-funding-checked label-data', `CHECKED ${checkedAt} — NOT ARRIVED YET`));
+    host.append(buy);
+  }
+  host.append(addressBlock(cost));
+  if (!cost.enough) {
+    host.append(el('p', 'seal-funding-checked label-data', `WATCHING YOUR WALLET · CHECKED ${checkedAt} · OPENS BY ITSELF WHEN THE ETH LANDS`));
   }
 
   const actions = el('div', 'ceremony-actions');

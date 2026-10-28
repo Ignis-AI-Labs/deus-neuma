@@ -64,4 +64,10 @@ window.ritePlane = {
     window.dispatchEvent(new CustomEvent('rite:begin'));
     specimenScript('7e'.repeat(32)).filter((e) => e.type !== 'birth:complete').forEach((e) => wsService.emit(e.type, e));
   },
+  // the birth lands with no film to play (the specimen's birth:complete carries no measured soul, as a
+  // birth whose measure went missing does): the field must still hold its seal
+  bornWithoutFilm() {
+    window.ritePlane.stage();
+    specimenScript('7e'.repeat(32)).filter((e) => e.type === 'birth:complete').forEach((e) => wsService.emit(e.type, e));
+  },
 };

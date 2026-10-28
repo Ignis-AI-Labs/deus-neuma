@@ -28,6 +28,19 @@
   gap: var(--space-3);
 }
 
+/* display: grid would override the hidden attribute: a closed panel stayed on screen beside the re-armed
+   SEAL ON ETHEREUM button, so the step showed two of them (2026-10-28) */
+.seal-funding[hidden],
+.seal-unlock[hidden] {
+  display: none;
+}
+
+.seal-unlock {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+
 .seal-funding-title {
   margin: 0;
   font-family: var(--font-data);
@@ -112,6 +125,41 @@
   font-size: 13px;
   overflow-wrap: anywhere;
   color: var(--color-text-primary);
+}
+
+/* the price, first and large: what the seal will most likely cost */
+.seal-funding-cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.seal-funding-cost-v {
+  font-family: var(--font-data);
+  font-size: 28px;
+  color: var(--color-text-primary);
+}
+
+.seal-funding-buy {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.seal-funding-addr-col {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.seal-funding-net {
+  font-size: 13px;
+  color: var(--color-text-secondary);
 }
 
 .seal-funding-checked {
