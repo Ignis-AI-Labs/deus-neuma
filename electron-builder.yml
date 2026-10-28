@@ -11,9 +11,11 @@
 #     (`npm run dist:linux` does both).
 #   - code signing, under Ignis AI Labs LLC (Design note, 2026-10-04: […]): the SETTINGS live here,
 #     the CREDENTIALS never do — they come from the build machine's environment
-#     (docs/operations/release-runbook.md §SIGNING). Without them the build is
+#     (docs/operations/release-runbook.md §SIGNING — not written yet). Without them the build is
 #     simply unsigned: Mac notarization skips with a warning, Windows signs nothing.
 #     Linux packages carry a detached GPG signature (scripts/sign-release.mjs).
+#     What a mac artifact is, what is checked after packaging, and what signing will
+#     change: docs/architecture/platform/macos-build.md.
 #   - frontend/ source is intentionally NOT shipped: in production the backend
 #     serves the built app from dist/ (Vite bundles the ceremony classes, the
 #     sounds sprite, and frontend/assets via publicDir), and the avatar roster
@@ -120,7 +122,11 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # one build per chip: the native modules are per-arch, so no universal app
+  # one build per chip: the native modules are per-arch, so no universal app.
+  # Every artifact is checked after packaging (scripts/check-mac-artifacts.mjs,
+  # run by `npm run dist:mac`): each Mach-O in it must load on the chip its
+  # directory claims. Why that check exists and what is still missing:
+  # docs/architecture/platform/macos-build.md.
   target:
     - target: dmg
       arch:

@@ -62,7 +62,10 @@
     "native:abi": "node scripts/native-abi-cache.mjs status",
     "lint": "eslint backend/ core/ frontend/ --ext .js,.cjs,.mjs",
     "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "predist:win": "node scripts/ensure-native-abi.mjs electron",
+    "dist:mac": "npm run build && electron-builder --mac && node scripts/check-mac-artifacts.mjs",
+    "predist:mac": "node scripts/ensure-native-abi.mjs electron",
+    "check:mac": "node scripts/check-mac-artifacts.mjs"
   },
   "dependencies": {
     "@codemirror/lang-css": "6.3.1",
