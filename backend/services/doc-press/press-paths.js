@@ -7,19 +7,25 @@
 // through its symlinks, and must stand inside the operator's open folder or
 // the being's own workspace — judged by the same checkPathAccess the file
 // tools cross, so a secret-shaped path, .git, a key or a hard-linked twin is
-// refused here exactly as it is there.
+// refused here exactly as it is there — and a PDF is never written into a
+// lane's platform state (laneStateWriteReason), as no file tool may.
 
 import path from 'path';
-import { checkPathAccess, realpathOfNearestExisting } from '../sandbox-path-policy.js';
+import { checkPathAccess, laneStateWriteReason, realpathOfNearestExisting } from '../sandbox-path-policy.js';
+import { getWitnessesRoot, getWorkspacesRoot } from '../../../core/workspace/neuma-workspace.js';
+import { getHarnessRoot } from '../../../core/workspace/lane-grounds.js';
 
 const SPECS = Object.freeze([
   Object.freeze({ arg: 'markdownPath', label: 'markdownPath', ext: '.md' }),
-  Object.freeze({ arg: 'outputPath', label: 'outputPath', ext: '.pdf' }),
+  Object.freeze({ arg: 'outputPath', label: 'outputPath', ext: '.pdf', write: true }),
   Object.freeze({ arg: 'kitsDir', label: 'kitsDir', ext: null }),
 ]);
 
 // impure — one optional path argument, placed inside the roots or refused
-const place = async (value, { label, ext }, realRoots) => {
+// impure (env) — the grounds whose lanes hold platform state (tool-sandbox.js laneGrounds)
+const laneGrounds = () => { const house = getWorkspacesRoot(); return [house, getWitnessesRoot(), getHarnessRoot(house)]; };
+
+const place = async (value, { label, ext, write }, realRoots) => {
   if (value === undefined || value === null || value === '') return { value: undefined };
   if (typeof value !== 'string' || !path.isAbsolute(value)) return { error: `${label} must be an absolute path` };
   if (ext && path.extname(value).toLowerCase() !== ext) return { error: `${label} must end in ${ext}` };
@@ -28,6 +34,9 @@ const place = async (value, { label, ext }, realRoots) => {
   if (!check.allowed) {
     return { error: `${label} ${value} is not open to the press: it must be inside the operator's open folder or your own workspace${check.reason ? ` (${check.reason})` : ''}` };
   }
+  // a pressed PDF never lands in platform state — a lane's config, identity or audit (C-01, audit 2026-10-28)
+  const walled = write ? laneStateWriteReason(real, { grounds: laneGrounds() }) : null;
+  if (walled) return { error: `${label} ${value} is not open to the press: ${walled}` };
   return { value: real };
 };
 

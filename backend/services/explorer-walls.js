@@ -108,7 +108,7 @@ const holdsAGround = (target) => [getRealmRoot(), getWorkspacesRoot(), getWitnes
  * @param {{write?: boolean}} [opts] - a write, create, rename or delete
  * @returns {?string}
  */
-const explorerRefusal = (target, wallet, { write = false } = {}) => {
+export const explorerRefusal = (target, wallet, { write = false } = {}) => {
   if (typeof target !== 'string' || !path.isAbsolute(target)) return null;
   const reader = String(wallet || '').toLowerCase();
   const asked = path.resolve(target);

@@ -5,6 +5,9 @@ import { createServer } from 'node:http';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fullAuth } from '../helpers/audit-auth.js';
+// the checks are for a signed-in caller (audit 2026-10-28 M-03)
+const signedIn = async () => ({ Authorization: `Bearer ${(await fullAuth()).token}` });
 
 // Isolate the REAL encrypted credential store before anything imports it — the
 // endpoint below is written through the real store, on a private path, so this
@@ -126,7 +129,7 @@ describe('a configured provider that is down must not open the ceremony', () => 
   });
 
   test('the row still NAMES the running provider — that part was right and stays', async () => {
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(await signedIn());
     expect(res.status).toBe(200);
 
     const substrate = res.body.checks.find((c) => c.id === 'substrate');
@@ -139,7 +142,7 @@ describe('a configured provider that is down must not open the ceremony', () => 
   });
 
   test('THE DOOR: the verdict is BLOCKED, so BEGIN THE CEREMONY stays disabled', async () => {
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(await signedIn());
 
     const substrate = res.body.checks.find((c) => c.id === 'substrate');
     // A warn here is what let Bastien in. The ceremony will reach for the

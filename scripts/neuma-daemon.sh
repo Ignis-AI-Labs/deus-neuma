@@ -176,11 +176,13 @@ verb_health() {
 verb_residency() {
   local port; port="$(read_port)"
   local url="http://127.0.0.1:$port/api/v1/residency"
-  local hdr=()
+  # The bearer rides curl's stdin (-H @-), never its argument list, where any
+  # local user reads it in the process table (audit 2026-10-28 L-05).
+  local auth=""
   if [[ -n "${DAEMON_AUTH_TOKEN:-}" ]]; then
-    hdr=(-H "Authorization: Bearer $DAEMON_AUTH_TOKEN")
+    auth="Authorization: Bearer $DAEMON_AUTH_TOKEN"
   fi
-  if curl --silent --show-error --max-time 10 --fail "${hdr[@]}" "$url"; then
+  if curl --silent --show-error --max-time 10 --fail -H @- "$url" <<<"$auth"; then
     printf '\n'
   else
     err "residency probe failed at $url"

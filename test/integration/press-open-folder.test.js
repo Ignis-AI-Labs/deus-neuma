@@ -80,6 +80,15 @@ describe('the press, working in the open folder', () => {
     expect(keyRead.status).toBe('error');
   });
 
+  test('a PDF never lands in a lane\'s platform state, even its own (C-01, audit 2026-10-28)', async () => {
+    const rig = rigFor();
+    const ownConfig = path.join(process.env.WORKSPACES_ROOT, 'presslegal', 'config', 'notes.pdf');
+    const res = await press(rig, { markdown: '# x\n', outputPath: ownConfig });
+    expect(res.status).toBe('error');
+    expect(res.error).toMatch(/platform state/);
+    expect(fs.existsSync(ownConfig)).toBe(false);
+  });
+
   test('a source outside both places, or a relative path, is refused before anything is read', async () => {
     const rig = rigFor();
     const away = await press(rig, { markdownPath: path.join(dir, 'elsewhere', 'outside.md') });

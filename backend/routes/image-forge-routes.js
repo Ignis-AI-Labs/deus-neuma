@@ -14,7 +14,7 @@
 import { createReadStream } from 'fs';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
-import { requireInstallOwner } from '../services/install-owner.js';
+import { passesInstallOwner, requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { verifyLaneOwnership } from '../services/lane-ownership.js';
@@ -31,6 +31,7 @@ import {
   freeComfy,
   comfySupervisorStatus,
 } from '../services/image-forge/comfyui-supervisor.js';
+import { ownedLanes } from '../services/house-deadlines.js';
 
 const log = createLogger('ImageForge.Routes');
 const router = express.Router();
@@ -104,13 +105,18 @@ router.get('/activity', (req, res) => {
 // case that most needs evidence produced none (ruling, 2026-08-01).
 //
 // `?outcome=refused` narrows to the refusals, which is the usual reason to look.
-router.get('/attempts', (req, res) => {
+router.get('/attempts', async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || READ_CAP, READ_CAP);
-  const { entries, total } = readAttempts(READ_CAP);
+  const { entries } = readAttempts(READ_CAP);
+  // A house reads its own lanes' attempts; a laneless one (the desk's own) is
+  // the install owner's. Never another house's prompts (audit 2026-10-28 L-09).
+  const mine = new Set((await ownedLanes(req.walletAddress)).map((lane) => lane.laneId));
+  const owner = await passesInstallOwner(req);
+  const visible = entries.filter((e) => (e.laneId ? mine.has(e.laneId) : owner));
   const outcome = req.query.outcome ? String(req.query.outcome) : null;
-  const filtered = outcome ? entries.filter((e) => e.outcome === outcome) : entries;
+  const filtered = outcome ? visible.filter((e) => e.outcome === outcome) : visible;
   res.set('Cache-Control', 'no-store');
-  res.json({ entries: filtered.slice(0, limit), total, returned: Math.min(filtered.length, limit) });
+  res.json({ entries: filtered.slice(0, limit), total: visible.length, returned: Math.min(filtered.length, limit) });
 });
 
 // The lane a request may read: the SAME id shape a neuma id and a witness lane

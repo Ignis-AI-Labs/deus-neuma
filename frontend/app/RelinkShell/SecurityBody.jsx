@@ -15,6 +15,7 @@ import {
   severityLoud, statusOwes, statusLabel, reportLabel, reportActor, evidenceLine, runLine, seatLine, hostLine,
   whereOfThreat, whereLabelThreat, threatTextParts, advisoryUrl, LEDGER_TEXT_KEPT,
 } from './security-view.js';
+import { safeHttpUrl } from './safe-url.js';
 
 export const SecurityIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -55,7 +56,10 @@ const ThreatDetail = ({ threat, onClose, onReopen, busy }) => {
         {threat.surfaces?.length ? <Fact label="SURFACES">{threat.surfaces.join(' · ')}</Fact> : null}
         <Fact label="SEEN">{formatDateTime(threat.ingestedAt)} → {formatDateTime(threat.lastSeenAt)}</Fact>
         {threat.githubIssue ? (
-          <Fact label="ISSUE"><a href={threat.githubIssue} target="_blank" rel="noreferrer">{threat.githubIssue}</a></Fact>
+          // a being wrote this field: a link only when it is http(s) (audit 2026-10-28 L-08)
+          <Fact label="ISSUE">{safeHttpUrl(threat.githubIssue)
+            ? <a href={safeHttpUrl(threat.githubIssue)} target="_blank" rel="noreferrer">{threat.githubIssue}</a>
+            : threat.githubIssue}</Fact>
         ) : null}
         {source ? <Fact label="SOURCE"><a href={source} target="_blank" rel="noreferrer">{source.replace(/^https:\/\//, '')}</a></Fact> : null}
       </dl>

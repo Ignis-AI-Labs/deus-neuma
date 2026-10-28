@@ -20,7 +20,7 @@
 //
 // Pure throughout; disk is account-store.js.
 
-import { getChannel } from './channel-registry.js';
+import { DESTINATION_KEYS, getChannel } from './channel-registry.js';
 
 export const STORE_VERSION = 2;
 
@@ -62,12 +62,19 @@ const accountFieldsOf = (channel) => channel.fields.filter((f) => !f.app);
  * @returns {Record<string, string>|null}
  */
 export const mergeChannelCredential = (channel, existing, patch) => {
+  // A destination that moves takes no stored secret with it (DESTINATION_KEYS):
+  // the secrets the same change did not re-enter are dropped, never resent.
+  const effective = (f, value) => (typeof value === 'string' && value.length > 0 ? value : (f.fallback ?? ''));
+  const moved = channel.fields.some((f) => DESTINATION_KEYS.has(f.key) && patch[f.key] !== undefined
+    && effective(f, patch[f.key]) !== effective(f, existing?.[f.key]));
   const next = {};
   for (const f of channel.fields) {
     const patched = patch[f.key];
     if (patched !== undefined) {
       if (typeof patched === 'string' && patched.length > 0) next[f.key] = patched;
       // empty string (or non-string) = clear — the field is simply not carried
+    } else if (moved && f.secret) {
+      // not carried to the new destination
     } else if (typeof existing?.[f.key] === 'string' && existing[f.key].length > 0) {
       next[f.key] = existing[f.key];
     }

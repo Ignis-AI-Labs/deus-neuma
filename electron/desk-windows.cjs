@@ -246,6 +246,10 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
     win.webContents.on('will-navigate', (event, url) => {
       if (!staysOnDesk(url, getOrigin())) event.preventDefault();
     });
+    // …and no server redirect carries it off either (audit 2026-10-28 M-07).
+    win.webContents.on('will-redirect', (event, url) => {
+      if (!staysOnDesk(url, getOrigin())) event.preventDefault();
+    });
 
     // THE COMFY VIEWPORT's guest, clamped in the MAIN process. The renderer sets
     // the <webview> attributes, so the renderer could set them wrong (or be made

@@ -70,12 +70,19 @@ def error(status: int, code: str, detail: str) -> JSONResponse:
     return JSONResponse({"error": code, "detail": detail}, status_code=status)
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from browser_guard import refusal  # noqa: E402  (audit 2026-10-28 M-06)
+
+
 @app.middleware("http")
 async def _guard_and_track(request: Request, call_next):
     # Loopback is the only gate on /design and /shutdown; refuse anything else
     # before it runs, even if the bind were ever widened.
     if (request.client.host if request.client else None) not in LOOPBACK_PEERS:
         return error(403, "forbidden", "the designer answers loopback callers only")
+    why = refusal(request.headers)  # a web page never reaches a sidecar (browser_guard.py)
+    if why:
+        return error(403, "forbidden", why)
     global _last_activity
     tracked = request.url.path not in UNTRACKED
     if tracked:

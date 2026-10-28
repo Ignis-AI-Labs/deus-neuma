@@ -22,7 +22,7 @@ import { MIN_SEAL_GAS_ETH } from '../services/seal-bundle.js';
 import { connectFilesystemServer } from '../services/mcp-filesystem.js';
 import { getWorkspacesRoot, getWitnessesRoot, setWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
 import { otherOwnedLanes } from '../services/root-tenants.js';
-import { requireInstallOwner } from '../services/install-owner.js';
+import { passesInstallOwner, requireInstallOwner } from '../services/install-owner.js';
 import { loadWorkspaceSettings, saveWorkspaceSettings, isTempPath } from '../services/workspace-settings.js';
 import { probeProtocol, probeRecords, probeSealing, probeActing } from '../services/birth-flight.js';
 import { MIN_FREE_DISK_GB, freeGBAt } from '../services/storage-health.js';
@@ -56,8 +56,13 @@ const homeBlock = async () => {
   };
 };
 
+// Signed in only (audit 2026-10-28 M-03): the checks run live probes through the
+// model, write probe files and name the house's root; /mind loads the model.
+// The first-run auto-adopt persists a provider choice, so it is the install
+// owner's alone (passesInstallOwner — the first wallet at this desk).
+
 // GET /home — only the space numbers: a changed allocation re-reads these, never the checks.
-router.get('/home', async (req, res) => {
+router.get('/home', requireAuth, async (req, res) => {
   try {
     res.json({ home: await homeBlock() });
   } catch (error) {
@@ -66,10 +71,10 @@ router.get('/home', async (req, res) => {
   }
 });
 
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const checks = [
-      await checkSubstrate(),
+      await checkSubstrate(null, { mayAdopt: await passesInstallOwner(req) }),
       await flightRow('acting', 'Substrate Acting', probeActing),
       await checkWorkspace(),
       await checkCeremonyRoad(),
@@ -297,9 +302,9 @@ export const DOOR_PROBE_MS = 100_000;
  * answering in words), so the door that opens a summoning and the flight check inside it can
  * never disagree. It also loads the model, so the ceremony does not wait on a cold start.
  */
-router.get('/mind', async (req, res) => {
+router.get('/mind', requireAuth, async (req, res) => {
   try {
-    const row = await checkSubstrate(null, { timeoutMs: DOOR_PROBE_MS });
+    const row = await checkSubstrate(null, { timeoutMs: DOOR_PROBE_MS, mayAdopt: await passesInstallOwner(req) });
     res.json({
       ready: row.status === 'pass',
       // a route nobody chose (the factory default) names nothing a person set up: no detail then

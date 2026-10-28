@@ -10,7 +10,7 @@
  */
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
-import { neumaWorkspace } from '../../core/index.js';
+import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import {
   askRiteQuestion,
   sealVoice,
@@ -31,22 +31,10 @@ router.param('neumaId', (req, res, next, id) => {
   next();
 });
 
-// The ownership gate every ceremony act shares: a lane claimed by another
-// wallet is never yours to ask or seal.
-const assertLaneAccess = async (req, res) => {
-  const { neumaId } = req.params;
-  const exists = await neumaWorkspace.exists(neumaId).catch(() => false);
-  if (!exists) {
-    res.status(404).json({ error: 'Workspace not found' });
-    return false;
-  }
-  const owner = await neumaWorkspace.readOwner(neumaId).catch(() => null);
-  if (owner?.wallet && String(owner.wallet).toLowerCase() !== String(req.walletAddress || '').toLowerCase()) {
-    res.status(403).json({ error: 'Not your workspace' });
-    return false;
-  }
-  return true;
-};
+// The ownership gate every ceremony act shares: the lane must be claimed, and
+// by this wallet. A missing or corrupt owner record refuses (fail closed, as
+// assertNeumaOwner everywhere else) — the seal is one-way (audit 2026-10-28 M-04).
+const assertLaneAccess = (req, res) => assertNeumaOwner(req, res, req.params.neumaId);
 
 const statusForError = (err) => {
   if (err?.code === VOICE_SEAL_ERRORS.alreadySealed) return 409;

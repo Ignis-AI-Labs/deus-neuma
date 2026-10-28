@@ -41,4 +41,17 @@ const staysOnDesk = (target, deskOrigin) => {
   }
 };
 
-module.exports = { externalUrlFor, staysOnDesk };
+/**
+ * Did this IPC message come from a desk's own top frame on the desk's origin?
+ * A frame that is not the top one, or a top frame somewhere else, never
+ * speaks for the desk (audit 2026-10-28 M-07). Pure over the event's sender.
+ * @param {{ senderFrame?: { url?: string, parent?: unknown } | null }} event
+ * @param {string} deskOrigin
+ * @returns {boolean}
+ */
+const fromDesk = (event, deskOrigin) => {
+  const frame = event?.senderFrame;
+  return Boolean(frame) && !frame.parent && staysOnDesk(frame.url, deskOrigin);
+};
+
+module.exports = { externalUrlFor, staysOnDesk, fromDesk };

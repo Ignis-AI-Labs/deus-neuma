@@ -110,6 +110,15 @@ const renderBody = (over = {}) => renderToStaticMarkup(createElement(SecurityBod
 }));
 
 describe('SecurityBody — the office, rendered for real', () => {
+  // Audit 2026-10-28 L-08: a being files the issue link; only an http(s) one becomes a link.
+  it('an issue link a being wrote is linked only when it is http(s)', () => {
+    const hostile = renderBody({ detail: T({ githubIssue: 'javascript:alert(document.cookie)' }) });
+    expect(hostile).not.toMatch(/href="javascript:/i);
+    expect(hostile).toContain('javascript:alert(document.cookie)');
+    const real = renderBody({ detail: T({ githubIssue: 'https://github.com/Ignis-AI-Labs/deus-neuma/issues/1' }) });
+    expect(real).toContain('href="https://github.com/Ignis-AI-Labs/deus-neuma/issues/1"');
+  });
+
   it('names the seated CSO, the last scan, the host, and the triage overview', () => {
     const html = renderBody();
     expect(html).toContain('THE SEAT — DOVAN');

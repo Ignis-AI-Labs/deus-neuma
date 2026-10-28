@@ -82,7 +82,10 @@ ipcRenderer.on('desk:request-handoff', (_event, requestId) => {
   ipcRenderer.send('desk:handoff-reply', requestId, { authToken, companion });
 });
 
-contextBridge.exposeInMainWorld('neuma', {
+// The bridge exists only on the app's own origin (audit 2026-10-28 M-07): a
+// frame anywhere else — a page the desk was somehow sent to — gets no wallet,
+// no folders, no openExternal.
+if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   desktop: true,
   platform: process.platform,
   // Which desk this window IS (1, 2, …) — a stable layout key claimed at

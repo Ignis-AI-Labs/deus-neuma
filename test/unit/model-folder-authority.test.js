@@ -15,6 +15,12 @@ import {
 const F = (p, servers = [...FOLDER_SERVERS]) => ({ path: p, servers });
 
 describe('the law, pure', () => {
+  test('a model folder is never the whole disk (audit 2026-10-28 M-02)', () => {
+    expect(() => normalizeFolders([{ path: '/' }])).toThrow(/whole disk/);
+    expect(() => normalizeFolders([{ path: '///' }])).toThrow(/whole disk/);
+    expect(normalizeFolders([{ path: '/srv/models/' }])[0].path).toBe('/srv/models');
+  });
+
   test('a model under a chosen folder is authorized; outside every folder it is not', () => {
     const folders = normalizeFolders([F('/mnt/models')]);
     expect(authorizingFolder(folders, '/mnt/models/a/b.gguf')).toBeTruthy();

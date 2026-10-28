@@ -104,10 +104,16 @@ _GEN_PER_CHAR_S = float(os.environ.get("QWEN3_GEN_PER_CHAR_S", "0.15"))
 _last_activity = time.monotonic()
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from browser_guard import assert_loopback_bind, refusal  # noqa: E402  (audit 2026-10-28 M-06)
+
 @app.middleware("http")
 async def _track_activity(request, call_next):
     # Stamped on arrival; the post-call_next stamp lands at stream START for a
     # StreamingResponse, so /synthesize stamps per chunk as the body streams.
+    why = refusal(request.headers)  # a web page never reaches a sidecar (browser_guard.py)
+    if why:
+        return JSONResponse({"error": "forbidden", "detail": why}, status_code=403)
     global _last_activity
     tracked = request.url.path not in ("/health", "/shutdown")
     if tracked:

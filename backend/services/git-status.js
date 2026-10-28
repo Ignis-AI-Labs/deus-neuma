@@ -14,13 +14,16 @@
  * with GIT_OPTIONAL_LOCKS=0 so a status probe never takes the index lock —
  * it can never race or block the witness's own git operations. core.quotepath
  * is off so non-ASCII names arrive as raw UTF-8 (never octal escapes the
- * tree can't match).
+ * tree can't match). The opened repository's own config is someone else's
+ * (audit 2026-10-28 H-01): every probe runs with the untrusted-git overrides,
+ * and status — the walk that can run a filter — runs only once the repo's own
+ * config is proven inert (untrusted-git.js); otherwise the tree shows no badges.
  */
 import { execFile } from 'child_process';
 import path from 'path';
 import { detectRepo } from './repo-detect.js';
 import { porcelainPath } from './git-porcelain-path.js';
-import { withoutBackendSecrets } from './agent-terminal-environment.js';
+import { UNTRUSTED_GIT_ARGS, repoConfigIsInert, untrustedGitEnv } from './untrusted-git.js';
 
 // A giant status (ten thousand touched files) is still single-digit MB; past
 // this the repo is pathological and the probe fails honestly, never an OOM.
@@ -31,11 +34,11 @@ const STATUS_TIMEOUT_MS = 8000;
 const gitProbe = (dir, args) => new Promise((resolve, reject) => {
   execFile(
     'git',
-    ['-C', dir, ...args],
+    [...UNTRUSTED_GIT_ARGS, '-C', dir, ...args],
     {
       timeout: STATUS_TIMEOUT_MS,
       maxBuffer: STATUS_MAX_BUFFER,
-      env: { ...withoutBackendSecrets(process.env), GIT_OPTIONAL_LOCKS: '0' },
+      env: untrustedGitEnv(process.env),
     },
     (error, out) => (error ? reject(error) : resolve(out)),
   );
@@ -61,7 +64,9 @@ const cachedRepoStatus = async (top) => {
   const hit = statusCache.get(top);
   if (hit?.parsed && Date.now() - hit.at < STATUS_CACHE_TTL_MS) return hit.parsed;
   if (hit?.pending) return hit.pending;
-  const pending = gitProbe(top, ['-c', 'core.quotepath=false', 'status', '--porcelain=v1', '--branch', '--untracked-files=normal', '--ignored=matching']).then(parsePorcelain);
+  const pending = repoConfigIsInert(top).then((inert) => (inert
+    ? gitProbe(top, ['-c', 'core.quotepath=false', 'status', '--porcelain=v1', '--branch', '--untracked-files=normal', '--ignored=matching']).then(parsePorcelain)
+    : { ...parsePorcelain(''), refused: 'this repository\'s own git config names programs git could run, so its status is not read' }));
   statusCache.set(top, { pending });
   try {
     const parsed = await pending;
@@ -143,7 +148,7 @@ export const parsePorcelain = (text) => {
  * (timeout, overflow, missing git) DO throw — the route turns them into an
  * honest 500 and the tree simply shows no badges.
  * @param {string} absPath absolute, already-contained folder path
- * @returns {Promise<{isRepo: false}|{isRepo: true, branch: string|null, ahead: number, behind: number, files: Object<string, string>, ignored: string[]}>}
+ * @returns {Promise<{isRepo: false}|{isRepo: true, branch: string|null, ahead: number, behind: number, files: Object<string, string>, ignored: string[], refused?: string}>}
  */
 // impure
 export const readGitStatus = async (absPath) => {

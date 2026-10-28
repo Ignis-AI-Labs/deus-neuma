@@ -68,6 +68,11 @@ ln -sf /opt/NEUMA/neuma %{buildroot}/usr/bin/neuma
 install -m 644 @DESKTOP@ %{buildroot}/usr/share/applications/neuma.desktop
 install -m 644 @ICON@ %{buildroot}/usr/share/icons/hicolor/512x512/apps/neuma.png
 
+%post
+# Electron's setuid sandbox helper, as the .deb's postinst sets it (audit 2026-10-28 L-04):
+# where unprivileged user namespaces are off, Chromium's sandbox needs it.
+chmod 4755 /opt/NEUMA/chrome-sandbox || true
+
 %files
 /opt/NEUMA
 /usr/bin/neuma

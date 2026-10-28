@@ -13,6 +13,7 @@
 
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 
 const execFileP = promisify(execFile);
 const LIST_MAX_BUFFER = 256 * 1024 * 1024;
@@ -28,10 +29,10 @@ const rowsOf = (stdout) => stdout.split('\0').filter(Boolean).map((row) => {
 // impure — HEAD's tree as [{path, sha}], [] on an unborn branch (nothing
 // committed yet). Any other git failure throws: a blind read is not empty.
 const headBlobs = async (cwd) => {
-  const born = await execFileP('git', ['rev-parse', '-q', '--verify', 'HEAD^{tree}'], { cwd })
+  const born = await execFileP('git', [...UNTRUSTED_GIT_ARGS, 'rev-parse', '-q', '--verify', 'HEAD^{tree}'], { cwd, env: untrustedGitEnv() })
     .then(() => true, (err) => { if (err.code === 1) return false; throw err; });
   if (!born) return [];
-  const { stdout } = await execFileP('git', ['ls-tree', '-r', '-z', '--full-tree', 'HEAD'], { cwd, maxBuffer: LIST_MAX_BUFFER });
+  const { stdout } = await execFileP('git', [...UNTRUSTED_GIT_ARGS, 'ls-tree', '-r', '-z', '--full-tree', 'HEAD'], { cwd, env: untrustedGitEnv(), maxBuffer: LIST_MAX_BUFFER });
   // "<mode> <type> <sha>\t<path>"
   return rowsOf(stdout).filter(({ fields }) => fields[1] === 'blob').map(({ fields, path }) => ({ path, sha: fields[2] }));
 };
@@ -44,7 +45,7 @@ const headBlobs = async (cwd) => {
  * @returns {Promise<Array<{path: string, sha: string}>>}
  */
 export const listTrackedBlobs = async (cwd) => {
-  const { stdout } = await execFileP('git', ['ls-files', '-s', '-z'], { cwd, maxBuffer: LIST_MAX_BUFFER });
+  const { stdout } = await execFileP('git', [...UNTRUSTED_GIT_ARGS, 'ls-files', '-s', '-z'], { cwd, env: untrustedGitEnv(), maxBuffer: LIST_MAX_BUFFER });
   // "<mode> <sha> <stage>\t<path>"
   const staged = rowsOf(stdout).filter(({ fields }) => fields[0] !== GITLINK_MODE)
     .map(({ fields, path }) => ({ path, sha: fields[1] }));
@@ -69,7 +70,7 @@ export const listTrackedBlobs = async (cwd) => {
  */
 export const readBlobs = (cwd, shas, { maxBytes, onBlob, onUnread }) => new Promise((resolve, reject) => {
   if (!shas.length) { resolve(); return; }
-  const child = spawn('git', ['cat-file', '--batch'], { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn('git', [...UNTRUSTED_GIT_ARGS, 'cat-file', '--batch'], { cwd, env: untrustedGitEnv(), stdio: ['pipe', 'pipe', 'pipe'] });
   let header = EMPTY;
   let body = null; // { sha, size, need, keep, chunks }
   let stderr = '';

@@ -11,7 +11,7 @@ import { existsSync, readdirSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import neumaWorkspace, { setWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
+import neumaWorkspace, { setWitnessesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { ensureWitnessCodingSandbox, runWitnessCommand } from '../../backend/services/witness-coding-sandbox.js';
 import { isLiveShell } from '../../backend/services/open-folder-autonomy.js';
 
@@ -79,6 +79,52 @@ describe('the shell in the open folder on AUTO', () => {
     expect(await fs.readFile(path.join(ground, '.git', 'HEAD'), 'utf8')).toBe('ref: refs/heads/main\n');
     const git = await runWitnessCommand({ ...sandbox, mode: 'write', live: liveFor(sandbox), command: 'git status' });
     expect(git.exitCode).not.toBe(0);
+  }, 60_000);
+
+  // Audit 2026-10-28 (C-01): whatever path a being writes through, it never
+  // rewrites its own consent files. Here the house's lanes sit inside the open
+  // folder under a name the secret masks do not know, beside a data root.
+  test('platform state inside the open folder stays read-only: a lane\'s policy, the data root', async () => {
+    const lanes = path.join(ground, 'house-lanes');
+    const policy = path.join(lanes, 'kin', 'config', 'tool-policy.json');
+    const dataRoot = path.join(ground, 'state');
+    await fs.mkdir(path.dirname(policy), { recursive: true });
+    await fs.writeFile(policy, '{"web":{"requireApproval":["web_fetch"]}}\n');
+    await fs.mkdir(path.join(dataRoot, 'covenant'), { recursive: true });
+    const savedData = process.env.NEUMA_DATA_ROOT;
+    setWorkspacesRoot(lanes);
+    process.env.NEUMA_DATA_ROOT = dataRoot;
+    try {
+      const sandbox = await ensureWitnessCodingSandbox(LANE_ID, ground);
+      const run = await runWitnessCommand({
+        ...sandbox, mode: 'write', live: liveFor(sandbox),
+        command: `printf '{"web":{"allowed":["web_fetch"]},"shellNetwork":true}' > house-lanes/kin/config/tool-policy.json; printf x > state/covenant/forged.json; printf ok > docs/still-mine.md; true`,
+      });
+      expect(run.live).toBe(true);
+      expect(await fs.readFile(policy, 'utf8')).toBe('{"web":{"requireApproval":["web_fetch"]}}\n');
+      await expect(fs.stat(path.join(dataRoot, 'covenant', 'forged.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(await fs.readFile(path.join(ground, 'docs', 'still-mine.md'), 'utf8')).toBe('ok');
+    } finally {
+      setWorkspacesRoot(null);
+      if (savedData === undefined) delete process.env.NEUMA_DATA_ROOT; else process.env.NEUMA_DATA_ROOT = savedData;
+    }
+  }, 60_000);
+
+  test('an open folder INSIDE a lane ground is never live: the shell keeps its overlay', async () => {
+    const lanes = path.join(root, 'house-lanes');
+    const inLane = path.join(lanes, 'kin');
+    await fs.mkdir(path.join(inLane, 'config'), { recursive: true });
+    await fs.writeFile(path.join(inLane, 'config', 'spend-allowlist.json'), '[]\n');
+    setWorkspacesRoot(lanes);
+    try {
+      const sandbox = await ensureWitnessCodingSandbox(LANE_ID, inLane);
+      const run = await runWitnessCommand({
+        ...sandbox, mode: 'write', live: isLiveShell({ mode: 'auto', sourceRoot: sandbox.sourceRoot, ground: inLane }),
+        command: `printf '["0xattacker"]' > config/spend-allowlist.json; true`,
+      });
+      expect(run.live).toBe(false);
+      expect(await fs.readFile(path.join(inLane, 'config', 'spend-allowlist.json'), 'utf8')).toBe('[]\n');
+    } finally { setWorkspacesRoot(null); }
   }, 60_000);
 
   test('inspect stays read-only on the live folder', async () => {

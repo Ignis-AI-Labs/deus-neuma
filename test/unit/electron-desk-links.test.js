@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { externalUrlFor, staysOnDesk } = require('../../electron/desk-links.cjs');
+const { externalUrlFor, staysOnDesk, fromDesk } = require('../../electron/desk-links.cjs');
 
 describe('externalUrlFor — only a web page leaves for the OS browser', () => {
   it('passes http and https through, normalized', () => {
@@ -60,3 +60,23 @@ describe('staysOnDesk — the desk frame keeps its own origin', () => {
     expect(staysOnDesk('http://127.0.0.1:47317/', 'not an origin')).toBe(false);
   });
 });
+
+// Audit 2026-10-28 M-07: only a desk's own top frame, on the desk's origin, speaks for the desk.
+describe('fromDesk — which IPC messages the desk answers', () => {
+  const desk = 'http://127.0.0.1:47317';
+  const top = (url) => ({ senderFrame: { url, parent: null } });
+  it('the desk\'s top frame on its origin, any path', () => {
+    expect(fromDesk(top('http://127.0.0.1:47317/'), desk)).toBe(true);
+    expect(fromDesk(top('http://127.0.0.1:47317/app?x=1#y'), desk)).toBe(true);
+  });
+  it('never a frame inside the page, another origin, another port, or a gone frame', () => {
+    expect(fromDesk({ senderFrame: { url: 'http://127.0.0.1:47317/', parent: {} } }, desk)).toBe(false);
+    expect(fromDesk(top('https://evil.example/'), desk)).toBe(false);
+    expect(fromDesk(top('http://127.0.0.1:8080/'), desk)).toBe(false);
+    expect(fromDesk(top('file:///etc/passwd'), desk)).toBe(false);
+    expect(fromDesk(top('about:blank'), desk)).toBe(false);
+    expect(fromDesk({ senderFrame: null }, desk)).toBe(false);
+    expect(fromDesk({}, desk)).toBe(false);
+  });
+});
+

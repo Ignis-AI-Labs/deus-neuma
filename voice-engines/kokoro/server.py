@@ -46,10 +46,16 @@ app = FastAPI(title="Kokoro Sidecar", version="0.1.0")
 _last_activity = time.monotonic()
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from browser_guard import assert_loopback_bind, refusal  # noqa: E402  (audit 2026-10-28 M-06)
+
 @app.middleware("http")
 async def _track_activity(request, call_next):
     # Marked on arrival AND completion: idle counts from the end of the last
     # real request, so a long synthesis can never be mistaken for idleness.
+    why = refusal(request.headers)  # a web page never reaches a sidecar (browser_guard.py)
+    if why:
+        return JSONResponse({"error": "forbidden", "detail": why}, status_code=403)
     global _last_activity
     tracked = request.url.path not in ("/health", "/shutdown")
     if tracked:
@@ -294,4 +300,5 @@ if __name__ == "__main__":
 
     host = os.environ.get("KOKORO_HOST", "127.0.0.1")
     port = int(os.environ.get("KOKORO_PORT", "7861"))
+    assert_loopback_bind("kokoro", host)
     uvicorn.run(app, host=host, port=port, log_level="info")

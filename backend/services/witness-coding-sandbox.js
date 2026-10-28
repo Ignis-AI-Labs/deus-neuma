@@ -47,6 +47,7 @@ import { linkedSecrets } from './secret-inodes.js';
 import { findSecretTwins } from './secret-twin-finder.js';
 import { createCommandOutput } from './coding-command-output.js';
 import { ensureCodingBase, activeCodingDirectory, freshCodingDirectory, assertActiveCodingShell } from './coding-shell-storage.js';
+import { liveShellWalls } from './live-shell-walls.js';
 export { sandboxPathFor } from './coding-shell-storage.js';
 
 // Directory names that are secret-shaped wherever they appear. Size-motivated
@@ -312,13 +313,17 @@ export const CONFINED_ULIMITS = 'ulimit -t 120 -v 2147483648 -f 1048576 -n 4096 
 // `live` is THE OPEN FOLDER on AUTO (open-folder-autonomy.js, ruling 2026-10-28):
 // the live ground itself, read-write for execute and read-only for inspect —
 // no overlay, but the very same masks on top, so .git and every secret stay
-// out of reach and history remains the safety net.
+// out of reach and history remains the safety net; platform state inside the
+// folder (lanes, the data root, settings, login files) stays read-only.
 const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = false, live = false }) => {
   const ground = path.resolve(sourceRoot);
   const shellDir = path.dirname(workspace);
   const args = confinedBaseArgs({ network });
   if (live) {
     args.push(mode === 'inspect' ? '--ro-bind' : '--bind', ground, ground);
+    // platform state inside the open folder (live-shell-walls.js): read-only,
+    // bound BEFORE the masks so a masked secret below one stays masked
+    for (const place of masks.readOnly ?? []) args.push('--ro-bind', place, place);
   } else if (mode === 'inspect') {
     // The last --overlay-src is the top layer: prior shell work shows over
     // the live ground, and the whole view refuses writes.
@@ -417,12 +422,16 @@ export const runWitnessCommand = async (input) => {
   input.beforeSpawn?.();
   const release = await lockOverlay(input.workspace, { directory: input.anchor });
   try {
-    if (!input.live) {
-      await assertActiveCodingShell(input);
-      await assertOverlayFresh(input);
+    const walls = input.live ? liveShellWalls(input.sourceRoot) : null;
+    const run = !walls ? input
+      : walls.live ? { ...input, masks: { ...input.masks, readOnly: walls.readOnly } }
+        : { ...input, live: false };
+    if (!run.live) {
+      await assertActiveCodingShell(run);
+      await assertOverlayFresh(run);
     }
-    const result = await runPreparedCommand(input);
-    if (!input.live) await assertOverlayFresh(input);
-    return { ...result, live: input.live === true };
+    const result = await runPreparedCommand(run);
+    if (!run.live) await assertOverlayFresh(run);
+    return { ...result, live: run.live === true };
   } finally { await release(); }
 };
