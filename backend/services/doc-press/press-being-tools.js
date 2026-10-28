@@ -1,7 +1,7 @@
 // THE PRESS for the being — branded documents from inside its stream:
 //
-//   press_document — press markdown you wrote into a branded PDF
-//                    {markdown, title?, kit?}
+//   press_document — press markdown into a branded PDF
+//                    {markdown | markdownPath, title?, kit?, kitsDir?, outputPath?}
 //
 // Two laws stand over every call:
 //
@@ -9,8 +9,12 @@
 //      press is local rendering with no egress, but the output carries the
 //      house's official livery, so the operator blesses the first pressings
 //      (one ALWAYS grant persists per being). Observe mode holds it.
-//   2. THE WORKSPACE — the PDF lands only inside the being's own sovereign
-//      workspace (tool-results/pressed/), never anywhere else on disk.
+//   2. THE PLACE — the PDF lands in the being's own sovereign workspace
+//      (tool-results/pressed/) unless the call names an outputPath; every
+//      path a call names (markdownPath, kitsDir, outputPath) must stand inside
+//      the operator's OPEN FOLDER or that workspace (press-paths.js, Founder
+//      2026-10-28: […]) — never a secret
+//      path, never anywhere else on disk.
 //
 // Every executed press lands in the being's journal. Portal-stream owns the
 // socket, so the event sender arrives as an injected port; the ACTS gate
@@ -22,6 +26,9 @@ import { gateAct } from '../act-gate.js';
 import { pressDocument, listBrandKits } from './index.js';
 import { locateChromium } from './chromium-press.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
+import { focusGroundOf } from '../focus-ground.js';
+import { resolvePressPaths } from './press-paths.js';
+import fs from 'fs/promises';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('PressTools');
@@ -33,15 +40,18 @@ export const PRESS_TOOLS = Object.freeze([
   Object.freeze({
     name: 'press_document',
     server: 'press',
-    description: 'Make a PDF: press markdown into a branded PDF document (the press — the Nimbus system) — args {markdown, title?, kit?}. Pass the FULL markdown (read a file first). kit is a brand-kit id your operator configured, e.g. the company\'s short id; an unknown id answers with the available ones; omit for the neutral look. The PDF is saved into your own workspace and the real saved path is returned — report that path, never a guessed one. Supports chartjs/pagebreak fences, ::: summary|feature|warning|note boxes, and @icon tags from the kit.',
+    description: 'Make a PDF: press markdown into a branded PDF document (the press — the Nimbus system) — args {markdown | markdownPath, title?, kit?, kitsDir?, outputPath?}. Give the FULL markdown, or markdownPath to a .md file. kit is a brand-kit id your operator configured, e.g. the company\'s short id; kitsDir is a folder of kits (e.g. a repository\'s own press-kit folder) to look the id up in; an unknown id answers with the available ones; omit kit for the neutral look. outputPath (a .pdf) sets where the PDF lands; without it the PDF is saved into your own workspace. Every path is absolute and must be inside the operator\'s open folder or your own workspace. The real saved path is returned — report that path, never a guessed one. Supports chartjs/pagebreak fences, ::: summary|feature|warning|note boxes, and @icon tags from the kit.',
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({
-        markdown: Object.freeze({ type: 'string', description: 'the full markdown source of the document' }),
+        markdown: Object.freeze({ type: 'string', description: 'the full markdown source of the document (or give markdownPath)' }),
+        markdownPath: Object.freeze({ type: 'string', description: 'absolute path of a .md file to press, instead of markdown' }),
         title: Object.freeze({ type: 'string', description: 'document title (used for the filename and running header)' }),
         kit: Object.freeze({ type: 'string', description: 'brand kit id (omit for the neutral built-in kit)' }),
+        kitsDir: Object.freeze({ type: 'string', description: 'absolute folder holding brand kits to find kit in' }),
+        outputPath: Object.freeze({ type: 'string', description: 'absolute .pdf path where the PDF lands (default: your workspace)' }),
       }),
-      required: Object.freeze(['markdown']),
+      required: Object.freeze([]),
     }),
   }),
 ]);
@@ -84,11 +94,13 @@ const slugify = (title) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 60) || 'document';
 
-// pure — argument validation; returns { error } or the normalized args
-const validatePressArgs = (args) => {
-  const markdown = args?.markdown;
+// pure — argument validation; returns { error } or the normalized args.
+// `fileMarkdown` is a markdownPath's text, read by the caller once the path
+// stood inside the press's roots (press-paths.js); inline markdown wins.
+const validatePressArgs = (args, fileMarkdown = null) => {
+  const markdown = typeof args?.markdown === 'string' && args.markdown.trim() !== '' ? args.markdown : fileMarkdown;
   if (typeof markdown !== 'string' || markdown.trim() === '') {
-    return { error: 'press_document needs {markdown}: the full markdown source to press' };
+    return { error: 'press_document needs {markdown} (the full markdown source) or {markdownPath} (a .md file)' };
   }
   if (Buffer.byteLength(markdown, 'utf8') > MAX_MARKDOWN_BYTES) {
     return { error: `the markdown is too large to press (over ${MAX_MARKDOWN_BYTES / (1024 * 1024)}MB)` };
@@ -99,6 +111,17 @@ const validatePressArgs = (args) => {
   const secret = checkOutboundSecrets('the document', [markdown, title], 'nothing was pressed');
   if (!secret.ok) return { error: secret.reason };
   return { markdown, title, kitId };
+};
+
+// impure — a markdownPath's text, bounded before it is read whole
+const readPressSource = async (file) => {
+  try {
+    const { size } = await fs.stat(file);
+    if (size > MAX_MARKDOWN_BYTES) return { error: `the markdown is too large to press (over ${MAX_MARKDOWN_BYTES / (1024 * 1024)}MB)` };
+    return { text: await fs.readFile(file, 'utf8') };
+  } catch (err) {
+    return { error: `markdownPath could not be read: ${err.message}` };
+  }
 };
 
 // impure — the pressing itself belongs to the record; non-blocking, never silent
@@ -147,22 +170,27 @@ export const handlePressTool = async (ws, connection, neumaPolicy, toolMode, mat
   });
   if (!gate.ok) return gate.result;
 
-  const checked = validatePressArgs(args);
+  const ownWorkspace = neumaWorkspace.pathFor(companion.neumaId);
+  const placed = await resolvePressPaths(args, [focusGroundOf(connection), ownWorkspace]);
+  const fileMarkdown = placed.markdownPath ? await readPressSource(placed.markdownPath) : null;
+  const checked = placed.error ? { error: placed.error }
+    : fileMarkdown?.error ? { error: fileMarkdown.error }
+      : validatePressArgs({ ...args, title: args?.title || (placed.markdownPath && path.basename(placed.markdownPath, '.md')) }, fileMarkdown?.text);
   if (checked.error) {
     ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'press_document — invalid args', detail: checked.error });
     return { tool, status: 'error', error: checked.error };
   }
 
   ports.sendToolEvent(ws, companion, { tool, status: 'executing' });
-  const outputPath = path.join(
-    neumaWorkspace.pathFor(companion.neumaId), 'tool-results', 'pressed',
-    `${slugify(checked.title)}-${Date.now()}.pdf`,
+  const outputPath = placed.outputPath || path.join(
+    ownWorkspace, 'tool-results', 'pressed', `${slugify(checked.title)}-${Date.now()}.pdf`,
   );
   try {
     const result = await pressDocument({
       markdown: checked.markdown,
       title: checked.title,
       kitId: checked.kitId,
+      kitsDir: placed.kitsDir,
       outputPath,
     });
     const content = `Document pressed with the "${result.kitId}" kit: ${result.outputPath} (${(result.pdf.length / 1024).toFixed(0)} KB).`;
@@ -175,7 +203,7 @@ export const handlePressTool = async (ws, connection, neumaPolicy, toolMode, mat
     return { tool, status: 'ok', content };
   } catch (err) {
     // An unknown kit is the likeliest miss — answer with the real choices.
-    const kits = await listBrandKits().catch(() => []);
+    const kits = await listBrandKits({ kitsDir: placed.kitsDir }).catch(() => []);
     const kitHint = kits.length > 0 ? ` Available kits: ${kits.map((k) => k.id).join(', ')} (or omit kit for neutral).` : '';
     const error = `The press failed: ${err.message}.${kitHint}`;
     ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'press_document — failed', detail: error });

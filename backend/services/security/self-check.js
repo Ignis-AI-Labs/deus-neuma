@@ -12,7 +12,8 @@
  *   helper-env-secrets    a spawned helper, ComfyUI and the press's Chromium
  *                         start without the backend's secrets
  *   auto-hard-gates       AUTO never runs a CSO verdict, a wallet send or
- *                         being code without the operator's card (protocol-guard.js)
+ *                         being code on a team workspace without the
+ *                         operator's card (protocol-guard.js)
  *   machine-owner-gate    every machine-wide route the install owner alone may
  *                         change carries the owner gate in its handler chain
  *
@@ -40,9 +41,12 @@ const PRIVATE_HOSTS = Object.freeze([
   '169.254.169.254', '100.64.0.1', '[::ffff:127.0.0.1]', '[::ffff:169.254.169.254]', '[::]',
   '10.0.0.1', '192.168.0.1', '[fd00::1]', '64:ff9b::a9fe:a9fe', '2002:a9fe:a9fe::',
 ]);
+// coding/execute left this list with protocol-guard.js's own (Design note, 2026-10-28:
+// on AUTO the shell runs live in the operator's open folder, .git and secrets
+// masked; AUTO may never ask more than ASK.
 const HARD_GATED = Object.freeze([
   ['intents', 'security.assess'], ['intents', 'security.escalate'], ['intents', 'security.circuit-breaker'],
-  ['intents', 'wallet.send'], ['coding', 'execute'], ['intents', 'team.workspace-run'],
+  ['intents', 'wallet.send'], ['intents', 'team.workspace-run'],
 ]);
 // The machine-wide changes the install-owner ruling gated (ruling, 2026-10-19).
 export const OWNER_GATED_ROUTES = Object.freeze([

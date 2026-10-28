@@ -23,6 +23,7 @@ import { noteTurnSandboxSource, ensureTurnSandbox } from './turn-sandbox.js';
 import { runSeatCommand } from './benchmark-exec-bridge.js';
 import { handleGroundGitTool } from './ground-git-consent.js';
 import { focusGroundOf } from './focus-ground.js';
+import { isLiveShell } from './open-folder-autonomy.js';
 import { ensureBeingGround } from './house-workspace.js';
 import { renderCommandResult } from './coding-result.js';
 import { executionPresentation } from './execution-presentation.js';
@@ -395,6 +396,7 @@ export const handleBeingCodingTool = async (ws, connection, neumaPolicy, toolMod
     const result = await runSeatCommand({
       connection, ...sandbox, command: args?.command, timeoutMs: args?.timeoutMs,
       mode: toolName === 'inspect' ? 'inspect' : 'write',
+      live: isLiveShell({ mode: normalizeToolMode(toolMode), sourceRoot: sandbox.sourceRoot, ground: focusGroundOf(connection) }),
       ...shellNetworkOptions(shellConsent, toolName === 'execute'), onChunk: paint,
     });
 

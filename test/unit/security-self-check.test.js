@@ -44,7 +44,7 @@ describe('the security self-check', () => {
   test('the protocol guard read in ASK mode — the hard-gate canary reports every class', async () => {
     const result = await runSelfChecks({ hardGated: (server, tool) => applyProtocolGuard('allowed', 'ask', server, tool) === 'approval_required' });
     expect(only(result)).toEqual(['self-check:auto-hard-gates']);
-    expect(result.findings[0].surfaces).toEqual(expect.arrayContaining(['intents/security.assess', 'intents/wallet.send', 'coding/execute']));
+    expect(result.findings[0].surfaces).toEqual(expect.arrayContaining(['intents/security.assess', 'intents/wallet.send', 'intents/team.workspace-run']));
   }, 60_000);
 
   test('a different gate than the owner\'s — the machine-route canary names the routes without it', async () => {

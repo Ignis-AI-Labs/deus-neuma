@@ -124,7 +124,8 @@ test.each([
   expect(await fs.readFile(baselineFile, 'utf8')).toBe('baseline');
   expect((await run([call('coding', 'execute', { command: 'printf baseline > command-baseline.txt' })]))[0].status).toBe('ok');
   const upper = kit.connection._turnSandbox.workspace;
-  expect(await fs.readFile(path.join(upper, 'command-baseline.txt'), 'utf8')).toBe('baseline');
+  // AUTO in the open folder: the shell works on the folder itself (open-folder-autonomy.js)
+  expect(await fs.readFile(path.join(kit.ground, 'command-baseline.txt'), 'utf8')).toBe('baseline');
   await flushFrames();
   const beforeCards = cards;
   const beforeSession = structuredClone(kit.connection._sessionToolPolicy);

@@ -184,7 +184,8 @@ describe('neuma coding tool surface', () => {
       .toBeTruthy();
     const status = await dispatch(match('sandbox_status'));
     expect(status).toMatchObject({ tool: 'coding/sandbox_status', status: 'ok' });
-    expect(status.content).toContain('the live focused folder, seen through a kernel overlay');
+    expect(status.content).toContain('the live focused folder');
+    expect(status.content).toContain('seen through a kernel overlay');
     const inspection = await dispatch(match('inspect', "grep -n 'alpha' needle.txt"));
     expect(inspection).toMatchObject({ tool: 'coding/inspect', status: 'ok' });
     expect(inspection.content).toContain('1:alpha');

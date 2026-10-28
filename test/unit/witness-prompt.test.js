@@ -38,7 +38,8 @@ describe('witness prompt truth', () => {
     // […] line was REMOVED with the behaviour
     // it described. Asserting it again would only be green by putting the
     // stale doctrine back. What matters now is where writes LAND.
-    expect(prompt).toContain('reads the focused folder LIVE through a kernel overlay');
+    expect(prompt).toContain('reads the focused folder LIVE');
+    expect(prompt).toContain('On AUTO in the operator\'s open folder it works on that folder for real');
     expect(prompt).toContain('never on the live folder itself');
     expect(prompt).toContain('Never claim an action completed until its result says it did.');
     expect(prompt).toContain('The human witness speaking with you is Founder.');
@@ -237,17 +238,17 @@ describe('the focus ground is named to the witness', () => {
     // lane-side over a live-reading overlay.
     const prompt = buildWitnessSystemPrompt({ ...INPUT, focusGround: '/repos/thing' });
     expect(prompt).toContain("Your work lands in the operator's real folder");
-    expect(prompt).toContain('reads the focused folder LIVE through a kernel overlay');
-    expect(prompt).toContain('Shell writes land in your lane-side layer');
+    expect(prompt).toContain('reads the focused folder LIVE');
+    expect(prompt).toContain('Otherwise shell writes land in your lane-side layer');
   });
 
   test('a shell not yet prepared still stands in the prompt — the status hand names its layer', () => {
     // Load on demand (2026-10-04): the shell is prepared at its first act, so
     // before one the layer's path is unknown; the line must not vanish with it.
     const prompt = buildWitnessSystemPrompt({ ...INPUT, focusGround: '/repos/thing', codingWorkspace: null, codingShell: true });
-    expect(prompt).toContain('Shell writes land in your lane-side layer (coding/sandbox_status names it)');
+    expect(prompt).toContain('Otherwise shell writes land in your lane-side layer (coding/sandbox_status names it)');
     const none = buildWitnessSystemPrompt({ ...INPUT, focusGround: '/repos/thing', codingWorkspace: null });
-    expect(none).not.toContain('Shell writes land in your lane-side layer');
+    expect(none).not.toContain('lane-side layer');
   });
 
   test('says paths outside the ground still ask', () => {

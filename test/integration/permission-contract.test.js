@@ -20,9 +20,13 @@ const prepare = async () => stashBeingTurnCatalog(kit.connection, await beingCod
 const execute = (command) => processToolCalls(kit.ws, '', kit.connection,
   [{ server: 'coding', toolName: 'execute', tool: 'coding/execute', args: { command } }]);
 
-test('ALWAYS runs subsequent AUTO commands without another card; revoke stops running work and next turn asks', async () => {
-  await workspace.writeToolPolicy(kit.laneId, { coding: { allowed: ['ground_git'] } });
-  kit.connection.toolMode = 'auto';
+// The ALWAYS/revoke contract lives in ASK (Design note, 2026-10-28: on AUTO a shell run
+// asks nothing at all — the mode is the grant, and switching to ASK the off
+// switch (open-folder-autonomy.js) — so the cards this contract governs are
+// ASK's.
+test('ALWAYS runs subsequent commands without another card; revoke stops running work and next turn asks', async () => {
+  await workspace.writeToolPolicy(kit.laneId, { coding: { allowed: ['ground_git'], requireApproval: ['execute'] } });
+  kit.connection.toolMode = 'ask';
   let allow = true;
   kit.client.on('message', (data) => {
     const frame = JSON.parse(data.toString());
@@ -71,7 +75,7 @@ test('ALWAYS runs subsequent AUTO commands without another card; revoke stops ru
 }, 30000);
 
 test('AUTO itself is not an explicit grant, and an explicit denial cannot be overridden', () => {
-  for (const [serverName, tool] of [['coding', 'execute'], ['intents', 'wallet.send'], ['filesystem', 'delete_file']]) {
+  for (const [serverName, tool] of [['intents', 'wallet.send'], ['filesystem', 'delete_file']]) {
     expect(applyProtocolGuard('allowed', 'auto', serverName, tool, false)).toBe('approval_required');
     expect(applyProtocolGuard('allowed', 'auto', serverName, tool, true)).toBe('allowed');
     expect(applyProtocolGuard('denied', 'auto', serverName, tool, true)).toBe('denied');

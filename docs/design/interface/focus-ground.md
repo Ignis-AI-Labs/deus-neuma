@@ -35,6 +35,23 @@ Consequences, all deliberate:
 - A witness on `auto` works silently while a neuma on `ask` still raises cards.
   Each participant's stance is set independently and persists per being.
 
+### The open folder on AUTO (Design note, 2026-10-28
+
+> […]
+
+The one place focus and mode meet: a participant on **AUTO** works **for real**
+in the open folder (`open-folder-autonomy.js`).
+
+- Its **shell runs on the folder itself**, not through the overlay
+  (`witness-coding-sandbox.js`, `live`): writes and deletes land; `.git` and every
+  secret-shaped path stay masked, so the history is the safety net — whatever a
+  being breaks in the files, git restores. Beings never commit (ruling).
+- A **delete inside the folder** (absolute path) lands with no card.
+- **ASK** keeps the overlay shell and every card; switching to ASK is the off
+  switch. Outside the open folder nothing changes, and money, outward speech
+  (posts, email) and security acts stay hard-gated in every mode
+  (`protocol-guard.js`).
+
 ## What this replaced
 
 The permission system asked the reach question three different ways, and the one
