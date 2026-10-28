@@ -67,6 +67,8 @@ describe('the Ethereum seal walkthrough', () => {
     const panel = page.getByTestId('seal-funding');
     await pw(panel).toContainText('Ethereum is a public ledger');
     await pw(panel).toContainText('YOUR WALLET 0.0000 ETH');
+    // the price first: what the seal will most likely cost (in ETH here: no price feed is served)
+    await pw(page.getByTestId('seal-funding-cost')).toContainText(/COST\s*≈ \d+\.\d{4} ETH/);
     await pw(panel).toContainText(/NEEDS ABOUT \d+\.\d{4} ETH/);
     await pw(panel).toContainText(/YOU NEED ABOUT \d+\.\d{4} ETH MORE/);
     for (const label of ['Coinbase', 'Kraken', 'Exchanges in your country']) {
@@ -82,6 +84,9 @@ describe('the Ethereum seal walkthrough', () => {
     await pw(page.getByTestId('seal-funding-go')).toBeEnabled({ timeout: 25_000 }); // the 15 s watch
     await pw(page.getByTestId('seal-funding-go')).toHaveText('SEAL ON ETHEREUM');
     await pw(panel).not.toContainText('YOU NEED ABOUT');
+    // a funded wallet still shows where it is: the address and its QR stay in view
+    await pw(page.getByTestId('seal-funding-address')).toHaveText(new RegExp(operator.address, 'i'));
+    await pw(panel.locator('img.seal-funding-qr')).toHaveAttribute('src', /^data:image\/png/);
     await page.screenshot({ path: shotPath('seal-funding-ready-1366'), fullPage: true });
     await page.getByTestId('seal-funding-go').click();
     expect(await page.evaluate(() => window.sealed)).toBe(true);

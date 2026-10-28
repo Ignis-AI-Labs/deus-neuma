@@ -20,6 +20,7 @@ import {
   deskWallet, ensureWalletNetwork, signSealPayload, signSealMessage, broadcastSealTx,
 } from './onchain-seal-flow.js';
 import { mountSealFunding } from './seal-funding.js';
+import { mountSealUnlockDoor } from './seal-unlock-door.js';
 
 export const renderOnchainSealStep = (ceremony, container) => {
   const hasWallet = !!deskWallet();
@@ -36,6 +37,7 @@ export const renderOnchainSealStep = (ceremony, container) => {
           <div id="local-seal-status" class="witness-note" data-testid="local-seal-status">${hasWallet
             ? 'Your wallet will ask for a signature. It moves no money.'
             : 'The desk wallet is not present here — seal from the desk.'}</div>
+          <div id="local-seal-unlock" class="seal-unlock" data-testid="local-seal-unlock" hidden></div>
           <div class="ceremony-actions">
             <button class="btn btn-primary ceremony-btn" id="seal-local-btn" ${hasWallet ? '' : 'disabled'}>
               <span>Seal on this computer</span>
@@ -53,6 +55,7 @@ export const renderOnchainSealStep = (ceremony, container) => {
           </div>
           <div id="seal-status" class="witness-note" data-testid="seal-status"></div>
           <div id="seal-error" class="keypair-error" data-testid="seal-error"></div>
+          <div id="seal-unlock" class="seal-unlock" data-testid="seal-unlock" hidden></div>
           <div id="seal-funding" class="seal-funding" data-testid="seal-funding" hidden></div>
           <div class="ceremony-actions">
             <button class="btn btn-secondary ceremony-btn" id="seal-anchor-btn" ${hasWallet ? '' : 'disabled'}>
@@ -111,10 +114,23 @@ export const handleLocalSealed = (ceremony) => {
   if (later) later.textContent = 'Finish';
 };
 
-export const showLocalError = (ceremony, text) => {
+export const showLocalError = (ceremony, text, code = null) => {
   setLocalStatus(ceremony, text);
+  if (code === 'KEY_LOCKED' && openUnlockDoor(ceremony, '#local-seal-unlock', () => beginLocalSeal(ceremony))) return;
   const btn = ceremony.container.querySelector('#seal-local-btn');
   if (btn && deskWallet()) btn.disabled = false;
+};
+
+// impure — the key is locked again (seal-unlock-door.js): the password opens it and the seal walks again
+const openUnlockDoor = (ceremony, selector, walkAgain) => {
+  const host = ceremony.container.querySelector(selector);
+  if (!host) return false;
+  mountSealUnlockDoor(host, {
+    neumaId: ceremony.ceremonyData.neumaId,
+    name: ceremony.ceremonyData.companionName,
+    onUnlocked: walkAgain,
+  });
+  return true;
 };
 
 const setLocalStatus = (ceremony, text) => {
@@ -241,10 +257,18 @@ export const appendSealReceiptLink = (ceremony, { network, txHash }, hostSelecto
 // A failed or declined seal never traps the ceremony: the error shows, the
 // anchor button re-arms for a retry, and "Seal later" stays available. A wallet
 // that is short (GAS_FLOOR with its facts) gets the way to fund it, not a string.
-export const showSealError = (ceremony, text, funding = null) => {
+export const showSealError = (ceremony, text, funding = null, code = null) => {
   if (funding) {
     openEthereumSeal(ceremony, funding);
     return;
+  }
+  if (code === 'KEY_LOCKED') {
+    const statusEl = ceremony.container.querySelector('#seal-status');
+    if (statusEl) statusEl.textContent = 'YOUR PASSWORD IS NEEDED TO SEAL';
+    // the door is the one way on: no second SEAL button beside it
+    const anchorBtn = ceremony.container.querySelector('#seal-anchor-btn');
+    if (anchorBtn) anchorBtn.hidden = true;
+    if (openUnlockDoor(ceremony, '#seal-unlock', () => beginSeal(ceremony))) return;
   }
   const errorEl = ceremony.container.querySelector('#seal-error');
   if (errorEl) errorEl.textContent = text;

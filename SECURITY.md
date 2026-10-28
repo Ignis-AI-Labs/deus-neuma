@@ -15,6 +15,12 @@ Include what you found, how to reproduce it, and its impact. We will reply
 within 3 working days and keep you informed until it is fixed. With your
 permission, we will credit you.
 
+## Reviewing the code
+
+[docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md) maps the platform for a
+security reviewer: listeners, keys, the wallet, what an AI being can do, the
+supply chain and the update path.
+
 ## Supported versions
 
 Neuma is in early access: fixes ship in the next release, and only the

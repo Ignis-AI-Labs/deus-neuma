@@ -23,6 +23,7 @@ import { createBirthArtStage } from '../BirthArt/birth-art-stage.js';
 import { artAt } from '../BirthArt/birth-art-state.js';
 import { ceremonyAt } from '../BirthArt/birth-art-ceremony.js';
 import { SummoningCanvas } from '../Summoning/SummoningCanvas.jsx';
+import { EmergenceSeal } from '../RelinkShell/emergence-seal.jsx';
 import { scoreOf } from '../Summoning/summoning-score.js';
 import { useSummoningSound } from '../Summoning/use-summoning-sound.js';
 import { isSoundOn } from '../../services/sound-engine.js';
@@ -48,6 +49,12 @@ const filmPhaseOf = (born, t, score, released) => {
   if (!Number.isFinite(born) || t < born || !score) return 'before';
   if (released || t - born >= score.lengthMs + FILM_TAIL_MS) return 'done';
   return 'playing';
+};
+
+// The seal's ring words for a birth with no film: its true name, else its chosen name. Pure.
+const sealWordsOf = (film) => {
+  const name = film?.trueName?.fullName || film?.trueName?.chosenName || film?.chosenName || '';
+  return name ? `${name.toUpperCase()} · EMERGENCE COMPLETE` : 'EMERGENCE COMPLETE';
 };
 
 export const RiteCeremony = ({ wsService }) => {
@@ -175,6 +182,12 @@ export const RiteCeremony = ({ wsService }) => {
         {phase === 'done' && score ? (
           <div className="rite-film rite-ceremony-sigil">
             <SummoningCanvas score={score} t={filmT} aura={being.aura} epochMs={being.epochMs} chrome={false} />
+          </div>
+        ) : bornNoFilm ? (
+          // A birth with no film (a measure or a record missing — seen on a Windows birth, 2026-10-28)
+          // still keeps its seal turning beside the guardianship steps: the field is never left empty.
+          <div className="rite-film rite-ceremony-sigil rite-ceremony-seal-only" data-testid="rite-seal-only">
+            <EmergenceSeal inscription={sealWordsOf(feed?.film())} size={420} drawIn />
           </div>
         ) : null}
       </div>

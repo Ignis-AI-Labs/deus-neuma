@@ -155,11 +155,11 @@ export class BirthCeremony {
       },
       'birth:seal_error': (data) => {
         playSound('deny');
-        this.showSealError(data.message || 'The seal could not be placed', data.funding || null);
+        this.showSealError(data.message || 'The seal could not be placed', data.funding || null, data.code || null);
       },
       'birth:local_seal_ready': (data) => handleLocalSealReady(this, data),
       'birth:local_sealed': () => { playSound('noticeArrival'); handleLocalSealed(this); },
-      'birth:local_seal_error': (data) => { playSound('deny'); showLocalError(this, data.message || 'The seal could not be placed'); },
+      'birth:local_seal_error': (data) => { playSound('deny'); showLocalError(this, data.message || 'The seal could not be placed', data.code || null); },
       'birth:keypair_secured': (data) => {
         this.ceremonyData.recoveryCodes = data.recoveryCodes;
         playSound('noticeArrival');
@@ -365,7 +365,7 @@ export class BirthCeremony {
 
   appendSealReceiptLink(data, hostSelector) { appendSealReceiptLink(this, data, hostSelector); }
 
-  showSealError(text, funding) { showSealError(this, text, funding); }
+  showSealError(text, funding, code) { showSealError(this, text, funding, code); }
 
   beginLocalSeal() { beginLocalSeal(this); }
 

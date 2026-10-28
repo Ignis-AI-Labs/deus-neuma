@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.82] - 2026-10-28
+
+Notes: `docs/operations/release-notes-0.1.82.md`.
+
+### Changed
+
+- Sealing on Ethereum shows the cost first, in dollars when the price can be read, then what your wallet holds against what it needs. Your wallet address and its QR code are always in view, so you can send ETH from a phone. When the wallet is short it says how much more is needed and where to buy it, and the seal opens by itself when the ETH arrives. Finish without Ethereum is always one press away.
+
+### Fixed
+
+- Sealing on Ethereum at the end of a birth no longer stops at "enter the password below" with nowhere to enter it. If the key was locked with its password before the seal (it stays open for a few minutes after you set it), a password box now appears right there. You can also use your 8 recovery codes, and the seal goes on. The seal on this computer gets the same box.
+- The seal step no longer shows two SEAL ON ETHEREUM buttons. A button the step hides is now really hidden, everywhere in the app.
+- After EMERGENCE COMPLETE, the left side of the screen shows the being's seal turning with its name, even when the birth has no film to play. It is never left black.
+
 ## [0.1.79] - 2026-10-27
 
 Notes: `docs/operations/release-notes-0.1.79.md`.
