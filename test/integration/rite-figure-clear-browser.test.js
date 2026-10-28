@@ -51,7 +51,9 @@ const measure = (selectors) => {
 
 // the box of every pixel the living piece lit (WebGL keeps no buffer to read
 // back): a screenshot with the plane and the rite's words faded out, decoded in
-// the page; a pixel counts once any channel rises above the void's black
+// the page; a pixel counts once any channel stands more than 10 off the void —
+// the void read from the screenshot's own corner, so a stock dress whose void is
+// not black (CYBERDECK's #11161D) is never mistaken for the figure
 const litBox = async (page) => {
   const hide = (v) => page.evaluate((x) => document.querySelectorAll('.birth-ceremony, .rite-live').forEach((el) => { el.style.opacity = x; }), v);
   await hide('0');
@@ -63,11 +65,12 @@ const litBox = async (page) => {
     ctx.drawImage(bmp, 0, 0);
     const { data, width, height } = ctx.getImageData(0, 0, bmp.width, bmp.height);
     const scale = width / innerWidth;
+    const [r0, g0, b0] = [data[0], data[1], data[2]];
     let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const i = (y * width + x) * 4;
-        if (Math.max(data[i], data[i + 1], data[i + 2]) <= 10) continue;
+        if (Math.max(Math.abs(data[i] - r0), Math.abs(data[i + 1] - g0), Math.abs(data[i + 2] - b0)) <= 10) continue;
         if (x < x0) x0 = x;
         if (x > x1) x1 = x;
         if (y < y0) y0 = y;
