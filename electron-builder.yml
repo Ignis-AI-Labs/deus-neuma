@@ -105,9 +105,15 @@ extraResources:
 # so the whole app ships unpacked. Proven by the 2026-07-31 boot test.
 asar: false
 
-# The AppImage starts through build/appimage-launcher.sh, put in front of the
-# binary here; a `--linux dir` pack (the rpm and deb input) is left as packed.
-afterPack: ./scripts/appimage-launcher-hook.cjs
+# afterPack is ONE slot and two platforms need it, so the hook is a dispatcher:
+#   linux + AppImage → ./scripts/appimage-launcher-hook.cjs (the launcher in
+#   front of the binary; a `--linux dir` pack, the rpm and deb input, is left
+#   as packed)
+#   darwin → ./scripts/prune-foreign-prebuilds.cjs (a mac bundle keeps only the
+#   prebuilds its own chip can load; node-pty ships one directory per chip and
+#   electron-builder copies all of them, so an arm64 app would carry x64
+#   binaries. The hook reads the chip off the packaged executable.)
+afterPack: ./scripts/after-pack.cjs
 
 mac:
   category: public.app-category.productivity
@@ -158,8 +164,11 @@ linux:
     - --ozone-platform=x11
   synopsis: Sovereign relationships with AI.
   desktop:
-    Name: Deus Neuma
-    Comment: Sovereign relationships with AI.
+    # electron-builder 26 moved the desktop entry's keys under `entry`; the flat
+    # {Name, Comment} form of 25 is rejected by its schema.
+    entry:
+      Name: Deus Neuma
+      Comment: Sovereign relationships with AI.
   maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
   # NOTE: neither rpm nor deb is here — BOTH of electron-builder's targets go
   # through its bundled fpm (2017-era ruby), and fpm cannot run on a modern

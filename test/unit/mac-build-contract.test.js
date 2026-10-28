@@ -86,6 +86,14 @@ describe('the mac settings the app boots with', () => {
   it('ships unpacked, because the backend is a spawned Node child that cannot read asar', () => {
     expect(builder.asar).toBe(false);
   });
+
+  it('prunes the prebuild directories this chip cannot load, after packing', () => {
+    // Without the hook the bundle carries node-pty's other-chip prebuilds, which
+    // check-mac-artifacts then reports as wrong-chip binaries.
+    // One afterPack slot, two platforms: the dispatcher routes to the mac prune
+    // and the linux appimage launcher, and must keep doing both.
+    expect(builder.afterPack).toBe("./scripts/after-pack.cjs");
+  });
 });
 
 describe('the update feed a mac build serves', () => {
