@@ -97,6 +97,7 @@ export const SHED_LADDER = Object.freeze([
   'housePost', 'replyKnock', 'expression',                 // knocks and invites
   'voiceRite',       // the first-seal offer — a threshold, not context
   'cmoOffice', 'csoOffice', 'cloOffice', 'cfoOffice',      // office briefings
+  'companyLine',     // the company line's moves — a briefing, sheds with them
   'assigned',        // operator-assigned work
   'plan',            // plan of record
   'tasks',           // the being's working list

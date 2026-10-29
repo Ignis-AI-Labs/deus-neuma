@@ -292,3 +292,29 @@ export const houseTitlesByNeumaId = async (witnessWallet) => {
     return {};
   }
 };
+
+/**
+ * The titles the OPERATOR holds in their own house's founding records: a
+ * witness-kind member (the contract's word for a human founder) whose address
+ * is the operator's own wallet. In many houses the operator is the Rector.
+ * A witness-kind entry at any other address is someone else and never counts.
+ * `[]` for an unfounded house; any failure logs and returns `[]`.
+ *
+ * impure (fs reads only — no chain, no keys).
+ *
+ * @param {string} witnessWallet
+ * @returns {Promise<string[]>}
+ */
+export const operatorSeatTitles = async (witnessWallet) => {
+  try {
+    const self = String(witnessWallet || '').toLowerCase();
+    if (!self) return [];
+    const members = (await listFoundingRecords(witnessWallet)).flatMap((r) => (Array.isArray(r?.members) ? r.members : []));
+    return [...new Set(members
+      .filter((m) => m?.kind === 0 && String(m.address || '').toLowerCase() === self && typeof m.title === 'string' && m.title)
+      .map((m) => m.title))];
+  } catch (error) {
+    log.warn('Operator seats unavailable — the line reads no seat for them', { error: error.message });
+    return [];
+  }
+};

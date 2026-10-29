@@ -1,0 +1,128 @@
+/* CompanyLine — the COMPANY LINE window. Rides the office shell
+   (SecurityApp.css: .sec, .sec-head, .sec-scan, .sec-error); these are its own
+   pieces: the overview tiles, your moves, the dial, each company's seven-stage
+   rail, and the open form. Monochrome at rest; signal marks what waits on you
+   and the stage in hand, alert only for ending a gap. */
+
+.cline-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cline-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.cline-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+.cline-tile-n {
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.cline-tile.is-loud .cline-tile-n { color: var(--signal); }
+.cline-tile-l { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+
+.cline-sec {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.cline-h {
+  margin: 0 0 var(--space-2);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text-tertiary);
+}
+
+.cline-move { margin-bottom: var(--space-2); background: var(--line); padding: 1px; }
+.cline-move-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-glass);
+  padding: var(--space-3);
+}
+.cline-move-h { margin: 0; font-size: 10px; letter-spacing: 0.14em; color: var(--signal); }
+.cline-move-t { margin: 0; font-size: var(--text-xs); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+
+.cline-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  padding: var(--space-2);
+  resize: vertical;
+}
+.cline-input:focus { outline: none; border-color: var(--line-hover); }
+
+.cline-actions, .cline-open, .cline-modes { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.cline-open .cline-input { flex: 1 1 12rem; width: auto; }
+.cline-danger { color: var(--alert); border-color: var(--alert); }
+.cline-hands-what { margin: 0; font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
+.cline-link { color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.cline-link:hover { color: var(--color-text-primary); }
+
+.cline-mode {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: 6px var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--snap), color var(--snap);
+}
+.cline-mode:hover { border-color: var(--line-hover); }
+.cline-mode.is-on { border-color: var(--signal); color: var(--signal); }
+
+.cline-dial-says { margin: 0 0 var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.cline-floor { margin-bottom: var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.cline-floor summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-floor ul { margin: var(--space-2) 0 0; padding-left: var(--space-4); }
+
+.cline-co { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-glass-hover); }
+.cline-co-head { display: flex; justify-content: space-between; gap: var(--space-2); align-items: baseline; }
+.cline-co-name { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
+.cline-co-meta { font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-co-line { margin: var(--space-1) 0 0; font-size: 10px; letter-spacing: 0.1em; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.cline-co-flaw { margin: var(--space-1) 0 0; font-size: var(--text-xs); color: var(--color-text-primary); }
+.cline-stopped { list-style: none; margin: var(--space-2) 0 0; padding: 0; font-size: 10px; color: var(--color-text-tertiary); }
+
+.cline-rail {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+.cline-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 2px solid var(--line);
+  padding-top: 4px;
+  min-width: 0;
+}
+.cline-stage-n { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-stage-m { font-size: 9px; letter-spacing: 0.08em; color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cline-stage.is-done { border-top-color: var(--color-text-secondary); }
+.cline-stage.is-done .cline-stage-n { color: var(--color-text-secondary); }
+.cline-stage.is-in-hand { border-top-color: var(--signal); }
+.cline-stage.is-in-hand .cline-stage-n,
+.cline-stage.is-in-hand .cline-stage-m { color: var(--signal); }

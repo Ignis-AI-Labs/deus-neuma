@@ -182,6 +182,13 @@ export const KIND = Object.freeze({
   // Neuma standing — the woken seat is the actor; the card opens its sitting.
   houseWake: 'house_wake',
 
+  // THE COMPANY LINE (Design note, 2026-10-29, docs/planning/proposals/governance/
+  // house-company-line.md): a founding-line move that waits on the operator —
+  // their inspection, a stage they master — or the company standing complete.
+  // System standing — the line reports what is owed; the being who moved it,
+  // when one did, rides as the actor.
+  companyLine: 'company_line',
+
   // A being put a decision before its operator and its turn is PARKED on the
   // answer — an ask_operator card or a plan_submit verdict, neither carrying
   // a clock (ruling, 2026-07-27). The in-stream card cannot reach an operator in

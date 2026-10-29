@@ -22,6 +22,8 @@
  * and hold nothing (2026-10-18 audit).
  */
 
+import { STOPS } from '../company-line/involvement-dial.js';
+
 /** Acts that move money out of the house. Never delegated, never pre-allowed. */
 export const MONEY_OUT = Object.freeze(['intents/wallet.send']);
 
@@ -41,7 +43,7 @@ export const ACTS_MAX = 32;
 const LANE_ID = /^[a-zA-Z0-9_-]{1,200}$/;
 const POLICY_ID = /^[a-z_]+\/[a-z0-9_.-]+$/;
 const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const KEYS = Object.freeze(['goal', 'linesOfWork', 'seats', 'quietHours', 'cadence', 'delegation', 'allow', 'escalate']);
+const KEYS = Object.freeze(['goal', 'linesOfWork', 'seats', 'quietHours', 'cadence', 'delegation', 'allow', 'escalate', 'involvement']);
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isCount = (v, max) => Number.isInteger(v) && v >= 1 && v <= max;
@@ -112,6 +114,15 @@ const delegationOf = (value) => {
   return Object.freeze({ teamPlans: d.teamPlans === true, maxMembers, maxSteps });
 };
 
+// The involvement dial (company/involvement-dial.js): how close the operator
+// stands to the house's company work. Unwritten is null — the line then
+// stands at the dial's default.
+const involvementOf = (value) => {
+  if (value == null) return null;
+  if (!STOPS.includes(value)) throw new Error(`involvement is one of ${STOPS.join(', ')}`);
+  return value;
+};
+
 const actsOf = (value, field, knownActs) => {
   if (value == null) return [];
   if (!Array.isArray(value) || value.length > ACTS_MAX) throw new Error(`${field} is a list of at most ${ACTS_MAX} acts`);
@@ -132,7 +143,7 @@ const actsOf = (value, field, knownActs) => {
  * @param {Object} input - the charter's fields as written
  * @param {{ownedLanes?: string[], knownActs?: ?Set<string>}} [opts] - the house's own lanes (seats must be
  *   among them); the act ids allow and escalate may name (none: any well-formed id)
- * @returns {Readonly<Object>} goal, linesOfWork, seats, quietHours, cadence, delegation, allow, escalate
+ * @returns {Readonly<Object>} goal, linesOfWork, seats, quietHours, cadence, delegation, allow, escalate, involvement
  */
 export const normalizeCharter = (input, { ownedLanes = null, knownActs = null } = {}) => {
   if (!isObject(input)) throw new Error('a charter is an object');
@@ -155,6 +166,7 @@ export const normalizeCharter = (input, { ownedLanes = null, knownActs = null } 
     allow: Object.freeze(allow),
     // Money out always comes back to the operator, written or not.
     escalate: Object.freeze([...new Set([...escalate, ...MONEY_OUT])]),
+    involvement: involvementOf(input.involvement),
   });
 };
 

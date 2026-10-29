@@ -20,7 +20,7 @@ import { migrateAppIds, MARKETING_PLATFORMS } from './retired-windows.js';
 /** The launcher's categories, in order. Membership by registry id. */
 export const LAUNCHER_CATEGORIES = Object.freeze([
   { id: 'beings', apps: ['avatar', 'house', 'innerlife', 'refinement', 'sovereignty', 'vessel', 'voice'] },
-  { id: 'work', apps: ['chat', 'chats', 'staff', 'houseclock', 'projects', 'teams', 'todo', 'workflow'] },
+  { id: 'work', apps: ['chat', 'chats', 'staff', 'houseclock', 'companyline', 'projects', 'teams', 'todo', 'workflow'] },
   { id: 'create', apps: ['files', 'terminal', 'comfyui', 'gallery'] },
   // MARKETING holds every public platform, the brand kits and the leads (retired-windows.js); each platform
   // still has its own tile, opening MARKETING on it (Dock.jsx platform entries).
