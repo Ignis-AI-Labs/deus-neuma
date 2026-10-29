@@ -13,7 +13,7 @@ import { lineView } from '../../backend/services/company-line/company-view.js';
 import { STOPS, DEFAULT_STOP as BACK_DEFAULT, stopSays, FLOOR } from '../../backend/services/company-line/involvement-dial.js';
 import { DIAL_STOPS, DEFAULT_STOP, dialSays } from '../../frontend/app/RelinkShell/house-clock/involvement-words.js';
 import { CompanyLineBody } from '../../frontend/app/RelinkShell/company-line/CompanyLineBody.jsx';
-import { upWords, stepWords, operatorMove, lineOverview, holderName, openHands, domainOf } from '../../frontend/app/RelinkShell/company-line/company-line-view.js';
+import { upWords, stepWords, operatorMove, lineOverview, holderName, openHands, domainOf, handOnReady, handOnPayload, currentStage as currentStageOf } from '../../frontend/app/RelinkShell/company-line/company-line-view.js';
 import { CharterSection } from '../../frontend/app/RelinkShell/house-clock/CharterSection.jsx';
 import { draftFromCharter, charterFromDraft, charterLines } from '../../frontend/app/RelinkShell/house-clock/house-clock-view.js';
 import { normalizeCharter } from '../../backend/services/house-clock/charter-shape.js';
@@ -147,5 +147,41 @@ describe('YOUR HANDS on the desk', () => {
     const row = { kind: 'hands', where: { app: 'companyline', companyId: COMPANY.id, handsId: item.id } };
     expect(KIND_LABEL[row.kind]).toBe('YOUR HANDS');
     expect(cardSelector(row)).toBe(`[data-hands-id="${item.id}"]`);
+  });
+});
+
+describe('worksheets on the desk', () => {
+  test('CHOOSE, when the operator masters it: the shaped gap shown, and the draft becomes the worksheet', async () => {
+    const { SHEETS, GAP } = await import('../helpers/company-line-kit.js');
+    const view = lineView(COMPANY, foldLine(toChoose.slice(0, 6)), HOLDERS, [], { shape: SHEETS.shape });
+    const choose = view.stages.find((s) => s.id === 'choose');
+    expect(choose.worksheet).toBe(true);
+    expect(view.stages.find((s) => s.id === 'charter').worksheet).toBe(false);
+    expect(handOnReady(choose, { why: 'ours', kill: '' })).toBe(false);
+    expect(handOnReady(choose, { why: 'ours', kill: 'we stop if nobody signs\n' })).toBe(true);
+    expect(handOnPayload(view, { why: 'The canvas leaves room.', kill: 'we stop if nobody signs\n\n we stop if churn > 50% ' })).toEqual({
+      stage: 'choose', worksheet: { candidate: GAP, why: 'The canvas leaves room.', killCriteria: ['we stop if nobody signs', 'we stop if churn > 50%'] },
+    });
+    const html = render({ ...boardOf(toChoose.slice(0, 6)), companies: [view] });
+    expect(html).toContain(`THE GAP SHAPED: ${GAP}`);
+    expect(html).toContain('data-worksheet="shape"');
+    expect(html).toContain('“Your harbour, your tides, one page.”');
+  });
+
+  test('a worksheet stage the operator writes by hand refuses JSON that does not parse', () => {
+    const view = lineView(COMPANY, foldLine([]), { ...HOLDERS, Speculator: 'operator' });
+    expect(handOnReady(currentStageOf(view), { json: '' })).toBe(false);
+    expect(() => handOnPayload(view, { json: '{candidates:' })).toThrow('The worksheet is not valid JSON.');
+  });
+
+  test('an inspection shows the canvas: a level per factor and player, and every level\'s source', async () => {
+    const { SHEETS } = await import('../helpers/company-line-kit.js');
+    const events = [hand('survey', 'spec', ['Numerarius'], 1), ok('survey', 0, 'numer', 2), hand('measure', 'numer', ['Rector'], 3)];
+    const view = lineView(COMPANY, foldLine(events), { ...HOLDERS, Architectus: 'operator' }, [], { survey: SHEETS.survey, measure: SHEETS.measure });
+    const html = render({ ...boardOf(events), companies: [view] });
+    expect(html).toContain('data-worksheet="measure"');
+    expect(html).toContain('CANVAS — Tide tables for small harbours');
+    expect(html).toContain('<td class="label-data" title="repos/tidewater/model-check.md">9</td>');
+    expect(html).toContain('Local accuracy · National almanac · 4 — <span>interview: harbour master, Port Isaac, 2026-10-20</span>');
   });
 });

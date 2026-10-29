@@ -65,6 +65,40 @@ export const operatorMove = (company) => {
   return { kind: 'inspect', counsel: company.up.as === 'counsel', stoppable: Boolean(currentStage(company)?.stoppable) };
 };
 
+const lines = (v) => String(v ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+
+/**
+ * Is the operator's hand-on draft whole enough to send? (The server judges
+ * the worksheet itself; this only keeps HAND ON dark until something is there.)
+ * @param {{id: string, worksheet: boolean}} stage
+ * @param {object} draft
+ */
+export const handOnReady = (stage, draft) => {
+  if (stage.id === 'choose') return Boolean(String(draft.why ?? '').trim()) && lines(draft.kill).length > 0;
+  if (stage.worksheet) return Boolean(String(draft.json ?? '').trim());
+  return Boolean(String(draft.artifact ?? '').trim());
+};
+
+/**
+ * The hand-on the operator's draft sends, or a thrown reason (a JSON worksheet that does not parse).
+ * @param {object} company - the line view
+ * @param {object} draft
+ * @returns {{stage: string, note?: string, artifact?: string, worksheet?: object}}
+ */
+export const handOnPayload = (company, draft) => {
+  const stage = currentStage(company);
+  const base = { stage: stage.id, ...(String(draft.note ?? '').trim() ? { note: draft.note } : {}) };
+  if (stage.id === 'choose') {
+    return { ...base, worksheet: { candidate: company.worksheets?.shape?.candidate ?? '', why: draft.why, killCriteria: lines(draft.kill) } };
+  }
+  if (!stage.worksheet) return { ...base, artifact: draft.artifact };
+  try {
+    return { ...base, worksheet: JSON.parse(draft.json) };
+  } catch {
+    throw new Error('The worksheet is not valid JSON.');
+  }
+};
+
 /** What a HANDS item asks back, as the box's prompt. */
 export const ANSWER_ASKS = Object.freeze({
   done: null,

@@ -18,6 +18,7 @@ import { getRosterForBinding } from '../../../services/social-channels-client.js
 import { useWaitingAccount } from '../waiting/use-waiting.js';
 import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { CompanyLineBody, CompanyLineIcon } from './CompanyLineBody.jsx';
+import { handOnPayload } from './company-line-view.js';
 
 const CompanyLineAppBody = () => {
   const [board, setBoard] = useState(null);
@@ -70,7 +71,7 @@ const CompanyLineAppBody = () => {
         board={board} names={names} error={error} loading={loading} busy={busy} drafts={drafts} onDraft={onDraft}
         onRefresh={() => { uiSound('activate'); load(); }}
         onOpen={() => move('_open', () => openCompany({ name: drafts._open?.name, mode: drafts._open?.mode }))}
-        onHandOn={(c) => move(c.id, () => handOnStage(c.id, { stage: c.stage, artifact: drafts[c.id]?.artifact, note: drafts[c.id]?.note }))}
+        onHandOn={(c) => move(c.id, () => handOnStage(c.id, handOnPayload(c, drafts[c.id] ?? {})))}
         onInspect={(c, verdict) => move(c.id, () => inspectStage(c.id, { stage: c.stage, verdict, flaw: drafts[c.id]?.flaw }))}
         onAnswer={(item, status) => move(item.id, () => answerHands(item.company.id, item.id, { status, text: drafts[item.id]?.text }))}
         onCharter={() => { uiSound('open'); requestWaitingJump({ where: { app: 'houseclock', tab: 'charter' } }); }}

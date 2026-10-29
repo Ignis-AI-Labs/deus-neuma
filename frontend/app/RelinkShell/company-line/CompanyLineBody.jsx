@@ -9,9 +9,10 @@
 import '../SecurityApp.css';
 import './CompanyLine.css';
 import { EmptyState } from '../empty-state.jsx';
+import { WorksheetView } from './WorksheetView.jsx';
 import {
   MODE_WORDS, holderName, statusWords, currentStage, upWords, stepWords, operatorMove, lineOverview,
-  ANSWER_ASKS, openHands, domainOf,
+  ANSWER_ASKS, openHands, domainOf, handOnReady,
 } from './company-line-view.js';
 
 export const CompanyLineIcon = () => (
@@ -45,17 +46,32 @@ const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect }) => {
   const stage = currentStage(company);
   const set = (field) => (e) => onDraft(company.id, field, e.target.value);
   if (move.kind === 'hand-on') {
+    const ready = handOnReady(stage, draft);
     return (
       <div className="cline-move cham" data-company-move={company.id}>
         <div className="cline-move-in cham-in">
           <p className="cline-move-h label-data">{company.name} · {stage.name} — YOURS TO DO</p>
           <p className="cline-move-t">{stage.handsOn}</p>
-          <input className="cline-input" aria-label="Where the work lies" placeholder="Where the work lies — a path, a link, or what was filed"
-            value={draft.artifact ?? ''} disabled={busy} onChange={set('artifact')} />
+          {stage.id === 'choose' ? (
+            <>
+              <p className="cline-co-line label-data">THE GAP SHAPED: {company.worksheets?.shape?.candidate ?? '—'}</p>
+              <WorksheetView stageId="shape" worksheet={company.worksheets?.shape} />
+              <textarea className="cline-input" rows={2} aria-label="Why this gap is ours" placeholder="Why this gap is ours"
+                value={draft.why ?? ''} disabled={busy} onChange={set('why')} />
+              <textarea className="cline-input" rows={2} aria-label="We stop if" placeholder="We stop if … (one condition per line)"
+                value={draft.kill ?? ''} disabled={busy} onChange={set('kill')} />
+            </>
+          ) : stage.worksheet ? (
+            <textarea className="cline-input label-data" rows={6} aria-label="The worksheet as JSON" placeholder="The worksheet, as JSON — its shape is in the plan, every claim with its source"
+              value={draft.json ?? ''} disabled={busy} onChange={set('json')} />
+          ) : (
+            <input className="cline-input" aria-label="Where the work lies" placeholder="Where the work lies — a path, a link, or what was filed"
+              value={draft.artifact ?? ''} disabled={busy} onChange={set('artifact')} />
+          )}
           <textarea className="cline-input" rows={2} aria-label="A note for the inspector" placeholder="A note for the inspector (optional)"
             value={draft.note ?? ''} disabled={busy} onChange={set('note')} />
           <div className="cline-actions">
-            <button type="button" className="sec-scan label-data" disabled={busy || !(draft.artifact ?? '').trim()} onClick={() => onHandOn(company)}>HAND ON</button>
+            <button type="button" className="sec-scan label-data" disabled={busy || !ready} onClick={() => onHandOn(company)}>HAND ON</button>
           </div>
         </div>
       </div>
@@ -67,6 +83,7 @@ const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect }) => {
       <div className="cline-move-in cham-in">
         <p className="cline-move-h label-data">{company.name} · {stage.name} — {move.counsel ? 'RECORD COUNSEL\'S ANSWER' : 'YOUR INSPECTION'}</p>
         <p className="cline-move-t">THE WORK: {company.handed.artifact}{company.handed.note ? ` — "${company.handed.note}"` : ''}</p>
+        <WorksheetView stageId={stage.id} worksheet={company.worksheets?.[stage.id]} />
         <textarea className="cline-input" rows={2} aria-label="The flaw, if it goes back" placeholder="The flaw — what is wrong, if it goes back or the gap ends here"
           value={draft.flaw ?? ''} disabled={busy} onChange={set('flaw')} />
         <div className="cline-actions">

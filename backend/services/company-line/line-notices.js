@@ -21,7 +21,9 @@ const noticeText = (company, event, line, up) => {
   const tag = `${company.name} [${company.id}]`;
   const verb = up.kind === 'inspector'
     ? `Your inspection (as ${up.as}): answer with company/inspect {company: "${company.id}", stage: "${line.stage.id}", verdict, flaw?}.`
-    : `Yours to master: ${line.stage?.handsOn}. Hand it on with company/hand-on {company: "${company.id}", stage: "${line.stage?.id}", artifact, note?}.`;
+    : line.stage?.sheet
+      ? `Yours to master: ${line.stage.handsOn}. Hand it on with company/hand-on {company: "${company.id}", stage: "${line.stage.id}", worksheet, note?} — worksheet: ${line.stage.sheet}. A source is an https link, a repos/ path on the house ground, or "interview: who, when".`
+      : `Yours to master: ${line.stage?.handsOn}. Hand it on with company/hand-on {company: "${company.id}", stage: "${line.stage?.id}", artifact, note?}.`;
   if (up.kind === 'standing') return `${tag} stands: its founding line is complete.`;
   if (event.type === 'opened') return `${tag} is open (${company.mode === 'field' ? 'in the operator\'s own field' : 'house-led'}). ${verb}`;
   if (event.type === 'handed') return `${tag} — ${line.stage.name} handed on: ${event.artifact}${event.note ? ` — "${event.note}"` : ''}. ${verb}`;

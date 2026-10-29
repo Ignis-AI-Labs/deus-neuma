@@ -12,6 +12,10 @@ import { listCompanies, readLine } from './company-store.js';
 import { seatHolders } from './stage-holders.js';
 import { lineView } from './company-view.js';
 import { readHands } from './hands-store.js';
+import { FOUNDING_LINE } from './line-stages.js';
+
+// The worksheet shape each stage hands on, as its master reads it.
+const SHEETS = Object.freeze(Object.fromEntries(FOUNDING_LINE.filter((s) => s.sheet).map((s) => [s.id, s.sheet])));
 
 const log = createLogger('Company.Briefing');
 
@@ -28,9 +32,13 @@ const upWords = (up, laneId) => {
 const moveLine = (v) => {
   const stage = v.stages.find((s) => s.id === v.stage);
   if (v.up.kind === 'inspector') {
-    return `- ${v.name} [${v.id}] ${stage.name}: inspect it as ${v.up.as} — the work: ${v.handed.artifact}${v.handed.note ? ` ("${v.handed.note}")` : ''}. Answer with company/inspect {company, stage, verdict, flaw?}.`;
+    const work = SHEETS[stage.id] ? `the worksheet: ${v.handed.artifact} on the house ground — open it and check every source` : `the work: ${v.handed.artifact}`;
+    return `- ${v.name} [${v.id}] ${stage.name}: inspect it as ${v.up.as} — ${work}${v.handed.note ? ` ("${v.handed.note}")` : ''}. Answer with company/inspect {company, stage, verdict, flaw?}.`;
   }
-  return `- ${v.name} [${v.id}] ${stage.name}: yours to master — ${stage.handsOn}.${v.flaw ? ` It came back: "${v.flaw}".` : ''} Hand it on with company/hand-on {company, stage, artifact, note?}.`;
+  const how = SHEETS[stage.id]
+    ? `Hand it on with company/hand-on {company, stage, worksheet, note?} — worksheet: ${SHEETS[stage.id]}. A source is an https link, a repos/ path on the house ground, or "interview: who, when".`
+    : 'Hand it on with company/hand-on {company, stage, artifact, note?}.';
+  return `- ${v.name} [${v.id}] ${stage.name}: yours to master — ${stage.handsOn}.${v.flaw ? ` It came back: "${v.flaw}".` : ''} ${how}`;
 };
 
 // What the operator's hands answered for this being, newest first — the fact

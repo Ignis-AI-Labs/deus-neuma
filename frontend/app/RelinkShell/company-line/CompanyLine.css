@@ -77,6 +77,15 @@
 .cline-link { color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .cline-link:hover { color: var(--color-text-primary); }
 
+/* A handed-on worksheet, as the operator inspects it. */
+.cline-ws { display: flex; flex-direction: column; gap: var(--space-2); border-left: 1px solid var(--line); padding-left: var(--space-3); }
+.cline-ws-list, .cline-ws-src { margin: 0; padding-left: var(--space-4); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.cline-ws-src li { overflow-wrap: anywhere; }
+.cline-ws-table { border-collapse: collapse; font-size: var(--text-xs); }
+.cline-ws-table th, .cline-ws-table td { border-bottom: 1px solid var(--line); padding: 2px var(--space-2); text-align: left; color: var(--color-text-secondary); }
+.cline-ws-errc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.cline-ws-errc ul { margin: 0; padding-left: var(--space-3); }
+
 .cline-mode {
   background: transparent;
   border: 1px solid var(--line);
