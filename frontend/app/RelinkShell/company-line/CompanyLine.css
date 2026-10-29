@@ -34,6 +34,7 @@
 }
 .cline-tile.is-loud .cline-tile-n { color: var(--signal); }
 .cline-tile-l { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.cline-tiles-flat { padding: var(--space-2) 0; border-bottom: none; }
 
 .cline-sec {
   padding: var(--space-3) var(--space-4);

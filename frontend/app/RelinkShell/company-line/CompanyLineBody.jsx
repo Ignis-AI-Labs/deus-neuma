@@ -10,6 +10,7 @@ import '../SecurityApp.css';
 import './CompanyLine.css';
 import { EmptyState } from '../empty-state.jsx';
 import { WorksheetView } from './WorksheetView.jsx';
+import { SalesSection } from './SalesSection.jsx';
 import {
   MODE_WORDS, holderName, statusWords, currentStage, upWords, stepWords, operatorMove, lineOverview,
   ANSWER_ASKS, openHands, domainOf, handOnReady,
@@ -167,6 +168,7 @@ const OpenForm = ({ draft, busy, onDraft, onOpen }) => (
 
 export const CompanyLineBody = ({
   board, names, error, loading, busy, drafts, onDraft, onRefresh, onOpen, onHandOn, onInspect, onAnswer, onCharter,
+  sales = null, onSales = null,
 }) => {
   const view = lineOverview(board);
   const mine = (board?.companies ?? []).filter((c) => operatorMove(c));
@@ -213,6 +215,7 @@ export const CompanyLineBody = ({
               <CompanyCard key={c.id} company={c} names={names} />
             ))}
           </section>
+          {onSales ? <SalesSection sales={sales} names={names} busy={busy} {...onSales} /> : null}
           <OpenForm draft={drafts._open ?? {}} busy={busy} onDraft={onDraft} onOpen={onOpen} />
         </>
       )}

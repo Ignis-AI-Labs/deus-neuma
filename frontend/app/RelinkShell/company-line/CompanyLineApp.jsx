@@ -15,6 +15,7 @@ import { AppTitle } from '../app-title.jsx';
 import { uiSound } from '../../../services/ui-sound.js';
 import { getCompanyLines, openCompany, handOnStage, inspectStage, answerHands } from '../../../services/company-line-client.js';
 import { getRosterForBinding } from '../../../services/social-channels-client.js';
+import { getRevenueBoard, seatMercator, clearMercator } from '../../../services/revenue-client.js';
 import { useWaitingAccount } from '../waiting/use-waiting.js';
 import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { CompanyLineBody, CompanyLineIcon } from './CompanyLineBody.jsx';
@@ -27,12 +28,16 @@ const CompanyLineAppBody = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [drafts, setDrafts] = useState({});
+  const [sales, setSales] = useState(null);
+  const [pick, setPick] = useState('');
   const waiting = useWaitingAccount();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setBoard(await getCompanyLines());
+      const [lines, revenue] = await Promise.all([getCompanyLines(), getRevenueBoard()]);
+      setBoard(lines);
+      setSales(revenue);
       setError(null);
     } catch (e) {
       setError(e.message); // surfaced, never swallowed
@@ -75,6 +80,13 @@ const CompanyLineAppBody = () => {
         onInspect={(c, verdict) => move(c.id, () => inspectStage(c.id, { stage: c.stage, verdict, flaw: drafts[c.id]?.flaw }))}
         onAnswer={(item, status) => move(item.id, () => answerHands(item.company.id, item.id, { status, text: drafts[item.id]?.text }))}
         onCharter={() => { uiSound('open'); requestWaitingJump({ where: { app: 'houseclock', tab: 'charter' } }); }}
+        sales={sales}
+        onSales={{
+          pick,
+          onPick: (v) => { uiSound('open'); setPick(v); },
+          onSeat: () => move('_sales', async () => { await seatMercator(pick); setPick(''); }),
+          onClear: () => move('_sales', clearMercator),
+        }}
       />
     </div>
   );

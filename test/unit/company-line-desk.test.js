@@ -185,3 +185,23 @@ describe('worksheets on the desk', () => {
     expect(html).toContain('Local accuracy · National almanac · 4 — <span>interview: harbour master, Port Isaac, 2026-10-20</span>');
   });
 });
+
+describe('SALES on the desk', () => {
+  test('the seat by name, the pipeline per stage with its value, each open deal with its next step', () => {
+    const sales = {
+      mercator: { laneId: 'merc' },
+      pipeline: { qualified: { count: 1, value: { USD: 120 } }, proposed: { count: 0, value: {} }, won: { count: 2, value: { USD: 300, ETH: 0.1 } }, lost: { count: 1, value: { USD: 40 } } },
+      deals: [{ id: 'd-0a0b0c0d', buyer: 'Padstow harbour office', stage: 'qualified', value: { amount: 120, currency: 'USD' }, nextStep: 'Send the sample sheet' }],
+    };
+    const html = renderToStaticMarkup(createElement(CompanyLineBody, {
+      board: boardOf([]), names: { ...NAMES, merc: 'Sol' }, error: null, loading: false, busy: false, drafts: {}, onDraft: () => {}, onRefresh: () => {},
+      onOpen: () => {}, onHandOn: () => {}, onInspect: () => {}, onAnswer: () => {}, onCharter: () => {},
+      sales, onSales: { pick: '', onPick: () => {}, onSeat: () => {}, onClear: () => {} },
+    }));
+    expect(html).toContain('SALES — MERCATOR · SOL');
+    expect(html).toContain('WON · 300 USD + 0.1 ETH');
+    expect(html).toContain('data-deal-id="d-0a0b0c0d"');
+    expect(html).toContain('Padstow harbour office — QUALIFIED, 120 USD — NEXT: Send the sample sheet');
+    expect(html).toContain('>UNSEAT<');
+  });
+});

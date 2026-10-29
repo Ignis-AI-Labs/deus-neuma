@@ -17,6 +17,7 @@ import { cfoDesignation } from '../treasury/cfo-designation.js';
 import { csoDesignation } from '../security/cso-designation.js';
 import { cloDesignation } from '../legal/clo-designation.js';
 import { cmoDesignation } from '../marketing/cmo-designation.js';
+import { croDesignation } from '../revenue/cro-designation.js';
 
 const OFFICES = Object.freeze([
   ['Optio', cosDesignation],
@@ -24,6 +25,7 @@ const OFFICES = Object.freeze([
   ['Praefectus', csoDesignation],
   ['Praetor', cloDesignation],
   ['Legatus', cmoDesignation],
+  ['Mercator', croDesignation],
 ]);
 
 // pure — the canonical spelling of a title, or null for a founder's own word.

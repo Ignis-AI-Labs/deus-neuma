@@ -409,8 +409,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'campaigns.ask',
       // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
       'marketing.board-arrange', 'marketing.company-links',
-      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*: the company line (Design note, 2026-10-29 — word between seats and a record on the house's realm, no egress, no spend; validate re-judges the seat law.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands',
+      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*: the company line and the Mercator's deals (Design note, 2026-10-29 — records on the house's realm, no egress, no spend; validate re-judges the seat.
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move',
     ],
     denied: [],
     requireApproval: [
