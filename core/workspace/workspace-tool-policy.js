@@ -26,7 +26,8 @@ const readCurrent = async (workspace, filePath, cached = false) => {
     const key = `${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.ino}`;
     const hit = cached && workspace._toolPolicyCache?.get(filePath);
     if (hit && hit.key === key) return structuredClone(hit.value);
-    const value = await workspace._readJSON(filePath);
+    // only an envelope the platform wrote is policy (workspace-json-io.js _readTrustedJSON)
+    const value = await workspace._readTrustedJSON(filePath);
     if (cached) {
       workspace._toolPolicyCache ??= new Map();
       workspace._toolPolicyCache.set(filePath, { key, value: structuredClone(value) });

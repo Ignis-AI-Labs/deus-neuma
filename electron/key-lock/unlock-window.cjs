@@ -13,7 +13,7 @@ const { BrowserWindow, ipcMain } = require('electron');
  */
 const askRecoveryCode = (tryCode) => new Promise((resolve) => {
   const win = new BrowserWindow({
-    width: 560, height: 420, resizable: false, backgroundColor: '#000000',
+    width: 560, height: 420, resizable: false, backgroundColor: '#11161D',
     title: 'DEUS NEUMA — LOCKED', autoHideMenuBar: true, show: false,
     webPreferences: {
       preload: path.join(__dirname, 'unlock-preload.cjs'),

@@ -75,6 +75,8 @@ export const applyRootChange = (roots, change) => {
     const dir = String(change.dir || '');
     if (!dir || !path.isAbsolute(dir)) return { ok: false, roots: list, error: 'a root must be an absolute path' };
     const resolved = path.resolve(dir);
+    // never the whole disk (audit 2026-10-28 M-02)
+    if (resolved === path.parse(resolved).root) return { ok: false, roots: list, error: 'a root cannot be the whole disk — choose a folder' };
     if (list.some((r) => path.resolve(r.dir) === resolved)) return { ok: true, roots: list };
     return {
       ok: true,

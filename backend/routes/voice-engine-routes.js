@@ -28,7 +28,9 @@ router.use(requireAuth);
 // Engine id is untrusted and reaches both a filesystem path (download log) and a
 // spawned process arg — validate it to a strict slug so `..`, slashes, and shell
 // metacharacters can never get through (Rule 8). Mirrors the companion guard.
-const VALID_ENGINE_ID = /^[a-zA-Z0-9_-]+$/;
+// It starts with a letter or digit: an id like `--all-local` would reach the
+// downloader as an option (audit 2026-10-28 L-01).
+const VALID_ENGINE_ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 router.param('id', (req, res, next, id) => {
   if (!VALID_ENGINE_ID.test(id)) {
     return res.status(400).json({ error: 'invalid engine id format' });

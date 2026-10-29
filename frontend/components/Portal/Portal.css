@@ -11,7 +11,11 @@
     linear-gradient(var(--grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 24px 24px;
-  overflow: hidden;
+  /* At a large reading size (THE LOOK's TEXT SIZE, reachable right here) the
+     threshold beneath the name outgrows a laptop screen: it scrolls rather
+     than cutting the sign-in off. Undressed it fits, and nothing scrolls. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .portal-background {
@@ -81,6 +85,7 @@
   align-items: center;
   gap: var(--space-6);
   width: min(92vw, 460px);
+  padding-bottom: var(--space-4); /* breathing room when the gateway scrolls */
   z-index: 2; /* above the resting field (z 1) */
 }
 

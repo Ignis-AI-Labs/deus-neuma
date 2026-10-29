@@ -33,6 +33,7 @@ import { requestState } from '../../core/runtime/operator-state.js';
 import { deskStanding, requireInstallOwner } from '../services/install-owner.js';
 import { houseGroundsOf } from '../services/explorer-ground.js';
 import { isWithin } from '../services/ground-roots.js';
+import { explorerRefusal } from '../services/explorer-walls.js';
 
 const log = createLogger('Gallery.Routes');
 const router = express.Router();
@@ -196,7 +197,8 @@ router.get('/file', async (req, res) => {
     // learns nothing about what exists outside its reach.
     if (!root) return res.status(404).json({ error: 'not found' });
     const real = await resolveInRoot(root, req.query.rel);
-    if (!real) return res.status(404).json({ error: 'not found' });
+    // the explorer's walls hold here too: a secret place or another house's ground is never served
+    if (!real || explorerRefusal(real, req.walletAddress)) return res.status(404).json({ error: 'not found' });
 
     const st = await fs.stat(real);
     const mime = mimeOf(real);

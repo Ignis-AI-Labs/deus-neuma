@@ -1,6 +1,9 @@
 /* global window */
-// The pre-auth entry gate — the first-run capacity probe — driven from a REAL
-// Chromium page against the REAL preflight router on a real HTTP socket.
+// The first-run door — its capacity probe and its model bar — driven from a REAL
+// Chromium page against the REAL preflight router on a real HTTP socket. The door
+// opens after the gateway's sign-in (app-state.js phaseAfterGateway), so the page
+// holds a real session token: /preflight and /mind answer only a signed-in caller
+// (audit 2026-10-28 M-03); /setup stays open.
 // Nothing is mocked: the verdicts are the backend's own, the refusals are its
 // own status codes, and a dropped socket is a real dropped socket. (The
 // licence gate it once stood beside was removed 2026-10-03: a download opens
@@ -14,6 +17,7 @@ import os from 'node:os';
 import { build } from 'vite';
 import { chromium, expect } from '@playwright/test';
 import { test } from 'vitest';
+import { fullAuth } from '../helpers/audit-auth.js';
 
 // The real preflight route's dynamic port sweep must stay pinned to a dead
 // port — unpinned it GETs /api/tags and /v1/models on EVERY loopback listener
@@ -24,7 +28,7 @@ process.env.NEUMA_DISCOVERY_PORTS = '1';
 
 const { default: preflightRouter } = await import('../../backend/routes/preflight-routes.js');
 
-test('the first-run probe keeps its pre-auth contract through the real backend', async () => {
+test('the first-run door reads the real backend for a signed-in caller: capacity, mind and flight agree', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'entry-gates-http-'));
   const saved = ['NEUMA_DATA_ROOT']
     .map((key) => [key, process.env[key]]);
@@ -73,7 +77,10 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     browser = await chromium.launch({ args: ['--disable-gpu'] });
+    const auth = await fullAuth();
     const page = await browser.newPage();
+    // signed in at the gateway, as the real app is before the door opens
+    await page.addInitScript((token) => sessionStorage.setItem('authToken', token), auth.token);
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -88,8 +95,10 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     expect(await capacity.getAttribute('class')).toMatch(/is-(ok|cpu|insufficient|unknown)/);
     // ONE TRUTH: the door's "ready" IS the flight check's substrate row, asked of the same backend.
     const base = `http://127.0.0.1:${server.address().port}/api/v1/preflight`;
-    const mind = await (await page.request.get(`${base}/mind`)).json();
-    const flight = await (await page.request.get(`${base}/`)).json();
+    expect((await page.request.get(`${base}/mind`)).status(), 'no token, no mind check').toBe(401);
+    const signed = { headers: { Authorization: `Bearer ${auth.token}` } };
+    const mind = await (await page.request.get(`${base}/mind`, signed)).json();
+    const flight = await (await page.request.get(`${base}/`, signed)).json();
     expect(mind.ready).toBe(flight.checks.find((c) => c.id === 'substrate').status === 'pass');
     // No model answers here (the sweep is pinned to a dead port): the model bar says so, first,
     expect(mind.ready).toBe(false);
@@ -126,8 +135,7 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
     await page.evaluate(() => window.hideDoor());
 
-    // Pre-auth by design: no token ever exists here, so the auth-rot alarm
-    // must never have sounded, and the page ran clean throughout.
+    // A signed-in door never sounds the auth-rot alarm, and the page ran clean throughout.
     expect(await page.evaluate(() => window.expired)).toBe(0);
     expect(errors).toEqual([]);
   } finally {

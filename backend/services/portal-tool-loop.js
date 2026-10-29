@@ -30,12 +30,13 @@ import { ACT_REFUSALS, grantAlwaysAllow, refusalForDecision } from './act-gate.j
 import { capturePolicyGrant } from './policy-grant-context.js';
 import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { applyProtocolGuard, holdForWake } from './protocol-guard.js';
+import { landsInOpenFolder } from './open-folder-autonomy.js';
 import { requestToolApproval } from './tool-approval.js';
 import { checkToolArgs } from './rogue-detector.js';
 import { requestablePattern, sensitiveGrantCovers } from './sensitive-grants.js';
 import { createSandboxedCallTool, findUngrantedReadPaths, findUngrantedWritePaths, normalizeToolArgs, resolveGrantDir, writeGrantScope, isWithinRoots, isWriteOperation, collectPathArgs, checkPathAccess, logToolCall } from './tool-sandbox.js';
 import { withFsPrimitives, withFsRouting, fsPolicyTarget, fsRetiredHint } from './fs-primitives.js';
-import { focusGroundRoots, ensureFocusGroundReachable } from './focus-ground.js';
+import { focusGroundOf, focusGroundRoots, ensureFocusGroundReachable } from './focus-ground.js';
 import { resolveCeremonyScratchDir, ceremonyWriteRoots } from '../../core/birth/ceremony-write.js';
 import { sweepIntents } from './intents/intent-sweep.js';
 import { recordBenchmarkToolCall } from './benchmark-tool-trail.js';
@@ -253,7 +254,8 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
       const baseAccess = checkToolAccess(policy, policyTarget.server, policyTarget.tool);
       // The guard reads the POLICY identity (policyTarget) — an fs/edit delete
       // pauses in AUTO on the delete row, not the edit row (protocol-guard.js).
-      const explicit = resolvePolicy({}, neumaPolicy, connection._sessionToolPolicy || null)[`${policyTarget.server}/${policyTarget.tool}`] === 'allowed';
+      const explicit = resolvePolicy({}, neumaPolicy, connection._sessionToolPolicy || null)[`${policyTarget.server}/${policyTarget.tool}`] === 'allowed'
+        || landsInOpenFolder({ ...policyTarget, args, ground: focusGroundOf(connection) });
       const access = holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, toolMode, toolName), toolMode, policyTarget.server, policyTarget.tool, explicit), policyTarget.server, policyTarget.tool);
       if (access === 'denied') {
         // An observe-mode hold reads differently from a policy denial —

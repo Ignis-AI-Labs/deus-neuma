@@ -22,6 +22,7 @@ import { execFile, execFileSync } from 'child_process';
 import path from 'path';
 import { createLogger } from './logger.js';
 import { isEnvFileName } from './security/secret-gate.js';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from './untrusted-git.js';
 
 const log = createLogger('CheckoutSecretFiles');
 
@@ -63,7 +64,7 @@ const failed = (root, error) => {
 // impure — the first listing of a root, on the caller's turn.
 const listNow = (root) => {
   try {
-    return parse(root, execFileSync('git', ['-C', root, ...GIT_ARGS], {
+    return parse(root, execFileSync('git', [...UNTRUSTED_GIT_ARGS, '-C', root, ...GIT_ARGS], { env: untrustedGitEnv(),
       encoding: 'utf8', timeout: SYNC_TIMEOUT_MS, maxBuffer: MAX_BUFFER, stdio: ['ignore', 'pipe', 'ignore'],
     }));
   } catch (error) {
@@ -74,7 +75,7 @@ const listNow = (root) => {
 
 // impure — a background re-listing; null when it failed (the last listing stands).
 const listLater = (root) => new Promise((resolve) => {
-  execFile('git', ['-C', root, ...GIT_ARGS], { encoding: 'utf8', timeout: ASYNC_TIMEOUT_MS, maxBuffer: MAX_BUFFER },
+  execFile('git', [...UNTRUSTED_GIT_ARGS, '-C', root, ...GIT_ARGS], { env: untrustedGitEnv(), encoding: 'utf8', timeout: ASYNC_TIMEOUT_MS, maxBuffer: MAX_BUFFER },
     (error, out) => {
       if (error) failed(root, error);
       resolve(error ? null : parse(root, out));

@@ -22,6 +22,7 @@ import { createInterface } from 'readline';
 import { promisify } from 'util';
 import { SECRET_PATTERNS, scanLine, isAllowlisted } from './secret-sweep.js';
 import { rotationRemedy } from './threat-remedy.js';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 
 const execFileP = promisify(execFile);
 
@@ -175,7 +176,7 @@ export const escalateLeakedEnvFindings = (houseFindings, historyFindings) => {
 // impure — every commit the remote-tracking refs reach (as of the last
 // fetch; the sweep never touches the network).
 const remoteCommitSet = async (cwd) => {
-  const { stdout } = await execFileP('git', ['rev-list', '--remotes'], { cwd, maxBuffer: 256 * 1024 * 1024 });
+  const { stdout } = await execFileP('git', [...UNTRUSTED_GIT_ARGS, 'rev-list', '--remotes'], { cwd, env: untrustedGitEnv(), maxBuffer: 256 * 1024 * 1024 });
   return new Set(stdout.split('\n').filter(Boolean));
 };
 
@@ -184,9 +185,9 @@ const remoteCommitSet = async (cwd) => {
 const scanHistory = (cwd, timeoutMs) => new Promise((resolve) => {
   const scanner = createPatchScanner();
   const child = spawn('git', [
-    '-c', 'core.quotePath=false', 'log', '--all', '-i', `-G${historyPrefilter()}`,
+    ...UNTRUSTED_GIT_ARGS, '-c', 'core.quotePath=false', 'log', '--all', '-i', `-G${historyPrefilter()}`,
     `--format=${COMMIT_MARK}%H`, '-p', '-U0', '--no-color', '--no-ext-diff', '--no-textconv',
-  ], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+  ], { cwd, env: untrustedGitEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
   let stderr = '';
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, timeoutMs);

@@ -31,6 +31,8 @@ import {
 } from './tool-policy.js';
 import { requestToolApproval } from './tool-approval.js';
 import { applyProtocolGuard, holdForWake } from './protocol-guard.js';
+import { landsInOpenFolder } from './open-folder-autonomy.js';
+import { focusGroundOf } from './focus-ground.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
 
 const log = createLogger('ActGate');
@@ -171,7 +173,10 @@ export const gateAct = async (connection, opts) => {
   const baseAccess = checkToolAccess(policy, server, tool);
   // The protocol guard rides AFTER the mode: AUTO's silent unlock stops at
   // the hard-gated classes (deletes, outward speech, spends, shell runs).
-  const explicit = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`${server}/${tool}`] === 'allowed';
+  // An explicit grant — or, on AUTO, a delete inside the operator's open folder
+  // (open-folder-autonomy.js) — lets a hard-gated act through.
+  const explicit = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`${server}/${tool}`] === 'allowed'
+    || landsInOpenFolder({ server, tool, args, ground: focusGroundOf(connection) });
   const access = observeExempt ? baseAccess
     : holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, tool), mode, server, tool, explicit), server, tool);
 

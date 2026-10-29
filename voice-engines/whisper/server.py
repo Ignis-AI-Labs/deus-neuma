@@ -87,9 +87,15 @@ _loaded = threading.Event()   # set once loading ended, either way
 _stream_slot = threading.Lock()
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from browser_guard import assert_loopback_bind, refusal  # noqa: E402  (audit 2026-10-28 M-06)
+
 @app.middleware("http")
 async def _track_activity(request, call_next):
     # Marked on arrival AND completion: idle counts from the end of the last real request.
+    why = refusal(request.headers)  # a web page never reaches a sidecar (browser_guard.py)
+    if why:
+        return JSONResponse({"error": "forbidden", "detail": why}, status_code=403)
     global _last_activity
     tracked = request.url.path not in ("/health", "/shutdown")
     if tracked:
@@ -325,6 +331,10 @@ async def _stream_ready(timeout_s: float = 300.0) -> bool:
 @app.websocket("/stream")
 async def stream_ws(websocket: WebSocket):
     global _last_activity
+    # HTTP middleware never runs for a socket: a page's socket is refused here, before accept
+    if refusal(websocket.headers):
+        await websocket.close(code=1008)
+        return
     if not _stream_slot.acquire(blocking=False):
         await websocket.accept()
         await websocket.close(code=1013, reason="one /stream client at a time")

@@ -44,7 +44,7 @@ test('a member\'s light: asleep, waiting for the model, awake, asleep again, hel
   holds.mate = gate();
   await sendPost(page, 1);
   await expect(label).toHaveText('WAITING FOR THE MODEL', { timeout: 30000 });
-  await expect(label).toHaveCSS('color', 'rgba(95, 233, 255, 0.5)');
+  await expect(label).toHaveCSS('color', 'rgba(79, 214, 232, 0.5)');
   await expect(light).toHaveCSS('opacity', '0.7');
   await expect(light).toHaveCSS('background-color', soul);
   await page.screenshot({ path: path.join(SHOTS, 'house-wake-01-waiting.png') });

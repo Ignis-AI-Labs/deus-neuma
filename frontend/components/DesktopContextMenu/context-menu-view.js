@@ -21,6 +21,7 @@ export const ROLE_LABELS = Object.freeze({
 export const itemLabel = (item) => {
   if (item.kind === 'suggestion') return item.word;
   if (item.kind === 'add-to-dictionary') return `ADD “${item.word}” TO DICTIONARY`;
+  if (item.kind === 'define') return `DEFINE “${item.word}”`;
   return ROLE_LABELS[item.role] || (item.role || '').toUpperCase();
 };
 

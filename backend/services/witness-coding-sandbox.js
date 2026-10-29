@@ -20,11 +20,18 @@
  * view. Commands still run under bubblewrap with an empty HOME, a scrubbed
  * environment, no network, and hard ulimits.
  *
+ * THE OPEN FOLDER on AUTO (ruling, 2026-10-28; open-folder-autonomy.js): when
+ * the chat is on AUTO and the shell's ground is the operator's open folder, the
+ * overlay stands aside and the live folder itself is mounted — a being works
+ * for real where the operator is working. The masks stay on top (no .git, no
+ * secrets), and so do bubblewrap, the scrubbed environment and the ulimits.
+ *
  * Requires bwrap >= 0.10 with unprivileged-overlayfs kernel support (>= 5.11),
  * checked for platform/executable availability before preparation and execution.
  * Kernel or mount refusals remain errors — never an unconfined fallback.
  */
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
 import { assertCodingShellAvailable } from './coding-shell-availability.js';
@@ -40,6 +47,7 @@ import { linkedSecrets } from './secret-inodes.js';
 import { findSecretTwins } from './secret-twin-finder.js';
 import { createCommandOutput } from './coding-command-output.js';
 import { ensureCodingBase, activeCodingDirectory, freshCodingDirectory, assertActiveCodingShell } from './coding-shell-storage.js';
+import { liveShellWalls } from './live-shell-walls.js';
 export { sandboxPathFor } from './coding-shell-storage.js';
 
 // Directory names that are secret-shaped wherever they appear. Size-motivated
@@ -235,9 +243,10 @@ export const SHELL_GIT_NOTE = "Note: Git internals are masked here. coding/groun
  * @returns {string}
  */
 export const sandboxStatusText = (sandbox) => [
-  `Shell ground: ${sandbox.sourceRoot} — the live focused folder, seen through a kernel overlay.`,
-  'Prior shell writes shadow the live lower. Commands refuse lower drift under those shadows; preserved work is never silently reset.',
-  `Shell writes land in your overlay layer (host path ${sandbox.workspace}, holding work since ${sandbox.since || 'this turn'}) — a command here never alters the live folder itself.`,
+  `Shell ground: ${sandbox.sourceRoot} — the live focused folder.`,
+  'On AUTO in the operator\'s open folder, the shell works on that folder FOR REAL: writes land in it, .git and secrets stay masked.',
+  'Otherwise it is seen through a kernel overlay: prior shell writes shadow the live lower, commands refuse lower drift under those shadows, and preserved work is never silently reset.',
+  `Overlay writes land in your overlay layer (host path ${sandbox.workspace}, holding work since ${sandbox.since || 'this turn'}) — an overlay command never alters the live folder itself.`,
   "Secret-shaped paths (.env, keys, .git, other beings' lanes) are masked from this shell's view.",
   SHELL_GIT_NOTE,
 ].join('\n');
@@ -271,6 +280,12 @@ export const confinedBaseArgs = ({ network = false } = {}) => [
   '--tmpfs', '/etc',
   '--proc', '/proc', '--dev', '/dev',
   '--tmpfs', '/tmp', '--tmpfs', '/home', '--dir', '/home/witness',
+  // The browsers this machine installed for Playwright, read-only, where a
+  // being's HOME looks for them — so the press, page renders and browser
+  // tests run in the shell as they do for the operator — and the font
+  // configuration they need. `-try`: a machine without them keeps its shell.
+  '--ro-bind-try', path.join(os.homedir(), '.cache', 'ms-playwright'), '/home/witness/.cache/ms-playwright',
+  '--ro-bind-try', '/etc/fonts', '/etc/fonts',
   '--setenv', 'HOME', '/home/witness',
   '--setenv', 'PATH', process.env.PATH || '/usr/bin:/bin',
   '--setenv', 'LANG', process.env.LANG || 'C.UTF-8',
@@ -278,10 +293,13 @@ export const confinedBaseArgs = ({ network = false } = {}) => [
 ];
 
 // WASM reserves far more address space than resident memory: four 64KiB
-// memories fail under 16GiB on Node24. Keep a finite 64GiB per-process
-// address limit; this is not an aggregate worker or physical-memory budget.
+// memories fail under 16GiB on Node24 — and a browser's engine reserves a
+// cage of about a terabyte before it draws a page (Chromium dies at 64GiB with
+// "Oilpan: CagedHeap reservation", measured 2026-10-28). Keep a finite 2TiB
+// per-process ADDRESS limit — reserved space, not memory used; this is not an
+// aggregate worker or physical-memory budget.
 // RLIMIT_NPROC counts threads too; multicore tooling exceeds 256 tasks.
-export const CONFINED_ULIMITS = 'ulimit -t 120 -v 67108864 -f 1048576 -n 4096 -u 4096';
+export const CONFINED_ULIMITS = 'ulimit -t 120 -v 2147483648 -f 1048576 -n 4096 -u 4096';
 
 // The mount plan: overlay first, masks ON TOP — bwrap applies mounts in
 // order, so each mask shadows the overlay's view of that path. Dir masks are
@@ -292,11 +310,21 @@ export const CONFINED_ULIMITS = 'ulimit -t 120 -v 67108864 -f 1048576 -n 4096 -u
 // `network` is the operator-granted mode (ruling, 2026-08-18): default keeps the
 // network namespace unshared; granted swaps --unshare-all for the per-namespace
 // set that keeps every other isolation and shares only the net.
-const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = false }) => {
+// `live` is THE OPEN FOLDER on AUTO (open-folder-autonomy.js, ruling 2026-10-28):
+// the live ground itself, read-write for execute and read-only for inspect —
+// no overlay, but the very same masks on top, so .git and every secret stay
+// out of reach and history remains the safety net; platform state inside the
+// folder (lanes, the data root, settings, login files) stays read-only.
+const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = false, live = false }) => {
   const ground = path.resolve(sourceRoot);
   const shellDir = path.dirname(workspace);
   const args = confinedBaseArgs({ network });
-  if (mode === 'inspect') {
+  if (live) {
+    args.push(mode === 'inspect' ? '--ro-bind' : '--bind', ground, ground);
+    // platform state inside the open folder (live-shell-walls.js): read-only,
+    // bound BEFORE the masks so a masked secret below one stays masked
+    for (const place of masks.readOnly ?? []) args.push('--ro-bind', place, place);
+  } else if (mode === 'inspect') {
     // The last --overlay-src is the top layer: prior shell work shows over
     // the live ground, and the whole view refuses writes.
     args.push('--overlay-src', ground, '--overlay-src', workspace, '--ro-overlay', ground);
@@ -385,17 +413,25 @@ const runPreparedCommand = async (input) => {
 };
 
 /** Run with exclusive upper ownership and freshness checks on both sides.
- * An interrupted command preserves all upper work. impure. */
+ * An interrupted command preserves all upper work. A LIVE run (the open folder
+ * on AUTO) never touches the upper, so the overlay's own checks stand aside;
+ * the lock still serializes the shell's commands. impure. */
 export const runWitnessCommand = async (input) => {
   input.signal?.throwIfAborted();
   await assertCodingShellAvailable();
   input.beforeSpawn?.();
   const release = await lockOverlay(input.workspace, { directory: input.anchor });
   try {
-    await assertActiveCodingShell(input);
-    await assertOverlayFresh(input);
-    const result = await runPreparedCommand(input);
-    await assertOverlayFresh(input);
-    return result;
+    const walls = input.live ? liveShellWalls(input.sourceRoot) : null;
+    const run = !walls ? input
+      : walls.live ? { ...input, masks: { ...input.masks, readOnly: walls.readOnly } }
+        : { ...input, live: false };
+    if (!run.live) {
+      await assertActiveCodingShell(run);
+      await assertOverlayFresh(run);
+    }
+    const result = await runPreparedCommand(run);
+    if (!run.live) await assertOverlayFresh(run);
+    return { ...result, live: run.live === true };
   } finally { await release(); }
 };

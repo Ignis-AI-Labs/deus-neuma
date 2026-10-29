@@ -30,16 +30,28 @@ const PAPER_SIZES_IN = Object.freeze({
   legal: Object.freeze({ width: 8.5, height: 14 })
 });
 
+// Every layout Playwright has shipped, newest build first: `chrome-linux/` up to
+// build 1161, `chrome-linux64/` since; the headless shells after the full
+// browsers. Knowing only the first layout, the press lived on a stale 1161 —
+// pruned, the press would have left every catalog without a word (2026-10-28).
+const PLAYWRIGHT_LAYOUTS = Object.freeze([
+  Object.freeze({ dir: /^chromium-(\d+)$/, bins: Object.freeze([['chrome-linux64', 'chrome'], ['chrome-linux', 'chrome']]) }),
+  Object.freeze({ dir: /^chromium_headless_shell-(\d+)$/, bins: Object.freeze([
+    ['chrome-headless-shell-linux64', 'chrome-headless-shell'], ['chrome-linux', 'headless_shell']]) }),
+]);
+
 function playwrightChromiums() {
   const root = path.join(os.homedir(), '.cache', 'ms-playwright');
+  let names;
   try {
-    return readdirSync(root)
-      .filter((name) => /^chromium-\d+$/.test(name))
-      .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]))
-      .map((name) => path.join(root, name, 'chrome-linux', 'chrome'));
+    names = readdirSync(root);
   } catch {
     return [];
   }
+  return PLAYWRIGHT_LAYOUTS.flatMap(({ dir, bins }) => names
+    .filter((name) => dir.test(name))
+    .sort((a, b) => Number(b.match(dir)[1]) - Number(a.match(dir)[1]))
+    .flatMap((name) => bins.map((parts) => path.join(root, name, ...parts))));
 }
 
 const SYSTEM_CHROMIUMS = Object.freeze([
@@ -94,7 +106,7 @@ export const pressEnvironment = (env, platform = process.platform) =>
 
 function launchChromium(executable, profileDir) {
   const args = [
-    ...(executable.includes('headless_shell') ? [] : ['--headless=new']),
+    ...(/headless[_-]shell/.test(executable) ? [] : ['--headless=new']),
     `--user-data-dir=${profileDir}`,
     '--remote-debugging-port=0',
     '--no-first-run',

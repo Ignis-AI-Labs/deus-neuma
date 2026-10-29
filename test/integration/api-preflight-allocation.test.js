@@ -75,7 +75,9 @@ beforeAll(async () => {
   app.use('/api/v1/preflight', router);
 
   // POST /workspace only gates on a session, never on a lane — a real wallet
-  // holding a real HMAC token and owning nothing is the right shape.
+  // holding a real HMAC token and owning nothing is the right shape. The
+  // checks (GET) answer a signed-in caller too (audit 2026-10-28 M-03): the
+  // same wallet, so the desk's first owner is the one the POSTs speak for.
   witness = strangerWitness();
 }, 120000);
 
@@ -108,7 +110,7 @@ describe('Pre-flight allocation accounting', () => {
   });
 
   test('GET / surfaces committed/available/count for the current root', async () => {
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.committedGB).toBe(4000);
     expect(res.body.home.neumaCount).toBe(1);
@@ -127,7 +129,7 @@ describe('Pre-flight allocation accounting', () => {
     const empty = mkdtempSync(path.join(os.tmpdir(), 'preflight-empty-'));
     core.setWorkspacesRoot(empty);
     try {
-      const res = await request(app).get('/api/v1/preflight');
+      const res = await request(app).get('/api/v1/preflight').set(witness.header);
       expect(res.status).toBe(200);
       const av = res.body.home.availableGB;
       expect(av).toBeGreaterThan(2); // genuine headroom — we are in the formula branch
@@ -156,7 +158,7 @@ describe('Pre-flight allocation accounting', () => {
     // affordable === false forces 'blocked' whatever the hardware rows say.
     await saveWorkspaceSettings({ root, allocationGB: 1_000_000_000 });
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.affordable).toBe(false);
     expect(res.body.verdict).toBe('blocked');
@@ -164,7 +166,7 @@ describe('Pre-flight allocation accounting', () => {
 
   test('GET / stays affordable=null when no allocation has been chosen', async () => {
     await saveWorkspaceSettings({ root, allocationGB: null });
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.body.home.affordable).toBe(null);
   }, 120000);
 
@@ -209,7 +211,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     writeNeuma(root, 'hog', 1_000_000_000); // commits past the disk → available 0
     await saveWorkspaceSettings({ root, allocationGB: 50 });
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.affordable).toBe(false);
     expect(res.body.verdict).toBe('blocked'); // the || affordable===false clause
@@ -229,7 +231,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
   test('an affordable allocation leaves the verdict to the real rows alone', async () => {
     await saveWorkspaceSettings({ root, allocationGB: 1 }); // 1 GB on an empty temp root fits
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.affordable).toBe(true);
 
@@ -248,7 +250,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     // The property the old file destroyed. Each row names a real probe of this
     // machine; a row that silently vanished (or a probe that never ran) is a
     // hole in the launch gate, and the endpoint would still answer 200.
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
 
     const ids = res.body.checks.map((c) => c.id);

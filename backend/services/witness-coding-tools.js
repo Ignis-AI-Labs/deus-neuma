@@ -19,6 +19,8 @@ import {
 import { sendToolEvent } from './witness-tool-events.js';
 import { handleCodingShellControl } from './coding-shell-control.js';
 import { focusGroundOf } from './focus-ground.js';
+import { isLiveShell } from './open-folder-autonomy.js';
+import { normalizeToolMode } from './tool-policy.js';
 
 // impure — one coding-shell call. `gateWitnessAct` is the caller's act gate
 // (witness-tools.js), injected so the dependency flows orchestrator → family.
@@ -51,6 +53,7 @@ export const handleCodingTool = async (ws, connection, identity, args, sandbox, 
     const result = await runWitnessCommand({
       ...sandbox, command: args?.command, timeoutMs: args?.timeoutMs,
       mode: identity.toolName === 'inspect' ? 'inspect' : 'write',
+      live: isLiveShell({ mode: normalizeToolMode(connection.toolMode), sourceRoot: sandbox.sourceRoot, ground: focusGroundOf(connection) }),
       signal: connection.activeTurn?.signal, onChunk: paint,
     });
     const content = renderCommandResult(result);

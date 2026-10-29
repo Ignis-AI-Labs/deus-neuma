@@ -24,6 +24,7 @@ import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { isEnvFileName } from './secret-gate.js';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 
 // Any key on the way to a value that says it holds one (privateKey,
 // authSecret, apiKeys.openai, dnaEncryptionKey, smtpPassword, accessToken).
@@ -79,8 +80,8 @@ const secretStorePaths = () => [...new Set(
 // impure — env-style files under a checkout: the root's, plus every ignored one deeper.
 const envFilesUnder = (repoRoot) => {
   const root = fs.readdirSync(repoRoot).filter(isEnvFileName);
-  const ignored = execFileSync('git', ['-C', repoRoot, 'ls-files', '-z', '--others', '--ignored', '--exclude-standard'],
-    { encoding: 'utf8', maxBuffer: 1024 * 1024 * 1024 })
+  const ignored = execFileSync('git', [...UNTRUSTED_GIT_ARGS, '-C', repoRoot, 'ls-files', '-z', '--others', '--ignored', '--exclude-standard'],
+    { encoding: 'utf8', env: untrustedGitEnv(), maxBuffer: 1024 * 1024 * 1024 })
     .split('\0').filter((rel) => rel && isEnvFileName(path.basename(rel)));
   return [...new Set([...root, ...ignored])];
 };

@@ -10,17 +10,22 @@ import {
   verifyAcceptance,
   isAcceptanceCurrent,
 } from '../../backend/services/covenant.js';
+import { COVENANT } from '../../frontend/app/Rite/rite-script.js';
 
 describe('covenant service', () => {
   describe('loadDocuments', () => {
-    it('loads the three binding documents with 64-hex hashes', () => {
+    it('loads the binding documents and the privacy notice with 64-hex hashes', () => {
       const docs = loadDocuments();
-      expect(docs.map((d) => d.id)).toEqual(['covenant', 'terms', 'eula']);
+      expect(docs.map((d) => d.id)).toEqual(['covenant', 'terms', 'eula', 'privacy']);
       for (const doc of docs) {
         expect(doc.sha256).toMatch(/^[0-9a-f]{64}$/);
         expect(doc.text.length).toBeGreaterThan(100);
         expect(doc.title).toBeTruthy();
       }
+    });
+
+    it('the rite draws one arc for each document the covenant serves, in its order', () => {
+      expect(COVENANT).toEqual(loadDocuments().map((d) => d.title.toUpperCase()));
     });
 
     it('hashes are stable across loads', () => {

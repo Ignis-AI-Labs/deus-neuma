@@ -43,12 +43,15 @@ export default Object.freeze({
     toggle: 'SOUND — {{state}}',
     volumeKey: 'Volume',
     volumeAria: 'Sound volume',
-    executionTitle: 'EXECUTION & FILES — {{count}}',
-    executionNote: 'Builds, tests, checks, dependencies, Git and file actions each have a distinct cue. Mixed commands have their own sound; unrecognized commands use Other execution. The chip shows the command.',
-    actsTitle: 'ACTS — {{count}}',
-    actsNote: 'External reads, publishing, artifact generation, records, state inspection and failures. Audition these candidate sounds here.',
-    worldTitle: 'THE WORLD — {{count}}',
-    worldNote: 'The ratified soundscape — the portal, the stream, the ceremony. Locked by ear; here to hear against.',
+    packKey: 'Voice',
+    pack: Object.freeze({ soft: 'SOFT', scifi: 'SCI-FI' }),
+    packNote: 'SCI-FI is the desk\'s own soundscape — what a new install hears. SOFT is a gentler set, if you prefer it.',
+    groups: Object.freeze({
+      desk: Object.freeze({ title: 'YOUR CONTROLS — {{count}}', note: 'Your own hands: confirm, refuse, open, close, and the small tick under toggles.' }),
+      notices: Object.freeze({ title: 'NOTICES — {{count}}', note: 'The world answering: arrivals, replies, connections, a signature to give, a memory kept.' }),
+      execution: Object.freeze({ title: 'A BEING AT WORK — {{count}}', note: 'Builds, tests, checks, dependencies, Git and file actions each have a distinct cue. Mixed commands have their own sound; unrecognized commands use Other execution. The chip shows the command.' }),
+      acts: Object.freeze({ title: 'MORE ACTS — {{count}}', note: 'External reads, publishing, artifact generation, records, state inspection and failures.' }),
+    }),
   }),
 
   realm: Object.freeze({

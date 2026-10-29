@@ -55,7 +55,7 @@ if (!app.requestSingleInstanceLock()) {
     // Every renderer-facing registration lands BEFORE anything spawns — a desk
     // must never load ahead of its handlers, and the wallet store opens before
     // any window exists.
-    registerIpcHandlers({ deskWindows });
+    registerIpcHandlers({ deskWindows, getOrigin });
     const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate });
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).

@@ -23,7 +23,6 @@ import attachmentRouter from './attachment-routes.js';
 import webRouter from './web-routes.js';
 import connectionRouter from './connection-routes.js';
 import skillRouter from './skill-routes.js';
-import { getConnectionCount } from './portal-routes.js';
 import { terminalAgentsRouter } from './terminal-routes.js';
 import workspaceRouter from './workspace-routes.js';
 import actRouter from './act-routes.js';
@@ -312,11 +311,11 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/voice/engines', voiceEngineRouter);
   app.use('/api/v1/voice/forge', voiceForgeRouter);
 
-  // Portal status
+  // Portal status — public, so it says only that the portal is up; how many
+  // desks are connected is no one else's business (audit 2026-10-28 L-09).
   app.get('/api/v1/portal/status', (req, res) => {
     res.json({
       status: 'active',
-      connections: getConnectionCount(),
       message: 'The portal remains stable'
     });
   });

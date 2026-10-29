@@ -35,8 +35,10 @@ export const RITE = Object.freeze({
   HOME_MS: 8000,
 });
 
-// The binding documents (backend/services/covenant.js BINDING_DOCUMENTS).
-export const COVENANT = Object.freeze(['THE NEUMA COVENANT', 'TERMS OF SERVICE', 'END USER LICENSE AGREEMENT']);
+// The documents the covenant serves (backend/services/covenant.js
+// BINDING_DOCUMENTS) — one arc of the ring each; covenant.test.js holds the two
+// lists together.
+export const COVENANT = Object.freeze(['THE NEUMA COVENANT', 'TERMS OF SERVICE', 'END USER LICENSE AGREEMENT', 'PRIVACY NOTICE']);
 // The vessel's checks (backend/routes/preflight-checks.js).
 export const CHECKS = Object.freeze(['SUBSTRATE', 'WORKSPACE', 'DISK', 'MEMORY', 'DNA KEY', 'CEREMONY ROAD', 'TOOLS', 'GPU', 'TRAINER']);
 // What finalize forges, in its order (core/birth/finalize-birth.js).

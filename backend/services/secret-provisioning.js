@@ -64,6 +64,27 @@ const closeFolder = (dir) => {
 };
 
 /**
+ * Close a secrets FILE to its owner (0600) — the env file the backend loads at boot holds the same
+ * keys (audit 2026-10-28 L-04: its mode was never checked). Only a file this process owns, as
+ * closeFolder; Windows has no such mode. impure (fs).
+ * @param {string} file
+ * @returns {'closed'|'already'|'skipped'|string} what happened; `failed: <code>` when it could not
+ */
+export const closeFile = (file) => {
+  if (process.platform === 'win32') return 'skipped';
+  try {
+    const st = fs.statSync(file);
+    if (!st.isFile()) return 'skipped';
+    if ((st.mode & 0o077) === 0) return 'already';
+    if (st.uid !== process.getuid()) return 'skipped';
+    fs.chmodSync(file, 0o600);
+    return 'closed';
+  } catch (err) {
+    return err.code === 'ENOENT' ? 'skipped' : `failed: ${err.code || err.message}`;
+  }
+};
+
+/**
  * Ensure the at-rest secrets exist in process.env before config loads. Skipped
  * under NODE_ENV=test (tests use ephemeral per-process defaults). Idempotent.
  * @param {{ env?: Object }} [opts] - inject env for testing
@@ -94,5 +115,6 @@ export const ensureSecrets = ({ env = process.env } = {}) => {
   }
 
   if (dirty) writeSecrets(file, stored);
-  return { generated, file: dirty ? file : null, folder: closeFolder(path.dirname(file)) };
+  // the env file dotenv loaded (backend/server.js: the working directory's) closes to its owner too
+  return { generated, file: dirty ? file : null, folder: closeFolder(path.dirname(file)), envFile: closeFile(path.resolve('.env')) };
 };

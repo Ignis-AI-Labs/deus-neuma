@@ -146,6 +146,9 @@ export const resolveInRoot = async (root, rel) => {
     const realRoot = await fs.realpath(root.dir);
     const real = await fs.realpath(path.join(realRoot, relative));
     if (!isInsideRoot(real, realRoot)) return null;
+    // the gallery serves media only, judged on the REAL name a link reaches
+    // (audit 2026-10-28 M-02: /file streamed any file under a root)
+    if (kindOf(real) === null) return null;
     const st = await fs.stat(real);
     return st.isFile() ? real : null;
   } catch {

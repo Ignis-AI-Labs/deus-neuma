@@ -20,7 +20,7 @@ describe('covenant PDFs (/api/v1/covenant)', () => {
   it('the listing gives every binding document its version and its PDF', async () => {
     const res = await request(appWithCovenant()).get('/api/v1/covenant');
     expect(res.status).toBe(200);
-    expect(res.body.documents.map((d) => d.id)).toEqual(['covenant', 'terms', 'eula']);
+    expect(res.body.documents.map((d) => d.id)).toEqual(['covenant', 'terms', 'eula', 'privacy']);
     for (const doc of res.body.documents) {
       expect(doc.version).toMatch(/^\d+\.\d+(\.\d+)?$/); // a version, whatever revision is current (CHANGELOG.md)
       expect(doc.pdfUrl).toBe(`/api/v1/covenant/${doc.id}/pdf`);
@@ -29,7 +29,7 @@ describe('covenant PDFs (/api/v1/covenant)', () => {
 
   it('streams the pressed PDF inline, byte for byte', async () => {
     const app = appWithCovenant();
-    for (const id of ['covenant', 'terms', 'eula']) {
+    for (const id of ['covenant', 'terms', 'eula', 'privacy']) {
       const res = await request(app).get(`/api/v1/covenant/${id}/pdf`).buffer(true)
         .parse((r, cb) => { const chunks = []; r.on('data', (c) => chunks.push(c)); r.on('end', () => cb(null, Buffer.concat(chunks))); });
       expect(res.status).toBe(200);
@@ -42,7 +42,7 @@ describe('covenant PDFs (/api/v1/covenant)', () => {
 
   it('refuses an id that is not a binding document', async () => {
     const app = appWithCovenant();
-    expect((await request(app).get('/api/v1/covenant/privacy/pdf')).status).toBe(404);
+    expect((await request(app).get('/api/v1/covenant/cookies/pdf')).status).toBe(404);
     expect((await request(app).get('/api/v1/covenant/..%2F..%2Fpackage.json/pdf')).status).toBe(404);
   });
 });

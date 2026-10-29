@@ -52,7 +52,7 @@
   padding: 18px 20px 20px;
   border: 1px solid var(--line);
   border-top: 2px solid var(--signal-dim);
-  background: linear-gradient(180deg, rgba(95, 233, 255, .035), transparent 140px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--signal) 3.5%, transparent), transparent 140px);
 }
 .gv-guide-kicker { margin: 0; font-size: .6875rem; letter-spacing: .18em; color: var(--signal-dim); }
 .gv-guide-title { margin: 0; font-family: var(--font-voice); font-weight: 300; font-size: 1.25rem; letter-spacing: .04em; line-height: 1.3; color: var(--color-text-primary); }

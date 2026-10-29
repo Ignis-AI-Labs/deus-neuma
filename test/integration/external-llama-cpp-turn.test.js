@@ -129,7 +129,12 @@ describe('the flight check adopting an operator\'s llama.cpp', () => {
     process.env.NEUMA_PROVIDER_CHOICE_PATH = choice;
     process.env.NEUMA_DISCOVERY_PORTS = String(operator.port);
     setConfig({ provider: 'llama-server', endpoint: 'http://127.0.0.1:1', model: 'local-model' });
-    const row = await checkSubstrate();
+    // a check that is not the install owner's never adopts (audit 2026-10-28 M-03)
+    const guest = await checkSubstrate();
+    expect(guest.detail ?? '').not.toMatch(/adopted automatically/);
+    expect(existsSync(choice)).toBe(false);
+    setConfig({ provider: 'llama-server', endpoint: 'http://127.0.0.1:1', model: 'local-model' });
+    const row = await checkSubstrate(null, { mayAdopt: true });
     expect(row.status).toBe('pass');
     expect(row.detail).toMatch(/adopted automatically/);
     const saved = JSON.parse(readFileSync(choice, 'utf8'));
@@ -141,7 +146,7 @@ describe('the flight check adopting an operator\'s llama.cpp', () => {
     process.env.NEUMA_PROVIDER_CHOICE_PATH = choice;
     process.env.NEUMA_DISCOVERY_PORTS = String(refusing.port);
     setConfig({ provider: 'llama-server', endpoint: 'http://127.0.0.1:1', model: 'local-model' });
-    const row = await checkSubstrate();
+    const row = await checkSubstrate(null, { mayAdopt: true });
     expect(row.status).toBe('fail');
     expect(existsSync(choice)).toBe(false);
   }, 30000);

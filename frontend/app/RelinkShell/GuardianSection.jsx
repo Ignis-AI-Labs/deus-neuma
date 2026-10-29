@@ -18,6 +18,7 @@ import {
   getThreats,
   getWatch, addWatchedRepo, removeWatchedRepo, setExpectedPorts,
 } from '../../services/cso-client.js';
+import { safeHttpUrl } from './safe-url.js';
 
 const THREAT_STATUSES = Object.freeze(['new', 'not_affected', 'confirmed', 'mitigated', 'needs_operator']);
 const THREAT_ROW_CAP = 30;
@@ -375,8 +376,8 @@ export const GuardianSection = ({ beings = [], harness = false }) => {
                       <span className="settings-tag-dim">
                         {(t.layer || '').toUpperCase()}{t.repo ? ` · ${t.repo}` : ''}
                       </span>
-                      {t.githubIssue ? (
-                        <a className="settings-tag-dim" href={t.githubIssue} target="_blank" rel="noreferrer">
+                      {safeHttpUrl(t.githubIssue) ? (
+                        <a className="settings-tag-dim" href={safeHttpUrl(t.githubIssue)} target="_blank" rel="noreferrer">
                           ISSUE ↗
                         </a>
                       ) : null}

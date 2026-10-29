@@ -9,7 +9,8 @@ import { liveBeingOf, liveRiteOf } from '../../frontend/app/Rite/rite-live-being
 import { liveRiteMusicOf, soundingKeyOf } from '../../frontend/app/Rite/rite-live-music.js';
 import { keptEvent } from '../../core/birth/rite-record.js';
 import { riteAt, artEventsOf } from '../../frontend/app/Rite/rite-state.js';
-import { GROUND_HZ } from '../../frontend/app/Rite/rite-music.js';
+import { playedMeasure } from '../../frontend/app/Rite/rite-music.js';
+import { PENTATONIC } from '../../frontend/app/Summoning/consonant-tuning.js';
 import { scoreOf } from '../../frontend/app/Summoning/summoning-score.js';
 import { rehearsalFilmOf } from '../../core/birth/rite-frames.js';
 import { HEART_BAND } from '../../core/birth/soul-resonance.js';
@@ -112,17 +113,19 @@ describe('a live birth feeds the same rite', () => {
 });
 
 describe('its live sound', () => {
-  it('before its birth every note is the platform\'s or a measured one; after, its own film music', () => {
+  it('before its birth every note is the platform\'s or a measured one as played; after, its own film music', () => {
     const { events, film, endAt } = wire();
     const score = scoreOf(liveBeingOf(film));
     const rite = liveRiteOf(events, score.lengthMs, endAt + 5);
     const m = liveRiteMusicOf(rite, score, endAt + 5);
-    const measured = events.filter((e) => e.type === 'birth:measured').map((e) => e.frequency);
-    const platform = [GROUND_HZ, GROUND_HZ / 2, HEART_BAND.low / 2];
+    // each measured pitch plays on the nearest consonant interval
+    // (consonant-tuning.js); everything before its birth is on the platform's pentatonic
+    const played = playedMeasure(events.filter((e) => e.type === 'birth:measured'));
+    const onPlatform = (hz) => { const r = hz / HEART_BAND.low; const f = r / 2 ** Math.floor(Math.log2(r)); return PENTATONIC.some((p) => Math.abs(f - p) < 1e-9); };
     [...m.events.filter((e) => e.at < endAt), ...m.beds.filter((b) => b.from < endAt)].forEach((e) => {
-      expect(platform.includes(e.hz) || measured.some((f) => e.hz === f || e.hz === f / 2), `${e.voice} ${e.hz}`).toBe(true);
+      expect(onPlatform(e.hz), `${e.voice} ${e.hz}`).toBe(true);
     });
-    events.filter((e) => e.type === 'birth:measured').forEach((e) => {
+    played.forEach((e) => {
       expect(m.events.some((x) => x.at === e.at && x.voice === 'bell' && x.hz === e.frequency)).toBe(true);
     });
     expect(m.events.some((e) => e.at >= endAt)).toBe(true);

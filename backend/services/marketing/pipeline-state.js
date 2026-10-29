@@ -16,13 +16,14 @@ import { houseEntries } from '../social/queue-house.js';
 import { ensureBeingGround } from '../house-workspace.js';
 
 import { ALGORITHM_REPOS, algorithmSyncStampPath } from './algorithm-locations.js';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 export { ALGORITHM_REPOS } from './algorithm-locations.js';
 
 // impure — one repo's HEAD short-hash via git itself (a shallow clone's
 // HEAD file holds a ref, not a sha). Null on any failure — an absent
 // reading is honest; a guessed one is not.
 const gitHead = (repo) => new Promise((resolve) => {
-  execFile('git', ['-C', repo, 'rev-parse', '--short', 'HEAD'], { timeout: 2000 }, (err, stdout) => {
+  execFile('git', [...UNTRUSTED_GIT_ARGS, '-C', repo, 'rev-parse', '--short', 'HEAD'], { timeout: 2000, env: untrustedGitEnv() }, (err, stdout) => {
     resolve(err ? null : String(stdout).trim() || null);
   });
 });

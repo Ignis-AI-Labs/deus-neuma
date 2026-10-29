@@ -1,18 +1,18 @@
 :root {
-  /* Stock LINE & CYCLE. THE LOOK overrides these at render (confirm.js
-     applies the theme MAIN read from the operator's own look store) —
-     --alert is semantic and is deliberately never themed. */
-  --void: #000000;
-  --panel: #000000;
-  --ink: #FFFFFF;
-  --ground: #000000;
-  --heading: var(--text-1);
-  --line: rgba(255,255,255,0.18);
-  --line-hover: rgba(255,255,255,0.40);
-  --text-1: rgba(255,255,255,0.95);
-  --text-2: rgba(255,255,255,0.70);
-  --text-3: rgba(255,255,255,0.50);
-  --signal: #5FE9FF;
+  /* Stock LINE & CYCLE — CYBERDECK. THE LOOK overrides these at render
+     (confirm.js applies the theme MAIN read from the operator's own look
+     store) — --alert is semantic and is deliberately never themed. */
+  --void: #11161D;
+  --panel: #18202A;
+  --ink: #E4EAF0;
+  --ground: #11161D;
+  --heading: #E9B872;
+  --line: rgba(228,234,240,0.18);
+  --line-hover: rgba(228,234,240,0.40);
+  --text-1: rgba(228,234,240,0.95);
+  --text-2: rgba(228,234,240,0.70);
+  --text-3: rgba(228,234,240,0.50);
+  --signal: #4FD6E8;
   --alert: #FF5533;
   --font-voice: 'Inter', system-ui, -apple-system, sans-serif;
   --font-data: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;

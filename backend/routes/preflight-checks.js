@@ -82,7 +82,8 @@ export const checkSubstrate = async (adoptedFrom = null, probe = {}) => {
     // choice AND exactly one running endpoint with models. Ambiguity (two
     // servers) or an explicit prior choice still fails with chips — the
     // platform never overrides a person, it only fills silence.
-    if (!adoptedFrom) {
+    // only the install owner's own check adopts (preflight-routes.js, audit 2026-10-28 M-03)
+    if (!adoptedFrom && probe.mayAdopt === true) {
       const target = pickAutoAdopt(found, await loadProviderChoice());
       if (target) {
         const adopted = { provider: target.id, endpoint: target.endpoint, model: target.models[0] };

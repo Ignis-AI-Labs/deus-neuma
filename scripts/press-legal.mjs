@@ -4,7 +4,7 @@
  *
  *   node scripts/press-legal.mjs
  *
- * Reads the three binding documents (backend/services/covenant.js) and writes
+ * Reads every binding document (backend/services/covenant.js) and writes
  * docs/legal/pdf/<FILE>.pdf in the Ignis livery (docs/legal/press-kit/ignis-legal —
  * tracked, unlike data/brand-kits). Re-run after every revision logged in
  * docs/legal/CHANGELOG.md, so the PDF always matches the text a witness signs.

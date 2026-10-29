@@ -47,6 +47,9 @@ describe('pure validation + planning', () => {
     expect(isValidModelKey('')).toBe(false);
     expect(isValidModelKey(null)).toBe(false);
     expect(isValidModelKey('x'.repeat(300))).toBe(false);
+    // an option, never an argument (audit 2026-10-28 L-01)
+    expect(isValidModelKey('--help')).toBe(false);
+    expect(isValidModelKey('-y')).toBe(false);
   });
 
   it('bounds context length', () => {

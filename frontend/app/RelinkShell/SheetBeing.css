@@ -54,7 +54,7 @@
   margin: 4px 0 0;
   padding: 14px 18px;
   border-left: 2px solid var(--signal-dim);
-  background: rgba(95, 233, 255, 0.025);
+  background: color-mix(in srgb, var(--signal) 2.5%, transparent);
 }
 .sb-spoken p { margin: 0; font-family: var(--font-voice); font-size: .9375rem; line-height: 1.7; color: var(--color-text-primary); }
 .sb-kotodama summary { cursor: pointer; padding: 8px 0; font-size: .75rem; letter-spacing: .14em; color: var(--color-text-secondary); }

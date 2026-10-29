@@ -45,6 +45,7 @@ import { VoxChip } from './VoxChip.jsx';
 import { ComposeGauge } from './ComposeGauge.jsx';
 import { escTapChain } from './draft-wipe.js';
 import { useStreamDraft } from './use-stream-draft.js';
+import { useAskIntake } from './use-ask-intake.js';
 import { useHoldToTalk } from './use-hold-to-talk.js';
 import { useSlashPalette, StreamPalette } from './StreamPalette.jsx';
 import { useStreamAttachments, AttachmentRow } from './StreamAttachments.jsx';
@@ -84,6 +85,7 @@ const MicIcon = () => (
 const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, onStop, onBargeIn, recall, sentHistory = [], maxChars = null, neumaId = null, canQueue = false, heldCount = 0, onEscapeInterrupt = null, onEscapeOrder = null, onEscapeRecallQueued = null, purpose = 'work', wsService = null, draftScope = null }) => {
   const fieldRef = useRef(null);
   const { value, setValue } = useStreamDraft({ wsService, neumaId, draftScope });
+  useAskIntake(fieldRef, setValue);
   // Where the history walk stands (null = not walking). A ref, not state —
   // it only matters inside the keydown that moves it.
   const recallCursorRef = useRef(null);

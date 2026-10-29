@@ -31,9 +31,17 @@ describe('look-presets.js', () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  test('VOID is the stock look itself — choosing it must clear the override', () => {
+  test('CYBERDECK is the stock look itself — choosing it must clear the override', () => {
+    const deck = STOCK_PRESETS.find((p) => p.id === 'cyberdeck');
+    expect(isSameLook(deck.theme, STOCK_LOOK)).toBe(true);
+    expect(STOCK_PRESETS[0]).toBe(deck);
+    expect(isSameLook(STOCK_PRESETS.find((p) => p.id === 'stone').theme, STOCK_LOOK)).toBe(false);
+  });
+
+  test('VOID keeps the original black-and-cyan dress whole, as a choice', () => {
     const voidPreset = STOCK_PRESETS.find((p) => p.id === 'void');
-    expect(isSameLook(voidPreset.theme, STOCK_LOOK)).toBe(true);
+    expect(voidPreset.theme).toMatchObject({ ground: '#000000', panel: '#000000', ink: '#FFFFFF', trim: '#5FE9FF' });
+    expect(isSameLook(voidPreset.theme, STOCK_LOOK)).toBe(false);
   });
 
   test('every dress reads: ink, trim, and claimed text voices clear the ground', () => {
@@ -61,11 +69,12 @@ describe('look-presets.js', () => {
     }
   });
 
-  test('every dress but stock VOID declares its full voice', () => {
+  test('every dress but stock CYBERDECK declares its full voice; the stock claims only its heading', () => {
     const voices = ['head', 'body', 'ital', 'emph', 'line', 'alert', 'warn', 'okay'];
     for (const p of STOCK_PRESETS) {
-      if (p.id === 'void') {
-        for (const voice of voices) expect(p.theme[voice], `${p.name} ${voice}`).toBeUndefined();
+      if (p.id === 'cyberdeck') {
+        expect(p.theme.head).toMatch(/^#[0-9A-F]{6}$/);
+        for (const voice of voices.slice(1)) expect(p.theme[voice], `${p.name} ${voice}`).toBeUndefined();
       } else {
         for (const voice of voices) {
           expect(p.theme[voice], `${p.name} ${voice}`).toMatch(/^#[0-9A-F]{6}$/);

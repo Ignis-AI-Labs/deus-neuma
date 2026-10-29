@@ -1,16 +1,19 @@
 /* TabStrip — the desk's parallel sittings (session tabs).
    LINE & CYCLE: hairline rules, monochrome at rest, SIGNAL only where
    something is live. The strip is chrome, so it stays quiet: it must never
-   compete with the sitting it sits above. */
+   compete with the sitting it sits above — but it must read as its OWN
+   band (Design note, 2026-10-28: […]): a rail lifted a step off the ground, the open sitting's tab
+   cut into it in the ground's own colour so it opens into the page below,
+   capped in SIGNAL. */
 
 .tabstrip {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
   flex-wrap: wrap;
-  padding: 0 var(--space-2);
-  border-bottom: 1px solid var(--line);
-  background: var(--color-void);
+  padding: var(--space-1) var(--space-2) 0;
+  border-bottom: 1px solid var(--line-hover);
+  background: color-mix(in srgb, var(--color-white) 3.5%, var(--color-void));
 }
 
 .tabstrip-rail {
@@ -31,10 +34,14 @@
 }
 
 /* The focused sitting is the only one wearing SIGNAL — at a glance the strip
-   answers […] without being read. */
+   answers […] without being read. Its tab is the page's own
+   ground, laid over the rail's bottom rule so the two read as one surface. */
 .tabstrip-tab.is-on {
-  border-color: var(--line);
-  background: var(--color-glass);
+  border-color: var(--line-hover);
+  background: var(--color-void);
+  box-shadow: inset 0 2px 0 var(--signal);
+  margin-bottom: -1px;
+  padding-bottom: 1px;
 }
 
 .tabstrip-tab.is-on .tabstrip-name {
@@ -52,7 +59,7 @@
   background: transparent;
   border: none;
   padding: var(--space-1) var(--space-2);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   cursor: pointer;
   min-width: 0;
   max-width: 180px;
@@ -231,7 +238,7 @@
   white-space: nowrap;
   padding-left: var(--space-1);
   margin-left: var(--space-1);
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border-primary);
   color: var(--tabstrip-ground-ink, #b9a2d0);
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wide);

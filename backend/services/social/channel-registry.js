@@ -30,6 +30,13 @@ import { TIKTOK_POSTING_SCOPES } from './tiktok-oauth.js';
  * @property {boolean} [queueOnly] posts only through the operator-approved queue, never instantly
  */
 
+// The fields that say WHERE a channel's secrets are sent: a mail server, a
+// Mastodon instance, a Bluesky PDS. A stored secret is never carried to a
+// destination it was not entered for (audit 2026-10-28 M-01): moving one
+// drops the secrets the same change did not re-enter, and a secret from the
+// operator's .env never goes to a destination a house stored.
+export const DESTINATION_KEYS = Object.freeze(new Set(['smtpHost', 'imapHost', 'instanceUrl', 'service']));
+
 const field = (key, label, secret, env, fallback) =>
   Object.freeze({ key, label, secret, env, ...(fallback !== undefined ? { fallback } : {}) });
 
@@ -175,15 +182,21 @@ export const getChannel = (id) => CHANNEL_CATALOG.find((c) => c.id === id) || nu
  */
 export const resolveChannelCredentials = (channel, storeEntry, env) => {
   const out = {};
+  let envSecret = false;
+  let storedDestination = false;
   for (const f of channel.fields) {
     const stored = storeEntry?.[f.key];
     const fromEnv = env[f.env];
-    const value = (typeof stored === 'string' && stored.length > 0) ? stored
-      : (typeof fromEnv === 'string' && fromEnv.length > 0) ? fromEnv
-        : f.fallback;
+    const isStored = typeof stored === 'string' && stored.length > 0;
+    const isEnv = !isStored && typeof fromEnv === 'string' && fromEnv.length > 0;
+    const value = isStored ? stored : isEnv ? fromEnv : f.fallback;
     if (typeof value !== 'string' || value.length === 0) return null;
+    if (f.secret && isEnv) envSecret = true;
+    if (isStored && DESTINATION_KEYS.has(f.key)) storedDestination = true;
     out[f.key] = value;
   }
+  // the operator's .env secret goes only where the operator's .env (or the platform default) says
+  if (envSecret && storedDestination) return null;
   return Object.freeze(out);
 };
 

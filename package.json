@@ -1,6 +1,6 @@
 {
   "name": "neuma",
-  "version": "0.1.82",
+  "version": "0.1.89",
   "license": "FSL-1.1-ALv2",
   "description": "Deus Neuma — sovereign relationships with AI.",
   "homepage": "https://deusneuma.ai",
@@ -110,6 +110,7 @@
     "react-markdown": "9.1.0",
     "remark-gfm": "4.0.1",
     "three": "0.184.0",
+    "wordnet-db": "3.1.14",
     "ws": "8.22.0",
     "yargs": "^18.0.0",
     "zod": "^4.3.6"

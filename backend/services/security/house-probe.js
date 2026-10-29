@@ -41,6 +41,7 @@ import { houseKey } from '../staff/cos-designation.js';
 import { verifyLaneOwnership } from '../lane-ownership.js';
 import { scanText } from './secret-sweep.js';
 import { secretLinkFindings } from './secret-link-findings.js';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 
 const execFileP = promisify(execFile);
 
@@ -82,7 +83,7 @@ const modeFinding = async (file, label) => {
 // git has never seen it, null when the history cannot be read (no repo here).
 const firstCommitOf = async (repoRoot, name) => {
   try {
-    const { stdout } = await execFileP('git', ['log', '--all', '--format=%h', '--', name], { cwd: repoRoot, maxBuffer: 4 * 1024 * 1024 });
+    const { stdout } = await execFileP('git', [...UNTRUSTED_GIT_ARGS, 'log', '--all', '--format=%h', '--', name], { cwd: repoRoot, env: untrustedGitEnv(), maxBuffer: 4 * 1024 * 1024 });
     return stdout.trim().split('\n').filter(Boolean).pop() || '';
   } catch {
     return null;

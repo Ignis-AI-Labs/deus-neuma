@@ -29,6 +29,15 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictSUIDSGID=yes
+# audit 2026-10-28 L-04: files the service writes are its own; no kernel log, no
+# personality switch, no realtime scheduling. Not ProtectClock (it implies
+# DeviceAllow=char-rtc, which closes the device policy and would cut the GPU off
+# the model and voice processes), not PrivateDevices (same), not
+# RestrictNamespaces (the coding shell is bubblewrap), not MemoryDenyWriteExecute (V8).
+UMask=0077
+ProtectKernelLogs=yes
+LockPersonality=yes
+RestrictRealtime=yes
 
 # Resource limits
 LimitNOFILE=65536

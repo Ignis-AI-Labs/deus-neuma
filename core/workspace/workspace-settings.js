@@ -65,7 +65,7 @@ export const createSettingsDomain = (deps) => Object.freeze({
   async readSpendAllowlist(neumaId) {
     try {
       const configDir = path.join(this._path(neumaId), 'config');
-      return await this._readJSON(path.join(configDir, 'spend-allowlist.json'));
+      return await this._readTrustedJSON(path.join(configDir, 'spend-allowlist.json'));
     } catch {
       return null;
     }
@@ -92,7 +92,7 @@ export const createSettingsDomain = (deps) => Object.freeze({
   async readSpendThreshold(neumaId) {
     try {
       const configDir = path.join(this._path(neumaId), 'config');
-      return await this._readJSON(path.join(configDir, 'spend-threshold.json'));
+      return await this._readTrustedJSON(path.join(configDir, 'spend-threshold.json'));
     } catch {
       return null;
     }
@@ -119,7 +119,7 @@ export const createSettingsDomain = (deps) => Object.freeze({
   async readPendingSpends(neumaId) {
     try {
       const configDir = path.join(this._path(neumaId), 'config');
-      const data = await this._readJSON(path.join(configDir, 'pending-spends.json'));
+      const data = await this._readTrustedJSON(path.join(configDir, 'pending-spends.json'));
       return Array.isArray(data?.requests) ? data.requests : [];
     } catch {
       return [];
@@ -154,7 +154,7 @@ export const createSettingsDomain = (deps) => Object.freeze({
     return deps.locks.withFileLock(filePath, async () => {
       let current = [];
       try {
-        const data = await this._readJSON(filePath);
+        const data = await this._readTrustedJSON(filePath);
         current = Array.isArray(data?.requests) ? data.requests : [];
       } catch (error) {
         if (error.code !== 'ENOENT') throw error;

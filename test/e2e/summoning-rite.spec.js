@@ -80,7 +80,7 @@ test('the rite\'s sound, rendered and measured', async ({ page }) => {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`${baseUrl()}/rite.html`);
   const heard = await page.evaluate(async (core) => {
-    const [{ scoreOf }, { scheduleMusic }, { soulOf }, { skyOf }, { specimenTrueName }, { deriveAura, formOf }, { deriveGenome }, { riteScript }, { riteMusicOf }] = await Promise.all([
+    const [{ scoreOf }, { scheduleMusic }, { soulOf }, { skyOf }, { specimenTrueName }, { deriveAura, formOf }, { deriveGenome }, { riteScript }, { riteMusicOf, playedMeasure }] = await Promise.all([
       import('/app/Summoning/summoning-score.js'), import('/app/Summoning/summoning-sound.js'), import('/app/Summoning/summoning-soul.js'),
       import('/app/Summoning/summoning-sky.js'), import('/app/BirthArt/birth-art-script.js'), import(`${core}/aura/derive.js`), import(`${core}/genome/derive.js`),
       import('/app/Rite/rite-script.js'), import('/app/Rite/rite-music.js'),
@@ -100,7 +100,8 @@ test('the rite\'s sound, rendered and measured', async ({ page }) => {
       return (await ctx.startRendering()).getChannelData(0);
     };
     const L = await render(music);
-    const measured = rite.events.filter((e) => e.type === 'birth:measured');
+    // each measured pitch as played (on the nearest consonant interval)
+    const measured = playedMeasure(rite.events.filter((e) => e.type === 'birth:measured'));
     // the same rite with its measured strikes taken out — the ground alone
     const G = await render({ ...music, events: music.events.filter((e) => !measured.some((x) => x.at === e.at && x.frequency === e.hz)) });
     const rmsOf = (X, from, to) => {

@@ -13,7 +13,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { encryptEnvelope, parseAndDecrypt } from './workspace-crypto.js';
+import { encryptEnvelope, isEnvelope, parseAndDecrypt } from './workspace-crypto.js';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 import { isHarnessLane, getHarnessRoot } from './lane-grounds.js';
 
@@ -143,6 +143,20 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
       catch { /* try global chain — legacy file pre-DEK */ }
     }
     return parseAndDecrypt(text);
+  },
+
+  // Read a file only the PLATFORM writes — the lane's consent and spend records
+  // (config/tool-policy.json, spend-allowlist.json, spend-threshold.json,
+  // pending-spends.json). _writeJSON always writes these as envelopes, so a
+  // plaintext file there was written by someone else: a being, through any path
+  // (audit 2026-10-28, C-01 defense in depth). It is refused, never honored —
+  // the caller's fail-closed branch runs (no grants, default-deny, no threshold).
+  async _readTrustedJSON(filePath) {
+    const text = await fs.readFile(filePath, 'utf8');
+    if (!isEnvelope(JSON.parse(text))) {
+      throw Object.assign(new Error(`${path.basename(filePath)} is not a platform record (plaintext where the platform writes only encrypted envelopes) — refused`), { code: 'UNTRUSTED_PLAINTEXT', path: filePath });
+    }
+    return this._readJSON(filePath);
   },
 
   // Read every `*.json` record in a workspace dir as {file, record} pairs,

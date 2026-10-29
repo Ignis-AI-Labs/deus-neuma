@@ -20,12 +20,14 @@
  *                           (tool-policy.js: ask / auto / observe, held
  *                           per participant on its own connection).
  *
- * Focus can never make a mode more permissive. It retires the PATH question
- * ([…]) and never the ACT question ([…]).
- * So delete_file still raises its card inside the focus ground while the
- * participant is on `ask`, and observe mode still holds every acting tool no
- * matter how plainly the folder is open. A participant on `auto` works
- * silently; its housemate on `ask` still asks. That is the whole model.
+ * Focus can never make ASK or OBSERVE more permissive. It retires the PATH
+ * question ([…]) and never the ACT question ([…]). So delete_file still raises its card inside the focus ground while
+ * the participant is on `ask`, and observe mode still holds every acting tool
+ * no matter how plainly the folder is open. A participant on `auto` works
+ * silently; its housemate on `ask` still asks. ONE meeting point (Founder,
+ * 2026-10-28, open-folder-autonomy.js): on AUTO, the open folder is where a
+ * being works FOR REAL — its shell runs live there (.git and secrets masked)
+ * and a delete inside it needs no card.
  *
  * TRUST: `connection.toolWorkspace` is not raw client input by the time it
  * reaches here — portal-routes.js runs every incoming value through

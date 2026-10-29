@@ -11,7 +11,7 @@
  */
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
-import { neumaWorkspace } from '../../core/index.js';
+import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { voiceSealStatus } from '../services/voice-seal-ceremony.js';
 import { createLogger } from '../services/logger.js';
 
@@ -30,14 +30,9 @@ router.param('neumaId', (req, res, next, id) => {
 router.get('/:neumaId', async (req, res) => {
   const { neumaId } = req.params;
   try {
-    // Ownership gate — same doctrine as the birth-setup probe: a lane claimed
-    // by another wallet is never yours to inspect.
-    const exists = await neumaWorkspace.exists(neumaId).catch(() => false);
-    if (!exists) return res.status(404).json({ error: 'Workspace not found' });
-    const owner = await neumaWorkspace.readOwner(neumaId).catch(() => null);
-    if (owner?.wallet && String(owner.wallet).toLowerCase() !== String(req.walletAddress || '').toLowerCase()) {
-      return res.status(403).json({ error: 'Not your workspace' });
-    }
+    // Ownership gate: the lane must be claimed, and by this wallet — a missing
+    // or corrupt owner record refuses (assertNeumaOwner; audit 2026-10-28 M-04).
+    if (!(await assertNeumaOwner(req, res, neumaId))) return undefined;
 
     res.json(await voiceSealStatus(neumaId));
   } catch (err) {

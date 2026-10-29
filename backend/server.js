@@ -116,6 +116,10 @@ if (sealedChats.files || sealedChats.failed.length) log.info('Sealed the chat co
 if (provisionedSecrets.folder?.startsWith('failed')) {
   log.warn('The folder holding the at-rest secrets could not be closed to its owner', { result: provisionedSecrets.folder });
 }
+if (provisionedSecrets.envFile === 'closed') log.info('The env file was readable by others — closed to its owner (0600)');
+else if (provisionedSecrets.envFile?.startsWith('failed')) {
+  log.warn('The env file could not be closed to its owner', { result: provisionedSecrets.envFile });
+}
 
 // DID THE GROUND MOVE UNDER US? Asked before anything reads or writes.
 //
