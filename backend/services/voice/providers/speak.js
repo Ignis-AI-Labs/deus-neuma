@@ -18,6 +18,7 @@
 
 import { streamPcmBody } from './_pcm-stream.js';
 import { wireContext } from '../speech-context.js';
+import { sidecarFetch } from '../sidecar-trust.js';
 
 const LOOPBACK = new Set(['127.0.0.1', '[::1]', 'localhost']);
 
@@ -48,7 +49,7 @@ const voiceBody = async (voice, inline) => (inline
   ? { clip_b64: await clipB64(voice), words: voice.words }
   : { clip_ref: voice.ref, words: voice.words });
 
-const post = (url, body, signal) => fetch(url, {
+const post = (url, body, signal) => sidecarFetch(url, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal,
 });
 

@@ -24,10 +24,12 @@ import { readMandate } from '../marketing/mandate/mandate-store.js';
 import { mandateGuidance } from '../marketing/mandate/mandate-words.js';
 import { COMPANY_UPDATES_TOOL, runCompanyUpdates } from './company-updates-tool.js';
 import { BOARD_READ_TOOL, boardToolsFor, runBoardRead } from './marketing-board-tool.js';
+import { isOpenChatsTool, handleOpenChats } from './chat-link-tools.js';
 
-// Does this parsed call target the house post tool? (both dialects)
+// Does this parsed call target the house word family: the post read, or the
+// live line's address book (open_chats, chat-link-tools.js)? (both dialects)
 const _isHousePostTool = (match) =>
-  match.toolName === 'post_check' || match.tool === 'house/post_check';
+  match.toolName === 'post_check' || match.tool === 'house/post_check' || isOpenChatsTool(match);
 
 // The two standing facts HOUSE POST rides on: the operator's chosen ground
 // and the being's sealed seat. Either absent → null (tools stay dark, a
@@ -48,6 +50,7 @@ const _housePostContext = async (connection) => {
 // the being's own inbox from house-post.js. Sending is the house/post INTENT
 // (Stage 3) — filed, settled by the sweep, seated-to-seated at validate time.
 const _handleHousePost = async (ws, connection, neumaPolicy, toolMode, match, args) => {
+  if (isOpenChatsTool(match)) return handleOpenChats(ws, connection, neumaPolicy, toolMode);
   const toolName = 'post_check';
   const tool = `house/${toolName}`;
   const { companion } = connection;

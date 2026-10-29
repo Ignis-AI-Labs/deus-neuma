@@ -20,6 +20,7 @@
 //   Both fields are Parler-specific; cloning engines ignore them.
 
 import { createLogger } from '../../logger.js';
+import { sidecarFetch } from '../sidecar-trust.js';
 const log = createLogger('Voice.Parler');
 
 const DEFAULT_SAMPLE_RATE = 44100;
@@ -86,7 +87,7 @@ export const parlerAdapter = {
     const url = `${config.endpoint.replace(/\/$/, '')}/synthesize`;
     log.debug('synthesize → parler', { chars: text.length, hasSeed: body.seed !== undefined });
 
-    const response = await fetch(url, {
+    const response = await sidecarFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

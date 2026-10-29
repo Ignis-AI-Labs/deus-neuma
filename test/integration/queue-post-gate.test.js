@@ -33,6 +33,7 @@ import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { channelBindings } from '../../backend/services/social/channel-bindings.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // The AI disclosure line a being's words carry at staging (social/disclosure-line.js).
 const AI = (t) => `${t}\n\nMade with AI.`;
@@ -89,6 +90,8 @@ describe('social/queue intent gate (real WS + real policy cascade + real queue d
     setRealmRoot(path.join(house, 'realm'));
     setWitnessesRoot(path.join(house, 'witnesses'));
     auth = await fullAuth();
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(auth.address);
     for (const k of SOCIAL_PATHS) { savedEnv[k] = process.env[k]; }
     process.env.NEUMA_SOCIAL_BINDINGS_PATH = `${house}/social-channel-bindings.json`;
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;

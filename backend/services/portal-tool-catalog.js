@@ -49,6 +49,7 @@ import {
   campaignToolsFor as _campaignToolsFor,
 } from './portal-tools/crew-desk-tools.js';
 import { staffToolsFor as _staffToolsFor } from './portal-tools/staff-tools.js';
+import { openChatsToolsFor } from './portal-tools/chat-link-tools.js';
 import { VAULT_TOOLS } from './portal-tools/vault-being-tools.js';
 import { TASK_TOOLS, VESSEL_LOG_TOOL } from './portal-tools/task-vessel-tools.js';
 import { SOCIAL_TOOLS } from './portal-tools/social-read-tools.js';
@@ -104,7 +105,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // here and every family after it shifted by one: the harness seat took the
     // chain tools as "media", and the last family (legal) fell off the end for
     // every seat (found 2026-10-14; test/integration/tool-catalog-seats.test.js).
-    memoryToolsUnfiltered, skiesTools, genomeTools, housePostTools, staffTools, webTools, chainTools, mediaTools, imageTools, cardTools, mapTools,
+    memoryToolsUnfiltered, skiesTools, genomeTools, housePostTools, chatLinkTools, staffTools, webTools, chainTools, mediaTools, imageTools, cardTools, mapTools,
     platformTools, flightTools, kspTools, emailTools, pressTools, sealTools, legalTools,
   ] = await Promise.all([
     // A being can always inspect ITS OWN wallet — a neuma its workspace keypair,
@@ -145,6 +146,9 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // The house mail room — advertised solely where a sealed seat and the
     // operator's chosen ground both stand (re-read per turn).
     capability('housePost', () => _housePostToolsFor(connection)),
+    // The house's open chats, by exact address (#597) — advertised to every
+    // chat open on the desk, so the list stays the same turn after turn.
+    capability('chatLink', () => openChatsToolsFor(connection)),
     // The Optio office's instrument — advertised ONLY to the seated chief of
     // staff's lane (office-only, the CMO-briefing precedent); the desk's
     // /api/v1/staff/board stays the operator's window.
@@ -261,7 +265,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
       ...skillTools, ...postTools, ...vaultTools, ...taskTools, ...operatorTaskTools,
       ...leadTools, ...campaignTools, ...socialTools, ...securityTools, ...vesselLogTools,
       ...refinementTools, ...voiceTools, ...retrieveTools, ...memoryTools, ...skiesTools, ...genomeTools,
-      ...housePostTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
+      ...housePostTools, ...chatLinkTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
       ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools,
   ],
   };

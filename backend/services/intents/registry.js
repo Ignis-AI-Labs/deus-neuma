@@ -46,6 +46,7 @@ import { imageGenerateIntent } from './image-generate.js';
 import { formRenderIntent } from './form-render.js';
 import { formChampionIntent } from './form-champion.js';
 import { housePostIntent } from './house-post.js';
+import { chatSendIntent } from './chat-send.js';
 import { houseReviewPacketIntent } from './house-review-packet.js';
 import { kspCommandIntent } from './ksp-command.js';
 import { voiceSealIntent, voiceClaimIntent } from './voice-rites.js';
@@ -74,6 +75,7 @@ const TYPES = new Map(
   [
     socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent,
     mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
+    chatSendIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
     speechAcceptIntent, speechAnotherIntent,

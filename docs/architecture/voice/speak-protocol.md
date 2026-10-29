@@ -24,8 +24,18 @@ contract is shaped to what they actually take.
 
 - **Loopback only.** The sidecar binds `127.0.0.1`. Binding is not enough on
   its own: every request whose peer address is not `127.0.0.1` or `::1` is
-  refused with `403 {"error":"forbidden"}` before anything else runs. `/shutdown`
-  and `/speak` carry no auth, and that is safe ONLY because of this rule.
+  refused with `403 {"error":"forbidden"}` before anything else runs.
+- **The install key (re-audit 2026-10-29, M-06).** Loopback is shared by every
+  program on the machine, so the backend and its sidecars know each other by one
+  install key (`data/settings/voice-sidecar.key`, handed to each sidecar it spawns
+  as `NEUMA_SIDECAR_KEY`; `backend/services/voice/sidecar-trust.js`,
+  `voice-engines/_shared/browser_guard.py`). `GET /identity?challenge=<hex>`
+  answers `{"proof": HMAC-SHA256(key, "neuma-sidecar-identity-v1\n" + challenge)}`;
+  the backend asks it before it adopts a sidecar, before every call, and before it
+  opens `/stream`, so a program squatting the port is never sent a clip or audio.
+  Every route but `/health` and `/identity` needs the header
+  `x-neuma-sidecar: HMAC-SHA256(key, "neuma-sidecar-caller-v1")`, else `403`.
+  A sidecar started without the key answers `/health` and nothing else.
 - **JSON in, JSON errors out.** Request bodies are `application/json`. Every
   error is JSON `{"error": "<code>", "detail": "<plain sentence>"}` with the
   status below — never an HTML page, never a bare string.
@@ -37,7 +47,7 @@ contract is shaped to what they actually take.
 | Status | `error` | When |
 | --- | --- | --- |
 | 400 | `bad_request` | malformed JSON, missing/empty `text`, bad base64, audio that is not WAV, unknown `speaker`, more than 6 `context` segments, a voice clip under 3 s, `max_audio_ms` outside (0, 120000] |
-| 403 | `forbidden` | the peer is not loopback |
+| 403 | `forbidden` | the peer is not loopback, a browser marked the request, or the call lacks the backend's token |
 | 409 | `unknown_ref` | a `clip_ref` or context `ref` the sidecar does not hold; the body names it in `ref` |
 | 413 | `too_long` | `text` over 1000 characters, `words` over 2000, a clip over 40 s, `context` audio over 45 s in total, or the voice clip + text alone do not fit the model window |
 | 499 | — (no body) | the client left while its request waited in the queue: it was dropped without running |

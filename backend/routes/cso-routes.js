@@ -200,6 +200,20 @@ router.put('/threats/:id/reopen', async (req, res) => {
   }
 });
 
+// The operator's word that a leaked key is revoked at its provider — the one proof no scan can
+// make, so a leak the watch sees live nowhere here is verified only by it (re-audit 2026-10-29, NEW-M6).
+router.put('/threats/:id/revoked', async (req, res) => {
+  try {
+    const result = await (await threatLedgerFor(req.walletAddress)).confirmRevocation(req.params.id, { by: `operator:${req.walletAddress}` });
+    if (!result.ok) return res.status(result.error === 'no such threat' ? 404 : 409).json({ error: result.error });
+    log.info('leak revocation confirmed by the operator', { id: result.entry.id, wallet: req.walletAddress });
+    res.json({ threat: result.entry });
+  } catch (error) {
+    log.error('Revocation confirm failed', { id: req.params.id, error: error.message });
+    res.status(500).json({ error: 'Failed to confirm the revocation' });
+  }
+});
+
 // ── The watch list ──────────────────────────────────────────────────────────
 router.get('/watch', async (req, res) => {
   try {

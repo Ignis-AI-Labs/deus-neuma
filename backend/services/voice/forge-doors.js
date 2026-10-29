@@ -24,6 +24,7 @@ import { clipRefOf } from '../../../core/voice/voice-dna-schema.js';
 import { ensureReady, resolveServe } from './engine-manager.js';
 import { fetchLibraryClip } from './voice-library.js';
 import { pitchTrack, soundProfileOf } from './sound-profile.js';
+import { sidecarFetch } from './sidecar-trust.js';
 
 const run = promisify(execFile);
 
@@ -274,7 +275,7 @@ const ready = (engineId) => ensureReady(engineId).catch((err) => {
 // impure — POST a sidecar endpoint on its loopback serve address.
 const postSidecar = async (engineId, route, init, timeoutMs) => {
   const { host, port } = resolveServe(engineId);
-  const res = await fetch(`http://${host}:${port}${route}`, { method: 'POST', ...init, signal: AbortSignal.timeout(timeoutMs) });
+  const res = await sidecarFetch(`http://${host}:${port}${route}`, { method: 'POST', ...init, signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     let detail = body.slice(0, 200);

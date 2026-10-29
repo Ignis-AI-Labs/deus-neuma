@@ -10,7 +10,7 @@
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { scanText } from './secret-sweep.js';
+import { checkOutboundSecrets } from './outbound-secrets.js';
 
 const execFileP = promisify(execFile);
 
@@ -59,18 +59,22 @@ export const escalationBody = (threat) => [
   `- [ ] Fix through the Rule 9 pipeline; assess the ledger entry \`mitigated\` when it lands`,
 ].filter((line) => line !== null).join('\n');
 
+/**
+ * pure — the issue exactly as it is filed. The approval card shows this and the filing uses the
+ * same text, so the operator approves the words that go out under their gh login (re-audit
+ * 2026-10-29, NEW-M5).
+ * @returns {{title: string, body: string}}
+ */
+export const issueOf = (threat) => ({ title: `[WATCHTOWER] ${threat.title}`.slice(0, 240), body: escalationBody(threat) });
+
 // impure — file the issue through the operator's own gh CLI, in the watched
 // repo's checkout so gh's default remote names the project. Labels ride when
 // they exist; a missing label retries bare rather than losing the issue.
-export const fileSecurityIssue = async (threat, repoPath) => {
-  const title = `[WATCHTOWER] ${threat.title}`.slice(0, 240);
-  const body = escalationBody(threat);
+export const fileSecurityIssue = async (threat, repoPath, { title, body } = issueOf(threat)) => {
   // The assessment and summary are CSO-written text: a turned or careless
   // CSO must never carry a key out on the operator's own gh login.
-  const leaks = scanText(`${title}\n${body}`);
-  if (leaks.length) {
-    return { ok: false, error: `the issue text holds what looks like a secret (${[...new Set(leaks.map((l) => l.patternId))].join(', ')}) — nothing was filed` };
-  }
+  const secret = checkOutboundSecrets('the issue text', [title, body], 'nothing was filed');
+  if (!secret.ok) return { ok: false, error: secret.reason };
   const labels = ['domain: security', 'audit: watchtower',
     ...(threat.severity !== 'unknown' ? [`severity: ${threat.severity}`] : [])];
   const baseArgs = ['issue', 'create', '--title', title, '--body', body];

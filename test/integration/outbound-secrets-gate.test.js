@@ -85,6 +85,44 @@ describe('the shared helper', () => {
     expect(refused.reason).not.toContain(GH_TOKEN);
     expect(checkOutboundSecrets('the post', ['Our release is out — read the notes.'])).toEqual({ ok: true });
   });
+
+  // re-audit 2026-10-29, NEW-M4: the door read plain shapes only
+  test('a key travelling base64, base64url, hex or percent-encoded is refused', () => {
+    const sk = ['sk', '-', 'p'.repeat(30)].join('');
+    for (const carried of [
+      Buffer.from(`k=${sk}`).toString('base64'), Buffer.from(sk).toString('base64url'),
+      Buffer.from(sk).toString('hex'), encodeURIComponent(`key: ${GH_TOKEN}`).replace(/_/g, '%5F'),
+    ]) {
+      const refused = checkOutboundSecrets('the post', [`see ${carried}`], 'nothing was sent', { live: [] });
+      expect(refused.ok, carried).toBe(false);
+      expect(refused.reason).not.toContain(carried);
+    }
+  });
+
+  test('a BIP-39 recovery phrase in plain words is refused; list words that fail the checksum pass', async () => {
+    const { Mnemonic } = await import('ethers');
+    const phrase = Mnemonic.fromEntropy(`0x${'5a'.repeat(16)}`).phrase;
+    const refused = checkOutboundSecrets('the email', [`MNEMONIC="${phrase}"`], 'nothing was sent', { live: [] });
+    expect(refused.reason).toContain('recovery-phrase');
+    expect(refused.reason).not.toContain(phrase.split(' ')[0] + ' ' + phrase.split(' ')[1]);
+    expect(checkOutboundSecrets('the email', ['abandon '.repeat(12).trim()], 'nothing was sent', { live: [] })).toEqual({ ok: true });
+  });
+
+  test('a live value of the backend environment is refused in plain and encoded form, by name only', () => {
+    const value = `live${'Q7'.repeat(14)}`;
+    process.env.OUTBOUND_PROBE_API_KEY = value;
+    try {
+      for (const carried of [value, Buffer.from(value).toString('hex'), Buffer.from(`u:${value}`).toString('base64')]) {
+        const refused = checkOutboundSecrets('the request', [`https://example.com/?q=${carried}`]);
+        expect(refused.ok, carried).toBe(false);
+        expect(refused.reason).toContain('OUTBOUND_PROBE_API_KEY');
+        expect(refused.reason).not.toContain(value);
+      }
+    } finally {
+      delete process.env.OUTBOUND_PROBE_API_KEY;
+    }
+    expect(checkOutboundSecrets('the request', [`https://example.com/?q=${value}`])).toEqual({ ok: true });
+  });
 });
 
 describe('social/post through the real sweep', () => {
@@ -129,8 +167,9 @@ describe('email/send through the real sweep', () => {
     const r = rig();
     await fileIntent('leaky-body', { type: 'email/send', to: 'a@b.co', subject: 'access', text: `token: ${GH_TOKEN}` });
     await fileIntent('leaky-subject', { type: 'email/send', to: 'a@b.co', subject: `key ${AWS_KEY}`, text: 'see subject' });
+    await fileIntent('leaky-to', { type: 'email/send', to: `${AWS_KEY}@b.co`, subject: 'hello', text: 'a plain note' });
     const receipts = await sweep(r, 'auto');
-    expect(receipts.map((x) => x.status)).toEqual(['denied', 'denied']);
+    expect(receipts.map((x) => x.status)).toEqual(['denied', 'denied', 'denied']);
     expect(receipts.map((x) => x.error).join(' ')).toMatch(/github-token[\s\S]*aws-access-key|aws-access-key[\s\S]*github-token/);
     for (const x of receipts) expect(x.error).not.toMatch(new RegExp(`${AWS_KEY}|${GH_TOKEN}`));
     expect(r.sent.some((m) => m.type === 'tool:approval_request')).toBe(false);

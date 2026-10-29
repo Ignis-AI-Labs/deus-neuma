@@ -30,6 +30,8 @@ import { handlePortalMessage } from './portal-message-handlers.js';
 import { closeVoiceSitting } from '../services/portal-voice-handlers.js';
 // a fired chat watch reaches its chat as a new turn (wired at load — services never import routes)
 import './portal-watch-delivery.js';
+// one open chat messages another, live (#597) — the same load-time wiring
+import './portal-chat-link.js';
 
 // The export surface every importer (server.js, meditation-routes,
 // channel-bridge, the test seam) reads — preserved verbatim by re-export.

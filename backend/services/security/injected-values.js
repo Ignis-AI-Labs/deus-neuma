@@ -20,6 +20,8 @@
 //
 // Every function here is pure.
 
+import { decodedForms } from './decoded-forms.js';
+
 const KEPT = 64;
 const IBAN = /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b/g;
 const CARD = /\b\d{4}(?:[ -]\d{4}){2,4}\b/g;
@@ -61,13 +63,8 @@ const all = (re, text) => [...text.matchAll(re)];
 // pure — the host of a url-form value.
 const hostOf = (norm) => norm.split(/[/?#]/)[0];
 
-/**
- * Every traceable value in a span of planted text. Pure.
- * @param {string} text
- * @returns {Array<{kind: string, raw: string, norm: string}>} distinct by (kind, norm)
- */
-export const valuesIn = (text) => {
-  const t = String(text || '');
+// pure — the values one form of the text shows plainly, most specific class first.
+const plainValuesIn = (t) => {
   const emails = all(EMAIL, t).map((m) => m[0]);
   // An address's domain is not a link: emailing a stranger at gmail.com must
   // not taint every gmail.com address.
@@ -90,6 +87,19 @@ export const valuesIn = (text) => {
     }),
     ...all(SECRET, t).map((m) => value('secret', m[1])),
   ].filter(Boolean);
+  return found;
+};
+
+/**
+ * Every traceable value in a span of planted text — in its plain form and in each encoded run it
+ * carries decoded, so a value planted base64- or hex-encoded is traced like a plain one (re-audit
+ * 2026-10-29, NEW-L5). Pure.
+ * @param {string} text
+ * @returns {Array<{kind: string, raw: string, norm: string}>} distinct by (kind, norm)
+ */
+export const valuesIn = (text) => {
+  const t = String(text || '');
+  const found = [t, ...decodedForms(t)].flatMap(plainValuesIn);
   const seen = new Set();
   return found.filter((v) => {
     const key = `${FORM_OF[v.kind]}\n${v.norm}`;

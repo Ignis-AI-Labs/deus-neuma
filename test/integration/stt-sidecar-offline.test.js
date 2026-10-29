@@ -32,6 +32,10 @@ import WebSocket from 'ws';
 import { launch, stop } from '../../backend/services/voice/engine-manager.js';
 import { shutdownSidecar } from '../../backend/services/voice/engine-process.js';
 import { renderSpeechPcm, makeDiskWorkDir } from '../helpers/speech-fixture.js';
+import { SIDECAR_CALLER_HEADER, callerToken, sidecarKey } from '../../backend/services/voice/sidecar-trust.js';
+
+// the backend's own token (sidecar-trust.js): the sidecar it launched answers nothing else
+const TOKEN = () => ({ [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) });
 
 const PORT = 7872;
 const MISSING_PORT = 7874;
@@ -96,7 +100,7 @@ describe('whisper sidecar is offline by construction (real sidecar, dead proxies
     expect(health).toMatchObject({ ok: true, phase: 'ready', model: LIVE_MODEL, streamModel: LIVE_MODEL, device: 'cpu' });
 
     // /stream: the lane is already built — `ready` arrives at once, not after a load.
-    const ws = new WebSocket(`ws://127.0.0.1:${PORT}/stream`);
+    const ws = new WebSocket(`ws://127.0.0.1:${PORT}/stream`, { headers: TOKEN() });
     const events = [];
     ws.on('message', (d) => { try { events.push(JSON.parse(d.toString())); } catch { /* noise */ } });
     await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
@@ -121,7 +125,7 @@ describe('whisper sidecar is offline by construction (real sidecar, dead proxies
     // /transcribe: the same live model reads the whole recording.
     const wav = await fs.readFile(path.join(workDir, 'utterance.wav'));
     const res = await fetch(`http://127.0.0.1:${PORT}/transcribe`, {
-      method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wav, signal: AbortSignal.timeout(120_000),
+      method: 'POST', headers: { 'Content-Type': 'audio/wav', ...TOKEN() }, body: wav, signal: AbortSignal.timeout(120_000),
     });
     expect(res.status).toBe(200);
     expect((await res.json()).text.toLowerCase()).toContain('portal is open');
@@ -138,7 +142,7 @@ describe('whisper sidecar is offline by construction (real sidecar, dead proxies
       expect(health).toMatchObject({ ok: true, model: 'large-v3', streamModel: LIVE_MODEL });
       const wav = await fs.readFile(path.join(workDir, 'utterance.wav'));
       const res = await fetch(`http://127.0.0.1:${PORT}/transcribe`, {
-        method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wav, signal: AbortSignal.timeout(120_000),
+        method: 'POST', headers: { 'Content-Type': 'audio/wav', ...TOKEN() }, body: wav, signal: AbortSignal.timeout(120_000),
       });
       expect(res.status).toBe(200);
       expect((await res.json()).text.toLowerCase()).toContain('portal is open');

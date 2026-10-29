@@ -130,3 +130,14 @@ export const classifySpend = (allowlist, thresholdEth, { to, value } = {}) => {
   if (requiresApproval(thresholdEth, value)) return 'pending';
   return 'autonomous';
 };
+
+/**
+ * A spend's memo as it is kept: one line of at most 280 characters. A being writes it, and it is
+ * read back into the Quaestor's briefing and onto the operator's card, so a line break or a
+ * control character could pass for the briefing's own lines (re-audit 2026-10-29, NEW-M2). Pure.
+ * @param {unknown} memo
+ * @returns {string}
+ */
+export const spendMemo = (memo) => (typeof memo === 'string'
+  ? memo.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, 280)
+  : '');

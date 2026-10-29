@@ -135,6 +135,8 @@ export const forceCrystallizeBelow = async (neumaId, messages, workspace, { thre
         type: 'exchange',
         userMessage: sanitizeMemoryForPrompt(userText, 300),
         response: sanitizeMemoryForPrompt(assistantText.slice(0, 500), 500),
+        // Whose words opened it, as the row says — absent: the operator's (recall-docs.js).
+        ...(user.origin ? { origin: user.origin } : {}),
         significance,
         emotion: detectEmotion(assistantText) || undefined,
         source,

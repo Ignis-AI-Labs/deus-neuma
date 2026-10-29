@@ -40,6 +40,7 @@ const LOUD = Object.freeze(['critical', 'high']);
 // text and could be spelled `watch`.
 const EVENT = Object.freeze({
   vanished: 'vanished', reopened: 'reopened', severity: 'severity', verified: 'verified', fixFiled: 'fix-filed',
+  awaitsRevocation: 'awaits-revocation',
 });
 
 // pure — a (source, repo-or-host) scope as one comparable string.
@@ -136,9 +137,11 @@ export const refreshSeen = (entry, finding, at, { whole = false } = {}) => {
     reopenByWatch(entry, `${claimOf(entry)}, but the ${finding.source} scan ${still} (${at}) — reopened`, at, { claimedBy: entry.assessedBy, claimedAt: entry.assessedAt });
     reopened = true;
   } else if (whole && isClaimed(entry) && stands === false && awaitsVerification(entry)) {
-    verifyClaim(entry, `verified not live by the ${finding.source} scan at ${at} — no env file of this checkout holds the value; the history still carries it, as expected: a leak is fixed by rotation, not erasure`, at);
-    verified = true;
+    // Not live HERE says nothing about the provider: a leaked key is handled only once it is revoked
+    // there, which no scan can see — so the claim waits for the operator (re-audit 2026-10-29, NEW-M6).
+    noteAwaitingRevocation(entry, finding.source, at);
   }
+  if (typeof finding.live === 'boolean') entry.live = finding.live;
   if (Array.isArray(finding.affected)) entry.affected = finding.affected;
   if (typeof finding.shipped === 'boolean') entry.shipped = finding.shipped;
   const severity = finding.severity || 'unknown';
@@ -193,6 +196,31 @@ export const verifyVanishedClaims = (entries, { scanned, seenKeys, keyOf, at }) 
     verified.push(entry);
   }
   return verified;
+};
+
+// Once per claim: the watch saw the leaked value live nowhere on this machine, and says what it
+// cannot see.
+const noteAwaitingRevocation = (entry, source, at) => {
+  const last = entry.history?.at(-1);
+  if (last?.event === EVENT.awaitsRevocation && last.claimedAt === entry.assessedAt) return;
+  appendHistory(entry, watchRow(entry, EVENT.awaitsRevocation, `not live on this machine by the ${source} scan at ${at} — `
+    + 'but no scan can see whether the old key is revoked at the provider: the claim stays unverified until the operator confirms the revocation', at,
+  { claimedBy: entry.assessedBy, claimedAt: entry.assessedAt }));
+};
+
+/**
+ * The operator confirms a leaked key is revoked at its provider: the one proof that settles a leak
+ * the watch already sees live nowhere on this machine (re-audit 2026-10-29, NEW-M6).
+ * @param {Object} entry
+ * @param {{by: string, at: string}} opts by — the operator's wallet
+ * @returns {string|null} why it cannot be confirmed, or null once verified
+ */
+export const confirmRevocation = (entry, { by, at }) => {
+  if (entry.source !== 'secret-sweep') return 'only a leaked secret is revoked';
+  if (!isClaimed(entry)) return 'the leak is not marked mitigated — rotate the key, have it marked, then confirm';
+  if (entry.live !== false) return 'the watch still sees the value live on this machine (or has not read it yet) — rotate it first';
+  verifyClaim(entry, `revocation at the provider confirmed by the operator (${by}) at ${at}; the ${entry.source} scan sees the value live nowhere on this machine`, at);
+  return null;
 };
 
 /**

@@ -74,6 +74,9 @@ describe('the HOUSE SEAT section — record, not recollection (gnosis)', () => {
     expect(text).toContain('- Faber — YOU');
     expect(text).toContain('- Rector — your witness');
     expect(text).toContain('- Legatus — mateecho');
+    // Its own seat's compass — and only its own (the identity diet).
+    expect(text).toContain('Your compass — what your seat asks of any venture: What exactly are we making, to what standard, by when? What is the smallest version that delivers the value? Did the customer get it?');
+    expect(text.match(/Your compass/g)).toHaveLength(1);
     // The gnosis law rides in the section itself — every turn, every model.
     expect(text).toContain('Never guess a seat');
     expect(text).toContain('gnosis over assumption');
@@ -92,6 +95,8 @@ describe('the HOUSE SEAT section — record, not recollection (gnosis)', () => {
     expect(text).toContain('- member, no seat on-chain — YOU');
     expect(text).toContain('- Faber — seatedecho');
     expect(text).not.toContain('SEALED ON-CHAIN');
+    // No title, no compass — never a seat's questions it does not hold.
+    expect(text).not.toContain('Your compass');
     // and the founded seats read it as a member with no title
     expect(await _houseSeatSection(conn('seatedecho'))).toContain('- member, no seat on-chain — unseatedecho');
   });

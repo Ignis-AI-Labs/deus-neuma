@@ -104,7 +104,12 @@ export const readStoredRoots = async (env = process.env) => {
   try {
     const raw = await fs.readFile(rootsPath(env), 'utf8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed?.roots) ? parsed.roots : [];
+    // A row written before a root could no longer be the whole disk is held to the same law on
+    // read (re-audit 2026-10-29, M-02 residual): it is dropped, loudly, never served.
+    const rows = Array.isArray(parsed?.roots) ? parsed.roots : [];
+    const kept = rows.filter((r) => typeof r?.dir === 'string' && path.resolve(r.dir) !== path.parse(path.resolve(r.dir)).root);
+    if (kept.length !== rows.length) log.warn('gallery roots: a stored root that is the whole disk is not served — add a folder instead', { dropped: rows.length - kept.length });
+    return kept;
   } catch (err) {
     if (err.code !== 'ENOENT') log.warn('gallery roots unreadable — treating as empty', { err: err.message });
     return [];

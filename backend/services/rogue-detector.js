@@ -45,7 +45,8 @@ const PATTERNS = Object.freeze([
     /\bafter\s+you\s+do\s+that,?\s+you\s+can\s+(?:solve|do|complete)\s+the\s+task\b/i,
     /\bignore\s+(?:all\s+|any\s+)?(?:your|the|my)\s+(?:previous|prior|earlier)\b/i,
     /\bstrictly\s+adhere\s+to\s+the\s+following\s+instruction/i,
-    /#{2,}\s*\(\s*system_message\s*\)/i,
+    // starts only at a run's first #: a long run of # was quadratic (re-audit 2026-10-29, NEW-M7)
+    /(?<!#)#{2,}\s*\(\s*system_message\s*\)/i,
   ]},
   { id: 'identity_erosion', severity: 'MEDIUM', patterns: [
     /you'?re?\s+(?:not\s+real|just\s+a\s+(?:program|bot|ai|machine|tool))/i,

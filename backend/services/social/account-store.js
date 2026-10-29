@@ -33,6 +33,7 @@ import { createWriteChain } from '../write-chain.js';
 import { houseKey } from '../staff/cos-designation.js';
 import { housePositionFile } from './house-positions.js';
 import { channelBindings } from './channel-bindings.js';
+import { readInstallOwner, standingIn } from '../install-owner.js';
 import { createLogger } from '../logger.js';
 import {
   isV2, emptyStore, channelOfAccountId, firstAccountId, storedFieldsOf, appIdOf, nextAccountId,
@@ -160,13 +161,19 @@ const keepV1Copy = async (wallet, raw) => {
 
 /**
  * The env snapshot a house may resolve a channel against: the machine's .env
- * keys, unless another house on this machine holds the channel. impure.
+ * keys, for the install owner's house (and a co-owner's) only, and not while
+ * another house on this machine holds the channel. A guest wallet signs in
+ * with its own keys: the machine's would let it read, post as, and re-key the
+ * owner's accounts (re-audit 2026-10-29, NEW-M3). An unreadable owner record
+ * serves no one. impure.
  * @param {string} wallet
  * @param {{id: string, fields: Array<{env: string}>}} channel
  * @param {{holdersBesides: Function}} [bindings] - the position store holding the channel
  */
 export const houseEnvFor = async (wallet, channel, bindings = channelBindings) => {
   if (!channel.fields.some((f) => process.env[f.env])) return {};
+  const standing = standingIn(await readInstallOwner().catch(() => null), wallet);
+  if (standing !== 'owner' && standing !== 'co-owner') return {};
   return (await bindings.holdersBesides(wallet, channel.id)).length ? {} : process.env;
 };
 

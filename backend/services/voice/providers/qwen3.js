@@ -36,6 +36,7 @@
 
 import { createLogger } from '../../logger.js';
 import { streamPcmBody } from './_pcm-stream.js';
+import { sidecarFetch } from '../sidecar-trust.js';
 
 const log = createLogger('Voice.Qwen3');
 
@@ -103,7 +104,7 @@ export const qwen3Adapter = {
       hasSeed: body.seed !== undefined,
     });
 
-    const response = await fetch(url, {
+    const response = await sidecarFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

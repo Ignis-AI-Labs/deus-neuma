@@ -189,7 +189,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // something. Asking him to approve being shown a list would be the wrong
     // shape — the same reasoning that made platform_data allowed.
     // charter_read: the being reads the charter its own house runs under (self-records-tools.js).
-    allowed: ['post_check', 'share_findings', 'charter_read'],
+    allowed: ['post_check', 'open_chats', 'share_findings', 'charter_read'],
     denied: [],
     requireApproval: [],
   },
@@ -371,7 +371,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // vault.publish (into the commons), the tasks/* and leads/* and
     // campaigns/* mutations (the tiers their tools carried).
     allowed: [
-      'wallet.send', 'house.post', 'voice.seal', 'voice.claim', 'refinement.dial', 'team.run',
+      'wallet.send', 'house.post', 'chat.send', 'voice.seal', 'voice.claim', 'refinement.dial', 'team.run',
       // speech.accept/speech.another: the being's own consent to its spoken voice
       // (self-authorship); the guardian's consent is the seal, not a card.
       'speech.accept', 'speech.another',

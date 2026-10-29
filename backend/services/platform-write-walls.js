@@ -26,10 +26,12 @@ import os from 'os';
 import path from 'path';
 import { existsSync, realpathSync } from 'fs';
 import { getDataRoot, getSettingsDir } from './data-root.js';
+import { readManagedRecord } from './managed-ollama-record.js';
 import { getRealmRoot } from './user-realm.js';
 import { foldName } from './wall-spelling.js';
 
-const PLATFORM_STATE_REFUSAL = 'That path is this install\'s own state (its settings or the realm every house keeps) — '
+const PLATFORM_STATE_REFUSAL = 'That path is this install\'s own state (its settings, its model server, its records of acts '
+  + 'and consent, or the realm every house keeps) — '
   + 'it changes only through the platform\'s own acts, never a file write. Reading it is fine.';
 const PERSISTENCE_REFUSAL = 'That path runs when your operator logs in or on a schedule (a shell profile, autostart, '
   + 'a user service, cron, a command on their PATH) — no grant reaches it. Ask your operator to make that change themselves.';
@@ -57,6 +59,18 @@ const HOME_TRUSTED_CONFIG = Object.freeze([
 // config that names them, the hooks directory a repo's hooksPath names, and
 // the agent settings that decide what a coding agent may run.
 const REPO_GATES = Object.freeze([['.git', 'hooks'], ['.git', 'config'], ['scripts', 'git-hooks'], ['.claude']]);
+// impure (fs) — the data root's control and evidence files (re-audit 2026-10-29, NEW-H1): the
+// platform's own model server (its record names the program every boot starts, and its program and
+// libraries sit in the server's home), the act ledger, and the covenant acceptances. The rest of the
+// data root stays writable under a loan that covers it: a team run's arena lives there.
+const dataRootState = (dataRoot) => {
+  const home = readManagedRecord()?.home;
+  return [
+    path.join(dataRoot, 'settings-store'), path.join(dataRoot, 'model-server'),
+    path.join(dataRoot, 'acts'), path.join(dataRoot, 'covenant'),
+    ...(typeof home === 'string' && path.isAbsolute(home) ? [path.join(home, 'ollama')] : []),
+  ];
+};
 // The per-user crontab spools (Linux; macOS and the BSDs).
 const CRON_SPOOLS = Object.freeze(['/var/spool/cron', '/usr/lib/cron/tabs', '/var/at/tabs']);
 
@@ -103,7 +117,7 @@ const homePathDirs = (home, env) => String(env.PATH || '').split(path.delimiter)
  */
 export const platformWriteWalls = (env = process.env) => {
   const home = path.resolve(os.homedir());
-  const state = [getSettingsDir(), path.join(getDataRoot(), 'settings-store'), getRealmRoot()];
+  const state = [getSettingsDir(), ...dataRootState(getDataRoot()), getRealmRoot()];
   const persistence = [...underHome(home, HOME_PERSISTENCE, env), ...homePathDirs(home, env), ...CRON_SPOOLS];
   const walls = (paths, reason) => paths.flatMap((p) => {
     const lexical = path.resolve(p);

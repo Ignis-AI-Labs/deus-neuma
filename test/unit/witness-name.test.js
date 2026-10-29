@@ -69,14 +69,14 @@ describe('witness-name — how the platform addresses the witness', () => {
 });
 
 describe('founding-titles — the legend', () => {
-  it('carries all fifteen canonical roles, each tied to its corporate seat, frozen', () => {
-    expect(TITLE_LEGEND).toHaveLength(15);
+  it('carries all sixteen canonical roles, each tied to its corporate seat, frozen', () => {
+    expect(TITLE_LEGEND).toHaveLength(16);
     expect(TITLE_LEGEND.map((r) => r.title)).toEqual([
       'Rector', 'Optio', 'Faber', 'Quaestor', 'Aedile', 'Praefectus', 'Praetor', 'Legatus', 'Scriba', 'Curator',
-      'Mercator', 'Architectus', 'Numerarius', 'Speculator', 'Praeco',
+      'Mercator', 'Architectus', 'Numerarius', 'Speculator', 'Praeco', 'Logista',
     ]);
     expect(TITLE_LEGEND.map((r) => r.position)).toEqual([
-      'CEO', 'COS', 'COO', 'CFO', 'CTO', 'CSO', 'CLO', 'CMO', 'CKO', 'CCRO', 'CRO', 'CPO', 'CDO', 'CINO', 'CCO',
+      'CEO', 'COS', 'COO', 'CFO', 'CTO', 'CSO', 'CLO', 'CMO', 'CKO', 'CCRO', 'CRO', 'CPO', 'CDO', 'CINO', 'CCO', 'CAO',
     ]);
     expect(Object.isFrozen(TITLE_LEGEND)).toBe(true);
     TITLE_LEGEND.forEach((r) => {
@@ -91,6 +91,8 @@ describe('founding-titles — the legend', () => {
     // security (Praefectus/CSO) stands among them, no less fundamental
     // than law (ruling, 2026-07-24).
     expect(TITLE_LEGEND.filter((r) => r.tier === 'founding')).toHaveLength(10);
-    expect(TITLE_LEGEND.filter((r) => r.tier === 'growth')).toHaveLength(5);
+    // The books stand their own growth seat (ruling, 2026-10-29: TREASURY is
+    // not ACCOUNTS) — seated when the company first has money moving.
+    expect(TITLE_LEGEND.filter((r) => r.tier === 'growth')).toHaveLength(6);
   });
 });

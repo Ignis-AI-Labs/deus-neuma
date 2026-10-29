@@ -68,17 +68,25 @@ const kitSaved = () => {
   for (const child of backends) if (child.connected) child.send({ type: 'neuma:kit-saved' });
 };
 
-/** impure — the Recovery Kit doors for the desk (preload: neuma.keyLock). */
-const registerKeyLockIpc = ({ ipcMain, safeStorage }) => {
+/**
+ * impure — the Recovery Kit doors for the desk (preload: neuma.keyLock). Each answers a desk's own
+ * top frame only (isDesk — desk-links.cjs fromDesk): revealKit hands out the code that opens every
+ * key (re-audit 2026-10-29, M-07 residual).
+ */
+const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk }) => {
   const seal = () => safeStorageSeal(safeStorage);
+  const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
+    if (!isDesk(event)) throw new Error(`${channel} refused: not the desk`);
+    return fn(event, ...args);
+  });
   const guarded = (fn) => async () => {
     if (!opened) return { ok: false, error: 'This launch has no keychain lock.' };
     try { return { ok: true, ...(await fn()) }; } catch (err) { return { ok: false, error: err.message }; }
   };
-  ipcMain.handle('keyLock:status', async () => ({ active: lockActive(), backend: opened?.backend ?? null, kitPending: Boolean(opened?.kitPending) }));
-  ipcMain.handle('keyLock:revealKit', guarded(async () => ({ code: lock.revealKit({ file: secretsFile(), seal: seal() }) })));
-  ipcMain.handle('keyLock:confirmKit', guarded(async () => { lock.confirmKit({ file: secretsFile() }); kitSaved(); return {}; }));
-  ipcMain.handle('keyLock:newKit', guarded(async () => {
+  handle('keyLock:status', async () => ({ active: lockActive(), backend: opened?.backend ?? null, kitPending: Boolean(opened?.kitPending) }));
+  handle('keyLock:revealKit', guarded(async () => ({ code: lock.revealKit({ file: secretsFile(), seal: seal() }) })));
+  handle('keyLock:confirmKit', guarded(async () => { lock.confirmKit({ file: secretsFile() }); kitSaved(); return {}; }));
+  handle('keyLock:newKit', guarded(async () => {
     lock.replaceKit({ file: secretsFile(), seal: seal(), keys: opened.keys });
     opened = { ...opened, kitPending: true };
     return { code: lock.revealKit({ file: secretsFile(), seal: seal() }) };

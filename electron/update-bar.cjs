@@ -69,7 +69,7 @@ const launchWhatsNew = ({ userData, appPath, current, log }) => {
  *   launch?: boolean, log?: object }} deps — launch: open WHAT'S NEW at this launch when due
  * @returns {{ publish: () => void, snapshot: () => object }}
  */
-const registerUpdateBar = ({ ipcMain, BrowserWindow, shell, app, autoUpdate, launch = app.isPackaged, log = console }) => {
+const registerUpdateBar = ({ ipcMain, BrowserWindow, shell, app, autoUpdate, isDesk, launch = app.isPackaged, log = console }) => {
   const current = app.getVersion();
   const userData = app.getPath('userData');
   let dismissed = null;
@@ -91,8 +91,13 @@ const registerUpdateBar = ({ ipcMain, BrowserWindow, shell, app, autoUpdate, lau
     }
   };
 
-  ipcMain.handle('update:state', () => snapshot());
-  ipcMain.handle('update:act', (_event, action) => {
+  // a desk's own top frame only (desk-links.cjs fromDesk; re-audit 2026-10-29, M-07 residual)
+  const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
+    if (!isDesk(event)) throw new Error(`${channel} refused: not the desk`);
+    return fn(event, ...args);
+  });
+  handle('update:state', () => snapshot());
+  handle('update:act', (_event, action) => {
     if (!ACTIONS.includes(action)) return { ok: false, reason: 'unknown act' };
     // The person's Check now (Settings → Security → Connections): asked even while the update check is off
     if (action === 'check') return autoUpdate.checkNow().then((result) => { publish(); return result; });

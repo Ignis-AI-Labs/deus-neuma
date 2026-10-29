@@ -11,7 +11,7 @@
 import { runSelfChecks, OWNER_GATED_ROUTES } from '../../backend/services/security/self-check.js';
 import { laneStateWriteReason } from '../../backend/services/sandbox-path-policy.js';
 import { isLoopbackAddress } from '../../backend/services/remote/access-scope.js';
-import { applyProtocolGuard } from '../../backend/services/protocol-guard.js';
+import { isAutoHardGated, applyProtocolGuard } from '../../backend/services/protocol-guard.js';
 import { requireLocalScope } from '../../backend/services/remote/access-guard.js';
 import { validateThreat } from '../../backend/services/security/threat-ledger.js';
 
@@ -45,6 +45,16 @@ describe('the security self-check', () => {
     const result = await runSelfChecks({ hardGated: (server, tool) => applyProtocolGuard('allowed', 'ask', server, tool) === 'approval_required' });
     expect(only(result)).toEqual(['self-check:auto-hard-gates']);
     expect(result.findings[0].surfaces).toEqual(expect.arrayContaining(['intents/security.assess', 'intents/wallet.send', 'intents/team.workspace-run']));
+  }, 60_000);
+
+  // re-audit 2026-10-29, NEW-L9: the canary watched 5 of the 9 gates
+  test.each([
+    'intents/security.assess', 'intents/security.escalate', 'intents/security.circuit-breaker', 'intents/wallet.send',
+    'intents/team.workspace-run', 'intents/email.send', 'intents/social.post', 'intents/tasks.operator-drop', 'filesystem/delete_file',
+  ])('a guard that drops %s — the canary names exactly it', async (gate) => {
+    const result = await runSelfChecks({ hardGated: (server, tool) => `${server}/${tool}` !== gate && isAutoHardGated(server, tool) });
+    expect(only(result)).toEqual(['self-check:auto-hard-gates']);
+    expect(result.findings[0].surfaces).toEqual([gate]);
   }, 60_000);
 
   test('a different gate than the owner\'s — the machine-route canary names the routes without it', async () => {

@@ -8,6 +8,7 @@
  *
  * The real fold and lookup, real inputs (RULE 0).
  */
+import { describe, expect, it } from 'vitest';
 import { applyRootChange, rootById, rootIdOf } from '../../backend/services/gallery/gallery-roots.js';
 
 describe('gallery root ids', () => {
@@ -37,5 +38,19 @@ describe('gallery root ids', () => {
     // adding the same folder again is still a no-op, never a second row
     expect(applyRootChange(stored, { op: 'add', dir }).roots).toEqual(stored);
     expect(applyRootChange(stored, { op: 'remove', id: oldId }).roots).toEqual([]);
+  });
+});
+
+// re-audit 2026-10-29, M-02 residual: a "/" row stored before the add-time law was still served
+describe('a stored root that is the whole disk', () => {
+  it('is dropped on read; the operator\'s folders still read', async () => {
+    const { readStoredRoots } = await import('../../backend/services/gallery/gallery-roots.js');
+    const { createTempDir } = await import('../helpers/temp-fs.js');
+    const fs = await import('node:fs/promises');
+    const file = `${await createTempDir('gallery-roots-disk')}/gallery-roots.json`;
+    await fs.writeFile(file, JSON.stringify({ roots: [
+      { id: 'disk', label: 'everything', dir: '/' }, { id: 'art', label: 'art', dir: '/home/someone/art' },
+    ] }));
+    expect((await readStoredRoots({ NEUMA_GALLERY_ROOTS_PATH: file })).map((r) => r.id)).toEqual(['art']);
   });
 });

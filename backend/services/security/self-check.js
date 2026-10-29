@@ -44,9 +44,12 @@ const PRIVATE_HOSTS = Object.freeze([
 // coding/execute left this list with protocol-guard.js's own (Design note, 2026-10-28:
 // on AUTO the shell runs live in the operator's open folder, .git and secrets
 // masked; AUTO may never ask more than ASK.
+// Every gate protocol-guard.js holds, named here on its own so the canary trips if one is ever
+// dropped there (re-audit 2026-10-29, NEW-L9: four were unwatched).
 const HARD_GATED = Object.freeze([
   ['intents', 'security.assess'], ['intents', 'security.escalate'], ['intents', 'security.circuit-breaker'],
-  ['intents', 'wallet.send'], ['intents', 'team.workspace-run'],
+  ['intents', 'wallet.send'], ['intents', 'team.workspace-run'], ['intents', 'email.send'], ['intents', 'social.post'],
+  ['intents', 'tasks.operator-drop'], ['filesystem', 'delete_file'],
 ]);
 // The machine-wide changes the install-owner ruling gated (ruling, 2026-10-19).
 export const OWNER_GATED_ROUTES = Object.freeze([

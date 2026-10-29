@@ -193,6 +193,20 @@ describe('CSO routes (/api/v1/cso)', () => {
     expect((await request(app).delete('/api/v1/cso/seat').set(other.header)).status).toBe(403);
     expect(JSON.parse(await fs.readFile(forged, 'utf8')).laneId).toBe('guardianlane');
   }, 30000);
+
+  // re-audit 2026-10-29, NEW-M6: only the operator's word verifies a leak; the route refuses what it cannot settle
+  test('revoked: a leak not claimed mitigated is refused; another house never reaches it; no such id is 404', async () => {
+    const { threatLedgerFor } = await import('../../backend/services/security/threat-ledger.js');
+    const ledger = await threatLedgerFor(witness.address);
+    await ledger.ingest([{ layer: 'software', source: 'secret-sweep', repo: 'tiny-repo', externalId: 'history:openai-key:abcd1234', title: 'a leak', severity: 'high', live: false }]);
+    const leak = (await ledger.load()).find((e) => e.externalId === 'history:openai-key:abcd1234');
+    const refused = await request(app).put(`/api/v1/cso/threats/${leak.id}/revoked`).set(witness.header).send({});
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toMatch(/not marked mitigated/);
+    const { strangerWitness } = await import('../helpers/witness.js');
+    expect((await request(app).put(`/api/v1/cso/threats/${leak.id}/revoked`).set(strangerWitness().header).send({})).status).toBe(404);
+    expect((await request(app).put('/api/v1/cso/threats/th_nope/revoked').set(witness.header).send({})).status).toBe(404);
+  }, 30000);
 });
 
 describe('CSO routes — real auth', () => {

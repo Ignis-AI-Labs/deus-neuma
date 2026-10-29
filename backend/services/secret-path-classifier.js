@@ -7,7 +7,17 @@ const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitc
 // them (gh's hosts.yml carries its token, docker's config.json its registry
 // auths, kube's config its cluster tokens, hub's its GitHub token) — and a
 // Mozilla profile's saved logins, the key that opens them, and its cookies.
-const SECRET_PATH = /(?:^|\/)(?:\.docker\/config\.json|gh\/hosts\.yml|\.kube\/config|\.config\/hub|(?:\.mozilla\/firefox|\.thunderbird)\/[^/]+\/(?:logins\.json|key[34]\.db|cookies\.sqlite))$/i;
+// Re-audit 2026-10-29 (M-02 residual): Maven's and Gradle's repository passwords,
+// doctl's token, gcloud's and Azure's token stores, and a Chromium-family
+// profile's saved logins, cookies and form data.
+const SECRET_PATH = new RegExp('(?:^|/)(?:'
+  + '\\.docker/config\\.json|gh/hosts\\.yml|\\.kube/config|\\.config/hub'
+  + '|(?:\\.mozilla/firefox|\\.thunderbird)/[^/]+/(?:logins\\.json|key[34]\\.db|cookies\\.sqlite)'
+  + '|\\.m2/settings(?:-security)?\\.xml|\\.gradle/gradle\\.properties|\\.config/doctl/config\\.yaml'
+  + '|\\.config/gcloud/(?:credentials\\.db|access_tokens\\.db|application_default_credentials\\.json|legacy_credentials/.+)'
+  + '|\\.azure/(?:accessTokens\\.json|msal_token_cache\\.(?:json|bin))'
+  + '|(?:google-chrome(?:-beta|-unstable)?|chromium|BraveSoftware/Brave-Browser|microsoft-edge|vivaldi|Google/Chrome)/[^/]+/(?:Login Data|Cookies|Web Data|Network/Cookies)'
+  + ')$', 'i');
 const CREDENTIAL_SOURCE = /^(?:[a-z0-9_-]+[-.])?credentials?(?:[-.][a-z0-9_-]+)*\.(?:js|mjs|cjs|jsx|ts|tsx)(?:\.map)?$/i;
 const basename = (value) => String(value).replace(/\\/g, '/').split('/').at(-1);
 

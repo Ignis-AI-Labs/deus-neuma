@@ -21,6 +21,7 @@ const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, s
 const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
+const { fromDesk } = require('./desk-links.cjs');
 const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
 const { registerUpdateBar } = require('./update-bar.cjs');
@@ -56,13 +57,14 @@ if (!app.requestSingleInstanceLock()) {
     // must never load ahead of its handlers, and the wallet store opens before
     // any window exists.
     registerIpcHandlers({ deskWindows, getOrigin });
-    const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate });
+    const isDesk = (event) => fromDesk(event, getOrigin());
+    const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate, isDesk });
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).
     guardAppSessions(session, getOrigin);
     // Spellcheck's dictionary fetch is off until the person turns it on — set before any page exists.
     registerConnections({ app, ipcMain, session });
-    registerKeyLockIpc({ ipcMain, safeStorage });
+    registerKeyLockIpc({ ipcMain, safeStorage, isDesk });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.

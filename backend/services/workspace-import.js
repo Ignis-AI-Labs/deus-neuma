@@ -18,6 +18,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createLogger } from './logger.js';
+import { harnessLaneId, isHarnessLane } from './harness-lane.js';
+import { isWitnessLaneId } from './witness-lane.js';
 
 const log = createLogger('WorkspaceImport');
 
@@ -74,6 +76,18 @@ const claimFreshLane = async (ownerPath, wallet) => {
   }
 };
 
+// pure — an id an import may not open for this wallet (re-audit 2026-10-29, NEW-H2). Both kinds
+// are bound before they exist: a harness lane's id is its wallet's own (harness-<first 8 hex>), so
+// anyone could compute another wallet's and claim it first; a witness lane is made only by its
+// summoning, under the summoner and the install owner. A restore of either goes to a new lane.
+const reservedLaneRefusal = (neumaId, wallet) => {
+  if (isWitnessLaneId(neumaId)) return outcome(403, { error: 'A witness lane is made only by its summoning; restore into a new lane' });
+  if (!isHarnessLane(neumaId)) return null;
+  let own = null;
+  try { own = harnessLaneId(wallet); } catch { own = null; }
+  return neumaId === own ? null : outcome(403, { error: 'That harness lane belongs to another wallet' });
+};
+
 /**
  * Import a bundle into a lane, under the custody rules above.
  *
@@ -110,6 +124,9 @@ export const importIntoLane = async ({ neumaId, bundle, wallet, workspace }) => 
     // double every conversation and memory. A restore goes to a new lane.
     return outcome(409, { error: 'This being already lives here; restore into a new lane' });
   }
+
+  const reserved = reservedLaneRefusal(neumaId, wallet);
+  if (reserved) return reserved;
 
   // Claim first, write second: when two imports race for one fresh id, the
   // one whose claim lands writes, and the other is refused before it writes

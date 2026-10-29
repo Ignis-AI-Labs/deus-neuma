@@ -11,6 +11,7 @@
 // impure (child processes).
 
 import { spawn } from 'node:child_process';
+import { probeEnvironment } from './agent-terminal-environment.js';
 
 const WIN = process.platform === 'win32';
 
@@ -51,7 +52,7 @@ export const boundedExec = (file, args, { timeoutMs, maxBytes = 1024 * 1024 }) =
     settle({ ok: false, code: null, timedOut: true });
   }, timeoutMs);
   try {
-    child = spawn(file, args, { windowsHide: true, detached: !WIN, stdio: ['ignore', 'pipe', 'pipe'] });
+    child = spawn(file, args, { windowsHide: true, detached: !WIN, stdio: ['ignore', 'pipe', 'pipe'], env: probeEnvironment() });
   } catch {
     settle({ ok: false, code: null, timedOut: false });
     return;

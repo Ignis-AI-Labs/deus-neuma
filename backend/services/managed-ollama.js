@@ -31,7 +31,6 @@ import { readManagedRecord, servedOllamaWindow, writeManagedRecord } from './man
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
 import { createLogger } from './logger.js';
-import { withoutBackendSecrets } from './agent-terminal-environment.js';
 import { getSetupStatus } from './substrate-setup.js';
 import { loadProviderChoice, saveProviderChoice } from './provider-choice.js';
 import { getConfig, setConfig } from './llm-provider.js';
@@ -41,6 +40,7 @@ import { _resetCapsCache } from './llm-runtime-cache.js';
 import {
   MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, setupDoneLine, versionAtLeast,
 } from './managed-ollama-plan.js';
+import { probeEnvironment } from './agent-terminal-environment.js';
 
 export { obtainArchive } from './managed-ollama-download.js';
 
@@ -76,7 +76,7 @@ export const findSystemOllama = () => {
     candidates.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe'));
   }
   for (const bin of candidates) {
-    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 5000, windowsHide: true, env: probeEnvironment() });
     if (r.status === 0) return { bin, version: (`${r.stdout}${r.stderr}`.match(/(\d+\.\d+\.\d+)/) || [])[1] || null };
   }
   return null;
@@ -211,7 +211,7 @@ const run = async (plan, signal, loadModel) => {
   let bin = null;
   if (plan.server === 'download' || plan.server === 'managed') bin = await ensureManagedServer(signal);
   else if (plan.server === 'installed') bin = findSystemOllama()?.bin;
-  else if (managed) bin = readRecord()?.bin || managedBin();
+  else if (managed) bin = managedBin();
   let { endpoint } = plan;
   let started = false;
   const guard = await currentDriverGuard();
@@ -297,7 +297,7 @@ const startServer = async (bin, managed, wanted = endpoints().usual, { window = 
   await fsp.mkdir(serverHome(), { recursive: true });
   const logFile = path.join(serverHome(), 'ollama.log');
   const out = fs.openSync(logFile, 'a');
-  const env = { ...withoutBackendSecrets(process.env), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
+  const env = { ...probeEnvironment(), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
   if (managed) {
     env.OLLAMA_MODELS = modelsDir();
     await fsp.mkdir(env.OLLAMA_MODELS, { recursive: true });
@@ -414,6 +414,13 @@ const followServer = async (record, was, endpoint) => {
 };
 
 /**
+ * The program a boot starts: the platform's own server where it set one up, else the Ollama this
+ * machine has installed — never the path the record names, which is a file on disk and no
+ * authority over what runs as the operator (re-audit 2026-10-29, NEW-H1). impure
+ */
+const bootBin = (record) => (record.managed ? managedBin() : findSystemOllama()?.bin ?? null);
+
+/**
  * At boot: a server the setup started is started again, so the mind is there after a restart. One
  * already answering there and new enough is used; one too old (an outdated Ollama's own service
  * holding the port) is left alone and the platform's moves to the next free port, its route with it.
@@ -421,14 +428,15 @@ const followServer = async (record, was, endpoint) => {
  */
 export const startManagedAtBoot = async () => {
   const record = readRecord();
-  if (!record?.bin || (record.managed && !fs.existsSync(record.bin))) return;
+  const bin = record?.bin ? bootBin(record) : null;
+  if (!bin || (record.managed && !fs.existsSync(bin))) return;
   const was = record.endpoint || endpoints().usual;
   try {
     const guard = await currentDriverGuard();
     if (guard.hold) log.warn('the graphics driver is older than this card needs; the model runs on the processor', { have: guard.have, floor: guard.floor });
     const window = servedOllamaWindow();
     const managed = Boolean(record.managed);
-    const placed = await startServer(record.bin, managed, was, { window, holdGpu: guard.hold });
+    const placed = await startServer(bin, managed, was, { window, holdGpu: guard.hold });
     const { started } = placed;
     let { endpoint } = placed;
     if (!sameEndpoint(endpoint, was)) {
@@ -444,7 +452,7 @@ export const startManagedAtBoot = async () => {
     if (started && hasModel) {
       const fit = await fitManagedWindow(endpoint, record.model, { onGpu: !guard.hold });
       await keepWindow(fit.window);
-      if (fit.window !== window) endpoint = await restartServer(record.bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
+      if (fit.window !== window) endpoint = await restartServer(bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
       log.info('model window fitted to the graphics card', { window: fit.window, onGpu: fit.onGpu, line: fit.line });
     }
     log.info('managed model server ready', { version: state.version, endpoint });

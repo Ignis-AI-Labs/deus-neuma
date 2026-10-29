@@ -21,8 +21,9 @@ import { fileURLToPath } from 'url';
 import { getEngine, listLocalEngines, getDefaultModel, engineFiles } from './engine-registry.js';
 import {
   uvBin, isUvAvailable, engineReadiness, isLoopbackBind, envIdOf, serves, probeHealth,
-  shutdownSidecar, spawnEngineProcess, waitForReady, syncEngineVenv,
+  shutdownSidecar, spawnEngineProcess, waitForReady, syncEngineVenv, provenOrRetired,
 } from './engine-process.js';
+import { provenHealth, sidecarFetch } from './sidecar-trust.js';
 import { createLogger } from '../logger.js';
 
 // Barrel — the uv/readiness probes and the bind guard moved to engine-process.js
@@ -136,8 +137,10 @@ const _inflightLaunches = new Map();
 // impure — record a live, proc-less sidecar as READY and arm its reaper. The
 // single adoption path shared by ensureReady (probe-first) and launch (orphan
 // already on the port). proc:null is deliberate: we did not spawn it, so a
-// later stop() can only mark it, never signal a process we don't own.
-const _adoptSidecar = (engineId, host, port, health) => {
+// later stop() can only mark it, never signal a process we don't own. Only a
+// sidecar that proves the install key is adopted (sidecar-trust.js, M-06).
+const _adoptSidecar = async (engineId, host, port, health) => {
+  if (!(await provenOrRetired(host, port))) return false;
   const { model = null, profile = null } = health ?? {};
   _engines.set(engineId, {
     state: STATES.READY, host, port, pid: null, proc: null, model, profile,
@@ -145,6 +148,7 @@ const _adoptSidecar = (engineId, host, port, health) => {
   });
   log.info('adopted already-running sidecar', { engineId, port, model });
   _armReaper();
+  return true;
 };
 
 // impure — retire a sidecar serving the wrong model so the right one can bind
@@ -199,8 +203,8 @@ export const ensureReady = async (engineId, opts = {}) => {
     }
     const { verdict, health } = await probeHealth(host, port);
     if (verdict === 'ready' && serves(want, health)) {
-      _adoptSidecar(engineId, host, port, health);
-      return;
+      if (await _adoptSidecar(engineId, host, port, health)) return;
+      continue;
     }
     if (verdict === 'ready') {
       await _retire(engineId, host, port);
@@ -252,9 +256,9 @@ export const launch = async (engineId, options = {}) => {
   }
 
   const { host, port } = resolveServe(engineId);
-  // /synthesize, /speak (and kyutai's /mint) are UNAUTHENTICATED by design — the
-  // loopback bind is the only gate. Refuse to spawn a sidecar onto a
-  // non-loopback host: a LAN-exposed /mint is an open voice-cloning service.
+  // /synthesize, /speak (and kyutai's /mint) are gated by the install key's token
+  // (sidecar-trust.js) and the loopback bind together. Refuse to spawn a sidecar onto
+  // a non-loopback host: a LAN-exposed /mint is a voice-cloning service one leak away.
   // The sidecar refuses such a bind too (exit 2); failing here names the
   // cause before any process or GPU memory is spent on it.
   if (!isLoopbackBind(host)) {
@@ -283,11 +287,9 @@ export const launch = async (engineId, options = {}) => {
   // it can serve, regardless of what is on local disk. One serving ANOTHER
   // model is retired first, for the same EADDRINUSE reason.
   const { verdict, health } = await probeHealth(host, port);
-  if (verdict === 'ready' && serves(want, health)) {
-    _adoptSidecar(engineId, host, port, health);
-    return getStatus(engineId);
-  }
-  if (verdict === 'ready') await _retire(engineId, host, port);
+  const adopted = verdict === 'ready' && serves(want, health) && await _adoptSidecar(engineId, host, port, health);
+  if (adopted) return getStatus(engineId);
+  if (verdict === 'ready' && !serves(want, health)) await _retire(engineId, host, port);
 
   if (!isDownloaded(engineId, model)) {
     throw new Error(`${engineId}${model ? ` (${model})` : ''} weights not downloaded — run: uv run voice-engines/_downloader/download.py ${engineId}${model ? ` --model ${model}` : ''}`);
@@ -424,9 +426,7 @@ export const healthCheck = async (engineId) => {
 // itself, which no local signal could do.
 const _reapEngine = async (engineId, state, idleSeconds) => {
   try {
-    await fetch(`http://${state.host}:${state.port}/shutdown`, {
-      method: 'POST', signal: AbortSignal.timeout(2000),
-    });
+    await sidecarFetch(`http://${state.host}:${state.port}/shutdown`, { method: 'POST', signal: AbortSignal.timeout(2000) });
   } catch { /* it may drop the socket while exiting — that IS the shutdown */ }
   if (state.proc) stop(engineId);
   else _engines.set(engineId, { ...state, state: STATES.STOPPED, pid: null, proc: null });
@@ -451,11 +451,8 @@ export const reapIdleEngines = async (ttlMs) => {
     const ttl = ttlMs ?? getEngine(engineId)?.serve?.idleTtlMs ?? IDLE_TTL_MS;
     if (Date.now() - (state.readySince ?? 0) < ttl) continue;
     try {
-      const r = await fetch(`http://${state.host}:${state.port}/health`, {
-        signal: AbortSignal.timeout(2000),
-      });
-      if (!r.ok) continue;
-      const data = await r.json().catch(() => null);
+      // only the sidecar's own word counts: an answerer that cannot prove the key is never trusted
+      const data = await provenHealth(`http://${state.host}:${state.port}`);
       const idle = data?.idle_seconds;
       if (typeof idle !== 'number') continue; // pre-contract sidecar — never reap
       if (idle * 1000 >= ttl) {

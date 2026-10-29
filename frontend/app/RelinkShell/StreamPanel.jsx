@@ -295,9 +295,12 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
 // bubble (chat-watch.js): drawn as an event, and the being's answer follows.
 // A HOUSE WAKE's opening note (house-clock/wake-thought.js) is the same kind of
 // line: the platform woke the seat for its own work, not the operator.
+// A CHAT LINK is another open chat of the house writing in (chat-link.js):
+// a housemate's words, never the operator's bubble.
 const PLATFORM_LINES = Object.freeze({
   watch: Object.freeze({ tag: 'WATCH', head: /^\[A WATCH YOU SET[^\]]*\]\s*/ }),
   wake: Object.freeze({ tag: 'WAKE', head: /^\[A WAKE[^\]]*\]\s*/ }),
+  link: Object.freeze({ tag: 'LINK', head: /^\[CHAT LINK[^\]]*\]\s*/ }),
 });
 const WatchLine = ({ message }) => (
   <div className="relink-watch-line" role="status">

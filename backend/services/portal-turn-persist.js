@@ -352,6 +352,8 @@ export const crystallizeObservation = async (neumaId, companionName, thought, fu
         kind,
         userMessage: sanitizeMemoryForPrompt(thought, 300),
         response: sanitizeMemoryForPrompt(fullResponse.slice(0, 500), 500),
+        // Whose words opened it, as the row says (a watch, a wake, another chat's link) — absent: the operator's.
+        ...(anchorSource?.userRecord?.origin ? { origin: anchorSource.userRecord.origin } : {}),
         // The measured score is recorded as measured, even when the exchange
         // was kept for another reason entirely — the number stays honest and
         // `kind` says why it survived.

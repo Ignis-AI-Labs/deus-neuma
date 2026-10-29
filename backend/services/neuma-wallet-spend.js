@@ -23,7 +23,7 @@ import crypto from 'crypto';
 import { getAppConfig } from '../config.js';
 import { getCachedKey, hasCachedKey } from '../routes/neuma-auth-routes.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
-import { isRecipientAllowed, requiresApproval, buildApprovalMessage, classifySpend, toAllowlist } from '../../core/wallet/spend-policy.js';
+import { isRecipientAllowed, requiresApproval, buildApprovalMessage, classifySpend, spendMemo, toAllowlist } from '../../core/wallet/spend-policy.js';
 import { decryptKeypair } from '../../core/wallet/keypair-vault.js';
 import { readSpendRecords, recordAutonomousSpend } from './treasury/spend-records.js';
 
@@ -315,7 +315,7 @@ export const requestSpend = async (neumaId, { to, value, memo } = {}) => {
       id: crypto.randomBytes(8).toString('hex'),
       to,
       value: String(value),
-      memo: typeof memo === 'string' ? memo.slice(0, 280) : '',
+      memo: spendMemo(memo),
       nonce: crypto.randomBytes(16).toString('hex'),
       expiry: Math.floor(Date.now() / 1000) + APPROVAL_TTL_SEC,
       requestedAt: new Date().toISOString(),
@@ -332,7 +332,7 @@ export const requestSpend = async (neumaId, { to, value, memo } = {}) => {
   } catch (err) {
     outcome = { status: 'error', reason: err.message };
   }
-  await recordAutonomousSpend(neumaId, { to, value, memo }, outcome);
+  await recordAutonomousSpend(neumaId, { to, value, memo: spendMemo(memo) }, outcome);
   return outcome;
 };
 

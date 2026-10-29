@@ -47,15 +47,15 @@ _last_activity = time.monotonic()
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
-from browser_guard import assert_loopback_bind, refusal  # noqa: E402  (audit 2026-10-28 M-06)
+from browser_guard import assert_loopback_bind, guard  # noqa: E402  (audits 2026-10-28/29 M-06)
 
 @app.middleware("http")
 async def _track_activity(request, call_next):
     # Marked on arrival AND completion: idle counts from the end of the last
     # real request, so a long synthesis can never be mistaken for idleness.
-    why = refusal(request.headers)  # a web page never reaches a sidecar (browser_guard.py)
-    if why:
-        return JSONResponse({"error": "forbidden", "detail": why}, status_code=403)
+    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    if answer:
+        return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity
     tracked = request.url.path not in ("/health", "/shutdown")
     if tracked:

@@ -162,7 +162,8 @@ export const READ_TOOLS = Object.freeze(new Set([
   'skies_read', 'genome_read',
   // Collecting one's own house post is reading one's own mail; sending
   // (post_send) acts on a housemate's context, so observe mode holds it.
-  'post_check',
+  // Listing the house's open chats reads the desk's own tabs; chat/send holds.
+  'post_check', 'open_chats',
   // Handing the operator a list acts on NOTHING — no egress, no store, no
   // change beyond the card in this conversation. And the mode argument is
   // decisive rather than merely permissive: chat mode `plan` resolves to
@@ -203,7 +204,7 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
   'journal_read', 'chats_list', 'chat_read', 'charter_read',
   // vault reads retired (prompt + fs); vault mutations are intents only
-  'skies_read', 'genome_read', 'post_check', 'refinement_sense', 'wallet_view',
+  'skies_read', 'genome_read', 'post_check', 'open_chats', 'refinement_sense', 'wallet_view',
   'flight_check', 'get_telemetry', 'get_view', 'inspect', 'sandbox_status', 'ground_git',
   // Handing the operator a list REACHES NOTHING — no egress, no store, no
   // change to anything but this conversation's own card. Observe mode holds
