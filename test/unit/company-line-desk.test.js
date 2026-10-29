@@ -205,3 +205,27 @@ describe('SALES on the desk', () => {
     expect(html).toContain('>UNSEAT<');
   });
 });
+
+describe('THE BOOKS on the desk', () => {
+  test('the keeper by name, each company to date per currency, the unmatched, a CPA\'s deadline, the unbooked receipts', () => {
+    const books = {
+      logista: { laneId: 'logi' }, year: '2026',
+      books: [{
+        id: COMPANY.id, name: 'Tidewater', voided: 1,
+        yearToDate: { currencies: { USDC: { in: 120, out: 0, net: 120 } }, entries: 2, unmatched: 1 },
+        deadlines: [{ id: 't-0a0b0c0d', what: 'Federal return (Form 1065)', due: '2027-03-15', authority: 'the IRS', needsCpa: true, met: null }],
+      }],
+      unbooked: [{ kind: 'spend', ref: 'quae:aa11', label: '0.01 ETH out by quae' }],
+    };
+    const html = renderToStaticMarkup(createElement(CompanyLineBody, {
+      board: boardOf([]), names: { ...NAMES, logi: 'Ledger' }, error: null, loading: false, busy: false, drafts: {}, onDraft: () => {}, onRefresh: () => {},
+      onOpen: () => {}, onHandOn: () => {}, onInspect: () => {}, onAnswer: () => {}, onCharter: () => {},
+      books, onBooks: { pick: '', onPick: () => {}, onSeat: () => {}, onClear: () => {} },
+    }));
+    expect(html).toContain('THE BOOKS — LOGISTA · LEDGER');
+    expect(html).toContain('USDC NET · IN 120 · OUT 0');
+    expect(html).toContain('2 ENTRIES · 1 UNMATCHED · 1 VOIDED');
+    expect(html).toContain('DUE 2027-03-15: Federal return (Form 1065) — TO the IRS — NEEDS A LICENSED CPA');
+    expect(html).toContain('1 RECEIPT NOT YET BOOKED');
+  });
+});

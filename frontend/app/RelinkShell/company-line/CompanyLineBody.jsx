@@ -11,6 +11,7 @@ import './CompanyLine.css';
 import { EmptyState } from '../empty-state.jsx';
 import { WorksheetView } from './WorksheetView.jsx';
 import { SalesSection } from './SalesSection.jsx';
+import { BooksSection } from './BooksSection.jsx';
 import {
   MODE_WORDS, holderName, statusWords, currentStage, upWords, stepWords, operatorMove, lineOverview,
   ANSWER_ASKS, openHands, domainOf, handOnReady,
@@ -168,7 +169,7 @@ const OpenForm = ({ draft, busy, onDraft, onOpen }) => (
 
 export const CompanyLineBody = ({
   board, names, error, loading, busy, drafts, onDraft, onRefresh, onOpen, onHandOn, onInspect, onAnswer, onCharter,
-  sales = null, onSales = null,
+  sales = null, onSales = null, books = null, onBooks = null,
 }) => {
   const view = lineOverview(board);
   const mine = (board?.companies ?? []).filter((c) => operatorMove(c));
@@ -216,6 +217,7 @@ export const CompanyLineBody = ({
             ))}
           </section>
           {onSales ? <SalesSection sales={sales} names={names} busy={busy} {...onSales} /> : null}
+          {onBooks ? <BooksSection books={books} names={names} busy={busy} {...onBooks} /> : null}
           <OpenForm draft={drafts._open ?? {}} busy={busy} onDraft={onDraft} onOpen={onOpen} />
         </>
       )}

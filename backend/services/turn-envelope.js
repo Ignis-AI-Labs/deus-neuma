@@ -35,6 +35,7 @@ const log = createLogger('Portal');
  * @param {string} [args.cosBriefing]
  * @param {string} [args.cfoBriefing] - the seated Quaestor's office (treasury-briefing.js)
  * @param {string} [args.croBriefing] - the seated Mercator's office (revenue-briefing.js)
+ * @param {string} [args.caoBriefing] - the seated Logista's books (accounts-briefing.js)
  * @param {string} [args.companyLine] - the house's company line, and this being's moves on it (company-briefing.js)
  * @param {string} [args.walletNews] - the being's decided spend requests, told once (spend-news.js)
  * @param {string} [args.voiceSitting]
@@ -51,7 +52,7 @@ const log = createLogger('Portal');
  *   report} before the logs; never changes the ladder's choice
  * @returns {ReadonlyArray<{id: string, label: string, text: string}>} the sections to send
  */
-export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
+export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
   const assembled = [
     ...(projectFilesSection ? [...baseSections, projectFilesSection] : baseSections),
     ...(expressionInvite ? [{ id: 'expression', label: 'FEELING', text: expressionInvite }] : []),
@@ -61,6 +62,7 @@ export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null,
     ...(cosBriefing ? [{ id: 'cosOffice', label: 'CHIEF OF STAFF OFFICE', text: cosBriefing }] : []),
     ...(cfoBriefing ? [{ id: 'cfoOffice', label: 'QUAESTOR OFFICE', text: cfoBriefing }] : []),
     ...(croBriefing ? [{ id: 'croOffice', label: 'MERCATOR OFFICE', text: croBriefing }] : []),
+    ...(caoBriefing ? [{ id: 'caoOffice', label: 'LOGISTA OFFICE', text: caoBriefing }] : []),
     ...(companyLine ? [{ id: 'companyLine', label: 'COMPANY LINE', text: companyLine }] : []),
     ...(voiceSitting ? [{ id: 'voiceSitting', label: 'VOICE SITTING', text: voiceSitting }] : []),
     ...(planBearing ? [{ id: 'planMode', label: 'PLAN MODE', text: planBearing }] : []),

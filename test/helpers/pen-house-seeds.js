@@ -83,6 +83,13 @@ export const seedHouseA = async (ctx) => {
   const { addLinkChange } = await import('../../backend/services/marketing/link-change-store.js');
   ids.linkChange = (await addLinkChange(ctx.a.address, { laneId: lane, companyId: ids.company, change: { site: 'https://a-brand.example' } }))?.entry?.id;
 
+  // A's company on the founding line, and an ask of A's hands on it: what the company-line routes must never let B move.
+  ids.companyLine = (await a('company line', 'post', '/api/v1/company-line', { name: 'A venture', mode: 'house' }))?.company?.id;
+  const { makeHands } = await import('../../backend/services/company-line/hands-shape.js');
+  const { raiseHands } = await import('../../backend/services/company-line/hands-store.js');
+  const hands = makeHands({ what: 'Sign the A operating agreement', why: 'A\'s company needs it signed.', where: 'https://a-brand.example/sign', answer: 'done', raisedBy: lane, now: new Date().toISOString() });
+  ids.hands = (await raiseHands(ctx.a.address, ids.companyLine, hands))?.item?.id;
+
   const { threatLedgerFor } = await import('../../backend/services/security/threat-ledger.js');
   const ledger = await threatLedgerFor(ctx.a.address);
   const { added } = await ledger.ingest([{ layer: 'house', source: 'manual', externalId: 'pen:a-threat', title: 'A house threat', severity: 'high' }]);
@@ -96,7 +103,7 @@ export const seedHouseA = async (ctx) => {
     ['/api/v1/cso/threats/', ids.threat], ['/api/v1/cso/watch/repos/', ids.repo], ['/api/v1/leads/', ids.lead],
     ['/api/v1/campaigns/', ids.campaign], ['/api/v1/user/projects/', ids.project], ['/api/v1/look/presets/', ids.lookPreset],
     ['/api/v1/remote/devices/', ids.device], ['/api/v1/gallery/roots/', ids.galleryRoot], ['/api/v1/social-channels/queue/', ids.post], ['/api/v1/lanes/', ids.unclaimed],
-    ['/api/v1/company-links/', ids.linkChange],
+    ['/api/v1/company-links/', ids.linkChange], ['/api/v1/company-line/', ids.companyLine],
   ];
   const byName = {
     neumaId: lane, companionName: lane, beingId: lane, companion: lane, taskId: ids.task, subId: ids.sub,
@@ -104,7 +111,7 @@ export const seedHouseA = async (ctx) => {
     serviceId: 'elevenlabs', vendor: 'claude-code', name: lane, brand: 'a-brand', postId: ids.post, act: 'bin',
     recordId: 'rec-a', ceremonyId: 'cer-a', adapterId: 'adapter-a', proposalId: 'prop-a', amendmentId: 'amend-a',
     imageId: 'img-a', serverName: 'fs', serverId: 'fs', action: 'stop', changeId: 'change-a', askId: ids.ask,
-    accountId: ids.account, companyId: ids.company, groupId: ids.group,
+    accountId: ids.account, companyId: ids.company, groupId: ids.group, handsId: ids.hands,
     // a platform, not a house's id: the connect keys its consent by the
     // caller's own house, so B's request can only ever open B's own
     channel: 'youtube',
