@@ -1,4 +1,4 @@
-// stream-follow.js — the transcript's follow law (Design note, 2026-07-23: the
+// stream-follow.js — the transcript's follow law (ruling, 2026-07-23): the
 // stream snaps to the live tail BY DEFAULT, but the witness is human — they
 // read at reading speed. Scrolling up RELEASES the follow (the view stands
 // where they stand, even while members keep streaming); scrolling back to

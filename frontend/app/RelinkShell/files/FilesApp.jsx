@@ -114,7 +114,7 @@ const FilesBody = ({ focusRoots = null }) => {
     } catch (e) { setNote(e.message); }
   }, [focusLens]);
 
-  // THE TWO-WAY BRIDGE (Design note, 2026-07-28: OS ⇄ Explorer drag — dropPath plus
+  // THE TWO-WAY BRIDGE (ruling, 2026-07-28): OS ⇄ Explorer drag — dropPath plus
   // the four drag handlers (use-files-dnd.js).
   const { dropPath, setDropPath, onDragOut, onDragOverRow, onDragLeaveRow, onDropFiles } = useFilesDnd({
     rootsRef, setNote, refreshDir, refreshGit,
@@ -209,7 +209,7 @@ const FilesBody = ({ focusRoots = null }) => {
     }
   }, [confirmDel, noAskDraft, deleteEntries]);
 
-  // --- The row right-click menu (Design note, 2026-07-24: every row action the tree
+  // --- The row right-click menu (ruling, 2026-07-24): every row action the tree
   // offers, plus the shelf pin and the focus lens. Items derive pure
   // (files-menu.js); pinned state reads the shelf at open time.
   const { openFolder } = useOpenFolder();
@@ -290,7 +290,7 @@ const FilesBody = ({ focusRoots = null }) => {
   // the intersection with the really-open roots. null focusRoots = unscoped.
   const shownRoots = roots === null ? null : (focusRoots ? roots.filter((r) => focusRoots.includes(r)) : roots);
 
-  // One click, three grammars (Design note, 2026-08-16: plain = select one and still
+  // One click, three grammars (ruling, 2026-08-16): plain = select one and still
   // toggle/open; ctrl(meta) = toggle membership; shift = range over the rows
   // as rendered. A modified click only SELECTS — expanding or opening under
   // ctrl/shift would fight the gesture the operator is making.

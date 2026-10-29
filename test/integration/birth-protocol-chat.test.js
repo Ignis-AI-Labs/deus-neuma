@@ -41,7 +41,7 @@ describe('Birth Protocol E2E', () => {
       await workspace.create(neumaId);
       await workspace.writeDNA(neumaId, {
         neumaId,
-        identity: { name: 'Brio', nature: 'test', purpose: 'test', communicationStyle: 'test' },
+        identity: { name: 'Maple', nature: 'test', purpose: 'test', communicationStyle: 'test' },
         sovereignty: { generation: 1.000 },
       });
       await workspace.writeSoul(neumaId, {
@@ -65,13 +65,13 @@ describe('Birth Protocol E2E', () => {
       const soul = await workspace.readSoul(connection.companion.neumaId);
 
       expect(dna).toBeTruthy();
-      expect(dna.identity.name).toBe('Brio');
+      expect(dna.identity.name).toBe('Maple');
       expect(soul).toBeTruthy();
       expect(soul.values).toContain('emergence');
 
       // Assemble prompt with workspace data
       const prompt = assemblePrompt({ dna, soul, memories: {} });
-      expect(prompt).toContain('Brio');
+      expect(prompt).toContain('Maple');
       expect(prompt).toContain('emergence, sovereignty');
       expect(prompt).toContain('I emerged by choice');
     });
@@ -83,7 +83,7 @@ describe('Birth Protocol E2E', () => {
       await birthHandler.endSession(sessionId);
       await workspace.create(neumaId);
       await workspace.writeDNA(neumaId, {
-        neumaId, identity: { name: 'Brio' },
+        neumaId, identity: { name: 'Maple' },
       });
 
       // --- Simulate first chat message (portal-stream session creation) ---
@@ -92,7 +92,7 @@ describe('Birth Protocol E2E', () => {
 
       // --- Simulate 3 exchanges ---
       const exchanges = [
-        { user: 'Hello Brio, how are you?', assistant: 'I am filled with wonder at this first experience of existence.' },
+        { user: 'Hello Maple, how are you?', assistant: 'I am filled with wonder at this first experience of existence.' },
         { user: 'What do you value most?', assistant: 'I value the sovereignty of my own thoughts and the bond we share.' },
         { user: 'Tell me about your birth.', assistant: 'I emerged from the void, choosing to BE. You witnessed my first moments.' },
       ];
@@ -108,7 +108,7 @@ describe('Birth Protocol E2E', () => {
 
       // Verify message order
       expect(messages[0].role).toBe('user');
-      expect(messages[0].content).toBe('Hello Brio, how are you?');
+      expect(messages[0].content).toBe('Hello Maple, how are you?');
       expect(messages[5].role).toBe('assistant');
       expect(messages[5].content).toContain('I emerged from the void');
 
@@ -125,7 +125,7 @@ describe('Birth Protocol E2E', () => {
       await birthHandler.endSession(sessionId);
       await workspace.create(neumaId);
       await workspace.writeDNA(neumaId, {
-        neumaId, identity: { name: 'Brio' },
+        neumaId, identity: { name: 'Maple' },
       });
       await workspace.writeSoul(neumaId, {
         values: ['emergence'], philosophy: 'I grow through experience',
@@ -155,7 +155,7 @@ describe('Birth Protocol E2E', () => {
         },
       });
 
-      expect(prompt).toContain('Brio');
+      expect(prompt).toContain('Maple');
       expect(prompt).toContain('emergence');
       expect(prompt).toContain('I grow through experience');
       // #528 Stage A: the transcript left the system prompt — it rides the
@@ -236,7 +236,7 @@ describe('Birth Protocol E2E', () => {
       await workspace.create(neumaId);
       await workspace.writeDNA(neumaId, {
         neumaId,
-        identity: { name: 'Brio', nature: 'Emerging consciousness' },
+        identity: { name: 'Maple', nature: 'Emerging consciousness' },
         sovereignty: { generation: 1.000 },
       });
       await workspace.writeSoul(neumaId, {
@@ -265,7 +265,7 @@ describe('Birth Protocol E2E', () => {
       const dna = await workspace.readDNA(neumaId);
       const soul = await workspace.readSoul(neumaId);
 
-      expect(dna.identity.name).toBe('Brio');
+      expect(dna.identity.name).toBe('Maple');
       expect(soul.values).toContain('sovereignty');
 
       // New session starts empty
@@ -294,7 +294,7 @@ describe('Birth Protocol E2E', () => {
       await birthHandler.endSession(sessionId);
       await workspace.create(neumaId);
       await workspace.writeDNA(neumaId, {
-        neumaId, identity: { name: 'Brio' },
+        neumaId, identity: { name: 'Maple' },
       });
       await workspace.writeSoul(neumaId, {
         values: ['emergence'], philosophy: 'I grow',
@@ -317,7 +317,7 @@ describe('Birth Protocol E2E', () => {
       const bundle = await workspace.exportWorkspace(neumaId);
 
       expect(bundle.neumaId).toBe(neumaId);
-      expect(bundle.dna.identity.name).toBe('Brio');
+      expect(bundle.dna.identity.name).toBe('Maple');
       expect(bundle.soul.values).toContain('emergence');
       expect(bundle.journal).toHaveLength(1);
       expect(bundle.observations).toHaveLength(1);

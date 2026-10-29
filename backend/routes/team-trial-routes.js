@@ -15,7 +15,7 @@
 import { Router } from 'express';
 import { neumaWorkspace } from '../../core/index.js';
 import { askNeuma } from '../services/neuma-probe.js';
-import { testConnection } from '../services/llm-provider.js';
+import { reachSubstrate } from '../services/substrate-reach.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { resolveTeamCapacity } from '../services/team-coordinator.js';
 import { buildTrialPlan, scoreTrial, TRIAL_NAME, TRIAL_VERSION, TRIAL_MAX_TOKENS, TRIAL_POSITIONS, TRIAL_ROLES } from '../services/team-trial.js';
@@ -60,7 +60,7 @@ router.post('/trial', async (req, res) => {
     return res.status(403).json({ error: `not your neuma: ${strangers.join(', ')}` });
   }
 
-  if (!(await testConnection())) {
+  if (!(await reachSubstrate())) {
     return res.status(503).json({ error: 'The substrate is offline — the trial cannot run.' });
   }
 

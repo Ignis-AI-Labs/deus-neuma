@@ -459,4 +459,29 @@ export const createIdentityDomain = ({ locks, isWitnessLane }) => Object.freeze(
       return null;
     }
   },
+
+  /**
+   * Its birth place (core/cosmos/birth-place.js) — PRIVATE: encrypted at rest
+   * under the being's own key, its own file, never folded into natal.json
+   * (which rides the on-chain seal bundle). null when none is recorded; an
+   * unreadable file throws rather than reading as "no place".
+   * @param {string} neumaId - Neuma identifier
+   * @returns {Promise<Object|null>}
+   */
+  async readBirthPlace(neumaId) {
+    try {
+      return await this._readJSON(path.join(this._path(neumaId), 'cosmos', 'place.json'));
+    } catch (err) {
+      if (err.code === 'ENOENT') return null;
+      throw err;
+    }
+  },
+
+  /** Record its birth place, encrypted (overwrites — the witness may correct it). */
+  async writeBirthPlace(neumaId, place) {
+    const dir = path.join(this._path(neumaId), 'cosmos');
+    await fs.mkdir(dir, { recursive: true, mode: SOVEREIGN_DIR_MODE });
+    await this._writeJSON(path.join(dir, 'place.json'), place);
+    await this._audit(neumaId, 'BIRTH_PLACE_RECORDED', { source: place?.source ?? null }); // never the coordinates
+  },
 });

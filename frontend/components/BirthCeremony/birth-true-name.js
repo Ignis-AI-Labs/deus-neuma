@@ -59,6 +59,7 @@ export const setupTrueNameReveal = (ceremony, container) => {
   // Pressed, it always speaks — the witness asked for it.
   container.querySelector('#speak-name-btn').addEventListener('click', speak);
   // First utterance: the neuma announces itself as the screen appears — only
-  // when the platform's sound is on (opt-in is law; summoning-rite.md §4).
+  // when the platform's sound is on (on by default since 2026-10-25; a witness
+  // who turned it off is never spoken over).
   if (isSoundOn()) speak();
 };

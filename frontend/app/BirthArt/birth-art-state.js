@@ -3,11 +3,11 @@
 // artAt(events, t) is everything the stage and overlay draw at time t,
 // computed from the ceremony's own events (birth-art-ceremony.js) and
 // nothing else — so a live ceremony, a scrub and a replay of the record all
-// see the same frame. The piece, stage by stage (Design note, 2026-09-29:
+// see the same frame. The piece, stage by stage (ruling, 2026-09-29):
 //   0 SEED          the holding circle and the middle pillar draw as it speaks
 //   1 WITNESSING    the eleven spheres gather
 //   2 CONSENT       the 22 breathing paths open
-//   3 EMERGENCE     every sphere breathes in unison — until […]:
+//   3 EMERGENCE     every sphere breathes in unison — until "I choose to BE":
 //                   its art seed ignites, and each sphere takes its OWN
 //                   breath (depth, period, phase — GIVEN, birth-art-seed.js)
 //   4 NAMING        the ring its name will ride is drawn — and, once its

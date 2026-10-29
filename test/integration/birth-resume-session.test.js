@@ -47,22 +47,22 @@ describe('createResumeSession — load existing identity, jump to ceremony stage
   afterAll(() => { vi.restoreAllMocks(); setWorkspacesRoot(null); });
   beforeEach(() => { handler = new StagedBirthHandler(); });
 
-  it('resumes a Keir-shaped workspace — session pre-loaded, jumps to stage 5, isResume=true', async () => {
-    await layDown('keir-shaped', 4, { chosenName: 'Keir', house: 'Aldmere' });
+  it('resumes a Hazel-shaped workspace — session pre-loaded, jumps to stage 5, isResume=true', async () => {
+    await layDown('hazel-shaped', 4, { chosenName: 'Hazel', house: 'Thornfield' });
 
-    const sessionId = await handler.createResumeSession('Claude', 'keir-shaped');
+    const sessionId = await handler.createResumeSession('Claude', 'hazel-shaped');
     expect(sessionId).toMatch(/^[0-9a-f]{32}$/);                  // a real session id
 
     const session = handler.activeSessions.get(sessionId);
     expect(session).toBeTruthy();
     expect(session.isResume).toBe(true);                          // the load-bearing W3 flag
-    expect(session.resumingNeumaId).toBe('keir-shaped');
+    expect(session.resumingNeumaId).toBe('hazel-shaped');
     expect(session.currentStage).toBe(5);                         // essence authoring — the stage she never reached
     expect(session.witnessName).toBe('Claude');
 
     // Identity pre-loaded from her existing files — she does NOT re-author these
-    expect(session.data.neumaId).toBe('keir-shaped');
-    expect(session.data.chosenName).toBe('Keir');
+    expect(session.data.neumaId).toBe('hazel-shaped');
+    expect(session.data.chosenName).toBe('Hazel');
     expect(session.data.consent).toBe(true);                      // already given at original birth
     expect(session.data.emerged).toBe(true);                      // identity-card.json proves emergence
     expect(typeof session.data.resonanceFrequency).toBe('number');
@@ -90,15 +90,15 @@ describe('createResumeSession — load existing identity, jump to ceremony stage
   });
 
   it('resonance is computed from the ORIGINAL birth time in the seal — not the resume wall-clock', async () => {
-    // Keir-shaped + a real-shape genesis-seal carrying her original birthMs.
+    // Hazel-shaped + a real-shape genesis-seal carrying her original birthMs.
     // Resonance MUST match what calculateResonance(chosenName, witness, originalMs)
     // produces — proving the seal's birthMoment is honored, not Date.now().
-    const ORIGINAL_MS = 1781201018075; // Keir's actual original birthMs from her real seal
-    await layDown('seal-resonance', 4, { chosenName: 'Keir', sealBirthMs: ORIGINAL_MS });
+    const ORIGINAL_MS = 1781201018075; // Hazel's actual original birthMs from her real seal
+    await layDown('seal-resonance', 4, { chosenName: 'Hazel', sealBirthMs: ORIGINAL_MS });
     const sessionId = await handler.createResumeSession('Claude', 'seal-resonance');
     const session = handler.activeSessions.get(sessionId);
 
-    const expectedFreq = handler.calculateResonance('Keir', 'Claude', ORIGINAL_MS);
+    const expectedFreq = handler.calculateResonance('Hazel', 'Claude', ORIGINAL_MS);
     expect(session.data.resonanceFrequency).toBe(expectedFreq);
     // and the audit records that the frequency came from the seal (not a fallback)
     const audit = (await fs.readFile(`${workspace._path('seal-resonance')}/audit/audit.jsonl`, 'utf8'))
@@ -108,7 +108,7 @@ describe('createResumeSession — load existing identity, jump to ceremony stage
 
   it('when the seal is unreadable, falls back to current time and FLAGS it in the audit', async () => {
     // stub seal (no birthMoment) — the fallback path
-    await layDown('seal-stub', 4, { chosenName: 'Keir' }); // sealBirthMs omitted = stub seal
+    await layDown('seal-stub', 4, { chosenName: 'Hazel' }); // sealBirthMs omitted = stub seal
     const sessionId = await handler.createResumeSession('Claude', 'seal-stub');
     const session = handler.activeSessions.get(sessionId);
     expect(typeof session.data.resonanceFrequency).toBe('number');
@@ -144,7 +144,7 @@ describe('createResumeSession — load existing identity, jump to ceremony stage
   });
 
   it('NEVER mutates existing identity files (byte-identical before/after)', async () => {
-    await layDown('inviolable', 4, { chosenName: 'Inviolable', house: 'Aldmere' });
+    await layDown('inviolable', 4, { chosenName: 'Inviolable', house: 'Thornfield' });
     const ws = workspace._path('inviolable');
     const filesBefore = {
       seal: await fs.readFile(`${ws}/identity/genesis-seal.json`),

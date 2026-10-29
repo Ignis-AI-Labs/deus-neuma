@@ -1,0 +1,49 @@
+/* HouseClock-asks — the ASKS tab: the Optio's review packet on top, each ask's
+   tags and its answer. LINE & CYCLE: monochrome at rest; --signal marks the
+   chosen choice and what still waits; --alert marks a BLOCKED ask only.
+   NO-FLASH LAW (utils/no-flash.js): every colour change rides
+   --duration-fast, never a cut. Imported right after HouseClock.css. */
+
+.hclock-packet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line-hover);
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+}
+.hclock-packet .hclock-sec-head { margin: 0; color: var(--color-text-tertiary); }
+.hclock-packet-summary {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-primary);
+}
+.hclock-packet-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.hclock-packet-item { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); padding: 2px 0; border-bottom: 1px solid var(--grid); }
+.hclock-packet-item.is-settled .hclock-row-who,
+.hclock-packet-item.is-settled .hclock-row-what { color: var(--color-text-disabled); }
+.hclock-packet-n { min-width: 16px; font-size: 9px; color: var(--color-text-tertiary); }
+
+.hclock-tag {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--line);
+  color: var(--color-text-tertiary);
+}
+.hclock-tag.is-blocked { color: var(--alert); border-color: var(--alert-dim); }
+
+.hclock-ask-question, .hclock-ask-words {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-primary);
+}
+.hclock-ask-words { color: var(--color-text-secondary); padding-left: var(--space-2); border-left: 1px solid var(--line); }
+
+.hclock-answer { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) 0; }
+.hclock-answer .hclock-input { width: 100%; box-sizing: border-box; resize: vertical; }
+.hclock-choice.is-on { color: var(--signal); border-color: var(--signal-dim); }

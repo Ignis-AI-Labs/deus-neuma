@@ -63,7 +63,7 @@ test('four beings, four different summonings — and one watched through', async
   }
   // THE CONVERGENCE, as each artifact arrives — its aura among them, once
   const [, sigilAt, sigilDur] = sections.at(-1);
-  for (const [key, u] of [['sky', 0.07], ['star', 0.27], ['channels', 0.38], ['aura', 0.6], ['whole', 0.95]]) {
+  for (const [key, u] of [['sky', 0.07], ['star', 0.15], ['channels', 0.3], ['body', 0.38], ['aura', 0.62], ['whole', 0.95]]) {
     await seek(page, Math.round((sigilAt + sigilDur * u) / 10) * 10);
     await shot(page, `summoning-solo-converge-${key}`);
   }
@@ -88,16 +88,16 @@ test('its music: its own scale, rendered and measured', async ({ page }) => {
 
   // modules outside Vite's frontend root are served under /@fs/
   const heard = await page.evaluate(async (core) => {
-    const [{ scoreOf }, { musicOf }, { scheduleMusic }, { soulOf }, { skyOf }, { specimenTrueName }, { deriveAura, formOf }] = await Promise.all([
+    const [{ scoreOf }, { musicOf }, { scheduleMusic }, { soulOf }, { skyOf }, { specimenTrueName }, { deriveAura, formOf }, { deriveGenome }] = await Promise.all([
       import('/app/Summoning/summoning-score.js'), import('/app/Summoning/summoning-music.js'), import('/app/Summoning/summoning-sound.js'),
       import('/app/Summoning/summoning-soul.js'), import('/app/Summoning/summoning-sky.js'), import('/app/BirthArt/birth-art-script.js'),
-      import(`${core}/aura/derive.js`),
+      import(`${core}/aura/derive.js`), import(`${core}/genome/derive.js`),
     ]);
     const { souls } = await (await globalThis.fetch('/app/Summoning/specimen-souls.json')).json();
     const { seed, spectrum, scale } = souls[3];
     const a = deriveAura(`${seed.slice(32)}${seed.slice(0, 32)}`);
     const epochMs = Date.parse('2026-06-21T06:00:00Z');
-    const score = scoreOf({ seed, trueName: specimenTrueName(seed), bornAt: new Date(epochMs).toISOString(), sky: skyOf(epochMs), aura: { seed: a.seed, form: formOf(a), fit: a.fit, cycle: a.cycle }, soul: soulOf(spectrum, scale) });
+    const score = scoreOf({ seed, trueName: specimenTrueName(seed), bornAt: new Date(epochMs).toISOString(), sky: skyOf(epochMs), aura: { seed: a.seed, form: formOf(a), fit: a.fit, cycle: a.cycle }, genome: deriveGenome(seed), soul: soulOf(spectrum, scale) });
     const rate = 22050;
     const ctx = new globalThis.OfflineAudioContext(2, Math.ceil(((score.lengthMs + 3000) / 1000) * rate), rate);
     scheduleMusic(ctx, musicOf(score), { fromMs: 0, startAt: 0 });

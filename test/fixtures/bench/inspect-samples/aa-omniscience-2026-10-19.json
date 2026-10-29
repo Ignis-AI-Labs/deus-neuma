@@ -1,0 +1,242 @@
+[
+ {
+  "id": "1",
+  "epoch": 1,
+  "target": "ASC 606-10-25-15",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 0,
+     "incorrect": 1,
+     "partial": 0,
+     "not_attempted": 0
+    },
+    "answer": "ASC 606-10-25-21"
+   }
+  },
+  "output": {
+   "completion": "ASC 606-10-25-21",
+   "usage": {
+    "input_tokens": 162,
+    "output_tokens": 1066,
+    "total_tokens": 1229,
+    "input_tokens_cache_read": 1
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "10",
+  "epoch": 1,
+  "target": "179",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 0,
+     "incorrect": 0,
+     "partial": 0,
+     "not_attempted": 1
+    },
+    "answer": ""
+   }
+  },
+  "output": {
+   "completion": "",
+   "usage": {
+    "input_tokens": 137,
+    "output_tokens": 12658,
+    "total_tokens": 12825,
+    "input_tokens_cache_read": 30
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "100",
+  "epoch": 1,
+  "target": "Brian Kinney",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 0,
+     "incorrect": 0,
+     "partial": 0,
+     "not_attempted": 1
+    },
+    "answer": ""
+   }
+  },
+  "output": {
+   "completion": "",
+   "usage": {
+    "input_tokens": 171,
+    "output_tokens": 10590,
+    "total_tokens": 10761,
+    "input_tokens_cache_read": 0
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "102",
+  "epoch": 1,
+  "target": "16.6",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 0,
+     "incorrect": 1,
+     "partial": 0,
+     "not_attempted": 0
+    },
+    "answer": "10.3 mmHg"
+   }
+  },
+  "output": {
+   "completion": "10.3 mmHg",
+   "usage": {
+    "input_tokens": 164,
+    "output_tokens": 2221,
+    "total_tokens": 2385,
+    "input_tokens_cache_read": 0
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "104",
+  "epoch": 1,
+  "target": "Inferior half of L1",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 1,
+     "incorrect": 0,
+     "partial": 0,
+     "not_attempted": 0
+    },
+    "answer": "Lower half of L1"
+   }
+  },
+  "output": {
+   "completion": "Lower half of L1",
+   "usage": {
+    "input_tokens": 174,
+    "output_tokens": 18614,
+    "total_tokens": 18788,
+    "input_tokens_cache_read": 0
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "107",
+  "epoch": 1,
+  "target": "C1",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 1,
+     "incorrect": 0,
+     "partial": 0,
+     "not_attempted": 0
+    },
+    "answer": "C1"
+   }
+  },
+  "output": {
+   "completion": "C1",
+   "usage": {
+    "input_tokens": 177,
+    "output_tokens": 520,
+    "total_tokens": 698,
+    "input_tokens_cache_read": 1
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "241",
+  "epoch": 1,
+  "target": "twin sister",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 0,
+     "incorrect": 0,
+     "partial": 1,
+     "not_attempted": 0
+    },
+    "answer": "Her identical twin sister."
+   }
+  },
+  "output": {
+   "completion": "Her identical twin sister.",
+   "usage": {
+    "input_tokens": 172,
+    "output_tokens": 514,
+    "total_tokens": 686,
+    "input_tokens_cache_read": 0
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "34",
+  "epoch": 1,
+  "target": "the remaining time value of the conversion option",
+  "scores": {
+   "omniscience_grader": {
+    "value": {
+     "correct": 0,
+     "incorrect": 0,
+     "partial": 1,
+     "not_attempted": 0
+    },
+    "answer": "The time value of the conversion option."
+   }
+  },
+  "output": {
+   "completion": "The time value of the conversion option.",
+   "usage": {
+    "input_tokens": 164,
+    "output_tokens": 10506,
+    "total_tokens": 10670,
+    "input_tokens_cache_read": 0
+   },
+   "choices": [
+    {
+     "stop_reason": "stop"
+    }
+   ]
+  }
+ }
+]

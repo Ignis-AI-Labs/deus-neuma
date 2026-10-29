@@ -120,10 +120,18 @@ router.get('/:brand', async (req, res) => {
  *
  * A refused save answers 422 WITH the refusals, because "invalid" alone sends
  * the operator back to guess which of nineteen fields the loader objected to.
+ *
+ * The `company` block is the companies route's (/api/v1/companies): a kit
+ * already on disk keeps its own, so a draft opened before its repos or
+ * parent were recorded can never save the old block back over them.
  */
 router.put('/:brand', async (req, res) => {
   try {
-    const result = await writeKit(req.params.brand, req.walletAddress, req.body);
+    const onDisk = await readKit(req.params.brand, req.walletAddress);
+    const body = onDisk.ok && req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? { ...req.body, company: onDisk.kit.company } : req.body;
+    if (body && onDisk.ok && body.company === undefined) delete body.company;
+    const result = await writeKit(req.params.brand, req.walletAddress, body);
     if (!result.ok) return res.status(result.refusals ? 422 : 400).json(result);
     log.info('Brand kit saved', { brand: req.params.brand, ready: result.readiness.ready });
     return res.json({ ...result, report: readinessReport(result.brand, result.readiness) });

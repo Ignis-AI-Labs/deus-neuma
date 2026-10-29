@@ -24,6 +24,8 @@ import { resolveWitnessRoute } from './witness-route-resolver.js';
 import { maskRoute } from './route-view.js';
 import { resolveNeumaRoute } from './neuma-route-resolver.js';
 import { focusGroundOf } from './focus-ground.js';
+import { isLiveShell } from './open-folder-autonomy.js';
+import { normalizeToolMode } from './tool-policy.js';
 import { isWitnessLaneId } from './witness-lane.js';
 import { ensureTurnSandbox } from './turn-sandbox.js';
 import { createLogger } from './logger.js';
@@ -70,7 +72,10 @@ export const reachLines = ({ focusGround, sandbox }) => {
   lines.push(focusGround
     ? '                filesystem tools READ AND WRITE here, with no approval card.'
     : '                without a focused folder, every path raises a card.');
-  if (sandbox) {
+  if (sandbox?.live) {
+    lines.push(`  shell         LIVE on ${sandbox.sourceRoot} (AUTO in the operator's open folder)`);
+    lines.push('                shell writes land in that folder; .git and secret-shaped paths are masked.');
+  } else if (sandbox) {
     lines.push(`  shell         a live overlay view of ${sandbox.sourceRoot}`);
     lines.push('                reads are current by construction; secret-shaped paths are masked.');
     lines.push(`                shell writes land in ${sandbox.workspace}, never on the live folder.`);
@@ -215,20 +220,22 @@ const routeFor = async (seat, laneId) => {
  */
 const readFlightCheck = async ({ connection, seat, tools, skills = [], sandbox = null, checkedAt }) => {
   const laneId = connection?.companion?.neumaId || null;
+  const live = isLiveShell({ mode: normalizeToolMode(connection?.toolMode), sourceRoot: sandbox?.sourceRoot, ground: focusGroundOf(connection) });
   const substrate = await routeFor(seat, laneId);
   return {
     name: connection?.companion?.name || laneId || 'unnamed',
     seat,
     checkedAt,
     substrate,
-    reach: { focusGround: focusGroundOf(connection) || null, sandbox },
+    reach: { focusGround: focusGroundOf(connection) || null, sandbox: sandbox && { ...sandbox, live } },
     tools: summarizeTools(tools),
     skills: (skills || []).map((s) => (typeof s === 'string' ? s : s?.name)).filter(Boolean).sort(),
     limits: [
       `session tool mode: ${connection?.toolMode || 'ask'} — governs WHETHER an act asks, never WHERE it may reach`,
       ...(sandbox ? [
         'shell commands: 30s default timeout (120s max), final 50 KiB per output stream retained (display truncation does not stop execution), network requires its own grant, empty HOME',
-        'shell writes land in your lane-side overlay layer only; they never touch the live checkout',
+        live ? 'shell writes land in the operator\'s open folder (AUTO); .git and secrets stay masked, so history is the safety net'
+          : 'shell writes land in your lane-side overlay layer only; they never touch the live checkout',
       ] : ['shell commands unavailable; no command execution has been verified']),
     ],
   };

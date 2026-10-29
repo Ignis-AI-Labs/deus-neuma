@@ -12,15 +12,27 @@
 //   desk-windows.cjs   — desk slots, boot/handoff relay, the one window factory
 //   ipc-handlers.cjs   — every renderer-facing IPC registration + the app menu
 //   tray.cjs           — the corner tab + the once-per-install "still running" notice
+//   update-bar.cjs     — the desk's update bar + WHAT'S NEW (what auto-update.cjs found)
+//   connections-main.cjs — the CONNECTIONS switches main applies (spellcheck)
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
-const { app, BrowserWindow, Notification, dialog, shell } = require('electron');
+const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, session } = require('electron');
 const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
+const { fromDesk } = require('./desk-links.cjs');
 const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
+const { registerUpdateBar } = require('./update-bar.cjs');
+const { guardAppSessions } = require('./permission-guard.cjs');
+const { registerConnections } = require('./connections-main.cjs');
+const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
+
+// Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
+// shows an app's notices (the update alert) only under its shortcut's ID, and "open at login" is the
+// Run entry by this name, the same one the installer's […] writes.
+if (process.platform === 'win32') app.setAppUserModelId('ai.neuma.app');
 
 const deskWindows = createDeskWindows({
   getOrigin,
@@ -33,8 +45,9 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', () => {
     // A second launch means "another desk", not […] (VS Code
-    // behavior) — carried on the focused desk's session when one is up.
-    deskWindows.openDeskFromFocused().catch((err) => {
+    // behavior) — carried on the focused desk's session when one is up. A
+    // hidden desk, or a boot still under way, is raised instead (secondLaunch).
+    deskWindows.secondLaunch().catch((err) => {
       dialog.showErrorBox('Deus Neuma', `Could not open a new desk.\n\n${err.message}`);
     });
   });
@@ -43,17 +56,30 @@ if (!app.requestSingleInstanceLock()) {
     // Every renderer-facing registration lands BEFORE anything spawns — a desk
     // must never load ahead of its handlers, and the wallet store opens before
     // any window exists.
-    registerIpcHandlers({ deskWindows });
+    registerIpcHandlers({ deskWindows, getOrigin });
+    const isDesk = (event) => fromDesk(event, getOrigin());
+    const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate, isDesk });
+    // Electron grants every camera/mic/screen/location ask by default; the
+    // floor is deny, before any page exists (permission-guard.cjs).
+    guardAppSessions(session, getOrigin);
+    // Spellcheck's dictionary fetch is off until the person turns it on — set before any page exists.
+    registerConnections({ app, ipcMain, session });
+    registerKeyLockIpc({ ipcMain, safeStorage, isDesk });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.
     if (!(await resolveStartupPort())) return;
     try {
-      await startBackend();
+      // The at-rest keys open BEFORE the backend exists; a person who quits the
+      // unlock window gets no backend at all (key-lock-main.cjs).
+      if ((await openAtRestKeys({ app, safeStorage })) === null) { app.quit(); return; }
+      await startBackend({ onRestarted: deskWindows.reloadDesks });
       await waitForBackend();
-      await deskWindows.createWindow();
+      await deskWindows.bootFirstDesk();
       tray.ensureTray(); // the corner tab — present from the first desk onward
-      autoUpdate.init({ app, shell, Notification, refreshTray: tray.rebuildTrayMenu });
+      // An offer that changes reaches the tray and every desk's bar together.
+      const refreshTray = () => { tray.rebuildTrayMenu(); updateBar.publish(); };
+      autoUpdate.init({ app, shell, Notification, refreshTray });
     } catch (err) {
       dialog.showErrorBox('Deus Neuma', `Could not start the local backend.\n\n${err.message}`);
       app.quit();

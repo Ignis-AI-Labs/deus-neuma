@@ -41,8 +41,8 @@ const DEFAULT_LEGACY_PATH = join(getSettingsDir(), 'legal-matters.json');
 const legacyMattersPath = () =>
   process.env.NEUMA_LEGAL_MATTERS_PATH || DEFAULT_LEGACY_PATH;
 
-export const MATTER_AREAS = Object.freeze(['license', 'posture', 'product', 'regulation']);
-export const MATTER_SOURCES = Object.freeze(['license-scan', 'posture-probe', 'build-watch', 'research', 'manual']);
+export const MATTER_AREAS = Object.freeze(['license', 'posture', 'product', 'regulation', 'marketing']);
+export const MATTER_SOURCES = Object.freeze(['license-scan', 'posture-probe', 'build-watch', 'research', 'manual', 'campaign-review']);
 export const MATTER_STATUSES = Object.freeze(['new', 'no_issue', 'concern', 'resolved', 'needs_counsel', 'needs_operator']);
 export const MATTER_SEVERITIES = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 
@@ -88,6 +88,9 @@ const cleanCitations = (list) => (Array.isArray(list) ? list : [])
   .map((c) => String(c || '').trim()).filter(Boolean).slice(0, CITATIONS_MAX);
 
 // pure — a verdict's minimum shape, or a rejection reason.
+// A citation's own words that it was not read at its source.
+const UNREAD_SOURCE = /\b(not|never|un)[- ]?(source[- ]?)?(verified|read|checked|confirmed)\b|from (my |the )?(clo |own )?(knowledge|memory|recall)|web access (was )?off|could not (be )?(read|fetch|reach)/i;
+
 export const validateVerdict = (verdict) => {
   const status = verdict?.status;
   if (!MATTER_STATUSES.includes(status) || status === 'new') {
@@ -100,6 +103,12 @@ export const validateVerdict = (verdict) => {
   // hand-off to counsel or the operator names at least one source.
   if (!['needs_counsel', 'needs_operator'].includes(status) && cleanCitations(verdict.citations).length === 0) {
     return 'cite what the verdict rests on — a statute, a regulator\'s page, the licence text (citations: [...])';
+  }
+  // A reading rests on law the office READ. A citation that says itself it was
+  // not read (from memory, unverified, the source unreachable) cannot carry a
+  // settled verdict: the honest flag becomes the honest status.
+  if (!['needs_counsel', 'needs_operator'].includes(status) && cleanCitations(verdict.citations).some((c) => UNREAD_SOURCE.test(c))) {
+    return 'a citation says its source was not read — read it first, or settle needs_operator (say what could not be read and why) or needs_counsel';
   }
   if (verdict.reviewBy !== undefined && verdict.reviewBy !== null
     && !(typeof verdict.reviewBy === 'string' && ISO_DATE.test(verdict.reviewBy))) {
@@ -199,6 +208,8 @@ export const createMatterLedger = ({ path, journal = null }) => {
             area: f.area,
             source: f.source,
             repo: f.repo || null,
+            // A campaign-review matter names the company whose words it read.
+            ...(typeof f.companyId === 'string' && f.companyId ? { companyId: f.companyId } : {}),
             externalId: f.externalId.trim(),
             title: f.title.trim(),
             severity: f.severity || 'unknown',

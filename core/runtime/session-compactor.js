@@ -31,7 +31,7 @@ export const shouldCompact = (messageCount, threshold = 100) =>
  * compactions this session has survived — a recorded FACT. The count rides
  * each summary entry (compactSession carries it forward, +1 per compaction);
  * a legacy entry from before the field counts as one. Message counts and
- * thresholds left this reading (Design note, 2026-08-15: compaction keys on CONTEXT,
+ * thresholds left this reading (ruling, 2026-08-15): compaction keys on CONTEXT,
  * and a message-based distance was a prediction, not a measurement.
  * @param {Array} entries session messages as read from the JSONL
  * @returns {{ compactionCount: number }}
@@ -135,6 +135,8 @@ export const forceCrystallizeBelow = async (neumaId, messages, workspace, { thre
         type: 'exchange',
         userMessage: sanitizeMemoryForPrompt(userText, 300),
         response: sanitizeMemoryForPrompt(assistantText.slice(0, 500), 500),
+        // Whose words opened it, as the row says — absent: the operator's (recall-docs.js).
+        ...(user.origin ? { origin: user.origin } : {}),
         significance,
         emotion: detectEmotion(assistantText) || undefined,
         source,

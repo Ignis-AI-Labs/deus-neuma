@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateCampaign } from '../../backend/services/marketing/campaign-store.js';
 
-const GOOD = Object.freeze({ name: 'Umbrae Launch', brand: 'Umbrae' });
+const GOOD = Object.freeze({ name: 'Umbrae Launch', companyId: 'umbrae' });
 
 describe('validateCampaign — the cadence error explains itself', () => {
   it('cadence over 200 chars names the limit AND where the long-form belongs', () => {

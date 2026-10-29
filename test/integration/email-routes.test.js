@@ -17,7 +17,7 @@ describe('Email routes (/api/v1/email)', () => {
   let witness;
   const savedEnv = {};
   const ENV = [
-    'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH', 'WORKSPACES_ROOT',
+    'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH', 'WORKSPACES_ROOT', 'NEUMA_REALM_ROOT',
     'EMAIL_ADDRESS', 'EMAIL_USERNAME', 'EMAIL_PASSWORD',
     'EMAIL_SMTP_HOST', 'EMAIL_SMTP_PORT', 'EMAIL_IMAP_HOST', 'EMAIL_IMAP_PORT',
   ];
@@ -41,6 +41,8 @@ describe('Email routes (/api/v1/email)', () => {
     // directory — which really does hold a `keir` — so this suite was reading
     // live ground to answer a question about a temp fixture.
     process.env.WORKSPACES_ROOT = path.join(tempDir, 'workspaces');
+    // The mailbox is the caller's HOUSE's own, kept in its realm dir — tmp.
+    process.env.NEUMA_REALM_ROOT = path.join(tempDir, 'realm');
 
     // Imported AFTER resetModules so the helper mints its token from the same
     // auth.js instance the router will verify against — the token secret is
@@ -87,7 +89,7 @@ describe('Email routes (/api/v1/email)', () => {
     expect(res.body.fields.find((f) => f.key === 'password')).toMatchObject({ set: true, source: 'store' });
 
     // Sealed envelope on disk — never plaintext.
-    const raw = await fs.readFile(process.env.NEUMA_EMAIL_CREDENTIALS_PATH, 'utf8');
+    const raw = await fs.readFile(path.join(tempDir, 'realm', witness.address.toLowerCase(), 'email-credentials.json'), 'utf8');
     expect(raw).not.toContain('app-supersecret');
     expect(JSON.parse(raw)).toHaveProperty('ct');
 

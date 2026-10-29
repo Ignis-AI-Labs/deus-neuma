@@ -11,21 +11,9 @@ import {
   isWalletUnlocked, getActiveWalletId, listWallets, canCreateWallet, MAX_WALLETS,
   createEmbeddedWallet, unlockEmbeddedWallet, tryRememberedUnlock, getEmbeddedProvider,
   importEmbeddedMnemonic, importEmbeddedWallet, importEmbeddedKeystore,
-  encryptMnemonicToKeystore, canMakeKeyForMe, createWalletForMe,
+  canMakeKeyForMe, createWalletForMe,
 } from '../../services/EmbeddedWallet.js';
-
-// Trigger a client-side download of a text file (the encrypted keystore backup).
-const downloadTextFile = (filename, content) => {
-  const blob = new Blob([content], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-};
+import { showRecoveryPhrase } from './wallet-backup-panel.js';
 
 /**
  * Show the wallet picker modal.
@@ -133,83 +121,9 @@ export const showWalletPicker = (contextMessage) => {
       if (confirmInput) confirmInput.addEventListener('keydown', handleEnter);
     };
 
+    // The recovery phrase + the password-locked backup file (wallet-backup-panel.js).
     const showMnemonicBackup = (mnemonic, password) => {
-      const panel = overlay.querySelector('.wallet-picker-panel');
-      const words = mnemonic.split(' ');
-      uiSound('open'); // the wallet exists now — reveal its recovery phrase
-
-      // A key made for the operator has no password they know (madeForMe):
-      // this computer's keychain keeps it, so the phrase may wait — and the
-      // encrypted file, which needs that password, is not offered.
-      const madeForMe = password === null;
-      panel.innerHTML = `
-        <div class="wallet-picker-header">
-          <h2 class="wallet-picker-title">Recovery Phrase</h2>
-        </div>
-        <p class="wallet-picker-context">
-          ${madeForMe
-            ? `Your key is made and kept by this computer — nothing to remember. These ${words.length} words are the only way to recover it on another machine, or if this computer's keychain is ever reset. You can show them again any time from the WALLET window.`
-            : `Write down these ${words.length} words and keep them somewhere safe and private.
-          They are the only way to recover this wallet if you forget your password.`}
-        </p>
-        <div class="wallet-picker-mnemonic">
-          ${words.map((w, i) => `<span class="mnemonic-word"><span class="mnemonic-index">${i + 1}</span>${w}</span>`).join('')}
-        </div>
-        <div class="wallet-picker-backup-actions">
-          <button class="wallet-picker-backup-btn" id="wp-copy" type="button">Copy</button>
-          ${madeForMe ? '' : '<button class="wallet-picker-backup-btn" id="wp-save" type="button">Save encrypted file</button>'}
-        </div>
-        <div class="wallet-picker-note" id="wp-backup-msg"></div>
-        <label class="wallet-picker-confirm-label">
-          <input type="checkbox" id="wp-saved-check" />
-          I have saved my recovery phrase
-        </label>
-        <button class="wallet-picker-submit" id="wp-continue" disabled>Continue</button>
-        ${madeForMe ? '<button class="wallet-picker-create wallet-picker-restore" id="wp-later" type="button"><span>Save it later</span></button>' : ''}
-      `;
-
-      const msgEl = panel.querySelector('#wp-backup-msg');
-
-      panel.querySelector('#wp-copy').addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(mnemonic);
-          uiSound('tick');
-          msgEl.textContent = 'Copied to clipboard.';
-        } catch {
-          uiSound('deny');
-          msgEl.textContent = 'Clipboard unavailable — select the words and copy manually.';
-        }
-      });
-
-      const laterBtn = panel.querySelector('#wp-later');
-      if (laterBtn) laterBtn.addEventListener('click', () => { uiSound('tick'); resolveWithEmbedded(); });
-
-      const saveBtn = panel.querySelector('#wp-save');
-      if (saveBtn) saveBtn.addEventListener('click', async () => {
-        saveBtn.disabled = true;
-        const label = saveBtn.textContent;
-        saveBtn.textContent = 'Encrypting…';
-        try {
-          const keystore = await encryptMnemonicToKeystore(mnemonic, password);
-          downloadTextFile(`neuma-wallet-keystore-${Date.now()}.json`, keystore);
-          uiSound('activate');
-          msgEl.textContent = 'Saved an encrypted keystore — it unlocks with your wallet password.';
-        } catch {
-          uiSound('deny');
-          msgEl.textContent = 'Could not create the encrypted file.';
-        } finally {
-          saveBtn.disabled = false;
-          saveBtn.textContent = label;
-        }
-      });
-
-      const checkbox = panel.querySelector('#wp-saved-check');
-      const continueBtn = panel.querySelector('#wp-continue');
-      checkbox.addEventListener('change', () => {
-        uiSound('toggle');
-        continueBtn.disabled = !checkbox.checked;
-      });
-      continueBtn.addEventListener('click', () => resolveWithEmbedded());
+      showRecoveryPhrase(overlay.querySelector('.wallet-picker-panel'), { mnemonic, password, onContinue: resolveWithEmbedded });
     };
 
     const showImportFlow = () => {
@@ -230,7 +144,7 @@ export const showWalletPicker = (contextMessage) => {
                  placeholder="Password (min 12 characters)" id="wp-password" autocomplete="new-password" />
           <div class="wallet-picker-error" id="wp-error"></div>
           <button class="wallet-picker-submit" id="wp-submit">Import</button>
-          <p class="wallet-picker-footnote">Or <a href="#" id="wp-keystore-link">import an encrypted keystore file</a></p>
+          <p class="wallet-picker-footnote">Or <a href="#" id="wp-keystore-link">restore from a backup file</a></p>
           <input type="file" id="wp-keystore-file" accept="application/json,.json" hidden />
         </div>
       `;
@@ -289,7 +203,7 @@ export const showWalletPicker = (contextMessage) => {
         if (!file) return;
         if (password.length < 12) {
           uiSound('deny');
-          errorEl.textContent = 'Enter the keystore password (min 12) above first';
+          errorEl.textContent = 'Type the backup file\'s password above first (at least 12 characters).';
           return;
         }
         submitBtn.disabled = true;
@@ -299,7 +213,7 @@ export const showWalletPicker = (contextMessage) => {
           resolveWithEmbedded();
         } catch {
           uiSound('deny');
-          errorEl.textContent = 'Could not import the keystore (wrong password?)';
+          errorEl.textContent = 'Could not open the backup file — is the password right?';
           submitBtn.disabled = false;
           submitBtn.textContent = 'Import';
         }
@@ -395,7 +309,7 @@ export const showWalletPicker = (contextMessage) => {
         .join('');
 
       // Create / Import on top (hidden at the cap), the existing wallets below.
-      // MAKE A KEY FOR ME leads where the keychain can keep one (Design note, 2026-10-14.
+      // MAKE A KEY FOR ME leads where the keychain can keep one (ruling, 2026-10-14).
       const forMeHTML = canCreateWallet() && await canMakeKeyForMe()
         ? `<button class="wallet-picker-create wallet-picker-forme" id="wp-forme"><span>Make a key for me</span><small class="wallet-picker-forme-note">One click. This computer keeps it — no password to remember.</small></button>`
         : '';

@@ -52,7 +52,9 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const openBackendLog = (home) => {
   try {
     const { current, previous } = logPaths(home);
-    fs.mkdirSync(logDir(home), { recursive: true });
+    // Owner-only: this is often the first thing to create ~/.neuma, the folder
+    // that holds the at-rest key.
+    fs.mkdirSync(logDir(home), { recursive: true, mode: 0o700 });
 
     // Last run's file becomes .prev. The failure an operator reports is
     // usually one launch old — they hit it, quit, reopened, and only then
@@ -79,4 +81,14 @@ const openBackendLog = (home) => {
  */
 const shouldRotate = (bytes) => Number.isFinite(bytes) && bytes >= MAX_BYTES;
 
-module.exports = { openBackendLog, logPaths, logDir, shouldRotate, MAX_BYTES };
+/**
+ * impure — reveal the log folder in the OS file manager with this run's log
+ * selected. Reveal rather than open: the folder holds this run AND the
+ * previous one, and the previous run is usually the one that failed. The
+ * Help menu and the tray both land here.
+ * @param {{ showItemInFolder: (p: string) => void }} shell - Electron's shell
+ * @param {string} home - the user's home directory
+ */
+const revealBackendLog = (shell, home) => shell.showItemInFolder(logPaths(home).current);
+
+module.exports = { openBackendLog, logPaths, logDir, shouldRotate, revealBackendLog, MAX_BYTES };

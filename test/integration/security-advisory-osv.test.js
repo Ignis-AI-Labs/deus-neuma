@@ -7,11 +7,16 @@
  * Requires network egress to api.osv.dev. If the box is offline the test
  * fails LOUDLY — a watch that cannot reach its source is not a watch.
  */
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterAll } from 'vitest';
 import path from 'path';
 import { createTempDir, writeJSON } from '../helpers/temp-fs.js';
 import { fetchOsvBatch, fetchVulnDetail, runAdvisoryScan } from '../../backend/services/security/advisory-scan.js';
 import { createThreatLedger } from '../../backend/services/security/threat-ledger.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['security-watch']);
+afterAll(() => connections.restore());
 
 const MINIMIST_GHSA = 'GHSA-xvch-5gv4-984h';
 
@@ -42,12 +47,13 @@ describe('advisory scan against the LIVE OSV API', () => {
     });
     const scan = await runAdvisoryScan({ id: 'fixture-repo', path: dir });
     expect(scan.error).toBeNull();
+    expect(scan.ok).toBe(true);
     expect(scan.checked).toBe(1);
     const hit = scan.hits.find((h) => h.externalId === MINIMIST_GHSA);
     expect(hit).toBeTruthy();
     expect(hit).toMatchObject({
-      layer: 'software', source: 'osv', repo: 'fixture-repo',
-      affected: [{ package: 'minimist', version: '1.2.5' }],
+      layer: 'software', source: 'osv', repo: 'fixture-repo', shipped: true,
+      affected: [{ package: 'minimist', version: '1.2.5', shipped: true }],
     });
 
     const ledger = createThreatLedger({ path: path.join(dir, 'threats.json') });
@@ -60,6 +66,7 @@ describe('advisory scan against the LIVE OSV API', () => {
 
   test('a repo with no lockfile says so — never a silent "clean"', async () => {
     const scan = await runAdvisoryScan({ id: 'lockless', path: dir });
+    expect(scan.ok).toBe(false);
     expect(scan.checked).toBe(0);
     expect(scan.error).toMatch(/no package-lock\.json/);
   });

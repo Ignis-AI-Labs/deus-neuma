@@ -6,10 +6,12 @@
 // LANES are a prop (F4, 2026-08-31): the queue spec below is the default, so
 // HERALD renders byte-identically without passing anything; another domain
 // (the vessel calendar, Wave-3) passes its own lanes over the same grid.
+// The grid itself is MonthCalendar's; this is the queue's fold and letters.
 
 import { buildMonthGrid, filterQueueToDay } from './campaigns-helpers.js';
-
-const WEEKDAYS = Object.freeze(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
+import { MonthCalendar } from './MonthCalendar.jsx';
+import { statusMark } from './post-status-marks.js';
+import './queue-status.css';
 
 // The queue's count lanes, in render order. Each lane: `key` indexes the
 // cell's counts object (a count the grid never folded is undefined → the
@@ -26,80 +28,74 @@ const QUEUE_COUNT_LANES = Object.freeze([
   { key: 'R', letter: 'R', tone: 'reply', label: (n) => `${n} ${n === 1 ? 'reply' : 'replies'}` },
 ]);
 
-// The cell's spoken form — the letters are colour-coded, so a screen reader
-// gets the same counts in words.
-const cellLabel = (cell, countLanes) => {
-  const day = new Date(`${cell.key}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
-  const parts = countLanes
-    .filter((lane) => cell.counts[lane.key] > 0)
-    .map((lane) => lane.label(cell.counts[lane.key]));
-  return `${day} — ${parts.length ? parts.join(', ') : 'nothing scheduled'}. Show this day.`;
+// The statuses a day is drawn by, in stacking order (queue-status.css colours them).
+// A status's name is the one table's (post-status-marks.js); replies are not a post status.
+const DAY_PARTS = Object.freeze([['S', 'sent', statusMark('sent').name], ['A', 'scheduled', statusMark('approved').name],
+  ['Q', 'awaiting', statusMark('draft').name], ['F', 'failed', statusMark('failed').name], ['R', 'reply', 'REPLIES']]);
+const dayTotal = (counts) => DAY_PARTS.reduce((t, [k]) => t + (counts[k] || 0), 0);
+
+/** A day as one stacked bar of its statuses and its total — read without decoding letters. */
+const DayMarks = ({ counts }) => {
+  const total = dayTotal(counts);
+  if (!total) return null;
+  return (
+    <>
+      <span className="qcal-stack">
+        {DAY_PARTS.filter(([k]) => counts[k] > 0).map(([k, tone]) => <i key={k} className={`qs-${tone}`} style={{ flexGrow: counts[k] }} />)}
+      </span>
+      <b className="qcal-total">{total}</b>
+    </>
+  );
 };
 
-// One count as its LETTER (Design note, 2026-07-28: […]). Zero prints nothing — a quiet day stays quiet
-// rather than reading a row of zeroes.
-const Count = ({ n, tone, letter }) => (
-  n > 0 ? <span className={`qcal-n is-${tone}`}>{letter}{n}</span> : null
-);
+/** The month's statuses as doors: one lights the days that hold it, again clears. */
+const MonthLegend = ({ weeks, highlight, onHighlight }) => {
+  const sums = Object.fromEntries(DAY_PARTS.map(([k]) => [k, weeks.flat().reduce((t, c) => t + (c.counts?.[k] || 0), 0)]));
+  return (
+    <div className="qcal-legend" role="group" aria-label="this month by status">
+      {DAY_PARTS.map(([k, tone, label]) => (
+        <button key={k} type="button" className={`qcal-legend-item${highlight === k ? ' is-lit' : ''}`}
+          disabled={!sums[k] || !onHighlight} aria-pressed={highlight === k}
+          onClick={() => onHighlight(highlight === k ? null : k)}>
+          <i className={`qs-${tone}`} /><b>{sums[k]}</b>{label}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 export const QueueCalendar = ({
   year, monthIndex, entries, now, selectedKey,
   onPick, onPrevMonth, onNextMonth, onToday,
-  countLanes = QUEUE_COUNT_LANES,
+  countLanes = QUEUE_COUNT_LANES, highlight = null, onHighlight = null, legend = true,
 }) => {
-  const weeks = buildMonthGrid(year, monthIndex, entries, { now });
   const unscheduled = filterQueueToDay(entries, null).length;
-  const monthLabel = new Date(year, monthIndex, 1)
-    .toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-    .toUpperCase();
-
+  const weeks = buildMonthGrid(year, monthIndex, entries, { now });
   return (
-    <div className="qcal">
-      <div className="qcal-head">
-        <button type="button" className="settings-set" aria-label="Previous month"
-          onClick={onPrevMonth}>‹</button>
-        <span className="label-data qcal-month" aria-live="polite">{monthLabel}</span>
-        <button type="button" className="settings-set" aria-label="Next month"
-          onClick={onNextMonth}>›</button>
-        <button type="button" className="settings-set" onClick={onToday}>TODAY</button>
-        {unscheduled > 0 ? (
+    <>
+      {/* `legend` false where a head above already draws this month's counts (MARKETING's account level). */}
+      {legend ? <MonthLegend weeks={weeks} highlight={highlight} onHighlight={onHighlight} /> : null}
+      <MonthCalendar
+        year={year}
+        monthIndex={monthIndex}
+        weeks={weeks}
+        countLanes={countLanes}
+        selectedKey={selectedKey}
+        onPick={onPick}
+        onPrevMonth={onPrevMonth}
+        onNextMonth={onNextMonth}
+        onToday={onToday}
+        quietCounts
+        renderMarks={(cell) => <DayMarks counts={cell.counts} />}
+        cellClass={(cell) => [dayTotal(cell.counts) ? 'has-posts' : '', highlight && !(cell.counts[highlight] > 0) ? 'is-dim' : ''].join(' ').trim()}
+        extra={unscheduled > 0 ? (
           // The bucket is a day view like any other — it just has no date, so
           // it lives beside the grid rather than inside it.
           <button type="button" className="settings-set" onClick={() => onPick(null)}>
             UNSCHEDULED ({unscheduled})
           </button>
         ) : null}
-      </div>
-      <div className="qcal-weekdays" aria-hidden="true">
-        {WEEKDAYS.map((d) => <span key={d} className="qcal-weekday">{d}</span>)}
-      </div>
-      <div className="qcal-grid">
-        {weeks.flat().map((cell, i) => (
-          cell.date === null ? (
-            // Padding keeps the grid 6×7 so the month never jumps height —
-            // a blank seat, not a day that answers clicks.
-            <span key={`pad-${i}`} className="qcal-cell is-pad" aria-hidden="true" />
-          ) : (
-            <button
-              key={cell.key}
-              type="button"
-              className={`qcal-cell${cell.today ? ' is-today' : ''}${selectedKey === cell.key ? ' is-on' : ''}`}
-              aria-pressed={selectedKey === cell.key}
-              aria-label={cellLabel(cell, countLanes)}
-              onClick={() => onPick(cell.key)}
-            >
-              <span className="qcal-day">{cell.date}</span>
-              <span className="qcal-counts">
-                {countLanes.map((lane) => (
-                  <Count key={lane.key} n={cell.counts[lane.key]} tone={lane.tone} letter={lane.letter} />
-                ))}
-              </span>
-            </button>
-          )
-        ))}
-      </div>
-    </div>
+      />
+    </>
   );
 };

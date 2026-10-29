@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { startProviderOAuth, pollProviderOAuth, removeProviderKey } from '../../services/routing.js';
 import './ProviderOAuth.css';
+import { safeHttpUrl } from './safe-url.js';
 
 const DEFAULT_POLL_MS = 5000;
 
@@ -104,10 +105,12 @@ export const ProviderOAuth = ({ provider, onChanged }) => {
         setBusy(false);
         return;
       }
-      if (mode === 'browser' && r.verificationUrl) window.open(r.verificationUrl, '_blank', 'noopener');
+      // the provider's word: opened or linked only when it is http(s) (audit 2026-10-28 L-08)
+      const verificationUrl = safeHttpUrl(r.verificationUrl);
+      if (mode === 'browser' && verificationUrl) window.open(verificationUrl, '_blank', 'noopener');
       setFlow({
         mode,
-        verificationUrl: r.verificationUrl || null,
+        verificationUrl,
         userCode: r.userCode || null,
         pollAfterMs: r.pollAfterMs,
       });

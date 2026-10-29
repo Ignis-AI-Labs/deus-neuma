@@ -9,11 +9,13 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const { primaryBounds } = require('./primary-placement.cjs');
 const path = require('node:path');
-const { SLOT_ARG_PREFIX, lowestFreeSlot } = require('./desk-slots.cjs');
+const { SLOT_ARG_PREFIX, lowestFreeSlot, hiddenDeskSlot } = require('./desk-slots.cjs');
 const { BOOT_CLAIM_TTL_MS, sanitizeBootPayload } = require('./desk-boot.cjs');
-const { buildContextMenuTemplate } = require('./context-menu.cjs');
+const { buildContextMenuTemplate, nativeItemsOf } = require('./context-menu.cjs');
 const { clampWebviewPreferences } = require('./webview-guard.cjs');
 const { noDeskOnScreen } = require('./notify-text.cjs');
+const { externalUrlFor, staysOnDesk } = require('./desk-links.cjs');
+const { readLookTheme } = require('./wallet/look-theme.cjs');
 
 /** Height of the window-controls band on Windows/Linux (base.css reads it back as env(titlebar-area-height)). */
 const TITLE_BAND_PX = 32;
@@ -24,8 +26,9 @@ const TITLE_BAND_PX = 32;
 const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
   // Desk-slot registry — every live window holds a stable slot (1, 2, …).
   // The ONE backend child serves them all; only window identity multiplies.
-  // Closing a window frees its slot; the next window claims the lowest free
-  // one, so a reopened desk reclaims the layout persisted under that slot.
+  // A desk's X only hides it, so it keeps its slot; a destroyed window frees
+  // its slot and the next window claims the lowest free one, reclaiming the
+  // layout persisted under that slot.
   const desks = new Map(); // slot -> BrowserWindow
 
   // One-shot boot payloads (the opener's auth token) waiting for the window
@@ -127,23 +130,39 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
       .map((win) => ({ visible: win.isVisible(), minimized: win.isMinimized(), focused: win.isFocused() })),
   );
 
-  // impure — bring a desk forward. restore() BEFORE show(): show() alone does not
-  // reliably un-minimize, and restore() is a no-op when the window is not
+  // impure — bring one desk forward. restore() BEFORE show(): show() alone does
+  // not reliably un-minimize, and restore() is a no-op when the window is not
   // minimized, so the pair is always correct and never costs anything.
-  const raiseDesk = () => {
-    const existing = [...desks.values()].find((win) => !win.isDestroyed());
-    if (!existing) return null;
-    if (existing.isMinimized()) existing.restore();
-    existing.show(); existing.focus();
-    return existing;
+  const raiseWin = (win) => {
+    if (win.isMinimized()) win.restore();
+    win.show(); win.focus();
+    return win;
   };
 
-  // Bring the live desk forward; false when none is up (the tray's icon click
-  // and OPEN share it).
-  const focusLiveDesk = () => {
-    const existing = [...desks.values()].find((win) => !win.isDestroyed());
-    if (!existing) return false;
-    existing.show(); existing.focus(); return true;
+  const liveDesks = () => [...desks].filter(([, win]) => !win.isDestroyed());
+
+  // impure — bring the first live desk forward; null when none is up.
+  const raiseDesk = () => {
+    const [first] = liveDesks();
+    return first ? raiseWin(first[1]) : null;
+  };
+
+  // impure — bring back a desk its X hid to the tray; null when none is hidden.
+  const raiseHiddenDesk = () => {
+    const slot = hiddenDeskSlot(liveDesks().map(([at, win]) => [at, { visible: win.isVisible() }]));
+    return slot === null ? null : raiseWin(desks.get(slot));
+  };
+
+  // The tray's icon click and OPEN: a hidden desk first, else the live one;
+  // false when none is up.
+  const focusLiveDesk = () => Boolean(raiseHiddenDesk() || raiseDesk());
+
+  // impure — point every live desk at the backend again, after a restart
+  // (whose port is the one the new child reported).
+  const reloadDesks = () => {
+    liveDesks().forEach(([slot, win]) => {
+      win.loadURL(getOrigin()).catch((err) => console.warn(`[neuma] desk ${slot} could not reload:`, err.message));
+    });
   };
 
   // impure — open a desk carrying the focused desk's session (or bare when
@@ -165,7 +184,8 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
       ...primaryBounds({ width: 1280, height: 832 }),
       minWidth: 960,
       minHeight: 640,
-      backgroundColor: '#000000', // the void — no white flash on load
+      // the operator's own ground (CYBERDECK when undressed) — no flash on load
+      backgroundColor: readLookTheme()?.ground || '#11161D',
       // The armillary on the taskbar — without it a dev desk shows the window
       // manager's generic icon (packaged builds also get it from the installer).
       icon: path.join(__dirname, '..', 'build', 'icon.png'),
@@ -212,10 +232,23 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
       });
     }
 
-    // External links (ollama.com, lmstudio.ai, etc.) open in the real browser.
+    // External links (ollama.com, lmstudio.ai, etc.) open in the real browser —
+    // http(s) only, the same gate as app:openExternal (desk-links.cjs says why).
     win.webContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url);
+      const target = externalUrlFor(url);
+      if (target) shell.openExternal(target);
       return { action: 'deny' };
+    });
+
+    // The desk's own frame never leaves the desk's origin. Asked at the event,
+    // not at creation: the origin is the backend's, and the port is settled
+    // only once the backend reports it.
+    win.webContents.on('will-navigate', (event, url) => {
+      if (!staysOnDesk(url, getOrigin())) event.preventDefault();
+    });
+    // …and no server redirect carries it off either (audit 2026-10-28 M-07).
+    win.webContents.on('will-redirect', (event, url) => {
+      if (!staysOnDesk(url, getOrigin())) event.preventDefault();
     });
 
     // THE COMFY VIEWPORT's guest, clamped in the MAIN process. The renderer sets
@@ -242,7 +275,7 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
         win.webContents.send('contextmenu:show', { x: params.x, y: params.y, items });
         return;
       }
-      const template = items.map((item) => {
+      const template = nativeItemsOf(items).map((item) => {
         switch (item.kind) {
           case 'suggestion':
             return { label: item.word, click: () => win.webContents.replaceMisspelling(item.word) };
@@ -286,12 +319,44 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
     return win;
   };
 
+  // THE BOOT'S DESK. A launch that lands while the boot is still bringing the
+  // backend up must not open a desk of its own: it would load an origin nobody
+  // serves yet, hold slot 1 as a dead window and push the boot's desk to slot 2.
+  let booted = false;
+  let markBooted = null;
+  const firstDeskSettled = new Promise((resolve) => { markBooted = resolve; });
+
+  // impure — the boot opens its first desk here, and only here.
+  const bootFirstDesk = async () => {
+    try {
+      return await createWindow();
+    } finally {
+      booted = true;
+      markBooted();
+    }
+  };
+
+  // impure — the OS launched the app again. A second launch means another desk
+  // (VS Code behaviour), with two exceptions: a launch during the boot waits
+  // for the boot's desk and raises it, and a desk the X hid to the tray comes
+  // back before a new one is opened.
+  const secondLaunch = async () => {
+    if (!booted) {
+      await firstDeskSettled;
+      return raiseDesk();
+    }
+    return raiseHiddenDesk() || openDeskFromFocused();
+  };
+
   return Object.freeze({
     createWindow,
+    bootFirstDesk,
+    secondLaunch,
     openDeskFromFocused,
     fallbackWindow,
     raiseDesk,
     focusLiveDesk,
+    reloadDesks,
     anyDeskOnScreen,
     claimBoot,
     settleHandoff,

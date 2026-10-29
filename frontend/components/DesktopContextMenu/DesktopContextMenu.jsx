@@ -6,16 +6,23 @@
 // the preload bridge; this component draws it and answers with the single
 // action the witness chose. Focus never leaves the text field under the
 // cursor — every press is mousedown-defused — so replace/paste land where
-// the witness was typing. Renders nothing outside the desktop shell.
+// the witness was typing. DEFINE is answered HERE, not in main: it opens
+// DefineCard at the spot, carrying the sentence and the chat window read
+// the moment the menu opened. Renders nothing outside the desktop shell.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { itemLabel, moveSelection, clampPosition } from './context-menu-view.js';
+import { defineContextNow } from './define-context.js';
+import { DefineCard } from './DefineCard.jsx';
 import { uiSound } from '../../services/ui-sound.js';
 import './DesktopContextMenu.css';
 
+const LINE_BELOW = 24;
+
 export const DesktopContextMenu = () => {
   const bridge = window.neuma?.contextMenu;
-  const [menu, setMenu] = useState(null); // { x, y, items }
+  const [menu, setMenu] = useState(null); // { x, y, items, context }
+  const [define, setDefine] = useState(null); // { word, x, y, sentence, composer }
   const [sel, setSel] = useState(-1);
   const [pos, setPos] = useState(null);
   const boxRef = useRef(null);
@@ -25,7 +32,8 @@ export const DesktopContextMenu = () => {
     const off = bridge.onShow((payload) => {
       if (!Array.isArray(payload?.items) || payload.items.length === 0) return;
       uiSound('open');
-      setMenu(payload);
+      // read now — the selection stands only until something else is pressed
+      setMenu({ ...payload, context: payload.items.some((i) => i.kind === 'define') ? defineContextNow() : null });
       setSel(-1);
       setPos({ x: payload.x, y: payload.y });
     });
@@ -49,9 +57,12 @@ export const DesktopContextMenu = () => {
 
   const act = useCallback((item) => {
     uiSound('activate');
-    bridge.act(item);
+    // the card opens a line below the cursor, so the sentence stays readable
+    if (item.kind === 'define') setDefine({ word: item.word, x: menu.x, y: menu.y + LINE_BELOW, ...menu.context });
+    else bridge.act(item);
     close();
-  }, [bridge, close]);
+  }, [bridge, close, menu]);
+  const closeDefine = useCallback(() => setDefine(null), []);
 
   // Keyboard: arrows walk, Enter acts, Escape dismisses — captured so the
   // focused input underneath doesn't also react while the menu is up.
@@ -74,39 +85,44 @@ export const DesktopContextMenu = () => {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [menu, sel, act, dismiss]);
 
-  if (!bridge || !menu || !pos) return null;
+  if (!bridge) return null;
+  const card = define ? <DefineCard {...define} onClose={closeDefine} /> : null;
+  if (!menu || !pos) return card;
 
   return (
-    <div
-      className="ctxmenu-overlay"
-      onMouseDown={(e) => { e.preventDefault(); dismiss(); }}
-      onContextMenu={(e) => e.preventDefault()}
-    >
+    <>
+      {card}
       <div
-        ref={boxRef}
-        className="ctxmenu"
-        role="menu"
-        style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
-        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        className="ctxmenu-overlay"
+        onMouseDown={(e) => { e.preventDefault(); dismiss(); }}
+        onContextMenu={(e) => e.preventDefault()}
       >
-        {menu.items.map((item, i) => (
-          item.kind === 'separator' ? (
-            <div key={`sep-${i}`} className="ctxmenu-sep" />
-          ) : (
-            <button
-              key={`${item.kind}-${item.word || item.role}-${i}`}
-              type="button"
-              role="menuitem"
-              className={`ctxmenu-item${item.kind === 'suggestion' ? ' is-word' : ''}${i === sel ? ' is-sel' : ''}`}
-              onMouseEnter={() => setSel(i)}
-              onClick={() => act(item)}
-            >
-              {itemLabel(item)}
-            </button>
-          )
-        ))}
+        <div
+          ref={boxRef}
+          className="ctxmenu"
+          role="menu"
+          style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        >
+          {menu.items.map((item, i) => (
+            item.kind === 'separator' ? (
+              <div key={`sep-${i}`} className="ctxmenu-sep" />
+            ) : (
+              <button
+                key={`${item.kind}-${item.word || item.role}-${i}`}
+                type="button"
+                role="menuitem"
+                className={`ctxmenu-item${item.kind === 'suggestion' ? ' is-word' : ''}${i === sel ? ' is-sel' : ''}`}
+                onMouseEnter={() => setSel(i)}
+                onClick={() => act(item)}
+              >
+                {itemLabel(item)}
+              </button>
+            )
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

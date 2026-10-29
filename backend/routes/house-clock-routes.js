@@ -15,8 +15,12 @@
  *   POST /charter/resume   release it
  *   GET  /queue            what waits, what runs, and why a held seat is held
  *   GET  /ledger           the wakes, newest first (?offset, ?limit, ?seat, ?outcome)
- *   GET  /asks             what the wakes filed for the operator, newest first
- *   POST /asks/:id/close   the operator has dealt with it ({note?}) — nothing runs
+ *   GET  /asks             what house work filed for the operator, newest first, and the
+ *                          Optio's current review packet
+ *   POST /asks/:id/answer  the operator answers it ({decision, text?, option?}): an act
+ *                          allow | deny (allow = ONE use of exactly that act), a plan
+ *                          approve | revise, a decision reply — and the seat is woken
+ *   POST /asks/:id/close   dismiss without answering ({note?}) — nothing runs
  */
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
@@ -28,7 +32,12 @@ import { charterStanding } from '../services/house-clock/charter-shape.js';
 import { setWakeRunner, readWakeQueue } from '../services/house-clock/wake-queue.js';
 import { readWakeLedger, readAsks, closeAsk, ASK_NOTE_MAX } from '../services/house-clock/wake-ledger.js';
 import { runWakeTurn } from '../services/house-clock/wake-turn.js';
+import { readPacket } from '../services/house-clock/review-packet.js';
+import { answerAsk, AnswerError } from '../services/house-clock/ask-answer.js';
 import { createLogger } from '../services/logger.js';
+import { loadHouseWorkspace } from '../services/ground-roots.js';
+import { cosDesignation } from '../services/staff/cos-designation.js';
+import { substrateLine } from '../services/substrate-lease.js';
 
 const log = createLogger('HouseClock');
 
@@ -57,7 +66,18 @@ const fail = (res, error, what) => {
 router.get('/charter', async (req, res) => {
   try {
     const charter = await readCharter(req.walletAddress);
-    res.json({ ...view(charter), history: await readCharterHistory(req.walletAddress) });
+    // What the house needs to do its work beside the charter: its shared ground and a seated Optio
+    // (2026-10-18: a house with no ground silently lost its board, its post and its charges) — and
+    // how many slots the model line runs: at one, every wake takes turns with the operator's chat.
+    const [{ root }, officer] = await Promise.all([
+      loadHouseWorkspace(req.walletAddress),
+      cosDesignation.getOfficer(req.walletAddress).catch(() => null),
+    ]);
+    res.json({
+      ...view(charter),
+      history: await readCharterHistory(req.walletAddress),
+      readiness: { ground: root, optio: officer?.laneId ?? null, lineSlots: substrateLine.snapshot().capacity },
+    });
   } catch (error) {
     fail(res, error, 'read the charter');
   }
@@ -138,7 +158,8 @@ router.get('/ledger', async (req, res) => {
 
 router.get('/asks', async (req, res) => {
   try {
-    res.json({ asks: await readAsks(req.walletAddress) });
+    const [asks, packet] = await Promise.all([readAsks(req.walletAddress), readPacket(req.walletAddress)]);
+    res.json({ asks, packet });
   } catch (error) {
     fail(res, error, 'read the house asks');
   }
@@ -146,9 +167,26 @@ router.get('/asks', async (req, res) => {
 
 const ASK_ID = /^[0-9a-f-]{36}$/;
 
-// Closing is the operator saying "seen, dealt with" — never an approval: the
-// refused act is not run, and no wake is raised. Answering the seat happens in
-// its sitting, where the operator speaks to it.
+// The operator's answer: the only door to a one-shot grant, a plan made the
+// plan of record by them, or a reply to a seat's decision. Their wallet is the
+// house, so an answer never reaches another house's ask.
+router.post('/asks/:id/answer', async (req, res) => {
+  const { id } = req.params;
+  if (!ASK_ID.test(id)) return res.status(400).json({ error: 'not an ask id' });
+  const { decision, text, option } = req.body ?? {};
+  try {
+    const answered = await answerAsk(req.walletAddress, id, { decision, text, option }, { by: req.walletAddress });
+    log.info('house ask answered', { wallet: req.walletAddress, id, decision, woken: answered.woken.queued });
+    res.json(answered);
+  } catch (error) {
+    if (error instanceof AnswerError) return res.status(error.status).json({ error: error.message });
+    fail(res, error, 'answer the house ask');
+  }
+});
+
+// Closing is the operator saying "seen, dealt with" — dismiss without
+// answering, never an approval: the refused act is not run, and no wake is
+// raised.
 router.post('/asks/:id/close', async (req, res) => {
   const { id } = req.params;
   if (!ASK_ID.test(id)) return res.status(400).json({ error: 'not an ask id' });

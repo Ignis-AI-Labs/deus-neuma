@@ -49,8 +49,9 @@ export const toIgnitionStatus = (st, targetModel) => ({
   available: st.launch.ready,
   target: targetModel,
   targetLoaded: st.serving,
-  // "igniting" = we own a process that isn't healthy yet (a boot in flight)
-  igniting: st.owned && !st.serving ? { startedAt: st.startedAt } : null,
+  // "igniting" = a boot in flight: its prepare phase (no process yet) or a
+  // process we own that isn't healthy yet
+  igniting: !st.serving && (st.booting || st.owned) ? { startedAt: st.startedAt } : null,
   lastError: st.lastError,
   loaded: st.serving ? [{ modelKey: targetModel, status: 'loaded' }] : [],
 });
@@ -62,7 +63,7 @@ export const toIgnitionStatus = (st, targetModel) => ({
 const isSupervised = (cfg) => cfg.provider !== 'lm-studio';
 
 /**
- * THE FOCUS LAW (Design note, 2026-08-21: the model the operator loaded LAST is the
+ * THE FOCUS LAW (ruling, 2026-08-21): the model the operator loaded LAST is the
  * standing focus — it stays the focus until HE changes it, and no relight may
  * fall past it to an env default. The selection marker already outranked env
  * at launch; what was missing was the other direction: a model loaded on the
@@ -100,17 +101,33 @@ const lockConnection = (launchCfg) => {
 };
 
 /**
+ * IGNITE ASKS FIRST (the 2026-10-19 ruling): igniting a house that runs on
+ * Ollama or a cloud provider moves it onto the local llama-server, and that
+ * move is the operator's to confirm, never a side effect of the button. Pure.
+ * @param {{provider: string}} cfg
+ * @param {boolean} confirmed - the request says the operator agreed to the switch
+ * @returns {boolean} true when the ignite must stop and ask
+ */
+export const switchNeedsConfirm = (cfg, confirmed) =>
+  isSupervised(cfg) && cfg.provider !== 'llama-server' && confirmed !== true;
+
+/**
  * Provider-aware ignition. For llama-server: lock the connection, then spawn
  * fire-and-observe (the desk polls ignitionStatus for completion — a 31GB load
  * must never block the request). A `selection` ({path, key} from the model
  * catalog) points the supervised substrate at a different model: the selection
  * is recorded (one truth for every later caller), then the server reloads.
  * A switch refuses while a being is mid-generation, and refuses to touch a
- * server NEUMA does not own. For lm-studio: the existing lms load. Impure.
+ * server NEUMA does not own. A house on another provider is refused with
+ * `switch-unconfirmed` until the operator confirms the move (switchNeedsConfirm),
+ * leaving the config and the saved choice untouched. For lm-studio: the
+ * existing lms load. Impure.
  * @param {{path: string, key: string}|null} [selection]
- * @returns {Promise<{status: string}>}
+ * @param {{confirmSwitch?: boolean}} [opts]
+ * @returns {Promise<{status: string, from?: string}>}
  */
-export const igniteConfigured = async (cfg, launchCfg, lmsTarget, selection = null) => {
+export const igniteConfigured = async (cfg, launchCfg, lmsTarget, selection = null, { confirmSwitch = false } = {}) => {
+  if (switchNeedsConfirm(cfg, confirmSwitch)) return { status: 'switch-unconfirmed', from: cfg.provider };
   if (isSupervised(cfg)) {
     const servingNow = await isServing(launchCfg.port, launchCfg.host);
     // Refusal gates precede the selection commit: a refused ignite leaves no

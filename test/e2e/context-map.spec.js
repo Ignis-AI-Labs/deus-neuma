@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { openDockApp } from './helpers/dock.js';
+import { passDeskGates } from './helpers/desk-gates.js';
 import { ethers } from 'ethers';
 import { spawn } from 'child_process';
 import fs from 'fs';
@@ -73,65 +74,8 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
-test('CONTEXT MAP opens from the dock with the honest empty state before any turn', async ({ page }) => {
-  await openDockApp(page, 'CONTEXT MAP');
-  await expect(page.locator('.ctx')).toBeVisible();
-
-  // No turn has been observed on this fresh portal session — the view says
-  // exactly that, and fabricates nothing.
-  await expect(page.locator('.empty-state')).toContainText('NO TURN OBSERVED YET THIS SESSION');
-  await expect(page.locator('.ctx-row')).toHaveCount(0);
-
-  // FIELD against the live stack: the synthetic companion has no workspace
-  // lane here, so the real authed graph fetch 404s — and the pane renders
-  // the honest failure with the real status, never a blank or invented map.
-  await page.locator('.ctx-tab', { hasText: 'FIELD' }).click();
-  await expect(page.locator('.empty-state')).toContainText('THE FIELD COULD NOT BE READ — HTTP 404');
-  await expect(page.locator('.ctx-field-refresh')).toBeVisible();
-
-  expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
-});
-
-test('a real turn draws the composition: sections, honest token labels, totals, budget', async ({ page }) => {
-  // Send a real thought FIRST — the composition hook lives at the desk
-  // level, so the event is held even while the MAP window is closed.
-  const field = page.locator('.relink-input-field');
-  await expect(field).toBeEnabled({ timeout: 15000 });
-  await field.fill('Answer with one single word.');
-  await field.press('Enter');
-
-  await openDockApp(page, 'CONTEXT MAP');
-  await expect(page.locator('.ctx')).toBeVisible();
-
-  // Emission 1 lands right after prompt assembly — sections appear without
-  // waiting for the full reply. (Emission 2 later relabels, same anatomy.)
-  await expect(page.locator('.ctx-row').first()).toBeVisible({ timeout: 60000 });
-  const rows = page.locator('.ctx-rows > .ctx-row:not(.ctx-total):not(.ctx-budget)');
-  expect(await rows.count()).toBeGreaterThan(0);
-
-  // The anatomy bar carries one segment per section.
-  expect(await page.locator('.ctx-seg').count()).toBe(await rows.count());
-
-  // Honest labels: per-section counts are never measured (attributed or
-  // approx, both rungs) — every one reads ~N with a visible EST tag.
-  const first = rows.first();
-  await expect(first.locator('.ctx-tok')).toContainText('~');
-  await expect(first.locator('.ctx-est')).toHaveText('EST');
-
-  // Totals row with real numbers; budget row is either a real used/total
-  // with its named source or the honest unknown — never an invented ceiling.
-  await expect(page.locator('.ctx-total')).toContainText('TOTAL');
-  await expect(page.locator('.ctx-total .ctx-tok')).toContainText(/\d/);
-  const budget = page.locator('.ctx-budget .ctx-budget-val');
-  await expect(budget).toContainText(/(\/ [\d,]+ · [A-Z]|— \/ UNKNOWN)/);
-
-  // Compressed regions: with no over-cap tool result this turn, the section
-  // says so honestly (ref-node rendering is proven in the component test —
-  // see the header comment).
-  await expect(page.locator('.ctx-h', { hasText: 'COMPRESSED REGIONS' })).toBeVisible();
-
-  expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
-});
+// The COMPOSITION tests live in context-map-composition.spec.js, on the desk
+// harness's seeded lane (a synthetic companion with no lane is held at arrival).
 
 // ————— FIELD — the crystallized-memory graph (F-03) —————
 //
@@ -234,6 +178,8 @@ test.describe('FIELD — crystallized-memory graph on an isolated temp-root stac
       sessionStorage.setItem('authToken', t);
     }, { t: fieldToken, a: fieldAddr, id: neumaId });
     await page.goto(`http://localhost:${FPORT}/`);
+    // A lane with no sealed voice raises the founding gates over the desk.
+    await passDeskGates(page, 5000);
     await openDockApp(page, 'CONTEXT MAP');
     await expect(page.locator('.ctx')).toBeVisible();
     await page.locator('.ctx-tab', { hasText: 'FIELD' }).click();

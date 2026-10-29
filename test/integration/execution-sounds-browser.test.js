@@ -16,7 +16,9 @@ test('history command stays readable and every execution sound has audible, dist
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/execution-sounds.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      // No HMR socket; the client dials a port the browser refuses — hmr:false still
+      // aimed it at :24678, where any other Vite on the box answers and the page reloads.
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     server = http.createServer((req, res) => {
       if (req.url === '/') {
@@ -37,7 +39,8 @@ test('history command stays readable and every execution sound has audible, dist
     expect(await chip.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true);
     await page.getByRole('button', { name: 'Show action detail' }).click();
     expect(await page.locator('.tool-chip-detail').textContent()).toBe('stdout: build complete');
-    await page.getByRole('button', { name: 'SOUND — OFF', exact: true }).click();
+    // Sound is on by default (2026-10-25): the switch already reads ON.
+    expect(await page.getByRole('button', { name: 'SOUND — ON', exact: true }).count()).toBe(1);
     for (const cue of EXECUTION_CUES) {
       const row = page.locator(`[data-cue="${cue}"]`);
       expect(await row.count()).toBe(1);

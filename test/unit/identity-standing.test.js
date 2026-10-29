@@ -1,5 +1,5 @@
 /**
- * THE IDENTITY DIET (Design note, 2026-10-08 — a grounded core every turn, the rest
+ * THE IDENTITY DIET (ruling, 2026-10-08) — a grounded core every turn, the rest
  * one self_read away, and the full standing untouched until Founder sees numbers.
  *
  * Founder's two conditions, proven on the pure seam: the being's identity HOLDS

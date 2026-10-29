@@ -18,11 +18,14 @@
 import { csoDesignation } from '../security/cso-designation.js';
 import { threatLedgerFor } from '../security/threat-ledger.js';
 import { runSecurityScan } from '../security/security-scheduler.js';
-import { fileSecurityIssue } from '../security/escalation.js';
+import { fileSecurityIssue, issueOf } from '../security/escalation.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { assessThreats } from '../security/assess-service.js';
 import { selectWatchedRepo } from '../security/attack-surface.js';
 import { watchStoreFor } from '../security/watch-store.js';
 import { circuitBreaker } from '../security/circuit-breaker.js';
+import { notAffectedEvidence } from '../security/verdict-evidence.js';
+import { securityFileFixIntent } from './security-fix.js';
 
 const ASSESS_STATUSES = Object.freeze(['not_affected', 'confirmed', 'mitigated', 'needs_operator']);
 const BREAKER_ACTIONS = Object.freeze(['block_source', 'unblock_source', 'lock_remote', 'release_remote', 'set_auto_containment']);
@@ -63,7 +66,7 @@ export const securityAssessIntent = Object.freeze({
   name: 'security/assess',
   policyTool: 'security.assess',
   fieldsForPrompt: '{id | ids, status, assessment, surfaces?, githubIssue?}',
-  descriptionForPrompt: 'CSO ONLY. Record a reasoned verdict on one threat or a batch. status: not_affected | confirmed | mitigated | needs_operator. Map software exposure first (security_attack_surface).',
+  descriptionForPrompt: 'CSO ONLY. Record a reasoned verdict on one threat or a batch. status: not_affected | confirmed | mitigated | needs_operator. Map software exposure first (security_attack_surface) — a not_affected on an advisory carries that map automatically. mitigated is a CLAIM: the next whole scan verifies it, or reopens the threat if it still sees it.',
   availableFor: securityScanIntent.availableFor,
   validate: async (payload, { connection }) => {
     const seat = await seatRefusal(connection);
@@ -88,15 +91,19 @@ export const securityAssessIntent = Object.freeze({
       ...(Array.isArray(payload.surfaces) ? { surfaces: payload.surfaces.map(String) } : {}),
       assessedBy: connection.companion?.neumaId || 'cso',
       ...(payload.githubIssue ? { githubIssue: String(payload.githubIssue) } : {}),
+      evidenceById: await notAffectedEvidence({ wallet: connection.walletAddress, ids, status: payload.status }),
     };
     const result = await assessThreats({ wallet: connection.walletAddress, ids, verdict });
     if (!result.ok && !result.settled.length) {
       return { ok: false, reason: result.error || result.failed.map((f) => `${f.id}: ${f.error}`).join('; ') };
     }
     const failures = result.failed.length ? `\nFailed (${result.failed.length}): ${result.failed.map((f) => `${f.id}: ${f.error}`).join('; ')}` : '';
+    const evidenced = result.settled.filter((entry) => entry.evidence).length;
+    const evidenceNote = evidenced ? `\nAttack-surface evidence attached to ${evidenced} verdict(s).` : '';
+    const claimNote = verdict.status === 'mitigated' ? '\nThe next whole scan verifies each mitigation, or reopens it if it still sees the threat.' : '';
     return {
       ok: true,
-      detail: `Assessed ${result.settled.length} threat(s) → ${verdict.status}:\n${result.settled.map((entry) => `[${entry.id.slice(0, 10)}] ${entry.title}`).join('\n')}${failures}`,
+      detail: `Assessed ${result.settled.length} threat(s) → ${verdict.status}:\n${result.settled.map((entry) => `[${entry.id.slice(0, 10)}] ${entry.title}`).join('\n')}${failures}${evidenceNote}${claimNote}`,
     };
   },
 });
@@ -107,14 +114,23 @@ export const securityEscalateIntent = Object.freeze({
   fieldsForPrompt: '{id}',
   descriptionForPrompt: 'CSO ONLY. File a confirmed threat as a real executable GitHub security issue and stamp the ledger with its URL.',
   availableFor: securityScanIntent.availableFor,
+  // The issue's words are the CSO's and the ledger's; the card shows them whole, they are screened
+  // before any card, and the filing publishes exactly what was shown (re-audit 2026-10-29, NEW-M5).
   validate: async (payload, { connection }) => {
     const seat = await seatRefusal(connection);
     if (seat) return seat;
     if (typeof payload?.id !== 'string' || !payload.id.trim()) return invalid('escalate needs {id} — the threat id from security_threats_list');
-    return { ok: true, value: { id: payload.id.trim() } };
+    const threat = await (await threatLedgerFor(connection.walletAddress)).get(payload.id.trim());
+    if (!threat) return invalid('no such threat (or the id is ambiguous)');
+    if (threat.status !== 'confirmed') return invalid(`only a CONFIRMED threat escalates — this one is ${threat.status}`);
+    const issue = issueOf(threat);
+    const secret = checkOutboundSecrets('the issue text', [issue.title, issue.body], 'nothing was filed');
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
+    return { ok: true, value: { id: threat.id, repo: threat.repo || null, ...issue } };
   },
+  cardArgs: (value) => ({ repo: value.repo, title: value.title, body: value.body }),
   summarize: (payload) => `escalate threat ${String(payload?.id ?? '?')} to a GitHub issue`,
-  execute: async ({ id }, { connection }) => {
+  execute: async ({ id, title, body }, { connection }) => {
     const threatLedger = await threatLedgerFor(connection.walletAddress);
     const threat = await threatLedger.get(id);
     if (!threat) return { ok: false, reason: 'no such threat (or the id is ambiguous)' };
@@ -123,7 +139,7 @@ export const securityEscalateIntent = Object.freeze({
     }
     const watch = await (await watchStoreFor(connection.walletAddress)).load();
     const repo = selectWatchedRepo(watch, threat.repo);
-    const filed = await fileSecurityIssue(threat, repo.path);
+    const filed = await fileSecurityIssue(threat, repo.path, { title, body });
     if (!filed.ok) return { ok: false, reason: `escalation failed: ${filed.error}` };
     await threatLedger.assess(threat.id, {
       status: 'confirmed', assessment: threat.assessment || 'confirmed',
@@ -162,5 +178,5 @@ export const securityCircuitBreakerIntent = Object.freeze({
 });
 
 export const securityIntents = Object.freeze([
-  securityScanIntent, securityAssessIntent, securityEscalateIntent, securityCircuitBreakerIntent,
+  securityScanIntent, securityAssessIntent, securityEscalateIntent, securityCircuitBreakerIntent, securityFileFixIntent,
 ]);

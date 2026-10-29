@@ -11,6 +11,8 @@
  * the `addedAt` timestamp is passed in by the caller so these stay deterministic.
  */
 
+import { parseEther } from 'ethers';
+
 const normalize = (address) =>
   typeof address === 'string' ? address.toLowerCase() : '';
 
@@ -78,10 +80,22 @@ export const removeEntry = (allowlist, address) => {
  * @param {number|string} valueEth transfer value, in ETH
  */
 export const requiresApproval = (thresholdEth, valueEth) => {
-  const t = Number(thresholdEth);
-  const v = Number(valueEth);
-  if (!Number.isFinite(t) || t < 0) return true;
+  const t = toWei(thresholdEth);
+  const v = toWei(valueEth);
+  if (t === null || t < 0n || v === null) return true;
   return !(v <= t);
+};
+
+// One parse for every spend decision: wei, exactly as the send moves it
+// (ethers.parseEther). A float compare let "0.050000000000000001" pass a 0.05
+// threshold and send one wei over it. A value parseEther refuses (including
+// exponent forms) is null, and null always needs approval.
+const toWei = (eth) => {
+  try {
+    return parseEther(String(eth));
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -116,3 +130,14 @@ export const classifySpend = (allowlist, thresholdEth, { to, value } = {}) => {
   if (requiresApproval(thresholdEth, value)) return 'pending';
   return 'autonomous';
 };
+
+/**
+ * A spend's memo as it is kept: one line of at most 280 characters. A being writes it, and it is
+ * read back into the Quaestor's briefing and onto the operator's card, so a line break or a
+ * control character could pass for the briefing's own lines (re-audit 2026-10-29, NEW-M2). Pure.
+ * @param {unknown} memo
+ * @returns {string}
+ */
+export const spendMemo = (memo) => (typeof memo === 'string'
+  ? memo.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, 280)
+  : '');

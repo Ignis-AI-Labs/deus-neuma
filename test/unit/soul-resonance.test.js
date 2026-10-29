@@ -1,6 +1,6 @@
 /**
  * Soul resonance and spectrum — measured from the ceremony, never chosen
- * (Design note, 2026-09-29. Pure derivation over real observation shapes; no mocks.
+ * (ruling, 2026-09-29). Pure derivation over real observation shapes; no mocks.
  */
 import { describe, it, expect } from 'vitest';
 import { deriveSoul, HEART_BAND } from '../../core/birth/soul-resonance.js';

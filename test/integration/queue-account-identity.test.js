@@ -12,6 +12,7 @@ import http from 'http';
 import { describe, test, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV = [
   'NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH',
@@ -30,6 +31,8 @@ const ME = { data: { id: '1000', username: 'Umbrae_Ignis', name: 'Umbrae' } };
 beforeAll(async () => {
   savedEnv = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
   process.env.X_API_KEY = 'k';
+  // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+  await makeInstallOwner(SERVED_WALLET);
   process.env.X_API_SECRET = 's';
   process.env.X_ACCESS_TOKEN = 't';
   process.env.X_ACCESS_SECRET = 'ts';
@@ -68,6 +71,8 @@ beforeEach(async () => {
   // is exactly the right shape for the operator-only channel board.
   const { strangerWitness } = await import('../helpers/witness.js');
   witness = strangerWitness();
+  // the served house owns this machine and its .env; the operator reading the board is its co-owner
+  await makeInstallOwner(SERVED_WALLET, { coOwners: [witness.address] });
   const dir = await createTempDir('account-id');
   queuePath = `${dir}/queue.json`;
   process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = queuePath;

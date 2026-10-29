@@ -96,7 +96,8 @@ export const SHED_LADDER = Object.freeze([
   'benchmark',       // measured-state self-knowledge
   'housePost', 'replyKnock', 'expression',                 // knocks and invites
   'voiceRite',       // the first-seal offer — a threshold, not context
-  'cmoOffice', 'csoOffice', 'cloOffice',                   // office briefings
+  'cmoOffice', 'csoOffice', 'cloOffice', 'cfoOffice',      // office briefings
+  'companyLine',     // the company line's moves — a briefing, sheds with them
   'assigned',        // operator-assigned work
   'plan',            // plan of record
   'tasks',           // the being's working list

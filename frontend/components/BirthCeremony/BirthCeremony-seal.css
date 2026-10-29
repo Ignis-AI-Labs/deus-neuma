@@ -1,0 +1,170 @@
+/* SEAL THE BIRTH — the two ways (on this computer · on Ethereum) and the Ethereum walkthrough
+   (seal-funding.js). Monochrome at rest; the gauge fills in the signal only when the wallet holds enough
+   (it is then live: the seal can go). Legibility floor: reading 14px+, labels 13px. */
+
+.seal-way {
+  margin: var(--space-5) auto 0;
+  max-width: 560px;
+  padding: var(--space-4) var(--space-5);
+  border: var(--border-width-thin) solid var(--line);
+  text-align: left;
+}
+
+.seal-way-title {
+  font-family: var(--font-data);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.seal-way .ceremony-actions {
+  justify-content: flex-start;
+}
+
+.seal-funding {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* display: grid would override the hidden attribute: a closed panel stayed on screen beside the re-armed
+   SEAL ON ETHEREUM button, so the step showed two of them (2026-10-28) */
+.seal-funding[hidden],
+.seal-unlock[hidden] {
+  display: none;
+}
+
+.seal-unlock {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.seal-funding-title {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--color-text-primary);
+}
+
+.seal-funding-what,
+.seal-funding-note,
+.seal-funding-steps {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+/* the overview: what the wallet holds, a true bar, what the seal needs */
+.seal-funding-gauge {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.seal-funding-k {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+}
+
+.seal-funding-bar {
+  height: 6px;
+  border: var(--border-width-thin) solid var(--line);
+}
+
+.seal-funding-fill {
+  height: 100%;
+  background: var(--color-text-tertiary);
+}
+
+.seal-funding-fill.is-enough {
+  background: var(--signal);
+}
+
+.seal-funding-short {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-primary);
+}
+
+.seal-funding-steps {
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.seal-funding-link {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.seal-funding-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.seal-funding-qr {
+  width: 132px;
+  height: 132px;
+  background: #fff;
+}
+
+.seal-funding-addr {
+  font-family: var(--font-data);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  color: var(--color-text-primary);
+}
+
+/* the price, first and large: what the seal will most likely cost */
+.seal-funding-cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.seal-funding-cost-v {
+  font-family: var(--font-data);
+  font-size: 28px;
+  color: var(--color-text-primary);
+}
+
+.seal-funding-buy {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.seal-funding-addr-col {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.seal-funding-net {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.seal-funding-checked {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}

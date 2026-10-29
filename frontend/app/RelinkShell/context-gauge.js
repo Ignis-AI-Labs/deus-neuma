@@ -12,7 +12,7 @@ import { currentLocale } from '../../i18n/active-locale.js';
 // bare, an estimated one wears ≈, and a missing context window never invents
 // a percentage (the label falls back to the raw token count).
 //
-// Redesign (Design note, 2026-08-15: the full-width rail is gone — a small ring
+// Redesign (ruling, 2026-08-15): the full-width rail is gone — a small ring
 // carries the percentage, and the window TOTAL (the active model's real
 // capacity, per-route) is stated in the label rather than implied.
 //
@@ -115,6 +115,10 @@ export const gaugeFor = (event) => {
   // simply did not render — name it.
   if (Array.isArray(event.degraded) && event.degraded.length > 0) {
     parts.push(`context degraded: ${event.degraded.join(', ')} unavailable this turn`);
+  }
+  // What the shed ladder cut this turn is named too — the window could not hold it.
+  if (Array.isArray(event.shed) && event.shed.length > 0) {
+    parts.push(`shed this turn (the window could not hold them): ${event.shed.map((s) => s.id).join(', ')}`);
   }
   if (event.route?.model) parts.push(`${event.route.model} via ${event.route.provider || 'unknown provider'}`);
   if (session) {

@@ -1,5 +1,5 @@
 // ENTER AS — switch this desk between the full platform and the harness alone
-// (Design note, 2026-10-14. The switch is the same entry the gateway makes
+// (ruling, 2026-10-14). The switch is the same entry the gateway makes
 // (frontend/app/entry-mode.js): the harness keeps the being you were with, and
 // the full platform brings it back; the desk remounts on the chosen layer.
 import { useConsciousnessPick } from './consciousness-context.js';

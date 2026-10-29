@@ -10,6 +10,8 @@
  * ANYWHERE on this machine refuses the launch, so two desks never measure on
  * one GPU at once. Listing and status are reads; a launch is a GPU job of
  * minutes to hours and asks the operator first (tool-policy-defaults `bench`).
+ * House work (a wake, a team member) never launches: nobody is at the desk to
+ * say yes, and an Optio's CLEAR is not the operator's yes.
  *
  * The arms a seat may run: on the HARNESS, bare (the raw model) and harness
  * (the platform with no being) on the operator's harness lane; on a being's
@@ -53,10 +55,20 @@ const NAMES = new Set(BENCH_TOOLS.map((t) => t.name));
 export const isBenchTool = (match) => NAMES.has(match?.toolName)
   || NAMES.has(String(match?.tool || '').replace(/^bench\//, ''));
 
+/** House work — a wake, a team member's turn — has no operator at the desk (tool-approval.js). */
+const isHouseWork = (connection) => Boolean(connection?._approvalRefusal);
+
+/** What house work reads when it reaches for a launch: a benchmark window is the operator's own yes. */
+export const HOUSE_WORK_BENCH_REFUSAL = 'A benchmark is a GPU window only your operator opens, with their own yes at the desk — house work never launches one, and no charter or review can clear it. It was NOT launched. If a run would serve this work, ask your operator for it (ask_operator) and carry on.';
+
 /** Advertised wherever a lane is bound and a benchmarks repository is connected — never
- *  inside a benchmark sitting: the item under test does not reach the bench that measures it. */
-export const benchToolsFor = (connection) =>
-  (connection?.companion?.neumaId && !connection._benchmarkControls && available(harnessRoot()) ? [...BENCH_TOOLS] : []);
+ *  inside a benchmark sitting: the item under test does not reach the bench that measures it.
+ *  House work reads the bench but never launches on it (no benchmark window without the
+ *  operator's explicit yes — an Optio's CLEAR or a charter is not that yes). */
+export const benchToolsFor = (connection) => {
+  if (!connection?.companion?.neumaId || connection._benchmarkControls || !available(harnessRoot())) return [];
+  return isHouseWork(connection) ? BENCH_TOOLS.filter((t) => t.name !== 'bench_run') : [...BENCH_TOOLS];
+};
 
 /** The arms a seat may run on its own lane. Pure. */
 const seatArms = (laneId) => (isHarnessLane(laneId) ? ['bare', 'harness'] : ['bare', 'harness', 'neuma']);
@@ -150,7 +162,7 @@ const runOne = async (connection, args) => {
     // the run's identity rides the chat card, which watches it to its end (BenchRunCard)
     bench: { comparisonId: result.comparisonId, cell: args.cell, arms },
     content: `Launched ${args.cell} — arms ${arms.join(', ')} on ${model}${args?.limit ? `, ${args.limit} items` : ''}. Comparison ${result.comparisonId}. ${watch
-      ? 'A watch is set on it: when the set settles, this chat is told the result in a new turn — no need to check back or promise to.'
+      ? 'A watch is set on it: when the set settles, this chat is told the result in a new turn — and told so if a desk restart cuts the set first.'
       : 'Follow it with bench_status.'} Your operator watches it live from the BENCHMARK chip under the chat.`,
   };
 };
@@ -163,6 +175,11 @@ export const handleBenchTool = async (ws, connection, neumaPolicy, toolMode, mat
   const name = NAMES.has(match?.toolName) ? match.toolName : String(match?.tool || '').replace(/^bench\//, '');
   const toolId = `bench/${name}`;
   const send = (event) => ports.sendToolEvent?.(ws, connection.companion, event);
+  // Refused before the gate, so no route can clear it and no record names the operator's yes.
+  if (name === 'bench_run' && isHouseWork(connection)) {
+    send({ tool: toolId, status: 'denied', summary: 'bench_run — refused: a benchmark window is the operator\'s yes' });
+    return { tool: toolId, status: 'denied', error: HOUSE_WORK_BENCH_REFUSAL };
+  }
   const gate = await gateAct(connection, { server: 'bench', tool: name, args, lanePolicy: neumaPolicy, mode: toolMode, emit: send });
   if (!gate.ok) return gate.result;
   try {

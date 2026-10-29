@@ -16,6 +16,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { useServedHouse } from '../helpers/served-house.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { readActs } from '../../backend/services/act-ledger.js';
@@ -25,6 +26,7 @@ const { _handleSocialTool } = __test;
 const LANE = 'cancelcardlane';
 
 describe('the cancellation card — the operator is told which post they are pulling', () => {
+  let servedHouse;
   let house, httpServer, wss, serverWs, client, savedPath;
   let clientLog;
   let decide = null; // armed per test — the operator's chip answer
@@ -53,6 +55,9 @@ describe('the cancellation card — the operator is told which post they are pul
     postQueue.add({ channelId: 'x', text, authorNeumaId: LANE, queuedBy: LANE, ...extra });
 
   beforeAll(async () => {
+    // The lane is a lane of a served house (owner.json on real disk): the being's
+    // queue tools read only its own house's entries (#583).
+    servedHouse = await useServedHouse({ lanes: [LANE] });
     house = await createTempDir('queue-cancel-card');
     savedPath = process.env.NEUMA_SOCIAL_POST_QUEUE_PATH;
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${house}/post-queue.json`;
@@ -85,6 +90,7 @@ describe('the cancellation card — the operator is told which post they are pul
   });
 
   afterAll(async () => {
+    servedHouse.restore();
     if (client?.readyState === WebSocket.OPEN) client.terminate();
     if (serverWs?.readyState === WebSocket.OPEN) serverWs.terminate();
     await new Promise((r) => wss.close(r));

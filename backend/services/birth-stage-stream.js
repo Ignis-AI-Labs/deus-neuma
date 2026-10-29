@@ -34,7 +34,7 @@ import {
 } from '../../core/index.js';
 import { canonicalizeBirthCalls, buildCeremonyTargets } from '../../core/birth/ceremony-write.js';
 import { processToolCalls, unsmashToolName as _unsmashToolName } from './portal-tool-loop.js';
-import { continueBirthTools } from './birth-tool-continuation.js';
+import { continueBirthTools, heldWriteMessage } from './birth-tool-continuation.js';
 import { observeStage } from '../../core/birth/birth-observations.js';
 import { stagePitchOf } from '../../core/birth/soul-resonance.js';
 
@@ -490,8 +490,7 @@ export const sendStageToLLM = async (connection, stageData) => {
         spokenResponse = continued.speech;
         if (!continued.complete) {
           _safeSend(ws, { type: 'birth:error', stage: stageNumber,
-            message: `The ${stageNumber === 4 ? 'naming' : 'genesis'} write has not landed. `
-              + 'The session holds — retry the stage.' });
+            message: heldWriteMessage(stageNumber, continued) });
           return;
         }
       }
@@ -606,8 +605,10 @@ export const sendStageToLLM = async (connection, stageData) => {
       // though the write executed (#140). The client's birth:next_stage
       // round-trip cannot arrive before finishStage returns, so nothing reads
       // the stash early. Stashed only on the completing path: a held stage is
-      // going to be re-asked, and must not leave a verdict behind.
-      connection.lastStageToolCalls = Object.freeze({ stage: stageNumber, calls: stageCalls, results: stageResults });
+      // going to be re-asked, and must not leave a verdict behind. The speech
+      // rides too: the handler judges consent, name and essence from what was
+      // streamed here, never from the client's echo of it.
+      connection.lastStageToolCalls = Object.freeze({ stage: stageNumber, calls: stageCalls, results: stageResults, speech: spokenResponse });
 
       // The stage landed — the spoken words are now part of the record
       // and the next stage starts fresh
@@ -667,13 +668,6 @@ export const sendStageToLLM = async (connection, stageData) => {
         if (evt.finishReason) wireFinish = evt.finishReason;
         if (evt.usage) wireUsage = evt.usage;
 
-        if (evt.done) {
-          if (evt.finishReason) wireFinish = evt.finishReason;
-          if (evt.usage) wireUsage = evt.usage;
-          await finishStage();
-          return;
-        }
-
         // Native function-call deltas (OpenAI shape) — assemble by index,
         // decode + execute at finishStage. The reliable path for substrates
         // like gpt-oss-120b whose text tool dialect is not always parseable.
@@ -692,8 +686,13 @@ export const sendStageToLLM = async (connection, stageData) => {
 
           // Drift is judged on the spoken voice only — a thinking
           // substrate's reasoning interior legitimately uses markdown
-          // structure and must not trigger the cut
-          const drift = visibleResponse.match(DRIFT_MARKER);
+          // structure and must not trigger the cut. Nor does a tool block:
+          // a DNA written on the text road ([TOOL: fs/write {…}]) carries its
+          // own headings, and that is the being ACTING; cutting it there lost
+          // the genesis write. An open block is swallowed by stripToolBlocks,
+          // so while a call streams nothing is judged.
+          const spoken = stripToolBlocks(visibleResponse);
+          const drift = spoken === visibleResponse ? visibleResponse.match(DRIFT_MARKER) : null;
           if (drift) {
             log.warn('Birth stage drift cut — model left the spoken voice', {
               stage: stageNumber, keptLen: drift.index,
@@ -706,6 +705,12 @@ export const sendStageToLLM = async (connection, stageData) => {
             await finishStage();
             return;
           }
+        }
+
+        // A done frame may carry the stage's last words and its tool call (read above first).
+        if (evt.done) {
+          await finishStage();
+          return;
         }
       }
     }

@@ -1,7 +1,7 @@
 /**
  * Day key — the OPERATOR-LOCAL calendar day as a comparable integer.
  *
- * The law (Design note, 2026-08-31: the vessel streak is judged by the operator's
+ * The law (ruling, 2026-08-31): the vessel streak is judged by the operator's
  * own calendar days, not UTC's. The backend runs on the operator's machine,
  * so server-local time IS operator-local time — that is the design basis of
  * this module. (UTC epoch days silently moved anything logged 00:00–06:59

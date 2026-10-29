@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { createMatterLedger, matterCounts } from '../../backend/services/legal/matter-ledger.js';
 import {
-  filterMatters, countsLine, seatLine, holderNameFor, statusOwes, severityLoud, areaLabel, runLine, reportsOf,
+  filterMatters, whereLabelMatter, seatLine, holderNameFor, statusOwes, severityLoud, areaLabel, runLine, reportsOf,
 } from '../../frontend/app/RelinkShell/legal-view.js';
 import { LegalBody } from '../../frontend/app/RelinkShell/LegalBody.jsx';
 
@@ -35,10 +35,10 @@ describe('legal-view — the display law, pure', () => {
     expect(ordered.map((m) => m.externalId)).toEqual([
       'posture:no-privacy-policy', 'build:voice-likeness@416b75de123c', 'license-family:LGPL-3.0-or-later',
     ]);
-    expect(filterMatters(entries, { area: 'license' })).toHaveLength(1);
+    expect(filterMatters(entries, { where: 'license:neuma' })).toHaveLength(1);
+    expect(filterMatters(entries, { status: '@open', severity: 'high' }).map((m) => m.externalId)).toEqual(['posture:no-privacy-policy']);
+    expect(whereLabelMatter('product:neuma')).toBe('NEW WORK · NEUMA');
     expect(filterMatters(entries, { status: 'no_issue' })[0].citations[0]).toContain('lgpl-3.0');
-    expect(countsLine(matterCounts(entries))).toBe('NEW 2 · NO ISSUE 1');
-    expect(countsLine(null)).toBe('THE LEDGER HOLDS NOTHING');
   });
 
   it('the seat, the loudness, the words', () => {
@@ -65,15 +65,19 @@ describe('the LEGAL window, rendered', () => {
       posture: { clo: { laneId: 'praetorlane', designatedAt: '2026-10-01T00:00:00Z' }, counts: matterCounts(entries), dueForReview: 0, lastRunAt: '2026-10-01T01:00:00Z' },
       watch: { runs: [{ startedAt: '2026-10-01T01:00:00Z', added: 3, seen: 0, repos: [{ repo: 'neuma', shipped: 626, commits: 69 }] }] },
       lanes: [{ neumaId: 'praetorlane', name: 'Galen' }],
+      all: entries,
       entries: filterMatters(entries),
+      now: Date.now(),
+      filters: {}, onFilter: () => {},
       detail: settled,
       busy: false, error: null, pick: '', seatBusy: false, confirmClear: false,
       onPick: () => {}, onSeat: () => {}, onAskClear: () => {}, onClear: () => {}, onCancelClear: () => {},
       onPickMatter: () => {}, onCloseDetail: () => {}, onRunWatch: () => {},
-      statusFilter: '', areaFilter: '', onStatus: () => {}, onArea: () => {},
     }));
     expect(html).toContain('THE PRAETOR — GALEN');
-    expect(html).toContain('NEW 2 · NO ISSUE 1');
+    expect(html).toContain('MUST ACT');
+    expect(html).toContain('SHOWING <b>3</b> OF 3 MATTERS');
+    expect(html).toContain('OUR PAPERS · NEUMA');
     expect(html).toContain('RUN WATCH');
     expect(html.indexOf('no privacy notice')).toBeLessThan(html.indexOf('voice and likeness'));
     expect(html).toContain('THE PRAETOR&#x27;S READINGS');
@@ -89,9 +93,10 @@ describe('the LEGAL window, rendered', () => {
       pick: '', seatBusy: false, confirmClear: false,
       onPick: () => {}, onSeat: () => {}, onAskClear: () => {}, onClear: () => {}, onCancelClear: () => {},
       onPickMatter: () => {}, onCloseDetail: () => {}, onRunWatch: () => {},
-      statusFilter: '', areaFilter: '', onStatus: () => {}, onArea: () => {},
+      all: [], now: Date.now(), filters: {}, onFilter: () => {},
     }));
     expect(html).toContain('NO PRAETOR SEATED');
+    expect(html).toContain('NO CRITICAL OR HIGH MATTERS OPEN');
     expect(html).toContain('THE LEGAL WATCH HAS NEVER RUN');
     expect(html).toContain('Could not read the matters ledger.');
     expect(html).toContain('EVERY 24 HOURS');

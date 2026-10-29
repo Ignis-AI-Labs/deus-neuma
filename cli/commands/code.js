@@ -76,7 +76,7 @@ const mountSeat = async ({ laneId, ground, yes, wallet }) => {
     { default: workspace },
     { createPortalConnection },
     { addAllowedTool },
-    { claimOrVerifyLaneOwnership },
+    { verifyLaneOwnership },
     { readExecutionToolPolicy },
   ] = await Promise.all([
     import('../../core/workspace/neuma-workspace.js'),
@@ -86,13 +86,14 @@ const mountSeat = async ({ laneId, ground, yes, wallet }) => {
     import('../../backend/services/execution-tool-policy.js'),
   ]);
   const descriptor = (await listNeumaSeats(workspace)).find((e) => e.laneId === laneId);
-  // Desk parity: an inhabited unclaimed lane auto-claims to the operator's
-  // wallet (the platform's own claim law); a foreign lane is refused.
-  const claim = await claimOrVerifyLaneOwnership({ workspace, neumaId: laneId, wallet });
+  // Desk parity: the seat verifies the operator owns the lane and never
+  // claims one (a read never claims); a foreign lane is refused.
+  const claim = await verifyLaneOwnership({ workspace, neumaId: laneId, wallet });
   if (!claim.ok) {
     const why = claim.reason === 'not-owner' ? `${laneId} belongs to another wallet`
       : claim.reason === 'not-found' ? `${laneId} holds no being to seat`
-        : `${laneId} could not be claimed (${claim.reason})`;
+        : claim.reason === 'unclaimed' ? `${laneId} has no owner yet — claim it at the desk first`
+          : `${laneId} could not be verified (${claim.reason})`;
     throw new Error(why);
   }
   const connection = createPortalConnection({ ws: { send() {} }, walletAddress: wallet });

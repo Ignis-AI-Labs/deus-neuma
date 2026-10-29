@@ -231,6 +231,38 @@ describe('notification bus over the real portal', () => {
     }
   }, 20000);
 
+  it('dismisses from one desk: every desk drops the card, and a desk opened later never gets it', async () => {
+    const deskOne = await openDesk(wsUrl, alice);
+    const deskTwo = await openDesk(wsUrl, alice);
+    let deskThree = null;
+    try {
+      const gone = await turnFor(alice.address, { actor: { id: 'lane-d1', name: 'Gone' } });
+      const kept = await turnFor(alice.address, { actor: { id: 'lane-d2', name: 'Kept' } });
+      await settle();
+
+      deskOne.ws.send(JSON.stringify({ type: 'notification:read', ids: [gone.id], dismiss: true }));
+      await settle(400);
+
+      expect(of(deskOne, 'notification:dismissed')[0].ids).toEqual([gone.id]);
+      expect(of(deskTwo, 'notification:dismissed')[0].ids).toEqual([gone.id]);
+      expect(of(deskTwo, 'notification:read')).toHaveLength(0);
+
+      const stored = await readNotifications(alice.address);
+      expect(stored.records.map((r) => r.id)).not.toContain(gone.id);
+      expect(stored.records.map((r) => r.id)).toContain(kept.id);
+
+      deskThree = await openDesk(wsUrl, alice);
+      await settle(400);
+      const hydrated = of(deskThree, 'notification:hydrate').at(-1)?.records ?? [];
+      expect(hydrated.map((r) => r.id)).not.toContain(gone.id);
+      expect(hydrated.map((r) => r.id)).toContain(kept.id);
+    } finally {
+      deskOne.ws.close();
+      deskTwo.ws.close();
+      deskThree?.ws.close();
+    }
+  }, 20000);
+
   it('accepts a batched read so clearing a full tray cannot trip the rate limit', async () => {
     const desk = await openDesk(wsUrl, alice);
     try {

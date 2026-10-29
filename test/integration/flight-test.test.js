@@ -6,8 +6,7 @@
  * on REAL tmp disk, and the route answers through the REAL express app.
  *
  * The env doors are the platform's own: NEUMA_<PLATFORM>_API_ROOT aims each
- * real probe at the loopback; NEUMA_SOCIAL_CREDENTIALS_PATH isolates the
- * sealed store.
+ * real probe at the loopback; the house's sealed store sits in a tmp realm.
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
@@ -18,6 +17,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { setChannelCredential } from '../../backend/services/social/channel-credentials.js';
 import { runFlightTests } from '../../backend/services/social/flight-test.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 
 const ENV_KEYS = [
   'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_X_API_ROOT',
@@ -36,7 +36,7 @@ const CREDS = {
 };
 
 describe('the flight tests (real loopback platforms + real sealed store, gnosis)', () => {
-  let house, server, base, app, witness;
+  let house, server, base, app, witness, wallet, priorRealm;
   const hits = [];
   const savedEnv = {};
 
@@ -44,6 +44,12 @@ describe('the flight tests (real loopback platforms + real sealed store, gnosis)
     house = await createTempDir('flight-test-house');
     for (const k of ENV_KEYS) { savedEnv[k] = process.env[k]; }
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;
+    // Each house proves its OWN connections: keys live in its realm dir.
+    priorRealm = getRealmRoot();
+    setRealmRoot(`${house}/realm`);
+    const auth = await fullAuth();
+    wallet = auth.address;
+    witness = { header: { Authorization: `Bearer ${auth.token}` } };
 
     // The loopback platform — one server, every endpoint shape. The wire
     // asserts ride with each hit (auth headers, token-in-path).
@@ -106,16 +112,13 @@ describe('the flight tests (real loopback platforms + real sealed store, gnosis)
 
     // The REAL sealed store — every channel's keys land encrypted on tmp disk.
     for (const [id, fields] of Object.entries(CREDS)) {
-      await setChannelCredential(id, fields);
+      await setChannelCredential(wallet, id, fields);
     }
 
-    // A real session — this route carries no neuma lane, so a real wallet
-    // that claims no workspace is exactly the right shape (RULE 0, #390
-    // tranche 4). No vi.resetModules() runs in this file, so this static
-    // import shares the same auth.js instance the router below verifies
-    // against.
-    const auth = await fullAuth();
-    witness = { header: { Authorization: `Bearer ${auth.token}` } };
+    // The session above is a real wallet that claims no workspace — this
+    // route carries no neuma lane (RULE 0, #390 tranche 4). No
+    // vi.resetModules() runs in this file, so the static import shares the
+    // same auth.js instance the router below verifies against.
     const { default: router } = await import('../../backend/routes/social-channel-routes.js');
     app = express();
     app.use(express.json());
@@ -123,6 +126,7 @@ describe('the flight tests (real loopback platforms + real sealed store, gnosis)
   }, 60000);
 
   afterAll(async () => {
+    setRealmRoot(priorRealm);
     for (const k of ENV_KEYS) {
       if (savedEnv[k] === undefined) delete process.env[k];
       else process.env[k] = savedEnv[k];
@@ -132,7 +136,7 @@ describe('the flight tests (real loopback platforms + real sealed store, gnosis)
   });
 
   test('every configured channel PROVES — credentials accepted, endpoint answering, the account named', async () => {
-    const tests = await runFlightTests({ fresh: true });
+    const tests = await runFlightTests({ fresh: true, wallet });
     expect(tests.x).toMatchObject({ ok: true, account: { id: '1000', name: 'neuma_house' } });
     expect(tests.telegram).toMatchObject({ ok: true, account: { id: '555', name: 'house_bot' } });
     expect(tests.discord).toMatchObject({ ok: true, account: { id: '777', name: 'house#0001' } });
@@ -154,45 +158,45 @@ describe('the flight tests (real loopback platforms + real sealed store, gnosis)
   }, 30000);
 
   test('a wrong key is an honest FAILURE, not a crash — the platform said so', async () => {
-    await setChannelCredential('telegram', { botToken: 'wrong-token' });
-    const tests = await runFlightTests({ fresh: true, channels: ['telegram'] });
+    await setChannelCredential(wallet, 'telegram', { botToken: 'wrong-token' });
+    const tests = await runFlightTests({ fresh: true, wallet, channels: ['telegram'] });
     expect(tests.telegram.ok).toBe(false);
     expect(tests.telegram.status).toBe(401);
     expect(tests.telegram.detail).toBe('Unauthorized');
-    await setChannelCredential('telegram', { botToken: 'tg-token' });
+    await setChannelCredential(wallet, 'telegram', { botToken: 'tg-token' });
   }, 30000);
 
   test('a mortal LinkedIn token carries its expiry warning BESIDE the proof, never instead of it', async () => {
-    await setChannelCredential('linkedin', {
+    await setChannelCredential(wallet, 'linkedin', {
       ...CREDS.linkedin,
       tokenExpiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     });
-    const tests = await runFlightTests({ fresh: true, channels: ['linkedin'] });
+    const tests = await runFlightTests({ fresh: true, wallet, channels: ['linkedin'] });
     expect(tests.linkedin.ok).toBe(true);
     expect(tests.linkedin.account).toEqual({ id: '8675309', name: 'Founder Doe' });
     expect(tests.linkedin.detail).toMatch(/the token expires in [1-3] days/);
-    await setChannelCredential('linkedin', CREDS.linkedin);
+    await setChannelCredential(wallet, 'linkedin', CREDS.linkedin);
   }, 30000);
 
   test('the cache spares the lane: a cached answer never touches the wire; fresh forces it', async () => {
     hits.length = 0;
-    await runFlightTests({ fresh: true, channels: ['discord'] });
+    await runFlightTests({ fresh: true, wallet, channels: ['discord'] });
     expect(hits.filter((h) => h.platform === 'discord')).toHaveLength(1);
     // Cached — no second probe.
-    await runFlightTests({ channels: ['discord'] });
+    await runFlightTests({ wallet, channels: ['discord'] });
     expect(hits.filter((h) => h.platform === 'discord')).toHaveLength(1);
     // Fresh — the RE-TEST act really probes again.
-    await runFlightTests({ fresh: true, channels: ['discord'] });
+    await runFlightTests({ fresh: true, wallet, channels: ['discord'] });
     expect(hits.filter((h) => h.platform === 'discord')).toHaveLength(2);
   }, 30000);
 
   test('an unconfigured channel answers ok:null — nothing to prove, never an error', async () => {
     const { removeChannelCredential } = await import('../../backend/services/social/channel-credentials.js');
-    await removeChannelCredential('mastodon');
-    const tests = await runFlightTests({ fresh: true, channels: ['mastodon'] });
+    await removeChannelCredential(wallet, 'mastodon');
+    const tests = await runFlightTests({ fresh: true, wallet, channels: ['mastodon'] });
     expect(tests.mastodon.ok).toBeNull();
     expect(tests.mastodon.detail).toMatch(/not configured/);
-    await setChannelCredential('mastodon', CREDS.mastodon);
+    await setChannelCredential(wallet, 'mastodon', CREDS.mastodon);
   }, 30000);
 
   test('the route answers through the REAL app, and ?fresh=1 forces the probe', async () => {

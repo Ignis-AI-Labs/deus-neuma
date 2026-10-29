@@ -10,7 +10,9 @@ services:
     container_name: neuma
     restart: unless-stopped
     ports:
-      - "${PORT:-3333}:3333"
+      # this host only (audit 2026-10-28 L-06): the API is the house's own; put it on a
+      # network on purpose, behind TLS, never by default
+      - "127.0.0.1:${PORT:-3333}:3333"
     env_file:
       - .env
     environment:

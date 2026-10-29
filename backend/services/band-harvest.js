@@ -26,7 +26,12 @@
  * lane reaches those moments from then on.
  *
  * THE CURSOR is a sidecar (`<lane>/memory/band-harvest.json`, atomic write):
- * which row index each session is harvested through. The session file itself
+ * which row index each session is harvested through, and how many times the
+ * session had compacted when it was written. A compaction rewrites the file
+ * to [summary, ...last rows], so an index from before it points past rows
+ * never harvested; a count that moved restarts the sweep at the top of the
+ * rewritten file (re-reading kept rows is the overlap named below, never a
+ * loss). The session file itself
  * stays pure conversation — no marker rows. A harvest never touches the live
  * tail (the being is still IN those rows; crystallizing them mid-flow would
  * teach recall to paraphrase the present).
@@ -44,8 +49,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from './logger.js';
-import { forceCrystallizeBelow } from '../../core/runtime/session-compactor.js';
+import { forceCrystallizeBelow, compactionTelemetry } from '../../core/runtime/session-compactor.js';
 import { liveTailStartFor } from '../../core/runtime/memory-section.js';
+import { foldBranchView, latestBranchView } from '../../core/workspace/branch-view.js';
 import { neumaRecall, neumaWorkspace } from '../../core/index.js';
 
 const log = createLogger('BandHarvest');
@@ -58,21 +64,27 @@ const CURSOR_FILE = 'band-harvest.json';
 const cursorPath = (neumaId) =>
   path.join(neumaWorkspace.pathFor(neumaId), 'memory', CURSOR_FILE);
 
+// A cursor without a count was written before any compaction it knew of (or
+// before the count rode the cursor): it reads as 0.
 const readCursor = async (neumaId, sessionId) => {
   try {
     const data = JSON.parse(await fs.readFile(cursorPath(neumaId), 'utf8'));
-    const through = data?.sessions?.[sessionId]?.through;
-    if (through === undefined && data?.sessions && !Object.hasOwn(data.sessions, sessionId)) return 0;
-    if (!Number.isInteger(through) || through < 0) throw new Error('Invalid working-band harvest cursor');
-    return through;
+    const entry = data?.sessions?.[sessionId];
+    if (entry === undefined && data?.sessions && !Object.hasOwn(data.sessions, sessionId)) return { through: 0, compactionCount: 0 };
+    const through = entry?.through;
+    const compactionCount = entry?.compactionCount ?? 0;
+    if (!Number.isInteger(through) || through < 0 || !Number.isInteger(compactionCount)) {
+      throw new Error('Invalid working-band harvest cursor');
+    }
+    return { through, compactionCount };
   } catch (error) {
-    if (error.code === 'ENOENT') return 0;
+    if (error.code === 'ENOENT') return { through: 0, compactionCount: 0 };
     throw error;
   }
 };
 
 // impure — tmp+rename, the whole-file JSON law (user-realm precedent)
-const writeCursor = async (neumaId, sessionId, through) => {
+const writeCursor = async (neumaId, sessionId, through, compactionCount) => {
   const file = cursorPath(neumaId);
   let data = null;
   try {
@@ -80,7 +92,10 @@ const writeCursor = async (neumaId, sessionId, through) => {
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const next = {
     ...(data && typeof data === 'object' ? data : {}),
-    sessions: { ...(data?.sessions || {}), [sessionId]: { through } },
+    sessions: {
+      ...(data?.sessions || {}),
+      [sessionId]: { through, ...(compactionCount > 0 ? { compactionCount } : {}) },
+    },
   };
   await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const tmp = `${file}.${process.pid}.tmp`;
@@ -108,11 +123,15 @@ const harvestRegion = async (neumaId, sessionId, { liveTailRows = null } = {}) =
   const tailStart = Number.isInteger(liveTailRows) && liveTailRows >= 0
     ? Math.max(0, rows.length - liveTailRows)
     : liveTailStartFor(rows);
-  const from = Math.min(await readCursor(neumaId, sessionId), tailStart);
+  const { compactionCount } = compactionTelemetry(rows);
+  const cursor = await readCursor(neumaId, sessionId);
+  const from = cursor.compactionCount === compactionCount ? Math.min(cursor.through, tailStart) : 0;
   const region = rows.slice(from, tailStart);
   if (region.length < HARVEST_FLOOR) return false;
 
-  const crystallized = await forceCrystallizeBelow(neumaId, region, neumaWorkspace, {
+  // Fold first (THE TAKES): a point's rejected take is never the answer it
+  // crystallizes — the full file's view names the take the operator kept.
+  const crystallized = await forceCrystallizeBelow(neumaId, foldBranchView(region, latestBranchView(rows)), neumaWorkspace, {
     threshold: 0.4,
     source: 'working-band-harvest',
     strict: true,
@@ -120,7 +139,7 @@ const harvestRegion = async (neumaId, sessionId, { liveTailRows = null } = {}) =
     // segment exists on this path) — same ts+sha8 resolution as the portal's.
     archiveHint: { sessionId },
   });
-  await writeCursor(neumaId, sessionId, tailStart);
+  await writeCursor(neumaId, sessionId, tailStart, compactionCount);
   if (crystallized.length > 0) {
     // Pure adds — each harvested moment appends to the hot index instead of
     // dropping it (harness-friction-map T2).

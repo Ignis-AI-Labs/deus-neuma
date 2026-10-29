@@ -5,6 +5,11 @@
 // nowhere else, and each folder names which serving engines may load from
 // it. Simple by design: install models into a dedicated folder (or point at
 // the folders you already keep), and authorization is done.
+//
+// The engine buttons are PERMISSIONS, not a picker. Allowing an engine is one
+// click (it only widens); taking one away asks again and says what it breaks
+// (2026-10-18: a single click took llama-server off the folder the house
+// model lives in, and the desk could no longer load it).
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +24,7 @@ export const ModelFoldersSection = () => {
   const [newPath, setNewPath] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [pending, setPending] = useState(null); // { path, server } awaiting a deliberate yes
 
   useSettled((settled) => {
     getModelFolders().then((v) => { if (!settled()) setView(v); });
@@ -53,16 +59,20 @@ export const ModelFoldersSection = () => {
     save((view.folders || []).filter((f) => f.path !== path));
   };
 
+  const setServers = (folder, servers) => save((view.folders || []).map((f) => (f.path === folder.path ? { ...f, servers } : f)));
+
   const toggleServer = (folder, server) => {
     if (!view) return;
-    const servers = folder.servers.includes(server)
-      ? folder.servers.filter((s) => s !== server)
-      : [...folder.servers, server];
-    if (servers.length === 0) {
-      setNote(t('folders.oneEngineLeft'));
-      return;
-    }
-    save((view.folders || []).map((f) => (f.path === folder.path ? { ...f, servers } : f)));
+    if (!folder.servers.includes(server)) { setPending(null); setServers(folder, [...folder.servers, server]); return; }
+    if (folder.servers.length === 1) { setNote(t('folders.oneEngineLeft')); return; }
+    uiSound('open');
+    setPending({ path: folder.path, server }); // taking an engine away asks again
+  };
+
+  const confirmOff = (folder) => {
+    const { server } = pending;
+    setPending(null);
+    setServers(folder, folder.servers.filter((s) => s !== server));
   };
 
   return (
@@ -74,22 +84,10 @@ export const ModelFoldersSection = () => {
       {view ? (
         <>
           {(view.folders || []).map((folder) => (
-            <div key={folder.path} className="settings-row">
+            <div key={folder.path} className="mf-folder">
+            <div className="settings-row">
               <code className="settings-v">{folder.path}</code>
               <span className="settings-k">
-                {(view.servers || []).map((server) => (
-                  <button
-                    key={server}
-                    type="button"
-                    className={`settings-set${folder.servers.includes(server) ? ' is-on' : ''}`}
-                    aria-pressed={folder.servers.includes(server)}
-                    disabled={busy}
-                    title={folder.servers.includes(server)
-                      ? t('folders.serverMay', { server })
-                      : t('folders.serverMayNot', { server })}
-                    onClick={() => toggleServer(folder, server)}
-                  >{server.toUpperCase()}</button>
-                ))}
                 <button
                   type="button"
                   className="settings-set"
@@ -98,6 +96,31 @@ export const ModelFoldersSection = () => {
                   onClick={() => removeFolder(folder.path)}
                 >✕</button>
               </span>
+            </div>
+            {/* the engines on their own line: permissions, read left to right */}
+            <div className="settings-control mf-engines">
+              <span className="label-data settings-note">{t('folders.engines')}</span>
+              {(view.servers || []).map((server) => (
+                <button
+                  key={server}
+                  type="button"
+                  className={`settings-set${folder.servers.includes(server) ? ' is-on' : ''}`}
+                  aria-pressed={folder.servers.includes(server)}
+                  disabled={busy}
+                  title={folder.servers.includes(server)
+                    ? t('folders.serverMay', { server })
+                    : t('folders.serverMayNot', { server })}
+                  onClick={() => toggleServer(folder, server)}
+                >{server.toUpperCase()}</button>
+              ))}
+            </div>
+            {pending?.path === folder.path ? (
+              <div className="settings-control mf-engines" role="alertdialog" aria-label={t('folders.confirmOff', { server: pending.server.toUpperCase(), path: folder.path })}>
+                <p className="settings-note">{t('folders.confirmOff', { server: pending.server.toUpperCase(), path: folder.path })}</p>
+                <button type="button" className="settings-set" disabled={busy} onClick={() => confirmOff(folder)}>{t('folders.turnOff')}</button>
+                <button type="button" className="settings-set is-on" onClick={() => { uiSound('toggle'); setPending(null); }}>{t('folders.keep')}</button>
+              </div>
+            ) : null}
             </div>
           ))}
           <div className="settings-control">

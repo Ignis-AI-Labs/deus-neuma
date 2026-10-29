@@ -139,7 +139,7 @@ test('witness births a neuma end-to-end', async ({ page }) => {
     // THE GUIDED ROAD (4107bbde7): a fresh realm leads with the first-run
     // door — two ways in, witness or neuma. This spec is the birth road, so
     // it walks through the NEUMA door when the door is shown.
-    const firstRunNeuma = page.locator('.firstrun-path', { hasText: 'Summon a neuma' });
+    const firstRunNeuma = page.locator('[data-door="neuma"] .firstrun-path');
     // HOME & ALLOCATION: BEGIN stays disabled until the operator applies the
     // workspace allocation — the panel pre-fills the honest defaults, so the
     // spec accepts them the way an operator clicking straight through would.

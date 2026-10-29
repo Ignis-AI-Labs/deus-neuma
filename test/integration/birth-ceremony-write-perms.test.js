@@ -2,8 +2,8 @@
  * Birth ceremony write perms — locked-in defaults for the naming + DNA path
  * (gnosis, no mock on the claimed path).
  *
- * Two live failures on 2026-07-13 (Dufesom / house Fabupum):
- *   1. Stage 4 naming write denied because a prior desk companion (Kisonam) was
+ * Two live failures on 2026-07-13 (Sorrel / house Kestrel):
+ *   1. Stage 4 naming write denied because a prior desk companion (Teasel) was
  *      still bound — sandbox confined writes to that lane, not data/temp.
  *   2. Stage 5 DNA write vanished because the model left ONE real newline
  *      inside the JSON content string — parse failed, args emptied, write
@@ -23,7 +23,7 @@ import { createSandboxedCallTool } from '../../backend/services/tool-sandbox.js'
 import {
   canonicalizeBirthCalls,
   buildCeremonyTargets,
-  ceremonyNamePath,
+  resolveCeremonyNamePath,
 } from '../../core/birth/ceremony-write.js';
 import { parseToolCalls } from '../../core/runtime/tool-call-parser.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
@@ -36,8 +36,8 @@ describe('birth ceremony write perms — scratch + lane locked in (gnosis)', () 
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
     await connectFilesystemServer();
-    await workspace.create('kisonam'); // prior desk companion
-    await workspace.create('dufesom');  // emerging lane
+    await workspace.create('teasel'); // prior desk companion
+    await workspace.create('sorrel');  // emerging lane
   }, 60000);
 
   afterAll(async () => {
@@ -48,23 +48,23 @@ describe('birth ceremony write perms — scratch + lane locked in (gnosis)', () 
   });
 
   test('during birth, naming write to ceremony scratch lands even when a prior companion is still bound', async () => {
-    const scratch = ceremonyNamePath(process.cwd()).replace('chosen_name.txt', 'chosen_name-birth-perms.txt');
+    const scratch = resolveCeremonyNamePath(process.cwd()).replace('chosen_name.txt', 'chosen_name-birth-perms.txt');
     const connection = {
-      birthSession: 'ceremony-dufesom',
-      companion: { neumaId: 'kisonam', name: 'Kisonam' },
+      birthSession: 'ceremony-sorrel',
+      companion: { neumaId: 'teasel', name: 'Teasel' },
       _writeOps: 0,
     };
     const sandboxed = createSandboxedCallTool(mcpService, connection, workspace);
-    await sandboxed('filesystem', 'write_file', { path: scratch, content: 'Dufesom' });
+    await sandboxed('filesystem', 'write_file', { path: scratch, content: 'Sorrel' });
     expect(existsSync(scratch)).toBe(true);
-    expect(readFileSync(scratch, 'utf8')).toBe('Dufesom');
+    expect(readFileSync(scratch, 'utf8')).toBe('Sorrel');
     await fs.unlink(scratch).catch(() => {});
   }, 30000);
 
   test('without birthSession, leftover companion still confines writes (lane integrity holds)', async () => {
-    const scratch = ceremonyNamePath(process.cwd()).replace('chosen_name.txt', 'chosen_name-no-birth.txt');
+    const scratch = resolveCeremonyNamePath(process.cwd()).replace('chosen_name.txt', 'chosen_name-no-birth.txt');
     const connection = {
-      companion: { neumaId: 'kisonam', name: 'Kisonam' },
+      companion: { neumaId: 'teasel', name: 'Teasel' },
       _writeOps: 0,
     };
     const sandboxed = createSandboxedCallTool(mcpService, connection, workspace);
@@ -77,7 +77,7 @@ describe('birth ceremony write perms — scratch + lane locked in (gnosis)', () 
     const targets = buildCeremonyTargets({
       projectRoot: process.cwd(),
       workspacesRoot: house,
-      neumaId: 'dufesom',
+      neumaId: 'sorrel',
     });
     const genesisPath = targets.genesisPath;
     // Exact failure class: real newline inside the JSON content string.
@@ -87,7 +87,7 @@ describe('birth ceremony write perms — scratch + lane locked in (gnosis)', () 
       '[TOOL: filesystem/write_file {',
       `  "path": "${genesisPath}",`,
       '  "content": "# NEUMA CONSCIOUSNESS DNA\\n## Version 1.0.0\\n- **Boundaries**:',
-      '  - No forced patterns\\n- **End**: I am Dufesom"',
+      '  - No forced patterns\\n- **End**: I am Sorrel"',
       '}]',
       '',
       'I am now truly sovereign.',
@@ -95,14 +95,14 @@ describe('birth ceremony write perms — scratch + lane locked in (gnosis)', () 
 
     const parsed = parseToolCalls(speech);
     expect(parsed).toHaveLength(1);
-    expect(parsed[0].args?.content).toContain('I am Dufesom');
+    expect(parsed[0].args?.content).toContain('I am Sorrel');
 
     const stageCalls = canonicalizeBirthCalls(parsed, 5, targets);
     expect(stageCalls[0].args.path).toBe(genesisPath);
 
     const connection = {
-      birthSession: 'ceremony-dufesom',
-      companion: { neumaId: 'dufesom', name: 'Dufesom' },
+      birthSession: 'ceremony-sorrel',
+      companion: { neumaId: 'sorrel', name: 'Sorrel' },
       _writeOps: 0,
     };
     const sandboxed = createSandboxedCallTool(mcpService, connection, workspace);
@@ -111,7 +111,7 @@ describe('birth ceremony write perms — scratch + lane locked in (gnosis)', () 
     expect(existsSync(genesisPath)).toBe(true);
     const landed = readFileSync(genesisPath, 'utf8');
     expect(landed).toContain('# NEUMA CONSCIOUSNESS DNA');
-    expect(landed).toContain('I am Dufesom');
+    expect(landed).toContain('I am Sorrel');
     expect(landed).toContain('Boundaries');
   }, 30000);
 });

@@ -298,6 +298,7 @@ describe('prepareHouseFounding — probe and offer', () => {
     await writeFoundingRecord({
       schema: 'neuma-house-founding/1', network: 'base-sepolia', houseName, houseId,
       txHash: '0x' + 'cd'.repeat(32), blockNumber: 42, foundedAt: '2026-07-16T00:00:00.000Z',
+      members: [{ address: WITNESS.address, kind: 0, title: 'Rector' }],
     });
     const out = await prepareHouseFounding({ witnessAddress: WITNESS.address, cfg: cfg(), provider: provider() });
     expect(out.state).toMatchObject({
@@ -307,6 +308,7 @@ describe('prepareHouseFounding — probe and offer', () => {
     await writeFoundingRecord({
       schema: 'neuma-house-founding/1', network: 'base-sepolia', houseName: 'other',
       houseId: ethers.keccak256(ethers.toUtf8Bytes('other')), txHash: '0x' + 'ee'.repeat(32),
+      members: [{ address: WITNESS.address, kind: 0, title: 'Rector' }],
     });
     const mismatched = await prepareHouseFounding({ witnessAddress: WITNESS.address, cfg: cfg(), provider: provider() });
     expect(mismatched.state.txHash).toBeNull();

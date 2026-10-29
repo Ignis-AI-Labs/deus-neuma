@@ -1,6 +1,6 @@
 // Pure inbound operator-card translation. Effects belong to the stream host.
 const actions = Object.freeze({
-  'tool:approval_request': (data, lane) => ({ type: 'APPROVAL_REQUEST', id: data.id, tool: data.tool, args: data.args, scope: data.scope, media: data.media || [], lane }),
+  'tool:approval_request': (data, lane) => ({ type: 'APPROVAL_REQUEST', id: data.id, tool: data.tool, label: data.label || '', args: data.args, fullArgs: data.fullArgs || '', scope: data.scope, media: data.media || [], renders: data.renders || [], lane }),
   'tool:approval_resolved': (data) => ({ type: 'APPROVAL_RESOLVED', id: data.id, decision: data.decision }),
   'operator:ask': (data) => ({ type: 'ASK_REQUEST', id: data.id, questions: data.questions, question: data.question, options: data.options }),
   'operator:ask_resolved': (data) => ({ type: 'ASK_RESOLVED', id: data.id, status: data.status, answer: data.answer }),

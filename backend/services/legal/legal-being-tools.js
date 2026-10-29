@@ -8,6 +8,8 @@ import { gateAct } from '../act-gate.js';
 import { matterLedgerFor, matterCounts, mattersDueForReview, MATTER_STATUSES, MATTER_AREAS } from './matter-ledger.js';
 import { cloDesignation } from './clo-designation.js';
 import { readLegalWatchState } from './legal-scheduler.js';
+import { sourcesText, SOURCE_KINDS, SOURCE_JURISDICTIONS } from './legal-sources.js';
+import { LEGAL_APIS, callLegalApi } from './legal-research-api.js';
 
 const tool = (name, description, properties = {}, required = []) => Object.freeze({
   name,
@@ -25,19 +27,30 @@ export const LEGAL_TOOLS = Object.freeze([
   tool('legal_matters_list', `List the legal matters ledger. Optional {status, area, repo, limit}; status is ${MATTER_STATUSES.join(' | ')}; area is ${MATTER_AREAS.join(' | ')}.`, {
     status: { type: 'string' }, area: { type: 'string' }, repo: { type: 'string' }, limit: { type: 'number' },
   }),
+  tool('legal_sources', `Where to read the law, before you search: the official free sources (statutes, regulations, bills, cases, guidance, licences), the route that answers your web tools, the reading order for the question, and how to check a citation. Optional {kind: ${SOURCE_KINDS.join(' | ')}, jurisdiction: ${SOURCE_JURISDICTIONS.join(' | ')}}.`, {
+    kind: { type: 'string' }, jurisdiction: { type: 'string' },
+  }),
   tool('legal_matter_get', 'Read one legal matter whole — its evidence, the law it points to, and every verdict in its history — by full or unambiguous prefix id.', {
     id: { type: 'string', description: 'Matter id or unambiguous prefix' },
   }, ['id']),
 ]);
-const TOOL_NAMES = new Set(LEGAL_TOOLS.map((t) => t.name));
+// The keyed official APIs — the SEATED CLO's alone: it spends the house's quota.
+// The key is added server-side and scrubbed from the answer; the office never holds it.
+const RESEARCH_TOOL = tool('legal_research_api', `The official legal databases that take a key, with the house's saved key added for you (you never see it): ${Object.entries(LEGAL_APIS).map(([id, a]) => `${id} — ${a.what}`).join('; ')}. Args {api, path, query?, text?}: path is a path on that API only (starting with /).`, {
+  api: { type: 'string', enum: Object.keys(LEGAL_APIS) }, path: { type: 'string' }, query: { type: 'object' }, text: { type: 'string' },
+}, ['api']);
+const TOOL_NAMES = new Set([...LEGAL_TOOLS, RESEARCH_TOOL].map((t) => t.name));
 
 /** Does a parsed call target the legal office? Pure. */
 export const isLegalTool = (match) => TOOL_NAMES.has(match?.toolName)
   || TOOL_NAMES.has(String(match?.tool || '').replace(/^legal\//, ''));
 
 /** The reads are house-visible — every bound being sees them. */
-export const legalToolsFor = async (connection) =>
-  (connection.companion?.neumaId ? [...LEGAL_TOOLS] : []);
+export const legalToolsFor = async (connection) => {
+  if (!connection.companion?.neumaId) return [];
+  const seated = await cloDesignation.holds(connection.walletAddress, connection.companion.neumaId).catch(() => false);
+  return seated ? [...LEGAL_TOOLS, RESEARCH_TOOL] : [...LEGAL_TOOLS];
+};
 
 // pure
 const matterLine = (m) => `[${m.id.slice(0, 10)}] ${m.severity} · ${m.status} · ${m.area}${m.repo ? `/${m.repo}` : ''} — ${m.title}`;
@@ -92,6 +105,20 @@ export const handleLegalTool = async (ws, connection, neumaPolicy, toolMode, mat
       const shown = entries.slice(-limit);
       send({ tool: toolId, status: 'ok', summary: `${shown.length} of ${total} matters` });
       return { tool: toolId, status: 'ok', content: shown.length ? shown.map(matterLine).join('\n') : 'No matters match — the ledger holds nothing under those filters.' };
+    }
+    if (toolName === 'legal_sources') {
+      const content = sourcesText({ kind: args?.kind ?? null, jurisdiction: args?.jurisdiction ?? null });
+      send({ tool: toolId, status: 'ok', summary: `sources${args?.kind ? ` for ${args.kind}` : ''}${args?.jurisdiction ? ` in ${args.jurisdiction}` : ''}` });
+      return { tool: toolId, status: 'ok', content };
+    }
+    if (toolName === 'legal_research_api') {
+      if (!(await cloDesignation.holds(connection.walletAddress, connection.companion?.neumaId).catch(() => false))) {
+        throw new Error('legal_research_api is the seated CLO\'s — it spends the house\'s own API keys');
+      }
+      const out = await callLegalApi({ api: args?.api, path: args?.path ?? '/', query: args?.query ?? {}, text: args?.text ?? null });
+      if (!out.ok) throw new Error(out.error);
+      send({ tool: toolId, status: 'ok', summary: `${args?.api} ${String(args?.path ?? '').slice(0, 60)}` });
+      return { tool: toolId, status: 'ok', content: out.text };
     }
     if (toolName === 'legal_matter_get') {
       const matter = await (await matterLedgerFor(connection.walletAddress)).get(String(args?.id || ''));

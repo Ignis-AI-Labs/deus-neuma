@@ -137,7 +137,7 @@
 .fwin-body::after {
   z-index: 5;
   background: linear-gradient(to bottom,
-    transparent 0%, var(--signal-faint) 46%, rgba(95, 233, 255, 0.55) 50%, transparent 51%);
+    transparent 0%, var(--signal-faint) 46%, color-mix(in srgb, var(--signal) 55%, transparent) 50%, transparent 51%);
   transform: translateY(-100%);
   animation: fwin-scan var(--dur-scan) 520ms linear;
 }
@@ -293,14 +293,19 @@
   transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Title bar — the drag handle, data register */
+/* Title bar — the drag handle, data register. The top step of the window's
+   ladder (Design note, 2026-10-28: […]): the bar is lifted most,
+   the tab rail beneath it less, the body sits on the ground — each band
+   reads as its own layer under any dress, since every step is the dress's
+   own ink over its own ground. Its name wears the heading register. */
 .fwin-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-white) 7%, var(--color-void));
+  border-bottom: 1px solid var(--line-hover);
   cursor: grab;
   user-select: none;
   flex: 0 0 auto;
@@ -316,6 +321,7 @@
   gap: var(--space-2);
   min-width: 0;
   overflow: hidden;
+  color: var(--color-heading);
 }
 
 .fwin-bar-controls {

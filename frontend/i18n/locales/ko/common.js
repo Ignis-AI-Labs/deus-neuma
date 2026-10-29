@@ -8,4 +8,11 @@ export default Object.freeze({
     title: "내 데이터로 학습 끄기",
     body: "{{provider}}에 보내는 모든 내용은 내 기기 밖으로 나갑니다. 무엇이든 보내기 전에 {{provider}} 계정의 개인정보 또는 데이터 설정을 열고, 내 대화를 모델 학습에 쓰도록 허용하는 모든 옵션을 끄세요. 기본값으로 켜 둔 제공자도 있습니다 — 사용하는 계정과 요금제를 하나씩 확인하세요.",
   }),
+  textSize: Object.freeze({
+    open: '글자 크기',
+    title: '글자 크기',
+    smaller: '글자 작게',
+    larger: '글자 크게',
+    reset: '초기화',
+  }),
 });

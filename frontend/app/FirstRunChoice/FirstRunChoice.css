@@ -1,5 +1,12 @@
-/* FirstRunChoice — the door. LINE & CYCLE: monochrome at rest, signal marks
-   the live thing, chamfers via .cham, never a border-radius. */
+/* FirstRunChoice — the door, built from the look-dev sheet (frontend/lookdev/, LINE & CYCLE):
+   the window is a SYSTEM WINDOW (the System addresses the person: luminous hairline, lit chamfer
+   cuts, instrument-grid ground, a header strip of real data), each door is an ENTITY CARD (a
+   hairline frame whose targeting brackets snap on at hover and focus). Monochrome at rest; signal
+   marks the live thing. The model bar's own look is ModelBar.css.
+
+   THE CHAMFER (2026-10-24): a `.cham` clip-path on an element that draws its own CSS border slices
+   the border off at the cut corners and draws no diagonal (the gaps Founder saw on Windows). The frame
+   is the sheet's pair instead: `.cham` paints the 1px line, `.cham-in` the void inside it. */
 
 .firstrun {
   position: fixed;
@@ -7,18 +14,83 @@
   display: grid;
   place-items: center;
   background: var(--color-void);
-  padding: var(--space-6);
+  padding: clamp(var(--space-3), 3vw, var(--space-8));
   overflow-y: auto;
 }
 
-.firstrun-inner {
+.firstrun-window {
+  --cut-a: var(--cut);
+  position: relative;
   width: 100%;
-  max-width: 72rem;
-  background: var(--color-surface);
-  border: var(--border-width-thin) solid var(--color-border-primary);
-  padding: var(--space-10);
+  max-width: 68rem;
+  background: color-mix(in srgb, var(--signal) 30%, transparent);
+  filter: drop-shadow(0 0 26px color-mix(in srgb, var(--signal) 10%, transparent));
 }
 
+/* corner light: the two cut diagonals are lit, deliberately (SYSTEM WINDOWS) */
+.firstrun-window::before,
+.firstrun-window::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  width: 18px;
+  height: 2px;
+  background: var(--signal);
+  pointer-events: none;
+}
+
+.firstrun-window::before { top: 5px; right: -3px; transform: rotate(45deg); }
+.firstrun-window::after { bottom: 5px; left: -3px; transform: rotate(45deg); }
+
+/* the void inside the frame, ruled as instrument paper (a structural zone carries the grid) */
+.firstrun-window-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(var(--space-4), 2.4vh, var(--space-6));
+  padding: clamp(var(--space-4), 3vw, var(--space-8));
+  background-color: var(--color-void);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* the header strip: where you are on the left, the machine you are on at the right */
+.firstrun-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2) var(--space-6);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width-thin) solid color-mix(in srgb, var(--signal) 22%, transparent);
+  font-family: var(--font-data);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.firstrun-head-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--signal);
+}
+
+.firstrun-head-mark .firstrun-glyph {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  stroke: var(--signal);
+}
+
+.firstrun-head-machine {
+  color: var(--color-text-secondary);
+  letter-spacing: 0.14em;
+}
+
+/* The eyebrow, title and lede are shared with the witness and platform doors
+   (FirstRunWitness, FirstRunHarness), which load this sheet through the chooser. */
 .firstrun-eyebrow {
   color: var(--signal);
   margin: 0 0 var(--space-3);
@@ -41,31 +113,68 @@
   line-height: 1.6;
 }
 
-.firstrun-paths {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: var(--space-5);
+/* The chooser's own heading: a section label in the data register, ruled out to the edge */
+.firstrun-doors-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-data);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
 }
 
-/* A path is a button, not a card with a button inside it: the whole target is
+.firstrun-doors-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.firstrun-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-rows: 1fr auto;
+  gap: var(--space-2) clamp(var(--space-3), 1.6vw, var(--space-5));
+}
+
+/* Each door is two rows of the shared grid (subgrid): the doors stand equal height,
+   and the Neuma door's rehearse link sits beneath it without stretching it. A door never
+   grows past its column (min-width 0): its chip wraps instead of pushing into the next door. */
+.firstrun-door {
+  min-width: 0;
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+}
+
+/* A door is a button, not a card with a button inside it: the whole target is
    the choice, so a keyboard reaches it in one tab and a pointer cannot miss. */
 .firstrun-path {
+  position: relative;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  align-items: flex-start;
+  gap: var(--space-2);
   text-align: left;
-  padding: var(--space-6);
-  background: var(--color-glass);
-  border: var(--border-width-thin) solid var(--color-border-primary);
+  padding: clamp(var(--space-4), 2.2vw, var(--space-6));
+  padding-top: clamp(var(--space-5), 3vh, var(--space-8));
+  background: color-mix(in srgb, var(--color-void) 70%, transparent);
+  border: var(--border-width-thin) solid var(--line);
   color: var(--color-text-primary);
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: border-color var(--snap), background var(--snap), opacity var(--snap);
 }
 
 .firstrun-path:hover:not(:disabled),
 .firstrun-path:focus-visible {
-  background: var(--color-glass-hover);
-  border-color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 4%, var(--color-void));
+  border-color: var(--line-hover);
   outline: none;
 }
 
@@ -74,81 +183,137 @@
   cursor: default;
 }
 
-.firstrun-path-tag {
+/* targeting brackets: four L ticks that snap on, never fade (look-dev ENTITY CARD) */
+.firstrun-bk {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  transition: opacity 80ms steps(2, end);
+  pointer-events: none;
+}
+
+.firstrun-path:hover:not(:disabled) .firstrun-bk,
+.firstrun-path:focus-visible .firstrun-bk {
+  opacity: 1;
+}
+
+.firstrun-bk.is-tl { top: -1px; left: -1px; border-top: 2px solid var(--signal); border-left: 2px solid var(--signal); }
+.firstrun-bk.is-tr { top: -1px; right: -1px; border-top: 2px solid var(--signal); border-right: 2px solid var(--signal); }
+.firstrun-bk.is-bl { bottom: -1px; left: -1px; border-bottom: 2px solid var(--signal); border-left: 2px solid var(--signal); }
+.firstrun-bk.is-br { bottom: -1px; right: -1px; border-bottom: 2px solid var(--signal); border-right: 2px solid var(--signal); }
+
+/* the door's place in the row, in the data register (the sheet's section numerals) */
+.firstrun-path-index {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  font-family: var(--font-data);
+  font-weight: 200;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+.firstrun-path:hover:not(:disabled) .firstrun-path-index,
+.firstrun-path:focus-visible .firstrun-path-index {
   color: var(--signal);
+}
+
+.firstrun-glyph {
+  width: clamp(2.75rem, 5vh, 3.5rem);
+  height: clamp(2.75rem, 5vh, 3.5rem);
+  margin-bottom: var(--space-3);
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.25;
+  transition: stroke var(--snap);
+}
+
+.firstrun-path:hover:not(:disabled) .firstrun-glyph,
+.firstrun-path:focus-visible .firstrun-glyph {
+  stroke: var(--signal);
 }
 
 .firstrun-path-name {
   font-family: var(--font-voice);
   font-size: var(--text-xl);
   font-weight: var(--weight-light);
-  color: var(--color-heading);
+  color: var(--color-text-primary);
 }
 
-.firstrun-path-body {
+.firstrun-path-line {
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-wrap: pretty;
+  color: var(--color-text-secondary);
+}
+
+/* What the door needs, as a small chip on its face — never discovered behind it */
+.firstrun-path-need {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: var(--space-1) var(--space-2);
+  max-width: 100%;
+  border: var(--border-width-thin) solid var(--line);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+  text-wrap: balance;
+  color: var(--color-text-secondary);
+}
+
+.firstrun-path-need.is-met {
+  border-color: var(--signal-dim);
+  color: var(--signal);
+}
+
+/* A door that needs the model, while none runs: plainly waiting, still pressable
+   (the press is held at the bar and goes through by itself once it is ready) */
+.firstrun-door.is-waiting .firstrun-path:not(:hover):not(:focus-visible) {
+  opacity: 0.5;
+}
+
+.firstrun-door.is-held .firstrun-path {
+  opacity: 1;
+  border-color: var(--signal-dim);
+}
+
+/* REHEARSE FIRST — a quiet link under the Neuma door */
+.firstrun-rehearse {
+  justify-self: start;
+  padding: var(--space-1) 0;
+  background: transparent;
+  border: none;
   font-family: var(--font-voice);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  line-height: 1.6;
-}
-
-/* The precondition, stated on the face of the door rather than discovered
-   behind it — the whole point of this screen. */
-.firstrun-path-need {
-  margin-top: auto;
-  padding-top: var(--space-3);
-  color: var(--color-text-tertiary);
-  border-top: var(--border-width-thin) solid var(--color-border-primary);
-}
-
-/* REHEARSE FIRST — a quieter third door under the two: the same ceremony,
-   nothing kept. Ink at rest; SIGNAL only on hover, like the paths. */
-.firstrun-rehearse {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-  margin-top: var(--space-4);
-  padding: var(--space-4) var(--space-6);
-  text-align: left;
-  background: transparent;
-  border: var(--border-width-thin) dashed var(--color-border-primary);
-  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--line-hover);
+  text-underline-offset: 4px;
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: color var(--snap);
 }
+
 .firstrun-rehearse:hover:not(:disabled),
 .firstrun-rehearse:focus-visible {
-  background: var(--color-glass-hover);
-  border-color: var(--signal);
+  color: var(--signal);
+  text-decoration-color: var(--signal);
   outline: none;
 }
-.firstrun-rehearse:disabled { opacity: 0.4; cursor: default; }
-.firstrun-rehearse-tag { color: var(--color-text-tertiary); }
-.firstrun-rehearse:hover:not(:disabled) .firstrun-rehearse-tag { color: var(--signal); }
-.firstrun-rehearse-body {
-  font-family: var(--font-voice);
-  font-size: var(--text-sm);
-  line-height: 1.6;
+
+.firstrun-rehearse:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.firstrun-foot {
-  font-family: var(--font-voice);
-  font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
-  margin: var(--space-8) 0 0;
-}
-
-/* THE FLIGHT CHECK — what this machine can actually hold. Informs the choice,
-   never gates it: `insufficient` uses --alert to be honest about the floor, but
-   the door stays clickable. */
+/* THE MACHINE READ — what this computer can hold, inside the bar's details. It
+   informs, never gates: `insufficient` uses --alert to be honest about the floor. */
 .firstrun-capacity {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: var(--border-width-thin) solid var(--color-border-primary);
 }
 
 .firstrun-capacity-machine {
@@ -156,16 +321,11 @@
 }
 
 .firstrun-capacity-headline {
-  color: var(--signal);
+  color: var(--color-text-primary);
 }
 
 .firstrun-capacity.is-insufficient .firstrun-capacity-headline {
   color: var(--alert);
-}
-
-.firstrun-capacity.is-cpu .firstrun-capacity-headline,
-.firstrun-capacity.is-unknown .firstrun-capacity-headline {
-  color: var(--color-text-secondary);
 }
 
 .firstrun-capacity-detail {
@@ -173,4 +333,11 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firstrun-path,
+  .firstrun-bk,
+  .firstrun-glyph,
+  .firstrun-rehearse { transition: none; }
 }

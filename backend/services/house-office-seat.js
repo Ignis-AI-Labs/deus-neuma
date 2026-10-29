@@ -53,11 +53,12 @@ const readSeat = async (file, office) => {
 const warned = new Set();
 
 /**
- * @param {{office: string, title: string, legacyPath: () => string}} opts
- *   office — the seat's short name (cso | clo | cmo); title — how refusals
- *   name it; legacyPath — the pre-2026-10-16 machine seat
+ * @param {{office: string, title: string, legacyPath?: ?(() => string)}} opts
+ *   office — the seat's short name (cso | clo | cmo | cfo); title — how refusals
+ *   name it; legacyPath — the pre-2026-10-16 machine seat (none for an office
+ *   born per house)
  */
-export const createHouseSeat = ({ office, title, legacyPath }) => {
+export const createHouseSeat = ({ office, title, legacyPath = null }) => {
   const houseFile = (key) => path.join(walletDir(key), seatFileName(office));
 
   // Serialize mutations — a designate, a clear and the migration must never
@@ -67,7 +68,7 @@ export const createHouseSeat = ({ office, title, legacyPath }) => {
   // impure — move the legacy machine seat to its owner's house, once. Never
   // overwrites a record the house already holds; never hands the seat to a
   // wallet that does not own the lane.
-  const migrateLegacy = () => serialize(async () => {
+  const migrateLegacy = () => (!legacyPath ? Promise.resolve() : serialize(async () => {
     const file = legacyPath();
     let seat;
     try {
@@ -104,7 +105,7 @@ export const createHouseSeat = ({ office, title, legacyPath }) => {
     }
     await writePrivate(file, { ...seat, migratedTo: owner, migratedAt: new Date().toISOString() });
     log.info(`the machine ${title} seat moved to its house`, { laneId: seat.laneId, house: owner });
-  });
+  }));
 
   // impure — the house's own record, migrating the legacy seat first when the
   // house has never written one.

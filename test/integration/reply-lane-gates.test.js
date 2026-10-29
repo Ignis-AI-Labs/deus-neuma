@@ -55,7 +55,7 @@ describe('the reply lane — gates (real WS + real stores, gnosis)', () => {
     expect(holder).toContain('queue_reply_to_x');
     expect(holder).toContain('reply_dismiss_to_x');
     expect(holder).toContain('at most 2 per conversation');
-    // THE SUBSTANCE READ rides the knock (Design note, 2026-07-28: the being is told
+    // THE SUBSTANCE READ rides the knock (ruling, 2026-07-28): the being is told
     // to work genuine engagement first — a signal, never a gate.
     expect(holder).toContain('answer the substantive ones first');
     // ANY PUBLIC POST (Design note, 2026-10-12: […]): the holder is told the tool answers any post, by id or link, and that a

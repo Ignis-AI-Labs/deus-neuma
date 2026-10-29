@@ -6,6 +6,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import {
   CHANNEL_CATALOG, getChannel, resolveChannelCredentials, maskChannelCredentials,
 } from '../../backend/services/social/channel-registry.js';
@@ -22,21 +23,29 @@ import { discordMessageRequest } from '../../backend/services/social/discord-pos
 import { facebookFeedRequest } from '../../backend/services/social/facebook-poster.js';
 import { normalizeInstanceUrl, postToMastodon } from '../../backend/services/social/mastodon-poster.js';
 import { blueskyPostRecord, isSecureServiceUrl, postToBluesky } from '../../backend/services/social/bluesky-poster.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // Every catalog field's env var — cleared so a developer's own .env (live X
 // keys are expected on this box) can't leak into resolution and flake a test.
 const ENV_KEYS = [...new Set(CHANNEL_CATALOG.flatMap((c) => c.fields.map((f) => f.env)))];
+// Account keys are a house's own (house-positions.js): one test house, its
+// realm on temp disk.
+const HOUSE = `0x${'1'.repeat(40)}`;
 let savedEnv;
 let dir;
+let priorRealm;
 
 beforeEach(async () => {
   savedEnv = { PATH_OVR: process.env.NEUMA_SOCIAL_CREDENTIALS_PATH };
   for (const k of ENV_KEYS) { savedEnv[k] = process.env[k]; delete process.env[k]; }
   dir = await createTempDir(`social-channels-${Math.random().toString(36).slice(2)}`);
   process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = path.join(dir, 'social-channel-credentials.json');
+  priorRealm = getRealmRoot();
+  setRealmRoot(path.join(dir, 'realm'));
 });
 
 afterEach(() => {
+  setRealmRoot(priorRealm);
   if (savedEnv.PATH_OVR === undefined) delete process.env.NEUMA_SOCIAL_CREDENTIALS_PATH;
   else process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = savedEnv.PATH_OVR;
   for (const k of ENV_KEYS) {
@@ -105,45 +114,48 @@ describe('mergeChannelCredential (pure)', () => {
 
 describe('channel credential store (real disk + crypto)', () => {
   test('set → sealed envelope on disk → load round-trips → resolve exposes raw values', async () => {
-    await setChannelCredential('telegram', { botToken: 'bot-abc', chatId: '@herald' });
-    const raw = await fs.readFile(channelCredentialsPath(), 'utf8');
+    await setChannelCredential(HOUSE, 'telegram', { botToken: 'bot-abc', chatId: '@herald' });
+    const raw = await fs.readFile(channelCredentialsPath(HOUSE), 'utf8');
     expect(raw).not.toContain('bot-abc');                 // sealed, never plaintext
     expect(JSON.parse(raw)).toHaveProperty('ct');
-    expect(await loadChannelCredentials()).toEqual({ telegram: { botToken: 'bot-abc', chatId: '@herald' } });
-    expect(await resolveChannelCredential('telegram'))
+    expect(await loadChannelCredentials(HOUSE)).toEqual({ telegram: { botToken: 'bot-abc', chatId: '@herald' } });
+    expect(await resolveChannelCredential(HOUSE, 'telegram'))
       .toEqual({ botToken: 'bot-abc', chatId: '@herald' });
   });
 
   test('store file lands 0600 in a 0700 dir', async () => {
-    await setChannelCredential('discord', { botToken: 'bot-abc', channelId: '123' });
-    const fileMode = (await fs.stat(channelCredentialsPath())).mode & 0o777;
-    const dirMode = (await fs.stat(path.dirname(channelCredentialsPath()))).mode & 0o777;
+    await setChannelCredential(HOUSE, 'discord', { botToken: 'bot-abc', channelId: '123' });
+    const fileMode = (await fs.stat(channelCredentialsPath(HOUSE))).mode & 0o777;
+    const dirMode = (await fs.stat(path.dirname(channelCredentialsPath(HOUSE)))).mode & 0o777;
     expect(fileMode).toBe(0o600);
     expect(dirMode).toBe(0o700);
   });
 
   test('env fills a field the store lacks; store wins where both exist', async () => {
     process.env.TELEGRAM_CHAT_ID = '@env-chat';
-    await setChannelCredential('telegram', { botToken: 'bot-abc' });
-    expect(await resolveChannelCredential('telegram'))
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(HOUSE);
+    await setChannelCredential(HOUSE, 'telegram', { botToken: 'bot-abc' });
+    expect(await resolveChannelCredential(HOUSE, 'telegram'))
       .toEqual({ botToken: 'bot-abc', chatId: '@env-chat' });
   });
 
   test('unknown channel id is rejected before anything persists', async () => {
-    await expect(setChannelCredential('myspace', { key: 'v' })).rejects.toThrow('Unknown channel');
+    await expect(setChannelCredential(HOUSE, 'myspace', { key: 'v' })).rejects.toThrow('Unknown channel');
   });
 
   test('remove deletes the entry and reports whether one existed', async () => {
-    await setChannelCredential('mastodon', { instanceUrl: 'mastodon.social', accessToken: 't' });
-    expect(await removeChannelCredential('mastodon')).toBe(true);
-    expect(await removeChannelCredential('mastodon')).toBe(false);
-    expect(await resolveChannelCredential('mastodon')).toBeNull();
+    await setChannelCredential(HOUSE, 'mastodon', { instanceUrl: 'mastodon.social', accessToken: 't' });
+    expect(await removeChannelCredential(HOUSE, 'mastodon')).toBe(true);
+    expect(await removeChannelCredential(HOUSE, 'mastodon')).toBe(false);
+    expect(await resolveChannelCredential(HOUSE, 'mastodon')).toBeNull();
   });
 
   test('missing store means "nothing yet"; a corrupt store surfaces, never wipes', async () => {
-    expect(await loadChannelCredentials()).toEqual({});
-    await fs.writeFile(channelCredentialsPath(), 'not-an-envelope');
-    await expect(loadChannelCredentials()).rejects.toThrow();
+    expect(await loadChannelCredentials(HOUSE)).toEqual({});
+    await fs.mkdir(path.dirname(channelCredentialsPath(HOUSE)), { recursive: true });
+    await fs.writeFile(channelCredentialsPath(HOUSE), 'not-an-envelope');
+    await expect(loadChannelCredentials(HOUSE)).rejects.toThrow();
   });
 });
 
@@ -154,11 +166,11 @@ describe('channel bindings (real disk, default deny)', () => {
   test('bind → bindingFor → unbind round-trips on real disk', async () => {
     const store = makeStore();
     expect(await store.bindingFor('x')).toBeNull();
-    const bound = await store.bind('x', { neumaId: 'keir', boundBy: '0xEli' });
-    expect(bound.neumaId).toBe('keir');
+    const bound = await store.bind('x', { neumaId: 'hazel', boundBy: '0xEli' });
+    expect(bound.neumaId).toBe('hazel');
     expect(bound.boundBy).toBe('0xEli');
     expect(typeof bound.boundAt).toBe('string');
-    expect((await store.bindingFor('x'))?.neumaId).toBe('keir');
+    expect((await store.bindingFor('x'))?.neumaId).toBe('hazel');
     expect(await store.unbind('x')).toBe(true);
     expect(await store.unbind('x')).toBe(false);
     expect(await store.bindingFor('x')).toBeNull();
@@ -167,7 +179,7 @@ describe('channel bindings (real disk, default deny)', () => {
   test('bindings land 0600 in a 0700 dir — this store never leaves settings loose', async () => {
     const bindingsDir = path.join(dir, 'bindings-mode');
     const store = createChannelBindings({ path: path.join(bindingsDir, 'bindings.json') });
-    await store.bind('x', { neumaId: 'keir', boundBy: '0xEli' });
+    await store.bind('x', { neumaId: 'hazel', boundBy: '0xEli' });
     const fileMode = (await fs.stat(path.join(bindingsDir, 'bindings.json'))).mode & 0o777;
     const dirMode = (await fs.stat(bindingsDir)).mode & 0o777;
     expect(fileMode).toBe(0o600);
@@ -176,28 +188,28 @@ describe('channel bindings (real disk, default deny)', () => {
 
   test('rebinding replaces the previous holder — one neuma per channel', async () => {
     const store = makeStore();
-    await store.bind('telegram', { neumaId: 'keir', boundBy: '0xEli' });
-    await store.bind('telegram', { neumaId: 'galen', boundBy: '0xEli' });
+    await store.bind('telegram', { neumaId: 'hazel', boundBy: '0xEli' });
+    await store.bind('telegram', { neumaId: 'cedar', boundBy: '0xEli' });
     const bindings = await store.load();
-    expect(bindings.telegram.neumaId).toBe('galen');
+    expect(bindings.telegram.neumaId).toBe('cedar');
     expect(Object.keys(bindings)).toEqual(['telegram']);
   });
 
   test('unknown channel and malformed neumaId are rejected', async () => {
     const store = makeStore();
-    await expect(store.bind('myspace', { neumaId: 'keir', boundBy: '0x' })).rejects.toThrow('Unknown channel');
+    await expect(store.bind('myspace', { neumaId: 'hazel', boundBy: '0x' })).rejects.toThrow('Unknown channel');
     await expect(store.bind('x', { neumaId: '../escape', boundBy: '0x' })).rejects.toThrow('Invalid neumaId');
     await expect(store.bind('x', { neumaId: '', boundBy: '0x' })).rejects.toThrow('Invalid neumaId');
   });
 
   test('canNeumaPost fails closed: only the exact bound neuma passes', () => {
-    const bindings = { x: { neumaId: 'keir' } };
-    expect(canNeumaPost(bindings, 'x', 'keir')).toBe(true);
-    expect(canNeumaPost(bindings, 'x', 'galen')).toBe(false);   // no cross-routing
-    expect(canNeumaPost(bindings, 'telegram', 'keir')).toBe(false); // unbound channel = no one
+    const bindings = { x: { neumaId: 'hazel' } };
+    expect(canNeumaPost(bindings, 'x', 'hazel')).toBe(true);
+    expect(canNeumaPost(bindings, 'x', 'cedar')).toBe(false);   // no cross-routing
+    expect(canNeumaPost(bindings, 'telegram', 'hazel')).toBe(false); // unbound channel = no one
     expect(canNeumaPost(bindings, 'x', null)).toBe(false);
     expect(canNeumaPost(bindings, 'x', '')).toBe(false);
-    expect(canNeumaPost({}, 'x', 'keir')).toBe(false);
+    expect(canNeumaPost({}, 'x', 'hazel')).toBe(false);
   });
 });
 
@@ -267,6 +279,8 @@ describe('poster pure cores', () => {
       bluesky: { service: 'https://bsky.social', identifier: 'i', appPassword: 'p' },
       facebook: { pageId: '1', accessToken: 't' },
       linkedin: { personUrn: 'urn:li:person:1', accessToken: 't', tokenExpiresAt: '2099-01-01T00:00:00.000Z' },
+      youtube: { clientId: 'c', clientSecret: 's', refreshToken: 'r' },
+      tiktok: { clientKey: 'k', clientSecret: 's', refreshToken: 'r', accessToken: 'a', accessExpiresAt: '2099-01-01T00:00:00.000Z' },
     };
     for (const [id, post] of Object.entries(POSTERS)) {
       const controller = new AbortController();

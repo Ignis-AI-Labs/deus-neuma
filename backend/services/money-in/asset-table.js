@@ -108,7 +108,7 @@ const networkErrors = (row) => {
     if (a?.kind === 'erc20') {
       // Checksummed exactly as pinned: a lower-cased paste would still
       // resolve, but a mistyped character is only caught by the checksum.
-      let checksummed = null;
+      let checksummed;
       try { checksummed = ethers.getAddress(String(a.address)); } catch { checksummed = null; }
       if (checksummed !== a.address) errors.push(`${at}: address must be a checksummed EVM address`);
       if (addresses.has(String(a.address).toLowerCase())) errors.push(`${at}: duplicate address`);

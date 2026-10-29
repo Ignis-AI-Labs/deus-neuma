@@ -114,7 +114,7 @@ const boot = async ({ withApi, tag }) => {
   const vite = await createServer({
     configFile: false, root: process.cwd(), cacheDir: path.join(ISO, `vite-${tag}`),
     appType: 'custom', optimizeDeps: { noDiscovery: true },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (_req, res) => res.type('html').send(PAGE));
   app.use(vite.middlewares);
@@ -277,7 +277,7 @@ test('setup panel renders from the real route; the provider chip really moves th
         text: document.querySelector('.pf-setup-panel').textContent,
       }));
     });
-    expect(panel.verdict).toBe('BLOCKED — RESOLVE THE FAILED CHECKS, THEN RECHECK');
+    expect(panel.verdict).toBe('NOT YET — FIX WHAT IS MARKED ABOVE, THEN PRESS RECHECK');
     expect(panel.rows).toBeGreaterThan(0);
 
     // GET /api/v1/preflight/setup (site 3, success): the panel is built from the
@@ -302,7 +302,10 @@ test('setup panel renders from the real route; the provider chip really moves th
       await idleChip();
       return { before, after: await stack.page.evaluate(() => window.expired), runsBefore };
     });
-    expect(refused.after).toBe(refused.before + 1);
+    // The PUT's 401 raises the alarm; the re-run of the checks may raise it once more, since the
+    // checks answer only a signed-in caller (audit 2026-10-28 M-03).
+    expect(refused.after).toBeGreaterThanOrEqual(refused.before + 1);
+    expect(refused.after).toBeLessThanOrEqual(refused.before + 2);
     expect(saw(stack.requests, 'PUT', '/api/v1/llm/provider', 401), seen(stack.requests).join(', ')).toBe(true);
     expect(getRuns(stack.requests)).toBeGreaterThan(refused.runsBefore);
     // The refusal moved nothing on disk — the operator's llama-server choice stands.

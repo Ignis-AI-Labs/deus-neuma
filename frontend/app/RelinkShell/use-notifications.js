@@ -20,6 +20,7 @@ import { KIND } from '../../../core/runtime/notification-record.js';
 // The SAME pure text helper the transcript used, reused verbatim rather than
 // reworded — the warning's wording is already tested and already right.
 import { storageWarningText } from './storage-warning.js';
+import { isOsNoticeOn } from '../../services/os-notice.js';
 
 /**
  * The reload offer is a DEV-LANE card, and the gate is compile-time.
@@ -102,6 +103,8 @@ export const useNotifications = (wsService) => {
   // Ids read locally but not yet acknowledged — batched so clearing a full tray
   // is one frame, not one per card (the inbound window is 30 frames/60s).
   const pendingReadRef = useRef(new Set());
+  // Ids dismissed locally, batched the same way (one frame for a whole CLEAR).
+  const pendingDismissRef = useRef(new Set());
   const flushTimerRef = useRef(null);
 
   const flushReads = useCallback(() => {
@@ -109,10 +112,13 @@ export const useNotifications = (wsService) => {
       clearTimeout(flushTimerRef.current);
       flushTimerRef.current = null;
     }
-    const ids = [...pendingReadRef.current];
+    const dismissed = [...pendingDismissRef.current];
+    pendingDismissRef.current.clear();
+    const ids = [...pendingReadRef.current].filter((id) => !dismissed.includes(id));
     pendingReadRef.current.clear();
-    if (ids.length === 0 || !wsService) return;
-    wsService.send('notification:read', { ids });
+    if (!wsService) return;
+    if (ids.length) wsService.send('notification:read', { ids });
+    if (dismissed.length) wsService.send('notification:read', { ids: dismissed, dismiss: true });
   }, [wsService]);
 
   const queueRead = useCallback((ids) => {
@@ -122,6 +128,18 @@ export const useNotifications = (wsService) => {
     // the server frame — the same fold either way, so the two cannot diverge.
     dispatch({ type: 'MARK_READ', ids: list });
     for (const id of list) pendingReadRef.current.add(id);
+    if (flushTimerRef.current === null) {
+      flushTimerRef.current = setTimeout(flushReads, 250);
+    }
+  }, [flushReads]);
+
+  // The ×, and CLEAR for every card: out of the tray here at once, and out of
+  // every desk and every later hydrate once the server has written it down.
+  const queueDismiss = useCallback((ids) => {
+    const list = (Array.isArray(ids) ? ids : [ids]).filter((id) => typeof id === 'string' && id);
+    if (list.length === 0) return;
+    dispatch({ type: 'DISMISS', ids: list });
+    for (const id of list) pendingDismissRef.current.add(id);
     if (flushTimerRef.current === null) {
       flushTimerRef.current = setTimeout(flushReads, 250);
     }
@@ -147,7 +165,8 @@ export const useNotifications = (wsService) => {
         return;
       }
 
-      if (shouldNotifyOS(record, viewer) && !notifiedRef.current.has(record.id)) {
+      // DESKTOP ALERTS (the tray's switch, os-notice.js) governs every OS notice.
+      if (shouldNotifyOS(record, viewer) && isOsNoticeOn() && !notifiedRef.current.has(record.id)) {
         notifiedRef.current.add(record.id);
         const target = notificationTarget(record);
         // Feature-probe rather than an isElectron check: a partial bridge is a
@@ -167,6 +186,10 @@ export const useNotifications = (wsService) => {
     // A sibling desk marked something read. Fold it exactly like a local click.
     const onRead = (frame) => {
       dispatch({ type: 'MARK_READ', ids: frame?.ids ?? [] });
+    };
+    // A sibling desk dismissed something. Fold it exactly like a local press.
+    const onDismissed = (frame) => {
+      dispatch({ type: 'DISMISS', ids: frame?.ids ?? [] });
     };
 
     // THE DISK. Deliberately NOT routed through the notification bus.
@@ -238,6 +261,7 @@ export const useNotifications = (wsService) => {
     wsService.on('notification:hydrate', onHydrate);
     wsService.on('notification:new', onNew);
     wsService.on('notification:read', onRead);
+    wsService.on('notification:dismissed', onDismissed);
     wsService.on('portal:established', onEstablished);
     wsService.on('storage:warning', onStorage);
     return () => {
@@ -246,6 +270,7 @@ export const useNotifications = (wsService) => {
       wsService.off('notification:hydrate', onHydrate);
       wsService.off('notification:new', onNew);
       wsService.off('notification:read', onRead);
+      wsService.off('notification:dismissed', onDismissed);
       wsService.off('portal:established', onEstablished);
       wsService.off('storage:warning', onStorage);
     };
@@ -257,7 +282,8 @@ export const useNotifications = (wsService) => {
     dispatch({ type: 'MARK_ALL_READ' });
     queueRead(unreadIds);
   }, [state.records, queueRead]);
-  const clear = useCallback(() => dispatch({ type: 'CLEAR' }), []);
+  const dismiss = useCallback((id) => queueDismiss([id]), [queueDismiss]);
+  const clear = useCallback(() => queueDismiss(state.records.map((rec) => rec.id)), [state.records, queueDismiss]);
 
   return useMemo(() => ({
     records: state.records,
@@ -265,8 +291,9 @@ export const useNotifications = (wsService) => {
     hydrated: state.hydrated,
     markRead,
     markAllRead,
+    dismiss,
     clear,
     setFrontmostApp,
     targetFor: notificationTarget,
-  }), [state.records, state.unread, state.hydrated, markRead, markAllRead, clear, setFrontmostApp]);
+  }), [state.records, state.unread, state.hydrated, markRead, markAllRead, dismiss, clear, setFrontmostApp]);
 };

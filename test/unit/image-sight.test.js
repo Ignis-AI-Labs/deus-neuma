@@ -21,6 +21,7 @@ import {
 import { collectOutputs } from '../../backend/services/image-forge/image-store.js';
 import { composeVisionTurn } from '../../backend/services/portal-turn-input.js';
 import { formatToolResults } from '../../backend/services/tool-exchange.js';
+import { stampPng } from '../../backend/services/image-forge/ai-disclosure.js';
 
 // A real 1×1 PNG — genuine image bytes, so the round-trip below is a real
 // round-trip and not a string exercise.
@@ -132,7 +133,8 @@ describe('readSight — the real bytes, off a real disk', () => {
     expect(images[0].startsWith('data:image/png;base64,')).toBe(true);
     // The whole claim: what comes back IS the image, byte for byte.
     const decoded = Buffer.from(images[0].split(',')[1], 'base64');
-    expect(decoded.equals(PNG_1X1)).toBe(true);
+    // Stored = the render's own bytes plus its AI disclosure, and nothing else (ai-disclosure.js).
+    expect(decoded.equals(stampPng(PNG_1X1))).toBe(true);
   });
 
   test('an id that was never recorded is withheld, not thrown', () => {

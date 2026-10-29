@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { looksLikeNeuma, identifyPortHolder, resolvePort } = require('../../electron/port-resolve.cjs');
+const { looksLikeNeuma, identifyPortHolder, resolvePort, portMovedNotice } = require('../../electron/port-resolve.cjs');
 
 /**
  * NEUMA MUST NOT LOSE ITS PORT TO SOMEBODY ELSE'S SERVICE (RULE 0).
@@ -138,5 +138,19 @@ describe('looksLikeNeuma (pure)', () => {
     expect(looksLikeNeuma(200, JSON.stringify({ status: 1, components: {} }))).toBe(false); // wrong type
     expect(looksLikeNeuma(200, JSON.stringify({ status: 'ok', components: null }))).toBe(false);
     expect(looksLikeNeuma(0, '')).toBe(false);
+  });
+});
+
+describe('a move is told to the operator (audit desk-electron-bench, finding 14)', () => {
+  test('a foreign holder moves the desk, and the notice names both ports and what stays behind', async () => {
+    const held = await listen((_q, res) => { res.writeHead(200); res.end('my own app'); });
+    const resolved = await resolvePort(held, { span: 20 });
+    expect(resolved.outcome).toBe('moved');
+    const { message, detail } = portMovedNotice(held, resolved.port);
+    expect(message).toBe(`Port ${held} is in use by another program, so Deus Neuma is using port ${resolved.port} this time.`);
+    // The desk's origin changed with the port: its per-port storage is parked, not lost.
+    expect(detail).toMatch(/window layouts, unsent drafts and display choices/);
+    expect(detail).toContain(`come back the next time Deus Neuma runs on port ${held}`);
+    expect(detail).toContain('NEUMA_PORT');
   });
 });

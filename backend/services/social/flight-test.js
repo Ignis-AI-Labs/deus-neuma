@@ -13,12 +13,16 @@
 // a board that re-proved on every render would spend the lane's allowance
 // on itself. `fresh` forces a real probe.
 
-import { resolveChannelCredential } from './channel-credentials.js';
+import { resolveAccountCredential, isAccountsLocked } from './account-store.js';
+import { channelOfAccountId, firstAccountId } from './account-shape.js';
 import { readXMe } from './x-reader.js';
 import { readLinkedInIdentity, linkedinExpiryNote } from './linkedin-poster.js';
 import { normalizeInstanceUrl } from './mastodon-poster.js';
 import { isSecureServiceUrl } from './bluesky-poster.js';
 import { GRAPH_VERSION } from './facebook-poster.js';
+import { readYouTubeChannel } from './youtube-poster.js';
+import { readTikTokAccount } from './tiktok-poster.js';
+import { missingProfileScopes, profileReconnectWords } from './tiktok-profile-view.js';
 
 const TTL_MS = 60 * 1000;
 const TIMEOUT_MS = 8 * 1000;
@@ -35,9 +39,9 @@ const unconfigured = (channelName) => ({ ok: null, detail: `${channelName} is no
 // Every probe: one impure call, never throws, answers the flight shape.
 // { ok: true, account: { id?, name? } } | { ok: false, status?, detail } | unconfigured
 
-const probeX = async (credentials, signal) => {
+const probeX = async (credentials, signal, wallet, accountId) => {
   if (!credentials) return unconfigured('X');
-  const me = await readXMe({ signal });
+  const me = await readXMe({ signal, wallet, accountId });
   if (!me.ok) return { ok: false, status: me.status, detail: me.detail || 'the account lookup failed' };
   const account = me.data?.id
     ? { id: String(me.data.id), name: String(me.data.username || '') }
@@ -150,6 +154,29 @@ const probeLinkedIn = async (credentials, signal) => {
   return note ? { ok: true, account, detail: note } : { ok: true, account };
 };
 
+// The channel the stored refresh token speaks as: its @handle where it has
+// one, its title always (the desk names the channel by its title).
+const probeYouTube = async (credentials, signal) => {
+  if (!credentials) return unconfigured('YouTube');
+  const me = await readYouTubeChannel(credentials, { signal });
+  if (!me.ok) return { ok: false, status: me.status, detail: me.detail };
+  return { ok: true, account: { id: me.channel.id, name: me.channel.handle || me.channel.title, title: me.channel.title } };
+};
+
+// The account the house's TikTok sign-in speaks as, by its display name; the
+// probe refreshes the access token through the house's store when it is due.
+// A connection without the account view's permissions says so (`profileNeeds`).
+const probeTikTok = async (credentials, signal, wallet, accountId) => {
+  if (!credentials) return unconfigured('TikTok');
+  const me = await readTikTokAccount(wallet, { signal, accountId });
+  if (!me.ok) return { ok: false, status: me.status, detail: me.detail };
+  return {
+    ok: true,
+    account: { id: me.user.id, name: me.user.displayName, title: me.user.displayName },
+    profileNeeds: profileReconnectWords(missingProfileScopes(credentials.grantedScope)),
+  };
+};
+
 const PROBES = Object.freeze({
   x: probeX,
   telegram: probeTelegram,
@@ -158,35 +185,56 @@ const PROBES = Object.freeze({
   bluesky: probeBluesky,
   facebook: probeFacebook,
   linkedin: probeLinkedIn,
+  youtube: probeYouTube,
+  tiktok: probeTikTok,
 });
 
-// The brief cache — one entry per channel: { at, result }.
+// The brief cache — one entry per house per ACCOUNT: { at, result }.
 const cache = new Map();
 
+// impure — one account's probe, cached; never throws.
+const probeAccount = async (wallet, accountId, fresh) => {
+  const probe = PROBES[channelOfAccountId(accountId)];
+  if (!probe) return null;
+  const key = `${String(wallet || '').toLowerCase()}|${accountId}`;
+  const cached = cache.get(key);
+  if (!fresh && cached && Date.now() - cached.at < TTL_MS) return cached.result;
+  let credentials = null;
+  try {
+    credentials = await resolveAccountCredential(wallet, accountId);
+  } catch (err) {
+    // A locked keys file is its own answer (never "not configured"); the platform is not called.
+    if (isAccountsLocked(err)) return { ok: false, detail: err.message, locked: true, checkedAt: new Date().toISOString() };
+  }
+  const result = await probe(credentials, AbortSignal.timeout(TIMEOUT_MS), wallet, accountId);
+  const stamped = { ...result, checkedAt: new Date().toISOString() };
+  cache.set(key, { at: Date.now(), result: stamped });
+  return stamped;
+};
+
 /**
- * Probe every channel (or a named subset). impure — credential store +
+ * Probe every channel's first account (or a named subset of channels) — the
+ * channel board's shape, keyed by channel id. impure — credential store +
  * network + clock. Never throws: a channel that cannot even resolve its
  * credentials answers its own failure shape.
- * @param {{fresh?: boolean, channels?: Array<string>}} [opts]
+ * @param {{fresh?: boolean, channels?: Array<string>, wallet: string}} opts -
+ *   wallet: the house whose connections are proven (each house its own keys)
  * @returns {Promise<Record<string, {ok: true|false|null, detail?: string,
  *   account?: {id: string, name: string}, status?: number, checkedAt: string}>>}
  */
-export const runFlightTests = async ({ fresh = false, channels = null } = {}) => {
-  const ids = channels || Object.keys(PROBES);
-  const out = {};
-  await Promise.all(ids.map(async (id) => {
-    const probe = PROBES[id];
-    if (!probe) return;
-    const cached = cache.get(id);
-    if (!fresh && cached && Date.now() - cached.at < TTL_MS) {
-      out[id] = cached.result;
-      return;
-    }
-    const credentials = await resolveChannelCredential(id).catch(() => null);
-    const result = await probe(credentials, AbortSignal.timeout(TIMEOUT_MS));
-    const stamped = { ...result, checkedAt: new Date().toISOString() };
-    cache.set(id, { at: Date.now(), result: stamped });
-    out[id] = stamped;
-  }));
-  return out;
+export const runFlightTests = async ({ fresh = false, channels = null, wallet } = {}) => {
+  const ids = (channels || Object.keys(PROBES)).filter((id) => PROBES[id]);
+  const results = await Promise.all(ids.map((id) => probeAccount(wallet, firstAccountId(id), fresh)));
+  return Object.fromEntries(ids.map((id, i) => [id, results[i]]));
+};
+
+/**
+ * Probe each named account of the house, keyed by account id: every account
+ * proves itself with its own keys. impure; never throws.
+ * @param {{fresh?: boolean, accountIds: Array<string>, wallet: string}} opts
+ */
+export const runAccountFlightTests = async ({ fresh = false, accountIds = [], wallet } = {}) => {
+  const ids = accountIds.filter((id) => PROBES[channelOfAccountId(id)]);
+  const results = await Promise.all(ids.map((id) => probeAccount(wallet, id, fresh)));
+  return Object.fromEntries(ids.map((id, i) => [id, results[i]]));
 };

@@ -36,26 +36,30 @@ export const mark = (value) => {
 export const ACTS = Object.freeze([
   Object.freeze({ key: 'custody', column: 'CUSTODY', label: 'SECURE THE KEYPAIR' }),
   Object.freeze({ key: 'seal', column: 'VOICE SEAL', label: 'CARRY THE RITE' }),
-  Object.freeze({ key: 'anchor', column: 'ANCHOR', label: 'ANCHOR ON CHAIN' }),
+  // The birth seal: on this computer or on Ethereum — either one (core/birth/birth-setup-state.js).
+  Object.freeze({ key: 'birthSeal', column: 'BIRTH SEAL', label: 'SEAL THE BIRTH' }),
 ]);
 
 /**
  * One being's row in the house standing table. Pure.
  * @param {{neumaId: string, name: string, sealed: ?boolean, sealedAt: ?string,
- *          keypairCustody: ?boolean, onchainSealed: ?boolean}} being
- * @returns {{neumaId, name, custody, seal, anchor, sealedAt, owed: string[], unreadable: boolean}}
+ *          keypairCustody: ?boolean, birthSealed: ?boolean, onchainSealed: ?boolean}} being
+ * @returns {{neumaId, name, custody, seal, birthSeal, onchain, sealedAt, owed: string[], unreadable: boolean}}
  */
 // pure
 export const standingRow = (being) => {
   const custody = mark(being?.keypairCustody);
   const seal = mark(being?.sealed);
-  const anchor = mark(being?.onchainSealed);
+  const birthSeal = mark(being?.birthSealed);
+  // shown, never owed: the Ethereum anchor is an addition to a sealed birth
+  const onchain = mark(being?.onchainSealed);
   return {
     neumaId: being?.neumaId ?? '',
     name: being?.name || being?.neumaId || '',
     custody,
     seal,
-    anchor,
+    birthSeal,
+    onchain,
     sealedAt: being?.sealedAt || null,
     // Only a definite NO is owed. An unknown is a READ failure, reported as
     // its own thing — offering an act against a lane you could not read would
@@ -63,9 +67,9 @@ export const standingRow = (being) => {
     owed: [
       ...(custody === 'no' ? ['custody'] : []),
       ...(seal === 'no' ? ['seal'] : []),
-      ...(anchor === 'no' ? ['anchor'] : []),
+      ...(birthSeal === 'no' ? ['birthSeal'] : []),
     ],
-    unreadable: [custody, seal, anchor].includes('unknown'),
+    unreadable: [custody, seal, birthSeal].includes('unknown'),
   };
 };
 
@@ -84,14 +88,14 @@ export const houseOwed = (rows) => {
   const unreadable = list.filter((r) => r.unreadable).length;
   const custody = count('custody');
   const seal = count('seal');
-  const anchor = count('anchor');
+  const birthSeal = count('birthSeal');
   return {
     beings: list.length,
     custody,
     seal,
-    anchor,
+    birthSeal,
     unreadable,
-    clean: list.length > 0 && custody + seal + anchor + unreadable === 0,
+    clean: list.length > 0 && custody + seal + birthSeal + unreadable === 0,
   };
 };
 
@@ -111,7 +115,7 @@ export const owedHeadline = (owed) => {
   const parts = [
     ...(owed.custody ? [`${plural(owed.custody, 'KEYPAIR', 'KEYPAIRS')} OWED`] : []),
     ...(owed.seal ? [`${owed.seal} UNSEALED`] : []),
-    ...(owed.anchor ? [`${plural(owed.anchor, 'ANCHOR', 'ANCHORS')} OWED`] : []),
+    ...(owed.birthSeal ? [`${plural(owed.birthSeal, 'BIRTH SEAL', 'BIRTH SEALS')} OWED`] : []),
     ...(owed.unreadable ? [`${owed.unreadable} UNREADABLE`] : []),
   ];
   return parts.join(' · ');

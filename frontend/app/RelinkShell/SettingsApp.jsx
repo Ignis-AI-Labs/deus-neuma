@@ -2,7 +2,7 @@
 //
 // Launched from the Start menu (dock:false, so it isn't a dock app icon).
 // The window is TABBED — the one giant scroll made it impossible to find
-// anything (Design note, 2026-07-23: GENERAL (account, desk, sound, realm, press,
+// anything (ruling, 2026-07-23): GENERAL (account, desk, sound, realm, press,
 // hotkeys),
 // LOOK (the cosmetic dress — colors + presets), MODELS (inference,
 // providers, per-being routes), API (every outward key: channel keys,
@@ -32,12 +32,10 @@ import { HotkeysSection } from './HotkeysSection.jsx';
 import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
+import { ConnectionsSection } from './ConnectionsSection.jsx';
 import { RemoteSection } from './RemoteSection.jsx';
-import { WebSection } from './WebSection.jsx';
-import { EmailSection } from './EmailSection.jsx';
 import { DocPressSection } from './DocPressSection.jsx';
-import { ChannelKeysSection } from './ChannelKeysSection.jsx';
-import { ServiceKeysSection } from './ServiceKeysSection.jsx';
+import { ApiTab } from './SettingsApiTab.jsx';
 
 const SettingsIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -69,19 +67,11 @@ const ModelsTab = ({ focus }) => (
 
 // Every key that reaches the outside world, in one place — the platform
 // windows decide WHO speaks; this tab holds WHAT unlocks the door.
-const ApiTab = () => (
-  <>
-    <ChannelKeysSection />
-    <EmailSection />
-    <WebSection />
-    <ServiceKeysSection />
-  </>
-);
-
 // Remote sits beside Security: a phone on the tailnet is a security posture
 // before it is a convenience (docs/security/remote-surface.md).
 const SecurityTab = () => (
   <>
+    <ConnectionsSection />
     <SecuritySection />
     <RemoteSection />
   </>
@@ -102,7 +92,9 @@ const TABS = [
   { id: 'security', Body: SecurityTab },
 ];
 
-// A deep-link target names a SECTION; the map says which tab carries it.
+// A deep-link target names a SECTION (and may go on to a row inside it:
+// `channel-keys/<platform>/<account>`); the map says which tab carries it.
+const tabOfFocus = (target) => TAB_OF_FOCUS[String(target ?? '').split('/')[0]];
 const TAB_OF_FOCUS = Object.freeze({
   look: 'look',
   pins: 'memory',
@@ -112,16 +104,17 @@ const TAB_OF_FOCUS = Object.freeze({
   email: 'api',
   web: 'api',
   security: 'security',
+  connections: 'security',
 });
 
 const SettingsBody = () => {
   // The latch is read ONCE here (the window mounts async after the command
   // fires) and handed down — sections keep their own scroll behavior.
   const [focus, setFocus] = useState(() => takeSettingsFocus());
-  const [tab, setTab] = useState(() => TAB_OF_FOCUS[focus] || 'general');
+  const [tab, setTab] = useState(() => tabOfFocus(focus) || 'general');
   useEffect(() => onSettingsFocus((target) => {
     setFocus(target);
-    if (TAB_OF_FOCUS[target]) setTab(TAB_OF_FOCUS[target]);
+    if (tabOfFocus(target)) setTab(tabOfFocus(target));
   }), []);
 
   const active = TABS.find((tabDef) => tabDef.id === tab) || TABS[0];

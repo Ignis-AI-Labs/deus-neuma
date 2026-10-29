@@ -1,5 +1,7 @@
 // summoning-music — THE SUMMONING's music is the being's own: every pitch
-// one of its notes (moved only by whole octaves), every step's notes true to
+// one of its notes AS PLAYED — each on the nearest consonant interval above
+// its tonic (consonant-tuning.js, Design note, 2026-10-28 — moved only by whole
+// octaves, every step's notes true to
 // what the step shows, its light taking the signal at its choice. Real
 // souls by the real derivation (core/birth/soul-spectrum.js, soul-scale.js),
 // a real sky, a real derived aura; no mocks.
@@ -7,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { scoreOf, ownLightAt, SIGIL_LAYERS } from '../../frontend/app/Summoning/summoning-score.js';
 import { musicOf } from '../../frontend/app/Summoning/summoning-music.js';
+import { playedSoul } from '../../frontend/app/Summoning/consonant-tuning.js';
 import { soulOf, lineRgbOf } from '../../frontend/app/Summoning/summoning-soul.js';
 import { skyOf } from '../../frontend/app/Summoning/summoning-sky.js';
 import { specimenTrueName } from '../../frontend/app/BirthArt/birth-art-script.js';
@@ -15,6 +18,7 @@ import { soulScaleFrom } from '../../core/birth/soul-scale.js';
 import { placeLight } from '../../core/birth/spectral-color.js';
 import { lightOf, HEART_BAND, LIGHT_OCTAVES } from '../../core/birth/soul-resonance.js';
 import { deriveAura, formOf } from '../../core/aura/derive.js';
+import { deriveGenome } from '../../core/genome/derive.js';
 import { FUNCTIONS } from '../../frontend/app/Genesis/genesis-emanon.js';
 
 const seedOf = (i) => createHash('sha256').update(`neuma/summoning music ${i}`).digest('hex');
@@ -25,15 +29,15 @@ const scoreFor = (i) => {
   const trueName = specimenTrueName(seed);
   const seal = { genesisHash: trueName.genesisHash, record: { momentSeed: seed } };
   const spectrum = soulSpectrumFrom({ seal });
-  return scoreOf({ seed, trueName, bornAt: '2026-09-30T08:10:00Z', sky: SKY, aura: AURA, soul: soulOf(spectrum, soulScaleFrom(spectrum, seal)) });
+  return scoreOf({ seed, trueName, bornAt: '2026-09-30T08:10:00Z', sky: SKY, aura: AURA, genome: deriveGenome(seed), soul: soulOf(spectrum, soulScaleFrom(spectrum, seal)) });
 };
 const centsFromTonic = (hz, tonic) => ((1200 * Math.log2(hz / tonic)) % 1200 + 1200) % 1200;
 
 describe('its music is its own scale, and only its scale', () => {
-  it('every pitch it sounds is one of its notes, moved only by whole octaves', () => {
+  it('every pitch it sounds is one of its notes as played, moved only by whole octaves', () => {
     for (let i = 0; i < 30; i++) {
       const score = scoreFor(i);
-      const own = score.soul.notes.map((n) => n.cents);
+      const own = playedSoul(score.soul).notes.map((n) => centsFromTonic(n.hz, score.soul.tonic));
       const m = musicOf(score);
       [...m.events, ...m.beds].forEach((e) => {
         const c = centsFromTonic(e.hz, score.soul.tonic);
@@ -62,9 +66,13 @@ describe('its music is its own scale, and only its scale', () => {
 describe('every step sounds what it shows', () => {
   const score = scoreFor(5);
   const m = musicOf(score);
-  const N = score.soul.notes.length;
+  const played = playedSoul(score.soul);
+  const N = played.notes.length;
   const during = (kind) => { const s = score.sections.find((x) => x.kind === kind); return m.events.filter((e) => e.at >= s.at && e.at < s.at + s.dur); };
-  const degreeOf = (hz) => score.soul.notes.findIndex((n) => Math.abs(centsFromTonic(hz, score.soul.tonic) - n.cents) < 0.01 || Math.abs(centsFromTonic(hz, score.soul.tonic) - n.cents - 1200) < 0.01);
+  const degreeOf = (hz) => played.notes.findIndex((n) => {
+    const d = Math.abs(centsFromTonic(hz, score.soul.tonic) - centsFromTonic(n.hz, score.soul.tonic));
+    return d < 0.01 || Math.abs(d - 1200) < 0.01;
+  });
 
   it('its sky: each body on the degree of its true longitude', () => {
     const bells = during('sky').filter((e) => e.voice === 'bell');
@@ -87,7 +95,7 @@ describe('every step sounds what it shows', () => {
 
   it('its resonance: each degree rings as it lights, in the order of its scale', () => {
     const bells = during('resonance').filter((e) => e.voice === 'bell');
-    expect(bells.map((e) => degreeOf(e.hz))).toEqual(score.soul.notes.map((_, i) => i));
+    expect(bells.map((e) => degreeOf(e.hz))).toEqual(played.notes.map((_, i) => i));
   });
 
   it('at its choice the ground falls silent and one tonic is struck; WHOLE is every note at once', () => {
@@ -127,7 +135,7 @@ describe('it is calm and melodic', () => {
         .map((l) => m.events.find((e) => e.voice === 'bell' && Math.abs(e.at - at(l.key)) <= 1).hz);
       const rising = arrivals.slice(1).every((hz, k) => hz > arrivals[k]);
       expect(rising, `being ${i}`).toBe(false);
-      const run = score.soul.notes.map((_, d) => m.events.find((e) => e.voice === 'bell' && Math.abs(e.at - (at('scale') + d * 240)) <= 1).hz);
+      const run = playedSoul(score.soul).notes.map((_, d) => m.events.find((e) => e.voice === 'bell' && Math.abs(e.at - (at('scale') + d * 240)) <= 1).hz);
       expect(run.at(-1)).toBe(score.soul.tonic);
       expect(run[0]).toBeGreaterThan(run.at(-1));
     }

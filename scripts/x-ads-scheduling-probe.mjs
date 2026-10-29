@@ -13,7 +13,14 @@ import crypto from 'crypto';
 import { resolveChannelCredential } from '../backend/services/social/channel-credentials.js';
 import { buildOAuth1Header } from '../backend/services/social/x-poster.js';
 
-const credentials = await resolveChannelCredential('x').catch(() => null);
+// Keys are per HOUSE (backend/services/social/house-positions.js): name the
+// house whose keys this proves.
+const HOUSE = process.env.NEUMA_HOUSE_WALLET;
+if (!/^0x[0-9a-fA-F]{40}$/.test(HOUSE || '')) {
+  console.error('set NEUMA_HOUSE_WALLET=<your house wallet 0x…> — account keys are kept per house');
+  process.exit(1);
+}
+const credentials = await resolveChannelCredential(HOUSE, 'x').catch(() => null);
 if (!credentials) {
   console.log('X credentials are not configured — nothing to probe.');
   process.exit(0);

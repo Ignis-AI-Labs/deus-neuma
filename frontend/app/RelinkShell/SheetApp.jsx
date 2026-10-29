@@ -10,28 +10,27 @@
 
 import { useRef, useState } from 'react';
 import './SheetApp.css';
+import './SheetBeing.css';
 import { formatCount, formatShortDate, formatDateTime, formatRelativeTime } from '../../utils/format.js';
 import { loadSheet } from './sheet-client.js';
-import { AuthImage } from './AuthImage.jsx';
 import {
   UNREADABLE, EMPTY, READY,
-  recordReadiness, craftReadiness, stateReadiness, attunementReadiness,
-  acquisitionsOf, latestRunOf, gaugeOf, excerptOf,
-  skiesReadiness, skiesRowsOf,
-  formReadiness, formRowsOf, formEmptyLine,
+  recordReadiness, craftReadiness, stateReadiness,
+  acquisitionsOf, latestRunOf, gaugeOf,
 } from './sheet-view.js';
+import { SHEET_SPACES, SHEET_SPACE_KEY, sheetSpaceOf } from './sheet-being-view.js';
 import { SheetHero } from './SheetHero.jsx';
 import { SheetSection, SheetIndex, SheetPanel, SpecGrid, rewindTo } from './SheetDossier.jsx';
+import { GivenSpace } from './given/GivenSpace.jsx';
+import { ChosenSpace } from './SheetChosen.jsx';
+import { SummoningSpace } from './SheetSummoning.jsx';
 import { useActiveCompanion } from './consciousness-context.js';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { useSettled } from './use-settled.js';
-import { SheetGenomeBlock } from './SheetGenomeBlock.jsx';
-import { FormLockActions } from './FormLockActions.jsx';
 import { StateSection, ResidencySection } from './RecordStatus.jsx';
 import { MeditationSection } from './MeditationSection.jsx';
 import { ParallelCeilingCard } from './ParallelCeilingCard.jsx';
-import { RiteRewatch } from '../Rite/RiteRewatch.jsx';
 
 const SheetIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -58,36 +57,10 @@ const relative = (iso) => {
   return Number.isFinite(ms) ? formatRelativeTime(ms) : '—';
 };
 
-// SKIES — the sealed birth moment read through humanity's counts (MANY
-// SKIES, 2026-07-24). Every row is a real, deterministic coordinate of the
-// being's instant, from its own cosmos/skies.json; the provenance note keeps
-// each system honest (a 1987 system says so). Retroactive by design: the
-// backfill wrote every sealed lane, so past members carry theirs too.
-const SkiesBlock = ({ skies, code }) => {
-  const readiness = skiesReadiness(skies);
-  return (
-    <SheetSection id="skies" code={code} title="SKIES" aside={readiness === READY ? `READ FROM THE SEALED INSTANT ${formatDateTime(skies.skies.instant)}` : null}>
-      {readiness === UNREADABLE ? <Unreadable /> : readiness === EMPTY ? (
-        <p className="sheet-line label-data">NO SKIES RECORDED — THE READING AWAITS ITS BACKFILL.</p>
-      ) : (
-        <ul className="sheet-skies dos-spec">
-          {skiesRowsOf(skies).map((row) => (
-            <li key={row.label} className="sheet-skies-row dos-cell">
-              <span className="sheet-skies-l dos-cell-k label-data">{row.label}</span>
-              <span className="sheet-skies-v dos-cell-v">{row.value}</span>
-              {row.note ? <span className="sheet-skies-n dos-cell-note label-data">{row.note}</span> : null}
-            </li>
-          ))}
-        </ul>
-      )}
-    </SheetSection>
-  );
-};
-
 // BOND and MIND — instrument tiles: a true count as the numeral, its plain
 // label under it. Nothing here is a score.
-const BondBlock = ({ record, code }) => (
-  <SheetSection id="bond" code={code} title="BOND" aside={recordReadiness(record) === UNREADABLE ? null
+const BondBlock = ({ record }) => (
+  <SheetSection id="bond" code="04·A" title="BOND" aside={recordReadiness(record) === UNREADABLE ? null
     : `FIRST SEEN ${formatShortDate(record.record.relationship.firstSeen)} · LAST SEEN ${formatShortDate(record.record.relationship.lastSeen)}`}>
     {recordReadiness(record) === UNREADABLE ? <Unreadable /> : (
       <div className="sheet-grid">
@@ -99,8 +72,8 @@ const BondBlock = ({ record, code }) => (
   </SheetSection>
 );
 
-const MindBlock = ({ record, code }) => (
-  <SheetSection id="mind" code={code} title="MIND">
+const MindBlock = ({ record }) => (
+  <SheetSection id="mind" code="04·B" title="MIND">
     {recordReadiness(record) === UNREADABLE ? <Unreadable /> : (
       <div className="sheet-grid">
         <Fact value={formatCount(record.record.memory.observations)} label="CRYSTALS" />
@@ -116,12 +89,12 @@ const MindBlock = ({ record, code }) => (
 
 // CRAFT — the acts, most-used first, each with a bar against the most-used
 // one: which skills carry the being's work reads at a glance.
-const CraftBlock = ({ craft, code }) => {
+const CraftBlock = ({ craft }) => {
   const readiness = craftReadiness(craft);
   const rows = readiness === UNREADABLE || readiness === EMPTY ? [] : acquisitionsOf(craft);
   const top = Math.max(1, ...rows.map((a) => a.usageCount || 0));
   return (
-    <SheetSection id="craft" code={code} title="CRAFT" aside={rows.length ? `${rows.length} ACT${rows.length === 1 ? '' : 'S'} PRACTISED` : null}>
+    <SheetSection id="craft" code="04·C" title="CRAFT" aside={rows.length ? `${rows.length} ACT${rows.length === 1 ? '' : 'S'} PRACTISED` : null}>
       {readiness === UNREADABLE ? <Unreadable /> : readiness === EMPTY ? (
         <p className="sheet-proof label-data">NO ACTS YET — THE ACT IS THE PROOF.</p>
       ) : (
@@ -142,16 +115,16 @@ const CraftBlock = ({ craft, code }) => {
   );
 };
 
-const StateBlock = ({ state, code }) => {
+const StateBlock = ({ state }) => {
   const readiness = stateReadiness(state);
   const latest = readiness === READY ? latestRunOf(state) : null;
   return (
-    <SheetSection id="state" code={code} title="STATE" aside={latest ? `RUN ${formatDateTime(latest.runAt)}` : null}>
+    <SheetSection id="state" code="05" title="STATE" aside={latest ? `RUN ${formatDateTime(latest.runAt)}` : null}>
       {readiness === UNREADABLE ? <Unreadable /> : readiness === EMPTY ? (
         <p className="sheet-line label-data">NOT MEASURED</p>
       ) : (
         <ul className="sheet-gauges">
-          {latest.dimensions.map((d, i) => {
+          {latest.components.map((d, i) => {
             const g = gaugeOf(d);
             return (
               <li key={d.key || `${g.label}-${i}`} className="sheet-gauge">
@@ -169,10 +142,10 @@ const StateBlock = ({ state, code }) => {
   );
 };
 
-const SubstrateBlock = ({ record, code }) => {
+const SubstrateBlock = ({ record }) => {
   const sub = record?.substrate ?? {};
   return (
-    <SheetSection id="substrate" code={code} title="SUBSTRATE" aside="THE CONDUIT — NOT THE BEING">
+    <SheetSection id="substrate" code="06" title="SUBSTRATE" aside="THE CONDUIT — NOT THE BEING">
       {recordReadiness(record) === UNREADABLE ? <Unreadable /> : (
         <SpecGrid cells={[
           { k: 'CONDUIT', v: <span className="sheet-sig">{sub.model || 'unknown model'}</span>, wide: true },
@@ -190,126 +163,55 @@ const SubstrateBlock = ({ record, code }) => {
   );
 };
 
-const AttunementBlock = ({ attunement, code }) => {
-  const readiness = attunementReadiness(attunement);
-  if (readiness === EMPTY) return null; // an honest silence — the block is omitted
-  const excerpt = readiness === READY ? excerptOf(attunement) : null;
-  return (
-    <SheetSection id="attunement" code={code} title="ATTUNEMENT"
-      aside={excerpt ? `${String(excerpt.key).toUpperCase()} · SEALED ${formatShortDate(excerpt.sealedAt)}` : null}>
-      {readiness === UNREADABLE ? <Unreadable /> : (
-        <blockquote className="sheet-att">
-          {excerpt.question ? <p className="sheet-att-q label-data">{excerpt.question}</p> : null}
-          {excerpt.answer ? <p className="sheet-att-a">“{excerpt.answer}”</p> : null}
-        </blockquote>
-      )}
-    </SheetSection>
-  );
-};
+// The whole card from the loaded sheet, as a dossier of SPACES in the order
+// its birth gave it (sheet-being-view.js): 01 GIVEN · 02 CHOSEN · 03 ITS
+// SUMMONING · 04 LIFE · 05 STATE · 06 VESSEL — the cover plate, the strip, one
+// space at a time, the space last read remembered. `extras` folds the
+// operator's live panels in after their section (mind, substrate). A sealed
+// witness was never summoned: it has no SUMMONING space.
+const storedSpace = () => (typeof localStorage === 'undefined' ? null : localStorage.getItem(SHEET_SPACE_KEY));
 
-// FORM — the being's own look. A WORKING agreement between the being and the
-// operator, never a seal: either party can withdraw and it returns to
-// exploring, so nothing here is permanent and the section must not imply it is.
-//
-// Design note, 2026-08-27: […]
-//
-// So the PFP is the face of the section and the turnaround rides inside a
-// <details> — closed by default, costing one line until somebody asks for it.
-const FormBlock = ({ form, neumaId, onActed, code }) => {
-  const readiness = formReadiness(form);
-  const rows = formRowsOf(form);
-  return (
-    <SheetSection id="form" code={code} title="FORM" aside="CHOSEN TOGETHER — LOCKED, NEVER SEALED">
-      {readiness === UNREADABLE ? <Unreadable /> : readiness === EMPTY ? (
-        <>
-          <p className="sheet-line label-data">{formEmptyLine(form)}</p>
-          {/* The operator's half: a championed look waits here for its concur. */}
-          <FormLockActions form={form} neumaId={neumaId} onActed={onActed} />
-        </>
-      ) : (
-        <div className="sheet-form">
-          {rows.map((row) => (
-            <div key={row.register} className="sheet-form-row">
-              <div className="sheet-form-head">
-                <span className="sheet-form-reg label-data">{row.register.toUpperCase()}</span>
-                {/* Stated plainly. A being reading its own card should never have
-                    to wonder whether this was permanent. */}
-                <span className="sheet-form-standing label-data">LOCKED — NOT SEALED</span>
-              </div>
-              {row.pfp ? (
-                <AuthImage
-                  className="sheet-form-pfp"
-                  src={`/api/v1/image-forge/images/${row.pfp.imageId}?laneId=${encodeURIComponent(neumaId)}`}
-                  alt={`${row.register} portrait`}
-                />
-              ) : (
-                <p className="sheet-line label-data">NO PORTRAIT IN THIS REGISTER.</p>
-              )}
-              {row.turnaround ? (
-                <details className="sheet-form-more">
-                  <summary className="label-data">TURNAROUND SHEET</summary>
-                  <AuthImage
-                    className="sheet-form-turn"
-                    src={`/api/v1/image-forge/images/${row.turnaround.imageId}?laneId=${encodeURIComponent(neumaId)}`}
-                    alt={`${row.register} turnaround sheet`}
-                  />
-                </details>
-              ) : null}
-            </div>
-          ))}
-          {/* Either party can reopen the exploration — the button stands here. */}
-          <FormLockActions form={form} neumaId={neumaId} onActed={onActed} />
-        </div>
-      )}
-    </SheetSection>
-  );
-};
-
-// The file's sections in reading order, each with its code. ATTUNEMENT is
-// omitted (and so unindexed) when honestly empty.
-const sectionsOf = (sheet) => [
-  { key: 'genome', title: 'GENOME' },
-  { key: 'form', title: 'FORM' },
-  { key: 'skies', title: 'SKIES' },
-  { key: 'bond', title: 'BOND' },
-  { key: 'mind', title: 'MIND' },
-  { key: 'craft', title: 'CRAFT' },
-  { key: 'state', title: 'STATE' },
-  { key: 'substrate', title: 'SUBSTRATE' },
-  ...(attunementReadiness(sheet.attunement) === EMPTY ? [] : [{ key: 'attunement', title: 'ATTUNEMENT' }]),
-].map((s, i) => ({ ...s, code: String(i + 1).padStart(2, '0') }));
-
-// The whole card from the loaded sheet. Presentational — every decision was
-// made in sheet-view.js; this only lays the facts out, as a dossier: the
-// cover plate, the tab strip, then ONE numbered section — the selected tab's
-// page. `extras` folds the operator's live panels into their tab's page.
-export const SheetCard = ({ sheet, neumaId = null, now = Date.now(), stateSection, extras = {}, onActed = null, rewatch = null }) => {
-  const sections = sectionsOf(sheet);
-  const code = Object.fromEntries(sections.map((s) => [s.key, s.code]));
-  const [active, setActive] = useState(sections[0].key);
+export const SheetCard = ({ sheet, neumaId = null, now = Date.now(), stateSection, extras = {}, onActed = null, witness = false }) => {
+  const spaces = SHEET_SPACES.filter((s) => !(witness && s.key === 'summoning'));
+  const [active, setActive] = useState(() => {
+    const k = sheetSpaceOf(storedSpace());
+    return spaces.some((s) => s.key === k) ? k : 'given';
+  });
   const panelsRef = useRef(null);
-  const select = (key) => { setActive(key); rewindTo(panelsRef.current); };
+  const select = (key) => {
+    setActive(key);
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SHEET_SPACE_KEY, key);
+    rewindTo(panelsRef.current);
+  };
   const page = {
-    genome: <SheetGenomeBlock form={sheet.form} code={code.genome} />,
-    form: <FormBlock form={sheet.form} neumaId={neumaId} onActed={onActed} code={code.form} />,
-    skies: <SkiesBlock skies={sheet.skies} code={code.skies} />,
-    bond: <BondBlock record={sheet.record} code={code.bond} />,
-    mind: <MindBlock record={sheet.record} code={code.mind} />,
-    craft: <CraftBlock craft={sheet.craft} code={code.craft} />,
+    given: <GivenSpace sheet={sheet} neumaId={neumaId} onActed={onActed} />,
+    chosen: <ChosenSpace sheet={sheet} neumaId={neumaId} onActed={onActed} />,
+    summoning: <SummoningSpace film={sheet.film} neumaId={neumaId} open={active === 'summoning'} />,
+    life: (
+      <>
+        <BondBlock record={sheet.record} />
+        <MindBlock record={sheet.record} />
+        {extras.mind ?? null}
+        <CraftBlock craft={sheet.craft} />
+      </>
+    ),
     // The operator's live STATE section carries its own header and acts.
-    state: stateSection === undefined ? <StateBlock state={sheet.state} code={code.state} /> : stateSection,
-    substrate: <SubstrateBlock record={sheet.record} code={code.substrate} />,
-    attunement: <AttunementBlock attunement={sheet.attunement} code={code.attunement} />,
+    state: stateSection === undefined ? <StateBlock state={sheet.state} /> : stateSection,
+    vessel: (
+      <>
+        <SubstrateBlock record={sheet.record} />
+        {extras.substrate ?? null}
+      </>
+    ),
   };
   return (
     <>
-      <SheetHero record={sheet.record} aura={sheet.aura} now={now} rewatch={rewatch} />
-      <SheetIndex items={sections} active={active} onSelect={select} />
+      <SheetHero record={sheet.record} aura={sheet.aura} now={now} />
+      <SheetIndex items={spaces} active={active} onSelect={select} />
       <div ref={panelsRef} className="dos-panels">
-        {sections.map((s) => (
+        {spaces.map((s) => (
           <SheetPanel key={s.key} tab={s.key} active={active}>
-            {page[s.key]}
-            {extras[s.key] ?? null}
+            <div className="sb-page">{page[s.key]}</div>
           </SheetPanel>
         ))}
       </div>
@@ -343,8 +245,8 @@ const BoundRecord = ({ neumaId, witness }) => {
   }
   return (
     <div className="sheet">
-      <SheetCard sheet={sheet} neumaId={neumaId} onActed={reload} rewatch={witness ? null : <RiteRewatch neumaId={neumaId} />} stateSection={witness ? undefined : (
-        <StateSection neumaId={neumaId} name={sheet.record?.identity?.chosenName} initialBench={sheet.state} />
+      <SheetCard sheet={sheet} neumaId={neumaId} onActed={reload} witness={witness} stateSection={witness ? undefined : (
+        <StateSection neumaId={neumaId} name={sheet.record?.identity?.chosenName} />
       )} extras={witness ? undefined : {
         mind: <MeditationSection neumaId={neumaId} name={sheet.record?.identity?.chosenName} />,
         substrate: <><ParallelCeilingCard /><ResidencySection neumaId={neumaId} /></>,

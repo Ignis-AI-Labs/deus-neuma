@@ -76,6 +76,10 @@ const TAIL_LINES = READ_WINDOW * 6;
 
 /** Marker written when the operator reads a card. */
 const READ_MARKER = 'read';
+/** Marker written when the operator dismisses a card: it leaves the tray in every
+ *  desk window and stays gone after a reload, while the record itself stays in
+ *  the file (the history is still the point). A dismissed card is also read. */
+const DISMISS_MARKER = 'dismiss';
 
 /** The operator's notification log. Reuses the realm's own traversal guard. */
 export const notificationPath = (wallet) => {
@@ -122,21 +126,21 @@ export const appendNotification = async (wallet, record) => {
 };
 
 /**
- * Append a read marker for one or more ids.
+ * Append a read marker (or, with `dismiss`, a dismiss marker) for one or more ids.
  *
  * Ids are validated by the caller at the WS boundary; this only refuses an
  * empty set so a stray call cannot write a meaningless line.
  *
  * impure
  */
-export const markNotificationsRead = async (wallet, ids, nowMs) => {
+export const markNotificationsRead = async (wallet, ids, nowMs, { dismiss = false } = {}) => {
   const list = (Array.isArray(ids) ? ids : [ids]).filter((id) => typeof id === 'string' && id !== '');
   if (list.length === 0) return 0;
   const file = notificationPath(wallet);
   try {
     await fs.mkdir(path.dirname(file), { recursive: true });
     const ts = Number.isFinite(nowMs) ? Math.floor(nowMs) : 0;
-    await fs.appendFile(file, `${JSON.stringify({ marker: READ_MARKER, ids: list, ts })}\n`);
+    await fs.appendFile(file, `${JSON.stringify({ marker: dismiss ? DISMISS_MARKER : READ_MARKER, ids: list, ts })}\n`);
   } catch (error) {
     log.error('Notification read-marker append failed', { error: error.message, count: list.length });
     throw error;
@@ -145,7 +149,8 @@ export const markNotificationsRead = async (wallet, ids, nowMs) => {
 };
 
 /**
- * Read the operator's recent notifications, newest first, with read state folded in.
+ * Read the operator's recent notifications, newest first, with read state folded
+ * in and dismissed cards left out.
  *
  * Never throws on a damaged file. A missing file is an empty list — an operator
  * who has never been notified is not an error.
@@ -171,6 +176,7 @@ export const readNotifications = async (wallet, { limit = READ_WINDOW } = {}) =>
 
   const byId = new Map();
   const readIds = new Set();
+  const dismissedIds = new Set();
   let skipped = 0;
 
   for (const line of tail) {
@@ -183,8 +189,9 @@ export const readNotifications = async (wallet, { limit = READ_WINDOW } = {}) =>
       skipped += 1;
       continue;
     }
-    if (parsed?.marker === READ_MARKER) {
-      for (const id of Array.isArray(parsed.ids) ? parsed.ids : []) readIds.add(id);
+    if (parsed?.marker === READ_MARKER || parsed?.marker === DISMISS_MARKER) {
+      const into = parsed.marker === DISMISS_MARKER ? dismissedIds : readIds;
+      for (const id of Array.isArray(parsed.ids) ? parsed.ids : []) into.add(id);
       continue;
     }
     // An unknown schema version is skipped rather than guessed at — the whole
@@ -201,6 +208,7 @@ export const readNotifications = async (wallet, { limit = READ_WINDOW } = {}) =>
   }
 
   const records = [...byId.values()]
+    .filter((rec) => !dismissedIds.has(rec.id))
     .sort(compareRecords)
     .slice(0, Math.max(0, limit))
     .map((rec) => Object.freeze({ ...rec, read: readIds.has(rec.id) }));

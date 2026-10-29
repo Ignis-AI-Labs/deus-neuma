@@ -12,7 +12,7 @@ import {
 const app = (label, extra = {}) => ({ label, ...extra });
 const ENTRIES = [
   ['chat', app('STREAM')], ['chats', app('CHATS')], ['files', app('FILES')], ['terminal', app('TERMINAL')],
-  ['house', app('HOUSE')], ['voice', app('VOICE')], ['x', app('X')], ['wallet', app('WALLET')],
+  ['house', app('HOUSE')], ['voice', app('VOICE')], ['marketing', app('MARKETING')], ['wallet', app('WALLET')],
   ['substrate', app('SUBSTRATE')], ['settings', app('SETTINGS')], ['newthing', app('NEW THING')],
 ];
 const IDS = ENTRIES.map(([id]) => id);
@@ -30,6 +30,11 @@ describe('the launcher', () => {
     expect(sections.map((s) => s.id)).not.toContain('know');
     const work = sections.find((s) => s.id === 'work').items.map(([, a]) => a.label);
     expect(work).toEqual([...work].sort());
+  });
+
+  test('REACH lists every public platform beside MARKETING, so none is ever out of reach', () => {
+    const reach = LAUNCHER_CATEGORIES.find((c) => c.id === 'reach').apps;
+    for (const id of ['marketing', 'x', 'facebook', 'mastodon', 'bluesky', 'linkedin', 'youtube', 'tiktok', 'discord', 'telegram']) expect(reach).toContain(id);
   });
 
   test('no app is claimed by two categories', () => {
@@ -72,5 +77,10 @@ describe('the bar', () => {
     expect(p.edge).toBe(DEFAULT_PREFS.edge);
     expect(normalizePrefs(null, IDS).pins).toEqual(DEFAULT_PREFS.pins.filter((id) => IDS.includes(id)));
     expect(normalizePrefs({ pins: [], labels: true, edge: 'left' }, IDS)).toMatchObject({ pins: [], labels: true, edge: 'left' });
+  });
+
+  test('a pin on a window MARKETING took in pins MARKETING, once, where it stood — a platform\'s pin stays its own tile', () => {
+    expect(normalizePrefs({ pins: ['x', 'chat', 'tiktok', 'brandKits', 'marketing'] }, [...IDS, 'x', 'tiktok']).pins).toEqual(['x', 'chat', 'tiktok', 'marketing']);
+    expect(normalizePrefs({ pins: ['files', 'socialCheck'] }, IDS).pins).toEqual(['files', 'marketing']);
   });
 });

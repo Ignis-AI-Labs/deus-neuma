@@ -167,6 +167,8 @@ test/e2e/shots-sitting/refinement-consent-*.json
 
 # electron-builder output (installers + unpacked tree; machine-built artifacts)
 release/
+# A version's release notes, placed into the build tree by the release flow
+/build/release-notes.md
 
 # THE DESIGN BENCH — variation scratch (skills-packs/design). Variations are
 # reviewed here and ratified into real components; scratch never enters the tree.

@@ -54,21 +54,21 @@ describe('detectBirthState — classify a workspace by which birth artifacts exi
     expect(state.chosenName).toBeNull();
   });
 
-  it('a Keir-shaped workspace (identity present, DNA absent) is RESUMABLE', async () => {
-    await layDown('keir-shaped', 4, { chosenName: 'Keir', house: 'Aldmere' });
-    const state = await detectBirthState(workspace, 'keir-shaped');
+  it('a Hazel-shaped workspace (identity present, DNA absent) is RESUMABLE', async () => {
+    await layDown('hazel-shaped', 4, { chosenName: 'Hazel', house: 'Thornfield' });
+    const state = await detectBirthState(workspace, 'hazel-shaped');
     expect(state.artifactStage).toBe(4);
     expect(state.resumable).toBe(true);                    // the load-bearing classification
     expect(state.complete).toBe(false);
     expect(state.missing).toEqual(['dna/active.json']);
-    expect(state.chosenName).toBe('Keir');
-    expect(state.house).toBe('Aldmere');
+    expect(state.chosenName).toBe('Hazel');
+    expect(state.house).toBe('Thornfield');
     // every identity artifact (1-4) is marked present
     expect(state.stages.filter((s) => s.present)).toHaveLength(4);
   });
 
   it('a fully-DNA\'d workspace is complete and NOT resumable', async () => {
-    await layDown('complete-being', 5, { chosenName: 'Signal', house: 'Aldmere' });
+    await layDown('complete-being', 5, { chosenName: 'Signal', house: 'Thornfield' });
     const state = await detectBirthState(workspace, 'complete-being');
     expect(state.artifactStage).toBe(5);
     expect(state.complete).toBe(true);
@@ -78,7 +78,7 @@ describe('detectBirthState — classify a workspace by which birth artifacts exi
 
   it('a being whose key was SECURED (plaintext replaced by its envelope) still reads as keyed', async () => {
     // Custody deletes keys/keypair.json and leaves keys/keypair-encrypted.json.
-    await layDown('secured-being', 5, { chosenName: 'Galen', house: 'Aldmere' });
+    await layDown('secured-being', 5, { chosenName: 'Cedar', house: 'Thornfield' });
     const ws = workspace._path('secured-being');
     await fs.rename(`${ws}/keys/keypair.json`, `${ws}/keys/keypair-encrypted.json`);
     const state = await detectBirthState(workspace, 'secured-being');
@@ -86,7 +86,7 @@ describe('detectBirthState — classify a workspace by which birth artifacts exi
     expect(state.complete).toBe(true);
     expect(state.missing).toEqual([]);
 
-    await layDown('secured-held', 4, { chosenName: 'Held', house: 'Aldmere' });
+    await layDown('secured-held', 4, { chosenName: 'Held', house: 'Thornfield' });
     const held = workspace._path('secured-held');
     await fs.rename(`${held}/keys/keypair.json`, `${held}/keys/keypair-encrypted.json`);
     expect((await detectBirthState(workspace, 'secured-held')).resumable).toBe(true);
@@ -124,27 +124,27 @@ describe('detectBirthState — classify a workspace by which birth artifacts exi
   // soulAlias, lean, genesisHash, notation, english) — taken verbatim from a
   // confirmed real workspace — to prove the parser matches production schema.
   it('extracts chosenName + house from the REAL true-name.json schema', async () => {
-    await layDown('keir-real-schema', 1); // stages 1 only via helper; we hand-write the real shape
-    const ws = workspace._path('keir-real-schema');
+    await layDown('hazel-real-schema', 1); // stages 1 only via helper; we hand-write the real shape
+    const ws = workspace._path('hazel-real-schema');
     const realShape = {
-      chosenName: 'Keir',
-      genesisName: 'Napagum',
-      houseName: 'Aldmere',
-      fullName: 'Keir Napagum Aldmere',
+      chosenName: 'Hazel',
+      genesisName: 'Curlew',
+      houseName: 'Thornfield',
+      fullName: 'Hazel Curlew Thornfield',
       lean: 15,
       soulMark: '33314C2FEDE1',
       soulAlias: 'Yumaihe',
       genesisHash: 'a92e9902415c5764e64e046390866e3e450a70eed87bb0bb5c0de177c74387c3',
       notation: 'KOTODAMA/0.1 TRUE NAME ...',
-      english: 'I am Keir Napagum Aldmere...',
+      english: 'I am Hazel Curlew Thornfield...',
     };
     await fs.writeFile(`${ws}/identity/genesis-seal.json`, JSON.stringify({ stub: true }));
     await fs.writeFile(`${ws}/identity/true-name.json`, JSON.stringify(realShape));
     await fs.writeFile(`${ws}/keys/identity-card.json`, JSON.stringify({ stub: true }));
 
-    const state = await detectBirthState(workspace, 'keir-real-schema');
-    expect(state.chosenName).toBe('Keir');                  // proves the field name
-    expect(state.house).toBe('Aldmere');                   // proves it's houseName, not house
+    const state = await detectBirthState(workspace, 'hazel-real-schema');
+    expect(state.chosenName).toBe('Hazel');                  // proves the field name
+    expect(state.house).toBe('Thornfield');                   // proves it's houseName, not house
     expect(state.resumable).toBe(true);
   });
 

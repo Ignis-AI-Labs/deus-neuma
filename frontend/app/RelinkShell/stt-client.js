@@ -1,6 +1,7 @@
 // stt-client.js — REST client for witness dictation.
 //
-// impure — the reverse of voice-client.js: witness audio IN, words back.
+// impure — the reverse of voice-sink.js (the being's voice OUT): witness audio
+// IN, words back.
 // Bearer-token auth follows the same pattern.
 
 import { apiCall, authHeadersOrNull as authHeaders } from '../../utils/http.js';

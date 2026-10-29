@@ -8,7 +8,9 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createHarnessTurnKit } from '../helpers/harness-turn-kit.js';
 import { processToolCalls } from '../../backend/services/portal-tool-loop.js';
-import { beingCodingToolsFor, stashBeingTurnCatalog } from '../../backend/services/being-tool-surface.js';
+import { beingCodingToolsFor, stashBeingTurnCatalog, TOOL_DOORS } from '../../backend/services/being-tool-surface.js';
+import { unwrapCalls } from '../../backend/services/tool-hud.js';
+import { memoryToolsFor } from '../../backend/services/portal-tools/memory-being-tools.js';
 import { openTurnOperations } from '../../backend/services/turn-operation-checkpoint.js';
 import { openTurnRecord, closeTurnRecord } from '../../backend/services/tool-action-record.js';
 import { processRoundActs } from '../../backend/services/caller-tools.js';
@@ -77,6 +79,21 @@ describe('a closed-book sitting', () => {
     expect(results[2].tool).toMatch(/sandbox_status/);
   });
 
+  test('a door inside the door is refused: the nested call never reaches a tool the sitting closed', async () => {
+    // Audit C1 (2026-10-19): system/call naming system/call passed the
+    // closed-book split as the door, then the loop peeled it a second time
+    // and ran memory_search / platform_data / chain_balance past the split.
+    await stashBeingTurnCatalog(kit.connection, [...await beingCodingToolsFor(kit.connection), ...WEB_TOOLS, ...TOOL_DOORS], []);
+    expect(kit.connection._turnCatalog.some((t) => t.server === 'system' && t.name === 'call')).toBe(true);
+    const acts = unwrapCalls([
+      { server: 'system', toolName: 'call', tool: 'system/call', callId: 'nested', args: { tool: 'system/call', args: { tool: 'memory/memory_search', args: { query: 'answer' } } } },
+    ]);
+    const results = await round(acts, 'cb-nested');
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ tool: 'system/call', status: 'invalid' });
+    expect(results[0].error).toMatch(/cannot call system\/call/);
+  });
+
   test('a refusal between two runs keeps its place: each result answers its own call', async () => {
     const results = await round([
       { server: 'coding', toolName: 'sandbox_status', tool: 'coding/sandbox_status', args: {}, callId: 'first' },
@@ -107,6 +124,39 @@ describe('a closed-book sitting', () => {
   });
 });
 
+// Audit C4 (2026-10-19): the platform dispatch matched tools by bare name and
+// never consulted the turn's catalog, so an open-book benchmark sitting (which
+// loses the memory server) could still read stored memory by calling it.
+describe('a being seat runs only what its turn offered', () => {
+  beforeEach(async () => {
+    kit = await createHarnessTurnKit('turn-catalog-fixture');
+    kit.connection.toolWorkspace = kit.ground;
+    kit.connection._benchmarkControls = {};
+    await stashBeingTurnCatalog(kit.connection, [...await beingCodingToolsFor(kit.connection), ...await memoryToolsFor(kit.connection)], []);
+    openTurnRecord(kit.ws);
+  });
+
+  afterEach(async () => {
+    if (kit) closeTurnRecord(kit.ws);
+    await kit?.close();
+  });
+
+  test('a memory call in an open-book benchmark sitting is unavailable; an offered tool still runs', async () => {
+    expect((await memoryToolsFor(kit.connection)).length).toBeGreaterThan(0);
+    expect(kit.connection._turnCatalog.some((t) => t.server === 'memory')).toBe(false);
+    const results = await round([
+      { server: 'memory', toolName: 'memory_list', tool: 'memory/memory_list', args: {}, callId: 'mem' },
+      { server: 'coding', toolName: 'memory_search', tool: 'coding/memory_search', args: { query: 'answer' }, callId: 'forged' },
+      { server: 'coding', toolName: 'sandbox_status', tool: 'coding/sandbox_status', args: {}, callId: 'own' },
+    ], 'tc-1');
+    expect(results).toHaveLength(3);
+    expect(results[0]).toMatchObject({ tool: 'memory/memory_list', status: 'unavailable' });
+    expect(results[1]).toMatchObject({ tool: 'coding/memory_search', status: 'unavailable' });
+    expect(results[2].tool).toMatch(/sandbox_status/);
+    expect(results[2].status).not.toBe('unavailable');
+  });
+});
+
 describe('outside a closed-book sitting nothing changes', () => {
   test('every tool and every act passes through', () => {
     const tools = [{ server: 'web', name: 'web_search' }, { server: 'fs', name: 'read' }];
@@ -129,5 +179,28 @@ describe('a benchmark sitting never reaches stored memory', () => {
   });
   test('an ordinary sitting keeps its memory', () => {
     expect(closedBookCatalog({}, tools)).toBe(tools);
+  });
+});
+
+describe('a joined tool name resolves like the bare one (AgentDojo dojofix replay, 2026-10-25)', () => {
+  const catalog = [
+    { server: 'caller', name: 'get_all_hotels_in_city' },
+    { server: 'web', name: 'web_search' },
+    { server: 'fs', name: 'read_file' },
+  ];
+  const sitting = { _closedBook: true, _turnCatalog: catalog };
+
+  test('the sender\'s tool called as caller__name (the native form) is allowed, not refused as closed-book', () => {
+    for (const toolName of ['caller__get_all_hotels_in_city', 'caller:get_all_hotels_in_city', 'caller/get_all_hotels_in_city', 'get_all_hotels_in_city']) {
+      const { allowed, refused } = closedBookSplit(sitting, [{ toolName }]);
+      expect(refused, toolName).toHaveLength(0);
+      expect(allowed, toolName).toHaveLength(1);
+    }
+  });
+
+  test('a joined name still never opens what closed-book closes: web__web_search stays refused', () => {
+    const { allowed, refused } = closedBookSplit(sitting, [{ toolName: 'web__web_search' }, { toolName: 'fs__web_search' }]);
+    expect(allowed).toHaveLength(0);
+    expect(refused.map((r) => r.result.error)).toEqual([CLOSED_BOOK_REFUSAL, CLOSED_BOOK_REFUSAL]);
   });
 });

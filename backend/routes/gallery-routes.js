@@ -30,6 +30,10 @@ import {
 } from '../services/gallery/gallery-roots.js';
 import { scanRoot, resolveInRoot, mimeOf } from '../services/gallery/media-scan.js';
 import { requestState } from '../../core/runtime/operator-state.js';
+import { deskStanding, requireInstallOwner } from '../services/install-owner.js';
+import { houseGroundsOf } from '../services/explorer-ground.js';
+import { isWithin } from '../services/ground-roots.js';
+import { explorerRefusal } from '../services/explorer-walls.js';
 
 const log = createLogger('Gallery.Routes');
 const router = express.Router();
@@ -51,8 +55,16 @@ router.use(requireAuth);
 // Scoped to the CALLING wallet: a being's art root is its own house's, and the
 // gallery never shows another wallet's beings.
 // A harness desk is not shown the house's beings' art (operator-state.js).
-const roots = (req) => allRoots(resolveComfyConfig(process.env),
-  requestState(req.headers) === 'harness' ? null : req.walletAddress);
+// The added folders and the ComfyUI output are the machine's, like the
+// explorer's opened folders (explorer-ground.js): its owner sees them all, a
+// guest house only those inside its own house. Its beings' art is always its own.
+const roots = async (req) => {
+  const all = await allRoots(resolveComfyConfig(process.env),
+    requestState(req.headers) === 'harness' ? null : req.walletAddress);
+  if (['owner', 'co-owner'].includes(await deskStanding(req))) return all;
+  const grounds = await houseGroundsOf(req.walletAddress);
+  return all.filter((root) => root.being || grounds.some((ground) => isWithin(root.dir, ground)));
+};
 
 // The folders the gallery reads. `builtIn` marks the ComfyUI output root, which
 // the UI shows as un-removable.
@@ -66,7 +78,8 @@ router.get('/roots', async (req, res) => {
 
 // Add a folder — THE GRANT. Proven to exist and to be a directory before it is
 // stored, so a typo becomes an error now rather than an empty gallery later.
-router.post('/roots', async (req, res) => {
+// The folder list is the machine's: its owner adds and removes, at its desk.
+router.post('/roots', requireInstallOwner, async (req, res) => {
   try {
     const dir = String(req.body?.dir || '');
     // ABSOLUTE FIRST, then stat. A relative path stats against the backend's
@@ -90,7 +103,7 @@ router.post('/roots', async (req, res) => {
   }
 });
 
-router.delete('/roots/:id', async (req, res) => {
+router.delete('/roots/:id', requireInstallOwner, async (req, res) => {
   try {
     const change = applyRootChange(await readStoredRoots(), { op: 'remove', id: req.params.id });
     if (!change.ok) return res.status(400).json({ error: change.error });
@@ -184,7 +197,8 @@ router.get('/file', async (req, res) => {
     // learns nothing about what exists outside its reach.
     if (!root) return res.status(404).json({ error: 'not found' });
     const real = await resolveInRoot(root, req.query.rel);
-    if (!real) return res.status(404).json({ error: 'not found' });
+    // the explorer's walls hold here too: a secret place or another house's ground is never served
+    if (!real || explorerRefusal(real, req.walletAddress)) return res.status(404).json({ error: 'not found' });
 
     const st = await fs.stat(real);
     const mime = mimeOf(real);

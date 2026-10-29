@@ -10,6 +10,9 @@ import { existsSync, statSync, mkdirSync, openSync, closeSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { helperEnvironment } from '../agent-terminal-environment.js';
+import { withStoredHfToken } from '../stored-secrets.js';
+import { sidecarFetch, sidecarKeyEnv, unprovenSidecar, verifySidecar } from './sidecar-trust.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(__filename), '..', '..', '..');
@@ -59,6 +62,25 @@ export const engineReadiness = ({ uvAvailable, downloaded }) => {
  */
 export const envIdOf = (engineId) => engineId.toUpperCase().replace(/[^A-Z0-9]/g, '_');
 
+// The names a sidecar, its `uv` and the downloader read: the engine's own
+// knobs (${ID}_*, plus the two legacy prefixes and the cross-named nano and
+// nemotron ones its server.py documents), the GPU and model-cache settings
+// and the HF credential. Everything else of the backend's env — its secrets
+// first — stays out (helperEnvironment).
+const VOICE_RUNTIME_KEY = /^(CUDA_|NVIDIA_|HF_|HUGGINGFACE_|PYTORCH_|TORCH_|OMP_|MKL_|UV_|PHONEMIZER_|NANO_|NEMOTRON_|ZONOS_|KOKORO_|LD_LIBRARY_PATH$)/;
+
+/**
+ * The environment a voice helper starts with. Pure.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} engineId
+ * @param {string} [platform]
+ * @returns {Record<string, string>}
+ */
+export const voiceHelperEnvironment = (env, engineId, platform = process.platform) => {
+  const own = `${envIdOf(engineId)}_`;
+  return helperEnvironment(env, platform, (key) => key.startsWith(own) || VOICE_RUNTIME_KEY.test(key));
+};
+
 // pure — the sidecar's uv project dir and entry script: serve.startModule when the
 // manifest declares one (repo-relative), else the voice-engines/<id>/server.py convention
 const entryOf = (engineId, startModule) => {
@@ -81,20 +103,22 @@ export const spawnEngineProcess = (engineId, host, port, { startModule, extraEnv
   // engines derive from the engine id (envIdOf). extraEnv carries per-launch
   // choices such as the model a multi-model engine serves (CSM_MODEL).
   // Temp files go to DISK beside the models: /tmp can be tmpfs (RAM), and a
-  // sidecar's scratch audio there is memory held for nothing (Design note, 2026-10-01.
+  // sidecar's scratch audio there is memory held for nothing (ruling, 2026-10-01).
   // torch's default compile cache lives under TMPDIR, so it follows to disk too
   // (csm pins its own under _models/csm/torchinductor).
   const envId = envIdOf(engineId);
   const scratch = path.join(REPO_ROOT, 'voice-engines', '_tmp', engineId);
   mkdirSync(scratch, { recursive: true });
   const env = {
-    ...process.env,
+    ...voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
     TMPDIR: scratch, TEMP: scratch, TMP: scratch,
     ZONOS_HOST: host, ZONOS_PORT: String(port),
     KOKORO_HOST: host, KOKORO_PORT: String(port),
     [`${envId}_HOST`]: host,
     [`${envId}_PORT`]: String(port),
     ...extraEnv,
+    // the install key it proves itself with and checks the backend's calls by (sidecar-trust.js)
+    ...sidecarKeyEnv(),
   };
   // Sidecar output goes to a per-engine FILE, never a pipe to this process:
   // a dev-watch backend restart orphans the sidecar, and an orphan holding a
@@ -165,7 +189,8 @@ export const waitForReady = async (endpoint, timeoutMs = 120_000, intervalMs = 1
   while (Date.now() < deadline) {
     if (isDead()) return { ok: false, error: 'sidecar process exited before it was ready' };
     const { verdict, health } = await probeHealth(hostname, Number(port), 2000);
-    if (verdict === 'ready') return { ok: true, ...health };
+    // ready is not enough: something else may hold the port, so the answerer proves the install key
+    if (verdict === 'ready') return (await verifySidecar(endpoint)) ? { ok: true, ...health } : { ok: false, error: unprovenSidecar(endpoint).message };
     if (verdict === 'failed') return { ok: false, ...health, error: health.error || 'model load failed' };
     await new Promise((r) => setTimeout(r, intervalMs));
   }
@@ -183,9 +208,12 @@ export const shutdownSidecar = async (host, port, timeoutMs = 10_000) => {
   while (Date.now() < deadline) {
     if (Date.now() - askedAt >= 1000) {
       askedAt = Date.now();
-      try {
-        await fetch(`http://${host}:${port}/shutdown`, { method: 'POST', signal: AbortSignal.timeout(2000) });
-      } catch { /* it may drop the socket while exiting — that IS the shutdown */ }
+      // the proven sidecar is asked with the backend's token; an unproven answerer gets a bare ask with
+      // nothing in it, which only a sidecar from before the install key (an app update) honors
+      const url = `http://${host}:${port}/shutdown`;
+      await sidecarFetch(url, { method: 'POST', signal: AbortSignal.timeout(2000) })
+        .catch(() => fetch(url, { method: 'POST', signal: AbortSignal.timeout(2000) }))
+        .catch(() => { /* it may drop the socket while exiting — that IS the shutdown */ });
     }
     if ((await probeHealth(host, port, 500)).verdict === 'down') return true;
     await new Promise((r) => setTimeout(r, 200));
@@ -199,6 +227,7 @@ export const syncEngineVenv = (engineId, startModule) =>
     const { projectDir } = entryOf(engineId, startModule);
     const proc = spawn(uvBin(), ['sync', '--project', projectDir], {
       cwd: projectDir,
+      env: voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stderr = '';
@@ -209,3 +238,18 @@ export const syncEngineVenv = (engineId, startModule) =>
       else reject(new Error(`uv sync failed (${code}): ${stderr.slice(0, 300)}`));
     });
   });
+
+/**
+ * Is the answerer on this port the install's own sidecar? Proven: true. Unproven: asked to step
+ * aside, false once the port is silent (a sidecar from before the install key), else refused —
+ * something that will not leave is never adopted and never sent anything. impure
+ * @param {string} host
+ * @param {number} port
+ * @returns {Promise<boolean>}
+ */
+export const provenOrRetired = async (host, port) => {
+  const origin = `http://${host}:${port}`;
+  if (await verifySidecar(origin)) return true;
+  if (await shutdownSidecar(host, port, 5000)) return false;
+  throw unprovenSidecar(origin);
+};

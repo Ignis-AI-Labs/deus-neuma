@@ -1,0 +1,8 @@
+#!/bin/sh
+# commit-msg — the SECRET GATE over the message itself: a key pasted into a
+# commit message is as public as one in a file (scripts/secret-gate.mjs).
+# Then the CHANGELOG GATE: a commit that changes the product carries its
+# changelog line (scripts/changelog-gate.mjs).
+here="$(cd "$(dirname "$0")" && pwd)"
+node "$here/../secret-gate.mjs" --message "$1" || exit 1
+exec node "$here/../changelog-gate.mjs" "$1"

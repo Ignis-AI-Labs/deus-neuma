@@ -81,7 +81,7 @@ const packet = (seconds, overrides = {}, context = {}) => buildTelemetryPacket(
 describe('Cael-v1 KSP sensing', () => {
   it('shapes one stable state packet without losing physical units', () => {
     const state = packet(0);
-    expect(state.protocol).toBe('cael-v1');
+    expect(state.protocol).toBe('veris-v1');
     expect(state.game.endpoint).toBe('127.0.0.1:50000');
     expect(state.vessel.name).toBe('Agency I');
     expect(state.vessel.velocity.surfaceMps).toEqual([100, 200, 300]);

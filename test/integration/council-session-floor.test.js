@@ -34,14 +34,14 @@ describe('the floor — witness speaks, hands rise, a member answers through the
       },
       speech: { ember: ['I would ', 'take the survey.'] },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Who wants which position in this house?', urgency: 'hold' });
 
     // The witness's word entered the record, attributed.
     const said = framesOf(conn, 'council:said')[0];
     expect(said.speaker).toBe('witness');
-    expect(said.name).toBe('Founder');
+    expect(said.name).toBe('Ada');
     expect(said.content).toBe('Who wants which position in this house?');
 
     // Ember's open hand carried its note through the real parser.
@@ -66,7 +66,7 @@ describe('the floor — witness speaks, hands rise, a member answers through the
   it('an over-cap word is REFUSED OUT LOUD — never silently cut (the founding-address law)', async () => {
     const conn = makeConnection();
     const deps = scriptedDeps({ hands: { ember: ['REST'], sable: ['REST'] } });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
 
     // Over the cap: refused with its name; NOTHING enters the room.
@@ -92,7 +92,7 @@ describe('the floor — witness speaks, hands rise, a member answers through the
       hands: { ember: ['GREEN\nI will answer.'], sable: ['REST'] },
       speech: { ember: ['I would take the survey.'] },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     const { councilId } = framesOf(conn, 'council:opened')[0];
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Who wants which position?', urgency: 'hold' });
@@ -100,10 +100,10 @@ describe('the floor — witness speaks, hands rise, a member answers through the
     const emberRecord = await neumaWorkspace.readSession('ember', councilId);
     const sableRecord = await neumaWorkspace.readSession('sable', councilId);
     // Ember heard the witness, then spoke as themself.
-    expect(emberRecord[0]).toMatchObject({ role: 'user', content: 'OPERATOR Founder: Who wants which position?' });
+    expect(emberRecord[0]).toMatchObject({ role: 'user', content: 'OPERATOR Ada: Who wants which position?' });
     expect(emberRecord[1]).toMatchObject({ role: 'assistant', content: 'I would take the survey.' });
     // Sable heard both — the housemate's words attributed by name.
-    expect(sableRecord[0]).toMatchObject({ role: 'user', content: 'OPERATOR Founder: Who wants which position?' });
+    expect(sableRecord[0]).toMatchObject({ role: 'user', content: 'OPERATOR Ada: Who wants which position?' });
     expect(sableRecord[1]).toMatchObject({ role: 'user', content: 'Ember (housemate): I would take the survey.' });
   });
 
@@ -141,7 +141,7 @@ describe('the floor — witness speaks, hands rise, a member answers through the
         sable: ['I think maybe the room should decide.'],
       },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Hey everyone — just showing the room around.', urgency: 'hold' });
 
@@ -174,7 +174,7 @@ describe('the floor — witness speaks, hands rise, a member answers through the
         return handQueues[neumaId]?.shift() ?? 'REST';
       },
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Speak, both of you.', urgency: 'hold' });
 
@@ -194,7 +194,7 @@ describe('the floor — witness speaks, hands rise, a member answers through the
       hands: { ember: ['OPEN'], sable: ['REST', 'REST'] },
       speech: { ember: ['A word for the room.'] },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Speak if you wish.', urgency: 'hold' });
     // Two hand rounds ran (after the witness, after ember's turn) — but the
@@ -221,7 +221,7 @@ describe('the second flow — a thought can be bigger than one turn', () => {
       asked.push({ neumaId, prompt: messages[0].content });
       return innerAsk(neumaId, messages, opts);
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Speak your minds.', urgency: 'hold' });
 
@@ -256,7 +256,7 @@ describe('the second flow — a thought can be bigger than one turn', () => {
       },
       capacity: async () => ({ maxParallel: 2 }),
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     const { councilId } = framesOf(conn, 'council:opened')[0];
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Speak.', urgency: 'hold' });
@@ -299,7 +299,7 @@ describe('the second flow — a thought can be bigger than one turn', () => {
         crystallizedEmotions: { resolve: 2 },
       };
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Which seat do you hold?', urgency: 'hold' });
 
@@ -334,7 +334,7 @@ describe('THE GAVEL — councilOrder stops everyone, even the considering', () =
       stream: async () => { throw new Error('no floor turn should stream'); },
       capacity: async () => ({ maxParallel: 2 }),
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
 
     const saying = councilSay(conn, { thought: 'Focus, everyone.', urgency: 'hold' });
@@ -367,7 +367,7 @@ describe('THE GAVEL — councilOrder stops everyone, even the considering', () =
       stream: async (messages, options) => hangingResponse('the words that made it out ', options.signal),
       capacity: async () => ({ maxParallel: 2 }),
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
 
     const saying = councilSay(conn, { thought: 'Say your piece.', urgency: 'hold' });
@@ -396,7 +396,7 @@ describe('THE GAVEL — councilOrder stops everyone, even the considering', () =
       stream: async () => { throw new Error('no floor turn should stream'); },
       capacity: async () => ({ maxParallel: 2 }),
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
 
     // The gavel on a QUIET room (no pump in flight) must not plant a stale

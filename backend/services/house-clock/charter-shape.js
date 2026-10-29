@@ -16,8 +16,13 @@
  *
  * Unknown keys are refused, never dropped: an operator who wrote a field
  * expects it to mean something, and a charter that silently ignored it would
- * be consent to something they never read.
+ * be consent to something they never read. So are unknown ACT ids in allow
+ * and escalate, when the caller hands in the acts the house knows
+ * (charter-store.js): a typo in […] would match nothing
+ * and hold nothing (2026-10-18 audit).
  */
+
+import { STOPS } from '../company-line/involvement-dial.js';
 
 /** Acts that move money out of the house. Never delegated, never pre-allowed. */
 export const MONEY_OUT = Object.freeze(['intents/wallet.send']);
@@ -38,7 +43,7 @@ export const ACTS_MAX = 32;
 const LANE_ID = /^[a-zA-Z0-9_-]{1,200}$/;
 const POLICY_ID = /^[a-z_]+\/[a-z0-9_.-]+$/;
 const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const KEYS = Object.freeze(['goal', 'linesOfWork', 'seats', 'quietHours', 'cadence', 'delegation', 'allow', 'escalate']);
+const KEYS = Object.freeze(['goal', 'linesOfWork', 'seats', 'quietHours', 'cadence', 'delegation', 'allow', 'escalate', 'involvement']);
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isCount = (v, max) => Number.isInteger(v) && v >= 1 && v <= max;
@@ -109,13 +114,23 @@ const delegationOf = (value) => {
   return Object.freeze({ teamPlans: d.teamPlans === true, maxMembers, maxSteps });
 };
 
-const actsOf = (value, field) => {
+// The involvement dial (company/involvement-dial.js): how close the operator
+// stands to the house's company work. Unwritten is null — the line then
+// stands at the dial's default.
+const involvementOf = (value) => {
+  if (value == null) return null;
+  if (!STOPS.includes(value)) throw new Error(`involvement is one of ${STOPS.join(', ')}`);
+  return value;
+};
+
+const actsOf = (value, field, knownActs) => {
   if (value == null) return [];
   if (!Array.isArray(value) || value.length > ACTS_MAX) throw new Error(`${field} is a list of at most ${ACTS_MAX} acts`);
   const out = [];
   for (const raw of value) {
     const id = typeof raw === 'string' ? raw.trim() : '';
     if (!POLICY_ID.test(id)) throw new Error(`"${raw}" in ${field} is not an act id (server/tool, e.g. intents/social.post)`);
+    if (knownActs && !knownActs.has(id)) throw new Error(`"${id}" in ${field} is not an act this house knows — check its spelling (e.g. intents/social.post, web/web_search)`);
     if (!out.includes(id)) out.push(id);
   }
   return out;
@@ -126,19 +141,20 @@ const actsOf = (value, field) => {
  * unlawful, with a message the operator can act on.
  *
  * @param {Object} input - the charter's fields as written
- * @param {{ownedLanes?: string[]}} [opts] - the house's own lanes (seats must be among them)
- * @returns {Readonly<Object>} goal, linesOfWork, seats, quietHours, cadence, delegation, allow, escalate
+ * @param {{ownedLanes?: string[], knownActs?: ?Set<string>}} [opts] - the house's own lanes (seats must be
+ *   among them); the act ids allow and escalate may name (none: any well-formed id)
+ * @returns {Readonly<Object>} goal, linesOfWork, seats, quietHours, cadence, delegation, allow, escalate, involvement
  */
-export const normalizeCharter = (input, { ownedLanes = null } = {}) => {
+export const normalizeCharter = (input, { ownedLanes = null, knownActs = null } = {}) => {
   if (!isObject(input)) throw new Error('a charter is an object');
   const unknown = Object.keys(input).filter((k) => !KEYS.includes(k));
   if (unknown.length) throw new Error(`the charter has no field ${unknown.map((k) => `"${k}"`).join(', ')}`);
-  const allow = actsOf(input.allow, 'allow');
+  const allow = actsOf(input.allow, 'allow', knownActs);
   for (const id of allow) {
     if (MONEY_OUT.includes(id)) throw new Error(`${id} moves money out — that is always the operator's to approve`);
     if (RESERVED_SERVERS.includes(id.split('/')[0])) throw new Error(`${id} reaches the sandbox — a charter cannot widen where a wake writes`);
   }
-  const escalate = actsOf(input.escalate, 'escalate');
+  const escalate = actsOf(input.escalate, 'escalate', knownActs);
   if (allow.some((id) => escalate.includes(id))) throw new Error('an act cannot be both allowed and escalated');
   return Object.freeze({
     goal: text(input.goal, 'goal', GOAL_MAX),
@@ -150,6 +166,7 @@ export const normalizeCharter = (input, { ownedLanes = null } = {}) => {
     allow: Object.freeze(allow),
     // Money out always comes back to the operator, written or not.
     escalate: Object.freeze([...new Set([...escalate, ...MONEY_OUT])]),
+    involvement: involvementOf(input.involvement),
   });
 };
 

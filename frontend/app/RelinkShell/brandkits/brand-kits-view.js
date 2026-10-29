@@ -163,3 +163,13 @@ export const unsetPath = (kit, dotted) => {
 /** Read a dotted path. Pure. */
 export const atPath = (kit, dotted) =>
   dotted.split('.').reduce((node, part) => (node == null ? undefined : node[part]), kit);
+
+/** What one house-ground read tells the editor: where a kit can land, or the
+ *  failure's own words. A failed read (getHouseWorkspace's `unread`) is never
+ *  "no ground set" — that answer offers SET THE GROUND over a ground that may
+ *  stand. Pure. */
+export const groundFromRead = (answer) => ({
+  known: true,
+  root: answer?.root || null,
+  unread: answer?.unread || null,
+});

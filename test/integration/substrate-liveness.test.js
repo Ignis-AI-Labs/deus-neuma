@@ -11,7 +11,7 @@ const { setConfig, getConfig } = await import('../../backend/services/llm-provid
 const { probeLiveness } = await import('../../backend/services/substrate-liveness.js');
 
 /**
- * […] (Design note, 2026-08-03.
+ * […] (ruling, 2026-08-03).
  *
  * A community member ran the ceremony three times. Every stage reported
  * complete. The EMERGING CONSCIOUSNESS panel was empty every time.

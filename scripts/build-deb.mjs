@@ -24,6 +24,8 @@ import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, chm
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { menuEntry } from './linux-menu-entry.mjs';
+import { packageDescription } from './installer-license.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const UNPACKED = join(ROOT, 'release', 'linux-unpacked');
@@ -46,16 +48,12 @@ const DEPENDS = [
   'libasound2', 'libgbm1', 'libdrm2',
 ];
 
-const desktop = `[Desktop Entry]
-Type=Application
-Name=NEUMA
-Comment=${pkg.description}
-Exec=neuma %U
-Icon=neuma
-Categories=Utility;
-Terminal=false
-StartupWMClass=NEUMA
-`;
+const desktop = menuEntry(pkg.description);
+
+// Debian's Description: the summary line, then the requirements as the extended
+// description (each line indented one space; a blank line is " .").
+const [summary, ...extended] = packageDescription(pkg.description).split('\n');
+const description = [summary, ...extended.map((l) => ` ${l || '.'}`)].join('\n');
 
 /** Installed-Size is in KiB and Debian policy expects it. impure (spawns du). */
 const installedSizeKiB = (dir) =>
@@ -93,7 +91,7 @@ update-desktop-database /usr/share/applications || true
 
   const control = `Package: neuma
 Version: ${pkg.version}
-License: BUSL-1.1
+License: ${pkg.license}
 Vendor: Ignis AI Labs LLC <legal@ignislabs.ai>
 Architecture: amd64
 Maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
@@ -102,8 +100,8 @@ Depends: ${DEPENDS.join(', ')}
 Recommends: libappindicator3-1
 Section: utils
 Priority: optional
-Homepage: https://github.com/Ignis-AI-Labs/deus-neuma
-Description: ${pkg.description}
+Homepage: ${pkg.homepage}
+Description: ${description}
 `;
 
   writeFileSync(join(controlRoot, 'control'), control);

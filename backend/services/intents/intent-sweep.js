@@ -53,6 +53,10 @@ import { createLogger } from '../logger.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { writeJsonAtomic } from '../user-realm.js';
 import { resolvePolicy, checkToolAccess, applyToolMode, normalizeToolMode, GLOBAL_DEFAULTS } from '../tool-policy.js';
+import { OPTIO_OFFICE_INTENTS } from '../tool-policy-defaults.js';
+import { mandateRenderAccess } from '../marketing/mandate/mandate-act.js';
+import { tripMandateForLane } from '../marketing/mandate/mandate-tripwire.js';
+import { cosDesignation } from '../staff/cos-designation.js';
 import { applyProtocolGuard, holdForWake } from '../protocol-guard.js';
 import { requestToolApproval } from '../tool-approval.js';
 import { grantAlwaysAllow, ACT_REFUSALS, refusalForDecision } from '../act-gate.js';
@@ -151,6 +155,15 @@ const executionStarted = async (dir, name) => {
   }
 };
 
+// impure (the designation) — the house's SEATED Optio assigns work and keeps
+// the board with no card (Design note, 2026-10-16: […]); every other lane asks, and an operator's own row on
+// the Optio's lane stands over the default.
+const optioOfficeAccess = async (connection, access, policyTool, ownRow) => {
+  if (access !== 'approval_required' || ownRow !== undefined || !OPTIO_OFFICE_INTENTS.includes(policyTool)) return access;
+  const officer = await cosDesignation.getOfficer(connection.walletAddress).catch(() => null);
+  return officer?.laneId && officer.laneId === connection.companion?.neumaId ? 'allowed' : access;
+};
+
 // Settle one intent file. Returns the one-line receipt the tool batch hands
 // back to the model THIS round, or null when the intent stays pending
 // (observe hold, interrupted card — see the header).
@@ -193,6 +206,8 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
     const reason = payload?.type == null
       ? 'the intent file has no "type" field — every intent must declare "type" as one of the types your INTENTS prompt section lists (e.g. "type": "social/queue")'
       : `unknown intent type "${payload.type}" — the INTENTS section of your prompt lists the types you may file`;
+    // A being filing a mandate act is reaching for its own grant: the mandate's widen tripwire.
+    if (/mandate/i.test(String(payload?.type ?? ''))) await tripMandateForLane({ wallet: connection.walletAddress, laneId, kind: 'widen', detail: `the CMO filed a "${String(payload.type).slice(0, 60)}" intent` });
     await writeResult(dir, name, { status: 'invalid', reason });
     await logToolCall(neumaWorkspace, laneId, 'intents', name, payload, 'denied', reason);
     emit({ tool: `intents/${payload?.type || 'unknown'}`, status: 'denied', summary: `intent — unknown type`, detail: reason });
@@ -205,14 +220,21 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   // `type` key named the registry entry — it is not an argument, so validate
   // and execute never see it (a spread payload would leak it into executors).
   const { type: _typeKey, ...fields } = payload;
+  // The name a person reads for THIS filing — one type may do two things a
+  // person tells apart (image/generate renders stills and videos). The filed
+  // type stays the type's own.
+  const shown = type.displayName ? type.displayName(fields) : type.name;
+  // The ACTS row THIS filing asks on — a type doing two acts the operator
+  // grants apart names it per filing (a video render asks on video.generate).
+  const policyTool = type.policyToolFor ? type.policyToolFor(fields) : type.policyTool;
   const verdict = await type.validate(fields, { connection });
   if (!current()) return null;
   if (!verdict.ok) {
     const chipStatus = verdict.status === 'invalid' ? 'error' : 'denied';
     await writeResult(dir, name, { status: verdict.status, reason: verdict.reason });
-    await logToolCall(neumaWorkspace, laneId, 'intents', type.policyTool, payload, 'denied', verdict.reason);
-    emit({ tool: tool(type.policyTool), status: chipStatus, summary: `${type.name} — ${verdict.status}`, detail: verdict.reason });
-    return { tool: tool(type.policyTool), status: chipStatus, error: verdict.reason };
+    await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'denied', verdict.reason);
+    emit({ tool: tool(policyTool), status: chipStatus, summary: `${shown} — ${verdict.status}`, detail: verdict.reason });
+    return { tool: tool(policyTool), status: chipStatus, error: verdict.reason };
   }
 
   // The ACTS tier. Intents are acts, never READ_TOOLS — observe mode's
@@ -220,36 +242,44 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   // guard rides after the mode: AUTO still pauses on its hard-gated classes
   // (outbound posts, spends) — protocol-guard.js.
   const policy = resolvePolicy(GLOBAL_DEFAULTS, lanePolicy, connection._sessionToolPolicy || null);
-  const baseAccess = checkToolAccess(policy, 'intents', type.policyTool);
-  const explicit = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`intents/${type.policyTool}`] === 'allowed';
+  const ownRow = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`intents/${policyTool}`];
+  const baseAccess = await optioOfficeAccess(connection, checkToolAccess(policy, 'intents', policyTool), policyTool, ownRow);
+  const explicit = ownRow === 'allowed';
   // A house wake's charter sends its escalated acts back to the operator, grant or none.
-  const access = holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, type.policyTool), mode, 'intents', type.policyTool, explicit), 'intents', type.policyTool);
+  const guarded = applyProtocolGuard(applyToolMode(baseAccess, mode, policyTool), mode, 'intents', policyTool, explicit);
+  // THE MANDATE answers a render's card when it covers renders (marketing/mandate/); a wake's holds still stand over it.
+  const access = holdForWake(connection, await mandateRenderAccess(connection, guarded, policyTool, type.summarize(payload)), 'intents', policyTool);
   if (access === 'denied') {
     if (baseAccess !== 'denied') return null; // observe: watching, not acting
     await writeResult(dir, name, { status: 'denied', reason: ACT_REFUSALS.policyDenied.error });
-    emit({ tool: tool(type.policyTool), status: 'denied', summary: `${type.name} — ${ACT_REFUSALS.policyDenied.summary}` });
-    return { tool: tool(type.policyTool), status: 'denied', error: ACT_REFUSALS.policyDenied.error };
+    emit({ tool: tool(policyTool), status: 'denied', summary: `${shown} — ${ACT_REFUSALS.policyDenied.summary}` });
+    return { tool: tool(policyTool), status: 'denied', error: ACT_REFUSALS.policyDenied.error };
   }
 
   if (access === 'approval_required') {
+    // A card no screen could show is no decision: the intent stays pending for
+    // the next sweep (a card already on screen when the portal closes parks).
+    if (!connection._approvalRefusal && connection.ws?.readyState !== connection.ws?.OPEN) return null;
     const decision = await requestToolApproval(connection, {
-      tool: tool(type.policyTool),
-      args: payload,
+      tool: tool(policyTool),
+      label: shown,
+      // A type whose act is more than its fields (a run's code) says what the card shows.
+      args: type.cardArgs ? type.cardArgs(verdict.value) : payload,
       scope: type.summarize(payload),
       signal,
     });
     if (!current()) return null;
     if (decision === 'always') {
-      await grantAlwaysAllow(connection, 'intents', type.policyTool, grantOrigin);
-      syncPolicy('intents', type.policyTool);
+      await grantAlwaysAllow(connection, 'intents', policyTool, grantOrigin);
+      syncPolicy('intents', policyTool);
     }
     if (decision === 'interrupted') return null; // no decision was made — pending
     if (decision !== 'allow' && decision !== 'always') {
       // The broker already journaled this refusal (one record law).
       const refusal = refusalForDecision(connection, decision);
       await writeResult(dir, name, { status: 'denied', reason: refusal.error });
-      emit({ tool: tool(type.policyTool), status: 'denied', summary: `${type.name} — ${refusal.summary}` });
-      return { tool: tool(type.policyTool), status: 'denied', error: refusal.error };
+      emit({ tool: tool(policyTool), status: 'denied', summary: `${shown} — ${refusal.summary}` });
+      return { tool: tool(policyTool), status: 'denied', error: refusal.error };
     }
   }
 
@@ -260,7 +290,7 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   await markExecuting(dir, name, type);
   // A disconnect or interrupt during persistence cannot authorize the act.
   if (!current()) return null;
-  emit({ tool: tool(type.policyTool), status: 'executing' });
+  emit({ tool: tool(policyTool), status: 'executing', summary: `${shown} — working` });
   // `emit` rides the execute context for executors with progress to report
   // (a render's fifths, a team's board); `extra` spreads into the receipt so
   // an executor can hand the stream a payload (a generated image's `sight`).
@@ -269,15 +299,15 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   if (outcome.ok) {
     await writeResult(dir, name, { status: 'done', detail: outcome.detail });
     await clearExecuting(dir, name);
-    await logToolCall(neumaWorkspace, laneId, 'intents', type.policyTool, payload, 'success', null);
-    emit({ tool: tool(type.policyTool), status: 'ok', summary: `${type.name} — done`, detail: outcome.detail });
-    return { tool: tool(type.policyTool), status: 'ok', content: outcome.detail, ...(outcome.extra || {}) };
+    await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'success', null);
+    emit({ tool: tool(policyTool), status: 'ok', summary: `${shown} — done`, detail: outcome.detail });
+    return { tool: tool(policyTool), status: 'ok', content: outcome.detail, ...(outcome.extra || {}) };
   }
   await writeResult(dir, name, { status: 'failed', reason: outcome.reason });
   await clearExecuting(dir, name);
-  await logToolCall(neumaWorkspace, laneId, 'intents', type.policyTool, payload, 'error', outcome.reason);
-  emit({ tool: tool(type.policyTool), status: 'error', summary: `${type.name} — failed`, detail: outcome.reason });
-  return { tool: tool(type.policyTool), status: 'error', error: outcome.reason };
+  await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'error', outcome.reason);
+  emit({ tool: tool(policyTool), status: 'error', summary: `${shown} — failed`, detail: outcome.reason });
+  return { tool: tool(policyTool), status: 'error', error: outcome.reason };
 };
 
 /**

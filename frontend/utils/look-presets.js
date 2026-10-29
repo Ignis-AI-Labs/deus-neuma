@@ -3,8 +3,10 @@
 // Curated within LINE & CYCLE discipline: a near-void ground, a barely
 // raised panel, one ink, ONE trim. ULTRAVIOLET and GOLDLEAF honor the two
 // accents retired from the brand sheet at ratification; the light dresses
-// (PARCHMENT, ALABASTER, SOLAR) close the shelf. VOID is the stock look
-// itself — choosing it clears the override entirely. Every trim keeps
+// (PARCHMENT, ALABASTER, SOLAR) close the shelf. CYBERDECK is the stock look
+// itself (Design note, 2026-10-28: […]) — choosing it clears the override entirely. STONE is the
+// neutral charcoal and calm blue; VOID is the original pure black and cyan,
+// kept whole for anyone who wants it. Every trim keeps
 // clear of ALERT's register (warnings must stay unmistakable), and a
 // light dress carries DARK accents so everything reads at data size.
 //
@@ -17,13 +19,15 @@
 //   ALERT / WARN / OKAY — the status registers, tuned to the dress's
 //   temperature but HELD in their semantic hue families (red / amber /
 //   green): a denial must read as a denial under every dress, and each
-//   stays distinct from the dress's own trim. VOID carries none: stock
-//   headings ride the ink, stock registers ride the stylesheet.
+//   stays distinct from the dress's own trim. CYBERDECK, the stock, claims
+//   only HEAD; every other voice rides the stylesheet.
 
 import { STOCK_LOOK } from './look-derive.js';
 
 export const STOCK_PRESETS = Object.freeze([
-  { id: 'void', name: 'VOID', theme: STOCK_LOOK },
+  { id: 'cyberdeck', name: 'CYBERDECK', theme: STOCK_LOOK },
+  { id: 'stone', name: 'STONE', theme: Object.freeze({ ground: '#1B1C1F', panel: '#25272B', ink: '#ECEAE6', trim: '#8AB4F8', head: '#ADACAA', body: '#ECEAE6', ital: '#ECEAE6', emph: '#ECEAE6', line: '#ECEAE6', alert: '#FF5533', warn: '#FFB86B', okay: '#00FF88' }) },
+  { id: 'void', name: 'VOID', theme: Object.freeze({ ground: '#000000', panel: '#000000', ink: '#FFFFFF', trim: '#5FE9FF', head: '#B3B3B3', body: '#FFFFFF', ital: '#FFFFFF', emph: '#FFFFFF', line: '#FFFFFF', alert: '#FF5533', warn: '#FFB86B', okay: '#00FF88' }) },
   { id: 'mono', name: 'MONO', theme: Object.freeze({ ground: '#000000', panel: '#0A0A0A', ink: '#FFFFFF', trim: '#FFFFFF', head: '#FFFFFF', body: '#F2F2F2', ital: '#C8C8C8', emph: '#FFFFFF', line: '#9A9A9A', alert: '#FF5533', warn: '#FFB86B', okay: '#00FF88' }) },
   { id: 'graphite', name: 'GRAPHITE', theme: Object.freeze({ ground: '#0B0C0E', panel: '#15171C', ink: '#F2F4F8', trim: '#8FA3BF', head: '#C7D2E0', body: '#E4E8EE', ital: '#A8B6C8', emph: '#F8FAFC', line: '#8A96A4', alert: '#F26D5E', warn: '#D9A95C', okay: '#57C994' }) },
   { id: 'ember', name: 'EMBER', theme: Object.freeze({ ground: '#0A0403', panel: '#160906', ink: '#FFF3E9', trim: '#FF7A45', head: '#FFC9A3', body: '#FFE8D6', ital: '#E8B08A', emph: '#FFF8F2', line: '#C4A090', alert: '#FF4A3D', warn: '#FFC067', okay: '#58E09C' }) },

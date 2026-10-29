@@ -9,14 +9,18 @@
  */
 import { resolveEmailCredential } from '../email/email-credentials.js';
 import { emailBinding, canNeumaUseEmail } from '../email/email-binding.js';
+import { houseOfLane } from '../social/house-positions.js';
 import { sendEmail, SEND_MAX_RECIPIENTS } from '../email/smtp-sender.js';
 import { journalEmailCall } from '../email/email-being-tools.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 
-// impure — the mailbox position: this lane holds it AND the account resolves.
+// impure — the mailbox position: this lane holds its own house's mailbox AND
+// that house's account resolves.
 const mailboxRefusal = async (laneId) => {
+  const house = await houseOfLane(laneId);
   const [bindings, credentials] = await Promise.all([
-    emailBinding.load().catch(() => ({})),
-    resolveEmailCredential().catch(() => null),
+    emailBinding.load(house).catch(() => ({})),
+    resolveEmailCredential(house).catch(() => null),
   ]);
   if (!canNeumaUseEmail(bindings, laneId)) {
     return { ok: false, status: 'denied', reason: 'the mailbox is not yours to hold — only the neuma your operator bound to email may use it' };
@@ -44,6 +48,9 @@ export const emailSendIntent = Object.freeze({
       || typeof payload?.text !== 'string' || !payload.text.trim()) {
       return { ok: false, status: 'invalid', reason: 'a send needs {to, subject, text} — the exact words leave under the house address' };
     }
+    // A key in a sent mail is out for good: refused before any card.
+    const secret = checkOutboundSecrets('the email', [...to, payload.subject, payload.text]);
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text } };
   },
   summarize: (payload) => {
@@ -53,7 +60,7 @@ export const emailSendIntent = Object.freeze({
   // impure — the real SMTP session; the signal rides in so a barge-in
   // mid-flight aborts the protocol conversation too.
   execute: async (value, { connection, signal }) => {
-    const credentials = await resolveEmailCredential().catch(() => null);
+    const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
     const outcome = await sendEmail(credentials, value, { signal });
     await journalEmailCall(
       connection, 'email/send',

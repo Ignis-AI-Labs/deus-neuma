@@ -8,8 +8,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   charterStatus, pauseSwitch, reasonWords, heldWords, outcomeWords, runningRows, queueRows,
-  ledgerRow, askRow, openAskCount, draftFromCharter, charterFromDraft, charterLines, ONE_AT_A_TIME, MONEY_OUT,
+  ledgerRow, draftFromCharter, charterFromDraft, charterLines, ONE_AT_A_TIME, MONEY_OUT, seatWake,
 } from '../../frontend/app/RelinkShell/house-clock/house-clock-view.js';
+import { askRow, openAskCount } from '../../frontend/app/RelinkShell/house-clock/asks-view.js';
 import { HouseClockBody } from '../../frontend/app/RelinkShell/house-clock/HouseClockBody.jsx';
 import { notificationTarget } from '../../frontend/app/RelinkShell/NotificationTray/notification-target.js';
 import { KIND } from '../../core/runtime/notification-record.js';
@@ -18,7 +19,7 @@ import { runGate } from '../../backend/services/house-clock/wake-gate.js';
 import { toDisplayMessages } from '../../frontend/app/RelinkShell/workspace-sessions.js';
 import { toHistoryMessages } from '../../frontend/app/RelinkShell/stream-reducer-messages.js';
 
-const NAMES = { 'lane-quae': 'Quae', 'lane-optio': 'Cael' };
+const NAMES = { 'lane-quae': 'Quae', 'lane-optio': 'Corin' };
 const BASE = {
   v: 1, goal: 'Find a real gap and build for it.', linesOfWork: ['research digests'],
   seats: [{ laneId: 'lane-quae', dailyCap: 2 }], quietHours: { start: '22:00', end: '07:00' }, cadence: { everyHours: 24 },
@@ -58,9 +59,39 @@ describe('house-clock-view — why a wake waits, from the gate\'s own words', ()
     expect(heldWords(why({ ...record, approvedVersion: null })).key).toBe('unapproved');
     expect(heldWords(why(null)).key).toBe('unapproved');
     expect(heldWords(why(record))).toEqual({ key: 'quiet', words: 'QUIET HOURS — 00:00–23:59' });
-    expect(heldWords(why({ ...record, quietHours: null }, 1))).toEqual({ key: 'cap', words: 'DAILY LIMIT REACHED — lane-quae has spent its 1 wakes for today' });
+    expect(heldWords(why({ ...record, quietHours: null }, 1), 'Quae')).toEqual({ key: 'cap', words: 'DAILY LIMIT REACHED — Quae has spent its 1 wakes for today' });
+    // the lane id never shows, named or not
+    expect(heldWords(why({ ...record, quietHours: null }, 1)).words).toBe('DAILY LIMIT REACHED — this member has spent its 1 wakes for today');
     expect(heldWords(why({ ...record, seats: [] })).key).toBe('seat');
     expect(heldWords('the house clock is not running').key).toBe('clock');
+  });
+
+  it('a member\'s light: awake, waiting for the model, held with its short reason, about to wake, asleep', () => {
+    const item = (id, seat) => ({ id, seat, reason: 'post', ref: id, queuedAt: '2026-10-16T10:00:00Z' });
+    const queue = {
+      items: [item('i1', 'lane-quae'), item('i2', 'lane-corin'), item('i3', 'lane-cosi'), item('i4', 'lane-orrin'), item('i5', 'lane-ada'), item('i6', 'lane-nyx')],
+      running: {
+        'lane-quae': { wakeId: 'w1', startedAt: '2026-10-16T10:00:03Z', itemIds: ['i1'] },
+        'lane-corin': { wakeId: 'w2', startedAt: '2026-10-16T10:00:03Z', itemIds: ['i2'], waitingForLine: true },
+      },
+      today: {},
+      held: [
+        { seat: 'lane-cosi', why: why({ ...record, paused: true }) },
+        { seat: 'lane-orrin', why: why(record) },
+        { seat: 'lane-ada', why: why({ ...record, quietHours: null }, 1) },
+      ],
+    };
+    expect(seatWake(queue, 'lane-quae')).toEqual({ key: 'awake', words: 'AWAKE', why: null });
+    expect(seatWake(queue, 'lane-corin')).toEqual({ key: 'waiting', words: 'WAITING FOR THE MODEL', why: null });
+    expect(seatWake(queue, 'lane-cosi')).toEqual({ key: 'held', words: 'HELD · PAUSED', why: 'PAUSED — the house is paused' });
+    expect(seatWake(queue, 'lane-orrin')).toMatchObject({ key: 'held', words: 'HELD · QUIET HOURS' });
+    expect(seatWake(queue, 'lane-ada')).toMatchObject({ key: 'held', words: 'HELD · DAILY LIMIT', why: expect.stringMatching(/^DAILY LIMIT REACHED — /) });
+    expect(seatWake(queue, 'lane-nyx')).toEqual({ key: 'next', words: 'ABOUT TO WAKE', why: null });
+    expect(seatWake(queue, 'lane-none')).toEqual({ key: 'asleep', words: 'ASLEEP', why: null });
+    // a running seat with more queued behind it is awake, never held or next
+    expect(seatWake({ ...queue, items: [...queue.items, item('i7', 'lane-quae')] }, 'lane-quae').key).toBe('awake');
+    // an unread queue says nothing rather than guess
+    expect(seatWake(null, 'lane-quae')).toBeNull();
   });
 
   it('reasons and outcomes read as words', () => {
@@ -90,6 +121,12 @@ describe('house-clock-view — why a wake waits, from the gate\'s own words', ()
     const rows = queueRows(queue, NAMES);
     expect(rows.map((r) => [r.key, r.wait.key])).toEqual([['i2', 'one-at-a-time'], ['i3', 'paused']]);
     expect(rows[0].wait.words).toBe(ONE_AT_A_TIME);
+    // a seat held by its daily limit is named, never shown by its lane id (the real gate's words)
+    const optio = { ...normalizeCharter({ goal: 'g', seats: [{ laneId: 'lane-optio', dailyCap: 2 }], quietHours: null }), version: 1, approvedAt: 'x', approvedVersion: 1, paused: false };
+    const cap = runGate({ charter: optio, seat: 'lane-optio', now: Date.now(), count: 2 }).why;
+    const capped = queueRows({ ...queue, held: [{ seat: 'lane-optio', why: cap }] }, NAMES);
+    expect(capped[1].wait.words).toBe(`DAILY LIMIT REACHED — ${NAMES['lane-optio']} has spent its 2 wakes for today`);
+    expect(capped[1].wait.words).not.toContain('lane-optio');
   });
 });
 
@@ -106,13 +143,14 @@ describe('house-clock-view — the ledger and the asks', () => {
     expect(row.acts).toEqual(['house/post — approved charter']);
   });
 
-  it('an ask: what, why, open or closed with the operator\'s note', () => {
+  it('an ask: what, why, open, answered, or dismissed with the operator\'s note', () => {
     const open = { id: 'a1', seat: 'lane-quae', kind: 'act', tool: 'intents/wallet.send', why: 'money out is always the operator\'s to approve', status: 'open', at: '2026-10-16T10:00:00Z', sessionId: 's1' };
     const closed = { ...open, id: 'a2', status: 'closed', closedAt: '2026-10-16T11:00:00Z', closeNote: 'not now' };
+    const answered = { ...open, id: 'a3', status: 'answered', answeredAt: '2026-10-16T11:00:00Z', answer: { decision: 'deny', text: 'no' } };
     expect(askRow(open, NAMES)).toMatchObject({ what: 'intents/wallet.send', open: true, closed: null, sessionId: 's1' });
-    expect(askRow(closed, NAMES).closed).toMatch(/^CLOSED .* — not now$/);
+    expect(askRow(closed, NAMES).closed).toMatch(/^DISMISSED .* — not now$/);
     expect(askRow({ ...open, kind: 'plan', planId: 'pl-1', tool: undefined }, NAMES).what).toBe('a team plan (pl-1)');
-    expect(openAskCount([open, closed])).toBe(1);
+    expect(openAskCount([open, closed, answered])).toBe(1);
   });
 });
 
@@ -135,6 +173,8 @@ describe('house-clock-view — the charter form, both ways', () => {
     expect(fields).toEqual({
       goal: 'Keep the digest going.', linesOfWork: [], seats: [{ laneId: 'lane-quae', dailyCap: 4 }],
       quietHours: null, cadence: null, delegation: { teamPlans: false, maxMembers: 4, maxSteps: 8 }, allow: [], escalate: [],
+      // A blank charter stands at the dial's default until the operator chooses (company line, 2026-10-29).
+      involvement: 'PARTNER',
     });
     expect(normalizeCharter(fields, { ownedLanes: ['lane-quae'] }).escalate).toEqual([MONEY_OUT]);
   });

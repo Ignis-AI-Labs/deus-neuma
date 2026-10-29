@@ -7,7 +7,7 @@
 // collapses, and only opens itself on a panel wide enough to hold it. The
 // editor column is designed to be the widest thing on screen.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KitContext } from './kit-context.js';
 import { useKitDraft } from './use-kit-draft.js';
 import { useKitSpec } from './use-kit-spec.js';
@@ -16,21 +16,30 @@ import { useKitMarks } from './use-kit-marks.js';
 import { sectionProgress, firstUnfinished } from './kit-progress.js';
 import { KitHeader } from './KitHeader.jsx';
 import { SectionRail } from './SectionRail.jsx';
-import { SectionEditor, RAW_SECTION } from './SectionEditor.jsx';
+import { SectionEditor, RAW_SECTION, SOURCES_SECTION } from './SectionEditor.jsx';
 import { ReadinessReport } from './ReadinessReport.jsx';
 import { NewKitDialog } from './NewKitDialog.jsx';
 import { CardPreview } from './CardPreview.jsx';
 import { EmptyState } from '../empty-state.jsx';
+import { takeBrandSection, onBrandSection } from './brand-landing.js';
 
 /** Below this the preview would take the editor's room, so it starts closed. */
 const PREVIEW_FROM = 1180;
 
 const RAW_ENTRY = { id: RAW_SECTION, label: 'THE WHOLE KIT', done: 0, total: 0, ready: true, gaps: [] };
 
-export const BrandKitsShell = () => {
+/**
+ * `brand` opens that kit on arrival (MARKETING's BRAND tab: a company is its
+ * kit); a door that names one of its sections (brand-landing.js) opens on it.
+ */
+export const BrandKitsShell = ({ brand = null }) => {
   const kit = useKitDraft();
+  const { openKit } = kit;
+  const listed = kit.kits !== null;
+  useEffect(() => { if (brand && listed) openKit(brand); }, [brand, listed, openKit]);
   const { spec, error: specError } = useKitSpec();
-  const [active, setActive] = useState(null);
+  const [active, setActive] = useState(() => takeBrandSection(brand));
+  useEffect(() => onBrandSection(brand, setActive), [brand]);
   const [naming, setNaming] = useState(false);
   const [showPreview, setShowPreview] = useState(
     () => (typeof window === 'undefined' ? false : window.innerWidth >= PREVIEW_FROM),
@@ -46,8 +55,8 @@ export const BrandKitsShell = () => {
   // Opens on the first section that still needs something — the panel's job is
   // getting a kit FINISHED, not showing it from the top.
   const current = active || (kit.draft ? firstUnfinished(spec.form, kit.draft) : null);
-  const section = current === RAW_SECTION
-    ? { id: RAW_SECTION }
+  const section = current === RAW_SECTION || current === SOURCES_SECTION
+    ? { id: current }
     : spec.form.sections.find((s) => s.id === current);
 
   return (
@@ -67,6 +76,7 @@ export const BrandKitsShell = () => {
           onNew={() => setNaming(true)}
           onSave={kit.save}
           onGround={(root) => kit.setNotice(`House ground set to ${root}.`)}
+          onRetryGround={() => kit.readGround()}
         />
 
         {!kit.open ? (
@@ -84,6 +94,13 @@ export const BrandKitsShell = () => {
           <div className="bk-body">
             <div className="bk-rail-col">
               <SectionRail sections={progress} active={current} onPick={setActive} />
+              <button
+                type="button"
+                className={`bk-rail-row bk-rail-raw${current === SOURCES_SECTION ? ' is-on' : ''}`}
+                onClick={() => setActive(SOURCES_SECTION)}
+              >
+                <span className="bk-rail-name label-data">SITE &amp; CODE</span>
+              </button>
               <button
                 type="button"
                 className={`bk-rail-row bk-rail-raw${current === RAW_SECTION ? ' is-on' : ''}`}

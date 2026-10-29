@@ -33,6 +33,7 @@ import { useLiveVoice } from './use-live-voice.js';
 import { LiveButton, RefineButton, useRefineDraft } from './ComposerTools.jsx';
 import { commandFromInput } from './commands.js';
 import { useCommandDispatch } from './use-command-dispatch.js';
+import { useCompactNote } from './use-compact-note.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { stepRecall, mayStep } from './sent-history.js';
 import { filesFrom } from './attachments.js';
@@ -44,6 +45,7 @@ import { VoxChip } from './VoxChip.jsx';
 import { ComposeGauge } from './ComposeGauge.jsx';
 import { escTapChain } from './draft-wipe.js';
 import { useStreamDraft } from './use-stream-draft.js';
+import { useAskIntake } from './use-ask-intake.js';
 import { useHoldToTalk } from './use-hold-to-talk.js';
 import { useSlashPalette, StreamPalette } from './StreamPalette.jsx';
 import { useStreamAttachments, AttachmentRow } from './StreamAttachments.jsx';
@@ -83,12 +85,14 @@ const MicIcon = () => (
 const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, onStop, onBargeIn, recall, sentHistory = [], maxChars = null, neumaId = null, canQueue = false, heldCount = 0, onEscapeInterrupt = null, onEscapeOrder = null, onEscapeRecallQueued = null, purpose = 'work', wsService = null, draftScope = null }) => {
   const fieldRef = useRef(null);
   const { value, setValue } = useStreamDraft({ wsService, neumaId, draftScope });
+  useAskIntake(fieldRef, setValue);
   // Where the history walk stands (null = not walking). A ref, not state —
   // it only matters inside the keydown that moves it.
   const recallCursorRef = useRef(null);
   // The one honest refusal line for an over-cap draft (cleared the moment
   // the draft shrinks under the cap, or on a successful send).
   const [sendNote, setSendNote] = useState(null);
+  useCompactNote(setSendNote);
   // The Escape ladder's standing: {at, chain, wiped} — when the last Escape
   // landed, which rung it reached, and the draft rung 2 wiped (restored if
   // the chain climbs on). Typing breaks the chain.
@@ -175,7 +179,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
     // honor the same gate, not send behind the affordance's back. An
     // attachment alone is a complete thought; text is optional when one rides.
     // `canQueue`: the caller holds mid-stream words and delivers them when the
-    // current action finishes, so a busy stream is no longer a closed door (Design note, 2026-07-26.
+    // current action finishes, so a busy stream is no longer a closed door (ruling, 2026-07-26).
     // Without it, busy still blocks — every existing caller behaves as before.
     if ((!text && ready.length === 0) || !connected || (busy && !canQueue) || uploading) return;
     if (ready.length === 0) {
@@ -193,7 +197,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
       const { images, files } = payload;
       const ids = await uploadAttachments({ images, files });
       // The FILES' NAMES ride the send — the operator's own bubble shows what
-      // was attached (Design note, 2026-09-17, live and after a reload.
+      // was attached (ruling, 2026-09-17), live and after a reload.
       fire(text, undefined, { ids, previews: images, names: files.map((f) => f.name) }, revisionRef.current ?? undefined);
       revisionRef.current = null; // a sent word retires the revision marker
       setValue('');
@@ -323,7 +327,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                   if (chain === 1 && !value && onEscapeRecallQueued) {
                     // The FIRST tap, empty-handed, while the portal holds a
                     // word: it comes home to be reworked, the flow untouched
-                    // (Design note, 2026-08-16. A drafted field is never stomped.
+                    // (ruling, 2026-08-16). A drafted field is never stomped.
                     e.preventDefault();
                     uiSound('tick');
                     onEscapeRecallQueued();
@@ -392,7 +396,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
             </button>
             {busy ? (
               <>
-                {/* MID-STREAM (Design note, 2026-07-26: while a reply runs, the witness
+                {/* MID-STREAM (ruling, 2026-07-26): while a reply runs, the witness
                     keeps BOTH ways to speak — interject now, or hold the word
                     for the next completed action — beside the stop. Watching a
                     being work stopped being read-only. */}

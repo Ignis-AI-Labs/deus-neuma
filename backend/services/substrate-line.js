@@ -19,10 +19,13 @@
 //     run at most capacity - 1 at once between them (the operator's slot, f0df1dd39), unless the
 //     server has a single slot.
 //   - Waiting is honest: a waiter is told its place and who is ahead, every time the line moves.
+//   - A heavy job takes the MACHINE (machine-lease.js — while a clip renders, everything else
+//     waits): while a 'machine' lease waits nothing new is admitted, so the line drains; it is admitted when nothing runs; while it runs nothing
+//     else is. No machine lease in line = the law above, unchanged.
 //
 // impure (module state is the line's own — one per process, like the server it fronts).
 
-/** @typedef {'turn'|'member'|'wake'|'background'} LineKind */
+/** @typedef {'turn'|'member'|'wake'|'background'|'machine'} LineKind */
 
 const PEOPLE = new Set(['turn', 'member', 'wake']);
 // The house working on its own — a team's members, a seat's wake — beside the operator's chat.
@@ -34,7 +37,10 @@ const HOUSE_WORK = new Set(['member', 'wake']);
  * @returns {number} the index in `waiting` to admit now, or -1
  */
 export const nextAdmission = ({ capacity, running, waiting }) => {
-  if (running.length >= capacity || waiting.length === 0) return -1;
+  if (waiting.length === 0 || running.some((r) => r.kind === 'machine')) return -1;
+  const machine = waiting.findIndex((w) => w.kind === 'machine');
+  if (machine >= 0) return running.length === 0 ? machine : -1;
+  if (running.length >= capacity) return -1;
   const houseRunning = running.filter((r) => HOUSE_WORK.has(r.kind)).length;
   const houseRoom = capacity <= 1 ? capacity : capacity - 1;
   const peopleWaiting = waiting.some((w) => PEOPLE.has(w.kind));

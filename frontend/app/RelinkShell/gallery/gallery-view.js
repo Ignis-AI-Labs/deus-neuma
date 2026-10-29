@@ -171,6 +171,21 @@ export const neighborOf = (items, current, delta) => {
 };
 
 /**
+ * The item a render's image id names, for a tray card landing on it. A
+ * being's render is stored as `<imageId>.<ext>` in its own art folder
+ * (image-store.js), so the file's name carries the id. Pure.
+ * @param {Array<object>} items the whole scan
+ * @param {unknown} imageId
+ * @returns {object|null}
+ */
+export const itemOfImage = (items, imageId) => {
+  if (typeof imageId !== 'string' || imageId === '') return null;
+  const named = (name) => typeof name === 'string' && name.lastIndexOf('.') > 0
+    && name.slice(0, name.lastIndexOf('.')) === imageId;
+  return (Array.isArray(items) ? items : []).find((it) => named(it?.name)) || null;
+};
+
+/**
  * Where the open item sits in the view, for a "3 of 40" readout. Pure.
  * @returns {{index: number, total: number}|null} index is 1-based
  */

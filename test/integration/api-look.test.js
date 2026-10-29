@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * Integration test for the LOOK API (Settings > LOOK). The route + the look
@@ -40,6 +41,7 @@ describe('Look API (the platform dress)', () => {
     // claims no workspace is exactly the right shape.
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
 
     app = await buildApp();
   });

@@ -26,3 +26,14 @@ test('carried readings describe their actual historical source rather than a cha
   expect(html).toContain('last measured turn');
   expect(html).not.toContain('chars/4');
 });
+
+test('the sections the shed ladder cut ride a SHED row, ids and estimates only', () => {
+  const event = {
+    ...buildCompositionEvent({ sections: [{ id: 'identity', label: 'Identity', text: 'identity text' }] }),
+    shed: [{ id: 'personality', tokens: 1200 }, { id: 'voice', tokens: 400 }],
+  };
+  const html = renderToStaticMarkup(React.createElement(CompositionView, { composition: event }));
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+  expect(text).toContain('SHED');
+  expect(text).toContain('PERSONALITY ~1,200, VOICE ~400 · THE WINDOW COULD NOT HOLD THEM');
+});

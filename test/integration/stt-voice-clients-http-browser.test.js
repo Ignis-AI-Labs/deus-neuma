@@ -1,12 +1,12 @@
 /* global window, sessionStorage */
 /**
- * stt-client + voice-client lifecycle migration proof (#174 family F10+F11) —
- * the real client modules in a real Chromium page against the real engine and
- * forge routers with real HMAC auth. Claims: the anonymous bailouts fire no
- * request; the null-fallback reads resolve null on every refusal shape; the
- * fire-and-forget calls (warmTranscriber, abandonForge) never reject and never
- * surface a page error; and every migrated site raises neuma:auth_expired on a
- * real 401-with-token. The whisper sidecar is NEVER launched: every launch
+ * stt-client + forge-client lifecycle proof (#174 family F10+F11) — the real
+ * client modules in a real Chromium page against the real engine and forge
+ * routers with real HMAC auth. Claims: the anonymous bailouts fire no request;
+ * the null-fallback reads resolve null on every refusal shape; the
+ * fire-and-forget calls (warmTranscriber, the forge's endForge) never reject
+ * and never surface a page error; and every site raises neuma:auth_expired on
+ * a real 401-with-token. The whisper sidecar is NEVER launched: every launch
  * POST here dies at requireAuth (invalid token) or at the route's unknown-
  * engine refusal (400) before any process or GPU memory is spent.
  *
@@ -55,12 +55,12 @@ test('stt/voice lifecycle clients preserve null and fire-and-forget contracts an
     app.use('/api/v1/voice/engines', (await import('../../backend/routes/voice-engine-routes.js')).default);
     app.use('/api/v1/voice/forge', (await import('../../backend/routes/voice-forge-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send(
       '<script type="module">'
       + 'import * as stt from "/frontend/app/RelinkShell/stt-client.js";'
-      + 'import * as voice from "/frontend/app/RelinkShell/voice-client.js";'
-      + 'window.stt = stt; window.voice = voice; window.expired = 0;'
+      + 'import * as forge from "/frontend/app/RelinkShell/voice-forge/forge-client.js";'
+      + 'window.stt = stt; window.forge = forge; window.expired = 0;'
       + 'window.addEventListener("neuma:auth_expired", () => window.expired++);'
       + '</script>'));
     app.use(vite.middlewares);
@@ -72,7 +72,7 @@ test('stt/voice lifecycle clients preserve null and fire-and-forget contracts an
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${server.address().port}`);
-    const pageReady = () => page.waitForFunction(() => window.stt && window.voice, null, { timeout: 30000 });
+    const pageReady = () => page.waitForFunction(() => window.stt && window.forge, null, { timeout: 30000 });
     await pageReady();
 
     // impure — run one REAL attempt; retry only while no HTTP response has
@@ -81,7 +81,7 @@ test('stt/voice lifecycle clients preserve null and fire-and-forget contracts an
     // real refusal, a real success and a real regression are never retried.
     const snapshot = async () => {
       try {
-        return await page.evaluate(() => ({ ready: Boolean(window.stt && window.voice), expired: window.expired ?? -1 }));
+        return await page.evaluate(() => ({ ready: Boolean(window.stt && window.forge), expired: window.expired ?? -1 }));
       } catch (error) {
         return { probe: String(error && error.message) };
       }
@@ -141,17 +141,10 @@ test('stt/voice lifecycle clients preserve null and fire-and-forget contracts an
       return value;
     });
 
-    // --- Unauthenticated: every site bails locally except abandonForge, whose
-    // legacy idiom always fired the DELETE (authHeaders() || {}) — preserved.
+    // --- Unauthenticated: every site bails locally.
     await drive(() => page.evaluate(() => window.stt.warmTranscriber()));
     expect(await drive(() => page.evaluate(() => window.stt.dictationReadiness()))).toBeNull();
     expect(await drive(() => page.evaluate(() => window.stt.modelDownloadStatus()))).toBeNull();
-    expect(await drive(() => page.evaluate(() => window.voice.prewarmEngine('kokoro')))).toBeNull();
-    expect(await drive(() => page.evaluate(() => window.voice.getEngineStatus('whisper')))).toBeNull();
-    expect(await refusalLeg(
-      () => window.voice.abandonForge('no-token-session'),
-      'DELETE', '/api/v1/voice/forge/no-token-session', 401,
-    )).toBeUndefined();
     // No token held → no alarm, and warmTranscriber never left the page.
     expect(await drive(() => page.evaluate(() => window.expired))).toBe(0);
     expect(requests.every((r) => !(r.method === 'POST' && r.url.includes('/whisper/launch')))).toBe(true);
@@ -165,23 +158,11 @@ test('stt/voice lifecycle clients preserve null and fire-and-forget contracts an
     await drive(() => page.evaluate(token => sessionStorage.setItem('authToken', token), auth.token));
     expect(await valueLeg(() => window.stt.dictationReadiness())).toEqual(expectedReadiness);
     expect(await valueLeg(() => window.stt.modelDownloadStatus())).toEqual({ state: 'idle' });
-    const status = await valueLeg(() => window.voice.getEngineStatus('whisper'));
-    expect(status.readiness).toEqual(expectedReadiness);
-    expect(typeof status.state).toBe('string');
-    // Refusals resolve null: unknown engine 404 on status, unknown engine 400
-    // on launch (the route refuses before any spawn), unknown session 404.
+    // Refusal resolves null: an unknown session is a real 404.
     expect(await refusalLeg(
-      () => window.voice.getEngineStatus('not-an-engine'),
-      'GET', '/api/v1/voice/engines/local/not-an-engine', 404,
-    )).toBeNull();
-    expect(await refusalLeg(
-      () => window.voice.prewarmEngine('not-an-engine'),
-      'POST', '/api/v1/voice/engines/local/not-an-engine/launch', 400,
-    )).toBeNull();
-    expect(await refusalLeg(
-      () => window.voice.abandonForge('no-such-session'),
+      () => window.forge.endForge('no-such-session'),
       'DELETE', '/api/v1/voice/forge/no-such-session', 404,
-    )).toBeUndefined();
+    )).toBeNull();
     expect(await drive(() => page.evaluate(() => window.expired))).toBe(0);
     requests.length = 0;
 
@@ -218,17 +199,9 @@ test('stt/voice lifecycle clients preserve null and fire-and-forget contracts an
       'GET', '/api/v1/voice/engines/local/whisper/download/status',
     )).toBeNull();
     expect(await rottenLeg(
-      () => window.voice.getEngineStatus('whisper'),
-      'GET', '/api/v1/voice/engines/local/whisper',
-    )).toBeNull();
-    expect(await rottenLeg(
-      () => window.voice.prewarmEngine('kokoro'),
-      'POST', '/api/v1/voice/engines/local/kokoro/launch',
-    )).toBeNull();
-    expect(await rottenLeg(
-      () => window.voice.abandonForge('ghost-session'),
+      () => window.forge.endForge('ghost-session'),
       'DELETE', '/api/v1/voice/forge/ghost-session',
-    )).toBeUndefined();
+    )).toBeNull();
 
     // Fire-and-forget never produced an unhandled rejection or any page error.
     expect(errors).toEqual([]);

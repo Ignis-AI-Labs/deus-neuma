@@ -14,15 +14,7 @@ export {
   laneOf, splitQueueIntoSections, AWAITING_LABEL, splitLaneIntoGroups,
   replyDispositionLabel, replyNeedsAttention,
 } from './queue-board.js';
-
-/**
- * Parse a comma-separated pillars input into the string[] the ledger keeps.
- * @param {string} raw
- * @returns {string[]}
- */
-// pure
-export const parsePillars = (raw) =>
-  raw.split(',').map((p) => p.trim()).filter(Boolean);
+import { absWhen, relWhen } from './queue-when.js';
 
 /**
  * The X permalink for a post id — the handle-free /i/status/ form, which
@@ -51,33 +43,7 @@ export const replyWhenLabel = (c, now = Date.now()) => {
 // daily instrument — […]). Pure, so the
 // whole truth table is unit-tested.
 
-const DAYS = Object.freeze(['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
-const MONTHS = Object.freeze(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']);
-
-const pad2 = (n) => String(n).padStart(2, '0');
-
-// pure — compact absolute time, 12-HOUR (Design note, 2026-07-27: […]): within the
-// week → 'TUE 9:12 PM', further out → 'JUL 27 · 9:30 AM'. Noon and midnight
-// stay honest ('12:00 PM' / '12:05 AM').
-const absWhen = (date, now) => {
-  const h = date.getHours();
-  const hhmm = `${h % 12 === 0 ? 12 : h % 12}:${pad2(date.getMinutes())} ${h < 12 ? 'AM' : 'PM'}`;
-  return Math.abs(now - date.getTime()) < 7 * 864e5
-    ? `${DAYS[date.getDay()]} ${hhmm}`
-    : `${MONTHS[date.getMonth()]} ${date.getDate()} · ${hhmm}`;
-};
-
-// pure — compact relative distance: '45M', '3H 12M', '2D 3H'. NOW under a
-// minute — a scheduled slot firing reads live, never '0M'.
-const relWhen = (ms) => {
-  const mins = Math.round(Math.abs(ms) / 60000);
-  if (mins < 1) return 'NOW';
-  if (mins < 60) return `${mins}M`;
-  const h = Math.floor(mins / 60);
-  if (h < 48) return mins % 60 ? `${h}H ${mins % 60}M` : `${h}H`;
-  const d = Math.floor(h / 24);
-  return h % 24 ? `${d}D ${h % 24}H` : `${d}D`;
-};
+// The compact absolute time and distance live in queue-when.js (the card's countdown reads them too).
 
 /**
  * The entry's one meta line — when it happens or when it happened, in the
@@ -95,7 +61,7 @@ export const queueWhenLabel = (entry, now = Date.now()) => {
     return Number.isNaN(t) ? null : new Date(t);
   };
   const scheduled = at(entry?.scheduledFor);
-  // THE REPLY'S CLOCK IS NOT A SLOT (Design note, 2026-08-06: an answer rides no
+  // THE REPLY'S CLOCK IS NOT A SLOT (ruling, 2026-08-06): an answer rides no
   // calendar — approval itself sends it — so its live standings speak the
   // approval law and the TTL, never the scheduler's vocabulary. Settled
   // standings (sending/sent/failed/…) read their moment like any entry.
@@ -178,20 +144,6 @@ export const queueToneOf = (status) => {
     case 'sending': return 'live';
     case 'failed': return 'failed';
     default: return 'done';
-  }
-};
-
-/** The standing chip's short label, in the lanes' own vocabulary. Pure. */
-export const queueStandingLabel = (entry) => {
-  switch (String(entry?.status || '')) {
-    case 'draft': return 'AWAITS YOUR DECISION';
-    case 'approved': return 'APPROVED';
-    case 'sending': return 'SENDING…';
-    case 'sent': return entry?.postId ? `SENT (${entry.postId})` : 'SENT';
-    case 'failed': return 'DID NOT SEND';
-    case 'rejected': return 'DECLINED';
-    case 'withdrawn': return 'WITHDRAWN';
-    default: return String(entry?.status || 'UNKNOWN').toUpperCase();
   }
 };
 

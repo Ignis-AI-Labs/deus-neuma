@@ -4,7 +4,7 @@
  * SUBSTRATE) and deriveRouteStatus (the bound lane's own route). Pure truth
  * tables — the two lights must never borrow each other's truth: a cloud
  * provider's bad day once read as "SUBSTRATE — OFFLINE" over a resting local
- * model, and deliberate idle-rest once read as a failure (Design note, 2026-07-27.
+ * model, and deliberate idle-rest once read as a failure (ruling, 2026-07-27).
  *
  * i18n wave 2: the lights return CATALOG KEYS + args (desk namespace,
  * hud.*); the words are the renderer's. The en catalog holds the pre-i18n

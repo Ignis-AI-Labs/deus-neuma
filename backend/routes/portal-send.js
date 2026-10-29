@@ -5,6 +5,7 @@
 import { createLogger } from '../services/logger.js';
 import { setNotificationSender, notifyOperator } from '../services/notification-bus.js';
 import { setActivityNotifier } from '../services/image-forge/forge-activity.js';
+import { renderNoticeTitle } from '../services/image-forge/render-kind.js';
 import { setRunFrameSender } from '../services/team-run-live.js';
 import { readOwnerStrict } from '../middleware/require-neuma-owner.js';
 import { KIND, STANDING } from '../../core/runtime/notification-record.js';
@@ -140,8 +141,6 @@ setActivityNotifier(async (record) => {
   const owner = await readOwnerStrict(record.laneId);
   if (owner.status !== 'ok') return;
 
-  const failed = record.phase === 'error';
-  const stopped = record.phase === 'stopped';
   const imageId = Array.isArray(record.images) && record.images.length > 0
     ? record.images[0].imageId ?? null
     : null;
@@ -150,11 +149,7 @@ setActivityNotifier(async (record) => {
     wallet: owner.owner.wallet,
     kind: KIND.renderDone,
     standing: STANDING.neuma,
-    title: failed
-      ? `${record.beingName || 'A being'} could not finish a render`
-      : (stopped
-        ? `${record.beingName || 'A being'} stopped a render`
-        : `${record.beingName || 'A being'} finished a render`),
+    title: renderNoticeTitle(record),
     detail: record.pipelineLabel || record.detail || null,
     actor: { id: record.laneId, name: record.beingName || record.laneId },
     ref: { jobId: record.jobId, imageId, phase: record.phase },

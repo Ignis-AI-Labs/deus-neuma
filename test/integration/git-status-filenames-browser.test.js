@@ -31,7 +31,7 @@ test.skipIf(process.platform === 'win32')('quoted names carry their Git badges t
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(temp, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/git-status-filenames.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     const app = express();
     app.use('/api/v1/user/files', router);

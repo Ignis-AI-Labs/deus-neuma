@@ -2,7 +2,7 @@
 // birth flight check's own probe payload (GET /api/v1/preflight/setup). Pure.
 import { describe, expect, it } from 'vitest';
 import {
-  localServers, localGuide, endpointToStore, serverModels, sameEndpoint,
+  localServers, localGuide, endpointToStore, serverModels, sameEndpoint, modelLabel, readyModelLabel,
 } from '../../frontend/app/FirstRunChoice/local-servers.js';
 
 const setup = (providers) => ({ providers });
@@ -102,5 +102,24 @@ describe('serverModels / sameEndpoint', () => {
   it('folds localhost and a trailing slash', () => {
     expect(sameEndpoint('http://localhost:1234/', 'http://127.0.0.1:1234')).toBe(true);
     expect(sameEndpoint('http://localhost:1234', 'http://localhost:1235')).toBe(false);
+  });
+});
+
+describe('the model a person can talk to, named plainly', () => {
+  it('drops the Hugging Face host, owner and -GGUF; keeps the quant; leaves other ids as they are', () => {
+    expect(modelLabel('hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M')).toBe('Qwen3.8-4B-Distill · Q4_K_M');
+    expect(modelLabel('hf.co/org/Some-Model')).toBe('Some-Model');
+    expect(modelLabel('llama3.2:3b')).toBe('llama3.2:3b');
+    expect(modelLabel(undefined)).toBe('');
+  });
+  it('names the first model a ready server holds, or nothing', () => {
+    const setup = { providers: { ollama: { running: false, models: [], endpoint: 'http://localhost:11434' }, lmStudio: { running: false, models: [], endpoint: 'http://localhost:1234' },
+      discovered: [{ provider: 'ollama', endpoint: 'http://127.0.0.1:40075', models: ['hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M'] }] } };
+    expect(readyModelLabel(setup)).toBe('Qwen3.8-4B-Distill · Q4_K_M');
+    expect(readyModelLabel({ providers: {} })).toBeNull();
+  });
+  it('names nothing for a server launched from a file descriptor (it reports the descriptor)', () => {
+    const fd = { providers: { discovered: [{ provider: 'llama-server', endpoint: 'http://127.0.0.1:8089', models: ['/proc/self/fd/4'] }] } };
+    expect(readyModelLabel(fd)).toBeNull();
   });
 });

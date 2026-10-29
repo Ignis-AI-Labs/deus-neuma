@@ -19,8 +19,8 @@ const run = (actions, start = initialState) => actions.reduce(reducer, start);
 const words = (m) => m.segments.filter((s) => s.kind === 'speech').map((s) => s.text).join('');
 
 const MEMBERS = [
-  { neumaId: 'fenna', name: 'Fenna' },
-  { neumaId: 'cael', name: 'Cael' },
+  { neumaId: 'alder', name: 'Alder' },
+  { neumaId: 'birch', name: 'Birch' },
 ];
 
 const OPENED = { type: 'OPENED', councilId: 'c1', members: MEMBERS };
@@ -38,8 +38,8 @@ describe('council-reducer', () => {
   test('OPENED clears a prior sitting (transcript, hands, error)', () => {
     const state = run([
       OPENED,
-      { type: 'SAID', name: 'Founder', content: 'hello all', turnId: 't0' },
-      { type: 'STATE', floor: 'fenna', hands: [{ neumaId: 'cael', hand: 'hold' }], witnessQueue: 1 },
+      { type: 'SAID', name: 'Ada', content: 'hello all', turnId: 't0' },
+      { type: 'STATE', floor: 'alder', hands: [{ neumaId: 'birch', hand: 'hold' }], witnessQueue: 1 },
       { type: 'ERROR', code: 'X', message: 'broke' },
       { type: 'OPENED', councilId: 'c2', members: [MEMBERS[0]] },
     ]);
@@ -56,19 +56,19 @@ describe('council-reducer', () => {
       OPENED,
       {
         type: 'STATE',
-        floor: 'fenna',
+        floor: 'alder',
         hands: [
-          { neumaId: 'fenna', hand: 'rest' },
-          { neumaId: 'cael', hand: 'open', note: 'I disagree', order: 1 },
+          { neumaId: 'alder', hand: 'rest' },
+          { neumaId: 'birch', hand: 'open', note: 'I disagree', order: 1 },
         ],
         witnessQueue: 2,
         witnessOrder: 2,
       },
     ]);
-    expect(state.floor).toBe('fenna');
+    expect(state.floor).toBe('alder');
     expect(state.hands).toEqual({
-      fenna: { hand: 'rest', note: '', order: null },
-      cael: { hand: 'open', note: 'I disagree', order: 1 },
+      alder: { hand: 'rest', note: '', order: null },
+      birch: { hand: 'open', note: 'I disagree', order: 1 },
     });
     expect(state.witnessQueue).toBe(2);
     expect(state.witnessOrder).toBe(2);
@@ -93,7 +93,7 @@ describe('council-reducer', () => {
   });
 
   // The per-seat `grounds` map and the GROUND action were REMOVED on
-  // 2026-07-27 (Founder: […]). The room no longer
+  // 2026-07-27: the focus ground is the consent. The room no longer
   // negotiates a ground per seat — the folder the operator has open IS the
   // ground, the server resolves and reachability-checks it, and the room
   // renders that single answer. What replaced these cases is the one below:
@@ -121,9 +121,9 @@ describe('council-reducer', () => {
     const AT = 1770000000000;
     const state = run([
       OPENED,
-      { type: 'SAID', name: 'Founder', content: 'hello all', turnId: 't0', at: AT },
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'Present.', at: AT + 1000 },
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: ' Listening.', at: AT + 9000 },
+      { type: 'SAID', name: 'Ada', content: 'hello all', turnId: 't0', at: AT },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'Present.', at: AT + 1000 },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: ' Listening.', at: AT + 9000 },
     ]);
     expect(state.messages[0].at).toBe(AT);          // the witness's word
     expect(state.messages[1].at).toBe(AT + 1000);   // the turn keeps its mint moment
@@ -132,8 +132,8 @@ describe('council-reducer', () => {
     const reopened = run([{
       ...OPENED,
       transcript: [
-        { speaker: 'witness', name: 'Founder', content: 'as we said', at: '2026-07-20T14:00:00.000Z' },
-        { speaker: 'fenna', name: 'Fenna', content: 'indeed' },
+        { speaker: 'witness', name: 'Ada', content: 'as we said', at: '2026-07-20T14:00:00.000Z' },
+        { speaker: 'alder', name: 'Alder', content: 'indeed' },
       ],
     }]);
     expect(reopened.messages[0].at).toBe('2026-07-20T14:00:00.000Z');
@@ -143,17 +143,17 @@ describe('council-reducer', () => {
   test('an act lands IN the turn, in flow — words continue below the chip', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'cael', turnId: 't1', content: 'Laying the record down. ' },
-      { type: 'TOOL_ACTING', neumaId: 'cael', turnId: 't1', tool: 'write_file', path: '/mnt/house/repos/notes.md' },
-      { type: 'TOOL_RESULT', neumaId: 'cael', turnId: 't1', tool: 'write_file', path: '/mnt/house/repos/notes.md', ok: true },
-      { type: 'SPEECH', neumaId: 'cael', turnId: 't1', content: 'Done.' },
-      { type: 'SPOKE', neumaId: 'cael', turnId: 't1' },
+      { type: 'SPEECH', neumaId: 'birch', turnId: 't1', content: 'Laying the record down. ' },
+      { type: 'TOOL_ACTING', neumaId: 'birch', turnId: 't1', tool: 'write_file', path: '/mnt/house/repos/notes.md' },
+      { type: 'TOOL_RESULT', neumaId: 'birch', turnId: 't1', tool: 'write_file', path: '/mnt/house/repos/notes.md', ok: true },
+      { type: 'SPEECH', neumaId: 'birch', turnId: 't1', content: 'Done.' },
+      { type: 'SPOKE', neumaId: 'birch', turnId: 't1' },
     ]);
     // ONE message, three segments, in arrival order — never a clump of
     // acts after the words.
     expect(state.messages).toHaveLength(1);
     const m = state.messages[0];
-    expect(m).toMatchObject({ speaker: 'cael', name: 'Cael', live: false });
+    expect(m).toMatchObject({ speaker: 'birch', name: 'Birch', live: false });
     expect(m.segments.map((s) => s.kind)).toEqual(['speech', 'tool', 'speech']);
     expect(m.segments[1]).toMatchObject({ phase: 'resolved', label: 'write_file', path: '/mnt/house/repos/notes.md', ok: true });
     expect(words(m)).toBe('Laying the record down. Done.');
@@ -162,14 +162,14 @@ describe('council-reducer', () => {
   test('a streamed block opens an acting chip that the settle resolves in place', () => {
     const mid = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'cael', turnId: 't1', content: 'Writing now.' },
-      { type: 'TOOL_OPEN', neumaId: 'cael', turnId: 't1' },
-      { type: 'TOOL_LABEL', neumaId: 'cael', turnId: 't1', label: 'write_file' },
+      { type: 'SPEECH', neumaId: 'birch', turnId: 't1', content: 'Writing now.' },
+      { type: 'TOOL_OPEN', neumaId: 'birch', turnId: 't1' },
+      { type: 'TOOL_LABEL', neumaId: 'birch', turnId: 't1', label: 'write_file' },
     ]);
     expect(mid.messages[0].segments[1]).toMatchObject({ kind: 'tool', phase: 'acting', label: 'write_file' });
     const done = run([
-      { type: 'TOOL_ACTING', neumaId: 'cael', turnId: 't1', tool: 'write_file', path: '/mnt/house/a.md' },
-      { type: 'TOOL_RESULT', neumaId: 'cael', turnId: 't1', tool: 'write_file', path: '/mnt/house/a.md', ok: true },
+      { type: 'TOOL_ACTING', neumaId: 'birch', turnId: 't1', tool: 'write_file', path: '/mnt/house/a.md' },
+      { type: 'TOOL_RESULT', neumaId: 'birch', turnId: 't1', tool: 'write_file', path: '/mnt/house/a.md', ok: true },
     ], mid);
     // Still one chip — announced, targeted, then resolved IN PLACE.
     expect(done.messages[0].segments).toHaveLength(2);
@@ -179,7 +179,7 @@ describe('council-reducer', () => {
   test('a refused act carries its refusal — and can be born of nothing but the act', () => {
     const state = run([
       OPENED,
-      { type: 'TOOL_RESULT', neumaId: 'cael', turnId: 't1', tool: 'write_file', path: '/etc/passwd', ok: false, error: 'Path outside allowed roots' },
+      { type: 'TOOL_RESULT', neumaId: 'birch', turnId: 't1', tool: 'write_file', path: '/etc/passwd', ok: false, error: 'Path outside allowed roots' },
     ]);
     // No words had streamed — the act alone minted the turn.
     expect(state.messages).toHaveLength(1);
@@ -191,26 +191,26 @@ describe('council-reducer', () => {
   test('SPOKE settles a chip left acting — nothing pulses in a finished turn', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'cael', turnId: 't1', content: 'Trying.' },
-      { type: 'TOOL_OPEN', neumaId: 'cael', turnId: 't1' },
-      { type: 'SPOKE', neumaId: 'cael', turnId: 't1' },
+      { type: 'SPEECH', neumaId: 'birch', turnId: 't1', content: 'Trying.' },
+      { type: 'TOOL_OPEN', neumaId: 'birch', turnId: 't1' },
+      { type: 'SPOKE', neumaId: 'birch', turnId: 't1' },
     ]);
     expect(state.messages[0].segments[1]).toMatchObject({ kind: 'tool', phase: 'resolved', ok: false });
   });
 
   test('a stray TOOL_LABEL with no turn standing is a no-op — no phantom turn', () => {
     const seeded = run([OPENED]);
-    expect(reducer(seeded, { type: 'TOOL_LABEL', neumaId: 'cael', turnId: 't1', label: 'write_file' })).toBe(seeded);
+    expect(reducer(seeded, { type: 'TOOL_LABEL', neumaId: 'birch', turnId: 't1', label: 'write_file' })).toBe(seeded);
   });
 
   test('acts resolve FIFO — two chips standing, the first settles first', () => {
     const state = run([
       OPENED,
-      { type: 'TOOL_OPEN', neumaId: 'cael', turnId: 't1' },
-      { type: 'TOOL_LABEL', neumaId: 'cael', turnId: 't1', label: 'create_directory' },
-      { type: 'TOOL_OPEN', neumaId: 'cael', turnId: 't1' },
-      { type: 'TOOL_LABEL', neumaId: 'cael', turnId: 't1', label: 'write_file' },
-      { type: 'TOOL_RESULT', neumaId: 'cael', turnId: 't1', tool: 'create_directory', path: '/mnt/house/repos', ok: true },
+      { type: 'TOOL_OPEN', neumaId: 'birch', turnId: 't1' },
+      { type: 'TOOL_LABEL', neumaId: 'birch', turnId: 't1', label: 'create_directory' },
+      { type: 'TOOL_OPEN', neumaId: 'birch', turnId: 't1' },
+      { type: 'TOOL_LABEL', neumaId: 'birch', turnId: 't1', label: 'write_file' },
+      { type: 'TOOL_RESULT', neumaId: 'birch', turnId: 't1', tool: 'create_directory', path: '/mnt/house/repos', ok: true },
     ]);
     const segs = state.messages[0].segments;
     expect(segs[0]).toMatchObject({ phase: 'resolved', label: 'create_directory', ok: true });
@@ -220,12 +220,12 @@ describe('council-reducer', () => {
   test('STATE carries who is considering; junk reads as nobody', () => {
     const thinking = run([
       OPENED,
-      { type: 'STATE', floor: null, hands: [], witnessQueue: 0, considering: ['cael', 7, 'fenna'] },
+      { type: 'STATE', floor: null, hands: [], witnessQueue: 0, considering: ['birch', 7, 'alder'] },
     ]);
-    expect(thinking.considering).toEqual(['cael', 'fenna']);
+    expect(thinking.considering).toEqual(['birch', 'alder']);
     const done = run([
       OPENED,
-      { type: 'STATE', floor: null, hands: [], witnessQueue: 0, considering: ['cael'] },
+      { type: 'STATE', floor: null, hands: [], witnessQueue: 0, considering: ['birch'] },
       { type: 'STATE', floor: null, hands: [], witnessQueue: 0 },
     ]);
     expect(done.considering).toEqual([]);
@@ -234,45 +234,45 @@ describe('council-reducer', () => {
   test('a state without order clears a prior order — the line is the server’s word, never stale', () => {
     const state = run([
       OPENED,
-      { type: 'STATE', floor: null, hands: [{ neumaId: 'cael', hand: 'hold', order: 1 }], witnessQueue: 1, witnessOrder: 2 },
-      { type: 'STATE', floor: 'cael', hands: [{ neumaId: 'cael', hand: 'rest' }], witnessQueue: 0 },
+      { type: 'STATE', floor: null, hands: [{ neumaId: 'birch', hand: 'hold', order: 1 }], witnessQueue: 1, witnessOrder: 2 },
+      { type: 'STATE', floor: 'birch', hands: [{ neumaId: 'birch', hand: 'rest' }], witnessQueue: 0 },
     ]);
-    expect(state.hands.cael.order).toBeNull();
+    expect(state.hands.birch.order).toBeNull();
     expect(state.witnessOrder).toBeNull();
   });
 
   test('a hands update replaces the previous map — a lowered hand goes quiet', () => {
     const state = run([
       OPENED,
-      { type: 'STATE', floor: null, hands: [{ neumaId: 'cael', hand: 'open' }], witnessQueue: 0 },
-      { type: 'STATE', floor: 'cael', hands: [{ neumaId: 'cael', hand: 'rest' }], witnessQueue: 0 },
+      { type: 'STATE', floor: null, hands: [{ neumaId: 'birch', hand: 'open' }], witnessQueue: 0 },
+      { type: 'STATE', floor: 'birch', hands: [{ neumaId: 'birch', hand: 'rest' }], witnessQueue: 0 },
     ]);
-    expect(state.hands.cael.hand).toBe('rest');
+    expect(state.hands.birch.hand).toBe('rest');
   });
 
   test('SAID appends a settled witness message', () => {
-    const state = run([OPENED, { type: 'SAID', name: 'Founder', content: 'begin', turnId: 'w1' }]);
+    const state = run([OPENED, { type: 'SAID', name: 'Ada', content: 'begin', turnId: 'w1' }]);
     expect(state.messages).toEqual([
-      { speaker: 'witness', name: 'Founder', turnId: 'w1', at: null, segments: [{ kind: 'speech', text: 'begin' }], live: false },
+      { speaker: 'witness', name: 'Ada', turnId: 'w1', at: null, segments: [{ kind: 'speech', text: 'begin' }], live: false },
     ]);
   });
 
   test('SPEECH mints the turn live on first chunk and appends thereafter', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'I think ' },
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'we should.' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'I think ' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'we should.' },
     ]);
     expect(state.messages).toEqual([
-      { speaker: 'fenna', name: 'Fenna', turnId: 't1', at: null, segments: [{ kind: 'speech', text: 'I think we should.' }], live: true },
+      { speaker: 'alder', name: 'Alder', turnId: 't1', at: null, segments: [{ kind: 'speech', text: 'I think we should.' }], live: true },
     ]);
   });
 
   test('SPOKE settles exactly its turn', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'done now.' },
-      { type: 'SPOKE', neumaId: 'fenna', turnId: 't1' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'done now.' },
+      { type: 'SPOKE', neumaId: 'alder', turnId: 't1' },
     ]);
     expect(state.messages[0].live).toBe(false);
   });
@@ -280,25 +280,25 @@ describe('council-reducer', () => {
   test('interleaving safety: chunks for a NEW turn while the old one settles', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'first turn ' },
-      // Cael takes the floor before Fenna's settle frame lands.
-      { type: 'SPEECH', neumaId: 'cael', turnId: 't2', content: 'second ' },
-      { type: 'SPOKE', neumaId: 'fenna', turnId: 't1' },
-      { type: 'SPEECH', neumaId: 'cael', turnId: 't2', content: 'turn.' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'first turn ' },
+      // Birch takes the floor before Alder's settle frame lands.
+      { type: 'SPEECH', neumaId: 'birch', turnId: 't2', content: 'second ' },
+      { type: 'SPOKE', neumaId: 'alder', turnId: 't1' },
+      { type: 'SPEECH', neumaId: 'birch', turnId: 't2', content: 'turn.' },
     ]);
     expect(state.messages).toHaveLength(2);
-    expect(state.messages[0]).toMatchObject({ speaker: 'fenna', live: false });
+    expect(state.messages[0]).toMatchObject({ speaker: 'alder', live: false });
     expect(words(state.messages[0])).toBe('first turn ');
-    expect(state.messages[1]).toMatchObject({ speaker: 'cael', live: true });
+    expect(state.messages[1]).toMatchObject({ speaker: 'birch', live: true });
     expect(words(state.messages[1])).toBe('second turn.');
   });
 
   test('same member, back-to-back turns: a new turnId opens a new message', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'one' },
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't3', content: 'two' },
-      { type: 'SPOKE', neumaId: 'fenna', turnId: 't1' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'one' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't3', content: 'two' },
+      { type: 'SPOKE', neumaId: 'alder', turnId: 't1' },
     ]);
     expect(state.messages).toHaveLength(2);
     expect(state.messages[0]).toMatchObject({ turnId: 't1', live: false });
@@ -310,22 +310,22 @@ describe('council-reducer', () => {
   test('a straggling chunk after its turn settled is dropped — the record stands', () => {
     const state = run([
       OPENED,
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'said.' },
-      { type: 'SPOKE', neumaId: 'fenna', turnId: 't1' },
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: ' late chunk' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'said.' },
+      { type: 'SPOKE', neumaId: 'alder', turnId: 't1' },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: ' late chunk' },
     ]);
     expect(state.messages).toHaveLength(1);
     expect(words(state.messages[0])).toBe('said.');
   });
 
   test('SPOKE for an unknown turn is a no-op', () => {
-    const seeded = run([OPENED, { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'x' }]);
-    expect(reducer(seeded, { type: 'SPOKE', neumaId: 'cael', turnId: 't9' })).toBe(seeded);
+    const seeded = run([OPENED, { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'x' }]);
+    expect(reducer(seeded, { type: 'SPOKE', neumaId: 'birch', turnId: 't9' })).toBe(seeded);
   });
 
   test('an empty SPEECH chunk is a no-op', () => {
     const seeded = run([OPENED]);
-    expect(reducer(seeded, { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: '' })).toBe(seeded);
+    expect(reducer(seeded, { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: '' })).toBe(seeded);
   });
 
   test('a speaker outside the opened roster still lands, named by id', () => {
@@ -343,8 +343,8 @@ describe('council-reducer', () => {
     const state = run([
       OPENED,
       { type: 'PAST', councils: past },
-      { type: 'SPEECH', neumaId: 'fenna', turnId: 't1', content: 'words' },
-      { type: 'STATE', floor: 'fenna', hands: [{ neumaId: 'cael', hand: 'hold' }], witnessQueue: 1 },
+      { type: 'SPEECH', neumaId: 'alder', turnId: 't1', content: 'words' },
+      { type: 'STATE', floor: 'alder', hands: [{ neumaId: 'birch', hand: 'hold' }], witnessQueue: 1 },
       { type: 'CLOSED' },
     ]);
     expect(state).toEqual({ ...initialState, past });
@@ -354,15 +354,15 @@ describe('council-reducer', () => {
     const state = run([{
       type: 'OPENED',
       councilId: 'council-9',
-      members: [{ neumaId: 'fenna', name: 'Fenna' }, { neumaId: 'cael', name: 'Cael' }],
+      members: [{ neumaId: 'alder', name: 'Alder' }, { neumaId: 'birch', name: 'Birch' }],
       transcript: [
-        { speaker: 'witness', name: 'Founder', content: 'What do we hold?' },
-        { speaker: 'fenna', name: 'Fenna', content: 'The east road.' },
+        { speaker: 'witness', name: 'Ada', content: 'What do we hold?' },
+        { speaker: 'alder', name: 'Alder', content: 'The east road.' },
       ],
     }]);
     expect(state.messages).toHaveLength(2);
     expect(state.messages.every((m) => m.live === false)).toBe(true);
-    expect(state.messages[1]).toMatchObject({ speaker: 'fenna', name: 'Fenna' });
+    expect(state.messages[1]).toMatchObject({ speaker: 'alder', name: 'Alder' });
     expect(words(state.messages[1])).toBe('The east road.');
     // Restored turns carry stable keys of their own namespace.
     expect(state.messages.map((m) => m.turnId)).toEqual(['restored-0', 'restored-1']);
@@ -378,8 +378,8 @@ describe('council-reducer', () => {
     const state = run([OPENED, {
       type: 'HANDS',
       reports: [
-        { neumaId: 'fenna', hand: 'rest', note: '', received: 'answered' },
-        { neumaId: 'cael', hand: null, note: '', received: 'unreachable' },
+        { neumaId: 'alder', hand: 'rest', note: '', received: 'answered' },
+        { neumaId: 'birch', hand: null, note: '', received: 'unreachable' },
       ],
     }]);
     expect(state.messages).toHaveLength(1);
@@ -388,8 +388,8 @@ describe('council-reducer', () => {
     expect(entry.live).toBe(false);
     expect(entry.segments).toEqual([]); // tail-follow reads it like any message
     expect(entry.reports).toEqual([
-      { neumaId: 'fenna', hand: 'rest', note: '', received: 'answered' },
-      { neumaId: 'cael', hand: null, note: '', received: 'unreachable' },
+      { neumaId: 'alder', hand: 'rest', note: '', received: 'answered' },
+      { neumaId: 'birch', hand: null, note: '', received: 'unreachable' },
     ]);
   });
 
@@ -397,14 +397,14 @@ describe('council-reducer', () => {
     const state = run([OPENED, {
       type: 'HANDS',
       reports: [
-        { neumaId: 'fenna', hand: 'waving', note: 42, received: 'perhaps' },
+        { neumaId: 'alder', hand: 'waving', note: 42, received: 'perhaps' },
         { hand: 'open' }, // no neumaId — dropped
         null,
       ],
     }]);
     expect(state.messages).toHaveLength(1);
     expect(state.messages[0].reports).toEqual([
-      { neumaId: 'fenna', hand: null, note: '', received: 'answered' },
+      { neumaId: 'alder', hand: null, note: '', received: 'answered' },
     ]);
     // A round with nothing legible appends nothing.
     const empty = run([OPENED, { type: 'HANDS', reports: [null, {}] }]);
@@ -418,7 +418,7 @@ describe('ORDER — THE GAVEL in the record', () => {
   test('appends the order mark, stamps its moment, clears the considering', () => {
     const state = run([
       OPENED,
-      { type: 'STATE', floor: null, hands: [], witnessQueue: 0, considering: ['n-fenna'] },
+      { type: 'STATE', floor: null, hands: [], witnessQueue: 0, considering: ['n-alder'] },
       { type: 'ORDER', at: 1700000000000 },
     ]);
     expect(state.considering).toEqual([]);
@@ -434,7 +434,7 @@ describe("APPROVAL — the witness's gate in the room's flow", () => {
   test('an ask rises pending, and server truth settles it', () => {
     const asked = run([
       OPENED,
-      { type: 'APPROVAL_ASK', id: 'ap-1', tool: 'read_text_file', args: '{"path": "/x"}', scope: 'Rugevil asks to READ outside the house ground: /x', at: 1700000000000 },
+      { type: 'APPROVAL_ASK', id: 'ap-1', tool: 'read_text_file', args: '{"path": "/x"}', scope: 'Linden asks to READ outside the house ground: /x', at: 1700000000000 },
     ]);
     const chip = asked.messages.at(-1);
     expect(chip).toMatchObject({ kind: 'approval', phase: 'pending', id: 'ap-1', tool: 'read_text_file' });

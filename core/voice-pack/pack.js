@@ -4,7 +4,7 @@
  * grammar: what an entry IS, what the first-seal receipt IS, and how the pack
  * hashes. IO lives in voice-store.js; selection/render lives in curation.js.
  *
- * The laws (Design note, 2026-08-18:
+ * The laws (ruling, 2026-08-18):
  * - The repository ACCRETES FOREVER. No update path, no delete path, no
  *   eviction — an entry, once sealed, is part of the being's record.
  * - The stamp is platform-minted: id, sealedAt, and textSha256 are spread

@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import fsp from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * Integration tests for the projects API. The projects service + user-files
@@ -31,6 +32,11 @@ describe('User projects API routes', () => {
     // is exactly the right shape for the witness's own project list.
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    // Opening a project's folder for the machine is the install owner's act
+    // (a guest's project stays in its own house — project-guest-ground.test.js):
+    // this witness owns the install these tests run on.
+    process.env.NEUMA_DATA_ROOT = await createTempDir('proj-data');
+    await makeInstallOwner(witness.address);
     // The REAL settings module, aimed at a real throwaway file (#390 tranche
     // 3). NEUMA_FILES_SETTINGS_PATH is the module's own isolation door and is
     // read per call, so the persist path runs for real and the operator's

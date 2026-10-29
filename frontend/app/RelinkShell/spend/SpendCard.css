@@ -1,0 +1,160 @@
+/* SpendCard — a being's pending spend, decided by the operator (#586).
+   LINE & CYCLE: monochrome at rest; the signal marks the live decision, the
+   alert only what could hurt (a first-time address, a short wallet, a
+   Quaestor's deny, the last hour). The being's own words ride the voice
+   register; every figure and label rides the data register. */
+
+.spend {
+  background: var(--line);
+  margin: 0 0 var(--space-3);
+}
+.spend-in {
+  background: var(--color-glass);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.spend.is-expired { opacity: 0.55; }
+
+.spend-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.spend-kind {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--signal);
+  border: 1px solid var(--signal-dim);
+  padding: 1px var(--space-2);
+}
+.spend-who {
+  flex: 1 1 auto;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+}
+.spend-left {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+.spend-left.is-closing { color: var(--alert); }
+
+.spend-amount { margin: 0; }
+.spend-figure {
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.spend-asset {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+}
+
+.spend-reason {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.spend-reason.is-none {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+.spend-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+.spend-facts dt {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+.spend-facts dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.spend-addr {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.spend-sub {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+}
+.spend-sub.is-loud { color: var(--alert); }
+.spend-review {
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.spend-warn {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--alert);
+  border-left: 2px solid var(--alert-dim);
+  padding-left: var(--space-2);
+}
+
+.spend-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.spend-pass,
+.spend-note {
+  flex: 1 1 12rem;
+  min-width: 0;
+  background: var(--color-input-fill);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  padding: 4px var(--space-2);
+}
+.spend-note { width: 100%; resize: vertical; }
+.spend-pass:focus,
+.spend-note:focus { outline: none; border-color: var(--signal-dim); background: var(--color-input-fill-focus); }
+.spend-deny { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.spend-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  padding: 4px var(--space-3);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.spend-btn:disabled { opacity: 0.4; cursor: default; }
+.spend-btn.is-go { color: var(--signal); border-color: var(--signal-dim); }
+.spend-btn.is-deny { color: var(--alert); border-color: var(--alert-dim); }
+.spend-btn:hover:not(:disabled) { border-color: var(--line-hover); color: var(--color-text-primary); }
+
+.spend-err {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--alert);
+}

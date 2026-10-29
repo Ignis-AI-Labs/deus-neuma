@@ -23,8 +23,9 @@ import crypto from 'crypto';
 import { getAppConfig } from '../config.js';
 import { getCachedKey, hasCachedKey } from '../routes/neuma-auth-routes.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
-import { isRecipientAllowed, requiresApproval, buildApprovalMessage, classifySpend, toAllowlist } from '../../core/wallet/spend-policy.js';
+import { isRecipientAllowed, requiresApproval, buildApprovalMessage, classifySpend, spendMemo, toAllowlist } from '../../core/wallet/spend-policy.js';
 import { decryptKeypair } from '../../core/wallet/keypair-vault.js';
+import { readSpendRecords, recordAutonomousSpend } from './treasury/spend-records.js';
 
 // --- Rate limiting ---
 
@@ -55,9 +56,17 @@ const checkTxRateLimit = (neumaId) => {
 // ETH_RPC_URL (Ethereum L1), which reported an honest zero for funds living
 // on Base (witnessed on Cael's funding, 2026-07-15).
 const NEUMA_WALLET_NETWORKS = Object.freeze({
-  'base': Object.freeze({ cfgKey: 'baseMainnetRpcUrl', publicRpc: 'https://mainnet.base.org' }),
-  'base-sepolia': Object.freeze({ cfgKey: 'baseSepoliaRpcUrl', publicRpc: 'https://sepolia.base.org' }),
+  'base': Object.freeze({ cfgKey: 'baseMainnetRpcUrl', publicRpc: 'https://mainnet.base.org', chainId: 8453 }),
+  'base-sepolia': Object.freeze({ cfgKey: 'baseSepoliaRpcUrl', publicRpc: 'https://sepolia.base.org', chainId: 84532 }),
 });
+
+/**
+ * The network a neuma-wallet read for this requested key actually lands on —
+ * so a reply can name the chain its number came from. Pure.
+ * @param {string|null|undefined} network
+ * @returns {'base'|'base-sepolia'}
+ */
+export const walletNetworkKey = (network) => (Object.hasOwn(NEUMA_WALLET_NETWORKS, network) ? network : 'base');
 
 /**
  * Resolve the RPC url for a neuma-wallet read/act. Configured endpoint first
@@ -68,14 +77,26 @@ const NEUMA_WALLET_NETWORKS = Object.freeze({
  * @returns {string}
  */
 export const resolveWalletRpc = (network, cfg) => {
-  const net = NEUMA_WALLET_NETWORKS[network] || NEUMA_WALLET_NETWORKS.base;
+  const net = NEUMA_WALLET_NETWORKS[walletNetworkKey(network)];
   return (cfg && cfg[net.cfgKey]) || net.publicRpc;
 };
 
+// One provider per network and endpoint, on its known chain (staticNetwork).
+// A provider per read was never destroyed, and one whose RPC had failed
+// re-ran network detection every second for the life of the process.
+const providers = new Map(); // `${network}\n${url}` → JsonRpcProvider
+
+// impure — reads config, caches the provider
 const getProvider = (network = 'base') => {
   let cfg;
   try { cfg = getAppConfig(); } catch { cfg = null; }
-  return new ethers.JsonRpcProvider(resolveWalletRpc(network, cfg));
+  const key = walletNetworkKey(network);
+  const url = resolveWalletRpc(key, cfg);
+  const cacheKey = `${key}\n${url}`;
+  if (!providers.has(cacheKey)) {
+    providers.set(cacheKey, new ethers.JsonRpcProvider(url, ethers.Network.from(NEUMA_WALLET_NETWORKS[key].chainId), { staticNetwork: true }));
+  }
+  return providers.get(cacheKey);
 };
 
 // --- Operator approval (transfers above the autonomous threshold) ---
@@ -184,14 +205,31 @@ export const getBalance = async (neumaId, { network } = {}) => {
  * @returns {Promise<Object>} Transaction receipt summary
  */
 // Per-transaction value cap — 0.1 ETH. Prevents single compromised request from draining wallet. (AI-SEC-008)
-const MAX_TX_VALUE_ETH = 0.1;
+export const MAX_TX_VALUE_ETH = '0.1';
+const MAX_TX_VALUE_WEI = ethers.parseEther(MAX_TX_VALUE_ETH);
+
+// impure (throws) — the value in wei, parsed exactly as the send moves it.
+// One parse for every gate: a float read let "0.050000000000000001" pass a
+// 0.05 threshold and the 0.1 cap by a wei. A value parseEther refuses, or a
+// negative one, is refused before any gate.
+const valueWeiOf = (value) => {
+  if (!value) return 0n;
+  let wei;
+  try {
+    wei = ethers.parseEther(String(value));
+  } catch {
+    throw new Error(`Transaction value ${String(value).slice(0, 40)} is not an ETH amount`);
+  }
+  if (wei < 0n) throw new Error('Transaction value cannot be negative');
+  return wei;
+};
 
 export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
   if (!checkTxRateLimit(neumaId)) {
     throw new Error('Transaction rate limit exceeded (max 10/hour)');
   }
 
-  const valueEth = tx.value ? parseFloat(String(tx.value)) : 0;
+  const valueWei = valueWeiOf(tx.value);
 
   // DEFAULT-DENY recipient allowlist — checked before the cached key is pulled,
   // so a disallowed send never consumes the operator's unlock. (AI-SEC: drain guard)
@@ -204,10 +242,10 @@ export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
   // Autonomous (at/under threshold) sends keep the absolute per-tx safety cap; a
   // operator-approved send authorizes the exact amount and may exceed that cap.
   const threshold = await neumaWorkspace.readSpendThreshold(neumaId);
-  if (requiresApproval(threshold?.thresholdEth, valueEth)) {
+  if (requiresApproval(threshold?.thresholdEth, tx.value ?? 0)) {
     await verifyWitnessApproval(neumaId, tx.to, tx.value, tx.approval);
-  } else if (valueEth > MAX_TX_VALUE_ETH) {
-    throw new Error(`Transaction value ${valueEth} ETH exceeds max ${MAX_TX_VALUE_ETH} ETH per tx`);
+  } else if (valueWei > MAX_TX_VALUE_WEI) {
+    throw new Error(`Transaction value ${ethers.formatEther(valueWei)} ETH exceeds max ${MAX_TX_VALUE_ETH} ETH per tx`);
   }
 
   const keypair = signingKeypair || getCachedKey(neumaId);
@@ -225,7 +263,7 @@ export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
 
   const txResponse = await wallet.sendTransaction({
     to: tx.to,
-    value: tx.value ? ethers.parseEther(String(tx.value)) : 0n,
+    value: valueWei,
     data: '0x',
   });
 
@@ -277,25 +315,25 @@ export const requestSpend = async (neumaId, { to, value, memo } = {}) => {
       id: crypto.randomBytes(8).toString('hex'),
       to,
       value: String(value),
-      memo: typeof memo === 'string' ? memo.slice(0, 280) : '',
+      memo: spendMemo(memo),
       nonce: crypto.randomBytes(16).toString('hex'),
       expiry: Math.floor(Date.now() / 1000) + APPROVAL_TTL_SEC,
       requestedAt: new Date().toISOString(),
       status: 'pending',
     };
-    const requests = await neumaWorkspace.readPendingSpends(neumaId);
-    requests.push(request);
-    await neumaWorkspace.writePendingSpends(neumaId, requests);
+    await neumaWorkspace.updatePendingSpends(neumaId, (requests) => [...requests, request]);
     return { status: 'pending', request };
   }
 
-  // autonomous — allowlisted and within the operator-set threshold
+  // autonomous — allowlisted, within the operator's threshold; recorded either way (spend-records.js)
+  let outcome;
   try {
-    const receipt = await sendTransaction(neumaId, { to, value });
-    return { status: 'sent', receipt };
+    outcome = { status: 'sent', receipt: await sendTransaction(neumaId, { to, value }) };
   } catch (err) {
-    return { status: 'error', reason: err.message };
+    outcome = { status: 'error', reason: err.message };
   }
+  await recordAutonomousSpend(neumaId, { to, value, memo: spendMemo(memo) }, outcome);
+  return outcome;
 };
 
 /**
@@ -305,7 +343,7 @@ export const requestSpend = async (neumaId, { to, value, memo } = {}) => {
  */
 export const listPendingSpends = async (neumaId) => {
   const now = Math.floor(Date.now() / 1000);
-  const requests = await neumaWorkspace.readPendingSpends(neumaId);
+  const requests = await readSpendRecords(neumaId, now);
   return requests.filter((r) => r.status === 'pending' && r.expiry > now);
 };
 
@@ -349,6 +387,23 @@ export const getWalletView = async (neumaId) => {
   });
 };
 
+// pure — the list with one still-pending request moved on by `patch`. Throws
+// when the request is gone or already decided, so nothing is written.
+const withRequest = (requests, id, patch) => {
+  const request = requests.find((r) => r.id === id);
+  if (!request) throw new Error('Pending spend not found');
+  if (request.status !== 'pending') throw new Error(`Pending spend already ${request.status}`);
+  return requests.map((r) => (r.id === id ? { ...r, ...patch } : r));
+};
+
+// pure — the request `id` out of a list withRequest just wrote.
+const openRequest = (requests, id) => requests.find((r) => r.id === id);
+
+// impure — record a broadcast's outcome on its own row, re-read under the
+// file's queue so a request filed during the broadcast is kept.
+const settleRequest = (neumaId, id, patch) => neumaWorkspace.updatePendingSpends(neumaId, (requests) =>
+  requests.map((r) => (r.id === id ? { ...r, ...patch, resolvedAt: new Date().toISOString() } : r)));
+
 /**
  * Operator APPROVES a pending spend: supplies the signature over the bound
  * approval message; the transfer executes under the same policy gate as any
@@ -361,17 +416,12 @@ export const getWalletView = async (neumaId) => {
  * @returns {Promise<Object>} transaction receipt summary
  */
 const executePendingSpend = async (neumaId, id, signature, signingKeypair) => {
-  const requests = await neumaWorkspace.readPendingSpends(neumaId);
-  const request = requests.find((r) => r.id === id);
-  if (!request) throw new Error('Pending spend not found');
-  if (request.status !== 'pending') throw new Error(`Pending spend already ${request.status}`);
-
   // Persist the one-way boundary before broadcast. If the process dies after
   // the node accepts the transaction, restart sees `executing` and refuses a
   // replay rather than risking a duplicate transfer.
-  request.status = 'executing';
-  request.approvalStartedAt = new Date().toISOString();
-  await neumaWorkspace.writePendingSpends(neumaId, requests);
+  const request = openRequest(await neumaWorkspace.updatePendingSpends(
+    neumaId, (requests) => withRequest(requests, id, { status: 'executing', approvalStartedAt: new Date().toISOString() }),
+  ), id);
 
   let receipt;
   try {
@@ -383,17 +433,11 @@ const executePendingSpend = async (neumaId, id, signature, signingKeypair) => {
   } catch (err) {
     // A broadcast error can be ambiguous. Preserve a terminal failure record
     // and require a fresh request/nonce instead of risking an automatic replay.
-    request.status = 'failed';
-    request.failure = err.message.slice(0, 280);
-    request.resolvedAt = new Date().toISOString();
-    await neumaWorkspace.writePendingSpends(neumaId, requests);
+    await settleRequest(neumaId, id, { status: 'failed', failure: err.message.slice(0, 280) });
     throw err;
   }
 
-  request.status = 'executed';
-  request.txHash = receipt.hash;
-  request.resolvedAt = new Date().toISOString();
-  await neumaWorkspace.writePendingSpends(neumaId, requests);
+  await settleRequest(neumaId, id, { status: 'executed', txHash: receipt.hash });
   return receipt;
 };
 
@@ -424,25 +468,19 @@ export const approvePendingSpendWithPassword = async (neumaId, id, signature, pa
 };
 
 /**
- * Operator REJECTS a pending spend. Marks it rejected; nothing is sent.
+ * Operator REJECTS a pending spend: nothing is sent; the optional note goes back to the being.
  * @param {string} neumaId
  * @param {string} id - pending request id
+ * @param {string} [note]
  * @returns {Promise<Object>} the rejected request record
  */
-const rejectPendingSpendInner = async (neumaId, id) => {
-  const requests = await neumaWorkspace.readPendingSpends(neumaId);
-  const request = requests.find((r) => r.id === id);
-  if (!request) throw new Error('Pending spend not found');
-  if (request.status !== 'pending') throw new Error(`Pending spend already ${request.status}`);
-  request.status = 'rejected';
-  request.resolvedAt = new Date().toISOString();
-  await neumaWorkspace.writePendingSpends(neumaId, requests);
-  return request;
-};
+const rejectPendingSpendInner = async (neumaId, id, note) => openRequest(await neumaWorkspace.updatePendingSpends(neumaId, (requests) => withRequest(requests, id, {
+  status: 'rejected', resolvedAt: new Date().toISOString(), note: typeof note === 'string' ? note.trim().slice(0, 280) : '',
+})), id);
 
 /** Serialize rejection against approval so exactly one operator decision lands. */
-export const rejectPendingSpend = async (neumaId, id) =>
-  withPendingApprovalLock(neumaId, () => rejectPendingSpendInner(neumaId, id));
+export const rejectPendingSpend = async (neumaId, id, note = '') =>
+  withPendingApprovalLock(neumaId, () => rejectPendingSpendInner(neumaId, id, note));
 
 /**
  * The canonical message an operator signs to approve a specific pending spend.

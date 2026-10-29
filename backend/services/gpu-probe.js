@@ -1,6 +1,6 @@
 // GPU probe — name and VRAM, whoever made the card.
 //
-// WHY THIS EXISTS (Design note, 2026-08-02: […] The detector shelled out to `nvidia-smi` and returned
+// WHY THIS EXISTS (ruling, 2026-08-02): […] The detector shelled out to `nvidia-smi` and returned
 // null on failure — a branch whose own comment read […]. So a person with a Radeon and 24 GB of VRAM was
 // told, in the first-run flight check, `no GPU detected`. Not a crash: a
 // quieter failure, where the app is confidently wrong about the machine and
@@ -18,38 +18,53 @@
 //
 // impure at the edges (exec, fs); every parser below is pure.
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { readFile, readdir } from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { boundedExec } from './bounded-exec.js';
 
-const execAsync = promisify(exec);
+// Each probe answers within its bound with its whole process tree killed at
+// the deadline (bounded-exec.js), so a hung nvidia-smi or CIM query on Windows
+// is never left running behind the first-run flight check.
 const PROBE_MS = 5000;
+const WINDOWS_PROBE_MS = 8000;
 
 /** PCI vendor id for AMD/ATI. Intel is 0x8086, NVIDIA 0x10de. */
 const AMD_VENDOR = '0x1002';
 const BYTES_PER_GB = 1024 ** 3;
 
 /**
- * `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits`
- * → one GPU, or null. Pure.
+ * `nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits`
+ * → one GPU, or null. Pure. The driver version rides along when it is there (gpu-driver-guard.js).
  *
  * Unified-memory silicon (GB10, Jetson) answers "[N/A]" for memory.total
  * because its GPU memory IS system memory — say that, never "NaN GB".
  * @param {string} stdout
  * @param {number} systemRamBytes
- * @returns {{name:string, vramGB:number, unified:boolean, vendor:string}|null}
+ * @returns {{name:string, vramGB:number, unified:boolean, vendor:string, driver?:string}|null}
  */
 export const parseNvidiaSmi = (stdout, systemRamBytes) => {
   const line = String(stdout ?? '').trim().split('\n')[0];
   if (!line) return null;
-  const [name, vramMB] = line.split(',').map((s) => s.trim());
+  const [name, vramMB, driver] = line.split(',').map((s) => s.trim());
   if (!name) return null;
   const dedicated = Number.parseInt(vramMB, 10);
+  const withDriver = driver ? { driver } : {};
   return Number.isFinite(dedicated)
-    ? { name, vramGB: Math.round(dedicated / 1024), unified: false, vendor: 'nvidia' }
-    : { name, vramGB: Math.round(systemRamBytes / BYTES_PER_GB), unified: true, vendor: 'nvidia' };
+    ? { name, vramGB: Math.round(dedicated / 1024), unified: false, vendor: 'nvidia', ...withDriver }
+    : { name, vramGB: Math.round(systemRamBytes / BYTES_PER_GB), unified: true, vendor: 'nvidia', ...withDriver };
+};
+
+/**
+ * `nvidia-smi --query-gpu=memory.free,memory.total --format=csv,noheader,nounits` → bytes, or
+ * null (unified memory answers [N/A]). Pure.
+ * @param {string} stdout
+ * @returns {{freeBytes:number, totalBytes:number}|null}
+ */
+export const parseNvidiaMemory = (stdout) => {
+  const [free, total] = String(stdout ?? '').trim().split('\n')[0].split(',').map((s) => Number.parseInt(s, 10));
+  return Number.isFinite(free) && Number.isFinite(total) && total > 0
+    ? { freeBytes: free * 1024 * 1024, totalBytes: total * 1024 * 1024 } : null;
 };
 
 /**
@@ -79,10 +94,16 @@ export const parseAmdSysfs = ({ vendor, vramBytes, productName, cardLabel } = {}
 /**
  * Windows `Get-CimInstance Win32_VideoController` CSV → GPU, or null. Pure.
  *
+ * The probe's `ConvertTo-Csv` (Windows PowerShell 5.1) QUOTES every field —
+ * `[…],"4293918720"` — so both fields are unquoted
+ * before they are read; a quoted number parsed as NaN and every card's VRAM
+ * read unknown.
+ *
  * AdapterRAM is a uint32 and therefore SATURATES AT 4 GB — an 8 GB card and a
- * 24 GB card both report 4294967295. Reporting 4 GB for a 24 GB card would be
- * a confident lie that sends a capable rig to CPU, so a saturated value yields
- * a null VRAM: the name is known, the size is not, and the caller says so.
+ * 24 GB card both report a value pinned at the top of the field (4293918720
+ * or 4294967295). Reporting 4 GB for a 24 GB card would be a confident lie
+ * that sends a capable rig to CPU, so a saturated value yields a null VRAM:
+ * the name is known, the size is not, and the caller says so.
  * @param {string} stdout
  * @returns {{name:string, vramGB:number|null, unified:boolean, vendor:string}|null}
  */
@@ -91,17 +112,44 @@ export const parseWindowsVideoController = (stdout) => {
   if (!line) return null;
   const idx = line.lastIndexOf(',');
   if (idx === -1) return null;
-  const name = line.slice(0, idx).trim().replace(/^"|"$/g, '');
-  const ram = Number.parseInt(line.slice(idx + 1).trim(), 10);
+  const unquote = (field) => field.trim().replace(/^"|"$/g, '').replace(/""/g, '"');
+  const name = unquote(line.slice(0, idx));
+  const ram = Number.parseInt(unquote(line.slice(idx + 1)), 10);
   if (!name) return null;
-  // ONLY the exact uint32 ceiling means "capped, size unknown". A value above
-  // it is a system reporting the true size through a wider field, and must be
-  // believed — an earlier `>=` here threw away every honest answer over 4 GB,
-  // which is precisely the large cards this change exists to serve.
-  const UINT32_MAX = 4294967295;
-  const saturated = !Number.isFinite(ram) || ram <= 0 || ram === UINT32_MAX;
+  // The field cannot hold 4 GB: anything at the 4095 MB mark or above is the
+  // ceiling, not a size.
+  const SATURATION_FLOOR = 0xFFF00000;
+  const saturated = !Number.isFinite(ram) || ram <= 0 || ram >= SATURATION_FLOOR;
   const vendor = /amd|radeon|ati/i.test(name) ? 'amd' : /nvidia|geforce|quadro|rtx/i.test(name) ? 'nvidia' : 'unknown';
   return { name, vramGB: saturated ? null : Math.round(ram / BYTES_PER_GB), unified: false, vendor };
+};
+
+/**
+ * Windows display adapters from the driver registry → the card with the most memory, or null. Pure.
+ *
+ * One `name<TAB>bytes[<TAB>driver]` line per adapter, from the display class key's
+ * `HardwareInformation.qwMemorySize` (64-bit: the true size of a 16 or 24 GB card, where WMI's
+ * AdapterRAM stops at 4 GB) or `HardwareInformation.MemorySize`. Every adapter is read and the
+ * largest wins, so a laptop's integrated graphics never stand in for its discrete card. The
+ * driver's own version (`DriverVersion`, e.g. 32.0.15.8157) rides along when it is there.
+ * @param {string} stdout
+ * @returns {{name:string, vramGB:number, unified:boolean, vendor:string, driver?:string}|null}
+ */
+export const parseWindowsAdapters = (stdout) => {
+  const cards = String(stdout ?? '').split(/\r?\n/).map((line) => {
+    const [rawName, rawBytes, rawDriver] = line.split('\t');
+    if (rawBytes === undefined) return null;
+    const name = rawName.trim();
+    const bytes = Number(rawBytes.trim());
+    const driver = String(rawDriver ?? '').trim();
+    return name && Number.isFinite(bytes) && bytes > 0 ? { name, bytes, ...(driver ? { driver } : {}) } : null;
+  }).filter(Boolean);
+  const best = cards.reduce((a, c) => (!a || c.bytes > a.bytes ? c : a), null);
+  if (!best || best.bytes < BYTES_PER_GB / 2) return null;
+  const vendor = /amd|radeon|ati\b/i.test(best.name) ? 'amd'
+    : /nvidia|geforce|quadro|rtx/i.test(best.name) ? 'nvidia'
+      : /intel|arc/i.test(best.name) ? 'intel' : 'unknown';
+  return { name: best.name, vramGB: Math.round(best.bytes / BYTES_PER_GB), unified: false, vendor, ...(best.driver ? { driver: best.driver } : {}) };
 };
 
 /** impure — one sysfs attribute, or undefined. Never throws. */
@@ -144,41 +192,56 @@ export const probeAmdLinux = async (root = '/sys/class/drm') => {
 
 /** impure — NVIDIA via nvidia-smi. Never throws. */
 const probeNvidia = async () => {
-  try {
-    const { stdout } = await execAsync(
-      'nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits',
-      { timeout: PROBE_MS }
-    );
-    return parseNvidiaSmi(stdout, os.totalmem());
-  } catch {
-    return null;
-  }
+  const r = await boundedExec('nvidia-smi', ['--query-gpu=name,memory.total,driver_version', '--format=csv,noheader,nounits'], { timeoutMs: PROBE_MS });
+  return r.ok ? parseNvidiaSmi(r.stdout, os.totalmem()) : null;
+};
+
+/**
+ * The NVIDIA card's free and total memory NOW, for fitting a model's window (ollama-window.js).
+ * Never cached: free memory moves. Asked only when a model server starts. impure. Never throws.
+ * @returns {Promise<{freeBytes:number, totalBytes:number}|null>}
+ */
+export const readNvidiaMemory = async () => {
+  const r = await boundedExec('nvidia-smi', ['--query-gpu=memory.free,memory.total', '--format=csv,noheader,nounits'], { timeoutMs: PROBE_MS });
+  return r.ok ? parseNvidiaMemory(r.stdout) : null;
 };
 
 /** impure — Windows, any vendor, via CIM. Never throws. */
 const probeWindows = async () => {
   if (process.platform !== 'win32') return null;
-  try {
-    const { stdout } = await execAsync(
-      'powershell -NoProfile -Command "Get-CimInstance Win32_VideoController | '
-      + 'Select-Object -First 1 Name,AdapterRAM | ConvertTo-Csv -NoTypeInformation | Select-Object -Skip 1"',
-      { timeout: PROBE_MS }
-    );
-    return parseWindowsVideoController(stdout);
-  } catch {
-    return null;
-  }
+  const r = await boundedExec('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+    'Get-CimInstance Win32_VideoController | Select-Object -First 1 Name,AdapterRAM | ConvertTo-Csv -NoTypeInformation | Select-Object -Skip 1',
+  ], { timeoutMs: WINDOWS_PROBE_MS });
+  return r.ok ? parseWindowsVideoController(r.stdout) : null;
 };
 
-// impure — one full probe, in vendor order.
+// The registry read behind parseWindowsAdapters (Windows PowerShell 5.1, no modules)
+const WINDOWS_ADAPTERS_PS = [
+  "Get-ChildItem 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}' -ErrorAction SilentlyContinue |",
+  'ForEach-Object { $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue;',
+  "$b = $p.'HardwareInformation.qwMemorySize'; if (-not $b) { $b = $p.'HardwareInformation.MemorySize' };",
+  'if ($b -is [byte[]]) { $b = [BitConverter]::ToUInt32($b, 0) };',
+  // no double quotes: Node escapes them on a Windows command line and PowerShell 5.1 reads that unevenly
+  'if ($p.DriverDesc -and $b) { $p.DriverDesc + [char]9 + $b + [char]9 + $p.DriverVersion } }',
+].join(' ');
+
+/** impure — Windows, every adapter's true memory from the driver registry. Never throws. */
+const probeWindowsAdapters = async () => {
+  if (process.platform !== 'win32') return null;
+  const r = await boundedExec('powershell', ['-NoProfile', '-NonInteractive', '-Command', WINDOWS_ADAPTERS_PS], { timeoutMs: WINDOWS_PROBE_MS });
+  return r.ok ? parseWindowsAdapters(r.stdout) : null;
+};
+
+// impure — one full probe, in vendor order. On Windows both probes run at once
+// (nvidia-smi still wins when it answers), so the slower one never adds to the wait.
 const probeOnce = async () => {
+  if (process.platform === 'win32') {
+    const [nvidia, adapters, windows] = await Promise.all([probeNvidia(), probeWindowsAdapters(), probeWindows()]);
+    return nvidia ?? adapters ?? windows;
+  }
   const nvidia = await probeNvidia();
   if (nvidia) return nvidia;
-  if (process.platform === 'linux') {
-    const amd = await probeAmdLinux();
-    if (amd) return amd;
-  }
-  return probeWindows();
+  return process.platform === 'linux' ? probeAmdLinux() : null;
 };
 
 // The card's name and VRAM cannot change under a running process, yet every

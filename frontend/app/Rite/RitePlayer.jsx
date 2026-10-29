@@ -18,6 +18,7 @@ import { scoreOf } from '../Summoning/summoning-score.js';
 import { skyOf } from '../Summoning/summoning-sky.js';
 import { soulOf } from '../Summoning/summoning-soul.js';
 import { specimenAura } from '../Summoning/summoning-aura.js';
+import { deriveGenome } from '../../../core/genome/derive.js';
 import { useSummoningSound } from '../Summoning/use-summoning-sound.js';
 import { isSoundOn } from '../../services/sound-engine.js';
 import { componentsOf } from '../Summoning/summoning-components.js';
@@ -50,6 +51,7 @@ const beingOf = ({ seed, trueName, epochMs, spectrum, scale }) => ({
   epochMs,
   bornAt: new Date(epochMs).toISOString(),
   aura: specimenAura(seed),
+  genome: deriveGenome(seed),
   sky: skyOf(epochMs, { zone: Intl.DateTimeFormat().resolvedOptions().timeZone, offsetMinutes: -new Date(epochMs).getTimezoneOffset() }),
   soul: soulOf(spectrum, scale),
 });

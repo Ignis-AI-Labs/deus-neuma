@@ -108,7 +108,7 @@ export const useConsciousnessStream = (wsService, {
   // resume bind lands first, so the server continues the chat on screen
   // instead of minting a forked session with an empty tail.
   const historyReadyRef = useRef(null);
-  // FAIL LOUD, NEVER FORK (Design note, 2026-08-31: set when the history load FAILED
+  // FAIL LOUD, NEVER FORK (ruling, 2026-08-31): set when the history load FAILED
   // (and its one retry). Sends hold with a loud bubble until a load succeeds —
   // a fresh session is never minted silently over an intact chat.
   const historyFailedRef = useRef(false);
@@ -240,15 +240,14 @@ export const useConsciousnessStream = (wsService, {
   // Mints each send's hold handle — session-local, collision-free by count.
   const holdSeqRef = useRef(0);
   const [toolMode, setToolModeState] = useState(() => readToolModePref(activeCompanion?.neumaId));
+  // The ref is what link-up restates: moved by declaration, ack and arrival,
+  // never synced from state on render (that lags the ack — restates stale).
   const toolModeRef = useRef(toolMode);
-  toolModeRef.current = toolMode;
   // The standing CHAT mode (default / plan / auto) — the composer's chip.
   // Same shape as the tool stance: seeded from the BOUND participant's own
-  // pref, mirrored in a ref for the stable link-up restate, server truth on
-  // the chat:mode ack.
+  // pref, the same restate ref, server truth on the chat:mode ack.
   const [chatMode, setChatModeState] = useState(() => readChatModePref(activeCompanion?.neumaId));
   const chatModeRef = useRef(chatMode);
-  chatModeRef.current = chatMode;
   const ensureSink = useCallback(() => {
     if (!sinkRef.current) sinkRef.current = createVoiceSink({ enabled: voiceEnabledRef.current });
     return sinkRef.current;
@@ -266,6 +265,7 @@ export const useConsciousnessStream = (wsService, {
     turnStartedRef, erroredRef, streamSeenRef, sinkRef, holdSeqRef,
     voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
     companionRef, focusRef, projectsRef, historyReadyRef, historyFailedRef, navigationSeqRef,
+    toolModeRef, chatModeRef,
   }), [wsService, ensureSink]);
 
   // The inbound frame translators (stream-message-handlers.js) — created once

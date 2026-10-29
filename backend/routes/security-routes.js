@@ -31,6 +31,7 @@ import {
 } from '../services/backup-destination.js';
 import { createLogger } from '../services/logger.js';
 import { requestState } from '../../core/runtime/operator-state.js';
+import { keyLockState } from '../services/desk-keys.js';
 
 const router = Router();
 const log = createLogger('Security');
@@ -105,6 +106,8 @@ router.get('/status', async (req, res) => {
       roots,
       storage,
       beings,
+      // Where the master key is held this launch: the desk's keychain lock, or a plain file (desk-keys.js).
+      keyLock: keyLockState(),
       encryption: {
         securedCount,
         totalCount: beings.length,

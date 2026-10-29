@@ -1,0 +1,119 @@
+/* WAITING ON YOU — the rows the notification tray lists (TrayWaiting.jsx)
+   and a platform window's band (WaitingBand.jsx). LINE & CYCLE: one steady signal
+   for "this needs you", never a pulse (no-flash law); ink for everything
+   settled around it. */
+
+/* the mark: a still signal diamond — shape says "owed" before any word does
+   (the tray's bell, its section and toasts, a platform band) */
+.waiting-chip-mark {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  align-self: center;
+  background: var(--signal);
+  transform: rotate(45deg);
+}
+
+.waiting-row {
+  display: grid;
+  grid-template-columns: 9ch minmax(0, 1fr);
+  grid-template-areas: "kind title" "kind meta";
+  gap: 2px var(--space-2);
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  box-shadow: inset 2px 0 0 var(--signal-dim);
+  text-align: left;
+  cursor: pointer;
+}
+.waiting-row:hover { background: var(--color-glass-hover); box-shadow: inset 2px 0 0 var(--signal); }
+.waiting-row-kind {
+  grid-area: kind;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--signal);
+}
+.waiting-row-title {
+  grid-area: title;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.waiting-row-meta {
+  grid-area: meta;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+}
+
+/* a platform window's band: the first thing in the window */
+.waiting-band {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px var(--space-3) 8px;
+  box-shadow: inset 0 0 0 1px var(--signal-dim), inset 3px 0 0 var(--signal);
+  background: var(--signal-faint);
+  font-family: var(--font-data);
+}
+.waiting-band-h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-label);
+  letter-spacing: 0.16em;
+  color: var(--signal);
+}
+.waiting-band-h b { font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.waiting-band-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.waiting-band-row {
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr) auto;
+  grid-template-areas: "kind text acts" "kind meta acts";
+  gap: 0 var(--space-2);
+  align-items: center;
+}
+.waiting-band-row .waiting-row-kind { align-self: start; padding-top: 2px; }
+.waiting-band-text {
+  grid-area: text;
+  font-family: var(--font-voice);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.waiting-band-acts { grid-area: acts; display: inline-flex; gap: 4px; }
+.waiting-band-go, .waiting-band-open, .waiting-band-more {
+  padding: 3px 9px;
+  background: var(--color-void);
+  border: var(--border-width-thin) solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-label);
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.waiting-band-go { border-color: var(--signal-dim); color: var(--signal); }
+.waiting-band-go:hover:not(:disabled) { border-color: var(--signal); }
+.waiting-band-open:hover, .waiting-band-more:hover { border-color: var(--line-hover); }
+.waiting-band-go:disabled { opacity: 0.5; cursor: default; }
+.waiting-band-more { align-self: flex-start; color: var(--color-text-secondary); }
+/* A row with no words of its own shows its title — a label, so it meets the floor. */
+.waiting-band-text:not([data-own-words]) { font-size: var(--text-label); }
+.waiting-band-err { margin: 0; font-size: var(--text-label); color: var(--alert); }
+
+/* a card a WAITING row landed on: marked for a moment, rising over its
+   transition, never a flash */
+.is-wait-landed {
+  box-shadow: 0 0 0 1px var(--signal), 0 0 0 4px var(--signal-faint) !important;
+  transition: box-shadow 320ms var(--ease-out);
+}

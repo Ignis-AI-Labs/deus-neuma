@@ -63,6 +63,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ethers } from 'ethers';
 import { createLogger } from './logger.js';
+import { redactRpcUrl } from './chain/chain-registry.js';
 import { verifyNatalisIdentity, verifyHouseRegistryImpl } from './chain-verify.js';
 import { SEAL_LAWS, NATALIS_LAW_BY_CODEHASH } from './seal-law.js';
 
@@ -124,7 +125,7 @@ const probeWithTimeout = (provider, address, timeoutMs, verify = verifyNatalisId
   );
   verify(provider, address).then(
     (v) => { clearTimeout(timer); done(v); },
-    (err) => { clearTimeout(timer); done({ ok: false, reason: 'rpc-error', error: err.message }); },
+    (err) => { clearTimeout(timer); done({ ok: false, reason: 'rpc-error', error: redactRpcUrl(err.message) }); },
   );
 });
 
@@ -157,7 +158,7 @@ const safeCall = async (label, fn) => {
   try {
     return await fn();
   } catch (err) {
-    log.warn({ label, error: err.message, code: err.code }, 'chain call failed');
+    log.warn('chain call failed', { label, error: redactRpcUrl(err.message), code: err.code });
     return null;
   }
 };
@@ -317,7 +318,7 @@ export const createChainReader = async ({
 
   const requireNatalis = (label) => {
     if (!natalis) {
-      log.warn({ label, status: natalisStatus }, 'Natalis call skipped (not verified or not configured)');
+      log.warn('Natalis call skipped (not verified or not configured)', { label, status: natalisStatus });
       return null;
     }
     return natalis;
@@ -326,7 +327,7 @@ export const createChainReader = async ({
     if (!houseRegistry) {
       // sc-echo BLOCK fix: message now covers all disable reasons, not just
       // 'not configured'. Matches requireNatalis wording.
-      log.warn({ label, status: houseRegistryStatus }, 'HouseRegistry call skipped (not verified or not configured)');
+      log.warn('HouseRegistry call skipped (not verified or not configured)', { label, status: houseRegistryStatus });
       return null;
     }
     return houseRegistry;
@@ -337,7 +338,7 @@ export const createChainReader = async ({
   const requireKeying = (label, soulKeyed) => {
     const c = requireNatalis(label);
     if (c && SEAL_LAWS[sealLaw].soulKeyed !== soulKeyed) {
-      log.warn({ label, sealLaw }, 'Natalis read skipped — this contract generation keys seals the other way');
+      log.warn('Natalis read skipped — this contract generation keys seals the other way', { label, sealLaw });
       return null;
     }
     return c;

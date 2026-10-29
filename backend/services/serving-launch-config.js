@@ -1,7 +1,10 @@
 import path from 'node:path';
 
 export const SERVING_CONTEXT_MIN = 512;
-export const SERVING_CONTEXT_MAX = 262_144;
+/** The largest POOL a launch may ask for: a unified pool sized to the GPU
+ *  (serving-fit.js) is shared room, so it may pass one trained window; one
+ *  being's window still stops at the model's trained context. */
+export const SERVING_CONTEXT_MAX = 4_194_304;
 /**
  * The host prompt cache (llama.cpp `--cache-ram`, MiB): OFF (2026-10-13).
  *
@@ -204,7 +207,9 @@ export const resolveServingLaunchConfig = (env) => {
     'LLAMA_SERVER_URL',
     'http://127.0.0.1:8089',
   ));
-  const contextLength = env.SUBSTRATE_CONTEXT_LENGTH === undefined
+  // The pool is fitted to the machine at every boot (serving-fit.js); this number is only the
+  // fallback for a machine the fit cannot measure ('auto' or unset reads as the default).
+  const contextLength = env.SUBSTRATE_CONTEXT_LENGTH === undefined || String(env.SUBSTRATE_CONTEXT_LENGTH).trim().toLowerCase() === 'auto'
     ? 65_536
     : canonicalInteger(
       env.SUBSTRATE_CONTEXT_LENGTH,

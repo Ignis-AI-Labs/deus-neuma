@@ -199,7 +199,7 @@ test('SETTINGS: the LOOK tab dresses the platform — knobs, presets, persistenc
     await page.goto('/?noboot=1');
     await expect.poll(cssSignal).toBe('#00CC88');
 
-    // Back to stock through the real UI: delete the shelf entry, choose VOID.
+    // Back to stock through the real UI: delete the shelf entry, choose CYBERDECK.
     const standAside = page.locator('.birth-setup-gate button', { hasText: 'STAND ASIDE' });
     if (await standAside.isVisible({ timeout: 5000 }).catch(() => false)) await standAside.click();
     await openDockApp(page, 'SETTINGS');
@@ -207,8 +207,8 @@ test('SETTINGS: the LOOK tab dresses the platform — knobs, presets, persistenc
     const shelfRow = page.locator('.settings-look-presets li', { hasText: 'E2E DUSK' });
     await shelfRow.locator('.settings-backup-del').click();
     await expect(page.locator('.settings-look-preset', { hasText: 'E2E DUSK' })).toHaveCount(0);
-    await page.locator('.settings-look-preset', { hasText: 'VOID' }).click();
-    // VOID clears the override entirely — the stock stylesheet stands again,
+    await page.locator('.settings-look-preset', { hasText: 'CYBERDECK' }).click();
+    // CYBERDECK clears the override entirely — the stock stylesheet stands again,
     // and the claimed registers RELEASE (no stale --alert left behind).
     await expect.poll(cssSignal).toBe('');
     await expect.poll(() =>
@@ -247,7 +247,7 @@ test('SWITCHER: an on-chain seat stands beside the name once the founding record
   await fs.promises.writeFile(sealPath, JSON.stringify({ soulAddress }));
   await fs.promises.writeFile(recordPath, JSON.stringify({
     schema: 'neuma-house-founding/1', houseName: 'E2eHouse', houseId: '0x1',
-    network: 'base', members: [{ address: soulAddress, kind: 1, title: 'Quaestor' }],
+    network: 'base', members: [{ address: addr, kind: 0, title: 'Rector' }, { address: soulAddress, kind: 1, title: 'Quaestor' }],
   }));
   try {
     // The switcher stands only when the cached roster holds two beings —

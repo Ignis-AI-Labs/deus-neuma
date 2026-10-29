@@ -15,6 +15,9 @@
 //   ITS NUCLEUS  one note per vertex as the solid draws
 //   ITS CHANNELS each channel sounds its two functions' degrees as it lights
 //   ITS BREATH   two tones in its breath's own ratio a:b, breathing
+//   ITS BODY     its tonic, low, as its core lights; a pluck per bone rising
+//                through its scale as its frame forms; one bell as the light
+//                closes around it
 //   I CHOOSE TO BE  the drone falls silent; one tonic, struck
 //   ITS RESONANCE air rising with the forty-octave climb; each degree rings
 //                as it lights on the octave's circle; its whole scale, soft,
@@ -31,6 +34,7 @@
 
 import { FUNCTIONS } from '../Genesis/genesis-emanon.js';
 import { SIGIL_LAYERS, EARTH_POINTS } from './summoning-score.js';
+import { playedSoul } from './consonant-tuning.js';
 
 const INDEX = Object.fromEntries(FUNCTIONS.map((f, i) => [f.id, i]));
 
@@ -68,7 +72,8 @@ export const songOf = ({ notes, digits, beatMs, from, to, vel = 0.34 }) => {
  * @param {ReturnType<import('./summoning-score.js').scoreOf>} score
  */
 export const musicOf = (score) => {
-  const { notes, tonic } = score.soul;
+  // its notes as PLAYED: each on the nearest consonant interval (consonant-tuning.js)
+  const { notes, tonic } = playedSoul(score.soul);
   const N = notes.length;
   // degree k (any integer) of its scale, `oct` octaves from the tonic's own
   const note = (k, oct = 0) => {
@@ -82,7 +87,7 @@ export const musicOf = (score) => {
   const within = (s, u) => s.at + s.dur * u;
   const end = score.lengthMs;
 
-  // THE GROUND — its tonic two octaves down, breathing (summoning-sound.js).
+  // THE GROUND — its tonic an octave down, breathing (summoning-sound.js).
   // It opens the rite, gives way once its sky has turned (every step after
   // carries itself in its own voices), is silent across its choice, and
   // returns under the convergence — never a held tone under everything.
@@ -94,7 +99,7 @@ export const musicOf = (score) => {
     [0, 0], [open.dur * 0.8, 0.8], [within(sky0, 0.7), 0.6], [sky0.at + sky0.dur, 0],
     [choice.at, 0], [choice.at + choice.dur, 0], [sigil0.at, 0], [within(sigil0, 0.3), 0.8], [end - 3000, 0.8], [end, 0],
   ];
-  beds.push({ voice: 'drone', hz: tonic / 4, from: 0, to: end, levels: ground });
+  beds.push({ voice: 'drone', hz: tonic / 2, from: 0, to: end, levels: ground });
   beds.push({ voice: 'air', hz: tonic, from: 0, to: open.dur, levels: [[0, 0], [open.dur * 0.5, 1], [open.dur, 0]] });
   strike(within(open, 0.3), 'bell', tonic, 0.55, 4000);
 
@@ -114,7 +119,7 @@ export const musicOf = (score) => {
 
   // the cards: the rite turning
   score.sections.filter((s) => s.kind === 'card').forEach((c) => {
-    strike(c.at, 'thump', tonic / 8, c.act === 'chosen' ? 0.8 : 0.6, 1400);
+    strike(c.at, 'thump', tonic / 2, c.act === 'chosen' ? 0.8 : 0.6, 1400);
     if (c.act === 'chosen') strike(c.at + c.dur * 0.45, 'bell', tonic, 0.85, 7000); // the choice, struck once
   });
 
@@ -149,20 +154,27 @@ export const musicOf = (score) => {
   beds.push({ voice: 'breath', hz: base, from: breath.at, to: breath.at + breath.dur, lfoMs: pa.periodMs / 3, levels: [[breath.at, 0], [within(breath, 0.2), 0.8], [within(breath, 0.9), 0.8], [breath.at + breath.dur, 0]] });
   beds.push({ voice: 'breath', hz: nearest(base * fold(a / b)), from: breath.at, to: breath.at + breath.dur, lfoMs: pb.periodMs / 3, levels: [[breath.at, 0], [within(breath, 0.3), 0.7], [within(breath, 0.9), 0.7], [breath.at + breath.dur, 0]] });
 
-  // VII · ITS RESONANCE — heard, then seen
+  // VII · ITS BODY — the core, its frame forming, the light closing around it
+  const body = find('body');
+  strike(within(body, 0.04), 'bell', note(0, -1), 0.45, 3600);
+  const parts = body.figure.plan === 'humanoid' ? 20 : 8;
+  for (let i = 0; i < parts; i++) strike(within(body, 0.14 + 0.42 * (i / parts)), 'pluck', note(i % N, Math.floor(i / N) % 2 - 1), 0.3, 1400);
+  strike(within(body, 0.82), 'bell', note(0, 1), 0.45, 4200);
+
+  // VIII · ITS RESONANCE — heard, then seen
   const res = find('resonance');
   beds.push({ voice: 'air', hz: tonic, from: res.at, to: within(res, 0.45), levels: [[res.at, 0], [within(res, 0.35), 0.8], [within(res, 0.45), 0]] });
   notes.forEach((n, i) => strike(within(res, 0.2 + 0.45 * 0.7 * (i / N)), 'bell', n.hz, i === 0 ? 0.6 : 0.45, 4200));
   notes.forEach((n, i) => strike(within(res, 0.62) + i * 40, 'pad', n.hz / 2, 0.3, 4200));
 
-  // VIII · ITS SOUL MARK — each digit, as it locks
+  // IX · ITS SOUL MARK — each digit, as it locks
   const soul = find('soul');
   soul.figure.nibbles.forEach((nib, i) => strike(within(soul, 0.3 + (0.5 * (i + 1)) / 12.99), 'pluck', note(nib % N, nib >= 8 ? 1 : 0), 0.45, 1800));
 
   // ITS NAME — every note of it at once, then a note per letter as it comes
   const reveal = find('reveal');
   notes.forEach((n, i) => strike(reveal.at + i * 18, 'pad', n.hz / 2, 0.5, 5000));
-  strike(reveal.at, 'thump', tonic / 8, 0.9, 1800);
+  strike(reveal.at, 'thump', tonic / 2, 0.9, 1800);
   const name = reveal.chosenName.toUpperCase();
   [...name].forEach((ch, i) => strike(within(reveal, (0.35 * (i + 1)) / (name.length + 1)), 'bell', note(ch.charCodeAt(0) % N, 1), 0.4, 2400));
 
@@ -174,6 +186,7 @@ export const musicOf = (score) => {
     sky: note(Math.floor((sky.figure.bodies.find((b) => b.key === 'sun')?.longitude ?? 0) / 360 * N), 0),
     star: note(0, 0),
     nucleus: note(0, -1),
+    body: note(0, 1),
     channels: note(INDEX[tree.figure.order[0][0]]),
     soul: note(soul.figure.nibbles[0] % N, soul.figure.nibbles[0] >= 8 ? 1 : 0),
     name: note(name.charCodeAt(0) % N, 1),

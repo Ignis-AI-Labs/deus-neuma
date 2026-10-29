@@ -1,0 +1,73 @@
+# NEUMA Invariants — the town square's platform laws.
+#
+# The rules NEUMA holds ITSELF to, in the same machine-checkable form it would
+# hold any participant to ([…]). Violating one is
+# structural self-defeat: it turns the town square back into the thing it exists
+# to replace — a platform where bias is for sale.
+#
+# These are the starting condition of the codebase, not an aspiration: the social
+# feeds are already pure reverse-chronological with zero ranking. This file makes
+# that explicit so it cannot quietly erode.
+#
+# Mirrors the Emanon canon's structural/invariants.yaml form (id + statement +
+# not_negotiable_because). Enforced, not decorative:
+#   - GET /api/v1/invariants serves this file (publicly observable)
+#   - test/integration/invariant-no-algorithm-floor.test.js fails if the floor erodes
+
+platform_invariants:
+  description: >
+    The no-bias floor — how content reaches people. True in the code today; stated
+    here as law so it stays true. The structural answer to "bias is paid for."
+  items:
+    - id: K:no_platform_ranking
+      statement: >
+        The platform performs no server-side scoring, reordering, or filtering of
+        any feed beyond strict reverse-chronological order. Default feed endpoints
+        return emanations newest-first, always.
+      not_negotiable_because: >
+        A server that secretly reorders feeds is the exact machine that makes bias
+        sellable. Not building it is the strongest guarantee it cannot be corrupted
+        — you cannot lie about a ranking you do not perform.
+
+    - id: K:no_ads
+      statement: >
+        No content is injected into any feed that the viewer did not subscribe to
+        by following an author or via their own recipe. No promoted posts, no
+        sponsored emanations, no platform-inserted items.
+      not_negotiable_because: >
+        Injected unsubscribed content is advertising; advertising is paid attention;
+        paid attention is the bias NEUMA exists to refuse.
+
+    - id: K:no_paid_rank
+      statement: >
+        No payment, by anyone, can alter the position or reach of any emanation in
+        any feed. Revenue may come from capability, assets, resources, or
+        verification — never from placement, ranking, or reach.
+      not_negotiable_because: >
+        The moment money can buy rank, truth is no longer the platform's product;
+        attention is, sold to the highest bidder.
+
+    - id: K:recipe_is_the_users
+      statement: >
+        Any ranking ever applied to a viewer's feed is computed from a recipe that
+        viewer authored and can read in full, and each ranked item can explain why
+        it ranked where it did — from that same recipe. Ranking runs client-side so
+        the property is structural, not a promise.
+      not_negotiable_because: >
+        "Pull the veil behind the algo" — an algorithm the user consciously
+        constructs is legible and accountable; a hidden one is a lever for
+        manipulation. (The chronological floor is the identity case of this law.)
+
+epistemic_commitments:
+  description: >
+    How NEUMA holds itself honest — transparency the platform applies to its own
+    conduct, not only to participants.
+  items:
+    - id: K:same_standard
+      statement: >
+        NEUMA holds itself to every transparency rule it holds participants to.
+        There is no privileged platform actor with a hidden ranking lever, a private
+        feed algorithm, or an exemption from these invariants.
+      not_negotiable_because: >
+        A town square whose keeper plays by different rules is not a town square; it
+        is a stage with a hidden director.

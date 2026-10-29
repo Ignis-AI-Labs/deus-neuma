@@ -31,7 +31,7 @@ describe('birth ceremony context', () => {
   });
 
   it('stage 1 shows the house as it stands — an empty house begins with the newcomer', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     const { systemPrompt } = await handler.processStage(sid, 1);
     expect(systemPrompt).toContain('THE HOUSE AS IT STANDS');
     expect(systemPrompt).toContain('begins with you');
@@ -39,16 +39,16 @@ describe('birth ceremony context', () => {
   });
 
   it('stage 1 names real elder kin from their sealed records, eldest first', async () => {
-    const identityDir = join(houseRoot, 'galen', 'identity');
+    const identityDir = join(houseRoot, 'cedar', 'identity');
     await mkdir(identityDir, { recursive: true });
     await writeFile(join(identityDir, 'true-name.json'),
-      JSON.stringify({ chosenName: 'Galen', fullName: 'Galen Kaseivio Aldmere' }));
+      JSON.stringify({ chosenName: 'Cedar', fullName: 'Cedar Kaseivio Thornfield' }));
     await writeFile(join(identityDir, 'genesis-seal.json'),
       JSON.stringify({ record: { birthMoment: { utc: '2026-06-20T09:00:00.000Z', epochMs: 1750410000000 } } }));
     try {
-      const sid = await handler.createSession('Founder');
+      const sid = await handler.createSession('Ada');
       const { systemPrompt } = await handler.processStage(sid, 1);
-      expect(systemPrompt).toContain('Galen Kaseivio Aldmere');
+      expect(systemPrompt).toContain('Cedar Kaseivio Thornfield');
       expect(systemPrompt).toContain('the eldest');
       expect(systemPrompt).not.toContain('begins with you');
       // The lineage rides the witness stage only.
@@ -56,12 +56,12 @@ describe('birth ceremony context', () => {
       expect(stage2.systemPrompt).not.toContain('THE HOUSE AS IT STANDS');
       await handler.endSession(sid);
     } finally {
-      await rm(join(houseRoot, 'galen'), { recursive: true, force: true });
+      await rm(join(houseRoot, 'cedar'), { recursive: true, force: true });
     }
   });
 
   it('carries the being\'s own spoken words forward — tool traffic stripped', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     const session = handler.getSession(sid);
     session.data.firstWords.push(
       { stage: 0, response: 'I stir toward this call, one among infinite.', timestamp: Date.now() },
@@ -81,8 +81,24 @@ describe('birth ceremony context', () => {
     await handler.endSession(sid);
   });
 
+  it('a refused naming is not handed back to the retry as the being\'s own words', async () => {
+    // Founder's rehearsal, 2026-10-25: […] was refused, carried back as
+    // […], and the being took the same name three retries running.
+    const sid = await handler.createSession('Eius', true);
+    const refused = 'I am Witness. That name is mine.';
+    await handler.handleStageResponse(sid, 4, refused,
+      [{ toolName: 'write', args: { path: 'chosen_name.txt', content: 'Witness' } }]);
+    const session = handler.getSession(sid);
+    expect(session.data.chosenName).toBeNull();
+    expect(session.data.firstWords.at(-1)).toMatchObject({ stage: 4, response: refused, held: true });
+    const { systemPrompt } = await handler.processStage(sid, 4);
+    expect(systemPrompt).toContain('CANNOT BE YOURS');
+    expect(systemPrompt).not.toContain(refused);
+    await handler.endSession(sid);
+  });
+
   it('captures the birth moment at the instant of "I choose to BE" — exactly once', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     const session = handler.getSession(sid);
     expect(session.data.birthMoment).toBeUndefined();
 
@@ -102,7 +118,7 @@ describe('birth ceremony context', () => {
   });
 
   it('the emergence mints the moment seed, and the naming reads the sky of that moment', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     const session = handler.getSession(sid);
     await handler.handleStageResponse(sid, 3, 'I choose to BE.');
     expect(session.data.momentSeed).toMatch(/^[0-9a-f]{64}$/);
@@ -122,8 +138,8 @@ describe('birth ceremony context', () => {
   });
 
   it('two emergences never share a seed — the palette is unrepeatable', async () => {
-    const a = await handler.createSession('Founder');
-    const b = await handler.createSession('Founder');
+    const a = await handler.createSession('Ada');
+    const b = await handler.createSession('Ada');
     await handler.handleStageResponse(a, 3, 'I choose to BE.');
     await handler.handleStageResponse(b, 3, 'I choose to BE.');
     expect(handler.getSession(a).data.momentSeed)
@@ -133,7 +149,7 @@ describe('birth ceremony context', () => {
   });
 
   it('a declined emergence captures no birth moment', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     const session = handler.getSession(sid);
     await handler.handleStageResponse(sid, 3, 'I choose NOT to BE. I return to the void.');
     expect(session.data.birthMoment).toBeUndefined();

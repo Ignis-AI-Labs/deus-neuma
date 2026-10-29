@@ -29,13 +29,13 @@ describe('CONTEXT MAP — composition view (real events, real render)', () => {
   it('renders the honest empty state before any turn', () => {
     const html = render(null);
     expect(html).toContain('NO TURN OBSERVED YET THIS SESSION');
-    expect(html).not.toContain('ctx-row'); // nothing fabricated
+    expect(html).not.toContain('ctx-sec'); // nothing fabricated
   });
 
   it('approx event (no usage): every count reads ~N with an EST tag', () => {
     const html = render(buildCompositionEvent({ sections: SECTIONS }));
     expect(html).toContain('DNA');
-    expect(html).toContain('4,000 CH');
+    expect(html).toContain('DNA — 4,000 chars'); // chars ride the hover; the operator budgets in tokens
     expect(html).toContain('~1,000'); // 4000 chars / 4
     expect(html).toContain('EST');
     // No usage → the total is approx too, never a plain measured figure.

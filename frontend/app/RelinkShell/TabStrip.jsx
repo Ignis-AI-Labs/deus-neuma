@@ -2,7 +2,7 @@
 //
 // Session tabs, slice 3. Design note, 2026-07-30: […]
 //
-// ONE DOOR (Design note, 2026-07-30: […]
+// ONE DOOR (ruling, 2026-07-30): […]
 //
 // So the strip does not ask the operator to pick a KIND. It reads who is in the
 // chair and opens another sitting with them. The two budgets are still real and

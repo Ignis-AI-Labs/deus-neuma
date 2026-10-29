@@ -65,6 +65,9 @@ export class Portal {
                 <span>Enter the Void</span>
               </span>
               <span class="portal-entry-hint">Sign in with your wallet — or have a key made for you</span>
+              <!-- Adults only, on the one control every path enters by (Terms §1, EULA):
+                   entering is the confirmation, so the statement rides the act -->
+              <span class="portal-age-notice" id="portal-age-notice">18+ only · Not for minors · Entering confirms you are at least 18 and of legal age where you live</span>
             </button>
             <!-- ENTER AS (Design note, 2026-10-14: the full platform, or the harness
                  alone — remembered on this device, changeable from the desk -->
@@ -123,8 +126,8 @@ export class Portal {
       });
     });
 
-    // Sound is opt-in — the witness gives the world its voice here,
-    // before the ceremony, so emergence can be heard
+    // Sound is on by default; the witness can quiet the world here,
+    // before the ceremony, and the choice is remembered
     soundToggle.addEventListener('click', () => {
       const on = toggleSound();
       soundToggle.textContent = `SOUND: ${on ? 'ON' : 'OFF'}`;

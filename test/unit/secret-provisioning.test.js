@@ -7,7 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
-import { ensureSecrets } from '../../backend/services/secret-provisioning.js';
+import { closeFile, ensureSecrets } from '../../backend/services/secret-provisioning.js';
 
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -92,3 +92,18 @@ describe('secret-provisioning', () => {
     expect(fs.statSync(file).mode & 0o077).toBe(0);
   });
 });
+
+// Audit 2026-10-28 L-04: the env file the backend loads holds the same keys; its mode was never checked.
+describe('closeFile — an env file readable by others is closed to its owner', () => {
+  it('closes an open file to 0600, leaves a closed one, skips a missing one', async () => {
+    const dir = await createTempDir(`close-file-${Math.random().toString(36).slice(2)}`);
+    const open = path.join(dir, 'open.env');
+    fs.writeFileSync(open, 'X=1\n', { mode: 0o644 });
+    fs.chmodSync(open, 0o644);
+    expect(closeFile(open)).toBe('closed');
+    expect(fs.statSync(open).mode & 0o777).toBe(0o600);
+    expect(closeFile(open)).toBe('already');
+    expect(closeFile(path.join(dir, 'absent.env'))).toBe('skipped');
+  });
+});
+

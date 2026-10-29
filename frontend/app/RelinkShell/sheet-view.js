@@ -4,7 +4,6 @@
 // fabricated zero, and an unreadable leg is never confused with an honestly
 // empty one.
 
-import { skiesLinesOf } from '../../../core/cosmos/skies/skies-lines.js';
 
 // Block readiness: UNREADABLE (the leg could not be read — null payload),
 // EMPTY (read fine, honestly none), READY (there is something to show).
@@ -52,29 +51,27 @@ export const craftReadiness = (skillTree) => {
 };
 
 /**
- * The run the STATE gauges render: the full latest run when it carries
- * dimensions, else the newest summary that does (runs arrive newest-first);
- * null when nothing measurable has ever run.
- * @param {Object|null} bench the state leg's payload ({ runs, latest })
+ * The self-check run the STATE gauges render (GET /:id/self-check → latest):
+ * a kept run with its components; null when no self-check has ever run.
+ * @param {Object|null} check the state leg's payload ({ latest, previous, ... })
  * @returns {Object|null}
  */
-export const latestRunOf = (bench) => {
-  if (!bench || typeof bench !== 'object') return null;
-  if (Array.isArray(bench.latest?.dimensions) && bench.latest.dimensions.length) return bench.latest;
-  const runs = Array.isArray(bench.runs) ? bench.runs : [];
-  return runs.find((r) => Array.isArray(r?.dimensions) && r.dimensions.length) || null;
+export const latestRunOf = (check) => {
+  const latest = check && typeof check === 'object' ? check.latest : null;
+  return Array.isArray(latest?.components) && latest.components.length ? latest : null;
 };
 
-export const stateReadiness = (bench) => {
-  if (!bench) return UNREADABLE;
-  return latestRunOf(bench) ? READY : EMPTY;
+export const stateReadiness = (check) => {
+  if (!check) return UNREADABLE;
+  return latestRunOf(check) ? READY : EMPTY;
 };
 
 /**
- * One dimension as a true gauge: the integer percent is the single source for
- * BOTH the bar's sweep and the printed value, so the two can never disagree
- * (SHINKEI: a gauge's sweep equals its displayed value). A null score is an
- * unmeasured dimension inside a real run — pct null, the bar stays empty.
+ * One self-check component as a true gauge: the integer percent is the single
+ * source for BOTH the bar's sweep and the printed value, so the two can never
+ * disagree (SHINKEI: a gauge's sweep equals its displayed value). A null score
+ * is a component with nothing answerable inside a real run — pct null, the bar
+ * stays empty.
  * @param {{label?: string, score?: number|null}} dimension
  * @returns {{label: string, pct: number|null}}
  */
@@ -124,12 +121,6 @@ export const skiesReadiness = (leg) => {
   if (!leg || typeof leg !== 'object') return UNREADABLE;
   return leg.recorded && leg.skies?.systems ? READY : EMPTY;
 };
-
-// Flatten the reading into display rows: [system label, the coordinates,
-// the tradition]. Every system the record carries, from the ONE list the
-// SUMMONING film draws too (core/cosmos/skies/skies-lines.js) — systems the
-// record does not carry are omitted, so rows only ever speak what was computed.
-export const skiesRowsOf = (leg) => skiesLinesOf(leg?.skies?.systems);
 
 // ── FORM — the being's own look, and ONLY what both parties agreed to ────────
 //

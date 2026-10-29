@@ -7,6 +7,7 @@ import process from 'node:process';
 import { createTempDir } from '../helpers/temp-fs.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { collectOutputs } from '../../backend/services/image-forge/image-store.js';
+import { stampPng } from '../../backend/services/image-forge/ai-disclosure.js';
 
 test.skipIf(process.platform === 'win32')('collecting an image recreates missing sovereign art directories at 0700', async () => {
   const root = await createTempDir('image-private-directory');
@@ -28,7 +29,8 @@ test.skipIf(process.platform === 'win32')('collecting an image recreates missing
     });
     expect(records).toHaveLength(1);
     expect(records[0].dir).toBe(path.join(lane, 'art', 'images'));
-    expect(await fs.readFile(path.join(records[0].dir, records[0].file))).toEqual(image);
+    // Stored = the render's own bytes plus its AI disclosure, and nothing else (ai-disclosure.js).
+    expect(await fs.readFile(path.join(records[0].dir, records[0].file))).toEqual(stampPng(image));
     const manifest = JSON.parse((await fs.readFile(path.join(records[0].dir, 'manifest.jsonl'), 'utf8')).trim());
     expect(manifest.imageId).toBe(records[0].imageId);
     for (const directory of [lane, path.join(lane, 'art'), records[0].dir]) {

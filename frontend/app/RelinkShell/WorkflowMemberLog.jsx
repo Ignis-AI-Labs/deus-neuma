@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { readPartLog } from './team-client.js';
+import { safeHttpUrl } from './safe-url.js';
 import { StopMemberButton } from './TeamRunControls.jsx';
 import { WorkflowSteer } from './WorkflowSteer.jsx';
 import './WorkflowMemberLog.css';
@@ -103,11 +104,16 @@ const LogEntry = ({ e, latest }) => {
         ) : null}
         {e.sources?.length ? (
           <ol className="workflow-log-sources">
-            {e.sources.map((src, i) => (
-              <li key={`${src.url}-${i}`}>
-                <a href={src.url} target="_blank" rel="noopener noreferrer">{src.title || src.url}</a>
-              </li>
-            ))}
+            {e.sources.map((src, i) => {
+              // A url that fails the href guard still shows, unlinked — the
+              // same rule as the tool chip's source list.
+              const href = safeHttpUrl(src.url);
+              return (
+                <li key={`${src.url}-${i}`}>
+                  {href ? <a href={href} target="_blank" rel="noopener noreferrer">{src.title || href}</a> : (src.title || src.url)}
+                </li>
+              );
+            })}
           </ol>
         ) : null}
       </li>

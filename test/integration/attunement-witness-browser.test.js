@@ -19,12 +19,19 @@ import attunementRouter from '../../backend/routes/attunement-routes.js';
 import rosterRouter from '../../backend/routes/roster-routes.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 
-let tmp; let oldRoot; let vite; let server; let browser; let token; let address;
+let tmp; let oldRoot; let oldCredentialPath; let vite; let server; let browser; let token; let address;
 const neumaId = 'attunement-ui-storage-control';
 beforeAll(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-attunement-ui-'));
   oldRoot = getWorkspacesRoot();
   setWorkspacesRoot(path.join(tmp, 'house'));
+  // The host reads attunement status, whose route resolution opens the
+  // provider credential store — unpinned, that was the operator's real
+  // data/settings/provider-credentials.json, sealed under the real key: it
+  // failed to decrypt under the test key, status answered 500 and the offer
+  // button never rendered.
+  oldCredentialPath = process.env.NEUMA_PROVIDER_CREDENTIALS_PATH;
+  process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = path.join(tmp, 'settings', 'provider-credentials.json');
   const wallet = Wallet.createRandom();
   address = wallet.address;
   await workspace.create(neumaId);
@@ -45,7 +52,9 @@ beforeAll(async () => {
     configFile: false, root: fileURLToPath(new URL('../../', import.meta.url)),
     cacheDir: path.join(tmp, 'vite'), appType: 'custom', esbuild: { jsx: 'automatic' },
     optimizeDeps: { entries: ['test/helpers/attunement-witness-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-    server: { middlewareMode: true, hmr: false, watch: null },
+    // No HMR socket; the client dials a port the browser refuses — hmr:false still
+    // aimed it at :24678, where any other Vite on the box answers and the page reloads.
+    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
   });
   app.get('/', (_req, res) => res.type('html').send('<!doctype html><html><body><div id="root"></div><script type="module" src="/test/helpers/attunement-witness-page.jsx"></script></body></html>'));
   app.use(vite.middlewares);
@@ -59,6 +68,8 @@ afterAll(async () => {
   if (server?.listening) await new Promise((resolve) => server.close(resolve));
   await vite?.close();
   setWorkspacesRoot(oldRoot);
+  if (oldCredentialPath === undefined) delete process.env.NEUMA_PROVIDER_CREDENTIALS_PATH;
+  else process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = oldCredentialPath;
   if (tmp) await fs.rm(tmp, { recursive: true, force: true });
 });
 

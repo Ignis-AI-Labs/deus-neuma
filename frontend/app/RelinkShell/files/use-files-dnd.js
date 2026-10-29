@@ -1,4 +1,4 @@
-// use-files-dnd — THE TWO-WAY BRIDGE (Design note, 2026-07-28: OS ⇄ Explorer drag,
+// use-files-dnd — THE TWO-WAY BRIDGE (ruling, 2026-07-28): OS ⇄ Explorer drag,
 // extracted whole from FilesApp (size law). dropPath plus the four drag
 // handlers; the shared refreshers and setters arrive as args — state
 // ownership stays with FilesApp, no restructure.

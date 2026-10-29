@@ -14,6 +14,7 @@
 import { Router } from 'express';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
+import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { createStreamRequest, consumeStream, stripThinkTags } from '../services/llm-provider.js';
 import { resolveNeumaRoute } from '../services/neuma-route-resolver.js';
 import { isLocalProvider } from '../services/provider-registry.js';
@@ -33,6 +34,8 @@ router.post('/refine', express.json({ limit: '128kb' }), async (req, res) => {
   if (!text.trim()) return res.status(400).json({ error: 'nothing to refine' });
   if (text.length > MAX_CHARS) return res.status(413).json({ error: `refine takes up to ${MAX_CHARS} characters` });
   const neumaId = typeof req.body?.neumaId === 'string' && req.body.neumaId ? req.body.neumaId : null;
+  // A named being's route is its house's: another house's being is refused.
+  if (neumaId && !(await assertNeumaOwner(req, res, neumaId))) return;
 
   let route;
   try {

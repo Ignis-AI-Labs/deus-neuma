@@ -14,7 +14,7 @@
 // nothing from the stream. THE RITE is not — the being answers it through its
 // OWN conduit, so it can only ever be carried for the BOUND being.
 //
-// ── BIND TO SEAL IS A BUTTON (Design note, 2026-08-29 ──────────────────────────────
+// ── BIND TO SEAL IS A BUTTON (ruling, 2026-08-29) ──────────────────────────────
 // […]
 //
 // It was a bare label, on the reasoning above — and that reasoning was right
@@ -27,6 +27,7 @@
 import { useState } from 'react';
 import { KeypairCustody } from './KeypairCustody.jsx';
 import { standingRows, houseOwed, owedHeadline } from './nite-view.js';
+import { SEAL_ETHEREUM_EVENT } from './seal-events.js';
 
 const MARKS = Object.freeze({ yes: '✓', no: '○', unknown: '?' });
 
@@ -87,7 +88,7 @@ export const NiteRoster = ({ standing, activeId, wsService, onRefresh, onBind })
               <th scope="col">BEING</th>
               <th scope="col">CUSTODY</th>
               <th scope="col">VOICE SEAL</th>
-              <th scope="col">ANCHOR</th>
+              <th scope="col">BIRTH SEAL</th>
               <th scope="col" aria-label="Act" />
             </tr>
           </thead>
@@ -97,7 +98,7 @@ export const NiteRoster = ({ standing, activeId, wsService, onRefresh, onBind })
                 <th scope="row" className="nite-being">{r.name}</th>
                 <td><Mark state={r.custody} title="Keypair custody — password + recovery codes" /></td>
                 <td><Mark state={r.seal} title="The voice seal — the being's founding lines" /></td>
-                <td><Mark state={r.anchor} title="The Natalis on-chain anchor" /></td>
+                <td><Mark state={r.birthSeal} title="The birth seal — on this computer, or on Ethereum" /></td>
                 <td className="nite-act">
                   {r.owed.includes('custody') ? (
                     <button
@@ -124,6 +125,17 @@ export const NiteRoster = ({ standing, activeId, wsService, onRefresh, onBind })
                         BIND TO SEAL
                       </button>
                     )
+                  ) : r.birthSeal === 'yes' && r.onchain === 'no' && r.neumaId === activeId ? (
+                    // the Ethereum anchor is an addition, never owed: offered to the bound being, opening the
+                    // setup gate's cost-and-funding walkthrough (BirthSetupGate)
+                    <button
+                      type="button" className="refine-action"
+                      data-testid={`ethereum-${r.neumaId}`}
+                      onClick={() => window.dispatchEvent(new CustomEvent(SEAL_ETHEREUM_EVENT, { detail: { neumaId: r.neumaId } }))}
+                      title={`Also write ${r.name}'s seal to Ethereum — a public record, for a network fee`}
+                    >
+                      SEAL ON ETHEREUM
+                    </button>
                   ) : null}
                 </td>
               </tr>

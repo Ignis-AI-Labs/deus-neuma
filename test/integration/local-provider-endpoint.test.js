@@ -37,6 +37,7 @@ describe('a local provider on a non-default port', () => {
   let server;
   let port;
   let hits = [];
+  let savedDiscoveryPorts;
 
   beforeAll(async () => {
     server = createServer((req, res) => {
@@ -50,10 +51,17 @@ describe('a local provider on a non-default port', () => {
     });
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     port = server.address().port;
+    // probeProviders also sweeps the machine's real listeners (74e375b06). Pin
+    // that sweep to OUR server, so it never knocks on the box's own servers
+    // and every hit below is accounted for.
+    savedDiscoveryPorts = process.env.NEUMA_DISCOVERY_PORTS;
+    process.env.NEUMA_DISCOVERY_PORTS = String(port);
   });
 
   afterAll(async () => {
     await removeCredential('ollama').catch(() => {});
+    if (savedDiscoveryPorts === undefined) delete process.env.NEUMA_DISCOVERY_PORTS;
+    else process.env.NEUMA_DISCOVERY_PORTS = savedDiscoveryPorts;
     await new Promise((r) => server.close(r));
     rmSync(CRED_DIR, { recursive: true, force: true });
   });
@@ -66,8 +74,12 @@ describe('a local provider on a non-default port', () => {
     // 11434 is almost certainly empty on this box — the point is WHICH address
     // was tried, which the result now states.
     expect(providers.ollama.endpoint).toBe('http://localhost:11434');
-    // Our real server on the other port was never contacted.
-    expect(hits).toEqual([]);
+    // The configured probe never contacted our real server on the other port:
+    // its one hit is the discovery sweep's (74e375b06), which names it apart.
+    expect(hits).toEqual(['/api/tags']);
+    expect(providers.discovered).toEqual([
+      { provider: 'ollama', endpoint: `http://127.0.0.1:${port}`, models: ['gemma-4-31b', 'qwen3.5'] },
+    ]);
   });
 
   test('THE FIX: the operator\'s endpoint is what gets probed, and the models are found', async () => {

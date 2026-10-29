@@ -32,15 +32,17 @@ export const OPTIONAL_KNOBS = Object.freeze([
 export const HEAD_KNOB = 'head';
 
 
-// The stock dress — mirrors frontend/styles/tokens.css exactly; applying it
-// is the same as applying no override at all. STOCK_FACES are the optional
+// The stock dress, CYBERDECK — mirrors frontend/styles/tokens.css exactly;
+// applying it is the same as applying no override at all. It claims one
+// optional voice, HEAD: its headings wear a soft amber beside the cyan. STOCK_FACES are the optional
 // knobs' resting values (the stylesheet's own), shown by the UI until a
 // dress claims that voice.
 export const STOCK_LOOK = Object.freeze({
-  ground: '#000000',
-  panel: '#000000',
-  ink: '#FFFFFF',
-  trim: '#5FE9FF',
+  ground: '#11161D',
+  panel: '#18202A',
+  ink: '#E4EAF0',
+  trim: '#4FD6E8',
+  head: '#E9B872',
 });
 
 export const STOCK_FACES = Object.freeze({

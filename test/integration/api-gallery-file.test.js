@@ -106,6 +106,27 @@ describe('Gallery /file — the viewer contract', () => {
     expect(res.status).toBe(401);
   });
 
+  // Audit 2026-10-28 M-02: a root could be any folder, and /file streamed ANY file under it.
+  test('only media is served: a text file, a .env, and a .png link to a secret are not found', async () => {
+    await fs.writeFile(path.join(folder, 'notes.txt'), 'private notes');
+    await fs.writeFile(path.join(folder, '.env'), 'API_KEY=never-served');
+    const outside = await createTempDir(`gallery-secret-${Math.random().toString(36).slice(2)}`);
+    await fs.writeFile(path.join(outside, 'id_rsa'), 'PRIVATE KEY');
+    await fs.symlink(path.join(outside, 'id_rsa'), path.join(folder, 'innocent.png'));
+    for (const rel of ['notes.txt', '.env', 'innocent.png']) {
+      const res = await request(app).get('/api/v1/gallery/file').set('Authorization', `Bearer ${token}`).query({ rootId, rel });
+      expect(res.status, rel).toBe(404);
+    }
+    const media = await request(app).get('/api/v1/gallery/file').set('Authorization', `Bearer ${token}`).query({ rootId, rel: 'render.png' });
+    expect(media.status).toBe(200);
+  });
+
+  test('a root can never be the whole disk', async () => {
+    const res = await request(app).post('/api/v1/gallery/roots').set('Authorization', `Bearer ${token}`).send({ dir: '/' });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(res.body)).toMatch(/whole disk/);
+  });
+
   test('bytes are storable and carry a validator', async () => {
     const res = await get({ token });
     // `no-store` was the bug: it forbade KEEPING the bytes at all, so every

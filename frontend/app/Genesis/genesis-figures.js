@@ -5,9 +5,13 @@
 // `apply(state, master)`: the only way its figures move.
 
 import * as THREE from 'three';
-import { GENESIS, seedCenters, firstVesica, fruitCenters, metatronLines, genesisSolids, genesisLattice } from './genesis-geometry.js';
+import { GENESIS, seedCenters, firstVesica, fruitCenters, metatronLines, genesisFamily, genesisLattice } from './genesis-geometry.js';
 import { SPANS } from './genesis-timeline.js';
 import { arcStrokes, solidStrokes } from './genesis-shaders.js';
+import { mixHex } from '../BootIgnition/stage-palette.js';
+import { MARKS, signatureOf } from './genesis-signatures.js';
+
+const MARK_PX = 9; // a vertex mark's size in CSS pixels
 
 const { R } = GENESIS;
 const UP = Math.PI / 2;
@@ -100,25 +104,44 @@ export const drawingFigures = ({ palette, pen, set }) => {
 };
 
 /** III · the construct: the simplex, the family, the lattice — one group that grows to cosmic scale. */
-export const constructFigures = ({ scene, palette, pen, set }, { turn }) => {
+export const constructFigures = ({ scene, palette, pen, mark, set }, { turn }) => {
   const group = new THREE.Group();
   scene.add(group);
-  const solids = genesisSolids();
-  const solid = (s, color) => pen(solidStrokes(s), { color, span: SPANS.SOLID, parent: group });
-  const tetrahedron = solid(solids.tetrahedra[0], palette.SIGNAL_TINT);
-  const stella = solid(solids.tetrahedra[1], palette.SIGNAL_TINT);
-  const cube = solid(solids.cube, palette.INK);
-  const octahedron = solid(solids.octahedron, palette.INK);
-  const icosahedron = solid(solids.icosahedron, palette.SIGNAL);
-  const dodecahedron = solid(solids.dodecahedron, palette.INK);
-  const lattice = solid(genesisLattice(), palette.INK);
-  const all = [[tetrahedron, 'tetrahedron'], [stella, 'stella'], [cube, 'cube'], [octahedron, 'octahedron'],
-    [icosahedron, 'icosahedron'], [dodecahedron, 'dodecahedron'], [lattice, 'lattice']];
+  const solids = genesisFamily();
+  // each solid in its own hand: tint, dash, and a mark on every vertex
+  const solid = (s, key) => {
+    const sig = signatureOf(key);
+    const color = mixHex(palette.INK, palette.SIGNAL, sig.mix);
+    return {
+      ...pen(solidStrokes(s), { color, span: SPANS.SOLID, parent: group }),
+      marks: mark(s.vertices, { color, shape: MARKS.indexOf(sig.mark), parent: group }),
+      dash: sig.dashes,
+    };
+  };
+  const figures = [
+    [solid(solids.tetrahedra[0], 'tetrahedron'), 'tetrahedron'],
+    [solid(solids.tetrahedra[1], 'stella'), 'stella'],
+    [solid(solids.cube, 'cube'), 'cube'],
+    [solid(solids.octahedron, 'octahedron'), 'octahedron'],
+    [solid(solids.icosahedron, 'icosahedron'), 'icosahedron'],
+    [solid(solids.dodecahedron, 'dodecahedron'), 'dodecahedron'],
+  ];
+  const lattice = pen(solidStrokes(genesisLattice()), { color: palette.INK, span: SPANS.SOLID, parent: group });
   return {
     apply(c, settle, master) {
       group.scale.setScalar(c.scale);
       group.rotation.z = turn * settle;
-      for (const [f, key] of all) set(f.m, { ...c[key], opacity: c[key].opacity * c.gain }, master);
+      for (const [f, key] of figures) {
+        const s = c[key];
+        const opacity = s.opacity * c.gain;
+        set(f.m, { ...s, opacity, dash: f.dash }, master);
+        // the marks arrive as the solid closes, never before its edges
+        f.marks.m.uOpacity.value = opacity * master * Math.min(1, Math.max(0, (s.draw - 0.6) / 0.4));
+        f.marks.m.uLift.value = s.lift;
+        f.marks.m.uBurn.value = s.burn;
+        f.marks.m.uSize.value = MARK_PX * f.marks.dpr();
+      }
+      set(lattice.m, { ...c.lattice, opacity: c.lattice.opacity * c.gain }, master);
     },
   };
 };

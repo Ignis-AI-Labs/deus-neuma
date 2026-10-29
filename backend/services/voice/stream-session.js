@@ -32,6 +32,7 @@
 import WebSocket from 'ws';
 import { ensureReady, resolveServe } from './engine-manager.js';
 import { createLogger } from '../logger.js';
+import { sidecarSocketHeaders } from './sidecar-trust.js';
 
 const log = createLogger('Voice.StreamSession');
 
@@ -147,7 +148,8 @@ export class VoiceStreamSession {
     if (!serve) throw new Error('whisper engine missing from registry');
     await ensureReady('whisper');
     const { host, port } = serve;
-    const ws = new WebSocket(`ws://${host}:${port}/stream`);
+    // the transcription audio goes only to a sidecar that proves the install key (sidecar-trust.js)
+    const ws = new WebSocket(`ws://${host}:${port}/stream`, { headers: await sidecarSocketHeaders(`http://${host}:${port}`) });
     this._ws = ws;
     // Open is not admitted: the lane answers `ready`, or refuses (one /stream
     // client at a time — close 1013 while another holds it). Wait for which,

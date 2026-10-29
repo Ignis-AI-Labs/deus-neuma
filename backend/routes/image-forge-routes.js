@@ -14,9 +14,10 @@
 import { createReadStream } from 'fs';
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
+import { passesInstallOwner, requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { neumaWorkspace } from '../../core/index.js';
-import { claimOrVerifyLaneOwnership } from '../services/lane-ownership.js';
+import { verifyLaneOwnership } from '../services/lane-ownership.js';
 import { readManifest, resolveImage } from '../services/image-forge/image-store.js';
 import { activitySnapshot } from '../services/image-forge/forge-activity.js';
 import { readAttempts, READ_CAP } from '../services/image-forge/attempt-log.js';
@@ -30,6 +31,7 @@ import {
   freeComfy,
   comfySupervisorStatus,
 } from '../services/image-forge/comfyui-supervisor.js';
+import { ownedLanes } from '../services/house-deadlines.js';
 
 const log = createLogger('ImageForge.Routes');
 const router = express.Router();
@@ -49,7 +51,9 @@ router.get('/status', async (req, res) => {
 // Launch is long (seconds); the card polls /status for progress. Kick the
 // boot, give it a short head start, and answer with the honest snapshot —
 // a failure that lands later is named in lastError, never a hung "launching".
-router.post('/launch', async (req, res) => {
+// Booting, stopping and freeing the engine are the machine's acts — its GPU
+// and its processes are the install owner's, at its own desk (ruling, 2026-10-19).
+router.post('/launch', requireInstallOwner, async (req, res) => {
   try {
     const config = cfg();
     const boot = ensureComfyReady(config);
@@ -61,7 +65,7 @@ router.post('/launch', async (req, res) => {
   }
 });
 
-router.post('/stop', async (req, res) => {
+router.post('/stop', requireInstallOwner, async (req, res) => {
   try {
     const result = await stopComfy();
     res.json({ ...(await comfySupervisorStatus(cfg())), result });
@@ -71,7 +75,7 @@ router.post('/stop', async (req, res) => {
 });
 
 // Operator "return VRAM now" — tier-1 by hand, without stopping the engine.
-router.post('/free', async (req, res) => {
+router.post('/free', requireInstallOwner, async (req, res) => {
   try {
     const result = await freeComfy(cfg());
     res.json({ ...result, ...(await comfySupervisorStatus(cfg())) });
@@ -86,28 +90,40 @@ router.post('/free', async (req, res) => {
 // the queue counter. This is the backend re-broadcasting what its own lane
 // socket already receives (see forge-activity.js).
 //
-// Rig-wide by design, exactly like /status: the engine is one shared resource
-// and the operator is its keeper. Metadata only — no bytes, no prompts (a
+// The engine is one shared resource and the operator is its keeper. Metadata only — no bytes, no prompts (a
 // prompt is the being's own words; the image ids here still serve through the
 // lane-scoped /images/:imageId gate).
-router.get('/activity', (req, res) => {
+//
+// Per house since the re-audit (2026-10-29, L-09 residual), like /attempts: a house reads its own
+// lanes' jobs, the laneless desk jobs are the install owner's, and every other house's live jobs
+// show only as a count — the engine stays one shared resource whose queue anyone may see.
+router.get('/activity', async (req, res) => {
+  const mine = new Set((await ownedLanes(req.walletAddress)).map((lane) => lane.laneId));
+  const owner = await passesInstallOwner(req);
+  const visible = (record) => (record.laneId ? mine.has(record.laneId) : owner);
+  const { live, recent, at } = activitySnapshot();
   res.set('Cache-Control', 'no-store');
-  res.json(activitySnapshot());
+  res.json({ live: live.filter(visible), recent: recent.filter(visible), othersLive: live.filter((r) => !visible(r)).length, at });
 });
 
 // The operator's debugging record: what was actually asked for, verbatim,
 // including every refusal. A refused prompt used to leave NO trace anywhere —
 // the being's memory held a summary, and the payload was dropped — so the one
-// case that most needs evidence produced none (Design note, 2026-08-01.
+// case that most needs evidence produced none (ruling, 2026-08-01).
 //
 // `?outcome=refused` narrows to the refusals, which is the usual reason to look.
-router.get('/attempts', (req, res) => {
+router.get('/attempts', async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || READ_CAP, READ_CAP);
-  const { entries, total } = readAttempts(READ_CAP);
+  const { entries } = readAttempts(READ_CAP);
+  // A house reads its own lanes' attempts; a laneless one (the desk's own) is
+  // the install owner's. Never another house's prompts (audit 2026-10-28 L-09).
+  const mine = new Set((await ownedLanes(req.walletAddress)).map((lane) => lane.laneId));
+  const owner = await passesInstallOwner(req);
+  const visible = entries.filter((e) => (e.laneId ? mine.has(e.laneId) : owner));
   const outcome = req.query.outcome ? String(req.query.outcome) : null;
-  const filtered = outcome ? entries.filter((e) => e.outcome === outcome) : entries;
+  const filtered = outcome ? visible.filter((e) => e.outcome === outcome) : visible;
   res.set('Cache-Control', 'no-store');
-  res.json({ entries: filtered.slice(0, limit), total, returned: Math.min(filtered.length, limit) });
+  res.json({ entries: filtered.slice(0, limit), total: visible.length, returned: Math.min(filtered.length, limit) });
 });
 
 // The lane a request may read: the SAME id shape a neuma id and a witness lane
@@ -121,7 +137,7 @@ const laneFor = async (req, res) => {
     res.status(400).json({ error: 'laneId is required and must be a plain lane id' });
     return null;
   }
-  const owned = await claimOrVerifyLaneOwnership({
+  const owned = await verifyLaneOwnership({
     workspace: neumaWorkspace, neumaId: laneId, wallet: req.walletAddress,
   });
   if (!owned.ok) {

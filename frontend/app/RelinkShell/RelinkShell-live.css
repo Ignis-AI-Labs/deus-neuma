@@ -148,6 +148,18 @@
   border: 1px solid var(--line);
   margin: var(--space-1) 0;
 }
+/* A history image not yet read (HistoryImage.jsx) — holds its place, names its size. */
+.relink-msg-image--pending {
+  width: min(320px, 100%);
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  background: var(--color-glass-light);
+}
 
 /* The desk row (D6) — Explorer panel + the window region, one flex row over
    the whole shell. The panel column carries its own strip/dock clearances;

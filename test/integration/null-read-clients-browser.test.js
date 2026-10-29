@@ -18,15 +18,18 @@ import { fullAuth } from '../helpers/audit-auth.js';
 test('substrate null-read clients preserve the resolve-null idiom and sound the auth rot alarm', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'null-read-clients-'));
   const paths = { NEUMA_CAPACITY_PATH: 'capacity', NEUMA_MODELS_DIRS: 'models', NEUMA_SUBSTRATE_CLAIM_DIR: 'claims' };
-  const saved = Object.fromEntries(Object.keys(paths).map(key => [key, process.env[key]]));
+  // The telemetry read probes the served llama-server: pinned to the discard port, never the live one.
+  const pinned = { LLAMA_SERVER_URL: 'http://127.0.0.1:9' };
+  const saved = Object.fromEntries([...Object.keys(paths), ...Object.keys(pinned)].map(key => [key, process.env[key]]));
   let vite; let server; let browser;
   try {
     for (const [key, dir] of Object.entries(paths)) process.env[key] = path.join(root, dir);
+    Object.assign(process.env, pinned);
     const auth = await fullAuth(); const app = express(); const requests = [];
     app.use('/api', (req, res, next) => { res.on('finish', () => requests.push({ method: req.method, status: res.statusCode })); next(); });
     app.use('/api/v1/substrate', (await import('../../backend/routes/substrate-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">'
       + 'import {fetchTelemetry} from "/frontend/app/RelinkShell/vessel-client.js";'
       + 'import {loadTelemetry} from "/frontend/app/RelinkShell/substrate-client.js";'
@@ -49,6 +52,7 @@ test('substrate null-read clients preserve the resolve-null idiom and sound the 
     const telemetry = await page.evaluate(() => window.reads.vessel());
     expect(typeof telemetry.at).toBe('string');
     expect(typeof telemetry.serving).toBe('boolean');
+    expect(telemetry.endpoint).toBe('http://127.0.0.1:9');
     const hudTelemetry = await page.evaluate(() => window.reads.hud());
     expect(typeof hudTelemetry.at).toBe('string');
     expect(hudTelemetry.provider).toBe(telemetry.provider);

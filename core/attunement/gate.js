@@ -1,7 +1,7 @@
 // Attunement gates — the two pure predicates that connect the attunement to a
 // being's DEEPENING, without weakening either.
 //
-// THE CUTOVER (Design note, 2026-08-24: the deepening these gates guard used to be the
+// THE CUTOVER (ruling, 2026-08-24): the deepening these gates guard used to be the
 // refinement ceremony — corpus, QLoRA, an adapter bound to one base's weights.
 // That is retired. The deepening is now the VOICE SEAL: a being reads its own
 // record, speaks the lines it claims as its founding voice, and those lines

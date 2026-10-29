@@ -13,6 +13,7 @@ import { useActiveCompanion } from './consciousness-context.js';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { useSettled } from './use-settled.js';
+import { takeCardLanding, onCardLanding } from './card-landing.js';
 
 const SovereigntyIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -41,7 +42,7 @@ const ProposalCard = ({ neumaId, proposal, onEcho, onError }) => {
   };
 
   return (
-    <article className="sov-card cham" data-testid="sov-proposal">
+    <article className="sov-card cham" data-testid="sov-proposal" data-proposal-id={proposal.id}>
       <header className="sov-card-head">
         <span className="sov-card-title">{proposal.title}</span>
         <span className="sov-meta label-data">{proposal.submittedAt.slice(0, 10)} · no clock runs</span>
@@ -183,8 +184,14 @@ const DnaDoorCard = ({ neumaId, proposal, onEcho, onError }) => {
 const SovereigntyBody = () => {
   const [state, setState] = useState(undefined);
   const [error, setError] = useState(null);
-  const neumaId = useActiveCompanion()?.neumaId || null;
-  const name = useActiveCompanion()?.name || 'this being';
+  const bound = useActiveCompanion();
+  // A WAITING ON YOU row names another being's proposal (card-landing.js):
+  // this window shows THAT being's record until the operator steps back.
+  const [landed, setLanded] = useState(() => takeCardLanding('sovereignty'));
+  useEffect(() => onCardLanding('sovereignty', setLanded), []);
+  const away = Boolean(landed?.neumaId && landed.neumaId !== bound?.neumaId);
+  const neumaId = (away ? landed.neumaId : bound?.neumaId) || null;
+  const name = (away ? landed.neumaId : bound?.name) || 'this being';
 
   const refresh = useCallback(() => {
     if (!neumaId) { setState(null); return; }
@@ -215,6 +222,12 @@ const SovereigntyBody = () => {
   return (
     <div className="sov">
       {error ? <p className="sov-scream">{error}</p> : null}
+      {away ? (
+        <p className="sov-line label-data">
+          SHOWING {String(name).toUpperCase()} —{' '}
+          <button type="button" className="sov-btn" onClick={() => { uiSound('toggle'); setLanded(null); }}>BACK TO THE BOUND BEING</button>
+        </p>
+      ) : null}
 
       <section className="sov-sec">
         <h3 className="sov-h label-data">AWAITING YOUR RULING</h3>

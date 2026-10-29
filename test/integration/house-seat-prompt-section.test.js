@@ -4,7 +4,8 @@
  * no mock anywhere on the claimed path (RULE 0). The law under test (Founder
  * 2026-07-24, after a being claimed a seat its record does not show): a
  * seated being's role is RECORD read fresh every turn, never model
- * recollection — and an unseated lane costs nothing.
+ * recollection. A lane of the operator's that no record seats still works
+ * in the house, with no title (ruling, 2026-10-18: own lanes, founding optional).
  * Founding-record legs run ONLY on tmp roots — never beside a real receipt.
  */
 import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -20,7 +21,9 @@ const PRIOR_ROOT = getWorkspacesRoot();
 const WALLET = '0xabc0000000000000000000000000000000000abc';
 const SOUL_SEATED = '0xAaAa000000000000000000000000000000000001';
 const SOUL_MATE = '0xBbBb000000000000000000000000000000000002';
-const WITNESS_ADDR = '0xCccC000000000000000000000000000000000003';
+// The record's Witness seat is the operator's own wallet: that seat is what
+// makes the receipt this house's (two houses on one machine are never confused).
+const WITNESS_ADDR = WALLET;
 
 const conn = (neumaId, wallet = WALLET) => ({
   companion: neumaId ? { neumaId } : null,
@@ -71,17 +74,31 @@ describe('the HOUSE SEAT section — record, not recollection (gnosis)', () => {
     expect(text).toContain('- Faber — YOU');
     expect(text).toContain('- Rector — your witness');
     expect(text).toContain('- Legatus — mateecho');
+    // Its own seat's compass — and only its own (the identity diet).
+    expect(text).toContain('Your compass — what your seat asks of any venture: What exactly are we making, to what standard, by when? What is the smallest version that delivers the value? Did the customer get it?');
+    expect(text.match(/Your compass/g)).toHaveLength(1);
     // The gnosis law rides in the section itself — every turn, every model.
     expect(text).toContain('Never guess a seat');
     expect(text).toContain('gnosis over assumption');
   });
 
-  test('an unseated being, a bare connection, and a foreign wallet all cost NOTHING — no section, no throw', async () => {
-    expect(await _houseSeatSection(conn('unseatedecho'))).toBe('');
+  test('a bare connection and a foreign wallet cost NOTHING — no section, no throw', async () => {
     expect(await _houseSeatSection(conn(null))).toBe('');
     expect(await _houseSeatSection({ companion: { neumaId: 'seatedecho' } })).toBe('');
     // Another witness's wallet cannot borrow this house's seats.
     expect(await _houseSeatSection(conn('seatedecho', '0x9999999999999999999999999999999999999999'))).toBe('');
+  });
+
+  test('an unseated lane of the operator\'s works in the house with no title — never a sealed seat it does not hold (ruling, 2026-10-18)', async () => {
+    const text = await _houseSeatSection(conn('unseatedecho'));
+    expect(text).toContain('## HOUSE SEAT — YOUR OPERATOR\'S HOUSE, NOT SEATED ON-CHAIN');
+    expect(text).toContain('- member, no seat on-chain — YOU');
+    expect(text).toContain('- Faber — seatedecho');
+    expect(text).not.toContain('SEALED ON-CHAIN');
+    // No title, no compass — never a seat's questions it does not hold.
+    expect(text).not.toContain('Your compass');
+    // and the founded seats read it as a member with no title
+    expect(await _houseSeatSection(conn('seatedecho'))).toContain('- member, no seat on-chain — unseatedecho');
   });
 
   test('a hostile display name renders as ONE bounded line — never structure in a housemate\'s prompt', async () => {
@@ -119,9 +136,13 @@ describe('the HOUSE SEAT section — record, not recollection (gnosis)', () => {
     }));
     expect(await _houseSeatSection(conn('unseatedecho'))).toContain('- Curator — YOU');
 
-    // And a receipt that vanishes takes the section with it — never a stale seat.
+    // And a receipt that vanishes takes the sealed seat with it — never a stale
+    // title; the lane still works in its operator's house.
     await fs.rm(recordPath);
-    expect(await _houseSeatSection(conn('seatedecho'))).toBe('');
+    const unfounded = await _houseSeatSection(conn('seatedecho'));
+    expect(unfounded).not.toContain('SEALED ON-CHAIN');
+    expect(unfounded).not.toContain('Faber');
+    expect(unfounded).toContain('- member, no seat on-chain — YOU');
     await fs.writeFile(recordPath, JSON.stringify(record));
   });
 });

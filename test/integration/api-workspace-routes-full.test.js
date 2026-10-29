@@ -386,6 +386,22 @@ describe('import — a real bundle really landing in a new lane', () => {
     // The proof that matters: their being is untouched on disk.
     expect((await neumaWorkspace.readDNA(id)).identity.name).toBe('TheirBeing');
   });
+
+  it('REFUSES a second import into the caller\'s own lane — nothing doubles', async () => {
+    const bundle = {
+      dna: { identity: { name: 'Twice' }, version: '1.0.0' },
+      observations: [{ id: 'abc12345', type: 'self-note', content: 'once only', significance: 0.9 }],
+      sessions: { 'session-1': [{ role: 'user', content: 'hello', timestamp: '2026-07-01T10:00:00.000Z' }] },
+    };
+    const first = await authed(request(app).post('/api/v1/workspace/import')).send({ neumaId: 'twice-lane', bundle });
+    expect(first.status).toBe(200);
+
+    const second = await authed(request(app).post('/api/v1/workspace/import')).send({ neumaId: 'twice-lane', bundle });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toBe('This being already lives here; restore into a new lane');
+    expect(await neumaWorkspace.listObservations('twice-lane')).toHaveLength(1);
+    expect(await neumaWorkspace.readSession('twice-lane', 'session-1')).toHaveLength(1);
+  });
 });
 
 describe('the gates — real owner.json, real sessions', () => {

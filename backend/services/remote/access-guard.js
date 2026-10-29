@@ -8,9 +8,12 @@
  * on every request.
  *
  * What each scope requires:
- *   local  — a loopback peer with a loopback Host (access-scope.js); nothing
- *            else changes for it. Remote access OFF leaves local exactly as
- *            it was.
+ *   local  — a loopback peer with a loopback Host (access-scope.js), and
+ *            not sent by another web origin: a page the operator visits can
+ *            reach 127.0.0.1, so a request carrying a foreign Origin, or
+ *            marked cross-site/same-site by the browser with no allowed Origin
+ *            (an <img>, a no-cors GET), is refused (audit 2026-10-28 M-03).
+ *            CLIs, tests and the backend's own callers send neither header.
  *   remote — a tailnet peer through Serve on the enrolled origin, plus the
  *            device cookie on everything except the enrolment road itself,
  *            plus Origin === Host on anything that can change state; OR a
@@ -20,6 +23,7 @@
  * `requireLocalScope` is the local-only tier: minting, host-OS acts, quit.
  */
 import { classifyAccess, originMatchesHost } from './access-scope.js';
+import { getAllowedOrigins, isSameOriginLoopback } from '../../config.js';
 import { remoteStore } from './remote-store.js';
 import { DEVICE_COOKIE, findDevice, findDeviceBySpki, readCookie } from './pairing.js';
 import { createLogger } from '../logger.js';
@@ -34,15 +38,38 @@ const refusal = (status, error, reason = error) =>
 const admission = (scope, device = null) =>
   Object.freeze({ allow: true, scope, status: 200, error: null, reason: null, device });
 
+// What a browser says about who sent a request. A page on another origin —
+// another site, or another localhost port (same-site) — never reaches the
+// local tier; same-origin and none (a CLI, the backend's own fetch) do.
+const FOREIGN_FETCH_SITES = Object.freeze(new Set(['cross-site', 'same-site']));
+
+/**
+ * Was this local request sent by another web origin? Pure.
+ * @param {Record<string, unknown>} headers
+ * @param {(origin: string) => boolean} originAllowed
+ * @returns {boolean}
+ */
+export const sentByForeignOrigin = (headers, originAllowed) => {
+  const site = String(headers['sec-fetch-site'] ?? '').toLowerCase();
+  // The browser's own word that the page and the request share an origin (a
+  // page cannot set Sec-Fetch-*): the app's page, or a dev proxy's own page.
+  if (site === 'same-origin') return false;
+  const origin = typeof headers.origin === 'string' ? headers.origin : '';
+  if (origin) return !originAllowed(origin);
+  return FOREIGN_FETCH_SITES.has(site);
+};
+
 /**
  * The verdict for one request or upgrade. Pure. The tunnel marker — set by
  * our own TLS layer on a socket it admitted — is checked first and is the
  * only road where the device is read from the socket rather than a cookie.
  * A pairing socket reaches exactly one door: POST /r/claim.
- * @param {{ headers: Record<string, unknown>, remoteAddress: unknown, method: string, path: string, state: object, now?: number, tunnel?: object | null }} input
+ * `originAllowed` (omitted: no origin rule) names the origins the local tier
+ * accepts — the app's own, the served origin, the configured allowlist.
+ * @param {{ headers: Record<string, unknown>, remoteAddress: unknown, method: string, path: string, state: object, now?: number, tunnel?: object | null, originAllowed?: (origin: string) => boolean }} input
  * @returns {{ allow: boolean, scope: 'local' | 'remote' | null, status: number, error: string | null, device: object | null }}
  */
-export const accessDecision = ({ headers, remoteAddress, method, path, state, now = Date.now(), tunnel = null }) => {
+export const accessDecision = ({ headers, remoteAddress, method, path, state, now = Date.now(), tunnel = null, originAllowed = null }) => {
   const verdict = classifyAccess({
     remoteAddress,
     forwardedFor: headers['x-forwarded-for'],
@@ -50,7 +77,10 @@ export const accessDecision = ({ headers, remoteAddress, method, path, state, no
     enrolledHost: state.enabled ? state.origin : null,
     tunnel,
   });
-  if (verdict.scope === 'local') return admission('local');
+  if (verdict.scope === 'local') {
+    if (originAllowed && sentByForeignOrigin(headers, originAllowed)) return refusal(403, 'cross-origin request blocked', 'a local request sent by another web origin');
+    return admission('local');
+  }
   if (verdict.scope === 'pairing') {
     if (path === '/r/claim' && String(method).toUpperCase() === 'POST') return admission('remote');
     return refusal(403, 'the pairing road carries the claim only', verdict.reason);
@@ -77,14 +107,23 @@ export const accessDecision = ({ headers, remoteAddress, method, path, state, no
   return admission('remote', device);
 };
 
-const decide = (req, store) => accessDecision({
-  headers: req.headers,
-  remoteAddress: req.socket?.remoteAddress,
-  method: req.method,
-  path: String(req.url ?? '').split('?')[0],
-  state: store.get(),
-  tunnel: req.socket?.neumaTunnel ?? null,
-});
+// impure (config) — the origins the local tier accepts
+const localOriginAllowed = (state) => (origin) => isSameOriginLoopback(origin)
+  || (state.enabled && state.origin && origin === `https://${state.origin}`)
+  || (getAllowedOrigins() ?? []).includes(origin);
+
+const decide = (req, store) => {
+  const state = store.get();
+  return accessDecision({
+    headers: req.headers,
+    remoteAddress: req.socket?.remoteAddress,
+    method: req.method,
+    path: String(req.url ?? '').split('?')[0],
+    state,
+    tunnel: req.socket?.neumaTunnel ?? null,
+    originAllowed: localOriginAllowed(state),
+  });
+};
 
 /**
  * Build the guard against a store — the default instance below uses the

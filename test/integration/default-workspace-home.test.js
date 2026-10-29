@@ -18,7 +18,7 @@ import path from 'path';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('fresh install sets up the default neuma workspace home', () => {
-  let app, base, neumaWorkspacesRoot;
+  let app, base, neumaWorkspacesRoot, signedIn;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -29,6 +29,10 @@ describe('fresh install sets up the default neuma workspace home', () => {
     const core = await import('../../core/index.js');
     core.setWorkspacesRoot(neumaWorkspacesRoot); // what the Electron default resolves to
     const { default: router } = await import('../../backend/routes/preflight-routes.js');
+    // the checks are for a signed-in caller (audit 2026-10-28 M-03); signed in through the same
+    // fresh module registry the router loaded, so its session secret is the router's
+    const { fullAuth } = await import('../helpers/audit-auth.js');
+    signedIn = async () => ({ Authorization: `Bearer ${(await fullAuth()).token}` });
     app = express();
     app.use(express.json());
     app.use('/api/v1/preflight', router);
@@ -43,7 +47,7 @@ describe('fresh install sets up the default neuma workspace home', () => {
     // Self-contained false→true proof: truly fresh before the GET, present after.
     expect(existsSync(neumaWorkspacesRoot)).toBe(false); // precondition: nothing created it yet
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(await signedIn());
     expect(res.status).toBe(200);
 
     // 1. The default neuma workspace home was created on disk by the GET.

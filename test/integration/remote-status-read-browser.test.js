@@ -27,7 +27,7 @@ test('remote status preserves local reads and signals expired sessions', async (
     app.use(createAccessGuard({ store }).middleware);
     app.use('/api/v1/remote', createRemoteRouter({ store }));
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import {getRemoteStatus} from "/frontend/services/remote-client.js"; window.readRemote=getRemoteStatus; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

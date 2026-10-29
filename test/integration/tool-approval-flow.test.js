@@ -195,7 +195,7 @@ describe('tool approval flow (real WS + real MCP, gnosis)', () => {
   }, 30000);
 
   test('AUTO mode — a delete still pauses on the protocol guard, then executes on the operator\'s yes', async () => {
-    // The law changed with the chat modes (Design note, 2026-08-26: AUTO flows
+    // The law changed with the chat modes (ruling, 2026-08-26): AUTO flows
     // ordinary gated acts, but the protocol guard (protocol-guard.js) holds
     // the irreversible/outward classes — deletes among them — for the card.
     const connection = { ...freshConnection(), toolMode: 'auto' };
@@ -441,7 +441,7 @@ describe('tool approval flow (real WS + real MCP, gnosis)', () => {
     await workspace.writeToolPolicy(NEUMA_ID, {}); // clean, so re-run order stays honest
   }, 30000);
 
-  test('a write outside the lane RAISES the ask — one approval pattern on every level (Design note, 2026-07-23', async () => {
+  test('a write outside the lane RAISES the ask — one approval pattern on every level (ruling, 2026-07-23)', async () => {
     // The old law made non-project writes a flat wall and a being fell back
     // to begging through ask_operator. Now the card rises naming the target
     // directory; the operator's no still refuses, and nothing touches disk.

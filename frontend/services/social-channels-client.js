@@ -74,7 +74,7 @@ export const getPostQueue = () => req('/queue');
 export const getReplyCandidates = () => req('/replies');
 
 /**
- * THE BIN (Design note, 2026-10-13: put a reply to the house in the bin — it never knocks
+ * THE BIN (ruling, 2026-10-13): put a reply to the house in the bin — it never knocks
  * again — or take it back out. Recorded, never deleted.
  * @param {string} postId
  * @param {'bin'|'restore'} act
@@ -96,16 +96,17 @@ export const getFlightTests = ({ fresh = false } = {}) =>
 
 /**
  * Stage a witness-authored draft into the queue. campaignId ties the draft
- * to a campaign on the bench, same as the being-tools' field.
- * @param {{channelId: string, text: string, scheduledFor?: string, campaignId?: string}} draft
+ * to a campaign on the bench, same as the being-tools' field; accountId names
+ * which of the house's accounts speaks (its platform's first when absent).
+ * @param {{channelId: string, accountId?: string, text: string, scheduledFor?: string, campaignId?: string}} draft
  */
 // impure
-export const stageQueuePost = ({ channelId, text, scheduledFor, campaignId }) =>
-  req('/queue', { method: 'POST', body: { channelId, text, scheduledFor, campaignId } });
+export const stageQueuePost = ({ channelId, accountId, text, scheduledFor, campaignId }) =>
+  req('/queue', { method: 'POST', body: { channelId, accountId, text, scheduledFor, campaignId } });
 
 /**
  * Approve a draft. For a POST this arms it for the scheduler (optionally
- * re-timed). For a REPLY the approval IS the send (Design note, 2026-08-06: pass
+ * re-timed). For a REPLY the approval IS the send (ruling, 2026-08-06): pass
  * `textSeen` — the exact copy rendered when the operator decided — and the
  * answer carries `{entry, outcome}` with the real send result instead of a
  * schedule receipt. The backend refuses a reply approval whose textSeen does
@@ -113,15 +114,58 @@ export const stageQueuePost = ({ channelId, text, scheduledFor, campaignId }) =>
  * @param {string} id
  * @param {{scheduledFor?: string, textSeen?: string}} [decision]
  */
+/**
+ * Approve a whole THREAD in one decision — every draft from its root down. The
+ * copy of each post as read rides along (textsSeen); a post edited since is a
+ * refusal and nothing is approved.
+ * @param {string} id - any post of the thread
+ * @param {Record<string, string>} textsSeen - id → the text as shown
+ */
 // impure
-export const approveQueuePost = (id, { scheduledFor, textSeen } = {}) =>
+export const approveQueueThread = (id, textsSeen) =>
+  req(`/queue/${id}/approve-thread`, { method: 'PUT', body: { textsSeen } });
+
+/**
+ * APPROVE GROUP — every waiting post of a group (one asset on several
+ * accounts) in one press, each copy as read (textsSeen). A TikTok post rides
+ * only with its card's choices (`tiktok[id]`); otherwise it is named in
+ * `ownCard` and waits for its own card.
+ * @param {string} groupId
+ * @param {Record<string, string>} textsSeen
+ * @param {Record<string, object>} [tiktok]
+ */
+// impure
+export const approveQueueGroup = (groupId, textsSeen, tiktok = undefined) =>
+  req(`/queue/groups/${encodeURIComponent(groupId)}/approve`, { method: 'PUT', body: { textsSeen, ...(tiktok ? { tiktok } : {}) } });
+
+// impure — `tiktok` carries the choices made on a TikTok post's card.
+export const approveQueuePost = (id, { scheduledFor, textSeen, tiktok } = {}) =>
   req(`/queue/${id}/approve`, {
     method: 'PUT',
     body: {
       ...(scheduledFor ? { scheduledFor } : {}),
       ...(textSeen !== undefined ? { textSeen } : {}),
+      ...(tiktok ? { tiktok } : {}),
     },
   });
+
+/**
+ * What a TikTok post's card renders from: the account as TikTok names it
+ * now and the author's suggestions.
+ * @param {string} id
+ * @returns {Promise<{ok: true, mode: 'drafts'}|{ok: true, mode: 'post', creator: object, suggested: object}>}
+ */
+// impure
+export const fetchTikTokCard = (id) => req(`/queue/${id}/tiktok`);
+
+/**
+ * The house's TikTok account as the TIKTOK window draws it: profile, the
+ * four counts, the recent videos, and what the connection cannot read yet.
+ * @returns {Promise<{ok: true, account: object, videos: object[]|null, hasMore: boolean,
+ *   videosError: string|null, missing: string[], reconnect: string|null, readAt: string}>}
+ */
+// impure
+export const fetchTikTokProfile = () => req('/tiktok/profile');
 
 /**
  * Decline a draft — it stays in the record, marked.
@@ -163,14 +207,19 @@ export const updateQueuePost = (id, patch) =>
 export const removeQueuePost = (id) =>
   req(`/queue/${id}`, { method: 'DELETE' });
 
+/** TRY AGAIN: a failed post the platform stumbled on, back to DRAFT — it sends only once approved again. */
+export const retryQueuePost = (id) =>
+  req(`/queue/${id}/retry`, { method: 'PUT' });
+
 /**
- * One staged attachment's bytes as a LOCAL object URL. The preview route is
- * behind the Bearer token and an <img> cannot send headers, so the bytes
- * travel through fetch and the element points at the object URL — the caller
- * owns revoking it.
+ * One staged attachment's bytes as a LOCAL object URL, with the type the
+ * server sniffed (an image, or a YouTube post's video). The preview route is
+ * behind the Bearer token and an <img>/<video> cannot send headers, so the
+ * bytes travel through fetch and the element points at the object URL — the
+ * caller owns revoking it.
  * @param {string} entryId
  * @param {number} index
- * @returns {Promise<string>}
+ * @returns {Promise<{url: string, type: string}>}
  */
 // impure
 export const fetchQueueMediaUrl = async (entryId, index) => {
@@ -178,14 +227,15 @@ export const fetchQueueMediaUrl = async (entryId, index) => {
   if (!headers) throw new Error('Not authenticated.');
   const res = await fetch(`/api/v1/social-channels/queue/${entryId}/media/${index}`, { headers });
   if (!res.ok) throw new Error(`The staged media did not load (${res.status}).`);
-  return URL.createObjectURL(await res.blob());
+  const blob = await res.blob();
+  return { url: URL.createObjectURL(blob), type: blob.type };
 };
 
 /**
  * The wallet's own roster, for the holder picker — one auth envelope for
  * everything this board needs, so the section never rebuilds it.
  *
- * WITNESSES RIDE TOO (Design note, 2026-07-26. /api/v1/roster has always returned
+ * WITNESSES RIDE TOO (ruling, 2026-07-26). /api/v1/roster has always returned
  * `{ roster, witnesses }`; this client read only `roster` and dropped the
  * witnesses on the floor, which is why a sealed peer — Kagipem, an OpenAI
  * witness already standing beside the house — could never be picked for

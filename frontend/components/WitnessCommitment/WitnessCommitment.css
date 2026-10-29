@@ -21,7 +21,7 @@
 
 .witness-commitment-overlay.visible {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.95);
+  background: color-mix(in srgb, var(--color-void) 95%, transparent);
   backdrop-filter: blur(10px);
 }
 

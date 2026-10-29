@@ -129,12 +129,24 @@ describe('notificationReducer', () => {
     expect(notificationReducer(state, { type: 'MARK_ALL_READ' })).toBe(state);
   });
 
-  test('CLEAR empties this tray but stays hydrated — it deletes nothing', () => {
-    let state = notificationReducer(initialNotifications, { type: 'HYDRATE', records: [card('a')] });
-    state = notificationReducer(state, { type: 'CLEAR' });
-    expect(state.records).toEqual([]);
-    expect(state.unread).toBe(0);
+  test('DISMISS takes the named cards out of the tray, and is a no-op for unknown ids', () => {
+    let state = notificationReducer(initialNotifications, {
+      type: 'HYDRATE', records: [card('a'), card('b', { ts: T0 + 1 }), card('c', { ts: T0 + 2 })],
+    });
+    state = notificationReducer(state, { type: 'DISMISS', ids: ['a', 'c'] });
+    expect(state.records.map((r) => r.id)).toEqual(['b']);
+    expect(state.unread).toBe(1);
     expect(state.hydrated).toBe(true);
+    expect(notificationReducer(state, { type: 'DISMISS', ids: ['zz'] })).toBe(state);
+    expect(notificationReducer(state, { type: 'DISMISS', ids: [] })).toBe(state);
+  });
+
+  test('a dismissed card does not come back on the next hydrate the server sends', () => {
+    let state = notificationReducer(initialNotifications, { type: 'HYDRATE', records: [card('a'), card('b', { ts: T0 + 1 })] });
+    state = notificationReducer(state, { type: 'DISMISS', ids: ['a'] });
+    // The server leaves dismissed cards out of its hydrate; HYDRATE replaces.
+    state = notificationReducer(state, { type: 'HYDRATE', records: [card('b', { ts: T0 + 1 })] });
+    expect(state.records.map((r) => r.id)).toEqual(['b']);
   });
 
   test('caps what it holds in memory', () => {
@@ -280,6 +292,18 @@ describe('notificationTarget', () => {
   test('a settled benchmark and a bench watch alert open the BENCH window', () => {
     expect(notificationTarget(card('t', { kind: KIND.benchDone, ref: { comparisonId: 'desk-1' } }))).toEqual({ appId: 'bench', payload: null });
     expect(notificationTarget(card('t', { kind: KIND.benchAlert }))).toEqual({ appId: 'bench', payload: null });
+  });
+
+  test('a house-wake card about something filed for the operator opens the HOUSE CLOCK on its ASKS tab', () => {
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: { sessionId: 's1', wakeId: 'w1', askId: 'a1' } })))
+      .toEqual({ appId: 'houseclock', payload: { wakeId: 'w1', sessionId: 's1', tab: 'asks' } });
+    // the Optio's review packet names no wake
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: { packetAt: '2026-10-18T10:00:00.000Z' } })))
+      .toEqual({ appId: 'houseclock', payload: { tab: 'asks' } });
+    // a card about the wake itself (its work failed) names the wake, no tab
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: { wakeId: 'w2' } })))
+      .toEqual({ appId: 'houseclock', payload: { wakeId: 'w2', sessionId: null } });
+    expect(notificationTarget(card('h', { kind: KIND.houseWake, ref: {} }))).toEqual({ appId: 'houseclock', payload: null });
   });
 
   test('a disk warning lands where the operator can act on it', () => {

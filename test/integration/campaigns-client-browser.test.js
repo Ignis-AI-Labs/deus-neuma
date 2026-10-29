@@ -40,7 +40,7 @@ test('campaign client preserves campaigns, files, designation and auth boundarie
     app.use('/api/v1/campaigns', (await import('../../backend/routes/campaign-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import * as client from "/frontend/services/campaigns-client.js"; window.client=client; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app);
@@ -62,7 +62,11 @@ test('campaign client preserves campaigns, files, designation and auth boundarie
     await page.evaluate((token) => sessionStorage.setItem('authToken', token), auth.token);
     expect((await invoke('getCampaigns')).result.campaigns).toEqual([]);
     expect((await invoke('createCampaign', [{}])).http).toBe(400);
-    const campaign = (await invoke('createCampaign', [{ name: 'Temporary campaign', brand: 'Test' }])).result.campaign;
+    const campaign = (await invoke('createCampaign', [{ name: 'Temporary campaign', companyId: 'ignis' }])).result.campaign;
+    expect(campaign).toMatchObject({ v: 2, companyId: 'ignis', angles: [], subs: [] });
+    const asked = (await invoke('askOnCampaign', [campaign.id, 'Which week do we launch?'])).result.campaign;
+    expect(asked.asks).toMatchObject([{ from: 'operator', state: 'open', text: 'Which week do we launch?' }]);
+    expect((await invoke('settleCampaignAsk', [campaign.id, asked.asks[0].id])).result.campaign.asks[0].state).toBe('done');
     const changed = (await invoke('updateCampaign', [campaign.id, { status: 'paused', notes: 'Local review' }])).result.campaign;
     expect(changed).toMatchObject({ status: 'paused', notes: 'Local review' });
     expect((await invoke('getCampaigns')).result.campaigns).toEqual([changed]);

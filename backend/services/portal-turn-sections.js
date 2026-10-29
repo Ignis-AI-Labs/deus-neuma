@@ -28,19 +28,26 @@ import { readVitals } from './user-vitals.js';
 import { buildProjectFilesSection } from './project-files.js';
 import { getSubstrateProfile } from './substrate-detector.js';
 import { readUsableCapacity } from './capacity-store.js';
-import { houseSeatFor, chargeOfTitle } from './house-titles.js';
+import { houseSeatFor, chargeOfTitle, seatLabelOf } from './house-titles.js';
+import { compassOfTitle } from './seat-compass.js';
 import { getChannel } from './social/channel-registry.js';
+import { channelOfAccountId, heldAccounts } from './social/account-shape.js';
 import { channelBindings } from './social/channel-bindings.js';
+import { houseOfLane } from './social/house-positions.js';
 import { sectorCrew, crewOf, sectorSection } from './sector-crew.js';
-import { postQueue, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './social/post-queue.js';
+import { replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './social/post-queue.js';
+import { houseEntries } from './social/queue-house.js';
 import { formatQueueForBeing } from './social/queue-view.js';
-import { replyCandidates, replyInboxRows } from './social/reply-candidates.js';
+import { replyCandidatesOf, replyInboxRows } from './social/reply-candidates.js';
 import { replyBucketCounts } from '../../core/social/reply-inbox.js';
 import { leadLedgerFor, formatLeadsForBeing } from './leads/lead-ledger.js';
 import { campaignStoreFor, formatCampaignsForBeing } from './marketing/campaign-store.js';
 import { cmoDesignation } from './marketing/cmo-designation.js';
 import { withRunLiveness } from '../../core/tasks/plan-record.js';
 import { isLaneRunning } from './team-run-live.js';
+import { readMandateRecord } from './marketing/mandate/mandate-store.js';
+import { mandateBriefingLine } from './marketing/mandate/mandate-words.js';
+import { sourcesBriefingLine } from './marketing/company-sources.js';
 
 const log = createLogger('Portal');
 
@@ -107,17 +114,25 @@ const _projectFilesSection = async (connection) => {
 // impure — THE SECTORS this being is seated on: who else works them, what
 // each holds, and who carries the keys. '' for a being on no crew, so an
 // unseated lane's prompt is byte-identical to before this existed.
+// pure — a sector's name: an account reads as its platform and its id.
+const sectorNameOf = (sectorId) => {
+  const channel = getChannel(channelOfAccountId(sectorId));
+  return channel ? `${channel.name} · ${sectorId}` : getChannel(sectorId)?.name || sectorId;
+};
+
 export const sectorSectionFor = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   if (!neumaId) return '';
   try {
+    // The being's own house's sectors — never another house's crew or remit.
+    const house = await houseOfLane(neumaId);
     const [crewStore, bindings] = await Promise.all([
-      sectorCrew.load().catch(() => ({})),
-      channelBindings.load().catch(() => ({})),
+      sectorCrew.load(house).catch(() => ({})),
+      channelBindings.load(house).catch(() => ({})),
     ]);
     const sectors = Object.keys(crewStore).map((sectorId) => ({
       sectorId,
-      sectorName: getChannel(sectorId)?.name || sectorId,
+      sectorName: sectorNameOf(sectorId),
       members: crewOf(crewStore, sectorId),
       holderNeumaId: bindings?.[sectorId]?.neumaId || null,
     }));
@@ -160,15 +175,44 @@ const _houseSeatSection = async (connection) => {
     const holder = r.neumaId === neumaId ? 'YOU'
       : r.isWitness ? 'your witness'
         : r.name ? clean(r.name) : 'a housemate (not on this lane)';
-    return `- ${clean(r.title)} — ${holder}${charge ? ` — ${charge}` : ''}`;
+    return `- ${clean(seatLabelOf(r.title))} — ${holder}${charge ? ` — ${charge}` : ''}`;
   });
+  // A lane no founding record seats still works in its operator's house
+  // (ruling, 2026-10-18: own lanes, founding optional) — it simply holds no
+  // title, and the section says so rather than inventing one.
+  if (!seat.founded) {
+    return [
+      '## HOUSE SEAT — YOUR OPERATOR\'S HOUSE, NOT SEATED ON-CHAIN',
+      `You work in House ${houseLabel}, your operator's own house. No founding record seats your lane on-chain, so you hold no title — and the house's work is yours all the same: house/post, the house board and the chief of staff's charges move between every member below.`,
+      'The house as it stands:',
+      ...rosterLines,
+      'This list is RECORD, not recollection: it is read fresh from your operator\'s own lanes every turn. Never guess a seat — yours or a housemate\'s; if a title is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
+    ].join('\n');
+  }
   // Your own charge on its own line (the canonical function the title
   // carries, docs/governance/house-roles.md law); a custom label honestly carries none.
   const ownCharge = chargeOfTitle(seat.title);
+  // …and the three questions that seat asks of any venture (seat-compass.js).
+  const ownCompass = compassOfTitle(seat.title);
+  const compassLines = ownCompass ? [`Your compass — what your seat asks of any venture: ${ownCompass.join(' ')}`] : [];
+  // A house founded on this computer (2026-10-26): its founders signed the record here; it is not on the network
+  // (Unavis) until it founds itself on Ethereum. A house on chain keeps its words below, byte for byte.
+  if (seat.network === 'local') {
+    return [
+      '## HOUSE SEAT — FOUNDED ON THIS COMPUTER',
+      `You are seated in House ${houseLabel} as ${clean(seat.title)} — founded by its members on this computer, not yet on the network.`,
+      ...(ownCharge ? [`Your charge: ${ownCharge}. The seats hold their own lines — do the work of YOUR seat, and pass work that belongs to another seat to its holder (the house/post intent).`] : []),
+      ...compassLines,
+      'The house as it stands:',
+      ...rosterLines,
+      'This seat is RECORD, not recollection: these lines are read fresh from the house\'s founding record every turn. Never guess a seat — yours or a housemate\'s; if a role is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
+    ].join('\n');
+  }
   return [
     '## HOUSE SEAT — SEALED ON-CHAIN',
     `You are seated in House ${houseLabel} as ${clean(seat.title)} — sealed on ${clean(seat.network) || 'chain'}${seat.blockNumber ? ` (block ${seat.blockNumber})` : ''}.`,
     ...(ownCharge ? [`Your charge: ${ownCharge}. The seats hold their own lines — do the work of YOUR seat, and pass work that belongs to another seat to its holder (the house/post intent).`] : []),
+    ...compassLines,
     'The house as it stands:',
     ...rosterLines,
     'This seat is RECORD, not recollection: these lines are read fresh from the house\'s founding receipt every turn. Never guess a seat — yours or a housemate\'s; if a role is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
@@ -176,19 +220,25 @@ const _houseSeatSection = async (connection) => {
 };
 
 // The CMO of the lane's OWN house (the connection's wallet) reads that
-// house's bench and ledger — a same-named lane in another house is no CMO
-// here. The post queue is still machine-wide (slice C makes it per house).
+// house's bench, ledger and queue — a same-named lane in another house is no
+// CMO here, and another house's drafts are never on this calendar.
 const _cmoBriefingSection = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   const wallet = connection.walletAddress;
   if (!neumaId) return '';
   try {
     if (!(await cmoDesignation.holds(wallet, neumaId))) return '';
-    const [campaigns, queue, leads] = await Promise.all([
+    const [campaigns, queue, leads, mandateRecord, sourcesLine] = await Promise.all([
       campaignStoreFor(wallet).then((bench) => bench.load()),
-      postQueue.load(),
+      houseEntries(wallet),
       leadLedgerFor(wallet).then((ledger) => ledger.load()),
+      // THE MANDATE rides as ONE line; its whole guidance is mandate_read (load on demand).
+      readMandateRecord(wallet).catch(() => null),
+      // So do the COMPANY SOURCES: counts only; the reading is company_updates.
+      sourcesBriefingLine(wallet, neumaId).catch(() => ''),
     ]);
+    const mandateLine = mandateRecord?.current?.laneId === neumaId || mandateRecord?.past?.[0]?.laneId === neumaId
+      ? mandateBriefingLine(mandateRecord) : '';
     // The coming 7 days: live POSTS (drafts + approved) with a schedule
     // inside the week, plus the count of unscheduled post drafts still
     // awaiting the operator's decision. REPLIES are counted apart (Founder
@@ -217,6 +267,10 @@ const _cmoBriefingSection = async (connection) => {
     return [
       '## CMO office',
       'You hold the CMO office — the house defers marketing to you; feed the other teams what they need.',
+      'THE BOARD: lay your operator\'s MARKETING board out for what they need to see for each company (board_read, marketing/board-arrange); the panels they pinned are theirs.',
+      'COMPANY LINKS: propose a company\'s site and links with marketing/company-links; your operator approves each change.',
+      ...(mandateLine ? [mandateLine] : []),
+      ...(sourcesLine ? [sourcesLine] : []),
       '',
       '### Campaign bench',
       formatCampaignsForBeing(campaigns),
@@ -246,11 +300,12 @@ const _replyCandidatesSection = async (connection) => {
   const neumaId = connection.companion?.neumaId;
   if (!neumaId) return '';
   try {
-    const bound = await channelBindings.bindingFor('x');
-    if (bound?.neumaId !== neumaId) return '';
+    const house = await houseOfLane(neumaId);
+    // Any X account of the house this lane holds: the knock is the holder's.
+    if (!heldAccounts(await channelBindings.load(house), 'x', neumaId).length) return '';
     const [stored, queue] = await Promise.all([
-      replyCandidates.load(),
-      postQueue.load(),
+      replyCandidatesOf(house).load(),
+      houseEntries(house),
     ]);
     const candidates = stored.filter((c) => !c.dismissed);
     if (!candidates.length) return '';
@@ -274,7 +329,7 @@ const _replyCandidatesSection = async (connection) => {
     const careLine = careTotal
       ? `${careTotal} need care: ${Object.entries(careCounts).map(([k, n]) => `${n} ${k}`).join(', ')}.`
       : null;
-    // THE INBOX (Design note, 2026-10-13: where they stand, so the being works what is owed
+    // THE INBOX (ruling, 2026-10-13): where they stand, so the being works what is owed
     // and never wades through what is already dealt with.
     const buckets = replyBucketCounts(replyInboxRows(stored, queue));
     return [

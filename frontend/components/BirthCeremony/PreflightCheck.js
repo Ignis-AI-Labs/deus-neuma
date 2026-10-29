@@ -7,9 +7,9 @@ import { hideVoidFade } from '../../utils/loading-states.js';
 import { apiCall } from '../../utils/http.js';
 import { riteIsLive, riteSignal } from '../../app/Rite/rite-signal.js';
 import { renderCheck, paintTally } from './preflight-rows.js';
-import { tallyLine } from './preflight-groups.js';
+import { tallyLine, isOptional } from './preflight-groups.js';
+import { renderHome, applyHome, browseFolder, paintVerdict } from './preflight-home.js';
 import './PreflightCheck-groups.css';
-
 
 export class PreflightCheck {
   constructor(onReady, onCancel) {
@@ -20,6 +20,7 @@ export class PreflightCheck {
   }
 
   show() {
+    this.closing = false;
     this.container = document.createElement('div');
     this.container.className = `preflight-overlay${riteIsLive() ? ' is-rite' : ''}`;
     this.container.innerHTML = `
@@ -79,7 +80,7 @@ export class PreflightCheck {
       if (this.onCancel) this.onCancel();
     });
     this.container.querySelector('#preflight-recheck').addEventListener('click', () => this.run());
-    this.container.querySelector('#pf-apply').addEventListener('click', () => this.applyHome());
+    this.container.querySelector('#pf-apply').addEventListener('click', () => applyHome(this));
 
     // Folder-rules guide: collapsed by default (the 90% never need it); expands
     // the naming/structure rules for witnesses who choose their own location.
@@ -99,7 +100,7 @@ export class PreflightCheck {
     const browseBtn = this.container.querySelector('#pf-browse');
     if (typeof window !== 'undefined' && window.neuma && typeof window.neuma.chooseDirectory === 'function') {
       browseBtn.hidden = false;
-      browseBtn.addEventListener('click', () => this.browseFolder());
+      browseBtn.addEventListener('click', () => browseFolder(this));
     }
     this.container.querySelector('#preflight-begin').addEventListener('click', () => {
       if (this.verdict !== 'ready' || !this.allocationGB) return;
@@ -114,7 +115,11 @@ export class PreflightCheck {
 
   // impure — probes the machine via the local backend, reveals each
   // measurement as a deliberation step
+  // Still on screen? A step back to the door mid-run tears the panel down; every step after an await stops.
+  alive() { return Boolean(this.container) && !this.closing; }
+
   async run() {
+    if (!this.alive()) return;
     const rowsEl = this.container.querySelector('#preflight-rows');
     const verdictEl = this.container.querySelector('#preflight-verdict');
     const beginBtn = this.container.querySelector('#preflight-begin');
@@ -125,11 +130,11 @@ export class PreflightCheck {
     beginBtn.disabled = true;
     this.verdict = null;
 
-    let data;
-    try {
-      data = await apiCall('GET', '/api/v1/preflight', { useServerError: false, errorPrefix: 'HTTP' });
-    } catch (error) {
-      console.error('Pre-flight unavailable:', error);
+    const data = await apiCall('GET', '/api/v1/preflight', { useServerError: false, errorPrefix: 'HTTP' })
+      .catch((error) => ({ unanswered: error }));
+    if (!this.alive()) return;
+    if (data.unanswered) {
+      console.error('Pre-flight unavailable:', data.unanswered);
       paintTally(this.container.querySelector('#preflight-tally'), 'NO ANSWER FROM THIS MACHINE', 'blocked');
       verdictEl.textContent = 'BLOCKED — THE LOCAL BACKEND DID NOT ANSWER';
       verdictEl.classList.add('blocked');
@@ -140,45 +145,25 @@ export class PreflightCheck {
     const tallyEl = this.container.querySelector('#preflight-tally');
     for (const [index, check] of data.checks.entries()) {
       renderCheck(rowsEl, check);
-      const shown = data.checks.slice(0, index + 1);
-      const settled = shown.length === data.checks.length;
-      paintTally(tallyEl, tallyLine(shown, data.checks.length),
+      // the headline counts what the summoning needs; optional capabilities stand apart
+      const core = data.checks.filter((c) => !isOptional(c.id));
+      const shown = data.checks.slice(0, index + 1).filter((c) => !isOptional(c.id));
+      const settled = index === data.checks.length - 1;
+      paintTally(tallyEl, settled ? tallyLine(shown, core.length) : `INSPECTING · ${index + 1} OF ${data.checks.length}`,
         !settled ? 'running' : (shown.some((c) => c.status === 'fail') ? 'blocked' : 'clear'));
       if (check.status === 'pass') riteSignal('rite:check', { check: index });
       playSound('deliberationTick');
       await new Promise((r) => setTimeout(r, 180));
+      if (!this.alive()) return;
     }
 
-    this.renderHome(data.home);
-
+    // The home, its starting space applied without a click when none is set, then the verdict.
     this.verdict = data.verdict;
-    const home = data.home || {};
-    const checksFailed = data.checks.some((c) => c.status === 'fail');
-    if (data.verdict === 'ready') {
-      verdictEl.textContent = this.allocationGB
-        ? 'READY — THE SUBSTRATE CAN HOLD A BEING'
-        : 'READY — CHOOSE THE ALLOCATION TO PROCEED';
-      verdictEl.classList.add('ready');
-      beginBtn.disabled = !this.allocationGB;
-      playSound('noticeArrival');
-    } else if (checksFailed) {
-      // A failed check is the harder blocker — the witness can't fix a missing
-      // LLM by shrinking the allocation — so it wins the verdict text.
-      verdictEl.textContent = 'BLOCKED — RESOLVE THE FAILED CHECKS, THEN RECHECK';
-      verdictEl.classList.add('blocked');
-      playSound('deny');
-    } else if (home.affordable === false) {
-      // Checks pass but the allocation outgrew the space left for it — name the
-      // gap so the witness knows to reduce the grant, not hunt for a failed check.
-      const avail = home.availableGB == null ? '—' : `${home.availableGB.toFixed(1)} GB`;
-      verdictEl.textContent = `BLOCKED — ${this.allocationGB} GB EXCEEDS ${avail} AVAILABLE · REDUCE THE ALLOCATION`;
-      verdictEl.classList.add('blocked');
-      playSound('deny');
-    } else {
-      verdictEl.textContent = 'BLOCKED — RESOLVE THE FAILED CHECKS, THEN RECHECK';
-      verdictEl.classList.add('blocked');
-      playSound('deny');
-    }
+    this.checksFailed = data.checks.some((c) => c.status === 'fail');
+    renderHome(this, data.home);
+    if (!this.allocationGB && data.home?.suggestedAllocationGB) await applyHome(this, { auto: true });
+    if (!this.alive()) return;
+    paintVerdict(this, { arrival: true });
 
     // No mind, no neuma — when the substrate check fails, turn the dead-end into
     // guidance: matched model + which local providers are running.
@@ -190,120 +175,43 @@ export class PreflightCheck {
     }
   }
 
-  renderHome(home) {
-    if (!home) return;
-    const rootInput = this.container.querySelector('#pf-root');
-    const allocInput = this.container.querySelector('#pf-alloc');
-    const note = this.container.querySelector('#pf-home-note');
-    if (!rootInput.value) rootInput.value = home.root || '';
-
-    // Prefill a MODEST starting allocation (the backend's ~10% suggestion) so the
-    // witness never has to guess a number, and never feels they must commit a
-    // large slice up front — a neuma's space is expandable later. The suggestion
-    // is null when the disk is unmeasured or over-committed (no applyable number).
-    const suggested = home.suggestedAllocationGB || null;
-    const prefill = home.allocationGB || suggested;
-    if (!allocInput.value && prefill) allocInput.value = prefill;
-    this.allocationGB = home.allocationGB || null;
-
-    const free = home.freeGB === null ? 'unmeasured' : `${home.freeGB.toFixed(1)} GB free`;
-    // The ledger: space already reserved by existing neuma, and what is left to
-    // allocate — so the witness never double-promises the same gigabytes.
-    const ledger = home.committedGB > 0
-      ? ` · ${home.committedGB} GB committed to ${home.neumaCount} neuma · ${home.availableGB == null ? '—' : home.availableGB.toFixed(1)} GB available`
-      : '';
-    const choice = this.allocationGB
-      ? ` · ${this.allocationGB} GB allocated · expandable later`
-      : (suggested
-          ? ` · ${suggested} GB suggested to start — adjust then APPLY · you can give more anytime`
-          : ' · choose how much this neuma may grow into');
-    note.textContent = `${free}${ledger}${choice}`;
-    // Flag an over-committed allocation in the ledger line itself, so the gap is
-    // visible right where the number is shown — not only in the verdict.
-    note.classList.toggle('is-error', home.affordable === false);
-  }
-
-  // impure — open the native folder picker (desktop shell) and drop the chosen
-  // absolute path into the field. The witness still reviews it and clicks APPLY,
-  // exactly as with a pasted path — browsing only fills the input.
-  async browseFolder() {
-    try {
-      // chooseDirectory resolves to null on cancel (not an exception), so the
-      // catch only fires on a genuine IPC/dialog failure — which we surface
-      // rather than swallow, instead of leaving the witness with a dead button.
-      const dir = await window.neuma.chooseDirectory();
-      if (dir) {
-        const note = this.container.querySelector('#pf-home-note');
-        note.classList.remove('is-error'); // clear any prior failure on a good pick
-        this.container.querySelector('#pf-root').value = dir;
-        playSound('confirm');
-      }
-    } catch (error) {
-      const note = this.container.querySelector('#pf-home-note');
-      note.textContent = `COULD NOT OPEN THE FOLDER PICKER: ${String(error.message || error).toUpperCase()}`;
-      note.classList.add('is-error');
-      playSound('deny');
-    }
-  }
-
-  // impure — persists the witness's home + allocation choice, then re-runs
-  // the checks against the chosen location
-  async applyHome() {
-    const rootInput = this.container.querySelector('#pf-root');
-    const allocInput = this.container.querySelector('#pf-alloc');
-    const note = this.container.querySelector('#pf-home-note');
-    const applyBtn = this.container.querySelector('#pf-apply');
-
-    applyBtn.disabled = true;
-    try {
-      // requireAuth guards this route (SEC-AUDIT-002) — the witness's session
-      // token must ride along or the choice is refused as a stranger's.
-      const body = await apiCall('POST', '/api/v1/preflight/workspace', {
-        body: {
-          root: rootInput.value.trim(),
-          allocationGB: Number(allocInput.value),
-        },
-        errorPrefix: 'Choice rejected',
-      });
-
-      playSound('confirm');
-      // A home that the filesystem tool can't reach means the neuma could not
-      // write its DNA during birth — surface it HERE, at the moment of choosing,
-      // not as a confusing mid-ceremony failure. Takes precedence over the
-      // (softer) stranded-workspaces warning.
-      if (body.filesystemReachWarning) {
-        note.textContent = body.filesystemReachWarning.toUpperCase();
-        note.classList.add('is-error');
-      } else if (body.warning) {
-        note.textContent = body.warning.toUpperCase();
-        note.classList.add('is-error');
-      }
-      await this.run();
-    } catch (error) {
-      playSound('deny');
-      note.textContent = String(error.message || error).toUpperCase();
-      note.classList.add('is-error');
-    }
-    applyBtn.disabled = false;
-  }
-
   // impure — fetches setup guidance and renders the […]
   // panel beneath a failed substrate check
   async renderSubstrateSetup() {
+    if (!this.alive()) return;
     const el = this.container.querySelector('#pf-setup');
-    el.textContent = '';
+    this.clearSubstrateSetup();
     let setup;
     try {
       setup = await apiCall('GET', '/api/v1/preflight/setup');
     } catch {
       return; // guidance is best-effort; the FAIL row already states the need
     }
+    if (!this.alive()) return;
     el.appendChild(this.buildSetupPanel(setup));
     el.classList.add('visible');
+    // The substrate row failed: whatever else answers here, the mind is not ready (one truth with the door).
+    await this.offerModelSetup(el);
+  }
+
+  // impure — no model is served: set one up right here, then check again. The
+  // setup card is the door's own (loaded on demand, only when it is needed).
+  async offerModelSetup(el) {
+    try {
+      const { mountModelSetup } = await import('./preflight-model-setup.js');
+      if (!this.alive()) return;
+      const host = document.createElement('div');
+      el.appendChild(host);
+      this.unmountModelSetup = mountModelSetup(host, () => this.run());
+    } catch {
+      // the panel's guide still names the way by hand
+    }
   }
 
   clearSubstrateSetup() {
-    const el = this.container.querySelector('#pf-setup');
+    this.unmountModelSetup?.();
+    this.unmountModelSetup = null;
+    const el = this.container?.querySelector('#pf-setup');
     if (el) {
       el.textContent = '';
       el.classList.remove('visible');
@@ -354,7 +262,8 @@ export class PreflightCheck {
       // Two different people are read this line: one who has no provider yet,
       // and one whose provider is running on a port we did not look at. Both
       // need to be told, or the second concludes NEUMA simply cannot see it.
-      guide.textContent = 'Install Ollama (ollama.com) or LM Studio (lmstudio.ai), start it, load the recommended model — then RECHECK. '
+      guide.textContent = 'SET IT UP FOR ME below installs a model server and the model for this machine. '
+        + 'Or install Ollama (ollama.com) or LM Studio (lmstudio.ai) yourself, load the recommended model, then RECHECK. '
         + 'Already running on a different port? Set its address in Settings → Models and RECHECK.';
     } else if (!anyModel) {
       guide.textContent = `Your provider is running — load ${rec.model || 'a model'} in it, then RECHECK.`;
@@ -456,10 +365,10 @@ export class PreflightCheck {
     return chip;
   }
 
-
-
   hide() {
-    this.container.classList.remove('visible');
+    this.closing = true;
+    this.clearSubstrateSetup();
+    this.container?.classList.remove('visible');
     setTimeout(() => {
       if (this.container) {
         this.container.remove();

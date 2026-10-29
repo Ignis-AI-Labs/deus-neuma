@@ -294,7 +294,7 @@ const WitnessesBody = () => {
 
   if (ceremonyOpen) {
     // PORTALLED OUT OF THE WINDOW, deliberately. The rite is a cut-scene that
-    // owns the viewport (Design note, 2026-07-29, and CSS alone cannot get it there:
+    // owns the viewport (ruling, 2026-07-29), and CSS alone cannot get it there:
     // .fwin carries `will-change: transform` (FloatingWindow.css:11), which
     // makes every floating window a containing block for position:fixed. A
     // fixed, inset-0 stage rendered inside one is pinned to the WINDOW, not the

@@ -1,4 +1,6 @@
 /** Endpoint-scoped health probes; invalidated requests cannot refill the cache. */
+import net from 'node:net';
+
 const HEALTH_TIMEOUT_MS = 2000;
 const SERVED_TRUTH_TTL_MS = 1500;
 const readings = new Map();
@@ -34,3 +36,20 @@ export const isServing = async (port, host = '127.0.0.1') => {
 
 /** impure — old callers finish their own requests but cannot restore removed entries. */
 export const expireServedTruth = () => readings.clear();
+
+/**
+ * impure — does ANY program accept a connection on this port? Unlike
+ * isServing it asks nothing of the listener, so a program that is not a
+ * healthy llama-server still reads as holding the port. An unanswered
+ * connect within the health deadline reads as free.
+ * @param {number} port
+ * @param {string} [host]
+ * @returns {Promise<boolean>}
+ */
+export const portTaken = (port, host = '127.0.0.1') => new Promise((resolve) => {
+  const socket = net.connect({ port, host });
+  const settle = (taken) => { socket.destroy(); resolve(taken); };
+  socket.setTimeout(HEALTH_TIMEOUT_MS, () => settle(false));
+  socket.once('connect', () => settle(true));
+  socket.once('error', () => settle(false));
+});

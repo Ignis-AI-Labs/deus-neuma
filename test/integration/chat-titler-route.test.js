@@ -93,7 +93,7 @@ beforeAll(async () => {
   await seal({ ...SEAL_INPUT });
 
   const { ensureWitnessLane } = await import('../../backend/services/witness-lane.js');
-  await ensureWitnessLane({ vendorSlug: SEAL_INPUT.vendor, chosenName: SEAL_INPUT.chosenName }, WALLET);
+  await ensureWitnessLane({ vendorSlug: SEAL_INPUT.vendor, chosenName: SEAL_INPUT.chosenName }, WALLET, { summoning: true });
 
   // A real exchange on the lane's own session record.
   await neumaWorkspace.createSession(LANE_ID, 'session-1');

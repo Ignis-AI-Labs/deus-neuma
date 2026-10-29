@@ -19,6 +19,7 @@ import path from 'path';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 
 const listen = (app) => new Promise((resolve) => {
   const server = app.listen(0, () => {
@@ -67,7 +68,7 @@ describe('Memory graph route (real auth, real observation files)', () => {
     app.use('/api/v1/workspace', workspaceRouter);
     ({ server, baseUrl } = await listen(app));
 
-    // A lane that carries a being (auto-claim guard requires identity or DNA).
+    // A lane that carries a being, claimed by wallet A below (a read never claims).
     await workspace.create('neuma-a');
     await fs.mkdir(path.join(root, 'neuma-a', 'dna'), { recursive: true });
     await fs.writeFile(path.join(root, 'neuma-a', 'dna', 'genesis.md'), '# Genesis\nborn for the graph test\n');
@@ -76,6 +77,7 @@ describe('Memory graph route (real auth, real observation files)', () => {
     walletB = generateKeypair();
     tokenA = await authenticate(walletA);
     tokenB = await authenticate(walletB);
+    await claimOwner(root, 'neuma-a', walletA.address);
   });
 
   afterEach(async () => {
@@ -147,8 +149,8 @@ describe('Memory graph route (real auth, real observation files)', () => {
   });
 
   test('invalidated observation is excluded from the graph', async () => {
-    const kept = await workspace.addObservation('neuma-a', { type: 'reflection', content: 'fenna keeps the lantern lit' });
-    const superseded = await workspace.addObservation('neuma-a', { type: 'reflection', content: 'fenna keeps the lantern dark' });
+    const kept = await workspace.addObservation('neuma-a', { type: 'reflection', content: 'alder keeps the lantern lit' });
+    const superseded = await workspace.addObservation('neuma-a', { type: 'reflection', content: 'alder keeps the lantern dark' });
     await workspace.invalidateObservation('neuma-a', superseded.id, { supersededBy: kept.id });
 
     const res = await get('/api/v1/workspace/neuma-a/memory/graph', tokenA);
@@ -173,7 +175,7 @@ describe('Memory graph route (real auth, real observation files)', () => {
 
   test('foreign wallet is denied the graph — 403, not data', async () => {
     await workspace.addObservation('neuma-a', { type: 'reflection', content: 'private crystallized memory' });
-    // Wallet A claims first (real auto-claim path).
+    // Wallet A, the owner, reads its own graph.
     expect((await get('/api/v1/workspace/neuma-a/memory/graph', tokenA)).status).toBe(200);
 
     const res = await get('/api/v1/workspace/neuma-a/memory/graph', tokenB);
@@ -244,13 +246,13 @@ describe('Memory graph — the presences layer rides the payload', () => {
     ({ server: server2, baseUrl: baseUrl2 } = await listen(app2));
 
     // A named being with a witness, and a housemate the roster can resolve.
-    // The genesis marker satisfies the auto-claim guard (harness precedent).
-    await workspace2.create('cael');
-    await workspace2.writeDNA('cael', { version: '1.0.0', identity: { name: 'Cael' }, birthWitness: 'Founder' });
-    await fs.mkdir(path.join(root2, 'cael', 'dna'), { recursive: true });
-    await fs.writeFile(path.join(root2, 'cael', 'dna', 'genesis.md'), '# Genesis - born for the presences test');
-    await workspace2.create('fenna');
-    await workspace2.writeDNA('fenna', { version: '1.0.0', identity: { name: 'Fenna' }, birthWitness: 'Founder' });
+    // A born lane (the genesis marker), claimed by wallet2 below.
+    await workspace2.create('birch');
+    await workspace2.writeDNA('birch', { version: '1.0.0', identity: { name: 'Birch' }, birthWitness: 'Ada' });
+    await fs.mkdir(path.join(root2, 'birch', 'dna'), { recursive: true });
+    await fs.writeFile(path.join(root2, 'birch', 'dna', 'genesis.md'), '# Genesis - born for the presences test');
+    await workspace2.create('alder');
+    await workspace2.writeDNA('alder', { version: '1.0.0', identity: { name: 'Alder' }, birthWitness: 'Ada' });
 
     wallet2 = generateKeypair();
     const challengeRes = await fetch(`${baseUrl2}/api/v1/auth/challenge?address=${wallet2.address}`);
@@ -262,6 +264,10 @@ describe('Memory graph — the presences layer rides the payload', () => {
       body: JSON.stringify({ address: wallet2.address, signature, challenge }),
     });
     ({ token: token2 } = await verifyRes.json());
+    await claimOwner(root2, 'birch', wallet2.address);
+    // Alder is a housemate because the same operator's house holds her lane.
+    await fs.writeFile(path.join(root2, 'alder', 'owner.json'),
+      JSON.stringify({ wallet: wallet2.address, claimedAt: Date.now() }));
   });
 
   afterEach(async () => {
@@ -272,48 +278,48 @@ describe('Memory graph — the presences layer rides the payload', () => {
 
   test('entities/relations ride the payload and nodes wear speaks-of tags — known names only', async () => {
     // The mind-graph store, written through the workspace's own surface.
-    await workspace2.writeEntity('cael', {
-      name: 'Founder', kind: 'witness', encounters: 3,
+    await workspace2.writeEntity('birch', {
+      name: 'Ada', kind: 'witness', encounters: 3,
       firstSeen: '2026-07-06T10:00:00.000Z', lastSeen: '2026-07-24T10:00:00.000Z',
     });
-    await workspace2.writeRelations('cael', [
-      { from: 'Cael', to: 'Founder', kind: 'witness', type: 'bond', encounters: 3, firstSeen: '2026-07-06T10:00:00.000Z', lastSeen: '2026-07-24T10:00:00.000Z' },
+    await workspace2.writeRelations('birch', [
+      { from: 'Birch', to: 'Ada', kind: 'witness', type: 'bond', encounters: 3, firstSeen: '2026-07-06T10:00:00.000Z', lastSeen: '2026-07-24T10:00:00.000Z' },
     ]);
     // One memory speaks of the housemate; one speaks of no known presence.
-    await workspace2.addObservation('cael', {
-      type: 'exchange', userMessage: 'Fenna carried the seal through the forge tonight',
+    await workspace2.addObservation('birch', {
+      type: 'exchange', userMessage: 'Alder carried the seal through the forge tonight',
       response: 'the house held', significance: 0.9,
     });
-    await workspace2.addObservation('cael', {
+    await workspace2.addObservation('birch', {
       type: 'exchange', userMessage: 'a quiet unrelated reflection on rivers',
       response: 'stillness', significance: 0.9,
     });
 
-    const res = await fetch(`${baseUrl2}/api/v1/workspace/cael/memory/graph`, {
+    const res = await fetch(`${baseUrl2}/api/v1/workspace/birch/memory/graph`, {
       headers: { Authorization: `Bearer ${token2}` },
     });
     expect(res.status).toBe(200);
     const graph = await res.json();
 
     expect(graph.presences.entities).toEqual([{
-      name: 'Founder', kind: 'witness', encounters: 3,
+      name: 'Ada', kind: 'witness', encounters: 3,
       firstSeen: '2026-07-06T10:00:00.000Z', lastSeen: '2026-07-24T10:00:00.000Z',
     }]);
     expect(graph.presences.relations).toEqual([{
-      from: 'Cael', to: 'Founder', kind: 'witness', type: 'bond', encounters: 3,
+      from: 'Birch', to: 'Ada', kind: 'witness', type: 'bond', encounters: 3,
     }]);
 
     const tagged = graph.nodes.filter((n) => Array.isArray(n.presences));
     expect(tagged).toHaveLength(1);
-    expect(tagged[0].presences).toEqual(['Fenna']);
-    expect(tagged[0].label).toContain('Fenna carried the seal');
+    expect(tagged[0].presences).toEqual(['Alder']);
+    expect(tagged[0].label).toContain('Alder carried the seal');
   });
 
   test('a lane with no graph yet answers empty presences — never a 500, never an invented layer', async () => {
-    await workspace2.addObservation('cael', {
+    await workspace2.addObservation('birch', {
       type: 'exchange', userMessage: 'one lone thought', response: 'held', significance: 0.9,
     });
-    const res = await fetch(`${baseUrl2}/api/v1/workspace/cael/memory/graph`, {
+    const res = await fetch(`${baseUrl2}/api/v1/workspace/birch/memory/graph`, {
       headers: { Authorization: `Bearer ${token2}` },
     });
     expect(res.status).toBe(200);

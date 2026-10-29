@@ -27,7 +27,8 @@ const MAX_CONTEXT = 1048576;
 
 /** Model keys as LM Studio names them — path-like, never shell-meaningful. Pure. */
 export const isValidModelKey = (key) =>
-  typeof key === 'string' && /^[\w.@/-]+$/.test(key) && key.length <= 256;
+  // never a leading '-': the key reaches `lms load` as an argument, never an option (audit 2026-10-28 L-01)
+  typeof key === 'string' && /^[\w.@/-]+$/.test(key) && !key.startsWith('-') && key.length <= 256;
 
 /** Context length within LM Studio's plausible bounds. Pure. */
 export const isValidContextLength = (n) =>

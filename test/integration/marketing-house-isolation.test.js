@@ -2,8 +2,9 @@
  * THE MARKETING OFFICE PER HOUSE — real tmp disk, the real stores, the real
  * briefing and the real Optio fold; no double anywhere (RULE 0).
  *
- * Two operators, two houses, and the SAME lane id (keir) in both (Founder,
- * 2026-10-16: […]). Proven: each house's CMO seat, campaign bench,
+ * Two operators, two houses, and the SAME lane id in both (ruling,
+ * 2026-10-16: two houses are never confused by the system, at any level).
+ * Proven: each house's CMO seat, campaign bench,
  * weekly plan and lead ledger are its own; the CMO briefing and house-state's
  * campaign, lead and posting-failure folds read only the lane's own house;
  * the machine-wide marketing data moves once to the original single operator
@@ -41,7 +42,7 @@ describe('the marketing office — one per house (real tmp disk)', () => {
   test('the same lane id in two houses: each CMO, bench, plan, ledger and briefing is its own', async () => {
     houses.asHouse(HOUSE_A);
     await cmoDesignation.designate(HOUSE_A, 'keir');
-    await (await campaignStoreFor(HOUSE_A)).add({ name: 'Omberly Dawn', brand: 'omberly' });
+    await (await campaignStoreFor(HOUSE_A)).add({ name: 'Brookmere Dawn', brand: 'brookmere' });
     await (await leadLedgerFor(HOUSE_A)).add({ name: 'Ada', addedBy: 'keir' });
     await (await weeklyPlanStoreFor(HOUSE_A)).approve(DAYS);
 
@@ -54,30 +55,30 @@ describe('the marketing office — one per house (real tmp disk)', () => {
 
     const briefingA = await cmoBriefingSection(keirOf(HOUSE_A));
     expect(briefingA).toContain('CMO office');
-    expect(briefingA).toContain('Omberly Dawn');
+    expect(briefingA).toContain('Brookmere Dawn');
     expect(briefingA).toContain('Ada');
 
     // House B seats its own keir; each briefing reads only its own house.
     houses.asHouse(HOUSE_B);
     await cmoDesignation.designate(HOUSE_B, 'keir');
-    await (await campaignStoreFor(HOUSE_B)).add({ name: 'Aldmere Tide', brand: 'aldmere' });
+    await (await campaignStoreFor(HOUSE_B)).add({ name: 'Thornfield Tide', brand: 'thornfield' });
     const briefingB = await cmoBriefingSection(keirOf(HOUSE_B));
-    expect(briefingB).toContain('Aldmere Tide');
-    expect(briefingB).not.toContain('Omberly Dawn');
+    expect(briefingB).toContain('Thornfield Tide');
+    expect(briefingB).not.toContain('Brookmere Dawn');
     expect(briefingB).not.toContain('Ada');
-    expect(await cmoBriefingSection(keirOf(HOUSE_A))).not.toContain('Aldmere Tide');
+    expect(await cmoBriefingSection(keirOf(HOUSE_A))).not.toContain('Thornfield Tide');
 
     // Clearing house B's seat leaves house A's standing.
     await cmoDesignation.clear(HOUSE_B);
     expect(await cmoBriefingSection(keirOf(HOUSE_B))).toBe('');
-    expect(await cmoBriefingSection(keirOf(HOUSE_A))).toContain('Omberly Dawn');
+    expect(await cmoBriefingSection(keirOf(HOUSE_A))).toContain('Brookmere Dawn');
   });
 
   test('the Optio fold: campaigns, leads and posting failures are the house\'s own', async () => {
     houses.asHouse(HOUSE_A);
-    await (await campaignStoreFor(HOUSE_A)).add({ name: 'Omberly Dawn', brand: 'omberly' });
+    await (await campaignStoreFor(HOUSE_A)).add({ name: 'Brookmere Dawn', brand: 'brookmere' });
     await (await leadLedgerFor(HOUSE_A)).add({ name: 'Ada', addedBy: 'dovan' });
-    await (await campaignStoreFor(HOUSE_B)).add({ name: 'Aldmere Tide', brand: 'aldmere', status: 'paused' });
+    await (await campaignStoreFor(HOUSE_B)).add({ name: 'Thornfield Tide', brand: 'thornfield', status: 'paused' });
     // The post queue is still one machine-wide store (slice C): the fold
     // reads only what is attributable to the house.
     const failed = (id, extra) => ({ id, status: 'failed', channelId: 'x', error: `boom ${id}`, failedAt: '2026-10-16T00:00:00.000Z', ...extra });
@@ -90,7 +91,7 @@ describe('the marketing office — one per house (real tmp disk)', () => {
     ]));
 
     const a = await computeHouseState({ wallet: HOUSE_A, laneId: 'dovan' });
-    expect(a.campaigns).toEqual({ total: 1, live: ['Omberly Dawn'] });
+    expect(a.campaigns).toEqual({ total: 1, live: ['Brookmere Dawn'] });
     expect(a.leads.total).toBe(1);
     expect(a.failures.map((f) => f.id).sort()).toEqual(['a-lane', 'a-operator']);
 
@@ -117,7 +118,10 @@ describe('the marketing office — one per house (real tmp disk)', () => {
 
     houses.asHouse(HOUSE_B); // even opened from house B's process first
     expect(await (await campaignStoreFor(HOUSE_B)).load()).toEqual([]);
-    expect(await (await campaignStoreFor(HOUSE_A)).load()).toEqual(campaigns);
+    // The first-shape bench lands in A's house and is moved to shape v2 there.
+    expect(await (await campaignStoreFor(HOUSE_A)).load()).toMatchObject([
+      { id: 'c1', v: 2, name: 'Legacy Bench', brand: 'neuma', status: 'active', angles: [], subs: [], migratedFrom: { v: 1, pillars: [] } },
+    ]);
     expect(await (await leadLedgerFor(HOUSE_B)).load()).toEqual([]);
     expect(await (await leadLedgerFor(HOUSE_A)).load()).toEqual(leads);
     expect(await (await weeklyPlanStoreFor(HOUSE_B)).load()).toBeNull();

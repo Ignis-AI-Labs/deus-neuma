@@ -11,6 +11,7 @@ import fs from 'fs/promises';
 import { join } from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 
 const run = promisify(execFile);
 
@@ -35,7 +36,7 @@ const readText = (path) => fs.readFile(path, 'utf8').catch(() => null);
 // impure — the ISO date of the last commit touching a path, or null.
 const lastTouched = async (repoPath, rel) => {
   try {
-    const { stdout } = await run('git', ['log', '-1', '--format=%cI', '--', rel], { cwd: repoPath, timeout: 15000 });
+    const { stdout } = await run('git', [...UNTRUSTED_GIT_ARGS, 'log', '-1', '--format=%cI', '--', rel], { cwd: repoPath, env: untrustedGitEnv(), timeout: 15000 });
     return stdout.trim() || null;
   } catch {
     return null;

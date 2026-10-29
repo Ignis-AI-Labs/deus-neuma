@@ -45,6 +45,7 @@ import {
   resolveRetryTurn,
 } from './portal-turn-input.js';
 import { runWitnessToolRounds } from './witness-tool-loop.js';
+import { composeFailedRecord, failureLeavesTake, spokenThrough } from './turn-failure-record.js';
 import { compactWitnessSession } from './witness-compaction.js';
 import { nearContextBoundary } from './solo-torch.js';
 // The pure epoch/repeat law lives in witness-tool-epochs.js; its tests pin
@@ -267,7 +268,7 @@ export const streamWitnessTurn = async (connection, message) => {
     // retaining an earlier count after an omission lies about the final request.
     // The FIRST round's measured prompt is also kept: STANDING pressure (what
     // persists into the next turn) is the compaction boundary's judge — the
-    // same law the portal lane holds (Design note, 2026-08-31, never the in-turn
+    // same law the portal lane holds (ruling, 2026-08-31), never the in-turn
     // working peak's ephemeral tool machinery.
     const captureUsage = (usage) => {
       ctx.turnUsage = usage;
@@ -382,6 +383,13 @@ export const streamWitnessTurn = async (connection, message) => {
     // the head alone left "terminated" as the whole record of the failure.
     const reason = describeProviderError(error);
     log.error('witness stream failed', { laneId, err: reason });
+    // What the peer already said and did stays on its record, marked failed —
+    // the portal seat's law (turn-failure-record.js).
+    const said = spokenThrough(ctx.fullResponse, error);
+    if (failureLeavesTake(said, turnRecordFor(ws))) {
+      await persistExchange(connection, laneId, sessionId, companionName, thought, composeFailedRecord(said),
+        { images, docs, tools: turnRecordFor(ws), take, thoughts: ctx.thoughtTrail });
+    }
     // The point is on disk by now (persistTurnPoint) — name it so the desk
     // can offer RETRY on the error bubble.
     const recovery = operationRecoveryNotice(error);

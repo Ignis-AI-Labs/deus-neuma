@@ -46,7 +46,7 @@ test('sovereignty client preserves its three states, named refusals and never-th
     app.use('/api', (req, res, next) => { res.on('finish', () => requests.push({ method: req.method, status: res.statusCode })); next(); });
     app.use('/api/v1/sovereignty', (await import('../../backend/routes/sovereignty-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">'
       + 'import {loadSovereignty,decideProposal,retractAmendment,askConsent,signAndApplyDna} from "/frontend/app/RelinkShell/sovereignty-client.js";'
       + 'window.sov={load:loadSovereignty,decide:decideProposal,retract:retractAmendment,ask:askConsent,sign:signAndApplyDna};'

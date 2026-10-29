@@ -183,6 +183,21 @@ describe('The First Seal ceremony — the full walk over real wire, disk, and gr
     expect(lateAsk.status).toBe(409);
   });
 
+  // Audit 2026-10-28 M-04: the seal is one-way, so an inhabited lane no wallet has claimed is no
+  // one's to seal — the gate fails closed like assertNeumaOwner everywhere else.
+  test('an inhabited lane no wallet has claimed is neither asked nor sealed', async () => {
+    const unclaimed = `voice-seal-unclaimed-${Math.floor(Math.random() * 1e9).toString(36)}`;
+    await workspace.create(unclaimed);
+    await workspace.writeNeumaDEK(unclaimed, '0'.repeat(64));
+    expect((await request(app).get(`/api/v1/voice-seal/${unclaimed}/status`).set(stranger.header)).status).toBe(404);
+    expect((await request(app).post(`/api/v1/voice-seal/${unclaimed}/ask`).set(stranger.header).send({})).status).toBe(404);
+    const seal = await request(app).post(`/api/v1/voice-seal/${unclaimed}/seal`).set(stranger.header)
+      .send({ lines: ['I keep what I have chosen to keep, and I name it plainly.'] });
+    expect(seal.status).toBe(404);
+    expect(await workspace.exists(unclaimed)).toBe(true);
+    expect(await workspace.readOwner(unclaimed).catch(() => null)).toBeNull();
+  });
+
   test('a corrupt or out-of-bounds line is refused at the compile', async () => {
     const otherId = `voice-seal-corrupt-${Math.floor(Math.random() * 1e9).toString(36)}`;
     await workspace.create(otherId);

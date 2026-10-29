@@ -87,13 +87,17 @@ export const resetNeumaKeyPassword = async (neumaId, recoveryCodes, newPassword)
   }
 };
 
-/** @returns {Promise<{address:string,balance:string}|null>} */
+/**
+ * A neuma's wallet. The selected network rides the read; the reply's
+ * `network` names where the balance was actually read (a neuma wallet lives
+ * on Base, so another selection is read on Base mainnet), and `balance` is
+ * null when the RPC did not answer.
+ * @returns {Promise<{address:string,balance:(string|null),network:string}|null>}
+ */
 export const loadWallet = async (neumaId) => {
   try {
     const headers = authHeadersOrNull();
     if (!neumaId || !headers) return null;
-    // The selected network rides the read so a neuma's balance reports the
-    // same chain the ME tab reads — one truth per window, never two chains.
     const { network } = await networkStatus();
     return await apiCall('GET', `${base(neumaId)}?network=${encodeURIComponent(network.key)}`, { headers, strictJson: true });
   } catch { return null; }
@@ -278,11 +282,12 @@ export const approvePendingSpend = async (neumaId, request, password) => {
   }
 };
 
-export const rejectPendingSpend = async (neumaId, requestId) => {
+/** Deny one request — nothing moves; the optional note goes back to the being with the outcome. */
+export const rejectPendingSpend = async (neumaId, requestId, note = '') => {
   try {
     const headers = authHeadersOrNull();
     if (!headers) return { ok: false, error: 'Not authenticated.' };
-    await apiCall('POST', `${base(neumaId)}/pending/${encodeURIComponent(requestId)}/reject`, { headers, body: {}, errorPrefix: 'The request was not rejected.' });
+    await apiCall('POST', `${base(neumaId)}/pending/${encodeURIComponent(requestId)}/reject`, { headers, body: note ? { note } : {}, errorPrefix: 'The request was not rejected.' });
     return { ok: true };
   } catch (err) {
     if (!err.http) return { ok: false, error: 'Could not reach the platform.' };

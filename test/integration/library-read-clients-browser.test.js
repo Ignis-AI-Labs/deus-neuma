@@ -32,7 +32,7 @@ test('folder and skill reads keep real data, cache semantics and expired-auth fa
     app.use('/api/v1/skills', (req, _res, next) => { if (req.method === 'GET') skillReads++; next(); });
     app.use('/api/v1/llm/model-folders', folderRouter); app.use('/api/v1', skillRouter);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true } });
+      appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
     app.get('/', (_req, res) => res.type('html').send('<script type="module">import {getModelFolders,setModelFoldersClient} from "/frontend/services/inference.js"; import {listSkillsResult,listSkills} from "/frontend/services/skills-client.js"; window.clients={getModelFolders,setModelFoldersClient,listSkillsResult,listSkills}; window.expired=0; window.addEventListener("neuma:auth_expired",()=>window.expired++);</script>'));
     app.use(vite.middlewares);
     server = http.createServer(app); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

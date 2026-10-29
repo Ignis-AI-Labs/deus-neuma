@@ -224,9 +224,8 @@ export const migrateBeing = async (workspace, neumaId, opts = {}) => {
   // Audit FIRST (in plaintext via _appendLine — see _audit) so the trail
   // exists even if the DEK write itself fails. If keys/dek.json already
   // exists (resume case: prior aborted run already wrote it), skip the write
-  // — writeNeumaDEK is deterministic in (master, genesisHash) so a re-write
-  // would persist the same DEK bytes inside a fresh envelope, which is
-  // harmless but wasteful and audit-noisy.
+  // — the key is random and written once (writeNeumaDEK keeps an existing
+  // dek.json), so the files a prior run moved stay under the key they used.
   await workspace.audit(neumaId, 'MIGRATION_START', { genesisHashPrefix, scope: 'per-neuma-dek' });
   const preExisting = await workspace.readNeumaDEK(neumaId);
   if (!preExisting) {

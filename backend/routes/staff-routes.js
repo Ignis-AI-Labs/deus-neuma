@@ -12,6 +12,7 @@ import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { cosDesignation } from '../services/staff/cos-designation.js';
 import { scaffoldCosWorkspace } from '../services/staff/cos-scaffold.js';
+import { carryOpenCharges } from '../services/staff/dispatch-store.js';
 import { cosBoardSnapshot } from '../services/staff/cos-briefing.js';
 import { houseActivity } from '../services/staff/house-state.js';
 import { endStandingPlan } from '../services/staff/end-plan.js';
@@ -36,7 +37,9 @@ router.get('/seat', async (req, res) => {
 // Seat one of the operator's own lanes as their house's chief of staff. The
 // office on disk rides with the seat — fail-soft: a scaffold that cannot land
 // never unseats the designation. `consent.note` records the seat's own yes as
-// the operator heard it (doctrine: a member is invited and consents).
+// the operator heard it (doctrine: a member is invited and consents). The
+// house's open charges follow the office to the new seat, and the answer says
+// how many (`charges`); a carry that fails is said, never silent.
 router.put('/seat', async (req, res) => {
   const laneId = typeof req.body?.laneId === 'string' ? req.body.laneId.trim() : '';
   if (!laneId) {
@@ -52,7 +55,15 @@ router.put('/seat', async (req, res) => {
     } catch (scaffoldError) {
       log.error('CoS scaffold failed — the designation stands', { laneId: cos.laneId, error: scaffoldError.message });
     }
-    res.json({ cos });
+    let charges;
+    try {
+      charges = await carryOpenCharges(req.walletAddress, cos.laneId);
+      if (charges.carried || charges.left) log.info('open charges carried to the new office', { laneId: cos.laneId, ...charges });
+    } catch (carryError) {
+      log.error('carrying the open charges failed — they stay in the former office\'s drawer', { laneId: cos.laneId, error: carryError.message });
+      charges = { error: 'the open charges could not be carried to the new office' };
+    }
+    res.json({ cos, charges });
   } catch (error) {
     log.error('CoS designation failed', { error: error.message });
     res.status(500).json({ error: 'Failed to designate the CoS' });
@@ -75,16 +86,17 @@ router.delete('/seat', async (req, res) => {
 router.get('/board', async (req, res) => {
   try {
     const cos = await cosDesignation.getOfficer(req.walletAddress);
-    if (!cos) return res.json({ cos: null, roster: null, posts: null, plan: null, runs: [] });
-    const { seat, posts, plan, runs } = await cosBoardSnapshot(req.walletAddress, cos.laneId);
-    res.json({ cos, roster: seat, posts, plan, runs });
+    if (!cos) return res.json({ cos: null, roster: null, posts: null, plan: null, runs: [], house: null });
+    const { seat, posts, plan, runs, house } = await cosBoardSnapshot(req.walletAddress, cos.laneId);
+    // The window's DISPATCH DRAWER reads house.dispatches — the drawer only, never the whole fold.
+    res.json({ cos, roster: seat, posts, plan, runs, house: house ? { dispatches: house.dispatches } : null });
   } catch (error) {
     log.error('CoS board read failed', { error: error.message });
     res.status(500).json({ error: 'Failed to read the CoS board' });
   }
 });
 
-// ── END THE STANDING PLAN (Design note, 2026-10-10 — the operator's way out of a plan that holds the
+// ── END THE STANDING PLAN (ruling, 2026-10-10) — the operator's way out of a plan that holds the
 // office stuck: the record retires (moved aside, never destroyed) and the live connection drops
 // the plan and its workspace confinement now. Refused while a team run is working on it.
 router.delete('/plan', async (req, res) => {
@@ -102,14 +114,14 @@ router.delete('/plan', async (req, res) => {
   }
 });
 
-// ── WHO IS WORKING — the activity chip's poll (Design note, 2026-09-15. One row per
-// seat with live work, best status first; empty when the office is unseated or
-// nothing moves. Concise by construction: this is polled every few seconds.
+// ── WHO IS WORKING — the activity chip's poll (ruling, 2026-09-15). One row per
+// seat with live work, best status first; empty when nothing moves. With no
+// office seated only the house clock's running wakes can show. Concise by
+// construction: this is polled every few seconds.
 router.get('/activity', async (req, res) => {
   try {
     const cos = await cosDesignation.getOfficer(req.walletAddress);
-    if (!cos) return res.json({ working: [] });
-    const working = await houseActivity(req.walletAddress, cos.laneId);
+    const working = await houseActivity(req.walletAddress, cos?.laneId ?? null);
     res.json({ working });
   } catch (error) {
     log.error('house activity read failed', { error: error.message });

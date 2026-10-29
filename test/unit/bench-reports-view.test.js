@@ -118,7 +118,7 @@ describe('THE ATLAS — every benchmark on one line, the architecture\u2019s inf
     expect(latest.n).toBe(25); // the newest set is the NEUMA-only heartbeat
     expect(latest.points.map((p) => p.arm)).toEqual(['neuma']);
     const [strong] = atlasRows(SUMMARY, 'strongest');
-    // The three core arms only (Design note, 2026-10-01: the diagnostic wire and silo never plot here.
+    // The three core arms only (ruling, 2026-10-01): the diagnostic wire and silo never plot here.
     expect(strong.points.map((p) => [p.arm, p.display])).toEqual([['bare', '67%'], ['neuma', '98%']]);
     expect(strong.low).toBe(0.67);
     expect(strong.high).toBe(0.98);

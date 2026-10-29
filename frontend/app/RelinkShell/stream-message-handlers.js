@@ -19,6 +19,7 @@ import { isNewProjectChat } from './project-space.js';
 import { focusProject } from './desk-focus.js';
 import { announceFileChange } from './files-refresh.js';
 import { announceCampaignChange } from './campaign-refresh.js';
+import { announceBoardArrangement } from './marketing/board-change.js';
 import { shouldAnnounceStorage } from './storage-warning.js';
 import { TOOL_MODES, CHAT_MODES } from './stream-preferences.js';
 import { isBootActive } from '../Opening/opening-state.js';
@@ -123,6 +124,7 @@ export const createStreamHandlers = ({
     // campaign board the same way. Without this the board kept saying
     // "No campaigns yet" over a campaign the operator had just created.
     announceCampaignChange(data);
+    announceBoardArrangement(data); // …and the CMO's arrangement of the MARKETING board
     dispatchAfterSpeech(lifecycleAction('tool:usage', data));
   };
   // impure — preserve sound-before-flush ordering while translation stays pure.
@@ -134,13 +136,17 @@ export const createStreamHandlers = ({
   };
   // The portal acked (or corrected) the declared tool mode — server truth.
   const onToolMode = (data) => {
-    if (TOOL_MODES.includes(data.mode)) setToolModeState(data.mode);
+    if (!TOOL_MODES.includes(data.mode)) return;
+    toolModeRef.current = data.mode;
+    setToolModeState(data.mode);
   };
   // The portal acked (or corrected) the declared CHAT mode — server truth.
   // Also fires when a plan verdict flips the mode (ACCEPT → DEFAULT / AUTO):
   // the desk never shows a mode the portal isn't holding.
   const onChatMode = (data) => {
-    if (CHAT_MODES.includes(data.mode)) setChatModeState(data.mode);
+    if (!CHAT_MODES.includes(data.mode)) return;
+    chatModeRef.current = data.mode;
+    setChatModeState(data.mode);
   };
   // The portal acked (or corrected) the declared sitting purpose — server
   // truth, same contract as tool:mode. Unknown values already failed closed
@@ -192,9 +198,12 @@ export const createStreamHandlers = ({
   const onProviderRetry = (data) => {
     dispatch(providerRetryAction(data, Date.now()));
   };
-  // THE LINE, visible (Design note, 2026-10-12: waiting its turn for the house's model, and who is ahead.
+  // THE LINE, visible (ruling, 2026-10-12): waiting its turn for the house's model, and who is ahead.
   const onWatchFired = (data) => {
     if (typeof data?.text === 'string' && data.text) dispatch({ type: 'WATCH_FIRED', text: data.text, at: data.at ?? Date.now() });
+  };
+  const onChatLink = (data) => {
+    if (typeof data?.text === 'string' && data.text) dispatch({ type: 'LINK_ARRIVED', text: data.text, at: data.at ?? Date.now() });
   };
   const onSubstrateLine = (data) => {
     dispatch(substrateLineAction(data, Date.now()));
@@ -210,7 +219,7 @@ export const createStreamHandlers = ({
     //
     // A QUIET PORTAL NEVER CHIMES. Every tab past the first runs its own
     // socket (TabPortalHost, #407) and connects on its FIRST FOCUS, so this
-    // fired on a plain tab switch: […] (Design note, 2026-08-29.
+    // fired on a plain tab switch: […] (ruling, 2026-08-29).
     //
     // The badge was already silenced for these portals in August; the chime
     // lives here and was missed, so the announcement only changed senses. The
@@ -333,6 +342,9 @@ export const createStreamHandlers = ({
     ['consciousness:provider-retry', onProviderRetry],
     ['substrate:line', onSubstrateLine],
     ['watch:fired', onWatchFired],
+    ['chatlink:arrived', onChatLink],
+    // A /compact, drawn in the thread where it happened (compact-marker.js).
+    ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     ['tool:usage', onTool],
     ['tool:approval_request', cardHandler('tool:approval_request')],
     ['tool:approval_resolved', cardHandler('tool:approval_resolved')],

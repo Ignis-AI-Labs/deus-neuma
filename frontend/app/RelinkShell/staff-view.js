@@ -28,6 +28,16 @@ export const holderLabel = (member) => {
   return member?.name || member?.neumaId || 'NO LANE ON THIS SEAT';
 };
 
+/**
+ * One roster seat's title as the operator reads it: a member no founding
+ * record seats (an unfounded house, a lane born after the founding) still
+ * works in the house — it simply holds no title on-chain (ruling, 2026-10-18).
+ * Pure.
+ * @param {{title: (string|null)}} member
+ */
+export const seatTitleLabel = (member) =>
+  (typeof member?.title === 'string' && member.title.trim() ? member.title.toUpperCase() : 'NO SEAT ON-CHAIN');
+
 /** pure — the seated record's own line: who, and since when. */
 export const seatHeldLine = (cos, holderName) =>
   `HELD BY ${(holderName || cos?.laneId || '').toUpperCase()} — SINCE ${formatDateTime(cos?.designatedAt)}`;
@@ -82,8 +92,20 @@ export const planSummary = (plan) => {
   return { title: plan.name || 'THE STANDING PLAN', detail };
 };
 
+// A wake's two states as the activity chip says them (staff/wake-activity.js);
+// every other status is the charge's own word.
+const ACTIVITY_WORDS = Object.freeze({ awake: 'awake', waiting: 'waiting for the model' });
+
+/** pure — a house activity row's status, as the chip reads it. */
+export const activityStatusWords = (status) => ACTIVITY_WORDS[status] || String(status || 'unknown');
+
 /** pure — "needs_operator"-style run statuses read as words. */
 export const runStatusLabel = (status) => (status || 'unknown').replace(/_/g, ' ').toUpperCase();
+
+// A run that did not finish its work reads loud however it ended: failed, lost
+// with its backend (team-run-store.js withLiveness), or settled as an error on
+// the desk (team-runs-reducer.js SETTLED_AS).
+const LOUD_RUN_STATUSES = new Set(['failed', 'lost', 'error']);
 
 /**
  * A run's register: in flight carries the signal (live), a failure the alert
@@ -92,7 +114,7 @@ export const runStatusLabel = (status) => (status || 'unknown').replace(/_/g, ' 
  */
 export const runRegister = (status) => {
   if (status === 'running') return 'live';
-  if (status === 'failed') return 'loud';
+  if (LOUD_RUN_STATUSES.has(status)) return 'loud';
   return 'quiet';
 };
 

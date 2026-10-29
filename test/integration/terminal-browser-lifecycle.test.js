@@ -23,7 +23,7 @@ describe('HR-TERMINAL browser lifecycle (no GPU)', () => {
       server: {
         // No watcher: rooted at the repo, a watcher walks every data and
         // build folder and ran the worker out of memory (seen 2026-10-03).
-        watch: null, hmr: false,
+        watch: null, hmr: { port: 1 }, ws: false,
         host: '127.0.0.1', port: 0,
         proxy: { '/api': kit.base, '/terminal-ws': { target: kit.base, ws: true } },
       },

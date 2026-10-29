@@ -10,9 +10,10 @@
  * instance these methods are assigned onto.
  */
 
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import { deriveNeumaDEK, wrapDEK, unwrapDEK, deriveKeyFromSecret } from './workspace-crypto.js';
+import { wrapDEK, unwrapDEK, deriveKeyFromSecret } from './workspace-crypto.js';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 
 /**
@@ -38,8 +39,11 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
   // readable across rotations without re-encryption.
 
   /**
-   * Write the per-neuma DEK to keys/dek.json. Derived from the genesisHash
-   * (canonical eternal anchor) under the master key.
+   * Write the per-neuma DEK to keys/dek.json: 32 RANDOM bytes, wrapped under
+   * the master key. It used to be derived from the master and the (public)
+   * genesisHash, so the master alone rebuilt every being's key; a random key
+   * exists only inside its wrap. Written once: an existing dek.json is kept,
+   * never replaced (a second random key would strand every file under the first).
    * @param {string} neumaId
    * @param {string} genesisHashHex - 64-char lowercase hex from the genesis seal
    * @returns {Promise<void>}
@@ -56,8 +60,7 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
     const secret = process.env.DNA_ENCRYPTION_KEY;
     if (!secret) throw new Error('writeNeumaDEK: DNA_ENCRYPTION_KEY missing — cannot derive master');
     const masterKey = deriveKeyFromSecret(secret);
-    const dek = deriveNeumaDEK(masterKey, genesisHashHex);
-    const wrapped = wrapDEK(dek, masterKey);
+    const wrapped = wrapDEK(crypto.randomBytes(32), masterKey);
     const dekPath = path.join(this._path(neumaId), 'keys', 'dek.json');
     // Per-file lock (ai6 R2, Medium) matches the codebase's concurrency
     // discipline (#121) — every write path on this workspace serializes
@@ -73,8 +76,14 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
       // on the same drive is atomic; the file that lands is either absent
       // or complete, never partial.
       const tempPath = `${dekPath}.tmp`;
+      try {
+        await fs.access(dekPath);
+        return; // the being's key already exists — the one its files are sealed under
+      } catch { /* none yet — write it */ }
       await fs.writeFile(tempPath, JSON.stringify(wrapped, null, 2));
       await fs.rename(tempPath, dekPath);
+      // A random key is never the one a cache may still hold for this lane.
+      this._dekCache?.delete(neumaId);
       await this._audit(neumaId, 'DEK_WRITTEN', { genesisHashPrefix: genesisHashHex.slice(0, 12) });
     });
   },

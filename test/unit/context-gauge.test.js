@@ -2,7 +2,7 @@
  * Tests for context-gauge — the pure derivation behind the composer's compact
  * CTX cluster (frontend/app/RelinkShell/context-gauge.js): ring percentage,
  * used/total label, tone ladder, hover detail, and every honest-degradation
- * rung. Redesign (Design note, 2026-08-15: the label states used/TOTAL, the ring
+ * rung. Redesign (ruling, 2026-08-15): the label states used/TOTAL, the ring
  * carries pct, and compaction shows FACTS only — ARMED (measured, present
  * tense) and ×N (recorded) — never a message-count prediction.
  */
@@ -120,7 +120,7 @@ describe('gaugeFor', () => {
     expect(g.title).not.toContain('self-compaction');
   });
 
-  it('the working peak is hover detail, never the headline (Design note, 2026-08-31', () => {
+  it('the working peak is hover detail, never the headline (ruling, 2026-08-31)', () => {
     // A tool-heavy turn: standing 17K, peak 60K of ephemeral tool machinery.
     const event = evt({ tokens: 17500, window: 262144 });
     event.usage = {
@@ -147,6 +147,12 @@ describe('gaugeFor', () => {
     event.degraded = ['recentConversation'];
     const g = gaugeFor(event);
     expect(g.title).toContain('context degraded: recentConversation unavailable this turn');
+  });
+
+  it('what the shed ladder cut this turn is named on hover', () => {
+    const event = evt({ tokens: 8000, window: 8192 });
+    event.shed = [{ id: 'personality', tokens: 900 }, { id: 'voice', tokens: 400 }];
+    expect(gaugeFor(event).title).toContain('shed this turn (the window could not hold them): personality, voice');
   });
 
   it('tone reads token pressure alone — an armed session never colors a calm window', () => {

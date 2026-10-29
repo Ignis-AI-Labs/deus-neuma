@@ -3,7 +3,7 @@
 // bench by protocol. Like a channel binding, it is a single-holder position
 // — but it governs the house's campaign bench, not a platform account.
 //
-// ONE SEAT PER HOUSE (Design note, 2026-10-16: `<realm>/<wallet>/house-cmo.json`,
+// ONE SEAT PER HOUSE (ruling, 2026-10-16): `<realm>/<wallet>/house-cmo.json`,
 // beside the house's charter (house-office-seat.js). The pre-2026-10-16
 // machine seat (data/settings/marketing-cmo.json, NEUMA_CMO_PATH override)
 // moves on first read to the house that owns its lane, or serves no house.

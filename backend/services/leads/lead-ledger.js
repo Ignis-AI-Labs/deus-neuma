@@ -11,7 +11,7 @@
 // and duplicates, because this is the operator's machine and the operator's
 // data — sovereignty includes the right to erase.
 //
-// ONE LEDGER PER HOUSE (Design note, 2026-10-16: each house's leads live in its own
+// ONE LEDGER PER HOUSE (ruling, 2026-10-16): each house's leads live in its own
 // office, `<realm>/<wallet>/offices/marketing/lead-ledger.json`
 // (house-office.js); the machine-wide ledger (data/settings/lead-ledger.json)
 // moves once to its house. Governance record, not a secret: plain JSON, same
@@ -46,9 +46,9 @@ const NOTE_MAX = 2000;
  * Validate the shape of a new or updated lead (pure). Returns an error string
  * or null — the ledger never persists a malformed entry.
  * @param {{name?: string, contact?: string, channelId?: string,
- *   source?: string, status?: string, campaignId?: string}} lead
+ *   source?: string, status?: string, campaignId?: string, accountId?: string}} lead
  */
-export const validateLead = ({ name, contact, channelId, source, status, campaignId } = {}) => {
+export const validateLead = ({ name, contact, channelId, source, status, campaignId, accountId } = {}) => {
   const n = typeof name === 'string' ? name.trim() : '';
   const c = typeof contact === 'string' ? contact.trim() : '';
   if (!n && !c) return 'a lead needs a name or a way to reach them';
@@ -59,6 +59,8 @@ export const validateLead = ({ name, contact, channelId, source, status, campaig
     if (typeof campaignId !== 'string') return 'campaignId must be a string';
     if (campaignId.length > 100) return 'campaignId is too long';
   }
+  // The account the lead came through (campaign plan §4.2) — `<channel>-<n>`.
+  if (accountId != null && accountId !== '' && !/^[a-z]+-\d+$/.test(String(accountId))) return 'accountId is one of the house\'s accounts, e.g. "x-1"';
   if (channelId != null && !KNOWN_LANES.includes(channelId) && !getChannel(channelId)) {
     return `Unknown lane: ${channelId}`;
   }
@@ -150,7 +152,7 @@ export const createLeadLedger = ({ path }) => {
      * Capture one lead. impure.
      * @param {{name?: string, contact?: string, channelId?: string,
      *   source?: string, note?: string, status?: string,
-     *   campaignId?: string,
+     *   campaignId?: string, accountId?: string,
      *   ownerNeumaId?: string|null, addedBy: string}} lead
      */
     add(lead) {
@@ -167,6 +169,7 @@ export const createLeadLedger = ({ path }) => {
           source: trimmed(lead.source),
           status: lead.status || 'cold',
           campaignId: trimmed(lead.campaignId) || null,
+          accountId: trimmed(lead.accountId) || null,
           ownerNeumaId: lead.ownerNeumaId || null,
           createdAt: now,
           updatedAt: now,
@@ -203,6 +206,8 @@ export const createLeadLedger = ({ path }) => {
           channelId: change.channelId !== undefined ? change.channelId : lead.channelId,
           source: change.source !== undefined ? change.source : lead.source,
           status: change.status !== undefined ? change.status : lead.status,
+          campaignId: change.campaignId !== undefined ? change.campaignId : lead.campaignId,
+          accountId: change.accountId !== undefined ? change.accountId : lead.accountId,
         };
         const invalid = validateLead(merged);
         if (invalid) return { ok: false, error: invalid };
@@ -213,6 +218,9 @@ export const createLeadLedger = ({ path }) => {
           channelId: merged.channelId || 'other',
           source: trimmed(merged.source),
           status: merged.status,
+          // Which campaign and account it came through can be set later (slice 6).
+          campaignId: trimmed(merged.campaignId) || null,
+          accountId: trimmed(merged.accountId) || null,
           updatedAt: now,
         });
         // An ownership handoff is relationship movement — who works the lead

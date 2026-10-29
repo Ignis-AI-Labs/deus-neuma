@@ -12,6 +12,7 @@
  */
 
 import { ethers } from 'ethers';
+import { redactRpcUrl } from './chain/chain-registry.js';
 
 // The known-good keccak256 of the deployed Natalis bytecode on Base Sepolia
 // at 0x15e65e4aee5c5310a8f1f125a2a0944033a76ac3 — the post-audit deployment
@@ -152,7 +153,7 @@ export const verifyNatalisIdentity = async (provider, address) => {
     chainId = Number(network.chainId);
     code = await provider.getCode(address);
   } catch (err) {
-    return { ok: false, reason: 'rpc-error', error: err.message };
+    return { ok: false, reason: 'rpc-error', error: redactRpcUrl(err.message) };
   }
   if (code === '0x' || code === '0x0') {
     return { ok: false, reason: 'no-code', codehash: null };
@@ -197,7 +198,7 @@ export const verifyHouseRegistryImpl = async (provider, proxyAddress) => {
     }
     implRaw = await provider.getStorage(proxyAddress, ERC1967_IMPL_SLOT);
   } catch (err) {
-    return { ok: false, reason: 'rpc-error', error: err.message };
+    return { ok: false, reason: 'rpc-error', error: redactRpcUrl(err.message) };
   }
   // implRaw is 32 bytes; the address occupies the last 20 (right-padded).
   const impl = ('0x' + implRaw.slice(-40)).toLowerCase();

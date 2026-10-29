@@ -27,10 +27,12 @@ const PLAN_DIR = await fs.mkdtemp(path.join(os.tmpdir(), 'plan-intent-'));
 const PLAN_PATH = path.join(PLAN_DIR, 'weekly-plan.json');
 const CMO_PATH = path.join(PLAN_DIR, 'cmo.json');
 const QUEUE_PATH = path.join(PLAN_DIR, 'queue.json');
+const DATA_ROOT = path.join(PLAN_DIR, 'data');
 const overrides = {
   NEUMA_WEEKLY_PLAN_PATH: PLAN_PATH,
   NEUMA_CMO_PATH: CMO_PATH,
   NEUMA_SOCIAL_POST_QUEUE_PATH: QUEUE_PATH,
+  NEUMA_DATA_ROOT: DATA_ROOT,
 };
 const savedEnv = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
 const savedRoot = getWorkspacesRoot();
@@ -123,27 +125,38 @@ describe('marketing/plan — author, approve, lock; and the standing surface', (
   });
 
   test('(c2) pipeline_state names the REAL algorithm clones on this machine', async () => {
+    // The sync receipt lives under the data root, and the suite's data root is
+    // its own (9ed812b43) — so the receipt is written here, in the shape
+    // scripts/x-algorithm-sync.mjs writes it, and read back through the real path.
+    const syncedAt = '2026-10-19T08:00:00.000Z';
+    await fs.mkdir(DATA_ROOT, { recursive: true });
+    await fs.writeFile(path.join(DATA_ROOT, 'x-algorithm-sync.json'), JSON.stringify({ syncedAt }));
     const state = await computePipelineState({ laneId: CMO_LANE, wallet: null });
     expect(state.algorithm.ranking.cloned).toBe(true);
     expect(state.algorithm.ml.cloned).toBe(true);
     expect(state.algorithm.ranking.head).toMatch(/^[0-9a-f]{7,}$/);
-    expect(state.algorithm.lastSynced).toBeTruthy();
+    expect(state.algorithm.lastSynced).toBe(syncedAt);
   });
 
   test('next scheduled is the earliest eligible future entry, independent of insertion order', async () => {
     const now = Date.now();
     const earlier = new Date(now + 3600000 + 7 * 3600000).toISOString().replace('Z', '+07:00');
     const later = new Date(now + 7200000).toISOString();
+    // Each entry authored by the house's CMO lane — the shape the queue
+    // intent writes — so the posture (one house's) counts them.
     await fs.writeFile(QUEUE_PATH, JSON.stringify([
       { status: 'draft', scheduledFor: later },
       { status: 'approved', scheduledFor: earlier },
       { status: 'sent', scheduledFor: new Date(now + 1000).toISOString() },
       { status: 'draft', scheduledFor: new Date(now - 1000).toISOString() },
       { status: 'approved', scheduledFor: 'invalid' },
-    ]));
-    const state = await computePipelineState();
+    ].map((e) => ({ ...e, authorNeumaId: CMO_LANE }))));
+    const state = await computePipelineState({ laneId: CMO_LANE, wallet: WALLET });
     expect(state.queue.nextScheduled).toBe(earlier);
     expect(state.queue.counts).toMatchObject({ draft: 2, approved: 2, sent: 1 });
+    // Another house, or none, counts none of this house's queue.
+    expect((await computePipelineState({ laneId: CMO_LANE, wallet: OTHER_HOUSE })).queue.counts.draft).toBe(0);
+    expect((await computePipelineState()).queue.counts.draft).toBe(0);
   });
 
   test('(d) the designated CMO\'s turn OPENS with the pipeline tools disclosed', async () => {

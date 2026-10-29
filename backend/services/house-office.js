@@ -18,7 +18,7 @@ import { houseKey } from './staff/cos-designation.js';
 import { moveLegacyRecord } from './house-office-legacy.js';
 import { seatFileName } from './house-office-seat.js';
 
-const OFFICES = Object.freeze(['security', 'legal', 'marketing']);
+const OFFICES = Object.freeze(['security', 'legal', 'marketing', 'treasury']);
 const WALLET = /^0x[a-f0-9]{40}$/;
 
 // Every legacy move an office's modules declared, so a watch can place the
@@ -35,7 +35,7 @@ const assertOffice = (office) => {
  * The house's office directory. Throws on a wallet that is not one — no
  * house, no office.
  * @param {string} wallet
- * @param {string} office - security | legal | marketing
+ * @param {string} office - security | legal | marketing | treasury
  */
 const officeDir = (wallet, office) => {
   assertOffice(office);
@@ -101,7 +101,7 @@ export const createHouseStore = ({ office, name, legacyPath, legacySeatPath, cre
   return async (wallet) => {
     const file = officeFile(wallet, office, name);
     await moveLegacy();
-    if (!stores.has(file)) stores.set(file, create({ path: () => file }));
+    if (!stores.has(file)) stores.set(file, create({ path: () => file, wallet }));
     return stores.get(file);
   };
 };

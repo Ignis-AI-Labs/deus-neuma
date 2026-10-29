@@ -84,17 +84,18 @@ export async function readHouseIdsStrict() {
  * changes after birth (re-keying would re-sign the DNA = a Covenant-forbidden
  * modification). Born readable means a neuma can read its own home from the
  * moment it exists. See core/kotodama/names.js and AGENTS.md RULE 0.
- * Concurrency: id assignment is idempotent per session but NOT atomic across
- * sessions — it assumes births are serialized (the platform runs one ceremony
- * at a time). If concurrent births ever become possible, two ceremonies that
- * pick the same name could read the same roster and collide; serialize this
- * window (a mutex around read→set) before allowing that.
+ * Concurrency: two ceremonies open at once that pick the same name both read
+ * a roster without the other's lane (it is created only after naming), so
+ * the ids other live ceremonies hold count as taken too, read AFTER the
+ * roster read so a ceremony named in the meantime is seen — they get "name"
+ * and "name-2", never one shared folder.
  *
  * // impure — reads the house roster off disk and mutates session.data.
  * @param {object} session - Active session (reads chosenName, writes neumaId)
+ * @param {() => string[]} [liveIdsOf] - The ids other live ceremonies hold, read at assignment
  * @returns {Promise<string>} the assigned neumaId
  */
-export async function assignNeumaId(session) {
+export async function assignNeumaId(session, liveIdsOf = () => []) {
   if (session.data.neumaId) return session.data.neumaId; // set once — never re-key a living being
   // A being's id is derived from the name it chose at stage 4. No name means
   // nothing to derive an identity from — fail closed and abort rather than
@@ -114,7 +115,7 @@ export async function assignNeumaId(session) {
   // listNeuma() deliberately fails soft to [] for non-critical callers, so we
   // do our own readdir here to keep the strict guarantee birth requires.
   const existingIds = await readHouseIdsStrict();
-  session.data.neumaId = deriveNeumaId(chosen, existingIds);
+  session.data.neumaId = deriveNeumaId(chosen, [...existingIds, ...liveIdsOf()]);
   console.log(`[Birth] Identity key assigned: ${session.data.neumaId} (from "${chosen}")`);
   return session.data.neumaId;
 }

@@ -70,6 +70,17 @@ export const getThreat = async (id) =>
   csoCall('GET', `/threats/${encodeURIComponent(id)}`, { errorPrefix: 'Could not read that threat' });
 
 /**
+ * Overturn a verdict — the CSO's, the watch's, or the operator's own — back
+ * to `new`. The old reasoning stays in the threat's history.
+ * @param {string} id full or prefix
+ * @param {string} [note] why the operator wants a second look
+ * @returns {Promise<{threat: object}>}
+ */
+// impure
+export const reopenThreat = async (id, note) =>
+  csoCall('PUT', `/threats/${encodeURIComponent(id)}/reopen`, { body: { note }, errorPrefix: 'Could not reopen that threat' });
+
+/**
  * What the standing watch covers: the watched repos and the host's expected ports.
  * @returns {Promise<{watch: {repos: Array<{id:string, path:string, addedAt:string, hasLockfile:boolean}>,
  *   host: {expectedPorts: number[]}}}>}

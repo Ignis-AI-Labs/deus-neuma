@@ -1,0 +1,9 @@
+/* status-mark — a post's status as one mark (StatusMark.jsx): the tone is
+   the table's own colour token (post-status-marks.js STATUS_TONES). */
+
+.stm { display: inline-flex; align-items: center; gap: 0.4em; white-space: nowrap; }
+.stm-mark { flex: 0 0 auto; display: block; overflow: visible; }
+.stm.is-signal { color: var(--signal); }
+.stm.is-ink { color: var(--color-text-secondary); }
+.stm.is-alert { color: var(--alert); }
+.stm.is-quiet { color: var(--color-text-tertiary); }

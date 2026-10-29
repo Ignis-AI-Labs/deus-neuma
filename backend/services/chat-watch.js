@@ -89,6 +89,29 @@ export const fireWatches = async (kind, ref, report) => {
   return hit.length;
 };
 
+/**
+ * A producer that lives only in its process (a bench chain) cannot fire a
+ * watch armed before a restart: at boot, every armed watch of `kind` armed
+ * before this process started fires with `reportFor(watch)`, so its chat is
+ * told the truth instead of waiting forever. One armed since is this
+ * process's own producer's to fire.
+ * @param {string} kind
+ * @param {(watch: object) => string} reportFor - the honest report, per watch
+ * @returns {Promise<number>} watches fired
+ */
+export const fireLostWatches = async (kind, reportFor, carriedOn = () => false) => {
+  const bootedAt = Date.now() - process.uptime() * 1000;
+  // A producer this boot carried on (carriedOn) still fires its watch itself when it ends.
+  const lost = (await load()).filter((w) => w.kind === kind && !w.firedAt && Date.parse(w.armedAt) < bootedAt && !carriedOn(w));
+  if (!lost.length) return 0;
+  const at = new Date().toISOString();
+  for (const w of lost) Object.assign(w, { firedAt: at, report: reportFor(w) });
+  await save();
+  log.warn('watches fired as lost — their producer did not survive a restart', { kind, chats: lost.length });
+  lost.forEach(attempt);
+  return lost.length;
+};
+
 /** Fired, not yet delivered, for one conversation — the opening chat collects them. */
 export const pendingFor = async ({ wallet, laneId, sessionId }) =>
   (await load()).filter((w) => w.firedAt && !w.deliveredAt && w.wallet === String(wallet || '').toLowerCase()

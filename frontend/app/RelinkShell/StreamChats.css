@@ -16,18 +16,18 @@
 }
 
 .stream-chat-title-name {
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: var(--tracking-wide);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .stream-chat-title-stamp {
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: var(--tracking-wide);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
@@ -94,9 +94,9 @@
 }
 
 .stream-chats-title {
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
-  color: var(--color-text-secondary);
+  color: var(--color-heading);
 }
 
 .stream-chats-fold {

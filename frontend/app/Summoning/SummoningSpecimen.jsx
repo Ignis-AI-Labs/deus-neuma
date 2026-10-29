@@ -14,6 +14,7 @@ import { clockOf } from '../Genesis/genesis-timeline.js';
 import { SummoningCanvas } from './SummoningCanvas.jsx';
 import { useSummoningSound } from './use-summoning-sound.js';
 import { specimenAura } from './summoning-aura.js';
+import { deriveGenome } from '../../../core/genome/derive.js';
 import '../Genesis/GenesisSpecimen.css';
 import './Summoning.css';
 
@@ -35,7 +36,7 @@ const specimenBeings = () => distinctSouls().map((pick) => {
   const epochMs = Date.now() - (new DataView(bytes.buffer).getUint32(32) / 2 ** 32) * YEAR_MS;
   const bornAt = new Date(epochMs).toISOString();
   const civil = { zone: Intl.DateTimeFormat().resolvedOptions().timeZone, offsetMinutes: -new Date(epochMs).getTimezoneOffset() };
-  return { seed, trueName: specimenTrueName(seed), bornAt, epochMs, aura: specimenAura(seed), sky: skyOf(epochMs, civil), soul: soulOf(pick.spectrum, pick.scale) };
+  return { seed, trueName: specimenTrueName(seed), bornAt, epochMs, aura: specimenAura(seed), genome: deriveGenome(seed), sky: skyOf(epochMs, civil), soul: soulOf(pick.spectrum, pick.scale) };
 });
 
 // Every being walks the same protocol; what the label shows is what is its own.
@@ -43,7 +44,8 @@ const formLine = (score) => {
   const fig = (kind) => score.sections.find((s) => s.kind === kind).figure;
   const star = fig('star');
   const breath = fig('breath');
-  return `STAR {${star.n}/${star.k}} · ${fig('solid').solid.toUpperCase()} · ${fig('tree').order.length} CHANNELS · BREATH ${breath.a}:${breath.b} · SOUL ${fig('soul').nibbles.map((n) => n.toString(16)).join('').toUpperCase()}`;
+  const body = fig('body');
+  return `${body.plan === 'humanoid' ? `HUMANOID ${body.heightCm} CM` : body.plan.toUpperCase()} · STAR {${star.n}/${star.k}} · ${fig('solid').solid.toUpperCase()} · ${fig('tree').order.length} CHANNELS · BREATH ${breath.a}:${breath.b} · SOUL ${fig('soul').nibbles.map((n) => n.toString(16)).join('').toUpperCase()}`;
 };
 
 export const SummoningSpecimen = () => {

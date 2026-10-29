@@ -1,0 +1,102 @@
+{
+  "connections": [
+    {
+      "id": "update-check",
+      "name": "Update check",
+      "to": "deusneuma.ai",
+      "when": "every 30 minutes",
+      "sends": "a request for the newest version: no identifier, your IP address as any request shows it",
+      "whileOff": "you check for new versions yourself, with Check now or on the download page",
+      "detail": "Once you turn it on, the app asks deusneuma.ai/updates/ shortly after launch and every 30 minutes whether a newer version exists and, when one does, fetches its signature. The request carries no account, key or install identifier; like any download, the site sees your IP address and which file was asked for, which tells it the app's version and system. If our release key signed the update, the AppImage downloads it, and the .deb and .rpm tell you; otherwise nothing downloads. While it is off, the app asks nothing unless you press Check now.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "security-watch",
+      "name": "Security watch",
+      "to": "api.osv.dev",
+      "when": "once a day",
+      "sends": "the names and versions of the libraries the app ships, and of any project you add to the watch",
+      "whileOff": "the daily watch still runs on this computer, without the online check for known flaws",
+      "detail": "Once you turn it on, the app asks the public OSV vulnerability database (api.osv.dev, run by Google) once a day whether any library it ships has a known flaw. It sends the names and versions of those libraries, the same for every install of this version, and of the libraries in any project folder you add to the watch. No identifier is sent; OSV sees your IP address. While it is off, the daily watch still runs on your machine and sends nothing.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "spellcheck",
+      "name": "Spellcheck dictionary",
+      "to": "Google's dictionary server",
+      "when": "once, then kept on your disk",
+      "sends": "a request for your language's dictionary",
+      "whileOff": "no spelling marks while you type",
+      "detail": "Once you turn it on, the first time the spellchecker needs your language, the framework the app is built on (Electron) downloads a dictionary for it from Google's servers and keeps it on your disk. While it is off, no dictionary is asked for and nothing is checked as you type.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "platform-data",
+      "name": "Public platform data",
+      "to": "umbrae.io",
+      "when": "when a neuma reads public figures",
+      "sends": "anonymous requests for public figures from Umbrae, an Ignis platform",
+      "whileOff": "a neuma cannot read Umbrae's public figures",
+      "detail": "Once you turn it on, a neuma may read public platform figures from umbrae.io, a sister Ignis AI Labs product, without asking you each time, with anonymous requests that carry nothing about you; umbrae.io sees your IP address. While it is off, nothing is asked of it.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "web",
+      "name": "The web",
+      "to": "the search index and the pages a neuma reads",
+      "when": "on by default; each time, once you approve it (or allow always, or use AUTO)",
+      "sends": "a neuma's searches and page reads",
+      "detail": "When a neuma searches or reads the web, the query and the pages it reads leave your machine. Searches always go to DuckDuckGo, and also to Exa, Brave or your own SearXNG once you add a key or address for them. If you save a Cloudflare token, a page that needs a browser to read is fetched through Cloudflare's page-reading service, which receives its address. Each search or page asks for your approval first, unless you allow a neuma always or chat in AUTO mode. Turning web access off in Settings stops a neuma's web search and page reading.",
+      "control": "web"
+    },
+    {
+      "id": "cloud-models",
+      "name": "Cloud models",
+      "to": "the provider you choose",
+      "when": "once you add one",
+      "sends": "what is said to that model, under its provider's terms",
+      "detail": "A neuma always runs on a model on your own machine; the app refuses to route a neuma through a cloud provider. You can add a cloud model, from about 150 providers, as a witness, in a council or to run the harness. Choosing a provider asks it for its list of models, so it sees your IP address; once you add your key or sign in (OpenAI, GitHub Copilot and xAI sign in through their own pages), what is said to that model goes to its provider, under its terms. Your conversations stay on your disk as well.",
+      "control": "setup"
+    },
+    {
+      "id": "wallets",
+      "name": "Wallets",
+      "to": "a public Ethereum node and CoinGecko",
+      "when": "when you open a wallet, or every 10 minutes once you save your own node",
+      "sends": "your wallet address, to read it; prices are asked with coin names, never an address",
+      "detail": "Your wallet's balances and transactions are read and sent through a public Ethereum node (ethereum-rpc.publicnode.com, or one you set), which sees your wallet address. A neuma's own wallet is read through Base's public node (mainnet.base.org), which sees that wallet's address. The wallet view asks CoinGecko for prices with coin names only, never an address. If you save your own node address, the app checks every 10 minutes for payments received by your house's and your neumas' wallets.",
+      "control": "use"
+    },
+    {
+      "id": "sealing",
+      "name": "Sealing",
+      "to": "Ethereum",
+      "when": "only if you choose it",
+      "sends": "an encrypted record, your address and signatures, permanently",
+      "detail": "Sealing a birth is done on this computer by default: the being and you each sign its birth record, and nothing leaves your machine. Writing the seal to Ethereum as well is a public, permanent transaction, made only if you choose it: an encrypted record, your address and your signatures are written to the chain for good. Opening that choice reads your wallet's balance from a public Ethereum node and the price of ETH from CoinGecko, to show what it costs.",
+      "control": "choice"
+    },
+    {
+      "id": "legal-research",
+      "name": "Legal research",
+      "to": "public US legal databases",
+      "when": "once you seat a legal officer",
+      "sends": "the question a neuma is researching",
+      "detail": "A neuma you seat as your house's legal officer may query public US legal databases (Congress.gov, GovInfo, Regulations.gov, CourtListener, Open States) with the question it is researching, without asking you each time. Until you seat one, nothing is asked.",
+      "control": "setup"
+    },
+    {
+      "id": "channels",
+      "name": "Channels and remote access",
+      "to": "the services you connect",
+      "when": "once you connect one",
+      "sends": "what you approve to post, and reads of your posts' stats and replies",
+      "detail": "Social channels (X, Telegram, Discord, Facebook, LinkedIn, Mastodon, Bluesky), email (your own mail server) and remote access (your own relay, your Tailscale network or your local network; there is no Ignis relay) talk only to the services you connect, and only once you do. Once a channel is connected, the app posts what you approved at its time, checks X for replies every 10 minutes, and reads the likes, replies and views of the posts you sent on X, Bluesky and Facebook every 30 minutes. If you save a Deus Neuma site token, it asks deusneuma.ai for your links' visit counts every 6 hours, with that token. A Hugging Face token you save is handed only to the local engines you run.",
+      "control": "setup"
+    }
+  ]
+}

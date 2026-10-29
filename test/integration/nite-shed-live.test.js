@@ -21,7 +21,7 @@
  *   node scripts/with-serving.mjs 2>/dev/null || true
  *   npx vitest run --project suite test/integration/nite-shed-live.test.js
  *
- * MULTIPLE MEMBERS, not one (Design note, 2026-08-20: a law proven on a single being is
+ * MULTIPLE MEMBERS, not one (ruling, 2026-08-20): a law proven on a single being is
  * a law proven on that being's particular size.
  */
 import { describe, test, expect, beforeAll } from 'vitest';

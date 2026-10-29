@@ -353,6 +353,7 @@
 .teams-past { margin-top: var(--space-4); border-top: 1px solid var(--line); padding-top: var(--space-3); }
 .teams-past-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
 .teams-past-row { display: flex; align-items: center; gap: var(--space-3); }
+.teams-past-row.is-landed { outline: 1px solid var(--color-text-secondary); outline-offset: 2px; }
 .teams-past-name { font-size: 10px; color: var(--color-text-primary); }
 .teams-past-state { font-size: 9px; letter-spacing: 0.14em; color: var(--color-text-tertiary); }
 .teams-past-state.is-done { color: var(--signal-dim); }

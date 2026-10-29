@@ -20,6 +20,8 @@ import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, rea
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { menuEntry } from './linux-menu-entry.mjs';
+import { packageDescription } from './installer-license.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const UNPACKED = join(ROOT, 'release', 'linux-unpacked');
@@ -41,30 +43,21 @@ const REQUIRES = [
   'mesa-libgbm', 'libdrm',
 ];
 
-const desktop = `[Desktop Entry]
-Type=Application
-Name=NEUMA
-Comment=${pkg.description}
-Exec=neuma %U
-Icon=neuma
-Categories=Utility;
-Terminal=false
-StartupWMClass=NEUMA
-`;
+const desktop = menuEntry(pkg.description);
 
 const spec = `Name: neuma
 Version: ${pkg.version}
 Release: 1%{?dist}
 Summary: ${pkg.description}
-License: BUSL-1.1
-URL: https://github.com/Ignis-AI-Labs/deus-neuma
+License: ${pkg.license}
+URL: ${pkg.homepage}
 Vendor: Ignis AI Labs LLC
 Packager: Ignis AI Labs LLC <legal@ignislabs.ai>
 AutoReqProv: no
 ${REQUIRES.map((r) => `Requires: ${r}`).join('\n')}
 
 %description
-${pkg.description}
+${packageDescription(pkg.description)}
 
 %install
 mkdir -p %{buildroot}/opt/NEUMA %{buildroot}/usr/bin \\
@@ -74,6 +67,11 @@ cp -a @UNPACKED@/. %{buildroot}/opt/NEUMA/
 ln -sf /opt/NEUMA/neuma %{buildroot}/usr/bin/neuma
 install -m 644 @DESKTOP@ %{buildroot}/usr/share/applications/neuma.desktop
 install -m 644 @ICON@ %{buildroot}/usr/share/icons/hicolor/512x512/apps/neuma.png
+
+%post
+# Electron's setuid sandbox helper, as the .deb's postinst sets it (audit 2026-10-28 L-04):
+# where unprivileged user namespaces are off, Chromium's sandbox needs it.
+chmod 4755 /opt/NEUMA/chrome-sandbox || true
 
 %files
 /opt/NEUMA

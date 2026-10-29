@@ -11,7 +11,11 @@
     linear-gradient(var(--grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 24px 24px;
-  overflow: hidden;
+  /* At a large reading size (THE LOOK's TEXT SIZE, reachable right here) the
+     threshold beneath the name outgrows a laptop screen: it scrolls rather
+     than cutting the sign-in off. Undressed it fits, and nothing scrolls. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .portal-background {
@@ -81,6 +85,7 @@
   align-items: center;
   gap: var(--space-6);
   width: min(92vw, 460px);
+  padding-bottom: var(--space-4); /* breathing room when the gateway scrolls */
   z-index: 2; /* above the resting field (z 1) */
 }
 
@@ -111,7 +116,9 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-6);
+  /* tight enough that the hint holds one line and the 18+ statement fits
+     above the enter-as row and the ignition strip at a 700 px window */
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
   font-family: var(--font-data);
   transition: all var(--snap);
@@ -166,6 +173,19 @@
   font-family: var(--font-data);
   letter-spacing: 0.12em;
   color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* Adults only: inside the entry, under its hint and brighter than it; in the
+   flow, so nothing the field paints covers it */
+.portal-age-notice {
+  display: block;
+  font-size: clamp(9px, 1.3vmin, 11px);
+  font-family: var(--font-data);
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   text-align: center;
 }
@@ -256,7 +276,7 @@
 }
 
 /* ENTER AS — the full platform or the harness alone (entry-mode.js) */
-.portal-enter-as { display: flex; justify-content: center; gap: 2px; margin-top: var(--space-3); }
+.portal-enter-as { display: flex; justify-content: center; gap: 2px; margin-top: var(--space-2); }
 .portal-enter-as-opt {
   padding: 6px 14px;
   background: transparent;

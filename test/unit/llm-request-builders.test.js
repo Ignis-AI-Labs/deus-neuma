@@ -159,6 +159,11 @@ describe('the hosted no-think variants pass 2 sends (via noThinkOptions)', () =>
     expect('chat_template_kwargs' in budgeted).toBe(false);
     const kin = buildStreamBody({ ...LOCAL, provider: 'custom', endpoint: 'http://127.0.0.1:8089/v1' }, TURN, { thinkingBudget: 2250 });
     expect(kin.thinking_budget_tokens).toBe(2250);
+    // An lm-studio route at a server the probe heard name itself llama.cpp: the budget rides;
+    // the template switch is proven only on llama-server, so it never does.
+    const studio = { ...LOCAL, provider: 'lm-studio', endpoint: 'http://127.0.0.1:1234' };
+    expect(buildStreamBody(studio, TURN, { thinkingBudget: 1 }).thinking_budget_tokens).toBe(1);
+    expect('chat_template_kwargs' in buildStreamBody(studio, TURN, { noThink: true })).toBe(false);
     const hosted = buildStreamBody(OPENAI, TURN, { thinkingBudget: 2250 });
     expect('thinking_budget_tokens' in hosted).toBe(false);
     expect('reasoning_budget_message' in hosted).toBe(false);
@@ -269,5 +274,15 @@ describe('on the wire, through the real createStreamRequest', () => {
     expect(lastRequest.raw).not.toContain('cacheSplit');
     expect(lastRequest.raw).not.toContain('cache_control');
     expect(lastRequest.body.messages[0]).toEqual({ role: 'system', content: 'STABLE HEAD\n\nVOLATILE TAIL' });
+  });
+});
+
+// An Ollama is told the window it serves, so a long prompt is never cut by its own default.
+describe('the Ollama window', () => {
+  const OLLAMA = { provider: 'ollama', endpoint: 'http://127.0.0.1:11434', model: 'qwen', temperature: 0.7, maxTokens: 512 };
+  test('a known window rides as num_ctx; an unknown one is not invented', () => {
+    expect(buildStreamBody(OLLAMA, TURN, { contextWindow: 65536 }).options).toEqual({ temperature: 0.7, num_predict: 512, num_ctx: 65536 });
+    expect(buildStreamBody(OLLAMA, TURN, {}).options).toEqual({ temperature: 0.7, num_predict: 512 });
+    expect(buildStreamBody(OLLAMA, TURN, { contextWindow: 0 }).options.num_ctx).toBeUndefined();
   });
 });

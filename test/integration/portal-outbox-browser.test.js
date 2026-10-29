@@ -7,7 +7,7 @@ import { attachMobileBrowserPortal } from '../helpers/mobile-browser-portal.js';
 let browser, context, server, vite, root, url, portal;
 beforeAll(async () => {
   root = await fs.mkdtemp('/tmp/neuma-outbox-browser-');
-  vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: root, appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null } });
+  vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: root, appType: 'custom', server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
   server = http.createServer((req, res) => req.url === '/' ? res.end('<!doctype html><title>Outbox proof</title><script type="module" src="/test/fixtures/portal-outbox.js"></script>') : vite.middlewares(req, res, () => { res.statusCode = 404; res.end(); }));
   portal = await attachMobileBrowserPortal(server, root);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

@@ -8,6 +8,10 @@
 // paths still stand. Direction law: this module never imports post-queue.js.
 
 import { getChannel } from './channel-registry.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
+import { youtubeDraftRefusal } from './youtube-metadata.js';
+import { tiktokDraftRefusal } from './tiktok-metadata.js';
+import { withDisclosureLine, DISCLOSURE_LINE } from './disclosure-line.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -26,7 +30,7 @@ export const duePosts = (entries, nowMs) => {
   const byId = new Map((entries || []).map((e) => [e.id, e]));
   return entries.filter((e) => {
     if (e.status !== 'approved') return false;
-    // THE REPLY CLOCK LAW (Design note, 2026-08-06: a reply is never the scheduler's
+    // THE REPLY CLOCK LAW (ruling, 2026-08-06): a reply is never the scheduler's
     // to send — approval itself fires it (claimReplyForSend on the approval
     // call). An `approved` reply here is a pre-law legacy entry; the tick's
     // expiry sweep settles it, the wire never does.
@@ -66,7 +70,7 @@ export const threadOrphans = (entries) => {
 export const REPLY_CAP_PER_CONVERSATION = 2;
 export const REPLY_LIVE_STANDINGS = Object.freeze(['draft', 'approved', 'sending', 'sent']);
 
-// THE REPLY TTL (Design note, 2026-07-28: an answer is worth giving while the
+// THE REPLY TTL (ruling, 2026-07-28): an answer is worth giving while the
 // conversation is warm. A reply that stood unanswered for a day is
 // system-withdrawn at its due moment — quiet, never a failure — so a draft
 // from Tuesday never publishes Friday.
@@ -111,7 +115,7 @@ export const replyCountForConversation = (entries, toUserId, conversationId) =>
  *   campaignId?: string, pillar?: string, kind?: string, reply?: object,
  *   expiresAt?: string|null}} draft
  */
-export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder } = {}) => {
+export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder, authorNeumaId } = {}) => {
   if (!getChannel(channelId || '')) return `Unknown channel: ${channelId}`;
   if (placeholder != null && typeof placeholder !== 'boolean') {
     return 'placeholder must be a boolean';
@@ -122,9 +126,23 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   // THE CHANNEL'S OWN CEILING (x-card-pipeline move 3): X allows 280 — the
   // wall belongs HERE at staging, stated with the count, not at the API after
   // the operator has already approved the post once or twice.
+  // The AI disclosure line the post will carry (disclosure-line.js) counts too.
   const channel = getChannel(channelId || '');
-  if (channel?.maxChars && t.length > channel.maxChars) {
-    return `the post is ${t.length} characters — ${channel.name || channelId} allows at most ${channel.maxChars}`;
+  const shown = withDisclosureLine({ channelId, text: t, authorNeumaId, media });
+  if (channel?.maxChars && shown.length > channel.maxChars) {
+    const line = shown.length > t.length ? ` and the disclosure line "${DISCLOSURE_LINE}" adds ${shown.length - t.length}` : '';
+    return `the post is ${t.length} characters${line} — ${channel.name || channelId} allows at most ${channel.maxChars}`;
+  }
+  // A YouTube post is one video and its title — refused here, at staging,
+  // so a text-only draft never reaches the operator's approval.
+  if (channelId === 'youtube') {
+    const refusal = youtubeDraftRefusal({ text: t, media, kind });
+    if (refusal) return refusal;
+  }
+  // A TikTok post likewise: one video and its caption and settings.
+  if (channelId === 'tiktok') {
+    const refusal = tiktokDraftRefusal({ text: t, media, kind });
+    if (refusal) return refusal;
   }
   if (scheduledFor != null && Number.isNaN(Date.parse(scheduledFor))) {
     return 'scheduledFor must be an ISO-8601 time';
@@ -132,7 +150,7 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   if (expiresAt != null && Number.isNaN(Date.parse(expiresAt))) {
     return 'expiresAt must be an ISO-8601 time';
   }
-  // The reply KIND (Design note, 2026-07-28: an answer to a reply on one of the
+  // The reply KIND (ruling, 2026-07-28): an answer to a reply on one of the
   // house's own posts, carrying BOUNDED linkage to what it answers. Replies
   // MAY carry media — shape-validated here exactly like a post's (≤4 entries,
   // a path each, alt ≤1000; the shared media block below), with the bytes
@@ -202,5 +220,19 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
     if (typeof v !== 'string') return `${label} must be a string`;
     if (v.length > 100) return `${label} is too long`;
   }
-  return null;
+  return queuedSecretRefusal({ text: t, media }, 'nothing was staged');
+};
+
+/**
+ * The outbound secret law over a queued post's leaving words — its text and
+ * every alt text (security-seat G5). Every way into the queue (a being's
+ * draft, REST, an edit) passes validateDraft above; the store re-asks at
+ * approval and at the send claim, for entries staged before the law. Pure.
+ * @param {{text?: string, media?: Array<{alt?: string}>|null}} entry
+ * @param {string} outcome what the refusal means here
+ * @returns {string|null} the refusal, or null when nothing secret leaves
+ */
+export const queuedSecretRefusal = ({ text, media }, outcome) => {
+  const check = checkOutboundSecrets('the post', [text, ...(Array.isArray(media) ? media.map((m) => m?.alt) : [])], outcome);
+  return check.ok ? null : check.reason;
 };

@@ -11,7 +11,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 
 describe('the reply bin — the operator puts a reply aside and takes it back', () => {
   let app, witness, realmState;
-  const ENV = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_REPLY_CANDIDATES_PATH', 'WORKSPACES_ROOT'];
+  const ENV = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_REPLY_CANDIDATES_PATH', 'NEUMA_SOCIAL_BINDINGS_PATH', 'WORKSPACES_ROOT'];
   const saved = {};
 
   beforeEach(async () => {
@@ -20,6 +20,7 @@ describe('the reply bin — the operator puts a reply aside and takes it back', 
     const dir = await createTempDir(`reply-bin-${Math.random().toString(36).slice(2)}`);
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = path.join(dir, 'queue.json');
     process.env.NEUMA_REPLY_CANDIDATES_PATH = path.join(dir, 'reply-candidates.json');
+    process.env.NEUMA_SOCIAL_BINDINGS_PATH = path.join(dir, 'bindings.json');
     process.env.WORKSPACES_ROOT = path.join(dir, 'workspaces');
     const realm = await import('../../backend/services/user-realm.js');
     realmState = { restore: realm.setRealmRoot, root: realm.getRealmRoot() };
@@ -42,9 +43,8 @@ describe('the reply bin — the operator puts a reply aside and takes it back', 
   });
 
   test('PUT /replies/:postId/bin and /restore — the operator\'s bin, recorded and reversible', async () => {
-    const { createReplyCandidates } = await import('../../backend/services/social/reply-candidates.js');
-    const candidates = createReplyCandidates({ path: process.env.NEUMA_REPLY_CANDIDATES_PATH });
-    await candidates.add({
+    const { replyCandidatesOf } = await import('../../backend/services/social/reply-candidates.js');
+    await replyCandidatesOf(witness.address).add({
       postId: '3001', conversationId: '950', authorId: '77', username: 'baiter',
       verified: false, text: 'scammers, all of you', postCreatedAt: '2026-10-12T10:00:00Z',
     });
@@ -65,6 +65,31 @@ describe('the reply bin — the operator puts a reply aside and takes it back', 
 
     expect((await request(app).put('/api/v1/social-channels/replies/0000/bin').set(witness.header)).status).toBe(404);
     expect((await request(app).put('/api/v1/social-channels/replies/3001/delete').set(witness.header)).status).toBe(404);
+  });
+
+  test('two houses: a reply landed for one is never listed for, nor binned by, the other', async () => {
+    const { fullAuth } = await import('../helpers/audit-auth.js');
+    const other = await fullAuth();
+    const otherHeader = { Authorization: `Bearer ${other.token}` };
+    expect(other.address.toLowerCase()).not.toBe(witness.address.toLowerCase());
+    // The record as it stood machine-wide, landed through this house's X binding.
+    const fs = await import('fs/promises');
+    await fs.writeFile(process.env.NEUMA_SOCIAL_BINDINGS_PATH, JSON.stringify({
+      x: { neumaId: 'herald', boundBy: witness.address.toLowerCase(), boundAt: '2026-10-01T00:00:00Z' },
+    }));
+    const { createReplyCandidates } = await import('../../backend/services/social/reply-candidates.js');
+    await createReplyCandidates({ path: process.env.NEUMA_REPLY_CANDIDATES_PATH }).add({
+      postId: '3101', conversationId: '951', authorId: '78', username: 'neighbour',
+      verified: false, text: 'a reply to this house', postCreatedAt: '2026-10-12T10:00:00Z',
+    });
+    const listed = async (header) => (await request(app).get('/api/v1/social-channels/replies').set(header))
+      .body.replies.map((r) => r.postId);
+
+    expect(await listed(otherHeader)).not.toContain('3101');
+    expect((await request(app).put('/api/v1/social-channels/replies/3101/bin').set(otherHeader)).status).toBe(404);
+    expect(await listed(witness.header)).toContain('3101');
+    expect((await request(app).put('/api/v1/social-channels/replies/3101/bin').set(witness.header)).status).toBe(200);
+    expect(await listed(otherHeader)).not.toContain('3101');
   });
 
   test('without a Bearer token the bin is a real 401', async () => {

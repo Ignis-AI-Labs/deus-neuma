@@ -6,7 +6,7 @@
 
 .bk-type { display: grid; gap: var(--space-4, 16px); }
 
-.bk-role { background: var(--bg-elevated); }
+.bk-role { background: var(--color-glass-light); }
 .bk-role .cham-in { padding: var(--space-3, 12px) var(--space-4, 16px); }
 
 .bk-role-head {
@@ -17,11 +17,11 @@
   margin-bottom: var(--space-3, 12px);
 }
 
-.bk-role-head h5 { margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--text-primary); }
+.bk-role-head h5 { margin: 0; font-size: var(--text-label); letter-spacing: 0.14em; color: var(--text-primary); }
 
 .bk-role-why {
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -53,7 +53,7 @@
    nobody vendored — is the one that used to be invisible. */
 .bk-badge {
   margin-left: auto;
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.1em;
   padding: 2px 7px;
   border: 1px solid currentColor;
@@ -63,8 +63,8 @@
 .bk-badge.is-ok { color: var(--accent-success); }
 .bk-badge.is-warn { color: var(--accent-warning, #ff9d3c); }
 .bk-badge.is-bad { color: var(--accent-danger); }
-.bk-badge.is-req { color: var(--text-muted); margin-left: 6px; }
-.bk-badge.is-tpl { color: var(--accent-primary); margin-left: 4px; }
+.bk-badge.is-req { color: var(--color-text-tertiary); margin-left: 6px; }
+.bk-badge.is-tpl { color: var(--signal); margin-left: 4px; white-space: normal; overflow-wrap: anywhere; } /* a long template list wraps, never runs sideways */
 
 .bk-embed h5 {
   display: flex;
@@ -72,7 +72,7 @@
   gap: 6px;
   flex-wrap: wrap;
   margin: 0 0 var(--space-2, 8px);
-  font-size: 11px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   color: var(--text-primary);
 }
@@ -81,21 +81,21 @@
   font-style: normal;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
 }
 
 .bk-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
 
 .bk-chips li {
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.06em;
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
   padding: 3px 8px;
 }
 
-.bk-chips li.is-none { color: var(--text-muted); border-style: dashed; }
+.bk-chips li.is-none { color: var(--color-text-tertiary); border-style: dashed; }
 
 /* --- colour -------------------------------------------------------------- */
 
@@ -107,7 +107,7 @@
   gap: 6px;
   flex-wrap: wrap;
   margin: 0 0 var(--space-2, 8px);
-  font-size: 11px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   color: var(--text-primary);
 }
@@ -116,8 +116,8 @@
   font-style: normal;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
 }
 
 .bk-crows {
@@ -126,19 +126,20 @@
   gap: 6px var(--space-4, 16px);
 }
 
-.bk-crow { display: flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; }
+.bk-crow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); min-width: 0; } /* at the label floor a long name puts its controls on the next line */
 
 .bk-crow-name {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   min-width: 120px;
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.06em;
   color: var(--text-secondary);
   text-transform: none;
 }
 
-.bk-crow-edit { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
+.bk-crow-edit { display: flex; align-items: center; gap: 5px; flex: 1 0 auto; }
 
 .bk-crow input[type="color"] {
   width: 26px;
@@ -155,7 +156,7 @@
 .bk-color-chip {
   width: 26px;
   height: 24px;
-  border: 1px dashed var(--border-default);
+  border: 1px dashed var(--line);
   flex: none;
 }
 
@@ -163,7 +164,7 @@
    opaque role would be twenty controls that do nothing. */
 .bk-alpha { display: flex; align-items: center; gap: 4px; flex: none; }
 .bk-alpha input[type="range"] { width: 60px; }
-.bk-alpha .label-data { font-size: 9px; color: var(--text-muted); min-width: 28px; }
+.bk-alpha .label-data { font-size: var(--text-label); color: var(--color-text-tertiary); min-width: 28px; }
 
 /* --- contrast ------------------------------------------------------------ */
 
@@ -175,7 +176,7 @@
   gap: 6px;
   flex-wrap: wrap;
   margin: 0 0 var(--space-2, 8px);
-  font-size: 11px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   color: var(--text-primary);
 }
@@ -184,8 +185,8 @@
   font-style: normal;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
 }
 
 .bk-contrast ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
@@ -196,46 +197,46 @@
   align-items: center;
   gap: var(--space-2, 8px);
   padding: 3px 0;
-  font-size: 11px;
+  font-size: var(--text-label);
 }
 
-.bk-pair { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-secondary); text-transform: none; }
+.bk-pair { display: flex; align-items: center; gap: 5px; font-size: var(--text-label); color: var(--text-secondary); text-transform: none; }
 
 /* The two colours being measured, shown as the reader meets them: the
    foreground overlapping its own background. */
 .bk-pair i { width: 14px; height: 14px; border: 1px solid var(--border-subtle); flex: none; }
 .bk-pair i + i { margin-left: -9px; }
 
-.bk-pair-why { font-size: 10px; color: var(--text-muted); }
-.bk-pair-n { font-size: 10px; font-variant-numeric: tabular-nums; }
+.bk-pair-why { font-size: var(--text-label); color: var(--color-text-tertiary); }
+.bk-pair-n { font-size: var(--text-label); font-variant-numeric: tabular-nums; }
 
 .bk-contrast li.is-pass .bk-pair-n { color: var(--accent-success); }
 .bk-contrast li.is-fail .bk-pair-n { color: var(--accent-danger); }
-.bk-contrast li.is-unknown .bk-pair-n { color: var(--text-muted); }
+.bk-contrast li.is-unknown .bk-pair-n { color: var(--color-text-tertiary); }
 
 /* --- marks --------------------------------------------------------------- */
 
 .bk-marks { display: grid; gap: var(--space-4, 16px); }
-.bk-mark { background: var(--bg-elevated); }
+.bk-mark { background: var(--color-glass-light); }
 .bk-mark .cham-in { padding: var(--space-3, 12px) var(--space-4, 16px); }
 
 .bk-mark-head { display: flex; align-items: baseline; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
-.bk-mark-head h5 { margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--text-primary); }
-.bk-mark-file { font-size: 10px; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.bk-mark-head h5 { margin: 0; font-size: var(--text-label); letter-spacing: 0.14em; color: var(--text-primary); }
+.bk-mark-file { font-size: var(--text-label); color: var(--color-text-tertiary); text-transform: none; letter-spacing: 0; }
 
 .bk-mark-swap {
   margin-left: auto;
   background: transparent;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--line);
   color: var(--text-secondary);
   font: inherit;
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.1em;
   padding: 3px 10px;
   cursor: pointer;
 }
 
-.bk-mark-swap:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+.bk-mark-swap:hover { border-color: var(--signal); color: var(--text-primary); }
 
 /* Three grounds, because a mark that is invisible on one of them is a mark
    that will ship invisible. Both Umbrae marks are pure #000000 with no
@@ -257,10 +258,10 @@
   cursor: zoom-in;
 }
 
-.bk-mark-zoom:focus-visible { outline: 1px solid var(--accent-primary); }
+.bk-mark-zoom:focus-visible { outline: 1px solid var(--signal); }
 
 .bk-mark-ground img { max-width: 100%; max-height: 56px; }
-.bk-mark-ground .label-data { font-size: 9px; color: var(--text-muted); }
+.bk-mark-ground .label-data { font-size: var(--text-label); color: var(--color-text-tertiary); }
 
 .bk-mark-recolor {
   display: flex;
@@ -268,14 +269,14 @@
   gap: 6px;
   flex-wrap: wrap;
   margin: var(--space-3, 12px) 0 0;
-  font-size: 9px;
-  color: var(--text-muted);
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
   text-transform: none;
   letter-spacing: 0;
 }
 
 .bk-mark-recolor span { display: inline-flex; align-items: center; gap: 4px; }
-.bk-mark-recolor i { width: 10px; height: 10px; border: 1px solid var(--border-default); }
+.bk-mark-recolor i { width: 10px; height: 10px; border: 1px solid var(--line); }
 
 /* --- the card preview ---------------------------------------------------- */
 
@@ -290,13 +291,13 @@
 }
 
 .bk-preview-head { display: flex; align-items: center; gap: var(--space-2, 8px); }
-.bk-preview-head > .label-data { font-size: 10px; color: var(--text-muted); }
+.bk-preview-head > .label-data { font-size: var(--text-label); color: var(--color-text-tertiary); }
 
 .bk-collapse {
   margin-left: auto;
   background: transparent;
   border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
+  color: var(--color-text-tertiary);
   font: inherit;
   width: 22px;
   height: 22px;
@@ -305,7 +306,7 @@
   flex: none;
 }
 
-.bk-collapse:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+.bk-collapse:hover { border-color: var(--signal); color: var(--text-primary); }
 
 .bk-preview-stage { border: 1px solid var(--border-subtle); min-height: 120px; }
 /* Dimmed rather than blanked while redrawing: the card you were looking at is
@@ -314,11 +315,11 @@
 .bk-svg { width: 100%; }
 
 .bk-preview-refusal { padding: var(--space-3, 12px); }
-.bk-preview-refusal .label-data { font-size: 10px; color: var(--accent-danger); }
+.bk-preview-refusal .label-data { font-size: var(--text-label); color: var(--accent-danger); }
 .bk-preview-refusal ul { list-style: none; margin: var(--space-2, 8px) 0 0; padding: 0; display: grid; gap: 4px; }
-.bk-preview-refusal li { font-size: 10px; color: var(--text-muted); line-height: 1.5; }
+.bk-preview-refusal li { font-size: var(--text-label); color: var(--color-text-tertiary); line-height: 1.5; }
 
-.bk-preview-note { font-size: 9px; color: var(--text-muted); letter-spacing: 0.1em; }
+.bk-preview-note { font-size: var(--text-label); color: var(--color-text-tertiary); letter-spacing: 0.1em; }
 
 .bk-preview-missing { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
-.bk-preview-missing li { font-size: 10px; color: var(--accent-warning, #ff9d3c); line-height: 1.5; }
+.bk-preview-missing li { font-size: var(--text-label); color: var(--accent-warning, #ff9d3c); line-height: 1.5; }

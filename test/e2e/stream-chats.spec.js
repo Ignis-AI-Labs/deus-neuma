@@ -15,7 +15,7 @@ import { claimOwner } from '../helpers/claim-owner.js';
  * with Claude's witness wallet), the real session store on real disk, the real
  * chat-label route. Nothing on any claimed path is mocked (RULE 0).
  *
- * The claim under test (Design note, 2026-08-25: a rail this narrow truncates long
+ * The claim under test (ruling, 2026-08-25): a rail this narrow truncates long
  * chat names by construction, so hovering a row must SHOW THE WHOLE NAME, and
  * the rows must read at the tasks rail's weight rather than a smaller one.
  * Both are things only a real browser can answer — a computed font size and a

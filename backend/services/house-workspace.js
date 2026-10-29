@@ -13,8 +13,10 @@
  */
 import fs from 'fs/promises';
 import path from 'path';
-import { assertDurableGround, walletDir, writeJsonAtomic } from './user-realm.js';
-import { isWithin, loadAllianceRoot, loadHouseWorkspace } from './ground-roots.js';
+import { assertDurableGround, getRealmRoot, walletDir, writeJsonAtomic } from './user-realm.js';
+import { assertClearOfRealmAndSettings, isWithin, loadAllianceRoot, loadHouseWorkspace } from './ground-roots.js';
+import { getWitnessesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { getHarnessRoot } from '../../core/workspace/lane-grounds.js';
 
 // This ground's own loader keeps its public address here (CQ-036, #395 moved
 // it to ground-roots.js — the place law is held from both sides, so both root
@@ -24,6 +26,77 @@ export { loadHouseWorkspace };
 
 
 const fileOf = (wallet) => path.join(walletDir(wallet), 'house-workspace.json');
+
+// A refusal is the operator's answer, not a fault: the route shows its own
+// words with a 400 instead of a generic failure.
+const refuse = (message) => Object.assign(new Error(message), { code: 'GROUND_REFUSED' });
+
+const WALLET_DIR_RE = /^0x[0-9a-f]{40}$/;
+
+/**
+ * The ground a founding raises when the operator has chosen none: one per
+ * wallet, beside the lanes, named like the founding record
+ * (`house-founding.<network>.<wallet>.json`). A dot can never appear in a
+ * being's id, so this name can never be a lane. pure.
+ * @param {string} workspacesRoot
+ * @param {string} wallet
+ * @returns {string}
+ */
+export const defaultHouseGround = (workspacesRoot, wallet) =>
+  path.join(workspacesRoot, `house.${String(wallet).toLowerCase()}`);
+
+// impure — refuse a root that would put lanes inside the ground, or the ground
+// inside a lane. A ground holding the lanes' root would count every lane as
+// house ground, and members would read each other's sealed folders.
+const assertClearOfLanes = (resolved) => {
+  const workspaces = path.resolve(getWorkspacesRoot());
+  const grounds = [
+    ['the beings\' lanes', workspaces],
+    ['the witnesses\' lanes', path.resolve(getWitnessesRoot())],
+    ['the harness lanes', path.resolve(getHarnessRoot(workspaces))],
+  ];
+  for (const [label, laneRoot] of grounds) {
+    if (isWithin(laneRoot, resolved)) {
+      throw refuse(`That path holds ${label} (${laneRoot}) — a house ground can never contain a lane`);
+    }
+  }
+  for (const [label, laneRoot] of grounds.slice(1)) {
+    if (isWithin(resolved, laneRoot)) {
+      throw refuse(`That path is inside ${label} (${laneRoot}) — a house ground can never stand in a lane`);
+    }
+  }
+  // Under the beings' root the ground may only stand directly beside the
+  // lanes: one level deeper is inside a lane, or raises a folder lane
+  // discovery would read as a being.
+  if (isWithin(resolved, workspaces) && path.dirname(resolved) !== workspaces) {
+    const holder = path.relative(workspaces, resolved).split(path.sep)[0];
+    throw refuse(`That path is inside '${holder}' in the beings' lanes root — a house ground there must stand directly in that root, never inside a lane`);
+  }
+};
+
+// impure — refuse a root that is, holds, or sits inside a ground another
+// operator on this install has recorded. Read one wallet at a time: the realm
+// may hold many wallets, and a read failing for lack of file handles would
+// read as unset and let the overlap through.
+const assertClearOfOtherHouses = async (wallet, resolved) => {
+  const self = wallet.toLowerCase();
+  let names;
+  try {
+    names = await fs.readdir(getRealmRoot());
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  const overlaps = (root) => root && (isWithin(resolved, root) || isWithin(root, resolved));
+  for (const other of names.filter((n) => WALLET_DIR_RE.test(n) && n !== self)) {
+    if (overlaps((await loadHouseWorkspace(other)).root)) {
+      throw refuse('That path overlaps the ground of another house on this install — houses never share ground');
+    }
+    if (overlaps((await loadAllianceRoot(other)).root)) {
+      throw refuse('That path overlaps the alliances root of another house on this install — a house ground never stands in shared ground');
+    }
+  }
+};
 
 // impure — set the house's shared ground. The root must be absolute and
 // durable (a temp dir can be swept at reboot, taking the house's work
@@ -53,14 +126,14 @@ export const setHouseWorkspace = async (wallet, root) => {
     standingMarker = JSON.parse(await fs.readFile(path.join(resolved, 'lane.json'), 'utf8'));
   } catch { /* no marker — checked by shape below */ }
   if (standingMarker && standingMarker.kind !== 'house-ground') {
-    throw new Error(`This directory is a ${standingMarker.kind} lane — a house ground can never overwrite a lane`);
+    throw refuse(`This directory is a ${standingMarker.kind} lane — a house ground can never overwrite a lane`);
   }
   if (!standingMarker) {
     const laneShaped = await Promise.all(
       ['owner.json', 'dna'].map((p) => fs.access(path.join(resolved, p)).then(() => true, () => false)),
     );
     if (laneShaped.some(Boolean)) {
-      throw new Error('This directory is a being\'s lane — a house ground can never overwrite a lane');
+      throw refuse('This directory is a being\'s lane — a house ground can never overwrite a lane');
     }
   }
   // THE PLACE LAW, HELD FROM BOTH SIDES. setAllianceRoot refuses a cross-house
@@ -71,16 +144,19 @@ export const setHouseWorkspace = async (wallet, root) => {
   const { root: allianceRoot } = await loadAllianceRoot(wallet);
   if (allianceRoot) {
     if (isWithin(resolved, allianceRoot)) {
-      throw new Error(
+      throw refuse(
         `A house ground cannot stand inside the alliances root (${allianceRoot}) — your house would sit in ground you share with other houses`,
       );
     }
     if (isWithin(allianceRoot, resolved)) {
-      throw new Error(
+      throw refuse(
         `The alliances root (${allianceRoot}) stands inside that path — a house ground can never contain the ground you share with other houses`,
       );
     }
   }
+  assertClearOfLanes(resolved);
+  await assertClearOfRealmAndSettings(wallet, resolved, 'a house ground');
+  await assertClearOfOtherHouses(wallet, resolved);
 
   // Every refusal is behind us — now the ground may be raised.
   await fs.mkdir(path.join(resolved, 'repos'), { recursive: true });

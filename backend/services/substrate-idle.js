@@ -59,7 +59,7 @@ export const shouldUnload = ({ serving, owned, busy, lastActivityAt: last, now, 
  * @returns {() => void} stop
  */
 export const startIdleMonitor = ({ idleMs, intervalMs, check, unload, resolveIdleMs = null }) => {
-  // STANDBY is a LIVE switch (Design note, 2026-07-26. With `resolveIdleMs` given, the
+  // STANDBY is a LIVE switch (ruling, 2026-07-26). With `resolveIdleMs` given, the
   // window is re-read every tick, so flipping standby in the stream header
   // takes effect on the next minute instead of the next restart — and the
   // monitor must therefore keep ticking even while standby is off, or turning

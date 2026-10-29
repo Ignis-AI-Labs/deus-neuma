@@ -30,7 +30,9 @@ const call = (server, toolName, args) => ({ server, toolName, args, tool: `${ser
 const prepareCoding = async (seat) => {
   kit.connection.toolWorkspace = kit.ground;
   if (seat === 'portal') {
-    const tools = await beingCodingToolsFor(kit.connection);
+    // The being seat's turn offers the fs primitives beside its coding hands, as
+    // portal-stream advertises them — a tool the turn never offered never runs.
+    const tools = [...withFsPrimitives(mcpService.getToolsContext().available_tools), ...await beingCodingToolsFor(kit.connection)];
     const catalog = await stashBeingTurnCatalog(kit.connection, tools, []);
     expect(catalog, kit.connection._turnSandboxError || 'coding catalog missing execute')
       .toContainEqual(expect.objectContaining({ server: 'coding', name: 'execute' }));

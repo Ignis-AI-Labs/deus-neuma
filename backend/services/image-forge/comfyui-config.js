@@ -56,8 +56,9 @@ export const resolveComfyConfig = (env) => {
     userDir: path.join(dataRoot, 'user'),
     logDir: path.join(dataRoot, 'logs'),
     extraModelPaths: env.COMFYUI_EXTRA_MODEL_PATHS || '',
-    // Empty = unset: the arbiter (P3) decides at launch time. A set value is
-    // the operator's explicit envelope and passes through untouched.
+    // Empty = unset: the supervisor computes the ceiling at launch from the
+    // machine (forge-capacity.js), so the engine never runs unbounded. A set
+    // value is the operator's explicit envelope and passes through untouched.
     headroomGb: env.COMFYUI_VRAM_HEADROOM_GB || '',
     idleTtlMs: Number(env.COMFYUI_IDLE_TTL_MS ?? 600_000),
     reapTtlMs: Number(env.COMFYUI_REAP_TTL_MS ?? 1_800_000),
@@ -125,7 +126,8 @@ export const buildComfyArgs = (cfg) => {
     // `--listen` intentionally ABSENT: the default bind is 127.0.0.1 and a
     // bare `--listen` means 0.0.0.0 (the footgun the law exists for).
     '--disable-all-custom-nodes',
-    '--disable-api-nodes',
+    // No cloud: v0.41 retired --disable-api-nodes for --offline (no API nodes, frontend offline).
+    '--offline',
     '--disable-metadata',
     '--output-directory', cfg.outputDir,
     '--temp-directory', cfg.tempDir,

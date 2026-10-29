@@ -6,7 +6,7 @@ import {
 import { interpretLlamaProps, interpretOllamaShow, interpretLmsModel } from '../../backend/services/model-capabilities.js';
 
 /**
- * THE BEING GETS THE ROOM THE MODEL HAS (Design note, 2026-08-04.
+ * THE BEING GETS THE ROOM THE MODEL HAS (ruling, 2026-08-04).
  *
  *   […]
  *
@@ -44,8 +44,10 @@ describe('the window is read from what the serving actually reports', () => {
       capabilities: ['completion', 'tools', 'thinking'],
       details: { parameter_size: '751M' },
     };
-    const got = interpretOllamaShow(real);
+    const got = interpretOllamaShow(real, 65536);
     expect(got.contextWindow).toBe(40960);
+    // served at no more than the window fitted to this card (ollama-window.js, 32,768 by default)
+    expect(interpretOllamaShow(real).contextWindow).toBe(32768);
     // And Ollama SAYS the model reasons — the signal our probe is blind to.
     expect(got.thinks).toBe(true);
   });

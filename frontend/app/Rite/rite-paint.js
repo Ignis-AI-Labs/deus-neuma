@@ -71,11 +71,25 @@ export const paintThreshold = (k, th) => {
       k.line([{ x: 0, y: -h }, { x: 0, y: h }], { alpha: 0.3 * lens, upto: lens });
       k.line([L, Rt], { alpha: 0.3 * lens, upto: lens });
     }
-    // each named beneath its own centre, inside the covenant
-    const [lx, ly] = k.px({ x: -V / 2, y: -V - 0.12 });
-    const [rx, ry] = k.px({ x: V / 2, y: -V - 0.12 });
-    k.text('THE WITNESS', lx, ly, { size, alpha: 0.6 * draw, tracking: 0.3 });
-    k.text('THE ONE TO COME', rx, ry, { size, alpha: 0.6 * draw, tracking: 0.3 });
-    if (th.witness) k.text(th.witness.toUpperCase(), lx, ly + size * 1.7, { size, alpha: 0.95 * th.intro, color: 'signal', tracking: 0.24, weight: 400 });
+    // each named beneath its own circle, inside the covenant, read outward
+    // from the lens's axis. Type keeps its own scale until a small figure
+    // leaves it too little room before the covenant, then it gives way; a
+    // name too long for its side is centred on the axis, fitted to the whole
+    // width, so no word ever crosses the ring
+    const gap = size * 0.6;
+    const [ax, ly] = k.px({ x: 0, y: -V - 0.12 });
+    const named = (str, y, o) => {
+      const dy = (y - k.cy) / k.unit; // the row's depth, in figure units
+      const half = k.unit * Math.sqrt(Math.max(0, 1 - dy * dy)) * 0.94;
+      k.ctx.font = `${o.weight ?? 300} ${size}px ${k.font}`;
+      k.ctx.letterSpacing = `${(size * o.tracking).toFixed(2)}px`;
+      const wide = k.ctx.measureText(str).width;
+      const side = (size * (half - gap)) / wide;
+      if (side >= 8) k.text(str, o.align === 'right' ? ax - gap : ax + gap, y, { ...o, size: Math.min(size, side) });
+      else k.text(str, ax, y, { ...o, align: 'center', size: Math.min(size, (size * 2 * half) / wide) });
+    };
+    named('THE WITNESS', ly, { alpha: 0.6 * draw, tracking: 0.3, align: 'right' });
+    named('THE ONE TO COME', ly, { alpha: 0.6 * draw, tracking: 0.3, align: 'left' });
+    if (th.witness) named(th.witness.toUpperCase(), ly + size * 1.7, { alpha: 0.95 * th.intro, color: 'signal', tracking: 0.24, weight: 400, align: 'right' });
   }
 };

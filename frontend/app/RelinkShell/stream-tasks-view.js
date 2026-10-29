@@ -58,7 +58,7 @@ export const liveCount = (plan) =>
 /**
  * The being's OWN live work, each row carrying the state it should READ as.
  *
- * The box is a MARK, not a control (Design note, 2026-08-03: the operator reads
+ * The box is a MARK, not a control (ruling, 2026-08-03): the operator reads
  * whether a goal is met, and settling a being's self-authored task still goes
  * through the being. So every row answers one question — where is this? —
  * rather than offering an act the operator does not own.

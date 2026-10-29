@@ -7,7 +7,7 @@
  * that asked for it.
  *
  * Every office route reads and moves the SIGNED-IN OPERATOR'S HOUSE only
- * (Design note, 2026-10-16: two houses on one machine are never confused): its seat,
+ * (ruling, 2026-10-16: two houses on one machine are never confused): its seat,
  * its ledger, its watch list, its scans. The live pulse and the application
  * firewall below are the machine's own instruments.
  */
@@ -23,6 +23,10 @@ import { runSecurityScan, readScanState } from '../services/security/security-sc
 import { mapThreatAttackSurface, readArchitectureSurface, selectWatchedRepo } from '../services/security/attack-surface.js';
 import { readSecurityTelemetry } from '../services/security/traffic-monitor.js';
 import { circuitBreaker } from '../services/security/circuit-breaker.js';
+import { requireInstallOwner, deskStanding } from '../services/install-owner.js';
+import { houseGroundsOf } from '../services/explorer-ground.js';
+import { realOf } from '../services/explorer-walls.js';
+import { isWithin } from '../services/ground-roots.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Security');
@@ -114,6 +118,7 @@ router.get('/telemetry', async (req, res) => {
       windowSeconds: req.query.windowSeconds,
       limit: req.query.limit,
       logLimit: req.query.logLimit,
+      wallet: req.walletAddress,
     }) });
   } catch (error) {
     log.error('Security telemetry read failed', { error: error.message });
@@ -131,7 +136,9 @@ router.get('/mitigations', async (req, res) => {
   }
 });
 
-router.post('/mitigations', async (req, res) => {
+// The firewall is the machine's, so only the install owner moves it, at its
+// own desk (ruling, 2026-10-19: one wallet never changes another house's world).
+router.post('/mitigations', requireInstallOwner, async (req, res) => {
   try {
     const outcome = await circuitBreaker.apply({
       ...(req.body || {}),
@@ -177,6 +184,36 @@ router.get('/threats/:id', async (req, res) => {
   }
 });
 
+// The operator's overturn: any verdict — the CSO's, the watch's, their own —
+// goes back to `new`, its old reasoning kept in the entry's history. The
+// operator always outranks the seat that answers to them.
+router.put('/threats/:id/reopen', async (req, res) => {
+  const note = typeof req.body?.note === 'string' && req.body.note.trim() ? req.body.note.trim().slice(0, 500) : undefined;
+  try {
+    const result = await (await threatLedgerFor(req.walletAddress)).reopen(req.params.id, { by: `operator:${req.walletAddress}`, note });
+    if (!result.ok) return res.status(result.error === 'no such threat' ? 404 : 409).json({ error: result.error });
+    log.info('threat reopened by the operator', { id: result.entry?.id || req.params.id, wallet: req.walletAddress });
+    res.json({ threat: result.entry });
+  } catch (error) {
+    log.error('Threat reopen failed', { id: req.params.id, error: error.message });
+    res.status(500).json({ error: 'Failed to reopen the threat' });
+  }
+});
+
+// The operator's word that a leaked key is revoked at its provider — the one proof no scan can
+// make, so a leak the watch sees live nowhere here is verified only by it (re-audit 2026-10-29, NEW-M6).
+router.put('/threats/:id/revoked', async (req, res) => {
+  try {
+    const result = await (await threatLedgerFor(req.walletAddress)).confirmRevocation(req.params.id, { by: `operator:${req.walletAddress}` });
+    if (!result.ok) return res.status(result.error === 'no such threat' ? 404 : 409).json({ error: result.error });
+    log.info('leak revocation confirmed by the operator', { id: result.entry.id, wallet: req.walletAddress });
+    res.json({ threat: result.entry });
+  } catch (error) {
+    log.error('Revocation confirm failed', { id: req.params.id, error: error.message });
+    res.status(500).json({ error: 'Failed to confirm the revocation' });
+  }
+});
+
 // ── The watch list ──────────────────────────────────────────────────────────
 router.get('/watch', async (req, res) => {
   try {
@@ -187,10 +224,26 @@ router.get('/watch', async (req, res) => {
   }
 });
 
+// impure — what this caller may put under its watch: the install owner (and a
+// co-owner) any checkout on the machine; a guest only one inside its own house
+// (its realm dir, its house ground, its lanes — the explorer's reach), judged
+// as typed and with its links resolved. A watched repo's leak findings land in
+// the watcher's ledger, so another house's checkout is never a guest's to watch.
+const watchReachOf = async (req) => {
+  if (['owner', 'co-owner'].includes(await deskStanding(req))) return null;
+  const grounds = await houseGroundsOf(req.walletAddress);
+  const forms = [...new Set([...grounds, ...grounds.map(realOf)])];
+  return (target) => [target, realOf(target)].every((candidate) => forms.some((ground) => isWithin(candidate, ground)));
+};
+
 router.post('/watch/repos', async (req, res) => {
   const { path } = req.body || {};
   try {
-    const result = await (await watchStoreFor(req.walletAddress)).addRepo(path);
+    const result = await (await watchStoreFor(req.walletAddress)).addRepo(path, { mayWatch: await watchReachOf(req) });
+    if (result.code === 'OUTSIDE_HOUSE') {
+      log.info('watched repo refused — outside the house', { wallet: req.walletAddress });
+      return res.status(403).json({ error: result.error, code: result.code });
+    }
     if (!result.ok) return res.status(400).json({ error: result.error });
     log.info('repo added to the security watch', { path, wallet: req.walletAddress });
     res.status(201).json({ repo: result.repo, watch: result.watch });

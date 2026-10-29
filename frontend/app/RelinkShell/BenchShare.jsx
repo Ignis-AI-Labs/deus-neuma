@@ -8,6 +8,7 @@ import './BenchApp.css';
 import './BenchApp-reports.css';
 import { EmptyState } from './empty-state.jsx';
 import { SHARE_SIZES, shareOptions } from './bench-summary-view.js';
+import { mediaMenuDoor } from './media-menu.js';
 
 export const BenchShare = ({
   summary, source, size, onSource, onSize, pngUrl, markdown, busy, notice, refusal,
@@ -50,7 +51,8 @@ export const BenchShare = ({
       {refusal ? <p className="bench-line label-data is-alert">{refusal}</p> : null}
       <div className={`bench-share-preview is-${size}`}>
         {pngUrl ? (
-          <img src={pngUrl} alt="the share card, exactly as it exports" className={busy ? 'is-stale' : ''} />
+          <img src={pngUrl} alt="the share card, exactly as it exports" className={busy ? 'is-stale' : ''} tabIndex={0}
+            {...mediaMenuDoor({ kind: 'image', src: pngUrl, name: 'share-card.png', alt: 'share card' })} />
         ) : (
           <EmptyState title={busy ? 'DRAWING THE CARD…' : 'CHOOSE A RESULT'} />
         )}

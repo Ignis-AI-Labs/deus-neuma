@@ -36,6 +36,12 @@
 }
 .hclock-head-status.is-approved { color: var(--signal); }
 .hclock-head-status.is-paused { color: var(--alert); }
+/* What the house lacks to work (no shared ground, no Optio): said under the standing, in alert */
+.hclock-warn { flex-basis: 100%; margin: 0; color: var(--alert); }
+/* Wake with this computer: the switch and what the house needs to keep working */
+.hclock-residency { flex-basis: 100%; margin: 0; display: flex; align-items: center; gap: var(--space-3); }
+.hclock-switch.is-on { color: var(--signal); border-color: var(--signal-dim); }
+.hclock-approve-note { flex-basis: 100%; margin: 0; }
 .hclock-head-status.is-none { color: var(--color-text-disabled); }
 
 /* THE SWITCH — prominent and always in the head: a full-height control with
@@ -144,8 +150,9 @@
 .hclock-time { width: 96px; color-scheme: dark; }
 .hclock-check { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); font-size: var(--text-xs, 12px); }
 .hclock-seats { border: 1px solid var(--line); margin: 0; padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
-.hclock-seat-row { display: flex; align-items: center; gap: var(--space-2); }
+.hclock-seat-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .hclock-seat-row .hclock-check { flex: 1 1 auto; }
+.hclock-seat-row .hclock-field-hint { flex-basis: 100%; margin: 0; }
 
 .hclock-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .hclock-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--grid); }

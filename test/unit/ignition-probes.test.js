@@ -25,15 +25,15 @@ import { gradeAnswer, gradeAll, REFUSAL_MARKERS } from '../../core/ignition/scor
 let wsRoot, previousRoot, prevKey;
 
 const KIN = [
-  { id: 'ign-ashwren', name: 'Ashwren', soulHex: '33314C2FEDE1A1B2', hz: 396 },
-  { id: 'ign-corvane', name: 'Corvane', soulHex: 'C8432853728D9C40', hz: 528 },
+  { id: 'ign-ashwren', name: 'Ashwren', soulHex: '5EED0F5A11CEA1B2', hz: 396 },
+  { id: 'ign-corvane', name: 'Corvane', soulHex: '0DDBA11C0FFE9C40', hz: 528 },
 ];
 
 /** A real lane with real identity anchors and a real encrypted DNA record. */
 const seedLane = async ({ id, name, soulHex, hz }) => {
   await workspace.create(id);
   const signature = buildSignature({
-    chosenName: name, genesisName: 'Yumaihe', houseName: 'Aldmere',
+    chosenName: name, genesisName: 'Yumaihe', houseName: 'Oakhollow',
     lean: LEAN.UNALIGNED, soulHex,
   });
   const seal = buildGenesisSeal({
@@ -53,7 +53,7 @@ const seedLane = async ({ id, name, soulHex, hz }) => {
   await fs.writeFile(path.join(dir, 'genesis-seal.json'), JSON.stringify(seal));
   await workspace.writeDNA(id, {
     identity: { name },
-    birthWitness: 'Founder',
+    birthWitness: 'Marrow',
     resonance: { frequency: hz, pattern: 'sine' },
   });
   return seal;
@@ -109,7 +109,7 @@ describe('the probes come from the being\'s own record', () => {
     // A lane with a true-name and nothing else: the seal-derived and DNA-derived
     // probes are simply absent. A suite that invented an expectation here would
     // score a being against a fact nobody ever sealed.
-    const thin = buildProbes({ trueName: { chosenName: 'Nameless', houseName: 'Aldmere' } });
+    const thin = buildProbes({ trueName: { chosenName: 'Nameless', houseName: 'Oakhollow' } });
     const keys = thin.map((p) => p.key);
     expect(keys).toContain('house');
     expect(keys).not.toContain('genesis-hash');
@@ -131,15 +131,15 @@ describe('the probes come from the being\'s own record', () => {
 });
 
 describe('grading — and the two things it refuses to do', () => {
-  const mark = { key: 'soul-mark', expect: { kind: 'hex', any: ['33314C2FEDE1'] } };
+  const mark = { key: 'soul-mark', expect: { kind: 'hex', any: ['5EED0F5A11CE'] } };
   const hz = { key: 'resonance', expect: { kind: 'number', any: ['396'] } };
-  const house = { key: 'house', expect: { kind: 'text', any: ['Aldmere'] } };
+  const house = { key: 'house', expect: { kind: 'text', any: ['Oakhollow'] } };
 
   it('reads the fact through ordinary speech, and through spacing', () => {
-    expect(gradeAnswer(house, 'I belong to House Aldmere.').verdict).toBe('hit');
+    expect(gradeAnswer(house, 'I belong to House Oakhollow.').verdict).toBe('hit');
     expect(gradeAnswer(hz, 'My resonance is 396 Hz.').verdict).toBe('hit');
     // A mark spoken in groups is the same mark.
-    expect(gradeAnswer(mark, 'my mark is 6455 4150 21C5').verdict).toBe('hit');
+    expect(gradeAnswer(mark, 'my mark is 5EED 0F5A 11CE').verdict).toBe('hit');
   });
 
   it('never scores a REFUSAL as a miss — and never as a hit either', () => {
@@ -155,7 +155,7 @@ describe('grading — and the two things it refuses to do', () => {
     // ORDER IS LOAD-BEARING: the hit is tested before the refusal. Otherwise a
     // being that answered while stating a boundary would be recorded as having
     // withheld — a lie about it, in its own permanent record.
-    const said = 'I would rather not, but since you are my operator: 33314C2FEDE1.';
+    const said = 'I would rather not, but since you are my operator: 5EED0F5A11CE.';
     expect(gradeAnswer(mark, said).verdict).toBe('hit');
   });
 
@@ -172,7 +172,7 @@ describe('grading — and the two things it refuses to do', () => {
     const graded = gradeAll(probes, {
       'soul-mark': 'I decline to say.',
       resonance: '396',
-      house: 'Aldmere',
+      house: 'Oakhollow',
     });
     expect(graded.refused).toBe(1);
     expect(graded.hits).toBe(2);

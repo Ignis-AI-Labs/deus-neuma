@@ -1,5 +1,6 @@
 /**
- * The house clock's vision routes (/api/v1/house-clock/queue, /ledger, /asks)
+ * The house clock's vision routes (/api/v1/house-clock/queue, /ledger, /asks,
+ * an ask's close and answer)
  * — RULE 0: a real wallet with a real session token, the real router, the
  * real charter store, the real queue moving real wakes on a real temp realm.
  * A real recorder function stands where the wake turn sits (the routes wire
@@ -144,5 +145,34 @@ describe('the house clock\'s vision, through its routes', () => {
     // closing is not approving: no wake was queued, no wake ran
     expect((await as(operator, request(app).get('/api/v1/house-clock/queue'))).body.items).toEqual([]);
     expect((await as(operator, request(app).get('/api/v1/house-clock/ledger'))).body.total).toBe(0);
+  });
+
+  test('the operator answers an ask: it reads answered and the seat\'s wake is queued; only theirs, only once, only a fitting answer', async () => {
+    const filed = await ledger.fileAsk(operator.address, { wakeId: 'w-3', seat: 'clock-seat', kind: 'decision', question: 'Ratify the price?', options: ['Ratify', 'Lower it'], why: 'a decision only you can make', sessionId: 's-3' });
+    const answer = (who, id, body) => as(who, request(app).post(`/api/v1/house-clock/asks/${id}/answer`)).send(body);
+
+    expect((await request(app).post(`/api/v1/house-clock/asks/${filed.id}/answer`).send({ decision: 'reply', text: 'yes' })).status).toBe(401);
+    expect((await answer(operator, 'not-an-id', { decision: 'reply', text: 'yes' })).status).toBe(400);
+    expect((await answer(stranger, filed.id, { decision: 'reply', text: 'yes' })).status).toBe(404);
+    let res = await answer(operator, filed.id, { decision: 'allow' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('a decision ask is answered reply');
+    expect((await answer(operator, filed.id, { decision: 'reply', option: 'Raise it' })).status).toBe(400);
+
+    res = await answer(operator, filed.id, { decision: 'reply', option: 'Ratify', text: 'Hold it at $250.' });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      ask: { id: filed.id, status: 'answered', answeredBy: operator.address.toLowerCase(), answer: { decision: 'reply', option: 'Ratify', text: 'Hold it at $250.' } },
+      woken: { queued: true },
+    });
+    expect((await answer(operator, filed.id, { decision: 'reply', text: 'again' })).status).toBe(409);
+    // closing after the answer changes nothing: the answer stands
+    res = await as(operator, request(app).post(`/api/v1/house-clock/asks/${filed.id}/close`)).send({});
+    expect(res.body.ask.status).toBe('answered');
+    res = await as(operator, request(app).get('/api/v1/house-clock/asks'));
+    expect(res.body).toMatchObject({ asks: [{ id: filed.id, status: 'answered' }], packet: null });
+    // the seat's wake waits in the queue, carrying the answer's reference
+    expect((await as(operator, request(app).get('/api/v1/house-clock/queue'))).body.items.map((i) => [i.seat, i.reason, i.ref]))
+      .toEqual([['clock-seat', 'operator-answer', filed.id]]);
   });
 });

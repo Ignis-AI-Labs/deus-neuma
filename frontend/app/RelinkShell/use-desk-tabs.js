@@ -4,7 +4,7 @@
 // (tabs-model, tab-budget); this holds the state, the persistence, and the one
 // thing a window cannot know on its own — what the MACHINE is holding.
 //
-// THE MACHINE IS THE UNIT (Design note, 2026-07-30: […] So the counts that feed the
+// THE MACHINE IS THE UNIT (ruling, 2026-07-30): […] So the counts that feed the
 // budget come from the server's `tabs:counts` broadcast, never from this
 // window's own strip. Two windows with 2 local tabs each is 4 against the rig's
 // ceiling, and only the server can say so.
@@ -66,7 +66,7 @@ export const useDeskTabs = (wsService, budgetCtx = {}, { scope, initialPayload =
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // NO TAB IS EVER HELD BACK (Design note, 2026-10-15: […] A live
+  // NO TAB IS EVER HELD BACK (ruling, 2026-10-15): […] A live
   // portal is a VIEW of a sitting; generation is what the rig runs out of, and
   // every turn waits its place in the house's line at the measured width
   // (substrate-lease.js), told its place and who is ahead.

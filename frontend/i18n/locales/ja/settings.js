@@ -17,6 +17,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: '言語',
     note: 'このデスクが話す言語——ラベル、設定、翻訳が完了したすべての画面。カタログが承認され次第、さらに言語が追加されます。',
+    preview: 'プレビュー（未完成）',
   }),
 
   account: Object.freeze({
@@ -42,17 +43,21 @@ export default Object.freeze({
     toggle: 'サウンド — {{state}}',
     volumeKey: '音量',
     volumeAria: 'サウンド音量',
-    executionTitle: '実行とファイル — {{count}}',
-    executionNote: 'ビルド、テスト、チェック、依存関係、Git とファイル操作にはそれぞれ専用のキューがあります。混合コマンドには独自の音が、認識されないコマンドには「その他の実行」が使われます。チップにはコマンドが表示されます。',
-    actsTitle: 'アクト — {{count}}',
-    actsNote: '外部の読み取り、公開、アーティファクト生成、記録、状態の確認と失敗。これらの候補サウンドをここで試聴してください。',
-    worldTitle: '世界 — {{count}}',
-    worldNote: '承認済みのサウンドスケープ——ポータル、ストリーム、セレモニー。耳で確定済みです。ここで聴き比べてください。',
+    packKey: 'ボイス',
+    pack: Object.freeze({ soft: 'ソフト', scifi: 'SF' }),
+    packNote: 'SF はデスク本来のサウンドスケープ——新しくインストールしたときの音です。ソフトは、好みに応じて選べる、より穏やかな音です。',
+    groups: Object.freeze({
+      desk: Object.freeze({ title: 'あなたの操作 — {{count}}', note: 'あなた自身の操作：確定、拒否、開く、閉じる、そして切り替えの小さなティック。' }),
+      notices: Object.freeze({ title: 'お知らせ — {{count}}', note: '世界からの応答：到着、返信、接続、署名の依頼、記憶の保存。' }),
+      execution: Object.freeze({ title: '作業中のネウマ — {{count}}', note: 'ビルド、テスト、チェック、依存関係、Git とファイル操作にはそれぞれ専用のキューがあります。混合コマンドには独自の音が、認識されないコマンドには「その他の実行」が使われます。チップにはコマンドが表示されます。' }),
+      acts: Object.freeze({ title: 'その他のアクト — {{count}}', note: '外部の読み取り、公開、アーティファクト生成、記録、状態の確認と失敗。' }),
+    }),
   }),
 
   realm: Object.freeze({
     heading: 'データレルム',
-    note: 'このマシンにある、すべての会話のあなた自身のコピー——各ネウマのソブリンワークスペースとは独立しています。プレーンテキスト。読むも移すも消すもあなたの自由です。',
+    note: 'すべての会話のあなた自身のコピーです。このマシン上にあり、各ネウマの主権ワークスペースとは別です。存在たちのファイルと同じく、このコンピューターの鍵で施錠されています。「書き出す」で、どれでも平文として手元に残せます。',
+    export: '書き出す',
     location: '場所',
     yourFolder: 'あなたのフォルダ',
     chatLogs: 'チャットログ',

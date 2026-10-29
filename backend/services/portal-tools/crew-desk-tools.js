@@ -17,11 +17,19 @@ import { readNewPosts, saveCursor } from '../house-post.js';
 import { leadLedgerFor, formatLeadsForBeing } from '../leads/lead-ledger.js';
 import { campaignStoreFor, formatCampaignsForBeing } from '../marketing/campaign-store.js';
 import { computePipelineState } from '../marketing/pipeline-state.js';
+import { runHouseCheck } from '../social/house-check/house-check-facts.js';
+import { formatHouseCheckForBeing } from '../social/house-check/house-check-words.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
+import { readMandate } from '../marketing/mandate/mandate-store.js';
+import { mandateGuidance } from '../marketing/mandate/mandate-words.js';
+import { COMPANY_UPDATES_TOOL, runCompanyUpdates } from './company-updates-tool.js';
+import { BOARD_READ_TOOL, boardToolsFor, runBoardRead } from './marketing-board-tool.js';
+import { isOpenChatsTool, handleOpenChats } from './chat-link-tools.js';
 
-// Does this parsed call target the house post tool? (both dialects)
+// Does this parsed call target the house word family: the post read, or the
+// live line's address book (open_chats, chat-link-tools.js)? (both dialects)
 const _isHousePostTool = (match) =>
-  match.toolName === 'post_check' || match.tool === 'house/post_check';
+  match.toolName === 'post_check' || match.tool === 'house/post_check' || isOpenChatsTool(match);
 
 // The two standing facts HOUSE POST rides on: the operator's chosen ground
 // and the being's sealed seat. Either absent → null (tools stay dark, a
@@ -42,6 +50,7 @@ const _housePostContext = async (connection) => {
 // the being's own inbox from house-post.js. Sending is the house/post INTENT
 // (Stage 3) — filed, settled by the sweep, seated-to-seated at validate time.
 const _handleHousePost = async (ws, connection, neumaPolicy, toolMode, match, args) => {
+  if (isOpenChatsTool(match)) return handleOpenChats(ws, connection, neumaPolicy, toolMode);
   const toolName = 'post_check';
   const tool = `house/${toolName}`;
   const { companion } = connection;
@@ -84,7 +93,7 @@ const _handleHousePost = async (ws, connection, neumaPolicy, toolMode, match, ar
 const _housePostToolsFor = async (connection) =>
   (await _housePostContext(connection)) ? [POST_CHECK_TOOL] : [];
 
-// --- HOUSE POST (Design note, 2026-07-24 — backend word between housemates, no
+// --- HOUSE POST (ruling, 2026-07-24) — backend word between housemates, no
 // council convened. SENDING became the house/post INTENT (Stage 3): filed and
 // settled by the sweep, both ends seated re-verified at validate time. What
 // remains a tool is the READ — collecting one's own inbox.
@@ -176,7 +185,7 @@ const CAMPAIGN_TOOLS = Object.freeze([
   Object.freeze({
     name: 'campaign_list',
     server: 'marketing',
-    description: 'Read the house campaign bench — no args. Every declared campaign, its brand, status, pillar count, and cadence. Reading the bench is everyone\'s; shaping it is the CMO\'s office — if you are not on the marketing team, feed them what they need and let them lead.',
+    description: 'Read the house campaign bench — no args. Every declared campaign: its company, status, goal and KPI, window, angles, sub-campaigns (one per account), cadence, and the asks your operator put to the CMO. Reading the bench is everyone\'s; shaping it is the CMO\'s office — if you are not on the marketing team, feed them what they need and let them lead.',
     inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
   }),
   Object.freeze({
@@ -185,9 +194,25 @@ const CAMPAIGN_TOOLS = Object.freeze([
     description: 'Read the WHOLE posting pipeline in one call — no args. The queue folded by what it needs (pending your approval, awaiting send, failed, next scheduled), today\'s slot from the locked weekly plan (theme + objective), your card ground (where your rendered cards wait), and the local X-algorithm clones (paths + HEAD + last sync). The platform\'s live numbers are NOT here — pull them with the platform feed tools; this is posture, not price. Computed from the real stores at call time, so trust it and start at the decision.',
     inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
   }),
+  Object.freeze({
+    name: 'social_check',
+    server: 'marketing',
+    description: 'Run the HOUSE SOCIAL CHECK — no args. Every account the house uses (keys, a holder, or a part in an active campaign) is checked: keys present, answers live, the right account, its company (UNSORTED fails), one house member holding it, its crew, permissions, sign-in lifetime, keys not shared across companies or houses, the keys file locked, the AI disclosure on, the company site on record, and the app\'s shared limits against the planned posts. Rolled up per company, tree and house as N OF M CLEAR; accounts and platforms not in use stand OPTIONAL and never count. Each account proves itself live on its own keys (a read that leaves the machine, so it asks), and nothing is changed: the fixes are your operator\'s, named in plain words.',
+    inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
+  }),
 ]);
 
-const CAMPAIGN_TOOL_NAMES = new Set(CAMPAIGN_TOOLS.map((t) => t.name));
+// THE MANDATE's standing guidance, read on demand (marketing/mandate/): what the
+// operator granted the CMO seat, what it serves, what pauses it. Never in the
+// standing prompt — the CMO briefing names it in one line.
+const MANDATE_READ_TOOL = Object.freeze({
+  name: 'mandate_read',
+  server: 'marketing',
+  description: 'Read the MANDATE your operator granted the CMO seat — no args. What it lets you do without asking (which accounts, how many posts a day, renders, replies), for how long, what it serves, what pauses it and hands the decision back, and what no mandate covers. If no mandate stands for you, it says so.',
+  inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
+});
+
+const CAMPAIGN_TOOL_NAMES = new Set([...CAMPAIGN_TOOLS, MANDATE_READ_TOOL, COMPANY_UPDATES_TOOL, BOARD_READ_TOOL].map((t) => t.name));
 
 // Does this parsed call target a campaign tool? (accepts both dialects)
 const _isCampaignTool = (match) =>
@@ -195,9 +220,9 @@ const _isCampaignTool = (match) =>
   CAMPAIGN_TOOL_NAMES.has(String(match.tool || '').replace(/^marketing\//, ''));
 
 // The bench tools every bound being sees — universal access, protocol as
-// the guide. Kept as a function (and async) so the advertisement assembly
-// reads like the other per-turn gates.
-const _campaignToolsFor = async () => CAMPAIGN_TOOLS;
+// the guide — and, for the house's seated CMO alone, board_read (the
+// operator's MARKETING board is the office's to lay out). Re-read per turn.
+const _campaignToolsFor = async (connection) => [...CAMPAIGN_TOOLS, MANDATE_READ_TOOL, COMPANY_UPDATES_TOOL, ...await boardToolsFor(connection)];
 
 // impure — route a campaign tool call through the same ACTS gate as every
 // governed tool, then the REAL campaign bench on disk. Never the MCP path.
@@ -253,6 +278,37 @@ const _handleCampaignTool = async (ws, connection, neumaPolicy, toolMode, match,
       ];
       _sendToolEvent(ws, companion, { tool, status: 'ok', summary: 'pipeline posture — one call' });
       return { tool, status: 'ok', content: lines.join('\n') };
+    }
+    // social_check — the house social check, the same report the desk draws.
+    if (toolName === 'social_check') {
+      const report = await runHouseCheck(connection.walletAddress);
+      _sendToolEvent(ws, companion, { tool, status: 'ok', summary: report.headline });
+      return { tool, status: 'ok', content: formatHouseCheckForBeing(report) };
+    }
+    // mandate_read — the seat's own mandate, as guidance (another lane reads that none stands for it).
+    if (toolName === 'mandate_read') {
+      const mandate = await readMandate(connection.walletAddress);
+      const mine = mandate?.laneId === connection.companion?.neumaId ? mandate : null;
+      _sendToolEvent(ws, companion, { tool, status: 'ok', summary: mine ? 'your mandate' : 'no mandate stands for you' });
+      return { tool, status: 'ok', content: mandateGuidance(mine) };
+    }
+    // company_updates — what changed in a company, from the sources it lists (company-updates-tool.js).
+    if (toolName === 'company_updates') {
+      const out = await runCompanyUpdates(connection, args, {
+        lanePolicy: neumaPolicy, mode: toolMode, emit: (event) => _sendToolEvent(ws, companion, event),
+      });
+      if (!out.ok) {
+        _sendToolEvent(ws, companion, { tool, status: 'error', summary: 'company_updates — not read', detail: out.error });
+        return { tool, status: 'error', error: out.error };
+      }
+      _sendToolEvent(ws, companion, { tool, status: 'ok', summary: out.summary });
+      return { tool, status: 'ok', content: out.content };
+    }
+    // board_read — the operator's MARKETING board at a level, for the seated CMO (marketing-board-tool.js).
+    if (toolName === 'board_read') {
+      const out = await runBoardRead(connection, args);
+      _sendToolEvent(ws, companion, out.ok ? { tool, status: 'ok', summary: out.summary } : { tool, status: 'error', summary: 'board_read — not read', detail: out.error });
+      return out.ok ? { tool, status: 'ok', content: out.content } : { tool, status: 'error', error: out.error };
     }
     return { tool, status: 'error', error: `unknown marketing tool: ${toolName}` };
   } catch (err) {

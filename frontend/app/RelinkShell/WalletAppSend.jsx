@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { loadWallet, sendEth, networkStatus } from './wallet-client.js';
 import { allocAmount, allocFraction, trimEth } from './wallet-tx.js';
-import { explorerTxUrl, fetchTxBreakdown } from './wallet-receipt.js';
+import { explorerTxUrl, explorerName, fetchTxBreakdown } from './wallet-receipt.js';
 import { formatAddress } from '../../utils/format.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { useSettled } from './use-settled.js';
@@ -60,7 +60,7 @@ const TxReceipt = ({ hash }) => {
         <div className="wal-rcpt-bar">
           <span className="wal-rcpt-status label-data">{words}</span>
           <a className="wal-rcpt-link label-data" href={explorerTxUrl(net && net.key, hash)}
-            target="_blank" rel="noreferrer">BASESCAN ↗</a>
+            target="_blank" rel="noreferrer">{explorerName(net && net.key)} ↗</a>
         </div>
         <button className="wal-hash" onClick={copy} title="Copy transaction hash">
           {hash}

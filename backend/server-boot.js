@@ -39,16 +39,21 @@ import { seedShippedPacks, seedLanded } from './services/skill-packs.js';
 import { broadcastStorageWarning, localTurnSnapshot } from './routes/portal-routes.js';
 import { startMeditationScheduler } from './services/meditation/meditation-scheduler.js';
 import { startPostScheduler } from './services/social/post-scheduler.js';
+import { startStatsSweep } from './services/social/stats/stats-sweep.js';
 import { startStatusScheduler } from './services/staff/status-sweep.js';
 import { startHouseClock } from './services/house-clock/house-clock.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
+import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
 import { startBenchWatchdog, stopBenchWatchdog } from './services/bench/bench-watchdog.js';
+import { settleLostChains } from './services/bench/bench-matched.js';
+import { resumeBenchChain } from './services/bench/bench-launch.js';
 import { startLineWidthWatch } from './services/substrate-lease.js';
 import { comfyShutdown } from './services/image-forge/comfyui-supervisor.js';
 import { startRemoteTunnel, stopRemoteTunnel } from './services/remote/wire.js';
+import { hydrateStoredSecrets } from './services/stored-secrets.js';
 
 /**
  * Run the whole boot sequence and wire the shutdown paths.
@@ -63,6 +68,18 @@ import { startRemoteTunnel, stopRemoteTunnel } from './services/remote/wire.js';
  */
 export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }) => {
   const mcpLog = createLogger('MCP');
+
+  // A rejection no caller holds must not end the desk: Electron does not
+  // respawn its backend, so Node's default (exit) is a dead app — once right
+  // after an operator paid gas (ethers' receipt wait, 2026-10-19). Logged at
+  // error level with its stack, never hidden; the bug is fixed at its source.
+  process.on('unhandledRejection', (reason) => {
+    log.error('Unhandled promise rejection — the backend stays up; fix it where it was thrown', {
+      error: reason instanceof Error ? reason.message : String(reason),
+      code: reason?.code,
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+  });
 
   // Held so graceful shutdown can silence the campaign lane before draining.
   let stopPostScheduler = null;
@@ -168,6 +185,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // dbPath misconfig — guard it here so even that can't stop the server from
     // listening (the singleton is left on its safe no-op driver, so platform
     // calls degrade rather than crash).
+    // Keys saved in Settings → API (search, page reader, downloads, chain RPC) load before anything asks for one.
+    await hydrateStoredSecrets();
+
     try {
       await platform.init();
     } catch (err) {
@@ -253,11 +273,17 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopPostScheduler = startGuarded('post scheduler', startPostScheduler);
     // Reply lane — watch who answers the house's posts on X.
     stopReplyListener = startGuarded('reply listener', startReplyListener);
+    // The stats sweep — what the house's posts did, read back on a decaying
+    // schedule, read-only; NEUMA_STATS_SWEEP=0 keeps it down.
+    startGuarded('stats sweep', startStatsSweep);
     // The CSO's standing watch — the 24-hour dependency/secret/host/house scan.
     stopSecurityScheduler = startGuarded('security scheduler', startSecurityScheduler);
     // The CLO's standing watch — licences shipped, the house's papers, and
     // what the new work touches, every 24 hours.
     stopLegalScheduler = startGuarded('legal scheduler', startLegalScheduler);
+    // The claims check — every waiting draft read against its company's kit;
+    // what needs a legal reading is filed with the CLO office. It flags, never holds.
+    startGuarded('claims review', startDraftReview);
     // The money-in watch — what the house received, every 10 minutes, read-only.
     stopMoneyIn = startGuarded('money-in watch', startMoneyInScheduler);
     // The Optio office's cadence — standing status checks on open charges.
@@ -268,6 +294,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The bench watch — sees and says (stalls, crunch, serving incidents);
     // never kills, never relights. No-op when no harness stands on this box.
     startGuarded('bench watchdog', startBenchWatchdog);
+    // A set the last process ran is carried on (its arms outlive the desk);
+    // a set that cannot be is told to the chat that watched it.
+    startGuarded('lost bench watches', async () => settleLostChains(await resumeBenchChain()));
     // The house's model line runs as wide as this rig was MEASURED to run — the
     // only cap on parallel sittings; open tabs are never capped (2026-10-15).
     startGuarded('line width', startLineWidthWatch);

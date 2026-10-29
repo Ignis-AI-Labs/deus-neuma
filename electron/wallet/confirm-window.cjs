@@ -56,7 +56,7 @@ const createConfirmWindow = (parentWin, viewModel) => {
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
-    backgroundColor: theme?.ground || '#000000', // the void — no flash before paint
+    backgroundColor: theme?.ground || '#11161D', // the ground (CYBERDECK stock) — no flash before paint
     title: 'NEUMA Wallet',
     webPreferences: {
       preload: CONFIRM_PRELOAD,

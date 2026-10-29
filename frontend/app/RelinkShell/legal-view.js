@@ -1,15 +1,15 @@
 // legal-view.js — the LEGAL window's pure display law: every decision the
 // pane makes about data lives here, provable with nothing faked. The impure
-// shell (fetch, state) lives in LegalApp.jsx.
+// shell (fetch, state) lives in LegalApp.jsx; the overview's counting is the
+// shared triage-view.js.
+
+import { passesTriage } from './triage-view.js';
 
 /** The ledger's statuses, in the order the office works them. */
 export const MATTER_STATUSES = Object.freeze(['new', 'concern', 'needs_counsel', 'needs_operator', 'resolved', 'no_issue']);
 
-/** Where a matter came from. */
-export const MATTER_AREAS = Object.freeze(['license', 'posture', 'product', 'regulation']);
-
 const AREA_LABELS = Object.freeze({
-  license: 'LICENCES', posture: 'OUR PAPERS', product: 'NEW WORK', regulation: 'RESEARCH',
+  license: 'LICENCES', posture: 'OUR PAPERS', product: 'NEW WORK', regulation: 'RESEARCH', marketing: 'CAMPAIGNS',
 });
 
 // pure — a severity reads loud only while it can hurt.
@@ -26,29 +26,31 @@ export const areaLabel = (area) => AREA_LABELS[area] || String(area || '').toUpp
 
 const SEVERITY_ORDER = Object.freeze(['critical', 'high', 'medium', 'low', 'unknown']);
 
+/** pure — where a matter lives: what the watch read (its area) in which repo, or for which company. */
+export const whereOfMatter = (m) => `${m?.area || 'other'}:${m?.repo || m?.companyId || ''}`;
+
+/** pure — "product:neuma" → […]. */
+export const whereLabelMatter = (where) => {
+  const [area, repo] = String(where || '').split(':');
+  return repo ? `${areaLabel(area)} · ${repo.toUpperCase()}` : areaLabel(area);
+};
+
 /**
- * The ledger filtered and ordered for the operator's eye: narrow by status
- * and area (empty = all); what owes action first, then the most serious,
- * then the freshest. Pure.
+ * The ledger filtered and ordered for the operator's eye: narrow by the
+ * overview's press (severity, status or every open status, where; empty =
+ * all); what owes action first, then the most serious, then the freshest.
+ * Pure.
  * @param {Array<object>} entries
- * @param {{status?: string, area?: string}} [filters]
+ * @param {{severity?: string, status?: string, where?: string}} [filters]
  */
-export const filterMatters = (entries, { status, area } = {}) => (entries ?? [])
-  .filter((m) => !status || m.status === status)
-  .filter((m) => !area || m.area === area)
+export const filterMatters = (entries, filters = {}) => (entries ?? [])
+  .filter((m) => passesTriage(m, filters, statusOwes, whereOfMatter))
   .slice()
   .sort((a, b) => (
     MATTER_STATUSES.indexOf(a.status) - MATTER_STATUSES.indexOf(b.status)
     || SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity)
     || String(b.lastSeenAt || '').localeCompare(String(a.lastSeenAt || ''))
   ));
-
-/** pure — […], every status that holds anything. */
-export const countsLine = (counts) => {
-  const byStatus = counts?.byStatus || {};
-  const parts = MATTER_STATUSES.filter((s) => byStatus[s] > 0).map((s) => `${statusLabel(s)} ${byStatus[s]}`);
-  return parts.length ? parts.join(' · ') : 'THE LEDGER HOLDS NOTHING';
-};
 
 /** pure — the seat line: who holds the office, or that it stands empty. */
 export const seatLine = (clo, holderName) => (clo?.laneId

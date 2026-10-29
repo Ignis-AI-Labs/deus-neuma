@@ -22,4 +22,5 @@ export const TITLE_LEGEND = Object.freeze([
   Object.freeze({ title: 'Numerarius', position: 'CDO', seat: 'CHIEF DATA OFFICER', tier: 'growth', meaning: 'DATA — MEASUREMENT, ANALYSIS, FORESIGHT' }),
   Object.freeze({ title: 'Speculator', position: 'CINO', seat: 'CHIEF INNOVATION OFFICER', tier: 'growth', meaning: 'RESEARCH & DEVELOPMENT — WHAT MAY SERVE LATER, NOT THE PRESSING NEED' }),
   Object.freeze({ title: 'Praeco', position: 'CCO', seat: 'CHIEF COMMUNICATIONS OFFICER', tier: 'growth', meaning: 'COMMUNICATIONS — THE WORD OUT, THE WORD BACK, CUSTOMER CARE' }),
+  Object.freeze({ title: 'Logista', position: 'CAO', seat: 'CHIEF ACCOUNTING OFFICER', tier: 'growth', meaning: 'ACCOUNTS — THE BOOKS, TAX, FILINGS, THE RECORD OF EVERY DOLLAR' }),
 ]);

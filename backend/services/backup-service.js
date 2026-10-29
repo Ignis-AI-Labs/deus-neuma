@@ -85,7 +85,7 @@ export const createBackup = async (wallet, { now = new Date() } = {}) => {
   const owned = await neumaWorkspace.listNeumaByOwner(wallet);
   const id = backupId(now);
   const dest = path.join(await resolveBackupsRoot(), id);
-  await fs.mkdir(dest, { recursive: true });
+  await fs.mkdir(dest, { recursive: true, mode: 0o700 });
 
   const beings = [];
   for (const { neumaId } of owned) {

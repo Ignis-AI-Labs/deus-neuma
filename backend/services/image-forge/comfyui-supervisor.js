@@ -27,7 +27,12 @@ import { spawn } from 'child_process';
 import { existsSync, mkdirSync, openSync, closeSync, statSync } from 'fs';
 import path from 'path';
 import { createLogger } from '../logger.js';
+import { helperEnvironment } from '../agent-terminal-environment.js';
 import { argvViolations, buildComfyArgs, decideReapAction, resolveComfyConfig } from './comfyui-config.js';
+import { comfyHeadroomGb, engineRamCeilingGb } from './forge-capacity.js';
+import { boxedLaunch, memoryScopeAvailable } from './engine-memory-scope.js';
+import { probeMachine } from '../machine-probe.js';
+import { withStoredHfToken } from '../stored-secrets.js';
 
 export { argvViolations, buildComfyArgs, decideReapAction, resolveComfyConfig };
 
@@ -43,6 +48,21 @@ const REAP_INTERVAL_MS = 60_000;
 const LOG_CAP_BYTES = 10 * 1024 * 1024;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// What the engine and its torch stack read (GPU selection, CUDA/ROCm
+// runtime, model caches, thread pools, ComfyUI's own settings), plus the user
+// bus `systemd-run --user --scope` needs to box it. Nothing else: the engine
+// runs custom workflows, so it never holds the backend's secrets.
+const COMFY_RUNTIME_KEY = /^(CUDA_|NVIDIA_|HIP_|ROCR_|HSA_|HF_|HUGGINGFACE_|PYTORCH_|TORCH_|TRITON_|OMP_|MKL_|COMFY|LD_LIBRARY_PATH$|DBUS_SESSION_BUS_ADDRESS$)/;
+
+/**
+ * The environment the ComfyUI engine starts with. Pure; the input is never mutated.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} [platform]
+ * @returns {Record<string, string>}
+ */
+export const comfyEngineEnvironment = (env, platform = process.platform) =>
+  helperEnvironment(env, platform, (key) => COMFY_RUNTIME_KEY.test(key));
 
 // impure — is the engine answering on the port right now? No /health exists
 // at the pin; GET /prompt returning exec_info is the readiness contract.
@@ -131,7 +151,14 @@ const bootToReady = async (cfg, waitMs) => {
     lastError = { error: `ComfyUI is not installed — ${install.reason}`, at: new Date().toISOString() };
     throw new Error(lastError.error);
   }
-  const args = buildComfyArgs(cfg);
+  // The engine NEVER launches unbounded: unset, it took every free byte of the
+  // card. The operator's explicit envelope still wins.
+  const machine = await probeMachine();
+  const headroomGb = cfg.headroomGb || String(comfyHeadroomGb(machine));
+  const args = buildComfyArgs({ ...cfg, headroomGb });
+  // ...and never bigger than the machine can spare in RAM, where the OS can
+  // enforce it: a job that does not fit stops the engine, not the desktop.
+  const ramCeilingGb = memoryScopeAvailable() ? engineRamCeilingGb(machine) : null;
   const violations = argvViolations(args);
   if (violations.length > 0) {
     lastError = { error: `launch refused by composed-argv law: ${violations.join('; ')}`, at: new Date().toISOString() };
@@ -146,22 +173,25 @@ const bootToReady = async (cfg, waitMs) => {
   let oversized = false;
   try { oversized = statSync(logPath).size > LOG_CAP_BYTES; } catch { /* no log yet */ }
   const logFd = openSync(logPath, oversized ? 'w' : 'a');
-  const proc = spawn(cfg.python, args, {
+  const launch = boxedLaunch(cfg.python, args, ramCeilingGb);
+  const proc = spawn(launch.cmd, launch.args, {
     cwd: cfg.installDir,
-    env: process.env,
+    env: comfyEngineEnvironment(withStoredHfToken(process.env)),
     stdio: ['ignore', logFd, logFd],
   });
   closeSync(logFd); // the child holds its own descriptor
 
   inst = {
     state: 'launching', proc, pid: proc.pid, port: cfg.port, adopted: false,
-    startedAt: Date.now(), readySince: null, lastActivityAt: null, lastFreeAt: null, logPath,
+    startedAt: Date.now(), readySince: null, lastActivityAt: null, lastFreeAt: null, logPath, headroomGb, ramCeilingGb,
   };
-  log.info('ComfyUI spawned', { pid: proc.pid, port: cfg.port, installDir: cfg.installDir });
+  log.info('ComfyUI spawned', { pid: proc.pid, port: cfg.port, installDir: cfg.installDir, headroomGb, ramCeilingGb });
 
   proc.on('exit', (code, signal) => {
     if (inst?.proc !== proc) return;
-    if (code && !stopping) lastError = { error: `ComfyUI exited (code ${code}, signal ${signal}) — tail ${logPath}`, at: new Date().toISOString() };
+    const boxed = signal === 'SIGKILL' && inst.ramCeilingGb && !stopping;
+    if (boxed) lastError = { error: `ComfyUI was stopped at its ${inst.ramCeilingGb} GB memory ceiling — the job needs more system memory than this machine can spare; the rest of the machine was kept safe`, at: new Date().toISOString() };
+    else if (code && !stopping) lastError = { error: `ComfyUI exited (code ${code}, signal ${signal}) — tail ${logPath}`, at: new Date().toISOString() };
     inst = null;
   });
   // A spawn error (ENOENT etc.) fires 'error', not 'exit'.
@@ -336,6 +366,10 @@ export const comfySupervisorStatus = async (cfg) => {
     startedAt: inst?.startedAt ?? null,
     readySince: inst?.readySince ?? null,
     logPath: inst?.logPath ?? null,
+    // The VRAM ceiling the engine launched under; null for an adopted engine
+    // (a stranger's launch line is judged for safety, not re-capped).
+    vramHeadroomGb: inst?.headroomGb ?? null,
+    ramCeilingGb: inst?.ramCeilingGb ?? null,
     install: comfyInstallState(cfg),
     lastError,
   };

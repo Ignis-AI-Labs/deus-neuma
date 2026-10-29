@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Markdown } from '../../frontend/app/RelinkShell/Markdown.jsx';
+import { cellText, isShortCell, SHORT_CELL_MAX } from '../../frontend/app/RelinkShell/table-cell.js';
 
 const render = (text) => renderToStaticMarkup(createElement(Markdown, { text }));
 
@@ -18,11 +19,31 @@ describe('Markdown — full expression (GFM)', () => {
       '| Latency | Near-instant turn-taking |',
       '| Memory threading | Carrying context across sessions |',
     ].join('\n'));
-    expect(html).toContain('<table>');
-    expect(html).toContain('<th>Layer</th>');
+    expect(html).toContain('<div class="relink-md-table"><table>');
+    expect(html).toContain('<th class="relink-md-short">Layer</th>');
     expect(html).toContain('<td>Near-instant turn-taking</td>');
     // No stray pipes leak into the rendered speech
     expect(html).not.toContain('|');
+  });
+
+  it('marks short cells to keep one line and honors column alignment', () => {
+    const html = render([
+      '| Platform | Views | What I can read |',
+      '|:---|---:|---|',
+      `| TikTok | 12,480 | ${'Nothing yet, the channel is not bound to me'} |`,
+    ].join('\n'));
+    expect(html).toContain('<th style="text-align:left" class="relink-md-short">Platform</th>');
+    expect(html).toContain('<td style="text-align:right" class="relink-md-short">12,480</td>');
+    expect(html).toContain('<td>Nothing yet, the channel is not bound to me</td>');
+  });
+
+  it('counts a short cell by its visible text, at most SHORT_CELL_MAX characters', () => {
+    const cell = (...values) => ({ type: 'element', children: values.map((value) => ({ type: 'text', value })) });
+    expect(cellText({ type: 'element', children: [{ type: 'element', children: [{ type: 'text', value: 'crew' }] }, { type: 'text', value: ' / gate' }] })).toBe('crew / gate');
+    expect(isShortCell(cell('❌ (crew / gate)'))).toBe(true);
+    expect(isShortCell(cell('x'.repeat(SHORT_CELL_MAX)))).toBe(true);
+    expect(isShortCell(cell('x'.repeat(SHORT_CELL_MAX + 1)))).toBe(false);
+    expect(isShortCell(null)).toBe(true);
   });
 
   it('renders strikethrough', () => {

@@ -36,6 +36,8 @@ import { fetchWebPage } from './web-fetch.js';
 import { searchWeb, searchImages } from './web-search.js';
 import { frameUntrustedContent } from './untrusted-content.js';
 import { createLogger } from './logger.js';
+import { recordAct } from './act-ledger.js';
+import { checkOutboundSecrets } from './security/outbound-secrets.js';
 
 const log = createLogger('WebTools');
 
@@ -56,11 +58,13 @@ export const WEB_TOOLS = Object.freeze([
   Object.freeze({
     name: 'web_fetch',
     server: 'web',
-    description: 'Read a web page — args {url}. Returns bounded readable text, not an original file. For SVG logos or other complete assets, file a web/download intent {url, name}; it saves original bytes to disk without text truncation. When configured, Kitesurf retries JavaScript-only pages. Public pages only; private and loopback addresses are refused.',
+    description: 'Read a web page — args {url}; for a PDF also {find?, pages?}: find keeps only the pages containing a phrase (a section number, a term), pages takes a range like "40-45". Returns bounded readable text, not an original file. For SVG logos or other complete assets, file a web/download intent {url, name}; it saves original bytes to disk without text truncation. When configured, Kitesurf retries JavaScript-only pages. Public pages only; private and loopback addresses are refused.',
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({
         url: Object.freeze({ type: 'string', description: 'the full http(s):// URL to read' }),
+        find: Object.freeze({ type: 'string', description: 'PDF only: return just the pages containing this phrase' }),
+        pages: Object.freeze({ type: 'string', description: 'PDF only: a page or range, e.g. "12" or "40-45"' }),
       }),
       required: Object.freeze(['url']),
     }),
@@ -206,10 +210,18 @@ export const renderPage = (page, retrievedAt = null) => {
   return `${meta}\n${frameUntrustedContent(`the web page at ${page.url}`, body)}`;
 };
 
-// impure — the reading list is part of the record; non-blocking, never silent
-const journalWebCall = async (connection, tool, detail, status) => {
+// impure — the reading list is part of the record; non-blocking, never silent.
+// company_updates journals its site reads through this same door.
+export const journalWebCall = async (connection, tool, detail, status) => {
   const neumaId = connection?.companion?.neumaId;
   if (!neumaId) return;
+  // The OPERATOR's copy too (SEC-035): what a being read from the web is never answered only by
+  // its own journal — the act ledger carries the tool, the query or address, and how it went
+  // (2026-10-18: a run's findings claimed live-opened sources the operator's record could not check).
+  await recordAct({
+    laneId: neumaId, name: connection.companion?.name || null, tool, scope: detail,
+    decision: 'auto', status: status === 'ok' ? 'success' : 'error',
+  });
   try {
     await neumaWorkspace.addJournalEntry(neumaId, {
       type: 'tool_call',
@@ -223,7 +235,7 @@ const journalWebCall = async (connection, tool, detail, status) => {
 };
 
 /**
- * Route a web tool call: master switch → ACTS gate → guarded egress.
+ * Route a web tool call: master switch → secret screen → ACTS gate → guarded egress.
  * Never the MCP path.
  * @param {Object} ws - the portal socket
  * @param {Object} connection - portal connection (companion, session policy, active turn)
@@ -262,6 +274,16 @@ export const handleWebTool = async (ws, connection, neumaPolicy, toolMode, match
     const error = 'no sovereign workspace on this connection — web reach is for bound beings';
     ports.sendToolEvent(ws, companion, { tool, status: 'unavailable', summary: `${toolName} — no workspace` });
     return { tool, status: 'unavailable', error };
+  }
+
+  // The door every web request leaves by (re-audit 2026-10-29, NEW-H3): a fetch or a search is
+  // egress like a post, so a key carried in its url or query is refused before any card, in every
+  // mode. The journal records the refusal, never the url that carried the key.
+  const secret = checkOutboundSecrets(`the ${toolName.replace('_', ' ')}`, [args?.url, args?.query, args?.find]);
+  if (!secret.ok) {
+    ports.sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — refused: it carried a secret` });
+    await journalWebCall(connection, tool, 'refused: it carried a secret', 'denied');
+    return { tool, status: 'denied', error: secret.reason };
   }
 
   const gate = await gateAct(connection, {
@@ -313,7 +335,7 @@ export const handleWebTool = async (ws, connection, neumaPolicy, toolMode, match
       };
     }
     // web_fetch
-    const out = await fetchWebPage(String(args?.url || ''));
+    const out = await fetchWebPage(String(args?.url || ''), { pdf: { find: args?.find ?? null, pages: args?.pages ?? null } });
     if (!out.ok) {
       ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: 'web_fetch — failed', detail: out.error });
       await journalWebCall(connection, tool, String(args?.url || '').slice(0, 200), 'error');

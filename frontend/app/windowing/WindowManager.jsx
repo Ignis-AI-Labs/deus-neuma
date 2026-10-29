@@ -7,9 +7,11 @@
 // multiInstance?, makeTitle? }) is host-supplied, so the manager stays
 // app-agnostic.
 
-import { createContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { reducer, hydrate, isValidWindowId, dedupeById, appIdOf } from './window-manager-reducer.js';
 import { loadDesk, saveDesk } from './window-storage.js';
+import { MARKETING_WINDOW, migrateOpenSet, redirectAction } from './retired-windows.js';
+import { requestCardLanding } from '../RelinkShell/card-landing.js';
 import { cycleDirection, isTypingTarget, nextWindowId } from './window-cycle.js';
 import { CLOSE_ALL_PRESSES, countsTowardCloseAll, nextStreak } from './escape-close.js';
 
@@ -20,9 +22,13 @@ export const WindowManager = ({ registry, defaultOpen = [], children }) => {
   // rail, never as a floating window — saved open-sets from before the law
   // (and any defaultOpen entry) are filtered generically by the flag.
   const isWindowable = (id) => !registry[appIdOf(id)]?.panel;
-  const [state, dispatch] = useReducer(reducer, null, () => {
-    const saved = loadDesk();
-    const seed = saved && saved.length
+  // A layout saved before MARKETING took the platform windows in names them:
+  // they fold into one MARKETING, opened at the first one's place (retired-windows.js).
+  const migrated = useRef(null);
+  const [state, rawDispatch] = useReducer(reducer, null, () => {
+    migrated.current = migrateOpenSet(loadDesk());
+    const saved = migrated.current.list;
+    const seed = saved.length
       // localStorage is a boundary: drop apps no longer registered, any
       // malformed/hostile instance id, and duplicate ids (a duplicate would
       // collide as a React key) before they can reach the DOM.
@@ -30,6 +36,19 @@ export const WindowManager = ({ registry, defaultOpen = [], children }) => {
       : defaultOpen.filter(isWindowable).map((id) => ({ id }));
     return hydrate(seed);
   });
+  useEffect(() => {
+    const landing = migrated.current?.landing;
+    if (landing && state.windows.some((w) => w.id === MARKETING_WINDOW)) requestCardLanding(MARKETING_WINDOW, landing);
+    // Once, at mount: the layout's own place, never re-latched.
+  }, []);
+
+  // Every caller's OPEN of a retired window (a palette command, a card, a pin)
+  // opens MARKETING at that window's place instead.
+  const dispatch = useCallback((action) => {
+    const { action: next, landing } = redirectAction(action);
+    if (landing) requestCardLanding(MARKETING_WINDOW, landing);
+    rawDispatch(next);
+  }, []);
 
   // Persist the open-set whenever it changes (geometry persists per-window
   // separately via useWindowFrame's storageKey). A window's spawn payload
@@ -38,7 +57,7 @@ export const WindowManager = ({ registry, defaultOpen = [], children }) => {
     saveDesk(state.windows.map((w) => (w.payload === undefined ? { id: w.id } : { id: w.id, payload: w.payload })));
   }, [state.windows]);
 
-  // SHIFT+\ MOVES BETWEEN OPEN WINDOWS (Design note, 2026-07-27 — the muscle memory he
+  // SHIFT+\ MOVES BETWEEN OPEN WINDOWS (ruling, 2026-07-27) — the muscle memory he
   // already has from his editor, carried onto the desk. Ctrl/Cmd+Shift+\ goes
   // back. Lives here because this is where the window set and the dispatch are;
   // a listener nearer the windows would need the state passed down to it.
@@ -59,7 +78,7 @@ export const WindowManager = ({ registry, defaultOpen = [], children }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [state.windows, state.focusedId]);
 
-  // ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (Design note, 2026-10-05 —
+  // ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (ruling, 2026-10-05) —
   // escape-close.js holds the rules. Each window leaves the way its own ×
   // would take it: the app's close hook first, then out of the open-set.
   const escapes = useRef(null);

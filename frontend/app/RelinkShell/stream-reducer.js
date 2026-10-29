@@ -17,6 +17,7 @@
 import { reduceHeldWord } from './held-word.js';
 import { streamingIndex, segmentHandlers } from './stream-reducer-segments.js';
 import { chipHandlers } from './stream-reducer-chips.js';
+import { compactHandlers } from './compact-marker.js';
 import { toHistoryMessages, withDisplayedAsk, pushMessage } from './stream-reducer-messages.js';
 import { substrateLineText } from './stream-turn-actions.js';
 
@@ -97,7 +98,7 @@ export const reducer = (state, action) => {
   // The streaming-content and witness-gate chip families live in their own
   // handler-map modules (the size-law seam); the switch below keeps every
   // action that touches link, purpose, voice, or the turn's lifecycle.
-  const family = segmentHandlers[action.type] || chipHandlers[action.type];
+  const family = segmentHandlers[action.type] || chipHandlers[action.type] || compactHandlers[action.type];
   if (family) return family(state, action);
   switch (action.type) {
     case 'LINK':
@@ -147,7 +148,11 @@ export const reducer = (state, action) => {
     case 'WATCH_FIRED':
       return pushMessage(state, 'watch', action.text, [], action.at);
 
-    // THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16 — held-word.js.
+    // Another open chat of the house wrote in (portal-chat-link.js) — its words open the turn that follows.
+    case 'LINK_ARRIVED':
+      return pushMessage(state, 'link', action.text, [], action.at);
+
+    // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
     case 'QUEUE_CLEAR':
     case 'QUEUE_EDIT':
@@ -257,9 +262,11 @@ export const reducer = (state, action) => {
       // retry note — the outcome is known, the wait is over.
       const next = pushMessage(retireProviderRetry(state), 'error', action.text, undefined, action.at);
       const turnId = typeof action.turnId === 'string' && action.turnId ? action.turnId : null;
-      if (!turnId) return next;
+      // What actually failed, in the provider's own words, rides under the bubble.
+      const reason = typeof action.reason === 'string' && action.reason && !String(action.text).includes(action.reason) ? action.reason : null;
+      if (!turnId && !reason) return next;
       const messages = next.messages.slice();
-      messages[messages.length - 1] = { ...messages[messages.length - 1], turnId };
+      messages[messages.length - 1] = { ...messages[messages.length - 1], ...(turnId ? { turnId } : {}), ...(reason ? { reason } : {}) };
       return { ...next, messages };
     }
 

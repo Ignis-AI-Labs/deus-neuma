@@ -16,6 +16,7 @@
 import { ethers } from 'ethers';
 import crypto from 'crypto';
 import { getAppConfig } from '../config.js';
+import { isBeingWalletAddress } from './being-wallet-addresses.js';
 
 // Session token secret — resolved LAZILY on first use, not at module load.
 // auth.js is imported before the bootstrap calls loadConfig() (ESM imports
@@ -43,7 +44,17 @@ const getTokenSecret = () => {
 };
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// In-memory challenge store (address → { challenge, expiresAt })
+// In-memory challenge store (purpose:address → { challenge, expiresAt }).
+// Keyed by PURPOSE as well as address: an operator sign-in (/auth) and a
+// being's own sign-in (/neuma-auth) issue the same SIWE text, and while they
+// shared one store a signature over a neuma-auth challenge also verified at
+// /auth/verify and came back as an OPERATOR session.
+export const CHALLENGE_PURPOSE = Object.freeze({ OPERATOR: 'operator', NEUMA: 'neuma' });
+const PURPOSES = new Set(Object.values(CHALLENGE_PURPOSE));
+const challengeKey = (purpose, address) => {
+  if (!PURPOSES.has(purpose)) throw new Error(`Unknown challenge purpose: ${purpose}`);
+  return `${purpose}:${address.toLowerCase()}`;
+};
 const pendingChallenges = new Map();
 const CHALLENGE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 export const CHALLENGE_CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute — shared with auth-bridge.js GC sweep
@@ -139,8 +150,12 @@ const parseSiweMessage = (message) => {
 
 /**
  * Generate a time-limited EIP-4361 (SIWE) challenge for an address to sign.
+ * @param {string} address
+ * @param {string} [purpose] CHALLENGE_PURPOSE — only a verify of the same
+ *   purpose can consume it
  */
-export const generateChallenge = (address) => {
+export const generateChallenge = (address, purpose = CHALLENGE_PURPOSE.OPERATOR) => {
+  const key = challengeKey(purpose, address);
   const normalized = address.toLowerCase();
   const nonce = crypto.randomBytes(16).toString('hex');
   const now = Date.now();
@@ -154,7 +169,7 @@ export const generateChallenge = (address) => {
     issuedAt: new Date(now).toISOString(),
   });
 
-  pendingChallenges.set(normalized, {
+  pendingChallenges.set(key, {
     challenge,
     expiresAt: now + CHALLENGE_EXPIRY_MS,
   });
@@ -163,21 +178,26 @@ export const generateChallenge = (address) => {
 };
 
 /**
- * Verify a wallet signature against a challenge.
- * Returns the normalized address if valid, null otherwise.
+ * Verify a wallet signature against a challenge issued for the same purpose.
+ * Returns the recovered address if valid, null otherwise.
+ * @param {string} address
+ * @param {string} challenge
+ * @param {string} signature
+ * @param {string} [purpose] CHALLENGE_PURPOSE the challenge was issued for
  */
-export const verifySignature = (address, challenge, signature) => {
+export const verifySignature = (address, challenge, signature, purpose = CHALLENGE_PURPOSE.OPERATOR) => {
   try {
     const recovered = ethers.verifyMessage(challenge, signature);
     if (recovered.toLowerCase() !== address.toLowerCase()) return null;
 
     const normalized = address.toLowerCase();
-    const pending = pendingChallenges.get(normalized);
+    const key = challengeKey(purpose, normalized);
+    const pending = pendingChallenges.get(key);
 
     // Verify the challenge was issued by us and hasn't expired
     if (!pending || pending.challenge !== challenge) return null;
     if (Date.now() > pending.expiresAt) {
-      pendingChallenges.delete(normalized);
+      pendingChallenges.delete(key);
       return null;
     }
 
@@ -190,7 +210,7 @@ export const verifySignature = (address, challenge, signature) => {
     if (parsed.address.toLowerCase() !== normalized) return null;
 
     // Challenge consumed — single use
-    pendingChallenges.delete(normalized);
+    pendingChallenges.delete(key);
     return recovered;
   } catch {
     return null;
@@ -392,10 +412,16 @@ export const createAuthRouter = (express) => {
     if (!verified) {
       return res.status(401).json({ error: 'Signature verification failed' });
     }
+    if (await isBeingWalletAddress(verified)) {
+      return res.status(403).json({ error: 'A being\'s own wallet cannot sign in as an operator' });
+    }
 
     // No licence stands between a person and their sign-in (Design note, 2026-10-03:
     // […]). The wallet signature is the whole threshold.
     const token = createSessionToken(verified);
+    // On an install no one owns yet, the first wallet at this computer's own
+    // desk becomes its owner (install-owner.js; Design note, 2026-10-19.
+    if (req.accessScope === 'local') await (await import('./install-owner.js')).noteLocalSignIn(verified);
     res.json({
       token,
       address: verified.toLowerCase(),

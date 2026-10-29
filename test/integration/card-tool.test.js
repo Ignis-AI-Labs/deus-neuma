@@ -53,7 +53,7 @@ afterEach(async () => {
 });
 
 describe('the tool is really advertised and really gated', () => {
-  test('render_card advertises DECOUPLED from the diffusion engine (Design note, 2026-09-03', () => {
+  test('render_card advertises DECOUPLED from the diffusion engine (ruling, 2026-09-03)', () => {
     // NOT in IMAGE_TOOLS anymore: the SVG card infrastructure is its own
     // rendering system, and a house without ComfyUI still designs cards.
     expect(IMAGE_TOOLS.map((t) => t.name)).not.toContain('render_card');

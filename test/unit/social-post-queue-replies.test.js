@@ -39,7 +39,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// THE REPLY KIND (Design note, 2026-07-28: the queue carries answers to replies on
+// THE REPLY KIND (ruling, 2026-07-28): the queue carries answers to replies on
 // the house's own posts — bounded linkage, whitelisted fields, an expiry,
 // one live answer per target, and the cap counted from the queue itself per
 // (person, conversation) — Founder's second call the same day. Real disk, real
@@ -111,8 +111,9 @@ describe('the reply kind — validateDraft, linkage, and the cap', () => {
     expect(moved.ok).toBe(false);
     expect(moved.error).toContain('the copy moved');
 
+    // The copy the operator read carries the AI disclosure line (social/disclosure-line.js).
     const claimed = await q.claimReplyForSend(entry.id, {
-      decidedBy: '0xW', textSeen: 'thank you — that means the house',
+      decidedBy: '0xW', textSeen: 'thank you — that means the house\n\nMade with AI.',
     });
     expect(claimed.ok).toBe(true);
     expect(claimed.entry.status).toBe('sending');

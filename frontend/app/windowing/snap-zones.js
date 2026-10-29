@@ -8,7 +8,7 @@
 
 import { MIN } from './geometry.js';
 
-// THE DELIBERATE SNAP (Design note, 2026-07-29: […] Snapping is a decision made AT the boundary,
+// THE DELIBERATE SNAP (ruling, 2026-07-29): […] Snapping is a decision made AT the boundary,
 // never an accident of travel — the pointer must press the edge itself,
 // not merely pass nearby.
 const EDGE = 8; // px from a side counts as "at the edge" — a press, not a pass

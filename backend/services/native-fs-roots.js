@@ -52,7 +52,7 @@ const normalizeRoot = async (dir) => {
  * Why this process cannot use `dir` as a root, or null when it can.
  * impure (stat, access).
  *
- * WHY NOT `stat` ALONE (Design note, 2026-08-30. This check used to be
+ * WHY NOT `stat` ALONE (ruling, 2026-08-30). This check used to be
  * `stat(dir).isDirectory()`, which answers […] — and
  * that SUCCEEDS on a directory this process cannot open, because stat needs
  * permission on the PARENT, not on the directory itself.

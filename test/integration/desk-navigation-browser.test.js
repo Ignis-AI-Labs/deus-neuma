@@ -14,7 +14,7 @@ const turns = () => kit.frames.filter((f) => ['consciousness:stream', 'conscious
 describe('H11 navigation owns deferred sends', () => {
   it('reconnect restores real browser preferences and the selected session', async () => {
     const page = await kit.page();
-    await page.waitForFunction(() => document.getElementById('transcript').textContent.includes('hr-desk-a second history'));
+    await page.waitForFunction(() => document.getElementById('transcript')?.textContent.includes('hr-desk-a second history'));
     await page.evaluate(() => window.desk.stream.setChatMode('auto'));
     await page.waitForFunction(() => window.desk.stream.chatMode === 'auto' && window.desk.stream.toolMode === 'auto');
     expect(await page.evaluate(() => localStorage.getItem('neuma.chat.mode:hr-desk-a'))).toBe('auto');
@@ -76,7 +76,7 @@ describe('H11 navigation owns deferred sends', () => {
     const page = await kit.page();
     await until(() => paused.used);
     await page.evaluate((B) => window.desk.stream.switchCompanion({ neumaId: B, name: 'HR Desk B' }), B);
-    await page.waitForFunction(() => document.getElementById('transcript').textContent.includes('hr-desk-b second history'));
+    await page.waitForFunction(() => document.getElementById('transcript')?.textContent.includes('hr-desk-b second history'));
     await kit.corruptOwner(A); // REAL router ownership failure, not a fabricated HTTP response.
     paused.release();
     await wait(1800); // includes the old retry window; stale failure must not enter it

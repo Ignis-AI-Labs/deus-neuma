@@ -23,7 +23,7 @@ test('the harness and the full platform each keep their own companion and desk; 
   try {
     const repo = fileURLToPath(new URL('../..', import.meta.url));
     vite = await createServer({ configFile: false, root: repo, cacheDir: path.join(root, 'cache'), appType: 'custom',
-      server: { middlewareMode: true, hmr: false, watch: null } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     const app = express();
     app.get('/', (_q, res) => res.type('html').send('<!doctype html><body><script type="module" src="/test/fixtures/operator-states.js"></script>'));
     app.use(vite.middlewares);

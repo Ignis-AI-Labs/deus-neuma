@@ -18,13 +18,14 @@
 import { randomUUID } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import { validatePlan } from './team-coordinator.js';
+import { validatePlan, isStepId } from './team-coordinator.js';
 import { repairJsonStringControlChars } from '../../core/index.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { safeChatId } from '../../core/tasks/task-chat.js';
 import { planRecordFrom, materializePlanTasks } from '../../core/tasks/plan-record.js';
 import { ensureFilesystemRoots } from './mcp-filesystem.js';
 import { notifyAwaitingAnswer } from './desk-notices.js';
+import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 import { createLogger } from './logger.js';
 import { normalizeStepFiles } from './team-step-files.js';
 import { normalizeClock, normalizeCheckIn, describeClock, NO_CLOCK, DEFAULT_CHECK_IN_MINUTES } from './team-clock.js';
@@ -37,7 +38,7 @@ const log = createLogger('TeamPlan');
 export const isPlanTool = (match) => match.toolName === 'plan_submit';
 
 /** What the being reads when no verdict came — honest, path forward named.
- *  No `timeout` key: the card carries no clock (Design note, 2026-07-27. */
+ *  No `timeout` key: the card carries no clock (ruling, 2026-07-27). */
 export const PLAN_UNANSWERED = Object.freeze({
   interrupted: 'The turn was interrupted before your operator ruled on the plan — it is NOT approved.',
   closed: 'The portal closed before your operator ruled on the plan — it is NOT approved.',
@@ -123,6 +124,7 @@ export const normalizePlanArgs = (args) => {
   const steps = rawSteps.map((s, i) => {
     const id = typeof s?.id === 'string' ? s.id.trim() : '';
     if (!id) throw new Error(`step ${i + 1} needs an id (a short unique label like "build" or "verify").`);
+    if (!isStepId(id)) throw new Error(`step ${i + 1} id ${JSON.stringify(id.slice(0, 40))} must be one word of letters, digits, ".", "_" or "-" (like "build" or "market-research").`);
     const member = typeof s?.member === 'string' ? s.member.trim() : '';
     if (!member) throw new Error(`step "${id}" needs a member — the NAME of the teammate who owns it (yourself included).`);
     const task = typeof s?.task === 'string' ? s.task.trim() : '';
@@ -257,6 +259,7 @@ export const requestPlanApproval = (connection, { name, goal, steps, workspace =
       const entry = pending.get(id);
       if (!entry) return;
       pending.delete(id);
+      clearLiveCard(id);
       if (signal) signal.removeEventListener('abort', entry.onAbort);
       // The desk learns the card settled on EVERY path — no dangling buttons.
       _safeSend(connection.ws, {
@@ -302,6 +305,7 @@ export const requestPlanApproval = (connection, { name, goal, steps, workspace =
         needs: [...(s.needs || [])],
       })),
     });
+    noteLiveCard(connection, { id, kind: 'plan', title: name || goal });
   });
 
 /**
@@ -372,18 +376,19 @@ export const submitPlan = async (connection, args, { roster, signal, decide = re
  * @param {Object} connection - Portal connection (companion.neumaId, sessionId)
  * @param {Object} plan - the frozen engine plan submitPlan resolved with
  * @param {Array<{neumaId: string, name: string}>} roster - the operator's beings
- * @param {{approvedAt?: string}} [opts] - the verdict's instant; the record and
- *   the connection copy must carry ONE timestamp for the one approval
+ * @param {{approvedAt?: string, approvedBy?: Object}} [opts] - the verdict's instant; the record and
+ *   the connection copy must carry ONE timestamp for the one approval; who gave it
  * @returns {Promise<{record: Object, note: string}>} note is appended to the
  *   tool result the being reads
  */
-export const persistApprovedPlan = async (connection, plan, roster, { approvedAt } = {}) => {
+export const persistApprovedPlan = async (connection, plan, roster, { approvedAt, approvedBy = null } = {}) => {
   const neumaId = connection.companion?.neumaId || null;
   const memberNames = Object.fromEntries(roster.map((m) => [m.neumaId, m.name || m.neumaId]));
   let record = planRecordFrom(plan, {
     memberNames,
     approvedAt: approvedAt || new Date().toISOString(),
     chatId: safeChatId(connection.sessionId),
+    approvedBy,
   });
   if (!neumaId) return { record, note: '' };
   let note = '';

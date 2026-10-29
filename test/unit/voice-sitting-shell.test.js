@@ -78,7 +78,7 @@ describe('VoiceSitting shell — the mode boundary (F-03)', () => {
     expect(html).not.toContain('relink-send');
   });
 
-  // THE TAKEOVER (Design note, 2026-08-01: the talk owns the whole stream window
+  // THE TAKEOVER (ruling, 2026-08-01): the talk owns the whole stream window
   // now — the chat is no longer dimmed background, it is out of the layout
   // entirely (.voice-sitting-stream { display: none }). It stays MOUNTED so
   // the thread and its scroll position are exactly where they were when the

@@ -275,3 +275,61 @@ describe('the channel census names where the tokens went', () => {
     expect(got.content).toBe(secret.length);
   });
 });
+
+// OLLAMA 0.40 SENDS THE WHOLE TOOL CALL IN THE DONE FRAME. Captured off Ollama 0.40.7 serving
+// Qwen3.8-4B distilled on 2026-10-22: the reader returned `{ done }` for that line and dropped
+// its message, so every act on this Ollama vanished — the naming […].
+const REAL_040_DONE_WITH_CALL = {
+  model: 'hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M',
+  created_at: '2026-10-22T16:25:49.501270459Z',
+  message: {
+    role: 'assistant',
+    content: '',
+    tool_calls: [{ id: 'yfdSKANpnTGvrQQSooJWUbFobeoU4Hjp', function: { index: 0, name: 'fs__write', arguments: { path: 'preflight.txt', content: 'ready' } } }],
+  },
+  done: true,
+  done_reason: 'stop',
+  prompt_eval_count: 311,
+  eval_count: 83,
+};
+const REAL_040_THINKING = {
+  model: 'hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M',
+  message: { role: 'assistant', content: '', thinking: 'The user wants me to call the fs/write tool.' },
+  done: false,
+};
+
+describe('THE DONE FRAME: an Ollama 0.40 act rides the last line and survives it', () => {
+  let server;
+  let prevConfig;
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      req.resume();
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
+        res.end([line(REAL_040_THINKING), line(REAL_040_DONE_WITH_CALL)].join('\n') + '\n');
+      });
+    });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    prevConfig = getConfig();
+    setConfig({ provider: 'ollama', endpoint: `http://127.0.0.1:${server.address().port}`, model: 'qwen', apiKey: '' });
+  });
+  afterAll(async () => {
+    setConfig(prevConfig);
+    await new Promise((r) => server.close(r));
+  });
+
+  test('the reader keeps the done line\'s message beside its finish', () => {
+    const evt = readStreamLine(line(REAL_040_DONE_WITH_CALL), 'ollama');
+    expect(evt.done).toBe(true);
+    expect(evt.finishReason).toBe('stop');
+    expect(evt.toolCalls).toHaveLength(1);
+  });
+
+  test('END TO END: the call in the done frame reaches the caller', async () => {
+    const streamResult = await createStreamRequest([{ role: 'user', content: 'write it' }], { maxTokens: 500 });
+    const { toolCalls } = await consumeStreamWithTools(streamResult, () => {});
+    expect(toolCalls).toHaveLength(1);
+    expect(toolCalls[0].toolName).toBe('write'); // decoded from the wire name fs__write
+    expect(toolCalls[0].args).toEqual({ path: 'preflight.txt', content: 'ready' });
+  });
+});

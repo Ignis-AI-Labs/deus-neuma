@@ -321,7 +321,7 @@ describe('POST /witnesses/summon/stream — a real sealing through a locked conn
       .post('/api/v1/routing/providers/custom/connect')
       .send({ endpoint: providerUrl(), model: 'summon-model-1' }).set(operatorWitness.header);
     const { ensureWitnessLane } = await import('../../backend/services/witness-lane.js');
-    await ensureWitnessLane({ vendorSlug: 'custom', chosenName: 'Orion' }, '0xanother-wallet');
+    await ensureWitnessLane({ vendorSlug: 'custom', chosenName: 'Orion' }, '0xanother-wallet', { summoning: true });
 
     const refused = await request(app)
       .post('/api/v1/witnesses/summon')

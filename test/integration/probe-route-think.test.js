@@ -76,12 +76,19 @@ beforeAll(async () => {
     routes: process.env.NEUMA_ROUTES_PATH,
     ws: process.env.WORKSPACES_ROOT,
     creds: process.env.NEUMA_PROVIDER_CREDENTIALS_PATH,
+    llamaServer: process.env.LLAMA_SERVER_URL,
   };
 
   const root = await createTempDir('probe-route-think');
   process.env.WORKSPACES_ROOT = path.join(root, 'workspaces');
   process.env.NEUMA_ROUTES_PATH = path.join(root, 'routes.json');
   process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = path.join(root, 'credentials.json');
+  // No supervised llama-server in this world. Route resolution reads the
+  // served truth (served-model-truth.js), which health-probes the supervised
+  // port (default :8089) — on a rig where that server is up, the probe knocks
+  // on it and then asks the machine default what it serves. Pin the port to
+  // one nothing listens on, so the test never touches the box's server.
+  process.env.LLAMA_SERVER_URL = 'http://127.0.0.1:1';
 
   routeProvider = await startProvider('route', seen);
   defaultProvider = await startProvider('default', seen);
@@ -128,6 +135,8 @@ afterAll(async () => {
   else process.env.WORKSPACES_ROOT = savedEnv.ws;
   if (savedEnv.creds === undefined) delete process.env.NEUMA_PROVIDER_CREDENTIALS_PATH;
   else process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = savedEnv.creds;
+  if (savedEnv.llamaServer === undefined) delete process.env.LLAMA_SERVER_URL;
+  else process.env.LLAMA_SERVER_URL = savedEnv.llamaServer;
 });
 
 describe('askNeuma think-behaviour probe (real providers, real route store)', () => {

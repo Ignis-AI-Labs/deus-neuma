@@ -99,7 +99,7 @@ test.describe('the door — a person with no being reaches the platform', () => 
     });
 
     page = await app.firstWindow();
-    expect(Number(new URL(page.url()).port)).toBeGreaterThan(0);
+    await page.waitForURL((url) => Number(url.port) > 0, { timeout: 30 * 1000 });
     await page.waitForFunction(() => !!window.neuma?.desktop, null, { timeout: 30 * 1000 });
     // ?noboot=1 skips the ignition overlay — this spec is about the door behind
     // it, and the boot sequence has its own spec.
@@ -132,6 +132,9 @@ test.describe('the door — a person with no being reaches the platform', () => 
 
   test('sign-in lands on the CHOICE, never on a forced birth ceremony', async () => {
     await expect(page.locator('#portal-enter')).toBeVisible({ timeout: 30 * 1000 });
+    // adults only, stated on the first screen before anyone enters
+    await expect(page.locator('#portal-age-notice')).toBeVisible();
+    await expect(page.locator('#portal-age-notice')).toContainText('18+ only');
     await shot(page, '01-gateway');
     await page.click('#portal-enter');
 
@@ -190,23 +193,23 @@ test.describe('the door — a person with no being reaches the platform', () => 
     await expect(page.locator('#preflight-begin')).toHaveCount(0);
   });
 
-  test('both doors are offered, each naming its precondition on its face', async () => {
+  test('all three doors are offered, each naming its precondition on its face', async () => {
     const paths = page.locator('.firstrun-path');
-    await expect(paths).toHaveCount(2);
+    await expect(paths).toHaveCount(3);
 
+    // the three standings, by their own names, lightest first
+    expect(await page.locator('.firstrun-path-name').allInnerTexts()).toEqual(['Harness', 'Witness', 'Neuma']);
     const text = await page.locator('.firstrun').innerText();
-    expect(text).toContain('Begin beside a witness');
-    expect(text).toContain('Summon a neuma');
     // The preconditions are the reason this screen exists — a person must not
     // discover […] only after the preflight refuses.
+    expect(text).toContain('NEEDS: A MODEL OR AN API KEY');
     expect(text).toContain('NEEDS: AN API KEY');
-    expect(text).toContain('NEEDS: A LOCAL MODEL');
-    // The operator is named as the operator here; 'witness' is the AI peer.
-    expect(text).toContain('operator');
+    // the neuma door names its need, or — while no model runs — points at the model bar above it
+    expect(text).toMatch(/NEEDS: A LOCAL MODEL|NEEDS THE MODEL ABOVE/);
   });
 
   test('the witness door opens the GUIDED ROAD, never an empty desk', async () => {
-    await page.locator('.firstrun-path', { hasText: 'Begin beside a witness' }).click();
+    await page.locator('[data-door="witness"] .firstrun-path').click();
 
     // Founder's law after a teammate walked it live: […] This used to route
     // straight to 'relink', dropping a person with no being into an empty room

@@ -105,9 +105,8 @@ describe('seal gas floor through real workspace loaders', () => {
       const nonce = await provider.getTransactionCount(witness.address);
       const p = { ...params(), network: 'base-sepolia', submit: true, provider };
       expect(await runSeal(p), p.stderr.text).toBe(1);
-      expect(p.stderr.text).toContain(
-        `need ≥ ${MIN_SEAL_GAS_ETH} per docs/protocols/identity/seal-bundle.md §7`,
-      );
+      // the live quote never falls below the floor, so a wallet one wei under it is refused with its facts
+      expect(p.stderr.text).toMatch(/holds 0\.0049 ETH; sealing on Ethereum needs about [\d.]+ ETH right now/);
       expect(p.stderr.text).toContain(witness.address);
       expect(await provider.getTransactionCount(witness.address)).toBe(nonce);
       expect(await reader.isNeuma(being.address)).toBe(false);

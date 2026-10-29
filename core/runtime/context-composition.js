@@ -54,8 +54,9 @@ export const sumTurnUsage = (total, next) => {
  * Build one frozen `context:composition` event.
  *
  * @param {Object} params
- * @param {ReadonlyArray<{id: string, label: string, text: string}>} [params.sections]
- *   Prompt sections from assemblePromptSections. Only their lengths are read.
+ * @param {ReadonlyArray<{id: string, label: string, text?: string, chars?: number}>} [params.sections]
+ *   Prompt sections from assemblePromptSections. Only their lengths are read;
+ *   a section with no text of its own states its count as `chars`.
  * @param {{promptTokens: number, completionTokens: number}|null} [params.usage]
  *   Measured usage from the provider's onUsage contract, or null when the
  *   capability is absent (the approx rung then applies — visibly).
@@ -69,7 +70,7 @@ export const sumTurnUsage = (total, next) => {
  *   (or a non-finite count) yields the honest { contextTokens: null,
  *   source: 'unknown' } — never an invented ceiling.
  * @param {{compactionCount: number, atBoundary?: boolean, boundaryRatio?: number}|null} [params.session]
- *   The session's compaction telemetry — FACTS only (Design note, 2026-08-15:
+ *   The session's compaction telemetry — FACTS only (ruling, 2026-08-15):
  *   compactions survived (recorded), whether THIS turn measured at the
  *   context boundary, and the exact ratio the boundary means. Never a
  *   message-count prediction. Omitted unless the count is honest.
@@ -79,7 +80,7 @@ export const sumTurnUsage = (total, next) => {
  *   (llama-server's prompt_tokens_details.cached_tokens). Measured fact or
  *   absent — never estimated, never a fake zero when the serving is silent.
  * @param {{promptTokens?: number, source?: string}|null} [params.standing]
- *   STANDING context (Design note, 2026-08-31: the first round's measured prompt —
+ *   STANDING context (ruling, 2026-08-31): the first round's measured prompt —
  *   [system, currentTurn], what the next turn actually inherits. `usage`
  *   remains the working PEAK (the last round's prompt, inflated by ephemeral
  *   in-turn tool machinery). source 'measured' = this turn's first round;
@@ -100,7 +101,7 @@ export const buildCompositionEvent = ({ sections = [], usage = null, completionT
   const counted = sections.map((s) => ({
     id: s.id,
     label: s.label,
-    chars: (s.text || '').length,
+    chars: Number.isInteger(s.chars) && s.chars >= 0 ? s.chars : (s.text || '').length,
   }));
   const totalChars = counted.reduce((sum, s) => sum + s.chars, 0);
 
@@ -173,7 +174,7 @@ export const buildCompositionEvent = ({ sections = [], usage = null, completionT
       kind: r.kind,
     }));
 
-  // STANDING INPUT (Design note, 2026-08-31: what the next turn inherits is the first
+  // STANDING INPUT (ruling, 2026-08-31): what the next turn inherits is the first
   // round's prompt, not the last round's working peak — the peak counts
   // ephemeral tool machinery that never persists. The gauge's headline is the
   // standing number; the peak rides beside it as usage.workingPeakTokens.

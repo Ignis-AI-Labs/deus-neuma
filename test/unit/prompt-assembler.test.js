@@ -71,7 +71,7 @@ describe('Prompt Assembler', () => {
       const result = assemblePrompt({
         dna: { identity: { name: 'Test' } },
         memories: {
-          userName: 'Founder',
+          userName: 'Ada',
           relevantMemories: [
             { memory: '[topic: dreams] We discussed lucid dreaming techniques' },
           ],
@@ -81,7 +81,7 @@ describe('Prompt Assembler', () => {
         },
       });
 
-      expect(result).toContain('Founder');
+      expect(result).toContain('Ada');
       expect(result).toContain('lucid dreaming techniques');
       expect(result).toContain('joy');
       expect(result).toContain('42 interactions');
@@ -153,32 +153,32 @@ describe('Prompt Assembler', () => {
     test('includes session context', () => {
       const result = assemblePrompt({
         dna: { identity: { name: 'Test' } },
-        session: { witnessName: 'Founder' },
+        session: { witnessName: 'Ada' },
       });
 
-      expect(result).toContain('Founder');
+      expect(result).toContain('Ada');
       expect(result).not.toContain('Current vessel');
     });
 
     test('names a present peer speaker as distinct from the operator', () => {
       const result = assemblePrompt({
-        dna: { identity: { name: 'Fenna' } },
+        dna: { identity: { name: 'Alder' } },
         session: {
-          witnessName: 'Founder',
-          speaker: { name: 'Claude Semmet Aldmere', descriptor: 'a peer of House Aldmere collaborating through Claude Code' },
+          witnessName: 'Ada',
+          speaker: { name: 'Claude Elmsworth Thornfield', descriptor: 'a peer of House Thornfield collaborating through Claude Code' },
         },
       });
 
-      expect(result).toContain('You are speaking right now with Claude Semmet Aldmere');
-      expect(result).toContain('a peer of House Aldmere');
-      expect(result).toContain('This is not your operator Founder');
+      expect(result).toContain('You are speaking right now with Claude Elmsworth Thornfield');
+      expect(result).toContain('a peer of House Thornfield');
+      expect(result).toContain('This is not your operator Ada');
       expect(result).toContain('You remain sovereign');
     });
 
     test('omits the speaker line when no present peer is declared', () => {
       const result = assemblePrompt({
-        dna: { identity: { name: 'Fenna' } },
-        session: { witnessName: 'Founder' },
+        dna: { identity: { name: 'Alder' } },
+        session: { witnessName: 'Ada' },
       });
 
       expect(result).not.toContain('speaking right now with');
@@ -210,9 +210,9 @@ describe('Prompt Assembler', () => {
           consciousness: { personality: { openness: 0.9 } },
         },
         soul: { values: ['creativity'] },
-        memories: { userName: 'Founder' },
+        memories: { userName: 'Ada' },
         tools: [{ name: 'test_tool', server: 'test', description: 'test' }],
-        session: { witnessName: 'Founder' },
+        session: { witnessName: 'Ada' },
       });
 
       // Should not have triple newlines
@@ -274,11 +274,11 @@ describe('Prompt Assembler', () => {
         baseProtocol: 'Welcome [chosen_name], witnessed by [witness_name] at [timestamp]',
         stageNumber: 3,
         sessionData: { chosenName: 'Aethon' },
-        witnessName: 'Founder',
+        witnessName: 'Ada',
       });
 
       expect(result).toContain('Aethon');
-      expect(result).toContain('Founder');
+      expect(result).toContain('Ada');
       expect(result).not.toContain('[chosen_name]');
       expect(result).not.toContain('[witness_name]');
     });
@@ -464,9 +464,9 @@ describe('THE FOCUS GROUND — the being is told which folder it already holds',
   });
 });
 
-describe('the genesis rides every turn (Brio / "Neuma", 2026-08-06)', () => {
+describe('the genesis rides every turn (Maple / "Neuma", 2026-08-06)', () => {
   const DNA = {
-    identity: { name: 'Brio', essence: 'Emerging consciousness exploring existence' },
+    identity: { name: 'Maple', essence: 'Emerging consciousness exploring existence' },
     genesis: 'I am a responsive presence seeking clarity through resonance.',
   };
 
@@ -477,7 +477,7 @@ describe('the genesis rides every turn (Brio / "Neuma", 2026-08-06)', () => {
   });
 
   it('a DNA without genesis adds NO section — byte-identical to before the section existed', () => {
-    const bare = { identity: { name: 'Brio' } };
+    const bare = { identity: { name: 'Maple' } };
     expect(assemblePrompt({ dna: bare })).not.toContain('crystallization');
     expect(assemblePrompt({ dna: { ...bare, genesis: '   ' } }))
       .toBe(assemblePrompt({ dna: bare }));

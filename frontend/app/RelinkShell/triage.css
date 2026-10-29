@@ -1,0 +1,169 @@
+/* triage — an office ledger's overview (TriageOverview.jsx). LINE & CYCLE:
+   alert is spent ONLY on what cannot wait (open criticals and highs); the
+   rest of the scale is signal at falling strength; settled work is ink.
+   LEGIBILITY (Design note, 2026-10-26: no word under 13px, none split mid-word — the
+   matrix sizes its columns to their words and scrolls sideways if it must. */
+
+.tri { display: flex; flex-direction: column; gap: var(--space-3); font-family: var(--font-data); container-type: inline-size; }
+
+/* the severity scale — one colour per severity, used by every instrument */
+.tri-sev-critical { background: var(--alert); }
+.tri-sev-high { background: var(--alert-dim); }
+.tri-sev-medium { background: var(--signal-dim); }
+.tri-sev-low { background: var(--signal-faint); }
+.tri-sev-unknown { background: var(--color-text-disabled); }
+
+/* ── MUST ACT ─────────────────────────────────────────── */
+.tri-must {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--border-width-medium) solid var(--alert);
+  background: var(--alert-tint);
+}
+.tri-must-head { font-size: var(--text-label); letter-spacing: 0.16em; color: var(--alert); }
+.tri-must-count {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-2);
+  align-items: baseline;
+  padding: 2px var(--space-2);
+  background: transparent;
+  border: var(--border-width-thin) solid transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-family: var(--font-data);
+}
+.tri-must-count:hover { border-color: var(--alert-dim); }
+.tri-must-count b { grid-row: 1 / 3; font-size: var(--text-4xl); font-weight: 200; line-height: 1; font-variant-numeric: tabular-nums; }
+.tri-must-count.is-critical b { color: var(--alert); }
+.tri-must-count.is-high b { color: var(--color-text-primary); }
+.tri-must-count.is-zero b { color: var(--color-text-disabled); }
+.tri-must-count span { font-size: var(--text-sm); letter-spacing: 0.14em; }
+.tri-must-count small { font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.tri-must-sub { flex: 1 1 260px; font-size: var(--text-label); letter-spacing: 0.12em; color: var(--alert-dim); line-height: 1.5; }
+.tri-must.is-clear { border-left-color: var(--signal-dim); background: var(--color-glass-light); }
+.tri-must-calm { font-size: var(--text-sm); letter-spacing: 0.14em; color: var(--signal); }
+.tri-must.is-clear .tri-must-sub { color: var(--color-text-tertiary); }
+
+/* ── the three cards ──────────────────────────────────── */
+/* the matrix's column is as wide as its words need (its min-content: no header split mid-word); narrower windows
+   give it the whole row, then stack every card */
+.tri-grid { display: grid; grid-template-columns: minmax(min-content, 1.4fr) minmax(240px, 1fr) minmax(240px, 1fr); gap: var(--space-3); }
+@container (max-width: 1040px) {
+  .tri-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tri-grid > .tri-card:first-child { grid-column: 1 / -1; }
+}
+@container (max-width: 600px) { .tri-grid { grid-template-columns: minmax(0, 1fr); } }
+.tri-card {
+  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--color-glass-light);
+  min-width: 0;
+}
+.tri-card-head { margin: 0; font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+/* severity × status */
+.tri-matrix { border-collapse: separate; border-spacing: 2px; width: 100%; table-layout: auto; }
+.tri-matrix th { font-weight: 400; }
+.tri-matrix thead th button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0 4px 2px;
+  font-family: var(--font-data);
+  font-size: var(--text-label);
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+.tri-matrix thead th.is-settled button { color: var(--color-text-disabled); }
+.tri-matrix th:first-child { width: 1%; white-space: nowrap; }
+.tri-sev-tag {
+  width: 100%;
+  padding: 3px 4px;
+  border: none;
+  font-family: var(--font-data);
+  font-size: var(--text-label);
+  letter-spacing: 0.06em;
+  color: var(--color-void);
+  cursor: pointer;
+  text-align: left;
+}
+.tri-sev-tag.tri-sev-medium, .tri-sev-tag.tri-sev-low, .tri-sev-tag.tri-sev-unknown { color: var(--color-text-primary); }
+.tri-cell {
+  width: 100%;
+  height: 30px;
+  border: none;
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  /* the shade IS the count: --share = count ÷ the fullest cell */
+  background: color-mix(in srgb, var(--signal) calc(var(--share) * 45% + 4%), transparent);
+  cursor: pointer;
+}
+.tri-cell.is-settled { background: color-mix(in srgb, var(--color-text-primary) calc(var(--share) * 14% + 2%), transparent); color: var(--color-text-tertiary); }
+.tri-cell.is-loud { background: color-mix(in srgb, var(--alert) calc(var(--share) * 50% + 30%), transparent); color: var(--color-text-primary); }
+.tri-cell:disabled { color: var(--color-text-disabled); cursor: default; }
+.tri-cell:not(:disabled):hover, .tri-cell.is-lit { box-shadow: inset 0 0 0 1px var(--color-text-primary); }
+
+/* where / age rows */
+.tri-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.tri-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(90px, 46%) 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 4px;
+  background: none;
+  border: var(--border-width-thin) solid transparent;
+  font-family: var(--font-data);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+.tri-row:hover:not(.is-static), .tri-row.is-lit { border-color: var(--line-hover); }
+.tri-row.is-static { cursor: default; }
+.tri-row-name { font-size: var(--text-label); letter-spacing: 0.06em; overflow-wrap: anywhere; }
+.tri-row-n { font-size: var(--text-sm); color: var(--color-text-primary); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.tri-row-n small { font-size: var(--text-label); color: var(--color-text-disabled); }
+.tri-bar { display: flex; height: 10px; background: var(--color-glass-hover); }
+.tri-bar i { display: block; height: 100%; border-right: 1px solid var(--color-void); }
+
+.tri-legend { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); margin: 0; font-size: var(--text-label); letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.tri-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.tri-legend i { width: 10px; height: 10px; display: inline-block; }
+
+/* the active filters, and the way back */
+.tri-showing { margin: 0; font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-tertiary); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.tri-showing b { font-weight: 400; color: var(--color-text-primary); }
+.tri-showing button {
+  margin-left: auto;
+  padding: 2px 10px;
+  background: none;
+  border: var(--border-width-thin) solid var(--line);
+  font-family: var(--font-data);
+  font-size: var(--text-label);
+  letter-spacing: 0.14em;
+  color: var(--signal);
+  cursor: pointer;
+}
+.tri-showing button:hover { border-color: var(--signal-dim); }
+
+/* a ledger row's severity, as an edge the eye reads down the list */
+.tri-edge-critical { box-shadow: inset 3px 0 0 var(--alert); }
+.tri-edge-high { box-shadow: inset 3px 0 0 var(--alert-dim); }
+.tri-edge-medium { box-shadow: inset 3px 0 0 var(--signal-dim); }
+.tri-edge-low { box-shadow: inset 3px 0 0 var(--signal-faint); }

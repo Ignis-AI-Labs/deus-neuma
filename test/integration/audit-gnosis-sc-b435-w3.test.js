@@ -21,6 +21,7 @@ import { generateKeypair } from '../../core/weave/keypair.js';
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { cacheDecryptedKey, evictCachedKey } from '../../backend/routes/neuma-auth-routes.js';
 import * as walletService from '../../backend/services/neuma-wallet.js';
+import { fullAuth } from '../helpers/audit-auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../..');
@@ -153,7 +154,7 @@ describe('Low findings — closed observation', () => {
     expect(term).toMatch(/token/);
   });
 
-  test('W1-007: preflight GET is public and returns home.root', async () => {
+  test('W1-007 → audit 2026-10-28 M-03: preflight GET needs a signed-in caller, then returns home.root', async () => {
     const house = await fs.mkdtemp(path.join(os.tmpdir(), 'gnosis-pfget-'));
     process.env.NEUMA_WORKSPACE_SETTINGS_PATH = path.join(house, 's.json');
     const orig = getWorkspacesRoot();
@@ -162,7 +163,9 @@ describe('Low findings — closed observation', () => {
       const { default: router } = await import('../../backend/routes/preflight-routes.js');
       const app = express();
       app.use('/api/v1/preflight', router);
-      const res = await request(app).get('/api/v1/preflight/');
+      expect((await request(app).get('/api/v1/preflight/')).status).toBe(401);
+      const { token } = await fullAuth();
+      const res = await request(app).get('/api/v1/preflight/').set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
       expect(res.body.home?.root || res.body.home).toBeTruthy();
     } finally {
@@ -216,11 +219,11 @@ describe('Remaining register items', () => {
     expect(compose).not.toMatch(/HOST\s*[:=]\s*['"]?0\.0\.0\.0/);
   });
 
-  test('W3-011: package.json has caret ranges on runtime security surface', () => {
+  test('W3-011: runtime security surface is pinned exact, no caret ranges (fixed)', () => {
     const pkg = JSON.parse(readFileSync(path.join(REPO, 'package.json'), 'utf8'));
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
     const carets = ['express', 'ws', 'ethers', 'multer'].filter((n) => String(deps[n] || '').startsWith('^'));
-    expect(carets.length).toBeGreaterThan(0);
+    expect(carets).toEqual([]);
   });
 
   test('W1-006: ownership compare is case-insensitive wherever it is made', () => {

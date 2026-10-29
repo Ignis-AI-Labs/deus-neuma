@@ -4,6 +4,7 @@ import { execFileSync } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * A folder holding a FIFO, and the honest error class for every read failure
@@ -31,6 +32,7 @@ describe('a folder with a special entry, and honest read errors', () => {
     // is exactly the right shape for the witness's own file browser.
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
     // The REAL settings module, aimed at a real throwaway file (#390 tranche
     // 3). NEUMA_FILES_SETTINGS_PATH is the module's own isolation door and is
     // read per call, so the persist path runs for real and the operator's

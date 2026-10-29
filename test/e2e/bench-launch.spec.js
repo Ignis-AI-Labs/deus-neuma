@@ -149,10 +149,10 @@ test('two columns: the picker on the left, THIS RUN pinned on the right, readabl
   await expect(run.locator('.bl-run-name').nth(0)).toBeVisible();
   await expect(run.locator('.bl-numeral')).toHaveText('~45 min'); // the cell's own wallclock, one arm
   await expect(setup.getByRole('button', { name: /BARE MODEL/ })).toHaveAttribute('aria-pressed', 'true');
-  // HARNESS is its own arm now — the platform agent with identity off (Design note, 2026-09-29.
+  // HARNESS is its own arm now — the platform agent with identity off (ruling, 2026-09-29).
   await expect(setup.getByRole('button', { name: /^HARNESS/ })).toBeVisible();
   await expect(setup.getByRole('button', { name: /^HARNESS/ })).toContainText('every identity layer off');
-  // Three core arms stand open; the two diagnostic arms wait folded until asked for (Design note, 2026-09-29.
+  // Three core arms stand open; the two diagnostic arms wait folded until asked for (ruling, 2026-09-29).
   await expect(setup.getByRole('button', { name: /PLATFORM WIRE/ })).toBeHidden();
   await setup.getByText('DIAGNOSTIC ARMS — FOR DEBUGGING A SPECIFIC LAYER').click();
   await setup.getByRole('button', { name: /PLATFORM WIRE/ }).click();

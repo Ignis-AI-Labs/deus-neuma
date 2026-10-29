@@ -1,5 +1,5 @@
 /**
- * Ctrl/Cmd+Shift+N opens a new stream window (Design note, 2026-09-29. The chord
+ * Ctrl/Cmd+Shift+N opens a new stream window (ruling, 2026-09-29). The chord
  * decision is pure and proven here on real event-shaped inputs; the window
  * actually opening is proven in test/e2e/desk.spec.js. No mocks (RULE 0).
  */

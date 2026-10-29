@@ -53,7 +53,7 @@ const withStoreQueue = (wallet, task) => {
 // pure — roll recurrence forward to now; the read half of every op.
 const rollForward = (plan, now) => materializeRecurrence(plan, now).plan;
 
-// pure — THE OPERATOR'S OWN LIST IS NEVER CHAT-SCOPED (Design note, 2026-08-01: it is
+// pure — THE OPERATOR'S OWN LIST IS NEVER CHAT-SCOPED (ruling, 2026-08-01): it is
 // their life — training, errands, milestones — not the work of one conversation.
 // The shared assigned-plan shape understands `chatId`, and a being reaches this
 // store through operator_task_add, so the field is stripped HERE, at the one

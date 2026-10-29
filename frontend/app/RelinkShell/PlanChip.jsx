@@ -98,7 +98,7 @@ export const PlanChip = ({ segment, onRespond }) => {
       onRespond(id, decision, words?.trim() || '');
     };
     return (
-      <div className="tool-chip plan-chip pending">
+      <div className="tool-chip plan-chip pending" data-wait-id={id}>
         <div className="tool-chip-head">
           <span className="tool-chip-tag">{chatPlan ? 'PLAN FOR VERDICT' : 'PLAN FOR APPROVAL'}</span>
           {name ? <span className="tool-chip-name">{name}</span> : null}

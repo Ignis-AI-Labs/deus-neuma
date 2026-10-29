@@ -2,8 +2,12 @@
    chrome. The boards inside carry the settings-* section styling; the
    .settings register on the panel carries scroll, padding, and rhythm. */
 
+@import './OutreachApps-floor.css';
+
 .outreach-panel {
   outline: none;
+  /* the console head reflows on the window's width (PlatformConsole.css) */
+  container-type: inline-size;
 }
 
 /* A space's own boards — CAMPAIGNS / QUEUE — hang from this strip. Same
@@ -19,7 +23,7 @@
   border: 1px solid transparent;
   border-bottom: none;
   color: var(--color-text-tertiary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
@@ -92,7 +96,7 @@
   background: transparent;
   border: 1px solid var(--line);
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.26em;
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
@@ -121,7 +125,7 @@
   border: none;
   border-bottom: 1px solid transparent;
   color: var(--color-text-tertiary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
@@ -138,7 +142,7 @@
 /* The count rides with the label, so the strip is an index of the whole board
    before any lane is opened. */
 .queue-lane-n {
-  font-size: 9px;
+  font-size: var(--text-label);
   opacity: 0.6;
 }
 
@@ -163,7 +167,7 @@
    be judged before it is scrolled. */
 .queue-group-n {
   flex: 0 0 auto;
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
@@ -192,102 +196,9 @@
 
 .queue-decisions-n {
   flex: 0 0 auto;
-  font-size: 9px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
-}
-
-/* THE MONTH GRID (Design note, 2026-07-28: […]). The board zoomed OUT: a 6×7 month of
-   days, each carrying only the counts that decide whether it is worth
-   opening. Data register throughout — SIGNAL marks a decision owed, the
-   settled stay in the quiet ink, and replies carry an R so engagement reads
-   separately at a glance. */
-.qcal-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin: var(--space-2) 0 var(--space-3);
-}
-
-.qcal-month {
-  color: var(--color-text-secondary);
-  letter-spacing: 0.22em;
-}
-
-.qcal-weekdays,
-.qcal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-
-.qcal-weekday {
-  font-family: var(--font-data);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: var(--color-text-tertiary);
-  padding: var(--space-1);
-}
-
-.qcal-cell {
-  min-height: 52px;
-  background: transparent;
-  border: 1px solid var(--line);
-  padding: var(--space-1);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-1);
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  font-family: var(--font-data);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-align: left;
-  transition: border-color var(--snap), background var(--snap);
-}
-
-button.qcal-cell:hover {
-  border-color: var(--line-hover);
-  background: var(--color-glass-hover);
-}
-
-/* Padding seats are the neighbouring months' — blank, never clickable, so
-   the grid keeps its 6×7 height without pretending they are days. */
-.qcal-cell.is-pad {
-  border-color: var(--grid);
-  cursor: default;
-}
-
-/* Today speaks in SIGNAL — the one day the operator is standing in. */
-.qcal-cell.is-today .qcal-day { color: var(--signal); }
-
-/* The day you drilled into keeps its mark when you come back to the month. */
-.qcal-cell.is-on {
-  border-color: var(--signal-dim);
-  background: var(--signal-faint);
-}
-
-.qcal-counts {
-  display: flex;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-  font-size: 9px;
-}
-
-.qcal-n.is-await { color: var(--signal); }
-.qcal-n.is-live { color: var(--color-text-secondary); }
-.qcal-n.is-done { color: var(--color-text-tertiary); }
-
-/* F — a failure wants an eye, on the month as on the cards. */
-.qcal-n.is-fail { color: var(--alert-dim); }
-
-/* Replies are distinguished by the R mark and the brighter ink, never a new
-   hue — the month stays monochrome-plus-signal. */
-.qcal-n.is-reply {
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--signal-dim);
 }
 
 /* THE DAY NAVIGATOR — the slim row the day view walks with: back to the
@@ -315,3 +226,6 @@ button.qcal-cell:hover {
   border-color: var(--signal-dim);
   margin: var(--space-2) 0;
 }
+
+/* a short platform window (#585): tighter rhythm, so the decisions are on screen on arrival */
+.outreach-panel.is-short { gap: var(--space-2); padding-top: var(--space-3); }

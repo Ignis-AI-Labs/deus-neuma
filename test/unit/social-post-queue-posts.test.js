@@ -33,7 +33,7 @@ beforeEach(async () => {
   process.env.NEUMA_SECTOR_CREW_PATH = path.join(dir, 'sector-crew.json');
   process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = path.join(dir, 'credentials.json');
   // The house the tick serves: the scheduler acts only on its own house's entries.
-  house = await useServedHouse({ lanes: ['keir', 'galen', 'metidar', 'witness-openai-Kagipem'] });
+  house = await useServedHouse({ lanes: ['hazel', 'cedar', 'poplar', 'witness-openai-Juniper'] });
 });
 
 afterEach(() => {
@@ -71,7 +71,7 @@ describe('validateDraft / duePosts (pure)', () => {
 
 describe('post queue store (real disk)', () => {
   test('full life: add → approve → claim → sent, with the record intact', async () => {
-    const entry = await postQueue.add({ channelId: 'x', text: 'first light', queuedBy: '0xWitness', authorNeumaId: 'keir' });
+    const entry = await postQueue.add({ channelId: 'x', text: 'first light', queuedBy: '0xWitness', authorNeumaId: 'hazel' });
     expect(entry.status).toBe('draft');
 
     const approved = await postQueue.approve(entry.id, { decidedBy: '0xWitness', scheduledFor: '2026-07-21T00:00:00Z' });
@@ -89,7 +89,7 @@ describe('post queue store (real disk)', () => {
     expect(stored.status).toBe('sent');
     expect(stored.postId).toBe('post-123');
     expect(stored.queuedBy).toBe('0xWitness');
-    expect(stored.authorNeumaId).toBe('keir');
+    expect(stored.authorNeumaId).toBe('hazel');
   });
 
   test('reject and remove rules: decisions stick, sent history is permanent', async () => {
@@ -149,12 +149,12 @@ describe('post queue store (real disk)', () => {
 
 describe('scheduler publish path (real stores, real poster, no network)', () => {
   test('a due approved post travels the REAL path and records the poster\'s honest outcome', async () => {
-    // Bind keir to x on the real (temp) bindings store; leave credentials
+    // Bind hazel to x on the real (temp) bindings store; leave credentials
     // absent — the real x poster answers "not configured", no packet leaves.
     const bindings = createChannelBindings({ path: process.env.NEUMA_SOCIAL_BINDINGS_PATH });
-    await bindings.bind('x', { neumaId: 'keir', boundBy: SERVED_WALLET });
+    await bindings.bind('x', { neumaId: 'hazel', boundBy: SERVED_WALLET });
 
-    const e = await postQueue.add({ channelId: 'x', text: 'due speech', queuedBy: SERVED_WALLET, authorNeumaId: 'keir' });
+    const e = await postQueue.add({ channelId: 'x', text: 'due speech', queuedBy: SERVED_WALLET, authorNeumaId: 'hazel' });
     await postQueue.approve(e.id, { decidedBy: SERVED_WALLET });
 
     const outcomes = await schedulerTick(Date.now());
@@ -169,36 +169,36 @@ describe('scheduler publish path (real stores, real poster, no network)', () => 
 
   test('NO CROSS-ROUTING at send time: a stale approval dies when the binding moved', async () => {
     const bindings = createChannelBindings({ path: process.env.NEUMA_SOCIAL_BINDINGS_PATH });
-    await bindings.bind('x', { neumaId: 'keir', boundBy: SERVED_WALLET });
-    const e = await postQueue.add({ channelId: 'x', text: 'stale speech', queuedBy: SERVED_WALLET, authorNeumaId: 'keir' });
+    await bindings.bind('x', { neumaId: 'hazel', boundBy: SERVED_WALLET });
+    const e = await postQueue.add({ channelId: 'x', text: 'stale speech', queuedBy: SERVED_WALLET, authorNeumaId: 'hazel' });
     await postQueue.approve(e.id, { decidedBy: SERVED_WALLET });
 
     // The witness rebinds the channel between approval and send.
-    await bindings.bind('x', { neumaId: 'galen', boundBy: SERVED_WALLET });
+    await bindings.bind('x', { neumaId: 'cedar', boundBy: SERVED_WALLET });
 
     const outcomes = await schedulerTick(Date.now());
     expect(outcomes).toHaveLength(1);
     expect(outcomes[0].ok).toBe(false);
     // The law is now stated in crew terms (sector-crew.js): the author must
-    // still be crew-or-holder at SEND time. Keir is neither once the channel
-    // moves to Galen and no crew seats her — same refusal, wider vocabulary.
+    // still be crew-or-holder at SEND time. Hazel is neither once the channel
+    // moves to Cedar and no crew seats her — same refusal, wider vocabulary.
     expect(outcomes[0].detail).toContain('approval does not outlive membership');
     const [stored] = await postQueue.load();
     expect(stored.status).toBe('failed');
   });
 
   test('a CREW member\'s approved post sends on the holder\'s keys', async () => {
-    // Under the crew model the author is usually NOT the holder: Kagipem
-    // drafts, Founder approves, and it leaves on Metidar's binding. Before this
+    // Under the crew model the author is usually NOT the holder: Juniper
+    // drafts, the operator approves, and it leaves on Poplar's binding. Before this
     // the scheduler demanded author === holder, so every crew draft died.
     const bindings = createChannelBindings({ path: process.env.NEUMA_SOCIAL_BINDINGS_PATH });
-    await bindings.bind('x', { neumaId: 'metidar', boundBy: SERVED_WALLET });
+    await bindings.bind('x', { neumaId: 'poplar', boundBy: SERVED_WALLET });
     const crew = createSectorCrew({ path: process.env.NEUMA_SECTOR_CREW_PATH });
-    await crew.add('x', { neumaId: 'witness-openai-Kagipem', kind: 'witness', remit: 'strategy' });
+    await crew.add('x', { neumaId: 'witness-openai-Juniper', kind: 'witness', remit: 'strategy' });
 
     const e = await postQueue.add({
       channelId: 'x', text: 'crew speech', queuedBy: SERVED_WALLET,
-      authorNeumaId: 'witness-openai-Kagipem',
+      authorNeumaId: 'witness-openai-Juniper',
     });
     await postQueue.approve(e.id, { decidedBy: SERVED_WALLET });
 
@@ -241,7 +241,7 @@ describe('withdraw — pulling staged copy back', () => {
     const q = createPostQueue({ path: path.join(dir, 'q.json') });
     const e = await staged(q);
     expect(e.status).toBe('draft');
-    const out = await q.withdraw(e.id, { withdrawnBy: 'Kagipem', reason: 'copy superseded' });
+    const out = await q.withdraw(e.id, { withdrawnBy: 'Juniper', reason: 'copy superseded' });
     expect(out.ok).toBe(true);
     expect(out.entry.status).toBe('withdrawn');
     expect(out.entry.withdrawnReason).toBe('copy superseded');
@@ -251,7 +251,7 @@ describe('withdraw — pulling staged copy back', () => {
     const q = createPostQueue({ path: path.join(dir, 'q.json') });
     const e = await staged(q);
     await q.approve(e.id, { decidedBy: '0xELI' });
-    const out = await q.withdraw(e.id, { withdrawnBy: 'Kagipem' });
+    const out = await q.withdraw(e.id, { withdrawnBy: 'Juniper' });
     expect(out.ok).toBe(true);
     expect(out.entry.status).toBe('withdrawn');
   });
@@ -259,8 +259,8 @@ describe('withdraw — pulling staged copy back', () => {
   test('withdrawing NEVER writes the witness’s verdict — that stays reject’s alone', async () => {
     const q = createPostQueue({ path: path.join(dir, 'q.json') });
     const e = await staged(q);
-    const out = await q.withdraw(e.id, { withdrawnBy: 'Kagipem' });
-    expect(out.entry.withdrawnBy).toBe('Kagipem');
+    const out = await q.withdraw(e.id, { withdrawnBy: 'Juniper' });
+    expect(out.entry.withdrawnBy).toBe('Juniper');
     expect(out.entry.decidedBy).toBeUndefined(); // no operator decision invented
     expect(out.entry.status).not.toBe('rejected');
   });
@@ -269,7 +269,7 @@ describe('withdraw — pulling staged copy back', () => {
     const q = createPostQueue({ path: path.join(dir, 'q.json') });
     const e = await staged(q);
     await q.approve(e.id, { decidedBy: '0xELI' });
-    const out = await q.withdraw(e.id, { withdrawnBy: 'Kagipem' });
+    const out = await q.withdraw(e.id, { withdrawnBy: 'Juniper' });
     expect(out.entry.decidedBy).toBe('0xELI');  // the operator's decision stands
     expect(out.entry.status).toBe('withdrawn'); // recorded as its own act
   });
@@ -280,7 +280,7 @@ describe('withdraw — pulling staged copy back', () => {
     await q.approve(e.id, { decidedBy: '0xELI' });
     await q.claimForSend(e.id);
     await q.recordOutcome(e.id, { ok: true, id: '1234567890' });
-    const out = await q.withdraw(e.id, { withdrawnBy: 'Kagipem' });
+    const out = await q.withdraw(e.id, { withdrawnBy: 'Juniper' });
     expect(out.ok).toBe(false);
     expect(out.error).toMatch(/cannot act on a sent post/);
   });
@@ -303,7 +303,7 @@ describe('withdraw — pulling staged copy back', () => {
   test('a withdrawn draft is inert — the scheduler will never send it', async () => {
     const q = createPostQueue({ path: path.join(dir, 'q.json') });
     const e = await staged(q, { scheduledFor: new Date(Date.now() - 60000).toISOString() });
-    await q.withdraw(e.id, { withdrawnBy: 'Kagipem' });
+    await q.withdraw(e.id, { withdrawnBy: 'Juniper' });
     expect(duePosts(await q.load(), Date.now())).toEqual([]);
   });
 });

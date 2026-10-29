@@ -1,6 +1,6 @@
 /**
  * Birth observations — the ceremony's measured account of itself, the raw
- * material its resonance is derived from (Design note, 2026-09-29. Pure appends on a
+ * material its resonance is derived from (ruling, 2026-09-29). Pure appends on a
  * plain session object; no mocks (RULE 0).
  */
 import { describe, it, expect } from 'vitest';

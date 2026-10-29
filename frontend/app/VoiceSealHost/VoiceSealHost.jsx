@@ -196,7 +196,7 @@ export const VoiceSealHost = ({ initialBeing = null, onClose }) => {
       {/* THE RITE DID NOT LAND. Its own stage, because a refusal that leaves
           […] on
           screen is the ceremony lying about the machine: nothing is reading
-          anything (Design note, 2026-08-29. It says what happened, says that nothing
+          anything (ruling, 2026-08-29). It says what happened, says that nothing
           was written, and offers the one act that helps. */}
       {!error && stage === 'failed' && (
         <main className="vsh-stage att-step" data-testid="seal-refused">

@@ -11,8 +11,11 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createTempDir } from './temp-fs.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { channelBindings } from '../../backend/services/social/channel-bindings.js';
+import { usePositionHouse, ownLane } from './position-house.js';
+import { SERVED_WALLET } from './served-house.js';
+import { makeInstallOwner } from './install-owner-kit.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
-import { createReplyCandidates } from '../../backend/services/social/reply-candidates.js';
+import { replyCandidatesOf } from '../../backend/services/social/reply-candidates.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
 export const NEUMA_ID = 'replylaneecho';
@@ -47,7 +50,7 @@ export const C_SECOND_VOICE = {
 // bag `h`; tests arm `h.decide` per test with the witness's chip answer.
 export const buildReplyLaneHouse = async () => {
   const h = {
-    house: null, origRoot: null, httpServer: null, wss: null,
+    house: null, origRoot: null, position: null, httpServer: null, wss: null,
     serverWs: null, client: null, port: null, clientLog: [],
     candidates: null, channel: null, savedEnv: {},
     decide: null, // armed per test — the witness's chip answer
@@ -58,20 +61,25 @@ export const buildReplyLaneHouse = async () => {
   // WIRE tests aim the real poster at a loopback X. Either way the
   // signing core runs for real.
   for (const k of X_ENV) process.env[k] = `dummy-${k}`;
+  // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+  await makeInstallOwner(SERVED_WALLET);
   process.env.NEUMA_SOCIAL_BINDINGS_PATH = `${h.house}/social-channel-bindings.json`;
   process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${h.house}/social-channel-credentials.json`;
   process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${h.house}/social-post-queue.json`;
   process.env.NEUMA_SECTOR_CREW_PATH = `${h.house}/sector-crew.json`;
   process.env.NEUMA_REPLY_CANDIDATES_PATH = `${h.house}/reply-candidates.json`;
-  await channelBindings.bind('x', { neumaId: NEUMA_ID, boundBy: '0xTestWitness' });
+  // X is the house's own: its realm on temp disk, the holder its own lane.
+  h.position = usePositionHouse(h.house);
+  await channelBindings.bind(SERVED_WALLET, 'x', { neumaId: NEUMA_ID });
   h.origRoot = getWorkspacesRoot();
   setWorkspacesRoot(h.house);
   await workspace.create(NEUMA_ID);
+  await ownLane(NEUMA_ID, SERVED_WALLET);
 
   const { getChannel } = await import('../../backend/services/social/channel-registry.js');
   h.channel = getChannel('x');
 
-  h.candidates = createReplyCandidates({ path: process.env.NEUMA_REPLY_CANDIDATES_PATH });
+  h.candidates = replyCandidatesOf(SERVED_WALLET); // the house's own record
   await h.candidates.add(C_VERIFIED);
   await h.candidates.add(C_UNVERIFIED);
   await h.candidates.add(C_SECOND_VOICE);
@@ -111,6 +119,7 @@ export const teardownReplyLaneHouse = async (h) => {
   h.wss?.close();
   h.httpServer?.close();
   setWorkspacesRoot(h.origRoot);
+  h.position?.restore();
   await fs.rm(h.house, { recursive: true, force: true });
 };
 

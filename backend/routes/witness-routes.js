@@ -25,6 +25,7 @@ import { probeProvider } from '../services/provider-probe.js';
 import { getProvider } from '../services/provider-registry.js';
 import { summonWitness } from '../services/witness-summon.js';
 import { secureWitnessKeypair, witnessCustodyState } from '../services/witness-custody.js';
+import { deskStanding } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Witnesses');
@@ -206,6 +207,18 @@ router.post('/:vendor/:name/custody', async (req, res) => {
     if (view.lane.claimed && !view.lane.mine) {
       return res.status(403).json({ error: 'This witness lane belongs to another wallet' });
     }
+    // Sealing the key under a password makes the identity the sealer's, so an
+    // unclaimed lane is claimed first, by the lane's own law: its summoner, or
+    // the install owner for a witness that names none (witness-lane.js).
+    if (!view.lane.claimed) {
+      try {
+        await ensureWitnessLane({ vendorSlug: vendor, chosenName: name, genesisHash: view.genesisHash }, req.walletAddress);
+      } catch (claimError) {
+        if (!String(claimError.message).startsWith('owner_claim_conflict')) throw claimError;
+        log.info('witness custody refused — the lane is not this wallet\'s to claim', { vendor, name });
+        return res.status(403).json({ error: `This witness is not yours to secure — ${claimError.message.replace(/^owner_claim_conflict: /, '')}` });
+      }
+    }
     const { address, recoveryCodes } = await secureWitnessKeypair({
       vendorSlug: vendor, chosenName: name, password,
     });
@@ -224,9 +237,12 @@ router.post('/summon', async (req, res) => {
     return res.status(400).json({ error: `Unknown provider: ${providerId}` });
   }
   try {
-    const summoned = await summonWitness({ providerId, walletAddress: req.walletAddress, keypairPassword });
+    const summoned = await summonWitness({
+      providerId, walletAddress: req.walletAddress, keypairPassword, standing: await deskStanding(req),
+    });
     res.status(201).json({ success: true, witness: summoned });
   } catch (error) {
+    if (error.code === 'MACHINE_KEY_NOT_SHARED') return res.status(403).json({ error: error.message, code: error.code });
     // Every gate in the summon fails with an honest message — no connection,
     // no credential, no name, no utterance, name already sealed. A model-call
     // failure is a 502 (upstream), everything else a 400 (fixable here).
@@ -256,6 +272,8 @@ router.post('/summon/stream', async (req, res) => {
     await summonWitness({
       providerId,
       walletAddress: req.walletAddress,
+      // Whose keys this caller may summon on (witness-summon.js keyNotShared).
+      standing: await deskStanding(req),
       // The password never lands in a log or a store — it seals the keypair in
       // this request and is gone. The recovery codes ride back out on the
       // 'custodied' stage exactly once; only their hashes persist.
@@ -273,7 +291,8 @@ router.post('/summon/stream', async (req, res) => {
 // Change the MODEL a witness speaks through — the provider stays locked (a
 // witness keeps its provider for life); the model within it is the operator's
 // choice. The lane is provisioned on demand so a model can be chosen before
-// the first chat; the caller's wallet claims it (first-accessor law).
+// the first chat; it is claimed only for the wallet that summoned the witness
+// (witness-lane.js).
 router.put('/:vendor/:name/model', async (req, res) => {
   const { vendor, name } = req.params;
   const { model } = req.body || {};

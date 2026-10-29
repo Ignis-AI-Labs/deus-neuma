@@ -149,7 +149,10 @@ export const handleSecurityTool = async (ws, connection, neumaPolicy, toolMode, 
       const threat = await (await threatLedgerFor(wallet)).get(String(args?.id || ''));
       if (!threat) throw new Error('no such threat (or the id is ambiguous)');
       send({ tool: toolId, status: 'ok', summary: threat.title.slice(0, 80) });
-      return { tool: toolId, status: 'ok', content: JSON.stringify(threat, null, 2) };
+      // The fix and its proof lead: what to do, and whether a claim was verified.
+      const { id, externalId, title, severity, status, remedy, verifiedAt } = threat;
+      const lead = { id, externalId, title, severity, status, remedy: remedy || null, verifiedAt: verifiedAt || null };
+      return { tool: toolId, status: 'ok', content: JSON.stringify({ ...lead, ...threat }, null, 2) };
     }
     if (toolName === 'security_attack_surface') {
       const threat = args?.id ? await (await threatLedgerFor(wallet)).get(String(args.id)) : null;
@@ -162,7 +165,7 @@ export const handleSecurityTool = async (ws, connection, neumaPolicy, toolMode, 
       return { tool: toolId, status: 'ok', content };
     }
     if (toolName === 'security_telemetry') {
-      const telemetry = await readSecurityTelemetry(args || {});
+      const telemetry = await readSecurityTelemetry({ ...(args || {}), wallet });
       send({ tool: toolId, status: 'ok', summary: `${telemetry.traffic.totals.requests} requests / ${telemetry.traffic.windowSeconds}s` });
       return { tool: toolId, status: 'ok', content: formatTelemetry(telemetry) };
     }

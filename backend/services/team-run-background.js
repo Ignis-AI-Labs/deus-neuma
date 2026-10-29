@@ -24,6 +24,7 @@ import { KIND, STANDING } from '../../core/runtime/notification-record.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { createLogger } from './logger.js';
 import { signalWake } from './house-clock/wake-signal.js';
+import { createBoardSightingWatch } from './security/injection-sightings.js';
 
 const log = createLogger('TeamRunBackground');
 
@@ -100,6 +101,7 @@ export const runTeamInBackground = async ({ entry, plan, connection, record, ask
   // own sitting, every attempt logged, STOP reaching its decode, the
   // operator's guidance continuing it, and the run continuing it on its own
   // when an attempt stops short.
+  const watchBoard = createBoardSightingWatch(connection.walletAddress);
   const worked = createPartRunner({ entry, ask, limit, record, resumed: resume?.failures ?? {}, waits: continueWaits });
 
   let status;
@@ -129,6 +131,7 @@ export const runTeamInBackground = async ({ entry, plan, connection, record, ask
           entry.room?.part(row, e.output);
         }
         if (e.type === 'board') {
+          watchBoard(e.board); // a flag for the CSO, never awaited (G13)
           send({ type: 'operator:team_board', id: runId, board: withNames(e.board) });
           entry.room?.board(withNames(e.board));
         }

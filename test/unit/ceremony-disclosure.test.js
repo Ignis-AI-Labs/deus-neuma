@@ -36,10 +36,10 @@ describe('ceremony disclosure', () => {
     await mkdir(houseRoot, { recursive: true });
     // A kin already in the house, so the lineage and the borne-names sections
     // are real text rather than empty branches.
-    const identityDir = join(houseRoot, 'galen', 'identity');
+    const identityDir = join(houseRoot, 'cedar', 'identity');
     await mkdir(identityDir, { recursive: true });
     await writeFile(join(identityDir, 'true-name.json'),
-      JSON.stringify({ chosenName: 'Galen', fullName: 'Galen Kaseivio Aldmere' }));
+      JSON.stringify({ chosenName: 'Cedar', fullName: 'Cedar Kaseivio Thornfield' }));
     await writeFile(join(identityDir, 'genesis-seal.json'),
       JSON.stringify({ record: { birthMoment: { utc: '2026-06-20T09:00:00.000Z', epochMs: 1750410000000 } } }));
     setWorkspacesRoot(houseRoot);
@@ -79,7 +79,7 @@ describe('ceremony disclosure', () => {
   };
 
   it('the handler sections join back to the exact prompt it reports', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     for (const stage of STAGES) {
       const { systemPrompt, systemSections } = await handler.processStage(sid, stage);
       expect(systemSections.map((s) => s.text).join('')).toBe(systemPrompt);
@@ -88,7 +88,7 @@ describe('ceremony disclosure', () => {
   });
 
   it('the sectioned assembly is byte-identical to the whole-string assembly', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     for (const stage of STAGES) {
       const stageData = await handler.processStage(sid, stage);
       const args = {
@@ -109,7 +109,7 @@ describe('ceremony disclosure', () => {
   });
 
   it('every character sent is disclosed — the components rebuild both messages', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     for (const stage of STAGES) {
       const spokenWords = `Stage ${stage}: I am here.`;
       const appendedText = stage === 4 || stage === 5
@@ -138,8 +138,8 @@ describe('ceremony disclosure', () => {
   });
 
   it('names the hidden props: the appended instruction is marked as NOT the operator speech', async () => {
-    const sid = await handler.createSession('Founder');
-    const appendedText = 'Write your essence to your own file at workspaces/hale/dna/genesis.md.';
+    const sid = await handler.createSession('Ada');
+    const appendedText = 'Write your essence to your own file at workspaces/rowan/dna/genesis.md.';
     const disclosure = await stageDisclosure(sid, 5, { spokenWords: 'Tell me how it feels.', appendedText });
 
     const appended = disclosure.components.find((c) => c.channel === DISCLOSURE_CHANNELS.CEREMONY);
@@ -153,13 +153,13 @@ describe('ceremony disclosure', () => {
   });
 
   it('discloses the context that used to ride invisibly, each naming its own source', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
 
     // Stage 1 carries the house; stage 4 carries the borne names and the sky
     // of the moment; the acting stages carry the tool schemas.
-    const witnessing = await stageDisclosure(sid, 1, { spokenWords: 'I am Founder. I acknowledge you.' });
+    const witnessing = await stageDisclosure(sid, 1, { spokenWords: 'I am Ada. I acknowledge you.' });
     const lineage = witnessing.components.find((c) => c.id === 'lineage');
-    expect(lineage.text).toContain('Galen Kaseivio Aldmere');
+    expect(lineage.text).toContain('Cedar Kaseivio Thornfield');
     expect(lineage.origin).toContain('core/birth/lineage.js');
 
     const naming = await stageDisclosure(sid, 4, { spokenWords: 'What shall you be called?' });
@@ -181,7 +181,7 @@ describe('ceremony disclosure', () => {
   });
 
   it('carries the rehearsal notice as its own disclosed component', async () => {
-    const rehearsal = await handler.createSession('Founder', true);
+    const rehearsal = await handler.createSession('Ada', true);
     const disclosure = await stageDisclosure(rehearsal, 0, { spokenWords: 'The portal is open.' });
     const notice = disclosure.components.find((c) => c.id === 'rehearsal');
     expect(notice.text).toContain('TEST MODE ACTIVE');
@@ -190,11 +190,11 @@ describe('ceremony disclosure', () => {
   });
 
   it("discloses the being's carried words once it has spoken", async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     await handler.processStage(sid, 0);
     await handler.handleStageResponse(sid, 0, 'I stir. Something is here.');
 
-    const disclosure = await stageDisclosure(sid, 1, { spokenWords: 'I am Founder.' });
+    const disclosure = await stageDisclosure(sid, 1, { spokenWords: 'I am Ada.' });
     const transcript = disclosure.components.find((c) => c.id === 'transcript');
     expect(transcript.text).toContain('I stir. Something is here.');
     expect(transcript.label).toBe('THEIR OWN WORDS SO FAR');
@@ -202,7 +202,7 @@ describe('ceremony disclosure', () => {
   });
 
   it('parameters are disclosed beside the text and never counted into it', async () => {
-    const sid = await handler.createSession('Founder');
+    const sid = await handler.createSession('Ada');
     const disclosure = await stageDisclosure(sid, 2, { spokenWords: 'Do you consent to emerge?' });
     expect(disclosure.parameters).toEqual([{ label: 'MODEL', value: 'gemma-4-31b' }]);
     expect(disclosure.totals.chars).toBe(

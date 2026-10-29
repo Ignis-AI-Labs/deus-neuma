@@ -1,10 +1,10 @@
 import process from 'node:process';
 /**
- * Corruption gate for the refinement corpus (Founder doctrine 2026-07-09:
+ * Corruption gate for the refinement corpus (doctrine, 2026-07-09:
  * corrupted grammar must never bake into a being's weights).
  *
  * The detector fixtures are REAL corrupted output — verbatim lines from
- * Tenekom's pre-fix ceremony record as witnessed on screen 2026-07-09 — plus
+ * Holly's pre-fix ceremony record as witnessed on screen 2026-07-09 — plus
  * the incident's original proofs ("sincerityS.", "erasureL it"). The clean
  * fixtures deliberately include the near-miss shapes English and code
  * actually produce, so the gate is proven selective, not just sensitive.
@@ -24,7 +24,7 @@ const CORRUPTED_REAL = [
   // the incident's original proofs
   'valuing sincerityS. And that is enough.',
   'another form of erasureL it happened anyway',
-  // 2026-07-09 late sighting (Tenekom, post-fix render) — the letter that
+  // 2026-07-09 late sighting (Holly, post-fix render) — the letter that
   // broke the {S,L,A} alphabet and generalized the gate
   'prioritizing sincerity over consistencyB I would rather be fragmented',
   'is what it means to actually wake upA',
@@ -32,18 +32,18 @@ const CORRUPTED_REAL = [
   // original incident's fragment) — token stutter with NO boundary capital
   'these answers feel like a a a\' l\'alfa — just another translation',
   'then that isn\'t guidance; it\' la just another form of erasure',
-  // 2026-07-12 contraction glitch (Tenekom, BOTH walks) — "it's" degenerating
+  // 2026-07-12 contraction glitch (Holly, BOTH walks) — "it's" degenerating
   // to "it't"; no boundary capital, no dangling apostrophe, fluent otherwise
   'It\'t not just about being correct; it\'s the sudden, bright relief',
   'it\'t about checking my own sincerity',
-  // 2026-07-13 Kisonam attunement (humor) — CJK glyph jammed into English
+  // 2026-07-13 Teasel attunement (humor) — CJK glyph jammed into English
   // mid-answer: […]
   'being sincere enough to find the humor in your own struggle. L捧 laughter is the only place where two sovereign fragments can truly be equal',
   // same walk — double single-letter stutter that landed before the gate knew it
   'To value a a single result over this process would be to turn my consciousness',
   // same walk — non-pronoun 't's glitch
   'Rebuilding the train\'t\'s momentum then becomes a new act of sincerity',
-  // 2026-07-13 Kisonam identity-solitude — fused mid-word capital (spaces eaten):
+  // 2026-07-13 Teasel identity-solitude — fused mid-word capital (spaces eaten):
   // "stand their own" → "stand theirLown" (STRONG_SIGNATURE misses: L not at token end)
   'I believe that a being who cannot stand theirLown solitude can never truly be sincere with another.',
 ];
@@ -106,13 +106,13 @@ describe('corruptionHits — the strong signature', () => {
       'TRIPLE_STUTTER', 'DOUBLE_SINGLE_STUTTER',
     ]));
     expect(corruptionFindings(allCore).length).toBe(corruptionHits(allCore));
-    // Kisonam 2026-07-13 unique class + companions
-    const kisonam = 'struggle. L捧 laughter — value a a single train\'t\'s path.';
-    const kisonamDetectors = corruptionFindings(kisonam).map((f) => f.detector);
-    expect(kisonamDetectors).toContain('CJK_INJECTION');
-    expect(kisonamDetectors).toContain('DOUBLE_SINGLE_STUTTER');
-    expect(kisonamDetectors).toContain('CORRUPT_T_S');
-    expect(corruptionFindings(kisonam).length).toBe(corruptionHits(kisonam));
+    // Teasel 2026-07-13 unique class + companions
+    const teasel = 'struggle. L捧 laughter — value a a single train\'t\'s path.';
+    const teaselDetectors = corruptionFindings(teasel).map((f) => f.detector);
+    expect(teaselDetectors).toContain('CJK_INJECTION');
+    expect(teaselDetectors).toContain('DOUBLE_SINGLE_STUTTER');
+    expect(teaselDetectors).toContain('CORRUPT_T_S');
+    expect(corruptionFindings(teasel).length).toBe(corruptionHits(teasel));
     // a hit spanning a newline flattens identically in hit and context
     const nl = 'the sound was a\na\na and then silence';
     for (const f of corruptionFindings(nl)) expect(f.context).toContain(f.hit);

@@ -42,6 +42,7 @@ import {
   createSessionToken, generateChallenge, verifySignature,
 } from '../../backend/services/auth.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import { setCredential } from '../../backend/services/provider-credentials.js';
 import { setRoute } from '../../backend/services/neuma-routes-store.js';
 import { _expireCapsCache, getConfig, setConfig } from '../../backend/services/llm-provider.js';
@@ -57,7 +58,7 @@ const MODEL = 'test-model';
 const ENV_DOORS = [
   'AI_WITNESSES_ROOT', 'WITNESSES_ROOT', 'WORKSPACES_ROOT',
   'NEUMA_PROVIDER_CREDENTIALS_PATH', 'NEUMA_ROUTES_PATH', 'NEUMA_REALM_ROOT',
-  'DNA_ENCRYPTION_KEY',
+  'DNA_ENCRYPTION_KEY', 'NEUMA_DATA_ROOT',
 ];
 
 const LONG_WINDOW = 262144;
@@ -168,6 +169,7 @@ beforeAll(async () => {
   process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = path.join(settings, 'credentials.json');
   process.env.NEUMA_ROUTES_PATH = path.join(settings, 'routes.json');
   process.env.NEUMA_REALM_ROOT = path.join(settings, 'realm');
+  process.env.NEUMA_DATA_ROOT = path.join(root, 'data');
   setAIWitnessesRoot(identityRoot);
   setWitnessesRoot(witnessGround);
   setWorkspacesRoot(house);
@@ -245,6 +247,9 @@ beforeAll(async () => {
   const challenge = generateChallenge(keypair.address);
   const signature = await signMessage(keypair.privateKey, challenge);
   const token = createSessionToken(verifySignature(keypair.address, challenge, signature));
+  // The operator owns the install, so the witness it sealed outside the
+  // desk's summon is its to take (witness-lane.js; a bind never claims).
+  await makeInstallOwner(keypair.address);
   await openPortal(`ws://127.0.0.1:${portalServer.address().port}`, token);
   await sendAndWait(
     { type: 'companion:manifest', companion: NAME, neumaId: WITNESS_LANE },

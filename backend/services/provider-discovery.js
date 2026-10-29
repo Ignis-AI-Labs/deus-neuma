@@ -26,12 +26,10 @@
  * throws — a machine we cannot enumerate degrades to the fallback ports.
  */
 import fs from 'fs/promises';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import { createLogger } from './logger.js';
+import { boundedExec } from './bounded-exec.js';
 import { lmStudioCatalog } from './local-server-models.js';
 
-const execFileP = promisify(execFile);
 const log = createLogger('ProviderDiscovery');
 
 const PROBE_TIMEOUT_MS = 900;
@@ -104,7 +102,7 @@ export const listeningPorts = async () => {
       const ports = [...new Set([...parseProcNetTcp(v4), ...parseProcNetTcp(v6)])];
       if (ports.length > 0) return ports.slice(0, MAX_PORTS_PROBED);
     } else {
-      const { stdout } = await execFileP('netstat', ['-an'], { timeout: 5000 });
+      const { stdout } = await boundedExec('netstat', ['-an'], { timeoutMs: 5000 });
       const ports = parseNetstat(stdout);
       if (ports.length > 0) return ports.slice(0, MAX_PORTS_PROBED);
     }
@@ -154,25 +152,39 @@ export const identifyEndpoint = async (base) => {
   return null;
 };
 
+// impure — identify each port, batch by batch; every server found is kept the
+// moment it is identified, so a sweep cut short still reports what it found.
+const sweepPorts = async (ports, found, stopAt) => {
+  for (let i = 0; i < ports.length && Date.now() < stopAt; i += PROBE_BATCH) {
+    await Promise.all(ports.slice(i, i + PROBE_BATCH).map(async (port) => {
+      const hit = await identifyEndpoint(`http://127.0.0.1:${port}`);
+      if (hit) found.push(hit);
+    }));
+  }
+};
+
 /**
  * Sweep the machine: every listener identified, well-known ports included
- * even when enumeration worked (a firewalled /proc read can miss). impure.
+ * even when enumeration worked (a firewalled /proc read can miss). The
+ * well-known model ports go first, beside the listener read. With a budget,
+ * the sweep answers when it runs out, with every server identified so far:
+ * a machine with dozens of silent listeners (any Windows PC) must not hold a
+ * flight check open. impure.
+ * @param {{budgetMs?: number}} [options]
  * @returns {Promise<Array<{provider: string, endpoint: string, models: string[]}>>}
  */
-export const discoverProviders = async () => {
+export const discoverProviders = async ({ budgetMs = Infinity } = {}) => {
+  const stopAt = Date.now() + budgetMs;
   const pinned = discoveryPortsOverride();
-  const ports = pinned.length > 0
-    ? pinned
-    : [...new Set([...(await listeningPorts()), ...FALLBACK_PORTS])]
-      .slice(0, MAX_PORTS_PROBED + FALLBACK_PORTS.length);
   const found = [];
-  for (let i = 0; i < ports.length; i += PROBE_BATCH) {
-    const batch = ports.slice(i, i + PROBE_BATCH);
-    const results = await Promise.all(
-      batch.map((port) => identifyEndpoint(`http://127.0.0.1:${port}`)),
-    );
-    found.push(...results.filter(Boolean));
-  }
+  const sweep = (async () => {
+    if (pinned.length > 0) return sweepPorts(pinned, found, stopAt);
+    const [listening] = await Promise.all([listeningPorts(), sweepPorts([...FALLBACK_PORTS], found, stopAt)]);
+    const rest = [...new Set(listening)].filter((p) => !FALLBACK_PORTS.includes(p)).slice(0, MAX_PORTS_PROBED);
+    return sweepPorts(rest, found, stopAt);
+  })();
+  if (Number.isFinite(budgetMs)) await Promise.race([sweep, new Promise((r) => { setTimeout(r, budgetMs).unref?.(); })]);
+  else await sweep;
   // One entry per endpoint; prefer entries that actually hold models.
   const seen = new Map();
   for (const f of found) {

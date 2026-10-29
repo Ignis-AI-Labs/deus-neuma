@@ -54,10 +54,9 @@ test('the identity door reads in INK, with the dress TRIM on its accents — nev
 
 test('with no dress the gateway stands stock', async ({ page }) => {
   await page.goto('/?noboot=1');
-  expect(await signalVar(page)).toBe('#5FE9FF');
-  // Stock headings ride the secondary ink — the register exists pre-dress.
-  // (a custom property reads back as written — 0.7 and 0.70 are the same ink)
+  expect(await signalVar(page)).toBe('#4FD6E8');
+  // Stock headings wear CYBERDECK's soft amber — the register exists pre-dress.
   expect(await page.evaluate(() =>
-    getComputedStyle(document.body).getPropertyValue('--color-heading').trim())).toMatch(/^rgba\(255, 255, 255, 0\.70?\)$/);
+    getComputedStyle(document.body).getPropertyValue('--color-heading').trim())).toBe('#E9B872');
   await expect(page.locator('#portal-enter')).toBeVisible();
 });

@@ -1,0 +1,66 @@
+/* health-strip — a console's state in one read (HealthStrip.jsx): one cell
+   per part, its level as a shape, the one number that decides it. As many
+   columns as cells when wide, half as many narrower, two when narrow. */
+
+.hlth {
+  display: grid;
+  grid-template-columns: repeat(var(--hlth-cols, 6), minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.hlth .hlth-cell {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "mark part word"
+    "num  num  num"
+    "what what what";
+  align-items: center;
+  gap: 4px var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  min-width: 0;
+  text-align: left;
+  font-family: var(--font-data);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: var(--border-width-thin) solid var(--line);
+  border-left-width: var(--border-width-medium);
+  border-radius: 0;
+  cursor: pointer;
+  /* a level change swells, never cuts (no-flash law) */
+  transition: border-color 0.24s ease, background-color 0.24s ease;
+}
+.hlth-cell:hover { border-color: var(--line-hover); }
+.hlth-cell:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.hlth-cell .lvl-mark { grid-area: mark; }
+.hlth-part { grid-area: part; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-secondary); }
+.hlth-word { grid-area: word; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.hlth-num {
+  grid-area: num;
+  font-size: var(--text-3xl);
+  font-weight: 200;
+  line-height: 1;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.hlth-unit { font-size: 0.55em; margin-left: 2px; color: var(--color-text-tertiary); }
+.hlth-what {
+  grid-area: what;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.hlth-cell.is-ok { border-left-color: var(--line-hover); }
+.hlth-cell.is-warm { border-left-color: var(--alert-dim); }
+.hlth-cell.is-warm .hlth-word { color: var(--alert-dim); }
+.hlth-cell.is-hot, .hlth-cell.is-fault { border-left-color: var(--alert); background: var(--alert-tint); }
+.hlth-cell.is-hot .hlth-word, .hlth-cell.is-fault .hlth-word,
+.hlth-cell.is-hot .hlth-num, .hlth-cell.is-fault .hlth-num { color: var(--alert); }
+@container (max-width: 1180px) { .hlth { grid-template-columns: repeat(var(--hlth-cols-mid, 3), minmax(0, 1fr)); } }
+@container (max-width: 560px) { .hlth { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hlth-cell { transition: none; }
+}

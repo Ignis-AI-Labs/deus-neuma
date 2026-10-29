@@ -16,22 +16,34 @@
 // saws beating under everything; bells are harmonic glass (ratio 2), never
 // inharmonic metal; width and echo carry the intricacy.
 //
+// Design note, 2026-10-28: […].
+// So: nothing rumbles (a 90 Hz low cut; the ground and every low strike sit
+// an octave or more higher than before), a strike no longer drops in pitch
+// (that is a trailer's boom), the air is breath above the notes rather than
+// wind beneath them, the pad is sine and triangle (no saw), the room is a
+// smaller, brighter one and the echo lets go sooner, and the top end is no
+// longer darkened. The notes themselves play consonant (consonant-tuning.js).
+// Then, […]: a
+// roomier space whose tail stays bright (length was never the scary part;
+// darkness and rumble were). No held chord over the ground: Founder, the same
+// day — […].
+//
 // scheduleMusic renders into ANY BaseAudioContext — a live AudioContext for
 // the ceremony, an OfflineAudioContext to listen to it headless.
 
 export const PATCH = Object.freeze({
-  master: Object.freeze({ gain: 2.6, drive: 1.15, lowCut: 45, shelfHz: 5000, shelfDb: -4 }),
-  room: Object.freeze({ seconds: 4.2, decay: 2.6, wet: 0.3, tone: 4800 }),
-  echo: Object.freeze({ beats: 0.75, feedback: 0.34, wet: 0.2, tone: 2600 }),
+  master: Object.freeze({ gain: 2.6, drive: 1.05, lowCut: 90, shelfHz: 5000, shelfDb: -1.5 }),
+  room: Object.freeze({ seconds: 3.4, decay: 2.8, wet: 0.26, tone: 7000 }),
+  echo: Object.freeze({ beats: 0.75, feedback: 0.24, wet: 0.14, tone: 3200 }),
   spread: 0.8, // how wide the notes are placed (0 mono … 1 hard left/right)
   drift: Object.freeze({ hz: 0.11, cents: 2.5 }),
-  drone: Object.freeze({ waves: ['sine', 'triangle'], detune: [0, 2], cutoff: 320, q: 0.4, swellHz: 0.06, swellDepth: 0.5, gain: 0.016 }),
-  pad: Object.freeze({ waves: ['triangle', 'sawtooth'], detune: [-5, 5], cutoff: 1300, q: 0.4, attack: 1.8, release: 3.4, gain: 0.024 }),
+  drone: Object.freeze({ waves: ['sine', 'triangle'], detune: [0, 2], cutoff: 700, q: 0.4, swellHz: 0.06, swellDepth: 0.5, gain: 0.013 }),
+  pad: Object.freeze({ waves: ['triangle', 'sine'], detune: [-4, 4], cutoff: 1600, q: 0.4, attack: 1.8, release: 3.4, gain: 0.026 }),
   bell: Object.freeze({ ratio: 2, index: 0.9, attack: 0.006, shimmer: 0.1, gain: 0.08, echo: 0.35 }),
   pluck: Object.freeze({ wave: 'triangle', cutoff: 2200, gain: 0.085, echo: 0.55 }),
   current: Object.freeze({ cutoff: 1800, attack: 0.008, gain: 0.04, echo: 0.6 }),
-  thump: Object.freeze({ drop: 2, gain: 0.1 }),
-  air: Object.freeze({ q: 1.6, sweepHz: 0.05, gain: 0.016 }),
+  thump: Object.freeze({ drop: 1, attack: 0.012, gain: 0.07 }),
+  air: Object.freeze({ octaves: 2, q: 3, sweepHz: 0.05, gain: 0.007 }),
   breath: Object.freeze({ depth: 0.5, gain: 0.03 }),
 });
 
@@ -233,14 +245,15 @@ export const scheduleMusic = (ctx, music, { fromMs = 0, startAt = ctx.currentTim
       const n = src(ctx.createBufferSource());
       n.buffer = noise;
       n.loop = true;
+      const airHz = b.hz * 2 ** P.air.octaves; // breath above the note, never wind beneath it
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.value = b.hz;
+      bp.frequency.value = airHz;
       bp.Q.value = P.air.q;
       const sweep = src(ctx.createOscillator());
       sweep.frequency.value = P.air.sweepHz;
       const sd = ctx.createGain();
-      sd.gain.value = b.hz * 0.3;
+      sd.gain.value = airHz * 0.3;
       sweep.connect(sd);
       sd.connect(bp.frequency);
       const env = envelope(b.levels, P.air.gain, b.from, b.to);
@@ -344,7 +357,7 @@ export const scheduleMusic = (ctx, music, { fromMs = 0, startAt = ctx.currentTim
       o.frequency.setValueAtTime(e.hz * p.drop, at);
       o.frequency.exponentialRampToValueAtTime(e.hz, at + 0.12);
       out.gain.setValueAtTime(0.0001, at);
-      out.gain.exponentialRampToValueAtTime(p.gain * e.vel, at + 0.006);
+      out.gain.exponentialRampToValueAtTime(p.gain * e.vel, at + p.attack);
       out.gain.exponentialRampToValueAtTime(0.0001, at + Math.min(dur, 0.9));
       o.connect(out);
       o.start(at);

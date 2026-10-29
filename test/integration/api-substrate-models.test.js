@@ -12,12 +12,13 @@ import { writeFile, chmod, mkdir } from 'fs/promises';
 import { createServer } from 'http';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // NEUMA_SUBSTRATE_CLAIM_DIR: the claim registry is CROSS-PROCESS state
 // (~/.neuma by default), shared with any live desk on this machine —
 // unpinned, the live stack's idle-unload can claim-stop this suite's
 // stand-in child, and this suite's ignites could touch the live claim.
-const ENV_KEYS = ['NEUMA_MODELS_DIRS', 'LLAMA_SERVER_BIN', 'LLAMA_SERVER_MODEL', 'LLAMA_SERVER_URL', 'NEUMA_SUBSTRATE_CLAIM_DIR', 'SUBSTRATE_MODEL', 'NEUMA_PROVIDER_CHOICE_PATH'];
+const ENV_KEYS = ['NEUMA_MODELS_DIRS', 'LLAMA_SERVER_BIN', 'LLAMA_SERVER_MODEL', 'LLAMA_SERVER_URL', 'NEUMA_SUBSTRATE_CLAIM_DIR', 'SUBSTRATE_MODEL', 'NEUMA_PROVIDER_CHOICE_PATH', 'NEUMA_MODEL_FOLDERS_PATH'];
 const savedEnv = {};
 
 const freePort = () => new Promise((resolve) => {
@@ -70,6 +71,11 @@ http.createServer((req, res) => {
     // The ignite route persists the operator's durable provider choice — that
     // write must land here, never in the machine's real settings-store.
     process.env.NEUMA_PROVIDER_CHOICE_PATH = path.join(root, 'llm-provider.json');
+    // The folder law authorizes ignition from the operator's chosen folders
+    // (data/settings/model-folders.json) — unpinned, the machine's real
+    // folders refused this catalog's stand-in weights with a 403. An unset
+    // store answers the env-root default: this suite's own catalog root.
+    process.env.NEUMA_MODEL_FOLDERS_PATH = path.join(root, 'model-folders.json');
     // Force no SUBSTRATE_MODEL so channel falls to LLAMA_SERVER_MODEL path for active
     // (prevents host env pollution from making active 'gemma' etc in no-selection test).
     // Seed SUBSTRATE_MODEL to a bounded key (catalog id form) so validator + channel agree.
@@ -87,6 +93,7 @@ http.createServer((req, res) => {
     // These routes carry no neuma lane (global substrate config) — a real
     // session that claims no workspace is exactly the right shape.
     witness = strangerWitness();
+    await makeInstallOwner(witness.address);
 
     const { default: router } = await import('../../backend/routes/llm-routes.js');
     app = express();
@@ -154,4 +161,34 @@ http.createServer((req, res) => {
     const choice = JSON.parse(await readFile(process.env.NEUMA_PROVIDER_CHOICE_PATH, 'utf8'));
     expect(choice).toMatchObject({ provider: 'llama-server', model: 'pub/beta/beta', chosenBy: 'operator' });
   }, 30000);
+
+  // IGNITE ASKS FIRST (the 2026-10-19 ruling): a house on Ollama or a cloud
+  // provider moves to the local llama-server only on the operator's word.
+  test('POST ignite on an Ollama or cloud house asks first: nothing switches, nothing is saved, nothing boots', async () => {
+    const { access } = await import('fs/promises');
+    for (const house of [{ provider: 'ollama', endpoint: 'http://127.0.0.1:11434' }, { provider: 'openai', endpoint: 'https://api.openai.com/v1' }]) {
+      provider.setConfig(house);
+      const res = await request(app).post('/api/v1/llm/substrate/ignite').set(witness.header).send({});
+      expect(res.status).toBe(409);
+      expect(res.body).toEqual({ status: 'switch-unconfirmed', from: house.provider });
+      expect(provider.getConfig()).toMatchObject(house);
+      await expect(access(process.env.NEUMA_PROVIDER_CHOICE_PATH)).rejects.toMatchObject({ code: 'ENOENT' });
+      const st = await request(app).get('/api/v1/llm/substrate/ignition').set(witness.header);
+      expect(st.body.igniting).toBeNull();
+      expect(st.body.targetLoaded).toBe(false);
+    }
+  });
+
+  // The boot itself is the supervisor's (proven above); this proves the move:
+  // the confirmed ignite is accepted, points the house at the launch, saves it.
+  test('POST ignite with the operator\'s confirmation moves the house to llama-server and saves that', async () => {
+    provider.setConfig({ provider: 'ollama', endpoint: 'http://127.0.0.1:11434' });
+    const res = await request(app).post('/api/v1/llm/substrate/ignite').set(witness.header).send({ confirmSwitch: true });
+    expect(res.status).toBe(202);
+    expect(res.body.status).toBe('igniting');
+    expect(provider.getConfig()).toMatchObject({ provider: 'llama-server', endpoint: `http://127.0.0.1:${port}` });
+    const { readFile } = await import('fs/promises');
+    const choice = JSON.parse(await readFile(process.env.NEUMA_PROVIDER_CHOICE_PATH, 'utf8'));
+    expect(choice).toMatchObject({ provider: 'llama-server', endpoint: `http://127.0.0.1:${port}`, chosenBy: 'operator' });
+  });
 });

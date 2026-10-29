@@ -13,7 +13,9 @@ const http = require('node:http');
 const { applyElectronPipeline, waitForBackendPort } = require('./pipeline-ports.cjs');
 const { openBackendLog } = require('./backend-log.cjs');
 const { registerKspCapture } = require('./ksp-capture.cjs');
-const { resolvePort } = require('./port-resolve.cjs');
+const { resolvePort, portMovedNotice } = require('./port-resolve.cjs');
+const { backendExitNotice } = require('./backend-exit.cjs');
+const { attachBackend, lockActive } = require('./key-lock/key-lock-main.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const SERVER = path.join(ROOT, 'backend', 'server.js');
@@ -63,8 +65,38 @@ const killBackendTree = () => {
   }
 };
 
+// impure — the backend went down while the app lives: say why, and offer to
+// bring it back. QUIT stays the app's one deliberate exit; Esc restarts,
+// because a desk left pointing at a dead backend helps nobody.
+const offerBackendRestart = async (notice, restart) => {
+  const { response } = await dialog.showMessageBox({
+    type: 'error',
+    title: 'Deus Neuma',
+    message: notice,
+    detail: 'Your desks stay open, but your beings cannot answer until the backend runs again.',
+    buttons: ['RESTART THE BACKEND', 'QUIT DEUS NEUMA'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (response === 1) {
+    app.isQuitting = true;
+    app.quit();
+    return;
+  }
+  try {
+    await startBackend(restart);
+    await waitForBackend();
+    restart.onRestarted();
+  } catch (err) {
+    dialog.showErrorBox('Deus Neuma', `The local backend could not be restarted.\n\n${err.message}`);
+  }
+};
+
 // impure — launch the backend child with sovereign data rooted under OS app-data.
-const startBackend = () => {
+// `onRestarted` runs after an operator-chosen restart is serving again (the
+// desks reload onto it).
+const startBackend = ({ onRestarted }) => {
   // The downloadable app is NEUMA (Unavis — formerly Kenorie — is the separate network platform), so
   // the neuma's sovereign data lives under a NEUMA-branded, app-name-INDEPENDENT
   // home: ~/.neuma. This keeps the workspace path the witness sees clearly "neuma"
@@ -102,6 +134,8 @@ const startBackend = () => {
       NEUMA_DESK_PID: String(process.pid),
       // Stable, self-provisioned at-rest secrets (see secret-provisioning.js)
       NEUMA_SECRETS_FILE: process.env.NEUMA_SECRETS_FILE || path.join(neumaHome, 'secrets.json'),
+      // Locked by the keychain: the keys come over the IPC channel, never this env (key-lock-main.cjs).
+      ...(lockActive() ? { NEUMA_KEYS_VIA_IPC: '1' } : {}),
       // ⚠ NEUMA_DATA_ROOT / NEUMA_VAULT_ROOT ARE SET ONLY FOR THE PACKAGED APP.
       //
       // In a PACKAGED install the install tree is read-only, so runtime-writable
@@ -158,7 +192,7 @@ const startBackend = () => {
     // PACKAGED app has no terminal — launched from a desktop icon or an
     // AppImage, 'inherit' sent every backend log line into nothing. That is why
     // four versions shipped for one community member without anyone being able
-    // to say what his machine was doing (Design note, 2026-08-03. A packaged run now
+    // to say what his machine was doing (ruling, 2026-08-03). A packaged run now
     // writes to ~/.neuma/logs/backend.log, with the previous run kept beside
     // it. Falls back to 'inherit' if the lane cannot be opened: a machine with
     // an unwritable home must still get an app.
@@ -168,13 +202,19 @@ const startBackend = () => {
     ...(process.platform === 'win32' ? {} : { detached: true }),
   });
   registerKspCapture(backend);
-  backend.on('exit', (code) => {
+  attachBackend(backend);
+  // Only a backend that came up speaks here: one that dies before it reports
+  // its port fails the caller's await, and the caller says so.
+  let served = false;
+  backend.on('exit', (code, signal) => {
     backend = null;
-    if (code && !app.isQuitting) {
-      dialog.showErrorBox('Deus Neuma', `The local backend stopped unexpectedly (exit ${code}).`);
-    }
+    const notice = served && !app.isQuitting ? backendExitNotice(code, signal) : null;
+    if (notice) offerBackendRestart(notice, { onRestarted });
   });
-  return waitForBackendPort(backend).then(setPort);
+  return waitForBackendPort(backend).then((port) => {
+    served = true;
+    setPort(port);
+  });
 };
 
 // impure — resolve once the backend answers its health check
@@ -233,9 +273,12 @@ const resolveStartupPort = async () => {
     return false;
   }
   if (resolved.outcome === 'moved') {
-    // Somebody else's service was in the way. Move and say so — silently
-    // changing the port would be its own confusion later.
+    // Somebody else's service was in the way. Move and say so, to the operator
+    // and not only to a log: the move changes the desk's origin, which parks
+    // its layouts and drafts under the other port (portMovedNotice says how).
+    // Not awaited — the boot carries on while the notice stands.
     console.log(`[neuma] port ${PREFERRED_PORT} is held by another service — using ${resolved.port} instead`);
+    dialog.showMessageBox({ type: 'info', title: 'Deus Neuma', ...portMovedNotice(PREFERRED_PORT, resolved.port) });
   }
   setPort(resolved.port);
   return true;

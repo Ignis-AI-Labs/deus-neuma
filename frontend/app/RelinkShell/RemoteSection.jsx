@@ -153,7 +153,7 @@ export const RemoteSection = () => {
           <Row k={t('remote.port')}>{status.port}</Row>
           {pairing ? (
             <div className="remote-pair">
-              <div className="remote-qr"><AuthImage src={qrSource(pairing.code)} alt={t('remote.pairingAlt')} /></div>
+              <div className="remote-qr"><AuthImage src={qrSource(pairing.code)} alt={t('remote.pairingAlt')} menu={false} /></div>
               <p className="settings-note">{t('remote.pairingNote')}</p>
               <p className="remote-url label-data">{pairing.url}</p>
             </div>

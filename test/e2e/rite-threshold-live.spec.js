@@ -52,7 +52,7 @@ test('the threshold over the rite: the covenant read and signed, the vessel insp
   const deadline = Date.now() + 6 * 60 * 1000;
   while (Date.now() < deadline && !(await covenant.isVisible().catch(() => false))) {
     const sign = page.locator('.wallet-confirm-approve').first();
-    const door = page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).first();
+    const door = page.locator('[data-door="neuma"] .firstrun-path').first();
     if (await sign.isVisible().catch(() => false)) await sign.click({ force: true }).catch(() => {});
     else if (await door.isVisible().catch(() => false)) await door.click({ force: true }).catch(() => {});
     await page.waitForTimeout(500);
@@ -63,7 +63,10 @@ test('the threshold over the rite: the covenant read and signed, the vessel insp
   await expect(rite).toBeVisible({ timeout: 10000 });
   await expect(rite).toHaveAttribute('data-movement', 'threshold');
   await expect(rite.locator('.gen-caption-title')).toHaveText('THE COVENANT');
-  await expect(page.locator('.covenant-doc')).toHaveCount(3, { timeout: 30000 });
+  // the count is whatever the covenant serves — the binding documents plus
+  // the privacy notice — read from the page, never hardcoded here.
+  const docCount = await page.locator('.covenant-doc').count();
+  expect(docCount, 'the binding documents rendered').toBeGreaterThan(0);
 
   // each document read to its end: one arc of the ring each
   const read = (i) => page.evaluate((n) => {
@@ -74,10 +77,9 @@ test('the threshold over the rite: the covenant read and signed, the vessel insp
     text.dispatchEvent(new Event('scroll'));
   }, i);
   await read(0);
-  await expect(rite.locator('.gen-caption-line')).toHaveText('1 / 3 BINDING DOCUMENTS READ TO THEIR END');
-  await read(1);
-  await read(2);
-  await expect(rite.locator('.gen-caption-line')).toHaveText('3 / 3 BINDING DOCUMENTS READ TO THEIR END');
+  await expect(rite.locator('.gen-caption-line')).toHaveText(`1 / ${docCount} BINDING DOCUMENTS READ TO THEIR END`);
+  for (let i = 1; i < docCount; i += 1) await read(i);
+  await expect(rite.locator('.gen-caption-line')).toHaveText(`${docCount} / ${docCount} BINDING DOCUMENTS READ TO THEIR END`);
   await page.waitForTimeout(2500);
   await page.screenshot({ path: path.join(SHOTS, 'rite-threshold-covenant.png') });
 

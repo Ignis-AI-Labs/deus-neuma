@@ -1,7 +1,15 @@
 #!/bin/sh
-# SIZE LAW pre-commit — judges staged files against the frozen baseline.
-# One-time enable: git config core.hooksPath scripts/git-hooks
-# (then `git lfs install` so the lfs hooks follow the hooksPath — without it
-# the four live lfs hooks in .git/hooks go silent).
-# Emergency bypass: git commit --no-verify (visible in the audit trail).
-exec node "$(git rev-parse --show-toplevel)/scripts/check-file-size.mjs" --staged
+# pre-commit — two gates, in order (one-time enable: git config core.hooksPath
+# scripts/git-hooks; `npm install` sets it too — see package.json "prepare").
+#   1. SECRET GATE: no live secret or key-shaped value enters history
+#      (scripts/secret-gate.mjs; why: commit 422f95aff, 2026-04-14).
+#   2. SIZE LAW: staged files judged against the frozen baseline.
+# Then `git lfs install` so the lfs hooks follow the hooksPath.
+# The gate is found beside this hook, not in the checkout: core.hooksPath is
+# absolute, so every worktree (even one checked out at an older commit) runs
+# the main checkout's current gate.
+here="$(cd "$(dirname "$0")" && pwd)"
+node "$here/../secret-gate.mjs" --staged || exit 1
+root="$(git rev-parse --show-toplevel)"
+[ -f "$root/scripts/check-file-size.mjs" ] || exit 0
+exec node "$root/scripts/check-file-size.mjs" --staged

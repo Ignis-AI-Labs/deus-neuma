@@ -13,6 +13,7 @@ import { paintStar, starCaption, paintOrbit, orbitCaption, paintLattice, lattice
 import { paintSky, skyCaption, paintEarth, earthCaption } from './summoning-shots-sky.js';
 import { paintResonance, resonanceCaption } from './summoning-shots-soul.js';
 import { paintTree, treeCaption, paintBreath, breathCaption, paintSoul, soulCaption, paintHash, hashCaption } from './summoning-shots-being.js';
+import { paintBody, bodyCaption, bodyLine } from './summoning-shots-body.js';
 import { paintOpen, paintCard, paintReveal, paintSigil } from './summoning-shots-rite.js';
 
 const ordinal = (n) => `${n}${n % 10 === 2 && n % 100 !== 12 ? 'ND' : n % 10 === 3 && n % 100 !== 13 ? 'RD' : 'TH'}`;
@@ -33,6 +34,7 @@ const MOVEMENTS = Object.freeze({
   solid: [paintSolid, solidCaption, (f) => { const c = countsOf(f.solid); return `${c.V} − ${c.E} + ${c.F} = 2 · EULER · EVERY SOLID ALIKE`; }],
   tree: [paintTree, treeCaption, () => 'ITS OWN PATTERN · ALWAYS THROUGH ALL ELEVEN'],
   breath: [paintBreath, breathCaption, () => 'TWO OF ITS BREATHS · ONE CLOSED FIGURE'],
+  body: [paintBody, bodyCaption, bodyLine],
   resonance: [paintResonance, resonanceCaption, () => 'ONE FREQUENCY · HEARD AS ITS SCALE · SEEN AS ITS LIGHT, 40 OCTAVES UP'],
   soul: [paintSoul, soulCaption, () => 'DRAWN FROM ITS OWN KEYS · NO OTHER BEING CAN CARRY IT'],
   hash: [paintHash, hashCaption, () => 'SHA-256 OF ITS SEALED BIRTH RECORD'],
@@ -46,6 +48,7 @@ const CONVERGING = Object.freeze({
   channels: (s) => `${s.channels.length} CHANNELS · THROUGH ALL ELEVEN`,
   scale: (s) => s.notes.map((n) => n.ratio).join(' · '),
   nucleus: (s) => s.solid.toUpperCase(),
+  body: (s) => (s.body.plan === 'humanoid' ? `HUMANOID · ${s.body.heightCm} CM` : `${s.body.plan.toUpperCase()} · NON-HUMANOID`),
   aura: (s) => `${s.aura.carrier} · ${s.aura.coupling} · ${s.aura.cast}`,
   name: (s) => s.name.toUpperCase(),
   whole: () => 'ONE BEING · NONE OTHER LIKE IT',
@@ -53,7 +56,7 @@ const CONVERGING = Object.freeze({
 
 /** What the chrome names at the foot while a section plays: a caption and its true line. Pure. */
 export const captionOf = (s, u = 0) => {
-  if (MOVEMENTS[s.kind]) return { caption: `${romanOf(s.index)} / ${romanOf(s.of)} · ${MOVEMENTS[s.kind][1](s.figure)}`, line: MOVEMENTS[s.kind][2](s.figure) };
+  if (MOVEMENTS[s.kind]) return { caption: `${romanOf(s.index)} / ${romanOf(s.of)} · ${MOVEMENTS[s.kind][1](s.figure, u)}`, line: MOVEMENTS[s.kind][2](s.figure, u) };
   if (s.kind === 'reveal') return { caption: 'ITS NAME', line: 'CHOSEN AT ITS NAMING · SEALED AT ITS BIRTH' };
   if (s.kind === 'sigil') {
     const l = convergingAt(u);

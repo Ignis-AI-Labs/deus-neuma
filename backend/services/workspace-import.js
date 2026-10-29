@@ -6,10 +6,11 @@
  * it is the reason SEC-AUDIT-003 (#162) is closed. It lives here so the rules
  * can be read and tested as rules, and so the route is a route again.
  *
- * The posture is fail-CLOSED throughout. An existing lane may only be
- * re-imported by its recorded owner; a lane that exists with NO claim is
- * refused rather than adopted, because […] is
- * exactly how a silent takeover looks from the inside.
+ * The posture is fail-CLOSED throughout. An import lands only in a NEW lane:
+ * an existing lane is refused (another wallet's as not yours, the caller's
+ * own because an import only appends and would double it), and a lane that
+ * exists with NO claim is refused rather than adopted, because […] is exactly how a silent takeover looks from the
+ * inside.
  *
  * impure — reads and writes the real sovereign filesystem.
  */
@@ -17,6 +18,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createLogger } from './logger.js';
+import { harnessLaneId, isHarnessLane } from './harness-lane.js';
+import { isWitnessLaneId } from './witness-lane.js';
 
 const log = createLogger('WorkspaceImport');
 
@@ -47,11 +50,13 @@ const readClaim = async (ownerPath, neumaId) => {
 };
 
 /**
- * Claim a BRAND-NEW lane for the importing wallet.
+ * Claim a BRAND-NEW lane for the importing wallet, BEFORE a byte of the bundle
+ * is written.
  *
  * The `wx` flag is load-bearing: two imports racing for the same fresh id must
  * not both believe they claimed it. The loser reads the winner's claim back and
- * is refused unless it is the same wallet.
+ * is refused — as not yours, or, when it is the same wallet, as a lane that
+ * already lives (an import only appends, so a second one would double it).
  * @returns {Promise<object|null>} a refusal outcome, or null when the claim holds
  */
 const claimFreshLane = async (ownerPath, wallet) => {
@@ -66,9 +71,21 @@ const claimFreshLane = async (ownerPath, wallet) => {
     if (claimErr.code !== 'EEXIST') throw claimErr;
     const owner = JSON.parse(await fs.readFile(ownerPath, 'utf8'));
     return walletsMatch(owner.wallet, wallet)
-      ? null
+      ? outcome(409, { error: 'This being already lives here; restore into a new lane' })
       : outcome(403, { error: 'Not your workspace' });
   }
+};
+
+// pure — an id an import may not open for this wallet (re-audit 2026-10-29, NEW-H2). Both kinds
+// are bound before they exist: a harness lane's id is its wallet's own (harness-<first 8 hex>), so
+// anyone could compute another wallet's and claim it first; a witness lane is made only by its
+// summoning, under the summoner and the install owner. A restore of either goes to a new lane.
+const reservedLaneRefusal = (neumaId, wallet) => {
+  if (isWitnessLaneId(neumaId)) return outcome(403, { error: 'A witness lane is made only by its summoning; restore into a new lane' });
+  if (!isHarnessLane(neumaId)) return null;
+  let own = null;
+  try { own = harnessLaneId(wallet); } catch { own = null; }
+  return neumaId === own ? null : outcome(403, { error: 'That harness lane belongs to another wallet' });
 };
 
 /**
@@ -103,14 +120,27 @@ export const importIntoLane = async ({ neumaId, bundle, wallet, workspace }) => 
     if (!ownerWallet || !walletsMatch(ownerWallet, wallet)) {
       return outcome(403, { error: 'Not your workspace' });
     }
+    // An import only appends — onto a lane that already lives it would
+    // double every conversation and memory. A restore goes to a new lane.
+    return outcome(409, { error: 'This being already lives here; restore into a new lane' });
   }
 
-  await workspace.importWorkspace(neumaId, bundle);
+  const reserved = reservedLaneRefusal(neumaId, wallet);
+  if (reserved) return reserved;
 
-  // Claim only for brand-new lanes. An existing owner file is already the caller's.
-  if (!exists) {
-    const refusal = await claimFreshLane(ownerPath, wallet);
-    if (refusal) return refusal;
+  // Claim first, write second: when two imports race for one fresh id, the
+  // one whose claim lands writes, and the other is refused before it writes
+  // anything into a lane that is not its own.
+  await fs.mkdir(laneDir, { recursive: true, mode: 0o700 });
+  const refusal = await claimFreshLane(ownerPath, wallet);
+  if (refusal) return refusal;
+  try {
+    await workspace.importWorkspace(neumaId, bundle);
+  } catch (error) {
+    // The lane is this request's own, born a moment ago: a half-written one
+    // would refuse every retry, so it goes with the failure.
+    await fs.rm(laneDir, { recursive: true, force: true });
+    throw error;
   }
 
   return outcome(200, { success: true, neumaId });

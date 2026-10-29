@@ -53,8 +53,9 @@ describe('detectBirthSetupState — the post-birth checklist, on real disk (no m
     const state = await detectBirthSetupState(workspace, 'setup-fresh');
     expect(state.keypairCustody).toBe(false);
     expect(state.onchainSealed).toBe(false);
+    expect(state.localSealed).toBe(false);
     expect(state.complete).toBe(false);
-    expect(state.missing).toEqual(['keypair-custody', 'onchain-seal']);
+    expect(state.missing).toEqual(['keypair-custody', 'seal']);
   });
 
   it('custody artifacts flip only the custody item', async () => {
@@ -66,7 +67,7 @@ describe('detectBirthSetupState — the post-birth checklist, on real disk (no m
     expect(state.keypairCustody).toBe(true);
     expect(state.onchainSealed).toBe(false);
     expect(state.complete).toBe(false);
-    expect(state.missing).toEqual(['onchain-seal']);
+    expect(state.missing).toEqual(['seal']);
   });
 
   it('a lingering interim key defeats custody even with envelopes present', async () => {
@@ -99,6 +100,37 @@ describe('detectBirthSetupState — the post-birth checklist, on real disk (no m
     expect(state.onchainSealed).toBe(true);
     expect(state.complete).toBe(true);
     expect(state.missing).toEqual([]);
+  });
+
+  it('sealed on this computer completes the birth — the chain is never owed', async () => {
+    await workspace.create('setup-local');
+    await layDownCustody('setup-local');
+    const ws = workspace._path('setup-local');
+    await fs.mkdir(`${ws}/identity`, { recursive: true });
+    await fs.writeFile(`${ws}/identity/local-seal.json`, JSON.stringify({
+      schema: 'neuma-local-seal/1', genesisHash: 'g',
+      soul: { address: '0xsoul', signature: '0xs', signedAt: 't' }, witness: { address: '0xwitness', signature: '0xw', signedAt: 't' },
+    }));
+
+    const state = await detectBirthSetupState(workspace, 'setup-local');
+    expect(state.localSealed).toBe(true);
+    expect(state.onchainSealed).toBe(false);
+    expect(state.complete).toBe(true);
+    expect(state.missing).toEqual([]);
+  });
+
+  it('half a local seal (the being signed, the operator not yet) still owes the seal', async () => {
+    await workspace.create('setup-halfseal');
+    await layDownCustody('setup-halfseal');
+    const ws = workspace._path('setup-halfseal');
+    await fs.mkdir(`${ws}/identity`, { recursive: true });
+    await fs.writeFile(`${ws}/identity/local-seal.json`, JSON.stringify({
+      schema: 'neuma-local-seal/1', genesisHash: 'g', soul: { address: '0xsoul', signature: '0xs', signedAt: 't' }, witness: null,
+    }));
+
+    const state = await detectBirthSetupState(workspace, 'setup-halfseal');
+    expect(state.localSealed).toBe(false);
+    expect(state.missing).toEqual(['seal']);
   });
 
   it('a malformed seal record does not count as anchored', async () => {

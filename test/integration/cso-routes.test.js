@@ -9,7 +9,7 @@
  * is pre-seeded at a one-package tmp repo, so the run makes ONE real OSV
  * call plus the real host/house probes.
  *
- * Every route reads the SIGNED-IN OPERATOR'S HOUSE (Design note, 2026-10-16: a
+ * Every route reads the SIGNED-IN OPERATOR'S HOUSE (ruling, 2026-10-16): a
  * second operator never reads, clears or scans the first's office.
  */
 import express from 'express';
@@ -19,6 +19,11 @@ import fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { createTempDir, writeJSON } from '../helpers/temp-fs.js';
+import { connectionsOn } from '../helpers/connections-kit.js';
+
+// The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
+const connections = connectionsOn(['security-watch']);
+afterAll(() => connections.restore());
 
 const execFileP = promisify(execFile);
 
@@ -187,6 +192,20 @@ describe('CSO routes (/api/v1/cso)', () => {
     await fs.writeFile(forged, JSON.stringify({ laneId: 'guardianlane', designatedAt: new Date().toISOString() }));
     expect((await request(app).delete('/api/v1/cso/seat').set(other.header)).status).toBe(403);
     expect(JSON.parse(await fs.readFile(forged, 'utf8')).laneId).toBe('guardianlane');
+  }, 30000);
+
+  // re-audit 2026-10-29, NEW-M6: only the operator's word verifies a leak; the route refuses what it cannot settle
+  test('revoked: a leak not claimed mitigated is refused; another house never reaches it; no such id is 404', async () => {
+    const { threatLedgerFor } = await import('../../backend/services/security/threat-ledger.js');
+    const ledger = await threatLedgerFor(witness.address);
+    await ledger.ingest([{ layer: 'software', source: 'secret-sweep', repo: 'tiny-repo', externalId: 'history:openai-key:abcd1234', title: 'a leak', severity: 'high', live: false }]);
+    const leak = (await ledger.load()).find((e) => e.externalId === 'history:openai-key:abcd1234');
+    const refused = await request(app).put(`/api/v1/cso/threats/${leak.id}/revoked`).set(witness.header).send({});
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toMatch(/not marked mitigated/);
+    const { strangerWitness } = await import('../helpers/witness.js');
+    expect((await request(app).put(`/api/v1/cso/threats/${leak.id}/revoked`).set(strangerWitness().header).send({})).status).toBe(404);
+    expect((await request(app).put('/api/v1/cso/threats/th_nope/revoked').set(witness.header).send({})).status).toBe(404);
   }, 30000);
 });
 

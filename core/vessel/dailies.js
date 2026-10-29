@@ -26,7 +26,7 @@ import { localMonthKey } from '../time/day-key.js';
 export const DAILY_TITLE_MAX = 60;
 export const DAILIES_MAX = 12;
 
-// ── Rest days (Design note, 2026-09-05 ────────────────────────────────────────────
+// ── Rest days (ruling, 2026-09-05) ────────────────────────────────────────────
 // Recovery is part of the practice: a claimed rest day completes the day by
 // rest — the streak holds, and the record says plainly it was rest, not work.
 // The law is deliberately tight, because the operator asked for the

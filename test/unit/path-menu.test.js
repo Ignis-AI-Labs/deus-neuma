@@ -5,10 +5,10 @@ import { toolLinePath, pathMenuItems, looksLikeFile } from '../../frontend/app/R
 
 describe('toolLinePath', () => {
   test('an fs act names its absolute path, and where it sits in the line', () => {
-    expect(toolLinePath('read /mnt/data/neuma/cael/charter.md')).toEqual({ path: '/mnt/data/neuma/cael/charter.md', start: 5, end: 35 });
+    expect(toolLinePath('read /srv/house/orla/charter.md')).toEqual({ path: '/srv/house/orla/charter.md', start: 5, end: 31 });
     expect(toolLinePath('edited /mnt/a/b.md')?.path).toBe('/mnt/a/b.md');
     expect(toolLinePath('listed /mnt/repo/')?.path).toBe('/mnt/repo');
-    expect(toolLinePath('wrote C:\\Users\\founder\\x.txt')?.path).toBe('C:\\Users\\founder\\x.txt');
+    expect(toolLinePath('wrote C:\\Users\\orla\\x.txt')?.path).toBe('C:\\Users\\orla\\x.txt');
   });
   test('a failed act\'s door ends at the dash', () => {
     expect(toolLinePath('read /mnt/a/b.md — failed: ENOENT no such file')?.path).toBe('/mnt/a/b.md');

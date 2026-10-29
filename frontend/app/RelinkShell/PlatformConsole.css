@@ -1,0 +1,133 @@
+/* PlatformConsole — a platform window's console head (PlatformHeader.jsx).
+   LINE & CYCLE: ink at rest, signal for what will go out and what waits on the
+   operator, alert only for a failure or a platform no one may post to. The
+   status colours are queue-status.css, shared with the calendar. */
+@import './queue-status.css';
+
+.pc-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-areas: "id id" "now month" "strip strip";
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--color-glass-light);
+  font-family: var(--font-data);
+}
+@container (max-width: 760px) {
+  .pc-head { grid-template-columns: 1fr; grid-template-areas: "id" "now" "month" "strip"; }
+}
+
+/* who it is and whether it can speak */
+.pc-id { grid-area: id; display: flex; align-items: center; flex-wrap: wrap; gap: 6px var(--space-3); }
+.pc-mark { display: inline-flex; color: var(--color-text-primary); }
+.pc-mark svg { width: 22px; height: 22px; }
+.pc-name { font-size: var(--text-lg); letter-spacing: 0.06em; color: var(--color-text-primary); }
+.pc-account { font-size: var(--text-label); color: var(--signal); letter-spacing: 0.06em; }
+.pc-facts { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.pc-fact {
+  display: inline-flex; gap: 6px; align-items: baseline; padding: 2px 8px;
+  font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.pc-fact-k { color: var(--color-text-tertiary); letter-spacing: 0.14em; }
+.pc-fact.is-live { color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal-dim); }
+.pc-fact.is-hot { color: var(--alert); box-shadow: inset 0 0 0 1px var(--alert-dim); }
+.pc-standing-btn {
+  margin-left: auto; padding: 3px 10px; background: none;
+  border: var(--border-width-thin) solid var(--line); color: var(--color-text-tertiary);
+  font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.14em; cursor: pointer;
+}
+.pc-standing-btn:hover, .pc-standing-btn.is-on { color: var(--color-text-primary); border-color: var(--line-hover); }
+.pc-standing { margin-bottom: var(--space-3); }
+
+/* what waits on the operator, and what goes out next */
+.pc-now { grid-area: now; display: flex; gap: var(--space-3); align-items: stretch; min-width: 0; }
+.pc-await {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px;
+  padding: 6px 12px; min-width: 104px; background: none; border: var(--border-width-thin) solid var(--line);
+  font-family: var(--font-data); color: var(--color-text-tertiary); cursor: pointer;
+}
+.pc-await b { font-size: var(--text-3xl); font-weight: 200; line-height: 1; color: var(--color-text-disabled); font-variant-numeric: tabular-nums; }
+.pc-await span { font-size: var(--text-label); letter-spacing: 0.16em; }
+.pc-await.is-owed { border-color: var(--signal-dim); color: var(--signal); }
+.pc-await.is-owed b { color: var(--signal); }
+.pc-await:disabled { cursor: default; }
+.pc-next { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.pc-next-k { font-size: var(--text-label); letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.pc-next-v {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
+  padding: 0; background: none; border: none; font-family: var(--font-data);
+  font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-secondary); cursor: pointer; min-width: 0; width: 100%;
+}
+.pc-next-v b { font-size: var(--text-lg); font-weight: 300; color: var(--signal); }
+.pc-next-text { font-family: var(--font-voice); font-size: var(--text-xs); color: var(--color-text-tertiary); letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+.pc-next-v.is-none { color: var(--color-text-disabled); cursor: default; }
+
+/* the month, each count a door */
+.pc-month { grid-area: month; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.pc-month-k { width: 100%; font-size: var(--text-label); letter-spacing: 0.18em; color: var(--color-text-tertiary); }
+.pc-door {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 10px 5px 12px; min-width: 72px;
+  background: none; border: var(--border-width-thin) solid var(--line); font-family: var(--font-data); cursor: pointer;
+  box-shadow: inset 3px 0 0 var(--qs, var(--line));
+}
+.pc-door b { font-size: var(--text-xl); font-weight: 200; line-height: 1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.pc-door span { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.pc-door.is-sent { --qs: var(--color-text-secondary); }
+.pc-door.is-scheduled { --qs: var(--signal); }
+.pc-door.is-awaiting { --qs: var(--signal-dim); }
+.pc-door.is-failed { --qs: var(--alert); }
+.pc-door.is-failed:not(.is-zero) b { color: var(--alert); }
+.pc-door.is-reply { --qs: var(--color-text-disabled); }
+.pc-door:not(:disabled):hover { border-color: var(--line-hover); }
+.pc-door.is-zero { opacity: 0.45; cursor: default; }
+
+/* the four weeks around today */
+.pc-strip { grid-area: strip; display: grid; grid-template-columns: repeat(28, minmax(0, 1fr)); gap: 2px; height: 70px; container-type: inline-size; }
+.pc-strip-day {
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 3px;
+  padding: 0; background: none; border: none; cursor: pointer; min-width: 0;
+}
+.pc-strip-col { display: flex; flex-direction: column-reverse; min-height: 0; gap: 1px; }
+.pc-strip-col i { display: block; min-height: 2px; }
+.pc-strip-date { font-family: var(--font-data); font-size: var(--text-label); color: var(--color-text-disabled); text-align: center; border-top: 1px solid var(--line); padding-top: 2px; }
+.pc-strip-day.is-past .pc-strip-col { opacity: 0.7; }
+.pc-strip-day.is-today .pc-strip-date { color: var(--signal); border-top-color: var(--signal); }
+.pc-strip-day:hover .pc-strip-date { color: var(--color-text-primary); }
+/* 28 dates at the label floor need ~520px; narrower, the weekly ticks carry the axis (each day's date stays on its hover). */
+@container (max-width: 540px) {
+  .pc-strip-day:not([data-tick]) .pc-strip-date { color: transparent; }
+  .pc-strip-day:not([data-tick]):hover .pc-strip-date { color: var(--color-text-primary); }
+}
+
+/* a short window (#585): the head folds to its counts so the decisions below
+   it are on screen on arrival; the four weeks are one press away */
+.pc-whole {
+  padding: 3px 9px; background: none; border: var(--border-width-thin) solid var(--line);
+  color: var(--color-text-tertiary); font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.14em; cursor: pointer;
+}
+.pc-whole:hover { color: var(--color-text-primary); border-color: var(--line-hover); }
+.pc-head.is-compact { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-2); padding: 6px var(--space-3); margin-bottom: 0; }
+.pc-head.is-compact .pc-id, .pc-head.is-compact .pc-now, .pc-head.is-compact .pc-month { display: contents; }
+.pc-head.is-compact .pc-standing-btn { margin-left: 0; }
+.pc-head.is-compact .pc-name { font-size: var(--text-base); }
+.pc-head.is-compact .pc-mark svg { width: 16px; height: 16px; }
+/* folded: the readings that hold something; every zero and empty one is back in the whole head */
+.pc-head.is-compact .pc-month-k, .pc-head.is-compact .pc-next-text, .pc-head.is-compact .pc-door.is-zero,
+.pc-head.is-compact .pc-await:disabled, .pc-head.is-compact .pc-next:has(.is-none) { display: none; }
+.pc-head.is-compact .pc-await,
+.pc-head.is-compact .pc-door { flex-direction: row; align-items: baseline; gap: 6px; min-width: 0; padding: 2px 8px 2px 10px; }
+.pc-head.is-compact .pc-await b { font-size: var(--text-lg); }
+.pc-head.is-compact .pc-door b { font-size: var(--text-sm); }
+.pc-head.is-compact .pc-next { flex-direction: row; align-items: baseline; gap: 6px; }
+.pc-head.is-compact .pc-next-v { flex-direction: row; align-items: baseline; gap: 6px; width: auto; }
+.pc-head.is-compact .pc-next-v b { font-size: var(--text-sm); }
+
+/* MARKETING's account level: the boards' tabs, then the door to the company's campaigns at the row's end. */
+.ps-tabrow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-1); border-bottom: 1px solid var(--line); }
+.ps-tabrow > .outreach-tabs { flex: 1 1 auto; border-bottom: 0; }
+.ps-tabrow > .door-btn { margin-bottom: 4px; }
+/* One board needs no tab: the door alone stands at the row's end. */
+.ps-tabrow > .door-btn:first-child { margin-left: auto; }

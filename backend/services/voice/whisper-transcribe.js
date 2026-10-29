@@ -7,6 +7,7 @@
 // impure throughout (engine lifecycle, loopback HTTP).
 import { hotwordsPhrase } from '../../../core/text/lexicon.js';
 import { launch, getStatus, ENGINE_STATES, resolveServe } from './engine-manager.js';
+import { sidecarFetch } from './sidecar-trust.js';
 
 const ENGINE = 'whisper';
 const READY_WAIT_MS = 150_000;
@@ -42,7 +43,7 @@ const ensureReady = async () => {
 export const transcribeRecording = async (audio, contentType) => {
   await ensureReady();
   const { host, port } = resolveServe(ENGINE);
-  const res = await fetch(`http://${host}:${port}/transcribe?hotwords=${encodeURIComponent(hotwordsPhrase())}`, {
+  const res = await sidecarFetch(`http://${host}:${port}/transcribe?hotwords=${encodeURIComponent(hotwordsPhrase())}`, {
     method: 'POST',
     headers: { 'Content-Type': contentType || 'application/octet-stream' },
     body: audio,

@@ -20,6 +20,7 @@ const { pickPersonalSignMessage, parseTypedData, isReadMethod, toChainIdHex } = 
 const { createConfirmWindow } = require('./confirm-window.cjs');
 const { buildSignConfirmView, buildGateView } = require('./confirm-view.cjs');
 const { NETWORKS, createNetworkStore } = require('./networks.cjs');
+const { fromDesk } = require('../desk-links.cjs');
 
 // Which renderer asked — carried through the async call chain so a confirm
 // dialog raised deep inside the wallet service attaches to the desk that made
@@ -67,7 +68,7 @@ const makeRpcGetter = (rpcStore, networkStore) => {
  * @param {{getWindow: () => object, userDataPath: string}} deps
  * @returns {() => void} an unregister function
  */
-const registerWalletIpc = ({ getWindow, userDataPath }) => {
+const registerWalletIpc = ({ getWindow, userDataPath, getOrigin = null }) => {
   const walletDir = path.join(userDataPath, 'wallet');
   const rpcStore = createRpcStore({ walletDir, outerSeal: osKeySeal });
   const networkStore = createNetworkStore({ walletDir });
@@ -244,9 +245,13 @@ const registerWalletIpc = ({ getWindow, userDataPath }) => {
 
   // Every handler runs inside call context carrying its sender, so any
   // dialog raised anywhere down the chain can attach to the asking desk.
+  // Only a desk's own top frame on the desk's origin may ask the wallet (desk-links.cjs fromDesk;
+  // audit 2026-10-28 M-07). The confirm and unlock windows keep their own sender checks.
   for (const [channel, fn] of Object.entries(handlers)) {
-    ipcMain.handle(channel, (event, ...args) =>
-      callCtx.run({ sender: event.sender }, () => fn(event, ...args)));
+    ipcMain.handle(channel, (event, ...args) => {
+      if (getOrigin && !fromDesk(event, getOrigin())) throw new Error(`${channel} refused: not the desk`);
+      return callCtx.run({ sender: event.sender }, () => fn(event, ...args));
+    });
   }
   return () => {
     for (const channel of Object.keys(handlers)) ipcMain.removeHandler(channel);

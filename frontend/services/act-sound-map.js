@@ -31,16 +31,21 @@ export const ACT_FAMILIES = Object.freeze({
     'security_threat_get', 'security.assess',
     // CLO office (2026-10-01): one matter, and the reading that settles it.
     'legal_matter_get', 'legal.assess',
+    'legal_sources', // where the law is read — a read of the office's reference
+    'legal_research_api', // one official legal database, read with the house's key
     'read_history', // one folder's git log — a read of the record
+    'company_updates', // what changed in one company, from its own sources — a read of the record
   ]),
   // Looking at what EXISTS — a spread rather than a single thing.
   actList: Object.freeze([
     'list', 'list_directory', 'list_directory_with_sizes', 'memory_list', 'vault_list',
-    'task_list', 'queue_list', 'replies_list', 'campaign_list', 'lead_list', 'media_library',
+    'task_list', 'calendar_read', 'queue_list', 'replies_list', 'campaign_list', 'lead_list', 'media_library',
     'list_pipelines', 'check_email_inbox', 'security_threats_list', 'legal_matters_list',
     // Whole-state reads: the posting pipeline, the house, the shared board —
     // a spread of what exists, one call each (FE-167).
     'pipeline_state', 'house_state', 'board_list',
+    'social_check', // every account the house uses, checked whole (campaign plan §6.1)
+    'board_read', // the operator's marketing board at a level, read whole
     'bench_list', 'bench_status', // the connected benchmarks, and what runs on the machine
   ]),
   // Hunting for something not yet known to be there.
@@ -57,6 +62,8 @@ export const ACT_FAMILIES = Object.freeze({
     'memory.supersede', 'memory.merge', 'campaigns.update', 'tasks.update', 'tasks.focus', 'tasks.take',
     'security.escalate', // an existing record's standing changes — not a small mark
     'tasks.operator-update', 'staff.dispatch-update', 'board.update',
+    'team.tune', // a working run's width and clocks change — the run already existed
+    'marketing.board-arrange', // the operator's marketing board laid out anew — the board already existed
   ]),
   // Bringing something into being on disk.
   actWrite: Object.freeze([
@@ -75,13 +82,16 @@ export const ACT_FAMILIES = Object.freeze({
     'marketing.plan', 'board.add', // a plan authored, a task put on the board
     'legal.file', // research entered on the record — a new matter
     'share_findings', // a list handed to the operator — a new artifact on the desk, nothing leaves
+    'house.review-packet', // the Optio's packet for the operator — the same shape: a new artifact, nothing leaves
+    'campaigns.ask', // a question put on the campaign's shared page — a new entry, nothing leaves the house
+    'marketing.company-links', // a company's links proposed to the operator — a new entry, nothing changes until approved
   ]),
   // Same thing, different place or name.
   actMove: Object.freeze(['move_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
   // Taking something away. Rare and consequential — it gets its own voice so
   // it is never mistaken for a write.
   actDelete: Object.freeze([
-    'delete_file', 'vault_archive', 'memory_archive', 'memory_retract', 'queue_cancel',
+    'delete_file', 'vault_archive', 'memory_archive', 'memory_retract', 'queue_cancel', 'tasks.operator-drop',
     'vault.archive', 'memory.archive', 'memory.retract',
   ]),
   // Running code. The operator hears their machine being used.
@@ -99,25 +109,29 @@ export const ACT_FAMILIES = Object.freeze({
   // it keeps platform_data out of READ_TOOLS.
   // The chain reads ride the same wire-law: every verb leaves the machine for
   // the operator's own keyed RPC — egress, journaled, never a local recall.
-  actReach: Object.freeze(['web_fetch', 'read_x', 'request_file_access', 'platform_data',
+  actReach: Object.freeze(['web_fetch', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
     'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders',
     'web.download']), // bytes fetched from outside the house
   // Something LEFT the house in the operator's name. The intents (Stage 2/3)
   // arrive by their policy names: a post is speech, a spend is a send, mail
   // is mail, word to a housemate is word leaving the lane.
   actSend: Object.freeze(['house.post', 'vault_publish', 'social.post', 'email.send', 'wallet.send', 'vault.publish',
-    'staff.dispatch']), // a charge sent to a housemate — word leaving the lane
+    'staff.dispatch', // a charge sent to a housemate — word leaving the lane
+    'team.post']), // word to a teammate — word leaving the lane, house.post narrowed to one run
   // Making an artifact — an image, a document.
-  actForge: Object.freeze(['image.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
+  actForge: Object.freeze(['image.generate', 'video.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
   // A mark on a ledger: noted, pinned, touched, proposed. Small by design.
   actMark: Object.freeze(['memory_pin', 'memory_unpin', 'lead_touch', 'memory.pin', 'memory.unpin', 'leads.touch', 'refinement.dial',
     'sovereignty.propose', // a filing that ends at "submitted" — the card is the act
+    'sovereignty.consent', // the being's recorded answer to its operator's change
     'staff.ack', // a charge's holder marks received/working/done
+    'treasury.review', 'treasury.flag', // the Quaestor's advice and alarm — marks beside the operator's decision
     'meditate']), // a standing request marked for the cycle — nothing acts yet
   // The being sensing its own state — capacity, adapters, its own birth sky.
-  actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'post_check',
+  actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'mandate_read', 'post_check',
     'security_posture',            // the house sensing its own defensive state
     'legal_posture',               // …and its own standing under the law
+    'treasury_board',              // …and its own money, read whole
     'security_attack_surface', 'security_telemetry', // …and the rest of that sense
     // A craft reading its own flight: telemetry is its state, the view is its
     // own eyes. Neither is a read of a THING, which is why both sit here.

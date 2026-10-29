@@ -26,6 +26,7 @@ import { getHarnessRoot } from '../../core/workspace/lane-grounds.js';
 import { resolveCeremonyScratchDir } from '../../core/birth/ceremony-write.js';
 import { nativeFilesystemClient } from './native-filesystem.js';
 import { setNativeFilesystemRoots, checkRootUsable } from './native-fs-roots.js';
+import { filesystemGrantedRoots } from './filesystem-granted-roots.js';
 import { FILESYSTEM_TOOL_CATALOG } from './native-fs-catalog.js';
 import { createLogger } from './logger.js';
 import { trackFilesystemFocus, filesystemFocusRoots } from './filesystem-focus-owners.js';
@@ -47,7 +48,7 @@ let reconnectChain = Promise.resolve();
 // Witness-granted extra roots (read-scope approvals). The organ is shared, so
 // these widen it globally — but per-being confinement still holds: tool-sandbox
 // only passes a path when THAT connection carries the grant.
-const grantedRoots = new Set();
+const grantedRoots = filesystemGrantedRoots;
 // What the organ was last stood up with — lets ensureFilesystemRoots skip the
 // update when every requested root is already in force.
 let activeRoots = [];

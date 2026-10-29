@@ -33,7 +33,14 @@ const { resolveEmailCredential } = await import(path.join(REPO, 'backend/service
 const { sendEmail, probeSmtp } = await import(path.join(REPO, 'backend/services/email/smtp-sender.js'));
 const { listInbox } = await import(path.join(REPO, 'backend/services/email/imap-reader.js'));
 
-const creds = await resolveEmailCredential();
+// Keys are per HOUSE (backend/services/social/house-positions.js): name the
+// house whose keys this proves.
+const HOUSE = process.env.NEUMA_HOUSE_WALLET;
+if (!/^0x[0-9a-fA-F]{40}$/.test(HOUSE || '')) {
+  console.error('set NEUMA_HOUSE_WALLET=<your house wallet 0x…> — account keys are kept per house');
+  process.exit(1);
+}
+const creds = await resolveEmailCredential(HOUSE);
 if (!creds) {
   console.log(`email is not configured — fill the fields in Settings > EMAIL or .env (${EMAIL_ACCOUNT.fields.map((f) => f.env).join(', ')}).`);
   console.log('Gmail needs 2-step verification + an app password; hosts/ports default to Gmail.');

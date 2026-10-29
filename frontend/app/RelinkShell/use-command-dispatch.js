@@ -16,7 +16,7 @@ import { requestSettingsFocus } from './settings-focus.js';
  */
 export const useCommandDispatch = () => {
   const { registry, dispatch } = useWindows();
-  const { newSession } = useConsciousnessPick('newSession');
+  const { newSession, wsService } = useConsciousnessPick('newSession', 'wsService');
   // impure — DOM event + reducer dispatch + session reset
   return useCallback((command) => {
     const run = command?.run;
@@ -35,6 +35,12 @@ export const useCommandDispatch = () => {
     }
     if (run.type === 'new') {
       newSession();
+      return true;
+    }
+    if (run.type === 'compact') {
+      // The portal answers on `session:compact` (use-compact-note.js shows it).
+      if (!wsService?.isConnected) return false;
+      wsService.send('session:compact', {});
       return true;
     }
     if (run.type === 'switch') {
@@ -58,5 +64,5 @@ export const useCommandDispatch = () => {
       return true;
     }
     return false;
-  }, [registry, dispatch, newSession]);
+  }, [registry, dispatch, newSession, wsService]);
 };

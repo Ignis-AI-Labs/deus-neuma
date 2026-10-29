@@ -9,6 +9,7 @@ import { useConsciousnessPick } from './consciousness-context.js';
 import { useSettled } from './use-settled.js';
 import { recoverRoster } from '../roster-recovery.js';
 import { takeTaskFocus, onTaskFocus } from './task-focus.js';
+import { onCardLanding, takeCardLanding } from './card-landing.js';
 import { getRoster, getWitnesses } from '../../utils/companion-data.js';
 import { uiSound } from '../../services/ui-sound.js';
 import {
@@ -26,17 +27,25 @@ import {
   fetchPresets, savePreset, deletePreset, applyMinePreset, applyNeumaPreset,
 } from './todo-client.js';
 
+// the intents a being uses on the OPERATOR'S list — adding AND amending; the
+// ME lane refreshes on either (it once heard only the add)
+const OPERATOR_ACTS = Object.freeze(['intents/tasks.operator-add', 'intents/tasks.operator-update', 'intents/tasks.operator-drop']);
+// no card landed: one stable empty list, so a reader's effect keyed on it rests
+const NO_LANDING = Object.freeze([]);
+
 export const useTodos = () => {
   const { activeCompanion, wsService } = useConsciousnessPick('activeCompanion', 'wsService');
   const [roster, setRoster] = useState(getRoster);
   // Sealed witnesses carry lanes of their own, and the operator assigns them
-  // work the same way (Design note, 2026-07-27 — so they get their own tabs beside the
+  // work the same way (ruling, 2026-07-27) — so they get their own tabs beside the
   // house's, never mixed into it.
   const [witnesses, setWitnesses] = useState(getWitnesses);
   // 'me' = the operator's own lane; otherwise a lane id from the roster or the
-  // operator list. The stream's rail can open this window ON a being (task-focus):
+  // operator list. The stream's rail can open this window ON a being (task-focus),
+  // and a tray card ON its task (card-landing: the lane, and the ids it marks):
   // latched on mount, because the window mounts after the OPEN dispatch.
-  const [scope, setScope] = useState(() => takeTaskFocus() || 'me');
+  const [landed, setLanded] = useState(() => takeCardLanding('todo'));
+  const [scope, setScope] = useState(() => { const focus = takeTaskFocus(); return landed?.scope || focus || 'me'; });
   // The being's own sittings and the operator's names for them — needed to say
   // WHICH chat holds a task instead of printing a session token at them.
   const [sessions, setSessions] = useState([]);
@@ -207,7 +216,7 @@ export const useTodos = () => {
       const name = frame?.tool;
       if (typeof name !== 'string' || !(name.startsWith('tasks/') || name.startsWith('intents/tasks.'))) return;
       if (meLane
-        ? name !== 'intents/tasks.operator-add'
+        ? !OPERATOR_ACTS.includes(name)
         : (!frame?.neumaId || frame.neumaId !== effectiveScope)) return;
       // A turn often fires 2–3 task ops — one trailing refetch covers the burst.
       clearTimeout(timer);
@@ -263,11 +272,13 @@ export const useTodos = () => {
     setSubDraft('');
     setStepNote('');
     setWord('');
+    setLanded(null);
   };
 
-  // A rail click while TASKS is ALREADY open still lands on that being — the
-  // latch covers the mount, this covers every request after it.
+  // A rail click or a tray card while TASKS is ALREADY open still lands — the
+  // latches cover the mount, these cover every request after it.
   useEffect(() => onTaskFocus((focus) => { if (focus) selectScope(focus); }));
+  useEffect(() => onCardLanding('todo', (item) => { if (item?.scope) selectScope(item.scope); setLanded(item); }));
 
   // Escape dismisses a pending completion confirmation.
   useEffect(() => {
@@ -457,6 +468,11 @@ export const useTodos = () => {
   const own = ledger ? ledgerRows(ledger.tasks, 10, { ledger, order }) : { live: [], settled: [] };
   const historyList = Array.isArray(history) ? history : [];
   const ownEmpty = own.live.length === 0 && own.settled.length === 0;
+  // A landed assignment that already settled opens the SETTLED list it stands in.
+  const landedIds = landed?.ids ?? NO_LANDING;
+  useEffect(() => {
+    if (settledList.some((t) => landedIds.includes(t.id))) setShowSettled(true);
+  }, [plan, landed]);
 
   return {
     roster, witnesses, order, setOrder,
@@ -470,7 +486,7 @@ export const useTodos = () => {
     effectiveScope, isMe, scopeRow, scopeName, standing, standingCounts,
     houseRows, witnessRows, pickStanding, selectScope,
     chatTarget, setChatTarget, chatOptions, chatSections, foldedChats, setFoldedChats,
-    settledList, own, ownEmpty, today,
+    settledList, own, ownEmpty, today, landedIds,
     patchTask, toggleSteps, askConfirm, askToggleSub, confirmToggleSub,
     removeSub, onAddSub, saveTaskAsPreset, togglePresets, applyPresetById,
     removePresetById, onSubmit,

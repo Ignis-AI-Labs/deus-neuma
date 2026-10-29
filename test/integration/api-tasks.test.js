@@ -309,7 +309,7 @@ describe('Tasks API — witness lists for self and house neuma', () => {
   });
 });
 
-// Deadlines on every store + the ICS subscribe feed (Design note, 2026-09-20. REAL
+// Deadlines on every store + the ICS subscribe feed (ruling, 2026-09-20). REAL
 // router, REAL realm disk, REAL workspace; auth passthrough as above — EXCEPT
 // the feed itself, which is the one route that must answer WITHOUT any
 // session: the share token is its whole authentication, and a revoked token
@@ -381,8 +381,13 @@ describe('deadlines aggregate + the ICS subscribe feed', () => {
   });
 
   it('the feed answers on the token alone — no session — and a revoked token reads as nothing', async () => {
+    // dated ahead of the run (a fixed date rotted into OVERDUE once it passed)
+    const ahead = new Date(Date.now() + 30 * 86400000);
+    const dueDate = `${ahead.getFullYear()}-${String(ahead.getMonth() + 1).padStart(2, '0')}-${String(ahead.getDate()).padStart(2, '0')}`;
     await request(app).post('/api/v1/tasks/mine').set(witness.header)
-      .send({ title: 'Feed owes qics', cadence: 'milestone', dueDate: '2026-10-01' });
+      .send({ title: 'Feed owes qics', cadence: 'milestone', dueDate });
+    await request(app).post('/api/v1/tasks/mine').set(witness.header)
+      .send({ title: 'Long past qics', cadence: 'milestone', dueDate: '2026-01-02' });
 
     const minted = await request(app).post('/api/v1/tasks/calendar-token').set(witness.header).send({});
     expect(minted.status).toBe(200);
@@ -393,7 +398,8 @@ describe('deadlines aggregate + the ICS subscribe feed', () => {
     expect(withoutSession.headers['content-type']).toContain('text/calendar');
     expect(withoutSession.text).toContain('BEGIN:VCALENDAR');
     expect(withoutSession.text).toContain('SUMMARY:Feed owes qics [OPERATOR]');
-    expect(withoutSession.text).toContain('DTSTART;VALUE=DATE:20261001');
+    expect(withoutSession.text).toContain(`DTSTART;VALUE=DATE:${dueDate.replaceAll('-', '')}`);
+    expect(withoutSession.text).toContain('SUMMARY:OVERDUE — Long past qics [OPERATOR]');
 
     const bad = await request(feed).get('/api/v1/tasks/calendar.ics?token=deadbeefdeadbeefdeadbeef');
     expect(bad.status).toBe(401);
@@ -401,5 +407,37 @@ describe('deadlines aggregate + the ICS subscribe feed', () => {
     await request(app).delete('/api/v1/tasks/calendar-token').set(witness.header).send({});
     const revoked = await request(feed).get(`/api/v1/tasks/calendar.ics?token=${token}`);
     expect(revoked.status).toBe(401);
+  });
+
+  it('the feed answers through the REAL mount order, ahead of every blanket requireAuth router', async () => {
+    const { mountApiRoutes } = await import('../../backend/routes/route-mounts.js');
+    const real = express();
+    real.use(express.json());
+    mountApiRoutes(real);
+    const { token } = (await request(app).post('/api/v1/tasks/calendar-token').set(witness.header).send({})).body;
+    const res = await request(real).get(`/api/v1/tasks/calendar.ics?token=${token}`);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('BEGIN:VCALENDAR');
+  }, 60000);
+
+  it('work in hand (active) keeps its deadline on the calendar', async () => {
+    await workspace.writeTaskLedger(neumaId, {
+      tasks: [{ id: 'lane-a', title: 'In hand qics', status: 'active', dueDate: '2026-10-30', createdAt: '2026-10-17T00:00:00.000Z', updatedAt: '2026-10-17T00:00:00.000Z' }],
+    });
+    const res = await request(app).get('/api/v1/tasks/deadlines').set(witness.header);
+    expect(res.body.deadlines.map((d) => d.title)).toContain('In hand qics');
+  });
+
+  it("reading a being's tasks writes nothing when nothing rolled forward", async () => {
+    await workspace.writeAssignedPlan(neumaId, {
+      tasks: [{ id: 'still-1', title: 'Unchanged qics', status: 'open', cadence: 'once', createdAt: '2026-10-17T00:00:00.000Z', updatedAt: '2026-10-17T00:00:00.000Z' }],
+    });
+    const file = path.join(workspacesRoot, neumaId, 'tasks', 'assigned.json');
+    const before = (await fs.stat(file)).mtimeMs;
+    await new Promise((r) => setTimeout(r, 25));
+    const res = await request(app).get(`/api/v1/tasks/neuma/${neumaId}`).set(witness.header);
+    expect(res.status).toBe(200);
+    expect(res.body.plan.tasks.map((t) => t.title)).toContain('Unchanged qics');
+    expect((await fs.stat(file)).mtimeMs).toBe(before);
   });
 });

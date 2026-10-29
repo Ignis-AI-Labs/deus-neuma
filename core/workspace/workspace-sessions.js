@@ -14,9 +14,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { shouldCompact, summarizeMessages, forceCrystallizeBelow } from '../runtime/session-compactor.js';
-import { encryptEnvelope } from './workspace-crypto.js';
+import { encryptEnvelope, parseAndDecrypt } from './workspace-crypto.js';
 import { ORIGIN_COMPACTION } from './archive-codec.js';
-import { latestBranchView } from './branch-view.js';
+import { latestBranchView, foldBranchView } from './branch-view.js';
 
 /**
  * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
@@ -128,6 +128,34 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
       throw new Error('appendBranchView: { turnId: positiveInteger } required');
     }
     return this.appendMessage(neumaId, sessionId, { role: 'system', branchView });
+  },
+
+  // impure — the read compaction rewrites from: every row a key opens, plus
+  // the raw lines none opens (a torn line, a line under a retired key). Those
+  // ride into the archive segment as written — the rewrite drops them from the
+  // live file, so the archive is the only place left that keeps them.
+  async _readSessionForCompaction(sessionPath) {
+    let data;
+    try {
+      data = await fs.readFile(sessionPath, 'utf8');
+    } catch (err) {
+      if (err?.code !== 'ENOENT') console.warn(`[Workspace] compaction read failed for ${sessionPath}: ${err.message}`);
+      return { messages: [], undecodable: [] };
+    }
+    const dek = await this._resolveDEK(sessionPath);
+    const messages = [];
+    const undecodable = [];
+    for (const line of data.split('\n').filter((l) => l.trim())) {
+      try {
+        if (dek) {
+          try { messages.push(parseAndDecrypt(line, { key: dek })); continue; } catch { /* the global chain next */ }
+        }
+        messages.push(parseAndDecrypt(line));
+      } catch {
+        undecodable.push(line);
+      }
+    }
+    return { messages, undecodable };
   },
 
   /** impure — complete decoded history, with read/decryption damage surfaced. */
@@ -268,11 +296,15 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
     // appendMessage to the SAME session file blocks until compaction
     // finishes — otherwise the temp-rename would clobber that append.
     return locks.withFileLock(sessionPath, async () => {
-      const messages = await this.readSession(neumaId, sessionId);
+      const { messages, undecodable } = await this._readSessionForCompaction(sessionPath);
       if (!shouldCompact(messages.length, threshold)) return false;
 
       const toSummarize = messages.slice(0, -keepRecent);
       const toKeep = messages.slice(-keepRecent);
+      // THE TAKES: what the region SAYS is its fold under the full file's
+      // view — a rejected take is kept in the archive, never crystallized or
+      // summarized as the answer.
+      const spoken = foldBranchView(toSummarize, latestBranchView(messages));
 
       // The compaction COUNT rides the summary entry itself: each rewrite
       // replaces the prior summary, so the count carries forward (+1) —
@@ -298,7 +330,7 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
       // block compaction (otherwise a single observation error stalls the
       // session forever).
       try {
-        await forceCrystallizeBelow(neumaId, toSummarize, this, {
+        await forceCrystallizeBelow(neumaId, spoken, this, {
           archiveHint: { sessionId, compactionCount },
         });
       } catch {
@@ -309,7 +341,18 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
       const authored = typeof selfSummary?.torch === 'string' && selfSummary.torch.trim()
         && selfSummary.regionLength === toSummarize.length
         ? selfSummary : null;
-      const summary = authored ? null : summarizeMessages(toSummarize);
+      const summary = authored ? null : summarizeMessages(spoken);
+      // CONTINUITY CARRIES: the region's own prior summary (row 0 after the
+      // last compaction) is system speech the extractive summarizer skips, and
+      // the torch lived only on that row. An extractive summary keeps both, so
+      // a compaction the being could not author never erases what it wrote.
+      // An authored one needs neither: the being wrote it with the prior in
+      // view (solo-torch.js buildTorchAsk).
+      const prior = toSummarize.includes(lastCompact) ? lastCompact : null;
+      const priorWords = typeof prior?.content === 'string' && prior.content.trim()
+        ? `\n\nEarlier in this session:\n${prior.content.trim()}` : '';
+      const priorTorch = typeof lastCompact?.torch === 'string' && lastCompact.torch.trim()
+        ? { torch: lastCompact.torch.trim() } : {};
 
       // THE TAKES: the branch view is an append-only fact, and the region
       // about to be destroyed may hold its latest rows. The summary entry
@@ -336,10 +379,11 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
           }
         : {
             role: 'system',
-            content: `[SESSION SUMMARY] ${summary.summary}`,
+            content: `[SESSION SUMMARY] ${summary.summary}${priorWords}`,
+            ...priorTorch,
             timestamp: new Date().toISOString(),
             compacted: true,
-            originalCount: summary.messageCount,
+            originalCount: toSummarize.length,
             compactionCount,
             ...carriedBranchView,
           };
@@ -352,7 +396,7 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
       // observations are a distillate, the segment is the only full copy.
       await this.writeArchiveSegment(neumaId, sessionId, compactionCount, {
         origin: ORIGIN_COMPACTION,
-        messages: toSummarize,
+        messages: [...toSummarize, ...undecodable.map((line) => ({ role: 'system', undecodable: line }))],
         archivedAt: new Date().toISOString(),
       });
 

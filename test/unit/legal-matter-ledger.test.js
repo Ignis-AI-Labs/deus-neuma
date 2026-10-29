@@ -6,7 +6,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { initRepo, commitFiles } from '../helpers/legal-repo-fixture.js';
-import { createMatterLedger, mattersDueForReview, matterCounts } from '../../backend/services/legal/matter-ledger.js';
+import { createMatterLedger, mattersDueForReview, matterCounts, validateVerdict } from '../../backend/services/legal/matter-ledger.js';
 import { journalOpinion } from '../../backend/services/legal/opinion-journal.js';
 import { runLegalWatch, legalTick } from '../../backend/services/legal/legal-scheduler.js';
 import { legalBriefingText } from '../../backend/services/legal/legal-briefing.js';
@@ -174,5 +174,28 @@ describe('the briefing', () => {
     expect(text).toMatch(/Due for review[\s\S]*read long ago/);
     expect(text).toContain('1 matter(s) wait on counsel');
     expect(text).toContain('not its counsel');
+  });
+});
+
+describe('validateVerdict — a reading rests on law the office READ', () => {
+  // The live Praetor flight (2026-10-20): web access was off, the seat cited from
+  // memory, flagged each citation "NOT source-verified" — and settled anyway. Its
+  // remembered quote was another state's wording, not Wyoming's.
+  const unread = 'W.S. 17-29-401(a) — Wyoming LLC Act — https://wyoleg.gov/statutes/compress/title17.pdf — read from CLO knowledge, NOT source-verified (web access off 2026-10-20)';
+  const read = 'W.S. 17-29-401(a) — read at https://wyoleg.gov/statutes/compress/title17.pdf, p. 678, 2026-10-20';
+
+  test('a citation that says it was not read cannot carry a settled verdict', () => {
+    for (const status of ['no_issue', 'concern', 'resolved']) {
+      expect(validateVerdict({ status, assessment: 'x', citations: [read, unread] }), status).toMatch(/was not read/);
+    }
+    for (const c of ['unverified', 'from memory', 'could not fetch the source', 'not checked against the text']) {
+      expect(validateVerdict({ status: 'no_issue', assessment: 'x', citations: [`17-29-401 — ${c}`] }), c).toMatch(/was not read/);
+    }
+  });
+
+  test('the honest hand-off still lands, and a read source settles', () => {
+    expect(validateVerdict({ status: 'needs_operator', assessment: 'x', citations: [unread] })).toBeNull();
+    expect(validateVerdict({ status: 'needs_counsel', assessment: 'x', citations: [unread] })).toBeNull();
+    expect(validateVerdict({ status: 'no_issue', assessment: 'x', citations: [read], reviewBy: '2027-01-01' })).toBeNull();
   });
 });

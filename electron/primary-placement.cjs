@@ -9,7 +9,8 @@
  * stays with a desk the operator has moved on purpose.
  *
  * Under native Wayland a client may not position itself and these are
- * ignored; Electron runs through XWayland by default, where they hold.
+ * ignored; they hold under X11 and XWayland, where every launch path keeps
+ * the desk (display-flags.cjs).
  */
 
 /**

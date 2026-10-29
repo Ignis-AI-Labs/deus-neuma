@@ -1,0 +1,40 @@
+/* HouseSeatWake — a member's light reads the house's wake (seatWake in
+   house-clock/house-clock-view.js). The light keeps its own soul color: the
+   wake only dims it, raises it, or rings it, in the House Clock's colors —
+   --signal for live, --alert for held. ASLEEP dims; ABOUT TO WAKE and
+   WAITING FOR THE MODEL stand half-lit; AWAKE is fully lit.
+   NO-FLASH LAW (utils/no-flash.js): every change rides --duration-fast
+   (200 ms), never a cut. */
+
+.house-seats-light,
+.house-seats-row .hd-light-dot {
+  transition: opacity var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.house-seats-card.is-wake-asleep .house-seats-light,
+.house-seats-row.is-wake-asleep .hd-light-dot { opacity: 0.35; box-shadow: none; }
+
+.house-seats-card.is-wake-next .house-seats-light,
+.house-seats-row.is-wake-next .hd-light-dot { opacity: 0.7; }
+
+.house-seats-card.is-wake-waiting .house-seats-light,
+.house-seats-row.is-wake-waiting .hd-light-dot { opacity: 0.7; box-shadow: 0 0 12px 1px var(--signal-dim); }
+
+.house-seats-card.is-wake-awake .house-seats-light,
+.house-seats-row.is-wake-awake .hd-light-dot { opacity: 1; box-shadow: 0 0 14px 2px var(--signal); }
+
+.house-seats-card.is-wake-held .house-seats-light,
+.house-seats-row.is-wake-held .hd-light-dot { opacity: 0.7; box-shadow: 0 0 12px 1px var(--alert); }
+
+/* THE LABEL — small, under the name; its color is the wake's register. */
+.house-seats-wake {
+  font-size: .6875rem; /* the house's readable data size (HouseReadability.css) */
+  letter-spacing: .12em;
+  color: var(--color-text-tertiary);
+  transition: color var(--duration-fast) linear;
+}
+.house-seats-row .house-seats-wake { margin-left: 10px; }
+.house-seats-wake[data-wake='next'] { color: var(--color-text-secondary); }
+.house-seats-wake[data-wake='waiting'] { color: var(--signal-dim); }
+.house-seats-wake[data-wake='awake'] { color: var(--signal); }
+.house-seats-wake[data-wake='held'] { color: var(--alert); }

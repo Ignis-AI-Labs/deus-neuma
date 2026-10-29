@@ -61,8 +61,8 @@ test('REHEARSE FIRST opens the ceremony as a rehearsal, and says nothing will be
   test.setTimeout(8 * 60 * 1000);
   await reachChooser(page);
   const door = page.locator('.firstrun-rehearse');
-  await expect(door).toContainText('REHEARSE FIRST');
-  await expect(door).toContainText('Nothing is kept');
+  await expect(door).toContainText('Rehearse first');
+  await expect(door).toContainText('nothing kept');
   await door.click();
 
   const commitment = await reachCommitment(page);
@@ -72,7 +72,7 @@ test('REHEARSE FIRST opens the ceremony as a rehearsal, and says nothing will be
 test('the real door stays real — no rehearsal mark on its commitment', async ({ page }) => {
   test.setTimeout(8 * 60 * 1000);
   await reachChooser(page);
-  await page.locator('.firstrun-path', { hasText: 'Summon a neuma' }).click();
+  await page.locator('[data-door="neuma"] .firstrun-path').click();
 
   const commitment = await reachCommitment(page);
   await expect(commitment).toContainText('BEFORE YOU SUMMON');

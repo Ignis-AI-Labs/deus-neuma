@@ -22,6 +22,8 @@ import {
   buildTxt2Img, buildImg2Img, buildForm, buildAnima, buildZImage,
 } from './templates.js';
 import { buildFlux2, buildFlux2Edit, buildZImageControl } from './templates-flux2.js';
+import { buildLtxI2v, buildWanI2v } from './templates-video.js';
+import { VIDEO_ASPECTS, VIDEO_FILE_KEYS } from './pipelines-video.js';
 import { resolveLoras, resolveControlNet, resolvePatch } from './pack-registry.js';
 import {
   composeSpine, missingFrom, unknownIn, PIPELINE, BEING,
@@ -145,14 +147,17 @@ export const resolveSlots = (pipeline, args) => {
  *   components. When present the completeness law is enforced in full — that is
  *   the prompt a look gets locked on. A being's free-text `positive` instead
  *   takes the subject band and only the structured parts are enforced.
+ * @param {string|null} [p.sourceLineage] the source image's recorded lineage;
+ *   absent or null on a source pipeline = not recorded (never usable for sexual content)
  * @param {string} [p.outputGroup] output subfolder — 'neuma' for real jobs, a
  *   `samples/...` group for in-repo lab scripts. NOT a slot: unreachable from
  *   caller args, and sanitized regardless.
- * @returns {{ok: true, graph: object, values: object} | {ok: false, error: string, refusalClass?: string}}
+ * @returns {{ok: true, graph: object, values: object} | {ok: false, error: string, refusalClass?: string, refusalMatch?: {term: string, where: string, slot: string|null}}}
  */
 export const parameterize = ({
   pipeline, model, args, jobId, screenList, fallbackSeed,
   sourceImageName = null, moreReferenceNames = [], outputGroup = 'neuma', subjectComponents = null,
+  sourceLineage = undefined,
 }) => {
   const resolved = resolveSlots(pipeline, args);
   if (!resolved.ok) return resolved;
@@ -165,12 +170,23 @@ export const parameterize = ({
   // is treated as positive — the conservative default.
   const screened = Object.entries(pipeline.slots)
     .filter(([, spec]) => spec.screened)
-    .map(([name, spec]) => ({ text: v[name], polarity: spec.polarity === 'negative' ? 'negative' : 'positive' }))
+    .map(([name, spec]) => ({ name, text: v[name], polarity: spec.polarity === 'negative' ? 'negative' : 'positive' }))
     .filter((s) => typeof s.text === 'string' && s.text.length > 0);
-  const verdict = screenSlots(screened, screenList);
+  // A job that starts from an image is judged WITH what made that image
+  // (image-lineage.js): a picture cannot launder a prompt the law refuses.
+  if (pipeline.requiresSourceImage === true && typeof sourceLineage === 'string' && sourceLineage) screened.push({ name: 'source', text: sourceLineage, polarity: 'positive' });
+  const verdict = screenSlots(screened, screenList, {
+    licenceRefuses: pipeline.licenceRefuses ?? [],
+    unrecordedSource: pipeline.requiresSourceImage === true && !(typeof sourceLineage === 'string' && sourceLineage),
+  });
   if (!verdict.ok) {
-    // The class only — echoing the matched term would teach the filter.
-    return { ok: false, error: 'refused by content law', refusalClass: verdict.classes[0] };
+    // The class only — echoing the matched term would teach the filter. A model-
+    // licence refusal alone carries what it matched (screenSlots), so a misread
+    // ordinary word can be seen and reworded.
+    return {
+      ok: false, error: 'refused by content law', refusalClass: verdict.classes[0],
+      ...(verdict.match ? { refusalMatch: verdict.match } : {}),
+    };
   }
 
   if (pipeline.requiresSourceImage && !sourceImageName) {
@@ -249,6 +265,19 @@ export const parameterize = ({
     // renders from in-repo lab output; both halves are sanitized above.
     filenamePrefix: `${safeGroup(outputGroup)}/${segment}`,
   };
+
+  if (pipeline.template === 'ltxi2v' || pipeline.template === 'wani2v') {
+    // Video: the model's own two-stage recipe is pinned inside the builder, so
+    // only the prompt, seed, length and canvas travel from the slots; the
+    // model's files travel by name.
+    const canvas = VIDEO_ASPECTS[v.aspect];
+    const files = Object.fromEntries(VIDEO_FILE_KEYS.filter((k) => model[k]).map((k) => [k, model[k]]));
+    const values = {
+      positive, seed: common.seed, seconds: v.seconds, ...canvas, imageName: sourceImageName,
+      filenamePrefix: common.filenamePrefix, ...files,
+    };
+    return { ok: true, graph: (pipeline.template === 'wani2v' ? buildWanI2v : buildLtxI2v)(values), values };
+  }
 
   if (pipeline.template === 'flux2' || pipeline.template === 'flux2edit' || pipeline.template === 'zimagecontrol') {
     // The custom-sampler families. Guidance, sampler and scheduler are the

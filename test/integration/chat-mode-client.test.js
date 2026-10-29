@@ -133,6 +133,7 @@ describe('the desk drives the chat modes (real client modules, real wire, gnosis
       voiceGenRef: refs.voiceGenRef, voiceGenFloorRef: refs.voiceGenFloorRef,
       lastVoiceTurnRef: refs.lastVoiceTurnRef, cutVoiceTurnRef: refs.cutVoiceTurnRef,
       companionRef: refs.companionRef, focusRef: refs.focusRef, projectsRef: refs.projectsRef,
+      toolModeRef: refs.toolModeRef, chatModeRef: refs.chatModeRef,
     });
     const handlers = createStreamHandlers({
       wsService: desk, dispatch,
@@ -283,6 +284,29 @@ describe('the desk drives the chat modes (real client modules, real wire, gnosis
     expect(deskState.toolMode).toBe('auto');
     // The REAL reducer took the LINK.
     expect(reducerState.connected).toBe(true);
+  }, 30000);
+
+  test('a declaration still in flight survives a reconnect restate — the stale mode never overwrites it', async () => {
+    // The race (desk-navigation, ~1 in 6): the operator presses AUTO, and the
+    // link comes up again ('connection' / 'portal:resumed') before the ack
+    // lands. The restate must carry what the operator declared, not the mode
+    // the desk last had acked — or the server is put back on DEFAULT.
+    actions.setChatMode('auto');
+    onLinkUp();
+
+    await untilClient(() => clientLog.filter((m) => m.type === 'chat:mode').length === 2);
+    expect(serverLog.filter((m) => m.type === 'chat:mode').map((m) => m.mode)).toEqual(['auto', 'auto']);
+    expect(connection.chatMode).toBe('auto');
+    expect(deskState.chatMode).toBe('auto');
+  }, 30000);
+
+  test('a tool stance still in flight survives a reconnect restate too', async () => {
+    actions.setToolMode('observe');
+    // The restate carries the stance just pressed, never the last acked one
+    // (the chat mode still rides last and derives the tier, by law).
+    onLinkUp();
+    await untilClient(() => clientLog.filter((m) => m.type === 'tool:mode').length === 3);
+    expect(serverLog.filter((m) => m.type === 'tool:mode').map((m) => m.mode)).toEqual(['observe', 'observe']);
   }, 30000);
 
   test('the desk never shows a mode the portal is not holding — a forged ack is ignored', async () => {

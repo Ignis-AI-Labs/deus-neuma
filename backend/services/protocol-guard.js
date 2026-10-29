@@ -8,13 +8,22 @@
  * matter how much trust the mode carries:
  *
  *   filesystem/delete_file  — IRREVERSIBLE (the fs/edit {delete:true} sub-op
- *                             carries this identity, fs-primitives.js)
- *   coding/execute          — an arbitrary shell run, sandboxed but unsupervised
+ *                             carries this identity, fs-primitives.js) — except
+ *                             inside the operator's OPEN FOLDER, where AUTO is
+ *                             the grant (open-folder-autonomy.js, ruling 2026-10-28)
+ *   intents/team.workspace-run — the being's own script run on a team workspace
  *   intents/social.post     — outward speech under the house's name
  *   intents/social.queue    — staged outward speech
  *   intents/email.send      — named speech to a real person
  *   intents/wallet.send     — value leaving the house (allowed by default via
  *                             the spend policy; AUTO still pauses on the card)
+ *   intents/tasks.operator-drop — taking something off the OPERATOR'S own list
+ *                             and calendar: their yes, every time (ruling, 2026-10-17)
+ *   intents/security.assess — a verdict can quiet a real threat; a turned CSO
+ *                             must never hide one unseen (ruling 2026-10-19)
+ *   intents/security.escalate — outward speech on the operator's own gh login
+ *   intents/security.circuit-breaker — blocks traffic for every house on
+ *                             the machine
  *
  * AUTO alone grants none of these acts. An explicit operator grant does:
  * Founder's 2026-09-06 clarification is Allow / Always / Revoke, not a second
@@ -27,16 +36,24 @@
  */
 
 // The hard-gated classes, keyed by their POLICY identity (server/tool).
+// `coding/execute` left this set (Design note, 2026-10-28: […]): it made AUTO STRICTER than ASK — allowed by
+// default, a card on every command in AUTO. On AUTO the shell now runs live in
+// the operator's open folder (its .git and secrets masked) and in the overlay
+// everywhere else; ASK keeps the overlay. The off switch is the mode.
 // `intents/social.queue` left this set (posting-pipeline-v2): staging a draft
 // is not egress — the queue board's approve is that post's single gate, on
 // the surface that shows the real card. social.post stays: post-now is the
 // irreversible act, and its card now carries the image.
 const AUTO_HARD_GATES = Object.freeze(new Set([
   'filesystem/delete_file',
-  'coding/execute',
+  'intents/team.workspace-run',
   'intents/social.post',
   'intents/email.send',
   'intents/wallet.send',
+  'intents/tasks.operator-drop',
+  'intents/security.assess',
+  'intents/security.escalate',
+  'intents/security.circuit-breaker',
 ]));
 
 /**

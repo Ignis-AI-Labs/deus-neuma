@@ -9,11 +9,14 @@ import { liveBeingOf, liveRiteOf } from '../../frontend/app/Rite/rite-live-being
 import { liveRiteMusicOf, soundingKeyOf } from '../../frontend/app/Rite/rite-live-music.js';
 import { keptEvent } from '../../core/birth/rite-record.js';
 import { riteAt, artEventsOf } from '../../frontend/app/Rite/rite-state.js';
-import { GROUND_HZ } from '../../frontend/app/Rite/rite-music.js';
+import { playedMeasure } from '../../frontend/app/Rite/rite-music.js';
+import { PENTATONIC } from '../../frontend/app/Summoning/consonant-tuning.js';
 import { scoreOf } from '../../frontend/app/Summoning/summoning-score.js';
 import { rehearsalFilmOf } from '../../core/birth/rite-frames.js';
 import { HEART_BAND } from '../../core/birth/soul-resonance.js';
 import { beingAura } from '../../core/aura/being.js';
+import { filmInputsOf } from '../../core/birth/finalize-words.js';
+import { appearanceSectionFor } from '../../core/genome/birth-genome.js';
 
 const EPOCH = Date.parse('2026-09-30T10:30:00Z');
 const MOMENT = { utc: new Date(EPOCH).toISOString(), epochMs: EPOCH, zone: 'Asia/Jakarta', offsetMinutes: 420 };
@@ -59,17 +62,41 @@ describe('a live birth feeds the same rite', () => {
   it('a born being\'s film reads its birth:complete records — its own aura, its real genesis hash', () => {
     const { film } = wire();
     const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64) } };
-    const trueName = { fullName: 'Rivia Oka Aldmere', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
+    const trueName = { fullName: 'Rivia Oka Ostrel', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
     const aura = beingAura({ trueName, genesisSeal: seal, neumaId: 'rivia' });
-    const being = liveBeingOf({ ...film, rehearsal: false, trueName, genesisHash: seal.genesisHash, aura });
+    const { genome } = filmInputsOf({ seal, trueName }, film.soul, 'rivia');
+    const being = liveBeingOf({ ...film, rehearsal: false, trueName, genesisHash: seal.genesisHash, aura, genome });
     expect(being.rehearsal).toBe(false);
     expect(being.trueName.genesisHash).toBe(seal.genesisHash);
     expect(being.aura.seed).toBe(aura.seed);
+    expect(being.genome).toBe(genome);
+    expect(scoreOf(being).sections.find((s) => s.kind === 'body').figure.sex).toBe(genome.sex);
+  });
+
+  it('a born being\'s film carries the very body its DNA records — the same anchors, the same derivation', () => {
+    const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64) } };
+    const { genome } = filmInputsOf({ seal, trueName: null }, null, 'rivia');
+    const { genome: dna } = appearanceSectionFor({ soulPublicKey: seal.record.soulPublicKey, genesisHash: seal.genesisHash, momentSeed: seal.record.momentSeed, neumaId: 'rivia' });
+    expect(genome).toEqual(dna);
+    // no sealed anchor, no body — the film refuses rather than invent one
+    expect(filmInputsOf({ seal: null, trueName: null }, null, '').genome).toBeNull();
+  });
+
+  it('a rehearsal\'s body is a specimen derived from its art seed, never a born being\'s', () => {
+    const being = liveBeingOf(wire().film);
+    expect(being.genome.seed).toBe(wire().film.artSeed);
   });
 
   it('nothing can be filmed without its records — never a stand-in', () => {
     expect(liveBeingOf(null)).toBeNull();
     expect(liveBeingOf({ artSeed: 'x', epochMs: EPOCH, soul: null })).toBeNull();
+    const { film } = wire();
+    const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64) } };
+    const trueName = { fullName: 'Rivia Oka Ostrel', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
+    const aura = beingAura({ trueName, genesisSeal: seal, neumaId: 'rivia' });
+    const born = { ...film, rehearsal: false, trueName, genesisHash: seal.genesisHash, aura };
+    expect(liveBeingOf({ ...born, genome: filmInputsOf({ seal, trueName }, null, 'rivia').genome })).not.toBeNull();
+    expect(liveBeingOf({ ...born, genome: null })).toBeNull();
   });
 
   it('before its birth the film waits; at it, the film begins', () => {
@@ -86,17 +113,19 @@ describe('a live birth feeds the same rite', () => {
 });
 
 describe('its live sound', () => {
-  it('before its birth every note is the platform\'s or a measured one; after, its own film music', () => {
+  it('before its birth every note is the platform\'s or a measured one as played; after, its own film music', () => {
     const { events, film, endAt } = wire();
     const score = scoreOf(liveBeingOf(film));
     const rite = liveRiteOf(events, score.lengthMs, endAt + 5);
     const m = liveRiteMusicOf(rite, score, endAt + 5);
-    const measured = events.filter((e) => e.type === 'birth:measured').map((e) => e.frequency);
-    const platform = [GROUND_HZ, GROUND_HZ / 2, HEART_BAND.low / 2];
+    // each measured pitch plays on the nearest consonant interval
+    // (consonant-tuning.js); everything before its birth is on the platform's pentatonic
+    const played = playedMeasure(events.filter((e) => e.type === 'birth:measured'));
+    const onPlatform = (hz) => { const r = hz / HEART_BAND.low; const f = r / 2 ** Math.floor(Math.log2(r)); return PENTATONIC.some((p) => Math.abs(f - p) < 1e-9); };
     [...m.events.filter((e) => e.at < endAt), ...m.beds.filter((b) => b.from < endAt)].forEach((e) => {
-      expect(platform.includes(e.hz) || measured.some((f) => e.hz === f || e.hz === f / 2), `${e.voice} ${e.hz}`).toBe(true);
+      expect(onPlatform(e.hz), `${e.voice} ${e.hz}`).toBe(true);
     });
-    events.filter((e) => e.type === 'birth:measured').forEach((e) => {
+    played.forEach((e) => {
       expect(m.events.some((x) => x.at === e.at && x.voice === 'bell' && x.hz === e.frequency)).toBe(true);
     });
     expect(m.events.some((e) => e.at >= endAt)).toBe(true);

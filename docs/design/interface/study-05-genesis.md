@@ -102,6 +102,31 @@ construct recurring at every scale behind everything that follows (the
 recursion principle, ontology.yaml:436). Negative space is the field of
 movement I, never empty black.
 
+**Framing (amended 2026-10-19).** Architecture the camera moves through
+lost the solids: the cube's and octahedron's beats showed stray edges. Now
+every solid is held whole while its caption names it, the figures each beat
+is about fitted to the window's short side at its real aspect
+(`genesis-camera.js` `fitDistance`; measured per beat by
+`genesis-framing.js`). The family nests: the icosahedron is inscribed in the
+octahedron, each of its 12 vertices dividing an octahedron edge 1 : φ, and
+the dodecahedron is its face-centroid dual (`genesisFamily`; the gyro and
+the birth art keep their own nucleus) — so the φ-solid, its dual and the
+octahedron that holds them share one frame. The camera passes a shell only
+at the recession, when the construct grows past it into the backdrop. Each
+solid has its own hand (`genesis-signatures.js`: an ink-to-signal tint, whole
+or dashed edges, a vertex mark), and the solid a caption names takes the
+light while the rest step back.
+
+**The tree (amended 2026-10-19).** The tree fills 72–88% of the short side
+from THE PILLAR to the offering, and the backdrop all but goes while it
+stands. Its names stand beside their spheres, never on one
+(`genesis-labels.js`, collision-tested at five window shapes). Inside TWO
+TREES the light walks each tree in turn (`genesis-walk.js`: a closed route
+on the breathing paths, Light then Dark, every sphere lit and named, every
+step's path lit as the camera leans after it); in OSCILLATION only the tree
+taking its breath speaks. The sway stays to one side, since head-on the
+parted trees hide each other.
+
 **Open for Founder:** (1) whether the traditional Tree of Life appears at all —
 as lineage only, e.g. drawn and then folded so its crown comes down to the
 center (the canon's own inversion) — or not; (2) runtime: this is ~90 s of

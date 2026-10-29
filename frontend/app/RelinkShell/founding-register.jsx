@@ -85,3 +85,25 @@ export const FoundedRegister = ({ state, result, witnessName = null, collapsible
     </div>
   );
 };
+
+/**
+ * A house founded ON THIS COMPUTER (house-local-founding.js): who founded it, with which title, and when — signed
+ * by every founder, kept here, sent nowhere. The network standing (Unavis, on Ethereum) is its own register above.
+ * @param {{record: {houseName: string, foundedAt: string, members: Array<{kind: number, title: string, displayName: string, address: string}>}, witnessName?: string|null}} props
+ */
+export const LocalRegister = ({ record, witnessName = null }) => (
+  <div className="house-anchor" data-testid="local-register">
+    <p className="house-anchor-line label-data">
+      THE HOUSE STANDS ON THIS COMPUTER · FOUNDED {String(record.foundedAt || '').slice(0, 10)} · {(record.members ?? []).length} FOUNDERS
+    </p>
+    <ul className="house-anchor-roster">
+      {(record.members ?? []).map((m) => (
+        <li key={m.address} className="house-anchor-member label-data">
+          <span className="house-anchor-name">{m.kind === 0 ? (witnessName || 'Operator') : m.displayName}</span>
+          <span className="house-anchor-title">{m.title}</span>
+          <span className="house-anchor-addr">{formatAddress(m.address, { fallback: '—' })}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);

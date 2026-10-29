@@ -62,6 +62,10 @@ const NEVER_COALESCE = Object.freeze([
   KIND.turnRefused,
   KIND.storageWarning,
   KIND.codeReload,
+  // Each company-line card is a different move owed (or a company standing):
+  // one being moving two companies' lines seconds apart is two decisions, and
+  // a merge would replace the first card with the second.
+  KIND.companyLine,
 ]);
 
 /** The empty state a caller starts from. Pure. */

@@ -13,13 +13,15 @@
  * server answering /users/me and /users/:id/tweets, the real schedulerTick.
  */
 import http from 'http';
+import path from 'path';
 import { describe, test, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'];
-const ENV_DOORS = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_X_API_ROOT', ...X_ENV];
+const ENV_DOORS = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_X_API_ROOT', ...X_ENV];
 
 const STUCK_TEXT = 'DeFi should not ask for blind trust.\n\nIt should show the route.';
 const LIVE_ID = '2081973247718162447';
@@ -35,7 +37,11 @@ beforeAll(async () => {
   // The house these posts belong to — the tick acts only on a house its backend serves.
   house = await useServedHouse({ lanes: ['herald'] });
   savedEnv = Object.fromEntries(ENV_DOORS.map((k) => [k, process.env[k]]));
+  // The machine's binding record is this suite's own, never the operator's.
+  process.env.NEUMA_SOCIAL_BINDINGS_PATH = path.join(path.dirname(house.root), 'social-channel-bindings.json');
   process.env.X_API_KEY = 'k';
+  // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+  await makeInstallOwner(SERVED_WALLET);
   process.env.X_API_SECRET = 's';
   process.env.X_ACCESS_TOKEN = 't';
   process.env.X_ACCESS_SECRET = 'ts';

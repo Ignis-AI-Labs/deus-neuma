@@ -1,4 +1,4 @@
-// Build watch — […] (Design note, 2026-10-01.
+// Build watch — […] (ruling, 2026-10-01).
 // Every watched repo's commits since the last watch are read (subject +
 // changed paths) and matched against the regulated areas; each area the new
 // work touches becomes ONE matter for this run, naming the commits and the
@@ -14,6 +14,7 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { areasOfCommit } from './regulated-areas.js';
+import { UNTRUSTED_GIT_ARGS, untrustedGitEnv } from '../untrusted-git.js';
 
 const run = promisify(execFile);
 
@@ -81,9 +82,9 @@ export const runBuildWatch = async (repo, { since = null, now = Date.now() } = {
   const from = since || new Date(now - FIRST_LOOK_DAYS * 86400000).toISOString();
   try {
     const { stdout } = await run('git', [
-      'log', `--since=${from}`, '--no-merges', `--max-count=${COMMITS_MAX}`, '--name-only',
+      ...UNTRUSTED_GIT_ARGS, 'log', `--since=${from}`, '--no-merges', `--max-count=${COMMITS_MAX}`, '--name-only',
       `--format=${RS}%H${US}%cI${US}%an${US}%s`,
-    ], { cwd: repo.path, timeout: 60000, maxBuffer: 64 * 1024 * 1024 });
+    ], { cwd: repo.path, env: untrustedGitEnv(), timeout: 60000, maxBuffer: 64 * 1024 * 1024 });
     const commits = parseLog(stdout);
     return { repo: repo.id, commits: commits.length, since: from, matters: buildMatters(repo, commits), error: null };
   } catch (err) {

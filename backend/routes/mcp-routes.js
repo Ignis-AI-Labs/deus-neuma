@@ -2,6 +2,7 @@ import { Router } from 'express';
 import path from 'path';
 import { mcpService } from '../services/mcp.js';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import { resolvePolicy, checkToolAccess, GLOBAL_DEFAULTS } from '../services/tool-policy.js';
 import { checkToolArgs } from '../services/rogue-detector.js';
 import { createSandboxedCallTool } from '../services/tool-sandbox.js';
@@ -15,6 +16,9 @@ const router = Router();
 
 // All MCP routes require authentication — these execute filesystem operations
 router.use(requireAuth);
+// Spawning, adding or dropping an MCP server changes the whole machine — a
+// process every house's beings can reach — so it is the install owner's act
+// (requireInstallOwner on each mutation below), never a guest house's.
 
 // MCP command allowlist — the ONLY command a client may spawn is `npx`, and only
 // to launch an allowlisted MCP package. `node` was removed (SEC-026 hardening):
@@ -40,8 +44,8 @@ const RESERVED_SERVER_NAMES = Object.freeze(['filesystem']);
 // npm_config_cache/npm_config_registry (redirect where the package resolves
 // from), NODE_EXTRA_CA_CERTS (MITM), LD_PRELOAD/DYLD_* (native lib). A denylist
 // can't be proven complete, so no client env is accepted at all; the spawned
-// server inherits the server's own trusted process.env (see connectToServer's
-// `{ ...process.env }` merge). Per-server env, if ever needed, belongs in a
+// server starts from the helper environment (connectToServer's
+// helperEnvironment — never the backend's secrets). Per-server env, if ever needed, belongs in a
 // server-side catalog, never on a client request.
 const SPAWN_ENV = Object.freeze({});
 
@@ -227,7 +231,7 @@ router.post('/call-tool', enforceToolPolicy, async (req, res) => {
 });
 
 // Connect to an MCP server — command restricted to allowlist
-router.post('/connect', async (req, res) => {
+router.post('/connect', requireInstallOwner, async (req, res) => {
   const { name, command, args } = req.body;
 
   if (rejectReservedServerName(name, res)) return;
@@ -260,7 +264,7 @@ router.get('/tools', async (req, res) => {
 });
 
 // Disconnect a specific server
-router.post('/disconnect/:serverName', async (req, res) => {
+router.post('/disconnect/:serverName', requireInstallOwner, async (req, res) => {
   const { serverName } = req.params;
   if (rejectReservedServerName(serverName, res)) return;
   try {
@@ -273,7 +277,7 @@ router.post('/disconnect/:serverName', async (req, res) => {
 });
 
 // Disconnect all servers — refuse to drop platform filesystem (SEC-AUDIT-005 residual)
-router.post('/disconnect-all', async (req, res) => {
+router.post('/disconnect-all', requireInstallOwner, async (req, res) => {
   const names = [...mcpService.clients.keys()].filter((n) => !RESERVED_SERVER_NAMES.includes(n));
   for (const name of names) {
     try {
@@ -296,7 +300,7 @@ router.get('/servers', (req, res) => {
 });
 
 // MCP server action (connect/disconnect by server ID)
-router.post('/servers/:serverId/:action', async (req, res) => {
+router.post('/servers/:serverId/:action', requireInstallOwner, async (req, res) => {
   const { serverId, action } = req.params;
   try {
     if (action === 'connect') {
@@ -326,7 +330,7 @@ router.post('/servers/:serverId/:action', async (req, res) => {
 });
 
 // Connect a custom MCP server
-router.post('/custom', async (req, res) => {
+router.post('/custom', requireInstallOwner, async (req, res) => {
   const { name, command, args } = req.body;
   const serverName = name || 'custom';
   if (rejectReservedServerName(serverName, res)) return;

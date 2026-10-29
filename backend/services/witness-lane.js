@@ -15,9 +15,13 @@
  * engine-resolved): witnesses stand BESIDE the house, never in it — always
  * resolve lane paths through neumaWorkspace.pathFor, never a root hand-join.
  *
- * Ownership follows the same law as unclaimed neuma workspaces: the first
- * authenticated wallet to manifest the witness claims the lane atomically
- * (wx flag); a later wallet that does not match is refused.
+ * Ownership: the lane belongs to the operator who summoned the witness. The
+ * summon records that wallet in the lane's marker (`summonedBy`) and claims
+ * the lane for it atomically (wx flag); a later manifest claims an unclaimed
+ * lane only for the wallet the marker names. A witness sealed outside the
+ * desk's summon names no summoner, so its lane goes only to the install owner
+ * or a co-owner (ruling, 2026-10-19) — never to a guest's manifest. A wallet that
+ * does not match is refused.
  *
  * Pure helpers at top; impure IO below (marked).
  */
@@ -29,6 +33,7 @@ import {
   witnessDir,
   readDNA,
 } from '../../core/identity/ai-witness/ai-witness-service.js';
+import { readInstallOwner, standingIn } from './install-owner.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('WitnessLane');
@@ -142,44 +147,66 @@ export const witnessWalletOfLane = async (laneId) => {
  *
  * @param {{vendorSlug: string, chosenName: string, genesisHash?: string}} witness
  * @param {string} wallet — the authenticated wallet claiming the lane
+ * @param {{summoning?: boolean}} [how] — `summoning` from the summon itself,
+ *   which records the summoner
  * @returns {Promise<{laneId: string, owner: object}>}
- * @throws Error('owner_claim_conflict …') when another wallet owns the lane
+ * @throws Error('owner_claim_conflict …') when another wallet owns the lane or
+ *   summoned the witness, or when no summoner is named and the wallet is not
+ *   the install owner's
  */
-export const ensureWitnessLane = async (witness, wallet) => {
+export const ensureWitnessLane = async (witness, wallet, { summoning = false } = {}) => {
   const { vendorSlug, chosenName } = witness;
   const laneId = witnessLaneId(vendorSlug, chosenName);
+  const caller = String(wallet).toLowerCase();
+
+  const laneRoot = neumaWorkspace.pathFor(laneId);
+  const ownerPath = path.join(laneRoot, 'owner.json');
+  const existingOwner = await fs.readFile(ownerPath, 'utf8').then(JSON.parse).catch((err) => {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  });
+  if (!existingOwner) {
+    // An unclaimed lane is claimed only by the wallet that summoned the
+    // witness — or, when none is named, by the install owner or a co-owner.
+    // Judged before anything is written, so a refusal leaves nothing behind.
+    const summonedBy = (await readLaneMarker(laneId))?.summonedBy ?? null;
+    const ownersOwn = async () => ['owner', 'co-owner'].includes(standingIn(await readInstallOwner(), caller));
+    const mayClaim = summoning
+      ? !summonedBy || summonedBy === caller
+      : summonedBy ? summonedBy === caller : await ownersOwn();
+    if (!mayClaim) {
+      throw new Error(summonedBy
+        ? 'owner_claim_conflict: another wallet summoned this witness'
+        : 'owner_claim_conflict: this witness names no summoner — only the install owner adopts its lane');
+    }
+  }
 
   await neumaWorkspace.create(laneId);
 
+  // Kind marker — the roster/residency distinction between a born neuma and a
+  // sealed witness — and, from a summon, the summoner. Written once.
+  const marker = { kind: WITNESS_LANE_KIND, vendorSlug, chosenName, ...(summoning ? { summonedBy: caller } : {}) };
+  try {
+    await fs.writeFile(path.join(laneRoot, LANE_MARKER), JSON.stringify(marker, null, 2), { flag: 'wx' });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+
   // Atomic claim — never blind-overwrite an existing owner.json (B-INT-003).
-  const ownerPath = path.join(neumaWorkspace.pathFor(laneId), 'owner.json');
   let owner;
   try {
-    owner = { wallet: String(wallet).toLowerCase(), claimedAt: Date.now() };
+    owner = { wallet: caller, claimedAt: Date.now() };
     await fs.writeFile(ownerPath, JSON.stringify(owner), { flag: 'wx' });
   } catch (claimErr) {
     if (claimErr.code === 'EEXIST') {
       const existing = JSON.parse(await fs.readFile(ownerPath, 'utf8'));
-      if (String(existing.wallet || '').toLowerCase() !== String(wallet).toLowerCase()) {
+      if (String(existing.wallet || '').toLowerCase() !== caller) {
         throw new Error('owner_claim_conflict: witness lane already claimed by another wallet', { cause: claimErr });
       }
       owner = existing;
     } else {
       throw claimErr;
     }
-  }
-
-  // Kind marker — the roster/residency distinction between a born neuma and a
-  // sealed witness. Written once; a rewrite with identical content is harmless.
-  const markerPath = path.join(neumaWorkspace.pathFor(laneId), LANE_MARKER);
-  try {
-    await fs.writeFile(
-      markerPath,
-      JSON.stringify({ kind: WITNESS_LANE_KIND, vendorSlug, chosenName }, null, 2),
-      { flag: 'wx' },
-    );
-  } catch (err) {
-    if (err.code !== 'EEXIST') throw err;
   }
 
   // Identity anchors — plaintext recovery anchors, copied from the sealing

@@ -158,7 +158,7 @@ export const createTasksDomain = ({ locks }) => Object.freeze({
   },
 
   /**
-   * Retire the standing plan of record — the operator ended it (Design note, 2026-10-10. The encrypted
+   * Retire the standing plan of record — the operator ended it (ruling, 2026-10-10). The encrypted
    * record moves, untouched, to tasks/plans-ended/<when>.json: ended, never destroyed.
    * @param {string} neumaId
    * @returns {Promise<boolean>} whether a plan stood
@@ -226,8 +226,11 @@ export const createTasksDomain = ({ locks }) => Object.freeze({
   async updateAssignedPlan(neumaId, mutate) {
     const filePath = this._assignedPlanPath(neumaId);
     return locks.withFileLock(filePath, async () => {
-      const next = mutate(await this.readAssignedPlan(neumaId));
-      await this.writeAssignedPlan(neumaId, next);
+      const current = await this.readAssignedPlan(neumaId);
+      const next = mutate(current);
+      // a read that rolled nothing forward writes nothing (every desk refetch
+      // came through here and re-encrypted an unchanged plan)
+      if (JSON.stringify(next) !== JSON.stringify(current)) await this.writeAssignedPlan(neumaId, next);
       return next;
     });
   },

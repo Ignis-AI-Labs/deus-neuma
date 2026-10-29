@@ -142,13 +142,13 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
       toPostId, toUserId: '42', toUsername: 'bluefriend',
       toTextPreview: 'this moved me', toVerifiedType: 'blue', conversationId,
     },
-    queuedBy: '0xW', // witness-authored: no binding gate, the re-checks are what is under test
+    queuedBy: SERVED_WALLET, // witness-authored: no binding gate, the re-checks are what is under test
   });
 
-  // THE APPROVAL IS THE SEND (Design note, 2026-08-06: the operator's decision
+  // THE APPROVAL IS THE SEND (ruling, 2026-08-06): the operator's decision
   // claims draft → sending in one atom and the same call publishes.
   const approveAndSend = async (entry) => {
-    const claimed = await postQueue.claimReplyForSend(entry.id, { decidedBy: '0xW', textSeen: entry.text });
+    const claimed = await postQueue.claimReplyForSend(entry.id, { decidedBy: SERVED_WALLET, textSeen: entry.text });
     if (!claimed.ok) throw new Error(`claim refused: ${claimed.error}`);
     return publishEntry(claimed.entry);
   };
@@ -165,12 +165,12 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     expect((await postQueue.load()).find((x) => x.id === entry.id).status).toBe('draft');
 
     // Plain approve refuses the kind — arming a reply would strand it.
-    const armed = await postQueue.approve(entry.id, { decidedBy: '0xW' });
+    const armed = await postQueue.approve(entry.id, { decidedBy: SERVED_WALLET });
     expect(armed.ok).toBe(false);
     expect(armed.error).toContain('approve-and-send');
 
     // The copy the operator READ is a precondition of the send (TOCTOU).
-    const moved = await postQueue.claimReplyForSend(entry.id, { decidedBy: '0xW', textSeen: 'other words' });
+    const moved = await postQueue.claimReplyForSend(entry.id, { decidedBy: SERVED_WALLET, textSeen: 'other words' });
     expect(moved.ok).toBe(false);
     expect(moved.error).toContain('the copy moved');
 
@@ -189,7 +189,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     const stored = (await postQueue.load()).find((x) => x.id === entry.id);
     expect(stored.status).toBe('sent');
     expect(stored.postId).toBe('3001');
-    expect(stored.decidedBy).toBe('0xW');
+    expect(stored.decidedBy).toBe(SERVED_WALLET);
     expect(stored.kind).toBe('reply');
     expect(stored.reply.toPostId).toBe('2001');
     expect(stored.reply.conversationId).toBe('900');
@@ -294,7 +294,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     expect(outcome.ok).toBe(true);
     expect(postCalls).toBe(before + 1);
     expect(lastPostBody.reply).toEqual({ in_reply_to_tweet_id: '5555' });
-    expect(lastPostBody.text).toBe('to be met as itself, and to keep its word.');
+    expect(lastPostBody.text).toBe('to be met as itself, and to keep its word.\n\nMade with AI.');
   }, 30000);
 
   test('a vanished target fails the send HONESTLY — nothing is posted, never a fallback post', async () => {
@@ -319,7 +319,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     await stageReply('standing answer one', { toPostId: '2201' });
     await stageReply('standing answer two', { toPostId: '2202' });
     const third = await stageReply('the answer that must hold', { toPostId: '2203' });
-    const claimed = await postQueue.claimReplyForSend(third.id, { decidedBy: '0xW', textSeen: third.text });
+    const claimed = await postQueue.claimReplyForSend(third.id, { decidedBy: SERVED_WALLET, textSeen: third.text });
     const before = postCalls;
     const outcome = await publishEntry(claimed.entry);
 
@@ -426,7 +426,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     // answer rides the mention's own line, by queue id and verbatim, outside the
     // frame (it is the house's copy, not the author's).
     const answer = (await postQueue.load()).find((e) => e.kind === 'reply' && e.reply?.toPostId === '2401');
-    const named = `the house's answer [${answer.id}] draft: "building in the open, beside you"`;
+    const named = `the house's answer [${answer.id}] draft: "building in the open, beside you Made with AI."`;
     expect(reread.content).toContain(named);
     expect(reread.content.indexOf(named)).toBeLessThan(reread.content.indexOf('--- BEGIN EXTERNAL CONTENT'));
 
@@ -434,14 +434,14 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     const byLink = await _handleSocialTool(h.serverWs, connection, null, 'auto', { toolName: 'queue_get' }, { id: 'https://x.com/newvoice/status/2401' });
     expect(byLink.status).toBe('ok');
     expect(byLink.content).toContain(`[${answer.id}] x — draft`);
-    expect(byLink.content).toContain('"building in the open, beside you"');
+    expect(byLink.content).toContain('"building in the open, beside you');
 
     // A second stage on the same post is refused WITH the standing answer's id and
     // words — a being that forgot what it staged learns it from the refusal.
     const twice = await _handleNeumaReply(h.serverWs, connection, null, 'auto', { toPostId: '2401', text: 'placeholder' }, h.channel);
     expect(twice.status).toBe('error');
     expect(twice.error).toContain(`[${answer.id}]`);
-    expect(twice.error).toContain('"building in the open, beside you"');
+    expect(twice.error).toContain('"building in the open, beside you Made with AI."');
   }, 30000);
 
   test('the house\'s own post links to its queue entry — read_x recent names it, queue_get resolves its id', async () => {

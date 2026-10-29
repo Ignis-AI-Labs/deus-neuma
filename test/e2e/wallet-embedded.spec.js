@@ -80,7 +80,8 @@ test('create: 24-word phrase shown, Copy works, encrypted keystore saves, wallet
   await openPicker(page);
   await createWallet(page);
 
-  // The shown phrase (the word is the text node after the index span).
+  // The words start hidden; show them, then read the phrase (the word is the text node after the index span).
+  await page.locator('#wp-reveal').click();
   const phrase = await page.evaluate(() =>
     Array.from(document.querySelectorAll('.mnemonic-word'))
       .map((el) => el.lastChild.textContent.trim())

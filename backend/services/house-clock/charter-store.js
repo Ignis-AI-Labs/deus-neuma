@@ -22,9 +22,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { walletDir, writeJsonAtomic } from '../user-realm.js';
 import { createWriteChain } from '../write-chain.js';
+import { GLOBAL_DEFAULTS } from '../tool-policy-defaults.js';
+import { intentTypes } from '../intents/registry.js';
 import { normalizeCharter } from './charter-shape.js';
+import { readCharter, charterFileOf as fileOf } from './charter-read.js';
 
-const fileOf = (wallet) => path.join(walletDir(wallet), 'house-charter.json');
+// The read lives in its own leaf (charter-read.js): a reader that only needs the
+// record (the WAITING ON YOU account) must not pull the write path's imports in.
+export { readCharter };
 const historyOf = (wallet) => path.join(walletDir(wallet), 'house-charter-history.jsonl');
 
 // One chain for the store: a PUT and an approve must never interleave their
@@ -39,29 +44,15 @@ export class CharterError extends Error {
   }
 }
 
-/**
- * The house's charter, or null when none was ever written. impure. A corrupt
- * file THROWS — read as "no charter" it would silently stop every wake, and
- * that is the operator's switch to throw, not a parse error's.
- * @param {string} wallet
- * @returns {Promise<?Object>}
- */
-export const readCharter = async (wallet) => {
-  let raw;
-  try {
-    raw = await fs.readFile(fileOf(wallet), 'utf8');
-  } catch (err) {
-    if (err.code === 'ENOENT') return null;
-    throw err;
-  }
-  const record = JSON.parse(raw);
-  if (!record || typeof record !== 'object' || !Number.isInteger(record.version)) {
-    throw new Error('house-charter: the stored charter is not a charter record');
-  }
-  return record;
-};
-
 const now = () => new Date().toISOString();
+
+// pure — the act ids a charter may name, in the id space the house matches them in (`server/tool`, as
+// protocol-guard.js holdForWake and optio-review.js actRoute read them): every row of the policy
+// defaults, and every registered intent as intents/<policyTool>
+const knownActIds = () => new Set([
+  ...Object.entries(GLOBAL_DEFAULTS).flatMap(([server, row]) => [...row.allowed, ...row.denied, ...row.requireApproval].map((tool) => `${server}/${tool}`)),
+  ...intentTypes().map((t) => `intents/${t.policyTool}`),
+]);
 
 /**
  * Write the charter: a new version, pending the operator's approval. impure.
@@ -73,7 +64,7 @@ const now = () => new Date().toISOString();
 export const writeCharter = (wallet, input, { by, ownedLanes }) => serialize(async () => {
   let fields;
   try {
-    fields = normalizeCharter(input, { ownedLanes });
+    fields = normalizeCharter(input, { ownedLanes, knownActs: knownActIds() });
   } catch (err) {
     throw new CharterError(err.message);
   }

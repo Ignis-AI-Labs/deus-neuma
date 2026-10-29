@@ -66,7 +66,7 @@ export const createEmbeddedWallet = async (password) => {
 };
 
 /**
- * A KEY MADE FOR THE OPERATOR (Design note, 2026-10-14: for people who want no wallet
+ * A KEY MADE FOR THE OPERATOR (ruling, 2026-10-14): for people who want no wallet
  * of their own. Desktop only, and only where the OS keychain can keep it — the
  * password is generated and kept in the main process, never here.
  * @returns {Promise<boolean>}

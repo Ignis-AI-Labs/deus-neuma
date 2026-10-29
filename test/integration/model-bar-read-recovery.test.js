@@ -31,7 +31,12 @@ test('model and effort reads recover from a real network outage and refuse anoth
       // and the page dies pre-mount ([…]) — the bar never renders, every locator reads absent.
       resolve: { dedupe: ['react', 'react-dom'] },
       optimizeDeps: { entries: ['test/fixtures/model-bar-read-recovery.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      // No HMR socket, and the injected client aimed at a port the browser
+      // refuses outright: with hmr:false the client still dials the default
+      // :24678, where any other Vite on the box (a concurrent browser proof)
+      // answers — its handshake refused, the client "polls for restart" and
+      // reloads the page in a loop, wiping the fixture's state mid-test.
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><div id="root"></div><script type="module" src="/test/fixtures/model-bar-read-recovery.jsx"></script>'));
     // The app genuinely has no engine endpoints. Its ordinary 404 is the

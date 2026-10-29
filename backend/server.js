@@ -1,3 +1,6 @@
+// First import, so every module below evaluates with the .env already loaded:
+// several read process.env at import time.
+import 'dotenv/config';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
@@ -6,9 +9,9 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
-import dotenv from 'dotenv';
 import { loadConfig, getAllowedOrigins, isProduction } from './config.js';
 import { ensureSecrets } from './services/secret-provisioning.js';
+import { receiveDeskKeys } from './services/desk-keys.js';
 import { createLogger } from './services/logger.js';
 import {
   DNAVaultServiceDefault as DNAVaultService, DevModeCache,
@@ -33,16 +36,17 @@ import { apiLimiter } from './services/rate-limiter.js';
 import { bootServer } from './server-boot.js';
 import { applyWorkspaceSettings } from './services/workspace-settings.js';
 import { applyRealmSettings } from './services/user-realm-settings.js';
+import { sealChatCopies } from './services/user-realm.js';
 import { applyFileSettings } from './services/user-files-settings.js';
 import { installRemoteGate, mountRemoteRoutes, attachRemoteTunnelTarget } from './services/remote/wire.js';
 import { attachUpgradeRouter } from './services/ws-upgrade-router.js';
 
 // --- Bootstrap ---
 
-dotenv.config();
-
 // Self-provision stable at-rest secrets on a fresh (packaged) install, before
 // config reads them. Explicit env (.env / Electron-injected) always wins.
+// A packaged desk hands the keys over its channel (key-lock); then nothing is provisioned here.
+await receiveDeskKeys();
 const provisionedSecrets = ensureSecrets();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -74,9 +78,13 @@ await applyWorkspaceSettings();
       provider: choice.provider, endpoint: choice.endpoint, chosenBy: choice.chosenBy,
     });
   }
+  // A model server the platform set up for this person (managed-ollama.js) starts again with
+  // the platform, so the mind is there after a restart. Fire-and-observe: boot never waits on it.
+  const { startManagedAtBoot } = await import('./services/managed-ollama.js');
+  startManagedAtBoot().catch(() => {});
 }
 
-// Witnesses stand BESIDE the house, never in it (Design note, 2026-07-24: any witness
+// Witnesses stand BESIDE the house, never in it (ruling, 2026-07-24): any witness
 // lane still sitting inside the workspaces root moves out to the witnesses'
 // ground before anything binds a lane. Idempotent — a clean house is a no-op;
 // a both-grounds collision is skipped loudly, never overwritten.
@@ -100,6 +108,17 @@ if (provisionedSecrets.generated.length > 0) {
   log.warn('Generated new at-rest secrets on first run — back up this file', {
     keys: provisionedSecrets.generated, file: provisionedSecrets.file,
   });
+}
+// Chat copies written before they were locked are sealed once, before any exchange can append.
+const sealedChats = await sealChatCopies();
+if (sealedChats.files || sealedChats.failed.length) log.info('Sealed the chat copies written before the lock', sealedChats);
+
+if (provisionedSecrets.folder?.startsWith('failed')) {
+  log.warn('The folder holding the at-rest secrets could not be closed to its owner', { result: provisionedSecrets.folder });
+}
+if (provisionedSecrets.envFile === 'closed') log.info('The env file was readable by others — closed to its owner (0600)');
+else if (provisionedSecrets.envFile?.startsWith('failed')) {
+  log.warn('The env file could not be closed to its owner', { result: provisionedSecrets.envFile });
 }
 
 // DID THE GROUND MOVE UNDER US? Asked before anything reads or writes.
@@ -229,7 +248,7 @@ app.use('/frontend/components', express.static(join(__dirname, '../frontend/comp
   }
 }));
 
-// NO MODEL EVER SHIPS (Design note, 2026-08-06: none of the avatars are ours to
+// NO MODEL EVER SHIPS (ruling, 2026-08-06): none of the avatars are ours to
 // distribute, so no .vrm is bundled into any artifact. Production scans a
 // WRITABLE avatar folder under the data root (the install tree is read-only —
 // the BIRTH-001 lesson), empty until the operator places their own models;

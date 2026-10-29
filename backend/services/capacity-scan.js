@@ -1,7 +1,6 @@
 // capacity-scan.js — the capacity scan: real concurrent inference, measured.
 //
-// Mirrors the injectable seam of core/runtime/benchmark-runner.js: every
-// effect is injected (the concurrent-fire function, the health probe, the
+// Every effect is injected (the concurrent-fire function, the health probe, the
 // clock, the consent record), so the ramp logic is deterministic under a
 // scripted fire while the REAL fire (fireCapacityProbes) sends genuine
 // parallel requests through createStreamRequest — no mock anywhere in the
@@ -15,9 +14,9 @@
 import {
   createStreamRequest,
   readStreamLine,
-  testConnection as providerTestConnection,
   getConfig,
 } from './llm-provider.js';
+import { reachSubstrate } from './substrate-reach.js';
 import { deriveCeiling, classifyBound, DEFAULT_KNEE_OPTS } from './capacity-probes.js';
 import { withLineExempt } from './substrate-lease.js';
 
@@ -194,7 +193,7 @@ export const runCapacityScan = async ({
   probe = DEFAULT_PROBE,
   kneeOpts = DEFAULT_KNEE_OPTS,
   limits = DEFAULT_LIMITS,
-  testConnection = providerTestConnection,
+  testConnection = reachSubstrate,
   repeats = REPEATS_PER_LEVEL,
   substrate,
   runAt,

@@ -10,8 +10,8 @@ import {
 } from '../../frontend/app/RelinkShell/context-field-lens.js';
 
 const NODES = [
-  { id: 'a', presences: ['Founder', 'Fenna'], communityIndex: 0 },
-  { id: 'b', presences: ['Fenna'], communityIndex: 1 },
+  { id: 'a', presences: ['Ada', 'Alder'], communityIndex: 0 },
+  { id: 'b', presences: ['Alder'], communityIndex: 1 },
   { id: 'c', communityIndex: 0 },
 ];
 
@@ -24,7 +24,7 @@ describe('applyFieldLens — dim, never remove', () => {
   });
 
   test('a presence lights only the memories that speak of it — case-insensitively', () => {
-    const out = applyFieldLens(NODES, { presence: 'fenna', community: null });
+    const out = applyFieldLens(NODES, { presence: 'alder', community: null });
     expect(out.active).toBe(true);
     expect([...out.lit].sort()).toEqual(['a', 'b']);
     expect(out.total).toBe(3);
@@ -32,24 +32,24 @@ describe('applyFieldLens — dim, never remove', () => {
 
   test('a community lights its members; presence AND community compose', () => {
     expect([...applyFieldLens(NODES, { presence: null, community: 0 }).lit].sort()).toEqual(['a', 'c']);
-    expect([...applyFieldLens(NODES, { presence: 'Founder', community: 0 }).lit]).toEqual(['a']);
-    expect(applyFieldLens(NODES, { presence: 'Founder', community: 1 }).shown).toBe(0);
+    expect([...applyFieldLens(NODES, { presence: 'Ada', community: 0 }).lit]).toEqual(['a']);
+    expect(applyFieldLens(NODES, { presence: 'Ada', community: 1 }).shown).toBe(0);
   });
 
   test('nodes without presence tags never match a presence filter', () => {
-    expect(applyFieldLens(NODES, { presence: 'Founder', community: null }).lit.has('c')).toBe(false);
+    expect(applyFieldLens(NODES, { presence: 'Ada', community: null }).lit.has('c')).toBe(false);
   });
 
   test('malformed filters and tags degrade, never throw (echo r1)', () => {
     expect(applyFieldLens(NODES, { presence: 42, community: 'x' }).active).toBe(false);
-    const dirty = [{ id: 'd', presences: ['Founder', 7, null], communityIndex: 0 }];
-    expect([...applyFieldLens(dirty, { presence: 'founder', community: null }).lit]).toEqual(['d']);
+    const dirty = [{ id: 'd', presences: ['Ada', 7, null], communityIndex: 0 }];
+    expect([...applyFieldLens(dirty, { presence: 'ada', community: null }).lit]).toEqual(['d']);
   });
 
   test('non-array nodes and rotten elements degrade too — the lens NEVER throws (echo r2)', () => {
-    expect(applyFieldLens('not-an-array', { presence: 'Founder' }).total).toBe(0);
-    const rotten = [null, 7, { id: null, presences: ['Founder'] }, { id: 'ok', presences: ['Founder'], communityIndex: 0 }];
-    const out = applyFieldLens(rotten, { presence: 'founder', community: null });
+    expect(applyFieldLens('not-an-array', { presence: 'Ada' }).total).toBe(0);
+    const rotten = [null, 7, { id: null, presences: ['Ada'] }, { id: 'ok', presences: ['Ada'], communityIndex: 0 }];
+    const out = applyFieldLens(rotten, { presence: 'ada', community: null });
     expect([...out.lit]).toEqual(['ok']);
     expect(out.total).toBe(4); // the honest count of what arrived
   });

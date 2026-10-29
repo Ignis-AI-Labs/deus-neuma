@@ -1,0 +1,57 @@
+/* accounts.css — a platform's app and accounts (Settings → API), and the
+   account strip of a platform window. LINE & CYCLE: hairlines, no fill; the
+   company register is the data register. */
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.account-app,
+.account-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+}
+
+/* A long handle or company name wraps inside the row, never off its edge. */
+.account-row .settings-row,
+.account-strip-row {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.account-row .settings-k,
+.account-strip-row .settings-k {
+  flex: 1 1 140px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-company-picker {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.account-add {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.account-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.account-strip-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line);
+}

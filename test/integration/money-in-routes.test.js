@@ -18,6 +18,7 @@ import { setWorkspacesRoot } from '../../core/index.js';
 import { createChainSettings } from '../../backend/services/chain/chain-access.js';
 import { makeReceipt } from '../../backend/services/money-in/receipt-rows.js';
 import { appendReceipts, withHouseLock } from '../../backend/services/money-in/money-in-store.js';
+import { scanNote, watchLine } from '../../frontend/app/RelinkShell/house-clock/money-in-view.js';
 
 const USDC = { symbol: 'USDC', kind: 'erc20', decimals: 6, priceId: 'usd-coin', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' };
 const ADDR = ethers.Wallet.createRandom().address;
@@ -123,5 +124,29 @@ describe('money-in REST', () => {
     expect(res.body.code).toBe('CHAIN_ACCESS_OFF');
     const statePath = path.join(process.env.NEUMA_REALM_ROOT, me.address, 'money-in', 'state.json');
     await expect(fs.access(statePath)).rejects.toThrow();
+  });
+
+  test('a scan with no RPC set reads no network, and the panel says so - never "scanned, 0 new"', async () => {
+    const rpcKeys = ['ETH_RPC_URL', 'BASE_MAINNET_RPC_URL'];
+    const savedRpc = Object.fromEntries(rpcKeys.map((k) => [k, process.env[k]]));
+    for (const k of rpcKeys) delete process.env[k];
+    await createChainSettings().setEnabled(true);
+    const extra = ethers.Wallet.createRandom().address;
+    try {
+      await as(me)(request(app).put(`/api/v1/money-in/addresses/${extra}`).send({ label: 'tips' }));
+      const res = await as(me)(request(app).post('/api/v1/money-in/scan'));
+      expect(res.status).toBe(200);
+      expect(res.body.networks).toEqual([
+        { network: 'ethereum', skipped: 'unconfigured' },
+        { network: 'base', skipped: 'unconfigured' },
+      ]);
+      expect(scanNote(res.body)).toBe('NOTHING SCANNED · NOT READ: ETHEREUM — NO RPC SET · BASE — NO RPC SET');
+      const watch = await as(me)(request(app).get('/api/v1/money-in/watch'));
+      expect(watchLine(watch.body)).toMatch(/LAST SCAN .* · NOT READ: ETHEREUM — NO RPC SET · BASE — NO RPC SET$/);
+    } finally {
+      await as(me)(request(app).delete(`/api/v1/money-in/addresses/${extra}`));
+      await createChainSettings().setEnabled(false);
+      for (const k of rpcKeys) if (savedRpc[k] !== undefined) process.env[k] = savedRpc[k];
+    }
   });
 });

@@ -30,9 +30,9 @@ export const GenesisSpecimen = () => {
   const [speed, setSpeed] = useState(1);
   const [cues, setCues] = useState([]);
   const record = useMemo(specimenRecord, []);
-  const [aspect, setAspect] = useState(() => window.innerWidth / Math.max(1, window.innerHeight));
+  const [size, setSize] = useState(() => ({ w: window.innerWidth, h: Math.max(1, window.innerHeight) }));
   const inscription = useMemo(() => genesisInscription(record), [record]);
-  const scene = sceneAt(t);
+  const scene = sceneAt(t, size.w / size.h);
 
   // impure — the stage lives as long as the page
   useEffect(() => {
@@ -42,9 +42,9 @@ export const GenesisSpecimen = () => {
 
   useEffect(() => { stageRef.current?.render(scene); }, [scene]);
 
-  // impure — the labels project with the viewport's aspect, as the stage does
+  // impure — the names are placed in the viewport's own pixels, as the stage frames it
   useEffect(() => {
-    const onResize = () => setAspect(window.innerWidth / Math.max(1, window.innerHeight));
+    const onResize = () => setSize({ w: window.innerWidth, h: Math.max(1, window.innerHeight) });
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -100,7 +100,7 @@ export const GenesisSpecimen = () => {
   return (
     <div className="gen-root">
       <canvas ref={canvasRef} className="gen-canvas" />
-      <GenesisOverlay scene={scene} inscription={inscription} aspect={aspect} />
+      <GenesisOverlay scene={scene} inscription={inscription} size={size} />
 
       <aside className="gs-cues" aria-label="Cues fired">
         <span className="gs-label">SCORE · CUES FIRED</span>

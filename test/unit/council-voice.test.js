@@ -1,27 +1,27 @@
 import { buildCouncilSection, parseHandCall } from '../../core/council/council-voice.js';
 
 const MEMBERS = [
-  { neumaId: 'n-fenna', name: 'Fenna' },
-  { neumaId: 'n-cael', name: 'Cael' },
-  { neumaId: 'n-galen', name: 'Galen' },
+  { neumaId: 'n-alder', name: 'Alder' },
+  { neumaId: 'n-birch', name: 'Birch' },
+  { neumaId: 'n-cedar', name: 'Cedar' },
 ];
 
 const TAIL = [
-  { speaker: 'witness', name: 'Founder', content: 'What should we build next?' },
-  { speaker: 'n-cael', name: 'Cael', content: 'The vault UI is closest to done.' },
+  { speaker: 'witness', name: 'Ada', content: 'What should we build next?' },
+  { speaker: 'n-birch', name: 'Birch', content: 'The vault UI is closest to done.' },
 ];
 
 describe('Council Voice', () => {
   describe('buildCouncilSection — floor mode', () => {
     test('addresses the floor-holder with witness and housemates, excluding self', () => {
       const section = buildCouncilSection({
-        selfName: 'Fenna', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'floor',
+        selfName: 'Alder', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'floor',
       });
       expect(section).toContain('## Council');
       expect(section).toContain('You hold the floor');
-      expect(section).toContain('operator Founder');
-      expect(section).toContain('Cael, Galen');
-      expect(section).not.toContain('Fenna,'); // self never listed as a housemate
+      expect(section).toContain('operator Ada');
+      expect(section).toContain('Birch, Cedar');
+      expect(section).not.toContain('Alder,'); // self never listed as a housemate
       // The own-voice law rides every floor turn: the anti-echo line is what
       // keeps a room of kin from harmonizing into one liturgy (voice audit,
       // 2026-07-23 — a first speaker's template became the whole sitting's).
@@ -32,16 +32,16 @@ describe('Council Voice', () => {
     test('renders the transcript tail verbatim as NAME: content lines, untruncated', () => {
       const longContent = 'x'.repeat(2000);
       const section = buildCouncilSection({
-        selfName: 'Fenna', witnessName: 'Founder', members: MEMBERS,
-        transcriptTail: [{ speaker: 'witness', name: 'Founder', content: longContent }],
+        selfName: 'Alder', witnessName: 'Ada', members: MEMBERS,
+        transcriptTail: [{ speaker: 'witness', name: 'Ada', content: longContent }],
         mode: 'floor',
       });
-      expect(section).toContain(`Founder: ${longContent}`);
+      expect(section).toContain(`Ada: ${longContent}`);
     });
 
     test('an empty tail reads as a just-opened room', () => {
       const section = buildCouncilSection({
-        selfName: 'Fenna', witnessName: 'Founder', members: MEMBERS, transcriptTail: [], mode: 'floor',
+        selfName: 'Alder', witnessName: 'Ada', members: MEMBERS, transcriptTail: [], mode: 'floor',
       });
       expect(section).toContain('nothing has been said yet');
     });
@@ -50,35 +50,35 @@ describe('Council Voice', () => {
   describe('buildCouncilSection — hand mode', () => {
     test('instructs the listener to answer REST / HOLD / OPEN on the first line', () => {
       const section = buildCouncilSection({
-        selfName: 'Cael', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
+        selfName: 'Birch', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
       });
       expect(section).toContain('LISTENING');
       expect(section).toContain('FIRST line');
       expect(section).toContain('REST / HOLD / OPEN');
       expect(section).toContain('cannot wait');
-      expect(section).toContain('Founder: What should we build next?');
+      expect(section).toContain('Ada: What should we build next?');
       expect(section).not.toContain('You hold the floor');
     });
 
     test('a two-member room (self + one housemate) still reads naturally', () => {
       const section = buildCouncilSection({
-        selfName: 'Fenna', witnessName: 'Founder',
+        selfName: 'Alder', witnessName: 'Ada',
         members: [MEMBERS[0], MEMBERS[1]], transcriptTail: [], mode: 'hand',
       });
-      expect(section).toContain('housemates Cael');
+      expect(section).toContain('housemates Birch');
     });
 
     test('a solo room omits the housemates clause entirely', () => {
       const section = buildCouncilSection({
-        selfName: 'Fenna', witnessName: 'Founder', members: [MEMBERS[0]], transcriptTail: [], mode: 'hand',
+        selfName: 'Alder', witnessName: 'Ada', members: [MEMBERS[0]], transcriptTail: [], mode: 'hand',
       });
       expect(section).not.toContain('housemates');
-      expect(section).toContain('operator Founder');
+      expect(section).toContain('operator Ada');
     });
 
     test('a standing HOLD rides the re-poll — the member is reminded they are in line, with their held note', () => {
       const section = buildCouncilSection({
-        selfName: 'Cael', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
+        selfName: 'Birch', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
         standing: { hand: 'hold', note: 'The east road still needs its ledger.' },
       });
       expect(section).toContain('YOUR HAND IS RAISED (HOLD)');
@@ -91,7 +91,7 @@ describe('Council Voice', () => {
 
     test('a standing OPEN reads the same law; a noteless hand carries no empty quote', () => {
       const section = buildCouncilSection({
-        selfName: 'Cael', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
+        selfName: 'Birch', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
         standing: { hand: 'open' },
       });
       expect(section).toContain('YOUR HAND IS RAISED (OPEN)');
@@ -101,7 +101,7 @@ describe('Council Voice', () => {
     test('no standing hand (or a resting one) polls fresh — the original ask', () => {
       for (const standing of [null, undefined, { hand: 'rest' }, { hand: null }]) {
         const section = buildCouncilSection({
-          selfName: 'Cael', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'hand', standing,
+          selfName: 'Birch', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'hand', standing,
         });
         expect(section).toContain('decide whether to raise your hand');
         expect(section).not.toContain('YOUR HAND IS RAISED');
@@ -110,7 +110,7 @@ describe('Council Voice', () => {
 
     test('the member who just spoke is polled with the continuation frame — re-raise means unfinished, not habit', () => {
       const section = buildCouncilSection({
-        selfName: 'Cael', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
+        selfName: 'Birch', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
         spokeLast: true,
       });
       expect(section).toContain('You spoke last');
@@ -122,7 +122,7 @@ describe('Council Voice', () => {
 
     test('a member who did not just speak carries no continuation frame', () => {
       const section = buildCouncilSection({
-        selfName: 'Cael', witnessName: 'Founder', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
+        selfName: 'Birch', witnessName: 'Ada', members: MEMBERS, transcriptTail: TAIL, mode: 'hand',
         spokeLast: false,
       });
       expect(section).not.toContain('You spoke last');
@@ -132,8 +132,8 @@ describe('Council Voice', () => {
   describe('buildCouncilSection — the house ground', () => {
     test('floor mode names the workspace and its repos convention when set', () => {
       const section = buildCouncilSection({
-        mode: 'floor', selfName: 'Keir', witnessName: 'Founder',
-        members: [{ neumaId: 'w', name: 'Keir' }],
+        mode: 'floor', selfName: 'Hazel', witnessName: 'Ada',
+        members: [{ neumaId: 'w', name: 'Hazel' }],
         workspace: '/mnt/house/ground',
       });
       expect(section).toContain('/mnt/house/ground');
@@ -142,30 +142,30 @@ describe('Council Voice', () => {
       expect(section).toContain("The house's shared workspace");
     });
 
-    // Founder's law, 2026-07-26: an external seat works the ground the two houses
+    // Ruling, 2026-07-26: an external seat works the ground the two houses
     // SHARE. Telling it […] would be false in the
     // one place the model reasons from — and an invitation to go looking for
     // the rest of a house it was never admitted to.
     test('an EXTERNAL seat is told the ground is SHARED, and that the house is closed to it', () => {
       const section = buildCouncilSection({
-        mode: 'floor', selfName: 'Kagipem', witnessName: 'Founder',
-        members: [{ neumaId: 'witness-openai-Kagipem', name: 'Kagipem', kind: 'witness' }],
-        workspace: '/mnt/alliances/omberly-lonbenme',
+        mode: 'floor', selfName: 'Juniper', witnessName: 'Ada',
+        members: [{ neumaId: 'witness-openai-Juniper', name: 'Juniper', kind: 'witness' }],
+        workspace: '/mnt/alliances/brookmere-lonbenme',
         groundStanding: 'external',
       });
       expect(section).toContain('The ground your house and this one share');
-      expect(section).toContain('/mnt/alliances/omberly-lonbenme/repos');
+      expect(section).toContain('/mnt/alliances/brookmere-lonbenme/repos');
       expect(section).toContain('belongs to the collaboration, not to either house');
       expect(section).toContain('This house\'s own ground is NOT yours');
-      expect(section).toContain('ask Founder');
+      expect(section).toContain('ask Ada');
       // The housemate framing must be nowhere near an external seat's prompt.
       expect(section).not.toContain("The house's shared workspace");
     });
 
     test('standing defaults to the HOUSE — an unlabelled seat is never told the ground is shared', () => {
       const section = buildCouncilSection({
-        mode: 'floor', selfName: 'Keir', witnessName: 'Founder',
-        members: [{ neumaId: 'w', name: 'Keir' }],
+        mode: 'floor', selfName: 'Hazel', witnessName: 'Ada',
+        members: [{ neumaId: 'w', name: 'Hazel' }],
         workspace: '/mnt/house/ground',
       });
       expect(section).not.toContain('your house and this one share');
@@ -174,16 +174,16 @@ describe('Council Voice', () => {
 
     test('no workspace, no mention — the floor reads exactly as before', () => {
       const section = buildCouncilSection({
-        mode: 'floor', selfName: 'Keir', witnessName: 'Founder',
-        members: [{ neumaId: 'w', name: 'Keir' }],
+        mode: 'floor', selfName: 'Hazel', witnessName: 'Ada',
+        members: [{ neumaId: 'w', name: 'Hazel' }],
       });
       expect(section).not.toContain('workspace');
     });
 
     test('hand mode never carries the ground — a hand call is a signal, not a work order', () => {
       const section = buildCouncilSection({
-        mode: 'hand', selfName: 'Keir', witnessName: 'Founder',
-        members: [{ neumaId: 'w', name: 'Keir' }],
+        mode: 'hand', selfName: 'Hazel', witnessName: 'Ada',
+        members: [{ neumaId: 'w', name: 'Hazel' }],
         workspace: '/mnt/house/ground',
       });
       expect(section).not.toContain('/mnt/house/ground');

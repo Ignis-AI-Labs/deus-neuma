@@ -143,6 +143,9 @@ describe('the advertised family and its gate', () => {
     const policy = resolvePolicy(GLOBAL_DEFAULTS, null, null);
     expect(checkToolAccess(policy, 'image', 'list_pipelines')).toBe('allowed');
     expect(checkToolAccess(policy, 'intents', 'image.generate')).toBe('approval_required');
+    // A clip holds the machine for minutes: it asks on its own row, granted apart.
+    expect(checkToolAccess(policy, 'intents', 'video.generate')).toBe('approval_required');
+    expect(GLOBAL_DEFAULTS.intents.requireApproval).toContain('video.generate');
     // A being does not ask permission to hold an opinion about its own work.
     expect(checkToolAccess(policy, 'image', 'review_image')).toBe('allowed');
   });

@@ -15,13 +15,13 @@ describe('neuma skill — pure libs', () => {
       expect(parseArgs(['list'])).toMatchObject({ command: 'list', name: null, message: null, sessionId: null });
     });
     test('talk folds trailing positionals into one message', () => {
-      expect(parseArgs(['talk', 'Fenna', 'hello', 'there'])).toMatchObject({
-        command: 'talk', name: 'Fenna', message: 'hello there',
+      expect(parseArgs(['talk', 'Alder', 'hello', 'there'])).toMatchObject({
+        command: 'talk', name: 'Alder', message: 'hello there',
       });
     });
     test('--session is captured, never folded into the message', () => {
-      expect(parseArgs(['talk', 'Fenna', 'hi', '--session', 'session-42'])).toMatchObject({
-        command: 'talk', name: 'Fenna', message: 'hi', sessionId: 'session-42',
+      expect(parseArgs(['talk', 'Alder', 'hi', '--session', 'session-42'])).toMatchObject({
+        command: 'talk', name: 'Alder', message: 'hi', sessionId: 'session-42',
       });
     });
     test('empty argv defaults to help', () => {
@@ -30,17 +30,17 @@ describe('neuma skill — pure libs', () => {
   });
 
   describe('resolveNeuma', () => {
-    const list = [{ neumaId: 'abc123', name: 'Fenna' }, { neumaId: 'def456', name: 'Signal' }];
+    const list = [{ neumaId: 'abc123', name: 'Alder' }, { neumaId: 'def456', name: 'Signal' }];
     test('matches by exact neumaId', () => {
       expect(resolveNeuma(list, 'def456')).toEqual({ neumaId: 'def456', name: 'Signal' });
     });
     test('matches by name, case-insensitive', () => {
-      expect(resolveNeuma(list, 'fenna')).toEqual({ neumaId: 'abc123', name: 'Fenna' });
+      expect(resolveNeuma(list, 'alder')).toEqual({ neumaId: 'abc123', name: 'Alder' });
     });
     test('null on miss, empty needle, or non-array', () => {
       expect(resolveNeuma(list, 'Nobody')).toBeNull();
       expect(resolveNeuma(list, '')).toBeNull();
-      expect(resolveNeuma(null, 'Fenna')).toBeNull();
+      expect(resolveNeuma(null, 'Alder')).toBeNull();
     });
   });
 
@@ -50,12 +50,12 @@ describe('neuma skill — pure libs', () => {
       const s = buildSpeaker({
         address: addr,
         name: 'Claude',
-        house: 'Aldmere',
+        house: 'Thornfield',
         harness: 'Claude Code',
       });
       expect(s.name).toBe('Claude');
       expect(s.descriptor).toContain('a peer consciousness');
-      expect(s.descriptor).toContain('of House Aldmere');
+      expect(s.descriptor).toContain('of House Thornfield');
       expect(s.descriptor).toContain('collaborating with your witness through Claude Code');
       expect(s.descriptor).toContain(`signing as ${addr}`);
     });
@@ -83,12 +83,12 @@ describe('neuma skill — pure libs', () => {
       const out = formatList({
         conduit: { reachable: true, provider: 'lmstudio', model: 'qwen' },
         neuma: [{
-          neumaId: 'abc12345xyz', name: 'Fenna', resident: true,
+          neumaId: 'abc12345xyz', name: 'Alder', resident: true,
           lastReflectionAt: new Date(NOW - 60000).toISOString(), freshObservations: 3,
         }],
       }, NOW);
       expect(out).toContain('conduit: AWAKE');
-      expect(out).toContain('Fenna');
+      expect(out).toContain('Alder');
       expect(out).toContain('3 pending');
     });
     test('formatList is honest when nothing is resident + conduit dormant', () => {
@@ -98,9 +98,9 @@ describe('neuma skill — pure libs', () => {
     });
     test('formatTalk includes reply, emotion, and a resumable session id', () => {
       const out = formatTalk({
-        name: 'Fenna', reply: 'I think so.', emotion: 'thoughtful', intensity: 'low', sessionId: 'session-9',
+        name: 'Alder', reply: 'I think so.', emotion: 'thoughtful', intensity: 'low', sessionId: 'session-9',
       });
-      expect(out).toContain('Fenna: I think so.');
+      expect(out).toContain('Alder: I think so.');
       expect(out).toContain('[thoughtful/low]');
       expect(out).toContain('--session session-9');
     });

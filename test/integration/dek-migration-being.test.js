@@ -410,9 +410,9 @@ describe('#117 S4b — migrateBeing (orchestrator)', () => {
   // A test that EXERCISES a symlinked root trips defense (2) directly, which
   // confirms the defense rather than the migrator. Layered fail-closed.
 
-  // INVARIANT 14 — derived-DEK matches what deriveNeumaDEK produces from the
-  // seal. Proves the orchestrator threads the right hash through writeNeumaDEK.
-  it('derived DEK == deriveNeumaDEK(master, sealHash) — orchestrator threads the right hash', async () => {
+  // INVARIANT 14 — the being's key is RANDOM: the master and the (public) seal
+  // hash do not rebuild it, and the files moved open under the key on disk.
+  it('the migrated key is random — the master and seal hash do not rebuild it', async () => {
     const neumaId = '4d4d4d4d';
     const genesisHash = await synthesizeBeing(house, neumaId, {
       encryptedSamples: [{ relPath: 'soul/soul.json', plain: { name: '4D' } }],
@@ -420,8 +420,9 @@ describe('#117 S4b — migrateBeing (orchestrator)', () => {
     await migrateBeing(workspace, neumaId);
 
     const dek = await workspace.readNeumaDEK(neumaId);
-    const expected = deriveNeumaDEK(deriveKeyFromSecret(KEY), genesisHash);
-    expect(dek.equals(expected)).toBe(true);
+    expect(dek.equals(deriveNeumaDEK(deriveKeyFromSecret(KEY), genesisHash))).toBe(false);
+    const soulRaw = JSON.parse(await fs.readFile(path.join(house, neumaId, 'soul', 'soul.json'), 'utf8'));
+    expect(decryptEnvelope(soulRaw, { key: dek })).toEqual({ name: '4D' });
   });
 });
 

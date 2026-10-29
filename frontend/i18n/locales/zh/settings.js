@@ -16,6 +16,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: '语言',
     note: '本界面所使用的语言——标签、设置以及每一个已完成翻译的界面。更多语言将在其词表审定后上线。',
+    preview: '预览（未完成）',
   }),
 
   account: Object.freeze({
@@ -41,17 +42,21 @@ export default Object.freeze({
     toggle: '声音 — {{state}}',
     volumeKey: '音量',
     volumeAria: '声音音量',
-    executionTitle: '执行与文件 — {{count}}',
-    executionNote: '构建、测试、检查、依赖、Git 与文件操作各有独立提示音。混合命令有自己的声音；无法识别的命令使用“其他执行”。芯片会显示该命令。',
-    actsTitle: '行动 — {{count}}',
-    actsNote: '外部读取、发布、产物生成、记录、状态查看与失败。请在此试听这些候选音效。',
-    worldTitle: '世界 — {{count}}',
-    worldNote: '已定稿的声景——门户、信息流、仪式。以耳定稿；在此对照试听。',
+    packKey: '音色',
+    pack: Object.freeze({ soft: '柔和', scifi: '科幻' }),
+    packNote: '科幻是桌面本来的声景——新安装时听到的就是它。柔和是更温和的一套声音，可按喜好选用。',
+    groups: Object.freeze({
+      desk: Object.freeze({ title: '您的操作 — {{count}}', note: '您自己的操作：确认、拒绝、打开、关闭，以及切换时的轻响。' }),
+      notices: Object.freeze({ title: '通知 — {{count}}', note: '世界的回应：到达、回复、连接、需要签名、记忆已保存。' }),
+      execution: Object.freeze({ title: '工作中的 neuma — {{count}}', note: '构建、测试、检查、依赖、Git 与文件操作各有独立提示音。混合命令有自己的声音；无法识别的命令使用“其他执行”。芯片会显示该命令。' }),
+      acts: Object.freeze({ title: '更多行动 — {{count}}', note: '外部读取、发布、产物生成、记录、状态查看与失败。' }),
+    }),
   }),
 
   realm: Object.freeze({
     heading: '数据领域',
-    note: '您在本机拥有的每一次对话的副本——与每个 neuma 的主权工作区相互独立。纯文本。由您读取、移动或删除。',
+    note: '您每段对话的副本都在这台机器上——与每位 neuma 的主权工作区分开。它们与存在的文件一样由这台电脑的密钥锁住；点「导出」即可把任意一段保存为明文。',
+    export: '导出',
     location: '位置',
     yourFolder: '您的文件夹',
     chatLogs: '聊天记录',

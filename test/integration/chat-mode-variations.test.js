@@ -28,6 +28,7 @@
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -57,7 +58,7 @@ const GOOD_PRESENT = Object.freeze({
 // The six hard-gated classes as their POLICY identities (protocol-guard.js).
 const HARD_GATES = Object.freeze([
   ['filesystem', 'delete_file'],
-  ['coding', 'execute'],
+  ['intents', 'team.workspace-run'],
   ['intents', 'social.post'],
   ['intents', 'email.send'],
   ['intents', 'wallet.send'],
@@ -107,7 +108,9 @@ describe('chat mode variations (real socket, real dispatcher, gnosis)', () => {
     bindingsFile = path.join(house, 'social-channel-bindings.json');
     prevBindingsEnv = process.env.NEUMA_SOCIAL_BINDINGS_PATH;
     process.env.NEUMA_SOCIAL_BINDINGS_PATH = bindingsFile;
-    await fs.writeFile(bindingsFile, JSON.stringify({ mastodon: { neumaId: 'aethon' } }));
+    // The lane is the house's own, and the house bound it (house-positions.js).
+    await fs.writeFile(path.join(house, 'aethon', 'owner.json'), JSON.stringify({ wallet: WITNESS }));
+    await fs.writeFile(bindingsFile, JSON.stringify({ mastodon: { neumaId: 'aethon', boundBy: WITNESS } }));
     // The lane's config writes (tool policy, spend allowlist) are encrypted at
     // rest — the test key the other suites use, saved and restored.
     prevDnaKey = process.env.DNA_ENCRYPTION_KEY;
@@ -221,17 +224,39 @@ describe('chat mode variations (real socket, real dispatcher, gnosis)', () => {
   // Design note, 2026-09-06 (protocol-guard.js): Allow / Always / Revoke — AUTO alone
   // grants no hard-gated act, but the operator's explicit ALWAYS is honored,
   // never a second approval after permission was already given.
-  test('AUTO guard — coding/execute pauses on the card; the operator\'s ALWAYS grant is honored', async () => {
+  // Design note, 2026-10-28 ([…]):
+  // a shell run is no longer hard-gated — AUTO can never ask MORE than ASK —
+  // and a delete inside the operator's OPEN FOLDER lands on AUTO with no card
+  // (open-folder-autonomy.js); outside it, the delete still pauses.
+  test('AUTO guard — a shell run asks nothing; a delete asks outside the open folder, never inside it; ALWAYS is honored', async () => {
     const { connection } = seatConnection('guard-gate');
     clientLog.length = 0;
 
-    // A shell run is approval-tier; plain AUTO would unlock it — the guard
-    // holds it for the operator.
-    approveWith = 'allow';
-    const exec = gateAct(connection, { server: 'coding', tool: 'execute', mode: 'auto', emit: () => {} });
-    const execCard = await untilClient((m) => m.type === 'tool:approval_request');
-    expect(execCard.tool).toBe('coding/execute');
-    expect((await exec).ok).toBe(true);
+    approveWith = null;
+    const exec = await gateAct(connection, { server: 'coding', tool: 'execute', mode: 'auto', emit: () => {} });
+    expect(exec.ok).toBe(true);
+    await settle(200);
+    expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
+
+    // The open folder: a delete by absolute path inside it lands with no card…
+    const openFolder = path.join(os.tmpdir(), 'open-folder-guard');
+    connection.toolWorkspace = openFolder;
+    const inside = await gateAct(connection, {
+      server: 'filesystem', tool: 'delete_file', mode: 'auto', args: { path: path.join(openFolder, 'old.txt') }, emit: () => {},
+    });
+    expect(inside.ok).toBe(true);
+    await settle(200);
+    expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
+
+    // …while one outside it (or a relative path) still pauses on the card.
+    approveWith = 'deny';
+    const outside = gateAct(connection, {
+      server: 'filesystem', tool: 'delete_file', mode: 'auto', args: { path: path.join(os.tmpdir(), 'elsewhere', 'x.txt') }, emit: () => {},
+    });
+    const outsideCard = await untilClient((m) => m.type === 'tool:approval_request');
+    expect(outsideCard.tool).toBe('filesystem/delete_file');
+    expect((await outside).ok).toBe(false);
+    connection.toolWorkspace = null;
 
     // Record an ALWAYS grant for deletes the honest way: ask mode, the card,
     // the operator's 'always' — persisted to the lane's real policy file.
@@ -341,6 +366,9 @@ describe('chat mode variations (real socket, real dispatcher, gnosis)', () => {
     }
     // An ordinary act flows in AUTO — the guard never reaches for it.
     expect(isAutoHardGated('fs', 'write')).toBe(false);
+    // A shell run left the table (Design note, 2026-10-28: AUTO never asks more than ASK.
+    expect(isAutoHardGated('coding', 'execute')).toBe(false);
+    expect(applyProtocolGuard('allowed', 'auto', 'coding', 'execute')).toBe('allowed');
     // Staging a draft left the table on purpose (posting-pipeline-v2).
     expect(isAutoHardGated('intents', 'social.queue')).toBe(false);
     expect(applyProtocolGuard('allowed', 'auto', 'fs', 'write')).toBe('allowed');

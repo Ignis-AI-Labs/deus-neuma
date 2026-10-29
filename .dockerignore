@@ -14,7 +14,16 @@ uploads/
 
 # Dev/test files
 test/
+# every env and key file at any depth, never only the root's (audit 2026-10-28 L-06)
 .env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+**/*.pem
+**/*.key
+**/keys/
+**/secrets/
 .env.local
 .env.test
 *.log

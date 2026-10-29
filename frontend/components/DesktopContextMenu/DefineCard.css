@@ -1,0 +1,107 @@
+/* DEFINE's card — a reading panel at the spot the word was asked: the word
+   in the voice register, its parts of speech in the heading register, the
+   meanings in plain prose, the acts in the data register (LINE & CYCLE). */
+.define-card {
+  position: fixed;
+  z-index: var(--z-popover);
+  width: min(380px, calc(100vw - 16px));
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--line-hover);
+  border-left: 2px solid var(--signal-dim);
+  box-shadow: var(--shadow-2xl);
+  color: var(--color-text-primary);
+}
+
+.define-word {
+  font-family: var(--font-voice);
+  font-size: var(--text-lg);
+  letter-spacing: 0.01em;
+}
+
+.define-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.define-note.is-error {
+  color: var(--alert);
+}
+
+.define-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.define-pos {
+  font-size: var(--text-label);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-heading);
+}
+
+.define-senses {
+  margin: 0;
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.define-def,
+.define-eg,
+.define-syn {
+  display: block;
+}
+
+.define-eg {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.define-syn {
+  font-family: var(--font-data);
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
+}
+
+.define-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--line);
+}
+
+.define-act {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  font-family: var(--font-data);
+  font-size: var(--text-label);
+  letter-spacing: 0.12em;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+
+.define-act:hover:not(:disabled),
+.define-act:focus-visible {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+
+.define-act:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

@@ -10,7 +10,7 @@
  * re-approve; an unlocked proposal never touches this store (proposals live in
  * the intent's own args — the card IS the proposal).
  *
- * ONE PLAN PER HOUSE (Design note, 2026-10-16: each house's plan lives in its own
+ * ONE PLAN PER HOUSE (ruling, 2026-10-16): each house's plan lives in its own
  * office, `<realm>/<wallet>/offices/marketing/marketing-weekly-plan.json`
  * (house-office.js); the machine-wide plan moves once to its house.
  * Governance record, not a secret: plain JSON, 0600/0700 posture,

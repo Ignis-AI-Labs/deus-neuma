@@ -40,7 +40,7 @@ export const beingRow = (house, neumaId, allBeings) => {
 
 /**
  * The house as a HARNESS desk may see it: its own lane and nothing else — the
- * harness is strictly the platform (Design note, 2026-10-14, so no being's grants, no
+ * harness is strictly the platform (ruling, 2026-10-14), so no being's grants, no
  * being's count in the badge, no being's unreadable lane. Pure.
  * @param {object|null} house the /permissions read
  * @param {string|null} laneId the harness lane in the chair

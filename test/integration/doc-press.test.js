@@ -9,7 +9,10 @@ import { describe, test, expect } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { createServer } from 'http';
 import { pressDocument, locateChromium } from '../../backend/services/doc-press/index.js';
+import { pressMayLoad } from '../../backend/services/doc-press/chromium-press.js';
+import { pdfText } from '../../backend/services/pdf-text.js';
 
 const TINY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#ff0000"/></svg>';
 
@@ -86,4 +89,46 @@ describe.skipIf(!chromiumAvailable)('pressDocument (real Chromium, real PDF)', (
     expect(onDisk.equals(result.pdf)).toBe(true);
     expect(pageCount(onDisk)).toBeGreaterThanOrEqual(2);
   }, 60_000);
+
+  // A pressed body may carry raw HTML. The PDF lands in the being's lane and
+  // it reads it back, so whatever the page loads is a read around the file
+  // sandbox (audit 2026-10-19, F2). Every secret here is FAKE.
+  test('the press page loads no local file and no loopback service into the PDF', async () => {
+    const root = await createTempDir('doc-press-wall');
+    const planted = path.join(root, 'planted.txt');
+    await fs.writeFile(planted, 'FAKE_PLANTED_LOCAL_LINE\n');
+    let loopbackHits = 0;
+    const loopback = createServer((req, res) => { loopbackHits += 1; res.end('FAKE_LOOPBACK_BODY'); });
+    const port = await new Promise((resolve) => loopback.listen(0, '127.0.0.1', () => resolve(loopback.address().port)));
+    try {
+      const markdown = [
+        '# Wall', '', 'VISIBLE_BODY_LINE', '',
+        `<iframe src="file://${planted}" width="600" height="80"></iframe>`, '',
+        `<object data="${planted}" width="600" height="80"></object>`, '',
+        `<iframe src="http://127.0.0.1:${port}/" width="600" height="80"></iframe>`, '',
+      ].join('\n');
+      const outputPath = path.join(root, 'wall.pdf');
+      await pressDocument({ markdown, title: 'wall', outputPath });
+      const text = await pdfText(outputPath);
+      expect(text).toContain('VISIBLE_BODY_LINE');
+      expect(text).not.toContain('FAKE_PLANTED_LOCAL_LINE');
+      expect(text).not.toContain('FAKE_LOOPBACK_BODY');
+      expect(loopbackHits).toBe(0);
+    } finally {
+      loopback.close();
+    }
+  }, 60_000);
+});
+
+describe('pressMayLoad — the press page loads its own document and inline data only', () => {
+  const doc = 'file:///tmp/doc-press-x/document.html';
+  test('its document, data: and blob: load; every other file, page and service does not', () => {
+    expect(pressMayLoad(doc, doc)).toBe(true);
+    expect(pressMayLoad('data:image/svg+xml;base64,AAAA', doc)).toBe(true);
+    expect(pressMayLoad('blob:null/1234', doc)).toBe(true);
+    expect(pressMayLoad('file:///etc/passwd', doc)).toBe(false);
+    expect(pressMayLoad('file:///tmp/doc-press-x/other.html', doc)).toBe(false);
+    expect(pressMayLoad('http://127.0.0.1:3333/api/v1/auth/me', doc)).toBe(false);
+    expect(pressMayLoad('https://example.com/x.png', doc)).toBe(false);
+  });
 });

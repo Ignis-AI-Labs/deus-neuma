@@ -12,6 +12,16 @@ export const getRealm = async () => apiCall('GET', '/api/v1/user/realm', {
 });
 
 /**
+ * One conversation as plain text — the copy is sealed on disk, this is the person's own readable copy.
+ * @param {string} neumaId
+ * @returns {Promise<{neumaId: string, text: string, turns: number}>}
+ */
+// impure
+export const exportChat = async (neumaId) => apiCall('GET', `/api/v1/user/realm/chats/${encodeURIComponent(neumaId)}/export`, {
+  strictJson: true, useServerError: false, errorPrefix: 'Could not export that conversation',
+});
+
+/**
  * Relocate the realm to an absolute path on this machine.
  * @param {string} root
  * @returns {Promise<{root: string, stats: object}>}

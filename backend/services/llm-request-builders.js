@@ -155,6 +155,31 @@ export const localPrefixStableMessages = (messages) => {
   });
 };
 
+const isLoopbackCustom = (config) => config.provider === 'custom'
+  && /^https?:\/\/(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost|\[::1\])(:|\/|$)/i.test(config.endpoint ?? '');
+
+/**
+ * Pure — the openai-compatible wire at a local serving (buildStreamBody's
+ * local branch): the one wire that folds the volatile tail into the turn.
+ * @param {Object} config resolved provider config
+ * @returns {boolean}
+ */
+export const isLocalOpenAIWire = (config) => !['ollama', 'anthropic', 'openai-responses'].includes(dialectOf(config))
+  && (config.provider === 'lm-studio' || config.provider === 'llama-server' || isLoopbackCustom(config));
+
+/**
+ * impure (the carry records this turn's block, as round one then reuses it) —
+ * the local wire built ahead of the first round, so the gauge's first frame
+ * counts what will ride (turn-context-carry.js wireContextSections). The
+ * carry's block is fixed per turn, so round one sends these same bytes; on
+ * every other wire nothing happens.
+ * @param {Object} config the config the turn's rounds will resolve
+ * @param {Array<Object>} messages the anchored wire head
+ */
+export const composeLocalWireAhead = (config, messages) => {
+  if (isLocalOpenAIWire(config)) localPrefixStableMessages(messages);
+};
+
 /**
  * The request body for one streaming turn, in the wire dialect the config names.
  * @param {Object} config resolved provider config (endpoint, model, sampling)
@@ -184,7 +209,12 @@ export const buildStreamBody = (config, messages, options) => {
         // request with `tools` present returns message.tool_calls, without it
         // the model can only talk about acting.
         ...(options.tools?.length ? { tools: options.tools } : {}),
-        options: { temperature: temp, num_predict: maxTok }
+        // the window this model is served at (model-capabilities.js OLLAMA_SERVED_CONTEXT):
+        // unasked, Ollama picks one by the GPU and cuts a longer prompt silently
+        options: {
+          temperature: temp, num_predict: maxTok,
+          ...(Number.isFinite(options.contextWindow) && options.contextWindow > 0 ? { num_ctx: options.contextWindow } : {}),
+        }
       };
 
     case 'anthropic': {
@@ -293,9 +323,8 @@ export const buildStreamBody = (config, messages, options) => {
       // cache_prompt:false and NO family sampling (2026-07-10: Signal's
       // bare-base walk corrupted through the cache-rollback class this knob
       // prevents; xAI — also 'custom' — is why the label can't just widen).
-      const loopbackCustom = config.provider === 'custom'
-        && /^https?:\/\/(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost|\[::1\])(:|\/|$)/i.test(config.endpoint ?? '');
-      if (config.provider === 'lm-studio' || config.provider === 'llama-server' || loopbackCustom) {
+      const loopbackCustom = isLoopbackCustom(config);
+      if (isLocalOpenAIWire(config)) {
         const family = localFamilySampling(model);
         if (options.temperature === undefined && family.temperature !== undefined) {
           body.temperature = family.temperature;
@@ -328,9 +357,14 @@ export const buildStreamBody = (config, messages, options) => {
       // THE SERVER BUDGET (thought-governor serverBudget): llama.cpp closes
       // the thought itself, in the same request, without touching the prompt.
       // The message is mandatory — closed bare, the model keeps reasoning in
-      // its visible speech (CPU probe 2026-10-04).
+      // its visible speech (CPU probe 2026-10-04). A caller sends it only where
+      // the think-shape probe heard the server name itself llama.cpp
+      // (llm-think-probe.js), so it rides every LOCAL wire that measured so —
+      // an lm-studio route fronting a llama.cpp server too (the house flight,
+      // 2026-10-17: the Optio's review thought freely there). LM Studio itself
+      // has no proven off switch; its requests carry neither field.
       if (Number.isInteger(options.thinkingBudget)
-        && (config.provider === 'llama-server' || loopbackCustom)) {
+        && (config.provider === 'lm-studio' || config.provider === 'llama-server' || loopbackCustom)) {
         body.thinking_budget_tokens = options.thinkingBudget;
         body.reasoning_budget_message = THINKING_BUDGET_MESSAGE;
       }

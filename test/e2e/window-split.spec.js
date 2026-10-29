@@ -216,7 +216,7 @@ test('dragging a window onto a sibling\'s side divides the sibling\'s space perf
   // Real pointer choreography: grab CHATS by its bar, carry it into the
   // left quarter of PROJECTS (fx ≈ 0.06 — inside the split band, clear of
   // the desk's own aero bands), and let go.
-  // A DIVIDE IS ASKED FOR (Design note, 2026-10-05: Shift held, and the pointer resting
+  // A DIVIDE IS ASKED FOR (ruling, 2026-10-05): Shift held, and the pointer resting
   // on the seam until the preview lights — only then does a release apply it.
   await engageDrag(page, chats);
   await page.keyboard.down('Shift');
@@ -315,7 +315,7 @@ test('the top edge maximizes only when HELD there — touched in passing, it nev
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-// ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (Design note, 2026-10-05.
+// ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (ruling, 2026-10-05).
 test('Escape five times on the bare desk closes every window — four never does, typing never does', async ({ page }) => {
   await openDockApp(page, 'PROJECTS');
   await openDockApp(page, 'CHATS');

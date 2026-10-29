@@ -24,6 +24,7 @@ import { ethers } from 'ethers';
 import { decryptEnvelope, isEnvelope, unwrapDEK } from '../../core/workspace/workspace-crypto.js';
 import { MIN_SEAL_GAS_ETH } from './seal-bundle.js';
 import { sealLawFor, sealCallArgs, sealDigestViewArgs } from './seal-law.js';
+import { sealCost, fundingWords } from './seal-cost.js';
 
 // The chains a seal may target. The digest BINDS the chainId (Natalis
 // computes it with block.chainid), so the selected network is a signing
@@ -64,7 +65,7 @@ const NETWORK_CONFIG_KEYS = Object.freeze({
     houseRegistryAddress: 'houseRegistryEthAddress', rpcEnv: 'ETH_RPC_URL',
   }),
 });
-// MAINNET, same law as config.js ceremonySealNetwork (Design note, 2026-08-07 —
+// MAINNET, same law as config.js ceremonySealNetwork (ruling, 2026-08-07) —
 // the two defaults must never disagree on which chain a seal without an
 // explicit network targets. Ethereum since 2026-10-04 (Base is left; its
 // seals stay readable).
@@ -395,15 +396,6 @@ export const preflightSeal = async ({
     }
   }
 
-  const balance = await rpc.getBalance(gasPayerAddress);
-  if (balance < ethers.parseEther(MIN_SEAL_GAS_ETH)) {
-    return {
-      ok: false, code: 'GAS_FLOOR',
-      message: `gas payer ${gasPayerAddress} has ${ethers.formatEther(balance)} ETH `
-        + `(need ≥ ${MIN_SEAL_GAS_ETH} per docs/protocols/identity/seal-bundle.md §7)`,
-    };
-  }
-
   const natalis = new ethers.Contract(net.natalisAddress, loadNatalisAbi(net.sealLaw), rpc);
   const onchainDigest = await natalis.sealDigest(...sealDigestViewArgs(bundle));
   if (onchainDigest.toLowerCase() !== bundle.digest.toLowerCase()) {
@@ -413,6 +405,16 @@ export const preflightSeal = async ({
         + 'abi.encode has drifted from Natalis.sealDigest; seal-bundle.js or the ABI is out of sync '
         + 'with the deployed contract',
     };
+  }
+
+  // Last, the money: a seal that cannot verify (above) is never put to a person as a reason to buy ETH.
+  // The live quote (seal-cost.js) is measured gas × this network's fee right now, never below the old
+  // floor; a short wallet is refused with the facts the desk turns into a way to fund it.
+  const funding = await sealCost({
+    net, network, payer: gasPayerAddress, floor: ethers.parseEther(MIN_SEAL_GAS_ETH), provider: rpc,
+  });
+  if (!funding.enough) {
+    return { ok: false, code: 'GAS_FLOOR', message: fundingWords(funding), funding };
   }
 
   return { ok: true, reader, rpc };

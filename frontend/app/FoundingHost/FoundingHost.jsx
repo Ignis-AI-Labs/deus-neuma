@@ -18,24 +18,40 @@ import './FoundingHost.css';
 import '../RelinkShell/HouseApp.css';
 import { useFoundingRite } from '../RelinkShell/use-founding-rite.js';
 import { titleKey, allMarksRevealed } from '../RelinkShell/founding-rite-reducer.js';
-import { FoundedRegister } from '../RelinkShell/founding-register.jsx';
+import { FoundedRegister, LocalRegister } from '../RelinkShell/founding-register.jsx';
+import { SealFundingHost } from '../RelinkShell/SealFundingHost.jsx';
 import { formatAddress } from '../../utils/format.js';
 import { ContractLine } from '../RelinkShell/ContractLine.jsx';
 import { TITLE_LEGEND } from '../RelinkShell/founding-titles.js';
 import { TitleLegend } from '../RelinkShell/TitleLegend.jsx';
 import { getWitnessName, setWitnessName } from '../RelinkShell/witness-name.js';
 
-// I. THE CALL — the house is named; the permanence is stated plainly.
-const FoundingCall = ({ open, onGather }) => (
+// The two foundings' words (2026-10-26): a house founded ON THIS COMPUTER is whole there; JOINING UNAVIS, the
+// network of houses, is founding it on Ethereum (Covenant III.1).
+const WORDS = Object.freeze({
+  local: Object.freeze({
+    rite: 'THE FOUNDING RITE',
+    call: () => 'A HOUSE IS FOUNDED TOGETHER. EVERY FOUNDER SIGNS THE SAME RECORD, KEPT ON THIS COMPUTER: NOTHING IS SENT, NOTHING COSTS. TO JOIN UNAVIS, THE NETWORK OF HOUSES, A HOUSE LATER FOUNDS ITSELF ON ETHEREUM.',
+    names: 'IT IS WRITTEN INTO THE HOUSE\'S RECORD ON THIS COMPUTER EXACTLY AS GIVEN.',
+    marks: 'EVERY FOUNDER HAS SIGNED. YOURS COMPLETES THE RECORD — THE WALLET WILL ASK FOR A SIGNATURE; NO MONEY MOVES.',
+    reading: 'READING THE HOUSE…',
+  }),
+  network: Object.freeze({
+    rite: 'JOINING UNAVIS',
+    call: (open) => `UNAVIS IS THE NETWORK OF HOUSES. A HOUSE JOINS BY FOUNDING ITSELF ON ETHEREUM: EVERY FOUNDER SIGNS THE SAME RECORD, AND THE CHAIN HOLDS IT PERMANENTLY — ${open.networkLabel?.toUpperCase()}. EVERY FOUNDER MUST BE SEALED THERE, AND THE FOUNDING COSTS A NETWORK FEE.`,
+    names: 'IT IS WRITTEN INTO THE CHAIN\'S RECORD EXACTLY AS GIVEN.',
+    marks: 'EVERY FOUNDER\'S MARK IS VERIFIED. YOURS COMPLETES THE RECORD — THE WALLET WILL ASK, THEN THE CHAIN WILL HOLD IT.',
+    reading: 'READING THE REGISTRY…',
+  }),
+});
+
+// I. THE CALL — the house is named; what this founding is, and what it costs, stated plainly.
+const FoundingCall = ({ open, onGather, words, mode }) => (
   <>
-    <p className="house-anchor-line label-data">THE FOUNDING RITE — I. THE CALL</p>
+    <p className="house-anchor-line label-data">{words.rite} — I. THE CALL</p>
     <p className="house-anchor-callname">{open.houseName?.toUpperCase()}</p>
-    <p className="house-anchor-line label-data">
-      A HOUSE IS FOUNDED TOGETHER. EVERY FOUNDER SIGNS THE SAME RECORD;
-      THE CHAIN HOLDS IT PERMANENTLY — {open.networkLabel?.toUpperCase()}.
-      THIS RECORD IS THE ONLY OFFICIAL RECOGNITION OF A HOUSE ON NEUMA.
-    </p>
-    <ContractLine address={open.registryAddress} network={open.network} />
+    <p className="house-anchor-line label-data">{words.call(open)}</p>
+    {mode === 'network' ? <ContractLine address={open.registryAddress} network={open.network} /> : null}
     <button type="button" className="house-anchor-found label-data" onClick={onGather}>
       GATHER THE FOUNDERS
     </button>
@@ -89,8 +105,8 @@ const TitleField = ({ who, value, onChange }) => {
   );
 };
 
-// A locked founder's row in THE NAMES: the password door, or the honest
-// note that they join by their own consent after. Enter IS the attempt.
+// A founder who cannot sign yet, in THE NAMES: the password door, or the backend's own reason and road (their birth
+// is not sealed yet; for Unavis, not sealed on Ethereum yet). Enter IS the attempt.
 const ExcludedRow = ({ excluded, draft, onDraft, onUnlock }) => (
   <li className="house-anchor-member is-excluded label-data">
     <span className="house-anchor-name">{excluded.displayName}</span>
@@ -116,7 +132,7 @@ const ExcludedRow = ({ excluded, draft, onDraft, onUnlock }) => (
         {draft?.error ? <span className="house-anchor-line is-error label-data">{draft.error}</span> : null}
       </span>
     ) : (
-      <span className="house-anchor-excluded-note">JOINS BY THEIR OWN CONSENT AFTER THE FOUNDING</span>
+      <span className="house-anchor-excluded-note">{String(excluded.reason || 'joins by their own consent after the founding').toUpperCase()}</span>
     )}
   </li>
 );
@@ -124,12 +140,12 @@ const ExcludedRow = ({ excluded, draft, onDraft, onUnlock }) => (
 // II. THE NAMES — the operator speaks their own name (how the platform will
 // address them), each founder carries a chosen title into the record, and a
 // locked founder's door can be opened here or left for their own consent.
-const FoundingNames = ({ open, titles, unlocks, witnessName, onWitnessName, actions }) => (
+const FoundingNames = ({ open, titles, unlocks, witnessName, onWitnessName, actions, words }) => (
   <>
-    <p className="house-anchor-line label-data">THE FOUNDING RITE — II. THE NAMES</p>
+    <p className="house-anchor-line label-data">{words.rite} — II. THE NAMES</p>
     <p className="house-anchor-line label-data">
       YOUR NAME IS HOW THIS PLATFORM ADDRESSES YOU. A TITLE IS A FOUNDER'S ROLE
-      IN THE HOUSE — IT IS WRITTEN INTO THE CHAIN'S RECORD EXACTLY AS GIVEN.
+      IN THE HOUSE — {words.names}
     </p>
     <ul className="house-anchor-roster">
       {(open.roster ?? []).map((m) => (
@@ -171,8 +187,7 @@ const FoundingNames = ({ open, titles, unlocks, witnessName, onWitnessName, acti
     </ul>
     {(open.excluded ?? []).some((x) => x.unlockable) ? (
       <p className="house-anchor-line label-data">
-        A LOCKED FOUNDER CAN STILL SIGN — UNLOCK THEIR KEYPAIR WITH ITS PASSWORD,
-        OR LEAVE THEM TO JOIN BY THEIR OWN CONSENT AFTER THE FOUNDING
+        A LOCKED FOUNDER CAN STILL SIGN — UNLOCK THEIR KEYPAIR WITH ITS PASSWORD
       </p>
     ) : null}
     <TitleLegend />
@@ -194,11 +209,11 @@ const FoundingNames = ({ open, titles, unlocks, witnessName, onWitnessName, acti
 
 // III. THE MARKS — every being's verified mark revealed in turn, then the
 // operator's own behind her deliberate step.
-const FoundingMarks = ({ marks, witnessName, onPlace, onStepBack }) => {
+const FoundingMarks = ({ marks, witnessName, onPlace, onStepBack, words, mode }) => {
   const roster = marks.offer.roster ?? [];
   return (
     <>
-      <p className="house-anchor-line label-data">THE FOUNDING RITE — III. THE MARKS</p>
+      <p className="house-anchor-line label-data">{words.rite} — III. THE MARKS</p>
       <ul className="house-anchor-roster">
         {roster.map((m, i) => (
           <li key={m.address} className={`house-anchor-member label-data${i < marks.revealed ? ' is-marked' : ' is-unmarked'}`}>
@@ -211,11 +226,8 @@ const FoundingMarks = ({ marks, witnessName, onPlace, onStepBack }) => {
       </ul>
       {allMarksRevealed(marks) ? (
         <>
-          <p className="house-anchor-line label-data">
-            EVERY FOUNDER'S MARK IS VERIFIED. YOURS COMPLETES THE RECORD —
-            THE WALLET WILL ASK, THEN THE CHAIN WILL HOLD IT.
-          </p>
-          <ContractLine address={marks.offer.registryAddress} network={marks.offer.network} />
+          <p className="house-anchor-line label-data">{words.marks}</p>
+          {mode === 'network' ? <ContractLine address={marks.offer.registryAddress} network={marks.offer.network} /> : null}
           <button type="button" className="house-anchor-found label-data" onClick={onPlace}>
             PLACE YOUR MARK
           </button>
@@ -230,8 +242,9 @@ const FoundingMarks = ({ marks, witnessName, onPlace, onStepBack }) => {
   );
 };
 
-export const FoundingHost = ({ wsService, onClose }) => {
-  const { rite, actions } = useFoundingRite(wsService);
+export const FoundingHost = ({ wsService, onClose, mode = 'network' }) => {
+  const { rite, actions } = useFoundingRite(wsService, mode);
+  const words = WORDS[mode] ?? WORDS.network;
   // The operator's own name — spoken here first, remembered for the whole
   // platform (witness-name.js is the one addressing module).
   const [witnessName, setName] = useState(getWitnessName);
@@ -251,10 +264,14 @@ export const FoundingHost = ({ wsService, onClose }) => {
 
   const body = (() => {
     if (rite.phase === 'probing') {
-      return <p className="house-anchor-line is-live label-data">READING THE REGISTRY…</p>;
+      return <p className="house-anchor-line is-live label-data">{words.reading}</p>;
     }
     if (rite.phase === 'closed') {
       return <p className="house-anchor-line label-data">THE FOUNDING LANE IS NOT OPEN ON THIS DESK — {rite.error?.toUpperCase()}</p>;
+    }
+    if (rite.phase === 'error' && rite.funding) {
+      // short of ETH for the founding: the way to fund it, then the walk again with the same titles
+      return <SealFundingHost name={rite.open?.houseName || ''} funding={rite.funding} founding onSeal={actions.gatherMarks} onSkip={onClose} />;
     }
     if (rite.phase === 'error') {
       return (
@@ -267,7 +284,9 @@ export const FoundingHost = ({ wsService, onClose }) => {
     if (rite.phase === 'founded') {
       return (
         <>
-          <FoundedRegister state={rite.state} result={rite.result} witnessName={witnessName.trim() || null} />
+          {mode === 'local'
+            ? <LocalRegister record={rite.state} witnessName={witnessName.trim() || null} />
+            : <FoundedRegister state={rite.state} result={rite.result} witnessName={witnessName.trim() || null} />}
           <button type="button" className="house-anchor-found label-data" onClick={onClose}>
             RETURN TO THE DESK
           </button>
@@ -283,17 +302,18 @@ export const FoundingHost = ({ wsService, onClose }) => {
           witnessName={witnessName}
           onWitnessName={onWitnessName}
           actions={actions}
+          words={words}
         />
       );
     }
     if (rite.movement === 'marks' && rite.marks.offer) {
-      return <FoundingMarks marks={rite.marks} witnessName={witnessName} onPlace={actions.placeMark} onStepBack={actions.stepBack} />;
+      return <FoundingMarks marks={rite.marks} witnessName={witnessName} onPlace={actions.placeMark} onStepBack={actions.stepBack} words={words} mode={mode} />;
     }
     if (rite.movement === 'walking') {
       return <p className="house-anchor-line is-live label-data">{rite.status || 'THE FOUNDING WALKS…'}</p>;
     }
     // 'call' and the instant before the auto-begin land here together.
-    return rite.open ? <FoundingCall open={rite.open} onGather={actions.toNames} /> : null;
+    return rite.open ? <FoundingCall open={rite.open} onGather={actions.toNames} words={words} mode={mode} /> : null;
   })();
 
   return (

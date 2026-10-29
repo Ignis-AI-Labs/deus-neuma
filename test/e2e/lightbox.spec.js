@@ -244,14 +244,15 @@ test.beforeEach(async ({ page }) => {
   await clearGates(page);
 });
 
-// X space → QUEUE board → POSTS section. POSTS opens on the month calendar;
+// X's account level (in MARKETING) → its queue → POSTS section. POSTS opens on the month calendar;
 // an unscheduled draft lives behind the UNSCHEDULED chip — the same click
 // the operator makes to reach it.
 const openPostsBoard = async (page) => {
   await openDockApp(page, 'X');
-  const win = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'X //' }) }).first();
-  await expect(win.locator('.outreach-tab', { hasText: 'QUEUE' })).toBeVisible({ timeout: 20000 });
-  await win.locator('.outreach-tab', { hasText: 'QUEUE' }).click();
+  // X's space is MARKETING's account level (slice 6).
+  const win = page.locator('.fwin', { has: page.locator('[data-mkt-level="account"][data-mkt-account^="x:"]') }).first();
+  // The account level's one board is the queue: no tab to press (SDT-6).
+  await expect(win.locator('.queue-section-tab').first()).toBeVisible({ timeout: 20000 });
   await win.locator('.queue-section-tab', { hasText: 'POSTS' }).click();
   const unscheduled = win.locator('button', { hasText: 'UNSCHEDULED' });
   if (await unscheduled.isVisible({ timeout: 5000 }).catch(() => false)) {

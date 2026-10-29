@@ -180,7 +180,7 @@ const foldMessage = (message) => {
 const charsOf = (message) => JSON.stringify(message)?.length ?? 0;
 
 /**
- * The settle's STANDING reading (Design note, 2026-08-31: what the next turn
+ * The settle's STANDING reading (ruling, 2026-08-31): what the next turn
  * inherits is the FIRST round's measured prompt — [system, currentTurn] —
  * never the last round's working PEAK (ephemeral tool machinery that never
  * persists). An interrupted turn usually measured nothing (OpenAI-dialect

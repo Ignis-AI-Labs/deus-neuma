@@ -31,6 +31,7 @@
 
 import { createLogger } from '../../logger.js';
 import { streamPcmBody } from './_pcm-stream.js';
+import { sidecarFetch } from '../sidecar-trust.js';
 
 const log = createLogger('Voice.Kyutai');
 
@@ -59,7 +60,7 @@ export const classifyKyutaiError = (status) =>
 
 // impure — one POST of a JSON body to the sidecar's /synthesize
 const postSynthesize = (url, body, signal) =>
-  fetch(url, {
+  sidecarFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

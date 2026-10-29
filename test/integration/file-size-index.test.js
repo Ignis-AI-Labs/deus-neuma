@@ -16,12 +16,13 @@ beforeEach(() => {
   root = mkdtempSync(path.join(tmpdir(), 'neuma-size-index-'));
   mkdirSync(path.join(root, 'scripts/git-hooks'), { recursive: true });
   copyFileSync(fileURLToPath(new URL('../../scripts/check-file-size.mjs', import.meta.url)), path.join(root, 'scripts/check-file-size.mjs'));
-  copyFileSync(fileURLToPath(new URL('../../scripts/git-hooks/pre-commit', import.meta.url)), path.join(root, 'scripts/git-hooks/pre-commit'));
   git('init', '-q');
   git('config', 'user.name', 'Local size proof');
   git('config', 'user.email', 'size-proof@example.invalid');
   git('config', 'commit.gpgsign', 'false');
-  git('config', 'core.hooksPath', 'scripts/git-hooks');
+  // The repository's real hooks, by absolute path (as every checkout runs
+  // them): the secret gate first, then this proof's size law from the temp root.
+  git('config', 'core.hooksPath', fileURLToPath(new URL('../../scripts/git-hooks', import.meta.url)));
   write('scripts/file-size-baseline.json', '{}\n');
   git('add', 'scripts/file-size-baseline.json');
 });

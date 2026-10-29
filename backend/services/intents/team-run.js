@@ -16,8 +16,8 @@ import { cosDesignation } from '../staff/cos-designation.js';
 import { rehydrateApprovedPlan, runUnderApproval } from '../team-plan.js';
 import { isLaneRunning } from '../team-run-live.js';
 import { resolveTeamCapacity } from '../team-coordinator.js';
-import { runWorkspaceFile } from '../workspace-run.js';
-import { testConnection as testSubstrateConnection } from '../llm-provider.js';
+import { readScript, runWorkspaceFile } from '../workspace-run.js';
+import { reachSubstrate } from '../substrate-reach.js';
 import { startTeamRun } from '../team-run-start.js';
 import { readRun } from '../team-run-store.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
@@ -63,9 +63,11 @@ const dispatchGate = async (connection) => {
   const house = await neumaWorkspace.listNeumaByOwner(connection.walletAddress).catch(() => []);
   if (!house.some((lane) => (lane?.neumaId ?? lane) === officer.laneId)) return null;
   // The Optio's own yes IS dispatch: a plan it approved inside the house's
-  // charter (house-clock/wake-plan.js) is the lead's to run.
+  // charter (house-clock/wake-plan.js) is the lead's to run — and so is a plan
+  // the operator approved by answering its ask in the house clock.
   const standing = await neumaWorkspace.readPlanRecord(connection.companion.neumaId).catch(() => null);
   if (standing?.approvedBy?.kind === 'optio' && standing.approvedBy.laneId === officer.laneId) return null;
+  if (standing?.approvedBy?.kind === 'operator') return null;
   return {
     ok: false,
     status: 'denied',
@@ -76,7 +78,7 @@ const dispatchGate = async (connection) => {
 // The rig and conduit the start uses — the declared seams when a suite set
 // them, the real ones otherwise.
 const startDeps = () => ({
-  checkSubstrate: seams.checkSubstrate || testSubstrateConnection,
+  checkSubstrate: seams.checkSubstrate || reachSubstrate,
   getCapacity: seams.getCapacity || resolveTeamCapacity,
   memberTurn,
   ask: seams.ask || null,
@@ -214,17 +216,33 @@ export const teamWorkspaceRunIntent = Object.freeze({
     if (typeof payload?.file !== 'string' || !payload.file.trim()) {
       return { ok: false, status: 'invalid', reason: 'workspace_run needs {file} — the deliverable to run, inside the assigned workspace' };
     }
-    return { ok: true, value: { file: payload.file, timeoutMs: payload?.timeoutMs, teamWs } };
+    // The card shows the code itself and pins its hash: the run refuses a
+    // file rewritten after the operator saw it.
+    let script;
+    try { script = await readScript(teamWs.root, payload.file); } catch (err) {
+      return { ok: false, status: 'invalid', reason: err.message };
+    }
+    return {
+      ok: true,
+      value: {
+        file: payload.file, timeoutMs: payload?.timeoutMs, teamWs,
+        runs: script.argv.join(' '), sha256: script.sha256, head: script.head,
+      },
+    };
   },
 
   summarize: (payload) => `run ${payload?.file ?? '?'} in the assigned team workspace`,
 
+  cardArgs: ({ runs, sha256, timeoutMs, head }) => ({
+    runs, sha256, ...(timeoutMs != null ? { timeoutMs } : {}), script: head,
+  }),
+
   // impure — a real confined subprocess (workspace-run.js); an invalid
   // request (outside the arena, unrunnable extension) IS the correction.
-  execute: async ({ file, timeoutMs, teamWs }) => {
+  execute: async ({ file, timeoutMs, teamWs, sha256 }) => {
     let outcome;
     try {
-      outcome = await runWorkspaceFile(teamWs, { file, timeoutMs });
+      outcome = await runWorkspaceFile(teamWs, { file, timeoutMs, sha256 });
     } catch (err) {
       return { ok: false, reason: err.message };
     }

@@ -7,13 +7,26 @@
 import { useEffect, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import {
-  isSettled, postCountFor, queueStandingLabel, queueToneOf, queueWhenLabel,
+  isSettled, postCountFor, queueToneOf, queueWhenLabel,
 } from './campaigns-helpers.js';
+import { StatusMark } from './StatusMark.jsx';
 import { Lightbox } from './Lightbox.jsx';
+import { mediaMenuDoor } from './media-menu.js';
 import { XPostLink } from './XPostLink.jsx';
+import { AccountMark } from './accounts/AccountMark.jsx';
+import { LegalChip } from './legal-chip/LegalChip.jsx';
+import { Bar } from './hud-instruments.jsx';
+import { CountdownMark } from './CountdownMark.jsx';
+import { cardWhen } from './queue-when.js';
+import { entryAccountId } from './accounts/account-words.js';
 import {
-  approveQueuePost, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
+  approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
 } from '../../services/social-channels-client.js';
+import { threadOf } from './queue-thread-view.js';
+import { TikTokPostSettings } from './TikTokPostSettings.jsx';
+import { useTikTokApproval } from './use-tiktok-approval.js';
+import { GroupDecision, PostAddress } from './campaigns/QueueEntryCampaign.jsx';
+import { QueueFailedFix } from './QueueFailedFix.jsx';
 
 // Whether an attached CARD still matches the brand it was drawn from.
 //
@@ -60,20 +73,27 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  // A YouTube post's attachment is its video: played in place, so the
+  // operator approves what they have watched.
+  const [video, setVideo] = useState(false);
   useEffect(() => {
     let live = true;
     let objectUrl = null;
     fetchQueueMediaUrl(entryId, index)
-      .then((u) => {
-        if (live) { objectUrl = u; setUrl(u); } else { URL.revokeObjectURL(u); }
+      .then((m) => {
+        if (live) { objectUrl = m.url; setUrl(m.url); setVideo(m.type.startsWith('video/')); } else { URL.revokeObjectURL(m.url); }
       })
       .catch(() => { if (live) setFailed(true); });
     return () => { live = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [entryId, index]);
   const file = String(item.path || '').split('/').pop();
+  // Its menu (media-menu.js): the player's own options, and the way to the
+  // gallery and the folder the staged file lives in.
+  const door = url ? mediaMenuDoor({ kind: video ? 'video' : 'image', src: url, path: item.path, alt: item.alt || file }) : null;
   return (
     <div className="queue-media-item">
-      {url
+      {url && video ? <video className="queue-media-video" src={url} controls preload="metadata" aria-label={`video ${file}`} {...door} /> : null}
+      {url && !video
         ? (
           <>
             <button
@@ -81,6 +101,7 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
               className="queue-media-zoom"
               aria-label={`view ${file} full size`}
               onClick={() => { uiSound('toggle'); setZoomed(true); }}
+              {...door}
             >
               <img className="queue-media-thumb" src={url} alt={item.alt || file} />
             </button>
@@ -94,10 +115,13 @@ const QueueMediaThumb = ({ entryId, index, item }) => {
             ) : null}
           </>
         )
-        : <span className="queue-media-alt">{failed ? `UNREADABLE — ${file}` : file}</span>}
-      <span className={`queue-media-alt${item.alt ? '' : ' is-missing'}`}>
-        {item.alt || '[NO ALT TEXT]'}
-      </span>
+        : null}
+      {url ? null : <span className="queue-media-alt">{failed ? `UNREADABLE — ${file}` : file}</span>}
+      {video ? null : (
+        <span className={`queue-media-alt${item.alt ? '' : ' is-missing'}`}>
+          {item.alt || '[NO ALT TEXT]'}
+        </span>
+      )}
       <KitMark kit={item.kit} />
     </div>
   );
@@ -109,11 +133,13 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // Settled copy arrives folded: a withdrawn post's body is exactly the text
-  // that should not be occupying the board (Design note, 2026-07-27. `folded` is the
+  // that should not be occupying the board (ruling, 2026-07-27). `folded` is the
   // board-wide COLLAPSE ALL; this is the per-entry override, so opening one
   // finished post does not require unfolding the whole board. The lane decides
   // the starting state — in UNAPPROVED the copy IS the work, so it opens.
   const [open, setOpen] = useState(startOpen);
+  // A TikTok post's approval carries the choices made on its card.
+  const tiktok = useTikTokApproval(entry);
   // THE THREAD'S PARENT (Kagipem 2026-07-29): a self-reply is read BENEATH
   // the post it answers — the parent's copy and its own moment ride the card.
   const parentEntry = entry.kind === 'self-reply' && entry.thread?.parentId
@@ -148,10 +174,12 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
     ? (roster.find((m) => m.neumaId === entry.authorNeumaId)?.name || entry.authorNeumaId)
     : 'you';
   const channel = channels?.find((c) => c.id === entry.channelId) || null;
-  const channelName = channel?.name || entry.channelId;
   // THE ACCOUNT THIS GOES OUT ON (Design note, 2026-07-28: […]). A sent post reads who it WENT OUT as (postedAs, stamped at send);
-  // everything live reads the channel's current account — never a guess.
-  const accountHandle = entry.postedAs?.username || channel?.account?.username || null;
+  // everything live reads the channel's current account — never a guess. The
+  // board names its platform's FIRST account only, so a post on another
+  // account never borrows that one's handle (its chip names its own).
+  const firstAccount = entryAccountId(entry) === `${entry.channelId}-1`;
+  const accountHandle = entry.postedAs?.username || (firstAccount ? channel?.account?.username : null) || null;
   const campaignName = entry.campaignId
     ? (campaigns?.find((c) => c.id === entry.campaignId)?.name || null)
     : null;
@@ -161,10 +189,15 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   // shown as the POST it is, measured against the platform's own ceiling
   // (Design note, 2026-07-27: […]).
   const tone = queueToneOf(entry.status);
-  const whenLabel = queueWhenLabel(entry, now);
+  // WHEN, once (show-dont-tell finding 8): a slot ahead as a countdown mark, a settled post as its moment.
+  const when = cardWhen(entry, now, queueWhenLabel);
+  const failure = entry.status === 'failed' && entry.error ? entry.error : null;
+  const whenShown = Boolean(when.ahead || when.at || when.line || failure);
   const count = postCountFor(entry, channel);
   const standing = (
-    <span className={`queue-standing is-${tone}`}>{queueStandingLabel(entry)}</span>
+    <span className={`queue-standing is-${tone}`}>
+      <StatusMark entry={entry} named title={entry.status === 'sent' && entry.postId ? `SENT · post ${entry.postId}` : undefined} />
+    </span>
   );
 
   // A decision that is still open NEVER folds, even under COLLAPSE ALL — a fold
@@ -183,7 +216,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
     </button>
   );
 
-  // THE REPLY APPROVAL IS THE SEND (Design note, 2026-08-06: the button says so, the
+  // THE REPLY APPROVAL IS THE SEND (ruling, 2026-08-06): the button says so, the
   // call carries the exact copy rendered on THIS card (textSeen — the backend
   // refuses if an edit landed between render and click), and a failed send
   // surfaces its honest detail right here instead of a silent 200.
@@ -195,14 +228,32 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
       }
       return;
     }
+    if (tiktok) {
+      await approveQueuePost(entry.id, { textSeen: entry.text, tiktok: tiktok.approval ?? undefined });
+      return;
+    }
     await approveQueuePost(entry.id);
   };
 
+  // A THREAD IS ONE DECISION: every draft from its root down, approved at
+  // once with the copy each card shows (queue-thread-view.js).
+  const thread = entry.kind === 'reply' ? null : threadOf(byId, entry.id);
+  const threadDrafts = thread && thread.members.length > 1 ? thread.drafts : [];
+  const approveThread = () => approveQueueThread(entry.id,
+    Object.fromEntries(threadDrafts.map((e) => [e.id, e.text])));
+
   const actions = pending ? (
     <>
-      <button type="button" className="settings-set" disabled={busy}
-        onClick={() => act(approve)}>
-        {entry.kind === 'reply' ? 'APPROVE & SEND' : 'APPROVE'}
+      {threadDrafts.length > 1 ? (
+        <button type="button" className="settings-set is-thread" disabled={busy}
+          title={`Approve all ${threadDrafts.length} posts of this thread at once — each goes out after the one it follows`}
+          onClick={() => act(approveThread)}>
+          APPROVE THREAD ({threadDrafts.length} POSTS)
+        </button>
+      ) : null}
+      <button type="button" className="settings-set" disabled={busy || Boolean(tiktok?.blockers.length)}
+        title={tiktok?.blockers[0]} onClick={() => act(approve)}>
+        {entry.kind === 'reply' ? 'APPROVE & SEND' : threadDrafts.length > 1 ? 'APPROVE THIS ONE' : 'APPROVE'}
       </button>
       <button type="button" className="settings-set is-danger" disabled={busy}
         onClick={() => act(() => rejectQueuePost(entry.id))}>
@@ -232,6 +283,8 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
        being's to stage, with the exchange in front of it. */
   ) : (shown && isSettled(entry.status) && entry.status !== 'sent') ? (
     <>
+      {/* A failed post's fix by its cause: the keys row, TRY AGAIN, a hand-over (QueueFailedFix.jsx). */}
+      {entry.status === 'failed' ? <QueueFailedFix entry={entry} roster={roster} busy={busy} act={act} /> : null}
       {entry.kind !== 'reply' ? (
         <button type="button" className="settings-set" disabled={busy}
           onClick={() => { uiSound('toggle'); onRevise(entry); }}>
@@ -246,7 +299,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   ) : null;
 
   return (
-    <div className={`queue-card cham is-${tone}`}>
+    <div className={`queue-card cham is-${tone}`} data-entry-id={entry.id}>
       <div className="cham-in queue-card-in">
         <button
           type="button"
@@ -254,13 +307,14 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
           aria-expanded={shown}
           onClick={() => { uiSound('toggle'); setOpen(!shown); }}
         >
+          {/* WHO SPEAKS, once: the account (its platform, handle, company and id on hover), its standing, its author. */}
           <span className="queue-entry-id">
-            <span className="settings-k">
-              {channelName}{accountHandle ? ` @${accountHandle}` : ''} · {author}
-            </span>
+            <AccountMark entry={entry} handle={accountHandle} />
             {standing}
+            <span className="settings-k queue-entry-author">{author}</span>
           </span>
           <span className="settings-v"><span className="settings-sec-tags">
+            <LegalChip legal={entry.legal} />
             {entry.kind === 'reply' ? <span className="settings-tag-dim">REPLY</span> : null}
             {entry.kind === 'self-reply' ? <span className="settings-tag-dim">THREAD</span> : null}
             {campaignName ? <span className="settings-tag-dim">{campaignName}</span> : null}
@@ -273,7 +327,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
           // platform's own measure underneath.
           <div className="queue-preview">
             {entry.kind === 'reply' && entry.reply ? (
-              // THE EXCHANGE (Design note, 2026-07-28: a reply is never approved
+              // THE EXCHANGE (ruling, 2026-07-28): a reply is never approved
               // blind — what was said TO the house sits above the drafted
               // answer, verbatim, with its verification standing named
               // HONESTLY (unverified authors are answerable now — the
@@ -281,7 +335,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
               // category raised when the words need care.
               <div className="queue-reply-context">
                 <div className="queue-preview-head">
-                  {/* THE LINK BACK (Design note, 2026-08-28: the operator verifies
+                  {/* THE LINK BACK (ruling, 2026-08-28): the operator verifies
                       who the house is answering MANUALLY — the quoted post's
                       author opens the real post on X, from the id the queue
                       already persisted, on drafts and in the sent record. */}
@@ -314,12 +368,6 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
                 <p className="queue-preview-text">{parentEntry.text}</p>
               </div>
             ) : null}
-            <div className="queue-preview-head">
-              <span className="queue-preview-author">{author}</span>
-              <span className="queue-preview-via">
-                {accountHandle ? `@${accountHandle} · ` : ''}{entry.kind === 'reply' ? `${channelName} · ANSWERS` : channelName}
-              </span>
-            </div>
             <p className="queue-preview-text">{entry.text}</p>
             {entry.media?.length ? (
               // The attachments themselves — the witness decides the images,
@@ -331,13 +379,16 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
                 ))}
               </div>
             ) : null}
+            {tiktok ? <TikTokPostSettings entry={entry} state={tiktok} /> : null}
             <div className="queue-preview-foot">
-              {/* The spacer keeps the count right-aligned, as it was when the
-                  meta line carried text. */}
-              <span className="queue-entry-meta" />
-              <span className={`queue-preview-count${count.over ? ' is-over' : ''}`}>
-                {count.count}{count.limit !== null ? ` / ${count.limit}` : ''}
-              </span>
+              {/* Its length against the platform's own ceiling, as a bar (the limit is the bar's end); the count beside it. */}
+              {count.limit !== null ? (
+                <span className={`queue-length${count.over ? ' is-over' : ''}`} role="img"
+                  aria-label={`${count.count} of ${count.limit} characters${count.over ? ` — ${count.count - count.limit} over` : ''}`}
+                  title={`${count.count} of ${count.limit} characters${count.over ? ` — ${count.count - count.limit} over the platform's limit` : ''}`}>
+                  <Bar name="" value={count.count} max={count.limit} text={String(count.count)} tone={count.over ? 'hot' : 'live'} />
+                </span>
+              ) : <span className="queue-preview-count">{count.count}</span>}
             </div>
           </div>
         ) : (
@@ -347,15 +398,17 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
             {entry.text.length > 90 ? `${entry.text.slice(0, 90)}…` : entry.text}
           </p>
         )}
-        {(whenLabel || actions) && (pending || shown) ? (
+        {(whenShown || actions) && (pending || shown) ? (
           <div className="queue-entry-foot">
             <span className="queue-entry-meta">
-              {whenLabel}
-              {entry.status === 'failed' && entry.error ? ` — ${entry.error}` : ''}
+              {when.ahead ? <CountdownMark ahead={when.ahead} title={when.title} /> : when.at || when.line || null}
+              {failure ? `${when.at || when.line ? ' — ' : ''}${failure}` : ''}
             </span>
             {actions ? <span className="queue-entry-actions">{actions}</span> : null}
           </div>
         ) : null}
+        <GroupDecision entry={entry} onChanged={onChanged} />
+        <PostAddress entry={entry} />
         {error ? <p className="settings-err">{error}</p> : null}
       </div>
     </div>

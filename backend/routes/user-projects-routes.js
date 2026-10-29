@@ -20,6 +20,11 @@ import { enrichFolders } from '../services/repo-detect.js';
 import { getRoots, setRoots, withRootsLock } from '../services/user-files.js';
 import { saveFileSettings } from '../services/user-files-settings.js';
 import { recordRecent } from '../services/user-recents.js';
+import { passesInstallOwner } from '../services/install-owner.js';
+import { verifyLaneOwnership } from '../services/lane-ownership.js';
+import { isWithin } from '../services/ground-roots.js';
+import { realOf } from '../services/explorer-walls.js';
+import neumaWorkspace, { getWitnessesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
 const router = express.Router();
 const log = createLogger('UserProjects');
@@ -29,17 +34,44 @@ router.use(requireAuth);
 // Add a project's folders to the open file-explorer roots (idempotent) so the
 // Files tree and the terminal cwd resolve to them. Never removes existing
 // roots. Records each as recent (best-effort) so the picker can surface them.
-const ensureRoots = async (wallet, folders) => {
+// The opened-folder list is the machine's, so only its owner, at its desk,
+// adds to it; a guest's project stands on its own record, and the explorer
+// opens a guest's own projects' folders for that house alone (explorer-ground.js).
+const ensureRoots = async (req, folders) => {
   const resolved = folders.map((f) => path.resolve(f));
-  // D9: ride the shared roots lock — this read-modify-write races the
-  // explorer's own POST/DELETE /roots across desk windows.
-  await withRootsLock(async () => {
-    setRoots(Array.from(new Set([...getRoots(), ...resolved])));
-    await saveFileSettings({ roots: getRoots() });
-  });
-  for (const r of resolved) {
-    await recordRecent(wallet, r).catch((e) => log.warn('Recents skipped', { error: e.message }));
+  if (await passesInstallOwner(req)) {
+    // D9: ride the shared roots lock — this read-modify-write races the
+    // explorer's own POST/DELETE /roots across desk windows.
+    await withRootsLock(async () => {
+      setRoots(Array.from(new Set([...getRoots(), ...resolved])));
+      await saveFileSettings({ roots: getRoots() });
+    });
   }
+  for (const r of resolved) {
+    await recordRecent(req.walletAddress, r).catch((e) => log.warn('Recents skipped', { error: e.message }));
+  }
+};
+
+const FOREIGN_LANE = "That folder is a being's lane your house does not hold — a project folder in a lane must be your own being's.";
+
+// impure — the lane ids a folder is, or stands inside: its first segment below
+// a lanes root, read on the path as typed and where its links lead.
+const lanesOf = (folder) => {
+  const grounds = [getWorkspacesRoot(), getWitnessesRoot()].map((g) => path.resolve(g));
+  const asked = path.resolve(folder);
+  return [...new Set([asked, realOf(asked)].flatMap((candidate) => grounds
+    .filter((ground) => candidate !== ground && isWithin(candidate, ground))
+    .map((ground) => path.relative(ground, candidate).split(path.sep)[0])))];
+};
+
+// impure — does this folder lie in a lane the caller does not own? A folder
+// beside the lanes that is no lane (a house ground) is the caller's to use.
+const inForeignLane = async (wallet, folder) => {
+  for (const neumaId of lanesOf(folder)) {
+    const { ok, reason } = await verifyLaneOwnership({ workspace: neumaWorkspace, neumaId, wallet });
+    if (!ok && reason !== 'not-found') return true;
+  }
+  return false;
 };
 
 // pure — every folder path a project attaches, for root registration.
@@ -94,8 +126,9 @@ router.post('/', async (req, res) => {
     if (!st || !st.isDirectory()) {
       return res.status(422).json({ error: 'Project folder is not an existing directory' });
     }
+    if (await inForeignLane(req.walletAddress, folder)) return res.status(403).json({ error: FOREIGN_LANE });
     const project = await createProject(req.walletAddress, { name, folder, channel, neumaId });
-    await ensureRoots(req.walletAddress, folderPaths(project));
+    await ensureRoots(req, folderPaths(project));
     log.info('Project created', { name: project.name, channel: project.channel });
     res.json({ project });
   } catch (error) {
@@ -112,7 +145,7 @@ router.post('/:id/activate', async (req, res) => {
   try {
     await setActiveProject(req.walletAddress, req.params.id);
     const project = await getActiveProject(req.walletAddress);
-    if (project) await ensureRoots(req.walletAddress, folderPaths(project));
+    if (project) await ensureRoots(req, folderPaths(project));
     res.json({ activeProjectId: req.params.id, project: project && await enrichProject(project) });
   } catch (error) {
     log.error('Activate project', { error: error.message });
@@ -130,15 +163,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Validate a candidate folder is an absolute path to an existing directory.
-// Returns an { status, error } to send, or null when it is good to attach.
+// Validate a candidate folder is an absolute path to an existing directory,
+// and in no other house's lane. Returns an { status, error } to send, or null
+// when it is good to attach.
 // impure
-const rejectBadFolder = async (folder) => {
+const rejectBadFolder = async (wallet, folder) => {
   if (typeof folder !== 'string' || !path.isAbsolute(folder)) {
     return { status: 400, error: 'folder must be an absolute path' };
   }
   const st = await fs.stat(path.resolve(folder)).catch(() => null);
   if (!st || !st.isDirectory()) return { status: 422, error: 'folder is not an existing directory' };
+  if (await inForeignLane(wallet, folder)) return { status: 403, error: FOREIGN_LANE };
   return null;
 };
 
@@ -146,10 +181,10 @@ const rejectBadFolder = async (folder) => {
 router.post('/:id/folders', async (req, res) => {
   try {
     const { path: folder } = req.body || {};
-    const bad = await rejectBadFolder(folder);
+    const bad = await rejectBadFolder(req.walletAddress, folder);
     if (bad) return res.status(bad.status).json({ error: bad.error });
     const project = await addFolder(req.walletAddress, req.params.id, path.resolve(folder));
-    await ensureRoots(req.walletAddress, folderPaths(project));
+    await ensureRoots(req, folderPaths(project));
     res.json({ project: await enrichProject(project) });
   } catch (error) {
     // A cross-project collision carries the owning project id so the UI can
@@ -190,10 +225,10 @@ router.post('/:id/cwd', async (req, res) => {
 router.post('/:id/folders/reconnect', async (req, res) => {
   try {
     const { path: folder } = req.body || {};
-    const bad = await rejectBadFolder(folder);
+    const bad = await rejectBadFolder(req.walletAddress, folder);
     if (bad) return res.status(bad.status).json({ error: bad.error });
     const project = await reconnectFolder(req.walletAddress, req.params.id, path.resolve(folder));
-    await ensureRoots(req.walletAddress, folderPaths(project));
+    await ensureRoots(req, folderPaths(project));
     res.json({ project: await enrichProject(project) });
   } catch (error) {
     log.error('Reconnect folder', { error: error.message });

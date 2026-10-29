@@ -36,7 +36,7 @@ describe('interrupt and close', () => {
       hands: { ember: ['OPEN'], sable: ['REST'] },
       speech: { ember: 'HANG' },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     const { councilId } = framesOf(conn, 'council:opened')[0];
     conn.councilRun.deps = deps;
     const saying = councilSay(conn, { thought: 'Speak.', urgency: 'now' });
@@ -83,7 +83,7 @@ describe('interrupt and close', () => {
       hands: { ember: ['OPEN'], sable: ['REST'] },
       speech: { ember: 'HANG' },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     const { councilId } = framesOf(conn, 'council:opened')[0];
     conn.councilRun.deps = deps;
     const first = councilSay(conn, { thought: 'wake the room', urgency: 'now' });
@@ -126,7 +126,7 @@ describe('interrupt and close', () => {
   it('two words in the same breath: the single-flight pump delivers both, in order', async () => {
     const conn = makeConnection();
     const deps = scriptedDeps({ hands: { ember: ['REST', 'REST'], sable: ['REST', 'REST'] } });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     // Fired in the same tick — concurrent ws frames converging on one pump.
     await Promise.all([
@@ -153,7 +153,7 @@ describe('interrupt and close', () => {
       hands: { ember: ['OPEN'], sable: ['REST', 'REST'] },
       speech: { ember: ['We should hold the east road.'] },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     const { councilId } = framesOf(conn, 'council:opened')[0];
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'What do we hold?', urgency: 'hold' });
@@ -163,7 +163,7 @@ describe('interrupt and close', () => {
     await councilList(conn);
     const shelf = framesOf(conn, 'council:list')[0].councils;
     expect(shelf.map((c) => c.councilId)).toContain(councilId);
-    expect(shelf[0].witnessName).toBe('Founder');
+    expect(shelf[0].witnessName).toBe('Ada');
 
     // Reopen: the exchange comes back settled, hands at rest, and the
     // member lanes CONTINUE under the same councilId session.
@@ -185,9 +185,9 @@ describe('interrupt and close', () => {
     await councilSay(conn, { thought: 'Then we continue.', urgency: 'hold' });
     const emberRecord = await neumaWorkspace.readSession('ember', councilId);
     expect(emberRecord.map((m) => m.content)).toEqual([
-      'OPERATOR Founder: What do we hold?',
+      'OPERATOR Ada: What do we hold?',
       'We should hold the east road.',
-      'OPERATOR Founder: Then we continue.',
+      'OPERATOR Ada: Then we continue.',
     ]);
   });
 
@@ -228,7 +228,7 @@ describe('interrupt and close', () => {
       }),
       carryMs: 40,
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Think on it.', urgency: 'hold' });
     // Nobody spoke; the floor stands open. Wait past three carry thresholds.
@@ -257,7 +257,7 @@ describe('interrupt and close', () => {
         sable: ['Second thought.'],
       },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Consider it.', urgency: 'hold' });
 
@@ -278,7 +278,7 @@ describe('interrupt and close', () => {
   });
 
   it('the speaking line is numbered on the wire — a late OPEN reads as 1, the early HOLD as 2', async () => {
-    // The confusion from the wild: Lifovan held first, another opened later
+    // The confusion from the wild: Yarrow held first, another opened later
     // and spoke "out of order". The law is OPEN > HOLD; the wire now says
     // so in numbers, and the grants follow exactly that line.
     const conn = makeConnection();
@@ -292,7 +292,7 @@ describe('interrupt and close', () => {
         ember: ['And now my patient thing.'],
       },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Speak.', urgency: 'hold' });
 
@@ -322,7 +322,7 @@ describe('interrupt and close', () => {
       hands: { ember: ['OPEN\nMine.'], sable: ['HOLD\nAfter you.'] },
       speech: { ember: 'HANG' },
     });
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     const first = councilSay(conn, { thought: 'Go.', urgency: 'hold' });
     await new Promise((r) => setTimeout(r, 100)); // ember takes and holds the floor
@@ -339,7 +339,7 @@ describe('interrupt and close', () => {
 
   it("a member's raised hand survives a garbled re-poll — the queued turn is never cut off", async () => {
     const conn = makeConnection();
-    // Founder's live report (2026-07-17): a neuma raised HOLD to build on
+    // A live report (2026-07-17): a neuma raised HOLD to build on
     // another's words and never got to speak. Here sable holds while ember
     // takes the floor first; sable's re-poll after ember's turn comes back
     // as prose (unreadable), which must KEEP the hand standing — under the
@@ -354,7 +354,7 @@ describe('interrupt and close', () => {
       }),
       ask: async (neumaId) => handQueues[neumaId]?.shift() ?? 'Hmm, I am not sure what to say to that...',
     };
-    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane });
+    await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane });
     conn.councilRun.deps = deps;
     await councilSay(conn, { thought: 'Speak.', urgency: 'hold' });
     const spoke = framesOf(conn, 'council:spoke');
@@ -386,7 +386,7 @@ describe('interrupt and close', () => {
     };
     const conn = makeConnection();
     try {
-      await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane }, deps);
+      await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane }, deps);
       expect(framesOf(conn, 'council:opened')[0].houseWorkspace).toBe(path.resolve(ground));
       await councilSay(conn, { thought: 'Record the decision.', urgency: 'hold' });
       expect(requests[0].options).not.toHaveProperty('tools');
@@ -440,7 +440,7 @@ describe('interrupt and close', () => {
         return stream(messages, options);
       };
       const conn = makeConnection();
-      await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Founder' }, { ownsNeumaLane }, deps);
+      await openCouncil(conn, { neumaIds: ['ember', 'sable'], witnessName: 'Ada' }, { ownsNeumaLane }, deps);
       await councilSay(conn, { thought: 'Read the native catalog.', urgency: 'hold' });
       const request = requests[0];
       expect(request.options.tools.map((tool) => tool.function.name).sort()).toEqual(

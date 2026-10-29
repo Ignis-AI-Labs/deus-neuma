@@ -19,14 +19,17 @@
 
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { appendFile, mkdir } from 'node:fs/promises';
+import { closeSync, openSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createLogger } from '../logger.js';
 import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
-import { fireWatches } from '../chat-watch.js';
+import { fireLostWatches, fireWatches } from '../chat-watch.js';
 import { listRuns } from './bench-reports.js';
 import { pressComparisonReport } from './bench-comparison-report.js';
+import { chainStatePath, persistChain, pidIsArm, readPersistedChain, refusedForTests, sealedOutcome, waitForArmExit } from './bench-chain-store.js';
+import { waitMachineClear } from './bench-machine.js';
 
 const log = createLogger('Bench');
 
@@ -42,7 +45,7 @@ export const IDENTITY_ARMS = Object.freeze(['silo', 'neuma']);
 
 /**
  * Arms SEATED on a lane: the identity arms, plus HARNESS — the platform agent
- * with identity off (Design note, 2026-09-29, which borrows a lane's disposable
+ * with identity off (ruling, 2026-09-29), which borrows a lane's disposable
  * workspace, sandbox and tool policy but sends none of its identity. Each needs
  * --lane and rides the lane's route, never the default endpoint.
  */
@@ -214,6 +217,11 @@ export const buildChainArgv = (params = {}, ctx = {}) => {
 
 /** The running or last chain — the desk reads it merged into /status. */
 let currentChain = null;
+/** The wallet that launched it — kept off the desk's snapshot, read by the bench watch. */
+let chainWallet = null;
+
+/** The wallet whose set runs now, or null — the bench watch's address for the rig's alerts. */
+export const liveChainWallet = () => (currentChain?.state === 'running' ? chainWallet : null);
 
 /**
  * The chain's live state for the desk, or null when no matched set has run.
@@ -280,21 +288,31 @@ export const requestChainStop = () => {
  * @returns {Promise<{arm: string, exitCode: ?number, signal: ?string, ok: boolean, logFile: string}>}
  */
 // impure (a real child process)
-const runOneArm = (root, plan, logFile, registerOwned, deregisterOwned, chainId) =>
+const runOneArm = (root, plan, logFile, registerOwned, deregisterOwned, chainId, onSpawn = () => {}) =>
   new Promise((resolveRun) => {
     const startedMs = Date.now();
     const startedAt = new Date(startedMs).toISOString();
-    const journal = (chunk) =>
-      appendFile(logFile, chunk).catch((err) => log.warn('chain journal append failed', { logFile, error: err.message }));
+    // The arm writes its own journal and runs in its own session, so a desk
+    // relaunch mid-arm leaves it running for the next desk to adopt (bench-chain-store.js).
+    let fd;
+    try {
+      fd = openSync(logFile, 'a');
+    } catch (err) {
+      resolveRun({ arm: plan.arm, logFile, startedAt, durationMs: 0, exitCode: null, signal: null, ok: false, error: err.message });
+      return;
+    }
     const child = spawn(process.execPath, plan.argv, {
       cwd: root,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['ignore', fd, fd],
       shell: false,
+      detached: true,
     });
-    registerOwned(child.pid, { verb: 'run-benchmark', startedAt, logFile, long: true, chainId });
+    closeSync(fd);
+    if (child.pid) {
+      registerOwned(child.pid, { verb: 'run-benchmark', startedAt, logFile, long: true, chainId });
+      onSpawn(child.pid);
+    }
     log.info('matched arm launched', { chainId, arm: plan.arm, pid: child.pid, logFile });
-    child.stdout.on('data', journal);
-    child.stderr.on('data', journal);
     const settle = (outcome) => {
       deregisterOwned(child.pid);
       resolveRun({ arm: plan.arm, logFile, startedAt, durationMs: Date.now() - startedMs, ...outcome });
@@ -318,6 +336,7 @@ const runOneArm = (root, plan, logFile, registerOwned, deregisterOwned, chainId)
 export const runMatchedChain = async ({ root, plans, cell, wallet, comparisonId, registerOwned, deregisterOwned, logDir }) => {
   await mkdir(logDir, { recursive: true });
   const chainId = `chain-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`;
+  chainWallet = wallet;
   currentChain = {
     chainId,
     state: 'running',
@@ -330,6 +349,22 @@ export const runMatchedChain = async ({ root, plans, cell, wallet, comparisonId,
     outcomes: [],
   };
   log.info('matched set started', { chainId, arms: currentChain.arms, comparisonId, wallet });
+  driveChain({ root, plans, wallet, comparisonId, registerOwned, deregisterOwned, logDir }, 0, null);
+  return { ok: true, chainId, arms: currentChain.arms, comparisonId, long: true };
+};
+
+/**
+ * Drive the chain from arm `from`. An ADOPTED arm (a desk relaunch found it
+ * running) is awaited by pid and read from its sealed receipt; every other arm
+ * is spawned. The record is written at every step (bench-chain-store.js).
+ */
+// impure (spawns real children over time)
+const driveChain = (ctx, from, adoptedArm) => {
+  let adopted = adoptedArm;
+  const { root, plans, wallet, comparisonId, registerOwned, deregisterOwned, logDir } = ctx;
+  const { chainId } = currentChain;
+  const save = () => persistChain(chainStatePath(logDir), { chain: currentChain, wallet, root, logDir, plans });
+  let refusals = 0;
   (async () => {
     const settleStopped = (i, at) => {
       currentChain.state = 'stopped';
@@ -338,19 +373,36 @@ export const runMatchedChain = async ({ root, plans, cell, wallet, comparisonId,
       currentChain.finishedAt = new Date().toISOString();
       log.warn('matched set stopped mid-chain', { chainId, at });
     };
-    for (let i = 0; i < plans.length; i += 1) {
+    for (let i = from; i < plans.length; i += 1) {
       const plan = plans[i];
       if (currentChain.stopRequested) { settleStopped(i, plan.arm); return; }
-      currentChain.currentIndex = i;
-      currentChain.currentArm = plan.arm;
-      currentChain.armStartedAt = new Date().toISOString();
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const logFile = join(logDir, `${stamp}-run-benchmark-${plan.arm}.log`);
-      // SEQUENTIAL is the law: the
-      // next arm spawns only after the current exits.
-      const outcome = await runOneArm(root, plan, logFile, registerOwned, deregisterOwned, chainId);
+      let outcome;
+      if (adopted && i === from) {
+        outcome = await adopted;
+      } else {
+        currentChain.currentIndex = i;
+        currentChain.currentArm = plan.arm;
+        await waitMachineClear({ stop: () => currentChain.stopRequested,
+          onWait: (m) => log.info('matched arm waits for a clear machine', { chainId, arm: plan.arm, tests: m.processes.length }) });
+        if (currentChain.stopRequested) { settleStopped(i, plan.arm); return; }
+        currentChain.armStartedAt = new Date().toISOString();
+        currentChain.currentPid = null;
+        await save();
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const logFile = join(logDir, `${stamp}-run-benchmark-${plan.arm}.log`);
+        // SEQUENTIAL is the law: the next arm spawns only after the current exits.
+        outcome = await runOneArm(root, plan, logFile, registerOwned, deregisterOwned, chainId,
+          (pid) => { currentChain.currentPid = pid; save(); });
+      }
+      // Refused only because a test run stood on the machine: no result — wait for clear and run the arm again.
+      if (!outcome.ok && !outcome.signal && !currentChain.stopRequested && (refusals += 1) <= 50 && await refusedForTests(outcome.logFile)) {
+        log.info('matched arm refused by a test run — it runs again once the machine is clear', { chainId, arm: plan.arm, refusals });
+        adopted = null; i -= 1; continue;
+      }
       currentChain.outcomes.push(outcome);
       currentChain.armStartedAt = null;
+      currentChain.currentPid = null;
+      await save();
       if (outcome.signal || currentChain.stopRequested) {
         // The plane's own stop landed — by signal, or by the harness's own
         // trapped exit after the operator's STOP — mark stopped, skip the rest.
@@ -368,12 +420,78 @@ export const runMatchedChain = async ({ root, plans, cell, wallet, comparisonId,
   })().catch((err) => {
     currentChain = { ...currentChain, state: 'failed', error: err.message, currentArm: null };
     log.error('matched set failed', { chainId, error: err.message });
-  }).finally(() => {
+  }).finally(async () => {
+    await save();
     notifySettled(wallet, chainStates());
     // the set's report is pressed first, so the chat that watches it is handed its link
     pressComparisonReport(comparisonId).catch(() => null)
       .then(async (pressed) => fireWatches('bench', comparisonId, await reportSettled(chainStates(), pressed)))
       .catch((err) => log.warn('benchmark watch not fired', { comparisonId, error: err.message }));
   });
-  return { ok: true, chainId, arms: currentChain.arms, comparisonId, long: true };
+};
+
+/**
+ * THE BOOT STEP for a set the last desk was running: adopt it and carry it to
+ * the end. The live arm is registered as owned (so STOP still reaches it),
+ * awaited by pid, and read from its sealed receipt; the arms still to come
+ * spawn as usual. impure, never throws.
+ * @returns {Promise<?string>} the comparison id carried on, or null
+ */
+export const resumeMatchedChain = async ({ logDir, registerOwned, deregisterOwned }) => {
+  try {
+    const record = await readPersistedChain(chainStatePath(logDir));
+    if (record?.chain?.state !== 'running' || !Array.isArray(record.plans) || currentChain?.state === 'running') return null;
+    currentChain = record.chain;
+    chainWallet = record.wallet;
+    const ctx = { root: record.root, plans: record.plans, wallet: record.wallet, comparisonId: currentChain.comparisonId, registerOwned, deregisterOwned, logDir };
+    const i = currentChain.outcomes.length;
+    const pid = currentChain.currentPid;
+    const arm = record.plans[i]?.arm;
+    if (!arm) return null;
+    // The desk died between arms: the next one simply spawns.
+    if (!currentChain.armStartedAt) {
+      driveChain(ctx, i, null);
+      return currentChain.comparisonId;
+    }
+    // An arm was running: awaited by pid while it lives, then read from its sealed receipt.
+    const live = pidIsArm(pid);
+    if (live) registerOwned(pid, { verb: 'run-benchmark', startedAt: currentChain.armStartedAt, logFile: null, long: true, chainId: currentChain.chainId });
+    const { armStartedAt, comparisonId } = currentChain;
+    const adopted = (live ? waitForArmExit(pid) : Promise.resolve()).then(async () => {
+      if (live) deregisterOwned(pid);
+      const runs = await listRuns(undefined, 200).catch(() => []);
+      return { arm, logFile: null, startedAt: armStartedAt, durationMs: Date.now() - (Date.parse(armStartedAt) || Date.now()),
+        ...sealedOutcome(runs, { comparisonId, arm, armStartedAt }) };
+    });
+    log.info('matched set adopted after a desk restart', { chainId: currentChain.chainId, comparisonId: currentChain.comparisonId, arm, pid, live });
+    driveChain(ctx, i, adopted);
+    return currentChain.comparisonId;
+  } catch (err) {
+    log.warn('matched set not adopted', { error: err.message });
+    return null;
+  }
+};
+
+// pure — what a chat reads when the desk restarted under the set it watched
+export const lostChainReport = (watch, runs) => {
+  const sealed = runs.filter((r) => r.comparisonId === watch.ref)
+    .map((r) => `${r.arm} ${r.status}${typeof r.primaryMetric?.value === 'number' ? ` ${Math.round(r.primaryMetric.value * 1000) / 1000}` : ''}`);
+  return `It did not finish: the desk restarted while it ran (comparison ${watch.ref}), so no arm still to come will be launched and no result is coming to this chat. ${sealed.length ? `Sealed before the restart: ${sealed.join(' · ')}.` : 'No arm sealed before the restart.'} Check bench_status before launching it again.`;
+};
+
+/**
+ * THE BOOT STEP for chat watches on a set a restart cut and no desk carried
+ * on (resumeMatchedChain): each such watch fires now with the honest report.
+ * impure, never throws.
+ * @returns {Promise<number>} watches fired
+ */
+export const settleLostChains = async (carried = null) => {
+  try {
+    const runs = await listRuns(undefined, 200).catch(() => []);
+    // A set carried on by resumeMatchedChain still fires its watch when it ends.
+    return await fireLostWatches('bench', (w) => lostChainReport(w, runs), (w) => w.ref === carried);
+  } catch (err) {
+    log.warn('lost benchmark watches not settled', { error: err.message });
+    return 0;
+  }
 };

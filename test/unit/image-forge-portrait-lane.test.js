@@ -57,8 +57,8 @@ describe('THE PHOTOREAL REGISTER IS SHELVED — not callable, and not deleted ei
     for (const id of ['form.illustrative.pfp', 'form.illustrative.turnaround']) {
       const out = resolvePipeline(id);
       expect(out.ok, `${id} did not resolve`).toBe(true);
-      // The model's card (Design note, 2026-08-28: Euler a or DPM++ 2M Karras,
-      // CFG 5-8, steps 20-50. Pinned so a drive-by […] cannot silently
+      // The model's card (ruling, 2026-08-28): Euler a or DPM++ 2M Karras,
+      // CFG 5-8, steps 20-50. Pinned so a drive-by "tidy" cannot silently
       // reintroduce the settings the card supersedes.
       expect(out.pipeline.slots.samplerName.default).toBe('euler_ancestral');
       expect(out.pipeline.slots.cfg.default).toBeGreaterThanOrEqual(5);

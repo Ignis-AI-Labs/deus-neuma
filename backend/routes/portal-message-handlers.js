@@ -26,6 +26,7 @@ import { portalConnections } from './portal-connections.js';
 import { sendToWallet } from './portal-send.js';
 import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace } from './portal-context.js';
 import { portalResume, portalNewSession, companionManifest } from './portal-bind-handlers.js';
+import { handleCompactRequest } from '../services/portal-compact.js';
 import {
   birthStart, birthRetryStage, birthNextStage, birthInterrupted,
   birthResume, birthResumeCompletion, birthAbandon,
@@ -34,6 +35,8 @@ import {
   birthEncryptKeypair, birthSealPreflight, birthSealSign, birthSealConfirm,
   houseFoundPreflight, houseFoundSign, houseFoundConfirm,
 } from './portal-seal-handlers.js';
+import { birthLocalSealOffer, birthLocalSealSign } from './portal-local-seal-handlers.js';
+import { houseFoundLocalPreflight, houseFoundLocalSign } from './portal-house-local-handlers.js';
 import {
   councilOpen, councilSpeak, councilResumeFrame, councilListFrame,
   councilInterruptFrame, councilOrderFrame, councilCloseFrame,
@@ -65,7 +68,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       updateToolWorkspace(connection, message.toolWorkspace);
       // The desk's handle for this word while held — invalid shapes drop.
       if (!HOLD_ID_PATTERN.test(String(message.holdId ?? ''))) delete message.holdId;
-      // MID-STREAM SPEECH (Design note, 2026-07-26 — the council's two ways, in the
+      // MID-STREAM SPEECH (ruling, 2026-07-26) — the council's two ways, in the
       // one-on-one: 'now' INTERJECTS (cut the reply, take the floor),
       // anything else HOLDS until the next completed action. The old flat refusal
       // made watching a being work read-only: destroy the turn, or wait.
@@ -91,7 +94,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       break;
 
     case 'consciousness:retry': {
-      // THE TAKES (Design note, 2026-07-27: ask a turn-point again as a new TAKE of
+      // THE TAKES (ruling, 2026-07-27): ask a turn-point again as a new TAKE of
       // the same point, never a new post. The frame names the point only —
       // the words and attachments come from the RECORD (resolveRetryTurn);
       // the bubble is never the source of truth.
@@ -103,7 +106,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         break;
       }
       const raw = message.retry && typeof message.retry === 'object' ? message.retry : {};
-      // The EDIT-fork (Design note, 2026-07-28: a retry may carry the operator's REVISED
+      // The EDIT-fork (ruling, 2026-07-28): a retry may carry the operator's REVISED
       // words. The point itself is still named by turnId — the revision rides
       // as the new take's ask (append-only; the recorded words never move).
       const revisedThought = typeof raw.thought === 'string' ? raw.thought.trim().slice(0, 20000) : '';
@@ -125,7 +128,12 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       }
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
       updateToolWorkspace(connection, message.toolWorkspace);
-      const retryMessage = { type: message.type, retry, preset: message.preset };
+      // Attachments ride along only so the turn can refuse them out loud — a
+      // retry answers the recorded point and never silently drops new ones.
+      const retryMessage = {
+        type: message.type, retry, preset: message.preset,
+        ...(Array.isArray(message.attachments) && message.attachments.length ? { attachments: message.attachments } : {}),
+      };
       if (connection.turnPromise) {
         // The same held-words semantics as a thought — the take goes the
         // next completed action in the in-flight turn (interjection is for speech,
@@ -142,7 +150,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       break;
     }
 
-    // THE HELD WORD STAYS THE OPERATOR'S (Design note, 2026-08-16 — the three queue
+    // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — the three queue
     // doors (edit / now / pull), answered in services/held-thoughts.js.
     case 'consciousness:queue_edit':
     case 'consciousness:queue_now':
@@ -236,6 +244,11 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       ws.send(JSON.stringify({ type: 'tool:mode', mode: connection.toolMode }));
       break;
 
+    case 'session:compact':
+      // The operator's /compact — the boundary's own torch-passing, on their word.
+      await handleCompactRequest(connection);
+      break;
+
     case 'session:purpose':
       // The operator's declared purpose for this sitting (work / conversation).
       // CLIENT-ORIGINATED ONLY — no being tool may ever write purpose (threat
@@ -271,9 +284,12 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
         .filter((id) => isValidId(id));
       if (ids.length === 0) break;
-      markNotificationsRead(connection.walletAddress, ids, Date.now())
+      // `dismiss` takes the cards out of the tray too (the × and CLEAR), on
+      // every desk and after a reload; the records stay in the file.
+      const dismiss = message.dismiss === true;
+      markNotificationsRead(connection.walletAddress, ids, Date.now(), { dismiss })
         .then(() => {
-          sendToWallet(connection.walletAddress, { type: 'notification:read', ids });
+          sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', ids });
         })
         .catch((error) => {
           log.error('Notification read-marking failed', { error: error.message, count: ids.length });
@@ -325,6 +341,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       await birthEncryptKeypair(connection, message);
       break;
 
+    case 'birth:local_seal_offer':
+      await birthLocalSealOffer(connection, message);
+      break;
+
+    case 'birth:local_seal_sign':
+      await birthLocalSealSign(connection, message);
+      break;
+
     case 'birth:seal_preflight':
       await birthSealPreflight(connection, message);
       break;
@@ -335,6 +359,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
 
     case 'birth:seal_confirm':
       await birthSealConfirm(connection, message);
+      break;
+
+    case 'house:found_local_preflight':
+      await houseFoundLocalPreflight(connection, message);
+      break;
+
+    case 'house:found_local_sign':
+      await houseFoundLocalSign(connection, message);
       break;
 
     case 'house:found_preflight':

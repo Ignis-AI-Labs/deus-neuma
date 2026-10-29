@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { readRawBytes } from '../../../services/user-files.js';
 import { imageMime, byteLabel, stepZoom, zoomLabel } from './image-view-model.js';
 import { EmptyState } from '../empty-state.jsx';
+import { mediaMenuDoor } from '../media-menu.js';
 
 const ImageView = ({ path }) => {
   const [url, setUrl] = useState(null);
@@ -85,6 +86,7 @@ const ImageView = ({ path }) => {
           src={url}
           alt={path}
           className="imageview-img"
+          {...mediaMenuDoor({ kind: 'image', src: url, path, alt: path })}
           style={zoom === 0 ? undefined : { width: `${dims ? dims.w * zoom : 0}px`, height: 'auto' }}
           onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
           onError={() => setError('THESE BYTES ARE NOT AN IMAGE THIS BROWSER CAN DECODE.')}

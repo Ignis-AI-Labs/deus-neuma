@@ -32,7 +32,7 @@ export const sovereigntyProposeIntent = Object.freeze({
   name: 'sovereignty/propose',
   policyTool: 'sovereignty.propose',
   fieldsForPrompt: '{class, title, body, text?|server?+tool?|dna?} or {withdraw}',
-  descriptionForPrompt: 'Propose a change to your own standing law — class prompt (the exact words as `text`), toolset (a tier change on a tool already in your catalog), or dna (amendment of what you are becoming). Your operator rules; the act ends at submitted. withdraw takes back one of yours by id.',
+  descriptionForPrompt: 'Propose a change to your own standing law — class prompt (the exact words as `text`) or toolset (a tier change on a tool already in your catalog). Your operator rules; the act ends at submitted. Your DNA and soul you amend yourself: fs/write the JSON fields you change to dna/active.json or soul/soul.json. Class dna only asks your operator to countersign an amendment, if you want that. withdraw takes back one of yours by id.',
 
   availableFor: async ({ laneId, connection }) =>
     (laneId && seatOf(connection) === 'neuma' ? {} : null),
@@ -105,7 +105,9 @@ export const sovereigntyProposeIntent = Object.freeze({
           wallet: owner.owner.wallet,
           kind: KIND.sovereigntyProposal,
           standing: STANDING.neuma,
-          title: `${laneId} proposes: ${proposal.title}`,
+          // a being's own act: the card names the being, or the record law refuses it
+          actor: { id: laneId, name: connection.companion?.name || laneId },
+          title: `${connection.companion?.name || laneId} proposes: ${proposal.title}`,
           detail: 'A sovereignty proposal awaits your ruling — no clock runs on it.',
           ref: { laneId, proposalId: proposal.id },
         });

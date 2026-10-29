@@ -10,8 +10,11 @@
 // This is the record keeper's feed — a LEAD reads the same board the members
 // and the witness see.
 //
-// Pure throughout: extraction and rendering are decisions on strings; the
-// runner owns the mutable state and passes snapshots in.
+// Pure throughout (the board's render draws its frame token): extraction and
+// rendering are decisions on strings; the runner owns the mutable state and
+// passes snapshots in.
+
+import { frameUntrustedTurns } from './untrusted-content.js';
 
 // Appended to every coordinated brief (plans that carry a goal). The general
 // path's wording is versionless; the LOCKED trial adopts a versioned form at
@@ -20,7 +23,7 @@ export const STATUS_ASK =
   'End your reply with a line that says exactly "STATUS:" followed by 2-5 short lines for the team board: ' +
   'where your part stands, anything left on your to-do list, and what you hand to whoever builds on your work.';
 
-// THE ONE SIGN-OFF (Design note, 2026-10-11: STATUS (for the board) and TORCH (for the
+// THE ONE SIGN-OFF (ruling, 2026-10-11): STATUS (for the board) and TORCH (for the
 // member's next instance) overlapped — both carried the handoff — and members
 // spent thinking walking two formats with line counts. One block now serves
 // as both; the run files it as the board status AND the member's torch.
@@ -85,20 +88,25 @@ export const boardEntries = ({ steps, results, working, statuses, failures = {} 
     status: statuses[s.id] ?? null,
   }));
 
-// pure — the board as it enters a brief. The reader finds itself marked (YOU),
+// The board as it enters a brief. The reader finds itself marked (YOU),
 // sees everyone's objective state, and reads teammates' check-ins verbatim.
+// A check-in is another being's words — a member that read a poisoned file
+// can carry its payload into every later brief — so check-ins ride inside
+// the untrusted frame while the state lines stay ours (security-seat G3).
+// Pure given `token`; impure by default (the frame's CSPRNG token).
 /**
  * @param {BoardEntry[]} entries
  * @param {string} selfId - the step this brief is for
+ * @param {string} [token] - injectable for tests
  * @returns {string}
  */
-export const renderBoard = (entries, selfId) => {
-  const line = (e) => {
+export const renderBoard = (entries, selfId, token) => {
+  const rows = entries.flatMap((e) => {
     const who = e.role || e.id;
     const head = `— ${who}${e.id === selfId ? ' (YOU)' : ''} [${e.state.toUpperCase()}]`;
     return e.status
-      ? `${head}\n${e.status.split('\n').map((l) => `    ${l}`).join('\n')}`
-      : head;
-  };
-  return `TEAM BOARD — where everyone stands right now:\n${entries.map(line).join('\n')}`;
+      ? [{ trusted: true, text: head }, { text: e.status.split('\n').map((l) => `    ${l}`).join('\n') }]
+      : [{ trusted: true, text: head }];
+  });
+  return `TEAM BOARD — where everyone stands right now:\n${frameUntrustedTurns('team members\' own check-ins on the board', rows, token)}`;
 };

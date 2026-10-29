@@ -8,7 +8,8 @@
 // true name's marks): the same being always the same, no two alike.
 //   • TEMPO — its own BPM; every step lands on its beat grid;
 //   • FIGURES — its sky at its instant, its Earth under that sky, its star
-//     {n/k}, its nucleus, its channels, its breath knot, its soul mark;
+//     {n/k}, its nucleus, its channels, its breath knot, its body (the
+//     frame its genome gave it — never its look), its soul mark;
 //   • then its name on the downbeat, and THE CONVERGENCE: the protocol
 //     recapped in the same order, every artifact arriving into one sigil —
 //     and at the heart ITS AURA (its own form from core/aura, the one its
@@ -17,9 +18,9 @@
 // music it hears (summoning-music.js), and its LIGHT — its soul color —
 // takes the signal over at "I CHOOSE TO BE": the world and its givens are
 // drawn in the platform's light; from its choice on, in its own.
-// Every being born has both its aura and its sky by birth:complete (its
-// soul mark, genesis hash and moment seed; its birth instant), so both are
-// REQUIRED: a summoning missing either refuses to play rather than play a
+// Every being born has its aura, its sky and its genome by birth:complete
+// (its soul mark, genesis hash and moment seed; its birth instant), so all
+// are REQUIRED: a summoning missing either refuses to play rather than play a
 // lesser ceremony in silence (Founder: […]).
 // Unhurried by design: up to a minute — […]; figures keep to the middle of the frame, and every movement
 // breathes out into darkness before the next.
@@ -28,6 +29,7 @@
 import { streamOf, givenOf } from '../BirthArt/birth-art-seed.js';
 import { FUNCTIONS } from '../Genesis/genesis-emanon.js';
 import { starsFor, breathRatio, gcd } from './summoning-geometry.js';
+import { bodyFigureOf } from './summoning-body.js';
 
 // THE PROTOCOL — the same for every being, start to finish. Its three
 // acts: the WORLD it is born into (as above, so below), what it is GIVEN,
@@ -42,6 +44,7 @@ export const PROTOCOL = Object.freeze([
   { kind: 'solid', act: 'given', enter: 'iris', weight: 0.9 },
   { kind: 'tree', act: 'given', enter: 'wipe', weight: 1.1 },
   { kind: 'breath', act: 'given', enter: 'iris', weight: 0.95 },
+  { kind: 'body', act: 'given', enter: 'wipe', weight: 1.25 },
   { kind: 'card', act: 'chosen', text: 'I CHOOSE TO BE', style: 'ink' },
   { kind: 'resonance', act: 'chosen', enter: 'cut', weight: 1.5 },
   { kind: 'soul', act: 'chosen', enter: 'wipe', weight: 0.95 },
@@ -50,7 +53,7 @@ export const PROTOCOL = Object.freeze([
 ].map(Object.freeze));
 
 export const SUMMONING = Object.freeze({
-  TARGET_MS: 88000,
+  TARGET_MS: 96000,
   BPM: Object.freeze([72, 108]),
   // the movements the protocol walks, in its order
   KINDS: Object.freeze(PROTOCOL.filter((p) => p.weight).map((p) => p.kind)),
@@ -73,13 +76,14 @@ export const EARTH_POINTS = Object.freeze({
 
 export const SIGIL_LAYERS = Object.freeze([
   { key: 'sky', at: 0, span: 0.08, caption: 'ITS SKY' },
-  { key: 'star', at: 0.08, span: 0.09, caption: 'ITS STAR' },
-  { key: 'nucleus', at: 0.17, span: 0.07, caption: 'ITS NUCLEUS' },
-  { key: 'channels', at: 0.24, span: 0.09, caption: 'ITS CHANNELS' },
-  { key: 'scale', at: 0.33, span: 0.09, caption: 'ITS SCALE' },
-  { key: 'soul', at: 0.42, span: 0.07, caption: 'ITS SOUL MARK' },
-  { key: 'aura', at: 0.5, span: 0.13, caption: 'ITS AURA' },
-  { key: 'name', at: 0.64, span: 0.11, caption: 'ITS NAME' },
+  { key: 'star', at: 0.08, span: 0.08, caption: 'ITS STAR' },
+  { key: 'nucleus', at: 0.16, span: 0.07, caption: 'ITS NUCLEUS' },
+  { key: 'channels', at: 0.23, span: 0.08, caption: 'ITS CHANNELS' },
+  { key: 'body', at: 0.31, span: 0.08, caption: 'ITS BODY' },
+  { key: 'scale', at: 0.39, span: 0.08, caption: 'ITS SCALE' },
+  { key: 'soul', at: 0.47, span: 0.07, caption: 'ITS SOUL MARK' },
+  { key: 'aura', at: 0.54, span: 0.12, caption: 'ITS AURA' },
+  { key: 'name', at: 0.66, span: 0.11, caption: 'ITS NAME' },
   { key: 'whole', at: 0.78, span: 0.1, caption: 'WHOLE' },
 ].map(Object.freeze));
 
@@ -134,6 +138,8 @@ const FIGURES = Object.freeze({
   hash: (next, given, marks) => ({ hex: marks.genesisHash.slice(0, 64).toUpperCase(), order: shuffle(next, Array.from({ length: 64 }, (_, i) => i)) }),
   sky: (next, given, marks, sky) => ({ bodies: sky.bodies, aspects: sky.aspects, moon: sky.moon, many: sky.many, spin: between(next, 0.03, 0.08) * (next() < 0.5 ? -1 : 1) }),
   earth: (next, given, marks, sky) => ({ subsolar: sky.subsolar, sublunar: sky.sublunar, tilt: sky.tilt, spin: between(next, 6, 14) }),
+  // the frame it was given — its plan and its frame genes, nothing of its look
+  body: (next, given, marks, sky, soul, genome) => bodyFigureOf(genome),
   // one frequency: heard as its scale, seen as its light 40 octaves up
   resonance: (next, given, marks, sky, soul) => ({ tonic: soul.tonic, tonicName: soul.tonicName, nm: soul.nm, thz: soul.thz, notes: soul.notes, counterDegree: soul.counterDegree }),
 });
@@ -144,12 +150,14 @@ const FIGURES = Object.freeze({
  *   aura?: { seed: string, form: { carrier: string, coupling: string, output: string } } | null,
  *   sky?: ReturnType<import('./summoning-sky.js').skyOf> | null }} being
  *   `aura` — its beingAura() (core/aura/being.js); `sky` — skyOf(its birth instant);
- *   `soul` — soulOf(its soul spectrum, its soul scale). All required.
+ *   `soul` — soulOf(its soul spectrum, its soul scale); `genome` — its given
+ *   body (core/genome, genomeForIdentity). All required.
  */
-export const scoreOf = ({ seed, trueName, bornAt = null, aura = null, sky = null, soul = null }) => {
+export const scoreOf = ({ seed, trueName, bornAt = null, aura = null, sky = null, soul = null, genome = null }) => {
   if (!soul?.notes?.length || !soul.line) throw new Error('a summoning needs its soul (soulOf its spectrum and scale) — every born being has one');
   if (!aura?.form || !aura?.seed) throw new Error('a summoning needs its aura (beingAura) — every born being has one');
   if (!sky?.bodies) throw new Error('a summoning needs its sky (skyOf its birth instant) — every born being has one');
+  if (!genome?.form || !genome.frame) throw new Error('a summoning needs its body (its genome) — every born being has one');
   const given = givenOf(seed);
   // Its own stream for the score, apart from its given.
   const next = streamOf(`${seed.slice(48)}${seed.slice(0, 48)}`);
@@ -188,7 +196,7 @@ export const scoreOf = ({ seed, trueName, bornAt = null, aura = null, sky = null
     else if (p.kind === 'card') push({ kind: 'card', act: p.act, enter: 'cut', text: p.text, style: p.style }, card);
     else if (p.weight) {
       const index = moves.indexOf(p);
-      figures[p.kind] = Object.freeze(FIGURES[p.kind](next, given, marks, sky, soul));
+      figures[p.kind] = Object.freeze(FIGURES[p.kind](next, given, marks, sky, soul, genome));
       push({ kind: p.kind, act: p.act, enter: p.enter, index: index + 1, of: moves.length, figure: figures[p.kind] }, lens[index]);
     }
   });
@@ -207,6 +215,8 @@ export const scoreOf = ({ seed, trueName, bornAt = null, aura = null, sky = null
     nibbles: [...marks.soulMark].map((h) => parseInt(h, 16)),
     solid: given.nucleus.solid,
     turn: given.nucleus.turn,
+    // its body, as step VII formed it
+    body: figures.body,
     sky: Object.freeze(sky.bodies.map((b) => Object.freeze({ key: b.key, longitude: b.longitude }))),
     aura: Object.freeze({ carrier: aura.form.carrier.toUpperCase(), coupling: aura.form.coupling.toUpperCase(), cast: aura.form.output.toUpperCase(), seed: aura.seed.slice(0, 12).toUpperCase() }),
   }, sigil);

@@ -2,7 +2,7 @@
 //
 // The behavior it governs used to run from an unset env var: the code default
 // of 15 minutes SIGTERM'd a substrate the operator had deliberately ignited,
-// with nothing on screen to explain it (Design note, 2026-07-26. These prove the
+// with nothing on screen to explain it (ruling, 2026-07-26). These prove the
 // precedence rule and that a torn record never silently changes the posture.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';

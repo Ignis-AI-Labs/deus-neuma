@@ -16,6 +16,7 @@ import { processWitnessToolBatch } from '../../backend/services/witness-tool-bat
 import { createTurnToolEpochs } from '../../backend/services/portal-tool-epochs.js';
 import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.js';
 import { mcpService } from '../../backend/services/mcp.js';
+import { withFsPrimitives } from '../../backend/services/fs-primitives.js';
 import workspace from '../../core/workspace/neuma-workspace.js';
 
 let kit, old, runtime;
@@ -25,8 +26,9 @@ const pointer = () => path.join(old.anchor, 'active.json');
 const populate = async (seat) => {
   if (seat === 'witness') runtime = await toolsForWitness(kit.connection, kit.ground, { nativeTools: true });
   else {
+    // The fs primitives ride every being turn's catalog (portal-stream advertises them).
     const tools = await beingCodingToolsFor(kit.connection);
-    await stashBeingTurnCatalog(kit.connection, [TOOL_SEARCH_TOOL, ...tools], []);
+    await stashBeingTurnCatalog(kit.connection, [TOOL_SEARCH_TOOL, ...withFsPrimitives(mcpService.getToolsContext().available_tools), ...tools], []);
   }
 };
 const batch = (seat, calls, turn = createTurnToolEpochs()) => seat === 'witness'

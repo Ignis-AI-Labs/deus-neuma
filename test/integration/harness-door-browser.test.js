@@ -51,7 +51,7 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
     vite = await createServer({ configFile: false, root: repo, cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/harness-door.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null } });
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     const app = express();
     app.use(express.json());
     app.use('/api/v1/routing', routingRouter);
@@ -69,13 +69,16 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
 
     // the lightest door leads, and says what it asks
     const first = page.locator('.firstrun-path').first();
-    await expect.poll(() => first.textContent()).toContain('Just use it');
-    expect(await first.textContent()).toContain('NEEDS: A MODEL — LOCAL OR AN API KEY');
+    await expect.poll(() => first.textContent()).toContain('Harness');
+    expect(await first.textContent()).toContain('no being, no covenant');
+    expect(await first.textContent()).toContain('needs: a model or an API key');
     await first.click();
 
-    // the harness door asks where the model runs before anything else
+    // a machine that already serves a model starts on LOCAL (the house llama.cpp here is
+    // ready): the road is chosen for the person, the cloud one press away
     await page.getByTestId('firstrun-harness').waitFor();
-    expect(await page.getByRole('button', { name: 'CONNECT & OPEN THE DESK' }).count()).toBe(0);
+    const local = page.getByRole('radio', { name: /On this machine/ });
+    await expect.poll(() => local.getAttribute('aria-checked'), { timeout: 30_000 }).toBe('true');
 
     // CLOUD: the witness door's catalog, with the machine's own servers left to LOCAL
     await page.getByRole('radio', { name: /A cloud provider/ }).click();

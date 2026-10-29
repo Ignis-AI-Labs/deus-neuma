@@ -23,6 +23,7 @@ import { HarnessLocalServers } from './HarnessLocalServers.jsx';
 import '../RelinkShell/SettingsApp.css'; // settings-input / settings-set / settings-err, before the desk has loaded them
 import './FirstRunWitness.css';
 import './FirstRunHarness.css';
+import { KeyLink } from '../RelinkShell/KeyLink.jsx';
 
 const ROADS = Object.freeze([
   { id: 'local', name: 'On this machine', body: 'Ollama, LM Studio or llama.cpp — nothing leaves your computer.' },
@@ -74,6 +75,19 @@ export const FirstRunHarness = ({ onDone, onBack }) => {
   }, []);
 
   useEffect(() => { if (road === 'local') recheck(); }, [road, recheck]);
+
+  // impure — a machine that already serves a model starts on that road (a model the platform
+  // set up a minute ago is never asked about again); the cloud stays one press away
+  useEffect(() => {
+    let live = true;
+    apiCall('GET', '/api/v1/preflight/setup', { strictJson: true })
+      .then((next) => {
+        if (!live || !localServers(next).some((s) => s.state === 'ready')) return;
+        setRoad((r) => r || 'local');
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   // the chosen server's models, keyed by what it holds (the rows are rebuilt each render)
   const heldKey = server ? `${server.endpoint}\n${server.models.join('\n')}` : '';
@@ -176,6 +190,7 @@ export const FirstRunHarness = ({ onDone, onBack }) => {
                 <>
                   <TrainingNotice provider={provider} />
                   {provider.requiresKey && !provider.hasKey ? (
+                    <>
                     <input
                       className="settings-input"
                       type="password"
@@ -186,6 +201,8 @@ export const FirstRunHarness = ({ onDone, onBack }) => {
                       spellCheck={false}
                       aria-label="Provider API key"
                     />
+                    <KeyLink provider={provider.id} />
+                    </>
                   ) : provider.requiresKey ? (
                     <p className="firstrun-witness-note label-data">A KEY IS ALREADY STORED FOR THIS PROVIDER</p>
                   ) : null}

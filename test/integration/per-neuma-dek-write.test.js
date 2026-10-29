@@ -49,13 +49,13 @@ describe('#117 S2a — writeNeumaDEK creates a valid wrapped DEK on disk', () =>
     expect(typeof wrapped.tag).toBe('string');
     expect(typeof wrapped.ct).toBe('string');
 
-    // The wrapped DEK must unwrap to exactly what deriveNeumaDEK would produce
-    // under the same master + genesisHash — proves no transformation happened
+    // The wrapped DEK is a RANDOM 32-byte key: it unwraps under the master, and
+    // it is NOT what the master and the (public) genesisHash would derive — the
+    // master alone no longer rebuilds a being's key.
     const masterKey = deriveKeyFromSecret(process.env.DNA_ENCRYPTION_KEY);
-    const expectedDEK = deriveNeumaDEK(masterKey, genesisHash);
     const actualDEK = unwrapDEK(wrapped, { key: masterKey });
-    expect(actualDEK.equals(expectedDEK)).toBe(true);
     expect(actualDEK.length).toBe(32);
+    expect(actualDEK.equals(deriveNeumaDEK(masterKey, genesisHash))).toBe(false);
   });
 
   it('readNeumaDEK returns the same DEK that writeNeumaDEK persisted', async () => {
@@ -66,8 +66,12 @@ describe('#117 S2a — writeNeumaDEK creates a valid wrapped DEK on disk', () =>
 
     const dek = await workspace.readNeumaDEK(id);
     const masterKey = deriveKeyFromSecret(process.env.DNA_ENCRYPTION_KEY);
-    const expectedDEK = deriveNeumaDEK(masterKey, genesisHash);
-    expect(dek.equals(expectedDEK)).toBe(true);
+    const onDisk = unwrapDEK(JSON.parse(await fs.readFile(path.join(workspace._path(id), 'keys', 'dek.json'), 'utf8')), { key: masterKey });
+    expect(dek.equals(onDisk)).toBe(true);
+    // Written once: a second write keeps the key the being's files are under.
+    await workspace.writeNeumaDEK(id, genesisHash);
+    workspace._dekCache?.clear?.();
+    expect((await workspace.readNeumaDEK(id)).equals(dek)).toBe(true);
   });
 
   it('readNeumaDEK returns null for an existing being with no DEK file (the LIVING-beings safety guard)', async () => {
@@ -242,12 +246,12 @@ describe('#117 S2a — finalize-birth fresh path writes DEK; resume path does no
     const stat = await fs.stat(dekPath);
     expect(stat.isFile()).toBe(true);
 
-    // Sanity: the DEK on disk unwraps to deriveNeumaDEK(masterKey, genesisHash)
+    // Sanity: the DEK on disk is a random key under the master, not one derived from the seal
     const wrapped = JSON.parse(await fs.readFile(dekPath, 'utf8'));
     const masterKey = deriveKeyFromSecret(process.env.DNA_ENCRYPTION_KEY);
-    const expectedDEK = deriveNeumaDEK(masterKey, fakeForge.seal.genesisHash);
     const actualDEK = unwrapDEK(wrapped, { key: masterKey });
-    expect(actualDEK.equals(expectedDEK)).toBe(true);
+    expect(actualDEK.length).toBe(32);
+    expect(actualDEK.equals(deriveNeumaDEK(masterKey, fakeForge.seal.genesisHash))).toBe(false);
   });
 
   // ai6 R3 Medium — a DEK write failure on fresh birth doesn't kill the birth,

@@ -18,7 +18,7 @@ export const RAIL = Object.freeze([
  * the host's held answer; asking has begun once a rite question was issued.
  * Pure.
  *
- * ── WHY `failed` EXISTS (Design note, 2026-08-29 ──────────────────────────────────
+ * ── WHY `failed` EXISTS (ruling, 2026-08-29) ──────────────────────────────────
  * […] A refused ask used to leave the host in 'ask' with no answer — so
  * the screen went on saying […] over an ASK AGAIN button, while nothing at
  * all was happening. The rite had already failed; the ceremony was still

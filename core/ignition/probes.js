@@ -12,7 +12,7 @@
  * So every probe below asks for a fact carrying an exact token in the being's
  * own sealed record. Anything needing judgment is not a probe and is not here.
  *
- * NOTHING IS HARDCODED TO ANY ONE NEUMA (Design note, 2026-08-20. Every probe is
+ * NOTHING IS HARDCODED TO ANY ONE NEUMA (ruling, 2026-08-20). Every probe is
  * generated from records the caller read out of that being's own lane, and a
  * record a lane does not carry simply yields no probe — a shorter set, never
  * an invented expectation.

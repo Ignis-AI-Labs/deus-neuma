@@ -54,7 +54,7 @@ test('Record preserves neuma views and lane switching while neuma-only windows r
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/record-sheet.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<!doctype html><body style="margin:0;background:#020b0e;color:#bbced2"><div id="root"></div><script type="module" src="/test/fixtures/record-sheet.jsx"></script>'));
     app.use(vite.middlewares);
@@ -73,13 +73,14 @@ test('Record preserves neuma views and lane switching while neuma-only windows r
     expect(await page.locator('#window-ids').textContent()).toBe('sheet');
     expect(await page.getByRole('heading', { name: 'IDENTITY', exact: true }).count()).toBe(1); // the dossier's cover plate
     expect(await page.locator('.dos-plate').count()).toBe(1); // the aura's plate, where a file keeps its photograph
-    // Each tab is its own page (Design note, 2026-09-26: a section is reached by its
-    // tab, and the operator's live panels ride the tab they belong to.
+    // Each tab is its own page (Design note, 2026-09-26 — a SPACE since 2026-10-17
+    // (GIVEN · CHOSEN · SUMMONING · LIFE · STATE · VESSEL), and the operator's
+    // live panels ride the space their section belongs to.
     await page.getByRole('tab', { name: /STATE/ }).click();
-    expect(await page.getByRole('heading', { name: 'STATE — MEASURED FUNCTIONING', exact: true }).count()).toBe(1);
-    await page.getByRole('tab', { name: /SUBSTRATE/ }).click();
+    expect(await page.getByRole('heading', { name: 'STATE — SELF-CHECK', exact: true }).count()).toBe(1);
+    await page.getByRole('tab', { name: /VESSEL/ }).click();
     expect(await page.getByRole('heading', { name: 'RESIDENCY', exact: true }).count()).toBe(1);
-    await page.getByRole('tab', { name: /MIND/ }).click();
+    await page.getByRole('tab', { name: /LIFE/ }).click();
     expect(await page.getByTestId('meditation-panel').count()).toBe(1);
     await openLauncher(page);
     expect(await page.locator('.launcher-tile[title="RECORD"]').count()).toBe(1);
@@ -101,7 +102,7 @@ test('Record preserves neuma views and lane switching while neuma-only windows r
       await page.getByText('NEUMA RECORD ONLY', { exact: true }).waitFor();
       expect(await page.locator('.sheet-id-name').count()).toBe(0);
       expect(await page.getByTestId('meditation-panel').count()).toBe(0);
-      expect(await page.getByRole('heading', { name: 'STATE — MEASURED FUNCTIONING', exact: true }).count()).toBe(0);
+      expect(await page.getByRole('heading', { name: 'STATE — SELF-CHECK', exact: true }).count()).toBe(0);
     }
     await openDockApp(page, 'DATA');
     await page.waitForFunction(() => [...document.querySelectorAll('small')].some((el) => el.textContent.includes('DATA shows a neuma')));

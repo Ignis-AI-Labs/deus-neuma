@@ -23,7 +23,7 @@ import { TabPortalHost } from './TabPortalHost.jsx';
 import { StripRegistrar } from './StripRegistrar.jsx';
 import { StreamPermissions } from './StreamPermissions.jsx';
 import { StreamTabs } from './StreamTabs.jsx';
-import { StreamChatTitle } from './StreamChatTitle.jsx';
+import { StreamChatTitle, StreamWindowLabel } from './StreamChatTitle.jsx';
 import { UnsealedNotice } from './UnsealedNotice.jsx';
 import { StreamChats } from './StreamChats.jsx';
 import { StreamRail } from './StreamRail.jsx';
@@ -72,7 +72,7 @@ const ChatTitle = () => {
   );
 };
 
-// The witness gives the world its voice — opt-in, persisted. Settings ›
+// The world's voice — on by default, off by the witness's choice, persisted. Settings ›
 // GENERAL holds the same switch, so this one follows the pref rather than
 // the state it happened to mount with.
 const SoundToggle = () => {
@@ -304,7 +304,7 @@ const ChatBody = () => {
   const recallMessage = useCallback(({ text, turnId }) => {
     setRecall((prev) => ({ text, turnId: turnId ?? null, seq: (prev?.seq || 0) + 1 }));
   }, []);
-  // THE EDIT, WHERE THE MESSAGE STANDS (Design note, 2026-07-28: the bubble's own
+  // THE EDIT, WHERE THE MESSAGE STANDS (ruling, 2026-07-28): the bubble's own
   // SAVE re-sends FROM the point, straight from the bubble — the composer
   // never sees the words.
   const reviseMessage = useCallback(({ turnId, text }) => {
@@ -364,7 +364,7 @@ const ChatBody = () => {
       onAsk={respondAsk}
       onPlan={respondPlan}
       onSeal={respondSeal}
-      // THE HELD WORD (Design note, 2026-08-16: a queued bubble's SAVE rewrites it
+      // THE HELD WORD (ruling, 2026-08-16): a queued bubble's SAVE rewrites it
       // in the portal's queue; SEND NOW promotes it to an interjection.
       onQueueEdit={state.connected ? queueEdit : null}
       onQueueNow={state.connected ? sendQueuedNow : null}
@@ -418,7 +418,7 @@ const ChatBody = () => {
               // Which TAB this composer belongs to, so two fresh chats with the
               // same being do not share one unsent-draft bucket.
               draftScope={tabs?.focusedId ?? null}
-              // MID-STREAM SPEECH, same as the council (Design note, 2026-07-26: the
+              // MID-STREAM SPEECH, same as the council (ruling, 2026-07-26): the
               // plain send HOLDS until the turn ends; the urgent send
               // INTERJECTS — one mechanism, the room's, never a second copy.
               canQueue
@@ -466,6 +466,7 @@ export const chatApp = {
   // its OWN portal and sitting — else every stream window would draw the
   // same conversation (StreamWindowHost).
   multiInstance: true,
+  InstanceLabel: StreamWindowLabel, // each window's row in the taskbar's hover list
   // No `makeTitle` on purpose: the host wraps the whole frame, so ChatTitle
   // already reads THIS window's stream live — a title composed from the
   // spawn payload would be a snapshot false on the first switch.

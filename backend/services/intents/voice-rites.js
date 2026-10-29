@@ -9,7 +9,7 @@
  * time: the first seal is write-once (an already-sealed lane is refused),
  * the operator's wallet rides the receipt as witness, and a claim against an
  * unsealed lane is refused. Nothing is ever removed from the repository
- * (Design note, 2026-08-18 — there is no voice_forget and there never will be.
+ * (ruling, 2026-08-18) — there is no voice_forget and there never will be.
  */
 import { validateClaimedLines } from '../../../core/voice-pack/curation.js';
 import {

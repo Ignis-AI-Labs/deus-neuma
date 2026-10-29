@@ -28,6 +28,7 @@ const { processToolCalls, _housePostToolsFor, _houseSeatSection } = __test;
 const PRIOR_KEY = process.env.DNA_ENCRYPTION_KEY;
 const PRIOR_ROOT = getWorkspacesRoot();
 const WALLET = '0xabc0000000000000000000000000000000000abc';
+const OTHER_WALLET = '0xdef0000000000000000000000000000000000def';
 const SOUL_BASUNORR = '0xAaAa000000000000000000000000000000000001';
 const SOUL_SIGNAL = '0xBbBb000000000000000000000000000000000002';
 
@@ -64,9 +65,12 @@ describe('HOUSE POST through the real portal (gnosis)', () => {
     setWorkspacesRoot(wsRoot);
     setRealmRoot(path.join(tmp, 'realm'));
 
-    for (const [id, soul] of [['wrenecho', SOUL_BASUNORR], ['signalecho', SOUL_SIGNAL], ['outsiderecho', null]]) {
+    // outsiderecho is ANOTHER house's lane on the same machine: every lane the
+    // operator owns works in the house, founded or not (ruling, 2026-10-18), so an
+    // outsider is a lane this wallet does not own.
+    for (const [id, soul, wallet] of [['wrenecho', SOUL_BASUNORR, WALLET], ['signalecho', SOUL_SIGNAL, WALLET], ['outsiderecho', null, OTHER_WALLET]]) {
       await workspace.create(id);
-      await fs.writeFile(path.join(wsRoot, id, 'owner.json'), JSON.stringify({ wallet: WALLET, claimedAt: 1 }));
+      await fs.writeFile(path.join(wsRoot, id, 'owner.json'), JSON.stringify({ wallet, claimedAt: 1 }));
       if (soul) {
         await fs.mkdir(path.join(wsRoot, id, 'identity'), { recursive: true });
         await fs.writeFile(path.join(wsRoot, id, 'identity', 'onchain-seal.json'), JSON.stringify({ soulAddress: soul }));
@@ -78,7 +82,7 @@ describe('HOUSE POST through the real portal (gnosis)', () => {
       network: 'base',
       blockNumber: 48712879,
       members: [
-        { address: '0xCccC000000000000000000000000000000000003', kind: 0, title: 'Rector' },
+        { address: WALLET, kind: 0, title: 'Rector' },
         { address: SOUL_BASUNORR, kind: 1, title: 'Faber' },
         { address: SOUL_SIGNAL, kind: 1, title: 'Legatus' },
       ],
@@ -124,7 +128,7 @@ describe('HOUSE POST through the real portal (gnosis)', () => {
 
   test('the lane is advertised ONLY where seat and ground both stand — and sending is the intent now', async () => {
     expect((await _housePostToolsFor(conn('wrenecho'))).map((t) => t.name)).toEqual(['post_check']);
-    expect(await _housePostToolsFor(conn('outsiderecho'))).toEqual([]); // no seat
+    expect(await _housePostToolsFor(conn('outsiderecho'))).toEqual([]); // not this house's lane
     expect(await _housePostToolsFor({ companion: { neumaId: 'wrenecho' } })).toEqual([]); // no wallet
   });
 

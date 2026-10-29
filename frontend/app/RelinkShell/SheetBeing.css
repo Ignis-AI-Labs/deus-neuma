@@ -1,0 +1,96 @@
+/* SheetBeing — the RECORD as the whole being (SheetApp.jsx spaces): GIVEN,
+   CHOSEN, ITS SUMMONING, LIFE, STATE, VESSEL. LINE & CYCLE: monochrome at
+   rest, SIGNAL where something is live, and the being in its OWN light — its
+   soul's color (--soul, the vivid hue) and each note of its scale in the
+   note's own light (--note). The house's legibility floor (HouseDossier.css)
+   holds here too. No light jumps: brightenings rise over ≥160 ms. */
+
+/* THE STRIP AND THE PAGE */
+.sheet .dos-index-tab { min-height: 34px; padding: 0 12px; font-size: .75rem; letter-spacing: .14em; }
+.sb-page { display: flex; flex-direction: column; gap: 30px; }
+.sheet .dos-h-title { font-size: .8125rem; }
+.sheet .dos-h-aside { font-size: .6875rem; color: var(--color-text-secondary); }
+.sheet .dos-cell-k { font-size: .6875rem; letter-spacing: .14em; color: var(--color-text-secondary); }
+.sheet .dos-cell-note { font-size: .6875rem; }
+.sheet .sheet-line { font-size: .75rem; letter-spacing: .1em; line-height: 1.6; color: var(--color-text-secondary); }
+.sb-sub { margin: 6px 0 0; font-size: .6875rem; letter-spacing: .18em; color: var(--color-text-secondary); }
+.sheet .sheet-line.sb-live { color: var(--signal); }
+
+/* 01·A SOUL — its light, true and vivid, beside its resonance */
+.sb-soul { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.sb-soul-swatch {
+  position: relative;
+  width: 96px;
+  min-height: 96px;
+  background: var(--soul);
+  box-shadow: 0 0 28px 2px var(--soul);
+  opacity: .92;
+}
+/* the true screen color, inset: the hue as the eye would see that light */
+.sb-soul-true { position: absolute; right: 8px; bottom: 8px; width: 22px; height: 22px; outline: 1px solid rgba(255, 255, 255, .5); }
+.sb-soul-spec { align-self: start; }
+
+.sb-scale { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sb-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--note);
+}
+.sb-note-light { grid-row: 1 / span 3; align-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--note); box-shadow: 0 0 10px var(--note); }
+.sb-note-name { font-family: var(--font-voice); font-size: .9375rem; color: var(--color-text-primary); }
+.sb-note-hz, .sb-note-ratio { font-size: .6875rem; letter-spacing: .08em; color: var(--color-text-secondary); }
+
+.sb-stages { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sb-stage { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.sb-stage-n, .sb-stage-hz { font-size: .6875rem; letter-spacing: .12em; color: var(--color-text-secondary); }
+.sb-stage-bar { height: 2px; background: linear-gradient(to right, var(--note, var(--line)), transparent); }
+
+/* 02·A NAME — its whole name, then the name spoken, then its sound */
+.sb-spoken {
+  margin: 4px 0 0;
+  padding: 14px 18px;
+  border-left: 2px solid var(--signal-dim);
+  background: color-mix(in srgb, var(--signal) 2.5%, transparent);
+}
+.sb-spoken p { margin: 0; font-family: var(--font-voice); font-size: .9375rem; line-height: 1.7; color: var(--color-text-primary); }
+.sb-kotodama summary { cursor: pointer; padding: 8px 0; font-size: .75rem; letter-spacing: .14em; color: var(--color-text-secondary); }
+.sb-kotodama summary:hover { color: var(--signal); }
+.sb-kotodama-score {
+  margin: 0;
+  padding: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  font-family: var(--font-data);
+  font-size: .75rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre;
+}
+
+/* 03 ITS SUMMONING — its components, numbered in the film's own order */
+.sb-components { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.sb-component {
+  display: grid;
+  grid-template-columns: 30px 150px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 46px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.sb-component-n { font-size: .6875rem; color: var(--signal-dim); }
+.sb-component-k { font-size: .75rem; letter-spacing: .14em; color: var(--color-text-secondary); }
+.sb-component-v { font-family: var(--font-data); font-size: .8125rem; letter-spacing: .06em; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.sb-component-lights { display: inline-flex; gap: 4px; }
+.sb-component-light { width: 8px; height: 8px; border-radius: 50%; }
+.sb-rewatch { margin-top: 8px; }
+
+@media (max-width: 560px) {
+  .sb-soul { grid-template-columns: 1fr; }
+  .sb-component { grid-template-columns: 30px minmax(0, 1fr); }
+  .sb-component-v, .sb-component-lights { grid-column: 2; }
+}

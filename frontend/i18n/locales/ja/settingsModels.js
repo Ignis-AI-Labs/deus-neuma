@@ -24,6 +24,10 @@ export default Object.freeze({
     removeAria: '{{path}} を削除',
     pathAria: 'モデルフォルダのパス',
     add: '追加',
+    engines: '許可するエンジン',
+    confirmOff: '{{server}} は {{path}} からモデルを読み込まなくなります——このフォルダから提供しているモデルは読み込めなくなります。',
+    turnOff: 'オフにする',
+    keep: '許可したままにする',
   }),
 
   providers: Object.freeze({

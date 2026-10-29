@@ -35,6 +35,7 @@ import { yieldForQueuedThought, QUEUED_ACTION_REASON } from './queued-action-han
 import { neumaWorkspace } from '../../core/index.js';
 import { currentTurnText, turnOwesFinalAnswer, verifyBrief, verifyEngaged } from '../../core/runtime/answer-verify.js';
 import { scoreCandidates } from './candidate-scorer.js';
+import { UNSETTLED_ALLOWANCE } from './thought-governor.js';
 import { selectCandidate } from './candidate-select.js';
 
 const log = createLogger('Portal');
@@ -60,7 +61,7 @@ export const speechlessRoundClose = (reasoning, { acting = false } = {}) => {
       : null,
     acting
       ? 'Do not deliberate further. Take your next action now, or give the final answer in exactly the form the task requires — brief is right.'
-      : 'Do not deliberate further. Give the final answer now, in exactly the form the task requires — brief is right.',
+      : `Do not deliberate further. Give the final answer now, in exactly the form the task requires — brief is right. ${UNSETTLED_ALLOWANCE}`,
   ].filter((part) => part !== null).join('\n\n');
 };
 
@@ -75,7 +76,7 @@ export const budgetCutClose = (partialReply) => {
     tail.length > 0
       ? `It ended here:\n"""\n${tail.slice(-BUDGET_CUT_TAIL_CHARS)}\n"""\nContinue from exactly where it stopped.`
       : null,
-    'Do not restart the work or reason at length again. Give the final answer now, in exactly the form the task requires — brief is right.',
+    `Do not restart the work or reason at length again. Give the final answer now, in exactly the form the task requires — brief is right. ${UNSETTLED_ALLOWANCE}`,
   ].filter((part) => part !== null).join('\n\n');
 };
 

@@ -17,6 +17,7 @@ export default Object.freeze({
   language: Object.freeze({
     heading: '언어',
     note: '이 데스크가 사용하는 언어——레이블, 설정, 번역이 완료된 모든 화면. 카탈로그가 승인되는 대로 더 많은 언어가 추가됩니다.',
+    preview: '미리보기 (미완성)',
   }),
 
   account: Object.freeze({
@@ -42,17 +43,21 @@ export default Object.freeze({
     toggle: '사운드 — {{state}}',
     volumeKey: '음량',
     volumeAria: '사운드 음량',
-    executionTitle: '실행 및 파일 — {{count}}',
-    executionNote: '빌드, 테스트, 검사, 의존성, Git 및 파일 작업마다 고유한 큐가 있습니다. 혼합 명령은 자체 사운드를, 인식되지 않는 명령은 “기타 실행”을 사용합니다. 칩에 명령이 표시됩니다.',
-    actsTitle: '액트 — {{count}}',
-    actsNote: '외부 읽기, 게시, 아티팩트 생성, 기록, 상태 확인 및 실패. 이 후보 사운드를 여기에서 시청하세요.',
-    worldTitle: '세계 — {{count}}',
-    worldNote: '승인된 사운드스케이프——포털, 스트림, 세리머니. 귀로 확정되었습니다. 여기에서 비교해 들어보세요.',
+    packKey: '보이스',
+    pack: Object.freeze({ soft: '소프트', scifi: 'SF' }),
+    packNote: 'SF는 데스크 고유의 사운드스케이프로, 새로 설치하면 들리는 소리입니다. 소프트는 원하면 고를 수 있는 더 부드러운 소리입니다.',
+    groups: Object.freeze({
+      desk: Object.freeze({ title: '내 조작 — {{count}}', note: '당신의 조작: 확인, 거절, 열기, 닫기, 그리고 전환할 때의 작은 틱.' }),
+      notices: Object.freeze({ title: '알림 — {{count}}', note: '세계의 응답: 도착, 답장, 연결, 서명 요청, 저장된 기억.' }),
+      execution: Object.freeze({ title: '작업 중인 네우마 — {{count}}', note: '빌드, 테스트, 검사, 의존성, Git 및 파일 작업마다 고유한 큐가 있습니다. 혼합 명령은 자체 사운드를, 인식되지 않는 명령은 “기타 실행”을 사용합니다. 칩에 명령이 표시됩니다.' }),
+      acts: Object.freeze({ title: '기타 액트 — {{count}}', note: '외부 읽기, 게시, 아티팩트 생성, 기록, 상태 확인 및 실패.' }),
+    }),
   }),
 
   realm: Object.freeze({
     heading: '데이터 렐름',
-    note: '이 기기에 있는 모든 대화의 당신 소유 사본——각 네우마의 소버린 워크스페이스와 분리되어 있습니다. 일반 텍스트. 읽고, 옮기고, 지우는 것 모두 당신의 것입니다.',
+    note: '모든 대화에 대한 당신만의 사본이 이 기계에 있습니다 — 각 네우마의 주권 작업 공간과는 별개입니다. 존재들의 파일처럼 이 컴퓨터의 키로 잠겨 있으며, 내보내기를 누르면 어느 것이든 평문으로 간직할 수 있습니다.',
+    export: '내보내기',
     location: '위치',
     yourFolder: '내 폴더',
     chatLogs: '채팅 로그',

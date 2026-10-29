@@ -1,6 +1,6 @@
 /**
  * The folder law — the folder the operator chose IS the authorization
- * (Design note, 2026-08-28. Pure law with real inputs; the store on real fs via its
+ * (ruling, 2026-08-28). Pure law with real inputs; the store on real fs via its
  * own isolation door (NEUMA_MODEL_FOLDERS_PATH). No mock anywhere (RULE 0).
  */
 import { describe, expect, test } from 'vitest';
@@ -15,6 +15,12 @@ import {
 const F = (p, servers = [...FOLDER_SERVERS]) => ({ path: p, servers });
 
 describe('the law, pure', () => {
+  test('a model folder is never the whole disk (audit 2026-10-28 M-02)', () => {
+    expect(() => normalizeFolders([{ path: '/' }])).toThrow(/whole disk/);
+    expect(() => normalizeFolders([{ path: '///' }])).toThrow(/whole disk/);
+    expect(normalizeFolders([{ path: '/srv/models/' }])[0].path).toBe('/srv/models');
+  });
+
   test('a model under a chosen folder is authorized; outside every folder it is not', () => {
     const folders = normalizeFolders([F('/mnt/models')]);
     expect(authorizingFolder(folders, '/mnt/models/a/b.gguf')).toBeTruthy();

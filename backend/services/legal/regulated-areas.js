@@ -30,6 +30,18 @@ export const REGULATED_AREAS = Object.freeze([
     regimes: ['EU AI Act Art. 50 (people told they deal with an AI; AI-generated content marked)', 'FTC Act §5 (deception) and FTC endorsement guides', 'Platform rules on automated and AI-generated posting (X, etc.)'],
     question: 'When a being speaks or posts to people outside the house, is it clear they are dealing with an AI, and is AI-made media marked?',
   }),
+  // What the house SAYS in public, read per draft by the claims check
+  // (marketing/claims-check.js) and filed as `campaign-review` matters; a
+  // commit touching the claims machinery itself is new work here too.
+  Object.freeze({
+    id: 'marketing-claims',
+    name: 'Claims in what the house posts',
+    severity: 'medium',
+    tokens: ['claims', 'testimonial', 'testimonials', 'endorsement', 'endorsements', 'giveaway', 'giveaways', 'sweepstakes'],
+    words: /\b(claims? check|testimonial\w*|endorse\w*|giveaway\w*|sweepstakes|comparative advertising)\b/i,
+    regimes: ['FTC Act §5 (deceptive or unfair claims) and the FTC Endorsement Guides (16 CFR Part 255)', 'FTC Health Products Compliance Guidance (health and safety claims need competent and reliable evidence)', 'EU Unfair Commercial Practices Directive 2005/29/EC and Comparative Advertising Directive 2006/114/EC', 'Platform rules on promotions and giveaways (X, Meta, TikTok, YouTube)', 'Securities and consumer-finance rules on token or investment talk (the house never trades)'],
+    question: 'Can the house stand behind this claim with evidence it holds today? Is a comparison fair and checkable, an endorsement real and disclosed, and a giveaway inside the platform\'s rules?',
+  }),
   Object.freeze({
     id: 'voice-likeness',
     name: 'Voice and likeness',

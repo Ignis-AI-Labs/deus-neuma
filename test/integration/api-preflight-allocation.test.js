@@ -24,11 +24,11 @@
  * unconditional verdict claim is the one this file exists to defend (an
  * unaffordable allocation BLOCKS). The […] claim is
  * stated as a relationship to the real rows, so a rig without a GPU reports
- * the truth instead of a false red. On this rig all thirteen rows pass, so
+ * the truth instead of a false red. On this rig all fourteen rows pass, so
  * the ready branch is genuinely exercised here.
  *
  * THE COST, stated plainly: ~30s for the file, against ~1s stubbed. That is
- * what thirteen real probes of a real machine cost — a real generation over a
+ * what fourteen real probes of a real machine cost — a real generation over a
  * real socket, real MCP tool calls that really write and read back, real disk
  * and trainer inspection. It is the price of the row meaning anything, and it
  * is paid per GET, which is why the timeouts below are generous. Nothing is
@@ -75,7 +75,9 @@ beforeAll(async () => {
   app.use('/api/v1/preflight', router);
 
   // POST /workspace only gates on a session, never on a lane — a real wallet
-  // holding a real HMAC token and owning nothing is the right shape.
+  // holding a real HMAC token and owning nothing is the right shape. The
+  // checks (GET) answer a signed-in caller too (audit 2026-10-28 M-03): the
+  // same wallet, so the desk's first owner is the one the POSTs speak for.
   witness = strangerWitness();
 }, 120000);
 
@@ -108,31 +110,30 @@ describe('Pre-flight allocation accounting', () => {
   });
 
   test('GET / surfaces committed/available/count for the current root', async () => {
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.committedGB).toBe(4000);
     expect(res.body.home.neumaCount).toBe(1);
     expect(res.body.home.availableGB).toBe(Math.max(0, res.body.home.freeGB - 4000));
-    // A MODEST starting allocation is suggested — ~10% of available, floored at
-    // the 1 GB min. null below the smallest applyable grant (availableGB < 2 *
-    // MIN_FREE_DISK_GB = 2): POST would reject any number we could name there.
+    // A new neuma starts with 5 GB, capped by what is available (always a number POST accepts),
+    // floored at the 1 GB min; null below the smallest applyable grant (availableGB < 2).
     const av = res.body.home.availableGB;
-    const expected = (av != null && av >= 2) ? Math.max(1, Math.round(av * 0.10)) : null;
+    const expected = (av != null && av >= 2) ? Math.max(1, Math.min(5, Math.floor(av - 1))) : null;
     expect(res.body.home.suggestedAllocationGB).toBe(expected);
   }, 120000);
 
-  test('GET / suggests ~10% of available when there is real headroom (positive branch)', async () => {
+  test('GET / starts a new neuma at 5 GB when there is real headroom (positive branch)', async () => {
     // An empty root has nothing committed → availableGB == freeGB (a real,
     // positive number on the temp disk), so this exercises the FORMULA branch
     // that the 4000-GB-committed default never reaches.
     const empty = mkdtempSync(path.join(os.tmpdir(), 'preflight-empty-'));
     core.setWorkspacesRoot(empty);
     try {
-      const res = await request(app).get('/api/v1/preflight');
+      const res = await request(app).get('/api/v1/preflight').set(witness.header);
       expect(res.status).toBe(200);
       const av = res.body.home.availableGB;
       expect(av).toBeGreaterThan(2); // genuine headroom — we are in the formula branch
-      expect(res.body.home.suggestedAllocationGB).toBe(Math.max(1, Math.round(av * 0.10)));
+      expect(res.body.home.suggestedAllocationGB).toBe(Math.max(1, Math.min(5, Math.floor(av - 1))));
     } finally {
       core.setWorkspacesRoot(root);
       rmSync(empty, { recursive: true, force: true });
@@ -157,7 +158,7 @@ describe('Pre-flight allocation accounting', () => {
     // affordable === false forces 'blocked' whatever the hardware rows say.
     await saveWorkspaceSettings({ root, allocationGB: 1_000_000_000 });
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.affordable).toBe(false);
     expect(res.body.verdict).toBe('blocked');
@@ -165,7 +166,7 @@ describe('Pre-flight allocation accounting', () => {
 
   test('GET / stays affordable=null when no allocation has been chosen', async () => {
     await saveWorkspaceSettings({ root, allocationGB: null });
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.body.home.affordable).toBe(null);
   }, 120000);
 
@@ -210,7 +211,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     writeNeuma(root, 'hog', 1_000_000_000); // commits past the disk → available 0
     await saveWorkspaceSettings({ root, allocationGB: 50 });
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.affordable).toBe(false);
     expect(res.body.verdict).toBe('blocked'); // the || affordable===false clause
@@ -230,7 +231,7 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
   test('an affordable allocation leaves the verdict to the real rows alone', async () => {
     await saveWorkspaceSettings({ root, allocationGB: 1 }); // 1 GB on an empty temp root fits
 
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
     expect(res.body.home.affordable).toBe(true);
 
@@ -245,17 +246,17 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     expect(res.body.verdict).toBe('ready');
   }, 120000);
 
-  test('every row is a real measurement — thirteen of them, none stubbed', async () => {
+  test('every row is a real measurement — fourteen of them, none stubbed', async () => {
     // The property the old file destroyed. Each row names a real probe of this
     // machine; a row that silently vanished (or a probe that never ran) is a
     // hole in the launch gate, and the endpoint would still answer 200.
-    const res = await request(app).get('/api/v1/preflight');
+    const res = await request(app).get('/api/v1/preflight').set(witness.header);
     expect(res.status).toBe(200);
 
     const ids = res.body.checks.map((c) => c.id);
     expect(ids).toEqual(expect.arrayContaining([
       'substrate', 'acting', 'workspace', 'ceremonyRoad', 'records',
-      'protocol', 'sealing', 'disk', 'memory', 'dnaKey', 'mcp', 'gpu', 'trainer',
+      'protocol', 'sealing', 'disk', 'memory', 'dnaKey', 'mcp', 'gpu', 'trainer', 'forge',
     ]));
     for (const check of res.body.checks) {
       expect(check.status).toMatch(/^(pass|warn|fail)$/);

@@ -70,7 +70,7 @@ const buildAppMenuTemplate = ({ isMac, actions, onShowLogs = null }) => {
     // HELP exists for one reason: so a person reporting a problem can produce
     // the log without being talked through a hidden path over chat. Four
     // versions shipped for one community member before anyone could see what
-    // his backend was doing (Design note, 2026-08-03 — the file existed nowhere and,
+    // his backend was doing (ruling, 2026-08-03) — the file existed nowhere and,
     // once it did, nothing pointed at it. Only shown when the app actually
     // keeps logs (packaged runs), because a menu item that opens nothing is
     // worse than no menu item.

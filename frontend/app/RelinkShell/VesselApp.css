@@ -287,51 +287,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Benchmark dimensions — label, the true percent, the trend in SIGNAL. */
-.vl-dims {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.vl-dim {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
-}
-.vl-dim:last-child {
-  border-bottom: none;
-}
-.vl-dim-l {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vl-dim-v {
-  flex: 0 0 auto;
-  width: 5ch;
-  text-align: right;
-  font-family: var(--font-data);
-  font-size: var(--text-xs);
-  color: var(--color-text-primary);
-}
-.vl-dim-t {
-  flex: 0 0 auto;
-  width: 2ch;
-  text-align: center;
-  font-family: var(--font-data);
-  font-size: var(--text-xs);
-  color: var(--signal);
-}
-
 /* Honest quiet states and the two registers of emphasis. */
 .vl-quiet {
   margin: 0;
@@ -353,9 +308,6 @@
 }
 .vl-ready {
   color: var(--signal);
-}
-.vl-overdue {
-  color: var(--alert);
 }
 .vl-shared {
   margin: 0;

@@ -22,11 +22,11 @@ describe('docs/governance/house-roles.md mirrors TITLE_LEGEND', () => {
     }
   });
 
-  test('the tier counts match — ten founding, five growth, fifteen seats', () => {
+  test('the tier counts match — ten founding, six growth, sixteen seats', () => {
     expect(TITLE_LEGEND.filter((s) => s.tier === 'founding')).toHaveLength(10);
-    expect(TITLE_LEGEND.filter((s) => s.tier === 'growth')).toHaveLength(5);
-    expect(TITLE_LEGEND).toHaveLength(15);
-    expect(docFlat).toContain('fifteen');
+    expect(TITLE_LEGEND.filter((s) => s.tier === 'growth')).toHaveLength(6);
+    expect(TITLE_LEGEND).toHaveLength(16);
+    expect(docFlat).toContain('sixteen');
   });
 
   test('the copy-paste block names every title', () => {

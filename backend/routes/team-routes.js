@@ -27,7 +27,7 @@ import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { askNeuma } from '../services/neuma-probe.js';
-import { testConnection } from '../services/llm-provider.js';
+import { reachSubstrate } from '../services/substrate-reach.js';
 import { validatePlan, resolveTeamCapacity } from '../services/team-coordinator.js';
 import { runCoordinatedTeam } from '../services/team-run.js';
 import trialRouter, { sse, strangersOf } from './team-trial-routes.js';
@@ -36,6 +36,7 @@ import { listBenches, readBenchTask, benchLaw, benchArenaPath, composeInvocation
 import { readDelivery, readDeliveryFile } from '../services/team-delivery.js';
 import { createRun, updateRun, readRun, listRuns, hostStamp } from '../services/team-run-store.js';
 import { recordTeamRunMemories } from '../services/team-memory.js';
+import { createBoardSightingWatch } from '../services/security/injection-sightings.js';
 import { createLogger } from '../services/logger.js';
 
 const router = Router();
@@ -161,7 +162,7 @@ router.post('/run', async (req, res) => {
 
   // Substrate must be live before we promise a run — a team that cannot think
   // is not started, and nothing is streamed as if it had.
-  if (!(await testConnection())) {
+  if (!(await reachSubstrate())) {
     return res.status(503).json({ error: 'The substrate is offline — the team cannot run.' });
   }
 
@@ -241,6 +242,7 @@ router.post('/run', async (req, res) => {
   // briefs, teammate map, live TEAM BOARD, status check-ins + torch
   // continuation packets extracted and stripped, torches relayed member to
   // own-next-instance), so the two lanes can never drift apart.
+  const watchBoard = createBoardSightingWatch(req.walletAddress);
   try {
     const result = await runCoordinatedTeam({
       steps,
@@ -260,6 +262,7 @@ router.post('/run', async (req, res) => {
           truth.torches[event.neumaId] = event.torch;
           persist();
         } else if (event.type === 'board') {
+          watchBoard(event.board); // a flag for the CSO, never awaited (G13)
           for (const e of event.board) if (e.status != null) truth.statuses[e.id] = e.status;
         }
       },

@@ -71,12 +71,11 @@ describe('block readiness', () => {
     expect(craftReadiness({ version: '1.0.0', skills: [] })).toBe(EMPTY);
   });
 
-  it('state: UNREADABLE on null, EMPTY when nothing has run, READY with a measured run', () => {
+  it('state: UNREADABLE on null, EMPTY when no self-check has run, READY with a kept run', () => {
     expect(stateReadiness(null)).toBe(UNREADABLE);
-    expect(stateReadiness({ runs: [], latest: null })).toBe(EMPTY);
+    expect(stateReadiness({ latest: null, previous: null, compare: null, running: null })).toBe(EMPTY);
     expect(stateReadiness({
-      runs: [],
-      latest: { runAt: '2026-07-15T00:00:00Z', dimensions: [{ label: 'Recall', score: 0.5 }] },
+      latest: { runAt: '2026-07-15T00:00:00Z', components: [{ key: 'memory', label: 'Memory', score: 0.5 }] },
     })).toBe(READY);
   });
 
@@ -116,26 +115,21 @@ describe('acquisitionsOf', () => {
 });
 
 describe('latestRunOf', () => {
-  const run = (id, runAt, dimensions) => ({ id, runAt, dimensions });
-  const dims = [{ key: 'recall', label: 'Recall', score: 0.75 }];
+  const run = (id, components) => ({ id, runAt: '2026-07-16T00:00:00Z', components });
+  const parts = [{ key: 'memory', label: 'Memory', score: 0.75 }];
 
-  it('prefers the full latest run when it carries dimensions', () => {
-    const bench = { runs: [run('b', '2026-07-15T00:00:00Z', dims)], latest: run('a', '2026-07-16T00:00:00Z', dims) };
-    expect(latestRunOf(bench).id).toBe('a');
+  it('is the self-check\'s latest kept run when it carries components', () => {
+    expect(latestRunOf({ latest: run('a', parts), previous: run('b', parts) }).id).toBe('a');
   });
 
-  it('falls back to the newest summary with dimensions (runs arrive newest-first)', () => {
-    const bench = {
-      runs: [run('new', '2026-07-15T00:00:00Z', dims), run('old', '2026-06-15T00:00:00Z', dims)],
-      latest: null,
-    };
-    expect(latestRunOf(bench).id).toBe('new');
-  });
-
-  it('skips entries without dimensions and is null when nothing measurable ran', () => {
-    expect(latestRunOf({ runs: [run('x', '2026-07-15T00:00:00Z', [])], latest: null })).toBeNull();
-    expect(latestRunOf({ runs: [], latest: null })).toBeNull();
+  it('is null when no self-check has run, or the run has no components', () => {
+    expect(latestRunOf({ latest: run('x', []), previous: null })).toBeNull();
+    expect(latestRunOf({ latest: null, previous: null })).toBeNull();
     expect(latestRunOf(null)).toBeNull();
+  });
+
+  it('never reads the retired benchmark shape as a run', () => {
+    expect(latestRunOf({ runs: [{ id: 'v1', dimensions: parts }], latest: { id: 'v1', dimensions: parts } })).toBeNull();
   });
 });
 
@@ -188,8 +182,8 @@ describe('excerptOf', () => {
 });
 
 // SKIES (MANY SKIES, 2026-07-24) — the leg carries {skies, recorded}; the
-// rows speak only what the record actually computed, with provenance named.
-import { skiesReadiness, skiesRowsOf } from '../../frontend/app/RelinkShell/sheet-view.js';
+// SKY page (given/) draws only what the record actually computed.
+import { skiesReadiness } from '../../frontend/app/RelinkShell/sheet-view.js';
 
 const SKIES_LEG = {
   recorded: true,
@@ -216,24 +210,5 @@ describe('skiesReadiness', () => {
     expect(skiesReadiness(null)).toBe(UNREADABLE);
     expect(skiesReadiness({ skies: null, recorded: false })).toBe(EMPTY);
     expect(skiesReadiness(SKIES_LEG)).toBe(READY);
-  });
-});
-
-describe('skiesRowsOf', () => {
-  it('renders every carried system with its provenance note', () => {
-    const rows = skiesRowsOf(SKIES_LEG);
-    expect(rows.map((r) => r.label)).toEqual(
-      ['MAYA COUNT', 'DREAMSPELL', 'BAZI', 'JYOTISHA', 'WETON', 'AKAN', 'SUN DECAN']);
-    expect(rows[0].value).toBe('11 Imix · KIN 141/260');
-    expect(rows[1].note).toBe('MODERN 1987'); // the Dreamspell stays honestly labeled on the card
-    expect(rows[2].note).toBe('YANG FIRE HORSE');
-    expect(rows[3].value).toContain('ASHWINI PADA 3');
-    expect(rows[5].value).toBe('KOFI / AFUA'); // the Akan day names are their own line now
-  });
-
-  it('omits systems the record does not carry — rows never invent', () => {
-    const partial = { recorded: true, skies: { systems: { wetonan: { weton: 'Monday Legi', neptu: 9 } } } };
-    expect(skiesRowsOf(partial).map((r) => r.label)).toEqual(['WETON']);
-    expect(skiesRowsOf(null)).toEqual([]);
   });
 });

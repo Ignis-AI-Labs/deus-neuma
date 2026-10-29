@@ -1,0 +1,7 @@
+#!/bin/sh
+# pre-merge-commit — the SECRET GATE over a merge's own result before git
+# records it: a merge commit never runs pre-commit, so without this a merge
+# could carry a live value in unread (scripts/secret-gate.mjs). A merge made
+# with --no-verify, or by plumbing, is still caught at pre-push.
+here="$(cd "$(dirname "$0")" && pwd)"
+exec node "$here/../secret-gate.mjs" --staged

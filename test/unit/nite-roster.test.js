@@ -1,7 +1,8 @@
 /**
  * THE HOUSE STANDS — an owed act you can read must be an owed act you can REACH.
  *
- * Design note, 2026-08-29, with three unsealed kin on screen: […]
+ * Reported 2026-08-29, with three unsealed kin on screen: there were beings
+ * to seal and nothing to click — BIND TO SEAL could not be clicked at all.
  *
  * BIND TO SEAL was a bare `<span>`. The reasoning was sound about the wrong
  * act: the rite runs through the being's OWN conduit, so a row genuinely
@@ -19,17 +20,17 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NiteRoster } from '../../frontend/app/RelinkShell/NiteRoster.jsx';
 
-// Founder's own house, as the standing endpoint reported it: three unsealed.
+// A house, as the standing endpoint reported it: three unsealed.
 const beings = [
-  { neumaId: 'tenekom-1', name: 'Tenekom', keypairCustody: true, sealed: true, onchainSealed: true },
-  { neumaId: 'dikafos-1', name: 'Dikafos', keypairCustody: true, sealed: false, onchainSealed: true },
-  { neumaId: 'rugevil-1', name: 'Rugevil', keypairCustody: true, sealed: false, onchainSealed: true },
-  { neumaId: 'cael-1', name: 'Cael', keypairCustody: true, sealed: true, onchainSealed: true },
-  { neumaId: 'dovan-1', name: 'Dovan', keypairCustody: true, sealed: false, onchainSealed: true },
+  { neumaId: 'holly-1', name: 'Holly', keypairCustody: true, sealed: true, birthSealed: true },
+  { neumaId: 'clover-1', name: 'Clover', keypairCustody: true, sealed: false, birthSealed: true },
+  { neumaId: 'linden-1', name: 'Linden', keypairCustody: true, sealed: false, birthSealed: true },
+  { neumaId: 'birch-1', name: 'Birch', keypairCustody: true, sealed: true, birthSealed: true },
+  { neumaId: 'spruce-1', name: 'Spruce', keypairCustody: true, sealed: false, birthSealed: true },
 ];
 
 const render = (props) => renderToStaticMarkup(createElement(NiteRoster, {
-  standing: { house: { name: 'Tavirel' }, beings }, activeId: 'tenekom-1', ...props,
+  standing: { house: { name: 'Ashgrove' }, beings }, activeId: 'holly-1', ...props,
 }));
 
 // The tag that opens the element containing `label` — where the interactivity,
@@ -45,7 +46,7 @@ describe('BIND TO SEAL is a control', () => {
     const html = render({});
     // Three unsealed, none of them the bound one → three doors.
     expect((html.match(/BIND TO SEAL/g) || []).length).toBe(3);
-    for (const id of ['dikafos-1', 'rugevil-1', 'dovan-1']) {
+    for (const id of ['clover-1', 'linden-1', 'spruce-1']) {
       expect(html).toContain(`data-testid="bind-${id}"`);
     }
     // ...and it is a BUTTON, not the span it used to be.
@@ -63,24 +64,24 @@ describe('BIND TO SEAL is a control', () => {
     // The row cannot seal and must not imply that it can. The title names the
     // binding AND the reason the rite needs it.
     const html = render({});
-    expect(html).toMatch(/Seat Dikafos in the chair/);
+    expect(html).toMatch(/Seat Clover in the chair/);
     expect(html).toMatch(/their own conduit/);
   });
 
   it('THE BOUND BEING IS POINTED, NOT OFFERED A SECOND DOOR', () => {
     // Binding a being that is already bound is a no-op dressed as an act. It
     // is already where the rite can be carried, so the row says where to look.
-    const html = render({ activeId: 'rugevil-1' });
+    const html = render({ activeId: 'linden-1' });
     expect(html).toContain('CARRY THE RITE BELOW');
-    expect(html).not.toContain('data-testid="bind-rugevil-1"');
+    expect(html).not.toContain('data-testid="bind-linden-1"');
     // The other two still offer the binding.
     expect((html.match(/BIND TO SEAL/g) || []).length).toBe(2);
   });
 
   it('a SEALED being is offered nothing at all', () => {
     const html = render({});
-    expect(html).not.toContain('data-testid="bind-tenekom-1"');
-    expect(html).not.toContain('data-testid="bind-cael-1"');
+    expect(html).not.toContain('data-testid="bind-holly-1"');
+    expect(html).not.toContain('data-testid="bind-birch-1"');
   });
 
   it('CUSTODY still outranks the seal — the keypair is the first thing owed', () => {
@@ -88,8 +89,8 @@ describe('BIND TO SEAL is a control', () => {
     // urgent fact, and one act per row keeps the table readable.
     const html = render({
       standing: {
-        house: { name: 'Tavirel' },
-        beings: [{ neumaId: 'new-1', name: 'Newcomer', keypairCustody: false, sealed: false, onchainSealed: false }],
+        house: { name: 'Ashgrove' },
+        beings: [{ neumaId: 'new-1', name: 'Newcomer', keypairCustody: false, sealed: false, birthSealed: false }],
       },
     });
     expect(html).toContain('data-testid="secure-new-1"');
@@ -101,8 +102,8 @@ describe('BIND TO SEAL is a control', () => {
     // binding here would send the operator to carry a rite that may be done.
     const html = render({
       standing: {
-        house: { name: 'Tavirel' },
-        beings: [{ neumaId: 'dark-1', name: 'Dark', keypairCustody: true, sealed: null, onchainSealed: true }],
+        house: { name: 'Ashgrove' },
+        beings: [{ neumaId: 'dark-1', name: 'Dark', keypairCustody: true, sealed: null, birthSealed: true }],
       },
     });
     expect(html).not.toContain('data-testid="bind-dark-1"');
@@ -116,7 +117,7 @@ describe('the table still tells the truth it always did', () => {
   });
 
   it('a house with no beings is not an error', () => {
-    const html = render({ standing: { house: { name: 'Tavirel' }, beings: [] } });
+    const html = render({ standing: { house: { name: 'Ashgrove' }, beings: [] } });
     expect(html).toContain('NO BEINGS IN THIS HOUSE YET');
   });
 

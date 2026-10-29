@@ -1,4 +1,4 @@
-/** Real signed HTTP and disk state; no benchmark inference or live lane mutation. */
+/** Real signed HTTP and disk state; no self-check inference or live lane mutation. */
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,7 @@ import { fullAuth, writeOwner } from '../helpers/audit-auth.js';
 const WITNESS = 'witness-record-boundary';
 const NEUMA = 'record-boundary-control';
 const LEGACY = 'legacy-record-witness';
-const endpoints = [['get', 'stats'], ['get', 'skies'], ['get', 'benchmarks'], ['post', 'benchmark'], ['get', 'aura'], ['get', 'form']];
+const endpoints = [['get', 'stats'], ['get', 'skies'], ['get', 'self-check'], ['post', 'self-check'], ['get', 'aura'], ['get', 'form']];
 
 // impure — every file's digest, so a refused write cannot hide a side effect.
 const snapshot = async (root) => {
@@ -77,12 +77,12 @@ test('neuma-only records refuse owned witness lanes without writes; shared lane 
       }
       expect(await snapshot(workspace.pathFor(LEGACY))).toEqual(before);
     }
-    for (const route of ['stats', 'skies', 'benchmarks', 'aura', 'form']) {
+    for (const route of ['stats', 'skies', 'self-check', 'aura', 'form']) {
       const res = await call('get', NEUMA, route, owner.token);
       expect(res.status).toBe(200);
       if (route === 'stats') expect(res.body.record.identity.chosenName).toBe('Record control');
       if (route === 'skies') expect(res.body).toEqual({ skies: null, recorded: false });
-      if (route === 'benchmarks') expect(res.body.runs).toEqual([]);
+      if (route === 'self-check') expect(res.body).toMatchObject({ latest: null, previous: null, compare: null });
       if (route === 'aura') expect(res.body.aura).toEqual({ recorded: false });
       if (route === 'form') expect(res.body).toMatchObject({ locked: false, status: 'exploring', plates: [] });
     }

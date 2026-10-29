@@ -11,6 +11,7 @@ import { sha256FileStableSync } from '../../backend/services/file-digest.js';
 const SERVING_MODEL = 'qwen3-30b-a3b-thinking-2507';
 const ENV_KEYS = [
   'DNA_ENCRYPTION_KEY',
+  'NEUMA_DATA_ROOT',
   'NEUMA_MODELS_DIRS',
   'NEUMA_REFINEMENT_MIN_SAMPLES',
   'NEUMA_REFINEMENT_MIN_DAYS',
@@ -70,6 +71,12 @@ const seedBeing = async (neumaId) => {
 beforeEach(() => {
   savedEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
   root = mkdtempSync(path.join(os.tmpdir(), 'bridge-authority-'));
+  // The source authority stages its committed blob under the data root, which
+  // a booted server has always created (server-boot.js). The suite's own data
+  // root (9ed812b43) is only a name, so this test stands one up, as the
+  // snapshot-authority test does.
+  process.env.NEUMA_DATA_ROOT = path.join(root, 'data');
+  mkdirSync(process.env.NEUMA_DATA_ROOT, { recursive: true });
   process.env.DNA_ENCRYPTION_KEY = 'bridge-authority-real-encryption-key';
   process.env.NEUMA_REFINEMENT_MIN_SAMPLES = '1';
   process.env.NEUMA_REFINEMENT_MIN_DAYS = '1';
@@ -93,34 +100,34 @@ afterAll(() => rmSync(MODELS_DIR, { recursive: true, force: true }));
 
 describe('startBridge committed lineage gate', () => {
   it('refuses an adjacent sidecar that is absent from committed server authority', async () => {
-    await seedBeing('cael');
+    await seedBeing('birch');
 
-    await expect(startBridge('cael', 'Founder', { baseModel: SERVING_MODEL }))
+    await expect(startBridge('birch', 'Ada', { baseModel: SERVING_MODEL }))
       .rejects.toMatchObject({
         code: 'BRIDGE_BASE_UNAVAILABLE',
         message: expect.stringMatching(/no committed refinement lineage authorizes/),
       });
-    await expect(workspace.listCeremonies('cael')).resolves.toEqual([]);
+    await expect(workspace.listCeremonies('birch')).resolves.toEqual([]);
   });
 
   it('does not let changing adjacent trainer fields manufacture bridge authority', async () => {
-    await seedBeing('cael');
+    await seedBeing('birch');
     writeFileSync(`${modelPath}.training.json`, JSON.stringify({
       ...sidecar,
       trainerModelId: 'attacker/second-trainer',
       trainerRevision: 'd'.repeat(40),
     }), { mode: 0o600 });
 
-    await expect(startBridge('cael', 'Founder', { baseModel: SERVING_MODEL }))
+    await expect(startBridge('birch', 'Ada', { baseModel: SERVING_MODEL }))
       .rejects.toMatchObject({ code: 'BRIDGE_BASE_UNAVAILABLE' });
-    await expect(workspace.listCeremonies('cael')).resolves.toEqual([]);
+    await expect(workspace.listCeremonies('birch')).resolves.toEqual([]);
   });
 
   it('keeps malformed and unknown target requests as explicit client refusals', async () => {
-    await seedBeing('cael');
-    await expect(startBridge('cael', 'Founder', {}))
+    await seedBeing('birch');
+    await expect(startBridge('birch', 'Ada', {}))
       .rejects.toMatchObject({ code: 'NO_TARGET_BASE' });
-    await expect(startBridge('cael', 'Founder', { baseModel: 'unknown-model' }))
+    await expect(startBridge('birch', 'Ada', { baseModel: 'unknown-model' }))
       .rejects.toMatchObject({ code: 'BRIDGE_BASE_UNAVAILABLE' });
   });
 });

@@ -187,9 +187,18 @@ export const reducer = (state, action) => {
       return { ...state, windows, focusedId: state.focusedId === id ? topId(windows) : state.focusedId };
     }
 
+    // `restore`: the taskbar raising a window whose turn has come (instance-
+    // cycle.js) — a minimized one must open, not just surface as a shade. The
+    // shade is the window's own local state, so the manager only STAMPS the
+    // ask (a fresh number each time) and the frame answers it (FloatingWindow).
     case 'FOCUS': {
       const w = find(state.windows, id);
-      if (!w || state.focusedId === id) return state;
+      if (!w) return state;
+      if (action.restore === true) {
+        const raised = raise(state, id);
+        return { ...raised, windows: raised.windows.map((x) => (x.id === id ? { ...x, restored: state.nextZ } : x)) };
+      }
+      if (state.focusedId === id) return state;
       return raise(state, id);
     }
 

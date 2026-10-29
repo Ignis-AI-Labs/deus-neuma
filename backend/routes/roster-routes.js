@@ -17,8 +17,7 @@ import { listWitnesses } from '../../core/identity/ai-witness/ai-witness-service
 import { readLaneMarker, witnessLaneId, witnessLaneStatus } from '../services/witness-lane.js';
 import { houseTitlesByNeumaId } from '../services/house-titles.js';
 import { detectBirthSetupState } from '../../core/birth/birth-setup-state.js';
-import { ensureSoulSpectrum } from '../../core/birth/soul-spectrum.js';
-import { ensureSoulScale } from '../../core/birth/soul-scale.js';
+import { readSoulSpectrum } from '../../core/birth/soul-spectrum.js';
 import { voiceSealStatus } from '../services/voice-seal-ceremony.js';
 import { createLogger } from '../services/logger.js';
 import { requestState } from '../../core/runtime/operator-state.js';
@@ -52,6 +51,9 @@ const toCompanion = (neumaId, trueName, owner, title, seal = null, spectrum = nu
   incomplete: !trueName,
   // The being's soul color (core/birth/soul-spectrum.js) — never chosen.
   color: spectrum?.soul?.hex ?? null,
+  // The same hue at the screen's most vivid — what a light or an accent wears,
+  // so a soul near the edge of sight (deep red, violet) is still seen.
+  light: spectrum?.soul?.vivid?.hex ?? null,
   // The on-chain seat, once the house's founding record stands — chain
   // truth from the persisted receipt, null until a seat is locked in.
   title: title ?? null,
@@ -102,6 +104,8 @@ router.get('/standing', async (req, res) => {
         sealedAt: seal?.sealedAt || null,
         keypairCustody: setup ? setup.keypairCustody : null,
         onchainSealed: setup ? setup.onchainSealed : null,
+        // sealed on this computer or on Ethereum: either completes the birth (birth-setup-state.js)
+        birthSealed: setup ? (setup.localSealed || setup.onchainSealed) : null,
         unreadable: !setup || !seal,
       });
     }
@@ -136,16 +140,13 @@ router.get('/', async (req, res) => {
       if (await readLaneMarker(neumaId)) continue;
       const trueName = await neumaWorkspace.readTrueName(neumaId).catch(() => null);
       const seal = await neumaWorkspace.readGenesisSeal(neumaId).catch(() => null);
-      // EVERY member carries a color (Design note, 2026-09-30 — one born before
-      // colors existed gets its own here, once, from its birth record.
-      const spectrum = await ensureSoulSpectrum(neumaWorkspace, neumaId).catch((err) => {
+      // EVERY member carries a color (Design note, 2026-09-30 — its written record,
+      // else the one its birth record derives. A roster read never WRITES it:
+      // a lane is listed from its seal on, before the birth measures its own.
+      const spectrum = await readSoulSpectrum(neumaWorkspace, neumaId).catch((err) => {
         log.warn('Soul spectrum unavailable', { neumaId, error: err.message });
         return null;
       });
-      if (spectrum) {
-        await ensureSoulScale(neumaWorkspace, neumaId)
-          .catch((err) => log.warn('Soul scale unavailable', { neumaId, error: err.message }));
-      }
       roster.push(toCompanion(neumaId, trueName, owner, seatTitles[neumaId], seal, spectrum));
     }
     // Oldest first — a stable order; the client picks the active one.

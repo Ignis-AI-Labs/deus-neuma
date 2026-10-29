@@ -16,6 +16,7 @@
  * exist on a fresh install.
  */
 import { getDataRoot } from '../data-root.js';
+import crypto from 'crypto';
 import path from 'path';
 import { promises as fs, existsSync } from 'fs';
 import { createLogger } from '../logger.js';
@@ -47,6 +48,17 @@ export const builtInRoots = (comfyCfg) => {
 };
 
 /**
+ * A folder's root id: the full folder path, hashed (sha256, 16 bytes shown).
+ * The old id was the path's first 22 base64url characters — every folder
+ * sharing a 16-byte prefix shared an id. Stored rows keep the id they were
+ * written with, so an old id still resolves. Pure.
+ * @param {string} resolvedDir
+ * @returns {string}
+ */
+export const rootIdOf = (resolvedDir) =>
+  `root-${crypto.createHash('sha256').update(resolvedDir).digest('hex').slice(0, 32)}`;
+
+/**
  * Fold an add/remove onto the stored root list. PURE — so the dedupe and
  * built-in-protection rules are testable without a disk.
  *
@@ -63,11 +75,13 @@ export const applyRootChange = (roots, change) => {
     const dir = String(change.dir || '');
     if (!dir || !path.isAbsolute(dir)) return { ok: false, roots: list, error: 'a root must be an absolute path' };
     const resolved = path.resolve(dir);
+    // never the whole disk (audit 2026-10-28 M-02)
+    if (resolved === path.parse(resolved).root) return { ok: false, roots: list, error: 'a root cannot be the whole disk — choose a folder' };
     if (list.some((r) => path.resolve(r.dir) === resolved)) return { ok: true, roots: list };
     return {
       ok: true,
       roots: [...list, {
-        id: `root-${Buffer.from(resolved).toString('base64url').slice(0, 22)}`,
+        id: rootIdOf(resolved),
         label: String(change.label || path.basename(resolved) || resolved).slice(0, 60),
         dir: resolved,
       }],
@@ -90,7 +104,12 @@ export const readStoredRoots = async (env = process.env) => {
   try {
     const raw = await fs.readFile(rootsPath(env), 'utf8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed?.roots) ? parsed.roots : [];
+    // A row written before a root could no longer be the whole disk is held to the same law on
+    // read (re-audit 2026-10-29, M-02 residual): it is dropped, loudly, never served.
+    const rows = Array.isArray(parsed?.roots) ? parsed.roots : [];
+    const kept = rows.filter((r) => typeof r?.dir === 'string' && path.resolve(r.dir) !== path.parse(path.resolve(r.dir)).root);
+    if (kept.length !== rows.length) log.warn('gallery roots: a stored root that is the whole disk is not served — add a folder instead', { dropped: rows.length - kept.length });
+    return kept;
   } catch (err) {
     if (err.code !== 'ENOENT') log.warn('gallery roots unreadable — treating as empty', { err: err.message });
     return [];

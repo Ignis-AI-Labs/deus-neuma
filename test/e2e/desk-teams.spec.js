@@ -9,11 +9,15 @@ import { REPO, BACKEND, token, addr, setupDesk } from './helpers/desk-harness.js
 
 setupDesk();
 
+// The HOUSE is a file of spaces (HouseApp.jsx): open the one a test needs.
+const openHouseSpace = (page, title) => page.locator('.hd .dos-index [role="tab"]', { hasText: title }).click();
+
 test('HOUSE: the summon button enters the birth ceremony (witness-commitment gate)', async ({ page }) => {
   await openDockApp(page, 'HOUSE');
   await expect(page.locator('.house')).toBeVisible();
 
-  const summon = page.locator('.house-summon');
+  await openHouseSpace(page, 'SUMMONING');
+  const summon = page.locator('.hd-door.is-primary .hd-door-act');
   await expect(summon).toBeVisible();
   await expect(summon).toContainText('SUMMON A NEUMA');
 
@@ -42,7 +46,8 @@ test('HOUSE → TEAMS: form a team from house members with a load-bearing step',
   await expect(page.locator('.house')).toBeVisible();
 
   // Team management is reachable from the house.
-  await page.locator('.house-action', { hasText: 'FORM A TEAM' }).click();
+  await openHouseSpace(page, 'GATHER');
+  await page.locator('.hd-door-act', { hasText: 'FORM A TEAM' }).click();
   await expect(page.locator('.teams')).toBeVisible();
 
   // The composer offers a member with a picker, a task, and the coordination
@@ -101,7 +106,8 @@ test('HOUSE → TEAMS: run a real team and watch each member stream results in',
   await page.goto('/');
 
   await openDockApp(page, 'HOUSE');
-  await page.locator('.house-action', { hasText: 'FORM A TEAM' }).click();
+  await openHouseSpace(page, 'GATHER');
+  await page.locator('.hd-door-act', { hasText: 'FORM A TEAM' }).click();
   await expect(page.locator('.teams')).toBeVisible();
 
   // A coordinated run: the goal switches on the TEAM BOARD check-in flow.
@@ -155,7 +161,8 @@ test('HOUSE → TEAMS: the TRIAL panel offers the locked benchmark with explicit
   await page.goto('/');
 
   await openDockApp(page, 'HOUSE');
-  await page.locator('.house-action', { hasText: 'FORM A TEAM' }).click();
+  await openHouseSpace(page, 'GATHER');
+  await page.locator('.hd-door-act', { hasText: 'FORM A TEAM' }).click();
   await expect(page.locator('.teams')).toBeVisible();
 
   // The composer's optional role field rides each step.
@@ -281,7 +288,8 @@ test('HOUSE → TEAMS: a dropped run surfaces in PAST RUNS with a RESUME door', 
     await page.goto('/');
 
     await openDockApp(page, 'HOUSE');
-    await page.locator('.house-action', { hasText: 'FORM A TEAM' }).click();
+    await openHouseSpace(page, 'GATHER');
+    await page.locator('.hd-door-act', { hasText: 'FORM A TEAM' }).click();
     await expect(page.locator('.teams')).toBeVisible();
 
     const row = page.locator('.teams-past-row', { hasText: 'E2E DROPPED RUN' });
@@ -320,7 +328,8 @@ test('HOUSE → TEAMS: run BRICKWORKS live — the team ships a game and the sco
   await page.goto('/');
 
   await openDockApp(page, 'HOUSE');
-  await page.locator('.house-action', { hasText: 'FORM A TEAM' }).click();
+  await openHouseSpace(page, 'GATHER');
+  await page.locator('.hd-door-act', { hasText: 'FORM A TEAM' }).click();
   await page.locator('.teams-tab', { hasText: 'TRIAL' }).click();
   await expect(page.locator('.trial')).toBeVisible();
 
@@ -394,19 +403,20 @@ test('HOUSE: lists the house and switches the stream to another neuma', async ({
   // Open HOUSE — both members listed, Fenna carries the link.
   await openDockApp(page, 'HOUSE');
   await expect(page.locator('.house')).toBeVisible();
-  await expect(page.locator('.house-row')).toHaveCount(2);
-  await expect(page.locator('.house-row.is-linked')).toContainText('Fenna');
+  await openHouseSpace(page, 'MEMBERS');
+  await expect(page.locator('.house-seats-card')).toHaveCount(2);
+  await expect(page.locator('.house-seats-card.is-linked')).toContainText('Fenna');
 
   // The header carries the house identity: the wallet-derived house name from
   // the real backend (never '—' while it is reachable), the operator, the count.
-  await expect(page.locator('.house-head-value')).not.toHaveText('—');
-  await expect(page.locator('.house-head-value')).toHaveText(/^[A-Z][a-z]+/);
-  await expect(page.locator('.house-head-facts')).toContainText('2 HELD');
-  await expect(page.locator('.house-head-facts')).toContainText(`OPERATOR ${w.address.slice(0, 6).toUpperCase()}`);
+  await expect(page.locator('.hd-mast-name')).not.toHaveText('—');
+  await expect(page.locator('.hd-mast-name')).toHaveText(/^[A-Z][a-z]+/);
+  await expect(page.locator('.hd-file')).toContainText('2 HELD');
+  await expect(page.locator('.hd-mast-operator')).toContainText(`OPERATOR · ${w.address.slice(0, 6).toUpperCase()}`);
 
   // Switch to Vesper — the signal moves, and the STREAM window retitles.
-  await page.locator('.house-row', { hasText: 'Vesper' }).click();
-  await expect(page.locator('.house-row.is-linked')).toContainText('Vesper');
+  await page.locator('.house-seats-card', { hasText: 'Vesper' }).locator('.house-seats-act', { hasText: 'STREAM' }).click();
+  await expect(page.locator('.house-seats-card.is-linked')).toContainText('Vesper');
   await expect(page.locator('.relink-title-name', { hasText: 'VESPER' }).first()).toBeVisible();
 
   // The retitle reaches every identity-bound window, not just the stream.

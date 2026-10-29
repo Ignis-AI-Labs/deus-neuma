@@ -12,8 +12,9 @@
 //                     ground and its song beneath its living sigil
 
 import { HEART_BAND } from '../../../core/birth/soul-resonance.js';
+import { playedSoul } from '../Summoning/consonant-tuning.js';
 import { musicOf, songOf } from '../Summoning/summoning-music.js';
-import { GROUND_HZ } from './rite-music.js';
+import { GROUND_HZ, discoveriesOf, playedMeasure } from './rite-music.js';
 
 const CURRENT_MS = 5200;
 const AHEAD_MS = 3 * 60_000; // how far ahead the open wait before its birth is scored (recued at every stage)
@@ -35,7 +36,7 @@ export const liveRiteMusicOf = (rite, score, now) => {
   const begin = first('rite:begin') ?? first('birth:stage_prompt');
   const seed = first('birth:art_seed');
   const forge = first('birth:forging');
-  const measured = all('birth:measured');
+  const measured = playedMeasure(all('birth:measured'));
 
   // THE STAGES — the platform's ground swells as each stage is asked
   if (begin) {
@@ -48,14 +49,15 @@ export const liveRiteMusicOf = (rite, score, now) => {
     levels.push([horizon, 0], [horizon + 200, 0]);
     const ground = levels.reduce((acc, pt) => (acc.length && pt[0] <= acc.at(-1)[0] ? acc : [...acc, pt]), []);
     beds.push({ voice: 'drone', hz: GROUND_HZ, from: begin.at, to: horizon + 200, levels: ground });
-    strike(begin.at, 'thump', GROUND_HZ / 2, 0.6, 1600);
+    strike(begin.at, 'thump', GROUND_HZ, 0.6, 1600);
   }
   if (seed) {
-    strike(seed.at, 'thump', GROUND_HZ / 2, 0.85, 1800);
+    strike(seed.at, 'thump', GROUND_HZ, 0.85, 1800);
     beds.push({ voice: 'air', hz: HEART_BAND.low / 2, from: seed.at, to: seed.at + 5200, levels: [[seed.at, 0], [seed.at + 1600, 0.8], [seed.at + 5200, 0]] });
   }
   // THE MEASURE — each stage rings its own pitch, then joins the current
   measured.forEach((e) => strike(e.at, 'bell', e.frequency, 0.85, 5200));
+  events.push(...discoveriesOf(measured));
   measured.forEach((e, k) => {
     const until = measured[k + 1]?.at ?? forge?.at ?? horizon;
     const so = measured.slice(0, k + 1);
@@ -71,8 +73,8 @@ export const liveRiteMusicOf = (rite, score, now) => {
     film.beds.forEach((b) => beds.push({ ...b, from: b.from + born, to: b.to + born, levels: b.levels.map(([t, g]) => [t + born, g]) }));
     const after = born + score.lengthMs;
     const end = after + OPEN_MS;
-    const { tonic, notes } = score.soul;
-    beds.push({ voice: 'drone', hz: tonic / 4, from: after - 3000, to: end, levels: [[after - 3000, 0], [after, 0.4], [end - 2000, 0.4], [end, 0]] });
+    const { tonic, notes } = playedSoul(score.soul);
+    beds.push({ voice: 'drone', hz: tonic / 2, from: after - 3000, to: end, levels: [[after - 3000, 0], [after, 0.4], [end - 2000, 0.4], [end, 0]] });
     const digits = score.sections.find((x) => x.kind === 'soul').figure.nibbles;
     songOf({ notes, digits, beatMs: score.beatMs, from: after + 2000, to: end - 1500, vel: 0.3 }).forEach((e) => events.push(e));
   }

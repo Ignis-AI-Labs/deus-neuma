@@ -36,7 +36,7 @@ const leadIntent = (spec) => Object.freeze({
 export const leadAddIntent = leadIntent({
   name: 'leads/add',
   policyTool: 'leads.add',
-  fieldsForPrompt: '{name?, contact?, channelId?, source?, note?, campaignId?}',
+  fieldsForPrompt: '{name?, contact?, channelId?, source?, note?, campaignId?, accountId?}',
   descriptionForPrompt: 'Capture a prospect onto the HOUSE lead ledger — at least one of name/contact. channelId: where they surfaced (a social channel id, email, or other). Record ONLY real people and real signals you actually saw — never invent a contact. You become the lead\'s holder; hand it to another member later with leads/touch.',
   validate: async (payload) => {
     const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
@@ -49,7 +49,7 @@ export const leadAddIntent = leadIntent({
     const neumaId = laneOf(connection);
     const lead = await (await ledgerOf(connection)).add({
       name: fields.name, contact: fields.contact, channelId: fields.channelId,
-      source: fields.source, note: fields.note, campaignId: fields.campaignId,
+      source: fields.source, note: fields.note, campaignId: fields.campaignId, accountId: fields.accountId,
       ownerNeumaId: neumaId, addedBy: neumaId,
     });
     return { ok: true, detail: `Captured [${lead.id.slice(0, 8)}] ${lead.name || lead.contact} — ${lead.status}, yours to work.` };

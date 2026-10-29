@@ -13,7 +13,7 @@
 //   OUTSIDE its own window        a tear-out → the sitting gets its own window
 //   anywhere else in its window   nothing    → the tab stays where it was
 //
-// THE DELIBERATE TEAR-OUT (Design note, 2026-10-05: […] A tab let go a few pixels below its strip used to
+// THE DELIBERATE TEAR-OUT (ruling, 2026-10-05): […] A tab let go a few pixels below its strip used to
 // launch a window; now only a release past the window's own edge does.
 //
 // Direction law: this imports the registry leaf, never TabStrip.
@@ -38,7 +38,7 @@ const carriesTab = (e) => {
 
 /** Which GAP the cursor is aiming at, given the tab's rectangle. Pure.
  *  The midpoint is the whole rule: left half is "before this one", right half
- *  is "after" (Design note, 2026-08-30. */
+ *  is "after" (ruling, 2026-08-30). */
 export const gapForPointer = (clientX, rect, i) =>
   (clientX < rect.left + rect.width / 2 ? i : i + 1);
 

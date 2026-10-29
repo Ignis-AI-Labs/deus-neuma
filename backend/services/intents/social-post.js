@@ -11,40 +11,41 @@
  * (the single-holder channel law). validate runs BEFORE the operator's card,
  * so a card only ever describes a post that can stand.
  */
-import { getChannel, CHANNEL_CATALOG, resolveChannelCredentials } from '../social/channel-registry.js';
-import { loadChannelCredentials, resolveChannelCredential } from '../social/channel-credentials.js';
-import { channelBindings, canNeumaPost } from '../social/channel-bindings.js';
+import { getChannel, CHANNEL_CATALOG } from '../social/channel-registry.js';
+import { resolveAccountCredential } from '../social/account-store.js';
+import { houseOfLane } from '../social/house-positions.js';
+import { usableAccounts, chooseAccount, postsAsWords, accountGuide } from './intent-account.js';
 import { readMediaFile, setAltText, uploadMedia } from '../social/x-media.js';
 import { posterFor } from '../social/poster-registry.js';
 import { resolvePostMedia } from '../social/post-media.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
+import { withDisclosureLine, DISCLOSURE_LINE } from '../social/disclosure-line.js';
 
 // Defensive ceiling only — each API is the authority on its own limit (local
 // counting gets CJK/URL weighting wrong in both directions).
 const POST_MAX_CHARS = 4000;
 
-// impure — the channels this lane may SPEAK through: held AND credentialed.
-// Shared by the post intent's availability probe and the queue intent's crew
-// probe (intents-section asks each type once per turn).
-const speakableChannels = async (laneId) => {
-  const [store, bindings] = await Promise.all([
-    loadChannelCredentials().catch(() => ({})),
-    channelBindings.load().catch(() => ({})),
-  ]);
-  return CHANNEL_CATALOG
-    .filter((c) => resolveChannelCredentials(c, store[c.id], process.env) !== null)
-    .filter((c) => canNeumaPost(bindings, c.id, laneId))
-    .map((c) => c.id);
+// impure — the accounts this lane may SPEAK through: held AND credentialed,
+// in the lane's own house (house-positions.js). A queue-only channel
+// (YouTube) is never offered for an instant post.
+const speakableAccounts = async (laneId) => {
+  const usable = await usableAccounts({ house: await houseOfLane(laneId), laneId, mode: 'hold', needKeys: true });
+  return usable.filter((a) => !getChannel(a.channelId)?.queueOnly);
 };
+
+const POST_DESCRIPTION = 'Publish a post NOW through a channel you hold — outward-facing speech, permanent and public. media: [{path, alt}] — each file must sit inside a folder your operator has open; always write alt text.';
 
 export const socialPostIntent = Object.freeze({
   name: 'social/post',
   // The ACTS policy row this intent rides (`intents` server in tool-policy).
   policyTool: 'social.post',
-  fieldsForPrompt: '{channel, text, media?}',
-  descriptionForPrompt: 'Publish a post NOW through a channel you hold — outward-facing speech, permanent and public. media: [{path, alt}] — each file must sit inside a folder your operator has open; always write alt text.',
+  fieldsForPrompt: '{channel, text, media?, account?}',
+  descriptionForPrompt: POST_DESCRIPTION,
   availableFor: async ({ laneId }) => {
-    const channels = await speakableChannels(laneId);
-    return channels.length ? { channels } : null;
+    const accounts = await speakableAccounts(laneId);
+    const channels = CHANNEL_CATALOG.map((c) => c.id).filter((id) => accounts.some((a) => a.channelId === id));
+    const guide = accountGuide(accounts);
+    return channels.length ? { channels, ...(guide ? { descriptionForPrompt: `${POST_DESCRIPTION} ${guide}` } : {}) } : null;
   },
 
   // impure — media authorization reads the disk, the binding reads its store
@@ -55,7 +56,13 @@ export const socialPostIntent = Object.freeze({
     if (!channel) {
       return { ok: false, status: 'invalid', reason: `unknown channel "${payload?.channel ?? ''}" — the INTENTS section names the channels you may speak through` };
     }
-    const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
+    if (channel.queueOnly) {
+      return { ok: false, status: 'invalid', reason: `${channel.name} posts go through the campaign queue (social/queue) so your operator sees the video before it goes out; there is no instant ${channel.name} post` };
+    }
+    // Every word a being publishes says it is AI-made (disclosure-line.js),
+    // and the line counts against the platform's own ceiling.
+    const text = typeof payload?.text === 'string'
+      ? withDisclosureLine({ channelId: channel.id, text: payload.text, authorNeumaId: connection.companion?.neumaId || 'being' }) : '';
     // Media is authorised BEFORE the operator's card: an unreachable path
     // should cost the operator nothing, and the card they answer should
     // describe a post that can actually be sent.
@@ -64,14 +71,33 @@ export const socialPostIntent = Object.freeze({
     if (!text || text.length > POST_MAX_CHARS) {
       return { ok: false, status: 'invalid', reason: text ? 'the post text is far beyond any postable length' : 'the post needs text' };
     }
+    if (channel.maxChars && text.length > channel.maxChars) {
+      return { ok: false, status: 'invalid', reason: `the post is ${text.length} characters with the disclosure line "${DISCLOSURE_LINE}" — ${channel.name} allows at most ${channel.maxChars}` };
+    }
+    // A key in a public post is out for good: refused before any card.
+    const secret = checkOutboundSecrets('the post', [text, ...resolvedMedia.media.map((m) => m.alt)]);
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     // The single-holder law, fail closed: a channel is one being's position,
     // and an unreadable bindings store denies everyone (no cross-routing).
-    const bindings = await channelBindings.load().catch(() => ({}));
-    if (!canNeumaPost(bindings, channel.id, connection.companion?.neumaId || null)) {
-      return { ok: false, status: 'denied', reason: `this channel is not yours to speak through — only the neuma your operator bound to ${channel.name} may post there` };
+    // The account is one being's position, fail closed: an unreadable store
+    // denies everyone (no cross-routing).
+    const laneId = connection.companion?.neumaId || null;
+    const house = await houseOfLane(laneId);
+    const usable = await usableAccounts({ house, laneId, mode: 'hold', channelId: channel.id });
+    if (!usable.length) {
+      return { ok: false, status: 'denied', reason: `this channel is not yours to speak through — only the neuma your operator bound to a ${channel.name} account may post there` };
     }
-    return { ok: true, value: { channel, text, media: resolvedMedia.media } };
+    const chosen = chooseAccount(usable, payload, channel);
+    if (!chosen.ok) return { ok: false, status: 'denied', reason: chosen.reason };
+    const postsAs = await postsAsWords(house, chosen.account);
+    return {
+      ok: true,
+      value: { channel, accountId: chosen.account.id, text, media: resolvedMedia.media, house, card: { 'posts as': postsAs, ...payload, text } },
+    };
   },
+
+  // The card says WHO WILL SPEAK first ("posts as"), then what was filed.
+  cardArgs: (value) => value.card,
 
   // The one line the operator's card stakes the decision on. Pure.
   summarize: (payload) => {
@@ -82,8 +108,8 @@ export const socialPostIntent = Object.freeze({
 
   // impure — the real platform API. The signal rides into the HTTP calls so a
   // barge-in mid-flight aborts the publish too.
-  execute: async ({ channel, text, media }, { signal }) => {
-    const credentials = await resolveChannelCredential(channel.id).catch(() => null);
+  execute: async ({ channel, accountId, text, media, house }, { signal }) => {
+    const credentials = await resolveAccountCredential(house, accountId).catch(() => null);
     // Upload first — it publishes nothing, so the post below stays the one
     // irreversible act. A media failure aborts the post entirely: half a
     // composition is not what was approved.
@@ -98,7 +124,7 @@ export const socialPostIntent = Object.freeze({
     }
     const outcome = await posterFor(channel.id)(credentials, text, { signal, mediaIds });
     return outcome.ok
-      ? { ok: true, detail: `Posted to ${channel.name}. Post id ${outcome.id}.` }
+      ? { ok: true, detail: `Posted to ${channel.name} as ${accountId}. Post id ${outcome.id}.` }
       : { ok: false, reason: `The post was not published: ${outcome.detail}.` };
   },
 });

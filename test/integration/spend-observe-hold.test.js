@@ -6,16 +6,19 @@
  *
  * The law under test: the standing grants (allowlist + threshold) are the
  * operator's approval routes — the intents/wallet.send row is `allowed` by
- * default, so ask/auto add NO card — but observe means watching, not acting,
+ * default, so ask adds NO card — but observe means watching, not acting,
  * and the hold leaves the intent PENDING (never a verdict, never a move).
  * External channels hardcode observe as their safety posture, so nothing may
- * act under it.
+ * act under it. AUTO is the one mode that is tightened: the protocol guard
+ * (182ca2f5f, protocol-guard.js) pauses value leaving the house on the
+ * operator's card even though the row is allowed.
  */
 import { describe, test, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
+import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { addEntry, toAllowlist } from '../../core/wallet/spend-policy.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
@@ -106,7 +109,7 @@ describe('the wallet/send intent under tool modes (real workspace, gnosis)', () 
 
   test('allowlisted + ABOVE the threshold goes PENDING — the operator\'s out-of-band ask lands on real disk', async () => {
     // threshold 0: every send is above it, so the operator's signature is owed.
-    const { sent, connection } = freshConnection('auto');
+    const { sent, connection } = freshConnection('ask');
     await fileIntent('pending-spend', { type: 'wallet/send', to: RECIPIENT, value: 0.01, memo: 'the proving transfer' });
     const receipts = await sweep(connection);
 
@@ -125,13 +128,29 @@ describe('the wallet/send intent under tool modes (real workspace, gnosis)', () 
     // error — and the intent settles FAILED, never done. (The live wire is
     // the operator's desk flow, proven outside the suite.)
     await workspace.writeSpendThreshold(NEUMA_ID, { thresholdEth: 1 });
-    const { connection } = freshConnection('auto');
+    const { connection } = freshConnection('ask');
     await fileIntent('chain-spend', { type: 'wallet/send', to: RECIPIENT, value: 0.01 });
     const receipts = await sweep(connection);
 
     expect(receipts[0].status).toBe('error');
     expect(receipts[0].error).toContain('could not be sent');
     expect((await readResult('chain-spend')).status).toBe('failed');
+  }, 30000);
+
+  test('AUTO pauses the send on the operator\'s card — a deny settles it and nothing moves', async () => {
+    // The protocol guard (182ca2f5f): AUTO alone never lets value leave the
+    // house, even on an allowlisted recipient with the row allowed.
+    const { sent, connection } = freshConnection('auto');
+    await fileIntent('auto-spend', { type: 'wallet/send', to: RECIPIENT, value: 0.01 });
+    const settling = sweep(connection);
+    await expect.poll(() => sent.find((m) => m.type === 'tool:approval_request'), { timeout: 5000 }).toBeTruthy();
+    const card = sent.find((m) => m.type === 'tool:approval_request');
+    expect(card.tool).toBe('intents/wallet.send');
+    expect(resolveToolApproval(connection, card.id, 'deny')).toBe(true);
+    const receipts = await settling;
+
+    expect(receipts[0].status).toBe('denied');
+    expect(await workspace.readPendingSpends(NEUMA_ID)).toEqual([]);
   }, 30000);
 
   test('the sovereignty boundary — a witness seat is refused before anything moves', async () => {

@@ -23,7 +23,7 @@ export const writeVoicePref = (enabled) => {
 // Persisted, and re-declared to the portal on every link-up — the stance
 // lives on the connection server-side, so a reconnect must restate it.
 //
-// PER PARTICIPANT (Design note, 2026-07-26: the stance is held for each being
+// PER PARTICIPANT (ruling, 2026-07-26): the stance is held for each being
 // separately, so a sealed witness can run on `auto` while a neuma stays on
 // `ask` — one works without interrupting, the other raises its cards, and the
 // operator sets each independently. This is the ASKING axis; reach is settled

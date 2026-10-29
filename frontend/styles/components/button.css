@@ -1,6 +1,12 @@
 /* Button Component Styles — LINE & CYCLE
    Controls are chamfered (--cut-sm), motion snaps (--snap),
    nothing bounces. Labels live in the data register. */
+/* display: inline-flex would override the hidden attribute: a ceremony button the code had hidden stayed
+   on screen (the seal step showed SEAL ON ETHEREUM twice, 2026-10-28) */
+.btn[hidden] {
+  display: none;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

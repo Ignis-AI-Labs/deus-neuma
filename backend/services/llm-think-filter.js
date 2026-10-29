@@ -140,7 +140,10 @@ export const createThinkFilter = (onContent, options = {}) => {
  */
 export const classifyThinkBehavior = (message) => {
   const content = message?.content ?? '';
-  const reasoningField = message?.reasoning ?? message?.reasoning_content;
+  // Ollama's native /api/chat names its reasoning channel `thinking`; the OpenAI-compatible
+  // servers say `reasoning` or `reasoning_content`. A thinker read as a non-thinker gets no
+  // reasoning budget and answers nothing (the flight check then refuses every birth on it).
+  const reasoningField = message?.reasoning ?? message?.reasoning_content ?? message?.thinking;
   const reasonsInField = typeof reasoningField === 'string' && reasoningField.length > 0;
   const thinks = content.includes('</think>') || reasonsInField;
   return Object.freeze({ thinks, implicitOpen: thinks && !reasonsInField && !content.includes('<think>') });

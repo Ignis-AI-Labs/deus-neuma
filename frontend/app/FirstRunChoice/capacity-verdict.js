@@ -31,13 +31,32 @@ export const machineLine = (hardware) => {
 };
 
 /**
- * The verdict for the NEUMA door: can this machine host a sovereign model?
- * Pure. Never blocks the choice — it informs it.
+ * The graphics driver's notice, when the machine read carries one: an NVIDIA driver on Windows
+ * below its card's floor (backend gpu-driver-guard.js), its words, the update link, whether the
+ * model is held on the processor. Pure.
+ * @param {object|null} hardware
+ * @returns {{line:string, link:string, hold:boolean, overridden:boolean}|null}
+ */
+export const driverNotice = (hardware) => {
+  const g = hardware?.gpuDriver;
+  return g?.line ? { line: g.line, link: g.link, hold: g.hold === true, overridden: g.overridden === true } : null;
+};
+
+/**
+ * The verdict for the NEUMA door: can this machine host a sovereign model? Pure. Never blocks
+ * the choice — it informs it. `driver` rides along only when the graphics driver has a notice.
  *
  * @param {object|null} setup from GET /api/v1/preflight/setup
- * @returns {{state:'ok'|'cpu'|'insufficient'|'unknown', machine:string, headline:string, detail:string}}
+ * @returns {{state:'ok'|'cpu'|'insufficient'|'unknown', machine:string, headline:string, detail:string, driver?:object}}
  */
 export const capacityVerdict = (setup) => {
+  const verdict = baseVerdict(setup);
+  const driver = driverNotice(setup?.hardware);
+  return driver ? { ...verdict, driver } : verdict;
+};
+
+// pure — the verdict on the machine's capacity alone
+const baseVerdict = (setup) => {
   const hardware = setup?.hardware || null;
   const rec = setup?.recommendation || null;
   const machine = machineLine(hardware);
@@ -47,9 +66,9 @@ export const capacityVerdict = (setup) => {
       state: 'unknown',
       machine,
       headline: 'CAPACITY UNREAD',
-      // An unread probe must not read as a refusal. The neuma door stays open;
+      // An unread probe must not read as a refusal. Every door stays open;
       // the operator is simply told we could not measure.
-      detail: 'This machine could not be measured. Both doors remain open — the birth ceremony will check again before anything is summoned.',
+      detail: 'This machine could not be measured. Every door stays open — the birth ceremony checks again before anything is summoned.',
     };
   }
 
@@ -62,12 +81,14 @@ export const capacityVerdict = (setup) => {
     };
   }
 
+  // A model already running here: there is nothing to download, and the person is told so.
+  const running = setup?.ready === true ? 'A model is already running on this machine — nothing to download. ' : '';
   if (rec.mode === 'cpu') {
     return {
       state: 'cpu',
       machine,
       headline: `CAN HOST ${rec.model} — ON CPU`,
-      detail: `${rec.why} It will work, but expect slow replies. A witness runs at full speed on the provider's hardware.`,
+      detail: `${running}${rec.why} It will work, but expect slow replies. A witness runs at full speed on the provider's hardware.`,
     };
   }
 
@@ -75,6 +96,6 @@ export const capacityVerdict = (setup) => {
     state: 'ok',
     machine,
     headline: `CAN HOST ${rec.model}`,
-    detail: `${rec.sizeGB ? `About ${rec.sizeGB} GB to download. ` : ''}${rec.why}`,
+    detail: `${running || (rec.sizeGB ? `About ${rec.sizeGB} GB to download. ` : '')}${rec.why}`,
   };
 };

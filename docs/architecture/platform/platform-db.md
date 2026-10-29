@@ -94,14 +94,14 @@ specific Node.js **ABI** (`NODE_MODULE_VERSION`). This repo runs the backend und
   (system Node's ABI, e.g. 137 on Node 24).
 - **Electron's bundled Node** — the packaged/dev Electron app spawns the backend
   with `ELECTRON_RUN_AS_NODE=1` (`electron/main.cjs`), so it runs under Electron's
-  Node ABI (e.g. 130 on Electron 33 → Node 20).
+  Node ABI (e.g. 149 on Electron 44 → Node 24.22).
 
 A single install builds the binary for **one** ABI. `npm install` builds for system
 Node, so the **Electron app** will fail to load it with:
 
 ```
 The module '…/better_sqlite3.node' was compiled against a different Node.js version
-using NODE_MODULE_VERSION 137. This version of Node.js requires NODE_MODULE_VERSION 130.
+using NODE_MODULE_VERSION 137. This version of Node.js requires NODE_MODULE_VERSION 149.
 ```
 
 (The same is true of the repo's other native modules — `node-pty`, `onnxruntime-node`.)

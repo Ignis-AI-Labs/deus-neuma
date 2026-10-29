@@ -1,5 +1,5 @@
 /**
- * replies_list — the being's read of the house's REPLY INBOX (Design note, 2026-10-13.
+ * replies_list — the being's read of the house's REPLY INBOX (ruling, 2026-10-13).
  *
  * read_x {what:'mentions'} reads X live and hands back only its newest window, so a being
  * asked to work 340 replies saw five and could not page back ([…]). This reads the house's own record of every reply
@@ -8,8 +8,8 @@
  *
  * A local read of the house's own record: no egress, no change to anything.
  */
-import { postQueue } from '../social/post-queue.js';
-import { replyCandidates, replyInboxRows, REPLY_CATEGORIES } from '../social/reply-candidates.js';
+import { houseEntries } from '../social/queue-house.js';
+import { replyCandidatesOf, replyInboxRows, REPLY_CATEGORIES } from '../social/reply-candidates.js';
 import { selectReplyInbox, REPLY_BUCKETS, INBOX_PAGE } from '../../../core/social/reply-inbox.js';
 import { frameUntrustedSections } from '../untrusted-content.js';
 import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
@@ -100,10 +100,12 @@ export const renderReplyInbox = (page, args, { budget = READ_WINDOW, token } = {
 
 /**
  * Read the record and answer the being. impure (the stores).
+ * @param {Object} args
+ * @param {?string} house - the being's house (its lane's owner): only its own replies are read
  * @returns {Promise<{ ok: true, text: string, summary: string } | { ok: false, error: string }>}
  */
-export const readReplyInbox = async (args) => {
-  const [candidates, queue] = await Promise.all([replyCandidates.load(), postQueue.load()]);
+export const readReplyInbox = async (args, house) => {
+  const [candidates, queue] = await Promise.all([replyCandidatesOf(house).load(), houseEntries(house)]);
   const page = selectReplyInbox(replyInboxRows(candidates, queue), args || {}, { categories: REPLY_CATEGORIES });
   if (!page.ok) return page;
   const drawn = renderReplyInbox(page, args);

@@ -29,20 +29,13 @@ export const isAffordable = (allocationGB, availableGB) =>
     : allocationGB + MIN_FREE_DISK_GB <= availableGB;
 
 /**
- * A MODEST starting allocation — ~10% of what's available, hard-capped at
- * 20 GB. A neuma's space is expandable later (it grows into its grant over
- * time), so a first birth should never begin by claiming a large slice of
- * the disk — on a multi-TB drive an uncapped 10% suggested hundreds of GB.
- * Floored at the minimum grant. null when the disk is unmeasured OR below
- * the smallest applyable grant — POST /workspace requires gb +
- * MIN_FREE_DISK_GB <= availableGB, so the floor (MIN_FREE_DISK_GB) only
- * fits once availableGB reaches 2 * MIN_FREE_DISK_GB. Below that there is
- * no number we could suggest that POST would accept, so the UI prompts to
- * choose instead. Pure.
+ * The starting allocation a new neuma is given without a click: 5 GB (a neuma's space grows
+ * later, so a first birth never claims a large slice of the disk), capped by what is available.
+ * It is always a number POST /workspace accepts (gb + MIN_FREE_DISK_GB <= availableGB), floored
+ * at the minimum grant. null when the disk is unmeasured or too full for any grant. Pure.
  */
+export const STARTING_ALLOCATION_GB = 5;
 export const suggestedAllocationGB = (availableGB) => {
-  const SUGGESTED_ALLOCATION_CAP_GB = 20;
-  return (availableGB != null && availableGB >= 2 * MIN_FREE_DISK_GB)
-    ? Math.max(MIN_FREE_DISK_GB, Math.min(SUGGESTED_ALLOCATION_CAP_GB, Math.round(availableGB * 0.10)))
-    : null;
+  if (availableGB == null || availableGB < 2 * MIN_FREE_DISK_GB) return null;
+  return Math.max(MIN_FREE_DISK_GB, Math.min(STARTING_ALLOCATION_GB, Math.floor(availableGB - MIN_FREE_DISK_GB)));
 };

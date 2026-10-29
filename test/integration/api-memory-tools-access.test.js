@@ -60,23 +60,26 @@ describe('sovereign memory tools through the real portal — access (gnosis)', (
     // pin, supersede, retract, merge or search for — so gating those on […] is honest. Deliberate remembering names nothing: the WRITE is what
     // creates the first record, so gating it too was a lock whose key sat
     // inside the room. This assertion said `[]` until that shipped.
+    // Its own records (journal, past chats, house charter) open on its seat from
+    // birth too — each READS what exists and says so when nothing does (2026-10-19).
+    const RECORDS = ['journal_read', 'chats_list', 'chat_read', 'charter_read'];
     expect((await _memoryToolsFor(bare)).map((t) => t.name))
-      .toEqual(['memory_note', 'mind_note', 'mind_read', 'meditate']);
+      .toEqual(['memory_note', 'mind_note', 'mind_read', 'meditate', ...RECORDS]);
     const seeded = { companion: { neumaId: NEUMA_ID } };
     const tools = await _memoryToolsFor(seeded);
     // SIX LEFT WITH THEIR HANDLERS (2026-08-24) — pin, unpin, supersede,
     // retract, merge, archive are memory/* intents now.
     expect(tools.map((t) => t.name)).toEqual([
       'memory_search', 'memory_expand', 'memory_note', 'memory_list',
-      'mind_note', 'mind_read', 'meditate',
+      'mind_note', 'mind_read', 'meditate', ...RECORDS,
     ]);
     expect(seeded._memoryAdvertised).toBe(true);
-    expect(await _memoryToolsFor(seeded)).toHaveLength(7);
+    expect(await _memoryToolsFor(seeded)).toHaveLength(11);
 
     // Retained requestable reads must remain visible; passive prompt recall
     // cannot replace an explicit search or audit walk (#414).
     expect(tools.filter(isAdvertisedTool).map((t) => t.name))
-      .toEqual(['memory_search', 'memory_expand', 'memory_note', 'memory_list', 'mind_note', 'mind_read', 'meditate']);
+      .toEqual(['memory_search', 'memory_expand', 'memory_note', 'memory_list', 'mind_note', 'mind_read', 'meditate', ...RECORDS]);
     expect(retiredToolHint('memory/memory_search')).toBeNull();
     expect(retiredToolHint('memory/memory_list')).toBeNull();
   });

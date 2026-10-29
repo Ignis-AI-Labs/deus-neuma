@@ -427,20 +427,22 @@
   color: var(--signal);
 }
 
-.relink-housechip-panel {
+/* Two classes: the global .lc-sel-panel (left: 0; min-width: 100%, Select.css)
+   loads later and, at one class, sized this panel to the chip (2026-10-18). */
+.relink-housechip .relink-housechip-panel {
   left: auto;
   right: 0;
   min-width: 300px;
 }
 
-.relink-housechip-row {
+.relink-housechip .relink-housechip-row {
   display: flex;
   gap: var(--space-2);
   align-items: baseline;
   white-space: nowrap;
 }
 
-.relink-housechip-row .relink-housechip-task {
+.relink-housechip .relink-housechip-row .relink-housechip-task {
   opacity: 0.72;
   overflow: hidden;
   text-overflow: ellipsis;

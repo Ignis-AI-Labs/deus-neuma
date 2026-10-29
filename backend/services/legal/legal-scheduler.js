@@ -13,7 +13,7 @@
 // written on the run's summary — a watch that hides its blindness is worse
 // than none.
 //
-// ONE WATCH PER HOUSE (Design note, 2026-10-16: each house's run reads that house's
+// ONE WATCH PER HOUSE (ruling, 2026-10-16): each house's run reads that house's
 // own watch list into that house's own ledger, and keeps its own state
 // (`<realm>/<wallet>/offices/legal/legal-watch-state.json`). The machine-wide
 // state moves once to its house (house-office.js).
@@ -35,8 +35,8 @@ import { createLogger } from '../logger.js';
 
 const log = createLogger('LegalScheduler');
 
-const TICK_MS = 60 * 60 * 1000; // check hourly…
-const RUN_EVERY_MS = 24 * 60 * 60 * 1000; // …run daily: […]
+export const TICK_MS = 60 * 60 * 1000; // check hourly…
+export const RUN_EVERY_MS = 24 * 60 * 60 * 1000; // …run daily: […]
 const RUNS_KEPT = 20;
 const EMPTY_STATE = Object.freeze({ lastRunAt: null, repos: {}, runs: [] });
 

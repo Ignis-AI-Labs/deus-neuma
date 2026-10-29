@@ -9,8 +9,8 @@
  *   - the HOUSE tab can never be vacant while any tab is open (otherwise the
  *     desk stops hearing substrate/storage frames entirely), and
  *   - a restored tab CARRIES its sitting, so focusing it returns the operator
- *     to the chat they left instead of minting a fresh one over it (Founder,
- *     2026-08-02: […]).
+ *     to the chat they left instead of minting a fresh one over it (ruling,
+ *     2026-08-02: a user can always pick up where they just left off).
  *     Binding is still deferred to focus — the 2026-07-30 law — but that is
  *     ChatApp's to honour; this module only remembers.
  */
@@ -65,8 +65,8 @@ describe('opening and focusing', () => {
   });
 
   test('a nameless tab wears its being’s id rather than nothing', () => {
-    const s = openTab(emptyTabs(), { id: 'a', kind: TAB_KIND.local, neumaId: 'fenna' });
-    expect(s.tabs[0].name).toBe('fenna');
+    const s = openTab(emptyTabs(), { id: 'a', kind: TAB_KIND.local, neumaId: 'alder' });
+    expect(s.tabs[0].name).toBe('alder');
   });
 
   test('focusing an unknown tab changes nothing — never blanks the desk', () => {
@@ -152,8 +152,8 @@ describe('renaming and session binding', () => {
   });
 
   test('an empty name falls back to the being — never a nameless strip entry', () => {
-    const s = renameTab(withTabs(tab('a', TAB_KIND.local, 'fenna')), 'a', '   ');
-    expect(tabById(s, 'a').name).toBe('fenna');
+    const s = renameTab(withTabs(tab('a', TAB_KIND.local, 'alder')), 'a', '   ');
+    expect(tabById(s, 'a').name).toBe('alder');
   });
 
   test('a tab holds no session until the server mints one', () => {
@@ -172,12 +172,12 @@ describe('renaming and session binding', () => {
   });
 });
 
-describe('THE SWITCH ADJUSTS ONE TAB — Design note, 2026-07-30', () => {
+describe('THE SWITCH ADJUSTS ONE TAB — Ada, 2026-07-30', () => {
   const three = () => withTabs(tab('a'), tab('b'), tab('c'));
 
   test('a switch moves the named tab and leaves every other one alone', () => {
-    const s = retargetTab(three(), 'b', { neumaId: 'basunor', name: 'Basunor', kind: TAB_KIND.witness });
-    expect(tabById(s, 'b')).toMatchObject({ neumaId: 'basunor', name: 'Basunor', kind: TAB_KIND.witness });
+    const s = retargetTab(three(), 'b', { neumaId: 'fern', name: 'Fern', kind: TAB_KIND.witness });
+    expect(tabById(s, 'b')).toMatchObject({ neumaId: 'fern', name: 'Fern', kind: TAB_KIND.witness });
     expect(tabById(s, 'a')).toMatchObject({ neumaId: 'n-a', kind: TAB_KIND.local });
     expect(tabById(s, 'c')).toMatchObject({ neumaId: 'n-c', kind: TAB_KIND.local });
   });
@@ -185,14 +185,14 @@ describe('THE SWITCH ADJUSTS ONE TAB — Design note, 2026-07-30', () => {
   test('THE SESSION IS DROPPED — a chat belongs to the being it was minted for', () => {
     const bound = bindSession(three(), 'b', 'sess-of-the-old-being');
     expect(tabById(bound, 'b').sessionId).toBe('sess-of-the-old-being');
-    const s = retargetTab(bound, 'b', { neumaId: 'basunor', name: 'Basunor', kind: TAB_KIND.witness });
+    const s = retargetTab(bound, 'b', { neumaId: 'fern', name: 'Fern', kind: TAB_KIND.witness });
     expect(tabById(s, 'b').sessionId).toBeNull();
     // ...and only that tab's. The others keep the chats they are holding.
     expect(tabById(bindSession(s, 'a', 'sess-a'), 'a').sessionId).toBe('sess-a');
   });
 
   test('the tab keeps its ID and its PLACE — same seat, different occupant', () => {
-    const s = retargetTab(three(), 'a', { neumaId: 'basunor', name: 'Basunor', kind: TAB_KIND.witness });
+    const s = retargetTab(three(), 'a', { neumaId: 'fern', name: 'Fern', kind: TAB_KIND.witness });
     expect(s.tabs.map((t) => t.id)).toEqual(['a', 'b', 'c']);
     expect(s.focusedId).toBe('c');           // focus is untouched by a switch
     expect(houseTab(s).id).toBe('a');        // and the house tab does not move
@@ -201,13 +201,13 @@ describe('THE SWITCH ADJUSTS ONE TAB — Design note, 2026-07-30', () => {
   test('the KIND moves with the being — the sitting changes budget', () => {
     const before = three();
     expect(countsByKind(before)).toEqual({ local: 3, witness: 0 });
-    const s = retargetTab(before, 'b', { neumaId: 'basunor', name: 'Basunor', kind: TAB_KIND.witness });
+    const s = retargetTab(before, 'b', { neumaId: 'fern', name: 'Fern', kind: TAB_KIND.witness });
     expect(countsByKind(s)).toEqual({ local: 2, witness: 1 });
   });
 
   test('an empty name falls back to the being — never a nameless seat', () => {
-    const s = retargetTab(three(), 'b', { neumaId: 'basunor', name: '   ', kind: TAB_KIND.witness });
-    expect(tabById(s, 'b').name).toBe('basunor');
+    const s = retargetTab(three(), 'b', { neumaId: 'fern', name: '   ', kind: TAB_KIND.witness });
+    expect(tabById(s, 'b').name).toBe('fern');
   });
 
   test('switching to the being already seated changes NOTHING — a rename must not cost the chat', () => {
@@ -219,12 +219,12 @@ describe('THE SWITCH ADJUSTS ONE TAB — Design note, 2026-07-30', () => {
 
   test('a malformed switch is refused rather than half-applied', () => {
     const s = three();
-    expect(retargetTab(s, 'b', { neumaId: 'basunor', kind: 'sideways' })).toBe(s);
+    expect(retargetTab(s, 'b', { neumaId: 'fern', kind: 'sideways' })).toBe(s);
     expect(retargetTab(s, 'b', { neumaId: '', kind: TAB_KIND.witness })).toBe(s);
     expect(retargetTab(s, 'b', {})).toBe(s);
     expect(retargetTab(s, 'b')).toBe(s);
     // An unknown tab changes nothing at all.
-    expect(retargetTab(s, 'nope', { neumaId: 'basunor', kind: TAB_KIND.witness })).toBe(s);
+    expect(retargetTab(s, 'nope', { neumaId: 'fern', kind: TAB_KIND.witness })).toBe(s);
   });
 });
 
@@ -319,63 +319,63 @@ describe('THE HOUSE IS THE ELDEST, NOT THE LEFTMOST', () => {
 });
 
 describe('RECONCILING THE CHAIR AND THE TAB — both directions', () => {
-  const fenna = { id: 't1', kind: TAB_KIND.local, neumaId: 'fenna', name: 'Fenna', sessionId: null };
-  const basunor = { id: 't2', kind: TAB_KIND.witness, neumaId: 'witness-basunor', name: 'Basunor', sessionId: 'sess-basunor' };
+  const alder = { id: 't1', kind: TAB_KIND.local, neumaId: 'alder', name: 'Alder', sessionId: null };
+  const fern = { id: 't2', kind: TAB_KIND.witness, neumaId: 'witness-fern', name: 'Fern', sessionId: 'sess-fern' };
 
   describe('focusPlan — arriving at a tab', () => {
     test('a tab whose being is NOT seated asks for the seat first', () => {
-      expect(focusPlan(basunor, 'fenna')).toEqual({ seat: 'witness-basunor', resume: 'sess-basunor', mint: false });
+      expect(focusPlan(fern, 'alder')).toEqual({ seat: 'witness-fern', resume: 'sess-fern', mint: false });
     });
 
     test('a tab whose being IS seated asks for no seat', () => {
-      expect(focusPlan(basunor, 'witness-basunor').seat).toBeNull();
+      expect(focusPlan(fern, 'witness-fern').seat).toBeNull();
     });
 
     test('a tab that has never spoken MINTS rather than resuming nothing', () => {
-      expect(focusPlan(fenna, 'fenna')).toEqual({ seat: null, resume: null, mint: true });
+      expect(focusPlan(alder, 'alder')).toEqual({ seat: null, resume: null, mint: true });
     });
 
     test('resume and mint are never both asked for', () => {
-      [fenna, basunor].forEach((t) => {
+      [alder, fern].forEach((t) => {
         const p = focusPlan(t, 'anyone');
         expect(Boolean(p.resume) && p.mint).toBe(false);
       });
     });
 
     test('no tab, no plan — the desk is never asked to act on nothing', () => {
-      expect(focusPlan(null, 'fenna')).toEqual({ seat: null, resume: null, mint: false });
-      expect(focusPlan({ id: 'x' }, 'fenna').mint).toBe(false);
+      expect(focusPlan(null, 'alder')).toEqual({ seat: null, resume: null, mint: false });
+      expect(focusPlan({ id: 'x' }, 'alder').mint).toBe(false);
     });
   });
 
   describe('switchPlan — the operator changed who is in the chair', () => {
     test('an operator switch moves the focused tab', () => {
-      expect(switchPlan(fenna, 'witness-basunor', null)).toEqual({ retarget: true, landed: false });
+      expect(switchPlan(alder, 'witness-fern', null)).toEqual({ retarget: true, landed: false });
     });
 
     test('THE INVERSION IS REFUSED — a seat in flight is not an operator switch', () => {
-      // Focus moved to Basunor's tab; the chair still holds Fenna because the seat
-      // has not landed. Retargeting here would stamp FENNA onto BASUNOR'S TAB —
+      // Focus moved to Fern's tab; the chair still holds Alder because the seat
+      // has not landed. Retargeting here would stamp ALDER onto FERN'S TAB —
       // writing the outgoing being onto the incoming tab.
-      expect(switchPlan(basunor, 'fenna', basunor.id)).toEqual({ retarget: false, landed: false });
+      expect(switchPlan(fern, 'alder', fern.id)).toEqual({ retarget: false, landed: false });
     });
 
     test('...but only for the tab actually being seated', () => {
       // A seat in flight for some OTHER tab must not freeze this one.
-      expect(switchPlan(basunor, 'fenna', 'some-other-tab').retarget).toBe(true);
+      expect(switchPlan(fern, 'alder', 'some-other-tab').retarget).toBe(true);
     });
 
     test('the seat LANDING is reported, so the marker can be retired', () => {
-      expect(switchPlan(basunor, 'witness-basunor', basunor.id)).toEqual({ retarget: false, landed: true });
+      expect(switchPlan(fern, 'witness-fern', fern.id)).toEqual({ retarget: false, landed: true });
     });
 
     test('agreement is never a retarget — the two are already reconciled', () => {
-      expect(switchPlan(basunor, 'witness-basunor', null)).toEqual({ retarget: false, landed: false });
+      expect(switchPlan(fern, 'witness-fern', null)).toEqual({ retarget: false, landed: false });
     });
 
     test('nothing seated, nothing to follow', () => {
-      expect(switchPlan(basunor, null, null).retarget).toBe(false);
-      expect(switchPlan(null, 'fenna', null).retarget).toBe(false);
+      expect(switchPlan(fern, null, null).retarget).toBe(false);
+      expect(switchPlan(null, 'alder', null).retarget).toBe(false);
     });
   });
 
@@ -383,10 +383,10 @@ describe('RECONCILING THE CHAIR AND THE TAB — both directions', () => {
     // The full sequence a focus performs, step by step, asserting the tab is
     // never retargeted at any point along it.
     const steps = [
-      switchPlan(basunor, 'fenna', basunor.id),      // focus committed, seat in flight
-      switchPlan(basunor, 'fenna', basunor.id),      // an unrelated re-render mid-flight
-      switchPlan(basunor, 'witness-basunor', basunor.id), // the seat lands
-      switchPlan(basunor, 'witness-basunor', null),   // marker retired
+      switchPlan(fern, 'alder', fern.id),      // focus committed, seat in flight
+      switchPlan(fern, 'alder', fern.id),      // an unrelated re-render mid-flight
+      switchPlan(fern, 'witness-fern', fern.id), // the seat lands
+      switchPlan(fern, 'witness-fern', null),   // marker retired
     ];
     expect(steps.map((s) => s.retarget)).toEqual([false, false, false, false]);
     expect(steps.map((s) => s.landed)).toEqual([false, false, true, false]);
@@ -394,8 +394,8 @@ describe('RECONCILING THE CHAIR AND THE TAB — both directions', () => {
 });
 
 describe('THE RESTART LAW — restore the strip AND the sitting it held', () => {
-  // Design note, 2026-07-30: […]
-  // Design note, 2026-08-02: […]
+  // Ruling, 2026-07-30: restore the strip, but never auto-resume.
+  // Ruling, 2026-08-02: a user can always pick up where they just left off.
   // The first is about BINDING, the second about REMEMBERING. This module does
   // the remembering; ChatApp still binds only on focus.
   test('a persisted tab set CARRIES its sitting out to disk', () => {
@@ -406,22 +406,22 @@ describe('THE RESTART LAW — restore the strip AND the sitting it held', () => 
 
   test('and comes back holding it — so focusing RETURNS instead of minting over it', () => {
     const back = normalizeTabs({
-      tabs: [{ id: 'a', kind: TAB_KIND.local, neumaId: 'fenna', name: 'A', sessionId: 'session-1754000000000' }],
+      tabs: [{ id: 'a', kind: TAB_KIND.local, neumaId: 'alder', name: 'A', sessionId: 'session-1754000000000' }],
       focusedId: 'a',
     });
     expect(back.tabs[0].sessionId).toBe('session-1754000000000');
     // The whole point: focusPlan must read it as a RESUME, never a mint. A null
     // here is what made a restart start a fresh chat over the operator's work.
-    expect(focusPlan(back.tabs[0], 'fenna')).toMatchObject({ resume: 'session-1754000000000', mint: false });
+    expect(focusPlan(back.tabs[0], 'alder')).toMatchObject({ resume: 'session-1754000000000', mint: false });
   });
 
   test('a tab that never spoke still comes back as a place for a sitting', () => {
     const back = normalizeTabs({
-      tabs: [{ id: 'a', kind: TAB_KIND.local, neumaId: 'fenna', name: 'A' }],
+      tabs: [{ id: 'a', kind: TAB_KIND.local, neumaId: 'alder', name: 'A' }],
       focusedId: 'a',
     });
     expect(back.tabs[0].sessionId).toBeNull();
-    expect(focusPlan(back.tabs[0], 'fenna')).toMatchObject({ resume: null, mint: true });
+    expect(focusPlan(back.tabs[0], 'alder')).toMatchObject({ resume: null, mint: true });
   });
 
   test('a malformed session id is refused — it would resume nothing, or worse', () => {
@@ -429,7 +429,7 @@ describe('THE RESTART LAW — restore the strip AND the sitting it held', () => 
     // server-side, so the shape is validated the same way the workspace does.
     for (const junk of ['../../etc/passwd', 'has spaces', 'x'.repeat(65), 42, '', null, {}]) {
       const back = normalizeTabs({
-        tabs: [{ id: 'a', kind: TAB_KIND.local, neumaId: 'fenna', name: 'A', sessionId: junk }],
+        tabs: [{ id: 'a', kind: TAB_KIND.local, neumaId: 'alder', name: 'A', sessionId: junk }],
         focusedId: 'a',
       });
       expect(back.tabs[0].sessionId).toBeNull();
@@ -466,12 +466,12 @@ describe('normalizeTabs — a corrupt record costs the tabs it broke, never the 
   test('malformed entries are dropped and the healthy ones survive', () => {
     const back = normalizeTabs({
       tabs: [
-        { id: 'good', kind: TAB_KIND.local, neumaId: 'fenna' },
+        { id: 'good', kind: TAB_KIND.local, neumaId: 'alder' },
         { id: '', kind: TAB_KIND.local, neumaId: 'x' },     // no id
         { id: 'nokind', neumaId: 'x' },                      // no kind
         { id: 'nobeing', kind: TAB_KIND.witness },           // no being
         { id: 'good', kind: TAB_KIND.local, neumaId: 'dup' }, // duplicate id
-        { id: 'ok2', kind: TAB_KIND.witness, neumaId: 'basunor' },
+        { id: 'ok2', kind: TAB_KIND.witness, neumaId: 'fern' },
       ],
       focusedId: 'good',
     });

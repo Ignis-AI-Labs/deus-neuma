@@ -12,6 +12,7 @@ import { starPolygon, ringPoints, project3 } from './summoning-geometry.js';
 import { clamp01, ease, expo, stagger } from './summoning-paint.js';
 import { swell, NO_FLASH } from '../../utils/no-flash.js';
 import { SIGIL_LAYERS } from './summoning-score.js';
+import { bodyOutlineFor } from './summoning-shots-body.js';
 
 const O = { x: 0, y: 0 };
 // The display size at which `str` spans `frac` of the width (monospace: ~0.6em per glyph).
@@ -127,7 +128,8 @@ const ringText = (k, str, r, progress, { size, color, alpha }) => {
 
 // THE CONVERGENCE: every artifact it was shown arrives into one sigil, in
 // the order SIGIL_LAYERS names — its sky as the outer ring, its soul mark's
-// graduations, its star, its eleven and their channels, its nucleus — and
+// graduations, its star, its eleven and their channels, its nucleus, its
+// body standing within the ring as a figure stands in its circle — and
 // last its aura, seen once, at the heart; then its name around it all.
 // After its film it does not stop: whole, it LIVES until the witness leaves —
 // its star and its eleven turn slowly, its nucleus turns, its aura flows,
@@ -144,6 +146,11 @@ export const paintSigil = (k, s, e) => {
   if (layer.aura > 0) {
     const bloom = ease(layer.aura);
     k.aura(e.t, (0.18 + 0.36 * bloom) * z, 0.85 * bloom);
+  }
+  // its body: the light around the frame it was given, faint, behind the rest
+  if (layer.body > 0) {
+    const outline = bodyOutlineFor(s.body).map((q) => ({ x: q.x * z, y: q.y * z }));
+    k.line([...outline, outline[0]], { color: 'signal', alpha: 0.3, width: 1, glow: 0.6, upto: ease(layer.body) });
   }
   // its sky: the ecliptic as the outer ring, the signs marked, its bodies
   // where they stood (0° Aries at nine o'clock, as ITS SKY drew it)

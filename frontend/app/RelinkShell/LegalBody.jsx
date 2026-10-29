@@ -8,9 +8,13 @@ import './LegalApp.css';
 import { formatDateTime } from '../../utils/format.js';
 import { EmptyState } from './empty-state.jsx';
 import { Select } from './Select.jsx';
+import { TriageOverview } from './TriageOverview.jsx';
+import { ageTag } from './triage-view.js';
+import { Fact } from './report-fact.jsx';
 import {
-  MATTER_STATUSES, MATTER_AREAS,
-  severityLoud, statusOwes, statusLabel, areaLabel, countsLine, seatLine, holderNameFor, runLine, reportsOf,
+  MATTER_STATUSES,
+  severityLoud, statusOwes, statusLabel, areaLabel, seatLine, holderNameFor, runLine, reportsOf,
+  whereOfMatter, whereLabelMatter,
 } from './legal-view.js';
 
 export const LegalIcon = () => (
@@ -18,23 +22,6 @@ export const LegalIcon = () => (
     <path d="M8 2 V14 M4.5 14 H11.5 M3 4 H13" />
     <path d="M3 4 L1.5 8.5 H4.5 Z M13 4 L11.5 8.5 H14.5 Z" />
   </svg>
-);
-
-const FilterChips = ({ label, values, current, onPick, labelOf }) => (
-  <span className="sec-filter" role="group" aria-label={label}>
-    <span className="sec-filter-label label-data">{label}</span>
-    {['', ...values].map((v) => (
-      <button
-        key={v || 'all'}
-        type="button"
-        className={`sec-chip label-data${current === v ? ' is-current' : ''}`}
-        onClick={() => onPick(v)}
-        aria-pressed={current === v}
-      >
-        {v === '' ? 'ALL' : labelOf(v)}
-      </button>
-    ))}
-  </span>
 );
 
 // THE SEAT — who holds the Praetor's office; the operator's one act on it.
@@ -85,17 +72,17 @@ const MatterDetail = ({ matter, onClose }) => {
         <button type="button" className="sec-detail-close label-data" onClick={onClose}>CLOSE</button>
       </div>
       <p className="sec-detail-title">{matter.title}</p>
-      {matter.summary ? <p className="sec-detail-summary legal-pre">{matter.summary}</p> : null}
-      {matter.regimes?.length ? <p className="sec-detail-line label-data">LAW TO READ — {matter.regimes.join(' · ')}</p> : null}
-      {matter.affected?.length ? (
-        <ul className="legal-affected">
-          {matter.affected.map((a) => <li key={a} className="label-data">{a}</li>)}
-        </ul>
-      ) : null}
-      <p className="sec-detail-line label-data">
-        FIRST SEEN {formatDateTime(matter.ingestedAt)} · LAST SEEN {formatDateTime(matter.lastSeenAt)}
-        {matter.reviewBy ? ` · REVIEW BY ${matter.reviewBy}` : ''}
-      </p>
+      <dl className="sec-facts">
+        {matter.regimes?.length ? <Fact label="LAW TO READ">{matter.regimes.join(' · ')}</Fact> : null}
+        {matter.affected?.length ? (
+          <Fact label="AFFECTED">
+            <ul className="legal-affected">{matter.affected.map((a) => <li key={a}>{a}</li>)}</ul>
+          </Fact>
+        ) : null}
+        <Fact label="SEEN">{formatDateTime(matter.ingestedAt)} → {formatDateTime(matter.lastSeenAt)}</Fact>
+        {matter.reviewBy ? <Fact label="REVIEW BY">{matter.reviewBy}</Fact> : null}
+      </dl>
+      {matter.summary ? <p className="sec-detail-text legal-pre">{matter.summary}</p> : null}
       <p className="sec-detail-reports label-data">THE PRAETOR&#39;S READINGS</p>
       {reports.length === 0 ? (
         <p className="sec-report-empty label-data">NOT YET READ.</p>
@@ -111,7 +98,7 @@ const MatterDetail = ({ matter, onClose }) => {
               <p className="sec-report-body">{h.assessment}</p>
               {h.citations?.length ? (
                 <ul className="legal-citations">
-                  {h.citations.map((c) => <li key={c} className="label-data">{c}</li>)}
+                  {h.citations.map((c) => <li key={c}>{c}</li>)}
                 </ul>
               ) : null}
             </li>
@@ -126,7 +113,7 @@ export const LegalBody = ({
   posture, watch, lanes, entries, detail, busy, error,
   pick, seatBusy, confirmClear, onPick, onSeat, onAskClear, onClear, onCancelClear,
   onPickMatter, onCloseDetail, onRunWatch,
-  statusFilter, areaFilter, onStatus, onArea,
+  all, now, filters, onFilter,
 }) => {
   const clo = posture?.clo || null;
   return (
@@ -143,10 +130,14 @@ export const LegalBody = ({
       <section className="sec-strip">
         <p className="sec-strip-line label-data">
           {posture?.lastRunAt ? `LAST WATCH ${formatDateTime(posture.lastRunAt)}` : 'THE LEGAL WATCH HAS NEVER RUN ON THIS INSTALL'}
+          {posture?.dueForReview ? ` · DUE FOR REVIEW ${posture.dueForReview}` : ''}
         </p>
-        <p className="sec-strip-line label-data">{countsLine(posture?.counts)}</p>
-        {posture?.dueForReview ? <p className="sec-strip-line label-data">DUE FOR REVIEW {posture.dueForReview}</p> : null}
       </section>
+
+      <TriageOverview
+        all={all ?? []} shown={entries.length} statuses={MATTER_STATUSES} owes={statusOwes} statusLabel={statusLabel}
+        whereOf={whereOfMatter} whereLabel={whereLabelMatter} filters={filters ?? {}} onFilter={onFilter} now={now} noun="MATTERS"
+      />
 
       <SeatSection
         clo={clo} lanes={lanes} pick={pick} busy={seatBusy} confirmClear={confirmClear}
@@ -154,22 +145,21 @@ export const LegalBody = ({
       />
 
       <section className="sec-ledger">
-        <div className="sec-filters">
-          <FilterChips label="STATUS" values={MATTER_STATUSES} current={statusFilter} onPick={onStatus} labelOf={statusLabel} />
-          <FilterChips label="FROM" values={MATTER_AREAS} current={areaFilter} onPick={onArea} labelOf={areaLabel} />
-        </div>
         {entries.length === 0 ? (
           <EmptyState title="NOTHING UNDER THESE FILTERS" />
         ) : (
           <ul className="sec-list">
             {entries.map((m) => (
               <li key={m.id}>
-                <button type="button" className={`sec-row${detail?.id === m.id ? ' is-open' : ''}`} onClick={() => onPickMatter(m)}>
+                <button type="button" className={`sec-row tri-edge-${m.severity}${detail?.id === m.id ? ' is-open' : ''}`} onClick={() => onPickMatter(m)}>
                   <span className={`sec-tag label-data ${severityLoud(m.severity) ? 'is-loud' : ''}`}>{String(m.severity).toUpperCase()}</span>
                   <span className={`sec-tag label-data ${statusOwes(m.status) ? 'is-loud' : ''}`}>{statusLabel(m.status)}</span>
-                  <span className="sec-row-id label-data">{areaLabel(m.area)}</span>
-                  <span className="sec-row-title">{m.title}</span>
+                  <span className="sec-row-what">
+                    <span className="sec-row-title">{m.title}</span>
+                    <span className="sec-row-id label-data">{areaLabel(m.area)}</span>
+                  </span>
                   <span className="sec-row-where label-data">{m.repo || ''}</span>
+                  <span className="sec-row-age label-data" title="days since first seen">{ageTag(m.ingestedAt, now)}</span>
                 </button>
               </li>
             ))}

@@ -1,0 +1,47 @@
+/* A row in plain words (plain-checks.js): what it means and what to do, first and full-size;
+   the measurement and its technical remedy beneath, small and quiet. */
+.pf-plain {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: calc(14 * var(--pu));
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+.pf-todo {
+  margin: calc(8 * var(--pu)) 0 0;
+  font-family: var(--font-voice);
+  font-size: calc(14 * var(--pu));
+  line-height: 1.6;
+  color: var(--color-white);
+}
+.pf-not-yours {
+  margin: calc(6 * var(--pu)) 0 0;
+  font-family: var(--font-voice);
+  font-size: calc(13 * var(--pu));
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+.pf-fix {
+  margin-top: calc(10 * var(--pu));
+  padding: calc(6 * var(--pu)) calc(14 * var(--pu));
+  background: transparent;
+  border: 1px solid var(--signal);
+  color: var(--signal);
+  font-family: var(--font-data);
+  font-size: calc(11 * var(--pu));
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+/* the technical line: kept, never the headline */
+.pf-tech:not(.is-pass) {
+  margin-top: calc(10 * var(--pu));
+  opacity: 0.6;
+}
+.pf-tech:not(.is-pass) .pf-detail-text,
+.pf-tech:not(.is-pass) .pf-requirement {
+  font-family: var(--font-data);
+  font-size: calc(11 * var(--pu));
+  color: var(--color-text-tertiary);
+}
+.preflight-row.fail .pf-tech .pf-detail-text { color: var(--color-text-tertiary); }
+.preflight-row.fail .pf-plain { color: var(--alert); }

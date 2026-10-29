@@ -12,7 +12,7 @@
 //     local noon (day certain, time approximate) and recordedAt keeps the
 //     honest moment of the logging. The word-law is unchanged.
 //
-// REST DAY (Design note, 2026-09-05 — recovery the streak honors: a few days a
+// REST DAY (ruling, 2026-09-05) — recovery the streak honors: a few days a
 // month (≤4, ≥2 training days between) claimed at his word; the day counts,
 // marked honestly as rest. The server owns the law and answers a refused
 // claim in plain words; a second tap confirms, because a misclick should not

@@ -113,9 +113,9 @@ const configSchema = z.object({
   // Since 2026-10-04 that is Ethereum mainnet (Founder: […]).
   ceremonySealNetwork: z.enum(['base-sepolia', 'base', 'ethereum-sepolia', 'ethereum']).default('ethereum'),
   // The one network an in-app HOUSE FOUNDING may target — the wire never
-  // chooses the chain. Unlike the ceremony seal (casual/trial births stay
-  // testnet), a founding IS the official recognition of a house on Neuma,
-  // so it defaults to MAINNET (Design note, 2026-07-16; rehearsal desks opt out
+  // chooses the chain. A house is founded on its operator's computer first
+  // (house-local-founding.js); founding on chain is how it joins the network
+  // (Unavis, 2026-10-26), so this defaults to MAINNET (ruling, 2026-07-16); rehearsal desks opt out
   // with HOUSE_FOUND_NETWORK=base-sepolia. Fail-closed regardless: without
   // BASE_MAINNET_RPC_URL the founding lane stays closed.
   // Ethereum mainnet since 2026-10-04; rehearsals opt down to ethereum-sepolia.

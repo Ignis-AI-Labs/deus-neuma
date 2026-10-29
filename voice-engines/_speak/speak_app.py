@@ -35,6 +35,7 @@ import json
 import os
 import secrets
 import sys
+from pathlib import Path
 import threading
 import time
 import traceback
@@ -47,6 +48,9 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from speak_audio import SR, BoundedLRU, SpeakError, to_pcm16
 from speak_guard import RunawayGuard
 from speak_request import parse_speak, parse_warm
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from browser_guard import guard  # noqa: E402  (audits 2026-10-28/29 M-06)
 
 LOOPBACK_BINDS = frozenset({"127.0.0.1", "localhost", "::1"})
 LOOPBACK_PEERS = frozenset({"127.0.0.1", "::1", "::ffff:127.0.0.1"})
@@ -237,8 +241,14 @@ class _Guard:
         self.rt = rt
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
+        if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
+        # browser_guard.py: a web page never reaches a sidecar, and only the backend holding the key does
+        answer = guard(scope.get("headers") or [], scope.get("path", ""), (scope.get("query_string") or b"").decode("latin-1"))
+        if scope["type"] == "websocket" and answer:
+            return await send({"type": "websocket.close", "code": 1008})
+        if answer:
+            return await JSONResponse(answer[1], status_code=answer[0])(scope, receive, send)
         peer = (scope.get("client") or (None,))[0]
         if peer not in LOOPBACK_PEERS:
             return await JSONResponse({"error": "forbidden", "detail": "this sidecar answers loopback only"},

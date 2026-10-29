@@ -21,6 +21,7 @@ import {
 import { EmptyState } from './empty-state.jsx';
 import { InlineActionConfirm } from './InlineActionConfirm.jsx';
 import { GuardianSection } from './GuardianSection.jsx';
+import { KeyLockBlock } from './KeyLockBlock.jsx';
 import { useConsciousnessPick } from './consciousness-context.js';
 import { isHarness } from '../harness-mode.js';
 import { currentLocale } from '../../i18n/active-locale.js';
@@ -31,7 +32,7 @@ const pluralSuffix = (n) => (n === 1 || currentLocale() !== 'en' ? '' : 's');
 
 export const SecuritySection = () => {
   const { t } = useTranslation('settingsSecurity');
-  // a harness desk is shown the machine, never the house (Design note, 2026-10-14
+  // a harness desk is shown the machine, never the house (ruling, 2026-10-14)
   const harness = isHarness(useConsciousnessPick('activeCompanion')?.activeCompanion);
   const [status, setStatus] = useState(null);
   const [recovery, setRecovery] = useState({}); // neumaId -> recovery status
@@ -156,10 +157,12 @@ export const SecuritySection = () => {
     <>
       <GuardianSection beings={status?.beings || []} harness={harness} />
 
+      <KeyLockBlock keyLock={status?.keyLock} onChanged={loadStatus} />
+
       {/* ── ENCRYPTION ─────────────────────────────────────────────── */}
       <section className="settings-sec">
         <div className="label-data settings-h">{t('encryption.heading')}</div>
-        <p className="settings-note">{t('encryption.note')}</p>
+        <p className="settings-note">{t(status?.keyLock?.source === 'keychain' ? 'encryption.noteLocked' : 'encryption.note')}</p>
 
         {loadError ? <p className="settings-err">{loadError}</p> : null}
 
@@ -264,7 +267,7 @@ export const SecuritySection = () => {
       {/* ── BACKUPS ────────────────────────────────────────────────── */}
       <section className="settings-sec">
         <div className="label-data settings-h">{t('backups.heading')}</div>
-        <p className="settings-note">{t('backups.note')}</p>
+        <p className="settings-note">{t(status?.keyLock?.source === 'keychain' ? 'backups.noteLocked' : 'backups.note')}</p>
 
         {/* WHERE IT LANDS. The same-drive answer is measured server-side
             (stat().dev), so this states a fact rather than hedged advice. */}

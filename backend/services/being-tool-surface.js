@@ -23,6 +23,7 @@ import { noteTurnSandboxSource, ensureTurnSandbox } from './turn-sandbox.js';
 import { runSeatCommand } from './benchmark-exec-bridge.js';
 import { handleGroundGitTool } from './ground-git-consent.js';
 import { focusGroundOf } from './focus-ground.js';
+import { isLiveShell } from './open-folder-autonomy.js';
 import { ensureBeingGround } from './house-workspace.js';
 import { renderCommandResult } from './coding-result.js';
 import { executionPresentation } from './execution-presentation.js';
@@ -47,7 +48,7 @@ export const BEING_CODING_NAMES = Object.freeze(
   new Set(WITNESS_CODING_TOOLS.map(({ name }) => name)));
 
 const TOOL_SEARCH_ID = 'system/tool_search';
-// Four, not eight (Design note, 2026-08-31: a search that activates a crowd bills every
+// Four, not eight (ruling, 2026-08-31): a search that activates a crowd bills every
 // later round of the turn for schemas the work never calls. The long tail can
 // ask for more explicitly, up to the max.
 const TOOL_SEARCH_LIMIT = 4;
@@ -90,8 +91,8 @@ const escapeTerm = (term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * Does this text carry the term as a WORD rather than as a fragment buried in
  * one? Pure.
  *
- * THE BUG THIS CLOSES (Design note, 2026-08-30. The old matcher used plain
- * `includes`, so `fs` matched inside […] and `write` inside […].
+ * THE BUG THIS CLOSES (ruling, 2026-08-30). The old matcher used plain
+ * `includes`, so `fs` matched inside "offset" and `write` inside "rewrite".
  * A query for the filesystem family ranked `social/queue_list` FIRST — it had
  * the longest description in the catalog, and length alone gave it the most
  * chances to contain some short word by accident. `fs/search` was cut. The
@@ -166,8 +167,8 @@ const searchTurnTools = (catalog, rawQuery, rawLimit) => {
   const scored = family
     .map((tool) => ({ tool, score: toolSearchScore(tool, terms) }))
     .filter(({ score }) => score > 0);
-  // HELPER GATE (Design note, 2026-08-31: request/grant machinery never answers an
-  // ACTION phrase. […] activating `filesystem/request_file_access` —
+  // HELPER GATE (ruling, 2026-08-31): request/grant machinery never answers an
+  // ACTION phrase. "read file" activating `filesystem/request_file_access` —
   // an approval-REQUEST, not a reader — was exactly the waste named. An id
   // carrying request/access is excluded unless the query itself says those
   // words. If the gate would empty the pool, the ungated matches stand: a
@@ -210,11 +211,22 @@ const searchAndDisclose = (connection, args) => {
   // THE ANSWER IS THE CONTRACT (tool-hud.js): nothing is activated — the wire
   // never changes — so a search answers with what a call needs: an exact id's
   // full arguments, a family's every tool (and its filed acts), a phrase's best.
-  const intentOf = (t) => ({ name: t.name, fields: t.fieldsForPrompt, description: t.descriptionForPrompt, ...(t.channels?.length ? { channels: t.channels } : {}) });
+  // an intent's answer says how to file it, as a tool's says how to call it — never a name to call (2026-10-17 flight: "run", "update", "post")
+  const intentOf = (t) => ({
+    name: t.name, fields: t.fieldsForPrompt, description: t.descriptionForPrompt, ...(t.channels?.length ? { channels: t.channels } : {}),
+    file: `not a tool: write a JSON file into your intents folder holding {"type": "${t.name}", …its fields}`,
+  });
   const intents = connection?._turnIntents || [];
   const intent = intents.find((type) => type.name.toLowerCase() === query);
   if (intent) return { tool: TOOL_SEARCH_ID, status: 'ok', content: JSON.stringify({ query, intent: intentOf(intent) }), count: 1, intent: intent.name };
-  const family = query.endsWith('/') ? intents.filter((type) => type.name.toLowerCase().startsWith(query)) : [];
+  // a family by its slash, else the intents a term names by a word of their id ("dispatch", "staff") —
+  // the acts a lane files are found by the same words as its tools (2026-10-17 flight: seven searches for one charge)
+  const terms = query.split(/\s+/).filter((term) => term.length >= 3).map((term) => term.replace(/\/$/, ''));
+  // a channel-bound type answers to its channels too ("tiktok" finds social/queue)
+  const intentWords = (type) => [...type.name.toLowerCase().split(/[^a-z0-9]+/), ...(type.channels || [])].filter(Boolean);
+  const family = query.endsWith('/')
+    ? intents.filter((type) => type.name.toLowerCase().startsWith(query))
+    : intents.filter((type) => terms.some((term) => intentWords(type).some((word) => word.startsWith(term) || (word.length >= 4 && term.startsWith(word)))));
   const matches = searchTurnTools(connection?._turnCatalog, query, args.limit);
   const exact = matches.length === 1 && catalogId(matches[0]).toLowerCase() === query;
   const content = JSON.stringify({
@@ -264,7 +276,7 @@ export const beingCodingToolsFor = async (connection) => {
   noteTurnSandboxSource(connection, null);
   const laneId = connection?.companion?.neumaId;
   const wallet = connection?.walletAddress;
-  // THE HOUSE TOOLING LAW (Design note, 2026-09-15: every house member has the same
+  // THE HOUSE TOOLING LAW (ruling, 2026-09-15): every house member has the same
   // tooling — position divides the work so seats never collide, never
   // capability. A seat the operator has not focused a folder for shells into
   // its OWN workspace on the house ground — per-seat, seen by the room, the
@@ -384,6 +396,7 @@ export const handleBeingCodingTool = async (ws, connection, neumaPolicy, toolMod
     const result = await runSeatCommand({
       connection, ...sandbox, command: args?.command, timeoutMs: args?.timeoutMs,
       mode: toolName === 'inspect' ? 'inspect' : 'write',
+      live: isLiveShell({ mode: normalizeToolMode(toolMode), sourceRoot: sandbox.sourceRoot, ground: focusGroundOf(connection) }),
       ...shellNetworkOptions(shellConsent, toolName === 'execute'), onChunk: paint,
     });
 

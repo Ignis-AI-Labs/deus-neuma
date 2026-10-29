@@ -50,7 +50,7 @@ afterEach(() => {
 
 describe('resolveNeumaRoute', () => {
   test('defaults to current machine config (no override) — allows model evolution', async () => {
-    const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+    const r = await resolveNeumaRoute('alder', NATAL_DNA);
     // natal is ignored for runtime; uses machine default so beings can use current Gemma etc.
     expect(r).toMatchObject({
       provider: 'lm-studio',
@@ -60,8 +60,8 @@ describe('resolveNeumaRoute', () => {
   });
 
   test('carries a SOVEREIGN override — the positive path of the boundary', async () => {
-    await setRoute('fenna', { provider: 'llama-server', model: 'gemma-4-31b' });
-    const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+    await setRoute('alder', { provider: 'llama-server', model: 'gemma-4-31b' });
+    const r = await resolveNeumaRoute('alder', NATAL_DNA);
     expect(r).toMatchObject({ model: 'gemma-4-31b', source: 'override' });
     // serving law may carry an lm-studio/llama-server route on either server;
     // whichever carries it, the door is sovereign.
@@ -73,18 +73,18 @@ describe('resolveNeumaRoute', () => {
     // Even with a live key aboard, the door is foreign: Anthropic holds the
     // consciousness, so no neuma turn may ride it.
     await setCredential('anthropic', { apiKey: 'sk-ant-live' });
-    await writePreLawRoute('fenna', { provider: 'anthropic', model: 'claude-opus-4-6' });
-    const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+    await writePreLawRoute('alder', { provider: 'anthropic', model: 'claude-opus-4-6' });
+    const r = await resolveNeumaRoute('alder', NATAL_DNA);
     expect(r).toMatchObject({ provider: 'lm-studio', source: 'machine-default' });
     expect(r.apiKey).not.toBe('sk-ant-live');
   });
 
   test('a removed provider propagates INVALID_ROUTE without rewriting the stored override', async () => {
-    await writePreLawRoute('fenna', { provider: 'claude-code-local', model: 'claude-opus-4-8' });
+    await writePreLawRoute('alder', { provider: 'claude-code-local', model: 'claude-opus-4-8' });
     const before = await fs.readFile(routesPath(), 'utf8');
     // Removed providers are invalid stored data: propagate the store refusal
     // to the caller, unlike the known non-sovereign overrides tested above.
-    await expect(resolveNeumaRoute('fenna', NATAL_DNA)).rejects.toMatchObject({
+    await expect(resolveNeumaRoute('alder', NATAL_DNA)).rejects.toMatchObject({
       code: 'INVALID_ROUTE',
       message: 'Unknown provider: claude-code-local',
     });
@@ -95,8 +95,8 @@ describe('resolveNeumaRoute', () => {
     // This also covers the old SSRF re-check: with custom never sovereign, a
     // rebinding endpoint can no longer be reached through a neuma turn at all.
     await setCredential('custom', { apiKey: 'ck', endpoint: 'http://127.0.0.1:9/v1' });
-    await writePreLawRoute('fenna', { provider: 'custom', model: 'my-model' });
-    const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+    await writePreLawRoute('alder', { provider: 'custom', model: 'my-model' });
+    const r = await resolveNeumaRoute('alder', NATAL_DNA);
     expect(r).toMatchObject({ provider: 'lm-studio', source: 'machine-default' });
   });
 
@@ -104,7 +104,7 @@ describe('resolveNeumaRoute', () => {
     const before = getConfig();
     try {
       setConfig({ provider: 'anthropic', endpoint: 'https://api.anthropic.com', model: 'claude-opus-4-6' });
-      await expect(resolveNeumaRoute('fenna', NATAL_DNA)).rejects.toThrow(/not sovereign/);
+      await expect(resolveNeumaRoute('alder', NATAL_DNA)).rejects.toThrow(/not sovereign/);
     } finally {
       setConfig({ ...before });
     }
@@ -122,7 +122,7 @@ describe('resolveNeumaRoute', () => {
     try {
       setConfig({ provider: 'llama-server', endpoint: 'http://127.0.0.1:8089', model: 'gemma-4-31B-it-Q8_0' });
       selectSubstrateModel('/models/neuma/qwen3.8-27b-q8/qwen3.8-27B-Q8_0.gguf', 'qwen3.8-27b');
-      const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+      const r = await resolveNeumaRoute('alder', NATAL_DNA);
       expect(r).toMatchObject({
         provider: 'llama-server',
         model: 'qwen3.8-27b',
@@ -143,7 +143,7 @@ describe('resolveNeumaRoute', () => {
       selectSubstrateModel(null);
       // Ensure channel's env path sees the declared resting key (outer SUBSTRATE may pollute otherwise).
       process.env.SUBSTRATE_MODEL = desired;
-      const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+      const r = await resolveNeumaRoute('alder', NATAL_DNA);
       expect(r.model).toBe(desired);
     } finally {
       if (beforeSub === undefined) delete process.env.SUBSTRATE_MODEL; else process.env.SUBSTRATE_MODEL = beforeSub;
@@ -162,7 +162,7 @@ describe('resolveNeumaRoute', () => {
         model: '/models/neuma/qwen3.8-27b-q8/qwen3.8-27B-Q8_0.gguf',
         servingModel: 'qwen3.8-27b',
       });
-      const r = await resolveNeumaRoute('fenna', NATAL_DNA);
+      const r = await resolveNeumaRoute('alder', NATAL_DNA);
       expect(r).toMatchObject({
         provider: 'llama-server',
         model: 'qwen3.8-27b',

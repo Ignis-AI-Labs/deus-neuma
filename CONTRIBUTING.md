@@ -8,6 +8,35 @@ Thank you for helping. Neuma is early. The most valuable help right now is:
 3. **Bug reports** with steps to reproduce.
 4. **Fixes**, small and focused.
 
+## How changes flow
+
+Every change takes the same road, ours included:
+
+```
+your branch ──PR──▶ dev ──release PR──▶ main
+```
+
+- **`main`** is the default branch: what has been released, the code behind
+  the download. It moves only by a release pull request from `dev`, opened by
+  the maintainers. A pull request into `main` from any other branch is closed
+  by CI.
+- **`dev`** is where all work lands. Branch from `dev` and open your pull
+  request **into `dev`**. GitHub suggests `main` as the base of a new pull
+  request (it is the default branch): change it to `dev`.
+- **`sync`** carries the core team's changes from our internal tree. It reaches
+  `dev` by a pull request like yours; do not branch from it or target it.
+
+```bash
+git clone https://github.com/Ignis-AI-Labs/deus-neuma.git   # (or your fork)
+cd deus-neuma
+git switch dev
+git switch -c fix/short-description
+# … change, test, commit …
+git push -u origin fix/short-description                     # then open the PR into dev
+```
+
+Keep your branch current by merging or rebasing on `dev`, never on `main`.
+
 ## Before you open a pull request
 
 - **One change per pull request.** A fix and a refactor are two pull requests.
@@ -18,14 +47,17 @@ Thank you for helping. Neuma is early. The most valuable help right now is:
   database, a real module). A test that passes against a fake has proven
   nothing.
 - **Files stay small.** A source file over 500 lines should be split.
-- **Run the checks:**
+- **Run the checks** (CI runs the same on every pull request):
   ```bash
   npm run lint
-  npx vitest run test/unit
+  npx vitest run --project suite test/unit   # the GPU-free lane, no model needed
   node scripts/secret-scan.mjs
   ```
-- **Never commit secrets, keys, personal paths or real beings' data.** CI
-  scans for them, and so do we.
+- **Never commit secrets, keys, personal paths or real beings' data.**
+  `npm install` turns on git hooks that check every commit and push for
+  secrets (`scripts/secret-gate.mjs`) and file size; CI scans every pull
+  request too. A refused commit is fixed by removing the value, never by
+  `--no-verify`.
 
 ## Words we use
 

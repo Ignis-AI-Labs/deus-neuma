@@ -5,13 +5,27 @@
 // baselined monolith that must shrink, never grow.
 //
 // The secret law holds here exactly as in the ledger: no secret material can
-// ride — the ledger never holds any (sweep findings carry file+line only),
-// and the body builder adds nothing beyond the entry itself.
+// ride. Sweep findings carry file+line only, but the summary and assessment
+// are free text, so the whole issue is scanned before gh ever runs.
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { checkOutboundSecrets } from './outbound-secrets.js';
 
 const execFileP = promisify(execFile);
+
+// GitHub refuses an issue body over 65,536 characters; the threat's text gets this much of it, the frame the rest.
+export const ISSUE_TEXT_ROOM = 48_000;
+
+// pure — the threat's text as the issue carries it: whole when it fits, else its head and the door to the whole.
+const issueText = (threat) => {
+  const text = threat.summary || threat.title;
+  if (text.length <= ISSUE_TEXT_ROOM) return text;
+  const whole = threat.source === 'osv' && /^[A-Za-z0-9-]+$/.test(threat.externalId || '')
+    ? `https://osv.dev/vulnerability/${threat.externalId}`
+    : `the security ledger, entry ${threat.id}`;
+  return `${text.slice(0, ISSUE_TEXT_ROOM)}\n\n_(cut at ${ISSUE_TEXT_ROOM.toLocaleString('en-US')} characters to fit a GitHub issue — the whole text: ${whole})_`;
+};
 
 // pure — the Rule 7 escalation body, assembled from the ledger entry alone.
 export const escalationBody = (threat) => [
@@ -33,7 +47,7 @@ export const escalationBody = (threat) => [
   ``,
   `## Summary`,
   ``,
-  threat.summary || threat.title,
+  issueText(threat),
   ``,
   `## Assessment`,
   ``,
@@ -45,12 +59,22 @@ export const escalationBody = (threat) => [
   `- [ ] Fix through the Rule 9 pipeline; assess the ledger entry \`mitigated\` when it lands`,
 ].filter((line) => line !== null).join('\n');
 
+/**
+ * pure — the issue exactly as it is filed. The approval card shows this and the filing uses the
+ * same text, so the operator approves the words that go out under their gh login (re-audit
+ * 2026-10-29, NEW-M5).
+ * @returns {{title: string, body: string}}
+ */
+export const issueOf = (threat) => ({ title: `[WATCHTOWER] ${threat.title}`.slice(0, 240), body: escalationBody(threat) });
+
 // impure — file the issue through the operator's own gh CLI, in the watched
 // repo's checkout so gh's default remote names the project. Labels ride when
 // they exist; a missing label retries bare rather than losing the issue.
-export const fileSecurityIssue = async (threat, repoPath) => {
-  const title = `[WATCHTOWER] ${threat.title}`.slice(0, 240);
-  const body = escalationBody(threat);
+export const fileSecurityIssue = async (threat, repoPath, { title, body } = issueOf(threat)) => {
+  // The assessment and summary are CSO-written text: a turned or careless
+  // CSO must never carry a key out on the operator's own gh login.
+  const secret = checkOutboundSecrets('the issue text', [title, body], 'nothing was filed');
+  if (!secret.ok) return { ok: false, error: secret.reason };
   const labels = ['domain: security', 'audit: watchtower',
     ...(threat.severity !== 'unknown' ? [`severity: ${threat.severity}`] : [])];
   const baseArgs = ['issue', 'create', '--title', title, '--body', body];

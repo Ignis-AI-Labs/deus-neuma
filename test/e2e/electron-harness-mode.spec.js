@@ -43,8 +43,7 @@ const BEING = 'neuma-orrin';
 const HOUSE_MARKS = [/\bOrrin\b/i, /\bQuellmar\b/i, /AMBER-NINE-SEVEN/, /lantern/i];
 // the apps that only mean something with a being (frontend/app/harness-mode.js BEING_APPS, as labelled)
 const BEING_APP_LABELS = ['HOUSE', 'WITNESSES', 'SHEET', 'NITE', 'SOVEREIGNTY', 'INNER LIFE', 'TEAMS', 'WORKFLOW',
-  'AVATAR', 'VESSEL', 'VOICE', 'LEGAL', 'CHIEF OF STAFF', 'X', 'TELEGRAM', 'DISCORD', 'FACEBOOK', 'MASTODON',
-  'BLUESKY', 'LINKEDIN', 'MARKETING', 'LEADS'];
+  'AVATAR', 'VESSEL', 'VOICE', 'LEGAL', 'CHIEF OF STAFF', 'TELEGRAM', 'DISCORD', 'MARKETING'];
 const leaksIn = (text) => HOUSE_MARKS.filter((re) => re.test(text)).map(String);
 
 const log = (m) => console.log(`[harness-mode] ${m}`);
@@ -239,7 +238,7 @@ test.describe('harness mode — strictly a harness, beside a house it never sees
     await expect(page.getByTestId('unsealed-notice')).toHaveCount(0);
   });
 
-  test('the server and model are named once, in the composer bar (Design note, 2026-10-14', async () => {
+  test('the server and model are named once, in the composer bar (ruling, 2026-10-14)', async () => {
     await expect(page.getByRole('button', { name: 'Server' })).toContainText(/llama\.cpp · (localhost|127\.0\.0\.1):8089/, { timeout: 30 * 1000 });
     await expect(page.getByRole('button', { name: 'Model' }).first()).not.toContainText('/proc/self/fd');
     expect(await page.locator('.relink-status').innerText()).not.toMatch(/ROUTE|SUBSTRATE/);

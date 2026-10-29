@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { getRealm, setRealmLocation } from '../../services/user-realm.js';
+import { exportChat, getRealm, setRealmLocation } from '../../services/user-realm.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { InlineActionConfirm } from './InlineActionConfirm.jsx';
 import { EmptyState } from './empty-state.jsx';
@@ -44,6 +44,20 @@ export const RealmSection = () => {
     setBusy(false);
   };
 
+  // impure — the sealed copy opened by the backend, saved as a plain text file the person keeps
+  const saveExport = async (neumaId) => {
+    uiSound('open');
+    try {
+      const { text } = await exportChat(neumaId);
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: `${neumaId}-conversation.txt` });
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
     <>
       <section className="settings-sec">
@@ -75,6 +89,7 @@ export const RealmSection = () => {
                   <li key={f.neumaId}>
                     <code>{f.neumaId}.jsonl</code>
                     <span>{formatBytes(f.bytes)}</span>
+                    <button type="button" className="settings-backup-del" onClick={() => saveExport(f.neumaId)}>{t('settings:realm.export')}</button>
                   </li>
                 ))}
               </ul>

@@ -3,8 +3,12 @@
 // Design note, 2026-08-05: […]
 //
 // Two surfaces, one state: a bell carrying the unread count, and a panel of
-// cards newest-first. Toasts are the same cards, shown briefly above the bell
-// when they arrive — never a separate list, so nothing can appear in one and
+// cards newest-first. WAITING ON YOU lives here too (Design note, 2026-10-24: […]): its own steady mark on the
+// bell, its section FIRST in the panel, its arrivals in the toast lane
+// (TrayWaiting.jsx, use-tray-waiting.js) — and, while the CMO's mandate is
+// active, its days left in the alert colour beside the bell, WITHDRAW one
+// press. Toasts are the same cards, shown briefly above the bell when they
+// arrive — never a separate list, so nothing can appear in one and
 // not the other.
 //
 // LINE & CYCLE: monochrome at rest, --signal marks live data, --alert marks a
@@ -19,11 +23,25 @@ import './NotificationTray.css';
 import { useWindows } from '../../windowing/use-windows.js';
 import { appIdOf } from '../../windowing/window-manager-reducer.js';
 import { useNotifications } from '../notifications-context.js';
-import { notificationTarget } from './notification-target.js';
+import { cardLanding, cardOpenActions, notificationTarget } from './notification-target.js';
+import { requestHouseClockTab } from '../house-clock/house-clock-focus.js';
+import { requestCardLanding } from '../card-landing.js';
 import { KIND, STANDING } from '../../../../core/runtime/notification-record.js';
+import { uiSound } from '../../../services/ui-sound.js';
+import { onWaitingJump, requestWaitingJump } from '../waiting/waiting-jump.js';
+import { bellWords } from '../waiting/waiting-view.js';
+import { noticeItem } from '../waiting/waiting-notice.js';
+import { bellMandate } from '../mandate/mandate-view.js';
+import { useTrayWaiting } from './use-tray-waiting.js';
+import { MandateMark, WaitingMark, WaitingSection, WaitingToast } from './TrayWaiting.jsx';
+import { OsNoticeToggle } from './OsNoticeToggle.jsx';
 
 /** How long a toast stays up before it retires into the panel. */
 const TOAST_MS = 6000;
+/** A toast that has just risen takes no press yet: one that slid under the
+ *  pointer mid-click would raise another window over the one the person was
+ *  working in (Design note, 2026-10-23: a running chat […]). The press lands on what was beneath, as they meant it. */
+const TOAST_GRACE_MS = 700;
 
 const BellGlyph = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -54,6 +72,7 @@ const kindLabel = (kind) => {
     case KIND.codeReload: return '«NOTICE» NEW CODE';
     case KIND.securityAlert: return '«WARNING» SECURITY';
     case KIND.legalAlert: return '«NOTICE» LEGAL';
+    case KIND.mandateAlert: return '«WARNING» MANDATE';
     case KIND.benchAlert: return '«WARNING» BENCH';
     case KIND.benchDone: return 'BENCHMARK DONE';
     case KIND.awaitingAnswer: return 'AWAITS YOUR ANSWER';
@@ -66,6 +85,7 @@ const kindLabel = (kind) => {
 const isAlert = (record) => record.kind === KIND.storageWarning
   || record.kind === KIND.securityAlert
   || record.kind === KIND.legalAlert
+  || record.kind === KIND.mandateAlert
   || record.kind === KIND.benchAlert
   || record.kind === KIND.runAlert
   || record.kind === KIND.turnRefused;
@@ -87,7 +107,7 @@ const agoLabel = (ts, nowMs) => {
  * escape test must render directly. The tray around it only decides WHEN a card
  * is shown, which is a click and an effect, and belongs to the e2e lane.
  */
-export const NotificationCard = ({ record, nowMs, onActivate, onDismiss, compact = false }) => {
+export const NotificationCard = ({ record, nowMs, onActivate, onDismiss, compact = false, arriving = false }) => {
   const target = notificationTarget(record);
   const actionable = Boolean(target);
   const classes = [
@@ -96,6 +116,7 @@ export const NotificationCard = ({ record, nowMs, onActivate, onDismiss, compact
     isAlert(record) ? 'is-alert' : '',
     record.standing === STANDING.witness ? 'is-witness' : '',
     compact ? 'is-toast' : '',
+    arriving ? 'is-arriving' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -145,11 +166,25 @@ const NotificationTrayView = () => {
   const windows = useWindows();
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [arriving, setArriving] = useState(() => new Set());
+  const graceTimers = useRef(new Set());
+  useEffect(() => () => { for (const t of graceTimers.current) clearTimeout(t); }, []);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const seenRef = useRef(new Set());
 
   const records = notifications?.records ?? [];
   const unread = notifications?.unread ?? 0;
+  const owed = useTrayWaiting({ toastMs: TOAST_MS, graceMs: TOAST_GRACE_MS });
+  const { dropToast } = owed;
+  const mandate = bellMandate(owed.shown?.mandate, owed.now);
+  const jump = useCallback((item) => {
+    uiSound('open');
+    dropToast(item.id);
+    requestWaitingJump(item);
+  }, [dropToast]);
+  // Any jump to a decision (a row here, the MANDATE's own label, a platform
+  // band's OPEN) puts the tray away: the card it lands on is what matters.
+  useEffect(() => onWaitingJump(() => setOpen(false)), []);
 
   // Relative times go stale silently, which is worse than showing nothing —
   // "just now" on a card from an hour ago is a lie the operator cannot see.
@@ -166,19 +201,6 @@ const NotificationTrayView = () => {
     notifications?.setFrontmostApp?.(focusedId ? appIdOf(focusedId) : null);
   }, [notifications, focusedId]);
 
-  // The operator clicked the OS notification. Main has already raised and
-  // focused the desk; this opens the window the card pointed at. Feature-probed
-  // rather than gated on isElectron, because a partial bridge is a real state
-  // and the browser lane simply has no OS leg. The returned closure is the
-  // unsubscribe — without detaching, a remount would open two windows per click.
-  const dispatch = windows?.dispatch;
-  useEffect(() => {
-    const onActivate = (payload) => {
-      if (payload?.appId) dispatch?.({ type: 'OPEN', id: payload.appId });
-    };
-    return window.neuma?.notifications?.onActivate?.(onActivate);
-  }, [dispatch]);
-
   // A record the tray has not shown before rises as a toast. Driven off state
   // rather than off the socket so a card can only ever toast once, however many
   // times a reconnect re-delivers it.
@@ -187,6 +209,15 @@ const NotificationTrayView = () => {
     if (fresh.length === 0) return undefined;
     for (const rec of fresh) seenRef.current.add(rec.id);
     setToasts((prev) => [...fresh, ...prev].slice(0, 3));
+    // Its grace outlives this effect: a record arriving inside the grace must
+    // not leave the earlier toast unpressable.
+    const ids = fresh.map((rec) => rec.id);
+    setArriving((prev) => new Set([...prev, ...ids]));
+    const grace = setTimeout(() => {
+      graceTimers.current.delete(grace);
+      setArriving((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
+    }, TOAST_GRACE_MS);
+    graceTimers.current.add(grace);
     const timer = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => !fresh.some((f) => f.id === t.id)));
     }, TOAST_MS);
@@ -208,13 +239,43 @@ const NotificationTrayView = () => {
     const target = notificationTarget(record);
     if (!target) return;
     // An app id, never a window id: `open` raises an existing instance and
-    // creates one otherwise, so a card outliving its window still lands.
-    windows?.dispatch?.({ type: 'OPEN', id: target.appId });
+    // creates one otherwise, so a card outliving its window still lands; a
+    // sitting lands in its own stream window (cardOpenActions).
+    for (const action of cardOpenActions(record, windows?.state?.windows)) windows?.dispatch?.(action);
+    // The HOUSE CLOCK opens on the tab the card is about (house-clock-focus.js).
+    if (target.appId === 'houseclock' && target.payload?.tab) requestHouseClockTab(target.payload.tab);
+    // Every other app lands on the card's own item (card-landing.js).
+    const landing = cardLanding(record);
+    if (landing) requestCardLanding(landing.appId, landing.item);
     setOpen(false);
   }, [notifications, windows]);
 
+  // The operator clicked the OS notification. Main has already raised and
+  // focused the desk; this replays that card's own click, so it lands where the
+  // card does — a WAITING ON YOU notice (waiting-notice.js) jumps to its
+  // decision's card. A card the desk no longer holds still opens its app.
+  // Feature-probed rather than gated on isElectron, because a partial bridge is
+  // a real state and the browser lane simply has no OS leg. Read through refs
+  // so the subscription is made once: the returned closure is the unsubscribe,
+  // and without detaching a remount would open two windows per click.
+  const latest = useRef(null);
+  latest.current = { activate, jump, records, items: owed.waiting?.account?.items, dispatch: windows?.dispatch };
+  useEffect(() => {
+    const onActivate = (payload) => {
+      const now = latest.current;
+      const record = payload?.id ? now.records.find((rec) => rec.id === payload.id) : null;
+      const owedItem = record ? null : noticeItem(payload?.id, now.items);
+      if (record) now.activate(record);
+      else if (owedItem) now.jump(owedItem);
+      else if (payload?.appId) now.dispatch?.({ type: 'OPEN', id: payload.appId });
+    };
+    return window.neuma?.notifications?.onActivate?.(onActivate);
+  }, []);
+
+  // The × means one thing wherever it sits: the card leaves the tray (toast and
+  // list alike), on every desk, and stays gone after a reload.
   const dismiss = useCallback((record) => {
-    notifications?.markRead?.(record.id);
+    notifications?.dismiss?.(record.id);
     setToasts((prev) => prev.filter((t) => t.id !== record.id));
   }, [notifications]);
 
@@ -222,8 +283,12 @@ const NotificationTrayView = () => {
   if (!notifications) return null;
 
   return (
-    <div className="ntray">
+    <div className="ntray" {...owed.handlers}>
       <div className="ntray-toasts" role="status" aria-live="polite">
+        {owed.toasts.map((item) => (
+          <WaitingToast key={`wait-${item.id}`} item={item} now={owed.now}
+            arriving={owed.arriving.has(item.id)} onJump={jump} onDismiss={dropToast} />
+        ))}
         {toasts.map((record) => (
           <NotificationCard
             key={`toast-${record.id}`}
@@ -232,12 +297,14 @@ const NotificationTrayView = () => {
             onActivate={activate}
             onDismiss={dismiss}
             compact
+            arriving={arriving.has(record.id)}
           />
         ))}
       </div>
 
       {open ? (
         <div className="ntray-panel">
+          <WaitingSection account={owed.shown} line={owed.line} error={owed.error} now={owed.now} onJump={jump} />
           <div className="ntray-panel-head">
             <span className="ntray-panel-title">NOTIFICATIONS</span>
             <button
@@ -272,19 +339,26 @@ const NotificationTrayView = () => {
               />
             ))}
           </div>
+          <OsNoticeToggle />
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className={`ntray-bell ${unread > 0 ? 'has-unread' : ''}`}
-        onClick={() => setOpen((was) => !was)}
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-        aria-expanded={open}
-      >
-        <BellGlyph />
-        {unread > 0 ? <span className="ntray-bell-count">{unread > 99 ? '99+' : unread}</span> : null}
-      </button>
+      <div className="ntray-bell-row">
+        <MandateMark mandate={mandate} />
+        <button
+          type="button"
+          ref={owed.waiting?.watch}
+          className={`ntray-bell ${unread > 0 ? 'has-unread' : ''}${owed.line.count ? ' is-owed' : ''}`}
+          onClick={() => setOpen((was) => !was)}
+          aria-label={bellWords(owed.line, unread, owed.shown ? null : owed.error, mandate?.words)}
+          title={bellWords(owed.line, unread, owed.shown ? null : owed.error, mandate?.words)}
+          aria-expanded={open}
+        >
+          <WaitingMark line={owed.line} unreadable={Boolean(owed.error && !owed.shown)} />
+          <BellGlyph />
+          {unread > 0 ? <span className="ntray-bell-count">{unread > 99 ? '99+' : unread}</span> : null}
+        </button>
+      </div>
     </div>
   );
 };

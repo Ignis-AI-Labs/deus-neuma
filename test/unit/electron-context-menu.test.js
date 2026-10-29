@@ -3,7 +3,7 @@
  * Chromium delivers on the 'context-menu' event.
  */
 import { describe, expect, it } from 'vitest';
-import { buildContextMenuTemplate, MAX_SUGGESTIONS } from '../../electron/context-menu.cjs';
+import { buildContextMenuTemplate, defineWordOf, nativeItemsOf, MAX_SUGGESTIONS } from '../../electron/context-menu.cjs';
 
 // The exact scenario that motivated this: right-clicking "asymetry" in the
 // compose field.
@@ -45,10 +45,39 @@ describe('buildContextMenuTemplate', () => {
 
   it('read-only selection (a neuma message) gets copy; empty right-click gets nothing', () => {
     expect(buildContextMenuTemplate({ isEditable: false, selectionText: 'the veil' }))
+      .toEqual([{ kind: 'role', role: 'copy' }, { kind: 'define', word: 'the veil' }]);
+    expect(buildContextMenuTemplate({ isEditable: false, selectionText: 'a whole sentence of many words' }))
       .toEqual([{ kind: 'role', role: 'copy' }]);
     expect(buildContextMenuTemplate({ isEditable: false, selectionText: '  ' })).toEqual([]);
     expect(buildContextMenuTemplate({})).toEqual([]);
     expect(buildContextMenuTemplate()).toEqual([]);
+  });
+
+  it('a selected word can be defined — in a message or a field, never a misspelling', () => {
+    expect(buildContextMenuTemplate({ isEditable: false, selectionText: 'pedantic' }))
+      .toEqual([{ kind: 'role', role: 'copy' }, { kind: 'define', word: 'pedantic' }]);
+    const field = buildContextMenuTemplate({ isEditable: true, selectionText: 'pedantic' });
+    expect(field.slice(-2)).toEqual([{ kind: 'separator' }, { kind: 'define', word: 'pedantic' }]);
+    expect(buildContextMenuTemplate(MISSPELLING).some((i) => i.kind === 'define')).toBe(false);
+  });
+
+  it('the word to define lets go of quotes and punctuation, keeps accents, refuses numbers and long runs', () => {
+    expect(defineWordOf(' “pedantic,” ')).toBe('pedantic');
+    expect(defineWordOf('a priori.')).toBe('a priori');
+    expect(defineWordOf('don\u2019t')).toBe("don't");
+    expect(defineWordOf('self-aware')).toBe('self-aware');
+    expect(defineWordOf('naïve')).toBe('naïve');
+    expect(defineWordOf('42')).toBeNull();
+    expect(defineWordOf('one two three four')).toBeNull();
+    expect(defineWordOf('x'.repeat(41))).toBeNull();
+    expect(defineWordOf('')).toBeNull();
+  });
+
+  it('the native fallback carries no DEFINE (it needs the in-page card) and no dangling separator', () => {
+    const native = nativeItemsOf(buildContextMenuTemplate({ isEditable: true, selectionText: 'pedantic' }));
+    expect(native.map((i) => i.role)).toEqual(['cut', 'copy', 'paste', 'selectAll']);
+    expect(nativeItemsOf(buildContextMenuTemplate({ isEditable: false, selectionText: 'pedantic' })))
+      .toEqual([{ kind: 'role', role: 'copy' }]);
   });
 
   it('never ends on a dangling separator', () => {

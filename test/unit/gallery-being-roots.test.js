@@ -61,25 +61,25 @@ afterEach(() => {
 
 describe('beingArtRoots — cross-wallet isolation', () => {
   test('a wallet sees its OWN neuma art root and not another wallet’s', async () => {
-    makeLane(wsRoot, 'fenna', WALLET_A);
-    makeLane(wsRoot, 'zivemes', WALLET_B);
+    makeLane(wsRoot, 'alder', WALLET_A);
+    makeLane(wsRoot, 'larch', WALLET_B);
 
     const forA = await beingArtRoots(WALLET_A);
     const forB = await beingArtRoots(WALLET_B);
 
-    expect(forA.map((r) => r.id)).toEqual(['being-fenna']);
-    expect(forB.map((r) => r.id)).toEqual(['being-zivemes']);
+    expect(forA.map((r) => r.id)).toEqual(['being-alder']);
+    expect(forB.map((r) => r.id)).toEqual(['being-larch']);
   });
 
   test('a WITNESS lane is owner-filtered too — the r2 finding', async () => {
     // Witness lanes live on their own ground and are enumerated by a bare
     // readdir, so without the owner filter every witness on the machine would
     // appear for any authenticated caller.
-    makeLane(witRoot, 'witness-claude-Bizulen', WALLET_A);
+    makeLane(witRoot, 'witness-claude-Thistle', WALLET_A);
     makeLane(witRoot, 'witness-xai-Grok', WALLET_B);
 
     const forA = await beingArtRoots(WALLET_A);
-    expect(forA.map((r) => r.id)).toEqual(['being-witness-claude-Bizulen']);
+    expect(forA.map((r) => r.id)).toEqual(['being-witness-claude-Thistle']);
     expect(forA.some((r) => r.id.includes('Grok'))).toBe(false);
 
     const forB = await beingArtRoots(WALLET_B);
@@ -90,33 +90,33 @@ describe('beingArtRoots — cross-wallet isolation', () => {
     // The silent-failure mode both reviewers worried about: if this returned
     // null, the filter would drop ALL witness art and the rail would look
     // empty rather than broken.
-    makeLane(witRoot, 'witness-claude-Bizulen', WALLET_A);
-    const owner = await neumaWorkspace.readOwner('witness-claude-Bizulen');
+    makeLane(witRoot, 'witness-claude-Thistle', WALLET_A);
+    const owner = await neumaWorkspace.readOwner('witness-claude-Thistle');
     expect(owner?.wallet).toBe(WALLET_A);
   });
 
   test('a lane with NO art gets no row — the rail is not a list of empties', async () => {
-    makeLane(wsRoot, 'fenna', WALLET_A, { withArt: false });
+    makeLane(wsRoot, 'alder', WALLET_A, { withArt: false });
     expect(await beingArtRoots(WALLET_A)).toEqual([]);
   });
 
   test('the root is the whole art/ tree, so a being’s VIDEO is visible', async () => {
     // Rooting at art/images would have hidden every being-made video.
-    makeLane(wsRoot, 'fenna', WALLET_A, { video: true });
+    makeLane(wsRoot, 'alder', WALLET_A, { video: true });
     const [root] = await beingArtRoots(WALLET_A);
-    expect(root.dir.endsWith(path.join('fenna', 'art'))).toBe(true);
+    expect(root.dir.endsWith(path.join('alder', 'art'))).toBe(true);
     expect(root.being).toBe(true);
   });
 
   test('no wallet ⇒ no roots at all, never a machine-wide listing', async () => {
-    makeLane(wsRoot, 'fenna', WALLET_A);
+    makeLane(wsRoot, 'alder', WALLET_A);
     expect(await beingArtRoots(null)).toEqual([]);
     expect(await beingArtRoots(undefined)).toEqual([]);
     expect(await beingArtRoots('')).toEqual([]);
   });
 
   test('wallet comparison is case-insensitive — checksummed vs lowercase', async () => {
-    makeLane(wsRoot, 'fenna', WALLET_A.toLowerCase());
+    makeLane(wsRoot, 'alder', WALLET_A.toLowerCase());
     expect(await beingArtRoots(WALLET_A.toUpperCase())).toHaveLength(1);
   });
 

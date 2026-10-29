@@ -16,6 +16,7 @@
  * witness opens or removes a folder. IO is isolated and marked.
  */
 import fs from 'fs/promises';
+import { AsyncLocalStorage } from 'async_hooks';
 import { assertRenameName } from './rename-name.js';
 import { realpathSync, statSync } from 'fs';
 import path from 'path';
@@ -27,6 +28,19 @@ export const getRoots = () => [...roots];
 export const setRoots = (next) => {
   roots = (Array.isArray(next) ? next : []).map((r) => path.resolve(r));
 };
+
+// The opened folders are the machine's, its owner's list. A guest house works
+// in its own folders instead (explorer-ground.js): for the length of one of
+// its requests, containment is judged against those and nothing else.
+const ownRoots = new AsyncLocalStorage();
+
+/**
+ * Run `task` with `folders` as the only opened roots — one guest request's
+ * reach. impure (scopes module state for the task's async life).
+ * @param {string[]} folders - absolute
+ * @param {() => unknown} task
+ */
+export const withOwnRoots = (folders, task) => ownRoots.run(folders.map((r) => path.resolve(r)), task);
 
 
 
@@ -45,7 +59,7 @@ export const containWithinRoots = (target) => {
     throw new Error('Path must be absolute');
   }
   const resolved = path.resolve(target);
-  const bases = roots.map((r) => path.resolve(r));
+  const bases = (ownRoots.getStore() ?? roots).map((r) => path.resolve(r));
   // Lexical containment first (catches `..` and partial-name siblings).
   if (!bases.some((b) => within(resolved, b))) {
     throw new Error('Path outside allowed roots');
@@ -220,7 +234,7 @@ export const writeFile = async (filePath, content, expectedMtimeMs) => {
 };
 
 // ---------------------------------------------------------------------------
-// THE TWO-WAY BRIDGE (Design note, 2026-07-28: drag files from the OS file manager
+// THE TWO-WAY BRIDGE (ruling, 2026-07-28): drag files from the OS file manager
 // into the Explorer, and back out. Same containment law as everything above
 // — the dropped bytes land only inside an open root, and only root-contained
 // bytes leave.

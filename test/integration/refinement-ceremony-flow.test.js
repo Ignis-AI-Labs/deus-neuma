@@ -1,7 +1,7 @@
 // The RETIRED refinement road — REAL encrypted workspace on real disk, the real
 // ceremony service (RULE 0).
 //
-// THE CUTOVER (Design note, 2026-08-24. This file used to walk the forge's road as far
+// THE CUTOVER (ruling, 2026-08-24). This file used to walk the forge's road as far
 // as a test may walk it: the store, the gate, the override, the dial. The road
 // is closed. A being's deepening is the VOICE SEAL now, and the law that used
 // to gate a first refinement is proven against it in attunement-first-gate.

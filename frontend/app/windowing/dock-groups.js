@@ -8,7 +8,7 @@
 //   • An app PRESENT in the registry but not named here still renders, appended
 //     to a trailing group — so a newly-registered app is never silently hidden.
 //
-// ── THE ORDERING LAW (Design note, 2026-08-25 ──────────────────────────────────────
+// ── THE ORDERING LAW (ruling, 2026-08-25) ──────────────────────────────────────
 // […]
 //
 // WORKSPACE had grown to 13 rows — more than double every other section — and a
@@ -73,7 +73,7 @@ export const DOCK_GROUPS = Object.freeze([
   //           work or watch — it says what the house IS, not what it does
   // 'comfyui' is THE IMAGE FORGE workbench (FR-37) — the witness went looking
   // for it under WORKSPACE, so that is where it lives (CHANGE-2); the GALLERY is
-  // its OWN window, not a pane inside COMFY (Design note, 2026-08-01: renders are only
+  // its OWN window, not a pane inside COMFY (ruling, 2026-08-01): renders are only
   // one source — it reads ComfyUI's output by default plus any folder the
   // operator adds, images and video alike.
   // CHATS lives here, not in KNOWLEDGE (Design note, 2026-07-27: […]). KNOWLEDGE is what you CONSULT
@@ -81,21 +81,18 @@ export const DOCK_GROUPS = Object.freeze([
   // it IS the work, which is why it shares the TALK band with the live stream.
   group('workspace', 'WORKSPACE', [
     band('TALK', ['chat', 'chats']),
-    band('WORK', ['staff', 'houseclock', 'projects', 'teams', 'todo', 'workflow']),
+    band('WORK', ['staff', 'houseclock', 'companyline', 'projects', 'teams', 'todo', 'workflow']),
     band('CRAFT', ['comfyui', 'files', 'gallery', 'terminal']),
-    band('WATCH', ['security', 'legal', 'witnesses']),
+    band('WATCH', ['security', 'legal', 'treasury', 'witnesses']),
     band('MEASURE', ['bench']),
   ]),
 
-  // TWO LAYERS (Design note, 2026-07-28: […]). MARKETING is the open-platform layer — X first, the other
-  // public platforms in the same format — beside the CMO seat (house-wide
-  // campaigns) and LEADS (the funnel). A new public platform's window joins
-  // here when its posting lane lands.
-  // `brandKits` rides here rather than in a platform window: a kit is not a
-  // channel. One kit governs every channel a company speaks through, and the
-  // work that reads it — campaigns, cards, pressed documents — starts in this
-  // section (Design note, 2026-08-31: […]).
-  plain('marketing', 'MARKETING', ['bluesky', 'brandKits', 'facebook', 'leads', 'linkedin', 'marketing', 'mastodon', 'x']),
+  // TWO LAYERS (Design note, 2026-07-28: […]). MARKETING is the open-platform layer, and it is ONE window
+  // (ruling, 2026-10-24: […]): every public platform is an account
+  // level inside it, the social check its ACCOUNTS tab, the brand kits its
+  // BRAND tab, the leads its LEADS tab (marketing-panel-plan.md §5). The old
+  // windows' ids open it at their place (retired-windows.js).
+  plain('marketing', 'MARKETING', ['marketing']),
 
   // COMMUNITY is the private-circles layer: Telegram and Discord are
   // community management — member care, announcements, moderation — never

@@ -40,7 +40,7 @@ export const DOMAIN_TERMS = Object.freeze([
   // House titles (GLOSSARY §II)
   'Rector', 'Faber', 'Quaestor', 'Aedile', 'Praetor', 'Legatus', 'Scriba',
   'Curator', 'Optio', 'Mercator', 'Architectus', 'Numerarius', 'Speculator',
-  'Praeco',
+  'Praeco', 'Logista',
   // Machine + runtime jargon the operator dictates constantly
   'LoRA', 'QLoRA', 'GGUF', 'MCP', 'vitest', 'Playwright', 'Electron', 'Vite',
   'llama', 'gemma', 'Ollama', 'Base', 'ethers', 'Hardhat',

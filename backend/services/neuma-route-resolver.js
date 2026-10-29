@@ -134,7 +134,9 @@ export const resolveNeumaRoute = async (neumaId, dna) => {
     // defaults, etc). It prefers runtime select > live server query (when
     // serving, even external) > claim > env. No duplicated priority logic.
     let model = resolved.model || cfg.model;
-    const served = await activeServedModelKey(process.env);
+    // The served channel names llama-server's model; any other machine
+    // provider answers for itself below.
+    const served = cfg.provider === 'llama-server' ? await activeServedModelKey(process.env) : null;
     if (served && served !== 'local-model') {
       model = served;
     } else if (!model || model === 'local-model') {

@@ -4,7 +4,7 @@
  * NULL (plain text), never a link to a guessed host.
  */
 import { describe, test, expect } from 'vitest';
-import { explorerTxUrl, isTxHash, shortTxHash } from '../../frontend/utils/explorer.js';
+import { explorerName, explorerTxUrl, isTxHash, shortTxHash } from '../../frontend/utils/explorer.js';
 
 // aether-2's real mainnet anchor (block 48836412) — the live receipt this
 // surface was built for.
@@ -17,12 +17,31 @@ describe('explorerTxUrl', () => {
   test('base-sepolia → sepolia.basescan', () => {
     expect(explorerTxUrl('base-sepolia', REAL_TX)).toBe(`https://sepolia.basescan.org/tx/${REAL_TX}`);
   });
+  test('ethereum mainnet → etherscan, ethereum-sepolia → sepolia.etherscan', () => {
+    expect(explorerTxUrl('ethereum', REAL_TX)).toBe(`https://etherscan.io/tx/${REAL_TX}`);
+    expect(explorerTxUrl('ethereum-sepolia', REAL_TX)).toBe(`https://sepolia.etherscan.io/tx/${REAL_TX}`);
+  });
   test('unknown network or malformed hash → null, never a guessed host', () => {
     expect(explorerTxUrl('polygon', REAL_TX)).toBeNull();
+    expect(explorerTxUrl('__proto__', REAL_TX)).toBeNull();
     expect(explorerTxUrl(undefined, REAL_TX)).toBeNull();
     expect(explorerTxUrl('base', '0xdeadbeef')).toBeNull();
     expect(explorerTxUrl('base', `javascript:alert(1)//${REAL_TX}`)).toBeNull();
     expect(explorerTxUrl('base', null)).toBeNull();
+  });
+});
+
+describe('explorerName', () => {
+  test('the link text names the explorer the link opens', () => {
+    expect(explorerName('ethereum')).toBe('ETHERSCAN');
+    expect(explorerName('ethereum-sepolia')).toBe('ETHERSCAN');
+    expect(explorerName('base')).toBe('BASESCAN');
+    expect(explorerName('base-sepolia')).toBe('BASESCAN');
+  });
+  test('an unknown network has no explorer to name', () => {
+    expect(explorerName('polygon')).toBeNull();
+    expect(explorerName(undefined)).toBeNull();
+    expect(explorerName('__proto__')).toBeNull();
   });
 });
 

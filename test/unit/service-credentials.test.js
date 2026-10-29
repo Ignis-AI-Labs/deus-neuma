@@ -39,7 +39,7 @@ describe('the tavily service entry', () => {
     const tavily = getService('tavily');
     expect(tavily).toEqual({
       id: 'tavily', name: 'Tavily', kind: 'service', service: 'web-search',
-      endpoint: 'https://api.tavily.com', keyEnv: null, requiresKey: true,
+      endpoint: 'https://api.tavily.com', keyEnv: null, requiresKey: true, group: 'Benchmarks', format: 'key',
     });
     expect(Object.isFrozen(tavily)).toBe(true);
     expect(getCredentialEntry('tavily')).toBe(tavily);

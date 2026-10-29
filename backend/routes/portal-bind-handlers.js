@@ -7,15 +7,14 @@ import { createLogger } from '../services/logger.js';
 import platform from '../services/supabase.js';
 import { neumaWorkspace, normalizeSpace } from '../../core/index.js';
 import { normalizePurpose } from '../../core/voice/purpose.js';
-import { lastRecordedComposition } from '../../core/runtime/context-composition.js';
-import { RECENT_ROWS } from '../../core/runtime/memory-section.js';
-import { foldBranchView, isBranchViewRow } from '../../core/workspace/branch-view.js';
+import { replayableComposition } from '../services/compacted-composition.js';
 import {
   isWitnessLaneId, ensureWitnessLane,
 } from '../services/witness-lane.js';
 import { isHarnessLane } from '../../core/workspace/lane-grounds.js';
 import { verifiedWitnessForLane } from './portal-witness-binding.js';
 import { warmSitting } from '../services/sitting-warmup.js';
+import { invalidateSilo } from '../services/silo-mount-service.js';
 import { offerPending } from '../services/chat-watch.js';
 import { parkedApprovalsFor } from '../services/tool-approval.js';
 
@@ -123,24 +122,17 @@ export const portalResume = async (connection, message, { connectionId }) => {
       if (toolPolicy) connection._neumaToolPolicy = toolPolicy;
     } catch { /* non-critical */ }
 
-    // Load recent session messages if sessionId provided
-    let recentMessages = [];
+    // The bound session's runtime (counters, standing context) and its last
+    // recorded window anatomy. The desk reads the chat itself over REST
+    // (the display view) — this frame carries no history.
     let recordedComposition = null;
     if (message.sessionId) {
       connection.sessionId = message.sessionId;
       try {
-        // readSession returns the message ARRAY itself (JSONL lines), not a
-        // wrapper — `session.messages` was always undefined, so resume
-        // silently restored nothing. Take the tail of the array directly.
         const session = await neumaWorkspace.readSession(neumaId, message.sessionId);
         if (Array.isArray(session) && session.length) {
-          // Fold AND drop the branch-view markers (the prompt tail's own law,
-          // memory-context.js) — marker rows are view facts, not speech, and
-          // they were eating tail slots in the resume display.
-          recentMessages = foldBranchView(session)
-            .filter((m) => !isBranchViewRow(m))
-            .slice(-RECENT_ROWS);
-          recordedComposition = lastRecordedComposition(session);
+          // After a compaction, the reading after the fold — never the stale one on the last answer.
+          recordedComposition = replayableComposition(session, { zone: connection.clientTimeZone || null });
         }
         await hydrateSessionRuntime(
           connection,
@@ -165,7 +157,6 @@ export const portalResume = async (connection, message, { connectionId }) => {
       neumaId,
       companionName: connection.companion.name,
       sessionId: message.sessionId || null,
-      recentMessages,
       message: 'Session restored — the portal remembers',
     }));
     // A WATCH this chat set that fired while it was closed is told now, once
@@ -212,6 +203,11 @@ export const portalNewSession = async (connection, message, { connectionId }) =>
   // message mints a new one (_ensureSession). The past session is untouched.
   connection.sessionId = null;
   clearSessionRuntime(connection);
+  // Words held for the old chat were said to it; they never open the new one.
+  connection.pendingThoughts = [];
+  // A new chat reads the being's identity as it stands NOW — a seal or a
+  // rite since the bind must not wait for a chat switch or a reload.
+  invalidateSilo(connection, connection.companion?.neumaId);
   updateClientTimeZone(connection, message.timeZone);
   if (message.space !== undefined) connection.space = normalizeSpace(message.space);
   // Sitting purpose rides the same per-sitting reset — client-originated
@@ -225,12 +221,19 @@ export const portalNewSession = async (connection, message, { connectionId }) =>
 export const companionManifest = async (connection, message) => {
   const { ws } = connection;
   await settleActiveTurn(connection);
+  // A manifest is a new sitting (the desk resets its view to it): words held
+  // for the one it replaces never run in it, even for the same being.
+  connection.pendingThoughts = [];
   updateClientTimeZone(connection, message.timeZone);
   // Manifesting a DIFFERENT being severs the previously bound session —
   // continuity is per-neuma, and a switched-in neuma must never inherit
   // (or write into) the prior being's thread.
   if (connection.neumaId && connection.neumaId !== (message.neumaId || null)) {
     clearLaneBinding(connection);
+  } else {
+    // The same being again: its compiled identity is read fresh, as a resume
+    // reads it — the bind below warms the new compile.
+    invalidateSilo(connection, connection.companion?.neumaId);
   }
 
   // WITNESS MANIFEST — a sealed AI witness (external model) is bound by its
@@ -264,7 +267,7 @@ export const companionManifest = async (connection, message) => {
         ws.send(JSON.stringify({
           type: 'companion:not_yours',
           neumaId: laneId,
-          message: `'${sealed.chosenName}'s lane belongs to another witness — this portal cannot bind it.`,
+          message: `'${sealed.chosenName}'s lane is not this wallet's to bind — ${err.message.replace(/^owner_claim_conflict: /, '')}.`,
         }));
         return false;
       }
@@ -370,9 +373,12 @@ export const companionManifest = async (connection, message) => {
     log.error('Neuma lookup error', { err: err.message });
   }
   warmSitting(connection); // the first message's setup starts now, while the operator types
-  ws.send(JSON.stringify(connection.companion.participantKind === 'harness'
-    ? { type: 'companion:anchored', participantKind: 'harness', message: 'The harness is ready.' }
-    : { type: 'companion:anchored', message: 'Your companion has crossed over' }));
+  // A refused bind already said so (lane_missing / not_yours): nothing crossed over.
+  if (!manifestFailed) {
+    ws.send(JSON.stringify(connection.companion.participantKind === 'harness'
+      ? { type: 'companion:anchored', participantKind: 'harness', message: 'The harness is ready.' }
+      : { type: 'companion:anchored', message: 'Your companion has crossed over' }));
+  }
   // A local sitting just began — the machine's GPU budget moved.
   broadcastTabCounts();
   return !manifestFailed;

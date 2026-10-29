@@ -1,6 +1,9 @@
 /* global window */
-// The pre-auth entry gate — the first-run capacity probe — driven from a REAL
-// Chromium page against the REAL preflight router on a real HTTP socket.
+// The first-run door — its capacity probe and its model bar — driven from a REAL
+// Chromium page against the REAL preflight router on a real HTTP socket. The door
+// opens after the gateway's sign-in (app-state.js phaseAfterGateway), so the page
+// holds a real session token: /preflight and /mind answer only a signed-in caller
+// (audit 2026-10-28 M-03); /setup stays open.
 // Nothing is mocked: the verdicts are the backend's own, the refusals are its
 // own status codes, and a dropped socket is a real dropped socket. (The
 // licence gate it once stood beside was removed 2026-10-03: a download opens
@@ -14,6 +17,7 @@ import os from 'node:os';
 import { build } from 'vite';
 import { chromium, expect } from '@playwright/test';
 import { test } from 'vitest';
+import { fullAuth } from '../helpers/audit-auth.js';
 
 // The real preflight route's dynamic port sweep must stay pinned to a dead
 // port — unpinned it GETs /api/tags and /v1/models on EVERY loopback listener
@@ -24,7 +28,7 @@ process.env.NEUMA_DISCOVERY_PORTS = '1';
 
 const { default: preflightRouter } = await import('../../backend/routes/preflight-routes.js');
 
-test('the first-run probe keeps its pre-auth contract through the real backend', async () => {
+test('the first-run door reads the real backend for a signed-in caller: capacity, mind and flight agree', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'entry-gates-http-'));
   const saved = ['NEUMA_DATA_ROOT']
     .map((key) => [key, process.env[key]]);
@@ -38,10 +42,14 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { FirstRunChoice } from ${JSON.stringify(path.resolve('frontend/app/FirstRunChoice/FirstRunChoice.jsx'))};
+      import { PreflightCheck } from ${JSON.stringify(path.resolve('frontend/components/BirthCeremony/PreflightCheck.js'))};
       window.expired = 0;
+      window.chosen = null;
       window.addEventListener('neuma:auth_expired', () => window.expired++);
       const root = createRoot(document.getElementById('root'));
-      window.showDoor = () => root.render(React.createElement(FirstRunChoice, { onChoose: () => {} }));
+      window.showDoor = () => root.render(React.createElement(FirstRunChoice, { onChoose: (p) => { window.chosen = p; } }));
+      // the flight check torn down while its run still awaits the machine (a step back to the door)
+      window.tearDownMidRun = () => { const check = new PreflightCheck(() => {}, () => {}); check.show(); check.hide(); };
       window.hideDoor = () => root.render(null);
       window.ready = true;
     `;
@@ -69,33 +77,65 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     browser = await chromium.launch({ args: ['--disable-gpu'] });
+    const auth = await fullAuth();
     const page = await browser.newPage();
+    // signed in at the gateway, as the real app is before the door opens
+    await page.addInitScript((token) => sessionStorage.setItem('authToken', token), auth.token);
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => window.ready);
 
-    // The first-run probe: the REAL setup status becomes a rendered verdict.
+    // The first-run probe: the REAL setup status becomes a rendered verdict, behind the model bar's details.
     await page.evaluate(() => window.showDoor());
+    const details = page.getByRole('button', { name: 'details' });
+    await details.click();
     const capacity = page.locator('.firstrun-capacity');
     await expect(capacity).toBeVisible({ timeout: 20_000 });
     expect(await capacity.getAttribute('class')).toMatch(/is-(ok|cpu|insufficient|unknown)/);
+    // ONE TRUTH: the door's "ready" IS the flight check's substrate row, asked of the same backend.
+    const base = `http://127.0.0.1:${server.address().port}/api/v1/preflight`;
+    expect((await page.request.get(`${base}/mind`)).status(), 'no token, no mind check').toBe(401);
+    const signed = { headers: { Authorization: `Bearer ${auth.token}` } };
+    const mind = await (await page.request.get(`${base}/mind`, signed)).json();
+    const flight = await (await page.request.get(`${base}/`, signed)).json();
+    expect(mind.ready).toBe(flight.checks.find((c) => c.id === 'substrate').status === 'pass');
+    // No model answers here (the sweep is pinned to a dead port): the model bar says so, first,
+    expect(mind.ready).toBe(false);
+    await expect(page.getByTestId('door-bar')).toContainText('No model is running on this computer', { timeout: 20_000 });
+    // and SUMMON does not enter the ceremony: it is held, and the bar says it starts by itself.
+    await page.locator('[data-door="neuma"] .firstrun-path').click();
+    await expect(page.getByText('The summoning starts by itself once the model runs.')).toBeVisible();
+    await expect(page.getByTestId('door-bar')).toHaveClass(/is-holding/);
+    expect(await page.evaluate(() => window.chosen)).toBeNull();
+    // the doors that need no local model still open at once
+    await page.locator('[data-door="witness"] .firstrun-path').click();
+    expect(await page.evaluate(() => window.chosen)).toBe('witness');
     await page.evaluate(() => window.hideDoor());
+
+    // A flight check torn down mid-run stops after its awaits — no step touches the gone panel.
+    await page.evaluate(() => window.tearDownMidRun());
+    await page.waitForResponse((r) => r.url().endsWith('/api/v1/preflight') || r.url().endsWith('/api/v1/preflight/'), { timeout: 60_000 });
+    await page.waitForTimeout(2500);
+    expect(errors).toEqual([]);
 
     // Any probe failure — an HTTP refusal or a dropped connection — resolves to
     // capacityVerdict(null): CAPACITY UNREAD, both doors open, never a throw.
     preflightFailure = '500';
     await page.evaluate(() => window.showDoor());
+    await details.click();
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
-    await expect(page.getByText('Both doors remain open')).toBeVisible();
+    await expect(page.getByText('Every door stays open')).toBeVisible();
+    // A machine that could not be read still says no model runs, and offers a way on.
+    await expect(page.getByTestId('door-bar')).toContainText('No model is running on this computer');
     await page.evaluate(() => window.hideDoor());
     preflightFailure = 'drop';
     await page.evaluate(() => window.showDoor());
+    await details.click();
     await expect(page.getByText('CAPACITY UNREAD', { exact: true })).toBeVisible();
     await page.evaluate(() => window.hideDoor());
 
-    // Pre-auth by design: no token ever exists here, so the auth-rot alarm
-    // must never have sounded, and the page ran clean throughout.
+    // A signed-in door never sounds the auth-rot alarm, and the page ran clean throughout.
     expect(await page.evaluate(() => window.expired)).toBe(0);
     expect(errors).toEqual([]);
   } finally {
@@ -109,4 +149,4 @@ test('the first-run probe keeps its pre-auth contract through the real backend',
     else process.env.NEUMA_DISCOVERY_PORTS = PREVIOUS_DISCOVERY;
     await fs.rm(root, { recursive: true, force: true });
   }
-}, 60_000);
+}, 180_000);

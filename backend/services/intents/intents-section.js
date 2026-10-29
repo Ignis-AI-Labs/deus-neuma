@@ -32,9 +32,10 @@ const log = createLogger('Intents');
  * or '' when the lane may file nothing. A broken probe costs the section,
  * never the turn.
  * @param {Object} connection - Portal connection (companion.neumaId)
+ * @param {{searchable?: boolean}} [opts] - false on a wire with no tool_search door: the contracts ride inline
  * @returns {Promise<string>}
  */
-export const intentSectionFor = async (connection) => {
+export const intentSectionFor = async (connection, { searchable = true } = {}) => {
   const laneId = connection.companion?.neumaId;
   connection._turnIntents = [];
   // A closed-book sitting never settles an intent (intent-sweep.js), so the
@@ -55,7 +56,8 @@ export const intentSectionFor = async (connection) => {
         available.push({
           name: type.name,
           fieldsForPrompt: type.fieldsForPrompt,
-          descriptionForPrompt: type.descriptionForPrompt,
+          // a type may answer with the contract for exactly what this lane can reach (social/queue's channels)
+          descriptionForPrompt: detail.descriptionForPrompt || type.descriptionForPrompt,
           channels: detail.channels || [],
         });
       }
@@ -63,7 +65,7 @@ export const intentSectionFor = async (connection) => {
     // The full contracts stay on the connection for tool_search to answer on demand.
     connection._turnIntents = available;
     if (!available.length) return '';
-    return buildIntentsSection(available, await ensureIntentDirectory(laneId));
+    return buildIntentsSection(available, await ensureIntentDirectory(laneId), { searchable });
   } catch (err) {
     log.warn('intents section unavailable — the lane keeps its tools', { laneId, err: err.message });
     return '';

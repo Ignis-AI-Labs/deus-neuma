@@ -103,7 +103,7 @@ describe('backend/services/voice/engine-registry.js', () => {
   });
 
   describe('ONE VOICE engines (speak protocol)', () => {
-    it('csm serves csm-1b on port 7868 — High/MisoTTS was dropped (Design note, 2026-10-01', () => {
+    it('csm serves csm-1b on port 7868 — High/MisoTTS was dropped (ruling, 2026-10-01)', () => {
       const csm = getEngine('csm');
       expect(csm).toMatchObject({ type: 'local', adapter: 'speak', protocol: 'speak', defaultModel: 'csm-1b' });
       expect(Object.keys(csm.models)).toEqual(['csm-1b']);

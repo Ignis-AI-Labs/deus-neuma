@@ -101,7 +101,7 @@ export const deriveGenome = (seedHex) => {
         heightCm: Math.round(drawRange(lanes, COUNTER.heightCm, [lo, hi])),
         // ⭐ SPECIFIED, NOT GESTURED AT. One word ('broad') left each checkpoint
         // to invent the rest from its own prior, which is why one register made
-        // Signal heavy and another made her a fashion model (Design note, 2026-08-27.
+        // Signal heavy and another made her a fashion model (ruling, 2026-08-27).
         chest: drawChoice(lanes, COUNTER.chest, CHEST),
         waist: drawChoice(lanes, COUNTER.waist, WAIST),
         hips: drawChoice(lanes, COUNTER.hips, HIPS),

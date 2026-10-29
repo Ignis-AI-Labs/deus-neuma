@@ -31,7 +31,7 @@ export const VoiceSittingMic = ({ connected, wsService, onSpeechStart, getPlayba
     // Echo discipline: `level` raises the VAD's bar so the being cannot
     // barge itself in; `active` shuts the mic pipe so whisper never hears it.
     getPlaybackState,
-    // PUSH TO TALK is the default for now (Design note, 2026-08-01. It does not fight
+    // PUSH TO TALK is the default for now (ruling, 2026-08-01). It does not fight
     // echo or silence-hallucination, it removes the conditions for both: the
     // pipe is shut unless a thumb is on the key, and when the being speaks the
     // witness is not holding it. The open-mic path above stays intact behind

@@ -82,7 +82,10 @@ ipcRenderer.on('desk:request-handoff', (_event, requestId) => {
   ipcRenderer.send('desk:handoff-reply', requestId, { authToken, companion });
 });
 
-contextBridge.exposeInMainWorld('neuma', {
+// The bridge exists only on the app's own origin (audit 2026-10-28 M-07): a
+// frame anywhere else — a page the desk was somehow sent to — gets no wallet,
+// no folders, no openExternal.
+if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   desktop: true,
   platform: process.platform,
   // Which desk this window IS (1, 2, …) — a stable layout key claimed at
@@ -142,6 +145,32 @@ contextBridge.exposeInMainWorld('neuma', {
       return () => ipcRenderer.removeListener('notifications:activate', handler);
     },
   },
+  // The desk's update bar and WHAT'S NEW (electron/update-bar.cjs). `state` reads what to show,
+  // `onChange` hears every change and returns its own unsubscribe, `act` sends the one choice
+  // made ('restart' | 'download' | 'later' | 'seen' | 'check'); main re-checks every act against the
+  // offer, except 'check' — the person's own Check now, asked even while the update check is off.
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    act: (action) => ipcRenderer.invoke('update:act', action),
+    onChange: (cb) => {
+      const handler = (_event, view) => cb(view);
+      ipcRenderer.on('update:changed', handler);
+      return () => ipcRenderer.removeListener('update:changed', handler);
+    },
+  },
+  // CONNECTIONS (electron/connections-main.cjs): the panel tells main a switch changed, so the
+  // spellcheck switch lands on every session at once.
+  connections: {
+    changed: () => ipcRenderer.invoke('connections:changed'),
+  },
+  // THE KEY LOCK (electron/key-lock/key-lock-main.cjs): whether the keychain holds
+  // Neuma's key, and the Recovery Kit — shown on request, confirmed saved, or replaced.
+  keyLock: {
+    status: () => ipcRenderer.invoke('keyLock:status'),
+    revealKit: () => ipcRenderer.invoke('keyLock:revealKit'),
+    confirmKit: () => ipcRenderer.invoke('keyLock:confirmKit'),
+    newKit: () => ipcRenderer.invoke('keyLock:newKit'),
+  },
   // App-level hotkeys (electron/hotkeys.cjs), for the Settings legend. Data
   // only — rebinding stays main's business.
   hotkeys: () => ipcRenderer.invoke('hotkeys:list'),
@@ -156,6 +185,8 @@ contextBridge.exposeInMainWorld('neuma', {
       return () => ipcRenderer.removeListener('contextmenu:show', handler);
     },
     act: (action) => ipcRenderer.send('contextmenu:action', action),
+    // DEFINE's card asks main for the word's meaning (offline dictionary)
+    define: (word) => ipcRenderer.invoke('dictionary:define', word),
   },
   // Witness wallet — the renderer calls these; the key never crosses this
   // bridge. `request` is the EIP-1193 surface; the rest is wallet management.

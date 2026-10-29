@@ -68,7 +68,7 @@ test('small real WASM memories coexist within the bounded production shell', asy
   expect(result.exitCode, result.stdout + result.stderr).toBe(0);
   expect(JSON.parse(await fs.readFile(path.join(sandbox.workspace, 'wasm-result.json'), 'utf8'))).toEqual([42, 42, 42, 42]);
   const limits = await runWitnessCommand({ ...sandbox, mode: 'inspect',
-    command: 'test "$(ulimit -v)" = 67108864 && test "$(ulimit -t)" = 120 && test "$(ulimit -u)" = 4096 && test "$(ulimit -n)" = 4096' });
+    command: 'test "$(ulimit -v)" = 2147483648 && test "$(ulimit -t)" = 120 && test "$(ulimit -u)" = 4096 && test "$(ulimit -n)" = 4096' });
   expect(limits.exitCode, limits.stderr).toBe(0);
 });
 

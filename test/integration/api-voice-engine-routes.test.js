@@ -39,6 +39,7 @@ const ILLEGAL_IDS = [
   '../../etc/passwd',    // traversal
   'a b',                 // whitespace
   'engine;rm -rf /',     // separator
+  '--all-local',         // an option to the downloader, never an id (audit 2026-10-28 L-01)
 ];
 
 let app, witness;

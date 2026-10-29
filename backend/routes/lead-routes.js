@@ -6,7 +6,7 @@
  * and every change lands as one appended touch on the lead's history — the
  * record of how a relationship moved is never quietly rewritten. All routes
  * require the witness's Bearer token, and every route reads and moves only
- * the signed-in operator's OWN house's ledger (Design note, 2026-10-16.
+ * the signed-in operator's OWN house's ledger (ruling, 2026-10-16).
  */
 
 import express from 'express';
@@ -36,12 +36,13 @@ router.get('/', async (req, res) => {
 // Capture one lead. A malformed lead is the caller's fault (400, refused at
 // the door); a store that cannot be read or written is ours (500).
 router.post('/', async (req, res) => {
-  const { name, contact, channelId, source, note, status, ownerNeumaId } = req.body || {};
-  const invalid = validateLead({ name, contact, channelId, source, status });
+  // campaignId + accountId: the campaign and account the lead came through.
+  const { name, contact, channelId, source, note, status, ownerNeumaId, campaignId, accountId } = req.body || {};
+  const invalid = validateLead({ name, contact, channelId, source, status, campaignId, accountId });
   if (invalid) return res.status(400).json({ error: invalid });
   try {
     const lead = await (await ledgerOf(req)).add({
-      name, contact, channelId, source, note, status, ownerNeumaId,
+      name, contact, channelId, source, note, status, ownerNeumaId, campaignId, accountId,
       addedBy: req.walletAddress,
     });
     log.info('Lead captured', { id: lead.id, wallet: req.walletAddress });
@@ -54,10 +55,10 @@ router.post('/', async (req, res) => {
 
 // Touch one lead — field edits, a status move, and a note, as ONE touch.
 router.put('/:id', async (req, res) => {
-  const { name, contact, channelId, source, status, note, ownerNeumaId } = req.body || {};
+  const { name, contact, channelId, source, status, note, ownerNeumaId, campaignId, accountId } = req.body || {};
   try {
     const result = await (await ledgerOf(req)).touch(req.params.id, {
-      name, contact, channelId, source, status, note, ownerNeumaId,
+      name, contact, channelId, source, status, note, ownerNeumaId, campaignId, accountId,
       by: req.walletAddress,
     });
     if (!result.ok) {

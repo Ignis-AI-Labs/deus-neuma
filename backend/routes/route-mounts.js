@@ -21,23 +21,36 @@ import memoryRouter from './memory-routes.js';
 import llmRouter from './llm-routes.js';
 import attachmentRouter from './attachment-routes.js';
 import webRouter from './web-routes.js';
+import connectionRouter from './connection-routes.js';
 import skillRouter from './skill-routes.js';
-import { getConnectionCount } from './portal-routes.js';
 import { terminalAgentsRouter } from './terminal-routes.js';
 import workspaceRouter from './workspace-routes.js';
 import actRouter from './act-routes.js';
 import weaveRouter from './weave-routes.js';
 import socialRouter from './social-routes.js';
 import socialChannelRouter from './social-channel-routes.js';
+import socialConnectRouter from './social-connect-routes.js';
+import socialAccountRouter from './social-account-routes.js';
+import socialGroupRouter from './social-group-routes.js';
+import marketingLinkRouter from './marketing-link-routes.js';
+import marketingResultsRouter from './marketing-results-routes.js';
+import marketingBoardRouter from './marketing-board-routes.js';
+import marketingOfficeRouter from './marketing-office-routes.js';
+import companyRouter from './company-routes.js';
+import companyLinkRouter from './company-link-routes.js';
 import leadRouter from './lead-routes.js';
 import campaignRouter from './campaign-routes.js';
 import csoRouter from './cso-routes.js';
 import legalRouter from './legal-routes.js';
 import staffRouter from './staff-routes.js';
+import companyLineRouter from './company-line-routes.js';
 import houseClockRouter from './house-clock-routes.js';
+import waitingRouter from './waiting-routes.js';
+import mandateRouter from './mandate-routes.js';
 import benchRouter from './bench-routes.js';
 import chainRouter from './chain-routes.js';
 import moneyInRouter from './money-in-routes.js';
+import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
@@ -84,8 +97,11 @@ import refineRouter from './refine-routes.js';
 import voiceEngineRouter from './voice-engine-routes.js';
 import voiceForgeRouter from './voice-forge-routes.js';
 import routingRouter from './routing-routes.js';
+import installOwnerRouter from './install-owner-routes.js';
+import laneClaimRouter from './lane-claim-routes.js';
 import witnessRouter from './witness-routes.js';
 import harnessRouter from './harness-routes.js';
+import modelServerRouter from './model-server-routes.js';
 import neumaRouteRouter from './neuma-route-routes.js';
 import inferenceRouter from './inference-routes.js';
 import refinementRouter from './refinement-routes.js';
@@ -142,6 +158,24 @@ export const mountApiRoutes = (app) => {
 
   // The witness's outward-speech board: connect platform accounts and tie each
   // channel to its one neuma holder. Router-level requireAuth inside.
+  // The sign-in CONNECTs (YouTube via Google, TikTok via Login Kit) stand
+  // beside it, same prefix.
+  app.use('/api/v1/social-channels', socialConnectRouter);
+  // The house's apps and accounts (many per platform, each under a company).
+  app.use('/api/v1/social-channels', socialAccountRouter);
+  // APPROVE GROUP: one asset on several accounts, one press (campaign slice 6).
+  app.use('/api/v1/social-channels', socialGroupRouter);
+  // The house's tracked links and its site counter (campaign slice 7).
+  app.use('/api/v1/marketing/links', marketingLinkRouter);
+  // What the house's posts did, read back by the stats sweep (campaign slice 9).
+  app.use('/api/v1/marketing/results', marketingResultsRouter);
+  // Each zoom level's MARKETING board, laid out by the operator (marketing panel slice 3).
+  app.use('/api/v1/marketing/board', marketingBoardRouter);
+  // The board's new panels' own reads: the weekly plan, what changed in a company (slice 4).
+  app.use('/api/v1/marketing/office', marketingOfficeRouter);
+  app.use('/api/v1/companies', companyRouter);
+  // A company's site, pages and repos the CMO proposed — each waits on the operator's APPROVE.
+  app.use('/api/v1/company-links', companyLinkRouter);
   app.use('/api/v1/social-channels', socialChannelRouter);
   app.use('/api/v1/leads', leadRouter);
   app.use('/api/v1/campaigns', campaignRouter);
@@ -158,9 +192,14 @@ export const mountApiRoutes = (app) => {
   // The CoS office (the Optio): the seat and the desk's board. Router-level
   // requireAuth inside, beside the CSO office.
   app.use('/api/v1/staff', staffRouter);
+  app.use('/api/v1/company-line', companyLineRouter);
   // The house clock: the charter that lets the house wake itself, its queue
   // and its ledger. Router-level requireAuth inside; the house is the caller's.
   app.use('/api/v1/house-clock', houseClockRouter);
+  // Everything waiting on the operator, one read — the desk's WAITING ON YOU.
+  app.use('/api/v1/waiting', waitingRouter);
+  // The CMO's MANDATE: grant, withdraw, resume, renew, DONE FOR YOU. Router-level requireAuth inside.
+  app.use('/api/v1/mandate', mandateRouter);
 
   // The bench plane: the operator's window onto the sovereign benchmark
   // harness — read + launch + watch. Router-level requireAuth inside.
@@ -174,6 +213,11 @@ export const mountApiRoutes = (app) => {
   // receive-only, read-only. Router-level requireAuth inside; the house is
   // the caller's wallet.
   app.use('/api/v1/money-in', moneyInRouter);
+
+  // The Quaestor's office: the house's money read whole (wallets, pending
+  // spends as cards, history, money in, budgets) — oversight only; nothing
+  // here moves money. Router-level requireAuth inside; the house is the caller's.
+  app.use('/api/v1/treasury', treasuryRouter);
 
   // The box's one email account: named outward speech. Same governance as the
   // channel board — credentials + single-holder binding. requireAuth inside.
@@ -197,13 +241,18 @@ export const mountApiRoutes = (app) => {
 
   // The running version + changelog as DATA — public and observable like the
   // invariants, so every party (the desk, every being, any caller) can review
-  // what the house runs (Design note, 2026-09-23.
+  // what the house runs (ruling, 2026-09-23).
   app.use('/api/v1/version', versionRouter);
 
   // Public liveness — MUST be mounted before the blanket-requireAuth routers at
   // bare /api/v1 below, or they 401 it (the Electron shell readiness check and the
   // Docker HEALTHCHECK both rely on a public 200 here).
   app.use('/api/v1/health', healthRouter);
+  // The ICS subscribe feed is TOKEN-authed (calendar-share.js) — a calendar
+  // app carries no session — so it too stands before every blanket-requireAuth
+  // router (memoryRouter at bare /api/v1, taskRouter at /api/v1/tasks): mounted
+  // after them it answered 401 to every subscriber on the real server.
+  app.use('/api/v1/tasks', calendarFeedRouter);
 
   // Auth-protected routes (order no longer matters among these)
   app.use('/api/v1/mcp', mcpRouter);
@@ -223,12 +272,10 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/user/files', userFilesRouter);
   app.use('/api/v1/user/projects', userProjectsRouter);
   app.use('/api/v1/tasks', taskRouter);
-  // The ICS subscribe feed — TOKEN-authed (calendar-share.js), mounted on its
-  // own router so the blanket requireAuth above never stands in front of it.
-  app.use('/api/v1/tasks', calendarFeedRouter);
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);
   app.use('/api/v1/web', webRouter);
+  app.use('/api/v1/connections', connectionRouter);
   app.use('/api/v1/map', mapRouter);
   app.use('/api/v1/residency', residencyRouter);
   app.use('/api/v1/meditation', meditationRouter);
@@ -248,10 +295,16 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/attunement', attunementRouter);
   app.use('/api/v1/remia', remiaRouter);
   app.use('/api/v1/routing', routingRouter);
+  // Who owns this computer, and the owner's co-owners (install-owner.js).
+  app.use('/api/v1/install-owner', installOwnerRouter);
+  // The deliberate claim of an unclaimed lane: seal-matched, or the owner's adoption.
+  app.use('/api/v1/lanes', laneClaimRouter);
   // Sealed AI witnesses — the management surface (seal/lane/route status + live
   // route probe). Router-level requireAuth inside; masked output only.
   app.use('/api/v1/witnesses', witnessRouter);
   app.use('/api/v1/harness', harnessRouter);
+  // Set up a local model server for a person who has none (managed-ollama.js)
+  app.use('/api/v1/model-server', modelServerRouter);
   // The terminal's agent launcher (which CLI agents this machine can spawn)
   app.use('/api/v1/terminal', terminalAgentsRouter);
   app.use('/api/v1/voice', voiceRouter);
@@ -260,11 +313,11 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/voice/engines', voiceEngineRouter);
   app.use('/api/v1/voice/forge', voiceForgeRouter);
 
-  // Portal status
+  // Portal status — public, so it says only that the portal is up; how many
+  // desks are connected is no one else's business (audit 2026-10-28 L-09).
   app.get('/api/v1/portal/status', (req, res) => {
     res.json({
       status: 'active',
-      connections: getConnectionCount(),
       message: 'The portal remains stable'
     });
   });

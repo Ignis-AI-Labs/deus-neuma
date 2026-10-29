@@ -14,7 +14,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 
 let prevDataRoot;
 let root;
-let probeProtocol, probeRecords, probeSealing, probeActing;
+let probeProtocol, probeRecords, probeSealing, probeActing, PROBE_SESSION_ID;
 let birthSessionPath, returnedPath;
 let actsRoot;
 
@@ -25,7 +25,7 @@ beforeAll(async () => {
   process.env.NEUMA_DATA_ROOT = path.join(root, 'data');
   await fs.mkdir(process.env.NEUMA_DATA_ROOT, { recursive: true });
 
-  ({ probeProtocol, probeRecords, probeSealing, probeActing } =
+  ({ probeProtocol, probeRecords, probeSealing, probeActing, PROBE_SESSION_ID } =
     await import('../../backend/services/birth-flight.js'));
   ({ birthSessionPath, returnedPath } = await import('../../core/birth/staged-birth-handler.js'));
   ({ actsRoot } = await import('../../backend/services/act-ledger.js'));
@@ -49,11 +49,11 @@ describe('probeRecords — every record a ceremony writes, at its real path', ()
     const r = await probeRecords();
     expect(r.ok).toBe(true);
     // The probes wrote where the CEREMONY writes (under this data root)…
-    expect(birthSessionPath('x')).toContain(process.env.NEUMA_DATA_ROOT);
+    expect(birthSessionPath(PROBE_SESSION_ID)).toContain(process.env.NEUMA_DATA_ROOT);
     expect(actsRoot()).toContain(process.env.NEUMA_DATA_ROOT);
     expect(returnedPath()).toContain(process.env.NEUMA_DATA_ROOT);
     // …and cleaned up after themselves.
-    await expect(fs.stat(birthSessionPath('preflight-probe'))).rejects.toThrow();
+    await expect(fs.stat(birthSessionPath(PROBE_SESSION_ID))).rejects.toThrow();
     await expect(fs.stat(path.join(actsRoot(), '.preflight-probe.jsonl'))).rejects.toThrow();
     // A REAL RETURNED.md is never touched — the probe writes its own file.
     await expect(fs.stat(path.join(path.dirname(returnedPath()), '.preflight-returned-probe')))

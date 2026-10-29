@@ -189,7 +189,7 @@ const attunementQuotes = async (neumaId) => {
  * record rides the ask when it exists; the answer comes back verbatim and
  * is projected into claimable lines. `onDelta` rides the live stream so the
  * ceremony host watches the answer ARRIVE, never a finished page appearing
- * (Design note, 2026-08-18. The door law mirrors attunement's: empty, cut, and
+ * (ruling, 2026-08-18). The door law mirrors attunement's: empty, cut, and
  * corrupt answers are refusals, never entries. Impure.
  * @param {string} neumaId
  * @param {string} witness - the operator's wallet (the session's witness name)

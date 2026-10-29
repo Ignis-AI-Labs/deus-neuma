@@ -13,6 +13,7 @@ import { mergeRefreshPlans, gitRootsFor } from './files-refresh-apply.js';
 import { createTrailingBatch } from '../../../utils/trailing-batch.js';
 import { useSettled } from '../use-settled.js';
 import { useVisibleInterval } from '../use-visible-interval.js';
+import { revealChain } from './reveal-chain.js';
 
 export const useFilesRoots = ({ activeFolder, expanded, setExpanded, rootsRef, setRoots, setNote, setChildrenMap }) => {
   const [gitByRoot, setGitByRoot] = useState({}); // root → { branch, ahead, behind, files } (repos only)
@@ -50,6 +51,7 @@ export const useFilesRoots = ({ activeFolder, expanded, setExpanded, rootsRef, s
       const fresh = await getRoots();
       setRoots(fresh);
       refreshGit(fresh);
+      return fresh;
     } catch (e) {
       setNote(e.message);
       // A 429 mid-storm must not strand the tree on LOADING: wait out the
@@ -58,6 +60,7 @@ export const useFilesRoots = ({ activeFolder, expanded, setExpanded, rootsRef, s
         const wait = Number.isFinite(e.retryAfterMs) ? e.retryAfterMs : 2000 * (attempt + 1);
         rootsRetryRef.current = setTimeout(() => refreshRoots(attempt + 1), wait);
       }
+      return null;
     }
   }, [refreshGit, setRoots, setNote]);
 
@@ -85,7 +88,19 @@ export const useFilesRoots = ({ activeFolder, expanded, setExpanded, rootsRef, s
     const onFocusRoot = async (e) => {
       const root = e.detail?.root;
       if (!root) return;
-      await refreshRoots();
+      const fresh = await refreshRoots();
+      // SHOW IN FILES (media-menu.js) names a folder deep inside a root: the
+      // tree opens every folder between the root it is SHOWN under (`within`,
+      // the window's focus lens) and it.
+      const { reveal, within } = e.detail;
+      const chain = reveal
+        ? revealChain((fresh || []).filter((r) => !Array.isArray(within) || within.includes(r)), reveal)
+        : [];
+      if (chain.length) {
+        setExpanded((prev) => new Set([...prev, ...chain]));
+        for (const folder of chain) await refreshDir(folder);
+        return;
+      }
       setExpanded((prev) => new Set(prev).add(root));
       await refreshDir(root);
     };

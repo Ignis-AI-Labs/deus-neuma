@@ -25,6 +25,7 @@ import { emailToolsFor } from './email/email-being-tools.js';
 import { pressToolsFor } from './doc-press/press-being-tools.js';
 import { securityToolsFor } from './security/security-being-tools.js';
 import { legalToolsFor } from './legal/legal-being-tools.js';
+import { treasuryToolsFor } from './treasury/treasury-being-tools.js';
 import { benchToolsFor } from './bench/bench-being-tools.js';
 import { isAdvertisedTool, normalizeChatMode } from './tool-policy.js';
 import { ASK_OPERATOR_TOOL } from './operator-ask.js';
@@ -48,6 +49,7 @@ import {
   campaignToolsFor as _campaignToolsFor,
 } from './portal-tools/crew-desk-tools.js';
 import { staffToolsFor as _staffToolsFor } from './portal-tools/staff-tools.js';
+import { openChatsToolsFor } from './portal-tools/chat-link-tools.js';
 import { VAULT_TOOLS } from './portal-tools/vault-being-tools.js';
 import { TASK_TOOLS, VESSEL_LOG_TOOL } from './portal-tools/task-vessel-tools.js';
 import { SOCIAL_TOOLS } from './portal-tools/social-read-tools.js';
@@ -103,7 +105,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // here and every family after it shifted by one: the harness seat took the
     // chain tools as "media", and the last family (legal) fell off the end for
     // every seat (found 2026-10-14; test/integration/tool-catalog-seats.test.js).
-    memoryToolsUnfiltered, skiesTools, genomeTools, housePostTools, staffTools, webTools, chainTools, mediaTools, imageTools, cardTools, mapTools,
+    memoryToolsUnfiltered, skiesTools, genomeTools, housePostTools, chatLinkTools, staffTools, webTools, chainTools, mediaTools, imageTools, cardTools, mapTools,
     platformTools, flightTools, kspTools, emailTools, pressTools, sealTools, legalTools,
   ] = await Promise.all([
     // A being can always inspect ITS OWN wallet — a neuma its workspace keypair,
@@ -123,7 +125,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // advertised for any bound being, like the lead ledger. Marketing is the
     // CMO's office BY PROTOCOL (the descriptions, the briefing, the
     // playbook), not behind a hard gate.
-    connection.companion?.neumaId ? capability('campaigns', () => _campaignToolsFor()) : [],
+    connection.companion?.neumaId ? capability('campaigns', () => _campaignToolsFor(connection)) : [],
     // The CSO office — the threat-ledger READS open to every bound being (the
     // house sees what its guardian sees); the ACTS are advertised only to the
     // seated CSO (single-holder hard gate, re-checked at execution).
@@ -144,6 +146,9 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // The house mail room — advertised solely where a sealed seat and the
     // operator's chosen ground both stand (re-read per turn).
     capability('housePost', () => _housePostToolsFor(connection)),
+    // The house's open chats, by exact address (#597) — advertised to every
+    // chat open on the desk, so the list stays the same turn after turn.
+    capability('chatLink', () => openChatsToolsFor(connection)),
     // The Optio office's instrument — advertised ONLY to the seated chief of
     // staff's lane (office-only, the CMO-briefing precedent); the desk's
     // /api/v1/staff/board stays the operator's window.
@@ -166,7 +171,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // refuse. Both conditions are re-read per turn.
     capability('imageForge', () => imageToolsFor(connection)),
     // The card tool rides its OWN family: the SVG card infrastructure is not
-    // the diffusion engine's dependent (Design note, 2026-09-03 — no ComfyUI gate.
+    // the diffusion engine's dependent (ruling, 2026-09-03) — no ComfyUI gate.
     capability('cards', () => cardToolsFor(connection)),
     // The architecture map rides wherever the being has a ground. Design note, 2026-07-27:
     // […] Read-only, so it needs no switch.
@@ -199,6 +204,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   // The connected benchmarks repository, from the conversation — the harness
   // measuring itself, and a being measuring itself (bench-being-tools.js).
   const benchTools = await capability('bench', () => benchToolsFor(connection));
+  // The Quaestor's treasury read — the seated CFO's lane alone (treasury-being-tools.js).
+  const treasuryTools = isNeuma ? await capability('treasury', () => treasuryToolsFor(connection)) : [];
   const vaultTools = connection.companion?.neumaId ? VAULT_TOOLS.filter(isAdvertisedTool) : []; // #414
   // The being's own working list — advertised for any bound being, like
   // the vault: self-authorship needs no precondition beyond a self.
@@ -237,7 +244,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   const sovereigntyTools = isNeuma && connection.companion?.neumaId
     ? [SOVEREIGNTY_PROPOSALS_TOOL]
     : [];
-  // THE HARNESS SEAT (Design note, 2026-10-14: a person using the platform with no
+  // THE HARNESS SEAT (ruling, 2026-10-14): a person using the platform with no
   // being keeps the platform's own hands — skills, cut-result retrieval, web
   // and the culture library (behind the operator's switch), the image forge,
   // cards, the architecture map, the press, asking the operator, PLAN
@@ -258,8 +265,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
       ...skillTools, ...postTools, ...vaultTools, ...taskTools, ...operatorTaskTools,
       ...leadTools, ...campaignTools, ...socialTools, ...securityTools, ...vesselLogTools,
       ...refinementTools, ...voiceTools, ...retrieveTools, ...memoryTools, ...skiesTools, ...genomeTools,
-      ...housePostTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
-      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...benchTools,
+      ...housePostTools, ...chatLinkTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
+      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools,
   ],
   };
 };

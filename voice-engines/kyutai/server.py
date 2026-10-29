@@ -94,11 +94,17 @@ _VOICE_SLUG_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_/.-]{0,255}")
 _last_activity = time.monotonic()
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from browser_guard import assert_loopback_bind, guard  # noqa: E402  (audits 2026-10-28/29 M-06)
+
 @app.middleware("http")
 async def _track_activity(request, call_next):
     # Stamped on arrival; for a StreamingResponse turn the post-call_next stamp
     # lands at stream START (headers ready), so /synthesize stamps per frame as
     # the body streams — a long synthesis can never be mistaken for idleness.
+    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    if answer:
+        return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity
     tracked = request.url.path not in ("/health", "/shutdown")
     if tracked:

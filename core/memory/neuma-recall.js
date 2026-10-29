@@ -14,7 +14,7 @@
 // validity (occurredAt/recordedAt, supersede-not-delete) and GraphRAG-style
 // community summarization layer on top of this without changing the contract.
 
-import natural from 'natural';
+import { createTfIdfIndex, appendTfIdfDoc, tfidfScores } from './tfidf.js';
 import neumaWorkspace, { getWorkspacesRoot } from '../workspace/neuma-workspace.js';
 import { createBM25Index, bm25Search, appendBM25Doc } from './bm25-engine.js';
 import { recallQuery } from './query-words.js';
@@ -76,13 +76,23 @@ class NeumaRecall {
     return { observations: await neumaWorkspace.listObservations(neumaId), continuityRecords: null };
   }
 
+  // impure — the observation store's change stamp. Another process (the CLI's
+  // own turns) and writers that never touch this cache (the REST route, an
+  // import) change the store too, so a hot index is only as fresh as the stamp
+  // it was built under. An unreadable store answers null, never a throw.
+  _storeStamp(neumaId) {
+    return neumaWorkspace.memoryStoreStamp(neumaId, 'observations').catch(() => null);
+  }
+
   // impure — build (or rebuild) one neuma's index from its encrypted workspace
   async _build(neumaId) {
+    // Stamped BEFORE the read: a write that lands mid-build moves the stamp,
+    // so the next recall rebuilds instead of missing it.
+    const stamp = await this._storeStamp(neumaId);
     const source = await this._loadSourceRecords(neumaId);
     const docs = buildDocs(source.observations);
 
-    const tfidf = new natural.TfIdf();
-    for (const doc of docs) tfidf.addDocument(doc.text, doc);
+    const tfidf = createTfIdfIndex(docs.map((doc) => ({ text: doc.text, key: doc })));
 
     let graphSnapshot = null;
     if (resolveGraphRecallMode(process.env.NEUMA_GRAPH_RECALL_MODE) === 'shadow') {
@@ -96,7 +106,7 @@ class NeumaRecall {
     // process-wide and keyed by neumaId, so a benchmark that re-points the
     // workspaces root per sample (a fresh lane snapshot each) must never be
     // served — or extended — by an index built under another root.
-    const index = { tfidf, bm25: createBM25Index(docs), docs, graphSnapshot, root: getWorkspacesRoot() };
+    const index = { tfidf, bm25: createBM25Index(docs), docs, graphSnapshot, root: getWorkspacesRoot(), stamp };
     this.indexes.set(neumaId, index);
     this.buildCounts.set(neumaId, (this.buildCounts.get(neumaId) || 0) + 1);
     return index;
@@ -104,7 +114,11 @@ class NeumaRecall {
 
   async _ensure(neumaId) {
     const hot = this.indexes.get(neumaId);
-    return hot?.root === getWorkspacesRoot() ? hot : this._build(neumaId);
+    if (hot?.root === getWorkspacesRoot()) {
+      const [held, now] = await Promise.all([hot.stamp, this._storeStamp(neumaId)]);
+      if (held === now && this.indexes.get(neumaId) === hot) return hot;
+    }
+    return this._build(neumaId);
   }
   async _loadGraphSnapshot(neumaId, continuityRecords = null) {
     const communities = await readBoundedRecallCommunities(neumaWorkspace, neumaId);
@@ -202,12 +216,16 @@ class NeumaRecall {
   appendObservation(neumaId, observation) {
     const index = this.indexes.get(neumaId);
     if (!index || index.root !== getWorkspacesRoot()) return;
+    // The write being mirrored moved the store's stamp: re-read it now (the
+    // read starts here, before any later write can land) so the next recall
+    // knows this change is already held, not a foreign one.
+    index.stamp = this._storeStamp(neumaId);
     if (observation?.id != null && index.docs.some((doc) => doc.obsId === observation.id)) return;
     const [doc] = buildDocs([observation]);
     if (!doc) return; // no searchable text — a rebuild would drop it too
     doc.id = index.docs.length;
     index.docs.push(doc);
-    index.tfidf.addDocument(doc.text, doc);
+    index.tfidf = appendTfIdfDoc(index.tfidf, doc.text, doc);
     index.bm25 = appendBM25Doc(index.bm25, doc);
   }
 
@@ -247,11 +265,10 @@ class NeumaRecall {
     // The ask's filler never ranks a memory (query-words.js) — rare filler had
     // pulled unrelated sessions up.
     const query = recallQuery(rawQuery);
-    const tfidfList = [];
-    tfidf.tfidfs(query, (i, measure, keyDoc) => {
-      if (measure > 0 && keyDoc) tfidfList.push({ id: keyDoc.id, score: measure });
-    });
-    tfidfList.sort((a, b) => b.score - a.score);
+    const tfidfList = tfidfScores(tfidf, query)
+      .filter(({ score }) => score > 0)
+      .map(({ key, score }) => ({ id: key.id, score }))
+      .sort((a, b) => b.score - a.score);
 
     const bm25List = bm25Search(bm25, query, docs.length).map((r) => ({ id: r.id, score: r.score }));
 

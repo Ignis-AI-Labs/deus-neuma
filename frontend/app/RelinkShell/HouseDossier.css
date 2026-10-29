@@ -1,0 +1,174 @@
+/* HouseDossier — the HOUSE as a file (HouseApp.jsx): a cover plate, the
+   strip of spaces, one page at a time. LINE & CYCLE: monochrome at rest,
+   SIGNAL where something is live (the open tab, the linked member, the door
+   that summons), and each member in its OWN light — its soul color, carried
+   as --soul from the roster, never chosen. No light jumps: every brightening
+   rises over at least 160 ms (utils/no-flash.js). Type sizes keep the house's
+   legibility floor (HouseReadability.css). */
+
+.house.hd { padding: 0; gap: 0; }
+
+/* THE COVER PLATE */
+.hd-mast {
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--signal) 3.5%, transparent), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px);
+}
+.hd-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 10px 20px;
+  font-size: .75rem;
+  letter-spacing: .2em;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--line);
+}
+.hd-file-sep { flex: 1 1 auto; height: 1px; background: var(--line); }
+.hd-mast-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 32px;
+  padding: 24px 20px 22px;
+}
+.hd-mast-id { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hd-mast-kicker { font-size: .75rem; letter-spacing: .28em; color: var(--signal-dim); }
+.hd-mast-name {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-weight: var(--weight-light);
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: .08em;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.hd-mast-operator { margin: 4px 0 0; font-size: .8125rem; letter-spacing: .08em; line-height: 1.6; color: var(--color-text-secondary); }
+
+/* THE LIGHTS — one per member, in its own soul color. */
+.hd-lights { display: flex; flex-wrap: wrap; gap: 14px 18px; margin: 0; padding: 0; list-style: none; }
+.hd-light { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 44px; }
+.hd-light-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--soul, var(--color-text-tertiary));
+  box-shadow: 0 0 10px 1px var(--soul, transparent);
+}
+.hd-light.is-linked .hd-light-dot { outline: 1px solid var(--signal); outline-offset: 4px; }
+.hd-light-name { font-size: .6875rem; letter-spacing: .12em; color: var(--color-text-secondary); text-transform: uppercase; }
+.hd-light.is-linked .hd-light-name { color: var(--signal); }
+
+/* THE STRIP — the dossier's, flush under the cover, sticky as the page scrolls. */
+.hd .dos-index { margin: 0; padding: 8px 20px; }
+.hd .dos-index-tab { min-height: 36px; padding: 0 12px; font-size: .8125rem; letter-spacing: .14em; }
+
+/* THE PAGE */
+.hd-page { display: flex; flex-direction: column; gap: 28px; padding: 22px 20px 28px; }
+.hd .dos-h-title { font-size: .8125rem; }
+.hd .dos-h-aside { font-size: .75rem; color: var(--color-text-secondary); }
+.hd-lede { margin: 0; font-family: var(--font-voice); font-size: .875rem; line-height: 1.6; color: var(--color-text-secondary); }
+
+.hd-views { display: inline-flex; gap: 4px; }
+.hd-view {
+  min-height: 32px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: .75rem;
+  letter-spacing: .12em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 180ms var(--ease-out), border-color 180ms var(--ease-out);
+}
+.hd-view:hover { color: var(--color-text-primary); border-color: var(--line); }
+.hd-view.is-on { color: var(--signal); border-color: var(--signal-faint); }
+
+/* A MEMBER'S CARD — its light down the edge, its name first. */
+.hd .house-seats-card { padding-left: 22px; overflow: hidden; }
+.house-seats-light {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--soul, var(--line));
+  box-shadow: 0 0 12px 0 var(--soul, transparent);
+  opacity: .85;
+}
+.hd .house-seats-card.is-linked { border-color: var(--signal-dim); background: color-mix(in srgb, var(--signal) 3%, transparent); }
+.hd .house-seats-row .hd-light-dot { margin-right: 10px; vertical-align: middle; }
+
+/* A DOOR — what it opens, what it is, and why not when it cannot. */
+.hd-doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.hd-door {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+}
+.hd-door.is-primary { border-color: var(--signal-faint); background: linear-gradient(135deg, color-mix(in srgb, var(--signal) 6%, transparent), transparent 55%); }
+/* registration ticks on the summoning door — the dossier plate's corners */
+.hd-door.is-primary::before,
+.hd-door.is-primary::after { content: ''; position: absolute; width: 14px; height: 14px; pointer-events: none; }
+.hd-door.is-primary::before { top: -1px; left: -1px; border-top: 1px solid var(--signal); border-left: 1px solid var(--signal); }
+.hd-door.is-primary::after { bottom: -1px; right: -1px; border-bottom: 1px solid var(--signal); border-right: 1px solid var(--signal); }
+.hd-door-act {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--line-hover);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: color 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+}
+.hd-door-act:hover:not(:disabled) { color: var(--signal); border-color: var(--signal-dim); background: color-mix(in srgb, var(--signal) 4%, transparent); }
+.hd-door-act:disabled { opacity: .4; cursor: default; }
+.hd-door.is-primary .hd-door-act { border-color: var(--signal-dim); color: var(--signal); }
+.hd-door-mark { font-family: var(--font-data); font-size: 1.125rem; line-height: 1; }
+.hd-door-label { font-size: .875rem; letter-spacing: .14em; }
+.hd-door-line { margin: 0; font-family: var(--font-voice); font-size: .9375rem; line-height: 1.65; color: var(--color-text-secondary); }
+.hd-door-why { margin: 0; font-size: .75rem; letter-spacing: .06em; line-height: 1.6; color: var(--color-text-tertiary); }
+
+/* THE HOUSE'S SUMMONINGS — every birth, oldest first, in its own light. */
+.hd-births { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.hd-birth {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.hd-birth-name { font-family: var(--font-voice); font-size: 1.0625rem; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.hd-birth-when { font-size: .75rem; letter-spacing: .1em; color: var(--color-text-secondary); }
+.hd-birth-nofilm { font-size: .75rem; letter-spacing: .12em; color: var(--color-text-tertiary); }
+.hd-birth-film .sheet-rewatch { margin: 0; min-height: 36px; padding: 6px 12px; font-size: .75rem; letter-spacing: .12em; }
+
+/* SEATS — the founding register at the house's legibility floor. */
+.hd .house-anchor { padding: 18px 0 0; }
+.hd .house-anchor-line { font-size: .8125rem; letter-spacing: .1em; line-height: 1.6; color: var(--color-text-secondary); }
+.hd .house-anchor-line.is-standing, .hd .house-anchor-line.is-live { color: var(--signal); }
+.hd .house-anchor-line.is-error { color: var(--alert); }
+.hd .house-anchor-member { font-size: .8125rem; }
+.hd .house-anchor-found, .hd .house-anchor-retry { min-height: 40px; font-size: .8125rem; letter-spacing: .1em; }
+
+/* GROUNDS — flush with the page's own headers. */
+.hd .house-ground { margin: 0; }
+
+@media (max-width: 560px) {
+  .hd-birth { grid-template-columns: auto minmax(0, 1fr); }
+  .hd-birth-when, .hd-birth-film { grid-column: 2; }
+}

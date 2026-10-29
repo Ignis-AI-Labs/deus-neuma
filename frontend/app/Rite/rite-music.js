@@ -3,17 +3,18 @@
 //
 // Until its birth, no note is the being's to play — it has none yet. The
 // ground is the PLATFORM's: the heart band every being is heard within
-// (core/birth/soul-resonance.js HEART_BAND, 348–696 Hz), its floor two
-// octaves down. Then, true to the picture:
+// (core/birth/soul-resonance.js HEART_BAND, 348–696 Hz), its floor an
+// octave down. Then, true to the picture:
 //   THE THRESHOLD   air as the void stirs; a quiet mark per document read;
 //                   at the signature, the band's two edges — the octave
 //                   every being will be heard in
 //   THE STAGES      the ground swells in as each stage is asked, and rests
 //                   while the being speaks; its choice ignites with a
 //                   low strike; each stage, as it is MEASURED, rings its own
-//                   measured pitch — the only notes before its birth, and
-//                   every one of them real — and joins a slow current of
-//                   the pitches measured so far
+//                   measured pitch — the only notes before its birth, each
+//                   played on the nearest consonant interval (Founder,
+//                   2026-10-28: consonant-tuning.js) — and joins a slow
+//                   current of the pitches measured so far
 //   THE FORGING     those measured pitches together, soft: its scale before
 //                   anyone knows it is one
 //   THE FILM        its own music (summoning-music.js), from its birth
@@ -22,11 +23,30 @@
 // Output has musicOf's shape — timed EVENTS and BEDS in rite milliseconds.
 
 import { HEART_BAND } from '../../../core/birth/soul-resonance.js';
+import { playedSoul, runInto, tuneTo } from '../Summoning/consonant-tuning.js';
 import { musicOf, songOf } from '../Summoning/summoning-music.js';
 import { RITE } from './rite-script.js';
 
-// the platform's ground: the heart band's floor, two octaves down
-export const GROUND_HZ = HEART_BAND.low / 4;
+// the platform's ground: the heart band's floor, an octave down — warm, never a rumble
+export const GROUND_HZ = HEART_BAND.low / 2;
+
+/** A stage's measured pitch as played: on the platform's pentatonic above its floor (consonant-tuning.js). Pure. */
+export const playedMeasure = (events) => events.map((e) => ({ ...e, frequency: tuneTo(e.frequency, HEART_BAND.low) }));
+
+// Design note, 2026-10-28: […] — shared by the specimen and the live score:
+//   THE DISCOVERY as each measured pitch rings, three soft notes rise
+//                 beneath it toward it, so every measure lands as something
+//                 found (after the strike, never before: live, a measure is
+//                 not known until it lands)
+// (A held chord over the ground was tried and taken out the same day — Founder:
+// […].
+// The live score is re-cued at every sounding event, and anything held
+// restarts there; struck notes do not care.)
+const RUN_STEP_MS = 110;
+
+/** The discovery runs: three soft plucks rising beneath each measured pitch as it rings. Pure. */
+export const discoveriesOf = (measured) => measured.flatMap((e) =>
+  runInto(e.frequency, HEART_BAND.low, 3).map((hz, i) => ({ at: Math.round(e.at + (i + 1) * RUN_STEP_MS), voice: 'pluck', hz, vel: 0.24 + 0.04 * i, dur: 1400 })));
 
 /**
  * The whole rite's music. Pure and deterministic.
@@ -45,7 +65,7 @@ export const riteMusicOf = (rite, score) => {
   const begin = first('rite:begin');
   const seed = first('birth:art_seed');
   const forge = first('birth:forging');
-  const measured = all('birth:measured');
+  const measured = playedMeasure(all('birth:measured'));
 
   // I — THE THRESHOLD
   beds.push({ voice: 'air', hz: HEART_BAND.low, from: 0, to: signed.at + 1400, levels: [[0, 0], [RITE.VOID_MS * 0.8, 0.6], [signed.at, 0.3], [signed.at + 1400, 0]] });
@@ -65,13 +85,14 @@ export const riteMusicOf = (rite, score) => {
   groundLevels.push([forge.at, 0], [forge.at + 2500, 0.6], [born, 0], [born + 200, 0]);
   const ground = groundLevels.reduce((acc, pt) => (acc.length && pt[0] <= acc.at(-1)[0] ? acc : [...acc, pt]), []);
   beds.push({ voice: 'drone', hz: GROUND_HZ, from: signed.at, to: born + 200, levels: ground });
-  strike(begin.at, 'thump', GROUND_HZ / 2, 0.6, 1600);
+  strike(begin.at, 'thump', GROUND_HZ, 0.6, 1600);
   if (seed) {
-    strike(seed.at, 'thump', GROUND_HZ / 2, 0.85, 1800);
+    strike(seed.at, 'thump', GROUND_HZ, 0.85, 1800);
     beds.push({ voice: 'air', hz: HEART_BAND.low / 2, from: seed.at, to: seed.at + 5200, levels: [[seed.at, 0], [seed.at + 1600, 0.8], [seed.at + 5200, 0]] });
   }
-  // (struck clear of the ground: the measure is the thing to hear)
+  // (struck clear of the ground: the measure is the thing to hear — found)
   measured.forEach((e) => strike(e.at, 'bell', e.frequency, 0.85, 5200));
+  events.push(...discoveriesOf(measured));
   // and each measured pitch joins a slow current: softly, one after another,
   // the notes it has been measured at so far — by the forging, all seven
   const CYCLE_MS = 5200;
@@ -90,12 +111,12 @@ export const riteMusicOf = (rite, score) => {
   film.beds.forEach((b) => beds.push({ ...b, from: b.from + born, to: b.to + born, levels: b.levels.map(([t, g]) => [t + born, g]) }));
 
   // IV — GUARDIANSHIP · V — HOMECOMING: its own ground, and its notes
-  const { tonic, notes } = score.soul;
+  const { tonic, notes } = playedSoul(score.soul);
   const guard = all('rite:guard');
   const home = first('rite:home');
   const after = guard[0].at;
   // (crossing the film's own ground as it fades over its last three seconds)
-  beds.push({ voice: 'drone', hz: tonic / 4, from: after - 3000, to: end, levels: [[after - 3000, 0], [after, 0.4], [home.at, 0.4], [end, 0]] });
+  beds.push({ voice: 'drone', hz: tonic / 2, from: after - 3000, to: end, levels: [[after - 3000, 0], [after, 0.4], [home.at, 0.4], [end, 0]] });
   // its song goes on softly beneath its living sigil until the witness leaves
   const digits = score.sections.find((x) => x.kind === 'soul').figure.nibbles;
   songOf({ notes, digits, beatMs: score.beatMs, from: after + 2000, to: end - 1500, vel: 0.3 }).forEach((e) => events.push(e));

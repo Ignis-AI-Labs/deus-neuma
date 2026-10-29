@@ -5,7 +5,8 @@
 // One button per shipped language, named by its ENDONYM — a reader never
 // decodes a foreign word for their own tongue. The choice applies the
 // moment it is made (i18next re-renders every subscribed surface) and
-// persists wallet-scoped for the next boot.
+// persists wallet-scoped for the next boot. A PREVIEW language (its catalog
+// only partly translated) says so on its own button.
 
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../../i18n/languages.js';
@@ -31,6 +32,7 @@ export const LanguageSection = () => {
               onClick={() => { uiSound('toggle'); setUiLanguage(lang.code); }}
             >
               {lang.endonym}
+              {lang.preview ? ` · ${t('language.preview')}` : null}
             </button>
           );
         })}

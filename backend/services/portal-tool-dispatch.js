@@ -38,6 +38,7 @@ import { isMindTool, handleMindTool } from './mind-tools.js';
 import { isSovereigntyTool, handleSovereigntyTool } from './sovereignty/gateway-handlers.js';
 import { handleSecurityTool, isSecurityTool } from './security/security-being-tools.js';
 import { handleLegalTool, isLegalTool } from './legal/legal-being-tools.js';
+import { handleTreasuryTool, isTreasuryTool } from './treasury/treasury-being-tools.js';
 import { handleBenchTool, isBenchTool } from './bench/bench-being-tools.js';
 import { isSkillSearchTool, isSkillTool } from './skill-tool.js';
 import {
@@ -329,7 +330,7 @@ export const dispatchPlatformTool = async (match, ctx) => {
     // Platform capability: the house offices' ledgers — the CSO's threats and
     // the CLO's legal matters — read by every bound being (the acts are the
     // seated officer's intents), and the connected benchmarks. Same ACTS gate.
-    const office = isSecurityTool(match) ? handleSecurityTool : isLegalTool(match) ? handleLegalTool : isBenchTool(match) ? handleBenchTool : null;
+    const office = isSecurityTool(match) ? handleSecurityTool : isLegalTool(match) ? handleLegalTool : isTreasuryTool(match) ? handleTreasuryTool : isBenchTool(match) ? handleBenchTool : null;
     if (office) {
       results.push(await office(ws, connection, neumaPolicy, toolMode, match, args, { sendToolEvent: _sendToolEvent }));
       break dispatch;
@@ -389,7 +390,7 @@ export const dispatchPlatformTool = async (match, ctx) => {
     }
 
     if (isPlatformFeedTool(match)) {
-      results.push(await handlePlatformFeedTool(ws, connection, match, args, { sendToolEvent: _sendToolEvent }));
+      results.push(await handlePlatformFeedTool(ws, connection, match, args, { sendToolEvent: _sendToolEvent, lanePolicy: neumaPolicy, mode: toolMode }));
       break dispatch;
     }
 

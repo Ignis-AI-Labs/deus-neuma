@@ -24,7 +24,7 @@ test('a saved founding assignment travels from real disk to House cards without 
   await writeFile(path.join(root, 'member', 'owner.json'), JSON.stringify({ wallet, claimedAt: 1 }));
   await writeFile(path.join(root, 'member', 'identity', 'onchain-seal.json'), JSON.stringify({ soulAddress: soul }));
   await writeFile(path.join(root, 'house-founding.base.json'), JSON.stringify({
-    network: 'base', members: [{ address: soul, kind: 1, title: 'Curator' }],
+    network: 'base', members: [{ address: wallet, kind: 0, title: 'Rector' }, { address: soul, kind: 1, title: 'Curator' }],
   }));
   const titles = await houseTitlesByNeumaId(wallet);
   const rows = [{ member: { neumaId: 'member', name: 'Member', title: titles.member } }];
@@ -54,7 +54,7 @@ test('a house founded on Base reads OPEN on Ethereum — its recorded seats stil
   await writeFile(path.join(root, 'optio', 'owner.json'), JSON.stringify({ wallet, claimedAt: 1 }));
   await writeFile(path.join(root, 'optio', 'identity', 'onchain-seal.json'), JSON.stringify({ soulAddress: soul }));
   await writeFile(path.join(root, 'house-founding.base.json'), JSON.stringify({
-    network: 'base', members: [{ address: soul, kind: 1, title: 'Optio' }],
+    network: 'base', members: [{ address: wallet, kind: 0, title: 'Rector' }, { address: soul, kind: 1, title: 'Optio' }],
   }));
   const titles = await houseTitlesByNeumaId(wallet);
   const rows = [{ member: { neumaId: 'optio', name: 'Zezebur', title: titles.optio } }];

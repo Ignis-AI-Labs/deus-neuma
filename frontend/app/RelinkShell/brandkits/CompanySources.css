@@ -1,0 +1,65 @@
+/* CompanySources — a company's SITE & CODE. Monochrome at rest; the signal
+   marks only what is live (a repo the CMO can read now). */
+
+.bk-src section { margin-top: var(--space-4, 16px); }
+.bk-src h5 { margin: 0 0 var(--space-2, 8px); font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.bk-src code { font-family: var(--font-data); font-size: var(--text-label); color: var(--color-text-primary); word-break: break-all; }
+.bk-src a { color: var(--color-text-secondary); font-size: var(--text-label); word-break: break-all; }
+
+.bk-src-tally { display: flex; gap: var(--space-4, 16px); margin-top: var(--space-3, 12px); }
+.bk-src-tally span { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--line); padding: 8px 14px; min-width: 96px; }
+.bk-src-tally b { font-family: var(--font-data); font-size: 20px; font-weight: 300; color: var(--color-text-primary); }
+.bk-src-tally small { font-size: var(--text-label); color: var(--color-text-tertiary); letter-spacing: 0.12em; }
+.bk-src-tally .is-live { border-color: var(--signal-dim); }
+.bk-src-tally .is-live b { color: var(--signal); }
+
+.bk-src-repos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2, 8px); }
+.bk-src-repo { display: grid; grid-template-columns: 10px 1fr auto; gap: var(--space-3, 12px); align-items: start; border: 1px solid var(--line); padding: 10px 12px; }
+.bk-src-mark { width: 8px; height: 8px; margin-top: 4px; border: 1px solid var(--line-hover); }
+.bk-src-repo.is-granted .bk-src-mark { background: var(--signal); border-color: var(--signal); }
+.bk-src-repo.is-missing .bk-src-mark { border-color: var(--alert); }
+.bk-src-what { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bk-src-what b { font-size: var(--text-label); font-weight: 500; color: var(--color-text-primary); }
+.bk-src-what small { font-size: var(--text-label); color: var(--color-text-tertiary); }
+.bk-src-repo.is-granted [data-src-state] { color: var(--signal); }
+.bk-src-repo.is-missing [data-src-state] { color: var(--alert); }
+
+.bk-src-acts { display: flex; gap: var(--space-2, 8px); align-items: center; }
+.bk-src-acts button, .bk-src-look, .bk-src-add button {
+  background: transparent; border: 1px solid var(--line); color: var(--color-text-secondary);
+  font: inherit; font-size: var(--text-label); letter-spacing: 0.12em; padding: 5px 12px; cursor: pointer; white-space: nowrap;
+}
+.bk-src-acts button.is-go:not(:disabled) { border-color: var(--line-hover); color: var(--color-text-primary); }
+.bk-src-acts button:disabled, .bk-src-look:disabled, .bk-src-add button:disabled { opacity: 0.4; cursor: default; }
+.bk-src-look { margin-top: var(--space-3, 12px); }
+
+.bk-src-card { margin-top: var(--space-3, 12px); background: var(--color-glass-light); border: 1px solid var(--line-hover); }
+.bk-src-card .cham-in { padding: var(--space-4, 16px); }
+
+.bk-src-proposals { margin-top: var(--space-3, 12px); border: 1px dashed var(--line-hover); padding: 10px 12px; }
+.bk-src-proposals ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bk-src-proposals li { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: var(--space-2, 8px); align-items: center; }
+.bk-src-proposals li small { grid-column: 1 / -1; font-size: var(--text-label); color: var(--color-text-tertiary); }
+.bk-src-proposals label { display: flex; gap: 8px; align-items: center; min-width: 0; }
+
+.bk-src-add { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.2fr) auto; gap: var(--space-2, 8px); margin-top: var(--space-3, 12px); }
+.bk-src input[type='text'] {
+  background: transparent; border: 1px solid var(--line); color: var(--color-text-primary);
+  font-family: var(--font-data); font-size: 11px; padding: 5px 8px; min-width: 0;
+}
+
+.bk-src-notice { margin-top: var(--space-3, 12px); font-size: var(--text-label); }
+.bk-src-notice.is-ok { color: var(--color-text-secondary); }
+.bk-src-notice.is-bad { color: var(--alert); }
+
+/* A link change the CMO proposed — the operator's one decision. */
+.bk-lc .bk-lc-h { display: flex; align-items: center; gap: 8px; }
+.bk-lc-rows { list-style: none; margin: var(--space-2, 8px) 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bk-lc-rows li { display: grid; grid-template-columns: 48px auto 14px minmax(0, 1fr); gap: var(--space-2, 8px); align-items: baseline; font-family: var(--font-data); font-size: var(--text-label); }
+.bk-lc-k { font-size: var(--text-label); color: var(--color-text-tertiary); letter-spacing: 0.12em; }
+.bk-lc-before { max-width: 36ch; color: var(--color-text-tertiary); word-break: break-all; }
+.bk-lc-arrow { color: var(--color-text-tertiary); }
+.bk-lc-after { color: var(--color-text-primary); word-break: break-all; }
+.bk-lc-read { display: flex; align-items: center; gap: 8px; margin: var(--space-2, 8px) 0; font-size: var(--text-label); color: var(--color-text-secondary); letter-spacing: 0.1em; }
+.bk-lc-read .bk-src-mark { margin-top: 0; }
+.bk-lc-hand { display: inline-flex; gap: var(--space-2, 8px); align-items: center; margin-top: var(--space-2, 8px); }

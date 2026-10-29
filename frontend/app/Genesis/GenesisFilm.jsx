@@ -27,7 +27,7 @@ export const GenesisFilm = ({ onDone }) => {
   const doneRef = useRef(false);
   const [record, setRecord] = useState(null);
   const [t, setT] = useState(0);
-  const [aspect, setAspect] = useState(() => window.innerWidth / Math.max(1, window.innerHeight));
+  const [size, setSize] = useState(() => ({ w: window.innerWidth, h: Math.max(1, window.innerHeight) }));
   const finish = () => { if (!doneRef.current) { doneRef.current = true; onDone(); } };
 
   // impure — claim the install's genesis: play it only when minted now. The
@@ -66,11 +66,11 @@ export const GenesisFilm = ({ onDone }) => {
     return () => cancelAnimationFrame(raf);
   }, [record]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const scene = sceneAt(t);
+  const scene = sceneAt(t, size.w / size.h);
   useEffect(() => { stageRef.current?.render(scene); }, [scene]);
 
   useEffect(() => {
-    const onResize = () => setAspect(window.innerWidth / Math.max(1, window.innerHeight));
+    const onResize = () => setSize({ w: window.innerWidth, h: Math.max(1, window.innerHeight) });
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -79,7 +79,7 @@ export const GenesisFilm = ({ onDone }) => {
   return (
     <div className="gen-root gen-film" data-genesis={record ? 'playing' : 'claiming'}>
       <canvas ref={canvasRef} className="gen-canvas" />
-      {record ? <GenesisOverlay scene={scene} inscription={inscription} aspect={aspect} /> : null}
+      {record ? <GenesisOverlay scene={scene} inscription={inscription} size={size} /> : null}
       {record && t >= SKIP_AFTER_MS ? (
         <button type="button" className="gen-skip" onClick={finish}>SKIP</button>
       ) : null}

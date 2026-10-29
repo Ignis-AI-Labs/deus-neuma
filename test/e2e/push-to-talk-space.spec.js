@@ -1,6 +1,6 @@
 // push-to-talk-space.spec.js — the held Space key, in a real browser.
 //
-// THE BUG (Design note, 2026-08-01: […] Entering a voice sitting by clicking TALK leaves TALK focused, and a
+// THE BUG (ruling, 2026-08-01): […] Entering a voice sitting by clicking TALK leaves TALK focused, and a
 // focused <button> is activated by Space on KEY-UP. The hold-to-talk handler
 // prevented that default on the first press — but its guard skipped auto-
 // repeats, and in Chromium an un-prevented repeat RE-ARMS the activation. So

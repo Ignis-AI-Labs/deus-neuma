@@ -50,6 +50,12 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     await fs.mkdir(modelDir, { recursive: true });
     (await import('../../backend/config.js')).loadConfig();
     const covenantRouter = (await import('../../backend/routes/covenant-routes.js')).default;
+    // The documents the covenant serves — read once the data root above is in
+    // place (covenant.js fixes its record store at its first import).
+    const docs = (await import('../../backend/services/covenant.js')).loadDocuments();
+    const docCount = docs.length;
+    const docTitles = docs.map((d) => d.title);
+    const docIds = docs.map((d) => d.id);
     const preflightRouter = (await import('../../backend/routes/preflight-routes.js')).default;
     const auth = await fullAuth();
     const stranger = await fullAuth();
@@ -80,14 +86,14 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       }
     });
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-      appType: 'custom', optimizeDeps: { include: ['ethers'] }, server: { middlewareMode: true, hmr: false, watch: null } });
+      appType: 'custom', optimizeDeps: { include: ['ethers'] }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send(`<script type="module">
       import { fetchVessels } from "/frontend/app/RelinkShell/vessel/vessel-roster.js";
-      import { loadSealNetwork } from "/frontend/components/BirthCeremony/birth-seal-step.js";
+      import { loadSealNetwork, appendSealReceiptLink } from "/frontend/components/BirthCeremony/birth-seal-step.js";
       import { WitnessCommitment } from "/frontend/components/WitnessCommitment/WitnessCommitment.js";
       import { importEmbeddedWallet, getEmbeddedProvider } from "/frontend/services/EmbeddedWallet.js";
       import { getWalletService } from "/frontend/services/WalletGate.js";
-      Object.assign(window, { fetchVessels, loadSealNetwork, WitnessCommitment, importEmbeddedWallet, getEmbeddedProvider, getWalletService });
+      Object.assign(window, { fetchVessels, loadSealNetwork, appendSealReceiptLink, WitnessCommitment, importEmbeddedWallet, getEmbeddedProvider, getWalletService });
       window.expired = 0; window.accepted = 0;
       window.addEventListener("neuma:auth_expired", () => window.expired++);
       window.ready = true;
@@ -212,6 +218,24 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     });
     expect(invalid.expired).toBe(beforeInvalid + 1);
 
+    // The ceremony's seal receipt names the explorer it links: an Ethereum
+    // seal opens Etherscan and says so, a Base seal says Basescan, and an
+    // unknown network gets no link at all. Real DOM, real function.
+    const receiptLink = (network) => drive(() => page.evaluate((net) => {
+      document.querySelectorAll('#seal-status').forEach((el) => el.remove());
+      const host = document.createElement('span');
+      host.id = 'seal-status';
+      document.body.append(host);
+      window.appendSealReceiptLink({ container: document.body }, { network: net, txHash: `0x${'ab'.repeat(32)}` });
+      const link = host.querySelector('.seal-explorer-link');
+      host.remove();
+      return link ? { href: link.href, text: link.textContent } : null;
+    }, network));
+    const sealTx = `0x${'ab'.repeat(32)}`;
+    expect(await receiptLink('ethereum')).toEqual({ href: `https://etherscan.io/tx/${sealTx}`, text: 'VIEW ON ETHERSCAN ↗' });
+    expect(await receiptLink('base')).toEqual({ href: `https://basescan.org/tx/${sealTx}`, text: 'VIEW ON BASESCAN ↗' });
+    expect(await receiptLink('polygon')).toBeNull();
+
     // Covenant fixture helpers — every one rebuilds only what a recycled
     // renderer could have wiped, then drives the real component.
     const freshCommitment = () => page.evaluate(() => {
@@ -219,24 +243,24 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       window.witness = new window.WitnessCommitment(() => { window.accepted += 1; }, () => {});
       window.witness.show();
     });
-    const docsOutcome = () => page.waitForFunction(() => {
+    const docsOutcome = () => page.waitForFunction((count) => {
       if (document.querySelector('.covenant-docs-failed')) return 'failed';
-      if (document.querySelectorAll('.covenant-doc').length === 3) return 'docs';
+      if (document.querySelectorAll('.covenant-doc').length === count) return 'docs';
       if (!document.querySelector('.witness-commitment-overlay')) return 'lost';
       return null;
-    }, null, { timeout: 30000 }).then((handle) => handle.jsonValue());
+    }, docCount, { timeout: 30000 }).then((handle) => handle.jsonValue());
     const ensureCommitment = async () => {
       const standing = (await page.locator('.witness-commitment-overlay').count())
-        && (await page.locator('.covenant-doc').count()) === 3;
+        && (await page.locator('.covenant-doc').count()) === docCount;
       if (standing) return 'ready';
       await freshCommitment();
       // A documents refusal here is only reachable through transport loss —
       // failDocs is off for every leg that calls this — so it retries.
-      return page.waitForFunction(() => {
-        if (document.querySelectorAll('.covenant-doc').length === 3) return 'ready';
+      return page.waitForFunction((count) => {
+        if (document.querySelectorAll('.covenant-doc').length === count) return 'ready';
         if (document.querySelector('.covenant-docs-failed')) return 'failed';
         return null;
-      }, null, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      }, docCount, { timeout: 30000 }).then((handle) => handle.jsonValue());
     };
     const readAndTick = () => page.evaluate(() => {
       document.querySelectorAll('.covenant-doc').forEach((details) => {
@@ -288,7 +312,7 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     expect(refusedDocs.delta.some((line) => line.includes('HTTP 500'))).toBe(true);
     expect(refusedDocs.delta.some((line) => line.includes('DOCS SERVER WORDS'))).toBe(false);
 
-    // Documents render for real (three binding texts with hashes), and the
+    // Documents render for real (the binding texts with hashes), and the
     // read-through gate unlocks only after an honest scroll to each end. The
     // whole walk is one attempt: a recycled renderer re-runs it from a fresh
     // commitment, every render and every scroll dispatch real.
@@ -300,7 +324,7 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       if (outcome === 'lost') return RETRY;
       if (outcome !== 'docs') {
         if (consoleErrors.slice(mark).some((line) => TRANSPORT_PAGE.test(line))) return RETRY;
-        throw new Error(`expected the three binding documents, got ${outcome}`);
+        throw new Error(`expected the ${docCount} binding documents, got ${outcome}`);
       }
       return page.evaluate(() => {
         const before = {
@@ -325,10 +349,10 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
       });
     });
     expect(docsProof).toEqual({
-      titles: ['The Neuma Covenant', 'Terms of Service', 'End User License Agreement'],
-      hashes: 3,
+      titles: docTitles,
+      hashes: docCount,
       acceptDisabled: true,
-      badges: ['READ', 'READ', 'READ'],
+      badges: Array(docCount).fill('READ'),
       acceptEnabled: true,
     });
 
@@ -426,9 +450,10 @@ test('ceremony reads and covenant signing keep their contracts on the shared tra
     // the record count only ever grows; the latest record is the proof.
     expect(records.length).toBeGreaterThanOrEqual(1);
     const record = records[records.length - 1];
-    expect(record).toMatchObject({ version: 'covenant-acceptance/1', wallet: auth.address });
-    expect(record.documents.map((doc) => doc.id)).toEqual(['covenant', 'terms', 'eula']);
+    expect(record).toMatchObject({ version: 'covenant-acceptance/2', wallet: auth.address });
+    expect(record.documents.map((doc) => doc.id)).toEqual(docIds);
     expect(record.message).toContain('NEUMA COVENANT ACCEPTANCE');
+    expect(record.message).toContain('I am at least 18 years of age');
 
     expect(pageErrors).toEqual([]);
   } finally {

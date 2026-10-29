@@ -1,6 +1,6 @@
 // OneShotTrialsPanel — the community one-shot benchmarks as one-click trials.
 //
-// The plug-and-play law (Design note, 2026-07-15: a witness who cannot navigate
+// The plug-and-play law (ruling, 2026-07-15): a witness who cannot navigate
 // tech at all picks their LEAD, clicks START, and WATCHES. The desk does the
 // rest — binds the LEAD, opens a fresh chat in the STREAM, and hands over
 // the composed invocation (the shared bench-pack primitive: verbatim public

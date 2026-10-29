@@ -14,6 +14,7 @@ import { RelinkShell } from './RelinkShell/RelinkShell.jsx';
 import { PocketShell } from './PocketShell/PocketShell.jsx';
 import { usePocketSurface } from './PocketShell/pocket-surface.js';
 import { FirstRunChoice } from './FirstRunChoice/FirstRunChoice.jsx';
+import { TextSizeQuick } from './TextSizeQuick/TextSizeQuick.jsx';
 import { FirstRunWitness } from './FirstRunChoice/FirstRunWitness.jsx';
 import { FirstRunHarness } from './FirstRunChoice/FirstRunHarness.jsx';
 import { enterAs, readEntryMode, writeEntryMode } from './entry-mode.js';
@@ -56,6 +57,8 @@ export const AppShell = ({ wsService }) => {
   // A REHEARSAL summoning (the witness chose to try it first): the whole
   // ceremony with their own model, nothing kept — the same test mode ?test=1 opens.
   const [rehearsal, setRehearsal] = useState(false);
+  // Which founding the rite walks: on this computer, or joining Unavis on Ethereum.
+  const [foundingMode, setFoundingMode] = useState('network');
   // A narrow or finger-driven viewport gets the pocket shell in place of the
   // desk (Neuma Remote); the decision follows the media query live.
   const pocket = usePocketSurface();
@@ -90,8 +93,9 @@ export const AppShell = ({ wsService }) => {
   // permanent on-chain act takes the whole screen and the witness's sole
   // focus, same staging law as the birth and the attunement. The desk
   // returns when the rite closes (standing, refusal, or deliberate leave).
+  // detail.mode: 'local' founds the house on this computer; 'network' joins Unavis on Ethereum (2026-10-26).
   useEffect(() => {
-    const toFounding = () => setPhase('founding');
+    const toFounding = (e) => { setFoundingMode(e.detail?.mode === 'local' ? 'local' : 'network'); setPhase('founding'); };
     window.addEventListener('founding:rite', toFounding);
     return () => window.removeEventListener('founding:rite', toFounding);
   }, []);
@@ -269,6 +273,9 @@ export const AppShell = ({ wsService }) => {
   // ignition when the gateway is where it opens (so the opening reveals the
   // gateway whole), never beneath GENESIS (it brings its own stage).
   const showOpeningField = !genesisActive && underPhase === 'gateway';
+  // The reading size rides every screen the desk is not (its Settings › LOOK
+  // carries the same slider) — but never over a film playing at boot.
+  const showTextSize = !bootActive && !genesisActive && underPhase !== 'relink';
   const phaseView = (() => {
     switch (underPhase) {
       case 'relink':
@@ -278,7 +285,7 @@ export const AppShell = ({ wsService }) => {
       case 'attunement':
         return <AttunementHost initialBeing={attunementTarget} onClose={() => setPhase('relink')} />;
       case 'founding':
-        return <FoundingHost wsService={wsService} onClose={() => setPhase('relink')} />;
+        return <FoundingHost wsService={wsService} mode={foundingMode} onClose={() => setPhase('relink')} />;
       case 'voiceseal':
         return <VoiceSealHost initialBeing={voiceSealTarget} onClose={() => setPhase('relink')} />;
       case 'choose':
@@ -370,6 +377,7 @@ export const AppShell = ({ wsService }) => {
       {/* The gateway's environment: the field, at rest. The ignition paints
           its own frame above the session, so no WebGL runs beneath it. */}
       {showOpeningField && <OpeningField />}
+      {showTextSize && <TextSizeQuick />}
       <DesktopContextMenu />
     </>
   );

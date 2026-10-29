@@ -1,5 +1,6 @@
 import { csoDesignation } from './cso-designation.js';
 import { threatLedgerFor } from './threat-ledger.js';
+import { bySeverityThenNewest } from './threat-lifecycle.js';
 import { watchStoreFor } from './watch-store.js';
 import { readScanState } from './security-scheduler.js';
 import { readSecurityTelemetry } from './traffic-monitor.js';
@@ -7,7 +8,13 @@ import { createLogger } from '../logger.js';
 
 const log = createLogger('Security.Briefing');
 const BRIEFING_CAP = 15;
-const threatLine = (entry) => `- [${entry.id.slice(0, 10)}] ${entry.severity} · ${entry.layer}${entry.repo ? `/${entry.repo}` : ''} — ${entry.title}`;
+const REMEDY_SHOWN = 160;
+// Each line carries its fix, cut short: the whole remedy is one
+// security_threat_get away, and the briefing rides every CSO turn.
+const remedyTail = (remedy) => (remedy
+  ? `\n  fix: ${remedy.length > REMEDY_SHOWN ? `${remedy.slice(0, REMEDY_SHOWN - 1)}…` : remedy}`
+  : '');
+const threatLine = (entry) => `- [${entry.id.slice(0, 10)}] ${entry.severity} · ${entry.layer}${entry.repo ? `/${entry.repo}` : ''} — ${entry.title}${remedyTail(entry.remedy)}`;
 
 const pulseLines = (telemetry) => {
   if (!telemetry) return ['Live traffic: unavailable — inspect the telemetry instrument before trusting silence.'];
@@ -36,10 +43,13 @@ export const csoBriefingSection = async (connection) => {
       threatLedgerFor(wallet).then((ledger) => ledger.load()),
       readScanState(wallet).catch(() => null),
       watchStoreFor(wallet).then((store) => store.load()).catch(() => null),
-      readSecurityTelemetry({ windowSeconds: 60, logLimit: 5 }).catch(() => null),
+      readSecurityTelemetry({ windowSeconds: 60, logLimit: 5, wallet }).catch(() => null),
     ]);
-    const fresh = entries.filter((entry) => entry.status === 'new');
-    const confirmed = entries.filter((entry) => entry.status === 'confirmed');
+    // Worst and newest first: the briefing shows only the head of each lane,
+    // and in file order that head was August's medium advisories while the
+    // house's criticals sat unseen below the cap.
+    const fresh = entries.filter((entry) => entry.status === 'new').sort(bySeverityThenNewest);
+    const confirmed = entries.filter((entry) => entry.status === 'confirmed').sort(bySeverityThenNewest);
     const needsOperator = entries.filter((entry) => entry.status === 'needs_operator');
     return [
       '## CSO office',
@@ -47,7 +57,7 @@ export const csoBriefingSection = async (connection) => {
       '',
       '### The watch',
       scan?.lastRunAt
-        ? `Last scan: ${scan.lastRunAt} (${scan.runs?.[0] ? `+${scan.runs[0].added} new, ${scan.runs[0].seen} known` : 'no run summary'})`
+        ? `Last scan: ${scan.lastRunAt} (${scan.runs?.[0] ? `+${scan.runs[0].added} new, ${scan.runs[0].seen} known, ${scan.runs[0].closed ?? 0} closed as no longer seen` : 'no run summary'})`
         : 'The watch has NEVER run on this install — file a security/scan intent, or ask the operator why the scheduler is silent.',
       watch ? `Watched repos: ${watch.repos.map((repo) => `${repo.id}${repo.hasLockfile ? '' : ' (no lockfile — sweep only)'}`).join(', ') || 'none'}` : null,
       scan?.host ? `Host: kernel ${scan.host.kernel || '?'} · NVIDIA driver ${scan.host.nvidiaDriver || 'n/a'} — check hardware advisories against THESE numbers.` : null,
@@ -64,6 +74,7 @@ export const csoBriefingSection = async (connection) => {
       '',
       '### Standing',
       confirmed.length ? `CONFIRMED, owed to the fix pipeline:\n${confirmed.slice(0, BRIEFING_CAP).map(threatLine).join('\n')}` : 'No confirmed threats stand.',
+      confirmed.length ? 'A fix only the operator\'s hands can make (rotate a key, upgrade a dependency, close a port) goes to their task list: security/file-fix {id}. Your `mitigated` is a claim — the next whole scan verifies it or reopens the threat.' : null,
       needsOperator.length ? `${needsOperator.length} threat(s) wait on the operator — say exactly what they need when you speak next.` : null,
       'Emergency Reach is bounded: a security/circuit-breaker intent asks the operator for ordinary changes; deterministic critical remote traffic is auto-contained for at most 15 minutes and written to the act ledger.',
     ].filter((line) => line !== null).join('\n');

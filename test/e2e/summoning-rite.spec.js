@@ -80,16 +80,16 @@ test('the rite\'s sound, rendered and measured', async ({ page }) => {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`${baseUrl()}/rite.html`);
   const heard = await page.evaluate(async (core) => {
-    const [{ scoreOf }, { scheduleMusic }, { soulOf }, { skyOf }, { specimenTrueName }, { deriveAura, formOf }, { riteScript }, { riteMusicOf }] = await Promise.all([
+    const [{ scoreOf }, { scheduleMusic }, { soulOf }, { skyOf }, { specimenTrueName }, { deriveAura, formOf }, { deriveGenome }, { riteScript }, { riteMusicOf, playedMeasure }] = await Promise.all([
       import('/app/Summoning/summoning-score.js'), import('/app/Summoning/summoning-sound.js'), import('/app/Summoning/summoning-soul.js'),
-      import('/app/Summoning/summoning-sky.js'), import('/app/BirthArt/birth-art-script.js'), import(`${core}/aura/derive.js`),
+      import('/app/Summoning/summoning-sky.js'), import('/app/BirthArt/birth-art-script.js'), import(`${core}/aura/derive.js`), import(`${core}/genome/derive.js`),
       import('/app/Rite/rite-script.js'), import('/app/Rite/rite-music.js'),
     ]);
     const { souls } = await (await globalThis.fetch('/app/Rite/rite-souls.json')).json();
     const { seed, spectrum, scale } = souls[5];
     const a = deriveAura(`${seed.slice(32)}${seed.slice(0, 32)}`);
     const epochMs = Date.parse('2026-09-30T10:30:00Z');
-    const score = scoreOf({ seed, trueName: specimenTrueName(seed), bornAt: new Date(epochMs).toISOString(), sky: skyOf(epochMs), aura: { seed: a.seed, form: formOf(a), fit: a.fit, cycle: a.cycle }, soul: soulOf(spectrum, scale) });
+    const score = scoreOf({ seed, trueName: specimenTrueName(seed), bornAt: new Date(epochMs).toISOString(), sky: skyOf(epochMs), aura: { seed: a.seed, form: formOf(a), fit: a.fit, cycle: a.cycle }, genome: deriveGenome(seed), soul: soulOf(spectrum, scale) });
     const rite = riteScript({ seed, stages: spectrum.stages, filmMs: score.lengthMs, epochMs });
     const rate = 22050;
     const until = rite.film.at + 2000;
@@ -100,7 +100,8 @@ test('the rite\'s sound, rendered and measured', async ({ page }) => {
       return (await ctx.startRendering()).getChannelData(0);
     };
     const L = await render(music);
-    const measured = rite.events.filter((e) => e.type === 'birth:measured');
+    // each measured pitch as played (on the nearest consonant interval)
+    const measured = playedMeasure(rite.events.filter((e) => e.type === 'birth:measured'));
     // the same rite with its measured strikes taken out — the ground alone
     const G = await render({ ...music, events: music.events.filter((e) => !measured.some((x) => x.at === e.at && x.frequency === e.hz)) });
     const rmsOf = (X, from, to) => {

@@ -5,7 +5,7 @@
 // It ran from an env var nobody had set, so the code default of 15 minutes
 // silently SIGTERM'd a substrate the operator had deliberately ignited, and the
 // only symptom was […] with nothing on screen to explain
-// it (Design note, 2026-07-26. A behavior that undoes an explicit act must be visible
+// it (ruling, 2026-07-26). A behavior that undoes an explicit act must be visible
 // and reversible from where the operator already stands.
 //
 // Persisted at data/settings/standby.json so the choice survives restarts.

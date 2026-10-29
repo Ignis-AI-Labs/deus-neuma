@@ -106,6 +106,29 @@ describe('accessDecision — the whole gate, pure', () => {
     expect(accessDecision({ ...local, state: state([]) }).scope).toBe('local');
     expect(accessDecision({ ...local, state: state([], false) }).scope).toBe('local');
   });
+  // Audit 2026-10-28 M-03: a page the operator visits can reach 127.0.0.1. The local tier refuses a
+  // request another web origin sent; a CLI, a test and the app's own page are untouched.
+  it('a local request sent by another web origin is refused; the app, a dev proxy and a CLI are not', () => {
+    const local = (headers) => ({ headers: { host: '127.0.0.1:3333', ...headers }, remoteAddress: '127.0.0.1', method: 'GET', path: '/api/v1/preflight', state: state([], false), originAllowed: (o) => o === 'http://127.0.0.1:3333' || o === 'http://localhost:7777' });
+    const verdict = (headers) => accessDecision(local(headers));
+    // a CLI or the backend's own fetch: neither header
+    expect(verdict({}).allow).toBe(true);
+    // the app's own page, and an allowed dev origin
+    expect(verdict({ origin: 'http://127.0.0.1:3333' }).allow).toBe(true);
+    expect(verdict({ origin: 'http://localhost:7777', 'sec-fetch-site': 'cross-site' }).allow).toBe(true);
+    // the browser's word that page and request share an origin (a dev proxy's own page)
+    expect(verdict({ origin: 'http://127.0.0.1:41999', 'sec-fetch-site': 'same-origin' }).allow).toBe(true);
+    // a foreign page: a CORS fetch carries its Origin; an <img> or no-cors GET only Sec-Fetch-Site
+    expect(verdict({ origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' })).toMatchObject({ allow: false, status: 403 });
+    expect(verdict({ origin: 'https://evil.example' })).toMatchObject({ allow: false, status: 403 });
+    expect(verdict({ 'sec-fetch-site': 'cross-site' })).toMatchObject({ allow: false, status: 403 });
+    // another localhost port is the same SITE, never the same origin
+    expect(verdict({ origin: 'http://127.0.0.1:8080', 'sec-fetch-site': 'same-site' })).toMatchObject({ allow: false, status: 403 });
+    expect(verdict({ 'sec-fetch-site': 'same-site' })).toMatchObject({ allow: false, status: 403 });
+    // a sandboxed frame or file:// page says Origin: null
+    expect(verdict({ origin: 'null' }).allow).toBe(false);
+  });
+
   it('a phone without the cookie is unauthorized; the enrolment road is open to it', () => {
     const bare = { headers: { host: ENROLLED, 'x-forwarded-for': '100.64.0.5' }, remoteAddress: '127.0.0.1', state: state([device]) };
     expect(accessDecision({ ...bare, method: 'GET', path: '/api/x' }).error).toBe('unauthorized');

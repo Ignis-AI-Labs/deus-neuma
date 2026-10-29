@@ -14,6 +14,7 @@ import {
   launch, getStatus, ENGINE_STATES, isUvAvailable, engineReadiness, resolveServe,
 } from '../services/voice/engine-manager.js';
 import { createLogger } from '../services/logger.js';
+import { sidecarFetch } from '../services/voice/sidecar-trust.js';
 
 const log = createLogger('Voice.STT');
 
@@ -95,7 +96,7 @@ router.post(
     // A live read while the key is held decodes greedily; the release's final keeps the beam.
     const preview = req.query.preview === '1' ? '&preview=1' : '';
     try {
-      const upstream = await fetch(`http://${host}:${port}/transcribe?hotwords=${bias}${preview}`, {
+      const upstream = await sidecarFetch(`http://${host}:${port}/transcribe?hotwords=${bias}${preview}`, {
         method: 'POST',
         headers: { 'Content-Type': req.get('content-type') || 'application/octet-stream' },
         body: req.body,

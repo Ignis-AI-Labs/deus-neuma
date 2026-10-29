@@ -26,6 +26,10 @@ import { getItems, getRoots, addRoot, removeRoot, fileSrc } from '../../../servi
 import {
   applyView, groupByDay, readableBytes, itemKey, neighborOf, positionOf, KINDS, SORTS,
 } from './gallery-view.js';
+import { itemOfLanding, pathOfItem } from './gallery-landing.js';
+import { mediaMenuDoor } from '../media-menu.js';
+import { dirOf } from '../../../utils/path.js';
+import { onCardLanding, takeCardLanding } from '../card-landing.js';
 import { AppTitle } from '../app-title.jsx';
 import { Viewer, markMissing, clearMissing } from './Viewer.jsx';
 import './GalleryApp.css';
@@ -50,8 +54,14 @@ const PlayIcon = () => (
 // engine evict decoded bitmaps under memory pressure. There is no thumbnail
 // endpoint, so a tile is the FULL-SIZE file — which is why the cache headers on
 // /file matter as much as the laziness does.
-const Tile = ({ item, onOpen }) => (
-  <button type="button" className="gallery-tile" onClick={() => onOpen(item)} title={item.name}>
+const Tile = ({ item, path, onOpen }) => (
+  <button
+    type="button"
+    className="gallery-tile"
+    onClick={() => onOpen(item)}
+    title={item.name}
+    {...mediaMenuDoor({ kind: item.kind, src: fileSrc(item), path, name: item.name, mime: item.mime, inGallery: true })}
+  >
     {item.kind === 'image' ? (
       <img
         className="gallery-tile-img"
@@ -82,11 +92,14 @@ const GalleryBody = () => {
   const [adding, setAdding] = useState('');
   const alive = useRef(true);
 
+  // The scan the read returned (null when it failed), so a landing can be
+  // judged against exactly what was read for it.
   const load = async () => {
     setBusy(true);
+    let res = null;
     try {
-      const res = await getItems();
-      if (!alive.current) return;
+      res = await getItems();
+      if (!alive.current) return null;
       setItems(res.items || []);
       setRoots(res.roots || []);
       setError(null);
@@ -94,12 +107,35 @@ const GalleryBody = () => {
       if (alive.current) setError(e.message);
     }
     if (alive.current) setBusy(false);
+    return res;
+  };
+
+  // A tray card names its render, an image's menu its render or its file
+  // (card-landing.js): latched for a window it opens, announced to an open one
+  // (which re-reads, the render being new). The viewer opens on it IN THE
+  // FOLDER IT LIVES IN, so stepping walks its neighbours there. A file no
+  // gallery folder holds says so, and offers its folder to add.
+  const land = (landing, res) => {
+    if (!landing || !res || !alive.current) return;
+    const hit = itemOfLanding(res.items, res.roots, landing);
+    if (hit) {
+      setView((v) => ({ ...v, kind: 'all', rootId: hit.rootId, query: '' }));
+      setOpen(hit);
+      return;
+    }
+    const folder = landing.path ? dirOf(landing.path) : '';
+    setError(folder
+      ? `That file is not in any gallery folder. Its folder is ${folder} — add it below to see it here.`
+      : 'That render is not in any gallery folder.');
+    if (folder) setAdding(folder);
   };
 
   useEffect(() => {
     alive.current = true;
-    load();
-    return () => { alive.current = false; };
+    const first = takeCardLanding('gallery');
+    load().then((res) => land(first, res));
+    const off = onCardLanding('gallery', (item) => { load().then((res) => land(item, res)); });
+    return () => { alive.current = false; off(); };
   }, []);
 
   const { items: shown, counts } = useMemo(() => applyView(items, view), [items, view]);
@@ -237,7 +273,7 @@ const GalleryBody = () => {
               <span className="label-data gallery-day-head">{day.key}</span>
               <div className="gallery-grid">
                 {day.items.map((it) => (
-                  <Tile key={itemKey(it)} item={it} onOpen={setOpen} />
+                  <Tile key={itemKey(it)} item={it} path={pathOfItem(it, roots)} onOpen={setOpen} />
                 ))}
               </div>
             </section>
@@ -248,6 +284,7 @@ const GalleryBody = () => {
       {open ? (
         <Viewer
           item={open}
+          path={pathOfItem(open, roots)}
           position={positionOf(shown, open)}
           onStep={onStep}
           onClose={() => { uiSound('toggle'); setOpen(null); }}

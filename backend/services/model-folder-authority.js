@@ -41,6 +41,8 @@ export const normalizeFolders = (folders) => {
     const p = typeof f?.path === 'string' ? f.path.trim() : '';
     if (!p || !path.isAbsolute(p)) throw new Error('every folder needs an absolute path');
     const clean = p.replace(/\/+$/, '') || '/';
+    // never the whole disk: a model folder is walked for weights (audit 2026-10-28 M-02)
+    if (clean === path.parse(path.resolve(clean)).root) throw new Error('a model folder cannot be the whole disk — choose the folder that holds the models');
     if (seen.has(clean)) throw new Error('folders must be unique');
     seen.add(clean);
     const servers = f?.servers === undefined ? [...FOLDER_SERVERS]

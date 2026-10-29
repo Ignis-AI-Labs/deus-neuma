@@ -116,7 +116,13 @@ describe('sandbox lane boundary — own lane only, others private (gnosis, no mo
   test('delete_file refuses directories and absent paths honestly, and never crosses lanes', async () => {
     const a = callFor('neuma-a');
     // A directory is never deletable — no recursive wipes through this hand.
-    await expect(a(SERVER, 'delete_file', { path: neumaA })).rejects.toThrow(/directories are not deletable/);
+    await expect(a(SERVER, 'delete_file', { path: path.join(neumaA, 'dna') })).rejects.toThrow(/directories are not deletable/);
+    expect(existsSync(aDnaPath)).toBe(true);
+    // The lane ROOT meets an earlier wall since a437e530f: it is an ancestor of
+    // the platform's coding/sandboxes control state, so the sandbox refuses it
+    // before the delete hand ever runs.
+    await expect(a(SERVER, 'delete_file', { path: neumaA })).rejects.toThrow(/Coding shell control state is platform-managed/);
+    expect(existsSync(neumaA)).toBe(true);
     // Nothing at the path — an honest nothing, not a silent success.
     await expect(a(SERVER, 'delete_file', { path: path.join(neumaA, 'never-was.md') })).rejects.toThrow(/Nothing stands/);
     // Another lane's file is out of write confinement — refused, untouched.
@@ -139,7 +145,7 @@ describe('sandbox lane boundary — own lane only, others private (gnosis, no mo
   });
 
   // -------------------------------------------------------------------------
-  // THE FOCUS GROUND (Design note, 2026-07-26 — the folder standing open in the
+  // THE FOCUS GROUND (ruling, 2026-07-26) — the folder standing open in the
   // operator's Explorer is shared reach. Same law, proved on real disk: the
   // bytes land, or the file is untouched.
   // -------------------------------------------------------------------------

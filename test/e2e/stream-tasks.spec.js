@@ -401,7 +401,7 @@ test('the TASKS window groups a being\'s work BY CHAT, and the rail shows only t
   await expect(todo).toBeVisible({ timeout: 20000 });
   // Opened with no being named, the window lands on ME — the operator's own
   // list, which is never chat-scoped and so shows plain cadence sections.
-  await expect(todo.locator('.todo-standing-tab.is-on')).toContainText('ME');
+  await expect(todo.locator('.todo-standing-tab.is-on')).toContainText('OPERATOR');
   await expect(todo.locator('.todo-chat')).toHaveCount(0);
 
   // The standing switch is the way into the house — and it lands on a being,

@@ -11,16 +11,30 @@ const path = require('node:path');
 const residency = require('./residency.cjs');
 const { registerWalletIpc } = require('./wallet/wallet-ipc.cjs');
 const { browserTargetFor } = require('./open-in-browser.cjs');
+const { externalUrlFor, fromDesk } = require('./desk-links.cjs');
 const { sanitizeBootPayload } = require('./desk-boot.cjs');
-const { logPaths } = require('./backend-log.cjs');
+const { revealBackendLog } = require('./backend-log.cjs');
 const { APP_HOTKEYS, buildAppMenuTemplate } = require('./hotkeys.cjs');
-const { cleanNotifyText, isSafeAppId } = require('./notify-text.cjs');
+const { cleanNotifyText, activationOf } = require('./notify-text.cjs');
 const { dragIcon } = require('./drag-icon.cjs');
+const { define } = require('./dictionary.cjs');
 const { primaryBounds } = require('./primary-placement.cjs');
 
 // impure — register every handler on ipcMain. `deskWindows` is the
 // createDeskWindows() surface (desk-windows.cjs).
-const registerIpcHandlers = ({ deskWindows }) => {
+const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
+  // Every channel here answers a desk's own top frame on the desk's origin
+  // only (desk-links.cjs fromDesk; audit 2026-10-28 M-07). A refused sync call
+  // still gets its answer (null), so no page ever hangs on it.
+  const fromTheDesk = (event) => fromDesk(event, getOrigin());
+  const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
+    if (!fromTheDesk(event)) throw new Error(`${channel} refused: not the desk`);
+    return fn(event, ...args);
+  });
+  const on = (channel, fn) => ipcMain.on(channel, (event, ...args) => {
+    if (fromTheDesk(event)) { fn(event, ...args); return; }
+    event.returnValue = null;
+  });
   const {
     createWindow,
     openDeskFromFocused,
@@ -75,7 +89,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   const osNotifyEnabled = String(process.env.NEUMA_DESK_OS_NOTIFY ?? '1') !== '0';
   const notifiedIds = new Set();
 
-  ipcMain.on('notifications:notify', (_event, payload) => {
+  on('notifications:notify', (_event, payload) => {
     try {
       if (!osNotifyEnabled) return;
       // A capability probe, NOT a preference: it answers […],
@@ -109,10 +123,10 @@ const registerIpcHandlers = ({ deskWindows }) => {
       });
       notification.on('click', () => {
         const win = raiseDesk();
-        // Ask the desk to open the app the card pointed at. A small enum of
-        // app ids, never a URL or a path.
-        const appId = isSafeAppId(payload?.appId) ? payload.appId : null;
-        if (win && appId) win.webContents.send('notifications:activate', { appId });
+        // Ask the desk to replay the card's click. A record id and a small enum
+        // of app ids, never a URL or a path.
+        const activation = activationOf(payload);
+        if (win && activation) win.webContents.send('notifications:activate', activation);
       });
       notification.show();
     } catch (error) {
@@ -122,27 +136,23 @@ const registerIpcHandlers = ({ deskWindows }) => {
     }
   });
 
-  ipcMain.handle('residency:get', () => residency.isResident());
-  ipcMain.handle('residency:set', (_event, enabled) => residency.setResident(enabled));
+  handle('residency:get', () => residency.isResident());
+  handle('residency:set', (_event, enabled) => residency.setResident(enabled));
 
   // The hotkey registry, read-only, for the Settings legend — the same
   // table the application menu is built from, so the legend can never
   // claim a binding the menu doesn't hold. (The sandboxed preload may only
   // require 'electron', hence IPC rather than a require of hotkeys.cjs.)
-  ipcMain.handle('hotkeys:list', () => APP_HOTKEYS);
+  handle('hotkeys:list', () => APP_HOTKEYS);
 
   // Open a URL in the user's real browser (used by the wallet bridge to reach
   // their Rabby/MetaMask). http(s) only — never file:// or custom schemes,
   // even though the renderer is our own app.
-  ipcMain.handle('app:openExternal', (_event, url) => {
-    try {
-      const u = new URL(String(url));
-      if (u.protocol === 'http:' || u.protocol === 'https:') {
-        shell.openExternal(u.toString());
-        return { ok: true };
-      }
-    } catch { /* invalid url — fall through */ }
-    return { ok: false };
+  handle('app:openExternal', (_event, url) => {
+    const target = externalUrlFor(url);
+    if (!target) return { ok: false };
+    shell.openExternal(target);
+    return { ok: true };
   });
 
   // Open a LOCAL HTML file in the user's default browser (the FILES tree's
@@ -150,7 +160,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // then the one IO check — the file must actually exist as a file — and
   // only then does the file:// URL leave the shell. Nothing else schemes
   // its way out of the app.
-  ipcMain.handle('app:openInBrowser', (_event, rawPath) => {
+  handle('app:openInBrowser', (_event, rawPath) => {
     const target = browserTargetFor(rawPath);
     if (!target) return { ok: false };
     try {
@@ -162,7 +172,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
 
   // Reveal a path in the OS file manager. String + existence checked; the
   // path itself never leaves the shell as a URL, so no scheme can ride it.
-  ipcMain.handle('app:showInFolder', (_event, rawPath) => {
+  handle('app:showInFolder', (_event, rawPath) => {
     if (typeof rawPath !== 'string' || rawPath.length === 0) return { ok: false };
     try { fs.statSync(rawPath); } catch { return { ok: false }; }
     shell.showItemInFolder(rawPath);
@@ -178,7 +188,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // never an iframe from the desk (ComfyUI's Host/Origin middleware fights
   // embedding, and the desk origin never touches the engine API).
   let workbenchWin = null;
-  ipcMain.handle('workbench:open', (_event, rawUrl) => {
+  handle('workbench:open', (_event, rawUrl) => {
     let u;
     try { u = new URL(String(rawUrl)); } catch { return { opened: false, reason: 'malformed workbench url' }; }
     const loopback = u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
@@ -215,8 +225,19 @@ const registerIpcHandlers = ({ deskWindows }) => {
 
   // In-page context menu — the renderer announces it can draw the styled
   // menu, and answers a shown menu with the chosen action.
-  ipcMain.on('contextmenu:ready', (event) => markMenuReady(event.sender));
-  ipcMain.on('contextmenu:action', (event, action) => applyMenuAction(event.sender, action));
+  on('contextmenu:ready', (event) => markMenuReady(event.sender));
+  on('contextmenu:action', (event, action) => applyMenuAction(event.sender, action));
+  // DEFINE — a word's meaning from the offline dictionary (dictionary.cjs).
+  // Read-only and local; the word is re-validated there, and a database that
+  // cannot be read says so instead of answering "no entry".
+  handle('dictionary:define', (_event, word) => {
+    if (typeof word !== 'string' || word.length > 64) return { word: '', entries: [], error: 'Not a word.' };
+    try {
+      return define(word);
+    } catch (err) {
+      return { word, entries: [], error: `The dictionary could not be read: ${err.message}` };
+    }
+  });
 
   // A desk spawns a sibling desk. The opener hands over its auth token so
   // the new desk wakes authenticated (one-shot relay — see desk-boot.cjs);
@@ -224,7 +245,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // Fire-and-forget BY CONTRACT: the reply says the spawn was scheduled,
   // not that the window loaded — a later load failure surfaces in the
   // native error dialog, the only honest place main can report it.
-  ipcMain.handle('desk:open', (_event, rawBoot) => {
+  handle('desk:open', (_event, rawBoot) => {
     createWindow(sanitizeBootPayload(rawBoot)).catch((err) => {
       dialog.showErrorBox('Deus Neuma', `Could not open a new desk.\n\n${err.message}`);
     });
@@ -235,14 +256,14 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // first script runs — the token is in sessionStorage by first paint, so
   // the gateway never flashes. Delivery is one-shot: the entry dies here.
   // Any window without a parked boot (slot 1, reloads, strangers) gets null.
-  ipcMain.on('desk:claim-boot', (event) => {
+  on('desk:claim-boot', (event) => {
     event.returnValue = claimBoot(event.sender.id);
   });
 
   // The focused desk's preload answers a handoff request (main-initiated
   // New Window). Untrusted input: the id must match a pending request —
   // unknown or late replies are dropped; the payload is sanitized at use.
-  ipcMain.on('desk:handoff-reply', (_event, requestId, payload) => {
+  on('desk:handoff-reply', (_event, requestId, payload) => {
     settleHandoff(requestId, payload);
   });
 
@@ -260,12 +281,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
     },
     // Packaged only — that is where the log lane exists, and where the
     // operator has no terminal to read instead.
-    onShowLogs: app.isPackaged ? () => {
-      const { current } = logPaths(app.getPath('home'));
-      // Reveal rather than open: the folder holds this run AND the previous
-      // one, and the previous run is usually the one that failed.
-      shell.showItemInFolder(current);
-    } : null,
+    onShowLogs: app.isPackaged ? () => revealBackendLog(shell, app.getPath('home')) : null,
   })));
 
   // Native folder picker — lets the witness browse to a workspace home in the
@@ -273,7 +289,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // Returns the chosen path, or null if cancelled. The renderer can only
   // request the dialog; it gains no other filesystem access. The sheet
   // attaches to the desk that ASKED, never a sibling window.
-  ipcMain.handle('dialog:openDirectory', async (event) => {
+  handle('dialog:openDirectory', async (event) => {
     const asking = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showOpenDialog(asking || undefined, {
       title: 'Choose the workspace home for your neuma',
@@ -291,7 +307,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // file act lives: the backend routes that built the tree the row came
   // from. The icon is generated in-process (drag-icon.cjs) — the repo
   // carries no PNG.
-  ipcMain.on('files:start-drag', (event, rawPath) => {
+  on('files:start-drag', (event, rawPath) => {
     const filePath = String(rawPath || '');
     if (!path.isAbsolute(filePath)) return;
     let st;
@@ -326,6 +342,7 @@ const registerIpcHandlers = ({ deskWindows }) => {
   // fallback when no asking sender is resolvable.
   registerWalletIpc({
     getWindow: fallbackWindow,
+    getOrigin,
     userDataPath: app.getPath('userData'),
   });
 

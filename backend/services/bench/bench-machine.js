@@ -80,6 +80,22 @@ export const probeMachineClear = async () => {
   }
 };
 
+/**
+ * Wait for a clear machine. The harness refuses an arm that STARTS while a
+ * test run stands anywhere on the machine, so a matched set's next arm waits
+ * here rather than failing (2026-10-20: another session's vitest refused two
+ * arms the moment they launched). An unknown verdict (clear: null) does not
+ * hold: the harness judges it. impure.
+ */
+export const waitMachineClear = async ({ everyMs = 10000, stop = () => false, onWait = () => {} } = {}) => {
+  for (;;) {
+    const machine = await probeMachineClear();
+    if (machine.clear !== false || stop()) return machine;
+    onWait(machine);
+    await new Promise((resolve) => { setTimeout(resolve, everyMs); });
+  }
+};
+
 // Executables that RUN tests — the harness's own list (runtime/test-processes.js).
 export const RUNNER_EXECUTABLES = Object.freeze(['node', 'nodejs', 'npm', 'npx', 'pnpm', 'yarn', 'bun', 'vitest', 'playwright']);
 

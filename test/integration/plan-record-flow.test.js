@@ -24,11 +24,11 @@ const ENGINE_PLAN = Object.freeze({
   name: 'INTEGRITY BOUNDARY',
   goal: 'Silo the benchmarks repository and prove the floor test.',
   steps: [
-    { id: 'audit', neumaId: 'cael', task: 'Map every file in the repository.', done: 'A directory tree with every file accounted for.', needs: [] },
-    { id: 'silo', neumaId: 'cael', task: 'Move the files into isolated silos.', needs: ['audit'] },
+    { id: 'audit', neumaId: 'birch', task: 'Map every file in the repository.', done: 'A directory tree with every file accounted for.', needs: [] },
+    { id: 'silo', neumaId: 'birch', task: 'Move the files into isolated silos.', needs: ['audit'] },
   ],
 });
-const ROSTER = [{ neumaId: 'cael', name: 'Cael' }];
+const ROSTER = [{ neumaId: 'birch', name: 'Birch' }];
 
 describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)', () => {
   let house, origRoot;
@@ -37,9 +37,9 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
     house = await createTempDir('plan-record-house');
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
-    await workspace.create('cael');
-    await workspace.writeDNA('cael', { identity: { name: 'Cael' } });
-    await fs.writeFile(path.join(house, 'cael', 'owner.json'), JSON.stringify({ wallet: WALLET }));
+    await workspace.create('birch');
+    await workspace.writeDNA('birch', { identity: { name: 'Birch' } });
+    await fs.writeFile(path.join(house, 'birch', 'owner.json'), JSON.stringify({ wallet: WALLET }));
   }, 60000);
 
   afterAll(async () => {
@@ -49,14 +49,14 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
   });
 
   test('no record stands for a fresh being — and rehydrate honestly answers null', async () => {
-    expect(await workspace.readPlanRecord('cael')).toBeNull();
-    const connection = { companion: { neumaId: 'cael' } };
+    expect(await workspace.readPlanRecord('birch')).toBeNull();
+    const connection = { companion: { neumaId: 'birch' } };
     expect(await rehydrateApprovedPlan(connection)).toBeNull();
     expect(connection._approvedPlan).toBeUndefined();
   });
 
   test('persistApprovedPlan: the approval lands on real disk — record, ledger tasks, and the note', async () => {
-    const connection = { companion: { neumaId: 'cael' }, sessionId: 'session-777' };
+    const connection = { companion: { neumaId: 'birch' }, sessionId: 'session-777' };
     const { record, note } = await persistApprovedPlan(connection, ENGINE_PLAN, ROSTER);
 
     expect(note).toContain('2 steps');
@@ -64,14 +64,14 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
     expect(Object.keys(record.taskIds)).toEqual(['audit', 'silo']);
 
     // The record, read back through the encrypted store.
-    const stored = await workspace.readPlanRecord('cael');
+    const stored = await workspace.readPlanRecord('birch');
     expect(stored.goal).toBe(ENGINE_PLAN.goal);
     expect(stored.approvedAt).toBe(record.approvedAt);
-    expect(stored.memberNames).toEqual({ cael: 'Cael' });
+    expect(stored.memberNames).toEqual({ birch: 'Birch' });
 
     // The tasks were FORMED at approval: both steps on the real ledger, the
     // dependency mapped into a real blocker.
-    const ledger = await workspace.readTaskLedger('cael');
+    const ledger = await workspace.readTaskLedger('birch');
     const audit = ledger.tasks.find((t) => t.id === record.taskIds.audit);
     const silo = ledger.tasks.find((t) => t.id === record.taskIds.silo);
     expect(audit.title).toBe('Map every file in the repository.');
@@ -80,26 +80,26 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
 
     // Sovereign at rest: the raw bytes on disk never carry the plan in the
     // clear (the same law every tasks/ file obeys).
-    const raw = await fs.readFile(path.join(house, 'cael', 'tasks', 'plan.json'), 'utf8');
+    const raw = await fs.readFile(path.join(house, 'birch', 'tasks', 'plan.json'), 'utf8');
     expect(raw).not.toContain('Silo the benchmarks');
     expect(raw).not.toContain('INTEGRITY BOUNDARY');
   }, 30000);
 
   test('a fresh connection rehydrates the standing plan of record', async () => {
-    const connection = { companion: { neumaId: 'cael' } };
+    const connection = { companion: { neumaId: 'birch' } };
     const plan = await rehydrateApprovedPlan(connection);
     expect(plan).toBe(connection._approvedPlan);
     expect(Object.isFrozen(plan)).toBe(true);
     expect(plan.goal).toBe(ENGINE_PLAN.goal);
     expect(plan.steps.map((s) => s.id)).toEqual(['audit', 'silo']);
-    expect(plan.memberNames.cael).toBe('Cael');
+    expect(plan.memberNames.birch).toBe('Birch');
     expect(plan.approvedAt).toBeTruthy();
   });
 
   test('the assembled prompt states the approval — in the plan\'s chat, never in another', async () => {
-    const record = await workspace.readPlanRecord('cael');
+    const record = await workspace.readPlanRecord('birch');
     const inChat = assemblePromptSections({
-      dna: { identity: { name: 'Cael' } },
+      dna: { identity: { name: 'Birch' } },
       planRecord: record,
       chatId: 'session-777',
       now: new Date('2026-08-16T00:00:00+07:00'),
@@ -111,7 +111,7 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
     expect(section.text).toContain('YOURS, on your ledger as');
 
     const otherChat = assemblePromptSections({
-      dna: { identity: { name: 'Cael' } },
+      dna: { identity: { name: 'Birch' } },
       planRecord: record,
       chatId: 'session-001',
       now: new Date('2026-08-16T00:00:00+07:00'),
@@ -131,12 +131,12 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
   // before that task existed. Under the lock both survive; without it, one of
   // them always loses.
   test('a ledger write mid-approval is not swallowed — both survive the lock (#413)', async () => {
-    await workspace.create('galen');
-    await workspace.writeDNA('galen', { identity: { name: 'Galen' } });
-    await fs.writeFile(path.join(house, 'galen', 'owner.json'), JSON.stringify({ wallet: WALLET }));
+    await workspace.create('cedar');
+    await workspace.writeDNA('cedar', { identity: { name: 'Cedar' } });
+    await fs.writeFile(path.join(house, 'cedar', 'owner.json'), JSON.stringify({ wallet: WALLET }));
     const { addTask } = await import('../../core/tasks/task-ledger.js');
 
-    const competing = workspace.updateTaskLedger('galen', async (ledger) => {
+    const competing = workspace.updateTaskLedger('cedar', async (ledger) => {
       // held across the await — the approval cannot slip a read in unlocked
       await new Promise((resolve) => setTimeout(resolve, 120));
       return addTask(ledger, { title: 'filed while the plan was landing' }, {
@@ -144,20 +144,20 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
       }).ledger;
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
-    // the steps must be GALEN's own, or nothing materializes onto its ledger
+    // the steps must be CEDAR's own, or nothing materializes onto its ledger
     // and the race would have nothing to lose
-    const galenPlan = {
+    const cedarPlan = {
       ...ENGINE_PLAN,
-      steps: ENGINE_PLAN.steps.map((s) => ({ ...s, neumaId: 'galen' })),
+      steps: ENGINE_PLAN.steps.map((s) => ({ ...s, neumaId: 'cedar' })),
     };
     const approval = persistApprovedPlan(
-      { companion: { neumaId: 'galen' }, sessionId: 'session-race' },
-      galenPlan,
-      [{ neumaId: 'galen', name: 'Galen' }],
+      { companion: { neumaId: 'cedar' }, sessionId: 'session-race' },
+      cedarPlan,
+      [{ neumaId: 'cedar', name: 'Cedar' }],
     );
     const [, { record }] = await Promise.all([competing, approval]);
 
-    const ledger = await workspace.readTaskLedger('galen');
+    const ledger = await workspace.readTaskLedger('cedar');
     const titles = ledger.tasks.map((t) => t.title);
     expect(titles).toContain('filed while the plan was landing');
     expect(titles).toContain('Map every file in the repository.');
@@ -167,19 +167,19 @@ describe('plan record flow (real encrypted disk + real prompt assembly, gnosis)'
   test('a full ledger cannot sink the approval — the record still lands, the note says why', async () => {
     // Fill the ledger to the cap through the real store.
     const { addTask, TASK_MAX_LIVE } = await import('../../core/tasks/task-ledger.js');
-    let ledger = await workspace.readTaskLedger('cael');
+    let ledger = await workspace.readTaskLedger('birch');
     let n = 0;
     while (ledger.tasks.filter((t) => ['open', 'active'].includes(t.status)).length < TASK_MAX_LIVE) {
       ({ ledger } = addTask(ledger, { title: `filler ${n += 1}` }, { id: `filler-${n}`, now: new Date().toISOString() }));
     }
-    await workspace.writeTaskLedger('cael', ledger);
+    await workspace.writeTaskLedger('birch', ledger);
 
-    const connection = { companion: { neumaId: 'cael' }, sessionId: 'session-888' };
+    const connection = { companion: { neumaId: 'birch' }, sessionId: 'session-888' };
     const { record, note } = await persistApprovedPlan(connection, ENGINE_PLAN, ROSTER);
     expect(note).toContain('could not be copied');
     expect(record.taskIds).toEqual({});
     // The durable record still superseded the old one.
-    const stored = await workspace.readPlanRecord('cael');
+    const stored = await workspace.readPlanRecord('birch');
     expect(stored.chatId).toBe('session-888');
   }, 30000);
 });

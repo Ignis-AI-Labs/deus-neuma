@@ -30,6 +30,7 @@ en KEY, not the en wording, where grammar demands it.
 | avatar | 化身 | アバター | 아바타 | The digital form (VRM) — never "vessel" |
 | lane | 通道 | レーン | 레인 | A being's sovereign workspace line |
 | the HOUSE | HOUSE | HOUSE | HOUSE | The founding surface keeps its Latin name |
+| the House Clock | HOUSE 时钟 | HOUSE 時計 | HOUSE 시계 | The house's wake window — HOUSE keeps its Latin name, the clock translates |
 | ACTS | 行动 | アクト | 액트 | The governed-acts layer |
 | consciousness | 意识 | 意識 | 의식 | Never "AI" or "assistant" in user-facing text |
 | being (a held one) | 存在 | 存在 | 존재 | A neuma or witness standing in the house |

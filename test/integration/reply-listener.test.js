@@ -6,7 +6,7 @@
  * through the REAL store.
  *
  * The env doors are the platform's own: NEUMA_X_API_ROOT points the real
- * read code at the loopback server, NEUMA_REPLY_CANDIDATES_PATH and
+ * read code at the loopback server, the realm root (the house's own reply record) and
  * NEUMA_SOCIAL_CREDENTIALS_PATH point the real stores at the temp house,
  * and dummy X_API_* keys feed the real signing core (the loopback server
  * checks the header's shape, never its validity — no packet leaves the
@@ -18,8 +18,10 @@ import http from 'http';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { replyListenerTick, materializeReplyCandidates } from '../../backend/services/social/reply-listener.js';
 import { readXListings } from '../../backend/services/social/x-reader.js';
-import { createReplyCandidates } from '../../backend/services/social/reply-candidates.js';
+import { replyCandidatesOf } from '../../backend/services/social/reply-candidates.js';
+import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_KEYS = [
   'X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET',
@@ -86,7 +88,7 @@ const MENTIONS = {
 };
 
 describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
-  let house, server, base, store, file, served;
+  let house, server, base, store, served, priorRealm;
   let mode = 'ok'; // the server's current answer shape for the mentions read
   let lastMentionsRequest = null;
   const savedEnv = {};
@@ -95,13 +97,17 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
     house = await createTempDir('reply-listener-house');
     for (const k of ENV_KEYS) { savedEnv[k] = process.env[k]; }
     process.env.X_API_KEY = 'dummy-key';
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(SERVED_WALLET);
     process.env.X_API_SECRET = 'dummy-secret';
     process.env.X_ACCESS_TOKEN = 'dummy-token';
     process.env.X_ACCESS_SECRET = 'dummy-access-secret';
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;
     process.env.NEUMA_REPLY_CANDIDATES_PATH = `${house}/reply-candidates.json`;
-    file = process.env.NEUMA_REPLY_CANDIDATES_PATH;
-    store = createReplyCandidates({ path: file });
+    // The house's own record, in its realm dir on temp disk.
+    priorRealm = getRealmRoot();
+    setRealmRoot(`${house}/realm`);
+    store = replyCandidatesOf(SERVED_WALLET);
     process.env.NEUMA_SOCIAL_BINDINGS_PATH = `${house}/social-channel-bindings.json`;
     await fs.writeFile(process.env.NEUMA_SOCIAL_BINDINGS_PATH, JSON.stringify({ x: { neumaId: HOLDER, boundBy: SERVED_WALLET } }));
     served = await useServedHouse({ lanes: [HOLDER] });
@@ -153,6 +159,7 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
 
   afterAll(async () => {
     served.restore();
+    setRealmRoot(priorRealm);
     for (const k of ENV_KEYS) {
       if (savedEnv[k] === undefined) delete process.env[k];
       else process.env[k] = savedEnv[k];
@@ -207,7 +214,7 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
     expect(byId['2001'].category).toBe('ordinary');
     expect(byId['2003'].category).toBe('ordinary');
 
-    // THE PARENT LINKAGE + THE SUBSTANCE READ land too (Design note, 2026-07-28:
+    // THE PARENT LINKAGE + THE SUBSTANCE READ land too (ruling, 2026-07-28):
     // WHICH house post was answered, and whether anyone is actually saying
     // something — 2001's warm thanks and 2002's question are engagement.
     // The bait is seven real words, so the SHAPE read calls it substantive
@@ -255,11 +262,11 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
   test('ONE PIPELINE — a being-driven read lands candidates through the same path, answerable immediately', async () => {
     // (Continues the store above — 4 candidates stand.) A being's read_x
     // between ticks sees a NEW reply and lands it through the exact
-    // function the tick runs — no ten-minute wait (Design note, 2026-07-28.
+    // function the tick runs — no ten-minute wait (ruling, 2026-07-28).
     mode = 'fresh';
-    const read = await readXListings({ kind: 'mentions', limit: 25 });
+    const read = await readXListings({ kind: 'mentions', limit: 25, wallet: SERVED_WALLET });
     expect(read.ok).toBe(true);
-    const { landed } = await materializeReplyCandidates(read.data);
+    const { landed } = await materializeReplyCandidates(read.data, SERVED_WALLET);
     expect(landed).toBe(1); // only the new one — dedupe is the pipeline's too
 
     const landedCandidate = await store.byPostId('2007');
@@ -271,9 +278,9 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
   }, 30000);
 
   test('ANOTHER HOUSE HOLDS X — the tick stands aside: no read, no candidate', async () => {
-    // Two desks share one binding store (Design note, 2026-10-16: two houses on one
-    // machine are never confused). X bound by another house, to a lane id
-    // this backend's own house also holds, is never this backend's to read.
+    // Two houses on one machine are never confused (ruling, 2026-10-16). X bound
+    // in the machine record by another house, to a lane id this backend's own
+    // house also holds, is never this backend's to read.
     const bindings = process.env.NEUMA_SOCIAL_BINDINGS_PATH;
     await fs.writeFile(bindings, JSON.stringify({ x: { neumaId: HOLDER, boundBy: `0x${'0b'.repeat(20)}` } }));
     lastMentionsRequest = null;

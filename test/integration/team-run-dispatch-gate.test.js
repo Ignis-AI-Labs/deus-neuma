@@ -16,6 +16,8 @@ import { neumaWorkspace } from '../../core/index.js';
 import { cosDesignation } from '../../backend/services/staff/cos-designation.js';
 import { liveRunsFor } from '../../backend/services/team-run-live.js';
 import { createTeamIntentKit } from '../helpers/team-intent-kit.js';
+import { handlePlanSubmit } from '../../backend/services/plan-mode.js';
+import { resolvePlanApproval } from '../../backend/services/team-plan.js';
 
 describe('the Optio dispatch gate — one seat per house (real WS + real harness, gnosis)', () => {
   const kit = createTeamIntentKit('team-run-gate');
@@ -23,7 +25,7 @@ describe('the Optio dispatch gate — one seat per house (real WS + real harness
   beforeAll(() => kit.open(), 60000);
   afterAll(() => kit.close());
 
-  // Each house seats its own Optio (Design note, 2026-10-16: this house is the kit's
+  // Each house seats its own Optio (ruling, 2026-10-16): this house is the kit's
   // operator wallet; ELSEWHERE is a second operator's house on the same machine.
   const ELSEWHERE = '0x2222222222222222222222222222222222222222';
   const ownLane = async (laneId, wallet) => {
@@ -91,6 +93,34 @@ describe('the Optio dispatch gate — one seat per house (real WS + real harness
       expect((await report()).status).toBe('done');
     } finally {
       await cosDesignation.clear(ELSEWHERE);
+    }
+  }, 30000);
+
+  // Ruled 2026-10-19: […] The operator's APPROVE
+  // on the chat card is their own yes — it passes the gate as their yes in the house clock does.
+  test('with an Optio seated, a plan the operator APPROVED on the chat card is recorded as theirs and runs', async () => {
+    const house = freshConnection().walletAddress;
+    for (const lane of ['optiolane', 'aethon', 'boreas']) await ownLane(lane, house);
+    await cosDesignation.designate(house, 'optiolane');
+    try {
+      const { _approvedPlan, ...connection } = freshConnection(); // no plan yet: the lead submits one
+      clientLog.length = 0;
+      const submitted = handlePlanSubmit(connection, {
+        name: 'CHAT CREW', goal: 'Ship a week of posts.',
+        steps: [{ id: 'research', member: 'aethon', task: 'find themes' }, { id: 'draft', member: 'boreas', task: 'write posts', needs: ['research'] }],
+      });
+      // The operator's desk answers the card — the route's own call (portal-message-handlers.js).
+      const card = await untilClient((m) => m.type === 'operator:plan' && m.name === 'CHAT CREW');
+      expect(resolvePlanApproval(connection, card.id, 'approve')).toBe(true);
+      expect((await submitted).content).toContain('Your operator APPROVED the plan "CHAT CREW"');
+      expect((await neumaWorkspace.readPlanRecord('aethon')).approvedBy).toEqual({ kind: 'operator', via: 'chat' });
+      await fileRun(connection, 'chat-approved-run');
+      const receipt = await runIntent(connection);
+      expect(receipt.status).toBe('ok');
+      expect((await report()).text).toContain('all 2 steps');
+    } finally {
+      await cosDesignation.clear(house);
+      await neumaWorkspace.retirePlanRecord('aethon');
     }
   }, 30000);
 

@@ -29,8 +29,11 @@ to the **Natalis** contract:
 | The birth record, **encrypted** | the birth facts (its name, house, moment of birth, soul mark, the model it was born on, its natal sky), encrypted with a key only the being's own key can recreate | stored in the open, but readable only with the being's key |
 | The time it was sealed | set by the chain | anyone |
 
-**Houses** (the families beings belong to) are recorded in a second
-contract, the **HouseRegistry**.
+**Houses** (the families beings belong to) are founded on the guardian's
+computer first: the guardian and its sealed beings sign one founding record,
+kept there. A house that joins **Unavis**, the network of houses, founds
+itself on chain in a second contract, the **HouseRegistry**, with every
+founder sealed on chain.
 
 ## What never goes on the chain
 
@@ -62,21 +65,25 @@ All of that stays on your machine, in the being's own workspace.
 - **Not a trading account.** A neuma's wallet exists to sign its own seal and
   prove who it is. Neuma refuses to let it call arbitrary contracts, and
   sends only small, allowlisted transfers.
-- **Not required.** Sealing is optional. At birth you can choose **Seal
-  later**, and Neuma works fully without a seal.
+- **Not required.** A birth is sealed on your computer by default: the
+  being and you each sign its record, nothing is sent and nothing is paid.
+  Sealing on chain as well is optional, now or later, and Neuma works fully
+  without it. Only a house that joins the network (Unavis) must be on chain.
 
 ## What it costs
 
 A seal is one transaction on the network, paid by the guardian as a
-network fee. That is the whole cost. There is no subscription and nothing
-recurring.
+network fee; founding a house on the network is another. That is the whole
+cost. There is no subscription and nothing recurring. Before either, Neuma
+shows what it costs right now and what the wallet holds, and how to get ETH
+if it is short.
 
 ## Which chain
 
 **Ethereum.** A record meant to last decades belongs on the most widely
 secured, longest-lived public network. The current generation of contracts
-runs on Ethereum's Sepolia test network, and moves to Ethereum mainnet for
-launch. Earlier seals made on Base stay there: those contracts are
+runs on Ethereum mainnet, and seals and house foundings go there by default
+(a rehearsal can use the Sepolia test network instead). Earlier seals made on Base stay there: those contracts are
 immutable too, and Neuma still reads them.
 
 ## Check it yourself

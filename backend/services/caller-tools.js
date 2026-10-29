@@ -13,9 +13,12 @@
  */
 
 import { closedBookSplit } from './closed-book.js';
+import { selfCheckSplit } from './self-check/self-check-sitting.js';
 import { sanitizeImages } from './attachment-store.js';
 import { RESULTS_FOLLOW_UP } from './tool-exchange.js';
 import { toolCallKey, heldRepeatResult } from './witness-tool-epochs.js';
+import { injectedValueSplit, noteTaintedResults } from './security/injected-value-gate.js';
+import { recordHeldActs } from './security/injected-value-record.js';
 
 export const CALLER_SERVER = 'caller';
 
@@ -214,10 +217,21 @@ const inActOrder = (acts, parts) => {
 };
 
 export const processRoundActs = async (processToolCalls, ws, response, connection, acts, epochs) => {
-  // A closed-book sitting refuses anything that is not local (closed-book.js);
-  // outside one, nothing is refused and the round runs exactly as before.
-  const { allowed, refused } = closedBookSplit(connection, acts);
+  // A closed-book sitting refuses anything that is not local (closed-book.js),
+  // a self-check anything that is not a read of the being's own world
+  // (self-check-sitting.js); outside both, the round runs exactly as before.
+  const book = closedBookSplit(connection, acts);
+  const check = selfCheckSplit(connection, book.allowed);
+  // An act carrying a value planted by injected text is HELD, whichever side
+  // would run it (security/injected-value-gate.js).
+  const taint = injectedValueSplit(connection, check.allowed);
+  const allowed = taint.allowed;
+  const refused = [...book.refused, ...check.refused, ...taint.refused];
   const refusals = refused.map(({ result }) => result);
+  if (taint.refused.length > 0) {
+    connection._taintHeld = (connection._taintHeld ?? 0) + taint.refused.length;
+    recordHeldActs(connection, taint.refused); // fire-and-forget: the hold already happened
+  }
   if (refused.length > 0 && connection._benchmarkControls) {
     connection._benchmarkToolTrail = [...(connection._benchmarkToolTrail ?? []),
       ...refusals.map((r) => ({ tool: r.tool, target: null, status: 'denied' }))];
@@ -228,10 +242,11 @@ export const processRoundActs = async (processToolCalls, ws, response, connectio
   const repeatActs = asked.filter((_, i) => held[i] !== null);
   const repeats = held.filter(Boolean);
   const refusedActs = refused.map(({ act }) => act);
-  if (caller.length === 0 && refused.length === 0 && repeats.length === 0) return processToolCalls(ws, response, connection, acts, epochs);
+  // What the being's own acts read is looked at for planted values before the next round.
+  if (caller.length === 0 && refused.length === 0 && repeats.length === 0) return noteTaintedResults(connection, await processToolCalls(ws, response, connection, acts, epochs));
   // The being's own acts in the round still run: their effects are real.
   const own = allowed.filter((act) => !isCallerAct(connection, act) || (caller.length === 0 && repeats.length === 0));
-  const ownResults = own.length > 0 ? await processToolCalls(ws, response, connection, own, epochs) : [];
+  const ownResults = own.length > 0 ? noteTaintedResults(connection, await processToolCalls(ws, response, connection, own, epochs)) : [];
   const results = inActOrder(acts, [[own, ownResults], [repeatActs, repeats], [refusedActs, refusals]]);
   if (caller.length === 0) return results;
   const round = connection._callerRounds = (connection._callerRounds ?? 0) + 1;

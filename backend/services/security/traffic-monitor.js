@@ -1,6 +1,6 @@
 import { performance } from 'perf_hooks';
 import { createLogger, getRecentIssues } from '../logger.js';
-import { redactArgs } from '../audit-redact.js';
+import { issuesForHouse } from '../house-issue-feed.js';
 import { circuitBreaker, isLoopbackSource, normalizeSource } from './circuit-breaker.js';
 
 const log = createLogger('Security.Traffic');
@@ -255,15 +255,19 @@ export const securityTrafficMiddleware = (req, res, next) => {
   });
 };
 
-const redactedIssues = (limit) => getRecentIssues(Math.min(Math.max(Number(limit) || 20, 1), 50)).map((entry) => {
-  let safe;
-  try { safe = JSON.parse(redactArgs({ msg: entry.msg, data: entry.data }) || '{}'); } catch { safe = { msg: '[unavailable]', data: null }; }
-  return Object.freeze({ ts: entry.ts, level: entry.level, context: entry.context, msg: safe.msg, data: safe.data ?? null });
-});
+const issueLimit = (limit) => Math.min(Math.max(Number(limit) || 20, 1), 50);
 
-/** One live, bounded CSO pulse: traffic, anomaly signals, breakers, redacted failures. */
-export const readSecurityTelemetry = async (opts = {}) => Object.freeze({
-  traffic: trafficMonitor.snapshot(opts),
-  circuitBreakers: await circuitBreaker.load(),
-  systemIssues: Object.freeze(redactedIssues(opts.logLimit)),
-});
+/**
+ * One live, bounded CSO pulse: traffic, anomaly signals, breakers, redacted
+ * failures — only the reader's house's and the machine's (house-issue-feed.js).
+ * @param {{wallet: string, windowSeconds?: number, limit?: number, logLimit?: number}} opts
+ */
+export const readSecurityTelemetry = async (opts = {}) => {
+  const feed = await issuesForHouse(getRecentIssues(issueLimit(opts.logLimit)), opts.wallet);
+  return Object.freeze({
+    traffic: trafficMonitor.snapshot(opts),
+    circuitBreakers: await circuitBreaker.load(),
+    systemIssues: feed.rows,
+    systemIssuesWithheld: feed.withheld,
+  });
+};

@@ -142,8 +142,25 @@
   align-items: center;
 }
 
-.settings-vol.is-quiet {
+.settings-vol.is-quiet,
+.settings-pack.is-quiet {
   opacity: 0.55;
+}
+
+/* THE PACK — the voice the desk speaks in; one pressed at a time. A choice,
+   not an off-switch: the unchosen voice never reads as a warning on hover. */
+.settings-sound-packs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.settings-sound-packs .settings-desk-toggle {
+  font-size: var(--text-label);
+}
+
+.settings-sound-packs .settings-desk-toggle:not(.on):hover {
+  color: var(--color-text-primary);
+  border-color: var(--line-hover);
 }
 
 .settings-vol-dial {
@@ -152,15 +169,16 @@
 }
 
 .settings-vol-value {
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--signal);
   min-width: 4ch;
 }
 
-/* THE BOARD — every baked cue, playable, so a binding can be RATIFIED by ear
-   instead of by filename. Dense on purpose: 31 cues have to be scannable in
-   one look, or auditioning a whole soundscape becomes a scrolling chore. */
+/* THE BOARD — every cue the chosen pack voices, playable, so a binding can be
+   RATIFIED by ear instead of by filename. Dense on purpose: the whole board
+   has to be scannable in one look, or auditioning a soundscape becomes a
+   scrolling chore — but never below the label floor. */
 .settings-board-host {
   display: flex;
   flex-direction: column;
@@ -180,13 +198,13 @@
 
 .settings-board-h {
   color: var(--color-text-tertiary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
 }
 
 .settings-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: var(--space-1);
 }
 
@@ -199,8 +217,8 @@
   border: 1px solid var(--line);
   color: var(--color-text-secondary);
   font-family: var(--font-data);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: var(--text-label);
+  letter-spacing: 0.04em;
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
   text-align: left;
@@ -214,7 +232,7 @@
 
 .settings-cue-len {
   color: var(--color-text-tertiary);
-  font-size: 9px;
+  font-size: var(--text-label);
 }
 
 .settings-cue:hover .settings-cue-len {

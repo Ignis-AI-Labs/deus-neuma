@@ -7,6 +7,8 @@
 
 import { llamaToolCapabilities } from './llama-tool-capabilities.js';
 import { lmStudioDownloadedCaps } from './local-server-models.js';
+import { OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
+import { servedOllamaWindow } from './managed-ollama-record.js';
 
 const KNOWN_MODELS = Object.freeze({
   // OpenAI
@@ -297,14 +299,13 @@ export const interpretLmsModel = (m) => Object.freeze({
  * @param {{ modalities?: { vision?: boolean }, chat_template_caps?: Object }} props
  * @returns {{ contextWindow: number|null, vision: boolean|null, tools?: boolean }}
  */
-export const interpretLlamaProps = (props) => {
-  // THE SERVING'S REAL CONTEXT, which this used to discard as null. llama.cpp
-  // reports the window it was actually launched with under
-  // default_generation_settings.n_ctx — measured on the live rig 2026-08-04:
-  // { default_generation_settings: { n_ctx: 65536 } }. Reading it is what lets
-  // a being use the room its operator actually paid for, instead of a constant
-  // someone picked years ago.
-  const n = props?.default_generation_settings?.n_ctx ?? props?.n_ctx;
+export const interpretLlamaProps = (props, meta = null) => {
+  // THE SERVING'S REAL CONTEXT: llama.cpp reports the window it was launched with
+  // under default_generation_settings.n_ctx (live rig 2026-08-04: { n_ctx: 65536 }),
+  // so a being uses the room its operator paid for, not a constant picked years ago.
+  const pool = props?.default_generation_settings?.n_ctx ?? props?.n_ctx;
+  // A pool sized to the GPU (serving-fit.js) is shared room: one being's window stops at the trained context.
+  const n = meta?.n_ctx_train > 0 && pool > meta.n_ctx_train ? meta.n_ctx_train : pool;
   return Object.freeze({
     contextWindow: Number.isFinite(n) && n > 0 ? n : null,
     vision: typeof props?.modalities?.vision === 'boolean' ? props.modalities.vision : null,
@@ -318,18 +319,18 @@ export const interpretLlamaProps = (props) => {
  * models — both are runtime truth. Neither present → vision undecided. Pure.
  * @param {{ parameters?: string, capabilities?: string[], projector_info?: unknown, details?: { parameter_size?: string } }} data
  */
-export const interpretOllamaShow = (data) => {
+export const interpretOllamaShow = (data, served = OLLAMA_SERVED_CONTEXT) => {
   // Two different numbers, and the difference matters. `parameters` carries
   // num_ctx only when a Modelfile PINNED one — most models have none, which is
   // why this read null for every stock pull. The model's REAL trained window
   // lives in model_info under `<arch>.context_length` (measured on a live
   // daemon 2026-08-04: { 'qwen3.context_length': 40960 } with no num_ctx in
   // parameters at all). A pinned num_ctx is the operator's own decision and
-  // wins; otherwise the architecture's window is the honest ceiling.
+  // wins; otherwise the architecture's window, no more than the one this machine serves (`served`).
   const pinned = (data?.parameters || '').match(/num_ctx\s+(\d+)/);
   const archCtx = Object.entries(data?.model_info || {})
     .find(([k]) => k.endsWith('.context_length'))?.[1];
-  const ctx = pinned ? parseInt(pinned[1], 10) : archCtx;
+  const ctx = pinned ? parseInt(pinned[1], 10) : Number.isFinite(archCtx) ? Math.min(archCtx, served) : archCtx;
   const caps = Array.isArray(data?.capabilities) ? data.capabilities : null;
   const vision = caps ? caps.includes('vision') : (data?.projector_info ? true : null);
   return Object.freeze({
@@ -365,15 +366,15 @@ const probeLocalShape = async (provider, endpoint, modelId) => {
           body: JSON.stringify({ name: modelId }),
           signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
         });
-        if (!res.ok) return null;
-        return interpretOllamaShow(await res.json());
+        return res.ok ? interpretOllamaShow(await res.json(), servedOllamaWindow()) : null;
       }
       case 'llama-server': {
         // /props carries the serving's modalities — decisive both ways (see
         // interpretLlamaProps). modelId is unused: one server serves one model.
-        const res = await fetch(`${base}/props`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+        const [res, models] = await Promise.all([fetch(`${base}/props`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }),
+          fetch(`${base}/v1/models`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
         if (!res.ok) return null;
-        return interpretLlamaProps(await res.json());
+        return interpretLlamaProps(await res.json(), models?.data?.[0]?.meta);
       }
       case 'lm-studio': {
         // The v0 REST API carries what /v1/models omits: model type ('vlm'
@@ -472,7 +473,7 @@ export const probeEndpointCapabilities = async (endpoint, modelId) => {
   const model = (lms?.data || []).find((m) => m.id === modelId);
   if (model) return interpretLmsModel(model);
   if (props) return interpretLlamaProps(props);
-  if (show) return interpretOllamaShow(show);
+  if (show) return interpretOllamaShow(show, servedOllamaWindow());
   return null;
 };
 

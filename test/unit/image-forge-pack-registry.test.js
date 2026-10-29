@@ -62,7 +62,7 @@ describe('resolveModel', () => {
 describe('the manifest itself', () => {
   test('the engine pin is a full 40-char SHA, not an abbreviation', () => {
     expect(ENGINE_PIN.sha).toMatch(/^[0-9a-f]{40}$/);
-    expect(ENGINE_PIN.tag).toBe('v0.28.0');
+    expect(ENGINE_PIN.tag).toBe('v0.41.0');
   });
 
   test('every registered model carries a full sha256 — no hollow attestations', () => {

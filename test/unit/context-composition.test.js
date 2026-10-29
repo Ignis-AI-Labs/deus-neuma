@@ -124,7 +124,7 @@ describe('buildCompositionEvent — token-truth ladder', () => {
   });
 });
 
-describe('buildCompositionEvent — standing vs working peak (Design note, 2026-08-31', () => {
+describe('buildCompositionEvent — standing vs working peak (ruling, 2026-08-31)', () => {
   it('the headline is the STANDING input; the in-turn peak rides as workingPeakTokens', () => {
     // A tool-heavy turn: round 0 measured 17K (standing — what the next turn
     // inherits), the last round measured 60K (peak — ephemeral tool machinery).

@@ -11,6 +11,9 @@
 // window holds the rest live) and the house's seated CoS: a house post from
 // the lead's lane into the Optio's inbox, read at its next turn — the
 // office's own grammar (staff/status-sweep.js), never a push into its turn.
+// Every alert wakes the Optio; a check-in wakes her only when it is notable —
+// a blocker, a member's question, a finished part (ruled 2026-10-19). A quiet
+// one still lands in her inbox and on the operator's tray.
 // While an Optio is seated it holds dispatch (intents/team-run.js), so it
 // usually LEADS the run itself: no post to itself then — its plan of record
 // carries the run's standing every turn (plan-record.js withRunLiveness).
@@ -25,7 +28,7 @@ import { makePost, appendPost, POST_BODY_MAX } from './house-post.js';
 import { clockFor, describeClock, formatMinutes, DEFAULT_CHECK_IN_MINUTES } from './team-clock.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { createLogger } from './logger.js';
-import { signalWake } from './house-clock/wake-signal.js';
+import { signalWake, runOutsideWake } from './house-clock/wake-signal.js';
 
 const log = createLogger('TeamWatch');
 
@@ -49,13 +52,25 @@ const placeOf = (entry, row) => {
 const workedOf = (entry, stepId, now) => (entry.worked?.[stepId] || 0)
   + (entry.workingSince?.[stepId] ? now - entry.workingSince[stepId] : 0);
 
+// pure — where the last check-in left the run: the parts done and the last channel post.
+export const checkInMark = (entry) => ({
+  done: (entry.board || []).filter((r) => r.state === 'done').map((r) => r.id),
+  n: entry.channel?.at(-1)?.n ?? 0,
+});
+
+const clip = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
 /**
  * The check-in, whole — the CoS's post, and the source of the desk's line. Pure.
+ * notable: the blockers (a clock passed, a part quiet, a part failed) and,
+ * since the last check-in's mark, each part finished and each member's question
+ * on the team channel.
  * @param {Object} entry - the live run
  * @param {number} [now]
+ * @param {?{done: string[], n: number}} [since] - checkInMark at the last check-in
  * @returns {{head: string, notable: string[], lines: string[]}}
  */
-export const checkInOf = (entry, now = Date.now()) => {
+export const checkInOf = (entry, now = Date.now(), since = null) => {
   const rows = entry.board || [];
   const count = (state) => rows.filter((r) => r.state === state).length;
   const age = span(now - Date.parse(entry.startedAt));
@@ -72,6 +87,10 @@ export const checkInOf = (entry, now = Date.now()) => {
       + `${clock ? `; clock ${describeClock(clock)}${passed ? ` — PASSED (${passed.then})` : ''}` : ''}`
       + `${quiet != null ? `; last sign of life ${span(quiet)} ago` : ''}`;
   });
+  if (since) {
+    for (const row of rows) if (row.state === 'done' && !since.done.includes(row.id)) notable.push(`${row.member || row.id} finished ${row.id}`);
+    for (const m of entry.channel || []) if (m.fromStep && m.n > since.n && m.text.includes('?')) notable.push(`${m.from} asks: ${clip(m.text, 160)}`);
+  }
   return { head, notable, lines };
 };
 
@@ -97,7 +116,7 @@ export const gaveUpAlertOf = (entry, stepId, why) => {
 // impure — the post into the house's seated Optio's inbox, from the lead's
 // lane. None when the house seats no office, the lead IS the office, or the
 // office is not a lane of this house (the second fence beside the per-house seat).
-const postToOptio = async ({ wallet, from, re, body, reason = 'run-check-in', ref = re }) => {
+const postToOptio = async ({ wallet, from, re, body, reason = 'run-check-in', ref = re, wake = true }) => {
   const officer = await cosDesignation.getOfficer(wallet).catch(() => null);
   if (!officer?.laneId || officer.laneId === from) return false;
   const house = await neumaWorkspace.listNeumaByOwner(wallet).catch(() => []);
@@ -105,9 +124,9 @@ const postToOptio = async ({ wallet, from, re, body, reason = 'run-check-in', re
   const { root } = await loadHouseWorkspace(wallet).catch(() => ({ root: null }));
   if (!root) return false;
   const text = body.length > POST_BODY_MAX ? `${body.slice(0, POST_BODY_MAX - 1)}…` : body;
-  const post = await appendPost(root, makePost({ from, to: officer.laneId, re, body: text, now: new Date().toISOString() }));
+  const post = await appendPost(root, makePost({ from, to: officer.laneId, re, body: text, now: new Date().toISOString() }), { wake });
   // The Optio has work — the run's watch: the house clock may wake it.
-  signalWake({ seat: officer.laneId, reason, ref: `${ref}:${post.id}`, detail: { from, re } });
+  if (wake) signalWake({ seat: officer.laneId, reason, ref: `${ref}:${post.id}`, detail: { from, re } });
   return true;
 };
 
@@ -128,10 +147,10 @@ export const startWatch = (entry, { wallet, lead, notify = notifyOperator, post 
   const actor = { id: lead.neumaId, name: lead.name || lead.neumaId };
   const ref = { runId: entry.id };
   // Each leg fails alone: a card or a post must never cost the run.
-  const tell = (kind, card, body, re) => {
+  const tell = (kind, card, body, re, wake = true) => {
     Promise.resolve(notify({ wallet, kind, standing: STANDING.neuma, title: card.title, detail: card.detail, actor, ref }))
       .catch((err) => log.warn('run watch card not raised', { runId: entry.id, error: err.message }));
-    Promise.resolve(post({ wallet, from: lead.neumaId, re, body, reason: kind === KIND.runAlert ? 'run-alert' : 'run-check-in', ref: entry.id }))
+    Promise.resolve(post({ wallet, from: lead.neumaId, re, body, reason: kind === KIND.runAlert ? 'run-alert' : 'run-check-in', ref: entry.id, wake }))
       .catch((err) => log.warn('run watch post not delivered', { runId: entry.id, error: err.message }));
   };
   entry.onClockPassed = (stepId, state) => {
@@ -143,17 +162,21 @@ export const startWatch = (entry, { wallet, lead, notify = notifyOperator, post 
     tell(KIND.runAlert, card, `${card.title}.\n${card.detail}.\nRun ${entry.id} — its other parts keep working; the operator can resume it once it settles.`, `Team run ${entry.id}: a member gave up`);
   };
   let timer = null;
+  let since = checkInMark(entry);
   const checkIn = () => {
-    const { head, notable, lines } = checkInOf(entry);
+    const { head, notable, lines } = checkInOf(entry, Date.now(), since);
+    since = checkInMark(entry);
     const card = { title: head, detail: notable.length ? notable.join(' · ') : 'every working part is moving' };
-    tell(KIND.runCheckIn, card, [`CHECK-IN — ${head}.`, ...lines, `Run ${entry.id}, led by ${entry.lead}.`].join('\n'), `Team run ${entry.id}: check-in`);
+    const said = [`CHECK-IN — ${head}.`, ...lines, ...(notable.length ? [`Needs eyes: ${notable.join('; ')}.`] : []), `Run ${entry.id}, led by ${entry.lead}.`];
+    tell(KIND.runCheckIn, card, said.join('\n'), `Team run ${entry.id}: check-in`, notable.length > 0);
   };
   entry.rewatch = () => {
     if (timer) clearInterval(timer);
     timer = null;
     const minutes = entry.checkIn ?? DEFAULT_CHECK_IN_MINUTES;
     if (!(minutes > 0)) return;
-    timer = setInterval(checkIn, Math.round(minutes * 60_000));
+    // Armed outside any wake (a tune can come from one): each check-in is the run's own signal.
+    timer = runOutsideWake(() => setInterval(checkIn, Math.round(minutes * 60_000)));
     timer.unref?.();
   };
   entry.stopWatch = () => {

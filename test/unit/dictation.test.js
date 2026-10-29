@@ -48,7 +48,7 @@ describe('isPushToTalkPress', () => {
   });
 });
 
-// THE REGRESSION THIS EXISTS FOR (Design note, 2026-08-01: […] Ownership of the key and the START of a hold
+// THE REGRESSION THIS EXISTS FOR (ruling, 2026-08-01): […] Ownership of the key and the START of a hold
 // are two different questions, and conflating them is what broke it — the
 // auto-repeats of a held key were not owned, so their default survived, and in
 // Chromium an un-prevented repeat re-arms the focused button's activation.

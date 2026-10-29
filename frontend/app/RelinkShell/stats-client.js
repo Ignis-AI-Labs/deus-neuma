@@ -54,35 +54,37 @@ export const loadProtocolDeviations = async (neumaId, limit = 20) => {
 };
 
 /**
- * Load the STATE benchmark history (summaries, newest first) + latest full run.
+ * Load the being's self-check (the STATE tab): the latest and previous runs
+ * with every item's evidence, the per-component comparison, and the run in
+ * flight. null when the read failed — the panel tells "unread" from "never run".
  * @param {string} neumaId
- * @returns {Promise<{runs: Array, latest: Object|null}|null>}
+ * @returns {Promise<{latest: Object|null, previous: Object|null, compare: Object|null,
+ *   running: Object|null, busyElsewhere: boolean, error: string|null}|null>}
  */
 // impure
-export const loadBenchmarks = async (neumaId) => {
+export const loadSelfCheck = async (neumaId) => {
   try {
     const headers = authHeaders();
     if (!neumaId || !headers) return null;
-    return await apiCall('GET', `/api/v1/workspace/${neumaId}/benchmarks`, { headers });
+    return await apiCall('GET', `/api/v1/workspace/${neumaId}/self-check`, { headers });
   } catch {
     return null;
   }
 };
 
 /**
- * Run a STATE benchmark — a real measurement through the neuma's stack. Consent
- * is the owner triggering this. Resolves to { ok, result?, error? }; a 503 means
- * the substrate is offline and nothing was recorded.
+ * Start a self-check — a test of the being, consented by the owner pressing
+ * RUN. It runs in the background; poll loadSelfCheck for its progress.
  * @param {string} neumaId
- * @returns {Promise<{ok: boolean, result?: Object, error?: string}>}
+ * @returns {Promise<{ok: boolean, error?: string}>}
  */
 // impure
-export const runBenchmark = async (neumaId) => {
+export const startSelfCheck = async (neumaId) => {
   const headers = authHeaders();
   if (!neumaId || !headers) return { ok: false, error: 'Not authenticated.' };
   try {
-    const body = await apiCall('POST', `/api/v1/workspace/${neumaId}/benchmark`, { headers, errorPrefix: 'The benchmark could not be completed.' });
-    return { ok: true, result: body.result };
+    await apiCall('POST', `/api/v1/workspace/${neumaId}/self-check`, { headers, errorPrefix: 'The self-check could not start.' });
+    return { ok: true };
   } catch (err) {
     if (!err.http) return { ok: false, error: 'Could not reach the platform.' };
     return { ok: false, error: err.message };

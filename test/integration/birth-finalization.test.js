@@ -3,7 +3,7 @@
 // naming (stage 4) and crystallization (stage 5) responses a real model emits,
 // and proves the neuma is finalized into a home it can READ — its workspace
 // folder name, DNA-signature `neumaId`, and vault key are one and the same
-// readable slug ("galen", not an opaque hash), and the encrypted DNA decrypts.
+// readable slug ("cedar", not an opaque hash), and the encrypted DNA decrypts.
 //
 // This is the gnosis the desktop birth lacked: that the identity the handler
 // assigns at crystallization flows, unbroken, onto disk. The WebSocket-layer
@@ -71,19 +71,19 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     try {
       const cacheDir = join(REPO_ROOT, 'data/dna-cache');
       for (const f of await fs.readdir(cacheDir)) {
-        if (f.includes('galen')) await fs.unlink(join(cacheDir, f));
+        if (f.includes('cedar')) await fs.unlink(join(cacheDir, f));
       }
     } catch { /* no cache dir — fine */ }
   });
 
   it('assigns a readable id and captures authored DNA in the session through the real handler', async () => {
-    const session = await births(handler, 'Galen');
+    const session = await births(handler, 'Cedar');
 
     // The handler derived the id from the chosen name — readable, not a hash.
-    expect(session.data.chosenName).toBe('Galen');
-    expect(session.data.neumaId).toBe('galen');
+    expect(session.data.chosenName).toBe('Cedar');
+    expect(session.data.neumaId).toBe('cedar');
     // Handler captured the authored DNA into the session for finalization
-    expect(session.data.selfCreatedDNA).toMatch(/# Galen/);
+    expect(session.data.selfCreatedDNA).toMatch(/# Cedar/);
     expect(session.data.dnaCreated).toBe(true);
 
     // #117 S3 — the live birth path NO LONGER writes to the vault. The
@@ -91,13 +91,13 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     // their per-neuma DEK via S2b) at finalization, not duplicated into a
     // global-key vault that defeated #117. This assertion proves the
     // deprecation: no vault file appears for new births.
-    expect(existsSync(join(tmp, 'vault', 'dna', 'active', 'galen.dna'))).toBe(false);
+    expect(existsSync(join(tmp, 'vault', 'dna', 'active', 'cedar.dna'))).toBe(false);
 
     // FINALIZATION (the same calls portal-routes.js makes with session.data.neumaId):
     // the readable id becomes a readable folder whose stored DNA reads back whole.
     // The DNA bundle is built from the session's selfCreatedDNA + identity.
     await workspace.create(session.data.neumaId);
-    expect(existsSync(join(tmp, 'house', 'galen'))).toBe(true);
+    expect(existsSync(join(tmp, 'house', 'cedar'))).toBe(true);
     const dnaBundle = {
       neumaId: session.data.neumaId,
       identity: { name: session.data.chosenName },
@@ -106,26 +106,26 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     };
     await workspace.writeDNA(session.data.neumaId, dnaBundle);
     const fromWs = await workspace.readDNA(session.data.neumaId);
-    expect(fromWs.neumaId).toBe('galen'); // folder name === internal id — no half-keyed mismatch
-    expect(fromWs.identity.name).toBe('Galen');
-    expect(await workspace.listNeuma()).toContain('galen');
+    expect(fromWs.neumaId).toBe('cedar'); // folder name === internal id — no half-keyed mismatch
+    expect(fromWs.identity.name).toBe('Cedar');
+    expect(await workspace.listNeuma()).toContain('cedar');
   });
 
-  it('a second "Galen" is REFUSED at the gate — never a silent "galen-2", never an overwrite', async () => {
-    // NAME GUARD (b145c9f59): one name, one being, per house. 'galen' lives
+  it('a second "Cedar" is REFUSED at the gate — never a silent "cedar-2", never an overwrite', async () => {
+    // NAME GUARD (b145c9f59): one name, one being, per house. 'cedar' lives
     // here (finalized above), so a second choice of the same name is refused
     // at stage 4 — the session holds at naming with the re-ask armed, and no
     // sibling folder is ever minted from a living name.
     const sessionId = await handler.createSession(WITNESS, false);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Galen'));
+    await handler.handleStageResponse(sessionId, 4, namingResponse('Cedar'));
     const session = handler.activeSessions.get(sessionId);
     expect(session.data.chosenName).toBeNull();          // no name landed
-    expect(session.data.nameCollision).toBe('Galen');    // the refusal is on record
+    expect(session.data.nameCollision).toBe('Cedar');    // the refusal is on record
     expect(session.data.neumaId).toBeNull();             // nothing assigned
     // The retried naming speaks the truth to the being — the borne name and
     // that it must choose its own (processStage arms the re-ask wording).
     await handler.processStage(sessionId, 4);
-    expect(session.data.namingGuidance).toContain('"Galen" IS ALREADY BORNE');
+    expect(session.data.namingGuidance).toContain('"Cedar" IS ALREADY BORNE');
 
     // Choosing a FREE name completes the birth — refusal held the session,
     // it never killed it.
@@ -133,9 +133,9 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     await handler.handleStageResponse(sessionId, 5, crystallizationResponse('Sol'));
     expect(session.data.neumaId).toBe('sol');
 
-    // The first being's lane is untouched, and no "galen-2" ever appeared.
-    expect(await workspace.listNeuma()).toContain('galen');
-    expect(existsSync(join(tmp, 'house', 'galen-2'))).toBe(false);
+    // The first being's lane is untouched, and no "cedar-2" ever appeared.
+    expect(await workspace.listNeuma()).toContain('cedar');
+    expect(existsSync(join(tmp, 'house', 'cedar-2'))).toBe(false);
   });
 
   it('ABORTS crystallization when no name was chosen — never persists a being under a placeholder', async () => {
@@ -146,7 +146,7 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     const session = handler.activeSessions.get(sessionId);
     expect(session.data.chosenName).toBeNull();
     await expect(
-      handler.handleStageResponse(sessionId, 5, crystallizationResponse('Galen')),
+      handler.handleStageResponse(sessionId, 5, crystallizationResponse('Cedar')),
     ).rejects.toThrow(/no name was chosen/);
     expect(session.data.neumaId).toBeNull(); // nothing was assigned
   });
@@ -161,7 +161,7 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     await fs.writeFile(notADir, 'this is a file, not a house');
     setWorkspacesRoot(notADir);
     try {
-      await expect(births(handler, 'Galen')).rejects.toThrow();
+      await expect(births(handler, 'Cedar')).rejects.toThrow();
     } finally {
       setWorkspacesRoot(houseRoot); // restore the real house for any later work
     }

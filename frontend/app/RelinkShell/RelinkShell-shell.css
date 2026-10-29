@@ -122,6 +122,13 @@
   white-space: nowrap;
 }
 
+/* The window's name is its heading (Design note, 2026-10-28: headers […]): the heading register, at the label floor — it beats
+   .label-data's own resting grey. */
+.label-data.relink-title-name {
+  color: var(--color-heading);
+  font-size: var(--text-label);
+}
+
 /* The participant-kind tag beside the stream title (a sealed AI witness). */
 .relink-title-kind {
   flex: 0 0 auto;

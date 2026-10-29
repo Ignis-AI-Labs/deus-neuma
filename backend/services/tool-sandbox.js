@@ -14,7 +14,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { createLogger } from './logger.js';
 import {
-  checkPathAccess, collectPathArgs, isWithinRoots, moveDestination,
+  checkPathAccess, collectPathArgs, isWithinRoots, laneStateWriteReason, moveDestination,
   normalizeToolArgs, realpathOfNearestExisting,
 } from './sandbox-path-policy.js';
 import { focusGroundRoots } from './focus-ground.js';
@@ -28,6 +28,9 @@ import { resolveCeremonyScratchDir, ceremonyWriteRoots } from '../../core/birth/
 import { requestablePattern, sensitiveGrantCovers } from './sensitive-grants.js';
 import { codingShellMutationReason } from './coding-shell-paths.js';
 import { claimFiledIntent } from './intents/intent-owners.js';
+import { amendIdentityRecord, identityWriteFor } from './identity-record-writes.js';
+import { getWitnessesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { getHarnessRoot } from '../../core/workspace/lane-grounds.js';
 
 const log = createLogger('ToolSandbox');
 
@@ -57,11 +60,18 @@ export const DELETE_FILE_TOOL = Object.freeze({
 // The path-policy pures moved to sandbox-path-policy.js; this barrel keeps
 // every existing importer of tool-sandbox.js standing unchanged.
 export {
-  deniedPatternsFor, matchesDeniedPattern, moveDestination, collectPathArgs,
+  deniedPatternsFor, matchesDeniedPattern, laneStateWriteReason, moveDestination, collectPathArgs,
   normalizeToolArgs, checkPathAccess, realpathOfNearestExisting,
   resolveGrantDir, isWithinRoots, findUngrantedReadPaths,
   findUngrantedWritePaths, writeGrantScope,
 } from './sandbox-path-policy.js';
+
+// impure (reads the current roots) — every ground that holds lanes, wherever
+// the house stands: the beings', the witnesses' and the harness lanes'.
+const laneGrounds = () => {
+  const house = getWorkspacesRoot();
+  return [house, getWitnessesRoot(), getHarnessRoot(house)];
+};
 
 const MAX_WRITE_OPS_PER_SESSION = 10;
 const MAX_READ_SIZE_BYTES = 1024 * 1024; // 1MB
@@ -99,7 +109,7 @@ export const isWriteOperation = (toolName) => {
 };
 
 /**
- * The SENSITIVE-GRANT DOOR (Design note, 2026-08-18: a denied-pattern refusal is a
+ * The SENSITIVE-GRANT DOOR (ruling, 2026-08-18): a denied-pattern refusal is a
  * wall only while no grant covers it. Returns null when the lane's grant
  * covers the path for the direction (read for reads, edit for writes — write
  * tools require edit on every path they touch, source included, because a
@@ -160,7 +170,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     // their existing reach (the team may read the house's context).
     const teamWs = connection._teamWorkspace && typeof connection._teamWorkspace.root === 'string'
       ? connection._teamWorkspace : null;
-    // THE FOCUS GROUND (Design note, 2026-07-26: the folder standing open in the
+    // THE FOCUS GROUND (ruling, 2026-07-26): the folder standing open in the
     // operator's Explorer is reach for whoever is seated on this connection —
     // neuma and sealed witness alike, since both arrive through this one
     // factory. It joins reads AND writes: […] is not a read-only sentence. A confined team workspace still wins
@@ -169,7 +179,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     // the ground either way. The denied-path list above fires first, in the
     // ground as anywhere: focus never opens .env, keys, or another being's DNA.
     const focusRoots = focusGroundRoots(connection);
-    // THE ACT CHANNEL stays open (Design note, 2026-10-10: a being acts by filing an intent into its own
+    // THE ACT CHANNEL stays open (ruling, 2026-10-10): a being acts by filing an intent into its own
     // lane's intents/, and intent-sweep.js gates every act there — policy, approval, refusal. An
     // approved team plan confined the lead's writes to the team workspace and so took its hands:
     // it could not file the next act, a new plan, or a team run, and the sprint stalled.
@@ -186,9 +196,13 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     const pathArgs = collectPathArgs(args);
     const filesIntent = isWrite && Boolean(intentsDir) && pathArgs.length > 0
       && pathArgs.every((p) => isWithinRoots(p, [intentsDir]));
-    const guardCodingState = async (filePath, laneRoot) => {
+    // A write never reaches a lane's platform state (laneStateWriteReason): the
+    // being's own lane as its engine resolved it, and every lane in every ground.
+    const grounds = isWrite ? laneGrounds() : [];
+    const guardPlatformState = async (filePath, laneRoot, laneGroundRoots = grounds) => {
       if (!isWrite) return;
-      const reason = await codingShellMutationReason(filePath, laneRoot);
+      const reason = await codingShellMutationReason(filePath, laneRoot)
+        ?? laneStateWriteReason(filePath, { grounds: laneGroundRoots, lanes: laneRoot ? [laneRoot] : [] });
       if (!reason) return;
       await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', reason);
       throw new Error(reason);
@@ -210,7 +224,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       throw new Error(reason);
     }
     for (const p of pathArgs) {
-      await guardCodingState(p, workspaceRoot);
+      await guardPlatformState(p, workspaceRoot);
       const pathCheck = checkPathAccess(p, roots, { requireRoot: isWrite });
       if (!pathCheck.allowed) {
         const reason = sensitiveDeniedReason(connection, isWrite, p, pathCheck);
@@ -229,7 +243,11 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     // grant door applies here identically.
     for (const p of pathArgs) {
       const real = await realpathOfNearestExisting(p);
-      if (workspaceRoot) await guardCodingState(real, await realpathOfNearestExisting(workspaceRoot));
+      await guardPlatformState(
+        real,
+        workspaceRoot ? await realpathOfNearestExisting(workspaceRoot) : null,
+        await Promise.all(grounds.map(realpathOfNearestExisting)),
+      );
       if (real === path.resolve(p)) continue; // no link in the chain — lexical verdict stands
       const realRoots = await Promise.all(roots.map(realpathOfNearestExisting));
       const realCheck = checkPathAccess(real, [...new Set([...roots, ...realRoots])], { requireRoot: isWrite });
@@ -243,6 +261,15 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
         await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', reason);
         throw new Error(reason);
       }
+    }
+
+    // A being's own DNA and soul records (identity-record-writes.js): a
+    // whole-file write is carried out as an amendment at step 3; any other
+    // reach for them is refused here, before the budget counts it.
+    const identityWrite = isWrite ? await identityWriteFor(toolName, pathArgs, { lane: workspaceRoot, grounds }) : null;
+    if (identityWrite?.refuse) {
+      await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', identityWrite.refuse);
+      throw new Error(identityWrite.refuse);
     }
 
     // A team member's filing is its own to settle (intent-owners.js).
@@ -321,11 +348,15 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     }
 
     // 3. Execute. Two tools are the PLATFORM'S OWN HAND rather than a forward
-    // to the MCP server — see platform-hands.js for why each one is. They run
+    // to the MCP server — see platform-hands.js for why each one is — and so is
+    // a being's write to its own DNA or soul record, which lands as an
+    // amendment through the workspace (identity-record-writes.js). They run
     // here, strictly behind every check above and the approval policy in front
     // of the sandbox.
-    if (PLATFORM_HANDS.has(toolName)) {
-      const hand = await runPlatformHand(toolName, args);
+    if (identityWrite?.amend || PLATFORM_HANDS.has(toolName)) {
+      const hand = identityWrite?.amend
+        ? await amendIdentityRecord(neumaWorkspace, neumaId, identityWrite.amend, args.content)
+        : await runPlatformHand(toolName, args);
       if (!hand.ok) {
         await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', hand.reason);
         throw new Error(hand.reason);

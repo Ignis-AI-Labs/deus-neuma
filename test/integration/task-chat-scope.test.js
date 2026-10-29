@@ -81,7 +81,7 @@ describe('per-chat task lists — two parallel chats, one being, real disk', () 
       expect(intentType(name)?.fieldsForPrompt, name).toContain('scope');
       expect(intentType(name)?.descriptionForPrompt, name).toContain('lane');
     }
-    expect(TASK_TOOLS.map((t) => t.name)).toEqual(['task_list']);
+    expect(TASK_TOOLS.map((t) => t.name)).toEqual(['task_list', 'calendar_read']); // two reads, no acts
   });
 
   it('stamps the chat the being was standing in, and persists it encrypted at rest', async () => {
@@ -188,6 +188,26 @@ describe('per-chat task lists — two parallel chats, one being, real disk', () 
     const entry = history.find((h) => h.title === 'Finished in A');
     expect(entry.status).toBe('done');
     expect(entry.chatId).toBe(CHAT_A);
+  });
+
+  it('only the act that settles a task writes its history — retitling finished work is not a second settle', async () => {
+    inChat(CHAT_A);
+    const added = await call('task_add', { title: 'Settle once qaudit' });
+    const shortId = added.content.match(/\[([0-9a-f]{8})\]/)[1];
+    await call('task_update', { id: shortId, status: 'done' });
+    await call('task_update', { id: shortId, title: 'Settle once qaudit (renamed)' });
+    const history = await workspace.readTaskHistory(neumaId);
+    expect(history.filter((h) => h.title.startsWith('Settle once qaudit'))).toHaveLength(1);
+  });
+
+  it('a being sets and moves the due date of its own one-shot through the real tool', async () => {
+    inChat(CHAT_A);
+    const added = await call('task_add', { title: 'Due later qaudit' });
+    const shortId = added.content.match(/\[([0-9a-f]{8})\]/)[1];
+    const moved = await call('task_update', { id: shortId, dueDate: '2026-11-02', dueTime: '10:00' });
+    expect(moved.status).not.toBe('error');
+    const task = (await workspace.readTaskLedger(neumaId)).tasks.find((t) => t.title === 'Due later qaudit');
+    expect(task).toMatchObject({ dueDate: '2026-11-02', dueTime: '10:00' });
   });
 
   it('a CROOKED session binding never costs the being its ability to record work', async () => {

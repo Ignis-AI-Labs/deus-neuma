@@ -1,0 +1,141 @@
+/* UpdateBar — the desk's update bar and WHAT'S NEW panel (LINE & CYCLE).
+ *
+ * The bar is one chamfered strip, top centre, under the status line: the new version in the
+ * signal (it is live news), one white primary act, WHAT'S NEW as a hairline ghost, later as
+ * quiet text. The panel is the System Notice idiom: a centred chamfered window over a dim veil.
+ * Both rise over 240ms (NO_FLASH.RISE_MS is the floor) and never wash the frame with light.
+ */
+
+.update-bar {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-notification);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - var(--space-8));
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  background: var(--color-void);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  animation: update-rise 240ms var(--ease-out) both;
+}
+
+.update-bar-version {
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+}
+
+.update-bar-glyph {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+.update-bar-later {
+  background: transparent;
+  border: none;
+  padding: 0 var(--space-2);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--snap);
+}
+
+.update-bar-later:hover,
+.update-bar-later:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.update-bar-refused {
+  color: var(--alert);
+  text-transform: none;
+  letter-spacing: 0.04em;
+  white-space: normal;
+}
+
+.update-notes-veil {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  animation: update-rise 240ms var(--ease-out) both;
+}
+
+.update-notes {
+  width: min(640px, calc(100% - var(--space-8)));
+  max-height: calc(100% - var(--space-16, 128px));
+  display: flex;
+}
+
+.update-notes-in {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  padding: var(--space-6);
+}
+
+.update-notes-title {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--signal);
+  margin-bottom: var(--space-4);
+}
+
+.update-notes-body {
+  overflow-y: auto;
+  min-height: 0;
+  font-family: var(--font-voice);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.update-notes-section + .update-notes-section {
+  margin-top: var(--space-6);
+}
+
+.update-notes-version {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+.update-notes-none {
+  margin: 0;
+}
+
+.update-notes-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+@keyframes update-rise {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-bar,
+  .update-notes-veil {
+    animation: none;
+  }
+}

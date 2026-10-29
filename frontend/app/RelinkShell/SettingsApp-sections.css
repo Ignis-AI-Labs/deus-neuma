@@ -188,3 +188,20 @@
   font-family: var(--font-data, monospace);
   color: var(--color-text-primary);
 }
+
+/* MASTER KEY — the Recovery Kit code, shown on request in the data face, large
+   enough to copy by hand; its buttons sit on one line under it. */
+.settings-kit-code {
+  display: block;
+  margin: var(--space-2) 0;
+  font-family: var(--font-data);
+  font-size: var(--text-base);
+  letter-spacing: 0.12em;
+  user-select: all;
+}
+.settings-key-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+}

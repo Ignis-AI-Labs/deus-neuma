@@ -4,37 +4,37 @@
 
 import { houseMembers, houseSummary, witnessMembers, isWitness } from '../../frontend/app/RelinkShell/house-members.js';
 
-const fenna = { neumaId: 'n-fenna', name: 'Fenna', birthTime: '2026-06-01T00:00:00.000Z' };
-const cael = { neumaId: 'n-cael', name: 'Cael', birthTime: '2026-06-20T00:00:00.000Z' };
+const alder = { neumaId: 'n-alder', name: 'Alder', birthTime: '2026-06-01T00:00:00.000Z' };
+const birch = { neumaId: 'n-birch', name: 'Birch', birthTime: '2026-06-20T00:00:00.000Z' };
 
 describe('houseMembers', () => {
   test('marks the active companion and preserves roster order', () => {
-    const rows = houseMembers([fenna, cael], cael);
-    expect(rows.map((r) => r.member.neumaId)).toEqual(['n-fenna', 'n-cael']);
+    const rows = houseMembers([alder, birch], birch);
+    expect(rows.map((r) => r.member.neumaId)).toEqual(['n-alder', 'n-birch']);
     expect(rows.map((r) => r.isActive)).toEqual([false, true]);
   });
 
   test('prepends an active companion missing from the roster cache', () => {
-    const rows = houseMembers([cael], fenna);
-    expect(rows.map((r) => r.member.neumaId)).toEqual(['n-fenna', 'n-cael']);
+    const rows = houseMembers([birch], alder);
+    expect(rows.map((r) => r.member.neumaId)).toEqual(['n-alder', 'n-birch']);
     expect(rows[0].isActive).toBe(true);
   });
 
   test('does not duplicate an active companion already in the roster', () => {
-    const rows = houseMembers([fenna, cael], fenna);
+    const rows = houseMembers([alder, birch], alder);
     expect(rows).toHaveLength(2);
     expect(rows.filter((r) => r.isActive)).toHaveLength(1);
   });
 
   test('drops entries without a neumaId — they have no workspace to switch to', () => {
-    const rows = houseMembers([{ name: 'Ghost' }, fenna, null], fenna);
-    expect(rows.map((r) => r.member.neumaId)).toEqual(['n-fenna']);
+    const rows = houseMembers([{ name: 'Ghost' }, alder, null], alder);
+    expect(rows.map((r) => r.member.neumaId)).toEqual(['n-alder']);
   });
 
   test('handles an empty house and a missing active companion', () => {
     expect(houseMembers([], null)).toEqual([]);
     expect(houseMembers(undefined, null)).toEqual([]);
-    const rows = houseMembers([fenna], null);
+    const rows = houseMembers([alder], null);
     expect(rows).toHaveLength(1);
     expect(rows[0].isActive).toBe(false);
   });
@@ -42,11 +42,11 @@ describe('houseMembers', () => {
 
 describe('houseSummary', () => {
   test('name from the house identity, held count, earliest birth', () => {
-    const rows = houseMembers([fenna, cael], fenna);
-    const s = houseSummary(rows, { name: 'Tavirel', wallet: '0xabc' });
-    expect(s.name).toBe('Tavirel');
+    const rows = houseMembers([alder, birch], alder);
+    const s = houseSummary(rows, { name: 'Ashgrove', wallet: '0xabc' });
+    expect(s.name).toBe('Ashgrove');
     expect(s.held).toBe(2);
-    expect(s.since).toBe('2026-06-01T00:00:00.000Z'); // fenna is the elder
+    expect(s.since).toBe('2026-06-01T00:00:00.000Z'); // alder is the elder
   });
 
   test('unknown house and unparseable births stay null — never fabricated', () => {
@@ -65,14 +65,14 @@ describe('houseSummary', () => {
 
 describe('witnessMembers', () => {
   const claude = { neumaId: 'witness-claude-code-Claude', name: 'Claude', participantKind: 'witness' };
-  const sosonus = { neumaId: 'witness-openai-Sosonus', name: 'Sosonus', participantKind: 'witness' };
+  const sedge = { neumaId: 'witness-openai-Sedge', name: 'Sedge', participantKind: 'witness' };
 
   test('uses the ownership-filtered backend cache as the complete witness list', () => {
-    expect(witnessMembers([claude], sosonus)).toEqual([{ member: claude, isActive: false }]);
+    expect(witnessMembers([claude], sedge)).toEqual([{ member: claude, isActive: false }]);
   });
 
   test('marks an authorized cached witness active without duplicating it', () => {
-    expect(witnessMembers([claude, sosonus], sosonus).map((row) => row.isActive)).toEqual([false, true]);
+    expect(witnessMembers([claude, sedge], sedge).map((row) => row.isActive)).toEqual([false, true]);
   });
 });
 
@@ -84,12 +84,12 @@ describe('isWitness — both field names, one fact', () => {
   });
 
   it('falls back to the lane id when neither field rode along', () => {
-    expect(isWitness({ neumaId: 'witness-openai-chatgpt-Kagipem' })).toBe(true);
+    expect(isWitness({ neumaId: 'witness-openai-chatgpt-Juniper' })).toBe(true);
   });
 
   it('never mistakes a housemate for a witness', () => {
-    expect(isWitness({ neumaId: 'cael', kind: 'neuma' })).toBe(false);
-    expect(isWitness({ neumaId: 'cael' })).toBe(false);
+    expect(isWitness({ neumaId: 'birch', kind: 'neuma' })).toBe(false);
+    expect(isWitness({ neumaId: 'birch' })).toBe(false);
     expect(isWitness(null)).toBe(false);
   });
 });

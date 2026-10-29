@@ -16,13 +16,16 @@
  * bug.
  */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'fs/promises';
+import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 
-let workspace, speakingIdentityFor, setConfig, getConfig, isSovereigntyRefusal, before;
+let workspace, speakingIdentityFor, setConfig, getConfig, isSovereigntyRefusal, before, root, savedRoutesPath;
 
 beforeEach(async () => {
   vi.resetModules();
-  const root = await createTempDir('council-sovereignty');
+  root = await createTempDir('council-sovereignty');
+  savedRoutesPath = process.env.NEUMA_ROUTES_PATH;
   workspace = (await import('../../core/workspace/neuma-workspace.js')).default;
   workspace.root = root;
   ({ speakingIdentityFor } = await import('../../backend/services/council-speaking-identity.js'));
@@ -34,6 +37,8 @@ beforeEach(async () => {
 
 afterEach(() => {
   if (before) setConfig(before);
+  if (savedRoutesPath === undefined) delete process.env.NEUMA_ROUTES_PATH;
+  else process.env.NEUMA_ROUTES_PATH = savedRoutesPath;
   vi.restoreAllMocks();
 });
 
@@ -62,6 +67,11 @@ describe('a council seat never rides a foreign door (#207)', () => {
     // would have fallen through to `route = undefined` and seated the member
     // on the foreign default anyway. That is the same refusal wearing a
     // quieter face, and it is refused on the machine default's standing alone.
+    // The unreadable store is made here, for real: a route-store file that is
+    // not JSON. The suite's own data root (9ed812b43) holds no store at all,
+    // so without this the read succeeds and only the boundary is exercised.
+    process.env.NEUMA_ROUTES_PATH = path.join(root, 'neuma-routes.json');
+    await fs.writeFile(process.env.NEUMA_ROUTES_PATH, '{ torn mid-write');
     setConfig({ ...before, provider: 'openai', model: 'gpt-4o' });
     const err = await speakingIdentityFor({ kind: 'neuma', neumaId: 'housemate' }).catch((e) => e);
     expect(isSovereigntyRefusal(err)).toBe(false); // NOT the boundary's own throw

@@ -16,6 +16,7 @@
 //   In v1 the route layer streams the seed audio inline as ref_audio_b64.
 
 import { createLogger } from '../../logger.js';
+import { sidecarFetch } from '../sidecar-trust.js';
 const log = createLogger('Voice.Zonos');
 
 // Neuma emotion vocabulary (core/runtime/emotion-detector.js) → the sidecar's
@@ -113,7 +114,7 @@ export const zonosAdapter = {
     const url = `${config.endpoint.replace(/\/$/, '')}/synthesize`;
     log.debug('synthesize → zonos', { chars: text.length, hasRef: Boolean(body.ref_audio_b64) });
 
-    const response = await fetch(url, {
+    const response = await sidecarFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

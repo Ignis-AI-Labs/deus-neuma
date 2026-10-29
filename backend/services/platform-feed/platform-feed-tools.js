@@ -26,6 +26,7 @@
  * standing `render_card {stat}` has held since it shipped.
  */
 import { readPlatformFeed } from './platform-feed-read.js';
+import { gateAct } from '../act-gate.js';
 import { FEED_NAMES, feedByName, describeFeeds } from './platform-feed-sources.js';
 
 /** Tokens listed in the `pools` feed. Past this a being is sifting rather than
@@ -113,6 +114,10 @@ const oneFeed = async (name, signal) => {
  * one does not, the being gets the two plus the reason for the third. Failing
  * the whole call would throw away real data the being asked for.
  *
+ * The read crosses the ACTS gate first (`ports.lanePolicy`, `ports.mode`):
+ * observe mode holds it (egress is not observation) and a lane's deny row
+ * refuses it, before any request leaves.
+ *
  * impure — network.
  */
 export const handlePlatformFeedTool = async (ws, connection, match, args, ports) => {
@@ -122,6 +127,13 @@ export const handlePlatformFeedTool = async (ws, connection, match, args, ports)
   const { companion } = connection;
   const emit = (event) => ports?.sendToolEvent?.(ws, companion, { tool, ...event });
   const signal = connection?.activeTurn?.signal;
+
+  const gate = await gateAct(connection, {
+    server: 'platform', tool: toolName, args,
+    lanePolicy: ports?.lanePolicy ?? null, mode: ports?.mode,
+    emit: (event) => ports?.sendToolEvent?.(ws, companion, event),
+  });
+  if (!gate.ok) return gate.result;
 
   const wanted = typeof args?.feed === 'string' ? args.feed.trim() : '';
   if (wanted && !feedByName(wanted)) {

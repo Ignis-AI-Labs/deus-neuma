@@ -7,6 +7,7 @@ import { createServer } from 'vite';
 import { chromium, expect } from '@playwright/test';
 import { test } from 'vitest';
 import { recoveryKit } from '../helpers/summoning-recovery-kit.js';
+import { claimOwner } from '../helpers/claim-owner.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 
@@ -22,11 +23,14 @@ test('dissolution requires confirmation and preserves the real council record', 
       await workspace.create(id);
       await workspace.writeDNA(id, { fixture: 'idle confirmation metadata, no seal or inference' });
       await workspace._writeJSON(path.join(workspace.pathFor(id), 'identity', 'true-name.json'), { chosenName: id, fixture: true });
+      // A read never claims a lane (ae5782cb7): each seat stands owned by the
+      // operator who convenes the room, as a born being's lane does.
+      await claimOwner(path.join(kit.root, 'lanes'), id, kit.wallet.address);
     }
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(kit.root, 'vite'),
       appType: 'custom', esbuild: { jsx: 'automatic' },
       optimizeDeps: { entries: ['test/fixtures/council-dissolve.jsx'] },
-      server: { middlewareMode: true, hmr: false, watch: null },
+      server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
     });
     app.get('/', (_req, res) => res.type('html').send('<div id="root"></div><script type="module" src="/test/fixtures/council-dissolve.jsx"></script>'));
     app.use(vite.middlewares);

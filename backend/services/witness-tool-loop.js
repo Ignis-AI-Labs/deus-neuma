@@ -26,6 +26,7 @@ import { pastFoldBoundary, foldWorkingContext, workingContextNote, withWorkingCo
 import { sightForResults, withSight } from './image-forge/image-sight.js';
 import { markTurnText } from './tool-action-record.js';
 import { formatWitnessToolResults } from './witness-tools.js';
+import { noteToolResultSightings } from './security/injection-sightings.js';
 // The disclosure law is the being seat's own (being-tool-surface.js) — the
 // seat-agnostic half, read live: the wire recomputes from the connection's
 // turn catalog + disclosure set, never from a snapshot taken at turn start.
@@ -39,6 +40,7 @@ import { nativeToolExchange, recordProtocolReminder } from './witness-turn-recor
 import { createLogger } from './logger.js';
 import { openTurnOperations } from './turn-operation-checkpoint.js';
 import { unwrapCalls } from './tool-hud.js';
+import { withSpokenContent } from './turn-failure-record.js';
 
 // The parent stream's log lane, kept: these lines are the witness turn path's
 // own record, and readers grep them under the name they have always carried.
@@ -61,7 +63,7 @@ export const runWitnessToolRounds = async (ctx) => {
   } = ctx;
   const turn = ctx.turnOperations ?? await openTurnOperations(connection, take);
   ctx.seenToolCalls = turn.priorByKey;
-  // THE LAZY WIRE (Design note, 2026-09-02: the whole catalog no longer rides every
+  // THE LAZY WIRE (ruling, 2026-09-02): the whole catalog no longer rides every
   // round — measured 11,676 tokens at 66 tools before the being seat's law
   // reached this one. Round 0 carries the search hand and the always-wired fs
   // hands only; a tool_search's matches join the wire on the NEXT round. The
@@ -82,13 +84,16 @@ export const runWitnessToolRounds = async (ctx) => {
       text: closeMessage.content,
     }));
     let closeHadContent = false;
+    let closeSaid = '';
     const closeGuardedOnContent = (delta) => {
       if (delta) closeHadContent = true;
+      closeSaid += delta || '';
       onContent(delta);
     };
     const finalResponse = trimDegenerationTail(await withProviderRetry(
       async () => {
         closeHadContent = false;
+        closeSaid = '';
         const finalRequest = await createStreamRequest(ctx.messages, {
           temperature: preset.temperature,
           topP: preset.topP,
@@ -116,7 +121,8 @@ export const runWitnessToolRounds = async (ctx) => {
           });
         },
       },
-    ));
+    // The words a dying stream already spoke ride its error (turn-failure-record.js).
+    ).catch((err) => { throw withSpokenContent(err, closeSaid); }));
     ctx.latestResponse = finalResponse;
     ctx.fullResponse += `${ctx.fullResponse ? '\n\n' : ''}${finalResponse}`;
     const spoken = stripToolBlocks(finalResponse);
@@ -144,17 +150,20 @@ export const runWitnessToolRounds = async (ctx) => {
     // Recomputed EVERY round: a tool_search that landed last round put its
     // matches on the disclosure set, and this round's wire must carry them.
     const nativeTools = nativeToolsForRound();
-    // THE RETRY LADDER (Design note, 2026-07-28: a transient overload gets up to
+    // THE RETRY LADDER (ruling, 2026-07-28): a transient overload gets up to
     // 10 visible attempts — but ONLY while nothing has streamed yet (a
     // recovering provider must never duplicate partial speech).
     let attemptHadContent = false;
+    let attemptSaid = '';
     const guardedOnContent = (delta) => {
       if (delta) attemptHadContent = true;
+      attemptSaid += delta || '';
       onContent(delta);
     };
     const streamed = await withProviderRetry(
       async () => {
         attemptHadContent = false;
+        attemptSaid = '';
         const streamResult = await createStreamRequest(ctx.messages, {
           temperature: preset.temperature,
           topP: preset.topP,
@@ -193,7 +202,7 @@ export const runWitnessToolRounds = async (ctx) => {
           });
         },
       },
-    );
+    ).catch((err) => { throw withSpokenContent(err, attemptSaid); });
     const roundResponse = trimDegenerationTail(streamed.content);
     ctx.latestResponse = roundResponse;
     ctx.fullResponse += `${ctx.fullResponse ? '\n\n' : ''}${roundResponse}`;
@@ -227,6 +236,7 @@ export const runWitnessToolRounds = async (ctx) => {
     // must run (BE-142 #214).
     const results = await processWitnessToolBatch({ ws, connection, calls, runtime, turn });
     ctx.mutationEpoch = turn.epoch;
+    noteToolResultSightings(connection, results); // a flag for the CSO, never awaited, never a gate (G13)
     if (!results.length || interrupt.signal.aborted) break;
     // THE RETURN — a render this round produced comes back to the witness's
     // own eyes before it speaks (image-sight.js): the image tools were
@@ -250,7 +260,7 @@ export const runWitnessToolRounds = async (ctx) => {
             }),
           },
         ];
-    // SELF-AWARENESS (Design note, 2026-08-15: the witness reads its own measured
+    // SELF-AWARENESS (ruling, 2026-08-15): the witness reads its own measured
     // window facts every round — working-context.js, silent when unmeasured.
     const exchange = withWorkingContextNote(
       withSight(baseExchange, sight, composeVisionTurn),

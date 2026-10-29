@@ -29,6 +29,10 @@ describe('S2 — solo compaction invalidates the recall index (Hazard 6)', () =>
     else process.env.DNA_ENCRYPTION_KEY = PRIOR_KEY;
   });
 
+  // Routine replies carry real length: a compaction folds only a region worth
+  // summing up (compact-region.js).
+  const ROUTINE = ' steady routine work, nothing new to report.'.repeat(24);
+
   it('a force-crystallized moment surfaces in recall immediately after compaction', async () => {
     const id = 'recall-inv-' + Math.random().toString(36).slice(2, 8);
     const sessionId = 'sess-' + Math.random().toString(36).slice(2, 6);
@@ -41,7 +45,7 @@ describe('S2 — solo compaction invalidates the recall index (Hazard 6)', () =>
     // (live). The lighthouse token appears in no routine message.
     for (let i = 0; i < 2; i += 1) {
       await workspace.appendMessage(id, sessionId, { role: 'user', content: `routine question ${i}` });
-      await workspace.appendMessage(id, sessionId, { role: 'assistant', content: `routine reply ${i}` });
+      await workspace.appendMessage(id, sessionId, { role: 'assistant', content: `routine reply ${i}${ROUTINE}` });
     }
     await workspace.appendMessage(id, sessionId, {
       role: 'user',
@@ -53,7 +57,7 @@ describe('S2 — solo compaction invalidates the recall index (Hazard 6)', () =>
     });
     for (let i = 2; i < 18; i += 1) {
       await workspace.appendMessage(id, sessionId, { role: 'user', content: `routine question ${i}` });
-      await workspace.appendMessage(id, sessionId, { role: 'assistant', content: `routine reply ${i}` });
+      await workspace.appendMessage(id, sessionId, { role: 'assistant', content: `routine reply ${i}${ROUTINE}` });
     }
 
     // Prime the cache BEFORE compaction: the index is built over zero

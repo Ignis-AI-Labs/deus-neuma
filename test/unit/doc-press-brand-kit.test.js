@@ -64,6 +64,31 @@ describe('loadBrandKit (real fs)', () => {
   test('path-traversal kit ids are rejected before any fs access', async () => {
     await expect(loadBrandKit({ kitId: '../escape', kitsDir: '/tmp' })).rejects.toThrow(/Invalid brand kit id/);
   });
+  // re-audit 2026-10-29, NEW-L4: a link in a kit carried the press to any file on the disk
+  test('a logo or a kit.json that is a link out of the kit is never read', async () => {
+    const root = await createTempDir('brand-kits');
+    const outside = await createTempDir('brand-kit-outside');
+    await fs.writeFile(path.join(outside, 'secret.png'), 'PRIVATE-BYTES');
+    await fs.writeFile(path.join(outside, 'kit.json'), JSON.stringify({ companyName: 'from outside' }));
+    const dir = await writeKit(root, 'linked', { logos: { primary: 'logo.png' } });
+    await fs.symlink(path.join(outside, 'secret.png'), path.join(dir, 'logo.png'));
+    const kit = await loadBrandKit({ kitId: 'linked', kitsDir: root });
+    expect(kit.logoData.primary).toBeUndefined();
+    const whole = path.join(root, 'whole');
+    await fs.mkdir(whole);
+    await fs.symlink(path.join(outside, 'kit.json'), path.join(whole, 'kit.json'));
+    await expect(loadBrandKit({ kitId: 'whole', kitsDir: root })).rejects.toThrow(/reaches outside its brand kit/);
+    await fs.symlink(outside, path.join(root, 'aliased'));
+    await expect(loadBrandKit({ kitId: 'aliased', kitsDir: root })).rejects.toThrow(/reaches outside its brand kit/);
+    expect((await listBrandKits({ kitsDir: root })).map((k) => k.id)).toEqual(['linked']);
+  });
+  test('a kits folder reached through a link still loads its own kits', async () => {
+    const real = await createTempDir('brand-kits-real');
+    await writeKit(real, 'acme', { companyName: 'Acme Corp', logos: { primary: 'logo.svg' } }, { 'logo.svg': TINY_SVG });
+    const alias = path.join(await createTempDir('brand-kits-alias'), 'kits');
+    await fs.symlink(real, alias);
+    expect((await loadBrandKit({ kitId: 'acme', kitsDir: alias })).logoData.primary).toBeDefined();
+  });
 });
 
 describe('listBrandKits (real fs)', () => {

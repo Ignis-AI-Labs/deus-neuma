@@ -1,0 +1,106 @@
+/* MarketingOverview — the MARKETING board's panel bodies (campaign plan §5;
+   marketing-panel-plan.md §3), laid on the shared 12-column grid
+   (panel-grid.css) under the health strip (health-strip.css). LINE & CYCLE:
+   hairlines, the mono data register, signal for a live reading, alert only
+   for what waits or fails. Every label meets the 13px floor (design-language.md
+   § LESS TEXT, NOT LESS DATA); the posts' own words keep the voice register. */
+
+.mko { container-type: inline-size; display: flex; flex-direction: column; gap: var(--space-3); font-family: var(--font-data); min-width: 0; }
+.mko-link { background: none; border: 0; padding: 0 var(--space-2); color: var(--signal); font: inherit; font-size: 13px; letter-spacing: 0.1em; cursor: pointer; }
+.mko-link:hover { text-decoration: underline; }
+.mko-none { color: var(--color-text-disabled); }
+.mkb-empty { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); font-size: 13px; letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+/* a table wider than its panel scrolls inside it, never past the window */
+.mkb-scroll { overflow-x: auto; min-width: 0; }
+.mkb-posts-bar { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* ── companies × platforms, angles × accounts ─────────── */
+.mko-grid, .mko-matrix { border-collapse: separate; border-spacing: 2px; width: 100%; table-layout: auto; font-size: 13px; }
+.mko-grid th, .mko-matrix th { font-weight: 400; text-align: left; letter-spacing: 0.02em; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.mko-grid thead th, .mko-matrix thead th { font-size: 13px; color: var(--color-text-tertiary); text-align: center; }
+.mko-grid td, .mko-matrix td { text-align: center; }
+.mko-grid tr.is-unsorted th { color: var(--alert-dim); }
+.mko-cell { display: inline-flex; gap: 2px; align-items: center; padding: 2px var(--space-1); background: transparent; border: var(--border-width-thin) solid transparent;
+  color: inherit; font: inherit; cursor: pointer; }
+.mko-cell:hover, .mko-cell.is-lit { border-color: var(--signal-dim); }
+.mko-cell small { font-size: 13px; color: var(--color-text-tertiary); }
+.mko-mark { font-style: normal; }
+.mko-mark.is-clear { color: var(--signal); }
+.mko-mark.is-failing { color: var(--alert); }
+.mko-mark.is-idle { color: var(--color-text-tertiary); }
+.mko-active { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.mko-mcell { width: 100%; min-width: 44px; padding: 3px 4px; border: var(--border-width-thin) solid transparent; color: var(--color-text-primary); font: inherit;
+  background: color-mix(in srgb, var(--signal) calc(var(--mko-shade, 0) * 40%), transparent); cursor: pointer; font-variant-numeric: tabular-nums; }
+.mko-mcell:hover, .mko-mcell.is-lit { border-color: var(--signal-dim); }
+
+/* ── one campaign ─────────────────────────────────────── */
+.mko-campaign { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.mko-campaign-body { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
+.mko-campaign .hud-dial { width: 124px; flex: 0 0 auto; }
+.mko-campaign .hud-dial-label { letter-spacing: 0.04em; overflow-wrap: anywhere; }
+/* the KPI's by-date stays on one line under its metric */
+.mko-campaign .hud-dial-sub { max-width: none; white-space: nowrap; }
+.mko-campaign-bars { flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mko-campaign .hud-bar { grid-template-columns: var(--hud-bar-name) minmax(40px, 1fr) auto; }
+.mko-campaign .hud-bar-text { white-space: nowrap; }
+.mko-campaign-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.mko-open { margin-left: auto; }
+.mko-subs { display: flex; flex-wrap: wrap; gap: 4px; }
+.mko-subs i { font-style: normal; font-size: 13px; letter-spacing: 0.04em; padding: 1px 4px; box-shadow: inset 0 0 0 1px var(--line); color: var(--color-text-tertiary); }
+.mko-subs i.is-on { box-shadow: inset 0 0 0 1px var(--signal-dim); color: var(--signal); }
+.mko-subs i.is-on .acm { color: var(--signal); }
+/* how many sent posts reported a step: one dot per post, lit for each that did */
+.mko-frac { display: inline-flex; align-items: center; gap: 3px; margin-left: var(--space-2); vertical-align: middle; font-size: var(--text-label); color: var(--color-text-tertiary); }
+.mko-frac i { width: 6px; height: 6px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--color-text-tertiary); }
+.mko-frac i.is-on { background: var(--color-text-secondary); box-shadow: none; }
+
+/* ── posts: one table, the legend said once ───────────── */
+/* The rows are subgrids of one grid, so every number stands under its legend
+   word. Wide: the post, its trace, six numbers. Mid: the post on its own line,
+   the trace and the numbers under it. Narrow: the numbers three to a line. */
+.mko-posts { container-type: inline-size; min-width: 0; }
+.mko-posts-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 200px) repeat(6, max-content); column-gap: var(--space-3); }
+.mko-post { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: end; row-gap: 4px; padding: var(--space-2) 0;
+  border-top: var(--border-width-thin) solid var(--line); }
+.mko-post:not(.is-sent):not(.mko-post-legend) .mko-post-main { grid-column: 1 / -1; }
+.mko-post-legend { padding: 0 0 2px; border-top: 0; align-items: baseline; }
+.mko-post-legend .mko-col-trace, .mko-col { font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.mko-post-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; align-self: start; }
+.mko-post-head { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; min-width: 0; }
+.mko-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.mko-chip { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: var(--text-label); letter-spacing: 0.04em; padding: 1px 5px;
+  box-shadow: inset 0 0 0 1px var(--line); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.mko-chip.is-angle, .mko-chip.is-group { color: var(--color-text-tertiary); }
+.mko-chip.is-none { box-shadow: none; color: var(--color-text-disabled); }
+.mko-door { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; margin: -8px 0; padding: 0;
+  background: none; border: var(--border-width-thin) solid transparent; color: var(--signal); font: inherit; font-size: 15px; line-height: 1;
+  text-decoration: none; cursor: pointer; transition: border-color 200ms ease; }
+.mko-door:hover, .mko-door:focus-visible { border-color: var(--signal-dim); }
+.mko-post-text { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.mko-post-error { font-size: var(--text-label); letter-spacing: 0.04em; color: var(--alert); overflow-wrap: anywhere; }
+.mko-post-failed { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mko-col-trace { min-width: 0; }
+.mko-col-trace .hud-trace { min-width: 0; flex: none; }
+.mko-num { font-size: var(--text-lg); font-weight: 300; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+@container (max-width: 860px) {
+  .mko-posts-grid { grid-template-columns: minmax(120px, 1fr) repeat(6, max-content); }
+  .mko-post .mko-post-main { grid-column: 1 / -1; }
+  .mko-post-legend .mko-post-main { display: none; }
+}
+@container (max-width: 520px) {
+  .mko-posts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mko-col-trace { grid-column: 1 / -1; }
+}
+
+/* ── the site counter ─────────────────────────────────── */
+.mko-site { display: flex; flex-direction: column; gap: var(--space-2); }
+.mko-site .settings-control { margin: 0; }
+.mko-site-nums { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-4); }
+.mko-site-state { font-size: 15px; letter-spacing: 0.08em; color: var(--color-text-tertiary); }
+.mko-site-state.is-on { color: var(--signal); }
+.mko-site-off { font-size: 13px; color: var(--color-text-tertiary); }
+.mko-site-nums { align-items: center; }
+.mko-site-n { display: inline-flex; align-items: baseline; gap: var(--space-1); font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.mko-site-n b { font-size: var(--text-lg); font-weight: 300; letter-spacing: 0; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.mko-site-key { margin: 0 0 0 auto; }
+.mko-site-key[aria-expanded='true'] { border-color: var(--signal-dim); }

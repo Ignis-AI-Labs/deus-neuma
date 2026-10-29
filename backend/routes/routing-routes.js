@@ -16,18 +16,22 @@
  *   DELETE /api/v1/routing/services/:id/key           — remove a service's stored key
  *
  * These are the OPERATOR'S provider credentials (machine-scoped), so they need
- * auth but not neuma ownership. The per-neuma route override lives in
+ * auth but not neuma ownership — and every write is the install owner's, at
+ * this computer's own desk (install-owner.js). The per-neuma route override lives in
  * neuma-route-routes.js. A raw key never leaves the server — responses are
  * masked; only the test/model probes use a key, and only server-side.
  */
 import { Router } from 'express';
+import { credentialLinksPayload } from '../services/credential-links.js';
+import { hydrateStoredSecrets } from '../services/stored-secrets.js';
 import { requireAuth } from '../services/auth.js';
+import { requireInstallOwner } from '../services/install-owner.js';
 import {
   PROVIDER_CATALOG, SERVICE_CATALOG, getProvider, getService,
 } from '../services/provider-registry.js';
 import {
   loadCredentials, computeCredentialState, maskCredential,
-  setCredential, removeCredential,
+  setCredential, removeCredential, pairRequestCredential,
 } from '../services/provider-credentials.js';
 import { resolveUsableCredential } from '../services/oauth-token-broker.js';
 import {
@@ -103,7 +107,7 @@ router.get('/providers/:providerId/models', async (req, res) => {
   }
 });
 
-router.put('/providers/:providerId/key', async (req, res) => {
+router.put('/providers/:providerId/key', requireInstallOwner, async (req, res) => {
   try {
     const entry = getProvider(req.params.providerId);
     const { apiKey, endpoint } = req.body || {};
@@ -128,7 +132,7 @@ router.put('/providers/:providerId/key', async (req, res) => {
   }
 });
 
-router.delete('/providers/:providerId/key', async (req, res) => {
+router.delete('/providers/:providerId/key', requireInstallOwner, async (req, res) => {
   try {
     const entry = getProvider(req.params.providerId);
     await cancelFlow(entry.id);
@@ -147,14 +151,13 @@ router.post('/providers/:providerId/test', async (req, res) => {
   try {
     const entry = getProvider(req.params.providerId);
     // Prefer a just-typed key/endpoint from the body (so the operator can test
-    // before saving), else fall back to the stored/env credential.
-    const stored = await resolveUsableCredential(entry.id);
-    const endpoint = (req.body?.endpoint) || stored.endpoint;
-    const apiKey = (req.body?.apiKey) || stored.apiKey;
+    // before saving), else fall back to the stored/env credential — which
+    // follows only its own endpoint, never one the request names.
+    const { endpoint, apiKey, accountId } = pairRequestCredential(await resolveUsableCredential(entry.id), req.body);
     if (!endpoint) return res.status(400).json({ success: false, error: 'No endpoint to test' });
     const guard = await assertSafeEndpoint(endpoint);
     if (!guard.ok) return res.status(400).json({ success: false, error: `Endpoint refused: ${guard.reason}` });
-    const models = await liveModels(entry, endpoint, apiKey, { accountId: stored.accountId });
+    const models = await liveModels(entry, endpoint, apiKey, { accountId });
     res.json({ success: models.length > 0, models });
   } catch (error) {
     log.error('provider test failed', { error: error.message });
@@ -168,18 +171,22 @@ router.post('/providers/:providerId/test', async (req, res) => {
 // locks the route in: the operator never reconfigures it, and it joins the
 // pool a new AI witness may be summoned onto. A lock holds no secrets.
 
-router.post('/providers/:providerId/connect', async (req, res) => {
+router.post('/providers/:providerId/connect', requireInstallOwner, async (req, res) => {
   try {
     const entry = getProvider(req.params.providerId);
     const store = await loadCredentials();
     const cred = await resolveUsableCredential(entry.id, store);
-    const endpoint = (req.body?.endpoint) || cred.endpoint;
-    const apiKey = (req.body?.apiKey) || cred.apiKey;
+    const { endpoint, apiKey, accountId, storedEndpoint } = pairRequestCredential(cred, req.body);
     if (!endpoint) return res.status(400).json({ success: false, error: 'No endpoint to connect' });
+    // A lock is summoned later with the STORED key, so locking another
+    // endpoint would carry that key there. Save the endpoint with its key first.
+    if (!storedEndpoint && cred.apiKey) {
+      return res.status(400).json({ success: false, error: 'The stored key belongs to another endpoint — save this endpoint with its own key first' });
+    }
     if (entry.requiresKey && !apiKey) {
       return res.status(400).json({ success: false, error: 'No credential — add a key or sign in first' });
     }
-    const probe = await probeProvider(entry.id, { endpoint, apiKey, accountId: cred.accountId });
+    const probe = await probeProvider(entry.id, { endpoint, apiKey, accountId });
     if (!probe.ok) return res.status(400).json({ success: false, error: probe.error });
     if (!probe.live) {
       return res.json({ success: false, live: false, error: 'The provider did not answer with a live model list — nothing was locked' });
@@ -211,7 +218,7 @@ router.get('/connections', async (req, res) => {
   }
 });
 
-router.delete('/connections/:providerId', async (req, res) => {
+router.delete('/connections/:providerId', requireInstallOwner, async (req, res) => {
   try {
     const removed = await removeConnection(req.params.providerId);
     res.json({ success: true, removed });
@@ -226,7 +233,7 @@ router.delete('/connections/:providerId', async (req, res) => {
 // poll is one token-endpoint round per call. OAuth endpoints are hardcoded
 // provider hosts — never user input — so no SSRF surface is added.
 
-router.post('/providers/:providerId/oauth/start', async (req, res) => {
+router.post('/providers/:providerId/oauth/start', requireInstallOwner, async (req, res) => {
   try {
     const entry = getProvider(req.params.providerId);
     const mode = req.body?.mode || oauthFlowsFor(entry.id)[0];
@@ -243,7 +250,7 @@ router.post('/providers/:providerId/oauth/start', async (req, res) => {
   }
 });
 
-router.post('/providers/:providerId/oauth/poll', async (req, res) => {
+router.post('/providers/:providerId/oauth/poll', requireInstallOwner, async (req, res) => {
   try {
     const entry = getProvider(req.params.providerId);
     const mode = req.body?.mode || 'device';
@@ -257,13 +264,40 @@ router.post('/providers/:providerId/oauth/poll', async (req, res) => {
   }
 });
 
+// --- Where to get each key (public links, never a credential) ---
+// The desk reads this once and shows "get a key" beside every credential input.
+router.get('/credential-links', (req, res) => {
+  res.json(credentialLinksPayload());
+});
+
 // --- Keyed services (non-chat) ---
 // A service key shares the encrypted store, and nothing else: it is never a
 // model, a route, or a connection, so these routes only set, list and clear.
 
 const maskedService = async (entry, store) => {
   const { state, storeEntry } = await stateFor(entry, store);
-  return { ...maskCredential(entry, state, storeEntry), service: entry.service };
+  // Where the value in use comes from: saved here wins; the env name is the developers' fallback.
+  const stored = typeof storeEntry?.apiKey === 'string' && storeEntry.apiKey.length > 0;
+  const fromEnv = !stored && Boolean(entry.keyEnv && String(process.env[entry.keyEnv] || '').trim());
+  return {
+    ...maskCredential(entry, state, storeEntry), service: entry.service,
+    group: entry.group ?? null, format: entry.format ?? 'key', keyEnv: entry.keyEnv ?? null,
+    source: stored ? 'stored' : fromEnv ? 'env' : null,
+  };
+};
+
+// pure — a value the service can use: an https address (a loopback http one for a
+// node on this machine), an account id, or a key; never one with spaces or control characters.
+const serviceValueProblem = (format, value) => {
+  if (/[\s\u0000-\u001f]/.test(value)) return 'the value has spaces or line breaks in it';
+  if (format === 'url') {
+    let url;
+    try { url = new URL(value); } catch { return 'that is not a web address'; }
+    const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) return 'the address must start with https:// (http:// only for a node on this machine)';
+  }
+  if (format === 'id' && !/^[A-Za-z0-9_-]{6,64}$/.test(value)) return 'an account id is letters and digits only';
+  return null;
 };
 
 router.get('/services', async (req, res) => {
@@ -278,14 +312,18 @@ router.get('/services', async (req, res) => {
   }
 });
 
-router.put('/services/:serviceId/key', async (req, res) => {
+router.put('/services/:serviceId/key', requireInstallOwner, async (req, res) => {
   try {
     const entry = getService(req.params.serviceId);
+    if (!entry) return res.status(404).json({ error: 'no such service' });
     const apiKey = req.body?.apiKey;
     if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
       return res.status(400).json({ error: 'apiKey must be a non-empty string' });
     }
+    const problem = serviceValueProblem(entry.format, apiKey.trim());
+    if (problem) return res.status(400).json({ error: problem });
     await setCredential(entry.id, { apiKey: apiKey.trim() });
+    await hydrateStoredSecrets();
     res.json({ success: true, service: await maskedService(entry) });
   } catch (error) {
     log.error('set service key failed', { error: error.message });
@@ -293,10 +331,12 @@ router.put('/services/:serviceId/key', async (req, res) => {
   }
 });
 
-router.delete('/services/:serviceId/key', async (req, res) => {
+router.delete('/services/:serviceId/key', requireInstallOwner, async (req, res) => {
   try {
     const entry = getService(req.params.serviceId);
+    if (!entry) return res.status(404).json({ error: 'no such service' });
     const removed = await removeCredential(entry.id);
+    await hydrateStoredSecrets();
     res.json({ success: true, removed, service: await maskedService(entry) });
   } catch (error) {
     log.error('delete service key failed', { error: error.message });
