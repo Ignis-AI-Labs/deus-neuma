@@ -1,3 +1,0 @@
-Added
-- The first five stages of a company's founding line now hand on structured worksheets (Blue Ocean Strategy): gap candidates from the six paths, strategy canvases, the eliminate/reduce/raise/create grid and offer, the chosen gap with its kill criteria, and real buyer results. Every claim and score must name its source, and each stage must build on the one before, so a generic or guessed worksheet is refused.
-- When you inspect a stage, the COMPANY LINE window shows its worksheet, with every source one click away. When CHOOSE is yours, a short form takes the gap's why and your "we stop if…" lines.
