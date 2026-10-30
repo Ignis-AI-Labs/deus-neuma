@@ -26,6 +26,7 @@ import { attachUpgradeRouter } from '../../backend/services/ws-upgrade-router.js
 import { launch, stop } from '../../backend/services/voice/engine-manager.js';
 import { shutdownSidecar } from '../../backend/services/voice/engine-process.js';
 import { renderSpeechPcm, makeDiskWorkDir } from '../helpers/speech-fixture.js';
+import { SIDECAR_CALLER_HEADER, callerToken, sidecarKey } from '../../backend/services/voice/sidecar-trust.js';
 
 const SIDECAR_PORT = 7873;
 const SPOKEN = 'The portal is open and the house is listening.';
@@ -133,7 +134,8 @@ describe('dictation streams through the live lane (real sidecar, real route)', (
     let sitting;
     const deadline = Date.now() + 60_000;
     for (;;) {
-      sitting = new WebSocket(`ws://127.0.0.1:${SIDECAR_PORT}/stream`);
+      // the sitting is the backend's own socket: it carries the install key's token (sidecar-trust.js)
+      sitting = new WebSocket(`ws://127.0.0.1:${SIDECAR_PORT}/stream`, { headers: { [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) } });
       const got = await new Promise((resolve) => {
         sitting.on('message', (d) => resolve(JSON.parse(d.toString()).type === 'ready'));
         sitting.on('close', () => resolve(false));

@@ -98,7 +98,11 @@ export const deriveInstallOwner = async () => {
 
 const readRecordFile = async () => {
   try {
-    return normalizeRecord(JSON.parse(await fs.readFile(recordPath(), 'utf8')));
+    const record = normalizeRecord(JSON.parse(await fs.readFile(recordPath(), 'utf8')));
+    // A record that parses but names no owner is as torn as one that does not parse: read as
+    // absent it would be re-derived, its co-owners dropped (re-audit 2026-10-29, NEW-L8).
+    if (!record) throw new Error('the record names no valid owner');
+    return record;
   } catch (error) {
     if (error.code === 'ENOENT') return null;
     // A torn record must never read as "nobody owns this" — that would hand

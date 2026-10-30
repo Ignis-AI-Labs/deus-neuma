@@ -136,6 +136,7 @@ describe('founding a house on this computer', () => {
     const section = await __test._houseSeatSection({ companion: { neumaId: 'hazel' }, walletAddress: operator.address });
     expect(section).toContain('## HOUSE SEAT — FOUNDED ON THIS COMPUTER');
     expect(section).toContain('as Faber — founded by its members on this computer, not yet on the network.');
+    expect(section).toContain('Your compass — what your seat asks of any venture: What exactly are we making, to what standard, by when? What is the smallest version that delivers the value? Did the customer get it?');
     expect(section).not.toContain('SEALED ON-CHAIN');
   });
 

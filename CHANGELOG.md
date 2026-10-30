@@ -6,6 +6,53 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.95] - 2026-10-29
+
+Notes: `docs/operations/release-notes-0.1.95.md`.
+
+### Added
+
+- A bookkeeping seat for the house: seat a being as Logista from the COMPANY LINE window. It keeps each company's books, matching every entry to a receipt the house already holds (money received, or a spend). The amounts come from the receipt itself, so the books can't drift from what actually moved. Anything without a receipt is entered by hand with its source and shows as unmatched. Wrong entries are voided with a reason, never edited.
+- The BOOKS section shows each company's year to date per currency, how many entries are unmatched, upcoming tax and filing deadlines (marking the ones a licensed CPA must sign), and any receipts not yet booked.
+- Your open chats can message each other. A being can list the other chats open in your house, each by its exact address, and send one of them a message; that chat answers it right away, or as soon as its current reply ends, and can write back.
+- A message from another chat shows as a LINK line naming who sent it and from which chat, never as your own words, in the chat and in the being's memory.
+- Two chats stop after six messages in a row without you, and pick up again when you speak in that chat.
+- YOUR HANDS in the COMPANY LINE window: when the house needs something only you can do (sign, file, pass an ID check, pay a fee), it asks plainly. Each request says what, why, the estimated cost and time, any deadline, and the exact link, with the site it leads to shown. It waits in WAITING ON YOU until you mark it done or decline it.
+- The first five stages of a company's founding line now hand on structured worksheets (Blue Ocean Strategy): gap candidates from the six paths, strategy canvases, the eliminate/reduce/raise/create grid and offer, the chosen gap with its kill criteria, and real buyer results. Every claim and score must name its source, and each stage must build on the one before, so a generic or guessed worksheet is refused.
+- When you inspect a stage, the COMPANY LINE window shows its worksheet, with every source one click away. When CHOOSE is yours, a short form takes the gap's why and your "we stop if…" lines.
+- A COMPANY LINE window: open a company and watch your house found it stage by stage, from finding the gap to the company standing. Each stage is done by one seat and checked by the next, and anything that waits on you shows up in WAITING ON YOU.
+- An involvement dial in the house charter: KIN, PARTNER, OVERSEER or SILENT sets how much of the company work comes to you. Money out, signatures and incidents always come to you at every setting.
+- A sixteenth house seat, Logista (Chief Accounting Officer), keeps the books apart from the treasurer: one being guards the money, another records it.
+- Every seated being now carries its seat's compass: three questions its seat asks of any venture, read each turn beside its charge.
+- A sales seat for the house: seat a being as Mercator from the COMPANY LINE window. It opens deals only once a buyer's problem and its value to them are known, moves each deal to proposed, won or lost with the reason, and works the leads marketing qualifies. The window shows the sales pipeline: deals and their value at each stage, plus each open deal's next step.
+- MAKOTO, the house's honest-persuasion doctrine (Blue Ocean, SPIN, and an honest "straight line"), now guides the sales seat and the marketing seat. A buyer who says no isn't approached again for 30 days.
+
+### Security
+
+- The being that approves the house's money (Quaestor) can never also keep its books (Logista), whichever seat is filled first.
+- A request or an answer that holds a secret (a key, a recovery phrase) is refused. For anything secret you say where it is kept, never the secret itself.
+- The command-line tool now keeps its sign-in token in a private folder in your home directory, not a shared temporary folder, and the background service no longer shows its token to other users of the computer.
+- Changing an account's mail server, Mastodon instance or Bluesky server now clears its saved password or token, so you enter it again. A saved secret is never sent to a server it wasn't entered for, and the password in your setup file is never sent to a server someone else saved.
+- The app's windows now answer only themselves. The wallet, folder and browser controls exist only on the app's own page, they answer only that page's top frame, and nothing can redirect the window away from it.
+- Social and email keys written in this computer's settings file now serve only the computer's owner (and co-owners). Anyone else who signs in uses their own keys and can no longer read, post as, or re-connect the owner's accounts.
+- Before a security officer publishes an issue to GitHub under your login, the approval card now shows the full title and text that will be posted. What you approve is exactly what goes out. A text that carries a key is refused before you're asked.
+- The gallery now shows only pictures and videos from its folders, never other files, and never through a shortcut that points at a private file. A gallery folder or model folder can't be your whole disk.
+- Restoring a backup can no longer take over a space that belongs to someone else before they first use it. Another person's personal workspace, and an AI witness's space, can't be restored into.
+- A being can no longer change its own permissions, spending list or spending limit by writing files, through any route. The app now ignores any such file it didn't write itself, and on AUTO a being's shell can't write the app's own data inside your open folder.
+- A leaked key is no longer marked as verified just because this computer stopped using it. Once it's marked handled, it waits for you to confirm the old key was revoked where it was issued. Only then is it verified.
+- A web page you visit can no longer use the app running on your computer: the app now refuses any request another website sends it. The pre-flight and model checks answer only after you sign in, and only the owner of the computer can have the app pick its model automatically.
+- The forge's record of image requests now shows each house only its own, and the public portal status no longer reveals how many desks are connected. Issue and sign-in links that come from a being or a provider become clickable only when they're ordinary web addresses. A voice engine name or model name can no longer be passed to a command as a hidden option.
+- When the app starts, it now starts only its own model server or the Ollama installed on your computer, never a program named in a file on disk. A consciousness that you let write to a wide folder can no longer change which program starts, the record of what it did, or the record of what you agreed to.
+- Web searches and page reads are now checked for keys before they leave your computer, the same way posts, emails and documents are. That includes automatic mode.
+- The check now also catches a key hidden in an encoded form, a wallet recovery phrase, an email address field, and this computer's own keys even when they have no recognisable shape.
+- Stricter installs and server setups. The Fedora package now sets up Chromium's sandbox helper like the Debian one, the server service runs with tighter limits, the setup file holding your keys is made private at startup if others could read it, and the Docker setup keeps the app on your own machine and keeps key files out of the image.
+- A paired phone can no longer change who a wallet may pay, how much it may spend without asking, or the accounts and app keys a house posts with. Those changes are made only at the computer itself.
+- Opening a folder in the Explorer can no longer run programs hidden in that repository's own git settings. A repository whose settings name such programs gets no git badges, and the app's security and legal checks read repositories the same safe way.
+- The voice engines and the app now check each other with a private key. Another program on your computer can no longer pretend to be a voice engine and receive a voice sample or what you say into the microphone. It also can no longer use the voice engines itself.
+- A voice engine you start by hand outside the app no longer answers the app. Close it and let the app start its own.
+- The voice seal, the voice pack and the birth setup check now refuse a being that no wallet has claimed, as every other being's page already does. Before, they let any signed-in person act on an unclaimed being, and the voice seal can't be undone.
+- The voice engines running on your computer now refuse any request a web page sends them, so a site you visit can't make them speak, transcribe or shut down. They also refuse to run on an address other devices on your network could reach.
+
 ## [0.1.88] - 2026-10-28
 
 Notes: `docs/operations/release-notes-0.1.88.md`.

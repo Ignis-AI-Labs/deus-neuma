@@ -32,6 +32,7 @@ export default Object.freeze({
     sovereignty: '主権',
     staff: '参謀長',
     houseclock: 'HOUSE 時計',
+    companyline: '会社ライン',
     substrate: '基盤',
     teams: 'チーム',
     terminal: 'ターミナル',

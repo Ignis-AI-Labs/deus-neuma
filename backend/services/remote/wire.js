@@ -21,7 +21,8 @@ import {
 } from './road-control.js';
 
 // A paired phone can use Neuma, but never activate the machine, swap or stop
-// its substrate, or strand itself. Each guard passes local requests straight
+// its substrate, rewrite a wallet's spending consent or a house's posting
+// credentials, or strand itself. Each guard passes local requests straight
 // through to the router mounted after it.
 const LOCAL_ONLY_ROUTES = Object.freeze([
   ['post', '/api/v1/license/activate'],
@@ -30,6 +31,19 @@ const LOCAL_ONLY_ROUTES = Object.freeze([
   ['post', '/api/v1/substrate/unload'],
   ['post', '/api/v1/substrate/capacity'],
   ['put', '/api/v1/substrate/standby'],
+  // re-audit 2026-10-29, NEW-M1: the consent a wallet spends under (who it may pay, how much without
+  // asking) and the credentials a house posts with are set at the desk, never from a paired phone
+  ['post', '/api/v1/neuma/:neumaId/wallet/allowlist'],
+  ['put', '/api/v1/neuma/:neumaId/wallet/threshold'],
+  ['put', '/api/v1/social-channels/:channelId/credentials'],
+  ['delete', '/api/v1/social-channels/:channelId/credentials'],
+  ['post', '/api/v1/social-channels/accounts'],
+  ['post', '/api/v1/social-channels/accounts/unlock'],
+  ['post', '/api/v1/social-channels/accounts/start-fresh'],
+  ['put', '/api/v1/social-channels/accounts/:accountId/credentials'],
+  ['delete', '/api/v1/social-channels/accounts/:accountId'],
+  ['put', '/api/v1/social-channels/apps/:channelId'],
+  ['post', '/api/v1/social-channels/:channel(youtube|tiktok)/connect'],
 ]);
 
 const passThrough = (_req, _res, next) => next();

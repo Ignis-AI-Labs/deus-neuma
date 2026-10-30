@@ -37,6 +37,7 @@ import { channelBindings } from '../../backend/services/social/channel-bindings.
 import { sectorCrew } from '../../backend/services/sector-crew.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const NEUMA_ID = 'sweepecho';
 const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'];
@@ -125,6 +126,8 @@ describe('the intent sweep (real WS + real workspace + real queue, gnosis)', () 
     setRealmRoot(path.join(house, 'realm'));
     setWitnessesRoot(path.join(house, 'witnesses'));
     auth = await fullAuth();
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(auth.address);
     for (const k of SOCIAL_PATHS) { savedEnv[k] = process.env[k]; }
     process.env.NEUMA_SOCIAL_BINDINGS_PATH = `${house}/social-channel-bindings.json`;
     process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${house}/social-channel-credentials.json`;

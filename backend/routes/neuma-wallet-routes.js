@@ -192,6 +192,7 @@ router.post('/:neumaId/wallet/allowlist', requireAuth, async (req, res) => {
       address, typeof label === 'string' ? label : '', new Date().toISOString(),
     );
     await neumaWorkspace.writeSpendAllowlist(neumaId, updated);
+    log.info('wallet allowlist: recipient approved', { neumaId, address, by: req.walletAddress });
     res.json({ neumaId, entries: updated.entries });
   } catch (err) {
     log.error('Allowlist add error', { error: err.message });
@@ -249,6 +250,7 @@ router.put('/:neumaId/wallet/threshold', requireAuth, async (req, res) => {
   try {
     if (!(await witnessOwns(req, res, neumaId))) return;
     await neumaWorkspace.writeSpendThreshold(neumaId, { thresholdEth });
+    log.info('wallet threshold set', { neumaId, thresholdEth, by: req.walletAddress });
     res.json({ neumaId, thresholdEth });
   } catch (err) {
     log.error('Threshold write error', { error: err.message });

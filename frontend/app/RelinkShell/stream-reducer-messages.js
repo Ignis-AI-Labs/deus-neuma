@@ -112,8 +112,8 @@ export const toHistoryMessages = (messages, base, prefix) =>
     if (m.compacted === true) return historyCompactMessage(m, `${prefix}${base + k}`);
     const shared = {
       id: `${prefix}${base + k}`,
-      // The platform's own lines — a watch's report, a house wake's note — never the operator's bubble.
-      role: m.role === 'assistant' ? 'neuma' : m.origin === 'watch' || m.origin === 'wake' ? m.origin : 'user',
+      // The platform's own lines — a watch's report, a house wake's note, another chat's link — never the operator's bubble.
+      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link'].includes(m.origin) ? m.origin : 'user',
       streaming: false,
       isHistory: true,
       at: m.at ?? null,
@@ -162,7 +162,7 @@ export const withDisplayedAsk = (message, text) => ({
 
 export const pushMessage = (state, role, text, images, at, holdId = null, docs = []) => ({
   ...state,
-  thinking: role === 'user' || role === 'watch', // a watch's report opens a turn too
+  thinking: role === 'user' || role === 'watch' || role === 'link', // a watch's report and a chat link open a turn too
   seq: state.seq + 1,
   messages: [
     ...state.messages,

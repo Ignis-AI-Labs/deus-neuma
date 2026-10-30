@@ -11,6 +11,7 @@ import workspace, { getWitnessesRoot, setWitnessesRoot } from '../../core/worksp
 import { fullAuth } from '../helpers/audit-auth.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 import { recordAttempt, toAttemptRecord } from '../../backend/services/image-forge/attempt-log.js';
+import { publishActivity, _resetActivity } from '../../backend/services/image-forge/forge-activity.js';
 
 let root; let saved; let app; let first; let second;
 
@@ -54,4 +55,18 @@ test('each house reads only its own lanes\' attempts; the laneless desk entry is
   expect(theirs.entries.map((e) => e.jobId)).toEqual(['lane-second-job']);
   expect(JSON.stringify(theirs)).not.toContain('lane-first');
   expect(theirs.total).toBe(1);
+});
+
+// re-audit 2026-10-29, L-09 residual: the live activity feed carried every house's lanes and names
+test('the activity feed reads per house too; another house\'s live jobs are only a count', async () => {
+  _resetActivity();
+  publishActivity({ jobId: 'job-first', phase: 'rendering', laneId: 'lane-first', pipelineLabel: 'portrait', detail: 'lane-first detail' });
+  publishActivity({ jobId: 'job-second', phase: 'rendering', laneId: 'lane-second', pipelineLabel: 'portrait', detail: 'lane-second detail' });
+  const feed = async (who) => (await request(app).get('/api/v1/image-forge/activity').set('Authorization', `Bearer ${who.token}`)).body;
+  const theirs = await feed(second);
+  expect(theirs.live.map((r) => r.jobId)).toEqual(['job-second']);
+  expect(theirs.othersLive).toBe(1);
+  expect(JSON.stringify(theirs)).not.toContain('lane-first');
+  expect((await feed(first)).live.map((r) => r.jobId)).toEqual(['job-first']);
+  _resetActivity();
 });

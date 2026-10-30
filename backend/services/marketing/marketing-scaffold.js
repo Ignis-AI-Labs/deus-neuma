@@ -12,6 +12,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../logger.js';
+import { MAKOTO_SECTION } from '../makoto.js';
 
 const log = createLogger('MarketingScaffold');
 
@@ -59,7 +60,8 @@ staged for the coming 7 days is a campaign that is slipping.
 Research never becomes engagement on its own. Reading mentions and timelines
 is observation; replies, likes, follows, and posts are outward speech and go
 through the queue and the operator — every time, no exceptions.
-`;
+
+${MAKOTO_SECTION}`;
 
 const BRAND_VOICE = `# Brand Voice
 

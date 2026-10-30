@@ -49,7 +49,7 @@ export const emailSendIntent = Object.freeze({
       return { ok: false, status: 'invalid', reason: 'a send needs {to, subject, text} — the exact words leave under the house address' };
     }
     // A key in a sent mail is out for good: refused before any card.
-    const secret = checkOutboundSecrets('the email', [payload.subject, payload.text]);
+    const secret = checkOutboundSecrets('the email', [...to, payload.subject, payload.text]);
     if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text } };
   },

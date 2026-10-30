@@ -8,6 +8,7 @@ import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 let root, server, watcher, saved, house;
 const doors = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_X_API_ROOT',
@@ -26,6 +27,8 @@ test('a transient recording failure after acceptance stays sending and reconcile
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-uncertain-send-'));
   saved = Object.fromEntries(doors.map(key => [key, process.env[key]]));
   house = await useServedHouse({ lanes: ['herald'] }); // the tick acts only on a house its backend serves
+  // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+  await makeInstallOwner(SERVED_WALLET);
   const queue = path.join(root, 'queue.json');
   const temporary = `${queue}.${process.pid}.tmp`;
   process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = queue;

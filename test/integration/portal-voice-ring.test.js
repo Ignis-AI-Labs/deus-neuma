@@ -21,6 +21,7 @@ import { __test as connections } from '../../backend/routes/portal-connections.j
 import { createSessionToken } from '../../backend/services/auth.js';
 import { stop } from '../../backend/services/voice/engine-manager.js';
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { answerIdentity } from '../helpers/sidecar-identity.js';
 
 const WALLET = '0x00B0110a0000000000000000000000000000b02b';
 const SAID = 'the line I said into the mic';
@@ -36,6 +37,7 @@ const pcmChunk = (level) => {
 // A real server speaking the whisper sidecar's contract (stream-session.js).
 const startWhisperStandIn = async () => {
   const server = createServer((req, res) => {
+    if (answerIdentity(req, res)) return;
     if (req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, phase: 'ready', model: 'stand-in', idle_seconds: null }));

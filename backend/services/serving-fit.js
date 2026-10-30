@@ -21,6 +21,7 @@ import { createLogger } from './logger.js';
 import { modelHasMtpHeads, modelTrainContext } from './gguf-mtp.js';
 import { SERVING_SERVER_SLOTS, validatedServingLaunchConfig } from './serving-launch-config.js';
 import { readClaim } from './substrate-claim-registry.js';
+import { probeEnvironment } from './agent-terminal-environment.js';
 
 const execFileAsync = promisify(execFile);
 const log = createLogger('ServingFit');
@@ -81,7 +82,7 @@ export const planServingPool = ({ totalMiB, othersMiB, share, projection, extraM
 /** impure — the card's total and used MiB (nvidia-smi), or null where it cannot answer. */
 export const readGpuMemory = async (index = 0) => {
   try {
-    const { stdout } = await execFileAsync('nvidia-smi', ['-i', String(index), '--query-gpu=memory.total,memory.used', '--format=csv,noheader,nounits'], { timeout: 10_000 });
+    const { stdout } = await execFileAsync('nvidia-smi', ['-i', String(index), '--query-gpu=memory.total,memory.used', '--format=csv,noheader,nounits'], { timeout: 10_000, env: probeEnvironment() });
     const [totalMiB, usedMiB] = stdout.trim().split(',').map((v) => Number(v.trim()));
     return Number.isFinite(totalMiB) && Number.isFinite(usedMiB) ? Object.freeze({ totalMiB, usedMiB }) : null;
   } catch {
@@ -110,7 +111,7 @@ export const projectedGpuMiB = (stdout) => {
 /** impure — llama.cpp's projection of this serving at one pool size, in MiB. */
 const projectAt = async (bin, model, slots, ctx) => {
   // Total KV is the pool either way, so the unified layout projects as its partitioned twin.
-  const { stdout } = await execFileAsync(bin, ['-m', model, '-c', String(ctx), '--parallel', String(slots), '-ngl', '999', '--fit-print', 'on'], { timeout: 120_000, maxBuffer: 4 * MiB });
+  const { stdout } = await execFileAsync(bin, ['-m', model, '-c', String(ctx), '--parallel', String(slots), '-ngl', '999', '--fit-print', 'on'], { timeout: 120_000, maxBuffer: 4 * MiB, env: probeEnvironment() });
   return Object.freeze({ ctx, totalMiB: projectedGpuMiB(stdout) });
 };
 
@@ -189,7 +190,7 @@ const saveLastFit = (fit) => writeServingFit({ ...readServingFit(), lastFit: fit
 /** impure — the MiB a process holds on the GPU (nvidia-smi), or null. */
 const gpuMiBOfPid = async (pid) => {
   try {
-    const { stdout } = await execFileAsync('nvidia-smi', ['--query-compute-apps=pid,used_memory', '--format=csv,noheader,nounits'], { timeout: 10_000 });
+    const { stdout } = await execFileAsync('nvidia-smi', ['--query-compute-apps=pid,used_memory', '--format=csv,noheader,nounits'], { timeout: 10_000, env: probeEnvironment() });
     const row = stdout.trim().split('\n').map((l) => l.split(',').map((v) => Number(v.trim()))).find(([p]) => p === pid);
     return row ? row[1] : null;
   } catch {

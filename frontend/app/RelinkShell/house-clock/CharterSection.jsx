@@ -6,6 +6,7 @@
 
 import { EmptyState } from '../empty-state.jsx';
 import { cadenceCapWarning, charterLines, charterStatus, MONEY_OUT, OPTIO_SEAT_NOTE } from './house-clock-view.js';
+import { DIAL_STOPS, dialSays } from './involvement-words.js';
 
 const Field = ({ label, hint, children }) => (
   <label className="hclock-field">
@@ -13,6 +14,22 @@ const Field = ({ label, hint, children }) => (
     {children}
     {hint ? <span className="hclock-field-hint">{hint}</span> : null}
   </label>
+);
+
+// The involvement dial: four stops, one lit, what it means beneath — how close
+// the operator stands to the house's company work (company line). Every stop
+// keeps the floor; the dial changes what is asked, never what is seen.
+const DialField = ({ value, busy, onDraft }) => (
+  <fieldset className="hclock-seats" data-charter-dial="">
+    <legend className="hclock-field-label label-data">YOUR INVOLVEMENT — THE DIAL</legend>
+    <div className="hclock-pair" role="radiogroup" aria-label="Your involvement">
+      {DIAL_STOPS.map(({ stop }) => (
+        <button key={stop} type="button" role="radio" aria-checked={value === stop} disabled={busy}
+          className={`hclock-btn label-data${value === stop ? ' is-primary' : ''}`} onClick={() => onDraft('involvement', stop)}>{stop}</button>
+      ))}
+    </div>
+    <p className="hclock-field-hint">{dialSays(value)} Every stop still brings you money out, what only a person can sign, choosing the company, and any incident.</p>
+  </fieldset>
 );
 
 // The seats: every being of the house, on or off, each with its daily limit —
@@ -86,6 +103,7 @@ const CharterForm = ({ draft, names, optio, busy, onDraft, onSeat, onSave, onCan
           disabled={busy || !draft.teamPlans} onChange={(e) => onDraft('maxSteps', e.target.value)} />
         <span className="hclock-muted">steps</span>
       </div>
+      <DialField value={draft.involvement} busy={busy} onDraft={onDraft} />
       <Field label="ALLOWED WITHOUT ASKING" hint="Act ids, one per line (e.g. intents/social.post). Money out and file access can never be here.">
         <textarea className="hclock-input label-data" rows={2} value={draft.allow} disabled={busy}
           onChange={(e) => onDraft('allow', e.target.value)} />

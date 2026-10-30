@@ -15,6 +15,7 @@ import { execFile } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
+import { probeEnvironment } from './agent-terminal-environment.js';
 
 const execFileAsync = promisify(execFile);
 const PROBE_MS = 5000;
@@ -135,7 +136,7 @@ export const nvmeChipOf = (address) => {
   return `nvme-pci-${m[1].toLowerCase()}${devfn.toString(16).padStart(2, '0')}`;
 };
 
-const run = (bin, args) => execFileAsync(bin, args, { timeout: PROBE_MS, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 })
+const run = (bin, args) => execFileAsync(bin, args, { timeout: PROBE_MS, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, env: probeEnvironment() })
   .then(({ stdout }) => stdout).catch(() => null);
 const readText = (path) => readFile(path, 'utf8').then((s) => s.trim()).catch(() => null);
 

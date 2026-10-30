@@ -22,11 +22,52 @@ const ENV_DOORS = [
 const MODEL = 'test-model';
 
 /**
- * impure — stand the portal up.
- * @param {{label: string, beings: Array<{id: string, name: string}>, witness?: boolean, contextLength?: number}} spec
- *   `contextLength`: the window the provider reports (absent: assumed caps)
+ * impure — one real portal socket under `token`, returned once the portal has
+ * said it is established, with its frame log and the two waits a suite drives.
  */
-export const openPortalTurnKit = async ({ label, beings, witness = false, contextLength = null }) => {
+const connectSocket = async (port, token) => {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/?token=${encodeURIComponent(token)}`);
+  const frames = [];
+  ws.on('message', (data) => frames.push(JSON.parse(data.toString())));
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('portal never established')), 5000);
+    const handler = (data) => {
+      if (JSON.parse(data.toString()).type !== 'portal:established') return;
+      clearTimeout(timer);
+      ws.off('message', handler);
+      resolve();
+    };
+    ws.on('message', handler);
+    ws.on('error', reject);
+  });
+
+  /** impure — the first frame at or after `from` matching `pred`. */
+  const untilFrame = (pred, { from = 0, ms = 15000 } = {}) => new Promise((resolve, reject) => {
+    const started = Date.now();
+    const tick = () => {
+      const hit = frames.slice(from).find(pred);
+      if (hit) return resolve(hit);
+      if (Date.now() - started > ms) return reject(new Error('expected frame never arrived'));
+      setTimeout(tick, 10);
+    };
+    tick();
+  });
+  /** impure — send one frame and wait for the first `type` frame it causes. */
+  const sendAndWait = (message, type, ms) => {
+    const from = frames.length;
+    ws.send(JSON.stringify(message));
+    return untilFrame((f) => f.type === type, { from, ms });
+  };
+  return { ws, frames, untilFrame, sendAndWait };
+};
+
+/**
+ * impure — stand the portal up.
+ * @param {{label: string, beings: Array<{id: string, name: string}>, witness?: boolean, contextLength?: number, respond?: Function}} spec
+ *   `contextLength`: the window the provider reports (absent: assumed caps);
+ *   `respond`: answer a completion from its own request body (local-provider.js)
+ */
+export const openPortalTurnKit = async ({ label, beings, witness = false, contextLength = null, respond = null }) => {
   const saved = Object.fromEntries(ENV_DOORS.map((key) => [key, process.env[key]]));
   const root = await fs.mkdtemp(path.join(os.tmpdir(), `${label}-`));
   const settings = path.join(root, 'settings');
@@ -58,7 +99,7 @@ export const openPortalTurnKit = async ({ label, beings, witness = false, contex
     await fs.writeFile(path.join(workspace.pathFor(id), 'dna', 'genesis.md'), `# ${name}\n${name}, summoned for a turn proof.\n`);
   }
 
-  const provider = await startLocalProvider({ reply: 'An answer.', contextLength });
+  const provider = await startLocalProvider({ reply: 'An answer.', contextLength, respond });
   setConfig({ provider: 'lm-studio', endpoint: provider.endpoint, apiKey: '', model: MODEL });
   let witnessLane = null;
   if (witness) {
@@ -93,37 +134,14 @@ export const openPortalTurnKit = async ({ label, beings, witness = false, contex
   // outside the desk's summon is its to take (lane-ownership.js, witness-lane.js).
   for (const { id } of beings) await claimOwner(process.env.WORKSPACES_ROOT, id, keypair.address);
   await makeInstallOwner(keypair.address);
-  const ws = new WebSocket(`ws://127.0.0.1:${portalServer.address().port}/?token=${encodeURIComponent(token)}`);
-  const frames = [];
-  ws.on('message', (data) => frames.push(JSON.parse(data.toString())));
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('portal never established')), 5000);
-    const handler = (data) => {
-      if (JSON.parse(data.toString()).type !== 'portal:established') return;
-      clearTimeout(timer);
-      ws.off('message', handler);
-      resolve();
-    };
-    ws.on('message', handler);
-    ws.on('error', reject);
-  });
-
-  /** impure — the first frame at or after `from` matching `pred`. */
-  const untilFrame = (pred, { from = 0, ms = 15000 } = {}) => new Promise((resolve, reject) => {
-    const started = Date.now();
-    const tick = () => {
-      const hit = frames.slice(from).find(pred);
-      if (hit) return resolve(hit);
-      if (Date.now() - started > ms) return reject(new Error('expected frame never arrived'));
-      setTimeout(tick, 10);
-    };
-    tick();
-  });
-  /** impure — send one frame and wait for the first `type` frame it causes. */
-  const sendAndWait = (message, type, ms) => {
-    const from = frames.length;
-    ws.send(JSON.stringify(message));
-    return untilFrame((f) => f.type === type, { from, ms });
+  const port = portalServer.address().port;
+  const { ws, frames, untilFrame, sendAndWait } = await connectSocket(port, token);
+  // More open chats on the same portal — this wallet's by default, or another's token.
+  const extraSockets = [];
+  const openChat = async (asToken = token) => {
+    const chat = await connectSocket(port, asToken);
+    extraSockets.push(chat.ws);
+    return chat;
   };
   /** impure — bounded wait for a condition on real state. */
   const until = async (check, ms = 15000) => {
@@ -137,7 +155,9 @@ export const openPortalTurnKit = async ({ label, beings, witness = false, contex
   };
 
   const close = async () => {
-    if (ws.readyState === WebSocket.OPEN) await new Promise((resolve) => { ws.once('close', resolve); ws.close(); });
+    for (const socket of [ws, ...extraSockets]) {
+      if (socket.readyState === WebSocket.OPEN) await new Promise((resolve) => { socket.once('close', resolve); socket.close(); });
+    }
     await new Promise((resolve) => wss.close(resolve));
     await new Promise((resolve) => portalServer.close(resolve));
     await provider.close();
@@ -154,7 +174,7 @@ export const openPortalTurnKit = async ({ label, beings, witness = false, contex
 
   // The wallet's own session rides out too, so a suite can reach the same
   // lanes through their REST routes under the real ownership gate.
-  return { root, workspace, provider, ws, frames, witnessLane, token, untilFrame, sendAndWait, until, close };
+  return { root, workspace, provider, ws, frames, witnessLane, token, untilFrame, sendAndWait, until, openChat, close };
 };
 
 /** Pure — the last user message's text in a captured completion body. */

@@ -46,6 +46,7 @@ import { imageGenerateIntent } from './image-generate.js';
 import { formRenderIntent } from './form-render.js';
 import { formChampionIntent } from './form-champion.js';
 import { housePostIntent } from './house-post.js';
+import { chatSendIntent } from './chat-send.js';
 import { houseReviewPacketIntent } from './house-review-packet.js';
 import { kspCommandIntent } from './ksp-command.js';
 import { voiceSealIntent, voiceClaimIntent } from './voice-rites.js';
@@ -55,6 +56,9 @@ import { teamRunIntent, teamWorkspaceRunIntent } from './team-run.js';
 import { teamPostIntent } from './team-post.js';
 import { teamTuneIntent } from './team-tune.js';
 import { staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent } from './staff-acts.js';
+import { companyIntents } from './company-acts.js';
+import { revenueIntents } from './revenue-acts.js';
+import { accountsIntents } from './accounts-acts.js';
 import { boardAddIntent, boardUpdateIntent } from './board-acts.js';
 import { sovereigntyProposeIntent } from './sovereignty-propose.js';
 import { sovereigntyConsentIntent } from './sovereignty-consent.js';
@@ -74,12 +78,14 @@ const TYPES = new Map(
   [
     socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent,
     mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
+    chatSendIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
     speechAcceptIntent, speechAnotherIntent,
     teamRunIntent, teamWorkspaceRunIntent, teamPostIntent, teamTuneIntent, sovereigntyProposeIntent, sovereigntyConsentIntent,
     staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent,
     boardAddIntent, boardUpdateIntent,
+    ...companyIntents, ...revenueIntents, ...accountsIntents,
     // Stage 3 batch 4 — the state-shaped tools as filed acts.
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,

@@ -148,6 +148,10 @@ export const reducer = (state, action) => {
     case 'WATCH_FIRED':
       return pushMessage(state, 'watch', action.text, [], action.at);
 
+    // Another open chat of the house wrote in (portal-chat-link.js) — its words open the turn that follows.
+    case 'LINK_ARRIVED':
+      return pushMessage(state, 'link', action.text, [], action.at);
+
     // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
     case 'QUEUE_CLEAR':

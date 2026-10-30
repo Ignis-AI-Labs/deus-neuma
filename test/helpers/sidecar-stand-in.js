@@ -8,11 +8,13 @@
 // Usage: node sidecar-stand-in.js <port> <idleSeconds|none>
 
 import { createServer } from 'node:http';
+import { answerIdentity } from './sidecar-identity.js';
 
 const port = Number(process.argv[2]);
 const idleArg = process.argv[3];
 
 const server = createServer((req, res) => {
+  if (answerIdentity(req, res)) return undefined;
   if (req.method === 'POST' && req.url === '/shutdown') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, shutting_down: true }));

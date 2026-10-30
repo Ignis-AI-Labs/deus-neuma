@@ -14,8 +14,11 @@ import { promisify } from 'node:util';
 import { registerEphemeralSight } from './ephemeral-sight.js';
 import { transcribeRecording } from '../voice/whisper-transcribe.js';
 import { createLogger } from '../logger.js';
+import { probeEnvironment } from '../agent-terminal-environment.js';
 
-const run = promisify(execFile);
+// a media probe starts from the probe environment, never the backend's secrets (re-audit 2026-10-29, NEW-L1)
+const execFileP = promisify(execFile);
+const run = (bin, args, opts = {}) => execFileP(bin, args, { ...opts, env: probeEnvironment() });
 const log = createLogger('ImageForge.VideoSight');
 const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
 const FFPROBE = process.env.FFPROBE_PATH || 'ffprobe';

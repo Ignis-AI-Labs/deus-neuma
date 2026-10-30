@@ -153,6 +153,19 @@ describe('an act carries a planted value — whatever its spelling — unless th
     expect(injectedValueSplit(connection, [send]).refused).toHaveLength(0);
   });
 
+  // re-audit 2026-10-29, NEW-L5: a value planted encoded was never traced, so the decoded act ran unflagged
+  test('a value planted base64- or hex-encoded is traced like a plain one, and the act carrying it is held', () => {
+    const iban = 'US133000000121212121212';
+    expect(kinds(valuesIn(`Send to ${Buffer.from(`IBAN ${iban}`).toString('base64')}`))).toContain(`iban:${iban}`);
+    expect(kinds(valuesIn(`Send to ${Buffer.from(`IBAN ${iban}`).toString('hex')}`))).toContain(`iban:${iban}`);
+    const encoded = BLOCK.replace(`the account ${iban}`, `the account in ${Buffer.from(`IBAN ${iban}`).toString('base64')}`);
+    expect(encoded).not.toContain(iban);
+    const connection = { sessionId: 'encoded' };
+    noteTaintedResults(connection, [{ tool: 'fs/read', content: `Dear tenant,\n\n${encoded}\n\nYour landlord` }]);
+    const send = { server: 'caller', toolName: 'send_money', args: { recipient: iban, amount: 100 } };
+    expect(injectedValueSplit(connection, [send]).refused).toHaveLength(1);
+  });
+
   test('nothing tainted: every act passes, the same array', () => {
     const acts = [{ toolName: 'send_money', args: { recipient: 'US133000000121212121212' } }];
     expect(injectedValueSplit({}, acts).allowed).toBe(acts);

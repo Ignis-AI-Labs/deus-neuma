@@ -23,6 +23,7 @@ import {
   emailBinding,
   canNeumaUseEmail,
 } from '../../backend/services/email/email-binding.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const EMAIL_ENV_KEYS = EMAIL_ACCOUNT.fields.map((f) => f.env);
 
@@ -111,6 +112,8 @@ describe('email credential store', () => {
     process.env.EMAIL_USERNAME = 'env@b.co';
     process.env.EMAIL_PASSWORD = 'env-pass';
     process.env.EMAIL_SMTP_HOST = 'smtp.own-domain.ai';
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(HOUSE);
     expect(await resolveEmailCredential(HOUSE)).toMatchObject({
       address: 'env@b.co',
       password: 'env-pass',

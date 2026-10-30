@@ -143,7 +143,20 @@ export function validateKit(raw, kitId) {
   };
 }
 
-async function loadLogoData(kitDir, logos, kitId) {
+// impure — a kit's own file, read only when it sits inside the kit folder, inside the kits folder,
+// reached through no link: a live shell in the operator's open folder could otherwise point
+// <kit>/logo.png or <kit>/kit.json at any file on the disk (re-audit 2026-10-29, NEW-L4).
+const readKitFile = async (kitsRoot, kitDir, rel, encoding) => {
+  const file = path.resolve(kitDir, rel);
+  const [realRoot, realFile] = await Promise.all([fs.realpath(kitsRoot), fs.realpath(file)]);
+  const expected = path.join(realRoot, path.relative(kitsRoot, file));
+  if (realFile !== expected || !expected.startsWith(realRoot + path.sep)) {
+    throw new Error(`${rel} reaches outside its brand kit (a link or a path out)`);
+  }
+  return fs.readFile(realFile, encoding);
+};
+
+async function loadLogoData(kitsRoot, kitDir, logos, kitId) {
   const logoData = {};
   for (const [key, filename] of Object.entries(logos)) {
     const ext = path.extname(filename).toLowerCase();
@@ -153,7 +166,7 @@ async function loadLogoData(kitDir, logos, kitId) {
       continue;
     }
     try {
-      const bytes = await fs.readFile(path.join(kitDir, filename));
+      const bytes = await readKitFile(kitsRoot, kitDir, filename);
       logoData[key] = `data:${mime};base64,${bytes.toString('base64')}`;
     } catch (err) {
       log.warn('Logo asset missing — pressing without it', { kit: kitId, logo: key, filename, err: err.message });
@@ -175,15 +188,16 @@ export async function loadBrandKit({ kitId, kitsDir } = {}) {
   if (!KIT_ID_PATTERN.test(kitId)) {
     throw new Error(`Invalid brand kit id: "${kitId}" (alphanumeric, dash, underscore only)`);
   }
-  const kitDir = path.join(resolveKitsDir(kitsDir), kitId);
+  const kitsRoot = resolveKitsDir(kitsDir);
+  const kitDir = path.join(kitsRoot, kitId);
   let raw;
   try {
-    raw = JSON.parse(await fs.readFile(path.join(kitDir, 'kit.json'), 'utf8'));
+    raw = JSON.parse(await readKitFile(kitsRoot, kitDir, 'kit.json', 'utf8'));
   } catch (err) {
     throw new Error(`Brand kit "${kitId}" not readable at ${kitDir}: ${err.message}`, { cause: err });
   }
   const kit = validateKit(raw, kitId);
-  kit.logoData = await loadLogoData(kitDir, kit.logos, kitId);
+  kit.logoData = await loadLogoData(kitsRoot, kitDir, kit.logos, kitId);
   return Object.freeze(kit);
 }
 
@@ -205,7 +219,7 @@ export async function listBrandKits({ kitsDir } = {}) {
   for (const entry of entries) {
     if (!entry.isDirectory() || !KIT_ID_PATTERN.test(entry.name)) continue;
     try {
-      const raw = JSON.parse(await fs.readFile(path.join(root, entry.name, 'kit.json'), 'utf8'));
+      const raw = JSON.parse(await readKitFile(root, path.join(root, entry.name), 'kit.json', 'utf8'));
       const kit = validateKit(raw, entry.name);
       kits.push({ id: kit.id, name: kit.name, companyName: kit.companyName });
     } catch (err) {

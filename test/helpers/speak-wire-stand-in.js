@@ -15,6 +15,7 @@
 
 import http from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
+import { answerIdentity } from './sidecar-identity.js';
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -84,6 +85,7 @@ export const startSpeakWire = async ({
   };
 
   const server = http.createServer((req, res) => {
+    if (answerIdentity(req, res)) return undefined;
     if (req.url === '/health') {
       return json(res, 200, {
         ok: true, model, profile, phase: 'ready', idle_seconds: 0, sample_rate: 24_000, device: 'stand-in', context, error: null,

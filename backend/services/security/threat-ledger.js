@@ -32,6 +32,7 @@ import { createHouseStore } from '../house-office.js';
 import { legacyCsoPath } from './cso-designation.js';
 import {
   SUMMARY_MAX, REMEDY_MAX, refreshSeen, settleVanished, verifyVanishedClaims, reopenEntry, noteFixFiled, scopeKey,
+  confirmRevocation,
 } from './threat-lifecycle.js';
 import { remedyFor } from './threat-remedy.js';
 
@@ -324,6 +325,21 @@ export const createThreatLedger = ({ path, journal = null }) => {
         if (!entry) return { ok: false, error: 'no such threat' };
         noteFixFiled(entry, { by, title, at: new Date().toISOString() });
         return { ok: true, entry };
+      });
+    },
+
+    /**
+     * The operator's word that a leaked key is revoked at its provider. impure.
+     * @param {string} id full id
+     * @param {{by: string}} opts by — the operator's wallet
+     * @returns {Promise<{ok: boolean, entry?: Object, error?: string}>}
+     */
+    confirmRevocation(id, { by }) {
+      return mutate(async (entries) => {
+        const entry = entries.find((e) => e.id === id);
+        if (!entry) return { ok: false, error: 'no such threat' };
+        const refused = confirmRevocation(entry, { by, at: new Date().toISOString() });
+        return refused ? { ok: false, error: refused } : { ok: true, entry };
       });
     },
 

@@ -36,11 +36,16 @@ const SECRETS = Object.freeze([
   'certs/server.pem', '.kube/config', '.vault-token', '.config/rclone/rclone.conf',
   '.local/share/keyrings/login.keyring', '.mozilla/firefox/abc.default/logins.json',
   '.mozilla/firefox/abc.default/key4.db', 'proj/mnemonic.txt',
+  // re-audit 2026-10-29, M-02 residual: plaintext credential stores the list missed
+  '.m2/settings.xml', '.gradle/gradle.properties', '.config/doctl/config.yaml',
+  '.config/gcloud/application_default_credentials.json', '.azure/msal_token_cache.json',
+  '.config/google-chrome/Default/Login Data', '.config/BraveSoftware/Brave-Browser/Profile 1/Cookies',
 ]);
 // Ordinary neighbours whose names come close.
 const ORDINARY = Object.freeze([
   'proj/keypair.js', 'proj/chat_history.json', 'proj/history.md', 'proj/hosts.yml', 'proj/config.json',
   'proj/docker/config.json', 'proj/credential-guide.md', 'proj/kube-config.md', 'proj/logins.json',
+  'proj/settings.xml', 'proj/gradle.properties', '.config/google-chrome/Default/Preferences',
 ]);
 
 describe('the operator\'s tool credentials are withheld from search, read and the coding shell', () => {

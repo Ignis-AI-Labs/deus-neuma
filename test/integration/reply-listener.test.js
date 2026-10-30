@@ -21,6 +21,7 @@ import { readXListings } from '../../backend/services/social/x-reader.js';
 import { replyCandidatesOf } from '../../backend/services/social/reply-candidates.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_KEYS = [
   'X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET',
@@ -96,6 +97,8 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
     house = await createTempDir('reply-listener-house');
     for (const k of ENV_KEYS) { savedEnv[k] = process.env[k]; }
     process.env.X_API_KEY = 'dummy-key';
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(SERVED_WALLET);
     process.env.X_API_SECRET = 'dummy-secret';
     process.env.X_ACCESS_TOKEN = 'dummy-token';
     process.env.X_ACCESS_SECRET = 'dummy-access-secret';

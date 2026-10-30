@@ -237,3 +237,22 @@ describe('a fresh install belongs to the first wallet that signs in at its desk'
     expect(theirs.body.standing).toBe('guest');
   });
 });
+
+// re-audit 2026-10-29, NEW-L8: a record that parsed but named no valid owner was read as absent and
+// re-derived — its co-owners dropped. Now it reads as torn: nothing is rewritten, nothing is guessed.
+describe('a damaged owner record is never rewritten', () => {
+  test('a record naming no valid owner refuses, keeps its bytes, and hands the machine to no one', async () => {
+    const dir = await createTempDir('install-owner-damaged');
+    process.env.NEUMA_DATA_ROOT = path.join(dir, 'data');
+    process.env.WORKSPACES_ROOT = path.join(dir, 'workspaces');
+    vi.resetModules();
+    const file = path.join(dir, 'data', 'settings', 'install-owner.json');
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    const damaged = JSON.stringify({ schema: 'install-owner/1', owner: 'not-a-wallet', coOwners: [`0x${'c'.repeat(40)}`] });
+    await fs.writeFile(file, damaged);
+    const { readInstallOwner, recordFirstLocalOwner } = await import('../../backend/services/install-owner.js');
+    await expect(readInstallOwner()).rejects.toMatchObject({ code: 'INSTALL_OWNER_UNREADABLE' });
+    await expect(recordFirstLocalOwner(`0x${'d'.repeat(40)}`)).rejects.toMatchObject({ code: 'INSTALL_OWNER_UNREADABLE' });
+    expect(await fs.readFile(file, 'utf8')).toBe(damaged);
+  });
+});

@@ -7,6 +7,7 @@
 // Pure — no React, no DOM, no fetch.
 
 import { formatDateTime } from '../../../utils/format.js';
+import { DEFAULT_STOP, dialSays } from './involvement-words.js';
 
 /** Money out is the operator's alone; the server always keeps it in `escalate`. */
 export const MONEY_OUT = 'intents/wallet.send';
@@ -327,6 +328,7 @@ export const draftFromCharter = (charter, lanes) => ({
   allow: (charter?.allow ?? []).join('\n'),
   // Money out is fixed in escalate by the server; the form shows it as a rule, not a line to delete.
   escalate: (charter?.escalate ?? []).filter((id) => id !== MONEY_OUT).join('\n'),
+  involvement: charter?.involvement ?? DEFAULT_STOP,
 });
 
 /**
@@ -343,6 +345,7 @@ export const charterFromDraft = (draft) => ({
   delegation: { teamPlans: draft.teamPlans, maxMembers: Number(draft.maxMembers), maxSteps: Number(draft.maxSteps) },
   allow: lines(draft.allow),
   escalate: lines(draft.escalate),
+  involvement: draft.involvement,
 });
 
 /**
@@ -368,4 +371,5 @@ export const charterLines = (charter, names) => [
   },
   { label: 'ALLOWED WITHOUT ASKING', value: charter.allow?.length ? charter.allow.join(' · ') : 'nothing' },
   { label: 'ALWAYS COMES TO YOU', value: charter.escalate.join(' · ') },
+  { label: 'YOUR INVOLVEMENT', value: `${charter.involvement ?? DEFAULT_STOP} — ${dialSays(charter.involvement ?? DEFAULT_STOP)}` },
 ];

@@ -18,7 +18,8 @@
 import { csoDesignation } from '../security/cso-designation.js';
 import { threatLedgerFor } from '../security/threat-ledger.js';
 import { runSecurityScan } from '../security/security-scheduler.js';
-import { fileSecurityIssue } from '../security/escalation.js';
+import { fileSecurityIssue, issueOf } from '../security/escalation.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { assessThreats } from '../security/assess-service.js';
 import { selectWatchedRepo } from '../security/attack-surface.js';
 import { watchStoreFor } from '../security/watch-store.js';
@@ -113,14 +114,23 @@ export const securityEscalateIntent = Object.freeze({
   fieldsForPrompt: '{id}',
   descriptionForPrompt: 'CSO ONLY. File a confirmed threat as a real executable GitHub security issue and stamp the ledger with its URL.',
   availableFor: securityScanIntent.availableFor,
+  // The issue's words are the CSO's and the ledger's; the card shows them whole, they are screened
+  // before any card, and the filing publishes exactly what was shown (re-audit 2026-10-29, NEW-M5).
   validate: async (payload, { connection }) => {
     const seat = await seatRefusal(connection);
     if (seat) return seat;
     if (typeof payload?.id !== 'string' || !payload.id.trim()) return invalid('escalate needs {id} — the threat id from security_threats_list');
-    return { ok: true, value: { id: payload.id.trim() } };
+    const threat = await (await threatLedgerFor(connection.walletAddress)).get(payload.id.trim());
+    if (!threat) return invalid('no such threat (or the id is ambiguous)');
+    if (threat.status !== 'confirmed') return invalid(`only a CONFIRMED threat escalates — this one is ${threat.status}`);
+    const issue = issueOf(threat);
+    const secret = checkOutboundSecrets('the issue text', [issue.title, issue.body], 'nothing was filed');
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
+    return { ok: true, value: { id: threat.id, repo: threat.repo || null, ...issue } };
   },
+  cardArgs: (value) => ({ repo: value.repo, title: value.title, body: value.body }),
   summarize: (payload) => `escalate threat ${String(payload?.id ?? '?')} to a GitHub issue`,
-  execute: async ({ id }, { connection }) => {
+  execute: async ({ id, title, body }, { connection }) => {
     const threatLedger = await threatLedgerFor(connection.walletAddress);
     const threat = await threatLedger.get(id);
     if (!threat) return { ok: false, reason: 'no such threat (or the id is ambiguous)' };
@@ -129,7 +139,7 @@ export const securityEscalateIntent = Object.freeze({
     }
     const watch = await (await watchStoreFor(connection.walletAddress)).load();
     const repo = selectWatchedRepo(watch, threat.repo);
-    const filed = await fileSecurityIssue(threat, repo.path);
+    const filed = await fileSecurityIssue(threat, repo.path, { title, body });
     if (!filed.ok) return { ok: false, reason: `escalation failed: ${filed.error}` };
     await threatLedger.assess(threat.id, {
       status: 'confirmed', assessment: threat.assessment || 'confirmed',

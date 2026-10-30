@@ -82,6 +82,7 @@ import { witnessesApp } from './WitnessesApp.jsx';
 import { securityApp } from './SecurityApp.jsx';
 import { staffApp } from './StaffApp.jsx';
 import { houseClockApp } from './house-clock/HouseClockApp.jsx';
+import { companyLineApp } from './company-line/CompanyLineApp.jsx';
 import { legalApp } from './LegalApp.jsx';
 import { treasuryApp } from './TreasuryApp.jsx';
 import { benchApp } from './BenchApp.jsx';
@@ -103,7 +104,7 @@ import { UpdateBar } from './UpdateBar.jsx';
 import { deskRegistryFor, isHarness } from '../harness-mode.js';
 
 // Voice and the 3D body are held back from the early release (coming-later.js).
-const REGISTRY = withoutComingLater({ chat: chatApp, house: houseApp, refinement: refinementApp, sovereignty: sovereigntyApp, innerlife: innerLifeApp, teams: teamsApp, workflow: workflowApp, todo: todoApp, avatar: avatarApp, vessel: vesselApp, chats: chatsApp, sheet: sheetApp, stats: statsApp, skills: skillsApp, contextmap: contextMapApp, map: mapApp, db: dataApp, files: filesApp, editor: editorApp, pdf: pdfApp, image: imageApp, terminal: terminalApp, comfyui: comfyUIWorkbenchApp, gallery: galleryApp, projects: projectsApp, substrate: substrateApp, wallet: walletApp, voice: voiceApp, settings: settingsApp, security: securityApp, legal: legalApp, treasury: treasuryApp, staff: staffApp, houseclock: houseClockApp, bench: benchApp, ...outreachApps, witnesses: witnessesApp });
+const REGISTRY = withoutComingLater({ chat: chatApp, house: houseApp, refinement: refinementApp, sovereignty: sovereigntyApp, innerlife: innerLifeApp, teams: teamsApp, workflow: workflowApp, todo: todoApp, avatar: avatarApp, vessel: vesselApp, chats: chatsApp, sheet: sheetApp, stats: statsApp, skills: skillsApp, contextmap: contextMapApp, map: mapApp, db: dataApp, files: filesApp, editor: editorApp, pdf: pdfApp, image: imageApp, terminal: terminalApp, comfyui: comfyUIWorkbenchApp, gallery: galleryApp, projects: projectsApp, substrate: substrateApp, wallet: walletApp, voice: voiceApp, settings: settingsApp, security: securityApp, legal: legalApp, treasury: treasuryApp, staff: staffApp, houseclock: houseClockApp, companyline: companyLineApp, bench: benchApp, ...outreachApps, witnesses: witnessesApp });
 
 const shortWallet = () => formatAddress(localStorage.getItem('walletAddress'), { prefix: 'OPERATOR ' });
 

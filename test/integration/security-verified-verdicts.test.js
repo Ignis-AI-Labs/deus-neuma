@@ -17,7 +17,9 @@
  *   - a history leak reads […] (critical, rotate
  *     <VAR>) while the env value matches, then […] (high) once
  *     the value changes — the entry stays open until someone marks it
- *     mitigated, which the watch then verifies NOT LIVE and keeps settled
+ *     mitigated; the watch then says it is NOT LIVE here but cannot see the
+ *     provider, so the claim waits (re-audit 2026-10-29, NEW-M6) until the
+ *     operator confirms the revocation, which verifies it and keeps it settled
  *     though history still holds the leak; the old value coming back reopens
  *     it; a claim while live is reopened;
  *   - no value ever reaches the ledger or the scan state on disk.
@@ -154,6 +156,8 @@ describe('verified verdicts + leak liveness (real scheduler, real git, real ledg
 
     // A claim while the leaked value is still in use is contradicted.
     const early = await claim(live.id, 'rotated it');
+    // nor can the operator settle a leak whose value is still in use here
+    expect(await ledger.confirmRevocation(live.id, { by: 'operator:0xabc' })).toMatchObject({ ok: false, error: expect.stringMatching(/still sees the value live/) });
     await scan();
     const contradicted = await entry(isEvm);
     expect(contradicted.status).toBe('new');
@@ -171,16 +175,27 @@ describe('verified verdicts + leak liveness (real scheduler, real git, real ledg
     expect(rotated.remedy).toMatch(/^confirm the old evm-private-key credential is revoked at the provider, then mark this mitigated/);
     expect((await entry(isOpenai)).severity).toBe('critical'); // the other leak is still live
 
-    // The CSO marks it handled; the watch proves the value is not live, and
-    // the entry STAYS settled though the history scan still sees the leak.
+    // The CSO marks it handled; the watch sees the value live nowhere here, but
+    // that is not revocation: the claim waits, said once, for the operator.
     const settled = await claim(rotated.id, 'deployer rotated; old address drained');
-    const proven = await scan();
-    expect(proven.verified).toBeGreaterThanOrEqual(1);
+    const waited = await scan();
+    expect(waited.verified).toBe(0);
+    const waiting = await entry(isEvm);
+    expect(waiting).toMatchObject({ status: 'mitigated', assessedBy: CSO, verifiedAt: null });
+    expect(waiting.history.at(-1)).toMatchObject({ event: 'awaits-revocation', claimedBy: CSO, claimedAt: settled.entry.assessedAt });
+    expect(waiting.history.at(-1).assessment).toMatch(/^not live on this machine by the secret-sweep scan at .+ — but no scan can see whether the old key is revoked at the provider/);
+    await scan();
+    expect((await entry(isEvm)).history).toHaveLength(waiting.history.length);
+
+    // The operator's word settles it — and the entry STAYS settled though the
+    // history scan still sees the leak.
+    const confirmed = await ledger.confirmRevocation(rotated.id, { by: 'operator:0xabc' });
+    expect(confirmed.ok).toBe(true);
     const verified = await entry(isEvm);
     expect(verified).toMatchObject({ status: 'mitigated', assessedBy: CSO });
     expect(Date.parse(verified.verifiedAt)).toBeGreaterThanOrEqual(Date.parse(settled.entry.assessedAt));
     expect(verified.history.at(-1)).toMatchObject({ event: 'verified', status: 'mitigated', claimedBy: CSO });
-    expect(verified.history.at(-1).assessment).toMatch(/^verified not live by the secret-sweep scan at .+ — no env file of this checkout holds the value; the history still carries it/);
+    expect(verified.history.at(-1).assessment).toMatch(/^revocation at the provider confirmed by the operator \(operator:0xabc\) at .+; the secret-sweep scan sees the value live nowhere on this machine$/);
     const rows = verified.history.length;
     await scan();
     const still = await entry(isEvm);

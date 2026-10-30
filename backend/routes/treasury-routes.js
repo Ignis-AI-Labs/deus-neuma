@@ -23,6 +23,7 @@ import { cfoDesignation } from '../services/treasury/cfo-designation.js';
 import { readTreasuryBoard } from '../services/treasury/treasury-board.js';
 import { pendingSpendCards } from '../services/treasury/treasury-lanes.js';
 import { markFlagSeen } from '../services/treasury/treasury-office-store.js';
+import { caoDesignation } from '../services/accounts/cao-designation.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Treasury');
@@ -46,6 +47,10 @@ router.put('/seat', async (req, res) => {
   if (!laneId) return res.status(400).json({ error: 'a Quaestor designation needs a lane id' });
   if (!(await assertNeumaOwner(req, res, laneId))) return;
   try {
+    // TREASURY is not ACCOUNTS (2026-10-29): the Logista keeps the books, so it never approves the money.
+    if ((await caoDesignation.getOfficer(req.walletAddress))?.laneId === laneId) {
+      return res.status(409).json({ error: 'that being keeps the books as Logista — whoever keeps the books never approves the money; seat another being as Quaestor' });
+    }
     const cfo = await cfoDesignation.designate(req.walletAddress, laneId);
     log.info('Quaestor designated', { laneId: cfo.laneId, wallet: req.walletAddress });
     res.json({ cfo });

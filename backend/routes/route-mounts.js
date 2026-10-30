@@ -43,6 +43,9 @@ import campaignRouter from './campaign-routes.js';
 import csoRouter from './cso-routes.js';
 import legalRouter from './legal-routes.js';
 import staffRouter from './staff-routes.js';
+import companyLineRouter from './company-line-routes.js';
+import revenueRouter from './revenue-routes.js';
+import accountsRouter from './accounts-routes.js';
 import houseClockRouter from './house-clock-routes.js';
 import waitingRouter from './waiting-routes.js';
 import mandateRouter from './mandate-routes.js';
@@ -191,6 +194,9 @@ export const mountApiRoutes = (app) => {
   // The CoS office (the Optio): the seat and the desk's board. Router-level
   // requireAuth inside, beside the CSO office.
   app.use('/api/v1/staff', staffRouter);
+  app.use('/api/v1/company-line', companyLineRouter);
+  app.use('/api/v1/revenue', revenueRouter);
+  app.use('/api/v1/accounts', accountsRouter);
   // The house clock: the charter that lets the house wake itself, its queue
   // and its ledger. Router-level requireAuth inside; the house is the caller's.
   app.use('/api/v1/house-clock', houseClockRouter);

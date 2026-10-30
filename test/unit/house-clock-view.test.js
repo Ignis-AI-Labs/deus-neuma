@@ -173,6 +173,8 @@ describe('house-clock-view — the charter form, both ways', () => {
     expect(fields).toEqual({
       goal: 'Keep the digest going.', linesOfWork: [], seats: [{ laneId: 'lane-quae', dailyCap: 4 }],
       quietHours: null, cadence: null, delegation: { teamPlans: false, maxMembers: 4, maxSteps: 8 }, allow: [], escalate: [],
+      // A blank charter stands at the dial's default until the operator chooses (company line, 2026-10-29).
+      involvement: 'PARTNER',
     });
     expect(normalizeCharter(fields, { ownedLanes: ['lane-quae'] }).escalate).toEqual([MONEY_OUT]);
   });

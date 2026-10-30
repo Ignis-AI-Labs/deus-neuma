@@ -62,7 +62,9 @@ export const SECRET_PATTERNS = Object.freeze([
   Object.freeze({ id: 'xai-key', regex: /\bxai-[A-Za-z0-9]{40,}/, ere: 'xai-[a-z0-9]{40}' }),
   Object.freeze({
     id: 'rpc-url-key',
-    regex: /\b[a-z0-9-]+\.(?:g\.alchemy\.com|infura\.io|quiknode\.pro)\/(?:v2\/|v3\/)?[A-Za-z0-9_-]{20,}/i,
+    // a host label starts where a run of label characters starts, and is at most 63 long: the open
+    // \b[a-z0-9-]+ retried from every character of a long run, quadratic (re-audit 2026-10-29, NEW-M7)
+    regex: /(?<![a-z0-9-])[a-z0-9-]{1,63}\.(?:g\.alchemy\.com|infura\.io|quiknode\.pro)\/(?:v2\/|v3\/)?[A-Za-z0-9_-]{20,}/i,
     ere: '(alchemy[.]com|infura[.]io|quiknode[.]pro)/(v2/|v3/)?[a-z0-9_-]{20}',
   }),
 ]);
@@ -122,11 +124,14 @@ const materialOf = (patternId, match, nextLine) => {
 export const scanLine = (line, nextLine = '') => {
   const hits = [];
   for (const { id, regex } of SECRET_PATTERNS) {
-    const match = regex.exec(line);
-    if (!match) continue;
     // The ten published Anvil/Hardhat dev keys are skipped: public by design,
-    // they guard nothing, and reporting them hid the findings that do.
-    if (id === 'evm-private-key' && isPublicDevKey(match[1])) continue;
+    // they guard nothing, and reporting them hid the findings that do. Every
+    // key on the line is read, so a dev key first never hides a real one
+    // after it (re-audit 2026-10-29, NEW-L3).
+    const match = id === 'evm-private-key'
+      ? [...line.matchAll(new RegExp(regex.source, `${regex.flags}g`))].find((m) => !isPublicDevKey(m[1]))
+      : regex.exec(line);
+    if (!match) continue;
     hits.push({ patternId: id, fingerprint: fingerprintOf(materialOf(id, match, nextLine)) });
   }
   return hits;

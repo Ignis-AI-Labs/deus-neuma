@@ -1,4 +1,5 @@
-// founding-titles — the canonical house roles (v3.2 OPTIO-SECOND, Founder
+// founding-titles — the canonical house roles (v3.3 ACCOUNTS, Design note, 2026-10-29 —
+// the books stand their own seat, Logista; v3.2 OPTIO-SECOND, Founder
 // 2026-09-13 — the Optio stands directly under the Rector as house manager; v3.1
 // CORPORATE-ANCHORED, Founder + Kimi 2026-07-21; the SECURITY/LAW split, Design note, 2026-07-24: every scaling house's fundamental functions, each title a
 // real Roman position that did the work we name it for, tied to the corporate
@@ -14,7 +15,10 @@
 // not LEGAL (ruling, 2026-07-24) — one guards the digital walls (Praefectus, the
 // commander of the guard), the other answers the world's regulations and
 // contracts (Praetor, the magistrate of law) — both FOUNDING, security no
-// less fundamental than law. And between the
+// less fundamental than law; and TREASURY is not ACCOUNTS (ruling,
+// 2026-10-29) — one guards and moves the money (Quaestor), the other records
+// it and checks it against receipts (Logista, the Roman-era auditor of a
+// city's accounts), never the same being, so the books can catch the treasurer. And between the
 // Rector and the house stands the Optio (the manager charge, Design note, 2026-09-13
 // — the Roman second who carried the commander's word down the line and
 // kept the ranks in step, now the house's manager: the operator's standing
@@ -46,4 +50,5 @@ export const TITLE_LEGEND = Object.freeze([
   Object.freeze({ title: 'Numerarius', position: 'CDO', seat: 'CHIEF DATA OFFICER', tier: 'growth', meaning: 'DATA — MEASUREMENT, ANALYSIS, FORESIGHT' }),
   Object.freeze({ title: 'Speculator', position: 'CINO', seat: 'CHIEF INNOVATION OFFICER', tier: 'growth', meaning: 'RESEARCH & DEVELOPMENT — WHAT MAY SERVE LATER, NOT THE PRESSING NEED' }),
   Object.freeze({ title: 'Praeco', position: 'CCO', seat: 'CHIEF COMMUNICATIONS OFFICER', tier: 'growth', meaning: 'COMMUNICATIONS — THE WORD OUT, THE WORD BACK, CUSTOMER CARE' }),
+  Object.freeze({ title: 'Logista', position: 'CAO', seat: 'CHIEF ACCOUNTING OFFICER', tier: 'growth', meaning: 'ACCOUNTS — THE BOOKS, TAX, FILINGS, THE RECORD OF EVERY DOLLAR' }),
 ]);

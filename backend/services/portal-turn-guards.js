@@ -47,12 +47,14 @@ export const refuseRetryAttachments = (ws, companionName, message) => {
 /**
  * impure (clears it) — the origin a watch set for this turn, read once at the
  * turn's entry: a turn refused before its point lands must not leave it for
- * the operator's next message.
+ * the operator's next message. A turn with no origin is the operator speaking,
+ * which opens the chat to a new run of chat links (chat-link.js loop guard).
  * @param {Object} connection
  * @returns {string|null}
  */
 export const takeTurnOrigin = (connection) => {
   const origin = connection._turnOrigin || null;
   connection._turnOrigin = null;
+  if (!origin) connection._linkRun = 0;
   return origin;
 };

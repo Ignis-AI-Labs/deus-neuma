@@ -24,6 +24,7 @@ import WebSocket from 'ws';
 import { renderSpeechPcm, makeDiskWorkDir } from '../helpers/speech-fixture.js';
 import { launch, stop } from '../../backend/services/voice/engine-manager.js';
 import { shutdownSidecar } from '../../backend/services/voice/engine-process.js';
+import { SIDECAR_CALLER_HEADER, callerToken, sidecarKey } from '../../backend/services/voice/sidecar-trust.js';
 
 const WHISPER_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)), '../../voice-engines/whisper',
@@ -45,8 +46,9 @@ const noiseChunk = () => {
   return b;
 };
 
-const openStream = () => new Promise((resolve, reject) => {
-  const ws = new WebSocket(STREAM_URL);
+// the backend's own token (sidecar-trust.js): the sidecar the backend launched holds the install key
+const openStream = (headers = { [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) }) => new Promise((resolve, reject) => {
+  const ws = new WebSocket(STREAM_URL, { headers });
   const events = [];
   const closed = { code: null };
   ws.on('message', (d) => { try { events.push(JSON.parse(d.toString())); } catch { /* noise */ } });
@@ -167,6 +169,17 @@ describe('whisper sidecar /stream (real sidecar, real speech, CPU-only)', () => 
     ws.send(JSON.stringify({ type: 'hold_off' }));
     ws.close();
   }, 240_000);
+
+  // re-audit 2026-10-29, M-06: the transcription lane answers the backend holding the key, no one else
+  test('a socket without the backend\'s token is refused before any audio is taken', async () => {
+    const refused = await new Promise((resolve) => {
+      const ws = new WebSocket(STREAM_URL);
+      ws.on('unexpected-response', (_req, res) => resolve(res.statusCode));
+      ws.on('close', (code) => resolve(code));
+      ws.on('error', () => {});
+    });
+    expect([403, 1008]).toContain(refused);
+  });
 
   test('a second concurrent /stream client is rejected (one decode lane, ever)', async () => {
     // The slot may still be releasing from the previous sitting — open the

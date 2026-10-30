@@ -28,6 +28,11 @@ export const observationToText = (obs) => {
     .trim();
 };
 
+// Who spoke an exchange's first words, by the row's origin: the operator,
+// unless another open chat sent them (chat-link) — a housemate's words are
+// never remembered as the operator's.
+const SPEAKER_BY_ORIGIN = Object.freeze({ link: 'A housemate wrote (chat link)' });
+
 /**
  * Render a structured observation into the human-readable string the prompt
  * assembler surfaces as a recalled memory. Pure.
@@ -39,7 +44,8 @@ export const observationToMemory = (obs) => {
   if (obs.type === 'exchange') {
     const witness = (obs.userMessage || '').trim();
     const reflected = (obs.response || '').trim();
-    if (witness && reflected) return `The operator said: "${witness}" — you reflected: "${reflected}"`;
+    const speaker = SPEAKER_BY_ORIGIN[obs.origin] || 'The operator said';
+    if (witness && reflected) return `${speaker}: "${witness}" — you reflected: "${reflected}"`;
     return reflected || witness;
   }
   return observationToText(obs);

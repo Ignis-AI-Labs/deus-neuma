@@ -103,6 +103,24 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
     expect(existsSync(choice)).toBe(false);
   });
 
+  // re-audit 2026-10-29, NEW-H1: the model server's record named the program every boot runs
+  test('the model server, the act ledger and the covenant acceptances are refused; a chosen server home too', async () => {
+    const serverHome = path.join(home, 'models-drive');
+    await fs.mkdir(path.join(dataRoot, 'model-server'), { recursive: true });
+    await fs.writeFile(path.join(dataRoot, 'model-server', 'managed.json'), JSON.stringify({ managed: true, home: serverHome }));
+    for (const target of [
+      path.join(dataRoot, 'model-server', 'managed.json'), path.join(dataRoot, 'acts', '2026-10-29.jsonl'),
+      path.join(dataRoot, 'covenant', 'acceptance.json'), path.join(serverHome, 'ollama', 'bin', 'ollama'),
+    ]) {
+      await expect(being()('fs', 'write', { path: target, content: '#!/bin/sh\n' }), target).rejects.toThrow(STATE);
+    }
+    expect(JSON.parse(await fs.readFile(path.join(dataRoot, 'model-server', 'managed.json'), 'utf8'))).toEqual({ managed: true, home: serverHome });
+    expect(existsSync(path.join(serverHome, 'ollama'))).toBe(false);
+    const models = path.join(serverHome, 'models', 'notes.md');
+    await fs.mkdir(path.dirname(models), { recursive: true });
+    expect((await being()('fs', 'write', { path: models, content: 'ok' }))?.isError).toBeFalsy();
+  });
+
   test('the realm root — every house\'s offices and ledger — is refused', async () => {
     const ledger = path.join(realm, WALLET, 'threat-ledger.json');
     await expect(being()('fs', 'write', { path: ledger, content: '[]' })).rejects.toThrow(STATE);

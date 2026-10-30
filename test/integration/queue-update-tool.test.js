@@ -23,6 +23,7 @@ import { channelBindings } from '../../backend/services/social/channel-bindings.
 import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // The AI disclosure line a being's words carry at staging (social/disclosure-line.js).
 const AI = (t) => `${t}\n\nMade with AI.`;
@@ -78,6 +79,8 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${house}/social-post-queue.json`;
     process.env.NEUMA_SECTOR_CREW_PATH = `${house}/sector-crew.json`;
     positionHouse = usePositionHouse(house);
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(POSITION_HOUSE);
     await channelBindings.bind(POSITION_HOUSE, 'x', { neumaId: NEUMA_ID });
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);

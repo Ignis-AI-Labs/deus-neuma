@@ -19,6 +19,7 @@ import { frameUntrustedSections } from '../untrusted-content.js';
 import { listCompanies } from '../marketing/companies.js';
 import { readCompanyUpdates, readCommitDiff } from '../marketing/company-updates.js';
 import { renderUpdates } from '../marketing/company-updates-text.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 
 const MAX_PAGES = 8;
 
@@ -45,6 +46,8 @@ const readSite = async (connection, company, { lanePolicy, mode, emit }) => {
   const urls = [company.site.url, ...company.site.links].filter(Boolean).slice(0, MAX_PAGES);
   if (!urls.length) return { unread: 'no site is recorded for this company' };
   if (!(await webSettings.isEnabled())) return { unread: 'web access is off — your operator can enable it in SETTINGS (WEB ACCESS)' };
+  const secret = checkOutboundSecrets('the site read', urls, 'nothing was read');
+  if (!secret.ok) return { unread: secret.reason };
   const gate = await gateAct(connection, { server: 'web', tool: 'web_fetch', args: { url: urls[0] }, lanePolicy, mode, emit });
   if (!gate.ok) return { unread: `the site read was not allowed this time (${gate.result.error || gate.result.status})` };
   const pages = [];

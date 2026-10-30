@@ -13,6 +13,7 @@ import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { channelBindings } from '../../backend/services/social/channel-bindings.js';
 import { usePositionHouse, ownLane } from './position-house.js';
 import { SERVED_WALLET } from './served-house.js';
+import { makeInstallOwner } from './install-owner-kit.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import { replyCandidatesOf } from '../../backend/services/social/reply-candidates.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
@@ -60,6 +61,8 @@ export const buildReplyLaneHouse = async () => {
   // WIRE tests aim the real poster at a loopback X. Either way the
   // signing core runs for real.
   for (const k of X_ENV) process.env[k] = `dummy-${k}`;
+  // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+  await makeInstallOwner(SERVED_WALLET);
   process.env.NEUMA_SOCIAL_BINDINGS_PATH = `${h.house}/social-channel-bindings.json`;
   process.env.NEUMA_SOCIAL_CREDENTIALS_PATH = `${h.house}/social-channel-credentials.json`;
   process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${h.house}/social-post-queue.json`;

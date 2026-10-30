@@ -83,6 +83,10 @@ describe('secret-sweep (real tmp git repo)', () => {
     }
     expect(scanText(`PRIVATE_KEY=${root.deriveChild(10).privateKey}`)).toHaveLength(1); // #10 is no default account
     expect(scanText(`PRIVATE_KEY=${FAKE_EVM_KEY}`)).toHaveLength(1);
+    // re-audit 2026-10-29, NEW-L3: a dev key first on a line once hid a real one after it
+    const [hit] = scanText(`PRIVATE_KEY=${accounts[0].privateKey} PRIVATE_KEY=${FAKE_EVM_KEY}`);
+    expect(hit?.patternId).toBe('evm-private-key');
+    expect(hit.fingerprint).toBe(scanText(`PRIVATE_KEY=${FAKE_EVM_KEY}`)[0].fingerprint);
   });
 
   test('sweepRepo walks TRACKED files only, and the leak lands as file+line+pattern+fingerprint', async () => {

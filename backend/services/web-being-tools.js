@@ -37,6 +37,7 @@ import { searchWeb, searchImages } from './web-search.js';
 import { frameUntrustedContent } from './untrusted-content.js';
 import { createLogger } from './logger.js';
 import { recordAct } from './act-ledger.js';
+import { checkOutboundSecrets } from './security/outbound-secrets.js';
 
 const log = createLogger('WebTools');
 
@@ -234,7 +235,7 @@ export const journalWebCall = async (connection, tool, detail, status) => {
 };
 
 /**
- * Route a web tool call: master switch → ACTS gate → guarded egress.
+ * Route a web tool call: master switch → secret screen → ACTS gate → guarded egress.
  * Never the MCP path.
  * @param {Object} ws - the portal socket
  * @param {Object} connection - portal connection (companion, session policy, active turn)
@@ -273,6 +274,16 @@ export const handleWebTool = async (ws, connection, neumaPolicy, toolMode, match
     const error = 'no sovereign workspace on this connection — web reach is for bound beings';
     ports.sendToolEvent(ws, companion, { tool, status: 'unavailable', summary: `${toolName} — no workspace` });
     return { tool, status: 'unavailable', error };
+  }
+
+  // The door every web request leaves by (re-audit 2026-10-29, NEW-H3): a fetch or a search is
+  // egress like a post, so a key carried in its url or query is refused before any card, in every
+  // mode. The journal records the refusal, never the url that carried the key.
+  const secret = checkOutboundSecrets(`the ${toolName.replace('_', ' ')}`, [args?.url, args?.query, args?.find]);
+  if (!secret.ok) {
+    ports.sendToolEvent(ws, companion, { tool, status: 'denied', summary: `${toolName} — refused: it carried a secret` });
+    await journalWebCall(connection, tool, 'refused: it carried a secret', 'denied');
+    return { tool, status: 'denied', error: secret.reason };
   }
 
   const gate = await gateAct(connection, {

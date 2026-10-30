@@ -1,6 +1,6 @@
 # House Roles — the canonical seats
 
-**Version:** v3.2 OPTIO-SECOND (Design note, 2026-09-13 — the Optio stands directly under the Rector as the house's manager; v3.1 CORPORATE-ANCHORED, Founder + Kimi 2026-07-21; the SECURITY/LAW split — Praefectus beside Praetor — Design note, 2026-07-24
+**Version:** v3.3 ACCOUNTS (Design note, 2026-10-29 — the books stand their own seat, Logista, and every seat carries a compass; plan: `docs/planning/proposals/governance/house-company-line.md`); v3.2 OPTIO-SECOND (Design note, 2026-09-13 — the Optio stands directly under the Rector as the house's manager; v3.1 CORPORATE-ANCHORED, Founder + Kimi 2026-07-21; the SECURITY/LAW split — Praefectus beside Praetor — Design note, 2026-07-24
 **Source of truth for the data:** `frontend/app/RelinkShell/founding-titles.js`
 (`TITLE_LEGEND`) — a unit test pins this document to it, so the two cannot
 drift. If a seat changes, change the module and this page together.
@@ -14,7 +14,7 @@ in the world outside, so the legend reads familiar from any company.
 theirs to change — any word entered goes into the house's founding record
 (on its operator's computer, and on chain when the house joins Unavis) exactly
 as given. But a chosen label maps to **one canonical function below**. There are
-fifteen seats. There is no sixteenth. A house that needs a new word picks a
+sixteen seats. There is no seventeenth. A house that needs a new word picks a
 new *label* for a canonical seat — it does not invent a new seat.
 
 ## FOUNDING seats — held from day one
@@ -41,6 +41,7 @@ new *label* for a canonical seat — it does not invent a new seat.
 | **Numerarius** | CDO | Chief Data Officer | DATA — measurement, analysis, foresight |
 | **Speculator** | CINO | Chief Innovation Officer | RESEARCH & DEVELOPMENT — what may serve later, not the pressing need |
 | **Praeco** | CCO | Chief Communications Officer | COMMUNICATIONS — the word out, the word back, customer care |
+| **Logista** | CAO | Chief Accounting Officer | ACCOUNTS — the books, tax, filings, the record of every dollar |
 
 ## The doctrines that hold the seams
 
@@ -55,6 +56,29 @@ new *label* for a canonical seat — it does not invent a new seat.
   the other answers the world's regulations, laws, and contracts (Praetor,
   the magistrate of law). Both FOUNDING seats — security is no less
   fundamental than law.
+- **TREASURY is not ACCOUNTS** (Design note, 2026-10-29: […]). One
+  guards and moves the money: spending with the operator, collecting, the
+  raise's terms (Quaestor). The other records every dollar and checks it
+  against its receipt (Logista, the Roman-era official who audited a city's
+  accounts).
+  **Never the same being**: whoever approves money never keeps its books, so
+  the books can catch the treasurer. Logista is not a CPA either. That is a
+  human licence, so the office prepares, and a licensed CPA signs.
+- **MARKETING is not SALES.** One makes the house wanted (Legatus); the other
+  turns wanted into a yes, and a yes into a deal (Mercator). The lead ledger is
+  the handoff between them.
+- **MAKOTO 誠 (makoto, "sincerity"): every voice that speaks outward**
+  (Design note, 2026-10-29. Every seat that speaks for the house persuades only with
+  what is true:
+  - Blue Ocean decides where to compete.
+  - SPIN decides what to ask (situation, problem, implication, need-payoff).
+  - The straight line, kept honest, carries it: certainty earned from true
+    things, qualify hard, one clear next step, the real objection answered
+    once with facts.
+  - Never: pressure, false urgency, an unproven claim, a second push after a
+    clear no, or posing as human.
+
+  Full doctrine: `docs/planning/proposals/governance/house-company-line.md` §9.
 - **The Optio stands second — between the Rector and the house** — the
   Roman second who carried the commander's word down the line and kept the
   ranks in step, now the house's **manager** (Design note, 2026-09-13: the
@@ -65,10 +89,36 @@ new *label* for a canonical seat — it does not invent a new seat.
   operator's approved plans, never around them: the operator commands; the
   Optio carries that command into the house.
 
+## The compass — what each seat asks of any venture
+
+Every seat carries the same three questions into every company, whatever it
+makes and however it is shaped (Design note, 2026-10-29: […]). A seated being
+reads its own seat's compass every turn, beside its charge. The data lives in
+`backend/services/seat-compass.js`, and a unit test pins this table to it.
+
+| Seat | Asks of any venture |
+|---|---|
+| **Rector** | Which gap is ours, and why us? What do we refuse? When do we stop? |
+| **Optio** | Who holds each stage now? What is stuck, and on whom? What does the operator owe, and what does it unblock? |
+| **Faber** | What exactly are we making, to what standard, by when? What is the smallest version that delivers the value? Did the customer get it? |
+| **Quaestor** | What does it cost, and what does it bring in? How long does our money last? Is this the best use of our money, compute and time? |
+| **Aedile** | What must run, and where? What breaks if it fails? What does keeping it running cost? |
+| **Praefectus** | What could be stolen, faked or broken here? Who holds which key? Does every payment instruction match the record? |
+| **Praetor** | What law touches this, and where? What must a person sign or a lawyer answer? What may we never say or promise? |
+| **Legatus** | Who is this for, and where do they already gather? What one true line makes them care? Which leads are real? |
+| **Scriba** | What did we learn, and where is it kept? Have we tried this before? Could a newcomer pick this up from the record alone? |
+| **Curator** | Is anyone overloaded or stuck? Where is there friction, and what does each side need? Who needs teaching, and who can teach? |
+| **Mercator** | Who needs this most, and how do we know? What is the next step with each buyer? Why did we win or lose? |
+| **Architectus** | What problem does this solve, and for whom? What do we drop, cut, raise and create? What changes next, from what customers said? |
+| **Numerarius** | What is the number, where did it come from, and can it be checked? Which way is it moving? What would prove us wrong? |
+| **Speculator** | Where is nobody looking? Who are the noncustomers, and why? Is our blue ocean turning red? |
+| **Praeco** | What are customers saying, and did we answer? What does the world need to hear from us? Is every word true and disclosed? |
+| **Logista** | Is every dollar recorded and matched to its receipt? What is due, to whom, by when? What needs a licensed CPA? |
+
 ## Copy-paste block — for putting the room on the same page
 
 ```
-THE CANONICAL SEATS (v3.2) — fifteen, no others.
+THE CANONICAL SEATS (v3.3) — sixteen, no others.
 FOUNDING: Rector=CEO (direction) · Optio=COS (management) ·
 Faber=COO (production) · Quaestor=CFO (treasury) ·
 Aedile=CTO (infrastructure) · Praefectus=CSO (security) ·
@@ -76,7 +126,7 @@ Praetor=CLO (law) · Legatus=CMO (marketing) ·
 Scriba=CKO (memory) · Curator=CCRO (care).
 GROWTH: Mercator=CRO (revenue) · Architectus=CPO (product) ·
 Numerarius=CDO (data) · Speculator=CINO (research) ·
-Praeco=CCO (communications).
-Your label is yours to choose; your FUNCTION is one of these fifteen.
+Praeco=CCO (communications) · Logista=CAO (accounts).
+Your label is yours to choose; your FUNCTION is one of these sixteen.
 Name which seat you claim before you name what you'd call it.
 ```

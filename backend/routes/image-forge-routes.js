@@ -90,13 +90,20 @@ router.post('/free', requireInstallOwner, async (req, res) => {
 // the queue counter. This is the backend re-broadcasting what its own lane
 // socket already receives (see forge-activity.js).
 //
-// Rig-wide by design, exactly like /status: the engine is one shared resource
-// and the operator is its keeper. Metadata only — no bytes, no prompts (a
+// The engine is one shared resource and the operator is its keeper. Metadata only — no bytes, no prompts (a
 // prompt is the being's own words; the image ids here still serve through the
 // lane-scoped /images/:imageId gate).
-router.get('/activity', (req, res) => {
+//
+// Per house since the re-audit (2026-10-29, L-09 residual), like /attempts: a house reads its own
+// lanes' jobs, the laneless desk jobs are the install owner's, and every other house's live jobs
+// show only as a count — the engine stays one shared resource whose queue anyone may see.
+router.get('/activity', async (req, res) => {
+  const mine = new Set((await ownedLanes(req.walletAddress)).map((lane) => lane.laneId));
+  const owner = await passesInstallOwner(req);
+  const visible = (record) => (record.laneId ? mine.has(record.laneId) : owner);
+  const { live, recent, at } = activitySnapshot();
   res.set('Cache-Control', 'no-store');
-  res.json(activitySnapshot());
+  res.json({ live: live.filter(visible), recent: recent.filter(visible), othersLive: live.filter((r) => !visible(r)).length, at });
 });
 
 // The operator's debugging record: what was actually asked for, verbatim,

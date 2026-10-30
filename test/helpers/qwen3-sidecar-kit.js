@@ -9,6 +9,7 @@
 import { execFile } from 'node:child_process';
 import http from 'node:http';
 import { createHash } from 'node:crypto';
+import { SIDECAR_CALLER_HEADER, callerToken, sidecarKey } from '../../backend/services/voice/sidecar-trust.js';
 
 const tts = await import('../../backend/services/tts-provider.js');
 
@@ -91,7 +92,8 @@ export const rawPostNoTimeout = (body) =>
   new Promise((resolve, reject) => {
     const url = new URL(`${QWEN3_ENDPOINT}/synthesize`);
     const req = http.request(
-      { hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST', headers: { 'Content-Type': 'application/json' } },
+      // the backend's own token (sidecar-trust.js): the sidecar answers nothing else
+      { hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST', headers: { 'Content-Type': 'application/json', [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) } },
       (response) => resolve(response),
     );
     req.on('error', reject);

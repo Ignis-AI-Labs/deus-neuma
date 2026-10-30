@@ -23,6 +23,7 @@ import { discordMessageRequest } from '../../backend/services/social/discord-pos
 import { facebookFeedRequest } from '../../backend/services/social/facebook-poster.js';
 import { normalizeInstanceUrl, postToMastodon } from '../../backend/services/social/mastodon-poster.js';
 import { blueskyPostRecord, isSecureServiceUrl, postToBluesky } from '../../backend/services/social/bluesky-poster.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // Every catalog field's env var — cleared so a developer's own .env (live X
 // keys are expected on this box) can't leak into resolution and flake a test.
@@ -132,6 +133,8 @@ describe('channel credential store (real disk + crypto)', () => {
 
   test('env fills a field the store lacks; store wins where both exist', async () => {
     process.env.TELEGRAM_CHAT_ID = '@env-chat';
+    // the machine's .env channel keys serve its install owner's house only (re-audit 2026-10-29, NEW-M3)
+    await makeInstallOwner(HOUSE);
     await setChannelCredential(HOUSE, 'telegram', { botToken: 'bot-abc' });
     expect(await resolveChannelCredential(HOUSE, 'telegram'))
       .toEqual({ botToken: 'bot-abc', chatId: '@env-chat' });

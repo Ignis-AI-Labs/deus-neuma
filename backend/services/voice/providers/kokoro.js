@@ -14,6 +14,7 @@
 //     resp: chunked binary PCM
 
 import { createLogger } from '../../logger.js';
+import { sidecarFetch } from '../sidecar-trust.js';
 const log = createLogger('Voice.Kokoro');
 
 // pure
@@ -71,7 +72,7 @@ export const kokoroAdapter = {
     const url = `${config.endpoint.replace(/\/$/, '')}/synthesize`;
     log.debug('synthesize → kokoro', { chars: text.length, voice: body.voice });
 
-    const response = await fetch(url, {
+    const response = await sidecarFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

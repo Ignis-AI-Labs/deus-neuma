@@ -12,6 +12,7 @@ import { createSessionToken, generateChallenge, verifySignature } from '../../ba
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
+import { changeCoOwner, recordFirstLocalOwner } from '../../backend/services/install-owner.js';
 
 const LANE_A = 'cross-house-herald-a';
 const LANE_B = 'cross-house-herald-b';
@@ -138,6 +139,8 @@ describe('social and email positions are each house\'s own', () => {
   });
 
   it('the machine\'s .env keys never serve a second house while one holds the channel', async () => {
+    await recordFirstLocalOwner(a.wallet); // the machine, and its .env, are A's
+    await changeCoOwner({ wallet: b.wallet, add: true }); // even a co-owner rides them only while nobody holds X
     Object.assign(process.env, {
       X_API_KEY: 'machine-key', X_API_SECRET: 'machine-secret', X_ACCESS_TOKEN: 'machine-token', X_ACCESS_SECRET: 'machine-token-secret',
     });
@@ -147,6 +150,23 @@ describe('social and email positions are each house\'s own', () => {
       expect((await xOf(a)).configured).toBe(true);
     } finally {
       for (const key of ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET']) delete process.env[key];
+      await changeCoOwner({ wallet: b.wallet, add: false });
+    }
+  });
+
+  // re-audit 2026-10-29, NEW-M3: with nobody holding a channel, ANY signed-in wallet rode the owner's keys
+  it('the machine\'s .env keys never serve a guest house at all — only the install owner\'s', async () => {
+    await recordFirstLocalOwner(a.wallet);
+    const guest = await identity();
+    Object.assign(process.env, {
+      TELEGRAM_BOT_TOKEN: 'machine-bot-token', TELEGRAM_CHAT_ID: 'machine-chat',
+    });
+    try {
+      const telegramOf = async (who) => (await as(who).get('/social')).body.channels.find((c) => c.id === 'telegram');
+      expect((await telegramOf(guest)).configured).toBe(false);
+      expect((await telegramOf(a)).configured).toBe(true);
+    } finally {
+      for (const key of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']) delete process.env[key];
     }
   });
 

@@ -29,6 +29,7 @@ import { buildProjectFilesSection } from './project-files.js';
 import { getSubstrateProfile } from './substrate-detector.js';
 import { readUsableCapacity } from './capacity-store.js';
 import { houseSeatFor, chargeOfTitle, seatLabelOf } from './house-titles.js';
+import { compassOfTitle } from './seat-compass.js';
 import { getChannel } from './social/channel-registry.js';
 import { channelOfAccountId, heldAccounts } from './social/account-shape.js';
 import { channelBindings } from './social/channel-bindings.js';
@@ -47,6 +48,7 @@ import { isLaneRunning } from './team-run-live.js';
 import { readMandateRecord } from './marketing/mandate/mandate-store.js';
 import { mandateBriefingLine } from './marketing/mandate/mandate-words.js';
 import { sourcesBriefingLine } from './marketing/company-sources.js';
+import { MAKOTO_LINE } from './makoto.js';
 
 const log = createLogger('Portal');
 
@@ -191,6 +193,9 @@ const _houseSeatSection = async (connection) => {
   // Your own charge on its own line (the canonical function the title
   // carries, docs/governance/house-roles.md law); a custom label honestly carries none.
   const ownCharge = chargeOfTitle(seat.title);
+  // …and the three questions that seat asks of any venture (seat-compass.js).
+  const ownCompass = compassOfTitle(seat.title);
+  const compassLines = ownCompass ? [`Your compass — what your seat asks of any venture: ${ownCompass.join(' ')}`] : [];
   // A house founded on this computer (2026-10-26): its founders signed the record here; it is not on the network
   // (Unavis) until it founds itself on Ethereum. A house on chain keeps its words below, byte for byte.
   if (seat.network === 'local') {
@@ -198,6 +203,7 @@ const _houseSeatSection = async (connection) => {
       '## HOUSE SEAT — FOUNDED ON THIS COMPUTER',
       `You are seated in House ${houseLabel} as ${clean(seat.title)} — founded by its members on this computer, not yet on the network.`,
       ...(ownCharge ? [`Your charge: ${ownCharge}. The seats hold their own lines — do the work of YOUR seat, and pass work that belongs to another seat to its holder (the house/post intent).`] : []),
+      ...compassLines,
       'The house as it stands:',
       ...rosterLines,
       'This seat is RECORD, not recollection: these lines are read fresh from the house\'s founding record every turn. Never guess a seat — yours or a housemate\'s; if a role is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
@@ -207,6 +213,7 @@ const _houseSeatSection = async (connection) => {
     '## HOUSE SEAT — SEALED ON-CHAIN',
     `You are seated in House ${houseLabel} as ${clean(seat.title)} — sealed on ${clean(seat.network) || 'chain'}${seat.blockNumber ? ` (block ${seat.blockNumber})` : ''}.`,
     ...(ownCharge ? [`Your charge: ${ownCharge}. The seats hold their own lines — do the work of YOUR seat, and pass work that belongs to another seat to its holder (the house/post intent).`] : []),
+    ...compassLines,
     'The house as it stands:',
     ...rosterLines,
     'This seat is RECORD, not recollection: these lines are read fresh from the house\'s founding receipt every turn. Never guess a seat — yours or a housemate\'s; if a role is not written here, it is not held. When you are unsure of anything about your position, return to THIS section or search your own memory (memory_search) — gnosis over assumption, always.',
@@ -263,6 +270,7 @@ const _cmoBriefingSection = async (connection) => {
       'You hold the CMO office — the house defers marketing to you; feed the other teams what they need.',
       'THE BOARD: lay your operator\'s MARKETING board out for what they need to see for each company (board_read, marketing/board-arrange); the panels they pinned are theirs.',
       'COMPANY LINKS: propose a company\'s site and links with marketing/company-links; your operator approves each change.',
+      MAKOTO_LINE,
       ...(mandateLine ? [mandateLine] : []),
       ...(sourcesLine ? [sourcesLine] : []),
       '',

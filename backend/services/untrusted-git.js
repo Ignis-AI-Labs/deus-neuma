@@ -11,7 +11,7 @@
 // failing closed on anything it does not know.
 
 import { groundConfigDigest } from './ground-git-exec.js';
-import { withoutBackendSecrets } from './agent-terminal-environment.js';
+import { helperEnvironment } from './agent-terminal-environment.js';
 
 /**
  * The overrides for every git read of a repository the platform did not write: command-line
@@ -30,7 +30,11 @@ export const UNTRUSTED_GIT_ARGS = Object.freeze([
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {NodeJS.ProcessEnv}
  */
-export const untrustedGitEnv = (env = process.env) => ({ ...withoutBackendSecrets(env), GIT_TERMINAL_PROMPT: '0', GIT_PAGER: 'cat', GIT_OPTIONAL_LOCKS: '0' });
+export const untrustedGitEnv = (env = process.env) => ({
+  // git's own tracing is the operator's diagnostic, never a secret, and it names no program
+  ...helperEnvironment(env, process.platform, (key) => key.startsWith('GIT_TRACE')),
+  GIT_TERMINAL_PROMPT: '0', GIT_PAGER: 'cat', GIT_OPTIONAL_LOCKS: '0',
+});
 
 /**
  * Is this repository's own config inert — nothing in it can name a program for git to run

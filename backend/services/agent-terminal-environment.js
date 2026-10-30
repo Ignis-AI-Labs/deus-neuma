@@ -73,3 +73,18 @@ export const helperEnvironment = (env, platform, passes = () => false) => {
   }
   return result;
 };
+
+// The names a hardware or media probe, a model server or a GPU tool reads from the operator's
+// session: the GPU runtime's own settings and the library path it loads from.
+const RUNTIME_KEY = /^(CUDA_|HIP_|ROCR_|ROCM_|HSA_|GPU_|NVIDIA_|OLLAMA_|LD_LIBRARY_PATH$|DYLD_LIBRARY_PATH$)/;
+
+/**
+ * The environment a probe or a local server the platform starts (nvidia-smi, ffmpeg, git reads,
+ * ollama) runs with: the helper environment plus the GPU runtime settings — never the backend's
+ * own secrets nor the service keys it loaded (re-audit 2026-10-29, NEW-L1/L2: a child given no
+ * env inherited DNA_ENCRYPTION_KEY, AUTH_SECRET and every provider key). Pure.
+ * @param {Record<string, string|undefined>} [env]
+ * @param {string} [platform]
+ * @returns {Record<string, string>}
+ */
+export const probeEnvironment = (env = process.env, platform = process.platform) => helperEnvironment(env, platform, (key) => RUNTIME_KEY.test(key));
