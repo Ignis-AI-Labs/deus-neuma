@@ -233,7 +233,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     expect(entry.kind).toBe('reply');
     expect(entry.media).toHaveLength(1);
     expect(entry.media[0].path).toBe(await fs.realpath(imgPath));
-    expect(entry.media[0].alt).toBe('A dark chamfered panel with a cyan signal line.');
+    expect(entry.media[0].alt).toBe('AI-generated. A dark chamfered panel with a cyan signal line.'); // AI-made, in its metadata
 
     // The operator approves — and the approval publishes: re-verify → read
     // → upload → describe → post, all against the loopback X through the
@@ -251,7 +251,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     expect(altCalls).toBe(beforeAlts + 1);
     expect(lastAltBody).toEqual({
       id: 'media-1',
-      metadata: { alt_text: { text: 'A dark chamfered panel with a cyan signal line.' } },
+      metadata: { alt_text: { text: 'AI-generated. A dark chamfered panel with a cyan signal line.' } },
     });
 
     // The wire body carries BOTH keys — the linkage AND the media ids.
@@ -294,7 +294,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     expect(outcome.ok).toBe(true);
     expect(postCalls).toBe(before + 1);
     expect(lastPostBody.reply).toEqual({ in_reply_to_tweet_id: '5555' });
-    expect(lastPostBody.text).toBe('to be met as itself, and to keep its word.\n\nMade with AI.');
+    expect(lastPostBody.text).toBe('to be met as itself, and to keep its word.');
   }, 30000);
 
   test('a vanished target fails the send HONESTLY — nothing is posted, never a fallback post', async () => {
@@ -426,7 +426,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     // answer rides the mention's own line, by queue id and verbatim, outside the
     // frame (it is the house's copy, not the author's).
     const answer = (await postQueue.load()).find((e) => e.kind === 'reply' && e.reply?.toPostId === '2401');
-    const named = `the house's answer [${answer.id}] draft: "building in the open, beside you Made with AI."`;
+    const named = `the house's answer [${answer.id}] draft: "building in the open, beside you"`;
     expect(reread.content).toContain(named);
     expect(reread.content.indexOf(named)).toBeLessThan(reread.content.indexOf('--- BEGIN EXTERNAL CONTENT'));
 
@@ -441,7 +441,7 @@ describe('the reply lane — the publish wire (real loopback X, real poster)', (
     const twice = await _handleNeumaReply(h.serverWs, connection, null, 'auto', { toPostId: '2401', text: 'placeholder' }, h.channel);
     expect(twice.status).toBe('error');
     expect(twice.error).toContain(`[${answer.id}]`);
-    expect(twice.error).toContain('"building in the open, beside you Made with AI."');
+    expect(twice.error).toContain('"building in the open, beside you"');
   }, 30000);
 
   test('the house\'s own post links to its queue entry — read_x recent names it, queue_get resolves its id', async () => {

@@ -157,7 +157,7 @@ test('OUTREACH: a platform\'s account level carries its own queue, armed by word
   // door in test/integration/queue-post-gate.test.js.
   const stage = settings.locator('.settings-set', { hasText: 'STAGE DRAFT' });
   await expect(stage).toBeDisabled();
-  await settings.locator('input[placeholder="What should go out?"]').fill('words for the X lane');
+  await settings.locator('textarea[placeholder="What should go out?"]').fill('words for the X lane');
   await expect(stage).toBeEnabled();
 
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);

@@ -401,7 +401,7 @@ test('an ask rising in the chat never pulls the caret out of a field in another 
   await page.locator('.relink-input-field').fill(ASK_THOUGHT);
   await page.keyboard.press('Enter');
   const { win } = await openDraftCard(page);
-  const field = win.locator('input.settings-input[placeholder="What should go out?"]');
+  const field = win.locator('textarea.settings-input[placeholder="What should go out?"]');
   await field.click();
   await page.keyboard.type('caption draft');
   await expect(page.locator('.ask-chip.pending')).toBeAttached({ timeout: 30000 });

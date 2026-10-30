@@ -207,8 +207,8 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       channelId: 'x',
-      // A being's words carry the AI disclosure line (social/disclosure-line.js).
-      text: 'speech under a banner\n\nMade with AI.',
+      // A being's words exactly as written (the AI disclosure rides in metadata, social/disclosure-line.js).
+      text: 'speech under a banner',
       campaignId: banner.id,
       angleId: 'craft',
       pillar: 'craft',

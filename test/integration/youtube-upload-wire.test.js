@@ -26,7 +26,6 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { postToYouTube } from '../../backend/services/social/youtube-poster.js';
-import { POST_DISCLOSURE } from '../../backend/services/image-forge/ai-disclosure.js';
 import { setChannelCredential } from '../../backend/services/social/channel-credentials.js';
 
 const CREDS = Object.freeze({ clientId: 'cid', clientSecret: 'stand-in-secret', refreshToken: 'refresh-1' });
@@ -207,7 +206,7 @@ describe('the resumable upload protocol', () => {
       uploadType: 'video/mp4',
     });
     expect(init.resource).toEqual({
-      snippet: { title: 'Forge night #3', description: `A walk through the armillary.\n\n${POST_DISCLOSURE}`, tags: ['armillary', 'ai art'] },
+      snippet: { title: 'Forge night #3', description: 'A walk through the armillary.', tags: ['armillary', 'ai art'] },
       status: { privacyStatus: 'private', selfDeclaredMadeForKids: false, containsSyntheticMedia: true },
     });
     expect(chunks.map((c) => c.range)).toEqual([

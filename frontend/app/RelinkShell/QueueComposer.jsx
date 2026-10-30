@@ -11,6 +11,7 @@ import { Select } from './Select.jsx';
 import { stageQueuePost, updateQueuePost } from '../../services/social-channels-client.js';
 import { useHouseAccounts } from './accounts/use-house-accounts.js';
 import { accountsByCompany, handleOf } from './accounts/account-words.js';
+import { postCountFor } from './campaigns-helpers.js';
 
 // A datetime-local input speaks LOCAL wall time without a zone; an entry's
 // scheduledFor is ISO. The conversion lives here so an EDIT seed shows the
@@ -160,9 +161,18 @@ export const QueueComposer = ({ channels, campaigns, fixedChannelId = null, fixe
           </p>
         )
       ) : null}
-      <div className="settings-control">
-        <input className="settings-input" placeholder="What should go out?" ref={textRef}
+      {/* THE POST'S OWN WORDS, written as they will read: several lines, paragraphs kept.
+          A one-line input drops every line break (an edit once ran a post into one block),
+          so this is a text area in the card's own type, growing with the post, counted
+          the way the card counts it against the platform's ceiling. */}
+      <div className="settings-control queue-composer-words">
+        <textarea className="settings-input queue-composer-text" placeholder="What should go out?" ref={textRef}
+          rows={Math.min(16, Math.max(4, text.split('\n').length + 1))}
           value={text} onChange={(e) => setText(e.target.value)} disabled={busy} />
+        {text ? (() => {
+          const { count, limit, over } = postCountFor({ text }, (channels ?? []).find((c) => c.id === channelId));
+          return <span className="label-data queue-composer-count" data-over={over || undefined}>{limit ? `${count} / ${limit}` : count}</span>;
+        })() : null}
       </div>
       <div className="settings-control">
         {seed?.kind === 'reply' ? (

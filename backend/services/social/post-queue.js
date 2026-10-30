@@ -33,7 +33,7 @@ import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.
 import { approveThreadIn } from './queue-thread.js';
 import { tiktokApproveRefusal } from './tiktok-metadata.js';
 import { channelOfAccountId, firstAccountId } from './account-shape.js';
-import { withDisclosureLine } from './disclosure-line.js';
+import { disclosed, markedMedia, IN_METADATA } from './disclosure-line.js';
 import { restageFailed } from './queue-retry.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
@@ -88,7 +88,7 @@ export const createPostQueue = (opts = {}) => {
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) throw new Error('post-queue: store is not an array');
-    return parsed;
+    return parsed.map(disclosed); // an unsent post's AI disclosure lives in its metadata
   };
 
   const save = async (entries) => {
@@ -207,15 +207,14 @@ export const createPostQueue = (opts = {}) => {
           id: crypto.randomBytes(8).toString('hex'),
           channelId: draft.channelId,
           accountId: draft.accountId || firstAccountId(draft.channelId),
-          text: withDisclosureLine(draft),
+          text: String(draft.text ?? '').trim(), disclosure: IN_METADATA,
           scheduledFor: draft.scheduledFor || null,
           campaignId: draft.campaignId?.trim() || null,
           pillar: draft.pillar?.trim() || '',
           // Resolved real paths + alt text. Whitelisted field-by-field so a
           // caller cannot smuggle extra keys onto a governance record.
-          media: Array.isArray(draft.media)
-            ? draft.media.map((m) => ({ path: m.path, alt: String(m.alt || '').slice(0, 1000) }))
-            : [],
+          media: markedMedia({ ...draft, media: Array.isArray(draft.media) // a being's images: the AI marker in their alt text
+            ? draft.media.map((m) => ({ path: m.path, alt: String(m.alt || '').slice(0, 1000) })) : [] }),
           // The STAGING KIND (the CoS audit's G4) — a placeholder holds the slot,
           // not the copy, never an operator decision — and the thread kind with
           // its bounded linkage: copied only when set, no smuggled keys.

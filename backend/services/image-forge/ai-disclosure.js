@@ -27,12 +27,10 @@ export const SOFTWARE = 'Deus Neuma Image & Video Forge';
 export const DISCLOSURE = 'AI-generated content (digital source type: trainedAlgorithmicMedia), made with the Deus Neuma Image & Video Forge.';
 
 // THE PUBLIC SIDE of the same law: what the house publishes says it is
-// AI-made in the words people read, and in every flag a platform asks for.
+// AI-made in every flag a platform asks for, and in the metadata it keeps beside
+// a post (social/disclosure-line.js), never in the words people read (2026-10-30).
 // Everything the house publishes was made or drafted by its beings, so the
 // flag is a constant, never an option a caller could switch off.
-
-/** The one line that rides public text beside AI-made media (a video's description). */
-export const POST_DISCLOSURE = 'AI-generated content, made with Deus Neuma.';
 
 /** A platform's AI-made flag (YouTube `status.containsSyntheticMedia`, TikTok `post_info.is_aigc`): always raised. */
 export const CONTAINS_SYNTHETIC_MEDIA = true;

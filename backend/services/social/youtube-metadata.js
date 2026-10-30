@@ -20,7 +20,7 @@
 // v3/docs/videos, 2026-10-15): title 100 characters, description 5000 bytes,
 // tags 500 characters in total, no `<` or `>` in a title or description.
 
-import { CONTAINS_SYNTHETIC_MEDIA, POST_DISCLOSURE } from '../image-forge/ai-disclosure.js';
+import { CONTAINS_SYNTHETIC_MEDIA } from '../image-forge/ai-disclosure.js';
 
 export const TITLE_MAX = 100;
 export const DESCRIPTION_MAX_BYTES = 5000;
@@ -79,11 +79,12 @@ export const parseYouTubeDraft = (text) => {
   if (ANGLE.test(title) || ANGLE.test(body)) {
     return { ok: false, detail: 'YouTube refuses the characters < and > in a title or description; remove them' };
   }
-  // The disclosure always rides: what the house publishes says it is AI-made.
-  const description = body ? `${body}\n\n${POST_DISCLOSURE}` : POST_DISCLOSURE;
+  // The description is the post's own words: the AI disclosure rides in the
+  // video's metadata, containsSyntheticMedia below (disclosure-line.js).
+  const description = body;
   const bytes = Buffer.byteLength(description, 'utf8');
   if (bytes > DESCRIPTION_MAX_BYTES) {
-    return { ok: false, detail: `the description is ${bytes} bytes with the AI disclosure line; YouTube allows at most ${DESCRIPTION_MAX_BYTES}` };
+    return { ok: false, detail: `the description is ${bytes} bytes; YouTube allows at most ${DESCRIPTION_MAX_BYTES}` };
   }
   const tags = (tagLines[0] ?? '').split(',').map((s) => s.trim().replace(/^#/, '')).filter(Boolean);
   if (tags.some((t) => ANGLE.test(t))) return { ok: false, detail: 'a tag cannot hold < or >' };

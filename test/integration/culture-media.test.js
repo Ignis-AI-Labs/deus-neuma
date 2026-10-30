@@ -310,10 +310,11 @@ describe('the culture media lane (real loopback + real broker + real disk, gnosi
     });
     expect(receipts[0].status).toBe('ok');
     const queue = await postQueue.load();
-    const staged = queue.find((e) => e.text === 'the culture, attached\n\nMade with AI.');
+    const staged = queue.find((e) => e.text === 'the culture, attached');
     expect(staged).toBeTruthy();
     expect(staged.media).toHaveLength(1);
     expect(staged.media[0].path).toBe(mediaPath);
-    expect(staged.media[0].alt).toBe('attachable culture');
+    // that a being made it rides in the image's alt text, never the words (social/disclosure-line.js)
+    expect(staged.media[0].alt).toBe('AI-generated. attachable culture');
   });
 });

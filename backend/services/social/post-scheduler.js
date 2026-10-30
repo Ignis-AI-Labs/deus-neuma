@@ -17,6 +17,7 @@
 // lane it does not serve (the ghost lane found live 2026-10-16).
 
 import { readMediaFile, setAltText, uploadMedia } from './x-media.js';
+import { markedMedia } from './disclosure-line.js';
 import { reverifyMediaFile } from './media-source.js';
 import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './post-queue.js';
 import { readXPost, readXListings, readXAccount } from './x-reader.js';
@@ -185,7 +186,7 @@ const journalSend = async (entry, outcome) => {
  */
 const uploadEntryMedia = async (credentials, entry) => {
   const mediaIds = [];
-  for (const item of entry.media) {
+  for (const item of markedMedia(entry)) { // an AI-made post's images say so in their alt text
     const verified = await reverifyMediaFile(item.path);
     if (!verified.ok) return { ok: false, detail: `media refused — ${verified.detail}` };
     const read = await readMediaFile(verified.path);
