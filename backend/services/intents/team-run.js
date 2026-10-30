@@ -239,10 +239,11 @@ export const teamWorkspaceRunIntent = Object.freeze({
 
   // impure — a real confined subprocess (workspace-run.js); an invalid
   // request (outside the arena, unrunnable extension) IS the correction.
-  execute: async ({ file, timeoutMs, teamWs, sha256 }) => {
+  execute: async ({ file, timeoutMs, teamWs, sha256 }, { connection } = {}) => {
     let outcome;
     try {
-      outcome = await runWorkspaceFile(teamWs, { file, timeoutMs, sha256 });
+      const laneId = connection?.companion?.neumaId;
+      outcome = await runWorkspaceFile(teamWs, { file, timeoutMs, sha256 }, { lane: laneId ? neumaWorkspace.pathFor(laneId) : null });
     } catch (err) {
       return { ok: false, reason: err.message };
     }

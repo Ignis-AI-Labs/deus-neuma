@@ -101,7 +101,10 @@ const CharterForm = ({ draft, names, optio, busy, onDraft, onSeat, onSave, onCan
         <span className="hclock-muted">members and</span>
         <input className="hclock-num" type="number" min="1" max="16" aria-label="Plan steps at most" value={draft.maxSteps}
           disabled={busy || !draft.teamPlans} onChange={(e) => onDraft('maxSteps', e.target.value)} />
-        <span className="hclock-muted">steps</span>
+        <span className="hclock-muted">steps, a programme of up to</span>
+        <input className="hclock-num" type="number" min="2" max="20" aria-label="Programme runs at most" value={draft.maxProgrammeRuns ?? '3'}
+          disabled={busy || !draft.teamPlans} onChange={(e) => onDraft('maxProgrammeRuns', e.target.value)} />
+        <span className="hclock-muted">runs</span>
       </div>
       <DialField value={draft.involvement} busy={busy} onDraft={onDraft} />
       <Field label="ALLOWED WITHOUT ASKING" hint="Act ids, one per line (e.g. intents/social.post). Money out and file access can never be here.">

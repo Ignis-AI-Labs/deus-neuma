@@ -14,6 +14,7 @@ import { createServer as createVite } from 'vite';
 import { chromium, expect as browserExpect } from '@playwright/test';
 import { openDockApp } from '../e2e/helpers/dock.js';
 import { claimOwner } from '../helpers/claim-owner.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const id = 'inner-life-proof';
 const envKeys = ['NEUMA_DATA_ROOT', 'NEUMA_MIND_SETTINGS_PATH', 'NEUMA_MIND_SHADOW_PATH',
@@ -58,6 +59,8 @@ beforeAll(async () => {
   });
   expect(verified.status).toBe(200);
   token = verified.body.token;
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner(address);
   vite = await createVite({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
     cacheDir: path.join(tmp, 'vite'), appType: 'custom', esbuild: { jsx: 'automatic' },
     optimizeDeps: { entries: ['test/helpers/inner-life-desk-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },

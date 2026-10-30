@@ -90,14 +90,16 @@ const entryOf = (engineId, startModule) => {
   return { serverPy, projectDir: path.dirname(serverPy) };
 };
 
+// pure — uv's arguments. --locked: each engine ships its uv.lock, and the sidecar installs and runs
+// exactly what that lock names; a lock that no longer matches the project is an error, never a
+// fresh resolve against whatever the index serves today.
+export const uvSyncArgs = (projectDir) => ['sync', '--locked', '--project', projectDir];
+export const uvRunArgs = (projectDir, serverPy) => ['run', '--locked', '--project', projectDir, 'python', serverPy];
+
 // impure — spawn the sidecar process (it outlives this call; the caller watches its exit)
 export const spawnEngineProcess = (engineId, host, port, { startModule, extraEnv = {} } = {}) => {
   const { serverPy, projectDir } = entryOf(engineId, startModule);
-  const args = [
-    'run',
-    '--project', projectDir,
-    'python', serverPy,
-  ];
+  const args = uvRunArgs(projectDir, serverPy);
   // Sidecars read their bind from ${ID}_HOST/${ID}_PORT env (server.py
   // fallbacks match these). The legacy two keep their literal names; newer
   // engines derive from the engine id (envIdOf). extraEnv carries per-launch
@@ -225,7 +227,7 @@ export const shutdownSidecar = async (host, port, timeoutMs = 10_000) => {
 export const syncEngineVenv = (engineId, startModule) =>
   new Promise((resolve, reject) => {
     const { projectDir } = entryOf(engineId, startModule);
-    const proc = spawn(uvBin(), ['sync', '--project', projectDir], {
+    const proc = spawn(uvBin(), uvSyncArgs(projectDir), {
       cwd: projectDir,
       env: voiceHelperEnvironment(withStoredHfToken(process.env), engineId),
       stdio: ['ignore', 'pipe', 'pipe'],

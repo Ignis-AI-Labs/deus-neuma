@@ -13,8 +13,9 @@
 //   moneyIn   — what the house received (the money-in ledger, receive-only)
 //   budgets   — the campaigns' PLANNING budgets (read, never enforced: nothing
 //               spends them)
-//   costs     — what of the cost meter exists today (the GPU's power draw,
-//               read live) and what is not built
+//   invoices  — where invoices are paid and every invoice (invoices/), newest first
+//   costs     — the GPU's power draw read live, and the cost meter
+//               (cost-meter/): its setting and items, this month and the last
 //   flags     — the Quaestor's open flags
 //   marks     — the flight check (treasury-flight.js)
 //
@@ -27,6 +28,8 @@ import { readReceipts } from '../money-in/money-in-store.js';
 import { summarizeMoneyIn } from '../money-in/money-in-summary.js';
 import { campaignStoreFor } from '../marketing/campaign-store.js';
 import { readMachineThermals } from '../machine-thermals.js';
+import { costBoard } from '../cost-meter/cost-store.js';
+import { invoiceBoard } from '../invoices/invoice-store.js';
 import { MAX_TX_VALUE_ETH } from '../neuma-wallet-spend.js';
 import { cfoDesignation } from './cfo-designation.js';
 import { readFlags } from './treasury-office-store.js';
@@ -35,15 +38,6 @@ import { houseLanes, laneMoney, baseBalanceOf, pendingSpendCards, withinTime } f
 import { keyCustodyOf, rawSigningRefused, treasuryMarks } from './treasury-flight.js';
 
 const HISTORY_MAX = 200;
-
-// The parts of the cost meter the house-economy plan names that no code
-// measures yet (house-economy-benchmark.md, Stage 3).
-const COST_METER_MISSING = Object.freeze([
-  'electricity price (so power draw becomes money)',
-  'GPU energy integrated over a period',
-  'hardware cost and rent, entered once',
-  'API spend per provider',
-]);
 
 // impure — an Ethereum balance through the operator's own RPC, or null.
 const ethereumBalanceOf = async (address) => {
@@ -87,7 +81,7 @@ export const readTreasuryBoard = async (wallet) => {
     const [balances, custody] = await Promise.all([balancesOf(money.address), keyCustodyOf(lane.neumaId).catch(() => 'none')]);
     return { ...money, balances, custody };
   }));
-  const [operatorBalances, pending, receipts, campaigns, thermals, flags, refused] = await Promise.all([
+  const [operatorBalances, pending, receipts, campaigns, thermals, flags, refused, meter, invoices] = await Promise.all([
     balancesOf(ethers.isAddress(house) ? ethers.getAddress(house) : null),
     part('pending', () => pendingSpendCards(house), gaps, []),
     part('money-in', () => readReceipts(house), gaps, []),
@@ -95,6 +89,8 @@ export const readTreasuryBoard = async (wallet) => {
     withinTime(readMachineThermals()),
     part('flags', () => readFlags(house), gaps, []),
     rawSigningRefused(),
+    part('cost meter', () => costBoard(house, Date.now()), gaps, null),
+    part('invoices', () => invoiceBoard(house, Date.now()), gaps, null),
   ]);
 
   const history = beings
@@ -119,10 +115,11 @@ export const readTreasuryBoard = async (wallet) => {
     moneyIn: summarizeMoneyIn(receipts),
     budgets: campaigns.filter((c) => c.budget && (c.budget.money != null || c.budget.hours != null))
       .map((c) => ({ id: c.id, name: c.name, status: c.status, money: c.budget.money ?? null, hours: c.budget.hours ?? null, note: c.budget.note || '' })),
+    invoices,
     costs: {
       gpuPowerW: thermals?.gpu?.powerW ?? null,
       gpuName: thermals?.gpu?.name ?? null,
-      missing: COST_METER_MISSING,
+      meter,
     },
     flags: flags.filter((f) => f.status === 'open'),
     capEth: MAX_TX_VALUE_ETH,

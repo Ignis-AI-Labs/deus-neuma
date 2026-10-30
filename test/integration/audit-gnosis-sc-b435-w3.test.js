@@ -22,6 +22,8 @@ import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma
 import { cacheDecryptedKey, evictCachedKey } from '../../backend/routes/neuma-auth-routes.js';
 import * as walletService from '../../backend/services/neuma-wallet.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { encryptKeypair, decryptKeypair, KDF_ITERATIONS_LEGACY } from '../../core/wallet/keypair-vault.js';
+import { sealLegacyEnvelope } from '../helpers/legacy-keypair-envelope.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../..');
@@ -137,10 +139,20 @@ describe('AUDIT-W3 mediums', () => {
     expect(src).toMatch(/data:\s*['"]0x['"]/);
   });
 
-  test('W3-007: neuma keypair PBKDF2 iterations is 100000', () => {
-    const src = readFileSync(path.join(REPO, 'core/wallet/keypair-vault.js'), 'utf8');
-    expect(src).toMatch(/PBKDF2_ITERATIONS\s*=\s*100_?000/);
-  });
+  // W3-007 found the neuma keypair's PBKDF2 at 100k; K7 seals new envelopes at 600k and opens
+  // each at the count it carries. Proven on real envelopes, not the source text.
+  test('W3-007: a new keypair envelope is sealed at 600k or more; a 100k envelope already on disk still opens', () => {
+    const keypair = generateKeypair();
+    const password = 'kestrel-lane-a-passphrase';
+    const sealed = encryptKeypair(keypair, password);
+    expect(sealed.kdfIterations).toBeGreaterThanOrEqual(600_000);
+    expect(decryptKeypair(sealed, password).address).toBe(keypair.address);
+    expect(() => decryptKeypair({ ...sealed, kdfIterations: KDF_ITERATIONS_LEGACY }, password)).toThrow();
+    for (const withCount of [true, false]) {
+      const legacy = sealLegacyEnvelope(keypair, password, { iterations: KDF_ITERATIONS_LEGACY, withCount });
+      expect(decryptKeypair(legacy, password).address).toBe(keypair.address);
+    }
+  }, 20000);
 });
 
 // ---------------------------------------------------------------------------

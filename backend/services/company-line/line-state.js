@@ -61,6 +61,17 @@ const apply = (line, event) => {
 };
 
 /**
+ * The line one event later — the event must fit (fitsLine); this is how an
+ * act that lands several events at once reads the line between them. pure.
+ * @param {object} line - foldLine's state
+ * @param {object} event
+ */
+export const advance = (line, event) => {
+  const next = apply(line, event);
+  return { ...next, stage: FOUNDING_LINE[next.index] ?? null };
+};
+
+/**
  * Fold the record into the line's state. pure.
  * @param {Array<object>} events - oldest first
  * @returns {{round: number, index: number, stage: ?object, status: 'open'|'returned'|'inspecting'|'standing',

@@ -36,6 +36,7 @@ import { attemptMessages } from './team-continue.js';
 import { createPartLog, actsOfPart } from './team-part-log.js';
 import { createRunGate } from './team-run-gate.js';
 import { createAttemptClock } from './team-part-clock.js';
+import { freeOfLocalSlot } from './team-workers.js';
 import {
   clockFor, workLimitMs, dueAtMs, describeClock, clockBrief, partialBanner, formatMinutes,
   WRAP_UP_GRACE_MS, CLOCK_WRAP_REASON, CLOCK_STOP_REASON,
@@ -176,10 +177,14 @@ export const createPartRunner = ({ entry, ask, limit, record = null, resumed = {
     const timer = createAttemptClock({ entry, stepId: step.id, limits: limitsNow(), onPass: clockPassed, keep: record?.worked ?? null });
     entry.clockWatch.set(step.id, () => timer.retarget(limitsNow()));
     try {
-      await entry.gate.enter(step.id, signal);
-      gated = true;
-      await acquireSlot(limit, signal);
-      holding = true;
+      // A worker on a cloud model decodes at its provider (team-workers.js): the run's width
+      // and the member slots guard one GPU from crowding, which its part never touches.
+      if (!(await freeOfLocalSlot(neumaId).catch(() => false))) {
+        await entry.gate.enter(step.id, signal);
+        gated = true;
+        await acquireSlot(limit, signal);
+        holding = true;
+      }
       timer.work();
       delete entry.retries[step.id]; // the wait is over — a late window must not read it as pending
       const answer = await ask(neumaId, asked, step, {

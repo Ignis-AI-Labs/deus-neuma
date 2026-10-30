@@ -16,13 +16,22 @@
   background: color-mix(in srgb, var(--color-white) 3.5%, var(--color-void));
 }
 
+/* The rail scrolls sideways when the tabs outrun it. A sideways scroller is a
+   vertical one too (overflow-x: auto makes overflow-y auto), and the open tab
+   reaches 1px below the rail to lie over the strip's bottom rule — so that
+   pixel drew a native up/down scroll bar and scrolled the overlap out of
+   sight. The rail takes that pixel itself (down over the rule, padded back),
+   and never scrolls down. */
 .tabstrip-rail {
   display: flex;
   align-items: stretch;
   gap: 1px; /* a hairline between tabs, not a gutter */
   min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: thin;
+  margin-bottom: -1px;
+  padding-bottom: 1px;
 }
 
 .tabstrip-tab {

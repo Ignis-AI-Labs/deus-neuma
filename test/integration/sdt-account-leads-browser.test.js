@@ -369,7 +369,8 @@ describe('SDT-6 — the account level, the post card and LEADS show; every numbe
       expect(await tg.page.locator('.pc-head.is-account').count()).toBe(0);
       await tg.page.locator('.pc-standing-btn').click();
       expect(await tg.page.locator('.ps-cell-k').allInnerTexts()).toEqual(['KEYS', 'HOLDER', 'CREW']);
-      expect(await tg.page.locator('.outreach-tabs [role="tab"]').allInnerTexts()).toEqual(['CAMPAIGNS', 'QUEUE']);
+      // COMMUNITY's TELEGRAM also holds its CHATS (who may talk with the house through its bot, the chat bridge).
+      expect(await tg.page.locator('.outreach-tabs [role="tab"]').allInnerTexts()).toEqual(['CAMPAIGNS', 'QUEUE', 'CHATS']);
       await legible(tg.page, `telegram at ${width}px`, '.outreach-panel .outreach-panel');
       expect(tg.errors).toEqual([]);
       await tg.page.close();

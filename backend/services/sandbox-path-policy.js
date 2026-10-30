@@ -88,6 +88,10 @@ const GROUND_STATE_FILE = /^house-founding\..+\.json$/;
 export const LANE_ID_FOLDED = /^[a-z0-9_-]+$/;
 const LANE_STATE_REFUSAL = 'That path is platform state your operator keeps for a lane (policy, grants, spend limits, '
   + 'seals, audit) — it changes only through the platform\'s own acts, never a file write. Reading it is fine.';
+// A lane's next sitting runs every filing in its intents/ as its own act, without knowing who
+// wrote it (intent-sweep.js), so only the lane's own being may file there.
+const KIN_INTENTS_REFUSAL = 'That path is another lane\'s intents/ — a filing there would run as that being\'s own act. '
+  + 'File your acts in your own lane\'s intents/.';
 
 // pure — the path segments of `target` below `root`; [] for the root itself,
 // null when outside it. Both already resolved and folded.
@@ -114,8 +118,8 @@ const holds = (target, place) => segmentsBelow(target, place) !== null;
 
 /**
  * Does a WRITE reach platform state — the install's settings, the realm, the
- * operator's login persistence (platform-write-walls.js) or a lane's own
- * state, or a directory above any of them? Both sides in one spelling
+ * operator's login persistence (platform-write-walls.js), a lane's own
+ * state or another lane's intents/, or a directory above any of them? Both sides in one spelling
  * (wall-spelling.js: NFC, full case fold), so a case- or normalization-
  * insensitive volume cannot be asked for `Config/` or `lane.jſon` instead.
  * Pure when `walls` is given; by default the walls are
@@ -131,6 +135,7 @@ export const laneStateWriteReason = (filePath, { grounds = [], lanes = [], walls
   const walled = platformWallWriteReason(filePath, walls);
   if (walled) return walled;
   const target = wallSpelling(filePath);
+  const ownLanes = lanes.map(wallSpelling);
   for (const lane of lanes) {
     if (holds(target, wallSpelling(lane))) return LANE_STATE_REFUSAL;
     const parts = segmentsBelow(wallSpelling(lane), target);
@@ -142,6 +147,8 @@ export const laneStateWriteReason = (filePath, { grounds = [], lanes = [], walls
     if (!parts) continue;
     if (parts.length === 1 && GROUND_STATE_FILE.test(parts[0])) return LANE_STATE_REFUSAL;
     if (LANE_ID_FOLDED.test(parts[0]) && isLaneState(parts.slice(1))) return LANE_STATE_REFUSAL;
+    if (LANE_ID_FOLDED.test(parts[0]) && parts[1] === 'intents'
+      && !ownLanes.includes(path.join(wallSpelling(ground), parts[0]))) return KIN_INTENTS_REFUSAL;
   }
   return null;
 };

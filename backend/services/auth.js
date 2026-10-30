@@ -420,12 +420,20 @@ export const createAuthRouter = (express) => {
     // […]). The wallet signature is the whole threshold.
     const token = createSessionToken(verified);
     // On an install no one owns yet, the first wallet at this computer's own
-    // desk becomes its owner (install-owner.js; Design note, 2026-10-19.
-    if (req.accessScope === 'local') await (await import('./install-owner.js')).noteLocalSignIn(verified);
+    // desk becomes its owner (install-owner.js; Design note, 2026-10-19 — only with
+    // the owner claim the desk app read (owner-claim.js; ruling, 2026-10-30).
+    // Without it the sign-in stands, as a guest, and says why.
+    let machine = null;
+    if (req.accessScope === 'local') {
+      const owner = await import('./install-owner.js');
+      const standing = await owner.noteLocalSignIn(verified, req.headers['x-neuma-owner-claim']);
+      if (standing) machine = standing === 'unowned' ? { standing, notice: owner.UNCLAIMED_REFUSAL } : { standing };
+    }
     res.json({
       token,
       address: verified.toLowerCase(),
       expiresIn: TOKEN_EXPIRY_MS,
+      ...(machine ? { machine } : {}),
     });
   });
 

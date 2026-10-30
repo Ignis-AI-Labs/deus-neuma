@@ -8,8 +8,8 @@ import { describe, test, expect } from 'vitest';
 import { FOUNDING_LINE, stageById } from '../../backend/services/company-line/line-stages.js';
 import { STOPS, DEFAULT_STOP, stopOf, takesGates, stopSays, FLOOR } from '../../backend/services/company-line/involvement-dial.js';
 import { inspectionsFor, masterFor, inspectorFor } from '../../backend/services/company-line/inspection-chain.js';
-import { foldLine, fitsLine } from '../../backend/services/company-line/line-state.js';
-import { judgeHandOn, judgeInspect, whoIsUp } from '../../backend/services/company-line/line-acts.js';
+import { foldLine, fitsLine, advance } from '../../backend/services/company-line/line-state.js';
+import { judgeHandOn, judgeInspect, whoIsUp, ownYesAt, withOwnAnswers, judgeEndGap } from '../../backend/services/company-line/line-acts.js';
 import { TITLE_LEGEND } from '../../backend/services/founding-titles-legend.js';
 
 const SEATS = new Set(TITLE_LEGEND.map((s) => s.title));
@@ -161,6 +161,52 @@ describe('the judged acts', () => {
     expect(whoIsUp(line, doubled)).toMatchObject({ holder: 'opt', seat: 'Optio' });
     expect(judgeInspect({ line, holders: doubled, actor: 'numer', stageId: 'measure', verdict: 'accept', now: T(4) }))
       .toMatchObject({ ok: false, status: 'denied', reason: expect.stringMatching(/the Optio's to answer/) });
+  });
+});
+
+describe('the operator\'s own yes (Design note, 2026-10-30: nothing is approved twice)', () => {
+  const toChoose = foldLine([
+    hand('survey', 'spec', ['Numerarius'], 1), insp('survey', 0, 'accept', 'numer', 2),
+    hand('measure', 'numer', ['Architectus'], 3), insp('measure', 0, 'accept', 'arch', 4),
+    hand('shape', 'arch', ['Rector'], 5), insp('shape', 0, 'accept', 'operator', 6),
+  ]);
+  const chose = hand('choose', 'operator', ['operator'], 7);
+
+  test('the Rector-operator\'s CHOOSE: handing it on is the floor\'s yes, and the line moves to PROVE in one move', () => {
+    expect(ownYesAt(toChoose, HOLDERS)).toBe(true);
+    const run = withOwnAnswers({ line: toChoose, holders: HOLDERS, event: chose, now: T(7) });
+    expect(run).toEqual([chose, { type: 'inspected', stage: 'choose', step: 0, verdict: 'accept', by: 'operator', as: 'operator', flaw: null, own: true, at: T(7) }]);
+    const after = run.reduce((line, e) => (fitsLine(line, e) ? advance(line, e) : null), toChoose);
+    expect(after).toMatchObject({ status: 'open', stage: expect.objectContaining({ id: 'prove' }) });
+    expect(whoIsUp(after, HOLDERS)).toMatchObject({ kind: 'master', holder: 'merc' });
+  });
+
+  test('a being\'s look always stands, and counsel\'s answer is never folded', () => {
+    const beingRector = { ...HOLDERS, Rector: 'rect' };
+    expect(ownYesAt(toChoose, beingRector)).toBe(false); // a being masters CHOOSE: the operator still answers it
+    expect(withOwnAnswers({ line: toChoose, holders: beingRector, event: hand('choose', 'rect', ['operator'], 7), now: T(7) })).toHaveLength(1);
+    const fresh = foldLine([]);
+    expect(ownYesAt({ ...fresh, index: 6, stage: stageById('form') }, HOLDERS)).toBe(false); // FORM is the Praetor's to inspect
+    const atCharter = { ...fresh, index: 5, stage: stageById('charter') };
+    const praetorOperator = { ...HOLDERS, Praetor: 'operator' };
+    expect(ownYesAt(atCharter, praetorOperator)).toBe(false); // counsel answers CHARTER, whoever masters it
+    expect(withOwnAnswers({ line: atCharter, holders: praetorOperator, event: hand('charter', 'operator', ['counsel', 'operator'], 12), now: T(12) })).toHaveLength(1);
+  });
+
+  test('the no: END THE GAP where the hand-on would be the yes — named, and only there', () => {
+    expect(judgeEndGap({ line: toChoose, holders: HOLDERS, stop: 'PARTNER', actor: 'operator', stageId: 'choose', flaw: ' ', now: T(7) }))
+      .toMatchObject({ ok: false, status: 'invalid', reason: 'name why this gap ends here' });
+    expect(judgeEndGap({ line: toChoose, holders: HOLDERS, stop: 'PARTNER', actor: 'spec', stageId: 'choose', flaw: 'x', now: T(7) }))
+      .toMatchObject({ ok: false, status: 'denied' });
+    expect(judgeEndGap({ line: toChoose, holders: { ...HOLDERS, Rector: 'rect' }, stop: 'PARTNER', actor: 'operator', stageId: 'choose', flaw: 'x', now: T(7) }))
+      .toMatchObject({ ok: false, status: 'denied', reason: expect.stringMatching(/by its inspection's answer/) });
+    expect(judgeEndGap({ line: toChoose, holders: HOLDERS, stop: 'PARTNER', actor: 'operator', stageId: 'prove', flaw: 'x', now: T(7) }))
+      .toMatchObject({ ok: false, status: 'invalid' });
+    const ended = judgeEndGap({ line: toChoose, holders: HOLDERS, stop: 'PARTNER', actor: 'operator', stageId: 'choose', flaw: 'three funded rivals: a red ocean', now: T(7) });
+    expect(ended.events.map((e) => e.verdict ?? e.type)).toEqual(['handed', 'stop']);
+    const after = ended.events.reduce((line, e) => (fitsLine(line, e) ? advance(line, e) : null), toChoose);
+    expect(after).toMatchObject({ round: 2, status: 'open', stage: expect.objectContaining({ id: 'survey' }) });
+    expect(after.stopped).toEqual([{ round: 1, stage: 'choose', by: 'operator', flaw: 'three funded rivals: a red ocean', at: T(7) }]);
   });
 });
 

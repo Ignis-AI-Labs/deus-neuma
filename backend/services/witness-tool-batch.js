@@ -8,12 +8,19 @@ import { scopeRecoveryCall } from './coding-recovery-repeat.js';
 import { toolRepeatEvent } from './tool-repeat-event.js';
 import { sendToolEvent } from './witness-tool-events.js';
 
-/** impure - run fresh calls through the unchanged witness gates, in issue order. */
-export const processWitnessToolBatch = async ({ ws, connection, calls, runtime, turn }) => {
+/**
+ * impure - run fresh calls through the unchanged witness gates, in issue order.
+ * `taintHeld` maps a call the injected-value gate held to its refusal, answered in its place.
+ */
+export const processWitnessToolBatch = async ({ ws, connection, calls, runtime, turn, taintHeld = new Map() }) => {
   const results = [];
   const receipts = [];
   const signal = connection.activeTurn?.signal;
   for (const rawCall of calls) {
+    if (taintHeld.has(rawCall)) {
+      results.push(taintHeld.get(rawCall));
+      continue;
+    }
     if (signal?.aborted) {
       results.push(heldRepeatResult(rawCall));
       continue;

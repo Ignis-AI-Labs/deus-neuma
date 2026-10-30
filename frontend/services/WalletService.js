@@ -1,3 +1,5 @@
+import { deskOwnerClaim, ownerClaimHeaders } from './owner-claim.js';
+
 /**
  * Wallet service for Web3 connections via any EIP-1193 provider.
  * Handles connection, auth challenge-sign-verify, and session token management.
@@ -125,7 +127,7 @@ export class WalletService {
 
     const verifyRes = await fetch('/api/v1/auth/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ownerClaimHeaders(await deskOwnerClaim()) },
       body: JSON.stringify({ address, signature, challenge }),
     });
     if (!verifyRes.ok) throw new Error('Authentication failed');

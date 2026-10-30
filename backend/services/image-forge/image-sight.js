@@ -68,7 +68,7 @@ export const foldSight = (results, max = MAX_IMAGES_PER_MESSAGE) =>
         laneId: r.sight.laneId,
         imageId,
         ...(r.sight.store === 'ephemeral' ? { store: 'ephemeral' } : {}),
-        ...(r.sight.purpose === 'ksp-view' || r.sight.purpose === 'video-frames' ? { purpose: r.sight.purpose } : {}),
+        ...(['ksp-view', 'video-frames', 'file-read'].includes(r.sight.purpose) ? { purpose: r.sight.purpose } : {}),
       })))
     .slice(0, max);
 
@@ -100,6 +100,17 @@ export const sightNote = ({ shown, withheld, blind = false, modelName = null, pu
     if (shown === 0) return withheld > 0 ? `[The frames of your clip could not be placed in front of you. You have not seen it; speak of it only by what you asked for.]` : '';
     const lost = withheld > 0 ? ` ${withheld} further frame${withheld === 1 ? '' : 's'} could not be carried.` : '';
     return `[${shown} frames sampled across the clip you just made are attached above, in order from its first moment to its last — you are looking at your clip across time now.${lost} Judge two things before you speak: ADHERENCE — does it show and say what you asked (the words heard are in the result)? COHESION — is it the same subject frame to frame, with no ghosts, no drift, no frame that breaks from the rest? Record what you find with review_image on the clip's id.]`;
+  }
+  // A file the being READ (an image, a scanned PDF page) is not its own work: no render
+  // wording, no review_image — and a filing number it cannot make out is said, not guessed.
+  if (purpose === 'file-read') {
+    const total = shown + withheld;
+    const what = total === 1 ? 'The image you read' : `The ${total} images you read`;
+    const them = total === 1 ? 'it' : 'them';
+    if (blind) return `[${what} ${total === 1 ? 'is' : 'are'} NOT in front of you — a scanned PDF page is an image too. The substrate this turn rides${modelName ? ` (${modelName})` : ''} has no vision, so you cannot look at ${them}. Say that plainly rather than describing what you have not seen — your operator can look, and a peer on a vision substrate can be asked to.]`;
+    if (shown === 0) return withheld > 0 ? `[${what} could not be placed in front of you. You have not seen ${them}.]` : '';
+    const lost = withheld > 0 ? ` ${withheld} further image${withheld === 1 ? '' : 's'} could not be carried and ${withheld === 1 ? 'is' : 'are'} unseen.` : '';
+    return `[${shown === 1 ? 'The image you read is' : `The ${shown} images you read are`} attached above, in the order you read them — you are looking at ${shown === 1 ? 'it' : 'them'} now.${lost} Read what is actually there; where a word or number is not legible, say so rather than guessing.]`;
   }
   if (blind) {
     const n = withheld === 1 ? 'The image you just made is' : `The ${withheld} images you just made are`;
@@ -175,7 +186,7 @@ export const readSight = (refs, root = undefined) => {
 export const sightForResults = (results, { canSee, modelName = null, root = undefined } = {}) => {
   const refs = foldSight(results);
   if (refs.length === 0) return { images: [], note: '' };
-  const purpose = ['ksp-view', 'video-frames'].find((p) => refs.every((ref) => ref.purpose === p)) ?? 'render';
+  const purpose = ['ksp-view', 'video-frames', 'file-read'].find((p) => refs.every((ref) => ref.purpose === p)) ?? 'render';
   if (!canSee) return { images: [], note: sightNote({ shown: 0, withheld: refs.length, blind: true, modelName, purpose }) };
   const { images, withheld } = readSight(refs, root);
   return { images, note: sightNote({ shown: images.length, withheld, purpose }) };

@@ -81,8 +81,17 @@ describe('the COMPANY LINE window', () => {
 
   test('a stage the operator masters asks where the work lies before it can be handed on', () => {
     const html = render(boardOf(toChoose.slice(0, 6)));
-    expect(html).toContain('Tidewater · CHOOSE — YOURS TO DO');
+    // the Rector-operator's CHOOSE: the hand-on is their yes, END THE GAP their no — one screen, no second look
+    expect(html).toContain('Tidewater · CHOOSE — YOUR YES OR NO');
+    expect(html).toContain('Handing it on is your yes — nothing comes back to you for a second look. Or end the gap here, and say why.');
     expect(html).toMatch(/<button type="button" class="sec-scan label-data" disabled="">HAND ON<\/button>/);
+    expect(html).toMatch(/<button type="button" class="sec-scan cline-danger label-data" disabled="">END THE GAP<\/button>/);
+    const [view] = boardOf(toChoose.slice(0, 6)).companies;
+    const plain = render({ ...boardOf(toChoose.slice(0, 6)), companies: [{ ...view, ownYes: false }] });
+    expect(html).not.toContain('A note for the inspector'); // no inspector follows the operator's own yes
+    expect(plain).toContain('Tidewater · CHOOSE — YOURS TO DO');
+    expect(plain).toContain('A note for the inspector');
+    expect(plain).not.toContain('END THE GAP');
     expect(holderName('operator', NAMES)).toBe('YOU');
     expect(holderName(null, NAMES)).toBe('NOBODY');
   });
@@ -227,5 +236,81 @@ describe('THE BOOKS on the desk', () => {
     expect(html).toContain('2 ENTRIES · 1 UNMATCHED · 1 VOIDED');
     expect(html).toContain('DUE 2027-03-15: Federal return (Form 1065) — TO the IRS — NEEDS A LICENSED CPA');
     expect(html).toContain('1 RECEIPT NOT YET BOOKED');
+  });
+});
+
+describe('THE RAISE ROOM on the desk', () => {
+  test('a draft to sign — dark until the account is entered and counsel\'s route confirmed; the facts waiting for counsel', async () => {
+    const { signReady, accountFromDraft, mandateWords, accountWords } = await import('../../frontend/app/RelinkShell/company-line/raise-view.js');
+    const draft = {
+      id: 'm-0a0b0c0d', amount: 250000, currency: 'USD', instrument: 'safe', valuation: { low: 2000000, high: 3000000, basis: 'three comparables' },
+      useOfFunds: 'Twelve months of serving', route: { kind: '506c', jurisdiction: 'US' }, limits: { perDay: 10, followUps: 2 }, minCheck: 5000,
+    };
+    const sheet = { id: 'f-0a0b0c0d', facts: [{ n: 1, claim: 'Three harbours pay', figure: { value: 3, unit: 'harbours' }, source: 'books: Tidewater', forwardLooking: false }] };
+    const raises = [{ id: COMPANY.id, name: 'Tidewater', raise: { status: 'none', draft, mandate: null, account: null, sheet, review: null } }];
+    expect(signReady({ kind: 'wallet', address: `0x${'ab'.repeat(20)}` })).toBe(false);
+    expect(signReady({ kind: 'wallet', address: `0x${'ab'.repeat(20)}`, counsel: true })).toBe(true);
+    expect(accountFromDraft({ kind: 'portal', portal: 'Wefunder', url: ' https://wefunder.com/x ' })).toEqual({ kind: 'portal', portal: 'Wefunder', url: 'https://wefunder.com/x' });
+    expect(mandateWords(draft)).toBe('250,000 USD BY SAFE · VALUATION 2,000,000–3,000,000 · 506C IN US · 10 A DAY, 2 FOLLOW-UPS · MIN CHECK 5,000');
+    expect(accountWords({ kind: 'bank', bankName: 'Mercury', accountName: 'Tidewater LLC' })).toBe('BANK Mercury — Tidewater LLC');
+    const html = renderToStaticMarkup(createElement(CompanyLineBody, {
+      board: boardOf([]), names: NAMES, error: null, loading: false, busy: false, drafts: {}, onDraft: () => {}, onRefresh: () => {},
+      onOpen: () => {}, onHandOn: () => {}, onInspect: () => {}, onAnswer: () => {}, onCharter: () => {},
+      raises, onRaise: { onSign: () => {}, onMove: () => {}, onReview: () => {} },
+    }));
+    expect(html).toContain(`data-raise="${COMPANY.id}"`);
+    expect(html).toContain('SIGN THE MANDATE — ONLY YOU CAN');
+    expect(html).toMatch(/disabled="">SIGN<\/button>/);
+    expect(html).toContain('COUNSEL CHOSE THIS ROUTE');
+    expect(html).toContain('FACTS SHEET — 1 FACTS · WAITING FOR COUNSEL');
+    expect(html).toContain('>COUNSEL APPROVED<');
+    expect(html).toContain('BEFORE ANY INVESTOR IS ASKED, COUNSEL ANSWERS');
+  });
+
+  test('a RAISE row is named and lands on its company\'s raise', () => {
+    const row = { kind: 'raise', where: { app: 'companyline', companyId: COMPANY.id, raise: 'sign' } };
+    expect(KIND_LABEL[row.kind]).toBe('RAISE');
+    expect(cardSelector(row)).toBe(`[data-raise="${COMPANY.id}"]`);
+  });
+});
+
+describe('the raise\'s investors on the desk', () => {
+  test('each investor where they stand, each thread as written — the placeholder, never the account', async () => {
+    const { RaiseSection } = await import('../../frontend/app/RelinkShell/company-line/RaiseSection.jsx');
+    const m = { id: 'm-0a0b0c0d', amount: 250000, currency: 'USD', instrument: 'safe', valuation: { low: 2, high: 3, basis: 'b' }, useOfFunds: 'u', route: { kind: '506c', jurisdiction: 'US' }, limits: { perDay: 3, followUps: 1 }, minCheck: 5000 };
+    const raises = [{ id: COMPANY.id, name: 'Tidewater', raise: {
+      status: 'active', draft: m, mandate: m, account: { kind: 'wallet', address: '0x7e7e', network: 'ethereum' }, sheet: null, review: null,
+      investors: [
+        { id: 'i-1', name: 'Ann Fund', firm: null, status: 'declined', note: 'Not this year', thread: [{ at: '2026-11-10T09:00:00.000Z', subject: 'Tidewater', text: 'Three harbours pay. {{payment}}' }] },
+        { id: 'i-2', name: 'Bo Angel', firm: 'Bo & Co', status: 'refused', note: 'Not accredited', thread: [] },
+      ],
+    } }];
+    const html = renderToStaticMarkup(createElement(RaiseSection, { raises, drafts: {}, busy: false, onDraft: () => {}, onSign: () => {}, onMove: () => {}, onReview: () => {} }));
+    expect(html).toContain('INVESTORS — 2');
+    expect(html).toContain('Ann Fund — DECLINED: Not this year');
+    expect(html).toContain('1 MESSAGE SENT');
+    expect(html).toContain('2026-11-10 09:00 — Tidewater: Three harbours pay. {{payment}}');
+    expect(html).toContain('Bo Angel (Bo &amp; Co) — REFUSED: Not accredited');
+    expect(html).toContain('MONEY LANDS AT: <span class="cline-exact">WALLET 0x7e7e (ethereum)</span>');
+    expect(html).toContain('>END THE RAISE</button>');
+  });
+});
+
+describe('the close on the desk', () => {
+  test('dark until the papers, accreditation (506c) and the receipt are there; a closed investor shows the money in', async () => {
+    const { RaiseSection } = await import('../../frontend/app/RelinkShell/company-line/RaiseSection.jsx');
+    const m = { id: 'm-1', amount: 100000, currency: 'USD', instrument: 'safe', valuation: { low: 2, high: 3, basis: 'b' }, useOfFunds: 'u', route: { kind: '506c', jurisdiction: 'US' }, limits: { perDay: 3, followUps: 1 }, minCheck: 5000 };
+    const raise = (drafts) => renderToStaticMarkup(createElement(RaiseSection, {
+      raises: [{ id: COMPANY.id, name: 'Tidewater', raise: { status: 'active', draft: m, mandate: m, account: { kind: 'wallet', address: '0x7e', network: 'ethereum' }, sheet: null, review: null, investors: [
+        { id: 'i-c', name: 'Cy Ventures', status: 'sound', terms: { amount: 50000, valuation: 2500000 }, thread: [] },
+        { id: 'i-d', name: 'Dee Capital', status: 'closed', closed: { amount: 20000, received: { kind: 'money-in', ref: 'ethereum:0xd:0' } }, thread: [] },
+      ] } }],
+      drafts, busy: false, onDraft: () => {}, onSign: () => {}, onMove: () => {}, onReview: () => {}, onClose: () => {},
+    }));
+    expect(raise({})).toContain('CLOSE Cy Ventures — 50,000 USD AT A 2,500,000 VALUATION — ONLY YOU SIGN');
+    expect(raise({})).toContain('THE INVESTOR IS VERIFIED ACCREDITED');
+    expect(raise({})).toMatch(/disabled="">SIGN THE CLOSE<\/button>/);
+    expect(raise({ 'close:i-c': { papers: true, accredited: true, receipt: 'ethereum:0xabc:0' } })).toMatch(/class="sec-scan label-data">SIGN THE CLOSE<\/button>/);
+    expect(raise({})).toContain('Dee Capital — CLOSED — 20,000 IN, UNDER ethereum:0xd:0');
   });
 });

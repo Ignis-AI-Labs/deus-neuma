@@ -6,6 +6,88 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.98] - 2026-10-30
+
+Notes: `docs/operations/release-notes-0.1.98.md`.
+
+### Added
+
+- Chats with the house: your house's Telegram and Discord bots can now listen as well as post. Turn on "Chats with the house" in Settings → Security → Connections (it's off until you do). The being that holds the bot answers, in a real conversation.
+- Nobody is heard until you say so. Someone who writes to the bot gets a pairing code, and nothing they send is read until you approve that code. Codes wait in WAITING ON YOU and on the platform window's new CHATS tab.
+- A stranger gets one code and nothing more until you answer it. In a group you approve, the bot answers only when it's named. You can take anyone off the list at any time.
+- The TREASURY window has a cost meter: what your house costs to run, month by month. It stays off until you set your electricity rate and say where the rate comes from.
+- Once it's on, the meter reads your GPU's power draw once a minute while the desk runs and prices it at your rate. A minute it didn't read (the desk was off, or the GPU gave no reading) is shown as unread, never guessed.
+- Enter your hardware once (what it cost, and how many months to pay it off over), any monthly costs such as rent, and each provider's API bill. Each entry needs its source: the receipt, the bill or a link.
+- Each month shows the GPU energy and its cost, the hardware's share, the monthly costs and the bills, with totals kept per currency and never converted. A wrong entry is voided with a reason, never edited.
+- Your Quaestor reads this month's and last month's costs on the treasury board.
+- Delivery to a customer. In COMPANY LINE → SALES, choose where finished work goes: a folder on this machine that you serve on the web (a synced drive folder, or a web server's directory), and its https address.
+- Your Mercator publishes a deal's work, or its invoice, to that folder, with your yes unless your charter allows it. Each item goes under a link no one can guess, and the Mercator sends the buyer the link from the house mailbox. Each of those emails still asks for your approval.
+- Only files from inside the house's own folder can be published, and never one carrying a recovery phrase or a live secret. An invoice is published from the Quaestor's record, so its payment address is always the one you set.
+- Each won deal in SALES lists every link delivered on it.
+- Invoices. When your Mercator wins a deal, your Quaestor can bill it: what each part costs, and when it's due. A deal's invoices can never bill more than the deal was won at.
+- You say where invoices are paid, in the TREASURY window: an Ethereum wallet that's yours. No being ever writes payment details. Each invoice carries the address you set, and that address is watched for money coming in.
+- USD invoices are paid in USDC, USDT or DAI, and ETH invoices in ether. Card payments come later.
+- An invoice is marked paid only by a payment that actually arrived: at its address, in its currency, for at least its total. One payment pays one invoice. Your Quaestor names the payment, or you press PAID BY on the invoice in TREASURY. Your Logista then records it in the books.
+- A wrong invoice is voided with a reason, never edited.
+- House mailbox watch: a new connection in Settings → Security → Connections, off until you turn it on. Once on, every 5 minutes the app lists the house mailbox's newest mail, read-only. It marks nothing as read and sends nothing.
+- A new message wakes the right being for a turn, inside your house charter. A reply from an investor or a lead the house is working wakes your Mercator; anything else wakes the being that holds the mailbox. The being reads the message itself, as untrusted text. The wake carries only the sender's address, never the message's words.
+- A new reply to the house's posts on X now wakes the being that holds that X account, so it can draft an answer right away. Every answer still waits for your approval.
+- Programmes: a lead being can now chain several team runs toward one goal. It opens a programme with the goal and how many runs it may take. Each run it starts joins the programme, and when a run ends the lead is woken to plan the next run from what that one taught, or to close the programme and say what the runs came to.
+- Your charter sets how many runs of a programme your Optio may approve on its own (THE OPTIO MAY APPROVE in HOUSE CLOCK, 3 unless you change it). Past that, the next plan comes to you.
+- Your legal office now reads the house's commercial acts, not only its code. Each day the legal watch files a matter when a company wins its first deal (it needs customer terms), when it invoices (sales tax or VAT), when money lands at a house wallet that no invoice or raise explains (a money-transmission question), and when a buyer asks for money back (money out is always yours). They show in LEGAL under SALES AND MONEY.
+- Sanctions screening: a new connection, off until you turn it on. Once on, the legal office downloads the US Treasury's public sanctions list at most once a day and checks your buyers' and investors' names against it on this computer. No name ever leaves your machine. A match is a possible match, and you are told at once. While it's off, the legal office says nobody was screened.
+- Raise closes: the house's Quaestor records the terms agreed with an interested investor. They must stay within your mandate: its instrument, its valuation range, its smallest check, and never past the amount you're raising. The Praetor checks them, then the close waits for your signature in WAITING ON YOU.
+- You sign a close only with the papers signed, the investor verified accredited where your route requires it, and the money landed. For a wallet, that means a receipt for at least the agreed amount, at your mandate's own address, on its network, and each receipt can close only one investor. Signing a wallet mandate also adds that address to the money-in watch list, so investor transfers are seen.
+- The raise room's foundation, in the COMPANY LINE window: once a company is fully formed, the house can prepare a raise. Its Quaestor drafts the mandate: how much, the instrument, the valuation range and how it was reached, what the money will do, the legal route, outreach limits, and the smallest check. Only you sign it, entering the account where the money lands yourself and confirming your lawyer chose the route. You can pause, resume or close it at any time.
+- The house's Numerarius files the facts sheet investors may be told, each fact with its source and each forward-looking line marked. You record your lawyer's review, and only an approved sheet will ever back an investor message.
+- Raise outreach, from the house's own mailbox: once you've signed the mandate and your lawyer has approved the facts sheet, the house can list investors, have its Praetor clear each one under the legal route, and write to them. Every message is checked first. Any number not on the approved facts sheet or in your mandate, an unmarked forward-looking promise, a missing AI-disclosure line, any payment details, or false urgency holds the message. Payment instructions are filled in only from the account you entered. The mandate's daily pace and follow-up limits hold, and an investor who says no is never written to again.
+- The RAISE section lists every investor, where each stands, and every message sent to them.
+- A being can read scanned PDFs. A page with no text on it (a scanned filing, a signed contract) is shown to the being as an image, up to four pages per read, and the being is told which pages to ask for next. A model that cannot see images is told so plainly.
+- Model-only workers on teams: your house's harness, the platform with no being on the model you chose for it, now stands on a team plan's roster as a worker, named by its model. A lead can give it steps beside the beings.
+- A worker takes steps and nothing else. It never holds a house seat and keeps no journal: a run isn't its memory.
+- On a cloud model, a worker's step runs beside the beings' without waiting for your GPU, so a team can grow wider than one machine. On a local model, it shares the GPU like any member.
+
+### Changed
+
+- When you hold the Rector seat, CHOOSE now takes one step instead of two. Handing the chosen gap on counts as your yes, so there's no second screen asking you to approve what you just wrote. END THE GAP sits beside HAND ON for when the answer is no, with your reason.
+- A team run that fails or is stopped is now remembered too. Each being whose own part didn't finish keeps that in its journal: what it was asked to do, and the record of what stopped it. Parts that never ran, because an earlier part failed, are noted as well. Each being's journal holds only its own part, never a teammate's, and states what happened without telling the being what to make of it.
+
+### Fixed
+
+- The company line's acts (opening a company, handing on a stage, inspecting it, asking for your hands), the Mercator's deals, the Logista's books, the raise room's acts, invoices and deliveries now each make their own sound on the desk, as every other act does. So do sending a message to another open chat and listing the open chats.
+- When an app or a benchmark drives a being through `neuma agent` and sends a system message, that message is now treated as the conversation's own rules, which hold over anything said inside the conversation. It used to be pasted into the being's first message as "SYSTEM: …", where the being's injection defence rightly ignored it as a smuggled instruction. A rule like "don't discuss sports" now holds when someone asks about sports.
+- Every word in the COMPANY LINE window now reads at 13px or more, the desk's legibility floor.
+- The raise room shows your receiving wallet, and the links your house sends you to, exactly as they are, never in capitals.
+- Large sums in the raise room carry thousands separators (250,000 USD, a 2,000,000–3,000,000 valuation), so an amount you sign can't be misread.
+- The button that ends a raise now reads END THE RAISE, so it can't be mistaken for signing an investor's close.
+- You're no longer notified about company line moves you made yourself. The window and WAITING ON YOU already show your next move.
+- A being's coding shell no longer stops working because a file changed in a folder where the shell once wrote something. The shell now refuses only when a file it changed itself was changed underneath it, or when it replaced a whole folder that then changed.
+- The chat tabs no longer show a small up and down scroll bar beside the last tab.
+- Every word in the TREASURY window now reads at 13px or more, the desk's legibility floor, including the spend cards you approve or deny. Spend cards in your wallet's settings got the same lift.
+
+### Security
+
+- The AppImage now keeps Chromium's sandbox on when started from the app menu. It turns the sandbox off only on systems that do not allow it (some Ubuntu releases), and says so when it does.
+- A house can no longer claim a wallet that belongs to another house on the same machine: neither that house's operator wallet, nor any address it watches. The guard covers where invoices are paid, a raise's receiving wallet, and the receive addresses you declare for money in. Before, one house could have started watching another house's incoming money in its own ledger.
+- Updates can now be signed by a second, offline backup key as well as the release key, so a lost or retired release key never leaves an installed app unable to update.
+- Voice models download from a fixed, known version of each model instead of whatever was published last, and no longer bring program files with them.
+- Voice engines install exactly the software versions the app was tested with.
+- The filesystem and memory tool servers start at the version the app ships, never the newest one published.
+- A being working in a folder that holds every house on the machine can no longer read or write another house's beings or records; its own house stays open to it as before.
+- If you set your own key for encrypting your neumas' private files and it looks like a passphrase rather than a random key, the setup check now warns you. Someone with a copy of the files could guess that kind of key and read them. The warning tells you how to switch to a random key. A key the app made for you never triggers the warning.
+- Identity keys sealed under a password are now protected by six times as much key-stretching work, making a stolen sealed key far harder to guess. Keys sealed before this change keep opening with the same password.
+- A being can no longer place a file in another being's acts folder, so it cannot make that being carry out an act it never chose.
+- When the folder of beings or the folder of house records is reached through a shortcut, another house's beings and records stay walled off under their real location too, for beings and for the file explorer.
+- On a new install, signing in no longer makes you the computer's owner just because you were first. The owner is the first person to sign in from the Deus Neuma app, or the `neuma` command line, running under the computer account that installed it. Someone using another account on the same computer who opens the app first signs in as a guest and cannot take over the computer's settings or its terminal. Installs that already have an owner are unchanged.
+- A being can no longer swap a link onto a secret file in the moment between the safety check and the read: the read is judged again as the file is opened. Files you granted it stay readable.
+- A being searching a folder that holds every house on the machine no longer finds file names or lines from another house's beings or records.
+- A being's shell, and a team's script run, over a folder that holds every house on the machine no longer sees another house's beings or records.
+- The built-in terminal opens only for this computer's owner and co-owners, at the computer's own desk. Anyone else who signs in with a wallet is refused and never gets a shell, since a shell runs as the owner's own account on the computer.
+- A sealed identity record that carries its tamper seal is always checked against it, even if the file has been edited to claim the older, unsealed format. Records written in that older format still open.
+- On a Linux desktop with no real keyring, the app no longer remembers your wallet password or makes a wallet for you, because the fallback store there is not a real lock and other programs could read the password back. A password remembered or a wallet made earlier still opens.
+- A sealed witness that reads a page carrying planted instructions can no longer carry a link, account or address from that page into its next act: the act waits for you, as a being's already does.
+- On Windows, uninstalling only removes a model folder that setup itself created, and never a drive, the Windows or Program Files folders, or your user folder, even if the setting that names the folder was changed by another program.
+
 ## [0.1.95] - 2026-10-29
 
 Notes: `docs/operations/release-notes-0.1.95.md`.

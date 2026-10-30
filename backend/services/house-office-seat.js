@@ -26,6 +26,7 @@ import { houseKey } from './staff/cos-designation.js';
 import { ABSENT, readJson, writePrivate, legacyHouseOf, isTombstone, sameWorld } from './house-office-legacy.js';
 import { createLogger } from './logger.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
+import { isHarnessLane } from '../../core/workspace/lane-grounds.js';
 
 const log = createLogger('HouseOffice.Seat');
 
@@ -177,6 +178,8 @@ export const createHouseSeat = ({ office, title, legacyPath = null }) => {
       if (!id || id.length > LANE_ID_MAX) {
         return Promise.reject(new Error(`a ${title} designation needs a lane id`));
       }
+      // A worker (the house's harness lane, team-workers.js) takes steps, never a seat: a seat is a being's.
+      if (isHarnessLane(id)) return Promise.reject(new Error(`lane ${id} is a worker of this house, not a being — a ${title} seat is a being's`));
       return serialize(async () => {
         if ((await ownerHouseOf(id)) !== key) {
           throw new Error(`lane ${id} is not a lane of this house — a house seats only its own ${title}`);

@@ -34,6 +34,7 @@ import harnessRouter from '../../backend/routes/harness-routes.js';
 import { harnessLaneId } from '../../backend/services/harness-lane.js';
 import { serverLine } from '../../frontend/app/RelinkShell/harness-route-line.js';
 import { beingModelOptions } from '../../backend/services/being-inference.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_DOORS = ['WORKSPACES_ROOT', 'HARNESS_ROOT', 'NEUMA_PROVIDER_CREDENTIALS_PATH', 'NEUMA_ROUTES_PATH', 'NEUMA_REALM_ROOT', 'DNA_ENCRYPTION_KEY'];
 
@@ -82,6 +83,8 @@ beforeAll(async () => {
   const challenge = generateChallenge(keypair.address);
   wallet = keypair.address;
   token = createSessionToken(verifySignature(keypair.address, challenge, await signMessage(keypair.privateKey, challenge)));
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner(keypair.address);
 });
 
 afterAll(async () => {

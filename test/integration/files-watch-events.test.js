@@ -14,6 +14,7 @@ import { createSessionToken } from '../../backend/services/auth.js';
 import { setRoots } from '../../backend/services/user-files.js';
 import { stopFilesWatchers } from '../../backend/services/files-watcher.js';
 import router from '../../backend/routes/user-files-routes.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const WALLET = '0x2222222222222222222222222222222222222222';
 
@@ -45,6 +46,8 @@ test('no token → the lane refuses (requireAuth, for real)', async () => {
 });
 
 test('a real write reaches a live SSE subscriber as a files:changed frame', async () => {
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner(WALLET);
   const token = createSessionToken(WALLET);
   const abort = new AbortController();
   // The token rides the QUERY — the exact path an EventSource must use.

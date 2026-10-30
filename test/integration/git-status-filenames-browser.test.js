@@ -11,6 +11,7 @@ import { expect, test } from 'vitest';
 import router from '../../backend/routes/user-files-routes.js';
 import { getRoots, setRoots } from '../../backend/services/user-files.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test.skipIf(process.platform === 'win32')('quoted names carry their Git badges through the signed API into Explorer rows', async () => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-git-badges-'));
@@ -26,7 +27,9 @@ test.skipIf(process.platform === 'win32')('quoted names carry their Git badges t
     const ignored = 'quote" -> name.ignored';
     await fs.writeFile(path.join(repo, ignored), 'ignored');
     setRoots([repo]);
-    const { token } = await fullAuth();
+    const { token, address } = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(address);
     vite = await createServer({ configFile: false,
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(temp, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },

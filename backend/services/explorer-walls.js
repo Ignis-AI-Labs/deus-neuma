@@ -68,7 +68,7 @@ export const realOf = (target) => {
 };
 
 // impure — the wallet a lane's owner.json names, or null
-const laneOwner = (laneDir) => {
+export const laneOwner = (laneDir) => {
   try {
     const wallet = JSON.parse(fs.readFileSync(path.join(laneDir, 'owner.json'), 'utf8'))?.wallet;
     return typeof wallet === 'string' ? wallet.toLowerCase() : null;
@@ -77,15 +77,24 @@ const laneOwner = (laneDir) => {
   }
 };
 
+// impure (realpath) — the realm and lane-ground roots, each as named and as it really lies
+export const houseRoots = () => {
+  const spellings = (root) => [...new Set([path.resolve(root), realOf(path.resolve(root))])];
+  return { realms: spellings(getRealmRoot()), grounds: [getWorkspacesRoot(), getWitnessesRoot()].flatMap(spellings) };
+};
+
 // impure — does this path lie in another house's realm dir or lane? The lane's
 // folder is read as typed and as folded, so a respelling never hides its owner.
-const isOtherHouse = (target, reader) => {
-  const realm = path.resolve(getRealmRoot());
-  if (within(target, realm) && foldName(target) !== foldName(realm)) {
+// The being sandbox (tool-sandbox.js) asks the same question for its connection's wallet.
+// Each root is judged as named and as it really lies, so a house or realm root that is itself
+// a symlink cannot hide a resolved path from the wall; a walk passes houseRoots() once.
+export const isOtherHouse = (target, reader, { realms, grounds } = houseRoots()) => {
+  for (const realm of realms) {
+    if (!within(target, realm) || foldName(target) === foldName(realm)) continue;
     const top = foldName(path.relative(foldName(realm), foldName(target)).split(path.sep)[0]);
     if (WALLET_DIR.test(top) && top !== reader) return true;
   }
-  for (const ground of [getWorkspacesRoot(), getWitnessesRoot()].map((g) => path.resolve(g))) {
+  for (const ground of grounds) {
     if (!within(target, ground) || foldName(target) === foldName(ground)) continue;
     const segment = (t, g) => path.relative(g, t).split(path.sep)[0];
     const owner = laneOwner(path.join(ground, segment(target, ground)))

@@ -16,6 +16,7 @@
 //     (treasury/treasury-waiting.js, #586)
 //   - a paused CMO mandate, and each hostile-text hold it raised (marketing/mandate/)
 //   - a company line waiting on the operator's own move (company-line/line-waiting.js)
+//   - a stranger's pairing code on a house chat bot (channels/chat-waiting.js)
 // Beside the items, not among them: an ACTIVE mandate (`mandate`), which owes
 // no decision but stands as the bell's quiet mark while the CMO acts.
 // Deliberately NOT here: an unsettled intent file (it becomes a chat card the
@@ -42,6 +43,7 @@ import { asksOwedBy } from '../marketing/campaign-asks.js';
 import { openLinkChanges } from '../marketing/link-changes.js';
 import { treasuryWaitingItems } from '../treasury/treasury-waiting.js';
 import { lineWaitingItems } from '../company-line/line-waiting.js';
+import { chatWaitingItems } from '../channels/chat-waiting.js';
 import { readMandate } from '../marketing/mandate/mandate-store.js';
 import { mandateWaitingItem, mandateOnMark } from '../marketing/mandate/mandate-words.js';
 import { readHolds } from '../marketing/mandate/mandate-hold-store.js';
@@ -113,5 +115,6 @@ export const readWaiting = async (wallet) => {
   const links = await read('link-changes', async () => (await openLinkChanges(wallet)).map((c) => linkChangeItem(c, names)), gaps);
   const kit = await read('key-lock', () => keyLockWaitingItems(wallet), gaps);
   const line = await read('company-line', () => lineWaitingItems(wallet, names), gaps);
-  return Object.freeze({ ...foldWaiting([...cards, ...asks, ...charter, ...queue, ...proposals, ...campaignAsks, ...mandate, ...money, ...links, ...kit, ...line]), gaps, mandate: standing });
+  const chats = await read('chat-pairing', () => chatWaitingItems(wallet), gaps);
+  return Object.freeze({ ...foldWaiting([...cards, ...asks, ...charter, ...queue, ...proposals, ...campaignAsks, ...mandate, ...money, ...links, ...kit, ...line, ...chats]), gaps, mandate: standing });
 };

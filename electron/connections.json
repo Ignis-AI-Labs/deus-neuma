@@ -45,6 +45,39 @@
       "default": false
     },
     {
+      "id": "mail-watch",
+      "name": "House mailbox watch",
+      "to": "the mail server you connected for the house mailbox",
+      "when": "every 5 minutes",
+      "sends": "the house mailbox's sign-in, to list the newest messages read-only",
+      "whileOff": "new mail waits until a being or you check the mailbox",
+      "detail": "Once you turn it on, every 5 minutes the app signs in to the mail server you connected for the house mailbox and lists the newest messages, read-only: it marks nothing read and sends nothing. A new message from an investor or a lead the house is talking to wakes the seat that holds that conversation; any other new message wakes the being that holds the mailbox. Every wake stays inside your house charter. Your mail provider sees the sign-in from this computer, as it does when you check mail yourself. While it is off, the house reads mail only when a being checks it.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "sanctions-list",
+      "name": "Sanctions list",
+      "to": "treasury.gov (the US Treasury's public sanctions list)",
+      "when": "once a day, while the legal watch runs",
+      "sends": "a request for the public list: no identifier, your IP address as any request shows it",
+      "whileOff": "buyers and investors are not screened, and the legal office says so",
+      "detail": "Once you turn it on, the legal office downloads the US Treasury's public sanctions list (the Specially Designated Nationals list and its other names, from treasury.gov) at most once a day and keeps it on this computer. It checks the names of the house's buyers and investors against that copy here; no name ever leaves your machine. The request carries no account or identifier; the Treasury's site sees your IP address. A match is only a possible match, filed for you and your CLO to look at. While it is off, nothing is screened.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "chat-bridge",
+      "name": "Chats with the house",
+      "to": "Telegram's and Discord's servers, through the bots you connected",
+      "when": "all the time while on: Telegram is asked for new messages every 25 seconds, Discord holds one open line",
+      "sends": "your bots' tokens, to hear the messages sent to them, and the answers of the beings who hold them",
+      "whileOff": "your bots post what you approve, but hear nobody",
+      "detail": "Once you turn it on, each Telegram and Discord bot you connected for the house, and gave a holder, listens for messages sent to it. A person you approve can then talk with the being who holds that bot, in a direct chat, or in a group you approved when the message names the bot. A stranger only gets a pairing code back, and nothing they send is read until you approve that code (WAITING ON YOU, or the platform's CHATS tab). Telegram and Discord see what is sent and answered, as with any chat on their services. While it is off, the bots only post what you approve.",
+      "control": "switch",
+      "default": false
+    },
+    {
       "id": "web",
       "name": "The web",
       "to": "the search index and the pages a neuma reads",

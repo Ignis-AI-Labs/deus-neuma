@@ -151,7 +151,8 @@ export const withFileSight = (result, laneId) => {
   return {
     ...stamped,
     // The shape `foldSight` reads. `store: 'ephemeral'` is what tells the eye
-    // these bytes live in memory for one look rather than in the image store.
-    sight: { laneId, imageIds: [...imageIds], store: 'ephemeral' },
+    // these bytes live in memory for one look rather than in the image store;
+    // `purpose: 'file-read'` tells the being it READ them, never that it made them.
+    sight: { laneId, imageIds: [...imageIds], store: 'ephemeral', purpose: 'file-read' },
   };
 };

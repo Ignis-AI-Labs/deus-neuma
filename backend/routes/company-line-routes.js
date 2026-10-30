@@ -19,8 +19,8 @@ import { requireAuth } from '../services/auth.js';
 import { seatHolders } from '../services/company-line/stage-holders.js';
 import { houseStop } from '../services/company-line/house-dial.js';
 import { stopSays, FLOOR } from '../services/company-line/involvement-dial.js';
-import { makeCompany, openCompany, listCompanies, readCompany, readLine, appendLineEvent } from '../services/company-line/company-store.js';
-import { judgeInspect } from '../services/company-line/line-acts.js';
+import { makeCompany, openCompany, listCompanies, readCompany, readLine, appendLineEvents } from '../services/company-line/company-store.js';
+import { judgeInspect, judgeEndGap, withOwnAnswers } from '../services/company-line/line-acts.js';
 import { prepareHandOn, keepWorksheet } from '../services/company-line/line-hand-on.js';
 import { announceMove } from '../services/company-line/line-notices.js';
 import { lineView } from '../services/company-line/company-view.js';
@@ -90,7 +90,9 @@ router.post('/', async (req, res) => {
 });
 
 // One operator move on a company's line, judged by the shared law (a judge
-// may read the ground: a hand-on's worksheet is judged where it lands).
+// may read the ground: a hand-on's worksheet is judged where it lands). A
+// hand-on whose next look is the operator's own lands with that yes (nothing
+// is approved twice); a judge that makes several events lands them as one run.
 const operatorMove = (judge) => async (req, res) => {
   try {
     const wallet = req.walletAddress;
@@ -100,10 +102,12 @@ const operatorMove = (judge) => async (req, res) => {
     const judged = await judge({ wallet, company, line, holders, stop, actor: 'operator', stageId: req.body?.stage, ...req.body, now: new Date().toISOString() });
     if (!judged.ok) return res.status(STATUS_OF[judged.status] ?? 400).json({ error: judged.reason });
     await keepWorksheet(judged);
-    const landed = await appendLineEvent(wallet, company.id, judged.event);
+    const events = judged.events ?? withOwnAnswers({ line, holders, event: judged.event, now: judged.event.at });
+    const landed = await appendLineEvents(wallet, company.id, events);
     if (!landed.ok) return res.status(409).json({ error: 'The line moved before this landed — read it again' });
-    await announceMove({ wallet, company, event: judged.event, line: landed.line, holders });
-    log.info('Company line moved by the operator', { id: company.id, stage: judged.event.stage, type: judged.event.type, verdict: judged.event.verdict ?? null, wallet });
+    const last = events.at(-1);
+    await announceMove({ wallet, company, event: last, line: landed.line, holders });
+    log.info('Company line moved by the operator', { id: company.id, stage: last.stage, types: events.map((e) => e.verdict ?? e.type), wallet });
     return res.json({ company: await viewOf(wallet, company, holders) });
   } catch (error) {
     log.error('Company line move failed', { id: req.params.id, error: error.message });
@@ -113,6 +117,8 @@ const operatorMove = (judge) => async (req, res) => {
 
 router.post('/:id/hand-on', operatorMove(prepareHandOn));
 router.post('/:id/inspect', operatorMove(async (args) => judgeInspect(args)));
+// The operator's no where their hand-on would be their yes: the gap ends here, its reason named.
+router.post('/:id/end-gap', operatorMove(async (args) => judgeEndGap(args)));
 
 // The operator answers a HANDS item: done (with the fact, or where a secret is
 // kept) or declined (with why). The answer is screened like anything that

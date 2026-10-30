@@ -409,8 +409,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'campaigns.ask',
       // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
       'marketing.board-arrange', 'marketing.company-links',
-      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*: the company line, the Mercator's deals, the Logista's books (Design note, 2026-10-29 — records on the house's realm, no egress, no spend; validate re-judges the seat.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met',
+      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [
@@ -424,7 +424,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // A video render (image/generate on a video pipeline) asks on its own row:
       // it holds the machine for minutes, so ALWAYS for stills never covers it.
       'video.generate',
-      'vault.publish',
+      'vault.publish', 'delivery.publish',
       'tasks.add', 'tasks.update', 'tasks.focus', 'tasks.take', 'tasks.operator-add', 'tasks.operator-update', 'tasks.operator-drop',
       'leads.add', 'leads.touch',
       'campaigns.create', 'campaigns.update',

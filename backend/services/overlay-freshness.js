@@ -2,11 +2,14 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createRequire } from 'node:module';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { writeJsonAtomic } from './user-realm.js';
 import { isCredentialSource } from './secret-path-classifier.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('OverlayFreshness');
+const execFileAsync = promisify(execFile);
 
 // Under the Electron binary (the desk spawns `electron backend/server.js`) the fs module
 // is ASAR-PATCHED: an .asar archive stats as a directory with synthetic per-process inodes
@@ -117,22 +120,126 @@ export const prepareOverlayFreshness = async ({ workspace, sourceRoot, masks }) 
   await writeJsonAtomic(manifestFor(workspace), { version: 1, sourceRoot, roots, excluded });
 };
 
-/** Check only lower subtrees shadowed by top-level upper entries (incl. whiteouts).
- * Directory shadows conservatively cover their subtree, including opaque dirs.
- * This stats dependencies only when an upper dependency tree actually exists.
- * It never refreshes the baseline over unharvested work. impure. */
+// The kernel tags an upper directory that REPLACES its lower (rm -rf then mkdir, a
+// rename) with an opaque or redirect xattr: that directory hides the lower's whole
+// subtree. Node has no xattr call, so Python reads them — NUL-separated paths
+// relative to the upper. A plain upper directory carries neither: it is a MERGE,
+// and the lower's own files under it stay live in the shell.
+const MARKED_DIRS = `
+import os, sys
+root = sys.argv[1]
+names = ('user.overlay.opaque', 'trusted.overlay.opaque', 'user.overlay.redirect', 'trusted.overlay.redirect')
+def marked(p):
+    for n in names:
+        try:
+            os.getxattr(p, n, follow_symlinks=False)
+            return True
+        except OSError:
+            pass
+    return False
+for d, dirs, _ in os.walk(root):
+    for name in dirs:
+        p = os.path.join(d, name)
+        if not os.path.islink(p) and marked(p):
+            sys.stdout.buffer.write(os.fsencode(os.path.relpath(p, root)) + b'\\0')
+`;
+
+// impure — the upper's directories that hide their lower subtree. Unreadable markers
+// (no python3) answer null: then every upper directory with a lower counts as hiding
+// it — the old, coarse answer, never a looser one.
+const markedDirs = async (workspace) => {
+  try {
+    const { stdout } = await execFileAsync('python3', ['-I', '-c', MARKED_DIRS, workspace], { encoding: 'buffer', maxBuffer: 256 * 1024 * 1024 });
+    return new Set(stdout.toString('utf8').split('\0').filter(Boolean));
+  } catch (error) {
+    log.warn('overlay directory markers unreadable; every upper directory with a lower is treated as hiding it', { err: error.message });
+    return null;
+  }
+};
+
+const splitTop = (rel) => {
+  const at = rel.indexOf(path.sep);
+  return at < 0 ? [rel, ''] : [rel.slice(0, at), rel.slice(at + 1)];
+};
+const lowerBound = (keys, target) => {
+  let lo = 0;
+  let hi = keys.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (keys[mid] < target) lo = mid + 1; else hi = mid; }
+  return lo;
+};
+
+// pure — the baseline read by any path under the ground: one row, or every row at and
+// below a path (keys sorted once per root, so a subtree is a range, not a scan).
+const baselineView = (baseline) => {
+  const sorted = new Map();
+  const rowsOf = (top) => (Object.hasOwn(baseline.roots, top) ? baseline.roots[top] : { '': null });
+  const keysOf = (top) => {
+    if (!sorted.has(top)) sorted.set(top, Object.keys(rowsOf(top)).sort());
+    return sorted.get(top);
+  };
+  return {
+    row: (rel) => { const [top, inner] = splitTop(rel); return rowsOf(top)[inner] ?? null; },
+    subtree: (rel) => {
+      const [top, inner] = splitTop(rel);
+      const rows = rowsOf(top);
+      if (!inner) return rows;
+      const keys = keysOf(top);
+      const out = Object.hasOwn(rows, inner) ? { [inner]: rows[inner] } : {};
+      const prefix = inner + path.sep;
+      for (let i = lowerBound(keys, prefix); i < keys.length && keys[i].startsWith(prefix); i += 1) out[keys[i]] = rows[keys[i]];
+      return out;
+    },
+  };
+};
+
+// impure — has the live lower at `rel`, or anything below it, moved since the baseline?
+const subtreeDrifted = async (view, { sourceRoot, excluded }, rel) => {
+  const inner = splitTop(rel)[1];
+  const prior = view.subtree(rel);
+  const current = {};
+  for (const [key, sig] of Object.entries(await inventory(path.join(sourceRoot, rel), excluded))) {
+    current[key ? (inner ? path.join(inner, key) : key) : inner] = sig;
+  }
+  const keys = new Set([...Object.keys(prior), ...Object.keys(current)]);
+  return [...keys].some((key) => (current[key] ?? null) !== (prior[key] ?? null));
+};
+
+const enoentNull = (error) => { if (error.code === 'ENOENT') return null; throw error; };
+
+/** Check only what the upper actually shadows. A file, symlink or whiteout shadows its
+ * own path (and a lower subtree under it); a marked directory shadows its whole lower
+ * subtree. A plain upper directory is a merge: only its own entries are walked, so a
+ * shell write deep in a folder never claims the folder — live edits beside it stay
+ * visible and the shell keeps running. A merge over a lower that became a file is a
+ * shadow too. It never refreshes the baseline over unharvested work. impure. */
 export const assertOverlayFresh = async ({ workspace, sourceRoot }) => {
   let baseline = await readBaseline(workspace);
   if (baseline?.version !== 1 || baseline.sourceRoot !== sourceRoot || !baseline.roots) {
     throw conflict('missing or invalid lower baseline');
   }
   baseline = await repairPoisonedRoots(baseline, workspace);
-  for (const name of await fs.readdir(workspace)) {
-    const current = await inventory(path.join(sourceRoot, name), baseline.excluded);
-    const prior = Object.hasOwn(baseline.roots, name) ? baseline.roots[name] : { '': null };
-    const names = new Set([...Object.keys(current), ...Object.keys(prior)]);
-    if ([...names].some((key) => current[key] !== prior[key])) {
-      throw conflict(`live lower changed beneath upper shadow ${JSON.stringify(name)}`);
+  const view = baselineView(baseline);
+  const drift = (rel) => conflict(`live lower changed beneath upper shadow ${JSON.stringify(rel)}`);
+  let marked;
+  const hides = async (rel) => {
+    if (marked === undefined) marked = await markedDirs(workspace);
+    return marked === null || marked.has(rel);
+  };
+  const queue = [''];
+  while (queue.length) {
+    const dir = queue.pop();
+    for (const name of await fs.readdir(path.join(workspace, dir))) {
+      const rel = dir ? path.join(dir, name) : name;
+      if ((await fs.lstat(path.join(workspace, rel))).isDirectory()) {
+        const live = await fsReal.lstat(path.join(sourceRoot, rel)).catch(enoentNull);
+        if (!live && view.row(rel) === null) continue; // the shell's own new folder: no lower below it
+        if (!(await hides(rel))) {
+          if (live && !live.isDirectory()) throw drift(rel);
+          queue.push(rel);
+          continue;
+        }
+      }
+      if (await subtreeDrifted(view, { sourceRoot, excluded: baseline.excluded }, rel)) throw drift(rel);
     }
   }
 };

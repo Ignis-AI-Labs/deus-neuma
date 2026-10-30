@@ -20,6 +20,7 @@ import { test, expect } from 'vitest';
 import { loadConfig, _resetConfig } from '../../backend/config.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('substrate ignite client keeps its refusal grammar and never-throw idiom', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'substrate-ignite-http-'));
@@ -28,6 +29,8 @@ test('substrate ignite client keeps its refusal grammar and never-throw idiom', 
   let vite; let server; let browser;
   try {
     const auth = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const app = express(); app.use(express.json());
     server = http.createServer(app); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;

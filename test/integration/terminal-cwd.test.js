@@ -17,7 +17,8 @@ import { realpathSync } from 'fs';
 import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
-import { generateChallenge, verifySignature, createSessionToken } from '../../backend/services/auth.js';
+import { generateChallenge, verifySignature, createSessionToken, verifySessionToken } from '../../backend/services/auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupTerminalRoutes } from '../../backend/routes/terminal-routes.js';
 import { setRoots } from '../../backend/services/user-files.js';
@@ -102,6 +103,8 @@ describe('terminal ?cwd= focus containment (D3/D4)', () => {
     setupTerminalRoutes(wss);
     await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
     const token = await makeAuthToken();
+    // The shell is the install owner's (terminal-routes.js): this wallet owns the test's install.
+    await makeInstallOwner(verifySessionToken(token).address);
     baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws?token=${encodeURIComponent(token)}`;
   });
 

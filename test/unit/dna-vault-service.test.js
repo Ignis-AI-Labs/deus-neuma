@@ -114,6 +114,22 @@ describe('DNAVaultService', () => {
       expect(decrypted).toEqual(original);
     });
 
+    test('an envelope with an authTag opens as GCM whatever its algorithm field says', async () => {
+      const original = { sealed: 'authenticated' };
+      const encrypted = await vault.encrypt(original);
+      const relabelled = { ...encrypted, algorithm: 'aes-256-cbc' };
+      expect(await vault.decrypt(relabelled)).toEqual(original);
+      const flipped = relabelled.encrypted[0] === 'a' ? 'b' : 'a';
+      await expect(vault.decrypt({ ...relabelled, encrypted: flipped + relabelled.encrypted.slice(1) }))
+        .rejects.toThrow(/authenticate/);
+      await expect(vault.decrypt({ ...relabelled, authTag: '00'.repeat(16) })).rejects.toThrow(/authenticate/);
+    });
+
+    test('an envelope claiming GCM with its authTag stripped is refused, not read as CBC', async () => {
+      const { authTag: _dropped, ...stripped } = await vault.encrypt({ sealed: 'authenticated' });
+      await expect(vault.decrypt(stripped)).rejects.toThrow(/without its authTag/);
+    });
+
     test('decrypt fails with authentication error on tampered GCM ciphertext', async () => {
       const encrypted = await vault.encrypt({ secret: 'untampered' });
       // Flip a byte in the ciphertext hex.

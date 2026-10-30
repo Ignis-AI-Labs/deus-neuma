@@ -25,5 +25,8 @@ export const handOnStage = (id, move) => lineCall('POST', `/${encodeURIComponent
 /** Answer the inspection that waits on the operator. impure. @param {string} id @param {{stage: string, verdict: string, flaw?: string}} move */
 export const inspectStage = (id, move) => lineCall('POST', `/${encodeURIComponent(id)}/inspect`, { body: move, errorPrefix: 'Could not record the inspection' });
 
+/** End the gap where the operator's hand-on would be their own yes: the no, with why. impure. @param {string} id @param {{stage: string, flaw: string}} move */
+export const endGap = (id, move) => lineCall('POST', `/${encodeURIComponent(id)}/end-gap`, { body: move, errorPrefix: 'Could not end the gap' });
+
 /** Answer a HANDS item: done (with the fact, or where a secret is kept) or declined (with why). impure. */
 export const answerHands = (id, handsId, answer) => lineCall('POST', `/${encodeURIComponent(id)}/hands/${encodeURIComponent(handsId)}`, { body: answer, errorPrefix: 'Could not record the answer' });

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { startTerminalKit, connectTerminal, terminalPid, until } from '../helpers/terminal-lifecycle-kit.js';
 
 let kit, owner;
-beforeEach(async () => { kit = await startTerminalKit(); owner = await kit.signIn(); });
+beforeEach(async () => { kit = await startTerminalKit(); owner = await kit.signIn(); await kit.seatOwners(owner); });
 afterEach(async () => { await kit?.dispose(); });
 
 test('fresh spawn returns a stable terminal identity', async () => {

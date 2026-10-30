@@ -16,6 +16,8 @@ import path from 'path';
 import { runCoordinatedTeam, composeRunReport } from './team-run.js';
 import { snapshotDelivery } from './team-delivery.js';
 import { recordTeamRunMemories } from './team-memory.js';
+import { joinRun } from './programmes/programme-store.js';
+import { freeOfLocalSlot } from './team-workers.js';
 import { stampPlanRun } from './team-plan.js';
 import { broadcastRun, endRun, flushStepStreams } from './team-run-live.js';
 import { createPartRunner } from './team-part.js';
@@ -42,13 +44,13 @@ export const memberSlots = (ceiling) => (Number.isInteger(ceiling) && ceiling > 
 // impure — THE DESK'S ACCOUNT of a team run ending: a run that finished in a
 // window the operator was not looking at is exactly the thing they asked to
 // be told about.
-const notifyRunEnded = (connection, runId, status, recordId) => {
+const notifyRunEnded = (connection, runId, status, recordId, programme = null) => {
   try {
     const laneId = connection?.companion?.neumaId ?? null;
     const name = connection?.companion?.name ?? 'A being';
     if (!connection?.walletAddress || !laneId) return;
-    // The lead has work — the run's synthesis: the house clock may wake it.
-    signalWake({ seat: laneId, reason: 'run-ended', ref: runId, detail: { status, record: recordId ?? null } });
+    // The lead has work — the run's synthesis, and its programme's next plan: the house clock may wake it.
+    signalWake({ seat: laneId, reason: 'run-ended', ref: runId, detail: { status, record: recordId ?? null, ...(programme ? { programme } : {}) } });
     notifyOperator({
       wallet: connection.walletAddress,
       kind: KIND.runDone,
@@ -103,6 +105,9 @@ export const runTeamInBackground = async ({ entry, plan, connection, record, ask
   // when an attempt stops short.
   const watchBoard = createBoardSightingWatch(connection.walletAddress);
   const worked = createPartRunner({ entry, ask, limit, record, resumed: resume?.failures ?? {}, waits: continueWaits });
+  // A worker on a cloud model is not the rig's to hold back: its steps widen the
+  // run past the local slots, which still bound every being (team-workers.js).
+  const cloudSteps = (await Promise.all(plan.steps.map((s) => freeOfLocalSlot(s.neumaId).catch(() => false)))).filter(Boolean).length;
 
   let status;
   let reportPath;
@@ -111,7 +116,7 @@ export const runTeamInBackground = async ({ entry, plan, connection, record, ask
       steps: plan.steps,
       goal: plan.goal,
       ask: worked,
-      maxParallel: limit,
+      maxParallel: limit + cloudSteps,
       workspace: plan.workspace ?? null,
       memberTools,
       lead: connection.companion.name || laneId,
@@ -169,19 +174,20 @@ export const runTeamInBackground = async ({ entry, plan, connection, record, ask
       ...(delivery ? { delivery: { id: delivery.id, root: delivery.root } } : {}),
       ...(record ? { record: record.id } : {}),
     });
-    // The run becomes each member's OWN memory — only a whole run is a
-    // finished story (the SSE lane's law).
-    if (!failed) {
-      await recordTeamRunMemories({
-        steps: plan.steps,
-        completed: run.results,
-        statuses: run.statuses,
-        torches: run.torches ?? {},
-        teamName: plan.name ?? null,
-        goal: plan.goal,
-        runId,
-      }).catch((memErr) => log.warn('team_run memory write-back', { error: memErr.message, runId }));
-    }
+    // The run becomes each member's OWN memory — a failed or stopped run as
+    // much as a whole one (memory of failure, the house economy's Stage 5).
+    await recordTeamRunMemories({
+      steps: plan.steps,
+      completed: run.results,
+      statuses: run.statuses,
+      torches: run.torches ?? {},
+      teamName: plan.name ?? null,
+      goal: plan.goal,
+      runId,
+      failures,
+      skipped: [...(run.skipped ?? [])],
+      outcome: status,
+    }).catch((memErr) => log.warn('team_run memory write-back', { error: memErr.message, runId }));
   } catch (err) {
     log.error('team_run failed', { error: err.message, runId });
     status = entry.controller.signal.aborted ? 'stopped' : 'failed';
@@ -194,6 +200,11 @@ export const runTeamInBackground = async ({ entry, plan, connection, record, ask
   await stampPlanRun(laneId, plan.approvedAt, {
     id: runId, status, startedAt: entry.startedAt, finishedAt: new Date().toISOString(), report: reportPath,
   });
-  notifyRunEnded(connection, runId, status, record?.id ?? null);
+  // A run of the lead's open programme joins it (programmes/programme-store.js); the wake carries where it stands.
+  const programme = connection?.walletAddress
+    ? await joinRun(connection.walletAddress, laneId, { id: runId, status, finishedAt: new Date().toISOString(), report: reportPath })
+      .catch((err) => { log.warn('the run could not join its programme', { runId, error: err.message }); return null; })
+    : null;
+  notifyRunEnded(connection, runId, status, record?.id ?? null, programme);
   return { status, report: reportPath };
 };

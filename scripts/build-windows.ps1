@@ -94,7 +94,8 @@ Step 3 'dependencies, with better-sqlite3 built for Electron'
 Run npm @('ci', '--no-audit', '--no-fund')
 $electron = node -p "require('./node_modules/electron/package.json').version"
 Push-Location node_modules\better-sqlite3
-& npx --yes prebuild-install --runtime=electron "--target=$electron" --arch=x64 --platform=win32
+# the locked prebuild-install (package-lock.json), run by path: npx could fetch the newest from the registry
+& node ..\prebuild-install\bin.js --runtime=electron "--target=$electron" --arch=x64 --platform=win32
 $prebuilt = ($LASTEXITCODE -eq 0)
 Pop-Location
 if ($prebuilt) {
@@ -117,6 +118,14 @@ $cache = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\winCodeSign\winCode
 if (-not (Test-Path (Join-Path $cache 'windows-10'))) {
   $archive = Join-Path $env:TEMP 'winCodeSign-2.6.0.7z'
   Invoke-WebRequest -UseBasicParsing -OutFile $archive 'https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z'
+  # Pinned: the archive whose sha512 electron-builder itself names for winCodeSign-2.6.0. Anything
+  # else stops the build before a byte of it is unpacked into the cache the signer runs from.
+  $pinned = 'cdaec7154dda7cc31f88d886e2489379a0625a737d610b5ae7f62a12f16743a4'
+  $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+  if ($got -ne $pinned) {
+    Remove-Item -Force -LiteralPath $archive
+    Fail "winCodeSign-2.6.0.7z is not the pinned archive (sha256 $got, expected $pinned)"
+  }
   New-Item -ItemType Directory -Force -Path $cache | Out-Null
   & .\node_modules\7zip-bin\win\x64\7za.exe x -y "-o$cache" $archive | Out-Null
   # exit 2 is exactly the two macOS symlinks it cannot create; everything Windows needs lands
@@ -129,7 +138,7 @@ Remove-Item -Recurse -Force release -ErrorAction SilentlyContinue
 # electron-builder's installer template crashes on some fresh installs (scripts\nsis-template-patch.mjs says why); never make an installer from it unpatched
 Run node @('scripts/patch-nsis-template.mjs', '--check')
 Run npm @('run', 'build')
-Run npx @('--yes', 'electron-builder', '--win', '--publish', 'never', '-c.npmRebuild=false')
+Run (Join-Path $PWD 'node_modules\.bin\electron-builder.cmd') @('--win', '--publish', 'never', '-c.npmRebuild=false')
 
 Step 6 'every native binary in the package is a real Windows binary'
 Run node @('scripts/verify-win-natives.mjs', 'release\win-unpacked')

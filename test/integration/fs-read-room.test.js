@@ -82,10 +82,12 @@ describe('a PDF reads as its words', () => {
     expect(page).toBe('[lines 2–2 of 2; end of file]\nHello from the press');
   });
 
-  test('a PDF with no selectable text is refused honestly, never handed back empty', async () => {
+  // A scan used to be refused here; it is now drawn for the being's eyes (fs-read-scanned-pdf.test.js).
+  test('a PDF with no selectable text is never handed back empty: its page is shown as an image', async () => {
     const result = await fsCall('fs', 'read', { path: path.join(dir, 'scan.pdf') });
-    expect(result.isError).toBe(true);
-    expect(text(result)).toMatch(/no selectable text/);
+    expect(result.isError).toBeFalsy();
+    expect(text(result)).toMatch(/\[Page 1\] — a scan with no text layer/);
+    expect(result.content.filter((c) => c.type === 'image')).toHaveLength(1);
   });
 });
 

@@ -9,6 +9,7 @@ import { listCompanies, readLine } from './company-store.js';
 import { seatHolders } from './stage-holders.js';
 import { lineView } from './company-view.js';
 import { readHands } from './hands-store.js';
+import { readRaise } from '../raise/raise-store.js';
 
 const TEXT_MAX = 200;
 
@@ -49,6 +50,24 @@ const handsWaitingItem = (view, item, names) => Object.freeze({
 });
 
 /**
+ * The raise's rows: a mandate draft waiting for the operator's signature, a
+ * facts sheet waiting for counsel's review (the floor, every dial stop). pure.
+ * @param {object} view - lineView's
+ * @param {object} raise - foldRaise's
+ */
+const raiseWaitingItems = (view, raise) => [
+  ...(raise.draft && raise.draft.id !== raise.mandate?.id
+    ? [{ id: `raise:${view.id}:sign:${raise.draft.id}`, kind: 'raise', title: `${view.name}: sign the raise mandate (${raise.draft.amount} ${raise.draft.currency})`, at: raise.draft.draftedAt, step: 'sign' }]
+    : []),
+  ...(raise.sheet && !raise.review
+    ? [{ id: `raise:${view.id}:review:${raise.sheet.id}`, kind: 'raise', title: `${view.name}: counsel's review of the facts sheet`, at: raise.sheet.filedAt, step: 'review' }]
+    : []),
+  ...raise.investors.filter((i) => i.status === 'sound').map((i) => ({
+    id: `raise:${view.id}:close:${i.id}`, kind: 'raise', title: `${view.name}: sign ${i.name}'s close (${i.terms.amount} ${raise.mandate.currency})`, at: i.terms.at, step: 'close',
+  })),
+].map(({ step, ...row }) => Object.freeze({ ...row, title: row.title.slice(0, TEXT_MAX), who: null, where: { app: 'companyline', companyId: view.id, raise: step } }));
+
+/**
  * @param {string} wallet - the house
  * @param {Map<string, string>} names - lane id → the name it goes by
  * @returns {Promise<object[]>}
@@ -58,8 +77,10 @@ export const lineWaitingItems = async (wallet, names) => {
   if (!companies.length) return [];
   const holders = await seatHolders(wallet);
   const views = await Promise.all(companies.map(async (c) => lineView(c, await readLine(wallet, c.id), holders, (await readHands(wallet, c.id)).items)));
-  return views.flatMap((v) => [
+  const raises = await Promise.all(views.map((v) => (v.status === 'standing' ? readRaise(wallet, v.id) : null)));
+  return views.flatMap((v, i) => [
     lineWaitingItem(v, names),
-    ...v.hands.filter((i) => i.status === 'open').map((i) => handsWaitingItem(v, i, names)),
+    ...v.hands.filter((h) => h.status === 'open').map((h) => handsWaitingItem(v, h, names)),
+    ...(raises[i] ? raiseWaitingItems(v, raises[i]) : []),
   ]).filter(Boolean);
 };

@@ -23,6 +23,7 @@ import fs from 'fs/promises';
 import { notifyAwaitingAnswer } from './desk-notices.js';
 import { noteLiveCard, clearLiveCard } from './waiting/live-cards.js';
 import { submitPlan, persistApprovedPlan, PLAN_UNANSWERED, operatorRoster } from './team-plan.js';
+import { teamRoster } from './team-workers.js';
 import { ensureFilesystemRoots } from './mcp-filesystem.js';
 import { normalizeChatMode, toolModeForChatMode } from './tool-policy.js';
 import { createLogger } from './logger.js';
@@ -317,7 +318,8 @@ const _handlePlanSubmit = async (connection, args, opts = {}) => {
 
   let outcome, plan, roster;
   try {
-    roster = await operatorRoster(connection.walletAddress);
+    // the house's beings, and its workers (team-workers.js: steps, never seats)
+    roster = await teamRoster(connection.walletAddress, await operatorRoster(connection.walletAddress));
     ({ outcome, plan } = await submitPlan(connection, args, {
       roster,
       signal: connection.activeTurn?.signal,

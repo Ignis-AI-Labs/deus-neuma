@@ -43,6 +43,7 @@ import { createServer } from 'vite';
 import { chromium } from '@playwright/test';
 import { beforeAll, afterAll, test, expect } from 'vitest';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // Transport-loss signatures: no HTTP response ever existed in these cases.
 // `is not a function/constructor` after window.ready fired means the probe
@@ -225,6 +226,8 @@ beforeAll(async () => {
   previousRoot = core.getWorkspacesRoot();
   core.setWorkspacesRoot(WORKSPACES);
   auth = await fullAuth();
+  // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+  await makeInstallOwner(auth.address);
 }, 60000);
 
 afterAll(async () => {

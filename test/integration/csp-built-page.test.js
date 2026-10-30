@@ -13,6 +13,7 @@ import { securityHeaders } from '../../backend/services/security-headers.js';
 import filesRouter from '../../backend/routes/user-files-routes.js';
 import { getRoots, setRoots } from '../../backend/services/user-files.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const listen = app => new Promise(resolve => { const live = app.listen(0, '127.0.0.1', () => resolve(live)); });
@@ -74,7 +75,9 @@ test('36 hostile filenames render verbatim without injected nodes under the prod
     await fs.mkdir(folder);
     for (const name of hostileNames) await fs.writeFile(path.join(folder, name), 'file content');
     setRoots([folder]);
-    const { token } = await fullAuth();
+    const { token, address } = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(address);
     const input = path.join(tmp, 'index.html');
     await fs.writeFile(input, `<!doctype html><div id="root"></div><script type="module" src="${path.join(root, 'test/fixtures/files-rename.jsx')}"></script>`);
     // Compile the actual FilesApp fixture, so Vite dev's injected inline code

@@ -46,6 +46,8 @@ import staffRouter from './staff-routes.js';
 import companyLineRouter from './company-line-routes.js';
 import revenueRouter from './revenue-routes.js';
 import accountsRouter from './accounts-routes.js';
+import raiseRouter from './raise-routes.js';
+import chatBridgeRouter from './chat-bridge-routes.js';
 import houseClockRouter from './house-clock-routes.js';
 import waitingRouter from './waiting-routes.js';
 import mandateRouter from './mandate-routes.js';
@@ -197,6 +199,8 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/company-line', companyLineRouter);
   app.use('/api/v1/revenue', revenueRouter);
   app.use('/api/v1/accounts', accountsRouter);
+  app.use('/api/v1/raise', raiseRouter);
+  app.use('/api/v1/chat-bridge', chatBridgeRouter);
   // The house clock: the charter that lets the house wake itself, its queue
   // and its ledger. Router-level requireAuth inside; the house is the caller's.
   app.use('/api/v1/house-clock', houseClockRouter);

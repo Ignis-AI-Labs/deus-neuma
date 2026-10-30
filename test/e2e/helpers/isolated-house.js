@@ -20,6 +20,7 @@ import { passDeskGates } from './desk-gates.js';
 import { claimOwner } from '../../helpers/claim-owner.js';
 import { forgeBirthIdentity } from '../../../core/birth/identity-forge.js';
 import { ensureSoulScale } from '../../../core/birth/soul-scale.js';
+import { ownerClaimHeaders } from './owner-claim.js';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -106,7 +107,7 @@ export const setupIsolatedHouse = (members, base) => {
     ctx.addr = w.address;
     const { challenge } = await (await fetch(`${api}/api/v1/auth/challenge?address=${ctx.addr}`)).json();
     const res = await fetch(`${api}/api/v1/auth/verify`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...ownerClaimHeaders(ctx.dataRoot) },
       body: JSON.stringify({ address: ctx.addr, signature: await w.signMessage(challenge), challenge }),
     });
     ({ token: ctx.token } = await res.json());

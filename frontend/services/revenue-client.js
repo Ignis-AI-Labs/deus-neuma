@@ -15,3 +15,6 @@ export const seatMercator = (laneId) => revenueCall('PUT', '/seat', { body: { la
 
 /** Clear the Mercator's seat. impure. */
 export const clearMercator = () => revenueCall('DELETE', '/seat', { errorPrefix: 'Could not clear the Mercator seat' });
+
+/** Choose where deliveries go: a folder on this machine you serve, and its https address. impure. */
+export const setDeliveryDestination = (folder, linkBase) => revenueCall('PUT', '/delivery-destination', { body: { folder, linkBase }, errorPrefix: 'Could not set where deliveries go' });

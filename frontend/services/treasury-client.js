@@ -32,3 +32,24 @@ export const clearCfo = () => treasuryCall('DELETE', '/seat', { errorPrefix: 'Co
 
 /** The operator has read a Quaestor's flag. impure. @param {string} id */
 export const markFlagSeen = (id) => treasuryCall('POST', `/flags/${encodeURIComponent(id)}/seen`, { body: {}, errorPrefix: 'Could not mark the flag read' });
+
+/** Set the cost meter: the electricity rate and this house's share, or {on: false}. impure. */
+export const setCostMeter = (setup) => treasuryCall('PUT', '/costs/setup', { body: setup, errorPrefix: 'Could not set the cost meter' });
+
+/** Enter a fixed cost: {kind: 'hardware', price, months} or {kind: 'monthly', monthly, until?}, with what, currency, since, source. impure. */
+export const addFixedCost = (cost) => treasuryCall('POST', '/costs/fixed', { body: cost, errorPrefix: 'Could not enter the cost' });
+
+/** Enter one provider's API bill for one month. impure. */
+export const addCostBill = (bill) => treasuryCall('POST', '/costs/bills', { body: bill, errorPrefix: 'Could not enter the bill' });
+
+/** Void a wrong cost or bill, with why. impure. */
+export const voidCostEntry = (id, reason) => treasuryCall('POST', `/costs/${encodeURIComponent(id)}/void`, { body: { reason }, errorPrefix: 'Could not void the entry' });
+
+/** Set where the house's invoices are paid — the operator's own Ethereum address. impure. */
+export const setInvoiceWallet = (address) => treasuryCall('PUT', '/invoice-wallet', { body: { address }, errorPrefix: 'Could not set where invoices are paid' });
+
+/** Record an invoice paid by a money-in receipt. impure. */
+export const markInvoicePaid = (id, receipt) => treasuryCall('POST', `/invoices/${encodeURIComponent(id)}/paid`, { body: { receipt }, errorPrefix: 'Could not record the invoice paid' });
+
+/** Void an open invoice, with why. impure. */
+export const voidInvoice = (id, reason) => treasuryCall('POST', `/invoices/${encodeURIComponent(id)}/void`, { body: { reason }, errorPrefix: 'Could not void the invoice' });

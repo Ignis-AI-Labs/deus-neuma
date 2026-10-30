@@ -189,8 +189,8 @@ describe('machine-wide settings belong to the install owner, changed at its own 
   });
 });
 
-describe('a fresh install belongs to the first wallet that signs in at its desk', () => {
-  let server, port, first, second;
+describe('a fresh install belongs to the first wallet that signs in at its desk with the owner claim', () => {
+  let server, port, first, second, claim;
 
   beforeAll(async () => {
     const dir = await createTempDir('install-owner-fresh');
@@ -211,17 +211,21 @@ describe('a fresh install belongs to the first wallet that signs in at its desk'
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     port = server.address().port;
+    const { prepareOwnerClaim } = await import('../../backend/services/install-owner.js');
+    await prepareOwnerClaim();
+    claim = (await fs.readFile(path.join(dir, 'data', 'settings', 'owner-claim', 'claim.key'), 'utf8')).trim();
   });
 
   afterAll(async () => {
     await new Promise((resolve) => server.close(resolve));
   });
 
-  const signIn = async (keypair) => {
+  const signIn = async (keypair, ownerClaim = claim) => {
     const { signMessage } = await import('../../core/weave/keypair.js');
     const at = `http://127.0.0.1:${port}`;
     const { body } = await request(at).get(`/api/v1/auth/challenge?address=${keypair.address}`).set('Host', `localhost:${port}`);
     const verified = await request(at).post('/api/v1/auth/verify').set('Host', `localhost:${port}`)
+      .set('X-Neuma-Owner-Claim', ownerClaim)
       .send({ address: keypair.address, challenge: body.challenge, signature: await signMessage(keypair.privateKey, body.challenge) });
     expect(verified.status).toBe(200);
     return verified.body.token;

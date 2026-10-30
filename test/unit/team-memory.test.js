@@ -57,6 +57,28 @@ describe('memberStories — one entry per member, own words only', () => {
     expect(stories.map((s) => s.neumaId)).toEqual(['hazel']);
   });
 
+  test('MEMORY OF FAILURE: its own failed part is a story; a part that never ran is not; the words are facts only', () => {
+    const stories = memberStories({
+      ...RUN,
+      completed: { spec: 'the spec, in hazel words' },
+      failures: { build: 'the build step timed out after 300 seconds' },
+      outcome: 'failed',
+    });
+    expect(stories.map((s) => s.neumaId).sort()).toEqual(['cedar', 'hazel']);
+    const cedar = stories.find((s) => s.neumaId === 'cedar').entry;
+    expect(cedar.outcome).toBe('failed');
+    expect(cedar.content).toContain('A team run — TEAM ALPHA did not finish: a part of it failed.');
+    expect(cedar.content).toContain('Cedar held WRIGHT');
+    expect(cedar.content).toContain('Asked: build it\nDid not finish — the platform\'s record of what stopped it: the build step timed out after 300 seconds');
+    expect(cedar.content).not.toMatch(/learn|lesson|should|feel/i); // what it makes of it is its own to say
+    const hazel = stories.find((s) => s.neumaId === 'hazel').entry.content;
+    expect(hazel).toContain('did not finish: a part of it failed.');
+    expect(hazel).not.toContain('timed out'); // never a teammate's failure
+    const skippedOnly = memberStories({ ...RUN, completed: {}, failures: { spec: 'refused' }, skipped: ['build'], outcome: 'stopped' });
+    expect(skippedOnly.map((s) => s.neumaId)).toEqual(['hazel']); // cedar never ran: no story
+    expect(skippedOnly[0].entry.content).toContain('was stopped before it finished.');
+  });
+
   test('one member holding several steps gets ONE entry carrying all its parts', () => {
     const stories = memberStories({
       ...RUN,

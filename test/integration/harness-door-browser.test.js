@@ -18,6 +18,7 @@ import { setHarnessRoot } from '../../core/workspace/lane-grounds.js';
 import { createSessionToken, generateChallenge, verifySignature } from '../../backend/services/auth.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { getSetupStatus } from '../../backend/services/substrate-setup.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const HOUSE_MODEL = 'http://127.0.0.1:8089';
 // every store the door writes is this test's own — CONNECT locks a connection
@@ -46,6 +47,8 @@ test('the platform door: local or cloud; the local pre-flight finds the running 
     const keypair = generateKeypair();
     const challenge = generateChallenge(keypair.address);
     const token = createSessionToken(verifySignature(keypair.address, challenge, await signMessage(keypair.privateKey, challenge)));
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(keypair.address);
 
     const repo = fileURLToPath(new URL('../..', import.meta.url));
     vite = await createServer({ configFile: false, root: repo, cacheDir: path.join(root, 'cache'),

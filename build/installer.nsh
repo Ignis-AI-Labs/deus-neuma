@@ -20,7 +20,8 @@
 ;   Finish, with Launch Deus Neuma (checked)
 ; Every choice is kept (HKCU\Software\Deus Neuma), so an update (electron-updater, --updated) shows no
 ; page, installs no component again and keeps them. The uninstaller removes the shortcuts and the
-; start-with-Windows entry, and asks before it removes the model folder (kept by default).
+; start-with-Windows entry, and asks before it removes the model folder (kept by default), which it
+; touches only while it carries the mark setup wrote into it (DnModelHomeVerdict).
 
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
@@ -31,6 +32,53 @@
 
 !define DN_REG "Software\Deus Neuma"
 !define DN_RUN "Software\Microsoft\Windows\CurrentVersion\Run"
+; Written into the model folder by setup (customInstall); the uninstaller touches only a folder that has it.
+!define DN_MODEL_MARK ".deus-neuma-model-home"
+
+; May the uninstaller stop the model server in, and delete, the model folder read back from HKCU? An
+; all-users uninstall runs elevated, but HKCU stays writable by anything the person runs, so the value
+; alone proves nothing. The folder must carry the mark setup wrote into it, must be a full path, and
+; must not be a drive root, nor be or hold Windows, Program Files, the profile or the install folder
+; (so never the install folder's parent), nor lie inside Windows. Sets VERDICT to "" when it may, else
+; to why not. Uses $R0-$R2.
+!macro DnCovers TARGET VERDICT
+  ${If} ${VERDICT} == ""
+    StrLen $R2 "$R0\"
+    StrCpy $R1 "${TARGET}\" $R2
+    ${If} $R1 == "$R0\"
+      StrCpy ${VERDICT} "it is, or holds, ${TARGET}"
+    ${EndIf}
+  ${EndIf}
+!macroend
+!macro DnModelHomeVerdict HOME VERDICT
+  StrCpy ${VERDICT} ""
+  StrCpy $R0 "${HOME}"
+  StrCpy $R1 $R0 1 -1
+  ${If} $R1 == "\"
+    StrCpy $R0 $R0 -1
+  ${EndIf}
+  StrCpy $R1 $R0 1 1
+  StrLen $R2 $R0
+  ${If} $R1 != ":"
+    StrCpy ${VERDICT} "it is not a full path on a drive"
+  ${ElseIf} $R2 <= 2
+    StrCpy ${VERDICT} "it is a whole drive"
+  ${ElseIfNot} ${FileExists} "$R0\${DN_MODEL_MARK}"
+    StrCpy ${VERDICT} "setup's mark is not in it"
+  ${EndIf}
+  !insertmacro DnCovers "$WINDIR" ${VERDICT}
+  !insertmacro DnCovers "$PROGRAMFILES" ${VERDICT}
+  !insertmacro DnCovers "$PROGRAMFILES64" ${VERDICT}
+  !insertmacro DnCovers "$PROFILE" ${VERDICT}
+  !insertmacro DnCovers "$INSTDIR" ${VERDICT}
+  ${If} ${VERDICT} == ""
+    StrLen $R2 "$WINDIR\"
+    StrCpy $R1 "$R0" $R2
+    ${If} $R1 == "$WINDIR\"
+      StrCpy ${VERDICT} "it is inside Windows"
+    ${EndIf}
+  ${EndIf}
+!macroend
 
 ; The folder the person sees is the trademark: ...\Programs\Deus Neuma, not the internal product name
 ; (NEUMA names the app's data folder and keychain entry, electron-builder.yml). This file is read before
@@ -451,6 +499,11 @@ Var PfBold
     ${EndIf}
     ${If} $CompModel == ${BST_CHECKED}
       WriteRegStr HKCU "${DN_REG}" "ModelHome" "$ModelHome"
+      ; the mark the uninstaller looks for before it stops or removes anything in this folder
+      CreateDirectory "$ModelHome"
+      FileOpen $1 "$ModelHome\${DN_MODEL_MARK}" w
+      FileWrite $1 "Deus Neuma setup made this folder its model folder. The uninstaller removes it only while this file is here.$\r$\n"
+      FileClose $1
       DetailPrint "What is happening: Deus Neuma thinks with an AI model that runs on YOUR PC, so your conversations stay with you."
       DetailPrint "A model server (Ollama) runs the model, and the model itself is a large file. Both go in $ModelHome."
       ${If} $PfVc == 0
@@ -483,6 +536,13 @@ Var PfBold
     Delete "$DESKTOP\${SHORTCUT_NAME}.lnk"
     DeleteRegValue HKCU "${DN_RUN}" "${APP_ID}"
     ReadRegStr $0 HKCU "${DN_REG}" "ModelHome"
+    ${If} $0 != ""
+      !insertmacro DnModelHomeVerdict "$0" $2
+      ${If} $2 != ""
+        DetailPrint "Left the model folder $0 as it is: $2."
+        StrCpy $0 ""
+      ${EndIf}
+    ${EndIf}
     ${If} $0 != ""
       ; The model server the setup started lives in that folder. Stopped first, it cannot hold the folder's
       ; files open, nor go on running after Deus Neuma is gone. Matched by the folder (read from the

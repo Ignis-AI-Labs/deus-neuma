@@ -67,6 +67,9 @@ const NOT_PASSED = Object.freeze({
     warn: { means: 'This computer has less memory (RAM) than recommended, so your neuma may answer slowly.', todo: `${CONTINUE} Closing other programs helps.` },
   },
   dnaKey: {
+    warn: { means: 'The key that keeps your neuma\'s private files encrypted was typed in by hand and does not look like a random key, '
+      + 'so someone who copies those files could guess it and read them.',
+    todo: 'You can continue. To be safe, switch to a random key with the house\'s re-key command — the steps are in the note below.' },
     fail: { means: 'The key that keeps your neuma\'s private files encrypted is not set.',
       todo: 'Restart Deus Neuma — it creates the key when it starts.',
       notYours: 'If it is still missing after a restart, reinstall the app; your data stays.' },

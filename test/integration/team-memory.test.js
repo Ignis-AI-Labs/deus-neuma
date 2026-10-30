@@ -93,4 +93,32 @@ describe('recordTeamRunMemories — real encrypted journals', () => {
     const cedar = await workspace.readJournal('cedar-tm');
     expect(cedar.filter((e) => e.runId === 'run-tm-2')).toHaveLength(0);
   });
+
+  test('MEMORY OF FAILURE: a run that did not finish lands too — the failed part with what stopped it, in its own member\'s journal only', async () => {
+    const { written } = await recordTeamRunMemories({
+      steps: [
+        { id: 'a', neumaId: 'hazel-tm', role: 'HELM', task: 'draft the harbour sheet', needs: [] },
+        { id: 'b', neumaId: 'cedar-tm', role: 'WRIGHT', task: 'price the tide feed', needs: [] },
+        { id: 'c', neumaId: 'cedar-tm', role: 'WRIGHT', task: 'ship the sheet', needs: ['a', 'b'] },
+      ],
+      completed: { a: 'the sheet, in hazel words' },
+      statuses: {},
+      torches: {},
+      teamName: 'TIDE',
+      goal: 'a weekly sheet',
+      runId: 'run-tm-3',
+      failures: { b: 'the tide feed answered 503 three times' },
+      skipped: ['c'],
+      outcome: 'failed',
+    });
+    expect(written.sort()).toEqual(['cedar-tm', 'hazel-tm']);
+    const cedar = (await workspace.readJournal('cedar-tm')).find((e) => e.runId === 'run-tm-3');
+    expect(cedar).toMatchObject({ type: 'team-run', outcome: 'failed' });
+    expect(cedar.content).toContain('A team run — TIDE did not finish: a part of it failed.');
+    expect(cedar.content).toContain('Asked: price the tide feed\nDid not finish — the platform\'s record of what stopped it: the tide feed answered 503 three times');
+    expect(cedar.content).toContain('Never ran, because a part before it did not finish:\n— ship the sheet');
+    const hazel = (await workspace.readJournal('hazel-tm')).find((e) => e.runId === 'run-tm-3');
+    expect(hazel.content).toContain('the sheet, in hazel words');
+    expect(hazel.content).not.toContain('503'); // never a teammate's failure
+  });
 });

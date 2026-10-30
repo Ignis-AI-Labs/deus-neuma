@@ -18,6 +18,7 @@ import os from 'os';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { mcpService } from '../../backend/services/mcp.js';
 import { fullAuth, writeOwner } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // ---------------------------------------------------------------------------
 // W1-001 — unauth preflight workspace mutation
@@ -57,6 +58,8 @@ describe('AUDIT-W1-001 unauth preflight POST /workspace', () => {
     const newRoot = path.join(house, 'new-home');
     await fs.mkdir(newRoot, { recursive: true });
     const auth = await fullAuth();
+    // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const res = await request(app)
       .post('/api/v1/preflight/workspace')
       .set('Authorization', `Bearer ${auth.token}`)

@@ -59,6 +59,7 @@ const routeRead = (args) => {
   if (Number.isInteger(args.tail)) extra.tail = args.tail;
   if (Number.isInteger(args.offset)) extra.offset = args.offset;
   if (Number.isInteger(args.limit)) extra.limit = args.limit;
+  if (typeof args.pages === 'string' || Number.isInteger(args.pages)) extra.pages = String(args.pages);
   return ok('read_text_file', { path: p, ...extra });
 };
 
@@ -222,7 +223,7 @@ const STR = Object.freeze({ type: 'string' });
 /** The five — the entire being-facing filesystem catalog. */
 export const FS_PRIMITIVE_TOOLS = Object.freeze([
   fsTool('read',
-    'Read a file. {"path"} reads it as text (PDFs and Word .docx as their words; SVG returns source XML; raster image/audio paths return as media; '
+    'Read a file. {"path"} reads it as text (PDFs and Word .docx as their words — a PDF\'s scanned pages are put in front of your eyes as images, and "pages": "N-M" picks a PDF\'s pages; SVG returns source XML; raster image/audio paths return as media; '
     + '{"path", "info": true} returns size/timestamps instead of content). {"paths": [...]} reads several at once. '
     + 'Read only what you need: "offset"/"limit" read a line range (find the lines first with fs/search content: true); '
     + '"whole": true reads ALL of it when someone asks for the whole document — you are told if it does not fit the room left.',
@@ -233,6 +234,7 @@ export const FS_PRIMITIVE_TOOLS = Object.freeze([
       tail: Object.freeze({ type: 'number', description: 'Only the last N lines' }),
       offset: Object.freeze({ type: 'integer', description: 'First line to read (1-based)' }),
       limit: Object.freeze({ type: 'integer', description: 'How many lines to read from offset' }),
+      pages: Object.freeze({ type: 'string', description: 'A PDF\'s pages to read: "3" or "3-6"' }),
       whole: Object.freeze({ type: 'boolean', description: 'Read the entire file (when the whole document is asked for)' }),
       info: Object.freeze({ type: 'boolean', description: 'Metadata (size, modified) instead of content' }),
     }),

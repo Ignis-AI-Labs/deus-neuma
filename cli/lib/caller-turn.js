@@ -23,7 +23,7 @@ const readJsonArg = async (cwd, value, flag) => {
 
 /**
  * Resolve the sender's side of a sitting.
- * @returns {Promise<{tools: Array, tail: Array, thought: ?string, images?: string[]} | {error: string}>}
+ * @returns {Promise<{tools: Array, tail: Array, thought: ?string, rules?: string, images?: string[]} | {error: string}>}
  *   thought is null when no transcript was given (the positional task stands);
  *   images (data URIs) only when the transcript's opening user message carried any
  */
@@ -39,7 +39,7 @@ export const resolveCallerTurn = async (argv, cwd) => {
   }
   const seat = seatCallerTranscript(transcriptArg.value);
   if (seat.error) return { error: `--transcript: ${seat.error}` };
-  return { tools: tools.tools, tail: seat.tail, thought: seat.thought, ...(seat.images ? { images: seat.images } : {}) };
+  return { tools: tools.tools, tail: seat.tail, thought: seat.thought, ...(seat.rules ? { rules: seat.rules } : {}), ...(seat.images ? { images: seat.images } : {}) };
 };
 
 /**

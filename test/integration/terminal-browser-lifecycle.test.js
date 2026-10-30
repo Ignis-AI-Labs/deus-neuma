@@ -5,14 +5,23 @@ import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createServer as createNetServer } from 'node:net';
+import { once } from 'node:events';
 import { startTerminalKit, until, pidAlive } from '../helpers/terminal-lifecycle-kit.js';
 
 describe('HR-TERMINAL browser lifecycle (no GPU)', () => {
   let kit, vite, browser, base, a, b;
   beforeAll(async () => {
-    kit = await startTerminalKit();
+    // The page is served on the desk's dev frontend port, as `npm run dev`
+    // serves it, so the terminal's local-desk check reads its Origin as the desk's.
+    const probe = createNetServer().listen(0, '127.0.0.1');
+    await once(probe, 'listening');
+    const frontendPort = probe.address().port;
+    await new Promise((resolve) => probe.close(resolve));
+    kit = await startTerminalKit({ frontendPort });
     a = await kit.signIn();
     b = await kit.signIn();
+    await kit.seatOwners(a, [b]);
     // No repo Vite config/dotenv, no global dev ports, no GPU or model bootstrap.
     vite = await createServer({
       configFile: false, envFile: false,
@@ -24,11 +33,11 @@ describe('HR-TERMINAL browser lifecycle (no GPU)', () => {
         // No watcher: rooted at the repo, a watcher walks every data and
         // build folder and ran the worker out of memory (seen 2026-10-03).
         watch: null, hmr: { port: 1 }, ws: false,
-        host: '127.0.0.1', port: 0,
+        host: '127.0.0.1', port: frontendPort, strictPort: true,
         proxy: { '/api': kit.base, '/terminal-ws': { target: kit.base, ws: true } },
       },
     });
-    await vite.listen(0);
+    await vite.listen();
     base = `http://127.0.0.1:${vite.httpServer.address().port}/test/fixtures/terminal-lifecycle.html`;
     browser = await chromium.launch({ headless: true, args: ['--disable-gpu'] });
   }, 60000);

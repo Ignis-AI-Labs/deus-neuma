@@ -9,6 +9,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import workspace, { getWitnessesRoot, setWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 import { recordAttempt, toAttemptRecord } from '../../backend/services/image-forge/attempt-log.js';
 import { publishActivity, _resetActivity } from '../../backend/services/image-forge/forge-activity.js';
@@ -24,6 +25,8 @@ beforeAll(async () => {
   process.env.COMFYUI_ATTEMPT_LOG_PATH = path.join(root, 'attempts.jsonl');
   first = await fullAuth();
   second = await fullAuth();
+  // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+  await makeInstallOwner(first.address);
   for (const [lane, who] of [['lane-first', first], ['lane-second', second]]) {
     await workspace.create(lane);
     await claimOwner(workspace.root, lane, who.address);

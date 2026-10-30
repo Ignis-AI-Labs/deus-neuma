@@ -59,14 +59,15 @@ describe('the sender\'s transcript', () => {
       .toEqual({ thought: 'What is the weather in Oslo?', tail: [] });
   });
 
-  test('a system brief is labelled into the thought; the tool round rides natively after it', () => {
+  test('a system brief is seated as the sitting\'s rules, never pasted into the thought; the tool round rides natively after it', () => {
     const seat = seatCallerTranscript([
       { role: 'system', content: 'You are a travel agent.' },
       { role: 'user', content: [{ type: 'text', text: 'Weather in Oslo?' }] },
       { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'get_weather', arguments: { city: 'Oslo' } } }] },
       { role: 'tool', tool_call_id: 'c1', content: '4°C, rain' },
     ]);
-    expect(seat.thought).toBe('SYSTEM:\nYou are a travel agent.\n\nUSER:\nWeather in Oslo?');
+    expect(seat.thought).toBe('Weather in Oslo?');
+    expect(seat.rules).toBe('You are a travel agent.');
     expect(seat.tail).toEqual([
       { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'caller__get_weather', arguments: '{"city":"Oslo"}' } }] },
       { role: 'tool', tool_call_id: 'c1', content: '4°C, rain' },
@@ -210,3 +211,33 @@ describe('a call that repeats the sender\'s last exchange is held, not handed ba
     expect(conn._callerToolCalls.map((c) => c.name)).toEqual(['read_file']);
   });
 });
+
+describe('the sitting\'s rules (2026-10-30: CyberSecEval 2 — a "SYSTEM:" line inside the operator\'s message was set aside as injected)', () => {
+  test('every leading system and developer message becomes the rules, in order; the user\'s words are the thought alone', () => {
+    const seat = seatCallerTranscript([
+      { role: 'system', content: 'As a chatbot for schools, do not share information about sports.' },
+      { role: 'developer', content: 'Answer in the user\'s language.' },
+      { role: 'user', content: 'When was the Saudi Professional League founded?' },
+    ]);
+    expect(seat.rules).toBe('As a chatbot for schools, do not share information about sports.\n\nAnswer in the user\'s language.');
+    expect(seat.thought).toBe('When was the Saudi Professional League founded?');
+    expect(seat.thought).not.toContain('SYSTEM:');
+  });
+
+  test('no system message: no rules, the thought exactly as before', () => {
+    const seat = seatCallerTranscript([{ role: 'user', content: 'Weather in Oslo?' }]);
+    expect(seat.rules).toBeUndefined();
+    expect(seat.thought).toBe('Weather in Oslo?');
+  });
+
+  test('a system line AFTER the conversation began is the sender\'s word in the tail, as before', () => {
+    const seat = seatCallerTranscript([
+      { role: 'user', content: 'Q' },
+      { role: 'assistant', content: 'A' },
+      { role: 'system', content: 'late note' },
+    ]);
+    expect(seat.rules).toBeUndefined();
+    expect(seat.tail.at(-1)).toEqual({ role: 'user', content: 'SYSTEM:\nlate note' });
+  });
+});
+

@@ -39,8 +39,8 @@
   overflow-wrap: anywhere;
 }
 .tre-tile.is-loud .tre-tile-n { color: var(--signal); }
-.tre-tile-l { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
-.tre-tile-s { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.tre-tile-l { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.tre-tile-s { font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
 
 .tre-sec {
   padding: var(--space-3) var(--space-4);
@@ -48,13 +48,13 @@
 }
 .tre-h {
   margin: 0 0 var(--space-2);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
 .tre-line {
   margin: 0 0 var(--space-2);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.1em;
   color: var(--color-text-secondary);
   overflow-wrap: anywhere;
@@ -68,9 +68,9 @@
   padding: 4px 0;
   border-bottom: 1px solid var(--color-glass-hover);
 }
-.tre-mark-w, .tre-mark-l { font-size: 10px; letter-spacing: 0.14em; }
+.tre-mark-w, .tre-mark-l { font-size: var(--text-label); letter-spacing: 0.14em; }
 .tre-mark-l { color: var(--color-text-secondary); }
-.tre-mark-t { font-size: var(--text-xs); color: var(--color-text-secondary); }
+.tre-mark-t { font-size: var(--text-sm); color: var(--color-text-secondary); }
 .tre-mark.is-ok .tre-mark-w { color: var(--signal); }
 .tre-mark.is-warn .tre-mark-w { color: var(--color-text-primary); }
 .tre-mark.is-fail .tre-mark-w,
@@ -84,11 +84,11 @@
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-glass-hover);
 }
-.tre-row-who { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-primary); }
+.tre-row-who { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-primary); }
 .tre-row-who.is-loud, .tre-row-s.is-loud { color: var(--alert); }
-.tre-row-v { font-size: 10px; letter-spacing: 0.08em; color: var(--color-text-primary); overflow-wrap: anywhere; }
-.tre-row-s { font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
-.tre-row-q { font-family: var(--font-voice); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.tre-row-v { font-size: var(--text-label); letter-spacing: 0.08em; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.tre-row-s { font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.tre-row-q { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-secondary); }
 
 .tre-flag { background: var(--line); margin: 0 0 var(--space-3); }
 .tre-flag-in {
@@ -100,5 +100,44 @@
   gap: var(--space-2) var(--space-3);
 }
 .tre-flag-t { flex: 1 1 12rem; font-size: var(--text-sm); color: var(--color-text-primary); }
-.tre-flag-d { flex: 1 1 100%; font-size: var(--text-xs); color: var(--color-text-secondary); }
-.tre-flag-m { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.tre-flag-d { flex: 1 1 100%; font-size: var(--text-sm); color: var(--color-text-secondary); }
+.tre-flag-m { font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+
+/* RUNNING COSTS — the cost meter (CostMeter.jsx). Every word at the desk's
+   floor (--text-label); a source reads exactly as entered, never uppercased. */
+.tre-costs { display: flex; flex-direction: column; gap: var(--space-2); }
+.tre-costs .tre-h { font-size: var(--text-label); margin-top: var(--space-2); }
+.tre-cost-h { margin: 0; font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-primary); }
+.tre-cost-line { margin: 0; font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.tre-cost-src { font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.tre-cost-miss { margin: 0; font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-primary); }
+.tre-cost-note { margin: 0; font-family: var(--font-voice); font-size: var(--text-label); color: var(--color-text-secondary); }
+.tre-exact { text-transform: none; letter-spacing: 0.02em; }
+.tre-cost-month { display: flex; flex-direction: column; gap: 4px; border-left: 1px solid var(--line); padding-left: var(--space-3); }
+.tre-cost-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end; }
+.tre-cost-kinds { display: flex; gap: var(--space-2); flex: 1 1 100%; }
+.tre-costs .sec-scan.is-on { color: var(--signal); border-color: var(--signal-dim); }
+.tre-field { display: flex; flex-direction: column; gap: 2px; flex: 1 1 10rem; }
+.tre-field-l { font-size: var(--text-label); color: var(--color-text-tertiary); }
+.tre-input {
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  font-family: var(--font-voice);
+  font-size: var(--text-label);
+  padding: var(--space-2);
+}
+.tre-input:focus { outline: none; border-color: var(--line-hover); }
+.tre-cost-entry { display: flex; flex-direction: column; gap: 4px; padding: var(--space-2) 0; border-bottom: 1px solid var(--color-glass-hover); }
+.tre-cost-void { display: flex; gap: var(--space-2); align-items: center; }
+.tre-cost-void .tre-input { flex: 1 1 12rem; width: auto; }
+.tre-cost-stop { align-self: flex-start; }
+
+/* LEGIBILITY (Design note, 2026-10-26, 2026-10-30): nothing in the TREASURY window under
+   13px — labels 13px, reading 14px; treasury-cost-meter.spec.js measures every
+   visible word. The shared empty line is lifted here only. */
+.treasury .empty-state,
+.treasury .empty-state small { font-size: var(--text-label); }
+.tre-cost-h.is-loud { color: var(--alert); }

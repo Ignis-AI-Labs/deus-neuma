@@ -102,7 +102,10 @@ describe('the treasury seat — oversight that never moves money', () => {
     expect(Object.fromEntries(bd.marks.map((m) => [m.id, m.state]))).toEqual({
       seat: 'ok', wallets: 'ok', limits: 'ok', allowlists: 'ok', pending: 'ok', custody: 'ok', trade: 'ok',
     });
-    expect(bd.costs.missing.length).toBeGreaterThan(0);
+    // the cost meter rides the board: off until the operator sets the rate, this month and the last
+    expect(bd.costs.meter).toMatchObject({ on: false, setup: null, costs: [], bills: [] });
+    expect(bd.costs.meter.months).toHaveLength(2);
+    expect(bd.costs.meter.months[0].missing[0]).toBe('the meter is off — set your electricity rate to start it');
     expect(bd.gaps).toEqual([]);
   });
 
@@ -127,6 +130,7 @@ describe('the treasury seat — oversight that never moves money', () => {
     expect(read.content).toContain(`[quill · ${asked.request.id}] 0.02 ETH on Base mainnet`);
     expect(read.content).toContain('FIRST TIME');
     expect(read.content).toContain('NOT YET REVIEWED');
+    expect(read.content).toContain('The cost meter is off (the operator sets the electricity rate).');
     const refused = await handleTreasuryTool(serverWs, conn('quill'), null, 'auto', { toolName: 'treasury_board' }, {}, {});
     expect(refused.status).toBe('error');
   });
@@ -184,7 +188,8 @@ describe('the treasury seat — oversight that never moves money', () => {
   });
 
   test('the office holds no act that moves money, and the Quaestor\'s own key cannot sign an approval', async () => {
-    expect(intentTypes().map((t) => t.name).filter((n) => n.startsWith('treasury/')).sort()).toEqual(['treasury/flag', 'treasury/review']);
+    // the office's acts: advice, alarm, and its invoices (a bill issued, a receipt named) — none reaches a wallet
+    expect(intentTypes().map((t) => t.name).filter((n) => n.startsWith('treasury/')).sort()).toEqual(['treasury/flag', 'treasury/invoice', 'treasury/invoice-paid', 'treasury/review']);
     const [card] = (await request(kit.app).get('/api/v1/treasury/spends').set(a.auth)).body.spends.filter((c) => c.neumaId === 'quill');
     const { buildApprovalMessage } = await import('../../core/wallet/spend-policy.js');
     const forged = await tally.key.signMessage(buildApprovalMessage({ neumaId: 'quill', ...card.approval }));
