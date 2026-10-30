@@ -43,7 +43,14 @@ const lateWords = (i, now) => {
 const LINES = Object.freeze({
   post: (i) => `House post waits for you from ${i.detail?.from ?? 'a housemate'}${i.detail?.re ? ` (re: ${clip(i.detail.re, 120)})` : ''} [post ${i.ref}] — collect it with post_check.`,
   dispatch: (i) => `Your Optio filed charge [${i.ref}] "${clip(i.detail?.title, 120)}" to you — it is in your house post; acknowledge it (staff/ack) as you take it up.`,
-  'run-ended': (i) => `Your team run ${i.ref} ended (${i.detail?.status ?? 'settled'}). Its report is named in your plan of record — read it and bring the work together for your operator.`,
+  'run-ended': (i) => {
+    const ended = `Your team run ${i.ref} ended (${i.detail?.status ?? 'settled'}). Its report is named in your plan of record — read it and bring the work together for your operator.`;
+    const p = i.detail?.programme;
+    if (!p) return ended;
+    return `${ended} It was run ${p.n} of the ${p.of} your programme "${clip(p.name, 60)}" may take [${p.id}] — its goal: ${clip(p.goal, 300)}. ${p.left > 0
+      ? 'If the goal is not met, submit the next run\'s plan (plan_submit), revised by what this run taught — what worked, what failed and why — or close the programme (programme/close) with what the runs came to.'
+      : 'It has no runs left: close the programme (programme/close) with what the runs came to, met or not.'}`;
+  },
   'run-check-in': (i) => `A check-in on team run ${String(i.ref).split(':')[0]} reached you as the house's Optio — it is in your house post.`,
   'run-alert': (i) => `An alert on team run ${String(i.ref).split(':')[0]} reached you as the house's Optio — it is in your house post.`,
   cadence: (i) => `Your review cadence (every ${i.detail?.everyHours ?? '?'}h) as the house's Optio: look over the house (staff/house_state, staff/board_list, the charges in your briefing) and move the work the charter's goal needs: to charge a member with work, file the staff/dispatch intent. If anything waits on your operator (your briefing lists the open asks), bring it back to them as one review packet (house/review-packet).`,

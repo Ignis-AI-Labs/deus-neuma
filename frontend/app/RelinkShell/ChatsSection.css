@@ -1,0 +1,13 @@
+/* ChatsSection — a COMMUNITY platform's CHATS tab. Every word at the desk's
+   floor (--text-label); a code reads exactly as sent, never re-cased. */
+.chats { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.chats-line { margin: 0; font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-primary); }
+.chats-note { margin: 0; font-family: var(--font-voice); font-size: var(--text-label); color: var(--color-text-secondary); }
+.chats-h { margin: var(--space-2) 0 0; font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.chats-err { margin: 0; font-family: var(--font-data); font-size: var(--text-label); color: var(--alert); overflow-wrap: anywhere; }
+.chats-account { display: flex; flex-direction: column; gap: var(--space-2); }
+.chats-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-glass-hover); }
+.chats-row.is-focus { border-color: var(--signal-dim); }
+.chats-who { font-family: var(--font-data); font-size: var(--text-label); letter-spacing: 0.06em; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.chats-exact { text-transform: none; letter-spacing: 0.12em; color: var(--color-text-primary); }
+.chats-acts { display: flex; gap: var(--space-2); }

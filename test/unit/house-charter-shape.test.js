@@ -21,7 +21,7 @@ describe('a charter an operator writes', () => {
     expect(c.seats).toEqual([{ laneId: 'optio-lane', dailyCap: 6 }, { laneId: 'scribe-lane', dailyCap: 3 }]);
     expect(c.quietHours).toBeNull();
     expect(c.cadence).toBeNull();
-    expect(c.delegation).toEqual({ teamPlans: false, maxMembers: 4, maxSteps: 8 });
+    expect(c.delegation).toEqual({ teamPlans: false, maxMembers: 4, maxSteps: 8, maxProgrammeRuns: 3 });
     expect(c.allow).toEqual([]);
     // money out always comes back to the operator, written or not
     expect(c.escalate).toEqual(MONEY_OUT);
@@ -34,14 +34,14 @@ describe('a charter an operator writes', () => {
       linesOfWork: ['research digests', 'outreach drafts'],
       quietHours: { start: '22:00', end: '07:00' },
       cadence: { everyHours: 24 },
-      delegation: { teamPlans: true, maxMembers: 3, maxSteps: 6 },
+      delegation: { teamPlans: true, maxMembers: 3, maxSteps: 6, maxProgrammeRuns: 5 },
       allow: ['web/web_search', 'intents/tasks.add'],
       escalate: ['intents/social.post', 'intents/wallet.send'],
     });
     expect(c.linesOfWork).toEqual(['research digests', 'outreach drafts']);
     expect(c.quietHours).toEqual({ start: '22:00', end: '07:00' });
     expect(c.cadence).toEqual({ everyHours: 24 });
-    expect(c.delegation).toEqual({ teamPlans: true, maxMembers: 3, maxSteps: 6 });
+    expect(c.delegation).toEqual({ teamPlans: true, maxMembers: 3, maxSteps: 6, maxProgrammeRuns: 5 });
     expect(c.allow).toEqual(['web/web_search', 'intents/tasks.add']);
     expect(c.escalate).toEqual(['intents/social.post', 'intents/wallet.send']);
   });

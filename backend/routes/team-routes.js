@@ -277,6 +277,15 @@ router.post('/run', async (req, res) => {
     truth.finishedAt = new Date().toISOString();
     await persist();
     if (failed) {
+      // Memory of failure: the members remember the run that did not finish, each its own part.
+      try {
+        await recordTeamRunMemories({
+          steps: truth.steps, completed: truth.completed, statuses: truth.statuses, torches: truth.torches,
+          teamName, goal, runId, failures, skipped: [...(result.skipped ?? [])], outcome: 'failed',
+        });
+      } catch (memErr) {
+        log.warn('Team run memory write-back', { error: memErr.message, runId });
+      }
       sse(res, {
         type: 'failed',
         runId,

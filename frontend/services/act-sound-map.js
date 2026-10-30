@@ -90,7 +90,7 @@ export const ACT_FAMILIES = Object.freeze({
     // The house's company (2026-10-29/30): a new record each — a company opened, an ask of the operator's hands,
     // a deal, a booked entry, a deadline, a raise's mandate, facts, investor and terms, an invoice issued.
     'company.open', 'company.hands', 'revenue.deal', 'accounts.book', 'accounts.deadline',
-    'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice',
+    'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
   ]),
   // Same thing, different place or name.
   actMove: Object.freeze(['move_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
@@ -138,7 +138,7 @@ export const ACT_FAMILIES = Object.freeze({
     // A stage handed on or answered, a deal moved, a deadline met, an investor cleared or updated, terms
     // checked, an invoice marked paid: each a mark on a record that already stood.
     'company.hand-on', 'company.inspect', 'revenue.move', 'accounts.deadline-met',
-    'raise.clear', 'raise.update', 'raise.terms-check', 'treasury.invoice-paid',
+    'raise.clear', 'raise.update', 'raise.terms-check', 'treasury.invoice-paid', 'programme.close',
     'meditate']), // a standing request marked for the cycle — nothing acts yet
   // The being sensing its own state — capacity, adapters, its own birth sky.
   actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'mandate_read', 'post_check',

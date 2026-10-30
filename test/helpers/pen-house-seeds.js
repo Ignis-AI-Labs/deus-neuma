@@ -90,6 +90,16 @@ export const seedHouseA = async (ctx) => {
   const hands = makeHands({ what: 'Sign the A operating agreement', why: 'A\'s company needs it signed.', where: 'https://a-brand.example/sign', answer: 'done', raisedBy: lane, now: new Date().toISOString() });
   ids.hands = (await raiseHands(ctx.a.address, ids.companyLine, hands))?.item?.id;
 
+  // A's chat door: a person A approved, and a stranger's code waiting on A — what the chat-bridge routes must never let B answer or take off.
+  const { walletDir } = await import('../../backend/services/user-realm.js');
+  const { writePrivate } = await import('../../backend/services/house-office-legacy.js');
+  const at = new Date().toISOString();
+  await writePrivate(path.join(walletDir(ctx.a.address), 'chat-access.json'), { 'telegram-1': {
+    allowed: [{ kind: 'user', id: '42', name: 'A friend', by: 'operator', at }],
+    pending: [{ code: 'PENC0DE2', kind: 'user', id: '43', name: 'A stranger', chat: { id: '43', type: 'dm' }, at, attempts: 1 }],
+  } });
+  ids.chatCode = 'PENC0DE2';
+
   const { threatLedgerFor } = await import('../../backend/services/security/threat-ledger.js');
   const ledger = await threatLedgerFor(ctx.a.address);
   const { added } = await ledger.ingest([{ layer: 'house', source: 'manual', externalId: 'pen:a-threat', title: 'A house threat', severity: 'high' }]);
@@ -104,6 +114,7 @@ export const seedHouseA = async (ctx) => {
     ['/api/v1/campaigns/', ids.campaign], ['/api/v1/user/projects/', ids.project], ['/api/v1/look/presets/', ids.lookPreset],
     ['/api/v1/remote/devices/', ids.device], ['/api/v1/gallery/roots/', ids.galleryRoot], ['/api/v1/social-channels/queue/', ids.post], ['/api/v1/lanes/', ids.unclaimed],
     ['/api/v1/company-links/', ids.linkChange], ['/api/v1/company-line/', ids.companyLine], ['/api/v1/raise/', ids.companyLine],
+    ['/api/v1/chat-bridge/', '42'],
   ];
   const byName = {
     neumaId: lane, companionName: lane, beingId: lane, companion: lane, taskId: ids.task, subId: ids.sub,
@@ -111,13 +122,15 @@ export const seedHouseA = async (ctx) => {
     serviceId: 'elevenlabs', vendor: 'claude-code', name: lane, brand: 'a-brand', postId: ids.post, act: 'bin',
     recordId: 'rec-a', ceremonyId: 'cer-a', adapterId: 'adapter-a', proposalId: 'prop-a', amendmentId: 'amend-a',
     imageId: 'img-a', serverName: 'fs', serverId: 'fs', action: 'stop', changeId: 'change-a', askId: ids.ask,
-    accountId: ids.account, companyId: ids.company, groupId: ids.group, handsId: ids.hands,
+    accountId: ids.account, companyId: ids.company, groupId: ids.group, handsId: ids.hands, code: ids.chatCode, kind: 'user',
     // a platform, not a house's id: the connect keys its consent by the
     // caller's own house, so B's request can only ever open B's own
     channel: 'youtube',
   };
   /** A's value for one param of a route, or undefined when none is known. Pure. */
   const fill = (routePath, param) => {
+    // the chat door is a Telegram or Discord account's: A's is telegram-1
+    if (param === 'accountId' && routePath.startsWith('/api/v1/chat-bridge/')) return 'telegram-1';
     if (param !== 'id') return byName[param];
     const family = idByFamily.find(([prefix]) => routePath.startsWith(prefix));
     return family ? family[1] : lane;

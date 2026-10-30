@@ -291,6 +291,8 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
   connection._candidateCount = candidateCount ?? 1;
   connection._callerTools = caller.tools;
   connection._callerTail = caller.tail;
+  // The sender's standing rules (its system message), seated as rules, never as the thought (test-conditions.js callerRulesFor).
+  connection._callerRules = caller.rules ?? null;
 
   const portal = createCliPortal({ stdin, stdout, stderr, connection, resolveToolApproval, finalRoundOnly: Boolean(benchmark.controls) });
   connection.ws = portal;

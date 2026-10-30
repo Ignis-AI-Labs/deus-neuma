@@ -67,6 +67,17 @@
       "default": false
     },
     {
+      "id": "chat-bridge",
+      "name": "Chats with the house",
+      "to": "Telegram's and Discord's servers, through the bots you connected",
+      "when": "all the time while on: Telegram is asked for new messages every 25 seconds, Discord holds one open line",
+      "sends": "your bots' tokens, to hear the messages sent to them, and the answers of the beings who hold them",
+      "whileOff": "your bots post what you approve, but hear nobody",
+      "detail": "Once you turn it on, each Telegram and Discord bot you connected for the house, and gave a holder, listens for messages sent to it. A person you approve can then talk with the being who holds that bot, in a direct chat, or in a group you approved when the message names the bot. A stranger only gets a pairing code back, and nothing they send is read until you approve that code (WAITING ON YOU, or the platform's CHATS tab). Telegram and Discord see what is sent and answered, as with any chat on their services. While it is off, the bots only post what you approve.",
+      "control": "switch",
+      "default": false
+    },
+    {
       "id": "web",
       "name": "The web",
       "to": "the search index and the pages a neuma reads",

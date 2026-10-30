@@ -49,6 +49,7 @@ import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
 import { startCostMeter } from './services/cost-meter/cost-meter-scheduler.js';
 import { startMailWatch } from './services/mail-watch/mail-watch.js';
+import { startChatBridge } from './services/channels/chat-supervisor.js';
 import { startBenchWatchdog, stopBenchWatchdog } from './services/bench/bench-watchdog.js';
 import { settleLostChains } from './services/bench/bench-matched.js';
 import { resumeBenchChain } from './services/bench/bench-launch.js';
@@ -94,6 +95,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
   let stopMoneyIn = null;
   let stopCostMeter = null;
   let stopMailWatch = null;
+  let stopChatBridge = null;
   let stopStatusSweep = null;
   let stopHouseClock = null;
 
@@ -300,6 +302,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The house mailbox watch — a reply wakes the seat that holds the
     // conversation; off until the operator turns the connection on.
     stopMailWatch = startGuarded('mail watch', startMailWatch);
+    // The chat bridge — the house's Telegram and Discord bots hear the people
+    // the operator approved; off until the operator turns the connection on.
+    stopChatBridge = startGuarded('chat bridge', startChatBridge);
     // The Optio office's cadence — standing status checks on open charges.
     stopStatusSweep = startGuarded('status sweep', startStatusScheduler);
     // The house clock — the house wakes itself for its own work, inside the
@@ -341,6 +346,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopMoneyIn?.(); // the money-in watch stops with the server
     stopCostMeter?.(); // the cost meter's minute stops with the server
     stopMailWatch?.(); // the mailbox watch stops with the server
+    stopChatBridge?.(); // every chat bot's line closes with the server
     stopStatusSweep?.(); // the office's cadence stops with the server
     stopHouseClock?.(); // no wake starts into the drain window
     stopBenchWatchdog(); // the bench watch stops with the server

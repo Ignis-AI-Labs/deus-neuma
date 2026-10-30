@@ -410,7 +410,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
       'marketing.board-arrange', 'marketing.company-links',
       // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid',
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [

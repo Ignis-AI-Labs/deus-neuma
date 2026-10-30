@@ -25,6 +25,7 @@ export const KIND_LABEL = Object.freeze({
   'company-line': 'COMPANY LINE',
   hands: 'YOUR HANDS',
   raise: 'RAISE',
+  'chat-pairing': 'CHAT',
   security: 'SECURITY',
 });
 
@@ -167,6 +168,7 @@ export const cardSelector = (item) => {
   if (w.changeId) return `[data-link-change-id="${safe(w.changeId)}"]`;
   if (w.raise && w.companyId) return `[data-raise="${safe(w.companyId)}"]`;
   if (w.handsId) return `[data-hands-id="${safe(w.handsId)}"]`;
+  if (w.section === 'chats' && w.code) return `[data-chat-code="${safe(w.code)}"]`;
   if (w.app === 'companyline' && w.companyId) return `[data-company-line="${safe(w.companyId)}"]`;
   if (w.tab === 'charter') return '[data-charter-pending]';
   return null;
