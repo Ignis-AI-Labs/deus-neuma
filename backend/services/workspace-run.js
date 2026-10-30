@@ -149,9 +149,11 @@ const prepareScratch = async (bytes) => {
  * @param {{root: string}} teamWs - connection._teamWorkspace
  * @param {{file: string, timeoutMs?: number, sha256?: string}} args - sha256:
  *   the bytes the operator's card showed; a file changed since is refused
+ * @param {{lane?: ?string}} [opts] - the running being's own lane: another house's lanes and
+ *   realm dirs under the arena are masked (witness-coding-sandbox.js enumerateSecretMasks)
  * @returns {Promise<{ok: boolean, report: string}>}
  */
-export const runWorkspaceFile = async (teamWs, args) => {
+export const runWorkspaceFile = async (teamWs, args, { lane = null } = {}) => {
   const root = path.resolve(teamWs.root);
   const script = await readScript(root, args?.file);
   if (args?.sha256 && args.sha256 !== script.sha256) {
@@ -164,7 +166,7 @@ export const runWorkspaceFile = async (teamWs, args) => {
   const timeout = Number.isFinite(requested) && requested > 0
     ? Math.min(requested, WORKSPACE_RUN_MAX_TIMEOUT_MS)
     : WORKSPACE_RUN_DEFAULT_TIMEOUT_MS;
-  const masks = await enumerateSecretMasks(root);
+  const masks = await enumerateSecretMasks(root, { lane });
   const scratch = await prepareScratch(script.bytes);
   const bwrap = runArgs({ root, ...script, masks, scratch, siteBinds: await userSiteBinds() });
 

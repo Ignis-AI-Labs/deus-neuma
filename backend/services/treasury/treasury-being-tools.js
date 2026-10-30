@@ -7,6 +7,7 @@
 import { gateAct } from '../act-gate.js';
 import { cfoDesignation } from './cfo-designation.js';
 import { readTreasuryBoard } from './treasury-board.js';
+import { statementWords } from '../cost-meter/cost-shape.js';
 
 export const TREASURY_BOARD_TOOL = Object.freeze({
   name: 'treasury_board',
@@ -51,7 +52,11 @@ export const boardText = (board) => [
   '',
   `MONEY IN: ${board.moneyIn.count} receipt(s); ${Object.values(board.moneyIn.perAsset).map((a) => `${a.amount} ${a.asset} on ${a.network}`).join(', ') || 'nothing received yet'}${board.moneyIn.unpriced ? ` (${board.moneyIn.unpriced} unpriced)` : ''}.`,
   `BUDGETS (planning, never spent by anyone): ${board.budgets.map((b) => `${b.name}: ${b.money ?? '—'} money, ${b.hours ?? '—'} hours`).join('; ') || 'none set'}.`,
-  `COSTS: GPU drawing ${board.costs.gpuPowerW ?? 'unread'} W now. Not measured yet: ${board.costs.missing.join('; ')}.`,
+  `COSTS: GPU drawing ${board.costs.gpuPowerW ?? 'unread'} W now. ${!board.costs.meter ? 'The cost meter was not read.'
+    : `The cost meter is ${board.costs.meter.on ? `on — ${board.costs.meter.setup.pricePerKwh} ${board.costs.meter.setup.currency} per kWh, ${board.costs.meter.setup.sharePct}% of this machine` : 'off (the operator sets the electricity rate)'}.`}`,
+  ...(board.costs.meter ? board.costs.meter.months.map((m) => `- ${statementWords(m)}`) : []),
+  `INVOICES: ${!board.invoices ? 'not read' : `${board.invoices.payTo ? `paid to the operator's ${board.invoices.payTo.address}` : 'the operator has not set where they are paid'}; `
+    + `${board.invoices.invoices.map((v) => `${v.number} ${v.buyer} ${v.total} ${v.currency} ${v.status}${v.overdue ? ' OVERDUE' : ''}`).join('; ') || 'none issued'}`}.`,
   `FLAGS OPEN: ${board.flags.map((f) => `[${f.id}] ${f.title}`).join('; ') || 'none'}.`,
   '',
   'FLIGHT CHECK:',

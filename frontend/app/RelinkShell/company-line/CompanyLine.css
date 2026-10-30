@@ -2,7 +2,11 @@
    (SecurityApp.css: .sec, .sec-head, .sec-scan, .sec-error); these are its own
    pieces: the overview tiles, your moves, the dial, each company's seven-stage
    rail, and the open form. Monochrome at rest; signal marks what waits on you
-   and the stage in hand, alert only for ending a gap. */
+   and the stage in hand, alert only for ending a gap.
+   THE FLOOR (design-language.md § Legibility): every word here reads at 13px or more. */
+
+.cline .label-data,
+.cline .empty-state { font-size: var(--text-label); }
 
 .cline-root {
   flex: 1 1 auto;
@@ -33,7 +37,7 @@
   color: var(--color-text-primary);
 }
 .cline-tile.is-loud .cline-tile-n { color: var(--signal); }
-.cline-tile-l { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-secondary); }
+.cline-tile-l { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-secondary); }
 .cline-tiles-flat { padding: var(--space-2) 0; border-bottom: none; }
 
 .cline-sec {
@@ -42,7 +46,7 @@
 }
 .cline-h {
   margin: 0 0 var(--space-2);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.16em;
   color: var(--color-text-tertiary);
 }
@@ -55,8 +59,8 @@
   background: var(--color-glass);
   padding: var(--space-3);
 }
-.cline-move-h { margin: 0; font-size: 10px; letter-spacing: 0.14em; color: var(--signal); }
-.cline-move-t { margin: 0; font-size: var(--text-xs); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.cline-move-h { margin: 0; font-size: var(--text-label); letter-spacing: 0.14em; color: var(--signal); }
+.cline-move-t { margin: 0; font-size: var(--text-label); color: var(--color-text-secondary); overflow-wrap: anywhere; }
 
 .cline-input {
   width: 100%;
@@ -65,7 +69,7 @@
   border: 1px solid var(--line);
   color: var(--color-text-primary);
   font-family: var(--font-voice);
-  font-size: var(--text-xs);
+  font-size: var(--text-label);
   padding: var(--space-2);
   resize: vertical;
 }
@@ -75,23 +79,26 @@
 .cline-open .cline-input { flex: 1 1 12rem; width: auto; }
 .cline-danger { color: var(--alert); border-color: var(--alert); }
 .cline-hands-what { margin: 0; font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
+/* An address, an account or a link is shown exactly as it is — never uppercased by the label it sits in. */
+.cline .cline-exact,
+.cline .cline-link { text-transform: none; letter-spacing: 0.04em; }
 .cline-link { color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .cline-link:hover { color: var(--color-text-primary); }
 
 /* A handed-on worksheet, as the operator inspects it. */
 .cline-ws { display: flex; flex-direction: column; gap: var(--space-2); border-left: 1px solid var(--line); padding-left: var(--space-3); }
-.cline-ws-list, .cline-ws-src { margin: 0; padding-left: var(--space-4); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.cline-ws-list, .cline-ws-src { margin: 0; padding-left: var(--space-4); font-size: var(--text-label); color: var(--color-text-secondary); }
 .cline-ws-src li { overflow-wrap: anywhere; }
-.cline-ws-table { border-collapse: collapse; font-size: var(--text-xs); }
+.cline-ws-table { border-collapse: collapse; font-size: var(--text-label); }
 .cline-ws-table th, .cline-ws-table td { border-bottom: 1px solid var(--line); padding: 2px var(--space-2); text-align: left; color: var(--color-text-secondary); }
-.cline-ws-errc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.cline-ws-errc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); font-size: var(--text-label); color: var(--color-text-secondary); }
 .cline-ws-errc ul { margin: 0; padding-left: var(--space-3); }
 
 .cline-mode {
   background: transparent;
   border: 1px solid var(--line);
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: var(--text-label);
   letter-spacing: 0.14em;
   padding: 6px var(--space-3);
   cursor: pointer;
@@ -100,18 +107,18 @@
 .cline-mode:hover { border-color: var(--line-hover); }
 .cline-mode.is-on { border-color: var(--signal); color: var(--signal); }
 
-.cline-dial-says { margin: 0 0 var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
-.cline-floor { margin-bottom: var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
-.cline-floor summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-dial-says { margin: 0 0 var(--space-2); font-size: var(--text-label); color: var(--color-text-secondary); }
+.cline-floor { margin-bottom: var(--space-2); font-size: var(--text-label); color: var(--color-text-secondary); }
+.cline-floor summary { cursor: pointer; font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
 .cline-floor ul { margin: var(--space-2) 0 0; padding-left: var(--space-4); }
 
 .cline-co { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-glass-hover); }
 .cline-co-head { display: flex; justify-content: space-between; gap: var(--space-2); align-items: baseline; }
 .cline-co-name { font-family: var(--font-voice); font-size: var(--text-sm); color: var(--color-text-primary); }
-.cline-co-meta { font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
-.cline-co-line { margin: var(--space-1) 0 0; font-size: 10px; letter-spacing: 0.1em; color: var(--color-text-secondary); overflow-wrap: anywhere; }
-.cline-co-flaw { margin: var(--space-1) 0 0; font-size: var(--text-xs); color: var(--color-text-primary); }
-.cline-stopped { list-style: none; margin: var(--space-2) 0 0; padding: 0; font-size: 10px; color: var(--color-text-tertiary); }
+.cline-co-meta { font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-co-line { margin: var(--space-1) 0 0; font-size: var(--text-label); letter-spacing: 0.1em; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.cline-co-flaw { margin: var(--space-1) 0 0; font-size: var(--text-label); color: var(--color-text-primary); }
+.cline-stopped { list-style: none; margin: var(--space-2) 0 0; padding: 0; font-size: var(--text-label); color: var(--color-text-tertiary); }
 
 .cline-rail {
   list-style: none;
@@ -129,8 +136,8 @@
   padding-top: 4px;
   min-width: 0;
 }
-.cline-stage-n { font-size: 9px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
-.cline-stage-m { font-size: 9px; letter-spacing: 0.08em; color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cline-stage-n { font-size: var(--text-label); letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-stage-m { font-size: var(--text-label); letter-spacing: 0.08em; color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cline-stage.is-done { border-top-color: var(--color-text-secondary); }
 .cline-stage.is-done .cline-stage-n { color: var(--color-text-secondary); }
 .cline-stage.is-in-hand { border-top-color: var(--signal); }

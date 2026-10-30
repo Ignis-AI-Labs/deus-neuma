@@ -4,9 +4,9 @@
 // WHY: the feed's sha512 and the installer both come from one bucket, so whoever can write the
 // bucket could otherwise ship code to every self-updating install. The release key's private half
 // never touches the bucket, the site or this repo (scripts/release-key.mjs); its public half is
-// embedded in the app (release-public-key.cjs). An installed app downloads only a release whose
-// feed this key signed, and electron-updater then checks the downloaded bytes against that
-// signed sha512. The publisher runs the same check offline before a feed goes out.
+// embedded in the app (release-public-key.cjs), beside the offline backup key's once there is one.
+// An installed app downloads only a release whose feed a trusted key signed, and electron-updater
+// then checks the downloaded bytes against that signed sha512. The publisher runs the same check offline before a feed goes out.
 //
 // WHAT IS SIGNED is never the bare file: it is "deus-neuma-feed-v1\n" + the file's NAME + "\n" +
 // its bytes. The name binds each signature to its channel — a validly signed latest.yml (Windows)
@@ -46,6 +46,14 @@ const releasePublicKey = (embedded) => {
   }
 };
 
+/**
+ * Every usable key in an embedded list (or one embedded form), in list order; an entry that is
+ * not an ed25519 key is left out. Pure.
+ * @param {string|string[]} embedded
+ * @returns {import('node:crypto').KeyObject[]}
+ */
+const releasePublicKeys = (embedded) => [].concat(embedded ?? []).map(releasePublicKey).filter(Boolean);
+
 /** The embedded form (base64 SPKI DER) of an ed25519 public KeyObject. Pure. */
 const embeddedFormOf = (publicKey) => publicKey.export({ format: 'der', type: 'spki' }).toString('base64');
 
@@ -75,17 +83,23 @@ const signatureHolds = (fileName, bytes, sigText, publicKey) => {
 };
 
 /**
- * The verdict on one signed release file, whatever it holds. Pure.
- * @returns {{ ok: true } | { ok: false, reason: string }}
+ * The verdict on one signed release file, whatever it holds. A signature holds when ANY trusted
+ * key made it (the release key, or the offline backup kept against its loss: release-public-key.cjs);
+ * signer is that key's place in the list. Pure.
+ * @param {{ fileName: string, bytes: Uint8Array, sigText: string|null,
+ *   publicKey: import('node:crypto').KeyObject|import('node:crypto').KeyObject[]|null }} input
+ * @returns {{ ok: true, signer: number } | { ok: false, reason: string }}
  */
 const checkSignature = ({ fileName, bytes, sigText, publicKey }) => {
-  if (!publicKey) return { ok: false, reason: 'no release public key is embedded in this build' };
+  const keys = [].concat(publicKey ?? []);
+  if (keys.length === 0) return { ok: false, reason: 'no release public key is embedded in this build' };
   if (sigText == null || String(sigText).trim() === '') return { ok: false, reason: `no signature for ${fileName}` };
   if (bytes.length > MAX_FEED_BYTES) return { ok: false, reason: `${fileName} is too large to be a signed release file` };
-  if (!signatureHolds(fileName, bytes, sigText, publicKey)) {
+  const signer = keys.findIndex((key) => signatureHolds(fileName, bytes, sigText, key));
+  if (signer === -1) {
     return { ok: false, reason: `the signature does not match ${fileName} (altered, signed for another file, or by another key)` };
   }
-  return { ok: true };
+  return { ok: true, signer };
 };
 
 /** The files a feed offers, by electron-updater's own rule (Provider getFileList). Pure. */
@@ -146,10 +160,11 @@ const unfitForPlatform = (offered, platform) => {
 /**
  * The whole verdict on one feed. Pure.
  * @param {{ fileName: string, ymlBytes: Uint8Array, sigText: string|null,
- *   publicKey: import('node:crypto').KeyObject|null, offered?: object }} input — fileName: the feed
- *   name the CALLER asked for (never one the server named); offered: the info electron-updater
+ *   publicKey: import('node:crypto').KeyObject|import('node:crypto').KeyObject[]|null,
+ *   offered?: object }} input — fileName: the feed name the CALLER asked for (never one the server
+ *   named); publicKey: the trusted key, or the list of them; offered: the info electron-updater
  *   parsed, when there is one
- * @returns {{ ok: true, signed: object } | { ok: false, reason: string }}
+ * @returns {{ ok: true, signed: object, signer: number } | { ok: false, reason: string }}
  */
 const checkSignedFeed = ({ fileName, ymlBytes, sigText, publicKey, offered }) => {
   const signature = checkSignature({ fileName, bytes: ymlBytes, sigText, publicKey });
@@ -164,7 +179,7 @@ const checkSignedFeed = ({ fileName, ymlBytes, sigText, publicKey, offered }) =>
     const differs = offerDiffers(offered, signed);
     if (differs) return { ok: false, reason: `the feed the updater read is not the signed feed: ${differs}` };
   }
-  return { ok: true, signed };
+  return { ok: true, signed, signer: signature.signer };
 };
 
 /**
@@ -181,6 +196,7 @@ module.exports = {
   MAX_FEED_BYTES,
   MESSAGE_DOMAIN,
   releasePublicKey,
+  releasePublicKeys,
   embeddedFormOf,
   signedMessage,
   signFeed,

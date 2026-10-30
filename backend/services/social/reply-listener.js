@@ -27,6 +27,7 @@ import { channelBindings } from './channel-bindings.js';
 import { readServed, laneHouse } from '../house-served.js';
 import { channelOfAccountId } from './account-shape.js';
 import { createLogger } from '../logger.js';
+import { signalWake } from '../house-clock/wake-signal.js';
 
 const log = createLogger('ReplyListener');
 
@@ -80,19 +81,19 @@ const candidateFromMention = (tweet, author) => ({
  *   read's payload
  * @param {string} house - the operator wallet whose account was read: its replies land in its own record
  * @param {?string} [accountId] - which of the house's X accounts was read (the one an answer speaks as)
- * @returns {Promise<{landed: number}>}
+ * @returns {Promise<{landed: number, ids: string[]}>} ids: the replies that landed new
  */
 export const materializeReplyCandidates = async ({ tweets, users, me } = {}, house, accountId = null) => {
   const myId = me?.id;
-  if (!myId) return { landed: 0 };
+  if (!myId) return { landed: 0, ids: [] };
   const userById = Object.fromEntries((users || []).map((u) => [u.id, u]));
-  let landed = 0;
+  const ids = [];
   for (const tweet of tweets || []) {
     if (!isReplyToUs(tweet, myId)) continue;
-    const { added } = await replyCandidatesOf(house).add({ ...candidateFromMention(tweet, userById[tweet.author_id] || null), accountId });
-    if (added) landed += 1;
+    const { added, candidate } = await replyCandidatesOf(house).add({ ...candidateFromMention(tweet, userById[tweet.author_id] || null), accountId });
+    if (added) ids.push(String(candidate?.postId ?? tweet.id));
   }
-  return { landed };
+  return { landed: ids.length, ids };
 };
 
 /**
@@ -123,7 +124,7 @@ export const replyListenerTick = async () => {
     const bindings = await channelBindings.load(house).catch(() => ({}));
     for (const [accountId, holder] of Object.entries(bindings)) {
       if (channelOfAccountId(accountId) === 'x' && holder?.neumaId && laneHouse(served, holder.neumaId, house)) {
-        accounts.push({ house, accountId });
+        accounts.push({ house, accountId, holder: holder.neumaId });
       }
     }
   }
@@ -132,8 +133,8 @@ export const replyListenerTick = async () => {
   }
   let landed = 0;
   let seen = 0;
-  for (const { house, accountId } of accounts) {
-    const one = await listenFor(house, accountId);
+  for (const { house, accountId, holder } of accounts) {
+    const one = await listenFor(house, accountId, holder);
     if (!one.ok) return one;
     landed += one.landed;
     seen += one.seen;
@@ -142,7 +143,11 @@ export const replyListenerTick = async () => {
 };
 
 // impure — one house account's mentions read with its own keys, its replies landed.
-const listenFor = async (house, accountId) => {
+// THE BRIDGE (the house economy's Stage 4): replies that land new wake the
+// account's holder, so an answer is drafted without waiting for its next turn —
+// inside the charter (house-clock/wake-signal.js), every answer still the
+// operator's to approve.
+const listenFor = async (house, accountId, holder) => {
   let read;
   try {
     read = await readXListings({ kind: 'mentions', limit: 25, wallet: house, accountId });
@@ -169,9 +174,12 @@ const listenFor = async (house, accountId) => {
     return { ok: false, status: read.status, detail: read.detail };
   }
   const { tweets, users, me } = read.data;
-  const { landed } = await materializeReplyCandidates({ tweets, users, me }, house, accountId);
+  const { landed, ids } = await materializeReplyCandidates({ tweets, users, me }, house, accountId);
   if (!me?.id) return { ok: false, detail: 'the account lookup returned no id' };
-  if (landed > 0) log.info('reply candidates landed', { landed, seen: tweets.length });
+  if (landed > 0) {
+    log.info('reply candidates landed', { landed, seen: tweets.length });
+    signalWake({ seat: holder, reason: 'reply', ref: `reply:${ids.at(-1)}`, detail: { channel: 'x', accountId, count: landed } });
+  }
   return { ok: true, landed, seen: tweets.length };
 };
 

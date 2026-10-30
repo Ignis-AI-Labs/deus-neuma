@@ -135,17 +135,19 @@ export const decryptVaultData = async (encryptionKey, encryptedData, opts = {}) 
   const key = resolveEncryptionKey(encryptionKey, opts);
   const iv = Buffer.from(encryptedData.iv, 'hex');
 
-  // Detect algorithm — legacy envelopes may lack an explicit field.
-  // Presence of authTag is the authoritative signal for GCM (DATA-002).
-  const algorithm = encryptedData.algorithm
-    || (encryptedData.authTag ? 'aes-256-gcm' : 'aes-256-cbc');
-
-  if (algorithm === 'aes-256-gcm') {
+  // The authTag decides the cipher, never the `algorithm` field: an envelope that carries a
+  // tag was sealed authenticated (DATA-002), and an edited `algorithm` must not route it to
+  // unauthenticated CBC. Only a tagless envelope is legacy CBC; one claiming GCM without its
+  // tag is refused rather than guessed at.
+  if (encryptedData.authTag) {
     const decipher = createDecipheriv('aes-256-gcm', key, iv);
     decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
     let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return JSON.parse(decrypted);
+  }
+  if (encryptedData.algorithm === 'aes-256-gcm') {
+    throw new Error('vault decrypt: a GCM envelope without its authTag cannot be opened');
   }
 
   // Legacy CBC fallback — preserves access to existing vault files.

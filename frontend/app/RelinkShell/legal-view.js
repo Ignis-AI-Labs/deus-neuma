@@ -9,7 +9,7 @@ import { passesTriage } from './triage-view.js';
 export const MATTER_STATUSES = Object.freeze(['new', 'concern', 'needs_counsel', 'needs_operator', 'resolved', 'no_issue']);
 
 const AREA_LABELS = Object.freeze({
-  license: 'LICENCES', posture: 'OUR PAPERS', product: 'NEW WORK', regulation: 'RESEARCH', marketing: 'CAMPAIGNS',
+  license: 'LICENCES', posture: 'OUR PAPERS', product: 'NEW WORK', regulation: 'RESEARCH', marketing: 'CAMPAIGNS', commerce: 'SALES AND MONEY',
 });
 
 // pure — a severity reads loud only while it can hurt.

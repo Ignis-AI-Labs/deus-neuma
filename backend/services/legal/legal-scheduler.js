@@ -32,6 +32,7 @@ import { readServed, servedWallet } from '../house-served.js';
 import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
 import { createLogger } from '../logger.js';
+import { reviewCommerce } from './commerce-review.js';
 
 const log = createLogger('LegalScheduler');
 
@@ -180,6 +181,17 @@ export const runLegalWatch = ({ wallet, trigger = 'manual', watchStore, ledger, 
       // the build window only moves when its read succeeded — a failed git
       // log re-reads the same span next run, never skips it
       if (!build.error) sinceByRepo[repo.id] = { buildSince: startedAt };
+    }
+
+    // THE COMMERCE LEG (the house economy's Stage 4): the house's deals,
+    // invoices, money in, raises and replies, read for what needs a legal
+    // reading — fail-soft like every leg, its blindness written on the run.
+    try {
+      const commerce = await reviewCommerce(wallet);
+      findings.push(...commerce.matters);
+      summary.commerce = { matters: commerce.matters.length, sanctions: commerce.sanctions };
+    } catch (err) {
+      summary.commerce = { matters: 0, error: err.message };
     }
 
     if (findings.length) {

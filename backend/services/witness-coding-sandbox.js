@@ -48,6 +48,7 @@ import { findSecretTwins } from './secret-twin-finder.js';
 import { createCommandOutput } from './coding-command-output.js';
 import { ensureCodingBase, activeCodingDirectory, freshCodingDirectory, assertActiveCodingShell } from './coding-shell-storage.js';
 import { liveShellWalls } from './live-shell-walls.js';
+import { houseRoots, isOtherHouse, laneOwner, realOf } from './explorer-walls.js';
 export { sandboxPathFor } from './coding-shell-storage.js';
 
 // Directory names that are secret-shaped wherever they appear. Size-motivated
@@ -90,10 +91,16 @@ const isMaskedDirectory = (root, parent, name) => {
  * is walked into neither — never masked, never swept — the same exposure the
  * copy design had when it ro-bound the real dependency tree into the shell.
  * @param {string} sourceRoot canonical ground directory
+ * @param {{lane?: ?string}} [opts] - the shell's own lane: a ground spanning the house or realm
+ *   also masks every lane and realm dir of another house than the lane owner's (explorer-walls.js
+ *   isOtherHouse), as the file tools refuse them; the lane itself is never masked
  * @returns {Promise<{dirs: string[], files: string[]}>} absolute paths to mask
  */
-export const enumerateSecretMasks = async (sourceRoot) => {
+export const enumerateSecretMasks = async (sourceRoot, { lane = null } = {}) => {
   const root = path.resolve(sourceRoot);
+  const house = lane ? { reader: laneOwner(lane) ?? '', roots: houseRoots(), own: [...new Set([path.resolve(lane), realOf(path.resolve(lane))])] } : null;
+  const otherHouse = (p) => house !== null && !house.own.some((o) => p === o || p.startsWith(o + path.sep))
+    && isOtherHouse(p, house.reader, house.roots);
   const dirs = [];
   const files = [];
   const assertMaskBound = () => {
@@ -118,7 +125,7 @@ export const enumerateSecretMasks = async (sourceRoot) => {
         }
         const candidate = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-          if (isMaskedDirectory(root, dir, entry.name)) dirs.push(candidate);
+          if (isMaskedDirectory(root, dir, entry.name) || otherHouse(candidate)) dirs.push(candidate);
           else if (entry.name.toLowerCase() !== 'node_modules') queue.push(candidate);
         } else if (isSecretFile(candidate)) {
           files.push(candidate);
@@ -210,7 +217,7 @@ const prepareCodingDirectory = async (laneId, source, anchor, { directory: shell
   }
 
   const exemptions = await sensitiveReadExemptions(laneId);
-  const masks = await enumerateSecretMasks(source);
+  const masks = await enumerateSecretMasks(source, { lane: neumaWorkspace.pathFor(laneId) });
   // The sensitive-grant door, shell-side: an operator-granted path is NOT
   // masked — the being reads the real bytes in-shell, as it does through the
   // file lane. (Read tier only: in-shell writes land in the overlay upper by

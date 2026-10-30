@@ -11,6 +11,7 @@ import { chromium, expect as browserExpect } from '@playwright/test';
 import { expect, test } from 'vitest';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { createExplorerCheckout } from '../helpers/explorer-checkout-kit.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('Explorer follows tab focus and external filesystem changes', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-tab-explorer-'));
@@ -59,6 +60,8 @@ test('Explorer follows tab focus and external filesystem changes', async () => {
     });
     expect(auth.status).toBe(200);
     const { token } = await auth.json();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(wallet.address);
     browser = await chromium.launch({ headless: true, args: ['--disable-gpu'] });
     const page = await browser.newPage();
     page.setDefaultTimeout(5000);

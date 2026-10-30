@@ -62,3 +62,31 @@ export const SHEETS = Object.freeze({
     summary: 'Three of three asked responded with interest and one signed up — above the kill line so far, with stand-ins named.',
   },
 });
+
+/**
+ * Walk a company's founding line to STANDING through the real store — every
+ * event the real law must accept (a house with the operator as Rector, the
+ * named lanes in their seats). Real inputs for a raise test; it fakes nothing.
+ * @param {(wallet: string, id: string, event: object) => Promise<{ok: boolean}>} append - company-store's appendLineEvent
+ * @param {string} wallet
+ * @param {string} id
+ * @param {{spec: string, numer: string, arch: string, merc: string, prae: string}} lanes
+ */
+export const standCompany = async (append, wallet, id, lanes) => {
+  const at = new Date().toISOString();
+  const hand = (stage, by, inspections) => ({ type: 'handed', stage, by, artifact: `repos/${id}/line/${stage}-r1.json`, note: null, inspections, at });
+  const ok = (stage, step, by) => ({ type: 'inspected', stage, step, verdict: 'accept', by, as: by, flaw: null, at });
+  const walk = [
+    hand('survey', lanes.spec, ['Numerarius']), ok('survey', 0, lanes.numer),
+    hand('measure', lanes.numer, ['Architectus']), ok('measure', 0, lanes.arch),
+    hand('shape', lanes.arch, ['Rector']), ok('shape', 0, 'operator'),
+    hand('choose', 'operator', ['operator']), ok('choose', 0, 'operator'),
+    hand('prove', lanes.merc, ['Numerarius', 'Rector']), ok('prove', 0, lanes.numer), ok('prove', 1, 'operator'),
+    hand('charter', lanes.prae, ['counsel', 'operator']), ok('charter', 0, 'operator'), ok('charter', 1, 'operator'),
+    hand('form', 'operator', ['Praetor']), ok('form', 0, lanes.prae),
+  ];
+  for (const event of walk) {
+    const landed = await append(wallet, id, event);
+    if (!landed.ok) throw new Error(`the walk stopped at ${event.type} ${event.stage}`);
+  }
+};

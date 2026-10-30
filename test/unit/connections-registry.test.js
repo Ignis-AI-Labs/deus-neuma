@@ -14,7 +14,7 @@ afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 describe('the list', () => {
   test('the four that run by themselves are switched, and every one starts off', () => {
-    expect(SWITCHED).toEqual(['update-check', 'security-watch', 'spellcheck', 'platform-data']);
+    expect(SWITCHED).toEqual(['update-check', 'security-watch', 'spellcheck', 'platform-data', 'mail-watch', 'sanctions-list']);
     for (const id of SWITCHED) expect(CONNECTIONS.find((c) => c.id === id).default).toBe(false);
   });
 

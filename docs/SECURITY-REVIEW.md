@@ -93,8 +93,15 @@ registry is `backend/services/security/platform-ports.js`.
 - **Sign-in:** a wallet signature over a challenge
   (`backend/services/auth.js`). Session tokens are HMAC-signed with
   `AUTH_SECRET`.
-- **Ownership:** the first local sign-in becomes the install owner
-  (`backend/services/install-owner.js`). `requireInstallOwner` guards the
+- **Ownership:** on a fresh install, the first local sign-in that presents
+  the one-time owner claim becomes the install owner
+  (`backend/services/install-owner.js`). The backend writes the claim to
+  `<data root>/settings/owner-claim/claim.key` (folder 0700, file 0600) while
+  no owner exists, and deletes it once one does
+  (`backend/services/owner-claim.js`). Only the OS user that runs the app can
+  read it: the desk gets it from Electron main (`electron/owner-claim.cjs`,
+  answered to the desk's own top frame only) and the CLI reads it directly.
+  A sign-in without the claim is a guest. `requireInstallOwner` guards the
   routes that act on the host.
 - **Lane ownership:** `backend/services/lane-ownership.js`.
 - **Remote requests:** the access gate in
@@ -219,7 +226,9 @@ by text it reads.
   - `backend/services/install-owner.js`, `lane-ownership.js`, `user-realm.js`,
     `house-workspace.js`, `root-tenants.js`.
   - The operator's own terminal is deliberately unconfined and owner-only:
-    `terminal-manager.js`.
+    `backend/routes/terminal-routes.js` admits only the install owner or a
+    co-owner at the local desk (others are closed with 4003);
+    `terminal-manager.js` keeps each terminal to the wallet that opened it.
 - **What may run on which model:** [protocols/sovereignty-boundary.md](protocols/sovereignty-boundary.md).
 
 ## Supply chain, install and update

@@ -20,10 +20,11 @@ import path from 'path';
 import os from 'os';
 import { realpathSync } from 'fs';
 import { describe, test, expect, beforeAll } from 'vitest';
-import { generateChallenge, verifySignature, createSessionToken } from '../../backend/services/auth.js';
+import { generateChallenge, verifySignature, createSessionToken, verifySessionToken } from '../../backend/services/auth.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setRealmRoot } from '../../backend/services/user-realm.js';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // The settings path must be decided BEFORE the router chain evaluates
 // user-files-settings.js (it reads the env at module load) — hence the
@@ -55,7 +56,10 @@ describe('folder-info + roots mutation hardening', () => {
     app = express();
     app.use(express.json());
     app.use('/api/v1/user/files', router);
-    auth = { Authorization: `Bearer ${await makeAuthToken()}` };
+    const token = await makeAuthToken();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(verifySessionToken(token).address);
+    auth = { Authorization: `Bearer ${token}` };
   });
 
   test('rejects an unauthenticated call (real requireAuth)', async () => {

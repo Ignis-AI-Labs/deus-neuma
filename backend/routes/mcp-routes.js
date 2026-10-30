@@ -29,11 +29,14 @@ router.use(requireAuth);
 const ALLOWED_MCP_COMMANDS = Object.freeze([
   'npx',
 ]);
-// Exact package name only — no @version / @url / @file: suffix (SEC-AUDIT-006 / #165).
-const ALLOWED_MCP_PACKAGES = Object.freeze([
-  '@modelcontextprotocol/server-filesystem',
-  '@modelcontextprotocol/server-memory',
-]);
+// Exact package name only — no @version / @url / @file: suffix (SEC-AUDIT-006 / #165). Each one
+// runs at the version the app ships (package.json, held equal by a test): the client names the
+// package, the server adds the version, so npx never fetches whatever the registry calls latest.
+const PINNED_MCP_PACKAGES = Object.freeze({
+  '@modelcontextprotocol/server-filesystem': '2026.7.10',
+  '@modelcontextprotocol/server-memory': '2026.8.31',
+});
+const ALLOWED_MCP_PACKAGES = Object.freeze(Object.keys(PINNED_MCP_PACKAGES));
 
 // Platform-managed client keys — client connect cannot steal these (SEC-AUDIT-005 / #164).
 const RESERVED_SERVER_NAMES = Object.freeze(['filesystem']);
@@ -110,6 +113,14 @@ const validateMcpSpawn = (command, args) => {
   }
 
   return { ok: true };
+};
+
+// The argv a VALIDATED spawn runs with: the package token gains its pinned version, every other
+// token stays as it was. Pure.
+const pinnedMcpArgs = (args) => {
+  const argv = (args || []).map(String);
+  const at = argv.findIndex((a) => a !== '-y' && a !== '--yes');
+  return argv.map((a, i) => (i === at ? `${a}@${PINNED_MCP_PACKAGES[a]}` : a));
 };
 
 const rejectReservedServerName = (name, res) => {
@@ -243,7 +254,7 @@ router.post('/connect', requireInstallOwner, async (req, res) => {
   }
 
   try {
-    await mcpService.connectToServer(name, command, args, SPAWN_ENV);
+    await mcpService.connectToServer(name, command, pinnedMcpArgs(args), SPAWN_ENV);
     const tools = await mcpService.listAllTools();
     res.json({ success: true, tools });
   } catch (error) {
@@ -313,7 +324,7 @@ router.post('/servers/:serverId/:action', requireInstallOwner, async (req, res) 
       if (!spawnCheck.ok) {
         return res.status(403).json({ error: spawnCheck.error });
       }
-      await mcpService.connectToServer(serverId, resolvedCommand, args || [], SPAWN_ENV);
+      await mcpService.connectToServer(serverId, resolvedCommand, pinnedMcpArgs(args), SPAWN_ENV);
       const tools = await mcpService.listAllTools();
       res.json({ success: true, tools });
     } else if (action === 'disconnect') {
@@ -342,7 +353,7 @@ router.post('/custom', requireInstallOwner, async (req, res) => {
     return res.status(403).json({ error: spawnCheck.error });
   }
   try {
-    await mcpService.connectToServer(serverName, resolvedCommand, args || [], SPAWN_ENV);
+    await mcpService.connectToServer(serverName, resolvedCommand, pinnedMcpArgs(args), SPAWN_ENV);
     const tools = await mcpService.listAllTools();
     res.json({ success: true, tools });
   } catch (error) {
@@ -351,5 +362,5 @@ router.post('/custom', requireInstallOwner, async (req, res) => {
   }
 });
 
-export { extractMCPContent, validateMcpSpawn };
+export { extractMCPContent, validateMcpSpawn, pinnedMcpArgs, PINNED_MCP_PACKAGES };
 export default router;

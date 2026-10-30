@@ -13,6 +13,15 @@ const { createWalletService, assessPassword, MAX_WALLETS } = require('../../elec
 const { ethers } = require('ethers');
 
 const PASSTHROUGH = { available: false }; // store unwrapped — no OS keychain in tests
+// A real keychain, and one that only obfuscates (Linux basic_text): both can
+// open what they sealed, only the strong one may take a password alone.
+const SEAL = {
+  available: true,
+  strong: true,
+  encrypt: (s) => Buffer.from(s, 'utf8'),
+  decrypt: (b) => Buffer.from(b).toString('utf8'),
+};
+const WEAK_SEAL = { ...SEAL, strong: false };
 const CHEAP = { N: 1024, r: 8, p: 1, dkLen: 32 };
 const PW = 'a-strong-witness-passphrase';
 
@@ -99,11 +108,6 @@ describe('wallet-service: select + per-wallet unlock', () => {
 });
 
 describe('wallet-service: remember password', () => {
-  const SEAL = {
-    available: true,
-    encrypt: (s) => Buffer.from(s, 'utf8'),
-    decrypt: (b) => Buffer.from(b).toString('utf8'),
-  };
 
   it('a remembered unlock opens a fresh service with no typed password', () => {
     const a = svc.create(PW);
@@ -121,6 +125,18 @@ describe('wallet-service: remember password', () => {
     const fresh = makeService();
     expect(fresh.tryRememberedUnlock()).toBeNull();
     expect(fresh.status().unlocked).toBe(false);
+  });
+
+  it('a keychain that only obfuscates never takes the password, yet an older blob still opens', () => {
+    const a = svc.create(PW);
+    const weak = makeService({ outerSeal: WEAK_SEAL });
+    expect(weak.unlock(a.id, PW, true)).toMatchObject({ unlocked: true });
+    expect(fs.existsSync(path.join(dir, 'remember.dat'))).toBe(false);
+
+    makeService({ outerSeal: SEAL }).unlock(a.id, PW, true);
+    const blob = fs.readFileSync(path.join(dir, 'remember.dat'));
+    expect(makeService({ outerSeal: WEAK_SEAL }).tryRememberedUnlock()).toMatchObject({ unlocked: true, activeId: a.id });
+    expect(fs.readFileSync(path.join(dir, 'remember.dat'))).toEqual(blob);
   });
 
   it('a corrupt remember blob is forgotten, never retried', () => {
@@ -246,14 +262,20 @@ describe('wallet-service: every lock transition notifies (multi-window truth)', 
 });
 
 describe('wallet-service: a key made for the operator', () => {
-  const SEAL = {
-    available: true,
-    encrypt: (s) => Buffer.from(s, 'utf8'),
-    decrypt: (b) => Buffer.from(b).toString('utf8'),
-  };
 
   it('is refused on a machine with no keychain to keep it', () => {
     expect(() => svc.createForMe()).toThrow(/no OS keychain/);
+  });
+
+  it('is refused on a keychain that only obfuscates, while one made before still opens', () => {
+    const weak = makeService({ outerSeal: WEAK_SEAL });
+    expect(weak.canKeepMadeKey()).toBe(false);
+    expect(() => weak.createForMe()).toThrow(/no OS keychain/);
+    expect(fs.readdirSync(dir).filter((f) => f.startsWith('made-'))).toEqual([]);
+
+    const made = makeService({ outerSeal: SEAL }).createForMe();
+    fs.rmSync(path.join(dir, 'remember.dat'));
+    expect(makeService({ outerSeal: WEAK_SEAL }).tryRememberedUnlock()).toMatchObject({ unlocked: true, activeId: made.id });
   });
 
   it('is made, unlocked, and never hands its password out', () => {

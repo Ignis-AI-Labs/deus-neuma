@@ -2,7 +2,8 @@
 // first (each spend as its SPEND card, each Quaestor flag), then the flight
 // check, every wallet of the house with its balances read live, the history
 // of money out with each being's reason, money in, the campaigns' planning
-// budgets, what the cost meter reads, and the Quaestor's seat. The display
+// budgets, the invoices (InvoicesSection.jsx), the cost meter (CostMeter.jsx),
+// and the Quaestor's seat. The display
 // law lives in treasury-view.js and spend/spend-card-view.js; the IO lives in
 // TreasuryApp.jsx. NO sound imports here — renderable under node.
 
@@ -13,6 +14,8 @@ import { formatDateTime } from '../../utils/format.js';
 import { EmptyState } from './empty-state.jsx';
 import { Select } from './Select.jsx';
 import { SpendCard } from './spend/SpendCard.jsx';
+import { CostMeter } from './CostMeter.jsx';
+import { InvoicesSection } from './InvoicesSection.jsx';
 import {
   markOf, ethLabel, walletName, limitLabel, custodyLabel, historyStatus, historyLoud, treasuryOverview, seatLine,
 } from './treasury-view.js';
@@ -51,6 +54,9 @@ const SeatSection = ({ seat, lanes, pick, busy, onPick, onSeat, onClear }) => (
 export const TreasuryBody = ({
   board, error, loading, now, readAtMs, lanes, pick, seatBusy,
   onRefresh, onDecided, onFlagSeen, onJump, onPick, onSeat, onClear,
+  drafts = {}, costBusy = false, onDraft = () => {}, onCostSetup = () => {}, onCostStop = () => {},
+  onAddCost = () => {}, onAddBill = () => {}, onCostVoid = () => {},
+  onPayTo = () => {}, onInvoicePaid = () => {}, onInvoiceVoid = () => {},
 }) => {
   const view = treasuryOverview(board);
   const ethConfigured = board?.chains?.ethereum !== false;
@@ -145,12 +151,13 @@ export const TreasuryBody = ({
             {board.budgets.length === 0 ? <p className="tre-line label-data">NO CAMPAIGN SETS A BUDGET.</p> : board.budgets.map((b) => (
               <p key={b.id} className="tre-line label-data">{b.name}: {b.money ?? '—'} MONEY · {b.hours ?? '—'} HOURS{b.note ? ` — ${b.note}` : ''}</p>
             ))}
-            <p className="tre-h label-data">RUNNING COSTS</p>
-            <p className="tre-line label-data">
-              {board.costs.gpuPowerW === null ? 'GPU POWER DRAW UNREAD' : `${board.costs.gpuName || 'GPU'} DRAWING ${board.costs.gpuPowerW} W NOW`}
-              {' '}— NOT MEASURED YET: {board.costs.missing.join(' · ').toUpperCase()}
-            </p>
           </section>
+
+          <InvoicesSection invoices={board.invoices} drafts={drafts} busy={costBusy} onDraft={onDraft}
+            onPayTo={onPayTo} onPaid={onInvoicePaid} onVoid={onInvoiceVoid} />
+
+          <CostMeter costs={board.costs} drafts={drafts} busy={costBusy} onDraft={onDraft}
+            onSetup={onCostSetup} onStop={onCostStop} onAddCost={onAddCost} onAddBill={onAddBill} onVoid={onCostVoid} />
 
           <SeatSection seat={board.seat} lanes={lanes} pick={pick} busy={seatBusy} onPick={onPick} onSeat={onSeat} onClear={onClear} />
           {board.gaps.length ? <p className="sec-error label-data">NOT READ: {board.gaps.map((g) => g.part).join(', ').toUpperCase()}</p> : null}

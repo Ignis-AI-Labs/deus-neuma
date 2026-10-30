@@ -13,6 +13,7 @@ import { expect, test } from 'vitest';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { applyPin, applyUnpin } from '../../core/memory/pin-ledger.js';
 import { fullAuth, writeOwner } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('web settings and memory pin clients preserve real storage and auth boundaries', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'read-control-browser-'));
@@ -26,6 +27,8 @@ test('web settings and memory pin clients preserve real storage and auth boundar
     delete process.env.NEUMA_WEB_ACCESS;
     setWorkspacesRoot(path.join(root, 'lanes'));
     const auth = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const stranger = await fullAuth();
     const id = 'read-control';
     await workspace.create(id);

@@ -16,7 +16,7 @@ import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { readReceipts, readScanState, readExtras, putExtra, deleteExtra, appendAttribution } from '../services/money-in/money-in-store.js';
 import { filterReceipts, summarizeMoneyIn, totalsByPeriod, GRANULARITIES } from '../services/money-in/money-in-summary.js';
-import { houseWatchSet } from '../services/money-in/watch-set.js';
+import { houseWatchSet, addressOfAnotherHouse } from '../services/money-in/watch-set.js';
 import { scanHouse } from '../services/money-in/money-in-scan.js';
 import { createLogger } from '../services/logger.js';
 
@@ -113,6 +113,7 @@ router.put('/addresses/:address', async (req, res) => {
   const member = str(req.body?.member) ?? null;
   if (member && !(await assertNeumaOwner(req, res, member))) return;
   try {
+    if (await addressOfAnotherHouse(req.walletAddress, address)) return res.status(409).json({ error: 'that wallet belongs to another house on this machine — a house is paid only at its own (houses never confused)' });
     const extras = await putExtra(req.walletAddress, {
       address: ethers.getAddress(address), label, member, by: req.walletAddress, at: new Date().toISOString(),
     });

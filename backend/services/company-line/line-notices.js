@@ -2,7 +2,9 @@
 // by house post on the house ground (the post wakes it, inside the charter,
 // house-clock.js), the operator by a notification when the move is theirs to
 // make, or when the company stands. Nobody else is told: the record and the
-// desk carry the rest, so a SILENT operator is never flooded (the dial).
+// desk carry the rest, so a SILENT operator is never flooded (the dial). Nor
+// is anyone told of a move they made themselves: the operator who just acted
+// from the desk sees the next move there, and in WAITING ON YOU.
 // A notice that cannot land is logged, never thrown — the move already
 // stands on the record, and the next turn's briefing shows it all the same.
 // impure (house post append, notification bus).
@@ -40,6 +42,7 @@ export const announceMove = async ({ wallet, company, event, line, holders }) =>
   const up = whoIsUp(line, holders);
   const body = noticeText(company, event, line, up);
   if (up.holder === 'operator' || up.kind === 'standing') {
+    if (up.kind !== 'standing' && event.by === 'operator') return;
     try {
       await notifyOperator({
         wallet,

@@ -1,7 +1,7 @@
 // impure - real isolated auth + terminal server, signed throwaway wallets, real wire.
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,8 +26,11 @@ export const pidAlive = (pid) => {
   catch (err) { if (err.code === 'ESRCH') return false; throw err; }
 };
 
-/** Start only production auth + terminal routes in a clean-env child, bound to :0. */
-export const startTerminalKit = async () => {
+/**
+ * Start only production auth + terminal routes in a clean-env child, bound to :0.
+ * `frontendPort` names a dev page's port, so its Origin reads as this desk's own.
+ */
+export const startTerminalKit = async ({ frontendPort } = {}) => {
   const root = await mkdtemp(path.join(tmpdir(), 'neuma-terminal-owned-'));
   const authSecret = randomBytes(32).toString('hex');
   const child = spawn(process.execPath, [fileURLToPath(new URL('./terminal-lifecycle-server.mjs', import.meta.url))], {
@@ -38,6 +41,7 @@ export const startTerminalKit = async () => {
       NEUMA_WORKSPACE_SETTINGS_PATH: path.join(root, 'workspace-settings.json'),
       NEUMA_REALM_SETTINGS_PATH: path.join(root, 'realm-settings.json'),
       AUTH_SECRET: authSecret,
+      ...(frontendPort ? { FRONTEND_PORT: String(frontendPort) } : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
@@ -88,15 +92,29 @@ export const startTerminalKit = async () => {
     const mac = createHmac('sha256', authSecret).update(payload).digest('hex');
     return { ...identity, token: Buffer.from(`${payload}:${mac}`).toString('base64') };
   };
-  return { root, base, signIn, count, close, expiresWithin, dispose };
+  // Who owns this machine, written where the production gate reads it
+  // (install-owner.js under the fixture's own data root). Without it the first
+  // wallet to open a terminal becomes the owner, as at a fresh desk.
+  const seatOwners = async (owner, coOwners = []) => {
+    const settings = path.join(root, 'settings');
+    await mkdir(settings, { recursive: true });
+    await writeFile(path.join(settings, 'install-owner.json'), JSON.stringify({
+      schema: 'install-owner/1', owner: owner.address, coOwners: coOwners.map((c) => c.address), source: 'test-fixture',
+    }));
+  };
+  // The fresh install's owner claim, read as the desk app's main reads it
+  // (null once an owner stands and the claim is spent).
+  const ownerClaimFile = path.join(root, 'settings', 'owner-claim', 'claim.key');
+  const ownerClaim = () => readFile(ownerClaimFile, 'utf8').then((s) => s.trim(), () => null);
+  return { root, base, signIn, count, close, expiresWithin, seatOwners, ownerClaim, ownerClaimFile, dispose };
 };
 
 /** A real client records frames without intercepting or replacing any implementation. */
-export const connectTerminal = (kit, identity, termId = null) => {
+export const connectTerminal = (kit, identity, termId = null, { ownerClaim } = {}) => {
   const url = new URL('/terminal-ws', kit.base.replace('http:', 'ws:'));
   url.searchParams.set('token', identity.token);
   if (termId !== null) url.searchParams.set('term', termId);
-  const ws = new WebSocket(url);
+  const ws = new WebSocket(url, ownerClaim ? { headers: { 'X-Neuma-Owner-Claim': ownerClaim } } : {});
   const result = { ws, frames: [], output: '', hello: null, closed: null, error: null };
   ws.on('message', (raw) => {
     const frame = JSON.parse(String(raw));

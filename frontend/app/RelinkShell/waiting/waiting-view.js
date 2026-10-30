@@ -24,6 +24,7 @@ export const KIND_LABEL = Object.freeze({
   'link-change': 'LINKS',
   'company-line': 'COMPANY LINE',
   hands: 'YOUR HANDS',
+  raise: 'RAISE',
   security: 'SECURITY',
 });
 
@@ -164,6 +165,7 @@ export const cardSelector = (item) => {
   if (w.spendId) return `[data-spend-id="${safe(w.spendId)}"]`;
   if (w.flagId) return `[data-flag-id="${safe(w.flagId)}"]`;
   if (w.changeId) return `[data-link-change-id="${safe(w.changeId)}"]`;
+  if (w.raise && w.companyId) return `[data-raise="${safe(w.companyId)}"]`;
   if (w.handsId) return `[data-hands-id="${safe(w.handsId)}"]`;
   if (w.app === 'companyline' && w.companyId) return `[data-company-line="${safe(w.companyId)}"]`;
   if (w.tab === 'charter') return '[data-charter-pending]';

@@ -12,6 +12,7 @@ import { test } from 'vitest';
 import routingRouter from '../../backend/routes/routing-routes.js';
 import { setCredential, loadCredentials } from '../../backend/services/provider-credentials.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('provider removal confirms its target, cancels safely and retries signed deletion', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'provider-confirm-'));
@@ -29,6 +30,8 @@ test('provider removal confirms its target, cancels safely and retries signed de
     const encrypted = await fs.readFile(process.env.NEUMA_PROVIDER_CREDENTIALS_PATH, 'utf8');
     expect(encrypted).not.toContain('temporary-openai-key');
     const auth = await fullAuth();
+    // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const entryId = 'virtual:provider-key-confirm-proof';
     const source = `
       import React from 'react';

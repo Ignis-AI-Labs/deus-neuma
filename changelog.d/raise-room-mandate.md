@@ -1,0 +1,3 @@
+Added
+- The raise room's foundation, in the COMPANY LINE window: once a company is fully formed, the house can prepare a raise. Its Quaestor drafts the mandate: how much, the instrument, the valuation range and how it was reached, what the money will do, the legal route, outreach limits, and the smallest check. Only you sign it, entering the account where the money lands yourself and confirming your lawyer chose the route. You can pause, resume or close it at any time.
+- The house's Numerarius files the facts sheet investors may be told, each fact with its source and each forward-looking line marked. You record your lawyer's review, and only an approved sheet will ever back an investor message.

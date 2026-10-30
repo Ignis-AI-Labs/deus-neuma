@@ -103,7 +103,7 @@ export const seedHouseA = async (ctx) => {
     ['/api/v1/cso/threats/', ids.threat], ['/api/v1/cso/watch/repos/', ids.repo], ['/api/v1/leads/', ids.lead],
     ['/api/v1/campaigns/', ids.campaign], ['/api/v1/user/projects/', ids.project], ['/api/v1/look/presets/', ids.lookPreset],
     ['/api/v1/remote/devices/', ids.device], ['/api/v1/gallery/roots/', ids.galleryRoot], ['/api/v1/social-channels/queue/', ids.post], ['/api/v1/lanes/', ids.unclaimed],
-    ['/api/v1/company-links/', ids.linkChange], ['/api/v1/company-line/', ids.companyLine],
+    ['/api/v1/company-links/', ids.linkChange], ['/api/v1/company-line/', ids.companyLine], ['/api/v1/raise/', ids.companyLine],
   ];
   const byName = {
     neumaId: lane, companionName: lane, beingId: lane, companion: lane, taskId: ids.task, subId: ids.sub,

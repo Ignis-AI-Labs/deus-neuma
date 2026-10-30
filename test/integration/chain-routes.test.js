@@ -26,6 +26,7 @@ import request from 'supertest';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { shouldRunChainTests, resolveEthMainnetRpc } from '../helpers/chain-optin.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const ENV_KEYS = ['ETH_RPC_URL', 'ETH_SEPOLIA_RPC_URL', 'BASE_MAINNET_RPC_URL', 'BASE_SEPOLIA_RPC_URL', 'NEUMA_CHAIN_ACCESS_PATH'];
 
@@ -54,6 +55,8 @@ describe('Chain routes (/api/v1/chain)', () => {
     process.env.NEUMA_CHAIN_ACCESS_PATH = path.join(house, 'chain-access.json');
     const { witnessFor } = await import('../helpers/witness.js');
     witness = await witnessFor(house, 'chainlane');
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(witness.address);
     app = await buildApp();
     // Isolate again after the app graph imports. Nothing in it loads .env at
     // import any more (core's recall stopped importing natural's package

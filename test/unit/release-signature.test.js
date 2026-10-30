@@ -7,22 +7,25 @@
  * The app-side gate — real Electron, real electron-updater, real loopback feed — is proven by
  * scripts/prove-update-signature.mjs.
  */
+import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import { createHash, generateKeyPairSync, verify } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import process from 'node:process';
 import { describe, expect, it } from 'vitest';
 import {
-  PRIVATE_KEY_NAME, REPO_ROOT, fingerprintOf, generateReleaseKey, isInsideRepo, signFeeds, verifyRelease,
+  PRIVATE_KEY_NAME, REPO_ROOT, fingerprintOf, generateReleaseKey, isInsideRepo, keyLabel, signFeeds, verifyRelease,
 } from '../../scripts/release-key.mjs';
 
 const require = createRequire(import.meta.url);
 const {
-  channelFileFor, checkSignedFeed, embeddedFormOf, offerDiffers, releasePublicKey, signFeed, signatureHolds,
-  signedMessage, unfitForPlatform,
+  channelFileFor, checkSignature, checkSignedFeed, embeddedFormOf, offerDiffers, releasePublicKey, releasePublicKeys, signFeed,
+  signatureHolds, signedMessage, unfitForPlatform,
 } = require('../../electron/release-signature.cjs');
+const embeddedKeys = require('../../electron/release-public-key.cjs');
 
 const FEED = Buffer.from('version: 0.1.31\nfiles:\n  - url: Deus-Neuma-0.1.31-x86_64.AppImage\n    sha512: AAAA\n    size: 10\npath: Deus-Neuma-0.1.31-x86_64.AppImage\nsha512: AAAA\n');
 const OFFERED = Object.freeze({
@@ -114,6 +117,55 @@ describe('checkSignedFeed — the whole verdict', () => {
   it('a validly signed latest.yml served as latest-linux.yml is refused', () => {
     const verdict = checkSignedFeed({ fileName: LINUX, ymlBytes: FEED, sigText: signFeed('latest.yml', FEED, keyA.privateKey), publicKey: PUB_A, offered: OFFERED });
     expect(verdict).toEqual({ ok: false, reason: 'the signature does not match latest-linux.yml (altered, signed for another file, or by another key)' });
+  });
+});
+
+describe('the trusted key list — the release key and its offline backup', () => {
+  const keyC = generateKeyPairSync('ed25519');
+  const TRUSTED = [embeddedFormOf(keyA.publicKey), embeddedFormOf(keyB.publicKey)];
+  const keys = releasePublicKeys(TRUSTED);
+
+  it('the app embeds a list whose first entry is the release key', () => {
+    expect(Array.isArray(embeddedKeys.RELEASE_PUBLIC_KEYS)).toBe(true);
+    expect(embeddedKeys.RELEASE_PUBLIC_KEYS[0]).toBe(embeddedKeys.RELEASE_PUBLIC_KEY);
+    expect(Object.isFrozen(embeddedKeys.RELEASE_PUBLIC_KEYS)).toBe(true);
+  });
+
+  it('every usable key is kept, in order; one that is not a key is left out', () => {
+    expect(keys.map(embeddedFormOf)).toEqual(TRUSTED);
+    expect(releasePublicKeys([TRUSTED[0], 'bm90IGEga2V5', '']).map(embeddedFormOf)).toEqual([TRUSTED[0]]);
+    expect(releasePublicKeys(TRUSTED[1]).map(embeddedFormOf)).toEqual([TRUSTED[1]]);
+    expect(releasePublicKeys([])).toEqual([]);
+  });
+
+  it('a feed signed by the SECOND listed key verifies, and says which key signed it', () => {
+    const verdict = checkSignedFeed({ fileName: LINUX, ymlBytes: FEED, sigText: signFeed(LINUX, FEED, keyB.privateKey), publicKey: keys, offered: OFFERED });
+    expect(verdict.ok).toBe(true);
+    expect(verdict.signer).toBe(1);
+    expect(checkSignedFeed({ fileName: LINUX, ymlBytes: FEED, sigText: signFeed(LINUX, FEED, keyA.privateKey), publicKey: keys }).signer).toBe(0);
+  });
+
+  it('a key outside the list is refused', () => {
+    const sigText = signFeed(LINUX, FEED, keyC.privateKey);
+    expect(checkSignedFeed({ fileName: LINUX, ymlBytes: FEED, sigText, publicKey: keys, offered: OFFERED })).toEqual({
+      ok: false, reason: 'the signature does not match latest-linux.yml (altered, signed for another file, or by another key)',
+    });
+    expect(checkSignature({ fileName: LINUX, bytes: FEED, sigText, publicKey: [] }).reason).toBe('no release public key is embedded in this build');
+  });
+
+  it('--verify says which trusted key made each signature', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'release-two-keys-'));
+    writeFileSync(join(dir, LINUX), FEED);
+    writeFileSync(join(dir, `${LINUX}.sig`), signFeed(LINUX, FEED, keyB.privateKey));
+    writeFileSync(join(dir, 'SHA256SUMS'), '');
+    writeFileSync(join(dir, 'SHA256SUMS.sig'), signFeed('SHA256SUMS', Buffer.alloc(0), keyA.privateKey));
+    const result = await verifyRelease({ dir, publicKeyText: TRUSTED });
+    expect(result.fingerprints).toEqual(TRUSTED.map(fingerprintOf));
+    expect(result.fingerprint).toBe(fingerprintOf(TRUSTED[0]));
+    expect(result.signedBy).toEqual({ [`${LINUX}.sig`]: 1, 'SHA256SUMS.sig': 0 });
+    expect([keyLabel(0), keyLabel(1)]).toEqual(['the release key', 'backup key 1']);
+    const outsider = await verifyRelease({ dir, publicKeyText: [TRUSTED[0], embeddedFormOf(keyC.publicKey)] });
+    expect(outsider.problems).toContain(`${LINUX}.sig: the signature does not match ${LINUX} (altered, signed for another file, or by another key)`);
   });
 });
 

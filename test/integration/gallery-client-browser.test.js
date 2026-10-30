@@ -13,6 +13,7 @@ import { chromium } from '@playwright/test';
 import { expect, test } from 'vitest';
 import { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
@@ -32,6 +33,8 @@ test('gallery client grants, lists, displays and revokes a real temporary root',
     await fs.mkdir(folder);
     await fs.writeFile(path.join(folder, 'proof & image.png'), PNG);
     const auth = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const app = express();
     app.use(express.json());
     app.use('/api/v1/gallery', (await import('../../backend/routes/gallery-routes.js')).default);

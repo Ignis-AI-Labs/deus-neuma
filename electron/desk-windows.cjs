@@ -20,6 +20,31 @@ const { readLookTheme } = require('./wallet/look-theme.cjs');
 /** Height of the window-controls band on Windows/Linux (base.css reads it back as env(titlebar-area-height)). */
 const TITLE_BAND_PX = 32;
 
+/** Pure — the web preferences every desk window opens with. */
+const deskWebPreferences = (slot) => ({
+  preload: path.join(__dirname, 'preload.cjs'),
+  contextIsolation: true,
+  nodeIntegration: false,
+  // Explicit, not Electron's defaults: a desk renderer that can be fooled must
+  // still hold no Node and keep the same-origin policy (preload.cjs is
+  // written for the sandbox).
+  sandbox: true,
+  webSecurity: true,
+  // THE COMFY VIEWPORT: the COMFYUI window embeds the engine's own UI in a
+  // <webview>, which is the only way to show it INSIDE the desk. An
+  // <iframe> cannot: ComfyUI 403s any request carrying
+  // `Sec-Fetch-Site: cross-site` (server.py origin_only_middleware), and a
+  // webview navigates its own top-level browsing context instead.
+  //
+  // This widens no privilege by itself — the guest is declared with its own
+  // partition, no preload and no node, so it stays a sandboxed foreign
+  // origin exactly as the detached workbench window was. `will-attach-
+  // webview` below re-imposes that server-side, because the renderer's
+  // attributes are not trustworthy on their own.
+  webviewTag: true,
+  additionalArguments: [`${SLOT_ARG_PREFIX}${slot}`],
+});
+
 // impure — the factory binds the registry to two seams the lifecycle owns:
 // `getOrigin` (backend-spawn.cjs — where a desk loads from) and
 // `announceStillRunning` (tray.cjs — the once-per-install close notice).
@@ -199,24 +224,7 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
         titleBarOverlay: { color: '#000000', symbolColor: '#8f9a9a', height: TITLE_BAND_PX },
       }),
       show: false,
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.cjs'),
-        contextIsolation: true,
-        nodeIntegration: false,
-        // THE COMFY VIEWPORT: the COMFYUI window embeds the engine's own UI in a
-        // <webview>, which is the only way to show it INSIDE the desk. An
-        // <iframe> cannot: ComfyUI 403s any request carrying
-        // `Sec-Fetch-Site: cross-site` (server.py origin_only_middleware), and a
-        // webview navigates its own top-level browsing context instead.
-        //
-        // This widens no privilege by itself — the guest is declared with its own
-        // partition, no preload and no node, so it stays a sandboxed foreign
-        // origin exactly as the detached workbench window was. `will-attach-
-        // webview` below re-imposes that server-side, because the renderer's
-        // attributes are not trustworthy on their own.
-        webviewTag: true,
-        additionalArguments: [`${SLOT_ARG_PREFIX}${slot}`],
-      },
+      webPreferences: deskWebPreferences(slot),
     });
     // The menu row goes too; its accelerators (New Window, reload, zoom,
     // devtools, quit) stay registered on the hidden menu.
@@ -365,4 +373,4 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
   });
 };
 
-module.exports = { createDeskWindows };
+module.exports = { createDeskWindows, deskWebPreferences };

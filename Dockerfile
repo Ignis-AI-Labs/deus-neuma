@@ -2,8 +2,12 @@
 # Stage 1: Build frontend with Vite
 # Stage 2: Production runtime (backend + neuma engine + built frontend)
 
+# Both stages start from one pinned image: node:22-slim's multi-arch index digest (Docker Hub,
+# 2026-10-28 build). A tag moves with every upstream rebuild; the digest is the exact image.
+# Move it deliberately, with the digest the registry gives for the new build.
+
 # --- Build stage ---
-FROM node:22-slim AS build
+FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -14,10 +18,10 @@ COPY vite.config.js ./
 RUN npm run build
 
 # --- Production stage ---
-FROM node:22-slim
+FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da
 WORKDIR /app
 
-# System deps for onnxruntime-node (native bindings need glibc, already in slim)
+# The system CA store for outbound TLS: the slim image ships none
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*

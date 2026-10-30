@@ -16,6 +16,7 @@ import request from 'supertest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const WALLET = '0x2222222222222222222222222222222222222222';
 
@@ -49,6 +50,8 @@ describe('Gallery /file — the viewer contract', () => {
 
     const auth = await import('../../backend/services/auth.js');
     token = auth.createSessionToken(WALLET);
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(WALLET);
 
     const { default: router } = await import('../../backend/routes/gallery-routes.js');
     app = express();

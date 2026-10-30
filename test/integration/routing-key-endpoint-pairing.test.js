@@ -23,6 +23,7 @@ import { generateChallenge, verifySignature, createSessionToken } from '../../ba
 import { loadCredentials, saveCredentials, setCredential } from '../../backend/services/provider-credentials.js';
 import { listConnections } from '../../backend/services/provider-connections.js';
 import routingRouter from '../../backend/routes/routing-routes.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // Fake keys are built at runtime: no key-shaped text sits in a test file (AGENTS.md Rule 8).
 const fakeKey = (words) => ['sk', 'FAKE', words].join('-');
@@ -64,6 +65,8 @@ beforeAll(async () => {
   const wallet = ethers.Wallet.createRandom();
   const challenge = generateChallenge(wallet.address);
   token = createSessionToken(verifySignature(wallet.address, challenge, await wallet.signMessage(challenge)));
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner(wallet.address);
 
   sink = await startSink();
   app = express();

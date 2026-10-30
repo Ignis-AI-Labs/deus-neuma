@@ -107,6 +107,9 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   // Open a URL in the user's real browser (used by the wallet bridge to reach
   // their Rabby/MetaMask). Main validates the scheme; the key never crosses here.
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  // A fresh install's owner claim for the first sign-in (null once owned);
+  // main answers the desk's own top frame only.
+  ownerClaim: () => ipcRenderer.invoke('app:ownerClaim'),
   // Open a LOCAL HTML file in the default browser (the FILES tree's OPEN IN
   // BROWSER). Main gates: absolute .html/.htm path that exists as a file.
   openInBrowser: (filePath) => ipcRenderer.invoke('app:openInBrowser', filePath),

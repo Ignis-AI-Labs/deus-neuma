@@ -4,8 +4,10 @@
 //
 // The operator's acts here: decide each pending spend on its SPEND card (your
 // signature and the being's key password — or a denial with a note), read a
-// Quaestor's flag, seat or unseat the Quaestor. Nothing on this window moves
-// money any other way; the office itself never can.
+// Quaestor's flag, seat or unseat the Quaestor, and keep the cost meter (the
+// electricity rate, hardware, rent and API bills, each with its source), and
+// say where invoices are paid (then mark one paid by its receipt, or void it).
+// Nothing on this window moves money any other way; the office itself never can.
 //
 // impure shell only: every render decision lives in TreasuryBody.jsx,
 // treasury-view.js and spend/ (all pure, node-renderable).
@@ -13,10 +15,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppTitle } from './app-title.jsx';
 import { uiSound } from '../../services/ui-sound.js';
-import { getTreasuryBoard, seatCfo, clearCfo, markFlagSeen } from '../../services/treasury-client.js';
+import {
+  getTreasuryBoard, seatCfo, clearCfo, markFlagSeen, setCostMeter, addFixedCost, addCostBill, voidCostEntry,
+  setInvoiceWallet, markInvoicePaid, voidInvoice,
+} from '../../services/treasury-client.js';
 import { getRosterForBinding } from '../../services/social-channels-client.js';
 import { useWaitingAccount } from './waiting/use-waiting.js';
 import { TreasuryBody, TreasuryIcon } from './TreasuryBody.jsx';
+import { formBody } from './cost-meter-view.js';
 
 const TICK_MS = 30000;
 
@@ -29,6 +35,8 @@ const TreasuryAppBody = () => {
   const [lanes, setLanes] = useState([]);
   const [pick, setPick] = useState('');
   const [seatBusy, setSeatBusy] = useState(false);
+  const [drafts, setDrafts] = useState({});
+  const [costBusy, setCostBusy] = useState(false);
   const waiting = useWaitingAccount();
   const root = useRef(null);
 
@@ -60,6 +68,17 @@ const TreasuryAppBody = () => {
     try { await fn(); await load(); } catch (e) { setError(e.message); } finally { setSeatBusy(false); }
   };
 
+  // A cost meter write: the form's draft cleared once it lands, the board read again.
+  const costAct = async (fn, form = null) => {
+    uiSound('activate');
+    setCostBusy(true);
+    try {
+      await fn();
+      if (form) setDrafts((d) => ({ ...d, [form]: {} }));
+      await load();
+    } catch (e) { setError(e.message); } finally { setCostBusy(false); }
+  };
+
   return (
     <div ref={root} className="tre-root">
       <TreasuryBody
@@ -78,6 +97,16 @@ const TreasuryAppBody = () => {
         onPick={(v) => { uiSound('open'); setPick(v); }}
         onSeat={() => seatAct(async () => { await seatCfo(pick); setPick(''); })}
         onClear={() => seatAct(clearCfo)}
+        drafts={drafts} costBusy={costBusy}
+        onDraft={(form, field, value) => setDrafts((d) => ({ ...d, [form]: { ...d[form], [field]: value } }))}
+        onCostSetup={() => costAct(() => setCostMeter(formBody('setup', drafts.setup)), 'setup')}
+        onCostStop={() => costAct(() => setCostMeter({ on: false }))}
+        onAddCost={() => costAct(() => addFixedCost(formBody('cost', drafts.cost)), 'cost')}
+        onAddBill={() => costAct(() => addCostBill(formBody('bill', drafts.bill)), 'bill')}
+        onCostVoid={(id, reason) => costAct(() => voidCostEntry(id, reason), `void:${id}`)}
+        onPayTo={() => costAct(() => setInvoiceWallet(String(drafts.payTo?.address ?? '').trim()), 'payTo')}
+        onInvoicePaid={(id, receipt) => costAct(() => markInvoicePaid(id, receipt))}
+        onInvoiceVoid={(id, reason) => costAct(() => voidInvoice(id, reason), `invoice:${id}`)}
       />
     </div>
   );

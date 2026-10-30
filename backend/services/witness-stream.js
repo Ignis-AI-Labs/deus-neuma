@@ -45,6 +45,7 @@ import {
   resolveRetryTurn,
 } from './portal-turn-input.js';
 import { runWitnessToolRounds } from './witness-tool-loop.js';
+import { noteOperatorWords } from './security/injected-value-gate.js';
 import { composeFailedRecord, failureLeavesTake, spokenThrough } from './turn-failure-record.js';
 import { compactWitnessSession } from './witness-compaction.js';
 import { nearContextBoundary } from './solo-torch.js';
@@ -189,6 +190,8 @@ export const streamWitnessTurn = async (connection, message) => {
     ? await getWalletPreset(connection.walletAddress).catch(() => undefined)
     : undefined));
   const sessionId = await ensureSession(connection, laneId);
+  // Only the operator's words exempt a planted value (injected-value-gate.js); a watch's never do.
+  noteOperatorWords(connection, thought, { origin: connection._turnOrigin || null });
   // Take identity for this turn (THE TAKES): a fresh ask opens a turn-point,
   // a retry answers the resolved point as its next take. It rides every
   // speech frame + the complete so the desk targets the take, never a new post.

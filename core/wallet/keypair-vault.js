@@ -16,7 +16,15 @@ import crypto from 'crypto';
 
 // --- Constants ---
 
-const PBKDF2_ITERATIONS = 100_000;
+// New envelopes are sealed at 600k. OWASP's 2023 table asks 210k for PBKDF2-HMAC-SHA512
+// (600k for SHA-256); 600k clears both with margin and still costs well under a second
+// per unlock on desktop hardware, which a once-per-session unlock can afford.
+const PBKDF2_ITERATIONS = 600_000;
+// Envelopes sealed before the raise carry 100k (or, oldest, no count at all) and must keep
+// opening. The ceiling exists because the count is read from disk: an envelope edited to a
+// huge count would otherwise pin the synchronous derive (and the event loop) indefinitely.
+export const KDF_ITERATIONS_LEGACY = 100_000;
+export const KDF_ITERATIONS_MAX = 10_000_000;
 const PBKDF2_KEY_LENGTH = 32; // 256 bits
 const PBKDF2_DIGEST = 'sha512';
 const AES_ALGORITHM = 'aes-256-gcm';
@@ -28,13 +36,22 @@ const RECOVERY_CODE_LENGTH = 16; // hex chars
 // --- Key derivation ---
 
 /**
+ * Is this a PBKDF2 count an envelope may carry? Pure.
+ * @param {unknown} iterations
+ * @returns {boolean}
+ */
+export const kdfIterationsValid = (iterations) => Number.isSafeInteger(iterations)
+  && iterations >= KDF_ITERATIONS_LEGACY && iterations <= KDF_ITERATIONS_MAX;
+
+/**
  * Derive an encryption key from a password and salt using PBKDF2.
  * @param {string} password
  * @param {Buffer} salt
+ * @param {number} iterations
  * @returns {Buffer} 32-byte key
  */
-const deriveKey = (password, salt) =>
-  crypto.pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, PBKDF2_KEY_LENGTH, PBKDF2_DIGEST);
+const deriveKey = (password, salt, iterations) =>
+  crypto.pbkdf2Sync(password, salt, iterations, PBKDF2_KEY_LENGTH, PBKDF2_DIGEST);
 
 // --- Encryption ---
 
@@ -58,7 +75,7 @@ export const encryptKeypair = (keypair, password) => {
   }
 
   const salt = crypto.randomBytes(SALT_LENGTH);
-  const key = deriveKey(password, salt);
+  const key = deriveKey(password, salt, PBKDF2_ITERATIONS);
   const iv = crypto.randomBytes(IV_LENGTH);
 
   const plaintext = JSON.stringify({
@@ -101,10 +118,17 @@ export const decryptKeypair = (encrypted, password) => {
   if (!password || typeof password !== 'string') {
     throw new Error('Password is required');
   }
+  // The count the envelope was sealed with, not today's constant. Envelopes stay at the
+  // count they were sealed with until their next re-seal (a password change or rotation);
+  // re-wrapping on unlock is not done here because every unlock site owns its own write path.
+  const iterations = encrypted.kdfIterations ?? KDF_ITERATIONS_LEGACY;
+  if (!kdfIterationsValid(iterations)) {
+    throw new Error('Invalid encrypted envelope: key derivation count out of range');
+  }
 
   const salt = Buffer.from(encrypted.salt, 'hex');
   const iv = Buffer.from(encrypted.iv, 'hex');
-  const key = deriveKey(password, salt);
+  const key = deriveKey(password, salt, iterations);
 
   try {
     const decipher = crypto.createDecipheriv(AES_ALGORITHM, key, iv);

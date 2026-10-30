@@ -10,6 +10,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import { join } from 'path';
 import { createLogger } from '../services/logger.js';
+import { secretSource } from '../services/secret-provisioning.js';
 import { getActiveModel, getConfig, setConfig as setLlmConfig } from '../services/llm-provider.js';
 import { reachSubstrate } from '../services/substrate-reach.js';
 import { loadProviderChoice, saveProviderChoice } from '../services/provider-choice.js';
@@ -222,10 +223,65 @@ export const checkMemory = () => {
     `${RECOMMENDED_RAM_GB} GB recommended for local models`);
 };
 
-// impure — DNA vault protection requires a real key (a missing key kills
-// the ceremony at crystallization; learned the hard way)
-export const checkDnaKey = () => {
-  const key = process.env.DNA_ENCRYPTION_KEY || '';
+// The pairs that fill English words. A random base64 key of 43+ characters
+// shows 8 or more of them about once in a thousand; a passphrase built from
+// words shows 9 to 20.
+const ENGLISH_PAIRS = new Set(['th', 'he', 'in', 'er', 'an', 're', 'on', 'at', 'en', 'nd', 'ti', 'es', 'or', 'te',
+  'of', 'ed', 'is', 'it', 'al', 'ar', 'st', 'to', 'nt', 'ng', 'se', 'ha', 'as', 'ou', 'io', 'le', 've', 'co', 'me',
+  'de', 'hi', 'ri', 'ro', 'ic', 'ne', 'ea', 'ra', 'ce']);
+const WORDY_PAIRS = 8;
+
+// pure — Shannon bits per character over the string's own characters
+const bitsPerChar = (s) => {
+  const counts = new Map();
+  for (const c of s) counts.set(c, (counts.get(c) || 0) + 1);
+  let bits = 0;
+  for (const n of counts.values()) bits -= (n / s.length) * Math.log2(n / s.length);
+  return bits;
+};
+
+const englishPairs = (s) => {
+  const lower = s.toLowerCase();
+  let hits = 0;
+  for (let i = 0; i < lower.length - 1; i++) if (ENGLISH_PAIRS.has(lower.slice(i, i + 2))) hits++;
+  return hits;
+};
+
+/**
+ * Does this key look like 256 bits of randomness — 64+ hex characters, or 43+
+ * base64 characters that read neither repetitive nor like words? A shape
+ * check, not proof: it catches a chosen passphrase, it cannot certify a key.
+ * Pure.
+ * @param {string} key
+ * @returns {boolean}
+ */
+export const looksRandomKey = (key) => {
+  const k = String(key || '');
+  if (/^[0-9a-f]{64,}$/i.test(k)) return bitsPerChar(k) >= 3;
+  if (!/^[A-Za-z0-9+/_-]{43,}={0,2}$/.test(k)) return false;
+  return bitsPerChar(k) >= 4 && englishPairs(k) < WORDY_PAIRS;
+};
+
+/**
+ * DNA vault protection requires a real key (a missing key kills the ceremony
+ * at crystallization; learned the hard way), and a key a person chose must
+ * not be guessable: it encrypts every being's records directly. A key this
+ * install generated is random by construction and is never questioned.
+ * Pure given its inputs; the defaults read the environment.
+ * @param {{key?: string, source?: ?string}} [input]
+ */
+export const checkDnaKey = ({
+  key = process.env.DNA_ENCRYPTION_KEY || '',
+  source = secretSource('DNA_ENCRYPTION_KEY'),
+} = {}) => {
+  const provisioned = source === 'generated' || source === 'stored';
+  if (key.length >= 32 && !provisioned && !looksRandomKey(key)) {
+    return row('dnaKey', 'DNA Vault Key', 'warn',
+      'DNA_ENCRYPTION_KEY was set by hand and does not look like a random key (64 hex characters, or 43+ random base64 characters)',
+      'This key encrypts every being’s records directly, so a guessable passphrase can be cracked offline by anyone '
+      + 'who gets a copy of the files. Switch to a random key: stop every backend on this house, run '
+      + 'node scripts/rekey-house.mjs to see what will move, then node scripts/rekey-house.mjs --apply.');
+  }
   if (key.length >= 32) {
     return row('dnaKey', 'DNA Vault Key', 'pass',
       'DNA_ENCRYPTION_KEY configured', 'Required to encrypt the neuma’s DNA');

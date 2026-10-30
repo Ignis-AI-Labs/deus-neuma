@@ -152,6 +152,8 @@ const REASONS = Object.freeze({
   'operator-answer': 'your answer to what it filed',
   scheduled: 'its calendar said it was time',
   'charge-due': 'a charge it holds came due',
+  mail: 'new mail came to the house mailbox',
+  reply: 'someone replied to the house\'s posts',
 });
 
 /** @param {string} reason @returns {string} */

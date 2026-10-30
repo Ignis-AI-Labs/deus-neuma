@@ -42,6 +42,7 @@ import path from 'path';
 import { describe, test, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { startLocalProvider } from '../helpers/local-provider.js';
 import { strangerWitness } from '../helpers/witness.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const writeNeuma = (root, id, gb) => {
   mkdirSync(path.join(root, id), { recursive: true });
@@ -79,6 +80,8 @@ beforeAll(async () => {
   // checks (GET) answer a signed-in caller too (audit 2026-10-28 M-03): the
   // same wallet, so the desk's first owner is the one the POSTs speak for.
   witness = strangerWitness();
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner(witness.address);
 }, 120000);
 
 afterAll(async () => {

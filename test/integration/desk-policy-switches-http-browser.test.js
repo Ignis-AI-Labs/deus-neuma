@@ -14,6 +14,7 @@ import { createServer } from 'vite';
 import { chromium } from '@playwright/test';
 import { test, expect } from 'vitest';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('desk policy switches keep their refusal words, null reads, and never-throw resolutions', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'desk-policy-switches-http-'));
@@ -29,6 +30,8 @@ test('desk policy switches keep their refusal words, null reads, and never-throw
     }
     const { default: workspace } = await import('../../core/workspace/neuma-workspace.js');
     const auth = await fullAuth(); const foreign = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const lane = 'policy-switch-proof';
     await workspace.create(lane);
     await fs.writeFile(path.join(workspace.pathFor(lane), 'owner.json'), JSON.stringify({ wallet: auth.address, claimedAt: new Date().toISOString() }));

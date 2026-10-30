@@ -7,7 +7,7 @@
 
 import { FOUNDING_LINE } from './line-stages.js';
 import { masterFor } from './inspection-chain.js';
-import { whoIsUp } from './line-acts.js';
+import { whoIsUp, ownYesAt } from './line-acts.js';
 
 const holderWord = (who) => (!who ? null : who.by === 'operator' ? 'operator' : who.laneId);
 
@@ -27,6 +27,8 @@ export const lineView = (company, line, holders, hands = [], worksheets = {}) =>
   status: line.status,
   stage: line.stage ? line.stage.id : null,
   up: whoIsUp(line, holders),
+  // the operator's hand-on here is their own yes (line-acts.js): one screen, their yes or no
+  ownYes: ownYesAt(line, holders),
   handed: line.handed,
   step: line.step,
   flaw: line.flaw,

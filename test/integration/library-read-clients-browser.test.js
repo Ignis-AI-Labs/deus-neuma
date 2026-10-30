@@ -10,6 +10,7 @@ import { chromium } from '@playwright/test';
 import { test, expect } from 'vitest';
 import folderRouter from '../../backend/routes/model-folder-routes.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('folder and skill reads keep real data, cache semantics and expired-auth fallbacks', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'library-read-'));
@@ -27,6 +28,8 @@ test('folder and skill reads keep real data, cache semantics and expired-auth fa
     expect(skillService.root).toBe(process.env.NEUMA_SKILLS_ROOT);
     const { default: skillRouter } = await import('../../backend/routes/skill-routes.js');
     const auth = await fullAuth();
+    // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const app = express(); app.use(express.json());
     let skillReads = 0;
     app.use('/api/v1/skills', (req, _res, next) => { if (req.method === 'GET') skillReads++; next(); });

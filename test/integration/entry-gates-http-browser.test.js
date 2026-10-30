@@ -18,6 +18,7 @@ import { build } from 'vite';
 import { chromium, expect } from '@playwright/test';
 import { test } from 'vitest';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // The real preflight route's dynamic port sweep must stay pinned to a dead
 // port — unpinned it GETs /api/tags and /v1/models on EVERY loopback listener
@@ -78,6 +79,8 @@ test('the first-run door reads the real backend for a signed-in caller: capacity
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     browser = await chromium.launch({ args: ['--disable-gpu'] });
     const auth = await fullAuth();
+    // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const page = await browser.newPage();
     // signed in at the gateway, as the real app is before the door opens
     await page.addInitScript((token) => sessionStorage.setItem('authToken', token), auth.token);

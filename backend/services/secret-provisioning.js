@@ -25,6 +25,20 @@ const MANAGED = Object.freeze([
   { env: 'AUTH_SECRET', key: 'authSecret' },
 ]);
 
+// Where each managed key came from at this launch: 'environment' (the
+// operator's .env or process env — or the desk's keychain hand-over, which
+// also lands there first), 'stored' or 'generated' (this module's own random
+// keys). The flight check reads it: only a key a person chose can be weak.
+const sources = {};
+
+/**
+ * Where a managed key came from at the last ensureSecrets; null when it never
+ * ran (tests, or a process that loads the env directly).
+ * @param {string} envKey
+ * @returns {'environment'|'stored'|'generated'|null}
+ */
+export const secretSource = (envKey) => sources[envKey] ?? null;
+
 /** Resolve the secrets file path (overridable for packaging/tests). */
 export const secretsFilePath = () =>
   process.env.NEUMA_SECRETS_FILE || path.join(os.homedir(), '.neuma', 'secrets.json');
@@ -105,11 +119,12 @@ export const ensureSecrets = ({ env = process.env } = {}) => {
   let dirty = false;
 
   for (const { env: envKey, key } of MANAGED) {
-    if (env[envKey]) continue;                 // explicit env wins — never overwrite
-    if (stored[key]) { env[envKey] = stored[key]; continue; } // reuse persisted
+    if (env[envKey]) { sources[envKey] = 'environment'; continue; } // explicit env wins — never overwrite
+    if (stored[key]) { env[envKey] = stored[key]; sources[envKey] = 'stored'; continue; } // reuse persisted
     const value = crypto.randomBytes(32).toString('hex');     // 256-bit, generated once
     stored[key] = value;
     env[envKey] = value;
+    sources[envKey] = 'generated';
     generated.push(envKey);
     dirty = true;
   }

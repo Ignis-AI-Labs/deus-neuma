@@ -17,8 +17,8 @@ export const isPdfResponse = (contentType, url) => {
     || (type === 'application/octet-stream' && /\.pdf(?:$|[?#])/i.test(String(url || '')));
 };
 
-// pure — "12" or "12-20" (1-based, inclusive), clamped to the document
-const parseRange = (spec, total) => {
+// pure — "12" or "12-20" (1-based, inclusive), clamped to the document; null when not a range
+export const parseRange = (spec, total) => {
   const m = String(spec ?? '').trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);
   if (!m) return null;
   const from = Math.max(1, Number(m[1]));

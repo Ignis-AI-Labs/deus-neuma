@@ -26,7 +26,7 @@ import { writeCharter, approveCharter } from '../../backend/services/house-clock
 import { houseStop } from '../../backend/services/company-line/house-dial.js';
 import { seatHolders } from '../../backend/services/company-line/stage-holders.js';
 import { companyLineBriefing } from '../../backend/services/company-line/company-briefing.js';
-import { makeCompany, openCompany, appendLineEvent } from '../../backend/services/company-line/company-store.js';
+import { makeCompany, openCompany, appendLineEvent, companyPath } from '../../backend/services/company-line/company-store.js';
 import { cloDesignation } from '../../backend/services/legal/clo-designation.js';
 import { Wallet } from 'ethers';
 import { SHEETS, GAP } from '../helpers/company-line-kit.js';
@@ -67,6 +67,7 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
   const inspect = (lane, company, stage, verdict = 'accept', flaw) => act(lane, { type: 'company/inspect', company, stage, verdict, flaw });
   const opHandOn = (id, stage, body) => request(app).post(`/api/v1/company-line/${id}/hand-on`).use(as(me)).send({ stage, ...body });
   const opInspect = (id, stage, verdict = 'accept', flaw) => request(app).post(`/api/v1/company-line/${id}/inspect`).use(as(me)).send({ stage, verdict, flaw });
+  const opEndGap = (id, stage, flaw) => request(app).post(`/api/v1/company-line/${id}/end-gap`).use(as(me)).send({ stage, flaw });
 
   beforeAll(async () => {
     process.env.DNA_ENCRYPTION_KEY = 'company-line-test-key';
@@ -180,11 +181,17 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     expect((await line(tidewater)).up).toEqual({ kind: 'master', holder: 'operator', seat: 'operator' });
   });
 
-  test('CHOOSE is the operator\'s; PROVE asks the Numerarius and the Rector-operator once — no double gate', async () => {
+  test('CHOOSE is the operator\'s, and handing it on is their yes; PROVE asks the Numerarius and the Rector-operator once — no double gate', async () => {
+    expect((await line(tidewater)).ownYes).toBe(true);
     expect((await opHandOn(tidewater, 'choose', { worksheet: { ...SHEETS.choose, candidate: 'Berth booking for moorings' } })).body.error).toMatch(/candidate: the gap SHAPE shaped \(Tide tables for small harbours\)/);
     expect((await opHandOn(tidewater, 'choose', { worksheet: SHEETS.choose })).status).toBe(200);
-    expect((await line(tidewater)).worksheets.choose.candidate).toBe(GAP);
-    expect((await opInspect(tidewater, 'choose')).status).toBe(200);
+    const chosen = await line(tidewater);
+    expect(chosen.worksheets.choose.candidate).toBe(GAP);
+    // nothing is approved twice: the hand-on carried the floor's yes, and PROVE is the Mercator's at once
+    expect(chosen).toMatchObject({ stage: 'prove', status: 'open', up: { kind: 'master', holder: 'merc' }, ownYes: false });
+    expect((await opInspect(tidewater, 'choose')).status).toBe(400);
+    const record = (await fs.readFile(companyPath(me.address, tidewater, 'line.jsonl'), 'utf8')).trim().split('\n').map((l) => JSON.parse(l));
+    expect(record.slice(-2).map((e) => [e.type, e.stage, e.by, e.verdict ?? null, e.own ?? null])).toEqual([['handed', 'choose', 'operator', null, null], ['inspected', 'choose', 'operator', 'accept', true]]);
     expect((await handOn('merc', tidewater, 'prove')).status).toBe('ok');
     expect((await line(tidewater)).handed.inspections).toEqual(['Numerarius', 'Rector']);
     expect((await inspect('numer', tidewater, 'prove')).status).toBe('ok');
@@ -203,10 +210,10 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     expect((await inspect('prae', tidewater, 'form')).status).toBe('ok');
     expect((await line(tidewater)).status).toBe('standing');
     const { records: notes } = await readNotifications(me.address);
-    // Every move that waited on the operator is its own card, newest first — never merged into one another.
+    // Every move another made that waits on the operator is its own card, newest first — never merged into
+    // one another; a move the operator made themselves tells them nothing (they see the next one on the desk).
     expect(notes.filter((n) => n.kind === 'company_line').map((n) => n.title)).toEqual([
-      'Tidewater stands', 'Tidewater: FORM waits on you', 'Tidewater: CHARTER waits on you', 'Tidewater: CHARTER waits on you',
-      'Tidewater: PROVE waits on you', 'Tidewater: CHOOSE waits on you', 'Tidewater: CHOOSE waits on you', 'Tidewater: SHAPE waits on you',
+      'Tidewater stands', 'Tidewater: CHARTER waits on you', 'Tidewater: PROVE waits on you', 'Tidewater: SHAPE waits on you',
     ]);
     expect(await companyLineBriefing(conn('spec'))).toBe('');
     expect((await readWaiting(me.address)).items.some((i) => i.kind === 'company-line')).toBe(false);
@@ -249,9 +256,9 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     }
     expect((await handOn('arch', brine, 'shape')).status).toBe('ok');
     expect((await opInspect(brine, 'shape')).status).toBe(200);
-    expect((await opHandOn(brine, 'choose', { worksheet: SHEETS.choose })).status).toBe(200);
-    expect((await opInspect(brine, 'choose', 'stop')).status).toBe(400);
-    expect((await opInspect(brine, 'choose', 'stop', 'three funded rivals: a red ocean')).status).toBe(200);
+    // the no sits beside the yes: END THE GAP, with why — no worksheet asked of a gap that ends
+    expect((await opEndGap(brine, 'choose', ' ')).body.error).toBe('name why this gap ends here');
+    expect((await opEndGap(brine, 'choose', 'three funded rivals: a red ocean')).status).toBe(200);
     const after = await line(brine);
     expect(after).toMatchObject({ round: 2, stage: 'survey', status: 'open', up: { holder: 'spec' } });
     expect(after.stopped).toEqual([expect.objectContaining({ round: 1, stage: 'choose', by: 'operator', flaw: 'three funded rivals: a red ocean' })]);

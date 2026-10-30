@@ -3,10 +3,18 @@
 // (intents/company-acts.js) and the operator's routes share this one law, so
 // a desk press and a filed act can never disagree about who may do what.
 // An actor is a lane id, or 'operator'.
+//
+// THE OPERATOR'S OWN YES (Design note, 2026-10-30: nothing is approved twice): when the
+// operator masters a stage and the look that follows would be their own too
+// (the Rector-operator's CHOOSE, the floor's one yes or no on the company they
+// will own), handing it on IS that yes, and ending the gap is the no, offered
+// on the same screen. Counsel's answer is never folded (it is the lawyer's,
+// carried back), and a being's inspection always stands.
 // PURE: the line (line-state.js), the holders (stage-holders.js) and the
 // dial stop come in as data.
 
 import { inspectionsFor, masterFor, inspectorFor } from './inspection-chain.js';
+import { advance } from './line-state.js';
 
 export const VERDICTS = Object.freeze(['accept', 'return', 'stop']);
 export const ARTIFACT_MAX = 300;
@@ -90,5 +98,68 @@ export const judgeInspect = ({ line, holders, actor, stageId, verdict, flaw, now
   return {
     ok: true,
     event: { type: 'inspected', stage: stage.id, step: line.step, verdict, by: actor, as: up.as, flaw: named || null, at: now },
+  };
+};
+
+/**
+ * Is the operator's hand-on here their own yes? They master the stage in hand
+ * and its first look would fall to them as well (never counsel's). pure.
+ * @param {object} line - foldLine's state
+ * @param {Record<string, string>} holders
+ */
+export const ownYesAt = (line, holders) => {
+  if (!line.stage || !['open', 'returned'].includes(line.status)) return false;
+  if (masterFor(line.stage, holders)?.by !== 'operator') return false;
+  const first = inspectorFor(line.stage.inspectors[0], { holders, doer: 'operator' });
+  return first.by === 'operator' && first.as !== 'counsel';
+};
+
+/**
+ * The events a judged move lands: the move itself, and — when it is the
+ * operator's own hand-on — every look that then waits on the operator alone,
+ * answered by that hand-on. The run ends at the first look that is anyone
+ * else's (a being's, or counsel's). pure.
+ * @param {{line: object, holders: Record<string, string>, event: object, now: string}} args - the line before the move
+ * @returns {Array<object>}
+ */
+export const withOwnAnswers = ({ line, holders, event, now }) => {
+  if (event.type !== 'handed' || event.by !== 'operator') return [event];
+  const run = [event];
+  for (let at = advance(line, event); at.status === 'inspecting';) {
+    const up = whoIsUp(at, holders);
+    if (up.holder !== 'operator' || up.as === 'counsel') break;
+    const yes = { type: 'inspected', stage: at.stage.id, step: at.step, verdict: 'accept', by: 'operator', as: up.as, flaw: null, own: true, at: now };
+    run.push(yes);
+    at = advance(at, yes);
+  }
+  return run;
+};
+
+/**
+ * The operator's no where their hand-on would be their yes (ownYesAt): the
+ * gap ends here with its reason named, and the next round opens at SURVEY.
+ * Recorded as a stop always reads — the stage handed on with no work, and the
+ * operator's stop on it. pure.
+ * @param {{line: object, holders: Record<string, string>, stop: string, actor: string, stageId: string, flaw: unknown, now: string}} args
+ * @returns {{ok: true, events: Array<object>} | {ok: false, status: string, reason: string}}
+ */
+export const judgeEndGap = ({ line, holders, stop, actor, stageId, flaw, now }) => {
+  const off = stageRefusal(line, stageId);
+  if (off) return off;
+  const { stage } = line;
+  if (!stage.stoppable) return refuse('invalid', `${stage.name} cannot end the gap — hand its work on, or leave it with its master`);
+  if (actor !== 'operator' || !ownYesAt(line, holders)) {
+    return refuse('denied', `the gap ends at ${stage.name} by its inspection's answer — its master hands the work on, and the inspector says no`);
+  }
+  const named = clean(flaw, NOTE_MAX);
+  if (!named) return refuse('invalid', 'name why this gap ends here');
+  const inspections = inspectionsFor(stage, stop, holders);
+  const { as } = inspectorFor(inspections[0], { holders, doer: 'operator' });
+  return {
+    ok: true,
+    events: [
+      { type: 'handed', stage: stage.id, by: 'operator', artifact: 'no gap chosen — the operator ended it here', note: null, inspections, at: now },
+      { type: 'inspected', stage: stage.id, step: 0, verdict: 'stop', by: 'operator', as, flaw: named, at: now },
+    ],
   };
 };

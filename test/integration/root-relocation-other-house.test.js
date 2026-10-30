@@ -14,6 +14,7 @@ import request from 'supertest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 describe('a root another house lives in is not moved out from under it', () => {
   let app, alpha, beta, dir, realm, workspaces, realmApi, core;
@@ -29,6 +30,8 @@ describe('a root another house lives in is not moved out from under it', () => {
     const { fullAuth, writeOwner } = await import('../helpers/audit-auth.js');
     alpha = await fullAuth();
     beta = await fullAuth();
+    // The first local wallet no longer owns a fresh install on its word (owner-claim.js): seated here.
+    await makeInstallOwner(beta.address);
     await fs.mkdir(path.join(realm, alpha.address), { recursive: true });
     await writeOwner(workspaces, 'alphalane', alpha.address);
 
