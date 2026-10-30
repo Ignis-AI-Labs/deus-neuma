@@ -20,10 +20,12 @@ import { seatHolders } from '../services/company-line/stage-holders.js';
 import { houseStop } from '../services/company-line/house-dial.js';
 import { stopSays, FLOOR } from '../services/company-line/involvement-dial.js';
 import { makeCompany, openCompany, listCompanies, readCompany, readLine, appendLineEvent } from '../services/company-line/company-store.js';
-import { judgeHandOn, judgeInspect } from '../services/company-line/line-acts.js';
+import { judgeInspect } from '../services/company-line/line-acts.js';
+import { prepareHandOn, keepWorksheet } from '../services/company-line/line-hand-on.js';
 import { announceMove } from '../services/company-line/line-notices.js';
 import { lineView } from '../services/company-line/company-view.js';
 import { readHands, answerHands } from '../services/company-line/hands-store.js';
+import { readRoundWorksheets } from '../services/company-line/worksheet-store.js';
 import { checkOutboundSecrets } from '../services/security/outbound-secrets.js';
 import { createLogger } from '../services/logger.js';
 
@@ -34,12 +36,19 @@ router.use(requireAuth);
 
 const STATUS_OF = Object.freeze({ invalid: 400, denied: 403 });
 
+// impure — one company as the desk reads it: its line, its HANDS asks, the round's worksheets.
+const viewOf = async (wallet, company, holders) => {
+  const line = await readLine(wallet, company.id);
+  const [{ items }, worksheets] = await Promise.all([readHands(wallet, company.id), readRoundWorksheets(wallet, company.id, line.round)]);
+  return lineView(company, line, holders, items, worksheets);
+};
+
 // The house's dial and every company's line, in one read.
 router.get('/', async (req, res) => {
   try {
     const wallet = req.walletAddress;
     const [stop, holders, { companies, unreadable }] = await Promise.all([houseStop(wallet), seatHolders(wallet), listCompanies(wallet)]);
-    const lines = await Promise.all(companies.map(async (c) => lineView(c, await readLine(wallet, c.id), holders, (await readHands(wallet, c.id)).items)));
+    const lines = await Promise.all(companies.map((c) => viewOf(wallet, c, holders)));
     res.json({ dial: { stop, says: stopSays(stop), floor: FLOOR }, holders, companies: lines, unreadable });
   } catch (error) {
     log.error('Company read failed', { error: error.message });
@@ -52,8 +61,7 @@ router.get('/:id', async (req, res) => {
     const company = await readCompany(req.walletAddress, req.params.id);
     if (!company) return res.status(404).json({ error: 'No such company in this house' });
     const holders = await seatHolders(req.walletAddress);
-    const hands = (await readHands(req.walletAddress, company.id)).items;
-    return res.json({ company: lineView(company, await readLine(req.walletAddress, company.id), holders, hands) });
+    return res.json({ company: await viewOf(req.walletAddress, company, holders) });
   } catch (error) {
     log.error('Company line read failed', { id: req.params.id, error: error.message });
     return res.status(500).json({ error: 'Could not read this company\'s line' });
@@ -81,28 +89,30 @@ router.post('/', async (req, res) => {
   }
 });
 
-// One operator move on a company's line, judged by the shared law.
+// One operator move on a company's line, judged by the shared law (a judge
+// may read the ground: a hand-on's worksheet is judged where it lands).
 const operatorMove = (judge) => async (req, res) => {
   try {
     const wallet = req.walletAddress;
     const company = await readCompany(wallet, req.params.id);
     if (!company) return res.status(404).json({ error: 'No such company in this house' });
     const [line, holders, stop] = await Promise.all([readLine(wallet, company.id), seatHolders(wallet), houseStop(wallet)]);
-    const judged = judge({ line, holders, stop, actor: 'operator', stageId: req.body?.stage, ...req.body, now: new Date().toISOString() });
+    const judged = await judge({ wallet, company, line, holders, stop, actor: 'operator', stageId: req.body?.stage, ...req.body, now: new Date().toISOString() });
     if (!judged.ok) return res.status(STATUS_OF[judged.status] ?? 400).json({ error: judged.reason });
+    await keepWorksheet(judged);
     const landed = await appendLineEvent(wallet, company.id, judged.event);
     if (!landed.ok) return res.status(409).json({ error: 'The line moved before this landed — read it again' });
     await announceMove({ wallet, company, event: judged.event, line: landed.line, holders });
     log.info('Company line moved by the operator', { id: company.id, stage: judged.event.stage, type: judged.event.type, verdict: judged.event.verdict ?? null, wallet });
-    return res.json({ company: lineView(company, landed.line, holders) });
+    return res.json({ company: await viewOf(wallet, company, holders) });
   } catch (error) {
     log.error('Company line move failed', { id: req.params.id, error: error.message });
     return res.status(500).json({ error: 'Could not move the line' });
   }
 };
 
-router.post('/:id/hand-on', operatorMove(judgeHandOn));
-router.post('/:id/inspect', operatorMove(judgeInspect));
+router.post('/:id/hand-on', operatorMove(prepareHandOn));
+router.post('/:id/inspect', operatorMove(async (args) => judgeInspect(args)));
 
 // The operator answers a HANDS item: done (with the fact, or where a secret is
 // kept) or declined (with why). The answer is screened like anything that

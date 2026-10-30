@@ -56,6 +56,8 @@ import { csoBriefingSection } from './security/security-briefing.js';
 import { cloBriefingSection } from './legal/legal-briefing.js';
 import { cosBriefingSection } from './staff/cos-briefing.js';
 import { companyLineBriefing } from './company-line/company-briefing.js';
+import { mercatorBriefingSection } from './revenue/revenue-briefing.js';
+import { logistaBriefingSection } from './accounts/accounts-briefing.js';
 import { cfoBriefingSection } from './treasury/treasury-briefing.js';
 import { spendNewsFor } from './treasury/spend-news.js';
 import { markSpendsTold } from './treasury/spend-records.js';
@@ -259,6 +261,10 @@ export const assembleTurnPrompt = async ({
     const cfoBriefing = await cfoBriefingSection(connection);
     // The company line rides the same law — '' for every house founding no company.
     const companyLine = await companyLineBriefing(connection);
+    // The Mercator's office — '' for every lane but the seated sales seat's.
+    const croBriefing = await mercatorBriefingSection(connection);
+    // The Logista's books — '' for every lane but the seated Logista's.
+    const caoBriefing = await logistaBriefingSection(connection);
     // What became of the being's own spend requests (#586), told once — never on a harness or benchmark sitting.
     const walletNews = companion?.neumaId && !platformOnly && !connection._benchmarkControls
       ? await spendNewsFor(companion.neumaId) : { text: '', ids: [] };
@@ -298,7 +304,7 @@ export const assembleTurnPrompt = async ({
     // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
-      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, companyLine, voiceSitting, planBearing,
+      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing,
       sovereigntyKnock, housePost, walletNews: walletNews.text, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
       voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,

@@ -16,8 +16,9 @@ const holderWord = (who) => (!who ? null : who.by === 'operator' ? 'operator' : 
  * @param {object} line - foldLine's state (plus the store's `torn`)
  * @param {Record<string, string>} holders - seat title → lane id or 'operator'
  * @param {ReadonlyArray<object>} [hands] - the company's HANDS items (hands-store.js), oldest first
+ * @param {Record<string, object>} [worksheets] - the round's worksheets by stage (worksheet-store.js)
  */
-export const lineView = (company, line, holders, hands = []) => Object.freeze({
+export const lineView = (company, line, holders, hands = [], worksheets = {}) => Object.freeze({
   id: company.id,
   name: company.name,
   mode: company.mode,
@@ -34,6 +35,7 @@ export const lineView = (company, line, holders, hands = []) => Object.freeze({
   torn: line.torn ?? 0,
   skipped: line.skipped ?? 0,
   hands,
+  worksheets,
   stages: FOUNDING_LINE.map((s, i) => ({
     id: s.id,
     name: s.name,
@@ -42,6 +44,7 @@ export const lineView = (company, line, holders, hands = []) => Object.freeze({
     inspectors: s.inspectors,
     gate: s.gate,
     stoppable: s.stoppable,
+    worksheet: Boolean(s.sheet),
     handsOn: s.handsOn,
     state: i < line.index ? 'done' : i === line.index && line.status !== 'standing' ? 'in-hand' : 'ahead',
   })),

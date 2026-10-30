@@ -48,6 +48,7 @@ import { isLaneRunning } from './team-run-live.js';
 import { readMandateRecord } from './marketing/mandate/mandate-store.js';
 import { mandateBriefingLine } from './marketing/mandate/mandate-words.js';
 import { sourcesBriefingLine } from './marketing/company-sources.js';
+import { MAKOTO_LINE } from './makoto.js';
 
 const log = createLogger('Portal');
 
@@ -269,6 +270,7 @@ const _cmoBriefingSection = async (connection) => {
       'You hold the CMO office — the house defers marketing to you; feed the other teams what they need.',
       'THE BOARD: lay your operator\'s MARKETING board out for what they need to see for each company (board_read, marketing/board-arrange); the panels they pinned are theirs.',
       'COMPANY LINKS: propose a company\'s site and links with marketing/company-links; your operator approves each change.',
+      MAKOTO_LINE,
       ...(mandateLine ? [mandateLine] : []),
       ...(sourcesLine ? [sourcesLine] : []),
       '',

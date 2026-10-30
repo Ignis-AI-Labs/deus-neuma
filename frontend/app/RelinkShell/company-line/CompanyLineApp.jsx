@@ -15,9 +15,12 @@ import { AppTitle } from '../app-title.jsx';
 import { uiSound } from '../../../services/ui-sound.js';
 import { getCompanyLines, openCompany, handOnStage, inspectStage, answerHands } from '../../../services/company-line-client.js';
 import { getRosterForBinding } from '../../../services/social-channels-client.js';
+import { getRevenueBoard, seatMercator, clearMercator } from '../../../services/revenue-client.js';
+import { getAccountsBoard, seatLogista, clearLogista } from '../../../services/accounts-client.js';
 import { useWaitingAccount } from '../waiting/use-waiting.js';
 import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { CompanyLineBody, CompanyLineIcon } from './CompanyLineBody.jsx';
+import { handOnPayload } from './company-line-view.js';
 
 const CompanyLineAppBody = () => {
   const [board, setBoard] = useState(null);
@@ -26,12 +29,19 @@ const CompanyLineAppBody = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [drafts, setDrafts] = useState({});
+  const [sales, setSales] = useState(null);
+  const [pick, setPick] = useState('');
+  const [books, setBooks] = useState(null);
+  const [bookPick, setBookPick] = useState('');
   const waiting = useWaitingAccount();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setBoard(await getCompanyLines());
+      const [lines, revenue, accounts] = await Promise.all([getCompanyLines(), getRevenueBoard(), getAccountsBoard()]);
+      setBoard(lines);
+      setSales(revenue);
+      setBooks(accounts);
       setError(null);
     } catch (e) {
       setError(e.message); // surfaced, never swallowed
@@ -70,10 +80,24 @@ const CompanyLineAppBody = () => {
         board={board} names={names} error={error} loading={loading} busy={busy} drafts={drafts} onDraft={onDraft}
         onRefresh={() => { uiSound('activate'); load(); }}
         onOpen={() => move('_open', () => openCompany({ name: drafts._open?.name, mode: drafts._open?.mode }))}
-        onHandOn={(c) => move(c.id, () => handOnStage(c.id, { stage: c.stage, artifact: drafts[c.id]?.artifact, note: drafts[c.id]?.note }))}
+        onHandOn={(c) => move(c.id, () => handOnStage(c.id, handOnPayload(c, drafts[c.id] ?? {})))}
         onInspect={(c, verdict) => move(c.id, () => inspectStage(c.id, { stage: c.stage, verdict, flaw: drafts[c.id]?.flaw }))}
         onAnswer={(item, status) => move(item.id, () => answerHands(item.company.id, item.id, { status, text: drafts[item.id]?.text }))}
         onCharter={() => { uiSound('open'); requestWaitingJump({ where: { app: 'houseclock', tab: 'charter' } }); }}
+        sales={sales}
+        onSales={{
+          pick,
+          onPick: (v) => { uiSound('open'); setPick(v); },
+          onSeat: () => move('_sales', async () => { await seatMercator(pick); setPick(''); }),
+          onClear: () => move('_sales', clearMercator),
+        }}
+        books={books}
+        onBooks={{
+          pick: bookPick,
+          onPick: (v) => { uiSound('open'); setBookPick(v); },
+          onSeat: () => move('_books', async () => { await seatLogista(bookPick); setBookPick(''); }),
+          onClear: () => move('_books', clearLogista),
+        }}
       />
     </div>
   );

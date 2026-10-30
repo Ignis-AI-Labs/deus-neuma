@@ -20,7 +20,8 @@ import { houseSeatFor } from '../house-titles.js';
 import { seatHolders } from '../company-line/stage-holders.js';
 import { houseStop } from '../company-line/house-dial.js';
 import { makeCompany, openCompany, listCompanies, readCompany, readLine, appendLineEvent, MODES } from '../company-line/company-store.js';
-import { judgeHandOn, judgeInspect, VERDICTS } from '../company-line/line-acts.js';
+import { judgeInspect, VERDICTS } from '../company-line/line-acts.js';
+import { prepareHandOn, keepWorksheet } from '../company-line/line-hand-on.js';
 import { announceMove, announceHands } from '../company-line/line-notices.js';
 import { makeHands, ANSWERS } from '../company-line/hands-shape.js';
 import { raiseHands } from '../company-line/hands-store.js';
@@ -101,8 +102,8 @@ export const companyOpenIntent = Object.freeze({
 export const companyHandOnIntent = Object.freeze({
   name: 'company/hand-on',
   policyTool: 'company.hand-on',
-  fieldsForPrompt: '{company, stage, artifact, note?}',
-  descriptionForPrompt: 'THE COMPANY LINE. Hand your stage\'s work on to its inspector: company is the [id], stage the stage you master, artifact where the work lies (a path on the house ground, or a link), note what the inspector should know. Only the stage\'s master hands on.',
+  fieldsForPrompt: '{company, stage, worksheet?, artifact?, note?}',
+  descriptionForPrompt: 'THE COMPANY LINE. Hand your stage\'s work on to its inspector: company is the [id], stage the stage you master, note what the inspector should know. SURVEY, MEASURE, SHAPE, CHOOSE and PROVE hand on a worksheet (its shape is in your COMPANY LINE briefing; every claim and score names its source); the platform keeps it and mirrors it to repos/<company>/line/ for the inspector. CHARTER and FORM hand on an artifact: where the work lies. Only the stage\'s master hands on.',
 
   availableFor: (probe) => advertisedOnLine(probe).catch(() => null),
 
@@ -111,16 +112,19 @@ export const companyHandOnIntent = Object.freeze({
     if (!context) return notOpen;
     const { company, line, refusal } = await companyLine(context.wallet, payload?.company);
     if (refusal) return refusal;
-    const judged = judgeHandOn({
-      line, holders: context.holders, stop: await houseStop(context.wallet), actor: context.neumaId,
-      stageId: payload?.stage, artifact: payload?.artifact, note: payload?.note, now: new Date().toISOString(),
+    const prepared = await prepareHandOn({
+      wallet: context.wallet, company, line, holders: context.holders, stop: await houseStop(context.wallet), actor: context.neumaId,
+      stageId: payload?.stage, artifact: payload?.artifact, note: payload?.note, worksheet: payload?.worksheet, now: new Date().toISOString(),
     });
-    return judged.ok ? { ok: true, value: { context, company, event: judged.event } } : judged;
+    return prepared.ok ? { ok: true, value: { context, company, prepared } } : prepared;
   },
 
   summarize: (payload) => `hand on ${payload?.stage ?? '?'} of ${payload?.company ?? '?'}`,
 
-  execute: ({ context, company, event }) => landMove({ ...context, company }, event),
+  execute: async ({ context, company, prepared }) => {
+    await keepWorksheet(prepared);
+    return landMove({ ...context, company }, prepared.event);
+  },
 });
 
 export const companyInspectIntent = Object.freeze({

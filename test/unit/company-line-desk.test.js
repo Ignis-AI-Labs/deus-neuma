@@ -13,7 +13,7 @@ import { lineView } from '../../backend/services/company-line/company-view.js';
 import { STOPS, DEFAULT_STOP as BACK_DEFAULT, stopSays, FLOOR } from '../../backend/services/company-line/involvement-dial.js';
 import { DIAL_STOPS, DEFAULT_STOP, dialSays } from '../../frontend/app/RelinkShell/house-clock/involvement-words.js';
 import { CompanyLineBody } from '../../frontend/app/RelinkShell/company-line/CompanyLineBody.jsx';
-import { upWords, stepWords, operatorMove, lineOverview, holderName, openHands, domainOf } from '../../frontend/app/RelinkShell/company-line/company-line-view.js';
+import { upWords, stepWords, operatorMove, lineOverview, holderName, openHands, domainOf, handOnReady, handOnPayload, currentStage as currentStageOf } from '../../frontend/app/RelinkShell/company-line/company-line-view.js';
 import { CharterSection } from '../../frontend/app/RelinkShell/house-clock/CharterSection.jsx';
 import { draftFromCharter, charterFromDraft, charterLines } from '../../frontend/app/RelinkShell/house-clock/house-clock-view.js';
 import { normalizeCharter } from '../../backend/services/house-clock/charter-shape.js';
@@ -147,5 +147,85 @@ describe('YOUR HANDS on the desk', () => {
     const row = { kind: 'hands', where: { app: 'companyline', companyId: COMPANY.id, handsId: item.id } };
     expect(KIND_LABEL[row.kind]).toBe('YOUR HANDS');
     expect(cardSelector(row)).toBe(`[data-hands-id="${item.id}"]`);
+  });
+});
+
+describe('worksheets on the desk', () => {
+  test('CHOOSE, when the operator masters it: the shaped gap shown, and the draft becomes the worksheet', async () => {
+    const { SHEETS, GAP } = await import('../helpers/company-line-kit.js');
+    const view = lineView(COMPANY, foldLine(toChoose.slice(0, 6)), HOLDERS, [], { shape: SHEETS.shape });
+    const choose = view.stages.find((s) => s.id === 'choose');
+    expect(choose.worksheet).toBe(true);
+    expect(view.stages.find((s) => s.id === 'charter').worksheet).toBe(false);
+    expect(handOnReady(choose, { why: 'ours', kill: '' })).toBe(false);
+    expect(handOnReady(choose, { why: 'ours', kill: 'we stop if nobody signs\n' })).toBe(true);
+    expect(handOnPayload(view, { why: 'The canvas leaves room.', kill: 'we stop if nobody signs\n\n we stop if churn > 50% ' })).toEqual({
+      stage: 'choose', worksheet: { candidate: GAP, why: 'The canvas leaves room.', killCriteria: ['we stop if nobody signs', 'we stop if churn > 50%'] },
+    });
+    const html = render({ ...boardOf(toChoose.slice(0, 6)), companies: [view] });
+    expect(html).toContain(`THE GAP SHAPED: ${GAP}`);
+    expect(html).toContain('data-worksheet="shape"');
+    expect(html).toContain('“Your harbour, your tides, one page.”');
+  });
+
+  test('a worksheet stage the operator writes by hand refuses JSON that does not parse', () => {
+    const view = lineView(COMPANY, foldLine([]), { ...HOLDERS, Speculator: 'operator' });
+    expect(handOnReady(currentStageOf(view), { json: '' })).toBe(false);
+    expect(() => handOnPayload(view, { json: '{candidates:' })).toThrow('The worksheet is not valid JSON.');
+  });
+
+  test('an inspection shows the canvas: a level per factor and player, and every level\'s source', async () => {
+    const { SHEETS } = await import('../helpers/company-line-kit.js');
+    const events = [hand('survey', 'spec', ['Numerarius'], 1), ok('survey', 0, 'numer', 2), hand('measure', 'numer', ['Rector'], 3)];
+    const view = lineView(COMPANY, foldLine(events), { ...HOLDERS, Architectus: 'operator' }, [], { survey: SHEETS.survey, measure: SHEETS.measure });
+    const html = render({ ...boardOf(events), companies: [view] });
+    expect(html).toContain('data-worksheet="measure"');
+    expect(html).toContain('CANVAS — Tide tables for small harbours');
+    expect(html).toContain('<td class="label-data" title="repos/tidewater/model-check.md">9</td>');
+    expect(html).toContain('Local accuracy · National almanac · 4 — <span>interview: harbour master, Port Isaac, 2026-10-20</span>');
+  });
+});
+
+describe('SALES on the desk', () => {
+  test('the seat by name, the pipeline per stage with its value, each open deal with its next step', () => {
+    const sales = {
+      mercator: { laneId: 'merc' },
+      pipeline: { qualified: { count: 1, value: { USD: 120 } }, proposed: { count: 0, value: {} }, won: { count: 2, value: { USD: 300, ETH: 0.1 } }, lost: { count: 1, value: { USD: 40 } } },
+      deals: [{ id: 'd-0a0b0c0d', buyer: 'Padstow harbour office', stage: 'qualified', value: { amount: 120, currency: 'USD' }, nextStep: 'Send the sample sheet' }],
+    };
+    const html = renderToStaticMarkup(createElement(CompanyLineBody, {
+      board: boardOf([]), names: { ...NAMES, merc: 'Sol' }, error: null, loading: false, busy: false, drafts: {}, onDraft: () => {}, onRefresh: () => {},
+      onOpen: () => {}, onHandOn: () => {}, onInspect: () => {}, onAnswer: () => {}, onCharter: () => {},
+      sales, onSales: { pick: '', onPick: () => {}, onSeat: () => {}, onClear: () => {} },
+    }));
+    expect(html).toContain('SALES — MERCATOR · SOL');
+    expect(html).toContain('WON · 300 USD + 0.1 ETH');
+    expect(html).toContain('data-deal-id="d-0a0b0c0d"');
+    expect(html).toContain('Padstow harbour office — QUALIFIED, 120 USD — NEXT: Send the sample sheet');
+    expect(html).toContain('>UNSEAT<');
+  });
+});
+
+describe('THE BOOKS on the desk', () => {
+  test('the keeper by name, each company to date per currency, the unmatched, a CPA\'s deadline, the unbooked receipts', () => {
+    const books = {
+      logista: { laneId: 'logi' }, year: '2026',
+      books: [{
+        id: COMPANY.id, name: 'Tidewater', voided: 1,
+        yearToDate: { currencies: { USDC: { in: 120, out: 0, net: 120 } }, entries: 2, unmatched: 1 },
+        deadlines: [{ id: 't-0a0b0c0d', what: 'Federal return (Form 1065)', due: '2027-03-15', authority: 'the IRS', needsCpa: true, met: null }],
+      }],
+      unbooked: [{ kind: 'spend', ref: 'quae:aa11', label: '0.01 ETH out by quae' }],
+    };
+    const html = renderToStaticMarkup(createElement(CompanyLineBody, {
+      board: boardOf([]), names: { ...NAMES, logi: 'Ledger' }, error: null, loading: false, busy: false, drafts: {}, onDraft: () => {}, onRefresh: () => {},
+      onOpen: () => {}, onHandOn: () => {}, onInspect: () => {}, onAnswer: () => {}, onCharter: () => {},
+      books, onBooks: { pick: '', onPick: () => {}, onSeat: () => {}, onClear: () => {} },
+    }));
+    expect(html).toContain('THE BOOKS — LOGISTA · LEDGER');
+    expect(html).toContain('USDC NET · IN 120 · OUT 0');
+    expect(html).toContain('2 ENTRIES · 1 UNMATCHED · 1 VOIDED');
+    expect(html).toContain('DUE 2027-03-15: Federal return (Form 1065) — TO the IRS — NEEDS A LICENSED CPA');
+    expect(html).toContain('1 RECEIPT NOT YET BOOKED');
   });
 });

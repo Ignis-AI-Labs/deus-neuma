@@ -29,6 +29,7 @@ import { companyLineBriefing } from '../../backend/services/company-line/company
 import { makeCompany, openCompany, appendLineEvent } from '../../backend/services/company-line/company-store.js';
 import { cloDesignation } from '../../backend/services/legal/clo-designation.js';
 import { Wallet } from 'ethers';
+import { SHEETS, GAP } from '../helpers/company-line-kit.js';
 import companyLineRouter from '../../backend/routes/company-line-routes.js';
 import { companyHandOnIntent, companyOpenIntent } from '../../backend/services/intents/company-acts.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
@@ -61,9 +62,10 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     const [result] = await processToolCalls(serverWs, '', conn(neumaId, wallet));
     return result;
   };
-  const handOn = (lane, company, stage, artifact = `repos/${company}/line/${stage}.md`) => act(lane, { type: 'company/hand-on', company, stage, artifact });
+  // A worksheet stage hands on its worksheet; CHARTER and FORM hand on where the work lies.
+  const handOn = (lane, company, stage, extra = SHEETS[stage] ? { worksheet: SHEETS[stage] } : { artifact: `repos/${company}/line/${stage}.md` }) => act(lane, { type: 'company/hand-on', company, stage, ...extra });
   const inspect = (lane, company, stage, verdict = 'accept', flaw) => act(lane, { type: 'company/inspect', company, stage, verdict, flaw });
-  const opHandOn = (id, stage, artifact) => request(app).post(`/api/v1/company-line/${id}/hand-on`).use(as(me)).send({ stage, artifact });
+  const opHandOn = (id, stage, body) => request(app).post(`/api/v1/company-line/${id}/hand-on`).use(as(me)).send({ stage, ...body });
   const opInspect = (id, stage, verdict = 'accept', flaw) => request(app).post(`/api/v1/company-line/${id}/inspect`).use(as(me)).send({ stage, verdict, flaw });
 
   beforeAll(async () => {
@@ -140,7 +142,17 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
 
   test('only the master hands on; the inspector hears it; a return names the flaw and the master mends', async () => {
     expect(await handOn('numer', tidewater, 'survey')).toMatchObject({ status: 'denied', error: expect.stringMatching(/the Speculator's stage to master/) });
+    // A worksheet stage takes its worksheet, whole and sourced — the refusal names every gap at once.
+    expect(await handOn('spec', tidewater, 'survey', { artifact: 'notes.md' })).toMatchObject({ status: 'error', error: expect.stringMatching(/the SURVEY worksheet is not ready — worksheet: this stage hands on a worksheet object/) });
+    const unsourced = { candidates: [{ ...SHEETS.survey.candidates[0], evidence: [{ claim: 'Harbour masters copy tables by hand weekly', source: 'I think so' }] }] };
+    expect(await handOn('spec', tidewater, 'survey', { worksheet: unsourced })).toMatchObject({ status: 'error', error: expect.stringMatching(/evidence\[0\]\.source: a source is an https link/) });
+    expect(await companyLineBriefing(conn('spec'))).toContain('worksheet: {candidates: [{name, gap, path: industries|groups|buyers|complements|appeal|time');
     expect((await handOn('spec', tidewater, 'survey')).status).toBe('ok');
+    // The platform keeps the true copy, and mirrors it on the ground for the inspector to open.
+    const mirror = JSON.parse(await fs.readFile(path.join(ground, 'repos', tidewater, 'line', 'survey-r1.json'), 'utf8'));
+    expect(mirror).toEqual(SHEETS.survey);
+    expect((await line(tidewater)).worksheets.survey).toEqual(SHEETS.survey);
+    expect(await companyLineBriefing(conn('numer'))).toContain(`the worksheet: repos/${tidewater}/line/survey-r1.json on the house ground — open it and check every source`);
     expect((await line(tidewater)).up).toMatchObject({ kind: 'inspector', holder: 'numer' });
     expect(await knock('numer')).toContain('House post: 1 unread');
     expect(await inspect('spec', tidewater, 'survey')).toMatchObject({ status: 'denied' });
@@ -152,6 +164,9 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
   });
 
   test('SHAPE waits on the operator as Rector — in WAITING ON YOU — and a being cannot answer for them', async () => {
+    // MEASURE scores only what SURVEY handed on: fitted to this blade.
+    const stray = { canvases: [{ ...SHEETS.measure.canvases[0], candidate: 'Kayak rentals' }] };
+    expect(await handOn('numer', tidewater, 'measure', { worksheet: stray })).toMatchObject({ status: 'error', error: expect.stringMatching(/canvases\[0\]\.candidate: a candidate SURVEY handed on/) });
     expect((await handOn('numer', tidewater, 'measure')).status).toBe('ok');
     expect((await inspect('arch', tidewater, 'measure')).status).toBe('ok');
     expect((await handOn('arch', tidewater, 'shape')).status).toBe('ok');
@@ -166,7 +181,9 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
   });
 
   test('CHOOSE is the operator\'s; PROVE asks the Numerarius and the Rector-operator once — no double gate', async () => {
-    expect((await opHandOn(tidewater, 'choose', 'Tidewater: tide-table reports for small harbours')).status).toBe(200);
+    expect((await opHandOn(tidewater, 'choose', { worksheet: { ...SHEETS.choose, candidate: 'Berth booking for moorings' } })).body.error).toMatch(/candidate: the gap SHAPE shaped \(Tide tables for small harbours\)/);
+    expect((await opHandOn(tidewater, 'choose', { worksheet: SHEETS.choose })).status).toBe(200);
+    expect((await line(tidewater)).worksheets.choose.candidate).toBe(GAP);
     expect((await opInspect(tidewater, 'choose')).status).toBe(200);
     expect((await handOn('merc', tidewater, 'prove')).status).toBe('ok');
     expect((await line(tidewater)).handed.inspections).toEqual(['Numerarius', 'Rector']);
@@ -182,7 +199,7 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     expect((await opInspect(tidewater, 'charter')).status).toBe(200);
     expect((await opInspect(tidewater, 'charter')).status).toBe(200);
     expect((await opInspect(tidewater, 'form')).status).toBe(400);
-    expect((await opHandOn(tidewater, 'form', 'entity filed; tax ID in the operator\'s keeping')).status).toBe(200);
+    expect((await opHandOn(tidewater, 'form', { artifact: 'entity filed; tax ID in the operator\'s keeping' })).status).toBe(200);
     expect((await inspect('prae', tidewater, 'form')).status).toBe('ok');
     expect((await line(tidewater)).status).toBe('standing');
     const { records: notes } = await readNotifications(me.address);
@@ -232,7 +249,7 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     }
     expect((await handOn('arch', brine, 'shape')).status).toBe('ok');
     expect((await opInspect(brine, 'shape')).status).toBe(200);
-    expect((await opHandOn(brine, 'choose', 'brine shrimp feed')).status).toBe(200);
+    expect((await opHandOn(brine, 'choose', { worksheet: SHEETS.choose })).status).toBe(200);
     expect((await opInspect(brine, 'choose', 'stop')).status).toBe(400);
     expect((await opInspect(brine, 'choose', 'stop', 'three funded rivals: a red ocean')).status).toBe(200);
     const after = await line(brine);
