@@ -1,3 +1,0 @@
-Added
-- Raise closes: the house's Quaestor records the terms agreed with an interested investor. They must stay within your mandate: its instrument, its valuation range, its smallest check, and never past the amount you're raising. The Praetor checks them, then the close waits for your signature in WAITING ON YOU.
-- You sign a close only with the papers signed, the investor verified accredited where your route requires it, and the money landed. For a wallet, that means a receipt for at least the agreed amount, at your mandate's own address, on its network, and each receipt can close only one investor. Signing a wallet mandate also adds that address to the money-in watch list, so investor transfers are seen.

@@ -1,2 +1,0 @@
-Security
-- On a new install, signing in no longer makes you the computer's owner just because you were first. The owner is the first person to sign in from the Deus Neuma app, or the `neuma` command line, running under the computer account that installed it. Someone using another account on the same computer who opens the app first signs in as a guest and cannot take over the computer's settings or its terminal. Installs that already have an owner are unchanged.

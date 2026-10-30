@@ -1,2 +1,0 @@
-Fixed
-- When an app or a benchmark drives a being through `neuma agent` and sends a system message, that message is now treated as the conversation's own rules, which hold over anything said inside the conversation. It used to be pasted into the being's first message as "SYSTEM: …", where the being's injection defence rightly ignored it as a smuggled instruction. A rule like "don't discuss sports" now holds when someone asks about sports.

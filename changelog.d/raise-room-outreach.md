@@ -1,3 +1,0 @@
-Added
-- Raise outreach, from the house's own mailbox: once you've signed the mandate and your lawyer has approved the facts sheet, the house can list investors, have its Praetor clear each one under the legal route, and write to them. Every message is checked first. Any number not on the approved facts sheet or in your mandate, an unmarked forward-looking promise, a missing AI-disclosure line, any payment details, or false urgency holds the message. Payment instructions are filled in only from the account you entered. The mandate's daily pace and follow-up limits hold, and an investor who says no is never written to again.
-- The RAISE section lists every investor, where each stands, and every message sent to them.

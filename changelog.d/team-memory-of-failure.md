@@ -1,2 +1,0 @@
-Changed
-- A team run that fails or is stopped is now remembered too. Each being whose own part didn't finish keeps that in its journal: what it was asked to do, and the record of what stopped it. Parts that never ran, because an earlier part failed, are noted as well. Each being's journal holds only its own part, never a teammate's, and states what happened without telling the being what to make of it.
