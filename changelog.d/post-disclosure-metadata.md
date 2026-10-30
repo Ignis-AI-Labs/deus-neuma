@@ -1,2 +1,0 @@
-Changed
-- Your house's posts no longer end with "Made with AI." That a post is AI-made now lives in its metadata: on X, the alt text of an AI-made image starts with "AI-generated.", every image and video the house makes carries an AI-generated marker in the file itself, and YouTube and TikTok raise their own AI label. YouTube descriptions no longer get an extra line either. Posts already waiting to go out lose the line automatically.

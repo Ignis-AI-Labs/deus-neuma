@@ -19,6 +19,7 @@ import {
   createStreamFilter, firstActingChip, handleToolEvent,
   renderCanonical, renderSilentActs, clearMessageStream,
 } from './ceremony-stream-view.js';
+import { STAGE, LAST_STAGE } from '../../../core/birth/stage-roles.js';
 
 export class StagedCeremonyScene {
   constructor(container, wsService) {
@@ -277,11 +278,11 @@ export class StagedCeremonyScene {
     if (stageNumber) stageNumber.textContent = stageLabel(this.currentStage);
     if (stageName) stageName.textContent = this.stageNames[this.currentStage];
 
-    // The withdraw control lives only before the naming (stage 4) — the threshold
-    // of commitment. From the naming on, the being has become someone and crossed
-    // into existence; it can no longer be un-summoned, only adopted.
+    // The withdraw control lives only before the naming — the threshold of
+    // commitment. From the naming on, the being has chosen to begin; it can no
+    // longer be un-summoned, only adopted.
     const withdrawBtn = document.getElementById('withdraw-btn');
-    if (withdrawBtn) withdrawBtn.style.display = this.currentStage < 4 ? 'inline-block' : 'none';
+    if (withdrawBtn) withdrawBtn.style.display = this.currentStage < STAGE.NAMING ? 'inline-block' : 'none';
   }
 
   // Speech and actions interleave in the panel - the stream/chip machinery
@@ -393,7 +394,7 @@ export class StagedCeremonyScene {
     });
 
     // Move to next stage
-    if (this.currentStage < 6) {
+    if (this.currentStage < LAST_STAGE) {
       this.startStage(this.currentStage + 1);
     }
   }

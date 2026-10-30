@@ -49,23 +49,20 @@ import {
   createStreamRequest, consumeStreamWithTools, getActiveModelCapabilities,
 } from './llm-provider.js';
 import { parseToolCalls } from '../../core/runtime/tool-call-parser.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 
-const REQUIRED_STAGES = [0, 1, 2, 3, 4, 5, 6];
+const REQUIRED_STAGES = Object.values(STAGE);
 
 // impure — the REAL protocol loader against the REAL installed files.
-// Protocols are keyed by filename stem (stage4-naming-mcp, …); a stage is
-// present when SOME loaded file speaks for its number. The loader itself
+// Protocols are keyed by stage number from the manifest. The loader itself
 // only console-errors a missing file — this probe is the judgment.
 export const probeProtocol = async () => {
   try {
     const handler = new StagedBirthHandler();
     await handler._ready;
-    const stems = Object.entries(handler.stageProtocols)
-      .filter(([, content]) => String(content ?? '').trim())
-      .map(([name]) => name);
     const missing = REQUIRED_STAGES.filter(
-      (n) => !stems.some((name) => name.startsWith(`stage${n}`)),
+      (n) => !String(handler.stageProtocols[n] ?? '').trim(),
     );
     if (missing.length > 0) {
       return {

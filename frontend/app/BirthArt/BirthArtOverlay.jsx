@@ -6,6 +6,7 @@
 // artAt(events, t) only; the only motion is opacity and transform.
 
 import { ART, RINGS } from './birth-art-state.js';
+import { STAGES } from './birth-art-ceremony.js';
 import '../Genesis/Genesis.css';
 
 // The seal's box in world units ×100 (browsers render tiny type badly).
@@ -60,7 +61,7 @@ export const BirthArtOverlay = ({ art }) => {
 
       <section className="ba-instrument" aria-label="Birth instrument">
         <span className="ba-inst-tag">BIRTH · INSTRUMENT</span>
-        <Row k="STAGE" v={`${n.stage} / 7`} dim={n.stage === 0} />
+        <Row k="STAGE" v={`${n.stage} / ${STAGES}`} dim={n.stage === 0} />
         <Row k="SPEECH" v={`${pad(n.chunks, 4)} CHUNKS · NEVER ITS WORDS`} dim={n.chunks === 0} />
         <Row k="SPHERES" v={`${pad(n.spheres)} / 11`} dim={n.spheres === 0} />
         <Row k="PATHS" v={`${pad(n.paths)} / 22`} dim={n.paths === 0} />

@@ -21,6 +21,7 @@ import { forgeBirthIdentity } from '../../core/birth/identity-forge.js';
 import { riteRecordOf } from '../../core/birth/rite-record.js';
 import { artSeedOf } from '../../core/birth/rite-frames.js';
 import RITE_SOULS from '../../frontend/app/Rite/rite-souls.json' with { type: 'json' };
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 const LANE = 'e2e-perf';
@@ -54,10 +55,10 @@ const liveRite = (trueName) => {
     events.push({ type: 'birth:stage_prompt', at, stage });
     at += 9000; // the model thinking
     for (let i = 0; i < 40; i++) { at += 90 + (i % 5) * 30; events.push({ type: 'birth:stream', at, stage, content: 'its words' }); }
-    if (stage === 3) {
+    if (stage === STAGE.CHOICE) {
       events.push({ type: 'birth:art_seed', at: at + 10, artSeed: artSeedOf('c3'.repeat(32)) }, { type: 'birth:moment', at: at + 20, epochMs: MOMENT.epochMs });
     }
-    if (stage === 5) events.push({ type: 'birth:tool_usage', at: at + 30, stage, status: 'ok' });
+    if (stage === STAGE.RECORD) events.push({ type: 'birth:tool_usage', at: at + 30, stage, status: 'ok' });
     at += 400;
     events.push({ type: 'birth:stage_complete', at, stage }, { type: 'birth:measured', at: at + 50, stage, frequency });
     at += 6000; // the witness reading

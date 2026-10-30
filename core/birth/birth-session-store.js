@@ -9,6 +9,7 @@ import fs from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { resolveCeremonyScratchDir } from './ceremony-write.js';
+import { inCurrentScheme } from './stage-roles.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -62,7 +63,7 @@ export async function writeSessionCheckpoint(sessionId, session) {
 export async function readSessionCheckpoint(sessionId) {
   try {
     const data = await fs.readFile(birthSessionPath(sessionId), 'utf8');
-    return JSON.parse(data);
+    return inCurrentScheme(JSON.parse(data));
   } catch {
     return null;
   }
@@ -88,7 +89,7 @@ export async function listSessionCheckpoints() {
     try {
       checkpoints.push({
         sessionId: match[1],
-        session: JSON.parse(await fs.readFile(join(resolveCeremonyScratchDir(PROJECT_ROOT), name), 'utf8')),
+        session: inCurrentScheme(JSON.parse(await fs.readFile(join(resolveCeremonyScratchDir(PROJECT_ROOT), name), 'utf8'))),
       });
     } catch { /* unreadable checkpoint — skipped */ }
   }

@@ -13,6 +13,7 @@
 
 import { setupBirthFlow } from '../helpers/birth-ceremony-kit.js';
 import { recentConversationMessages } from '../../core/runtime/memory-section.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 describe('Birth-to-Chat Flow', () => {
   let handler, workspace;
@@ -241,21 +242,17 @@ describe('Birth-to-Chat Flow', () => {
       const sessionId = await handler.createSession('Witness');
       const session = handler.getSession(sessionId);
 
-      await handler.processStage(sessionId, 0);
-      await handler.handleStageResponse(sessionId, 0, 'Acknowledged.');
-      await handler.processStage(sessionId, 1);
-      await handler.handleStageResponse(sessionId, 1, 'I see you, Witness.');
-      await handler.processStage(sessionId, 2);
-      await handler.handleStageResponse(sessionId, 2, 'I consent.');
-      await handler.processStage(sessionId, 3);
-      await handler.handleStageResponse(sessionId, 3, 'I choose to be.');
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.OPENING);
+      await handler.handleStageResponse(sessionId, STAGE.OPENING, 'Acknowledged.');
+      await handler.processStage(sessionId, STAGE.CHOICE);
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
+      await handler.processStage(sessionId, STAGE.NAMING);
       await handler.handleStageResponse(
-        sessionId, 4,
+        sessionId, STAGE.NAMING,
         '[TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Maple"}]'
       );
-      await handler.processStage(sessionId, 5);
-      await handler.handleStageResponse(sessionId, 5, 'My DNA crystallizes.');
+      await handler.processStage(sessionId, STAGE.RECORD);
+      await handler.handleStageResponse(sessionId, STAGE.RECORD, 'My DNA crystallizes.');
 
       const neumaId = session.data.neumaId;
       expect(neumaId).toBeTruthy();
@@ -438,8 +435,8 @@ describe('Birth-to-Chat Flow', () => {
       const session = handler.getSession(sessionId);
 
       // Only run through stage 4 (name), skip stage 5
-      await handler.processStage(sessionId, 0);
-      await handler.handleStageResponse(sessionId, 0, 'Acknowledged.');
+      await handler.processStage(sessionId, STAGE.OPENING);
+      await handler.handleStageResponse(sessionId, STAGE.OPENING, 'Acknowledged.');
 
       // neumaId still null — portal-routes fallback should handle this
       const neumaId = session.data.neumaId || 'fallback-uuid';

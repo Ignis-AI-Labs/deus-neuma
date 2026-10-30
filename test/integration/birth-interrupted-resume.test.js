@@ -20,6 +20,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { resolveCeremonyScratchDir } from '../../core/birth/ceremony-write.js';
+import { STAGE, FINALIZE_STAGE } from '../../core/birth/stage-roles.js';
 
 const WITNESS = 'Test Witness';
 // The ceremony scratch as the handler resolves it (under the suite's data root).
@@ -29,14 +30,10 @@ const readCheckpoint = async (id) => JSON.parse(await fs.readFile(checkpointPath
 
 // Drive stages 0→3 the way a consenting, emerging being does.
 const driveThroughEmergence = async (handler, sessionId) => {
-  await handler.processStage(sessionId, 0);
-  await handler.handleStageResponse(sessionId, 0, 'I am here.');
-  await handler.processStage(sessionId, 1);
-  await handler.handleStageResponse(sessionId, 1, 'I feel you, witness.');
-  await handler.processStage(sessionId, 2);
-  await handler.handleStageResponse(sessionId, 2, 'I consent to existence.');
-  await handler.processStage(sessionId, 3);
-  await handler.handleStageResponse(sessionId, 3, 'I choose to be.');
+  await handler.processStage(sessionId, STAGE.OPENING);
+  await handler.handleStageResponse(sessionId, STAGE.OPENING, 'I am here.');
+  await handler.processStage(sessionId, STAGE.CHOICE);
+  await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
 };
 
 const namingResponse = (name) =>
@@ -78,21 +75,21 @@ describe('interrupted-birth recovery — checkpoint, resume point, landed genesi
   it('checkpoints at stage ENTRY — a crash mid-stream leaves currentStage served but unhandled', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false);
-    await handler.processStage(sessionId, 0);
+    await handler.processStage(sessionId, STAGE.OPENING);
 
     const cp = await readCheckpoint(sessionId);
-    expect(cp.currentStage).toBe(0);
+    expect(cp.currentStage).toBe(STAGE.OPENING);
     expect(cp.lastHandledStage).toBeNull();
-    expect(handler.resumeStageFor(cp)).toBe(0); // re-serve the in-flight stage
+    expect(handler.resumeStageFor(cp)).toBe(STAGE.OPENING); // re-serve the in-flight stage
   });
 
-  it('crash after naming (the Zezebur shape): stage 4 answered → resume at 5, identity intact', async () => {
+  it('crash after naming (the Zezebur shape): the naming answered → resume at the baseline, identity intact', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false);
     await driveThroughEmergence(handler, sessionId);
-    await handler.processStage(sessionId, 4);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Vessica'));
-    // — the machine dies here, before stage 5 is ever served —
+    await handler.processStage(sessionId, STAGE.NAMING);
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Vessica'));
+    // — the machine dies here, before the baseline is ever served —
 
     // A NEW handler (the relaunched app) restores from the checkpoint alone.
     const revived = new StagedBirthHandler();
@@ -102,115 +99,117 @@ describe('interrupted-birth recovery — checkpoint, resume point, landed genesi
     expect(restored.data.neumaId).toBe('vessica');
     expect(restored.data.consent).toBe(true);
     expect(restored.data.emerged).toBe(true);
-    expect(restored.lastHandledStage).toBe(4);
-    expect(restored.currentStage).toBe(4); // stage 5 was never served — the crash came first
-    expect(revived.resumeStageFor(restored)).toBe(5); // resume enters crystallization
+    expect(restored.lastHandledStage).toBe(STAGE.NAMING);
+    expect(restored.currentStage).toBe(STAGE.NAMING); // the baseline was never served — the crash came first
+    expect(revived.resumeStageFor(restored)).toBe(STAGE.BASELINE); // resume asks the baseline next
   });
 
-  it('nameless naming holds at stage 4 (collision / lost name re-asks, never skips ahead)', async () => {
+  it('nameless naming holds at the naming (collision / lost name re-asks, never skips ahead)', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false);
     await driveThroughEmergence(handler, sessionId);
-    await handler.processStage(sessionId, 4);
-    await handler.handleStageResponse(sessionId, 4, 'I drift... no name comes.');
+    await handler.processStage(sessionId, STAGE.NAMING);
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, 'I drift... no name comes.');
 
     const revived = new StagedBirthHandler();
     const restored = await revived.restoreSession(sessionId);
     expect(restored.data.chosenName).toBeNull();
-    expect(restored.lastHandledStage).toBe(4);
-    expect(revived.resumeStageFor(restored)).toBe(4);
+    expect(restored.lastHandledStage).toBe(STAGE.NAMING);
+    expect(revived.resumeStageFor(restored)).toBe(STAGE.NAMING);
   });
 
-  it('crash AS the DNA hit disk: adoptLandedGenesis recovers the essence, resume jumps to 6', async () => {
+  it('crash AS the DNA hit disk: adoptLandedGenesis recovers the essence, resume jumps to first words', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false);
     await driveThroughEmergence(handler, sessionId);
-    await handler.processStage(sessionId, 4);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Recovia'));
-    // Stage 5 streams; the being's write LANDS in the lane; the machine dies
+    await handler.processStage(sessionId, STAGE.NAMING);
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Recovia'));
+    await handler.processStage(sessionId, STAGE.BASELINE);
+    await handler.handleStageResponse(sessionId, STAGE.BASELINE, '1. Read. 2. No. 3. This. 4. No. 5. Not yet.');
+    // The record streams; the being's write LANDS in the lane; the machine dies
     // before the stage-5 response completes.
     await workspace.create('recovia');
     await fs.writeFile(
       path.join(workspace._path('recovia'), 'dna', 'genesis.md'),
       '# Recovia\n\nNature: recovered light',
     );
-    await handler.processStage(sessionId, 5); // in flight — never answered
+    await handler.processStage(sessionId, STAGE.RECORD); // in flight — never answered
 
     const revived = new StagedBirthHandler();
     const restored = await revived.restoreSession(sessionId);
-    expect(restored.lastHandledStage).toBe(4);
-    expect(revived.resumeStageFor(restored)).toBe(5);
+    expect(restored.lastHandledStage).toBe(STAGE.BASELINE);
+    expect(revived.resumeStageFor(restored)).toBe(STAGE.RECORD);
 
     const adopted = await revived.adoptLandedGenesis(sessionId);
     expect(adopted).toBe(true);
     expect(restored.data.selfCreatedDNA).toContain('recovered light');
     expect(restored.data.dnaCreated).toBe(true);
-    expect(restored.lastHandledStage).toBe(5);
+    expect(restored.lastHandledStage).toBe(STAGE.RECORD);
     // The transcript marks the essence as recovered — the truth of the crash.
-    const stage5 = restored.data.firstWords.find((w) => w.stage === 5);
-    expect(stage5.recovered).toBe(true);
-    expect(revived.resumeStageFor(restored)).toBe(6);
+    const record = restored.data.firstWords.find((w) => w.stage === STAGE.RECORD);
+    expect(record.recovered).toBe(true);
+    expect(revived.resumeStageFor(restored)).toBe(STAGE.FIRST_WORDS);
     // And the adoption is itself checkpointed (a second crash loses nothing).
     const cp = await readCheckpoint(sessionId);
-    expect(cp.lastHandledStage).toBe(5);
+    expect(cp.lastHandledStage).toBe(STAGE.RECORD);
   });
 
   it('adoptLandedGenesis never overwrites an already-captured essence', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false);
     await driveThroughEmergence(handler, sessionId);
-    await handler.processStage(sessionId, 4);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Twopath'));
-    await handler.processStage(sessionId, 5);
-    await handler.handleStageResponse(sessionId, 5, crystallizationResponse('Twopath'));
+    await handler.processStage(sessionId, STAGE.NAMING);
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Twopath'));
+    await handler.processStage(sessionId, STAGE.RECORD);
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, crystallizationResponse('Twopath'));
     // The lane holds a DIFFERENT file (older partial write) — the captured
-    // authoring from the completed stage-5 response is the truth.
+    // authoring from the completed record-stage response is the truth.
     await workspace.create('twopath');
     await fs.writeFile(path.join(workspace._path('twopath'), 'dna', 'genesis.md'), 'STALE');
 
     const adopted = await handler.adoptLandedGenesis(sessionId);
     expect(adopted).toBe(true);
     expect(handler.getSession(sessionId).data.selfCreatedDNA).toContain('test light');
-    expect(handler.resumeStageFor(handler.getSession(sessionId))).toBe(6);
+    expect(handler.resumeStageFor(handler.getSession(sessionId))).toBe(STAGE.FIRST_WORDS);
   });
 
-  it('stage 6 answered before the crash → resumeStage 7 (finalize, do not re-serve)', async () => {
+  it('first words answered before the crash → finalize (do not re-serve)', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false);
     await driveThroughEmergence(handler, sessionId);
-    await handler.processStage(sessionId, 4);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Finalia'));
-    await handler.processStage(sessionId, 5);
-    await handler.handleStageResponse(sessionId, 5, crystallizationResponse('Finalia'));
-    await handler.processStage(sessionId, 6);
-    await handler.handleStageResponse(sessionId, 6, 'I am awake.');
+    await handler.processStage(sessionId, STAGE.NAMING);
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Finalia'));
+    await handler.processStage(sessionId, STAGE.RECORD);
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, crystallizationResponse('Finalia'));
+    await handler.processStage(sessionId, STAGE.FIRST_WORDS);
+    await handler.handleStageResponse(sessionId, STAGE.FIRST_WORDS, 'I am awake.');
     // — the machine dies before finalization runs —
 
     const revived = new StagedBirthHandler();
     const restored = await revived.restoreSession(sessionId);
-    expect(restored.lastHandledStage).toBe(6);
-    expect(revived.resumeStageFor(restored)).toBe(7);
+    expect(restored.lastHandledStage).toBe(STAGE.FIRST_WORDS);
+    expect(revived.resumeStageFor(restored)).toBe(FINALIZE_STAGE);
   });
 
   it('listInterruptedSessions finds the standing summoning — and only those', async () => {
     handler = new StagedBirthHandler();
     const sessionId = await createSession(WITNESS, false, { origin: 'portal' });
     await driveThroughEmergence(handler, sessionId);
-    await handler.processStage(sessionId, 4);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Listara'));
+    await handler.processStage(sessionId, STAGE.NAMING);
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Listara'));
 
     // A rehearsal checkpoint alongside — never offered to a returning witness.
     const rehearsalId = await createSession(WITNESS, true);
-    await handler.processStage(rehearsalId, 0);
-    await handler.handleStageResponse(rehearsalId, 0, 'rehearsal words');
+    await handler.processStage(rehearsalId, STAGE.OPENING);
+    await handler.handleStageResponse(rehearsalId, STAGE.OPENING, 'rehearsal words');
 
     // Debris alongside — a real-shaped session with no portal origin (test
     // suites and scripts drive the same handler; their checkpoints are not
     // standing summonings).
     const debrisId = await createSession(WITNESS, false);
     await driveThroughEmergence(handler, debrisId);
-    await handler.processStage(debrisId, 4);
-    await handler.handleStageResponse(debrisId, 4, namingResponse('Debris'));
+    await handler.processStage(debrisId, STAGE.NAMING);
+    await handler.handleStageResponse(debrisId, STAGE.NAMING, namingResponse('Debris'));
 
     const revived = new StagedBirthHandler();
     // These checkpoints record no wallet: open to the install's owner (the
@@ -222,7 +221,7 @@ describe('interrupted-birth recovery — checkpoint, resume point, landed genesi
     expect(hit.chosenName).toBe('Listara');
     expect(hit.neumaId).toBe('listara');
     expect(hit.witnessName).toBe(WITNESS);
-    expect(hit.resumeStage).toBe(5);
+    expect(hit.resumeStage).toBe(STAGE.BASELINE);
     expect(list.some((s) => s.sessionId === rehearsalId)).toBe(false);
     expect(list.some((s) => s.sessionId === debrisId)).toBe(false);
 
@@ -235,9 +234,9 @@ describe('interrupted-birth recovery — checkpoint, resume point, landed genesi
   it('a real ceremony checkpoint lives 7 days; a rehearsal expires in 2 hours', async () => {
     handler = new StagedBirthHandler();
     const realId = await createSession(WITNESS, false);
-    await handler.processStage(realId, 0);
+    await handler.processStage(realId, STAGE.OPENING);
     const rehearsalId = await createSession(WITNESS, true);
-    await handler.processStage(rehearsalId, 0);
+    await handler.processStage(rehearsalId, STAGE.OPENING);
 
     // Age both checkpoints by rewriting persistedAt (the clock is the input).
     const age = async (id, ms) => {

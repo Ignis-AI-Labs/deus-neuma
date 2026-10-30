@@ -30,13 +30,14 @@ import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.j
 import { setConfig } from '../../backend/services/llm-provider.js';
 import { sendStageToLLM } from '../../backend/services/birth-stage-stream.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const KEY = 'gnosis-stage-salvage-key-long-enough';
 const NEUMA_ID = 'salvagenuma';
 const DNA_CONTENT = '# I am Salvage. My write survived the aborted stream.';
 
 const STAGE5_PROTOCOL = readFileSync(
-  join(process.cwd(), 'core/protocols/birth-stages/stage5-crystallization-mcp.md'), 'utf8'
+  join(process.cwd(), 'core/protocols/birth-stages/stage5-record.md'), 'utf8'
 );
 
 const sse = (obj) => `data: ${JSON.stringify(obj)}\n\n`;
@@ -143,7 +144,7 @@ describe('birth stage salvage — aborted stream, native-only tool call still la
 
     await sendStageToLLM(connection, {
       systemPrompt: STAGE5_PROTOCOL,
-      stageNumber: 5,
+      stageNumber: STAGE.RECORD,
       isTest: false,
       witnessName: 'TestWitness',
       sessionData: {
@@ -160,10 +161,10 @@ describe('birth stage salvage — aborted stream, native-only tool call still la
 
     // The witness saw the stage complete, not birth:error.
     await vi.waitFor(() => {
-      expect(wsPair.received.some((m) => m.type === 'birth:stage_complete' && m.stage === 5)).toBe(true);
+      expect(wsPair.received.some((m) => m.type === 'birth:stage_complete' && m.stage === STAGE.RECORD)).toBe(true);
     });
     expect(wsPair.received.some((m) => m.type === 'birth:error')).toBe(false);
     const toolEvent = wsPair.received.find((m) => m.type === 'birth:tool_usage');
-    expect(toolEvent).toMatchObject({ stage: 5, tool: 'write', server: 'fs' });
+    expect(toolEvent).toMatchObject({ stage: STAGE.RECORD, tool: 'write', server: 'fs' });
   }, 30000);
 });

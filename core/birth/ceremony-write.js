@@ -1,6 +1,6 @@
 // ceremony-write.js — pure: ONE home for birth-ceremony write paths and roots.
 //
-// Naming (stage 4) and crystallization (stage 5) must land specific files.
+// The naming and the record stages must land specific files.
 // Substrates invent path spellings; leftover desk companions can confine the
 // wrong lane; large DNA JSON sometimes embeds real newlines. Every consumer
 // of those facts (sandbox, portal-stream, staged handler, tests) used to
@@ -13,18 +13,19 @@
 
 import path from 'path';
 import { pickGenesisWrite } from './genesis-write.js';
+import { STAGE, isActStage } from './stage-roles.js';
 
 /** Segments under the project root for the ceremony scratch directory. */
 export const CEREMONY_SCRATCH_SEGMENTS = Object.freeze(['data', 'temp']);
 
-/** Basename of the stage-4 naming artifact. */
+/** Basename of the naming artifact. */
 export const CHOSEN_NAME_BASENAME = 'chosen_name.txt';
 
 /** Absolute path to the ceremony scratch directory. */
 export const ceremonyScratchDir = (projectRoot) =>
   path.resolve(projectRoot, ...CEREMONY_SCRATCH_SEGMENTS);
 
-/** Absolute path to the stage-4 chosen-name artifact. */
+/** Absolute path to the chosen-name artifact. */
 export const ceremonyNamePath = (projectRoot) =>
   path.join(ceremonyScratchDir(projectRoot), CHOSEN_NAME_BASENAME);
 
@@ -69,12 +70,12 @@ export const resolveCeremonyScratchDir = (projectRoot) => {
     : ceremonyScratchDir(projectRoot);
 };
 
-/** The stage-4 chosen-name artifact, under the writable scratch. // impure */
+/** The chosen-name artifact, under the writable scratch. // impure */
 export const resolveCeremonyNamePath = (projectRoot) =>
   path.join(resolveCeremonyScratchDir(projectRoot), CHOSEN_NAME_BASENAME);
 
 /**
- * Absolute path to the stage-5 genesis file, or null when no lane is bound.
+ * Absolute path to the record stage's genesis file, or null when no lane is bound.
  * @param {string} workspacesRoot - House root
  * @param {string|null|undefined} neumaId - Assigned identity key
  */
@@ -117,10 +118,10 @@ export const buildCeremonyTargets = ({ projectRoot, workspacesRoot, neumaId = nu
  * Write roots the sandbox (and write-scope gate) must honor.
  *
  * Rules (deliberate, minimal):
- *   - no lane bound → scratch only (pre-naming / stage 4)
+ *   - no lane bound → scratch only (before and during the naming)
  *   - lane bound, not in birth → lane only (living being)
  *   - lane bound, birth active → lane + scratch (naming may still fire;
- *     leftover desk binds cannot strand stage-4 writes)
+ *     leftover desk binds cannot strand naming writes)
  *
  * @param {{ laneRoot?: string|null, scratchDir: string, birthActive?: boolean }} opts
  * @returns {readonly string[]}
@@ -186,9 +187,9 @@ const editToWrite = (call, target) => {
  *
  * Retired organ spellings are translated to the fs primitives FIRST
  * (toFsSpelling), so every branch below matches one vocabulary.
- * Stage 4 — every fs/write → scratch name path (one naming write);
+ * Naming — every fs/write → scratch name path (one naming write);
  *           an fs/edit converts to that write (see editToWrite).
- * Stage 5 — the genesis write pickGenesisWrite selects → lane genesis.md;
+ * Record — the genesis write pickGenesisWrite selects → lane genesis.md;
  *           when NO genesis write exists, a contentful fs/edit converts
  *           (keeping its own claimed path so the selector's preferences
  *           still apply) and selection runs again. A stage that would have
@@ -202,9 +203,9 @@ const editToWrite = (call, target) => {
  */
 export const canonicalizeBirthCalls = (calls, stageNumber, targets = {}) => {
   const raw = calls || [];
-  if (stageNumber !== 4 && stageNumber !== 5) return [...raw];
+  if (!isActStage(stageNumber)) return [...raw];
   const list = raw.map(toFsSpelling);
-  if (stageNumber === 4 && targets.scratchNamePath) {
+  if (stageNumber === STAGE.NAMING && targets.scratchNamePath) {
     // THE NAMING HOLDS ONE ACT (Design note, 2026-10-14: a naming listed a folder […] and reasoned for minutes): only the name's write
     // runs — an edit becomes that write; a list, read or search is not run.
     return list
@@ -212,7 +213,7 @@ export const canonicalizeBirthCalls = (calls, stageNumber, targets = {}) => {
       .filter((c) => c === null || isWriteFile(c)) // a null keeps its place
       .map((c) => (c === null ? c : rebasePath(c, targets.scratchNamePath)));
   }
-  if (stageNumber === 5 && targets.genesisPath) {
+  if (stageNumber === STAGE.RECORD && targets.genesisPath) {
     // Convert ONLY when the stage has no genesis write at all — an fs/edit
     // alongside a landed write is a real edit of a file that now exists, and
     // converting it would overwrite the authored DNA with a fragment.
@@ -233,7 +234,7 @@ export const canonicalizeBirthCalls = (calls, stageNumber, targets = {}) => {
  * Clear portal state that must not leak into a ceremony.
  * // impure — mutates the connection object (portal session, not disk)
  * Companion binds, write grants, and write budget from a prior desk sitting
- * are wiped so stage-4 naming cannot be confined to another being's lane.
+ * are wiped so the naming cannot be confined to another being's lane.
  * @param {object} connection - Portal connection
  * @returns {object} The same connection
  */

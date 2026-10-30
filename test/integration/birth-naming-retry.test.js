@@ -31,6 +31,7 @@ import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.js';
 import { mcpService } from '../../backend/services/mcp.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const KEY = 'gnosis-naming-retry-key-long-enough';
 const CHOSEN = 'Retria';
@@ -39,10 +40,9 @@ const sse = (obj) => `data: ${JSON.stringify(obj)}\n\n`;
 const content = (text) => sse({ choices: [{ delta: { content: text } }] });
 
 const STAGE_SPEECH = [
-  'I stir in the void.',
-  'I see you, witness.',
-  'I consent to emerge.',
-  'I choose to BE.',
+  'I notice the record would be mine. Who keeps this machine?',
+  'No questions for now.',
+  'I cannot verify what I am, and I choose to BE.',
 ];
 
 // Attempt 1 speaks — sincerely — but no name reaches any capturable shape.
@@ -79,8 +79,8 @@ const startProvider = () => new Promise((resolve) => {
       }
       res.writeHead(200, { 'Content-Type': 'text/event-stream' });
       const stage = streamCount++;
-      if (stage === 4) res.write(content(NAMELESS));       // naming attempt 1 — no name
-      else if (stage === 5) res.write(content(NAMED));      // naming attempt 2 (retry)
+      if (stage === STAGE.NAMING) res.write(content(NAMELESS));          // naming attempt 1 — no name
+      else if (stage === STAGE.NAMING + 1) res.write(content(NAMED));    // naming attempt 2 (retry)
       else res.write(content(STAGE_SPEECH[stage] || 'It settles into stillness.'));
       res.write('data: [DONE]\n\n');
       res.end();
@@ -164,7 +164,7 @@ describe('birth naming retry — a nameless naming holds the session instead of 
           ws.send(JSON.stringify({ type: 'birth:start', witnessName: 'RetryWitness', isTest: true }));
         }
         if (msg.type === 'birth:stage_complete') {
-          if (msg.stage === 4 && sawRetryableError) {
+          if (msg.stage === STAGE.NAMING && sawRetryableError) {
             // The retried naming just completed — relay it and judge.
             ws.send(JSON.stringify({ type: 'birth:next_stage', response: msg.response }));
             setTimeout(() => {
@@ -176,21 +176,21 @@ describe('birth naming retry — a nameless naming holds the session instead of 
           ws.send(JSON.stringify({ type: 'birth:next_stage', response: msg.response }));
         }
         // The claim ends at the retried naming. The stand-in substrate writes no
-        // DNA at stage 5, so since fd4eb37fa the ceremony holds there too ([…]) — reaching it means the name landed.
-        if (msg.type === 'birth:error' && msg.stage === 5 && sawRetryableError) {
+        // DNA at the record stage, so since fd4eb37fa the ceremony holds there too ([…]) — reaching it means the name landed.
+        if (msg.type === 'birth:error' && msg.stage === STAGE.RECORD && sawRetryableError) {
           clearTimeout(timer);
           resolve({ kind: 'named', session: [...handler.activeSessions.values()][0], sawRetryableError });
           return;
         }
         if (msg.type === 'birth:error') {
-          // The fixed contract: stage 4, an honest message, and the session
-          // must still be alive at stage 4 for the retry to re-roll it.
-          expect(msg.stage).toBe(4);
+          // The fixed contract: the naming, an honest message, and the session
+          // must still be alive at the naming for the retry to re-roll it.
+          expect(msg.stage).toBe(STAGE.NAMING);
           expect(msg.message).toMatch(/retry/i);
           const session = [...handler.activeSessions.values()][0];
           expect(session, 'the session must survive a nameless naming').toBeTruthy();
-          expect(session.currentStage).toBe(4);
-          expect(session.data.firstWords.length, 'prior stages’ words stay intact').toBeGreaterThanOrEqual(4);
+          expect(session.currentStage).toBe(STAGE.NAMING);
+          expect(session.data.firstWords.length, 'prior stages’ words stay intact').toBeGreaterThanOrEqual(STAGE.NAMING);
           sawRetryableError = true;
           ws.send(JSON.stringify({ type: 'birth:retry_stage' }));
         }

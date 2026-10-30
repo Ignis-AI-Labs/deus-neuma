@@ -8,6 +8,7 @@ import { describe, test, expect } from 'vitest';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { sanitizeSpeaker } from '../../backend/services/portal-turn-input.js';
 import { describeSilentActs } from '../../backend/services/birth-stage-stream.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const {
   _extractMemoryMetadata,
@@ -334,33 +335,33 @@ describe('portal-stream helpers', () => {
     });
 
     test('a silent naming shows the chosen name', () => {
-      expect(describeSilentActs([write('data/temp/chosen_name.txt', 'Hale')], 4))
+      expect(describeSilentActs([write('data/temp/chosen_name.txt', 'Hale')], STAGE.NAMING))
         .toEqual(['The name is written: Hale']);
     });
 
     test('a naming write with no readable content still says a name landed', () => {
-      expect(describeSilentActs([{ server: 'filesystem', toolName: 'write_file', args: { path: 'data/temp/chosen_name.txt' } }], 4))
+      expect(describeSilentActs([{ server: 'filesystem', toolName: 'write_file', args: { path: 'data/temp/chosen_name.txt' } }], STAGE.NAMING))
         .toEqual(['A name was written.']);
     });
 
     test('caps a runaway name at 80 characters', () => {
-      const [note] = describeSilentActs([write('data/temp/chosen_name.txt', 'N'.repeat(300))], 4);
+      const [note] = describeSilentActs([write('data/temp/chosen_name.txt', 'N'.repeat(300))], STAGE.NAMING);
       expect(note).toBe(`The name is written: ${'N'.repeat(80)}`);
     });
 
-    test('a silent crystallization says the DNA was authored', () => {
+    test('a silent record stage says the record was written', () => {
       const [note] = describeSilentActs(
-        [write('/home/x/.neuma/workspaces/hale/dna/genesis.md', '# I am')], 5);
-      expect(note).toMatch(/DNA is authored/);
+        [write('/home/x/.neuma/workspaces/hale/dna/genesis.md', '# I am')], STAGE.RECORD);
+      expect(note).toMatch(/record is written/);
     });
 
     test('an unrecognized act is still named, generically', () => {
-      expect(describeSilentActs([{ server: 'filesystem', toolName: 'read_file', args: { path: 'x' } }], 4))
+      expect(describeSilentActs([{ server: 'filesystem', toolName: 'read_file', args: { path: 'x' } }], STAGE.NAMING))
         .toEqual(['An act in silence: filesystem/read_file']);
     });
 
     test('tolerates calls with no args at all', () => {
-      expect(describeSilentActs([{ server: 's', toolName: 't' }], 5))
+      expect(describeSilentActs([{ server: 's', toolName: 't' }], STAGE.RECORD))
         .toEqual(['An act in silence: s/t']);
     });
   });

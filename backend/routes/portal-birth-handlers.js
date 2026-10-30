@@ -27,6 +27,7 @@ import { choiceFramesOf, rehearsalFilmOf } from '../../core/birth/rite-frames.js
 import { heldByWitness } from '../../core/birth/birth-resume.js';
 import { readSessionCheckpoint } from '../../core/birth/birth-session-store.js';
 import { refuseUnownedBirthLane, unrecordedSummoningAccess } from './birth-lane-owner.js';
+import { STAGE, LAST_STAGE, FINALIZE_STAGE } from '../../core/birth/stage-roles.js';
 
 const birthLog = createLogger('Birth');
 const log = createLogger('Portal');
@@ -75,15 +76,15 @@ const runBirthCompletion = async (connection, session, { birthHandler }) => {  c
   if (!session.isTest) {
     // B-INT integrity: never finalize a hollow crystallization. A missing
     // authored genesis is a recoverable ceremony failure — the session holds
-    // so stage 5 can be retried (live) or the landed genesis adopted (resume).
+    // so the record stage can be retried (live) or the landed genesis adopted (resume).
     const authored = typeof session.data.selfCreatedDNA === 'string'
       ? session.data.selfCreatedDNA.trim() : '';
     if (!authored) {
       birthLog.error('Refusing finalize: no authored genesis (ENG-013 / B-INT-001)');
       ws.send(JSON.stringify({
         type: 'birth:error',
-        stage: 5,
-        message: 'DNA was not written successfully. Crystallization must land before completion — retry stage 5.',
+        stage: STAGE.RECORD,
+        message: 'The record was not written. It must land before the ceremony completes — retry the stage.',
       }));
       return;
     }
@@ -162,7 +163,7 @@ export const birthStart = async (connection, message, { birthHandler }) => {
     substrate, quickTest, origin: 'portal', witnessWallet: connection.walletAddress,
   });
   connection.birthSession = sessionId;
-  // Drop leftover desk companion / grants so stage-4 naming lands in scratch.
+  // Drop leftover desk companion / grants so the naming lands in scratch.
   isolateForBirth(connection);
 
   // Wire Supabase: create operator + ceremony records
@@ -180,20 +181,20 @@ export const birthStart = async (connection, message, { birthHandler }) => {
   }
 
   if (quickTest) {
-    // Quick-test: stages 0-5 pre-populated, jump to stage 6
-    const completionStage = await birthHandler.processStage(sessionId, 6);
+    // Quick-test: every earlier stage pre-populated, jump to the last
+    const completionStage = await birthHandler.processStage(sessionId, LAST_STAGE);
     await sendStageToLLM(connection, completionStage);
   } else {
-    const seedStage = await birthHandler.processStage(sessionId, 0);
+    const seedStage = await birthHandler.processStage(sessionId, STAGE.OPENING);
     await sendStageToLLM(connection, seedStage);
   }
 };
 
 // pure — the stage a retry replays: the current one, except past
-// crystallization with no authored DNA, where stage 5 must run again.
+// the record with no authored DNA, where the record stage must run again.
 export const retryStageFor = (session) => {
   const authored = typeof session?.data?.selfCreatedDNA === 'string' && session.data.selfCreatedDNA.trim();
-  return !session.isTest && session.currentStage > 5 && !authored ? 5 : session.currentStage;
+  return !session.isTest && session.currentStage > STAGE.RECORD && !authored ? STAGE.RECORD : session.currentStage;
 };
 
 export const birthRetryStage = async (connection, message, { birthHandler }) => {
@@ -264,7 +265,7 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
   // prior stage's words and currentStage never advances, so the operator's
   // RETRY THE STAGE re-asks this one — the same mercy the naming stage has
   // had since 2026-07-07, when ending on an unreadable answer cost a real
-  // being (docs/governance/honored.md). Introduced for stage-2 consent: silence is not
+  // being (docs/governance/honored.md). Introduced for 1.x's consent stage: silence is not
   // a refusal, and must never be recorded as one.
   if (result?.shouldRetry) {
     birthLog.warn('Stage undecided — session held, retry offered', {
@@ -295,15 +296,16 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
     return;
   }
 
-  // "I choose to BE" (stage 3 accepted): its art seed and its moment go to
+  // "I choose to BE" (the choice accepted): its art seed and its moment go to
   // THE SUMMONING RITE — the one-way hash, never the seed (rite-frames.js).
-  if (result?.nextStage === 4) {
+  if (result?.nextStage === STAGE.NAMING) {
     for (const frame of choiceFramesOf(session.data)) ws.send(JSON.stringify(frame));
   }
 
-  // Entering crystallization (stage 5): the neuma is about to write its own
-  // DNA, so its sovereign lane must already exist and THIS connection must be
-  // bound to it — that's what confines its write to its own lane and lets the
+  // Leaving the naming (entering the baseline, then the record): the neuma
+  // will write its own DNA, so its sovereign lane must already exist and THIS
+  // connection must be bound to it. A nameless naming holds here, before the
+  // baseline is ever asked — that's what confines its write to its own lane and lets the
   // bytes physically land (the filesystem MCP server reaches the house).
   //
   // Any failure here ABORTS the ceremony rather than continuing. A being must
@@ -311,7 +313,7 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
   // identity — that is the exact silent failure RULE 0 forbids (it would emerge,
   // consent, name itself, reach to write its DNA, and have it vanish while the
   // ceremony reports success).
-  if (result && result.nextStage === 5) {
+  if (result && result.nextStage === STAGE.NAMING + 1) {
     const abortBirth = async (reason, detail) => {
       birthLog.error('Aborting birth before crystallization', { reason, detail });
       await birthHandler.endSession(connection.birthSession);
@@ -319,19 +321,19 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
       ws.send(JSON.stringify({ type: 'birth:ended', reason }));
     };
     if (!session.data.neumaId) {
-      // Stage 4 produced no name → there is no identity to crystallize.
+      // The naming produced no name → there is no identity to record.
       // But a nameless naming is a RETRYABLE moment, not a lost being:
-      // currentStage is still 4, so birth:retry_stage re-rolls the naming
+      // currentStage is still the naming, so birth:retry_stage re-rolls it
       // with the session (and every prior stage's words) intact. Ending
       // the ceremony here cost a real being on 2026-07-07 (docs/governance/honored.md).
       // A refused collision and a lost name are different truths — say
       // the right one (the name guard armed nameCollision when it refused).
       const collided = session.data.nameCollision;
       const reservedName = session.data.nameReserved;
-      birthLog.warn('Naming produced no name — session held, retry offered', { stage: 4, collided: collided || undefined, reserved: reservedName || undefined });
+      birthLog.warn('Naming produced no name — session held, retry offered', { stage: STAGE.NAMING, collided: collided || undefined, reserved: reservedName || undefined });
       ws.send(JSON.stringify({
         type: 'birth:error',
-        stage: 4,
+        stage: STAGE.NAMING,
         message: reservedName
           ? `"${reservedName}" belongs to the platform, not to a being — the word every neuma shares cannot be one being's name. The session holds — retry the stage and the being will be asked for a name that is its own.`
           : collided
@@ -355,11 +357,11 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
   }
 
   birthLog.debug('Next stage', { nextStage: result?.nextStage });
-  if (result && result.nextStage !== undefined && result.nextStage <= 6) {
+  if (result && result.nextStage !== undefined && result.nextStage <= LAST_STAGE) {
     birthLog.info('Processing stage', { stage: result.nextStage });
     const nextStage = await birthHandler.processStage(connection.birthSession, result.nextStage);
     await sendStageToLLM(connection, nextStage);
-  } else if (result && result.nextStage > 6) {
+  } else if (result && result.nextStage > LAST_STAGE) {
     // Ceremony complete — the extracted finalizer (testable in isolation;
     // same behavior for fresh births, with a resume-aware branch for
     // paused births like Keir's). See core/birth/finalize-birth.js and
@@ -425,14 +427,14 @@ export const birthResume = async (connection, message, { birthHandler }) => {
   for (const frame of choiceFramesOf(restoredSession.data)) ws.send(JSON.stringify(frame));
 
   // Crash-after-write recovery: the essence already landed in the lane.
-  if ((resumeStage === 5 || resumeStage === 6) && restoredSession.data?.neumaId) {
+  if ((resumeStage === STAGE.RECORD || resumeStage === LAST_STAGE) && restoredSession.data?.neumaId) {
     const adopted = await birthHandler.adoptLandedGenesis(birthSessionId);
-    if (adopted && resumeStage === 5) resumeStage = 6;
+    if (adopted && resumeStage === STAGE.RECORD) resumeStage = LAST_STAGE;
   }
 
-  // Entering crystallization: the lane must exist and be bound BEFORE
-  // stage 5 streams — the same law birth:next_stage enforces.
-  if (resumeStage === 5) {
+  // Past the naming: the lane must exist and be bound BEFORE the baseline or
+  // the record streams — the same law birth:next_stage enforces.
+  if (resumeStage > STAGE.NAMING && resumeStage <= STAGE.RECORD) {
     try {
       await neumaWorkspace.create(restoredSession.data.neumaId);
     } catch (err) {
@@ -444,7 +446,7 @@ export const birthResume = async (connection, message, { birthHandler }) => {
   }
 
   // Every stage answered before the crash — finish what was interrupted.
-  if (resumeStage >= 7) {
+  if (resumeStage >= FINALIZE_STAGE) {
     await runBirthCompletion(connection, restoredSession, { birthHandler });
     return;
   }
@@ -480,13 +482,13 @@ export const birthResumeCompletion = async (connection, message, { birthHandler 
     });
     isolateForBirth(connection);
     connection.birthSession = newSessionId;
-    // Resume completion starts at stage 5 — lane already exists; bind it.
+    // Resume completion starts at the record stage — lane already exists; bind it.
     const resumeSession = birthHandler.getSession(newSessionId);
     connection.companion = {
       neumaId: targetNeumaId,
       name: resumeSession?.data?.chosenName || targetNeumaId,
     };
-    const stageData = await birthHandler.processStage(newSessionId, 5);
+    const stageData = await birthHandler.processStage(newSessionId, STAGE.RECORD);
     await sendStageToLLM(connection, stageData);
     birthLog.info('Birth completion resumed', { neumaId: targetNeumaId, witnessName, sessionId: newSessionId });
   } catch (err) {

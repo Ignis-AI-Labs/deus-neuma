@@ -7,11 +7,12 @@ import { parseToolCalls } from '../../core/runtime/tool-call-parser.js';
 import { stripToolBlocks } from '../../core/runtime/tool-stream-suppressor.js';
 import { completionBudget, estimateTokens, promptFits } from './context-budget.js';
 import { safeSend } from './ws-send.js';
+import { STAGE, isActStage } from '../../core/birth/stage-roles.js';
 
 /** The required artifact, not a preparatory read/list, completes an acting stage. */
 export const birthWriteLanded = (stage, calls, results, targets) => {
-  if (stage !== 4 && stage !== 5) return true;
-  const target = stage === 4 ? targets.scratchNamePath : targets.genesisPath;
+  if (!isActStage(stage)) return true;
+  const target = stage === STAGE.NAMING ? targets.scratchNamePath : targets.genesisPath;
   return calls.some((call, index) => ['write', 'write_file'].includes(call.toolName)
     && typeof call.args?.content === 'string' && call.args.content.trim().length > 0
     && call.args.path === target && results[index]?.status === 'ok');
@@ -25,28 +26,28 @@ export const birthWriteLanded = (stage, calls, results, targets) => {
  * // pure
  */
 export const heldWriteMessage = (stage, { calls, results, speech }) => {
-  const noun = stage === 4 ? 'name' : 'DNA';
-  const file = stage === 4 ? 'name file' : 'genesis file';
+  const noun = stage === STAGE.NAMING ? 'name' : 'record';
+  const file = stage === STAGE.NAMING ? 'name file' : 'genesis file';
   const held = 'Nothing was authored. The session holds — retry the stage.';
   const failed = results.filter((r) => r?.status !== 'ok');
   const reached = calls.map((c) => c.toolName).filter(Boolean);
-  // Stage 5 asks THE shared genesis selector (the one capture and finalize
+  // The record asks THE shared genesis selector (the one capture and finalize
   // judge by); the naming write is any contentful write.
-  const wrote = stage === 5 ? pickGenesisWrite(calls)
+  const wrote = stage === STAGE.RECORD ? pickGenesisWrite(calls)
     : calls.find((c) => ['write', 'write_file'].includes(c.toolName) && c.args?.content);
   if (wrote) {
-    return `The consciousness wrote its ${noun} and the write did not land. ${held}`;
+    return `It wrote its ${noun} and the write did not land. ${held}`;
   }
   if (!speech && failed.length > 0) {
-    return 'The consciousness acted instead of speaking, and the act did not land: '
+    return 'It acted instead of speaking, and the act did not land: '
       + `${failed.map((r) => `${r?.tool ?? 'a tool'} — ${r?.status ?? 'unknown'}`).join('; ')}. ${held}`;
   }
   if (reached.length > 0) {
-    return `The consciousness authored no ${noun} — it reached for ${reached.join(', ')} `
+    return `It wrote no ${noun} — it reached for ${reached.join(', ')} `
       + `instead of writing its ${file}. ${held}`;
   }
-  return `The consciousness spoke, but wrote no ${noun}. `
-    + `${stage === 4 ? 'Naming' : 'Crystallization'} is the writing, not the telling. ${held}`;
+  return `It spoke, but wrote no ${noun}. `
+    + `${stage === STAGE.NAMING ? 'Naming' : 'The record'} is the writing, not the telling. ${held}`;
 };
 
 // A being that SPOKE its act and made no call is asked again, this many times at most.
@@ -74,9 +75,9 @@ export const nextContinuation = ({ landed, calls, results, asked }) => {
 };
 
 /** The ask after spoken-only: the stage's file, by path, and that only the call writes it. // pure */
-export const spokenOnlyAsk = (stage, targets) => (stage === 4
+export const spokenOnlyAsk = (stage, targets) => (stage === STAGE.NAMING
   ? `Your name is not written yet: speaking it does not write it. Call the fs/write tool now, with path ${targets.scratchNamePath} and content the name you chose. Only the tool call writes it.`
-  : `Your DNA is not written yet: speaking of it does not write it. Call the fs/write tool now, with path ${targets.genesisPath} and content your DNA, in your own words. Only the tool call writes it.`);
+  : `Your record is not written yet: speaking of it does not write it. Call the fs/write tool now, with path ${targets.genesisPath} and content your filled-in record, in your own words. Only the tool call writes it.`);
 
 /** Exact additional conversation messages remain inspectable in the existing panel. */
 const continuationDisclosure = (disclosure, messages, round, maxTokens) => {

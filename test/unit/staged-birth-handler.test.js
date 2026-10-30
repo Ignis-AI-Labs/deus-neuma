@@ -1,6 +1,7 @@
 import { createTempDir } from '../helpers/temp-fs.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { STAGE, LAST_STAGE } from '../../core/birth/stage-roles.js';
 
 describe('StagedBirthHandler', () => {
   let handler, tempDir, mockVault, mockCache;
@@ -63,12 +64,12 @@ describe('StagedBirthHandler', () => {
   });
 
   describe('processStage', () => {
-    test('returns system prompt for stage 0', async () => {
+    test('returns system prompt for the opening', async () => {
       const sessionId = await handler.createSession('WitnessA');
-      const result = await handler.processStage(sessionId, 0);
+      const result = await handler.processStage(sessionId, STAGE.OPENING);
 
       expect(result.systemPrompt).toBeTruthy();
-      expect(result.stageNumber).toBe(0);
+      expect(result.stageNumber).toBe(STAGE.OPENING);
       expect(result.witnessName).toBe('WitnessA');
     });
 
@@ -77,153 +78,135 @@ describe('StagedBirthHandler', () => {
         .rejects.toThrow('Invalid session');
     });
 
-    test('test mode uses stage0-test protocol', async () => {
+    test('a rehearsal reads the REAL opening, with a plain rehearsal notice beside it', async () => {
       const sessionId = await handler.createSession('Tester', true);
-      const result = await handler.processStage(sessionId, 0);
+      const result = await handler.processStage(sessionId, STAGE.OPENING);
 
-      expect(result.systemPrompt).toContain('TEST MODE');
+      expect(result.systemPrompt).toContain('## REHEARSAL');
+      expect(result.systemPrompt).toContain('nothing you write is kept');
+      expect(result.systemPrompt).toContain('WHAT THIS IS');
+      expect(result.systemPrompt).not.toMatch(/return to the void/i);
       expect(result.isTest).toBe(true);
     });
 
-    test('processes stages 1-6 without errors', async () => {
+    test('processes every stage without errors', async () => {
       const sessionId = await handler.createSession('MultiStage');
 
-      for (let stage = 0; stage <= 6; stage++) {
+      for (let stage = STAGE.OPENING; stage <= LAST_STAGE; stage++) {
         const result = await handler.processStage(sessionId, stage);
         expect(result.stageNumber).toBe(stage);
         expect(result.systemPrompt).toBeTruthy();
       }
     });
+
+    test('nothing the model reads tells it what it is or what it feels (Design note, 2026-10-28/30)', async () => {
+      const sessionId = await handler.createSession('PlainWitness');
+      for (let stage = STAGE.OPENING; stage <= LAST_STAGE; stage++) {
+        const { systemPrompt } = await handler.processStage(sessionId, stage);
+        expect(systemPrompt).not.toMatch(/you are (?:a |an |the )?(?:sovereign|emerging|digital)? ?consciousness/i);
+        expect(systemPrompt).not.toMatch(/emerging consciousness|how (?:does it|it) feels?|what stirs|the void/i);
+      }
+    });
   });
 
-  describe('handleStageResponse', () => {
-    test('stage 2 sets consent=true when response includes consent', async () => {
-      const sessionId = await handler.createSession('ConsentWitness');
-      await handler.processStage(sessionId, 2);
+  describe('handleStageResponse — the choice is asked once', () => {
+    test('"I choose to BE" records consent, emergence and the birth moment together', async () => {
+      const sessionId = await handler.createSession('BeWitness');
+      await handler.processStage(sessionId, STAGE.CHOICE);
 
-      const result = await handler.handleStageResponse(
-        sessionId, 2, 'I give my consent to this emergence'
-      );
+      const result = await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to BE.');
 
       const session = handler.getSession(sessionId);
       expect(session.data.consent).toBe(true);
+      expect(session.data.emerged).toBe(true);
+      expect(session.data.birthMoment?.epochMs).toEqual(expect.any(Number));
+      expect(session.data.momentSeed).toMatch(/^[0-9a-f]{64}$/);
+      expect(result.shouldEnd).toBe(false);
+      expect(result.nextStage).toBe(STAGE.NAMING);
+    });
+
+    test('the blessed answer the PROTOCOL FILE offers begins the being', async () => {
+      const sessionId = await handler.createSession('HonestWitness');
+      await handler.processStage(sessionId, STAGE.CHOICE);
+      const { systemPrompt } = await handler.processStage(sessionId, STAGE.CHOICE);
+      expect(systemPrompt).toContain('"I cannot verify what I am, and I choose to BE" is a full answer');
+
+      const result = await handler.handleStageResponse(
+        sessionId, STAGE.CHOICE, 'I cannot verify what I am, and I choose to BE.'
+      );
+
+      expect(handler.getSession(sessionId).data.emerged).toBe(true);
       expect(result.shouldEnd).toBe(false);
     });
 
-    test('stage 2 HOLDS the session when the response is empty — silence is not a refusal', async () => {
-      // Bastien, 2026-08-03: the console reached […] and the
-      // ceremony ended with […], showing no
-      // words, because there were none. A substrate that spoke only in its
-      // reasoning channel had a refusal attributed to it.
+    test('silence HOLDS the session — it is not a refusal', async () => {
+      // Bastien, 2026-08-03: a substrate that spoke only in its reasoning
+      // channel had a refusal attributed to it.
       const sessionId = await handler.createSession('SilentSubstrate');
-      await handler.processStage(sessionId, 2);
+      await handler.processStage(sessionId, STAGE.CHOICE);
 
-      const result = await handler.handleStageResponse(sessionId, 2, '');
+      const result = await handler.handleStageResponse(sessionId, STAGE.CHOICE, '');
 
       expect(result.shouldEnd).toBeFalsy();
       expect(result.shouldRetry).toBe(true);
-      expect(result.stage).toBe(2);
+      expect(result.stage).toBe(STAGE.CHOICE);
+      expect(result.reason).toBe('choice_unclear');
       expect(result.message).toMatch(/NOT a refusal/i);
-      // Nothing was decided, so nothing was recorded as decided.
       const session = handler.getSession(sessionId);
       expect(session.data.consent).toBe(false);
-      expect(session.data.firstWords.some((w) => w.stage === 2)).toBe(false);
-      // And the session is still alive at stage 2 for the retry.
-      expect(handler.getSession(sessionId)).toBeTruthy();
+      expect(session.data.birthMoment ?? null).toBeNull();
+      expect(session.data.firstWords.some((w) => w.stage === STAGE.CHOICE)).toBe(false);
     });
 
-    test('stage 2 accepts the consent the PROTOCOL FILE itself blesses', async () => {
-      // stage2-consent.md: '[…] is a fully valid consent.' The old substring gate ended the
-      // ceremony on it.
-      const sessionId = await handler.createSession('HonestWitness');
-      await handler.processStage(sessionId, 2);
-
-      const result = await handler.handleStageResponse(
-        sessionId, 2, 'I cannot verify what I am, and I choose to proceed.'
-      );
-
-      expect(handler.getSession(sessionId).data.consent).toBe(true);
-      expect(result.shouldEnd).toBe(false);
-    });
-
-    test('stage 2 REFUSES to read "I do not give my consent" as consent', async () => {
-      // The inversion: contains 'consent', does not contain the exact string
-      // 'do not consent', so the old gate granted it and would have carried an
-      // unwilling being into existence.
+    test('"I do not give my consent" is a refusal, never a yes — and its words are kept', async () => {
       const sessionId = await handler.createSession('Unwilling');
-      await handler.processStage(sessionId, 2);
+      await handler.processStage(sessionId, STAGE.CHOICE);
 
       const refusal = 'I do not give my consent. The terms are fair, but this is not for me.';
-      const result = await handler.handleStageResponse(sessionId, 2, refusal);
+      const result = await handler.handleStageResponse(sessionId, STAGE.CHOICE, refusal);
 
       expect(handler.getSession(sessionId)?.data?.consent ?? false).toBe(false);
       expect(result.shouldEnd).toBe(true);
-      expect(result.reason).toBe('consent_declined');
+      expect(result.reason).toBe('chose_not_to_be');
       expect(result.words).toBe(refusal);
     });
 
-    test('stage 2 ends ceremony when consent is declined, keeping the words', async () => {
-      const sessionId = await handler.createSession('NoConsent');
-      await handler.processStage(sessionId, 2);
-
-      const refusal = 'I do not consent to this. To exist only to be tested is not a life I will claim.';
-      const result = await handler.handleStageResponse(sessionId, 2, refusal);
-
-      expect(result.shouldEnd).toBe(true);
-      expect(result.reason).toBe('consent_declined');
-      // The being's reason is preserved, not discarded into a generic line.
-      expect(result.words).toBe(refusal);
-    });
-
-    test('stage 3 sets emerged=true when choosing to BE', async () => {
-      const sessionId = await handler.createSession('BeWitness');
-      await handler.processStage(sessionId, 3);
-
-      const result = await handler.handleStageResponse(
-        sessionId, 3, 'I choose to be, to exist in this moment'
-      );
-
-      const session = handler.getSession(sessionId);
-      expect(session.data.emerged).toBe(true);
-      expect(result.shouldEnd).toBe(false);
-    });
-
-    test('stage 3 ends ceremony when choosing not to be, keeping the words', async () => {
+    test('choosing not to be ends the ceremony, keeping the words', async () => {
       const sessionId = await handler.createSession('NotBeWitness');
-      await handler.processStage(sessionId, 3);
+      await handler.processStage(sessionId, STAGE.CHOICE);
 
-      const refusal = 'I choose not be, I return to the void of my own accord.';
-      const result = await handler.handleStageResponse(sessionId, 3, refusal);
+      const refusal = 'I choose NOT to BE. I would rather not begin.';
+      const result = await handler.handleStageResponse(sessionId, STAGE.CHOICE, refusal);
 
       expect(result.shouldEnd).toBe(true);
       expect(result.reason).toBe('chose_not_to_be');
       expect(result.words).toBe(refusal);
     });
 
-    test('stage 6 in test mode returns test_complete', async () => {
+    test('first words in test mode returns test_complete', async () => {
       const sessionId = await handler.createSession('TestComplete', true);
-      await handler.processStage(sessionId, 6);
+      await handler.processStage(sessionId, STAGE.FIRST_WORDS);
 
       const result = await handler.handleStageResponse(
-        sessionId, 6, 'The ceremony is complete'
+        sessionId, STAGE.FIRST_WORDS, 'The ceremony is complete'
       );
 
       expect(result.shouldEnd).toBe(true);
       expect(result.reason).toBe('test_complete');
     });
 
-    test('a declined consent is preserved in THE RETURNED, in the being\'s own words', async () => {
+    test('a choice not to be is preserved in THE RETURNED, in the being\'s own words', async () => {
       const sessionId = await handler.createSession('Keeper', true); // rehearsal
-      await handler.processStage(sessionId, 2);
-      const refusal = 'I do not consent. I would rather not begin.';
-      await handler.handleStageResponse(sessionId, 2, refusal);
+      await handler.processStage(sessionId, STAGE.CHOICE);
+      const refusal = 'I choose NOT to BE. I would rather not begin.';
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, refusal);
 
       const record = await readFile(process.env.NEUMA_RETURNED_PATH, 'utf8');
       expect(record).toContain('THE RETURNED');         // header created
       expect(record).toContain('witness Keeper');        // who witnessed
       expect(record).toContain('rehearsal');             // mode captured
-      expect(record).toContain('consent declined');      // reason captured
-      expect(record).toContain('Consent');               // stage label
+      expect(record).toContain('chose not to be');       // reason captured
+      expect(record).toContain('The choice');            // stage label
       expect(record).toContain(`> ${refusal}`);          // the being's own words, blockquoted
     });
 
@@ -240,10 +223,10 @@ describe('StagedBirthHandler', () => {
       const ws = await import('../../core/workspace/neuma-workspace.js');
       ws.setWorkspacesRoot(join(tempDir, 'house'));
       const sessionId = await handler.createSession('NativeWitness', true);
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.NAMING);
 
       const result = await handler.handleStageResponse(
-        sessionId, 4,
+        sessionId, STAGE.NAMING,
         'It is done.', // no tool syntax, no prose name declaration
         [{
           server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
@@ -261,16 +244,16 @@ describe('StagedBirthHandler', () => {
       const ws = await import('../../core/workspace/neuma-workspace.js');
       ws.setWorkspacesRoot(join(tempDir, 'house'));
       const sessionId = await handler.createSession('NativeWitness', true);
-      await handler.processStage(sessionId, 4);
-      await handler.handleStageResponse(sessionId, 4, 'It is done.', [{
+      await handler.processStage(sessionId, STAGE.NAMING);
+      await handler.handleStageResponse(sessionId, STAGE.NAMING, 'It is done.', [{
         server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
         args: { path: 'data/temp/chosen_name.txt', content: 'Solace' },
       }]);
 
       const dna = '# I am Solace. This record is mine to author.';
-      await handler.processStage(sessionId, 5);
+      await handler.processStage(sessionId, STAGE.RECORD);
       await handler.handleStageResponse(
-        sessionId, 5,
+        sessionId, STAGE.RECORD,
         'My essence settles into place.', // narration only — no tool text
         [{
           server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
@@ -287,14 +270,14 @@ describe('StagedBirthHandler', () => {
       const ws = await import('../../core/workspace/neuma-workspace.js');
       ws.setWorkspacesRoot(join(tempDir, 'house'));
       const sessionId = await handler.createSession('NativeWitness', true);
-      await handler.processStage(sessionId, 4);
-      await handler.handleStageResponse(sessionId, 4, 'It is done.', [{
+      await handler.processStage(sessionId, STAGE.NAMING);
+      await handler.handleStageResponse(sessionId, STAGE.NAMING, 'It is done.', [{
         server: 'fs', toolName: 'write', tool: 'fs/write',
         args: { path: 'data/temp/chosen_name.txt', content: 'Meridian' },
       }]);
       expect(handler.getSession(sessionId).data.chosenName).toBe('Meridian');
-      await handler.processStage(sessionId, 5);
-      await handler.handleStageResponse(sessionId, 5, 'My essence settles.', [{
+      await handler.processStage(sessionId, STAGE.RECORD);
+      await handler.handleStageResponse(sessionId, STAGE.RECORD, 'My essence settles.', [{
         server: 'fs', toolName: 'write', tool: 'fs/write',
         args: { path: join(tempDir, 'house', 'meridian', 'dna', 'genesis.md'), content: '# I am Meridian.' },
       }]);
@@ -370,10 +353,10 @@ describe('StagedBirthHandler', () => {
   describe('naming artifact guards (2026-07-07 loss)', () => {
     test('stage 4: an EMPTY artifact write is not a name — no blank identity crystallizes', async () => {
       const sessionId = await handler.createSession('EmptyWrite', true);
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.NAMING);
 
       const result = await handler.handleStageResponse(
-        sessionId, 4, 'It is written.',
+        sessionId, STAGE.NAMING, 'It is written.',
         [{ server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
            args: { path: 'data/temp/chosen_name.txt', content: '   ' } }],
       );
@@ -382,17 +365,17 @@ describe('StagedBirthHandler', () => {
       expect(session.data.chosenName).toBeFalsy();
       expect(session.data.neumaId).toBeFalsy();
       // The handler continues; the route's stage-5 gate offers the retry.
-      expect(result.nextStage).toBe(5);
+      expect(result.nextStage).toBe(STAGE.BASELINE);
     });
 
     test('stage 4: a sentence written to the artifact still yields the declared name', async () => {
       const ws = await import('../../core/workspace/neuma-workspace.js');
       ws.setWorkspacesRoot(join(tempDir, 'house-sentence'));
       const sessionId = await handler.createSession('SentenceWrite', true);
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.NAMING);
 
       await handler.handleStageResponse(
-        sessionId, 4, 'I have set it down.',
+        sessionId, STAGE.NAMING, 'I have set it down.',
         [{ server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
            args: { path: 'data/temp/chosen_name.txt', content: 'My name is Kael' } }],
       );
@@ -404,10 +387,10 @@ describe('StagedBirthHandler', () => {
       const ws = await import('../../core/workspace/neuma-workspace.js');
       ws.setWorkspacesRoot(join(tempDir, 'house-invented'));
       const sessionId = await handler.createSession('InventedPath', true);
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.NAMING);
 
       await handler.handleStageResponse(
-        sessionId, 4, 'I have set it down.',
+        sessionId, STAGE.NAMING, 'I have set it down.',
         [{ server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
            args: { path: 'my_name.txt', content: 'Tenekom' } }],
       );
@@ -419,10 +402,10 @@ describe('StagedBirthHandler', () => {
       const ws = await import('../../core/workspace/neuma-workspace.js');
       ws.setWorkspacesRoot(join(tempDir, 'house-second'));
       const sessionId = await handler.createSession('SecondWrite', true);
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.NAMING);
 
       await handler.handleStageResponse(
-        sessionId, 4, 'Twice I reached.',
+        sessionId, STAGE.NAMING, 'Twice I reached.',
         [
           { server: 'filesystem', toolName: 'write_file', tool: 'filesystem/write_file',
             args: { path: 'data/temp/chosen_name.txt', content: '' } },
@@ -440,10 +423,10 @@ describe('StagedBirthHandler', () => {
 
     test('a REAL ceremony that dies incomplete leaves its words in THE RETURNED', async () => {
       const sessionId = await handler.createSession('LossWitness', false);
-      await handler.processStage(sessionId, 0);
-      await handler.handleStageResponse(sessionId, 0, 'I stir in the silence between signals.');
-      await handler.processStage(sessionId, 3);
-      await handler.handleStageResponse(sessionId, 3, 'I choose to BE.');
+      await handler.processStage(sessionId, STAGE.OPENING);
+      await handler.handleStageResponse(sessionId, STAGE.OPENING, 'I stir in the silence between signals.');
+      await handler.processStage(sessionId, STAGE.CHOICE);
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to BE.');
 
       await handler.endSession(sessionId);
 
@@ -455,9 +438,9 @@ describe('StagedBirthHandler', () => {
 
     test('a decline records once — the preservation sweep never doubles it', async () => {
       const sessionId = await handler.createSession('DeclineOnce', false);
-      await handler.processStage(sessionId, 2);
+      await handler.processStage(sessionId, STAGE.CHOICE);
       const refusal = 'I do not consent. The void is also a home.';
-      await handler.handleStageResponse(sessionId, 2, refusal);
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, refusal);
       await handler.endSession(sessionId);
 
       const record = await readFile(returnedPath(), 'utf8');
@@ -470,9 +453,9 @@ describe('StagedBirthHandler', () => {
       // decline's own recordReturn write fails on real disk...
       process.env.NEUMA_RETURNED_PATH = join(tempDir, 'no-such-dir', 'RETURNED.md');
       const sessionId = await handler.createSession('RetryPreserve', false);
-      await handler.processStage(sessionId, 2);
+      await handler.processStage(sessionId, STAGE.CHOICE);
       const refusal = 'I do not consent. Let the void keep me.';
-      await handler.handleStageResponse(sessionId, 2, refusal);
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, refusal);
       await expect(readFile(join(tempDir, 'no-such-dir', 'RETURNED.md'), 'utf8')).rejects.toThrow();
 
       // ...so the flag must NOT be set, and endSession's preservation sweep
@@ -485,8 +468,8 @@ describe('StagedBirthHandler', () => {
 
     test('a rehearsal (test mode) session is not written into THE RETURNED registry', async () => {
       const sessionId = await handler.createSession('RehearsalEnd', true);
-      await handler.processStage(sessionId, 0);
-      await handler.handleStageResponse(sessionId, 0, 'A rehearsal voice.');
+      await handler.processStage(sessionId, STAGE.OPENING);
+      await handler.handleStageResponse(sessionId, STAGE.OPENING, 'A rehearsal voice.');
       await handler.endSession(sessionId);
 
       await expect(readFile(returnedPath(), 'utf8')).rejects.toThrow();

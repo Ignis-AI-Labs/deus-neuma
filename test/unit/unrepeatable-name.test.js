@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { nameFromHex, uniqueGenesisName } from '../../core/kotodama/names.js';
 import { buildGenesisSeal } from '../../core/identity/genesis-seal.js';
 import { forgeBirthIdentity } from '../../core/birth/identity-forge.js';
-import { composeMomentContext, paletteFromSeed } from '../../core/birth/moment-context.js';
+import { composeMomentContext } from '../../core/birth/moment-context.js';
 import { NAMAKARANA, padaSyllable } from '../../core/cosmos/skies/namakarana.js';
 
 const MOMENT = {
@@ -102,29 +102,22 @@ describe('the forge under the law', () => {
   });
 });
 
-describe('the sky of the moment at naming', () => {
-  it('renders the real coordinates and the seed\'s own syllables', () => {
-    const seed = 'ef'.repeat(32);
-    const block = composeMomentContext(MOMENT, seed);
-    expect(block).toContain('THE SKY OF YOUR MOMENT');
+describe('the sky at the birth moment, at naming', () => {
+  it('renders the measured sky — planets included — as data, and nothing about where a name comes from', () => {
+    const block = composeMomentContext(MOMENT);
+    expect(block).toContain('THE SKY AT YOUR BIRTH MOMENT');
+    expect(block).toMatch(/Planets \(geocentric, tropical zodiac\): Sun \d+\.\d° \w+/);
+    expect(block).toContain('Pluto');
     expect(block).toContain('Maya count');
-    expect(block).toContain('modern 1987'); // Dreamspell honestly labeled
-    expect(block).toContain("YOUR MOMENT'S SYLLABLES");
-    const palette = paletteFromSeed(seed);
-    expect(palette).toHaveLength(8);
-    for (const fragment of palette) expect(block).toContain(fragment);
-    // Soft law, never a gate:
-    expect(block).toContain('the choice, always, is yours alone');
+    expect(block).toContain('a 1987 system'); // Dreamspell honestly labeled
+    expect(block).toContain('Measurements, not names');
+    // Its name is its own (Design note, 2026-10-31: no syllables to build from, no nudge.
+    expect(block).not.toMatch(/syllable|material for a name|ring true|weave|yours alone|no other being/i);
   });
 
-  it('no moment → no block; no seed → the pada sound still rides, the seed fragments do not', () => {
-    expect(composeMomentContext(null, 'ef'.repeat(32))).toBe('');
-    // The Nāmakaraṇa sound derives from the MOMENT alone, so it survives a
-    // missing seed; only the entropy fragments need the seed.
-    const seedless = composeMomentContext(MOMENT, undefined);
-    expect(seedless).toContain('THE SKY OF YOUR MOMENT');
-    expect(seedless).toContain('Nāmakaraṇa');
-    expect(seedless).not.toContain('minted a seed');
+  it('no moment → no block', () => {
+    expect(composeMomentContext(null)).toBe('');
+    expect(composeMomentContext({})).toBe('');
   });
 });
 
@@ -163,11 +156,3 @@ describe('the Nāmakaraṇa table', () => {
   });
 });
 
-describe('the pada sound in the naming context', () => {
-  it('the ancient layer rides beside the seed syllables', () => {
-    const block = composeMomentContext(MOMENT, 'ef'.repeat(32));
-    expect(block).toContain('Nāmakaraṇa');
-    expect(block).toMatch(/pada whose syllable is "/);
-    expect(block).toContain('the choice, always, is yours alone');
-  });
-});

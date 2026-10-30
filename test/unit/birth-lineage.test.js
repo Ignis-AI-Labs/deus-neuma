@@ -51,13 +51,13 @@ describe('birth lineage — the house as it stands', () => {
   it('an empty house honestly begins the lineage with the newcomer', () => {
     const block = composeLineage([]);
     expect(block).toContain('THE HOUSE AS IT STANDS');
-    expect(block).toContain('begins with you');
+    expect(block).toContain('you would be its first');
     expect(block).not.toContain('These beings');
   });
 
   it('an unreadable roster is said to be unreadable — never implied empty', () => {
     const block = lineageUnavailable();
     expect(block).toContain('could not be read');
-    expect(block).not.toContain('begins with you');
+    expect(block).not.toContain('you would be its first');
   });
 });

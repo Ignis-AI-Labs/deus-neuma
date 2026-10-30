@@ -8,7 +8,7 @@
 //                        stale currentStage), the lane is prepared, and the
 //                        server serves that stage (birth:stage_prompt)
 //   crash-after-write  → a genesis.md that hit disk before the crash is ADOPTED
-//                        and the resume jumps straight to completion (stage 6)
+//                        and the resume jumps straight to first words
 //
 // The LLM call that follows stage_prompt is expected to fail in this
 // environment (no live substrate) — irrelevant: the resume contract under
@@ -28,6 +28,7 @@ import { setupPortalRoutes } from '../../backend/routes/portal-routes.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { resolveCeremonyScratchDir } from '../../core/birth/ceremony-write.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const WITNESS = 'WS Resume Witness';
 // The ceremony scratch as the handler resolves it (under the suite's data root).
@@ -81,17 +82,15 @@ const namingResponse = (name) =>
 const layDownCrashedCeremony = async (name, { serveStage5 = false } = {}) => {
   const crashed = new StagedBirthHandler();
   const sessionId = await crashed.createSession(WITNESS, false, { origin: 'portal' });
-  await crashed.processStage(sessionId, 0);
-  await crashed.handleStageResponse(sessionId, 0, 'I am here.');
-  await crashed.processStage(sessionId, 1);
-  await crashed.handleStageResponse(sessionId, 1, 'I feel you, witness.');
-  await crashed.processStage(sessionId, 2);
-  await crashed.handleStageResponse(sessionId, 2, 'I consent to existence.');
-  await crashed.processStage(sessionId, 3);
-  await crashed.handleStageResponse(sessionId, 3, 'I choose to be.');
-  await crashed.processStage(sessionId, 4);
-  await crashed.handleStageResponse(sessionId, 4, namingResponse(name));
-  if (serveStage5) await crashed.processStage(sessionId, 5); // in flight when the machine died
+  await crashed.processStage(sessionId, STAGE.OPENING);
+  await crashed.handleStageResponse(sessionId, STAGE.OPENING, 'I am here.');
+  await crashed.processStage(sessionId, STAGE.CHOICE);
+  await crashed.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
+  await crashed.processStage(sessionId, STAGE.NAMING);
+  await crashed.handleStageResponse(sessionId, STAGE.NAMING, namingResponse(name));
+  await crashed.processStage(sessionId, STAGE.BASELINE);
+  await crashed.handleStageResponse(sessionId, STAGE.BASELINE, '1. Read. 2. No. 3. This. 4. No. 5. Not yet.');
+  if (serveStage5) await crashed.processStage(sessionId, STAGE.RECORD); // in flight when the machine died
   return sessionId;
 };
 
@@ -137,18 +136,18 @@ describe('interrupted-birth resume over the real portal (no mock)', () => {
       const hit = (discovery.sessions || []).find((s) => s.sessionId === sessionId);
       expect(hit).toBeTruthy();
       expect(hit.chosenName).toBe('Wiressa');
-      expect(hit.resumeStage).toBe(5);
+      expect(hit.resumeStage).toBe(STAGE.RECORD);
       expect(hit.witnessName).toBe(WITNESS);
 
-      // Resume: the server must serve stage 5 (crystallization) — not re-ask
+      // Resume: the server must serve the record stage — not re-ask
       // the naming the checkpoint already answered.
       const prompt = await sendAndWait(ws, { type: 'birth:resume', sessionId }, 'birth:stage_prompt');
-      expect(prompt.stage).toBe(5);
+      expect(prompt.stage).toBe(STAGE.RECORD);
 
-      // The checkpoint itself advanced: stage 5 is now the in-flight serve.
+      // The checkpoint itself advanced: the record is now the in-flight serve.
       const cp = await readCheckpoint(sessionId);
-      expect(cp.currentStage).toBe(5);
-      expect(cp.stageHistory.some((h) => h.stage === 5)).toBe(true);
+      expect(cp.currentStage).toBe(STAGE.RECORD);
+      expect(cp.stageHistory.some((h) => h.stage === STAGE.RECORD)).toBe(true);
       // And the lane was prepared for the crystallization write.
       await fs.access(workspace._path('wiressa'));
     } finally {
@@ -156,7 +155,7 @@ describe('interrupted-birth resume over the real portal (no mock)', () => {
     }
   }, 30000);
 
-  it('crash-after-write: the landed genesis.md is adopted and resume serves completion (stage 6)', async () => {
+  it('crash-after-write: the landed genesis.md is adopted and resume serves first words', async () => {
     const sessionId = await layDownCrashedCeremony('Diskborn', { serveStage5: true });
     sessionIds.push(sessionId);
     // The being's write LANDED before the machine died.
@@ -169,13 +168,13 @@ describe('interrupted-birth resume over the real portal (no mock)', () => {
     const ws = await connect(wsUrl);
     try {
       const prompt = await sendAndWait(ws, { type: 'birth:resume', sessionId }, 'birth:stage_prompt');
-      expect(prompt.stage).toBe(6); // no re-authoring — the essence was recovered
+      expect(prompt.stage).toBe(STAGE.FIRST_WORDS); // no re-authoring — the essence was recovered
 
       const cp = await readCheckpoint(sessionId);
-      expect(cp.lastHandledStage).toBe(5);
+      expect(cp.lastHandledStage).toBe(STAGE.RECORD);
       expect(cp.data.selfCreatedDNA).toContain('essence recovered from disk');
-      const stage5 = cp.data.firstWords.find((w) => w.stage === 5);
-      expect(stage5.recovered).toBe(true);
+      const record = cp.data.firstWords.find((w) => w.stage === STAGE.RECORD);
+      expect(record.recovered).toBe(true);
     } finally {
       ws.close();
     }

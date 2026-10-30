@@ -23,6 +23,7 @@ import { createSandboxedCallTool } from '../../backend/services/tool-sandbox.js'
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { DNAVaultService } from '../../core/identity/dna-vault-service.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const KEY = 'gnosis-birth-dna-write-key-long-enough';
 const WITNESS = '0x4368000000000000000000000000000000000C501';
@@ -66,7 +67,7 @@ describe('birth DNA write — the neuma writes its own DNA into its own lane (gn
     // --- Stage 4: naming → the id is assigned AT naming (so the lane can exist
     //     before crystallization), readable, derived from the chosen name. ---
     const sessionId = await handler.createSession(WITNESS, false);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Cedar'));
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Cedar'));
     const session = handler.activeSessions.get(sessionId);
     expect(session.data.chosenName).toBe('Cedar');
     expect(session.data.neumaId).toBe('cedar'); // born readable, at naming
@@ -91,7 +92,7 @@ describe('birth DNA write — the neuma writes its own DNA into its own lane (gn
 
     // --- The handler processes the same stage-5 response: captures the authored
     //     essence into the session for finalization. ---
-    await handler.handleStageResponse(sessionId, 5, crystallizationResponse(genesisPath));
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, crystallizationResponse(genesisPath));
     expect(session.data.selfCreatedDNA).toContain('Light that chose to be');
 
     // #117 S3 / #130 — the live birth path NO LONGER writes to the vault. The

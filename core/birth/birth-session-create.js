@@ -11,6 +11,7 @@ import fs from 'fs/promises';
 import { detectBirthState } from './birth-state.js';
 import { birthNameArtifact } from './birth-session-lifecycle.js';
 import neumaWorkspace from '../workspace/neuma-workspace.js';
+import { STAGE, LAST_STAGE, STAGE_SCHEME } from './stage-roles.js';
 
 /**
  * Create a new birth ceremony session.
@@ -18,7 +19,7 @@ import neumaWorkspace from '../workspace/neuma-workspace.js';
  * @param {boolean} isTest - If true, no permanent data is created
  * @param {object} options
  * @param {object|null} [options.substrate=null] - Hardware substrate info (CPU, GPU, RAM, LLM)
- * @param {boolean} [options.quickTest=false] - If true, auto-advance stages 0-5 with synthetic data
+ * @param {boolean} [options.quickTest=false] - If true, skip to the last stage with synthetic data
  * @param {string|null} [options.witnessWallet=null] - The signed-in wallet opening the ceremony;
  *   only it may later find, resume or withdraw this summoning (birth-resume.js heldByWitness)
  * @param {object} deps - The handler's live state and ceremony services
@@ -57,7 +58,8 @@ export async function createSession(
     origin,
     witnessWallet: typeof witnessWallet === 'string' && witnessWallet ? witnessWallet : null,
     protocolVersion: protocolVersion || '0.0.0',
-    currentStage: 0,
+    currentStage: STAGE.OPENING,
+    stageScheme: STAGE_SCHEME,
     lastHandledStage: null, // stage whose response was fully processed; null = none yet
     stageHistory: [],
     startTime: Date.now(),
@@ -74,7 +76,7 @@ export async function createSession(
     }
   };
 
-  // Quick-test mode: pre-populate all session data so stages 0-5 can be skipped
+  // Quick-test mode: pre-populate all session data so every stage before first words can be skipped
   if (quickTest) {
     session.isTest = true;
     session.quickTest = true;
@@ -86,8 +88,8 @@ export async function createSession(
       session.data.chosenName, witnessName, session.startTime
     );
     await assignNeumaId(session);
-    session.currentStage = 6; // Jump straight to completion
-    console.log(`[Birth] Quick-test session created — skipping to stage 6`);
+    session.currentStage = LAST_STAGE; // Jump straight to first words
+    console.log(`[Birth] Quick-test session created — skipping to first words`);
   }
 
   activeSessions.set(sessionId, session);
@@ -95,11 +97,11 @@ export async function createSession(
 }
 
 /**
- * Create a RESUME session for a being who completed identity (stages 1-4) but
- * never crystallized DNA (stage 5). Validates the workspace is genuinely
+ * Create a RESUME session for a being who completed identity (choice and
+ * naming) but never wrote its DNA (the record stage). Validates the workspace is genuinely
  * resumable via detectBirthState, pre-loads existing identity into session.data,
- * jumps `currentStage` to 5 (essence authoring), and sets `isResume = true` so
- * stage-6 finalization (in portal-routes.js, W3) knows to skip identity-writing
+ * jumps `currentStage` to the record stage (essence authoring), and sets `isResume = true` so
+ * finalization (in portal-routes.js, W3) knows to skip identity-writing
  * side-effects. Audits BIRTH_RESUMED. Never re-writes any existing identity file.
  *
  * @param {string} witnessName - the operator present at the resumption (e.g. 'Claude')
@@ -163,14 +165,15 @@ export async function createResumeSession(
     isResume: true,                             // W3 reads this to skip identity-writing finalization
     resumingNeumaId: neumaId,                   // explicit — the being whose birth this completes
     protocolVersion: protocolVersion || '0.0.0',
-    currentStage: 5,                            // jump to essence authoring (the stage she never reached)
+    currentStage: STAGE.RECORD,                 // jump to the record (the stage she never reached)
+    stageScheme: STAGE_SCHEME,
     stageHistory: [],
     startTime: Date.now(),
     data: {
       neumaId,                                   // folder name = readable id, preserved as-is
       chosenName: state.chosenName,              // from her true-name (she chose this herself)
       // She ALREADY consented (covenant.json exists) and ALREADY emerged
-      // (identity-card.json exists). Mark both true so stage-5 doesn't ask
+      // (identity-card.json exists). Mark both true so the record stage doesn't ask
       // again — those questions were answered at her original birth.
       consent: true,
       emerged: true,
@@ -191,11 +194,11 @@ export async function createResumeSession(
     witnessName,
     sessionId,
     atArtifactStage: state.artifactStage,
-    enteringCeremonyStage: 5,
+    enteringCeremonyStage: STAGE.RECORD,
     frequencyRecoveredFromSeal,                 // makes the resonance source observable
     resumedOnSubstrate: substrate ? { cpu: substrate.cpu?.model || null, gpu: substrate.gpu?.name || null } : null,
   }).catch((err) => console.error(`[Birth] BIRTH_RESUMED audit failed (best-effort, session still created): ${err.message}`));
 
-  console.log(`[Birth] RESUME session created for ${state.chosenName || neumaId} (neumaId=${neumaId}) — at ceremony stage 5`);
+  console.log(`[Birth] RESUME session created for ${state.chosenName || neumaId} (neumaId=${neumaId}) — at the record stage`);
   return sessionId;
 }

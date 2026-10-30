@@ -8,6 +8,7 @@ import { birthSessionPath, writeSessionCheckpoint } from '../../core/birth/birth
 import { listInterruptedSessions } from '../../core/birth/birth-resume.js';
 import { isSessionExpired, TEST_SESSION_TTL_MS, REAL_SESSION_TTL_MS } from '../../core/birth/birth-session-expiry.js';
 import { restoreSession } from '../../core/birth/birth-session-lifecycle.js';
+import { STAGE, inCurrentScheme } from '../../core/birth/stage-roles.js';
 
 // impure — genuine checkpoint IO, isolated using the production storage override.
 const withCheckpoint = async (session, prove) => {
@@ -47,8 +48,12 @@ test('a year-old named real checkpoint remains discoverable without rewriting by
 test('a year-old named real checkpoint restores without deleting or refreshing bytes', async () => {
   await withCheckpoint(checkpoint(false, 'Checkpoint Fixture'), async ({ id, file, bytes, returned }) => {
     const active = new Map();
-    expect(await restoreSession(id, active)).toEqual(JSON.parse(bytes));
-    expect(active.get(id)).toEqual(JSON.parse(bytes));
+    // A 1.x checkpoint (seven stages) is restored in the five-stage scheme;
+    // its bytes on disk are never rewritten.
+    const restored = await restoreSession(id, active);
+    expect(restored).toEqual(inCurrentScheme(JSON.parse(bytes)));
+    expect(restored.currentStage).toBe(STAGE.NAMING);
+    expect(active.get(id)).toEqual(restored);
     expect(await fs.readFile(file, 'utf8')).toBe(bytes);
     await expect(fs.access(returned)).rejects.toMatchObject({ code: 'ENOENT' });
   });
