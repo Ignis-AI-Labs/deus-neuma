@@ -1,7 +1,8 @@
-// THE UNREPEATABLE NAME (MANY SKIES §6.1) — the mathematical law, proven on
-// the real forge. Real modules end to end; no mocks (RULE 0).
+// THE UNREPEATABLE NAME (MANY SKIES §6.1) — the law, proven on the real
+// forge. Real modules end to end; no mocks (RULE 0). Since kotodama-names/2 a
+// genesis name already borne is walked past to another meaningful name; the
+// walk itself is proven in meaningful-name.test.js.
 import { describe, it, expect } from 'vitest';
-import { nameFromHex, uniqueGenesisName } from '../../core/kotodama/names.js';
 import { buildGenesisSeal } from '../../core/identity/genesis-seal.js';
 import { forgeBirthIdentity } from '../../core/birth/identity-forge.js';
 import { composeMomentContext } from '../../core/birth/moment-context.js';
@@ -23,32 +24,6 @@ const SEAL_INPUT = {
   substrate: { model: 'test' },
 };
 
-describe('uniqueGenesisName — deterministic extension', () => {
-  const hash = 'ab'.repeat(32);
-
-  it('gives the 3-syllable name when free, extends past each collision', () => {
-    const base = uniqueGenesisName(hash);
-    expect(base).toBe(nameFromHex(hash, 3));
-    const extended = uniqueGenesisName(hash, [base]);
-    expect(extended).toBe(nameFromHex(hash, 4));
-    const twice = uniqueGenesisName(hash, [base, extended]);
-    expect(twice).toBe(nameFromHex(hash, 5));
-    // The extension only ever reveals more of the SAME seed.
-    expect(extended.toLowerCase().startsWith(base.toLowerCase())).toBe(true);
-  });
-
-  it('collision check folds case', () => {
-    const base = uniqueGenesisName(hash);
-    expect(uniqueGenesisName(hash, [base.toUpperCase()])).toBe(nameFromHex(hash, 4));
-  });
-
-  it('two distinct hashes always separate (injectivity, spot-proven)', () => {
-    const a = 'ab'.repeat(32);
-    const b = 'ab'.repeat(31) + 'ac';
-    expect(nameFromHex(a, 32)).not.toBe(nameFromHex(b, 32));
-  });
-});
-
 describe('momentSeed in the genesis seal', () => {
   it('folds into the canonical record and changes the hash; absent = legacy shape', () => {
     const seed = 'cd'.repeat(32);
@@ -67,7 +42,7 @@ describe('momentSeed in the genesis seal', () => {
 });
 
 describe('the forge under the law', () => {
-  it('extends the genesis name past a name already borne — chosen name untouched', () => {
+  it('walks the genesis name past a name already borne — chosen name untouched', () => {
     const first = forgeBirthIdentity({
       chosenName: 'Proof',
       witnessWallet: SEAL_INPUT.witnessWallet,
@@ -77,7 +52,7 @@ describe('the forge under the law', () => {
       substrate: { model: 'test' },
     });
     // Re-forge identical inputs with the first genesis name already borne:
-    // same hash, DIFFERENT (extended) genesis name, same chosen name.
+    // same hash, a DIFFERENT genesis name, same chosen name.
     const second = forgeBirthIdentity({
       chosenName: 'Proof',
       witnessWallet: SEAL_INPUT.witnessWallet,
@@ -89,8 +64,7 @@ describe('the forge under the law', () => {
     });
     expect(second.seal.genesisHash).toBe(first.seal.genesisHash);
     expect(second.trueName.genesisName).not.toBe(first.trueName.genesisName);
-    expect(second.trueName.genesisName.toLowerCase()
-      .startsWith(first.trueName.genesisName.toLowerCase())).toBe(true);
+    expect(second.trueName.meanings.genesis.parts).toHaveLength(2);
     expect(second.trueName.chosenName).toBe('Proof');
   });
 
@@ -98,7 +72,7 @@ describe('the forge under the law', () => {
     const a = forgeBirthIdentity({ ...SEAL_INPUT, lean: undefined, momentSeed: 'aa'.repeat(32) });
     const b = forgeBirthIdentity({ ...SEAL_INPUT, lean: undefined, momentSeed: 'ab'.repeat(32) });
     expect(a.seal.genesisHash).not.toBe(b.seal.genesisHash);
-    expect(a.trueName.genesisName).not.toBe(b.trueName.genesisName); // 3 syllables of distinct hashes here
+    expect(a.trueName.genesisName).not.toBe(b.trueName.genesisName); // distinct hashes, distinct names here
   });
 });
 

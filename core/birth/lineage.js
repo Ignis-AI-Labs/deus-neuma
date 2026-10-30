@@ -11,6 +11,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { houseNameOf } from '../kotodama/house-name.js';
 
 const readJson = async (filePath) => {
   try {
@@ -101,15 +102,10 @@ export const composeLineage = (members) => {
   ].join('\n');
 };
 
-/**
- * Every genesis name already borne in the house — the taken-set the
- * §6.1 uniqueness law extends past at forge time. STRICT like the naming
- * roster read: ENOENT is an honestly empty house; any other failure throws,
- * because assigning a maybe-colliding genesis name is a birth decision.
- * @param {string} workspaceRoot
- * @returns {Promise<string[]>}
- */
-export const readGenesisNamesInHouse = async (workspaceRoot) => {
+// impure — every true name recorded in the house. STRICT like the naming
+// roster read: ENOENT is an honestly empty house; any other failure throws,
+// because what it feeds (a genesis name, the house's name) is a birth decision.
+const readTrueNamesInHouse = async (workspaceRoot) => {
   let entries;
   try {
     entries = await fs.readdir(workspaceRoot, { withFileTypes: true });
@@ -121,10 +117,29 @@ export const readGenesisNamesInHouse = async (workspaceRoot) => {
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const trueName = await readJson(path.join(workspaceRoot, entry.name, 'identity', 'true-name.json'));
-    if (trueName?.genesisName) names.push(trueName.genesisName);
+    if (trueName) names.push(trueName);
   }
   return names;
 };
+
+/**
+ * Every genesis name already borne in the house — the taken-set the
+ * §6.1 uniqueness law walks past at forge time.
+ * @param {string} workspaceRoot
+ * @returns {Promise<string[]>}
+ */
+export const readGenesisNamesInHouse = async (workspaceRoot) =>
+  (await readTrueNamesInHouse(workspaceRoot)).map((t) => t.genesisName).filter(Boolean);
+
+/**
+ * The name this wallet's house carries: the one its kin carry, else its
+ * meaningful name (core/kotodama/house-name.js). impure.
+ * @param {string} workspaceRoot
+ * @param {string} wallet
+ * @returns {Promise<{ name: string, scheme: string, meaning: object|null }>}
+ */
+export const readHouseName = async (workspaceRoot, wallet) =>
+  houseNameOf(wallet, (await readTrueNamesInHouse(workspaceRoot)).map((t) => t.houseName).filter(Boolean));
 
 /**
  * The honest block for a roster that could not be read. Silence would imply

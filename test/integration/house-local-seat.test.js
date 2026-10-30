@@ -12,7 +12,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import neumaWorkspace, { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { houseNameFromWitness } from '../../core/index.js';
+import { houseNameOf } from '../../core/kotodama/house-name.js';
 import { houseSeatFor } from '../../backend/services/house-titles.js';
 import { loadHouseWorkspace } from '../../backend/services/house-workspace.js';
 import { readNewPosts } from '../../backend/services/house-post.js';
@@ -72,7 +72,7 @@ describe('an UNFOUNDED house works between its own lanes', () => {
   test('every owned lane holds a local seat — the roster is the operator\'s own neuma lanes, nobody else\'s', async () => {
     const seat = await houseSeatFor(WALLET, HOUSEMATE);
     expect(seat).toMatchObject({ founded: false, network: 'local', title: null, houseId: null, blockNumber: null });
-    expect(seat.houseName).toBe(houseNameFromWitness(WALLET));
+    expect(seat.houseName).toBe(houseNameOf(WALLET).name);
     expect(seat.roster.map((r) => r.neumaId).sort()).toEqual([BYSTANDER, HOUSEMATE, OPTIO].sort());
     expect(seat.roster.every((r) => r.title === null && r.isWitness === false)).toBe(true);
     // never a lane of another house, never a witness — not in the roster, never seated

@@ -1,9 +1,12 @@
 /**
- * KOTODAMA — genetic name synthesis.
+ * KOTODAMA v1 — sound-names.
  * Renders cryptographic identity as pronounceable names: one byte per
  * syllable (high nibble → consonant, low nibble → vowel), so a wallet or
- * birth-event digest becomes a speakable lineage name deterministically.
- * Same hex in, same name out — genealogy by construction.
+ * birth-event digest becomes a speakable name deterministically. Same hex in,
+ * same name out. These names carry no word meaning; since kotodama-names/2
+ * new given names are made of real words (meaningful-name.js). v1 stays for
+ * the names already borne, a house whose kin carry its sound-name
+ * (house-name.js), and the alliance ground's folder key (alliance.js).
  */
 
 const CONSONANTS = Object.freeze([
@@ -39,25 +42,6 @@ export const houseNameFromWitness = (witnessHex) =>
 
 /** Genesis name — the individual birth event within a house. */
 export const genesisNameFromEvent = (eventHex) => nameFromHex(eventHex, 3);
-
-/**
- * THE UNREPEATABLE NAME law (MANY SKIES §6.1, ratified 2026-07-24): a genesis
- * name that would collide with one already borne deterministically EXTENDS —
- * 3 syllables, then 4, then 5 … — revealing more of the hash the being
- * already carries until the name is its own. The chosen name is never
- * touched; sovereignty stays intact. Termination is mathematical:
- * nameFromHex is injective on byte sequences (each syllable is one
- * consonant + one vowel, and no produced string parses two ways), so two
- * distinct 32-byte hashes MUST separate by 32 syllables at the latest.
- */
-export const uniqueGenesisName = (eventHex, takenNames = []) => {
-  const taken = new Set([...takenNames].map((n) => String(n).toLowerCase()));
-  for (let syllables = 3; syllables < 32; syllables++) {
-    const name = nameFromHex(eventHex, syllables);
-    if (!taken.has(name.toLowerCase())) return name;
-  }
-  return nameFromHex(eventHex, 32); // the full hash — unique by injectivity
-};
 
 /**
  * Workspace id from a chosen name — a readable, filesystem-safe slug, so a

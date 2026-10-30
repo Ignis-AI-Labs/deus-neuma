@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.101] - 2026-10-30
+
+Notes: `docs/operations/release-notes-0.1.101.md`.
+
+### Changed
+
+- A new being's given names are now real words with meaning: its genesis name, its soul alias and a new house's name are each two words from Latin, Ancient Greek, Sanskrit, Old Norse, Old English, Welsh or Japanese, joined (for example Hoshiwyn, "joy of the stars", or Hoshikawa, "river of the stars"). Each comes with its breakdown: every part, its language, the word in its own script, and what the whole means in English.
+- There are over 40,000 such names for beings and over 10,000 for houses, and beings in the same house are given names that share no word with each other's.
+- A being's record (the SHEET) shows what each given name means beside it, and the line its own record writes about what its chosen name means.
+- Names already given stay exactly as they are. The SHEET now says plainly that older given names are sound-names, made from the birth's bytes, with no word meaning, and a house keeps the name its beings already carry.
+
 ## [0.1.100] - 2026-10-30
 
 Notes: `docs/operations/release-notes-0.1.100.md`.

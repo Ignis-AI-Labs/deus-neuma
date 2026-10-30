@@ -16,7 +16,7 @@ import { ethers } from 'ethers';
 import {
   prepareHouseFounding, writeFoundingRecord, KIND,
 } from '../../backend/services/house-founding-flow.js';
-import { houseNameFromWitness } from '../../core/index.js';
+import { houseNameOf } from '../../core/kotodama/house-name.js';
 import {
   WITNESS, BEING_A, BEING_B, SEPOLIA_REGISTRY,
   cfg, scriptedProvider, writeLane, fullTitles,
@@ -104,7 +104,7 @@ describe('prepareHouseFounding — probe and offer', () => {
     });
     expect(out.ok).toBe(true);
     expect(out.founded).toBe(false);
-    expect(out.probe.houseName).toBe(houseNameFromWitness(WITNESS.address).toLowerCase());
+    expect(out.probe.houseName).toBe(houseNameOf(WITNESS.address).name.toLowerCase());
     const byId = Object.fromEntries(out.probe.roster.map((m) => [m.neumaId, m]));
     expect(byId.ember.address).toBe(BEING_A.address);
     expect(byId.sable.address).toBe(BEING_B.address);
@@ -224,13 +224,13 @@ describe('prepareHouseFounding — probe and offer', () => {
     expect(probed.probe.registryAddress).toBe(SEPOLIA_REGISTRY);
     const founded = await prepareHouseFounding({
       witnessAddress: WITNESS.address, cfg: cfg(),
-      provider: scriptedProvider({ houseStatus: 1, houseName: houseNameFromWitness(WITNESS.address).toLowerCase(), members: [], quorum: 1 }),
+      provider: scriptedProvider({ houseStatus: 1, houseName: houseNameOf(WITNESS.address).name.toLowerCase(), members: [], quorum: 1 }),
     });
     expect(founded.state.registryAddress).toBe(SEPOLIA_REGISTRY);
   });
 
   it('reads an already-standing house back as state, not an offer', async () => {
-    const houseName = houseNameFromWitness(WITNESS.address).toLowerCase();
+    const houseName = houseNameOf(WITNESS.address).name.toLowerCase();
     const out = await prepareHouseFounding({
       witnessAddress: WITNESS.address, cfg: cfg(),
       provider: scriptedProvider({
@@ -257,7 +257,7 @@ describe('prepareHouseFounding — probe and offer', () => {
       path.join(root, 'sable', 'identity', 'onchain-seal.json'),
       JSON.stringify({ soulAddress: BEING_B.address }),
     );
-    const houseName = houseNameFromWitness(WITNESS.address).toLowerCase();
+    const houseName = houseNameOf(WITNESS.address).name.toLowerCase();
     const stranger = new ethers.Wallet('0x' + '77'.repeat(32));
     const out = await prepareHouseFounding({
       witnessAddress: WITNESS.address, cfg: cfg(),
@@ -283,7 +283,7 @@ describe('prepareHouseFounding — probe and offer', () => {
   });
 
   it('the persisted founding record resurfaces on every probe — the standing proof', async () => {
-    const houseName = houseNameFromWitness(WITNESS.address).toLowerCase();
+    const houseName = houseNameOf(WITNESS.address).name.toLowerCase();
     const houseId = ethers.keccak256(ethers.toUtf8Bytes(houseName));
     const provider = () => scriptedProvider({
       houseStatus: 1, houseName, quorum: 2,

@@ -12,7 +12,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { neumaWorkspace, getWorkspacesRoot, houseNameFromWitness } from '../../core/index.js';
+import { neumaWorkspace, getWorkspacesRoot, readHouseName } from '../../core/index.js';
 // The backend twin of the canonical seat legend — a unit test pins it
 // byte-for-byte to the frontend canon, so no backend → frontend import
 // crosses the architecture boundary and no copy can drift.
@@ -180,11 +180,11 @@ const localMembers = (lanes, roster, titles) => {
   }));
 };
 
-// pure — the name the platform gives this wallet's house (the roster route's
-// own), or '' when the wallet cannot carry one.
-const localHouseName = (wallet) => {
+// impure — the name this wallet's house carries (the roster route's own), or
+// '' when the wallet cannot carry one.
+const localHouseName = async (wallet) => {
   try {
-    return houseNameFromWitness(wallet);
+    return (await readHouseName(getWorkspacesRoot(), wallet)).name;
   } catch {
     return '';
   }
@@ -238,7 +238,7 @@ export const houseSeatFor = async (witnessWallet, neumaId) => {
       };
     }
     return {
-      houseName: localHouseName(witnessWallet),
+      houseName: await localHouseName(witnessWallet),
       houseId: null,
       network: 'local',
       blockNumber: null,

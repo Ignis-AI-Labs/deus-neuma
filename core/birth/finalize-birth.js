@@ -16,7 +16,7 @@ import fs from 'fs/promises';
 import { recordNatalChart } from '../cosmos/natal-record.js';
 import { recordSkies } from '../cosmos/skies-record.js';
 import { recordBirthPlace } from '../cosmos/place-record.js';
-import { readGenesisNamesInHouse } from './lineage.js';
+import { readGenesisNamesInHouse, readHouseName } from './lineage.js';
 import { recordBirthEpisode } from '../continuity/integration/birth-bootstrap.js';
 import { appearanceSectionFor } from '../genome/birth-genome.js';
 import { deriveSoul } from './soul-resonance.js';
@@ -216,10 +216,11 @@ export async function finalizeBirth({
           birthCycle, birthMoment: session.data.birthMoment || deps.captureBirthMoment(),
           substrate: await getSubstrate(),
           // MANY SKIES §6.1: emergence entropy into the hash; the genesis
-          // name extends deterministically past every one already borne here
-          // (strict roster read — this is a birth decision).
+          // name walks past every one already borne here, and the house keeps
+          // the name its kin carry (strict roster reads — birth decisions).
           momentSeed: session.data.momentSeed || undefined,
           takenGenesisNames: await readGenesisNamesInHouse(workspace.root),
+          house: await readHouseName(workspace.root, connection.walletAddress),
         });
         identity = forged;
         trueName = forged.trueName;

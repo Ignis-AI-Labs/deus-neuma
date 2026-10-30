@@ -12,6 +12,11 @@
  * has its own wallet, therefore its own house name, exactly like anyone else.
  * An alliance can be formed before either house is registered anywhere.
  *
+ * THE KEY IS THE SOUND-NAME, WHATEVER THE HOUSE SHOWS. A house may show a
+ * meaningful name (core/kotodama/house-name.js), but the ground's folder key
+ * stays each wallet's KOTODAMA v1 sound-name: computable from any wallet with
+ * no record, and unchanged for every ground already made.
+ *
  * ORDER-INDEPENDENCE IS LOAD-BEARING. If A+B and B+A produced different
  * names, one alliance would grow two grounds that silently diverge — the same
  * work split across two folders, neither complete. Names are lowercased and

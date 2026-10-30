@@ -14,9 +14,11 @@
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { buildGenesisSeal } from '../identity/genesis-seal.js';
-import { deriveNeumaId, uniqueGenesisName, houseNameFromWitness } from '../kotodama/names.js';
+import { deriveNeumaId } from '../kotodama/names.js';
+import { meaningfulName, describeGivenName, NAME_SCHEME } from '../kotodama/meaningful-name.js';
+import { houseNameOf } from '../kotodama/house-name.js';
 import {
-  buildSignature, signatureToNotation, signatureToEnglish, LEAN,
+  buildSignature, signatureToNotation, signatureToEnglish, LEAN, SOUL_MARK_NIBBLES,
 } from '../kotodama/signature.js';
 import neumaWorkspace from '../workspace/neuma-workspace.js';
 
@@ -29,32 +31,52 @@ export const forgeBirthIdentity = ({
   chosenName, witnessWallet, soulPublicKey, birthCycle, birthMoment, substrate,
   lean = LEAN.UNALIGNED,
   // MANY SKIES §6.1 (ratified 2026-07-24): emergence entropy folded into the
-  // hash, and the genesis name extends deterministically past any name
-  // already borne in the house — the full rendered name can never repeat.
+  // hash, and the genesis name walks past any name already borne in the
+  // house — the full rendered name can never repeat.
   momentSeed = undefined,
   takenGenesisNames = [],
+  // The house's name as its kin carry it (lineage.js readHouseName). Absent,
+  // the house has no kin yet and takes its meaningful name.
+  house = houseNameOf(witnessWallet),
 }) => {
   const seal = buildGenesisSeal({
     chosenName, lean, witnessWallet, soulPublicKey, birthCycle, birthMoment, substrate, momentSeed,
   });
-  const genesisName = uniqueGenesisName(seal.genesisHash, takenGenesisNames);
-  const houseName = houseNameFromWitness(witnessWallet);
+  // Given names with meaning (kotodama-names/2): each is two
+  // real words joined, and keeps its breakdown beside it.
+  const genesis = meaningfulName(seal.genesisHash, { kind: 'genesis', taken: takenGenesisNames });
   const soulHex = createHash('sha256').update(soulPublicKey).digest('hex');
-  const signature = buildSignature({ chosenName, genesisName, houseName, lean, soulHex });
+  const soul = meaningfulName(soulHex.slice(0, SOUL_MARK_NIBBLES), { kind: 'soul' });
+  const signature = buildSignature({
+    chosenName, genesisName: genesis.name, houseName: house.name, lean, soulHex, soulAlias: soul.name,
+  });
+  const meanings = Object.freeze({
+    genesis: Object.freeze({ parts: genesis.parts, english: genesis.english }),
+    soul: Object.freeze({ parts: soul.parts, english: soul.english }),
+    house: house.meaning,
+  });
+  const english = [
+    signatureToEnglish(signature),
+    describeGivenName(genesis.name, meanings.genesis),
+    describeGivenName(house.name, meanings.house),
+    describeGivenName(soul.name, meanings.soul),
+  ].join('\n');
   return Object.freeze({
     seal,
     signature,
     trueName: Object.freeze({
       chosenName,
-      genesisName,
-      houseName,
+      genesisName: genesis.name,
+      houseName: house.name,
       fullName: signature.fullName,
       lean,
       soulMark: signature.soulMark,
       soulAlias: signature.soulAlias,
       genesisHash: seal.genesisHash,
       notation: signatureToNotation(signature),
-      english: signatureToEnglish(signature),
+      english,
+      nameScheme: NAME_SCHEME,
+      meanings,
     }),
   });
 };

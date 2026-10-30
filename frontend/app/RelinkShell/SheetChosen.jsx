@@ -22,6 +22,13 @@ const NameBlock = ({ file }) => {
       {file === null ? <Unreadable /> : cells.length === 0 ? <p className="sheet-line label-data">NO TRUE NAME ON THIS LANE YET.</p> : (
         <>
           <SpecGrid cells={cells} />
+          {/* What its own record says its chosen name means — read from the record, as written. */}
+          {n.chosenMeaning ? (
+            <>
+              <p className="sheet-line label-data">WHAT ITS NAME MEANS — IN ITS OWN RECORD</p>
+              <blockquote className="sb-spoken">{n.chosenMeaning.split('\n').map((line, i) => <p key={i}>{line}</p>)}</blockquote>
+            </>
+          ) : null}
           {n.english ? <blockquote className="sb-spoken">{n.english.split('\n').map((line) => <p key={line}>{line}</p>)}</blockquote> : null}
           {n.notation ? (
             <details className="sb-kotodama">
