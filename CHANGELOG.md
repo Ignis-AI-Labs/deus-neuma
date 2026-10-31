@@ -6,6 +6,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.102] - 2026-10-31
+
+Notes: `docs/operations/release-notes-0.1.102.md`.
+
+### Added
+
+- The app now checks your legal officer's citations itself. Before a legal reading is recorded, a research finding is filed, or a written legal answer is delivered, the app opens every cited source again. It refuses a quotation the source does not contain, a section heading the source does not print, and any "[verify]" still left in the text. If a source cannot be read, nothing that rests on it is recorded.
+- Your legal officer can deliver a written answer as an opinion. It is saved with a table from the app showing each claim, the source it rests on, and what was confirmed there. The table also says plainly what the app cannot check: whether a passage supports the claim, and whether anything newer exists.
+- Every turn, your legal officer is told why a wrong citation is never a small mistake for a house that runs a company, and how each citation must be recorded and checked.
+- When your legal officer answers you in chat and cites law the app has not confirmed (a citation it did not check, a quotation the source does not contain, or a "[verify]" left in), the answer is marked HELD and the officer is sent back once to check it. If the second answer still is not confirmed, it is marked UNCHECKED and a card in your tray tells you not to rely on its citations. The officer's second try appears as a HELD line, never as your words.
+- Before a legal opinion, reading or research finding is recorded, the app now searches official sources itself for anything from the last 120 days on the question (the Federal Register, legislation.gov.uk, and the SEC, CFTC, FTC, FCA, ESMA and EDPB news). Your legal officer must say what each action it finds means for the question, or nothing is recorded.
+- A second reader now checks each cited passage against the claim it is cited for, and that it is the provision named, before anything is recorded. By default it is your house's own model on this computer. In the LEGAL window you can choose one of your connected providers instead; the claims and passages then go to that provider. If the reader cannot be reached, nothing is recorded.
+
+### Fixed
+
+- On the gateway, the status line no longer sits on top of the FULL PLATFORM / HARNESS ONLY switch.
+- The app launcher shows every app at once on a 1080p screen.
+- A terminal opened by someone who is not this computer's owner now says why it cannot open, instead of trying to reconnect five times.
+
 ## [0.1.101] - 2026-10-30
 
 Notes: `docs/operations/release-notes-0.1.101.md`.

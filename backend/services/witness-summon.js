@@ -14,7 +14,7 @@
 import { seal } from '../../core/identity/ai-witness/ai-witness-protocol.js';
 import { listWitnesses, readDNA } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { getProvider } from './provider-registry.js';
-import { getConnection } from './provider-connections.js';
+import { getConnection, routeForConnection } from './provider-connections.js';
 import { pairRequestCredential } from './provider-credentials.js';
 import { resolveUsableCredential } from './oauth-token-broker.js';
 import { createStreamRequest, consumeStream } from './llm-provider.js';
@@ -31,20 +31,6 @@ import { readInstallOwner, standingIn } from './install-owner.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('WitnessSummon');
-
-// pure — the route object a connection implies for one model call, carrying
-// the credential paired with its endpoint (pairRequestCredential).
-const routeForConnection = (connection, { endpoint, apiKey, accountId }) => {
-  const entry = getProvider(connection.providerId);
-  return {
-    provider: connection.providerId,
-    model: connection.model,
-    endpoint,
-    apiKey,
-    accountId,
-    chatPath: entry.chatPath,
-  };
-};
 
 // pure — extract a valid witness name from a model's reply, or null.
 // The instruction demands a bare name; the parse accepts a quoted bare name

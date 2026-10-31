@@ -205,6 +205,9 @@ export const createStreamHandlers = ({
   const onChatLink = (data) => {
     if (typeof data?.text === 'string' && data.text) dispatch({ type: 'LINK_ARRIVED', text: data.text, at: data.at ?? Date.now() });
   };
+  const onCitationHeld = (data) => {
+    if (typeof data?.text === 'string' && data.text) dispatch({ type: 'CITATION_HELD', text: data.text, at: data.at ?? Date.now() });
+  };
   const onSubstrateLine = (data) => {
     dispatch(substrateLineAction(data, Date.now()));
   };
@@ -343,6 +346,7 @@ export const createStreamHandlers = ({
     ['substrate:line', onSubstrateLine],
     ['watch:fired', onWatchFired],
     ['chatlink:arrived', onChatLink],
+    ['citation:held', onCitationHeld],
     // A /compact, drawn in the thread where it happened (compact-marker.js).
     ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     ['tool:usage', onTool],

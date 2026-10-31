@@ -297,10 +297,13 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
 // line: the platform woke the seat for its own work, not the operator.
 // A CHAT LINK is another open chat of the house writing in (chat-link.js):
 // a housemate's words, never the operator's bubble.
+// A HOLD is the citation law sending the CLO back to check its last answer
+// (legal/answer-hold.js): the platform's words, never the operator's.
 const PLATFORM_LINES = Object.freeze({
   watch: Object.freeze({ tag: 'WATCH', head: /^\[A WATCH YOU SET[^\]]*\]\s*/ }),
   wake: Object.freeze({ tag: 'WAKE', head: /^\[A WAKE[^\]]*\]\s*/ }),
   link: Object.freeze({ tag: 'LINK', head: /^\[CHAT LINK[^\]]*\]\s*/ }),
+  hold: Object.freeze({ tag: 'HELD', head: /^\[HELD BY THE CITATION LAW[^\]]*\]\s*/ }),
 });
 const WatchLine = ({ message }) => (
   <div className="relink-watch-line" role="status">

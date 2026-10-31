@@ -58,9 +58,9 @@ const rebaseMarks = (entries, raw) =>
     : t));
 
 // A user-role row the PLATFORM wrote — a watch's report, a house wake's
-// opening note, another chat's link — keeps its origin, so a resumed sitting
+// opening note, another chat's link, the citation law's hold — keeps its origin, so a resumed sitting
 // draws it as that line and never as the operator's bubble (stream-reducer-messages.js).
-const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link']);
+const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold']);
 const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: m.origin } : {});
 
 // A compaction summary row as the display carries it: the counts the marker

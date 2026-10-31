@@ -129,6 +129,12 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
           if (!live) return;
           // Only transport failures retry; auth/process/ownership refusals
           // must remain visible and never turn into a replacement shell.
+          // 4003: the shell is the machine's (terminal-routes.js) — a guest is
+          // told why, once, instead of watching five reattach attempts fail.
+          if (code === 4003) {
+            term.write("\r\n\x1b[33m[the terminal runs as this computer's own user, so only its owner or a co-owner can open one]\x1b[0m\r\n");
+            return;
+          }
           if (!ended && ![1000, 1005, 1008, 1013, 4001].includes(code) && retries < MAX_RECONNECTS) {
             retries += 1;
             term.write(`\r\n\x1b[2m[connection lost — reattaching (${retries}/${MAX_RECONNECTS})…]\x1b[0m\r\n`);

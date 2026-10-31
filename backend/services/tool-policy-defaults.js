@@ -418,7 +418,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'security.scan', 'security.assess', 'security.escalate', 'security.circuit-breaker',
       // The CLO office's acts: the operator's one yes per filing (a reading
       // the house will act on, a run, a matter entered on the record).
-      'legal.scan', 'legal.assess', 'legal.file',
+      'legal.scan', 'legal.assess', 'legal.file', 'legal.opinion',
       'email.send',
       'media.save', 'web.download', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
       // A video render (image/generate on a video pipeline) asks on its own row:
@@ -462,7 +462,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   legal: {
     allowed: ['legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api'],
     denied: [],
-    requireApproval: [],
+    requireApproval: ['legal_cite_check'], // the platform's re-read of cited sources: web reads, so it asks like one
   },
   // The Quaestor's office: the treasury read, the seated CFO's alone; it moves nothing.
   treasury: { allowed: ['treasury_board'], denied: [], requireApproval: [] },

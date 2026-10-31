@@ -171,7 +171,7 @@ html[data-taskbar-edge='top'] .relink-main { padding-top: 56px; }
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-height: min(72vh, 760px);
+  max-height: min(84vh, 880px); /* every app in view at 1080p; smaller screens scroll */
   padding: var(--space-4);
 }
 

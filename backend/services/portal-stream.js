@@ -62,6 +62,7 @@ import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, 
 import { settleUnfinishedTurn } from './portal-turn-unfinished.js';
 import { refuseUnboundTurn, refuseRetryAttachments, takeTurnOrigin } from './portal-turn-guards.js';
 import { withShedSections } from './turn-envelope.js';
+import { settleCitationHold } from './legal/answer-hold.js';
 
 const log = createLogger('Portal');
 
@@ -396,6 +397,7 @@ export const streamConsciousness = async (connection, message) => {
     fullResponse = rounds.fullResponse;
     if (rounds.error) throw rounds.error;
     const { latestResponse, turnUsage, standingUsage, turnAffect, toolContextSections, standingCacheTelemetry } = rounds;
+    await settleCitationHold({ connection, text: latestResponse, interrupted: interrupt.signal.aborted, origin }); // the CLO's unchecked law is held (legal/answer-hold.js)
 
     const interrupted = interrupt.signal.aborted;
     const turnTools = turnRecordFor(ws);
