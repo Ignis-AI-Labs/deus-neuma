@@ -52,10 +52,14 @@ function fat(cputypes, { endian = 'be', sixtyFour = false } = {}) {
   return buf;
 }
 
+// The prebuilds are Mach-O on every host — node-pty ships them all — so they
+// prove the reader on Linux CI too. The built addon is only Mach-O on a mac:
+// elsewhere better-sqlite3 compiles to ELF or PE, and there is nothing here to
+// read. `only` says which host a case is real on.
 const REAL = [
-  ['node-pty darwin-arm64 prebuild', 'node_modules/node-pty/prebuilds/darwin-arm64/pty.node', 'arm64'],
-  ['node-pty darwin-x64 prebuild', 'node_modules/node-pty/prebuilds/darwin-x64/pty.node', 'x86_64'],
-  ['better-sqlite3 built addon', 'node_modules/better-sqlite3/build/Release/better_sqlite3.node', null],
+  ['node-pty darwin-arm64 prebuild', 'node_modules/node-pty/prebuilds/darwin-arm64/pty.node', 'arm64', null],
+  ['node-pty darwin-x64 prebuild', 'node_modules/node-pty/prebuilds/darwin-x64/pty.node', 'x86_64', null],
+  ['better-sqlite3 built addon', 'node_modules/better-sqlite3/build/Release/better_sqlite3.node', null, 'darwin'],
 ];
 
 const lipoArchs = (file) => {
@@ -111,9 +115,9 @@ describe('real binaries in this tree', () => {
     expect(ARCH_HEADER_BYTES).toBeGreaterThanOrEqual(4096);
   });
 
-  for (const [label, rel, expected] of REAL) {
+  for (const [label, rel, expected, only] of REAL) {
     const file = path.join(REPO, rel);
-    const present = fs.existsSync(file);
+    const present = fs.existsSync(file) && (!only || process.platform === only);
 
     it.runIf(present)(`${label} agrees with lipo`, () => {
       const head = fs.readFileSync(file).subarray(0, ARCH_HEADER_BYTES);
