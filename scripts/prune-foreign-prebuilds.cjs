@@ -23,8 +23,8 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-// The reader is ESM. require() of it is supported from Node 22.12 (both project
-// floors are >=22.23.4), and it has no top-level await, so this is synchronous.
+// The reader is ESM. require() of it is supported from Node 22.12 (the project
+// floor is >=24.15.0), and it has no top-level await, so this is synchronous.
 const { ARCH_HEADER_BYTES, archsOf } = require('./macho-arch.mjs');
 
 const PREBUILD_DIR = /^(darwin|linux|win32|android|freebsd|openbsd|sunos|aix)-(\w+)$/;

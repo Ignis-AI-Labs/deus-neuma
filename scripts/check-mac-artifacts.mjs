@@ -136,9 +136,8 @@ export function main(argv = process.argv.slice(2)) {
   }
 
   if (targets.length === 0) {
-    console.log(`[check-mac-artifacts] nothing to check: no mac*.app under ${args.release}`);
-    console.log('[check-mac-artifacts] that is fine for a non-mac build, and it is what a failed one looks like');
-    return 0;
+    console.log(`[check-mac-artifacts] FAILED: no mac*.app under ${args.release}; there is no artifact to ship`);
+    return 1;
   }
 
   let failed = 0;

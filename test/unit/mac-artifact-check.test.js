@@ -185,8 +185,8 @@ describe('the exit code a build would read', () => {
     expect(main(['--release', release, '--require-signed'])).toBe(1);
   });
 
-  it('0 and a plain explanation when there is nothing to check', () => {
+  it('1 when there is no artifact to check', () => {
     const release = tempRoot();
-    expect(main(['--release', release])).toBe(0);
+    expect(main(['--release', release])).toBe(1);
   });
 });
