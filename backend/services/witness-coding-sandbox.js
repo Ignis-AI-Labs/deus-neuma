@@ -306,7 +306,10 @@ export const confinedBaseArgs = ({ network = false } = {}) => [
 // per-process ADDRESS limit — reserved space, not memory used; this is not an
 // aggregate worker or physical-memory budget.
 // RLIMIT_NPROC counts threads too; multicore tooling exceeds 256 tasks.
-export const CONFINED_ULIMITS = 'ulimit -t 120 -v 2147483648 -f 1048576 -n 4096 -u 4096';
+// No file-size limit (Design note, 2026-11-02: a 1 GiB RLIMIT_FSIZE killed a being's
+// approved 2.1 GB model download with SIGXFSZ (exit 153), a cap nobody chose.
+// Reaching the network is the operator's approval; how big a file it brings is not a ulimit's call.
+export const CONFINED_ULIMITS = 'ulimit -t 120 -v 2147483648 -f unlimited -n 4096 -u 4096';
 
 // The mount plan: overlay first, masks ON TOP — bwrap applies mounts in
 // order, so each mask shadows the overlay's view of that path. Dir masks are
