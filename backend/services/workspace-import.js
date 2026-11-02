@@ -83,8 +83,7 @@ const claimFreshLane = async (ownerPath, wallet) => {
 const reservedLaneRefusal = (neumaId, wallet) => {
   if (isWitnessLaneId(neumaId)) return outcome(403, { error: 'A witness lane is made only by its summoning; restore into a new lane' });
   if (!isHarnessLane(neumaId)) return null;
-  let own = null;
-  try { own = harnessLaneId(wallet); } catch { own = null; }
+  const own = (() => { try { return harnessLaneId(wallet); } catch { return null; } })();
   return neumaId === own ? null : outcome(403, { error: 'That harness lane belongs to another wallet' });
 };
 
