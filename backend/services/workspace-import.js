@@ -84,7 +84,9 @@ const reservedLaneRefusal = (neumaId, wallet) => {
   if (isWitnessLaneId(neumaId)) return outcome(403, { error: 'A witness lane is made only by its summoning; restore into a new lane' });
   if (!isHarnessLane(neumaId)) return null;
   let own = null;
-  try { own = harnessLaneId(wallet); } catch { own = null; }
+  // A wallet whose lane id cannot be computed has no lane of its own; the
+  // initializer is what the compare below reads in that case.
+  try { own = harnessLaneId(wallet); } catch { /* stays null */ }
   return neumaId === own ? null : outcome(403, { error: 'That harness lane belongs to another wallet' });
 };
 
