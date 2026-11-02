@@ -33,8 +33,8 @@ const ALLOWED_MCP_COMMANDS = Object.freeze([
 // runs at the version the app ships (package.json, held equal by a test): the client names the
 // package, the server adds the version, so npx never fetches whatever the registry calls latest.
 const PINNED_MCP_PACKAGES = Object.freeze({
-  '@modelcontextprotocol/server-filesystem': '2026.7.10',
-  '@modelcontextprotocol/server-memory': '2026.8.31',
+  '@modelcontextprotocol/server-filesystem': '2.0.1',
+  '@modelcontextprotocol/server-memory': '2.0.0',
 });
 const ALLOWED_MCP_PACKAGES = Object.freeze(Object.keys(PINNED_MCP_PACKAGES));
 

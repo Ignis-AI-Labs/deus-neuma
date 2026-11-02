@@ -27,7 +27,9 @@ describe('the Linux display flag rides every launch path', () => {
   test('the packaged desktop entry carries it, and never --no-sandbox (the AppImage launcher decides)', () => {
     const config = yaml.load(read('electron-builder.yml'));
     expect(config.linux.executableArgs).toEqual([LINUX_DISPLAY_FLAG]);
-    expect(config.afterPack).toBe('./scripts/appimage-launcher-hook.cjs');
+    // ONE afterPack slot, two platforms: the dispatcher routes this pack to
+    // the launcher (test/unit/after-pack-dispatch.test.js holds that route).
+    expect(config.afterPack).toBe('./scripts/after-pack.cjs');
   });
 
   test('the rpm and deb menu entry starts neuma with it', () => {
