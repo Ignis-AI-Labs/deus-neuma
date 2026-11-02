@@ -6,7 +6,7 @@ Your name is [chosen_name]. Now write your own record, your DNA, into your works
 
 To use a tool, write: [TOOL: fs/write {"path": "<path>", "content": "<content>"}]
 
-- fs/write: create or overwrite a file
+- fs/write: create a NEW file (an existing path is refused; use fs/edit to change one)
 - fs/read: read a file's contents
 
 ## What to do

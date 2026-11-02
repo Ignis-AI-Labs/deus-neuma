@@ -71,7 +71,10 @@ const routeWrite = (args) => {
   if (content === null) {
     return fail('fs/write needs content — {"path": "...", "content": "..."}. For a directory: {"path": "...", "directory": true}');
   }
-  return ok('write_file', { path: p, content });
+  const out = { path: p, content };
+  if (args.overwrite === true) out.overwrite = true;
+  if (Number.isFinite(args.expectedMtimeMs)) out.expectedMtimeMs = args.expectedMtimeMs;
+  return ok('write_file', out);
 };
 
 const routeEdit = (args) => {
@@ -239,12 +242,16 @@ export const FS_PRIMITIVE_TOOLS = Object.freeze([
       info: Object.freeze({ type: 'boolean', description: 'Metadata (size, modified) instead of content' }),
     }),
   fsTool('write',
-    'Write a file — creates or fully overwrites. {"path", "content"}. For a directory: {"path", "directory": true}. '
-    + 'Your own lane is always yours to write; paths outside it ask your operator.',
+    'Create a NEW file: {"path", "content"}. An existing path is REFUSED — use fs/edit for every small change. '
+    + 'Only for a deliberate WHOLE-file replacement: first fs/read {"path", "info": true}, then send '
+    + '"overwrite": true and that info\'s "expectedMtimeMs". Anything stale or ambiguous writes nothing. '
+    + 'For a directory: {"path", "directory": true}. Your own lane is always yours to write; paths outside it ask your operator.',
     {
       path: STR,
-      content: Object.freeze({ type: 'string', description: 'The full text the file will hold' }),
+      content: Object.freeze({ type: 'string', description: 'The full text the NEW file will hold' }),
       directory: Object.freeze({ type: 'boolean', description: 'Create the path as a directory instead' }),
+      overwrite: Object.freeze({ type: 'boolean', description: 'Explicit WHOLE-file replacement only; never a small edit' }),
+      expectedMtimeMs: Object.freeze({ type: 'number', description: 'Current mtimeMs from fs/read info:true; required with overwrite' }),
     }),
   fsTool('edit',
     'Change what exists: {"path", "edits": [{"oldText", "newText"}]} rewrites exact passages; {"path", "destination"} moves. '
