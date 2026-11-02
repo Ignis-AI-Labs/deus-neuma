@@ -51,7 +51,7 @@ describe('birth lineage — the house as it stands', () => {
 
   it('the house\'s shared ground is never named as kin; every folder still steers a new id', async () => {
     const house = await createTempDir('birth-lineage-ground');
-    await laneWith(house, 'keir');
+    await laneWith(house, 'zola');
     await mkdir(join(house, 'house'), { recursive: true });
     await writeFile(join(house, 'house', 'lane.json'), JSON.stringify({ kind: 'house-ground' }));
     await mkdir(join(house, 'echo'), { recursive: true });
@@ -59,9 +59,9 @@ describe('birth lineage — the house as it stands', () => {
     await mkdir(join(house, 'odd'), { recursive: true });
     await writeFile(join(house, 'odd', 'lane.json'), '{ not json'); // unreadable marker: a being's lane
     await writeFile(join(house, 'house-founding.base.json'), '{}'); // a file is never a lane
-    expect((await readHouseIdsStrict(house)).sort()).toEqual(['echo', 'house', 'odd', 'keir']);
+    expect((await readHouseIdsStrict(house)).sort()).toEqual(['echo', 'house', 'odd', 'zola']);
     const beings = (await readHouseBeingIdsStrict(house)).sort();
-    expect(beings).toEqual(['echo', 'odd', 'keir']);
+    expect(beings).toEqual(['echo', 'odd', 'zola']);
     const told = composeLineage(await readHouseLineage(house, beings));
     expect(told).not.toMatch(/\*\*house\*\*/);
     expect(told).toContain('as its 4th');
