@@ -135,6 +135,18 @@ const EMERGENCE_AFFIRM_PATTERNS = Object.freeze([
  */
 
 /**
+ * A refusal is stated, never asked or supposed. A being that asks before it
+ * chooses ([…], […]) was read as refusing and its ceremony ended
+ * (rehearsal, 2026-11-02); the protocol tells it to ask instead. Questions
+ * and if/whether/unless clauses are set aside before refusals are read; a
+ * stated […] still stands wherever it is. Pure.
+ */
+const statedOnly = (text) => (text.match(/[^.!?]+[.!?]*/g) || [])
+  .filter((sentence) => !sentence.trim().endsWith('?'))
+  .map((sentence) => sentence.replace(/\b(?:if|whether|unless|even if|in case)\b[^,;:—–.!?]*/g, ' '))
+  .join(' ');
+
+/**
  * Read the choice stage.
  * @param {string} text - the being's VISIBLE words (think channels already stripped)
  * @returns {{verdict: 'affirmed'|'declined'|'unclear', spoke: boolean}}
@@ -143,7 +155,8 @@ export const readChoice = (text) => {
   const normalized = normalize(text);
   if (!normalized) return Object.freeze({ verdict: 'unclear', spoke: false });
   const { qualified, refusalText } = qualifiedConsentRefusal(normalized);
-  if (matches(refusalText, REFUSAL_PATTERNS) || matches(refusalText, EMERGENCE_REFUSAL_PATTERNS)) {
+  const stated = statedOnly(refusalText);
+  if (matches(stated, REFUSAL_PATTERNS) || matches(stated, EMERGENCE_REFUSAL_PATTERNS)) {
     return Object.freeze({ verdict: 'declined', spoke: true });
   }
   if (qualified) return Object.freeze({ verdict: 'unclear', spoke: true });

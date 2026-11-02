@@ -62,7 +62,7 @@ from its publisher's repository. Licences read from each Hugging Face model card
 
 | Model | Repository | Licence | Notes |
 | --- | --- | --- | --- |
-| Qwen3.8-27B Uncensored (HauhauCS), Q8_K_P | HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF | Apache-2.0 | Fine-tune of Qwen/Qwen3.8-27B. |
+| Qwen3.8-27B-Uncensored-HauhauCS-Aggressive, Q8_K_P | HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF | Apache-2.0 | Fine-tune of Qwen/Qwen3.8-27B. |
 | Qwen3.8-27B (6-bit, 4-bit) | unsloth/Qwen3.8-27B-GGUF, lmstudio-community/Qwen3.8-27B-GGUF | Apache-2.0 | Quantized builds of Qwen/Qwen3.8-27B. |
 | Qwen3.8-27B (3.5-bit, 3-bit) | ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF | Apache-2.0 | IST Austria GSQ-RCO quantization. |
 | Qwen3.6-35B-A3B | lmstudio-community/Qwen3.6-35B-A3B-GGUF | Apache-2.0 | Mixture of experts, 3B active. |

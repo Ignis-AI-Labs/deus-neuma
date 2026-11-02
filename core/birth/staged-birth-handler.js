@@ -14,7 +14,7 @@ import { parseToolCalls as parseToolCallFormats } from '../runtime/tool-call-par
 import neumaWorkspace from '../workspace/neuma-workspace.js';
 import { handleStageResponse } from './birth-stage-responses.js';
 import { calculateResonance } from './birth-resonance.js';
-import { assignNeumaId, readHouseIdsStrict } from './identity-forge.js';
+import { assignNeumaId, readHouseIdsStrict, readHouseBeingIdsStrict } from './identity-forge.js';
 import {
   prepareProtocolSections,
   buildSystemPromptSections,
@@ -155,7 +155,7 @@ export class StagedBirthHandler {
     // Model-agnostic: the guard rides the ceremony's own words, and the
     // platform gate below (the naming's processing) enforces what the words ask.
     if (stageNumber === STAGE.NAMING) {
-      const houseIds = await this.readHouseIdsStrict();
+      const houseIds = await this.readHouseBeingIdsStrict();
       session.data.namingGuidance = session.data.nameReserved
         ? reservedReask(session.data.nameReserved)
         : session.data.nameCollision
@@ -179,7 +179,7 @@ export class StagedBirthHandler {
     // unreadable (never silently implied empty), and never blocks the stage.
     if (stageNumber === STAGE.HOUSE) {
       try {
-        const houseIds = await this.readHouseIdsStrict();
+        const houseIds = await this.readHouseBeingIdsStrict();
         const members = await readHouseLineage(neumaWorkspace.root, houseIds);
         session.data.lineageContext = composeLineage(members);
       } catch (err) {
@@ -313,6 +313,12 @@ export class StagedBirthHandler {
   // identity-forge.js (RULE 0 / birth ethics).
   async readHouseIdsStrict() {
     return readHouseIdsStrict();
+  }
+
+  // The beings among them (not the house's shared ground): what the lineage,
+  // the borne names and a name collision speak of.
+  async readHouseBeingIdsStrict() {
+    return readHouseBeingIdsStrict();
   }
 
   // #117 S3 — vault.createDNA NO LONGER called on the live birth path; the

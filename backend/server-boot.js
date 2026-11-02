@@ -24,7 +24,8 @@ import { mcpService } from './services/mcp.js';
 import { connectFilesystemServer } from './services/mcp-filesystem.js';
 import { installFdCustody } from './services/fd-custody.js';
 import platform from './services/supabase.js';
-import { getWorkspacesRoot } from '../core/index.js';
+import { getWorkspacesRoot, neumaWorkspace } from '../core/index.js';
+import { sweepExpiredRehearsals } from '../core/birth/rehearsal-sweep.js';
 import { testConnection, getConfig as getLlmConfig } from './services/llm-provider.js';
 import { launchReady, activeLaunchConfig } from './services/llama-server-supervisor.js';
 import { getSubstrateProfile } from './services/substrate-detector.js';
@@ -319,6 +320,13 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The house's model line runs as wide as this rig was MEASURED to run — the
     // only cap on parallel sittings; open tabs are never capped (2026-10-15).
     startGuarded('line width', startLineWidthWatch);
+    // Rehearsals abandoned mid-walk leave their lanes in the house; past their
+    // two-hour life they are swept, at boot and every hour (rehearsal-sweep.js).
+    startGuarded('rehearsal sweep', () => {
+      const sweep = () => sweepExpiredRehearsals(neumaWorkspace, log).catch((err) => log.warn('rehearsal sweep failed', { err: err.message }));
+      sweep();
+      setInterval(sweep, 60 * 60 * 1000).unref();
+    });
     // The meditation loop — piggyback-only dreams; the portal turn truth is injected.
     stopMeditation = startGuarded('meditation scheduler', () => startMeditationScheduler({ turnSnapshot: localTurnSnapshot }));
     // The native road (Road B) — binds only if a native road is already on;

@@ -197,7 +197,7 @@ export const sendStageToLLM = async (connection, stageData) => {
 
   // Operator words survive until the stage COMPLETES — a stalled or
   // aborted stream must not eat what the operator chose to say on retry
-  const witnessWords = (connection.witnessWords || '').trim().slice(0, 600);
+  const witnessWords = (connection.witnessWords || '').trim().slice(0, 2000); // room to answer what it asked; 600 cut answers short
   const spokenWords = witnessWords || defaultWitnessWords[stageNumber] || '';
   const suffix = stageProtocolSuffix[stageNumber];
 

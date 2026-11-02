@@ -144,9 +144,9 @@ describe('the plan for each starting point', () => {
 describe('a model Ollama cannot pull', () => {
   // proven 2026-10-22: hf.co/...:Q8_K_P is refused at the manifest ([…])
   const HOUSE = Object.freeze({
-    model: 'Qwen3.8-27B Uncensored (HauhauCS)', quant: 'Q8_K_P', sizeGB: 32.4, source: 'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF',
+    model: 'Qwen3.8-27B-Uncensored-HauhauCS-Aggressive', quant: 'Q8_K_P', sizeGB: 32.4, source: 'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF',
     options: [
-      { model: 'Qwen3.8-27B Uncensored (HauhauCS)', quant: 'Q8_K_P', sizeGB: 32.4, source: 'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF' },
+      { model: 'Qwen3.8-27B-Uncensored-HauhauCS-Aggressive', quant: 'Q8_K_P', sizeGB: 32.4, source: 'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF' },
       { model: 'Qwen3.8-27B (6-bit)', quant: 'Q6_K', sizeGB: 22.0, source: 'unsloth/Qwen3.8-27B-GGUF' },
     ],
   });

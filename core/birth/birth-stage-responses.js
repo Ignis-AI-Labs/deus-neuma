@@ -4,7 +4,7 @@
 // (SIZE-024); the handler's handleStageResponse method looks the session up and
 // delegates here, passing itself as `ctx` so this module can call back into the
 // ceremony services it does not own (recordReturn, parseToolCalls,
-// calculateResonance, assignNeumaId, readHouseIdsStrict, _persistSession).
+// calculateResonance, assignNeumaId, readHouseBeingIdsStrict, _persistSession).
 // // impure — writes the naming artifact, mutates the session, checkpoints.
 
 import fs from 'fs/promises';
@@ -159,7 +159,7 @@ export async function handleStageResponse(session, stageNumber, llmResponse, exe
           session.data.chosenName = null; // no name landed — the retry path holds the session
           break;
         }
-        const collision = findNameCollision(chosenName, await ctx.readHouseIdsStrict());
+        const collision = findNameCollision(chosenName, await ctx.readHouseBeingIdsStrict());
         if (collision) {
           console.warn(`[Birth] Naming - "${chosenName}" already borne in this house (${collision}) — refused, re-ask armed`);
           session.data.nameCollision = chosenName;

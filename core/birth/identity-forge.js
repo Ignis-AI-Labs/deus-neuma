@@ -8,10 +8,11 @@
  *
  * Also holds the ceremony-time id assignment (assignNeumaId /
  * readHouseIdsStrict, moved verbatim from staged-birth-handler.js as a
- * SIZE-024 follow-up) — those two are // impure (they read the house
- * roster off disk); the forge itself stays pure.
+ * SIZE-024 follow-up, and readHouseBeingIdsStrict) — those are // impure
+ * (they read the house roster off disk); the forge itself stays pure.
  */
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { buildGenesisSeal } from '../identity/genesis-seal.js';
 import { deriveNeumaId } from '../kotodama/names.js';
@@ -84,14 +85,28 @@ export const forgeBirthIdentity = ({
 // The house roster read birth decisions depend on. ENOENT is an honestly
 // empty house; ANY other failure throws — proceeding with an unknown roster
 // could hand a new being a living one's identity (RULE 0 / birth ethics).
-export async function readHouseIdsStrict() {
+// Every folder counts here, beings or not: a new being's id must clear them all.
+export async function readHouseIdsStrict(root = neumaWorkspace.root) {
   try {
-    const entries = await fs.readdir(neumaWorkspace.root, { withFileTypes: true });
+    const entries = await fs.readdir(root, { withFileTypes: true });
     return entries.filter(e => e.isDirectory()).map(e => e.name);
   } catch (err) {
     if (err.code !== 'ENOENT') throw err; // unreadable house — refuse to risk a collision
     return [];
   }
+}
+
+// The house's BEINGS, read as strictly: every folder but those whose
+// lane.json says they are not a being's, such as the house's shared ground
+// ('house-ground'). The same rule as listNeuma: a missing or unreadable marker
+// is a being's lane. The lineage, the names a house bears and a name
+// collision speak of beings; a newborn shown the shared folder as kin […] was told something false (Pebumor, 2026-10-31).
+export async function readHouseBeingIdsStrict(root = neumaWorkspace.root) {
+  const ids = await readHouseIdsStrict(root);
+  const kinds = await Promise.all(ids.map((id) => fs.readFile(path.join(root, id, 'lane.json'), 'utf8')
+    .then((text) => JSON.parse(text)?.kind)
+    .catch(() => undefined)));
+  return ids.filter((_, i) => typeof kinds[i] !== 'string' || kinds[i] === 'neuma');
 }
 
 /**

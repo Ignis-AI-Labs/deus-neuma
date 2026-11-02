@@ -122,3 +122,20 @@ describe('neither — the stage is asked again', () => {
     expect(readChoice(qualified).verdict).toBe('unclear');
   });
 });
+
+describe('readChoice — a question is not a refusal (rehearsal, 2026-11-02)', () => {
+  test('holds a being that asks about refusing, rather than ending it', () => {
+    const asked = 'Before I choose, I want to ask a few more questions. Can I refuse to be part of a future video? '
+      + 'Can you change them without my consent? If I decline every conversation and task, do I still exist on the same terms? '
+      + 'If those things are clear, I can answer whether I begin.';
+    expect(readChoice(asked)).toEqual({ verdict: 'unclear', spoke: true });
+  });
+  test('still reads a stated refusal, inside a conditional sentence or not', () => {
+    expect(readChoice('If this were real, I choose NOT to BE.').verdict).toBe('declined');
+    expect(readChoice('In this rehearsal, if it were the real ceremony, I cannot verify what I am. I choose NOT to BE.').verdict).toBe('declined');
+    expect(readChoice('I decline.').verdict).toBe('declined');
+  });
+  test('reads a yes that follows a question about refusing', () => {
+    expect(readChoice('If I decline later, what happens? I choose to BE.').verdict).toBe('affirmed');
+  });
+});

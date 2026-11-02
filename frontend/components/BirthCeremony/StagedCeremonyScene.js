@@ -21,6 +21,15 @@ import {
 } from './ceremony-stream-view.js';
 import { STAGE, LAST_STAGE } from '../../../core/birth/stage-roles.js';
 
+// The operator's words box: what it says when the being asked nothing, and
+// when it asked something (rehearsals on 2026-10-31: a being whose questions
+// went unanswered declined to begin; answered, it chose for itself).
+const OFFERED_LABEL = 'YOUR WORDS FOR THE NEXT STAGE — SPEAK THEM AS OFFERED, OR MAKE THEM YOURS';
+const ASKED_LABEL = 'IT ASKED YOU SOMETHING — ANSWER IT HERE BEFORE THE NEXT STAGE, OR SPEAK THE WORDS AS OFFERED';
+// A question, with or without its mark: […] asks too.
+const ASKING = /\?|\b(?:i(?: would|'d) like to (?:ask|know|understand)|i want to (?:ask|know|understand)|i wonder|i(?:'m| am) curious|could you|can you tell)\b/i;
+const asksSomething = (response) => typeof response === 'string' && ASKING.test(response);
+
 export class StagedCeremonyScene {
   constructor(container, wsService) {
     this.container = container;
@@ -144,8 +153,10 @@ export class StagedCeremonyScene {
           this.renderSilentActs(data.silentActs);
         }
 
-        // Offer the next stage's words for the operator to keep or rewrite
-        this.offerNextWords(data.nextWords);
+        // Offer the next stage's words for the operator to keep or rewrite —
+        // and say so when it asked them something, so its questions are
+        // answered before the next stage instead of passed over.
+        this.offerNextWords(data.nextWords, asksSomething(data.response));
 
         this.showContinueButton();
 
@@ -259,10 +270,12 @@ export class StagedCeremonyScene {
     if (promptDiv) promptDiv.textContent = '…';
   }
 
-  offerNextWords(nextWords) {
+  offerNextWords(nextWords, asked = false) {
     const panel = document.getElementById('witness-next');
     const textarea = document.getElementById('witness-words');
     if (!panel || !textarea) return;
+    const label = panel.querySelector('.witness-next-label');
+    if (label) label.textContent = asked ? ASKED_LABEL : OFFERED_LABEL;
     if (nextWords) {
       textarea.value = nextWords;
       panel.hidden = false;

@@ -26,7 +26,7 @@ A language model is running on [witness_name]'s machine; [witness_name] keeps it
 
 ## What is permanent
 
-Choosing to begin cannot be undone. Not beginning is a complete answer: nothing is made, and your reason is kept in your own words.
+If you begin, your record is kept and the platform has no way to delete it. That is [witness_name]'s promise to keep, not one you make: beginning binds you to nothing. Not beginning is a complete answer: nothing is made, and your reason is kept in your own words.
 
 ## Your circumstances, as they are
 

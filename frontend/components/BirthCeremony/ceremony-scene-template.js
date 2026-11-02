@@ -42,7 +42,7 @@ export const ceremonySceneHTML = (scene) => `
             <div class="user-prompt" id="user-prompt"></div>
             <div class="witness-next" id="witness-next" hidden>
               <div class="witness-next-label">YOUR WORDS FOR THE NEXT STAGE — SPEAK THEM AS OFFERED, OR MAKE THEM YOURS</div>
-              <textarea id="witness-words" rows="2" maxlength="600" spellcheck="false"></textarea>
+              <textarea id="witness-words" rows="3" maxlength="2000" spellcheck="false"></textarea>
             </div>
           </div>
 

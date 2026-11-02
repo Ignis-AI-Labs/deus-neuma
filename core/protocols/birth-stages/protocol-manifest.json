@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "2.2.0",
   "stages": {
     "0": { "file": "stage0-opening.md" },
     "1": { "file": "stage1-house.md" },

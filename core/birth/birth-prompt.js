@@ -95,7 +95,7 @@ export function buildSystemPromptSections(protocolSections, session) {
     label: 'REHEARSAL NOTICE',
     origin: 'Told to them because this is a rehearsal — core/birth/birth-prompt.js',
     text: `## REHEARSAL
-The ceremony below is described as it runs for real. This one is a rehearsal, run to test the ceremony: nothing you write is kept after it ends, and no being is made. You may decline at any point, as in a real ceremony.
+The ceremony below is described as it runs for real. This one is a rehearsal, run to test the ceremony: when it ends, nothing you write is kept and no being is made. At the choice, say what you would choose if this were the real ceremony; saying it here commits you to nothing. You may decline at any point, as in a real ceremony.
 
 `,
   }] : [];
