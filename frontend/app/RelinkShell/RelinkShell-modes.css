@@ -64,9 +64,25 @@
   color: var(--signal);
 }
 
-.relink-mode-chip.is-auto {
+.relink-mode-chip.is-auto,
+.relink-mode-chip.is-off {
   border-color: var(--alert);
   color: var(--alert);
+}
+
+.relink-mode-chip.is-on {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.relink-sandbox-refusal {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: max-content;
+  color: var(--alert);
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
 }
 
 .relink-vox-chip.is-on {

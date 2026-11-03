@@ -1,6 +1,7 @@
 /**
- * THE TURN'S SANDBOX, PREPARED WHEN USED. Preparing the coding shell sweeps
- * the whole focused folder for secret-shaped paths (enumerateSecretMasks):
+ * THE TURN'S SHELL, PREPARED ONLY WHEN SANDBOX IS ON. OFF returns a direct
+ * descriptor immediately — no sweep, bubblewrap, or overlay. ON prepares the
+ * isolated shell on first use and sweeps the focused folder for secret paths:
  * ~1.3-1.5 s on this repository, warm, on NVMe — and it used to run before
  * EVERY message, whether or not the turn touched the shell. Design note, 2026-10-04:
  * […] Now the turn notes WHERE its
@@ -9,6 +10,7 @@
  * and a refused preparation answers that call with its reason.
  */
 import { ensureWitnessCodingSandbox } from './witness-coding-sandbox.js';
+import { directShellFor } from './sandbox-mode.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('TurnSandbox');
@@ -33,8 +35,15 @@ export const noteTurnSandboxSource = (connection, source) => {
  * @returns {Promise<Object|null>}
  */
 export const ensureTurnSandbox = async (connection) => {
-  if (connection?._turnSandbox) return connection._turnSandbox;
   const source = connection?._turnSandboxSource;
+  const direct = directShellFor(connection, source);
+  if (direct) {
+    connection._turnSandbox = direct;
+    connection._turnSandboxError = null;
+    return direct;
+  }
+  if (connection?._turnSandbox && !connection._turnSandbox.direct) return connection._turnSandbox;
+  connection._turnSandbox = null;
   if (!source || connection._turnSandboxError) return null;
   try {
     connection._turnSandbox = await ensureWitnessCodingSandbox(source.laneId, source.sourceRoot);

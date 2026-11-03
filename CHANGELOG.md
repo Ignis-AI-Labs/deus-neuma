@@ -6,6 +6,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.109] - 2026-11-03
+
+Notes: `docs/operations/release-notes-0.1.109.md`.
+
+### Added
+
+- File copy and move now have direct tools, work across drives, and show both the source and destination while they run and when they finish.
+- PDFs now read continuously: scrolling to the bottom reveals the next page, while earlier pages remain available above.
+- Game concept pipelines for consistent pixel-styled characters, reference-based turnarounds and alternate views, and large standalone weapon designs.
+- Sandbox can now be switched ON or OFF beside the chat composer. OFF is the default and runs commands directly in the focused folder with your normal environment; ON restores the isolated shell. Approval modes remain separate.
+- The Substrate window can now apply a GPU share and relaunch the same model server immediately, refitting the context pool without waiting for a later ignition.
+- Terminal windows now accept hold-to-talk dictation as editable shell input, and preserve keystrokes typed while a terminal is starting.
+- Repeated terminal recovery no longer hits the login-attempt limit; session lookups remain authenticated.
+- Right-click a web address in the terminal to open it in the integrated browser or your external browser.
+- Image input is now on by default for every model, with an explicit Settings → API switch. Capability-probe uncertainty no longer disables vision, while known blind models are still refused.
+
+### Changed
+
+- File and folder paths in chat now open on a plain click. Project-relative paths resolve against the focused folder, and images open in the image viewer.
+
+### Fixed
+
+- Long image-review and tool sessions now recover from a full model context instead of repeatedly losing the stream.
+- Near-full conversations compact before the next turn when an earlier interruption prevented normal cleanup.
+- Small code changes now use exact anchored edits; ordinary file writes cannot overwrite an existing file, and deliberate whole-file replacements require current-file confirmation and support undo.
+- Markdown and PDF windows open with less startup work, and streaming conversations do less rendering while staying smooth.
+
 ## [0.1.107] - 2026-11-02
 
 Notes: `docs/operations/release-notes-0.1.107.md`.

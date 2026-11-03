@@ -72,8 +72,11 @@ export const reachLines = ({ focusGround, sandbox }) => {
   lines.push(focusGround
     ? '                filesystem tools READ AND WRITE here, with no approval card.'
     : '                without a focused folder, every path raises a card.');
-  if (sandbox?.live) {
-    lines.push(`  shell         LIVE on ${sandbox.sourceRoot} (AUTO in the operator's open folder)`);
+  if (sandbox?.direct) {
+    lines.push(`  shell         DIRECT on ${sandbox.sourceRoot} (SANDBOX OFF)`);
+    lines.push('                commands use the operator\'s normal OS user, environment, network and permissions; no overlay or masks.');
+  } else if (sandbox?.live) {
+    lines.push(`  shell         LIVE on ${sandbox.sourceRoot} (SANDBOX ON, AUTO in the operator's open folder)`);
     lines.push('                shell writes land in that folder; .git and secret-shaped paths are masked.');
   } else if (sandbox) {
     lines.push(`  shell         a live overlay view of ${sandbox.sourceRoot}`);
@@ -146,8 +149,8 @@ export const FLIGHT_CHECK_TOOLS = Object.freeze([
     description: 'Report YOUR OWN current capacity, read live from the state that governs you — '
       + 'the substrate route you are running on and whether it is configured, every tool advertised '
       + 'to you this turn grouped by whether it runs freely / asks the operator first / is held, '
-      + 'your skills, exactly where you may read and write (the operator\'s LIVE folder versus your '
-      + 'shell overlay — reads there are live, but shell writes land lane-side, never on the folder), '
+      + 'your skills, exactly where you may read and write (direct execution with SANDBOX OFF, '
+      + 'or the operator\'s LIVE folder versus your shell overlay with SANDBOX ON), '
       + 'and your limits. Call this when asked what you can or cannot do, after any substrate or '
       + 'permission change, and before promising a capability. Answer from THIS, never from memory '
       + 'of your prompt — the report is generated from the same structures that decide your calls.',
@@ -232,7 +235,9 @@ const readFlightCheck = async ({ connection, seat, tools, skills = [], sandbox =
     skills: (skills || []).map((s) => (typeof s === 'string' ? s : s?.name)).filter(Boolean).sort(),
     limits: [
       `session tool mode: ${connection?.toolMode || 'ask'} — governs WHETHER an act asks, never WHERE it may reach`,
-      ...(sandbox ? [
+      ...(sandbox?.direct ? [
+        'shell commands: SANDBOX OFF — direct execution with the normal OS user, environment, network and permissions; no overlay or masks',
+      ] : sandbox ? [
         'shell commands: 30s default timeout (120s max), final 50 KiB per output stream retained (display truncation does not stop execution), network requires its own grant, empty HOME',
         live ? 'shell writes land in the operator\'s open folder (AUTO); .git and secrets stay masked, so history is the safety net'
           : 'shell writes land in your lane-side overlay layer only; they never touch the live checkout',

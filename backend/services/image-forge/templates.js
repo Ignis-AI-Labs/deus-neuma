@@ -129,16 +129,18 @@ export const buildLoraChain = (loras, source) => {
 };
 
 /**
- * The form graph: txt2img, plus an optional LoRA chain and an optional
- * ControlNet branch.
+ * The form graph: txt2img or reference img2img, plus an optional LoRA chain and
+ * an optional ControlNet branch. A source is scaled to the pipeline's pinned
+ * canvas before VAE encoding so output geometry cannot silently follow the
+ * upload instead.
  *
  * The control branch conditions BOTH the positive and the negative — that is
  * what `ControlNetApplyAdvanced` returns, and feeding only the positive would
  * quietly halve the guidance.
  *
  * @param {object} p already-validated scalars: the txt2img set, plus
- *   `loras` (may be empty) and, when posed, `controlNetName` / `controlImage` /
- *   `controlStrength`.
+ *   `loras` (may be empty), optional `imageName` / `denoise`, and, when posed,
+ *   `controlNetName` / `controlImage` / `controlStrength`.
  */
 export const buildForm = (p) => {
   const chain = buildLoraChain(p.loras, '4');
@@ -151,6 +153,22 @@ export const buildForm = (p) => {
     '8': { class_type: 'VAEDecode', inputs: { samples: ['3', 0], vae: ['4', 2] } },
     '9': { class_type: 'SaveImage', inputs: { images: ['8', 0], filename_prefix: safePrefix(p.filenamePrefix) } },
   };
+
+  let latentImage = ['5', 0];
+  let denoise = 1.0;
+  if (p.imageName) {
+    graph['10'] = { class_type: 'LoadImage', inputs: { image: p.imageName } };
+    graph['12'] = {
+      class_type: 'ImageScale',
+      inputs: {
+        image: ['10', 0], upscale_method: 'lanczos',
+        width: p.width, height: p.height, crop: 'disabled',
+      },
+    };
+    graph['11'] = { class_type: 'VAEEncode', inputs: { pixels: ['12', 0], vae: ['4', 2] } };
+    latentImage = ['11', 0];
+    denoise = p.denoise;
+  }
 
   let positive = ['6', 0];
   let negative = ['7', 0];
@@ -177,7 +195,7 @@ export const buildForm = (p) => {
     inputs: {
       model: chain.model, seed: p.seed, steps: p.steps, cfg: p.cfg,
       sampler_name: p.samplerName, scheduler: p.scheduler,
-      positive, negative, latent_image: ['5', 0], denoise: 1.0,
+      positive, negative, latent_image: latentImage, denoise,
     },
   };
   return graph;

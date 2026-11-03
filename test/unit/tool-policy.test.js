@@ -15,7 +15,7 @@ describe('resolvePolicy', () => {
     // the delete sub-op is destructive, so it ASKS by default (2026-07-23 —
     // its outright denial made a being fake deletions by overwriting files).
     const policy = resolvePolicy(GLOBAL_DEFAULTS);
-    for (const tool of ['read', 'write', 'edit', 'list', 'search']) {
+    for (const tool of ['read', 'write', 'edit', 'copy', 'move', 'list', 'search']) {
       expect(policy[`fs/${tool}`], `${tool} should be allowed`).toBe('allowed');
     }
     expect(policy['filesystem/delete_file']).toBe('approval_required');
@@ -138,11 +138,11 @@ describe('addAllowedTool', () => {
 });
 
 describe('the fs primitives', () => {
-  it('the five being-facing filesystem tools are allowed by default (own-lane law)', () => {
+  it('the seven being-facing filesystem tools are allowed by default (own-lane law)', () => {
     // The organ spellings are internal now (fs-primitives.js routes fs/* onto
     // them) — the tier lives on the name the being actually calls.
     const policy = resolvePolicy(GLOBAL_DEFAULTS);
-    for (const tool of ['read', 'write', 'list', 'search', 'edit']) {
+    for (const tool of ['read', 'write', 'list', 'search', 'edit', 'copy', 'move']) {
       expect(checkToolAccess(policy, 'fs', tool)).toBe('allowed');
     }
   });

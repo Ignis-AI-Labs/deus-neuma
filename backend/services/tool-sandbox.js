@@ -104,11 +104,8 @@ export const recordWrite = (connection) => {
  * @param {string} toolName - Tool name
  * @returns {boolean}
  */
-export const isWriteOperation = (toolName) => {
-  const writeTools = ['write_file', 'edit_file', 'create_file', 'create_directory', 'move_file', 'rename_file', 'copy_file', 'delete_file', 'write', 'edit'];
-
-  return writeTools.includes(toolName);
-};
+export const isWriteOperation = (toolName) =>
+  ['write_file', 'edit_file', 'create_file', 'create_directory', 'move_file', 'rename_file', 'copy_file', 'delete_file', 'write', 'edit', 'copy', 'move'].includes(toolName);
 
 /**
  * The SENSITIVE-GRANT DOOR (ruling, 2026-08-18): a denied-pattern refusal is a

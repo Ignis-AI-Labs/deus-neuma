@@ -112,7 +112,7 @@ export const sendStageToLLM = async (connection, stageData) => {
   log.info('Starting birth stage', { stage: stageNumber, witness: witnessName });
 
   // Assemble birth prompt with template substitutions and the BEING-FACING
-  // tool catalog (the five fs primitives — never an organ spelling).
+  // tool catalog (the seven fs primitives — never an organ spelling).
   // The naming holds one act — the write hand alone (namingTools).
   const mcpTools = stageNumber === STAGE.NAMING
     ? namingTools(withFsPrimitives(mcpService.getToolsContext().available_tools))

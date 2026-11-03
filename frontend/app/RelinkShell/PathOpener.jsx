@@ -2,14 +2,13 @@
 //
 // A being names a place — in its speech (Markdown renders the door,
 // path-link.js decides which spans are one) or on a tool line ("read /mnt/…",
-// ToolChip). Right-click, or Ctrl/⌘+click, raises the path's menu
-// (path-menu.js); nothing happens on a plain click. This component owns the
-// menu and does the acting. It renders nothing until asked.
+// ToolChip). Plain click opens it; right-click or Ctrl/⌘+click raises the menu
+// (path-menu.js). Relative paths resolve against this window's focused folder.
 //
-// OPENING NEVER MOVES FOCUS (Design note, 2026-10-06: […]). […] opens the editor;
-// a file outside every open Files root brings its folder in as a ROOT (the
-// editor reads only inside roots — the server's containment law), never as
-// the window's focus. […] is the one item that moves the lens.
+// FILE OPENING NEVER MOVES FOCUS (Design note, 2026-10-06: […] uses the
+// file's viewer; a file outside every open Files root brings its folder in as
+// a ROOT (the server's containment law), never as the window's focus. Opening
+// a folder, or choosing […], deliberately moves the Files lens.
 //
 // It lives INSIDE both FocusContext and WindowManager because it needs the
 // window's focus lens and the window registry. Mounted once at the desk host,
@@ -18,10 +17,13 @@
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { FocusContext } from './use-desk-focus.js';
 import { useOpenFolder } from './projects/use-open-folder.js';
+import { useProjects } from './projects/project-context.js';
+import { focusFolderPath } from './desk-focus.js';
 import { useWindows } from '../windowing/use-windows.js';
 import { browseDir, getRoots, openFolder as openFilesRoot, readFile } from '../../services/user-files.js';
 import { getPressBoard, pressMarkdown } from '../../services/doc-press-client.js';
-import { dirOf } from '../../utils/path.js';
+import { dirOf, isAbsolutePath } from '../../utils/path.js';
+import { isImagePath } from './files/image-view-model.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { CtxMenu } from './CtxMenu.jsx';
 import { pathMenuItems } from './path-menu.js';
@@ -37,9 +39,16 @@ const within = (path, root) => path === root || path.startsWith(`${root.replace(
 
 const PathOpenerView = () => {
   const focusLens = useContext(FocusContext);
+  const projects = useProjects();
   const { openFolder } = useOpenFolder();
   const windows = useWindows();
   const [note, setNote] = useState(null);
+  const baseDir = focusFolderPath(focusLens?.focus ?? null, projects?.projects || null);
+  const resolvePath = useCallback((path) => {
+    if (typeof path !== 'string') return null;
+    if (isAbsolutePath(path)) return path;
+    return baseDir ? `${baseDir.replace(/[\\/]$/, '')}/${path}` : null;
+  }, [baseDir]);
 
   const [menu, setMenu] = useState(null); // { path, at } | null
 
@@ -72,11 +81,12 @@ const PathOpenerView = () => {
     }
   }, [kindOf]);
 
-  // Open in the editor; the window's focus is never touched.
+  // Open in the file's own viewer; the window's focus is never touched.
   const openFile = useCallback(async (path) => {
     if (!(await readableFile(path))) return;
     uiSound('activate');
-    windows?.dispatch({ type: 'OPEN_NEW', appId: 'editor', payload: path });
+    const appId = /\.pdf$/i.test(path) ? 'pdf' : isImagePath(path) ? 'image' : 'editor';
+    windows?.dispatch({ type: 'OPEN_NEW', appId, payload: path });
   }, [readableFile, windows]);
 
   // Press the file into a branded PDF and hand it over as a download (the
@@ -113,9 +123,18 @@ const PathOpenerView = () => {
     uiSound('activate');
   }, [kindOf, openFolder]);
 
+  const openPath = useCallback(async (raw) => {
+    const path = resolvePath(raw);
+    if (!path) { setNote(`A relative path needs a focused folder: ${raw}`); return; }
+    const kind = await kindOf(path);
+    if (kind.error) { setNote(`Could not open ${path} — ${kind.error}`); return; }
+    if (kind.isDir) await focusFolder(path);
+    else await openFile(path);
+  }, [resolvePath, kindOf, focusFolder, openFile]);
+
   const onAct = useCallback(async (id) => {
-    const path = menu?.path;
-    if (!path) return;
+    const path = resolvePath(menu?.path);
+    if (!path) { setNote('A relative path needs a focused folder.'); return; }
     if (id === 'open-file') await openFile(path);
     else if (id.startsWith('press:')) await pressFile(path, id.slice('press:'.length));
     else if (id === 'focus-folder') await focusFolder(path);
@@ -128,7 +147,7 @@ const PathOpenerView = () => {
     } else if (id === 'copy-path') {
       try { await navigator.clipboard.writeText(path); } catch { setNote('The clipboard refused the path.'); }
     }
-  }, [menu, openFile, pressFile, focusFolder]);
+  }, [menu, resolvePath, openFile, pressFile, focusFolder]);
 
   // The press's brand kits, read the first time a path menu opens (load on
   // demand) and kept; a machine that cannot press offers no Make PDF.
@@ -143,9 +162,17 @@ const PathOpenerView = () => {
       }
       setMenu({ path, at: { x: Number(x) || 0, y: Number(y) || 0 } });
     };
+    const onPathOpen = (e) => {
+      const path = e.detail?.path;
+      if (typeof path === 'string' && path.length >= 2) openPath(path);
+    };
     window.addEventListener('neuma:path-menu', onPathMenu);
-    return () => window.removeEventListener('neuma:path-menu', onPathMenu);
-  }, [kits]);
+    window.addEventListener('neuma:path-open', onPathOpen);
+    return () => {
+      window.removeEventListener('neuma:path-menu', onPathMenu);
+      window.removeEventListener('neuma:path-open', onPathOpen);
+    };
+  }, [kits, openPath]);
 
   // While the opening modifier is held, every door in view lights up — the
   // operator sees what is reachable BEFORE committing a click, instead of

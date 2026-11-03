@@ -21,6 +21,7 @@
  * it is an unknown argument and is refused.
  */
 import { buildFormPipelines } from './form-registry.js';
+import { buildConceptPipelines, CONCEPT_MODELS, CONCEPT_LORAS } from './concept-registry.js';
 import { buildFlux2Pipelines } from './pipelines-flux2.js';
 import { buildVideoPipelines, VIDEO_MODELS } from './pipelines-video.js';
 
@@ -46,6 +47,7 @@ export const ENGINE_PIN = Object.freeze({
  * signature, and that check is a separate act.
  */
 export const PACK_MODELS = Object.freeze({
+  ...CONCEPT_MODELS,
   'sdxl-base-1.0': Object.freeze({
     id: 'sdxl-base-1.0',
     label: 'SDXL Base 1.0',
@@ -230,6 +232,7 @@ export const PACK_MODELS = Object.freeze({
  * different artifact entirely.
  */
 export const PACK_LORAS = Object.freeze({
+  ...CONCEPT_LORAS,
   'ill-dark-lines-v2': Object.freeze({
     id: 'ill-dark-lines-v2',
     label: 'iLLMyth Dark Lines v2',
@@ -360,13 +363,16 @@ const STILL_PIPELINES = Object.freeze({
 // The three registers and their scaffolds live in `form-registry.js`; the slot
 // vocabularies are handed in so the dependency runs one way and never cycles.
 const FORM_PIPELINES = buildFormPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
+const CONCEPT_PIPELINES = buildConceptPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 // FLUX.2 klein + the controlled Z-Image lane (`pipelines-flux2.js`), same one-way hand-in.
 const FLUX2_PIPELINES = buildFlux2Pipelines(PROMPT_SLOTS, SAMPLER_SLOTS, SIZE_SLOTS);
 // Video with sound (`pipelines-video.js`), same one-way hand-in.
 const VIDEO_PIPELINES = buildVideoPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 
 /** The whole manifest, frozen once. */
-export const PIPELINES = Object.freeze({ ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES, ...VIDEO_PIPELINES });
+export const PIPELINES = Object.freeze({
+  ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES, ...CONCEPT_PIPELINES, ...VIDEO_PIPELINES,
+});
 
 /** The pipeline a caller gets when it names none. */
 export const DEFAULT_PIPELINE_ID = 'still.sdxl.txt2img';

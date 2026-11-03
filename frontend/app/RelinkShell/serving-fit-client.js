@@ -25,3 +25,10 @@ export const saveServingShare = async (sharePct) => apiCall('PUT', FIT_URL, {
   body: { sharePct },
   errorPrefix: 'Could not save the GPU share',
 });
+
+/** Apply the share and restart the same supervised server with a fresh fit. */
+export const relaunchServingFit = async (sharePct) => apiCall('POST', `${FIT_URL}/relaunch`, {
+  headers: authHeaders() ?? {},
+  body: { sharePct },
+  errorPrefix: 'Could not relaunch the model server',
+});

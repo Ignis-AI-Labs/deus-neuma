@@ -46,7 +46,7 @@ import { recordWork, artifactFor } from '../../core/tasks/task-work.js';
 import {
   toolFormatters,
   toolSummary as _toolSummary, toolFailureSummary as _toolFailureSummary,
-  sendToolEvent as _sendToolEvent,
+  toolActivitySummary as _toolActivitySummary, sendToolEvent as _sendToolEvent,
   chipDetail as _chipDetail,
 } from './portal-tools/tool-events.js';
 import { dispatchPlatformTool } from './portal-tool-dispatch.js';
@@ -198,7 +198,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
 
     // Substrate dialect repair: a smashed "<server>_<tool>" name routes to the
     // real tool instead of reading as unavailable. The list is BEING-FACING:
-    // the five fs primitives stand where the 16 organ spellings used to.
+    // the seven fs primitives stand where the 16 organ spellings used to.
     const match = noteWorkingSetCall(connection, recordBenchmarkToolCall(connection, await scopeRecoveryCall(_unsmashToolName(rawMatch, withFsPrimitives(mcpService.getToolsContext()?.available_tools || [])), connection)));
     const { toolName, args } = match;
     const refused = refusedBeforeDispatch(connection, match); if (refused) { results.push(refused); continue; } // unreadable args, a nested door, a tool never offered
@@ -400,7 +400,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         continue;
       }
 
-      _sendToolEvent(ws, companion, { tool: toolLabel, status: 'executing' });
+      _sendToolEvent(ws, companion, { tool: toolLabel, status: 'executing', summary: _toolActivitySummary(toolName, args) });
 
       const result = await sandboxedCallTool(serverName, toolName, args);
       const content = extractMCPContent(result);
@@ -419,7 +419,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         results.push({ tool: toolLabel, status: 'error', error: content });
         _sendToolEvent(ws, companion, {
           tool: toolLabel, status: 'error',
-          summary: `${toolName} — refused`,
+          summary: `${_toolSummary(toolName, args)} — refused`,
           detail: content.slice(0, 2000),
         });
         continue;
@@ -453,7 +453,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         // the Explorer went on showing the tree it fetched at mount, so real
         // work looked like nothing had happened (Founder, live 2026-07-26). A
         // move/copy points at the NEW path — the file that stands there now.
-        ...((() => { const p = (toolName === 'edit' && typeof args?.destination === 'string' && args.destination) || collectPathArgs(args)[0]; return p ? { path: p } : {}; })()),
+        ...((() => { const p = (['edit', 'copy', 'move'].includes(toolName) && typeof args?.destination === 'string' && args.destination) || collectPathArgs(args)[0]; return p ? { path: p } : {}; })()),
       });
     } catch (error) {
       if (error.code === 'TURN_OPERATION_CHECKPOINT') throw error;

@@ -56,12 +56,13 @@ import {
 import {
   persistTurnPoint as _persistTurnPoint, persistExchange as _persistExchange,
   crystallizeObservation, sendStreamError as _sendStreamError, isMemorylessSitting, isRecallBlindSitting, isHarnessSitting, isPlatformSitting,
-  settleCompositionRecord as _settleCompositionRecord,
+  settleCompositionRecord as _settleCompositionRecord, compactWithSelfTorch as _compactWithSelfTorch,
 } from './portal-turn-persist.js';
 import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead, wireContextSections } from './portal-turn-prompt.js';
 import { settleUnfinishedTurn } from './portal-turn-unfinished.js';
 import { refuseUnboundTurn, refuseRetryAttachments, takeTurnOrigin } from './portal-turn-guards.js';
 import { withShedSections } from './turn-envelope.js';
+import { compactBeforeTurn } from './context-overflow.js';
 import { settleCitationHold } from './legal/answer-hold.js';
 
 const log = createLogger('Portal');
@@ -224,6 +225,7 @@ export const streamConsciousness = async (connection, message) => {
   let fullResponse = '';
 
   try {
+    await compactBeforeTurn({ connection, contextWindow: turnCapabilities?.contextWindow, compact: () => companion?.neumaId ? _compactWithSelfTorch(companion.neumaId, sessionId, true) : false, onState: (state) => _safeSend(ws, { type: 'session:compact', state, automatic: true }) });
     const mcpContext = mcpService.getToolsContext();
     // THE GATHER — independent loads run CONCURRENTLY (friction-map T1): the
     // serial chain made every turn pay the SUM of their IO waits, not the
@@ -479,6 +481,7 @@ export const streamConsciousness = async (connection, message) => {
     if (interrupt.signal.reason !== QUEUED_ACTION_REASON) _notifyTurnEnded(connection, companionName, sessionId, take, interrupted);
 
   } catch (error) {
+    connection.contextRecoveryPending = true;
     // Interrupted or failed, the record keeps what was said and done (portal-turn-unfinished.js).
     await settleUnfinishedTurn({ connection, companionName, thought, fullResponse, images, docs, sessionId, companion, take, interrupt, error, route });
   } finally {

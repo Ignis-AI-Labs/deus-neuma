@@ -16,6 +16,7 @@ import { resolveSealRequestDeclined } from '../services/seal-request.js';
 import { resolvePlanApproval } from '../services/team-plan.js';
 import { resolvePlanVerdict } from '../services/plan-mode.js';
 import { normalizeToolMode, normalizeChatMode, toolModeForChatMode } from '../services/tool-policy.js';
+import { declareSandboxMode } from '../services/sandbox-mode.js';
 import { normalizePurpose } from '../../core/voice/purpose.js';
 import { handleVoiceFrame } from '../services/portal-voice-handlers.js';
 import { abortAudition } from '../services/voice/voice-audition.js';
@@ -221,6 +222,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       // the broker drops unknown ids; the reason is clamped.
       resolveSealRequestDeclined(connection, message.id, message.reason);
       break;
+
+    case 'sandbox:mode': {
+      // Independent from ACTS: OFF means direct execution, and only the
+      // install owner/co-owner at this desk may declare it. The ack is truth.
+      const verdict = await declareSandboxMode(connection, message.enabled === true);
+      ws.send(JSON.stringify({ type: 'sandbox:mode', ...verdict }));
+      break;
+    }
 
     case 'tool:mode':
       // The operator's standing stance on tool acts for this session

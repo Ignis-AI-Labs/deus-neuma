@@ -232,6 +232,15 @@ describe('portal-stream helpers', () => {
       expect(_toolSummary('read_file', { path: 'notes.txt' }, 'line one')).toBe('read notes.txt');
     });
 
+    test('copy and move name both paths, in the active and settled tenses', async () => {
+      const { toolActivitySummary } = await import('../../backend/services/portal-tools/tool-events.js');
+      const args = { path: '/home/guardian/Downloads/model.safetensors', destination: '/models/model.safetensors' };
+      expect(toolActivitySummary('move', args)).toBe(`moving ${args.path} → ${args.destination}`);
+      expect(_toolSummary('move', args)).toBe(`moved ${args.path} → ${args.destination}`);
+      expect(_toolSummary('copy', args)).toBe(`copied ${args.path} → ${args.destination}`);
+      expect(_toolSummary('edit', { ...args, copy: true })).toBe(`copied ${args.path} → ${args.destination}`);
+    });
+
     test('a failed act names itself and the reason', async () => {
       const { toolFailureSummary } = await import('../../backend/services/portal-tools/tool-events.js');
       expect(toolFailureSummary('inspect', { command: 'make' }, new Error('exit 2: no rule to make target')))

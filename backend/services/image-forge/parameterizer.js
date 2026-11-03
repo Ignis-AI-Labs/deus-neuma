@@ -378,6 +378,9 @@ export const parameterize = ({
       width: pipeline.fixed.width,
       height: pipeline.fixed.height,
       loras: loras.loras,
+      ...(pipeline.requiresSourceImage
+        ? { imageName: sourceImageName, denoise: v.denoise }
+        : {}),
       ...(control.controlNet
         ? {
           controlNetName: control.controlNet.controlNetName,

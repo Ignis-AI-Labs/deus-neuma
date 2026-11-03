@@ -14,7 +14,7 @@ import remarkGfm from 'remark-gfm';
 import { renderLatexSymbols } from '../../utils/latex-symbols.js';
 import { softenBreakTags } from '../../utils/markdown-breaks.js';
 import { openablePath } from './path-link.js';
-import { openPathMenu, pathMenuAnchor } from './path-menu.js';
+import { openPathDoor, openPathMenu, pathMenuAnchor } from './path-menu.js';
 import { CopyWord } from './copy-word.jsx';
 import { codeBlockText } from './copy-text.js';
 import { isShortCell } from './table-cell.js';
@@ -23,12 +23,8 @@ import './RelinkMarkdown.css';
 
 const PLUGINS = [remarkGfm];
 
-// A code span whose whole content is an absolute path is a DOOR (Founder,
-// 2026-07-26). DELIBERATE (ruling, 2026-10-06): right-click — or Ctrl/⌘+click,
-// or Ctrl+Enter — raises the path's menu (open the file, show it in the file
-// manager, copy it, or focus its folder); a plain click still just selects, so
-// copying a path works as before, and nothing moves the window's focus unless
-// that menu item is chosen. The desk host owns the menu (PathOpener.jsx).
+// A code span whose whole content is a path is a DOOR. Plain click/Enter opens
+// it; right-click or Ctrl/⌘+click raises the existing options (PathOpener.jsx).
 
 const PathSpan = ({ path, children, ...props }) => (
   <code
@@ -36,17 +32,21 @@ const PathSpan = ({ path, children, ...props }) => (
     className="relink-md-path"
     role="link"
     tabIndex={0}
-    title={`${path}\nRight-click (or Ctrl+click) for options`}
+    title={`${path}\nClick to open · Right-click (or Ctrl+click) for options`}
     onContextMenu={(e) => { e.preventDefault(); openPathMenu(path, e.clientX, e.clientY); }}
     onClick={(e) => {
-      if (!e.ctrlKey && !e.metaKey) return; // a plain click still just selects
       e.preventDefault();
-      openPathMenu(path, e.clientX, e.clientY);
+      if (e.ctrlKey || e.metaKey) openPathMenu(path, e.clientX, e.clientY);
+      else openPathDoor(path);
     }}
     onKeyDown={(e) => {
-      if (!(e.key === 'ContextMenu' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)))) return;
-      e.preventDefault();
-      openPathMenu(path, ...pathMenuAnchor(e.currentTarget));
+      if (e.key === 'ContextMenu' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault();
+        openPathMenu(path, ...pathMenuAnchor(e.currentTarget));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        openPathDoor(path);
+      }
     }}
   >
     {children}
@@ -77,6 +77,7 @@ const COMPONENTS = {
     // worse than plain text, so the decision stays narrow (path-link.js).
     const path = openablePath(
       Array.isArray(children) ? children.join('') : children,
+      { relative: true },
     );
     if (!path) return <code {...props}>{children}</code>;
     return <PathSpan path={path} {...props}>{children}</PathSpan>;

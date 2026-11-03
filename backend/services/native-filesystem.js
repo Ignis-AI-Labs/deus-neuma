@@ -40,8 +40,10 @@ import {
 } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
 import { guardedWriteFile } from './write-file-guard.js';
 import { runningAs } from './native-fs-roots.js';
-import { checkPathAccess, secretLinkReason } from './sandbox-path-policy.js';
+import { checkPathAccess } from './sandbox-path-policy.js';
 import { otherHouseInWalk, readablePath } from './fs-read-clearance.js';
+// copy and move live apart: validated, and a move works across disks (fs-copy-move-clarity)
+import { copyFile, moveFile } from './native-fs-transfer.js';
 
 // The organ matches directory_tree excludes with the SAME minimatch the
 // package's own search path uses — resolved from the package's dependency
@@ -250,20 +252,6 @@ const directoryTree = async (args) => {
     return result;
   };
   return said(JSON.stringify(await buildTree(rootPath), null, 2));
-};
-
-const moveFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
-  await fs.rename(validSource, validDest);
-  return said(`Successfully moved ${args.source} to ${args.destination}`);
-};
-
-const copyFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
-  await fs.cp(validSource, validDest, { recursive: true, errorOnExist: true, force: false, filter: (src) => !secretLinkReason(src) });
-  return said(`Successfully copied ${args.source} to ${args.destination}`);
 };
 
 

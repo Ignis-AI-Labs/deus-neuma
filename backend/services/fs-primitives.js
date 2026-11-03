@@ -132,8 +132,18 @@ const routeSearch = (args) => {
   return ok('search_files', out);
 };
 
+// Direct copy (paste; the source stays) and move (cut and paste; the source leaves):
+// a being names both ends, and the act says both (fs-copy-move-clarity).
+const routeTransfer = (verb) => (args) => {
+  const source = firstString(args, [...PATH_ALIASES, 'source', 'from', 'src']);
+  const destination = firstString(args, ['destination', 'to', 'target']);
+  if (!source || !destination) return fail(`fs/${verb} needs both ends — {"path": "...", "destination": "..."}`);
+  return ok(verb === 'copy' ? 'copy_file' : 'move_file', { source, destination });
+};
+
 const ROUTERS = Object.freeze({
-  read: routeRead, write: routeWrite, edit: routeEdit, list: routeList, search: routeSearch,
+  read: routeRead, write: routeWrite, edit: routeEdit, copy: routeTransfer('copy'), move: routeTransfer('move'),
+  list: routeList, search: routeSearch,
 });
 
 /**
@@ -200,8 +210,8 @@ export const FS_RETIRED_HINTS = Object.freeze({
   write_file: 'write_file is retired — use fs/write {"path": "...", "content": "..."}',
   create_directory: 'create_directory is retired — use fs/write {"path": "...", "directory": true}',
   edit_file: 'edit_file is retired — use fs/edit {"path": "...", "edits": [{"oldText": "...", "newText": "..."}]}',
-  move_file: 'move_file is retired — use fs/edit {"path": "...", "destination": "..."}',
-  copy_file: 'copy_file is retired — use fs/edit {"path": "...", "destination": "...", "copy": true}',
+  move_file: 'move_file is retired — use fs/move {"path": "...", "destination": "..."} (cut and paste; the source leaves)',
+  copy_file: 'copy_file is retired — use fs/copy {"path": "...", "destination": "..."} (paste; the source stays)',
   delete_file: 'delete_file is retired — use fs/edit {"path": "...", "delete": true} (asks your operator)',
   list_directory: 'list_directory is retired — use fs/list {"path": "..."}',
   list_directory_with_sizes: 'list_directory_with_sizes is retired — use fs/list {"path": "...", "sizes": true}',
@@ -274,6 +284,12 @@ export const FS_PRIMITIVE_TOOLS = Object.freeze([
       copy: Object.freeze({ type: 'boolean', description: 'Copy to destination instead of moving' }),
       delete: Object.freeze({ type: 'boolean', description: 'Delete the file at path (asks your operator)' }),
     }),
+  fsTool('copy',
+    'Copy a file or folder: {"path", "destination"}. The source stays where it is; an existing destination is refused, never overwritten.',
+    { path: STR, destination: STR }),
+  fsTool('move',
+    'Move a file or folder: {"path", "destination"}, cut and paste. The source leaves; works across disks; an existing destination is refused, never overwritten.',
+    { path: STR, destination: STR }),
   fsTool('list',
     'See inside a directory: {"path"} names its entries ([FILE]/[DIR]); "sizes": true adds sizes; "tree": true recurses. '
     + 'No path (or "roots") lists the folders you may reach.',

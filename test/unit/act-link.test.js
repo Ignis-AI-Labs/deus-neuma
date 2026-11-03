@@ -14,6 +14,11 @@ describe('actFilePath', () => {
     }
   });
 
+  test('direct transfers link to the destination carried by their event', () => {
+    expect(actFilePath('copy', '/models/copy.safetensors')).toBe('/models/copy.safetensors');
+    expect(actFilePath('move', '/models/moved.safetensors')).toBe('/models/moved.safetensors');
+  });
+
   test('case-insensitive — the chip label may arrive uppercase', () => {
     expect(actFilePath('WRITE_FILE', '/a/b.md')).toBe('/a/b.md');
   });

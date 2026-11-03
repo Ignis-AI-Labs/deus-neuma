@@ -21,6 +21,7 @@ const { define } = require('./dictionary.cjs');
 const { primaryBounds } = require('./primary-placement.cjs');
 const { dataRootFor } = require('./connections.cjs');
 const { readOwnerClaim } = require('./owner-claim.cjs');
+const { openDevBrowser } = require('./dev-browser.cjs');
 
 // impure — register every handler on ipcMain. `deskWindows` is the
 // createDeskWindows() surface (desk-windows.cjs).
@@ -186,6 +187,8 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
     shell.showItemInFolder(rawPath);
     return { ok: true };
   });
+
+  handle('browser:open', (_event, url) => openDevBrowser(url));
 
   // THE IMAGE FORGE workbench (FR-37) — ComfyUI's own UI in a dedicated,
   // UNPRIVILEGED child window. ComfyUI is a high-privilege tool; this

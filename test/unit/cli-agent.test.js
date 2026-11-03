@@ -227,7 +227,7 @@ describe('cli/commands/agent — the benchmark tool scope (ARC-HARNESS L0, #531)
     const base = { coding: { allowed: ['execute'] } };
     const built = benchmarkSessionToolPolicy(base);
     expect(built.coding.allowed).toContain('execute');
-    expect(built.fs.allowed.sort()).toEqual(['edit', 'list', 'read', 'search', 'write']);
+    expect(built.fs.allowed.sort()).toEqual(['copy', 'edit', 'list', 'move', 'read', 'search', 'write']);
     expect(built.map.allowed).toEqual(['read_history']);
     expect(benchmarkToolScopeLabels()).toContain('fs/write');
     expect(BENCHMARK_TOOL_SCOPE).toHaveLength(benchmarkToolScopeLabels().length);

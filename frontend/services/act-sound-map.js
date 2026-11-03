@@ -93,7 +93,7 @@ export const ACT_FAMILIES = Object.freeze({
     'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
   ]),
   // Same thing, different place or name.
-  actMove: Object.freeze(['move_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
+  actMove: Object.freeze(['move', 'copy', 'move_file', 'copy_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
   // Taking something away. Rare and consequential — it gets its own voice so
   // it is never mistaken for a write.
   actDelete: Object.freeze([

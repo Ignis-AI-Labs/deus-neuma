@@ -1,5 +1,8 @@
 /**
- * The coding shell — commands against the LIVE ground through a kernel overlay.
+ * The coding shell — direct execution with SANDBOX OFF (the default), or the
+ * isolated paths below with SANDBOX ON. OFF never prepares an overlay, calls
+ * bwrap, masks paths, or scrubs the environment; it is an explicit owner-gated
+ * choice, never a silent fallback. ON retains the original confinement.
  *
  * A being's shell used to run in a disposable COPY of the focused folder,
  * served at the ground's own path. Every freshness signal for that copy
@@ -26,9 +29,9 @@
  * for real where the operator is working. The masks stay on top (no .git, no
  * secrets), and so do bubblewrap, the scrubbed environment and the ulimits.
  *
- * Requires bwrap >= 0.10 with unprivileged-overlayfs kernel support (>= 5.11),
- * checked for platform/executable availability before preparation and execution.
- * Kernel or mount refusals remain errors — never an unconfined fallback.
+ * SANDBOX ON requires bwrap >= 0.10 with unprivileged-overlayfs kernel support
+ * (>= 5.11), checked before isolated preparation and execution. Kernel or mount
+ * refusals remain errors — they never silently turn direct execution ON.
  */
 import fs from 'fs/promises';
 import os from 'os';
@@ -249,14 +252,18 @@ export const SHELL_GIT_NOTE = "Note: Git internals are masked here. coding/groun
  * @param {{workspace:string,sourceRoot:string,since:(string|null)}} sandbox
  * @returns {string}
  */
-export const sandboxStatusText = (sandbox) => [
-  `Shell ground: ${sandbox.sourceRoot} — the live focused folder.`,
+export const sandboxStatusText = (sandbox) => (sandbox?.direct ? [
+  `Shell ground: ${sandbox.sourceRoot} — SANDBOX OFF, direct execution.`,
+  'Commands run directly in this folder with the operator\'s normal OS user, environment, network and permissions. There is no bubblewrap, overlay, mask or sandbox recovery in this path.',
+  'Turn SANDBOX ON at the composer to use the isolated shell instead.',
+].join('\n') : [
+  `Shell ground: ${sandbox.sourceRoot} — SANDBOX ON, the live focused folder.`,
   'On AUTO in the operator\'s open folder, the shell works on that folder FOR REAL: writes land in it, .git and secrets stay masked.',
   'Otherwise it is seen through a kernel overlay: prior shell writes shadow the live lower, commands refuse lower drift under those shadows, and preserved work is never silently reset.',
   `Overlay writes land in your overlay layer (host path ${sandbox.workspace}, holding work since ${sandbox.since || 'this turn'}) — an overlay command never alters the live folder itself.`,
   "Secret-shaped paths (.env, keys, .git, other beings' lanes) are masked from this shell's view.",
   SHELL_GIT_NOTE,
-].join('\n');
+].join('\n'));
 
 const clampTimeout = (value) => {
   const parsed = Number(value);
@@ -266,7 +273,7 @@ const clampTimeout = (value) => {
 const commandMode = (value) => (value === 'write' ? 'write' : 'inspect');
 
 /**
- * The confinement every being-run command shares — the coding shell's and a
+ * The confinement every SANDBOX ON command shares — the coding shell's and a
  * team's workspace run: fresh namespaces (the network's too unless the
  * operator granted it), an EMPTY environment but for the few names set here,
  * the system read-only, and an empty /etc, /tmp and HOME. Pure. The caller
@@ -364,7 +371,7 @@ const unlockWorkdirInternals = (shellDir) =>
   fs.chmod(path.join(shellDir, 'work', 'work'), 0o700).catch(() => {});
 
 /**
- * Execute one command inside the overlay shell.
+ * Execute one command directly, or inside the prepared isolated shell.
  * @param {{workspace:string,sourceRoot:string,masks:{dirs:string[],files:string[]},command:string,mode?:string,timeoutMs?:number,signal?:AbortSignal}} input
  * @returns {Promise<{exitCode:number|null,stdout:string,stderr:string,timedOut:boolean,truncated:boolean,mode:string}>}
  */
@@ -373,23 +380,29 @@ const runPreparedCommand = async (input) => {
   if (!command || command.length > 4000 || /[\0\r]/.test(command)) {
     throw new Error('Command must be 1-4000 characters without NUL or carriage returns');
   }
-  if (!Array.isArray(input.masks?.dirs) || !Array.isArray(input.masks?.files)) {
+  if (!input.direct && (!Array.isArray(input.masks?.dirs) || !Array.isArray(input.masks?.files))) {
     throw new Error('The coding shell is not prepared — run ensureWitnessCodingSandbox first (the secret masks are part of the shell)');
   }
   const mode = commandMode(input.mode);
   const timeoutMs = clampTimeout(input.timeoutMs);
-  const args = bwrapArgs({ ...input, command, mode });
-  // Public DNS and trust only; the rest of /etc remains empty. Outward only: never this machine's own services.
-  const net = input.network === true ? await outwardNetwork() : null;
-  if (net) args.push(...net.binds);
-  args.push('/bin/bash', '-lc', `${CONFINED_ULIMITS}; exec /bin/bash -lc "$NEUMA_COMMAND"`);
-  const launch = net ? net.wrap(args) : { command: 'bwrap', args };
+  let launch = { command: '/bin/bash', args: ['-lc', 'exec /bin/bash -lc "$NEUMA_COMMAND"'] };
+  if (!input.direct) {
+    const args = bwrapArgs({ ...input, command, mode });
+    // Public DNS and trust only; the rest of /etc remains empty. Outward only: never this machine's own services.
+    const net = input.network === true ? await outwardNetwork() : null;
+    if (net) args.push(...net.binds);
+    args.push('/bin/bash', '-lc', `${CONFINED_ULIMITS}; exec /bin/bash -lc "$NEUMA_COMMAND"`);
+    launch = net ? net.wrap(args) : { command: 'bwrap', args };
+  }
 
   return new Promise((resolve, reject) => {
     input.signal?.throwIfAborted();
     input.beforeSpawn?.();
     const executionTimer = startTimer();
-    const child = spawn(launch.command, launch.args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(launch.command, launch.args, {
+      detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+      ...(input.direct ? { cwd: input.sourceRoot, env: { ...process.env, NEUMA_COMMAND: command } } : {}),
+    });
     const output = createCommandOutput();
     let timedOut = false;
 
@@ -415,7 +428,7 @@ const runPreparedCommand = async (input) => {
       const timing = finishTimer(executionTimer);
       clearTimeout(timer);
       input.signal?.removeEventListener('abort', onAbort);
-      await unlockWorkdirInternals(path.dirname(input.workspace));
+      if (!input.direct) await unlockWorkdirInternals(path.dirname(input.workspace));
       if (input.signal?.aborted) reject(input.signal.reason);
       else resolve({ exitCode, ...output.snapshot(), timedOut, mode, timing });
     });
@@ -428,6 +441,10 @@ const runPreparedCommand = async (input) => {
  * the lock still serializes the shell's commands. impure. */
 export const runWitnessCommand = async (input) => {
   input.signal?.throwIfAborted();
+  if (input.direct === true) {
+    const result = await runPreparedCommand(input);
+    return { ...result, direct: true, live: true };
+  }
   await assertCodingShellAvailable();
   input.beforeSpawn?.();
   const release = await lockOverlay(input.workspace, { directory: input.anchor });

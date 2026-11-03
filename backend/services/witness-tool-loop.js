@@ -23,6 +23,7 @@ import { trimDegenerationTail, parseToolCalls, stripToolBlocks, stripHarmonyLeak
 import { withProtocolReminders } from './protocol-classifier.js';
 import { isFinalToolRound, withinToolRounds } from './tool-rounds.js';
 import { pastFoldBoundary, foldWorkingContext, workingContextNote, withWorkingContextNote } from './working-context.js';
+import { contextRecoveryOptions } from './context-overflow.js';
 import { sightForResults, withSight } from './image-forge/image-sight.js';
 import { markTurnText } from './tool-action-record.js';
 import { formatWitnessToolResults } from './witness-tools.js';
@@ -74,6 +75,7 @@ export const runWitnessToolRounds = async (ctx) => {
   const nativeToolsForRound = () => (routeCapabilities.tools
     ? toOpenAITools(disclosedNativeTools(connection))
     : []);
+  const contextRecovery = contextRecoveryOptions(wireHead, (recovery) => { ctx.messages = recovery.messages; ctx.foldedRounds += recovery.foldedRounds; });
   const closeToolLoop = async (reason) => {
     const closeMessage = {
       role: 'user',
@@ -100,6 +102,7 @@ export const runWitnessToolRounds = async (ctx) => {
           temperature: preset.temperature,
           topP: preset.topP,
           maxTokens: turnMaxTokens,
+          ...contextRecovery,
           signal: interrupt.signal,
           route,
           ...(effort.directive ? { effort: effort.directive } : {}),
@@ -170,6 +173,7 @@ export const runWitnessToolRounds = async (ctx) => {
           temperature: preset.temperature,
           topP: preset.topP,
           maxTokens: turnMaxTokens,
+          ...contextRecovery,
           signal: interrupt.signal,
           route,
           ...(effort.directive ? { effort: effort.directive } : {}),

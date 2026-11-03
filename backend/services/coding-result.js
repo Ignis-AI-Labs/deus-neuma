@@ -9,7 +9,9 @@
  * @returns {string}
  */
 export const renderCommandResult = (result) => [
-  ...(result.mode === 'write' ? [
+  ...(result.direct === true ? [
+    '[direct] SANDBOX OFF — this command ran directly in the focused folder with the operator\'s normal OS user and environment.',
+  ] : result.mode === 'write' ? [
     '[overlay] Writes and deletes in the focused folder affect only this shell\'s overlay; the live folder is unchanged. Exit 0 alone does not prove a path existed or changed. Use filesystem tools for live-folder changes.',
   ] : []),
   `exit_code: ${result.exitCode === null ? 'none' : result.exitCode}`,

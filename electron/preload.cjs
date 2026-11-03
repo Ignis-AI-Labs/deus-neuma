@@ -124,6 +124,9 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   workbench: {
     open: (url) => ipcRenderer.invoke('workbench:open', url),
   },
+  browser: {
+    open: (url) => ipcRenderer.invoke('browser:open', url),
+  },
   // Native folder picker for the pre-flight workspace-home step. Resolves to the
   // chosen absolute path, or null if the witness cancels.
   chooseDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),

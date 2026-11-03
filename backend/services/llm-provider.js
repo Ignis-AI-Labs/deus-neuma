@@ -39,6 +39,8 @@ import { stripThinkTags, createThinkFilter } from './llm-think-filter.js';
 import { probeThinkBehavior } from './llm-think-probe.js';
 import { servedInstance, keptShape, keepShape } from './think-shape-store.js';
 import { capsCacheFresh, runtimeModelCaches } from './llm-runtime-cache.js';
+import { visionSettings } from './vision-settings.js';
+import { isContextOverflow, recoverContextOverflow } from './context-overflow.js';
 export { CAPS_CACHE_TTL_MS, capsCacheFresh, _resetCapsCache, _expireCapsCache, expireRuntimeModelCaches } from './llm-runtime-cache.js';
 
 // The extracted seams' public surface, re-exported so every importer of
@@ -362,6 +364,16 @@ export const createStreamRequest = async (messages, options = {}) => {
     // The provider's response body says WHY (context overflow, bad param,
     // unknown model…) — losing it turns a diagnosable failure into a mystery
     detail ||= await response.text().then((t) => t.slice(0, 500)).catch(() => '');
+    if (!options.contextOverflowRecovered && isContextOverflow(response.status, detail)) {
+      const recovery = recoverContextOverflow(messages, options.contextHead);
+      if (recovery) {
+        log.info('provider context overflow — retrying with in-turn machinery folded', {
+          provider: config.provider, foldedRounds: recovery.foldedRounds, freedChars: recovery.freedChars,
+        });
+        notifyObserver('onContextRecovery', options.onContextRecovery, recovery);
+        return createStreamRequest(recovery.messages, { ...options, contextOverflowRecovered: true });
+      }
+    }
     throw new Error(
       `LLM provider error (${config.provider}): ${response.status} ${response.statusText}` +
       (detail ? ` — ${detail}` : '')
@@ -744,6 +756,8 @@ export const getRouteCapabilities = async (route = null) => {
             : {}),
       }
     : inferred;
+  if (!(await visionSettings.isEnabled())) result.vision = false;
+  else if (typeof result.vision !== 'boolean') result.vision = true;
   // An unregistered model must be LOUD at the point of consumption (NITE-004,
   // #399): every rung missed — hand table, catalog, name inference, runtime
   // probe — so this turn runs on assumption-driven caps. The cache makes this

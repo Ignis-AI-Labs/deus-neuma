@@ -28,7 +28,7 @@
 // still fail closed (checkToolAccess defaults to approval_required).
 export const GLOBAL_DEFAULTS = Object.freeze({
   // The 16 organ names are INTERNAL now (Stage 3 batch 3, #357): beings are
-  // advertised the five fs/* primitives and fs-primitives.js routes them onto
+  // advertised the seven fs/* primitives and fs-primitives.js routes them onto
   // the organ inside the sandbox, so no being-facing call ever carries these
   // names and no row here names them. Two platform-owned names stay:
   // request_file_access — asking for sensitive access is the being's own act,
@@ -41,23 +41,22 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     denied: [],
     requireApproval: ['delete_file'],
   },
-  // THE FS PRIMITIVES — the whole being-facing filesystem in five tools. The
-  // sovereign own-lane law above applies verbatim: write/edit are
+  // THE FS PRIMITIVES — the whole being-facing filesystem in seven tools. The
+  // sovereign own-lane law above applies verbatim: write/edit/copy/move are
   // self-authorship inside the being's lane (the sandbox enforces fail-closed
   // confinement exactly as it did for the old names), read/list/search are
   // observation. The delete sub-op never resolves here — it routes to
   // filesystem/delete_file above, so a blanket edit grant can never cover an
   // irreversible act.
   fs: {
-    allowed: ['read', 'write', 'list', 'search', 'edit'],
+    allowed: ['read', 'write', 'list', 'search', 'edit', 'copy', 'move'],
     denied: [],
     requireApproval: [],
   },
-  // A neuma's isolated coding workspace: routine execution is autonomous.
-  // Witness defaults retain execution approval. Both seats still run inside
-  // bubblewrap with no host credentials and (ungranted) no network; shell
-  // writes land in the overlay layer, never the live folder, and the shell's
-  // masked `.git` makes in-shell git see no repository at all.
+  // Execution approval is independent from OS isolation. A neuma's routine
+  // execution is autonomous; witnesses retain execution approval. SANDBOX OFF
+  // runs directly with the operator's normal environment; SANDBOX ON keeps the
+  // original bubblewrap, overlay, network and masked-.git confinement.
   //
   // THE GIT-STATE PROTECTION LAW (Design note, 2026-09-05: a git state is the
   // operator's until the operator says otherwise. Every explicit Git tool is
