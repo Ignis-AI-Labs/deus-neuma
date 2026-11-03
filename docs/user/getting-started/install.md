@@ -6,7 +6,7 @@
 
 From live `docs/operations/self-hosting.md` and package requirements:
 
-- Node.js 20+ (LTS recommended)
+- Node.js 24.15 or newer (the `engines` floor in `package.json`)
 - npm
 - 4 GB RAM minimum (8 GB+ if running local LLM)
 - Disk space for the repo + model size if local
