@@ -19,6 +19,9 @@ import { Markdown } from './Markdown.jsx';
 import { createPacer, paceStep, isRevealing } from './stream-reveal.js';
 import { LiveSpeech } from './LiveSpeech.jsx';
 import { acquireTypingSound, releaseTypingSound } from './typing-sound.js';
+import { useWindowShown } from '../windowing/window-shown.js';
+
+const REVEAL_FRAME_MS = 1000 / 30;
 
 const StreamingSpeechView = ({ text, live, onReveal }) => {
   const [visible, setVisible] = useState(() => (live ? 0 : text.length));
@@ -38,25 +41,37 @@ const StreamingSpeechView = ({ text, live, onReveal }) => {
   visibleRef.current = visible;
 
   const revealing = isRevealing(visible, text.length);
-
-  // rAF pacing loop — alive only while there is backlog to reveal. New
-  // chunks grow the target; the loop persists across renders because the
-  // dependency only flips when revealing starts or stops.
+  const windowShown = useWindowShown();
+  const [pageVisible, setPageVisible] = useState(() => !document.hidden);
   useEffect(() => {
-    if (!revealing) return undefined;
-    let raf;
+    const onVisibility = () => setPageVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+  const revealActive = revealing && windowShown && pageVisible;
+
+  // The pacer uses elapsed time, so 30 visual updates a second reveal the same
+  // characters at the same rate with half the React/Markdown render work.
+  useEffect(() => {
+    if (!revealActive) return undefined;
+    let raf = null;
+    let timer = null;
+    const schedule = () => { timer = setTimeout(() => { raf = requestAnimationFrame(tick); }, REVEAL_FRAME_MS); };
     const tick = (now) => {
       if (pacerRef.current === null) pacerRef.current = createPacer(now);
       const { state, next } = paceStep(
         pacerRef.current, visibleRef.current, textRef.current.length, now, liveRef.current
       );
       pacerRef.current = state;
-      setVisible(next);
-      raf = requestAnimationFrame(tick);
+      if (next !== visibleRef.current) setVisible(next);
+      schedule();
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [revealing]);
+    return () => {
+      clearTimeout(timer);
+      if (raf !== null) cancelAnimationFrame(raf);
+    };
+  }, [revealActive]);
 
   // Follow only after React has committed the newly visible text. Calling the
   // scroll callback from inside rAF used to measure the previous frame's DOM,
@@ -65,13 +80,12 @@ const StreamingSpeechView = ({ text, live, onReveal }) => {
     if (visible > 0 && onRevealRef.current) onRevealRef.current();
   }, [visible]);
 
-  // The typing bed plays exactly while characters are appearing — and no
-  // longer (the one-shot it replaces died out mid-response).
+  // The typing bed follows visible reveal work, including window/page holds.
   useEffect(() => {
-    if (!revealing) return undefined;
+    if (!revealActive) return undefined;
     acquireTypingSound();
     return releaseTypingSound;
-  }, [revealing]);
+  }, [revealActive]);
 
   const shown = revealing ? text.slice(0, visible) : text;
   return live || revealing

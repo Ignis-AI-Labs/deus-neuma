@@ -116,11 +116,20 @@
     {
       "id": "legal-research",
       "name": "Legal research",
-      "to": "public US legal databases",
+      "to": "public legal databases, the pages it cites, and regulators' feeds",
       "when": "once you seat a legal officer",
-      "sends": "the question a neuma is researching",
-      "detail": "A neuma you seat as your house's legal officer may query public US legal databases (Congress.gov, GovInfo, Regulations.gov, CourtListener, Open States) with the question it is researching, without asking you each time. Until you seat one, nothing is asked.",
+      "sends": "the question a neuma is researching, the addresses of the pages it cites, and its search terms",
+      "detail": "A neuma you seat as your house's legal officer may query public US legal databases (Congress.gov, GovInfo, Regulations.gov, CourtListener, Open States) with the question it is researching, without asking you each time. Before its readings and opinions are recorded, the app also opens again every page it cites, to check that the quoted words and headings are really there, and searches official sources (the Federal Register, legislation.gov.uk, and the SEC, CFTC, FTC, FCA, ESMA and EDPB news feeds) for anything from the last 120 days on its search terms. These reads go only to those public sites and carry no account or identifier; each site sees your IP address. Turning web access off in Settings stops them. Until you seat a legal officer, nothing is asked.",
       "control": "setup"
+    },
+    {
+      "id": "legal-second-reader",
+      "name": "Second legal reader",
+      "to": "the connected provider you choose",
+      "when": "only if you choose a connected provider as your legal officer's second reader",
+      "sends": "each claim your legal officer cites, with the passage of law it rests on",
+      "detail": "Before your legal officer's opinions and readings are recorded, a second reader checks each cited passage against the claim it is cited for. By default that reader is your house's own model on this computer, and nothing leaves your machine. If you choose one of your connected providers instead, in the LEGAL window, each claim and the passage of law it rests on go to that provider, under its terms. A provider on this computer's own key can only be chosen by its owner. Choose the house's own model again to stop.",
+      "control": "choice"
     },
     {
       "id": "channels",

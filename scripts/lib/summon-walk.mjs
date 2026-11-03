@@ -35,8 +35,11 @@ const modelOf = (composition) => {
  *   stage asked (the instant the previous stage was answered), its first
  *   streamed frame, its completion, the words spoken and the acts announced.
  *   The walker answers at once, so there is no witness pause to record.
+ *   `wordsFor(stage, reply)` — the operator's own words for the NEXT stage
+ *   after `stage` replied (birth:next_stage witnessWords), or null for the
+ *   house's default words: how a walk answers the questions a being asks.
  */
-export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check', stageRetries = 0 }) => new Promise((done) => {
+export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check', stageRetries = 0, wordsFor = null }) => new Promise((done) => {
   let retriesLeft = stageRetries; // held stages this walk may retry, in all
   let retried = 0;
   const stages = [];
@@ -90,7 +93,8 @@ export const walkCeremony = ({ wsUrl, walkMs, witnessName = 'Summon Check', stag
       streamed = 0;
       thought = 0;
       acts = 0;
-      ws.send(frame('birth:next_stage', { response: msg.response }));
+      const words = wordsFor ? wordsFor(msg.stage, String(msg.response || '')) : null;
+      ws.send(frame('birth:next_stage', { response: msg.response, ...(words ? { witnessWords: words } : {}) }));
       return;
     }
     if (msg.type === 'birth:error' || msg.type === 'birth:blocked') {

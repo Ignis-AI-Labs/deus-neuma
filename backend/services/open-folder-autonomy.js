@@ -3,11 +3,12 @@
 // Design note, 2026-10-28: […] Ruling: a
 // chat on AUTO works FOR REAL in the folder open in the operator's Explorer — its
 // shell runs on the live folder (witness-coding-sandbox.js `live`) and a delete
-// inside it lands with no card. ASK keeps the overlay shell and the cards;
-// switching to ASK is the off switch. Outside the open folder every rule
-// stands, and money, outward speech and security acts stay hard-gated in every
-// mode (protocol-guard.js). `.git` stays masked in the shell (ruling: […]): history is the safety net — whatever a being breaks in
-// the files can be restored from it.
+// inside it lands with no card. With SANDBOX ON, ASK keeps the overlay shell
+// and the cards. SANDBOX OFF is a separate switch: direct execution regardless
+// of chat mode. Outside the open folder every approval rule stands, and money,
+// outward speech and security acts stay hard-gated in every mode
+// (protocol-guard.js). With SANDBOX ON, `.git` stays masked in the shell
+// (ruling: […]): history is the safety net.
 
 import fs from 'node:fs';
 import path from 'node:path';

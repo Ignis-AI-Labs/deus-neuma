@@ -109,3 +109,18 @@ export const removeConnection = async (providerId) => serialize(async () => {
   await saveConnections(map);
   return true;
 });
+
+/**
+ * The route object a connection implies for one model call, carrying the
+ * credential paired with its endpoint (pairRequestCredential). Pure.
+ * @param {{providerId: string, model: string}} connection
+ * @param {{endpoint: string, apiKey?: string, accountId?: string}} credential
+ */
+export const routeForConnection = (connection, { endpoint, apiKey, accountId }) => ({
+  provider: connection.providerId,
+  model: connection.model,
+  endpoint,
+  apiKey,
+  accountId,
+  chatPath: getProvider(connection.providerId).chatPath,
+});

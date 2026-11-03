@@ -19,7 +19,7 @@
 
 import { TIKTOK_POSTING_SCOPES, TIKTOK_PROFILE_SCOPES, missingTikTokScopes } from '../tiktok-oauth.js';
 import { linkedinExpiryNote } from '../linkedin-poster.js';
-import { NATIVE_LABEL_CHANNELS, DISCLOSURE_LINE, carriesDisclosureLine } from '../disclosure-line.js';
+import { NATIVE_LABEL_CHANNELS, ALT_MARK, carriesDisclosure } from '../disclosure-line.js';
 import {
   keysDoor, houseKeysDoor, handleDoor, brandDoor, standingDoor, queueDoor, fixOf, holderHandTo, disclosurePrompt, cmoHandTo, sitePrompt,
 } from './check-fixes.js';
@@ -214,20 +214,20 @@ const fileCheck = ({ file }) => {
     { detail: `${file.path} is ${mode(file.mode)}, its folder ${mode(file.dirMode)}` });
 };
 
-// 11 — the AI disclosure rides every post from this account.
+// 11 — the AI disclosure rides every post from this account, in its metadata.
 const disclosureCheck = (facts) => {
   const { account, live } = facts;
   if (NATIVE_LABEL_CHANNELS.includes(account.channelId)) {
     return pass(`${account.channelName} posts carry its own AI-made label, always raised.`);
   }
-  const bare = live.filter((e) => !carriesDisclosureLine(e));
+  const bare = live.filter((e) => !carriesDisclosure(e));
   if (bare.length) {
-    return fail(`${bare.length} waiting post(s) from before the disclosure line do not carry it (${DISCLOSURE_LINE})`,
-      fixOf('Add the AI line', 'Edit its words (the edit adds the line), or withdraw it.', queueDoor(account, bare[0].id),
+    return fail(`${bare.length} waiting post(s) have images whose alt text lacks the AI marker (${ALT_MARK})`,
+      fixOf('Mark the images', 'Edit the post\'s images (the queue marks them when it reads them), or withdraw it.', queueDoor(account, bare[0].id),
         holderHandTo(facts, disclosurePrompt(account, bare))),
       { detail: bare.map((e) => e.id).join(', ') });
   }
-  return pass(`Every waiting post ends with the disclosure line (${DISCLOSURE_LINE})`);
+  return pass(`AI-made posts say so in their metadata: each image's alt text opens with "${ALT_MARK}", and the words carry no line.`);
 };
 
 // 12 — the company's site is on record (what a bio link points to).

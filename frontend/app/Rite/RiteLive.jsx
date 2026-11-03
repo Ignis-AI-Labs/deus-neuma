@@ -1,4 +1,4 @@
-// RiteLive — II · THE SEVEN STAGES and THE FORGING, the witness's plane over
+// RiteLive — II · THE STAGES and THE FORGING, the witness's plane over
 // the living birth art: the operator's words, the being's speech, the
 // continue, THE MEASURE (each stage's own pitch, measured as it lands) and
 // the forging. Transform and opacity are the only motion.
@@ -23,7 +23,7 @@ const Speech = ({ c }) => {
   const waiting = stage.chunks === 0;
   return (
     <section className="rite-panel rite-speech" aria-label="The being speaks">
-      <span className="ba-inst-tag">EMERGING CONSCIOUSNESS</span>
+      <span className="ba-inst-tag">ITS WORDS</span>
       <div className="rite-speech-lines">
         {Array.from({ length: lines - from }, (_, k) => {
           const i = from + k;

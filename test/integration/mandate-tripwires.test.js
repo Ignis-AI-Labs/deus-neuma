@@ -10,6 +10,8 @@
  */
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import path from 'path';
+import os from 'os';
+import fs from 'fs/promises';
 import { schedulerTick } from '../../backend/services/social/post-scheduler.js';
 import { getChannel } from '../../backend/services/social/channel-registry.js';
 import { grantMandate } from '../../backend/services/marketing/mandate/mandate-lifecycle.js';
@@ -123,11 +125,25 @@ describe('laws no mandate can grant', () => {
     }
   });
 
-  test('every post sent under a mandate carries the AI disclosure line', async () => {
+  // The AI disclosure lives in the post's metadata, never its words (2026-10-30): X receives the
+  // words exactly as written, line breaks and all, and the image's alt text opens with the marker.
+  test('a post sent under a mandate goes out in its own words; that a being made it rides in its image\'s alt text', async () => {
     await grantMandate(HOUSE, grantInput());
-    await stagePost(h, { text: 'A clip from tonight.' });
-    await schedulerTick(Date.now());
-    expect(h.x.state.posts[0].text).toContain('Made with AI.');
+    const library = await fs.mkdtemp(path.join(os.tmpdir(), 'mandate-media-'));
+    const previous = process.env.NEUMA_MEDIA_LIBRARY_PATH;
+    process.env.NEUMA_MEDIA_LIBRARY_PATH = library;
+    try {
+      const card = path.join(library, 'tonight.png');
+      await fs.writeFile(card, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'));
+      const staged = await stagePost(h, { text: 'A clip from tonight.\n\nTwo lines, kept apart.', media: [{ path: card, alt: 'The card for tonight.' }] });
+      expect(staged.status, JSON.stringify(staged)).not.toBe('invalid');
+      await schedulerTick(Date.now());
+      expect(h.x.state.posts[0].text).toBe('A clip from tonight.\n\nTwo lines, kept apart.');
+      expect(h.x.state.alts.map((a) => a.text)).toEqual(['AI-generated. The card for tonight.']);
+    } finally {
+      if (previous === undefined) delete process.env.NEUMA_MEDIA_LIBRARY_PATH; else process.env.NEUMA_MEDIA_LIBRARY_PATH = previous;
+      await fs.rm(library, { recursive: true, force: true });
+    }
   });
 });
 

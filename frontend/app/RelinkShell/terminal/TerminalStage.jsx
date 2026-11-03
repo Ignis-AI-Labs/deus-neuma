@@ -6,7 +6,7 @@
 // disposes the view on unmount. Only explicit window close kills the shell;
 // auth navigation and renderer reload detach within the backend's bounded TTL.
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -17,6 +17,9 @@ import {
   readTerminalSession, rememberTerminalSession, forgetTerminalSession,
   registerTerminalWindow, closeTerminalSession,
 } from '../../../services/terminal-session.js';
+import { useTerminalDictation } from './use-terminal-dictation.js';
+import { linksIn, linkAt, terminalCellAt, TERMINAL_LINK_ITEMS } from './terminal-links.js';
+import { CtxMenu } from '../CtxMenu.jsx';
 
 // xterm needs literal values (CSS vars won't resolve inside its canvas), so
 // the theme is READ from the live tokens at every mount — the terminal
@@ -59,6 +62,36 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
   // The launch id pins the same way — it is the process this window runs.
   const initialCwd = useRef(cwd).current;
   const initialLaunch = useRef(launch).current;
+  const socketRef = useRef(null);
+  const sendToShell = useCallback((text) => socketRef.current?.send(text), []);
+  const dictation = useTerminalDictation(sendToShell);
+  const [linkMenu, setLinkMenu] = useState(null);
+  const [linkError, setLinkError] = useState(null);
+  const openLink = useCallback(async (kind, url) => {
+    setLinkMenu(null);
+    setLinkError(null);
+    try {
+      if (kind === 'integrated' && window.neuma?.browser?.open) {
+        const result = await window.neuma.browser.open(url);
+        if (!result?.opened) throw new Error(result?.reason || 'the integrated browser refused the URL');
+        return;
+      }
+      if (kind === 'external' && window.neuma?.openExternal) {
+        const result = await window.neuma.openExternal(url);
+        if (!result?.ok) throw new Error('the external browser refused the URL');
+        return;
+      }
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (err) {
+      setLinkError(err.message || 'the browser could not open the URL');
+    }
+  }, []);
 
   useEffect(() => {
     const term = new Terminal({
@@ -72,6 +105,40 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
     term.loadAddon(fit);
     term.open(hostRef.current);
     try { fit.fit(); } catch { /* zero-size at mount — the observer will fit */ }
+    const linkProvider = term.registerLinkProvider({
+      provideLinks: (y, answer) => {
+        const text = term.buffer.active.getLine(y - 1)?.translateToString(true) || '';
+        answer(linksIn(text).map((link) => ({
+          range: { start: { x: link.start + 1, y }, end: { x: link.end, y } },
+          text: link.url,
+          activate: (_event, url) => openLink('integrated', url),
+        })));
+      },
+    });
+    const linkAtPointer = (event) => {
+      const rect = term.element?.querySelector('.xterm-screen')?.getBoundingClientRect();
+      const cell = terminalCellAt({ clientX: event.clientX, clientY: event.clientY, rect, cols: term.cols, rows: term.rows });
+      if (!cell) return null;
+      const line = term.buffer.active.getLine(term.buffer.active.viewportY + cell.y - 1);
+      return linkAt(line?.translateToString(true) || '', cell.x);
+    };
+    const onLinkMenu = (event) => {
+      const link = linkAtPointer(event);
+      if (!link) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setLinkMenu({ url: link.url, at: { x: event.clientX, y: event.clientY } });
+    };
+    const onLinkClick = (event) => {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey) return;
+      const link = linkAtPointer(event);
+      if (!link) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openLink('integrated', link.url);
+    };
+    hostRef.current.addEventListener('contextmenu', onLinkMenu);
+    hostRef.current.addEventListener('click', onLinkClick, true);
 
     // A socket that dies without an error/exit frame (auth refusal, backend
     // restart, dropped upgrade) must not read as a live terminal — a black
@@ -129,6 +196,12 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
           if (!live) return;
           // Only transport failures retry; auth/process/ownership refusals
           // must remain visible and never turn into a replacement shell.
+          // 4003: the shell is the machine's (terminal-routes.js) — a guest is
+          // told why, once, instead of watching five reattach attempts fail.
+          if (code === 4003) {
+            term.write("\r\n\x1b[33m[the terminal runs as this computer's own user, so only its owner or a co-owner can open one]\x1b[0m\r\n");
+            return;
+          }
           if (!ended && ![1000, 1005, 1008, 1013, 4001].includes(code) && retries < MAX_RECONNECTS) {
             retries += 1;
             term.write(`\r\n\x1b[2m[connection lost — reattaching (${retries}/${MAX_RECONNECTS})…]\x1b[0m\r\n`);
@@ -138,6 +211,7 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
           term.write('\r\n\x1b[2m[connection closed — close and reopen this window]\x1b[0m\r\n');
         },
       });
+      socketRef.current = socket;
     };
     readTerminalSession(windowId).then((identity) => {
       if (closeRequested) {
@@ -175,6 +249,38 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
     });
 
     const onInput = term.onData((d) => socket?.send(d));
+    let holdTimer = null;
+    let spaceHolding = false;
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.code !== 'Space') return true;
+      if (event.type === 'keydown') {
+        if (event.repeat) {
+          if (holdTimer || spaceHolding) {
+            event.preventDefault();
+            return false;
+          }
+          return true;
+        }
+        holdTimer = setTimeout(() => {
+          holdTimer = null;
+          spaceHolding = true;
+          socketRef.current?.send('\x7f');
+          dictation.begin();
+        }, 300);
+        return true;
+      }
+      if (event.type === 'keyup') {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+        if (spaceHolding) {
+          spaceHolding = false;
+          dictation.end();
+          return false;
+        }
+      }
+      return true;
+    });
+    window.addEventListener('blur', dictation.end);
     const syncSize = () => {
       try { fit.fit(); } catch { return; }
       socket?.resize(term.cols, term.rows);
@@ -188,14 +294,64 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
       live = false;
       unregister();
       clearTimeout(initial);
+      clearTimeout(holdTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      window.removeEventListener('blur', dictation.end);
       observer.disconnect();
       unbindTextSize();
       onInput.dispose();
+      linkProvider.dispose();
+      hostRef.current?.removeEventListener('contextmenu', onLinkMenu);
+      hostRef.current?.removeEventListener('click', onLinkClick, true);
+      socketRef.current = null;
       socket?.detach();
       term.dispose();
     };
   }, []);
 
-  return <div className="terminal-stage" ref={hostRef} />;
+  const micLabel = dictation.state === 'recording' ? 'LISTENING…'
+    : dictation.state === 'transcribing' ? 'TRANSCRIBING…'
+      : dictation.state === 'error' ? 'DICTATION ERROR' : 'HOLD TO TALK';
+  return (
+    <div className="terminal-stage-shell">
+      <div className="terminal-tools label-data">
+        <button
+          type="button"
+          className={`terminal-dictate${dictation.state === 'recording' ? ' is-recording' : ''}`}
+          aria-pressed={dictation.state === 'recording'}
+          title="Hold to dictate into this terminal; release to edit, then press Enter to run"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            dictation.begin();
+          }}
+          onPointerUp={(event) => { event.preventDefault(); dictation.end(); }}
+          onPointerCancel={dictation.end}
+          onKeyDown={(event) => {
+            if (!['Space', 'Enter'].includes(event.code) || event.repeat) return;
+            event.preventDefault();
+            dictation.begin();
+          }}
+          onKeyUp={(event) => {
+            if (!['Space', 'Enter'].includes(event.code)) return;
+            event.preventDefault();
+            dictation.end();
+          }}
+        >{micLabel}</button>
+        <span className="terminal-dictation-preview">
+          {dictation.setup ? 'SPEECH SETUP REQUIRED' : dictation.preview}
+        </span>
+      </div>
+      {linkError ? <p className="terminal-link-error label-data" role="alert">{linkError}</p> : null}
+      <div className="terminal-stage" ref={hostRef} />
+      {linkMenu ? (
+        <CtxMenu
+          at={linkMenu.at}
+          items={TERMINAL_LINK_ITEMS}
+          onAct={(id) => openLink(id, linkMenu.url)}
+          onClose={() => setLinkMenu(null)}
+        />
+      ) : null}
+    </div>
+  );
 };

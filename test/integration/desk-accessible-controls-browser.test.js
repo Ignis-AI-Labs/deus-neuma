@@ -68,6 +68,15 @@ test('skill selection, allocation controls and composer retain keyboard operatio
     await expect(slider).toHaveValue('500');
     await slider.focus(); await page.keyboard.press('ArrowRight'); await expect(slider).toHaveValue('501');
     const composer = page.locator('#composer');
+    const sandboxOff = composer.getByRole('button', { name: 'SANDBOX OFF', exact: true });
+    await expect(sandboxOff).toHaveAttribute('aria-pressed', 'false');
+    await sandboxOff.focus(); await page.keyboard.press('Enter');
+    const sandboxOn = composer.getByRole('button', { name: 'SANDBOX ON', exact: true });
+    await expect(sandboxOn).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => localStorage.getItem('neuma.sandbox.enabled'))).toBe('1');
+    await sandboxOn.focus(); await page.keyboard.press('Enter');
+    await expect(composer.getByRole('button', { name: 'SANDBOX OFF', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    expect(await page.evaluate(() => localStorage.getItem('neuma.sandbox.enabled'))).toBe('0');
     const send = composer.getByRole('button', { name: 'Send thought', exact: true });
     await expect(send.locator('svg')).toHaveAttribute('aria-hidden', 'true');
     await composer.locator('textarea').fill('Keyboard composer proof');

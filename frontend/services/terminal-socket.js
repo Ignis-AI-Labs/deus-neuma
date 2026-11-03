@@ -32,7 +32,16 @@ export const openTerminalSocket = ({ token = sessionStorage.getItem('authToken')
   const termParam = termId !== null ? `&term=${encodeURIComponent(termId)}` : '';
   const ws = new WebSocket(`${proto}//${window.location.host}/terminal-ws?token=${encodeURIComponent(token)}${cwdParam}${launchParam}${termParam}`);
 
-  ws.onopen = () => onOpen?.();
+  const pendingInput = [];
+  let pendingResize = null;
+  ws.onopen = () => {
+    for (const data of pendingInput.splice(0)) ws.send(JSON.stringify({ type: 'terminal:data', data }));
+    if (pendingResize) {
+      ws.send(JSON.stringify({ type: 'terminal:resize', ...pendingResize }));
+      pendingResize = null;
+    }
+    onOpen?.();
+  };
   ws.onmessage = (e) => {
     if (!sameIdentity()) return;
     let msg;
@@ -63,8 +72,16 @@ export const openTerminalSocket = ({ token = sessionStorage.getItem('authToken')
   };
 
   return {
-    send: (data) => { if (sameIdentity() && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'terminal:data', data })); },
-    resize: (cols, rows) => { if (sameIdentity() && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'terminal:resize', cols, rows })); },
+    send: (data) => {
+      if (!sameIdentity()) return;
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'terminal:data', data }));
+      else if (ws.readyState === WebSocket.CONNECTING) pendingInput.push(data);
+    },
+    resize: (cols, rows) => {
+      if (!sameIdentity()) return;
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'terminal:resize', cols, rows }));
+      else if (ws.readyState === WebSocket.CONNECTING) pendingResize = { cols, rows };
+    },
     detach: () => depart(4000, 'terminal view detached'),
     close: () => depart(1000, 'terminal closed by operator'),
   };

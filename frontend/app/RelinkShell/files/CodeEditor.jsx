@@ -6,17 +6,12 @@
 // reports the live text (for dirty tracking / Save), and Mod-S saves without
 // the browser's save dialog.
 
-import { useEffect, useRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { useEffect, useRef, useState } from 'react';
+import { EditorState, StateEffect } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
-import { html } from '@codemirror/lang-html';
-import { css } from '@codemirror/lang-css';
-import { markdown } from '@codemirror/lang-markdown';
-import { python } from '@codemirror/lang-python';
+import { loadLanguageFor } from './editor-language.js';
 
 // THE LOOK reaches the editor chrome. CodeMirror injects these as real CSS
 // rules, so var() resolves live against the dressed documentElement —
@@ -39,19 +34,7 @@ const deskChrome = EditorView.theme({
     { backgroundColor: 'var(--signal-faint)' },
 }, { dark: true });
 
-const langFor = (path) => {
-  const ext = (path.split('.').pop() || '').toLowerCase();
-  switch (ext) {
-    case 'js': case 'jsx': case 'mjs': case 'cjs': return javascript({ jsx: true });
-    case 'ts': case 'tsx': return javascript({ jsx: true, typescript: true });
-    case 'json': return json();
-    case 'html': case 'htm': return html();
-    case 'css': return css();
-    case 'md': case 'markdown': return markdown();
-    case 'py': return python();
-    default: return [];
-  }
-};
+const langFor = loadLanguageFor;
 
 // `readOnly` uses EditorState.readOnly rather than EditorView.editable: the
 // document is barred from changing, but the cursor and selection stay live, so
@@ -62,17 +45,20 @@ const CodeEditor = ({ path, doc, loadId, onChange, onSave, readOnly = false }) =
   const hostRef = useRef(null);
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
+  const [languageError, setLanguageError] = useState(false);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
 
   useEffect(() => {
     if (!hostRef.current) return undefined;
+    let disposed = false;
+    setLanguageError(false);
     const saveKey = keymap.of([{
       key: 'Mod-s',
       preventDefault: true,
-      run: (view) => {
+      run: (current) => {
         if (readOnly) return true; // swallowed, never forwarded
-        onSaveRef.current?.(view.state.doc.toString());
+        onSaveRef.current?.(current.state.doc.toString());
         return true;
       },
     }]);
@@ -84,19 +70,27 @@ const CodeEditor = ({ path, doc, loadId, onChange, onSave, readOnly = false }) =
       state: EditorState.create({
         doc,
         extensions: [
-          basicSetup, oneDark, deskChrome, langFor(path), saveKey, listener,
+          basicSetup, oneDark, deskChrome, saveKey, listener,
           EditorView.lineWrapping,
           ...(readOnly ? [EditorState.readOnly.of(true)] : []),
         ],
       }),
     });
-    return () => view.destroy();
+    langFor(path).then((language) => {
+      if (!disposed) view.dispatch({ effects: StateEffect.appendConfig.of(language) });
+    }).catch(() => { if (!disposed) setLanguageError(true); });
+    return () => { disposed = true; view.destroy(); };
     // Recreate only on a new open (loadId), never on every keystroke — the view
     // owns the document after init.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadId, readOnly]);
+  }, [loadId, readOnly, path]);
 
-  return <div className="files-editor-host" ref={hostRef} />;
+  return (
+    <>
+      {languageError ? <div className="files-note label-data">«WARNING» SYNTAX HIGHLIGHTING FAILED TO LOAD — THE DOCUMENT REMAINS EDITABLE.</div> : null}
+      <div className="files-editor-host" ref={hostRef} />
+    </>
+  );
 };
 
 export default CodeEditor;

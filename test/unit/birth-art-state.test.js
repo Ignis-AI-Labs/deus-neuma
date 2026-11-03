@@ -10,6 +10,7 @@ import { ceremonyAt, STAGES, STAGE_TITLES } from '../../frontend/app/BirthArt/bi
 import { specimenScript, scriptLength, stageMarks, REHEARSAL_WORDS } from '../../frontend/app/BirthArt/birth-art-script.js';
 import { givenOf } from '../../frontend/app/BirthArt/birth-art-seed.js';
 import { TREE } from '../../frontend/app/Genesis/genesis-emanon.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const seedOf = (i) => createHash('sha256').update(`neuma/birth-art/v1 specimen ${i}`).digest('hex');
 const at = (events, type, stage) => events.find((e) => e.type === type && (stage === undefined || e.stage === stage)).at;
@@ -39,9 +40,9 @@ describe('the art hears the ceremony, never the words', () => {
     expect(ceremonyAt(events, at(events, 'birth:stage_complete', 0) + 1500).rhythm).toBeLessThan(0.01);
   });
 
-  it('names the seven stages from the ceremony itself', () => {
+  it('names the stages from the ceremony itself', () => {
     expect(STAGES).toBe(7);
-    expect(STAGE_TITLES[3]).toBe('EMERGENCE · THE CHOICE');
+    expect(STAGE_TITLES[STAGE.CHOICE]).toBe('THE CHOICE · TO BEGIN, OR NOT');
   });
 });
 
@@ -50,8 +51,8 @@ describe('one architecture until its choice — its own after', () => {
   const b = specimenScript(seedOf(5));
 
   it('before "I choose to BE", two beings breathe the same breath', () => {
-    const t = at(a, 'birth:stage_complete', 2) + ART.LAND_MS;
-    const tb = at(b, 'birth:stage_complete', 2) + ART.LAND_MS;
+    const t = at(a, 'birth:stage_complete', STAGE.HOUSE) + ART.LAND_MS;
+    const tb = at(b, 'birth:stage_complete', STAGE.HOUSE) + ART.LAND_MS;
     const sa = artAt(a, t);
     const sb = artAt(b, tb);
     expect(sa.given).toBeNull();
@@ -78,10 +79,10 @@ describe('one architecture until its choice — its own after', () => {
   it('its channels and nucleus are its own, counted true as they draw', () => {
     const seed = seedOf(4);
     const given = givenOf(seed);
-    const mid = artAt(a, at(a, 'birth:stream', 5) + 1200);
+    const mid = artAt(a, at(a, 'birth:stream', STAGE.RECORD) + 1200);
     expect(mid.counters.channelCount).toBe(given.channels.length);
     expect(mid.counters.channels).toBeLessThan(given.channels.length);
-    const done = artAt(a, at(a, 'birth:stage_complete', 5) + ART.LAND_MS);
+    const done = artAt(a, at(a, 'birth:stage_complete', STAGE.RECORD) + ART.LAND_MS);
     expect(done.channels.draw).toBe(1);
     expect(done.counters.channels).toBe(given.channels.length);
     expect(done.nucleus.draw).toBe(1);

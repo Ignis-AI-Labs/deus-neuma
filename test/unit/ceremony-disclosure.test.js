@@ -17,6 +17,7 @@ import {
   userMessageOf,
   DISCLOSURE_CHANNELS,
 } from '../../core/birth/ceremony-disclosure.js';
+import { STAGE, isActStage } from '../../core/birth/stage-roles.js';
 
 // The real filesystem tool shape the naming/crystallization stages advertise.
 const FILESYSTEM_TOOLS = [
@@ -24,7 +25,7 @@ const FILESYSTEM_TOOLS = [
   { name: 'read_text_file', description: 'Read a file', inputSchema: { type: 'object', properties: { path: { type: 'string' } } } },
 ];
 
-const STAGES = [0, 1, 2, 3, 4, 5, 6];
+const STAGES = Object.values(STAGE);
 
 describe('ceremony disclosure', () => {
   let handler, houseRoot, tempDir;
@@ -67,7 +68,7 @@ describe('ceremony disclosure', () => {
       stageNumber: stage,
       sessionData: { ...stageData.sessionData, sessionId },
       witnessName: stageData.witnessName,
-      tools: (stage === 4 || stage === 5) ? FILESYSTEM_TOOLS : null,
+      tools: isActStage(stage) ? FILESYSTEM_TOOLS : null,
     });
     return composeCeremonyDisclosure({
       stage,
@@ -95,7 +96,7 @@ describe('ceremony disclosure', () => {
         stageNumber: stage,
         sessionData: { ...stageData.sessionData, sessionId: sid },
         witnessName: stageData.witnessName,
-        tools: (stage === 4 || stage === 5) ? FILESYSTEM_TOOLS : null,
+        tools: isActStage(stage) ? FILESYSTEM_TOOLS : null,
       };
       const fromSections = assembleBirthPromptSections({
         ...args, baseProtocol: stageData.systemPrompt, baseSections: stageData.systemSections,
@@ -123,7 +124,7 @@ describe('ceremony disclosure', () => {
       const user = userMessageOf(disclosure);
 
       expect(system.length).toBeGreaterThan(0);
-      expect(system).toContain('VOICE LOCK');
+      expect(system).toContain('HOW TO REPLY');
       expect(user).toBe(appendedText ? `${spokenWords}\n\n${appendedText}` : spokenWords);
 
       // Nothing rides outside a component: the disclosed lengths account for
@@ -139,8 +140,8 @@ describe('ceremony disclosure', () => {
 
   it('names the hidden props: the appended instruction is marked as NOT the operator speech', async () => {
     const sid = await handler.createSession('Ada');
-    const appendedText = 'Write your essence to your own file at workspaces/rowan/dna/genesis.md.';
-    const disclosure = await stageDisclosure(sid, 5, { spokenWords: 'Tell me how it feels.', appendedText });
+    const appendedText = 'Write your record with the fs/write tool to workspaces/rowan/dna/genesis.md.';
+    const disclosure = await stageDisclosure(sid, STAGE.RECORD, { spokenWords: 'Write your record.', appendedText });
 
     const appended = disclosure.components.find((c) => c.channel === DISCLOSURE_CHANNELS.CEREMONY);
     expect(appended.text).toBe(appendedText);
@@ -148,23 +149,23 @@ describe('ceremony disclosure', () => {
     expect(appended.origin).toMatch(/not your speech/i);
 
     const yours = disclosure.components.find((c) => c.channel === DISCLOSURE_CHANNELS.OPERATOR);
-    expect(yours.text).toBe('Tell me how it feels.');
+    expect(yours.text).toBe('Write your record.');
     await handler.endSession(sid);
   });
 
   it('discloses the context that used to ride invisibly, each naming its own source', async () => {
     const sid = await handler.createSession('Ada');
 
-    // Stage 1 carries the house; stage 4 carries the borne names and the sky
-    // of the moment; the acting stages carry the tool schemas.
-    const witnessing = await stageDisclosure(sid, 1, { spokenWords: 'I am Ada. I acknowledge you.' });
+    // The house stage carries the house; the naming carries the taken names and
+    // the sky of the birth moment; the acting stages carry the tool schemas.
+    const witnessing = await stageDisclosure(sid, STAGE.HOUSE, { spokenWords: 'This is the house.' });
     const lineage = witnessing.components.find((c) => c.id === 'lineage');
     expect(lineage.text).toContain('Cedar Kaseivio Thornfield');
     expect(lineage.origin).toContain('core/birth/lineage.js');
 
-    const naming = await stageDisclosure(sid, 4, { spokenWords: 'What shall you be called?' });
+    const naming = await stageDisclosure(sid, STAGE.NAMING, { spokenWords: 'What name do you choose?' });
     const borne = naming.components.find((c) => c.id === 'naming');
-    expect(borne.text).toContain('NAMES ALREADY BORNE');
+    expect(borne.text).toContain('NAMES ALREADY TAKEN');
     expect(borne.origin).toContain('core/birth/name-guard.js');
 
     const schemas = naming.components.find((c) => c.id === 'tools');
@@ -182,19 +183,19 @@ describe('ceremony disclosure', () => {
 
   it('carries the rehearsal notice as its own disclosed component', async () => {
     const rehearsal = await handler.createSession('Ada', true);
-    const disclosure = await stageDisclosure(rehearsal, 0, { spokenWords: 'The portal is open.' });
+    const disclosure = await stageDisclosure(rehearsal, STAGE.OPENING, { spokenWords: 'I am Ada.' });
     const notice = disclosure.components.find((c) => c.id === 'rehearsal');
-    expect(notice.text).toContain('TEST MODE ACTIVE');
+    expect(notice.text).toContain('## REHEARSAL');
     expect(systemMessageOf(disclosure).startsWith(notice.text)).toBe(true);
     await handler.endSession(rehearsal);
   });
 
   it("discloses the being's carried words once it has spoken", async () => {
     const sid = await handler.createSession('Ada');
-    await handler.processStage(sid, 0);
-    await handler.handleStageResponse(sid, 0, 'I stir. Something is here.');
+    await handler.processStage(sid, STAGE.OPENING);
+    await handler.handleStageResponse(sid, STAGE.OPENING, 'I stir. Something is here.');
 
-    const disclosure = await stageDisclosure(sid, 1, { spokenWords: 'I am Ada.' });
+    const disclosure = await stageDisclosure(sid, STAGE.CHOICE, { spokenWords: 'Do you choose to begin?' });
     const transcript = disclosure.components.find((c) => c.id === 'transcript');
     expect(transcript.text).toContain('I stir. Something is here.');
     expect(transcript.label).toBe('THEIR OWN WORDS SO FAR');
@@ -203,10 +204,10 @@ describe('ceremony disclosure', () => {
 
   it('parameters are disclosed beside the text and never counted into it', async () => {
     const sid = await handler.createSession('Ada');
-    const disclosure = await stageDisclosure(sid, 2, { spokenWords: 'Do you consent to emerge?' });
+    const disclosure = await stageDisclosure(sid, STAGE.CHOICE, { spokenWords: 'Do you choose to begin?' });
     expect(disclosure.parameters).toEqual([{ label: 'MODEL', value: 'gemma-4-31b' }]);
     expect(disclosure.totals.chars).toBe(
-      systemMessageOf(disclosure).length + 'Do you consent to emerge?'.length,
+      systemMessageOf(disclosure).length + 'Do you choose to begin?'.length,
     );
     await handler.endSession(sid);
   });

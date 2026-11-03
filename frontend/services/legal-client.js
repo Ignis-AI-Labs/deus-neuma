@@ -50,3 +50,13 @@ export const seatClo = async (laneId) =>
 // impure
 export const clearClo = async () =>
   legalCall('DELETE', '/seat', { errorPrefix: 'Could not clear the CLO seat' });
+
+/** The house's second reader and the choices it may take. @returns {Promise<{reader: {provider: string}, choices: Array<{provider: string, label: string}>}>} */
+// impure
+export const getReader = async () =>
+  legalCall('GET', '/reader', { errorPrefix: 'Could not read the second reader' });
+
+/** Choose the house's second reader: 'house' or a connected provider id. @param {string} provider */
+// impure
+export const setReader = async (provider) =>
+  legalCall('PUT', '/reader', { body: { provider }, errorPrefix: 'Could not set the second reader' });

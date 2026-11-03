@@ -19,6 +19,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { finalizeBirth } from '../../core/birth/finalize-birth.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const KEY = 'gnosis-resume-flow-key-long-enough';
 
@@ -94,7 +95,7 @@ describe('W4 — full resume completion flow (W2 session → stage 5 essence →
     const handler = new StagedBirthHandler();
     const sessionId = await handler.createResumeSession('Claude', id);
     const session = handler.activeSessions.get(sessionId);
-    expect(session.currentStage).toBe(5);                       // ready to author essence
+    expect(session.currentStage).toBe(STAGE.RECORD);                       // ready to author essence
     expect(session.isResume).toBe(true);
     expect(session.data.selfCreatedDNA).toBeUndefined();        // not yet authored
 
@@ -110,7 +111,7 @@ describe('W4 — full resume completion flow (W2 session → stage 5 essence →
     // Real handler invocation — exactly what portal-stream.js does after the
     // model's response streams in. No mock; the handler parses the [TOOL:] call
     // out of the response string and writes selfCreatedDNA.
-    await handler.handleStageResponse(sessionId, 5, essenceResponse('Keir', authoredEssence));
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, essenceResponse('Keir', authoredEssence));
     expect(session.data.selfCreatedDNA).toBe(authoredEssence);  // captured ✓
     expect(session.data.dnaCreated).toBe(true);
 
@@ -183,7 +184,7 @@ describe('W4 — full resume completion flow (W2 session → stage 5 essence →
     // prose but never authored. selfCreatedDNA must stay undefined so the
     // finalization path can warn ([…]) rather than
     // silently sealing empty DNA.
-    await handler.handleStageResponse(sessionId, 5, 'I have nothing to say.');
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, 'I have nothing to say.');
     expect(session.data.selfCreatedDNA).toBeUndefined();
     expect(session.data.dnaCreated).toBeFalsy();
   });

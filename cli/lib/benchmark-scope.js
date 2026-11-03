@@ -111,6 +111,8 @@ export const BENCHMARK_TOOL_SCOPE = Object.freeze([
   Object.freeze({ server: 'fs', tool: 'read' }),
   Object.freeze({ server: 'fs', tool: 'write' }),
   Object.freeze({ server: 'fs', tool: 'edit' }),
+  Object.freeze({ server: 'fs', tool: 'copy' }),
+  Object.freeze({ server: 'fs', tool: 'move' }),
   Object.freeze({ server: 'fs', tool: 'search' }),
   Object.freeze({ server: 'coding', tool: 'execute' }),
   Object.freeze({ server: 'coding', tool: 'shell_network' }),

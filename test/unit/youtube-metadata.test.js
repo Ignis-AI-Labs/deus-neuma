@@ -11,7 +11,7 @@ import {
   parseYouTubeDraft, buildVideoResource, youtubeDraftRefusal, mapYouTubeError, mapTokenError,
   tagsLength, TITLE_MAX, DESCRIPTION_MAX_BYTES, DEFAULT_PRIVACY,
 } from '../../backend/services/social/youtube-metadata.js';
-import { POST_DISCLOSURE, CONTAINS_SYNTHETIC_MEDIA } from '../../backend/services/image-forge/ai-disclosure.js';
+import { CONTAINS_SYNTHETIC_MEDIA } from '../../backend/services/image-forge/ai-disclosure.js';
 import {
   pkceChallenge, buildAuthorizeUrl, authorizationCodeBody, refreshTokenBody, missingScopes,
   YOUTUBE_SCOPES, YOUTUBE_UPLOAD_SCOPE,
@@ -24,11 +24,11 @@ import { getChannel, maskChannelCredentials } from '../../backend/services/socia
 import { postsOwnMedia } from '../../backend/services/social/poster-registry.js';
 
 describe('the draft text becomes the video\'s metadata', () => {
-  test('first line = title, the rest = description, the disclosure appended, unlisted by default', () => {
+  test('first line = title, the rest = description word for word (the AI label is the video\'s metadata), unlisted by default', () => {
     const r = parseYouTubeDraft('Forge night #3\n\nA short walk through the armillary.\nMade live.');
     expect(r.ok).toBe(true);
     expect(r.meta.title).toBe('Forge night #3');
-    expect(r.meta.description).toBe(`A short walk through the armillary.\nMade live.\n\n${POST_DISCLOSURE}`);
+    expect(r.meta.description).toBe('A short walk through the armillary.\nMade live.');
     expect(r.meta.privacyStatus).toBe(DEFAULT_PRIVACY);
     expect(DEFAULT_PRIVACY).toBe('unlisted');
     expect(r.meta.tags).toEqual([]);
@@ -43,8 +43,8 @@ describe('the draft text becomes the video\'s metadata', () => {
     expect(parseYouTubeDraft('T\nprivacy: private').meta.privacyStatus).toBe('private');
   });
 
-  test('a title-only post still carries the disclosure as its description', () => {
-    expect(parseYouTubeDraft('Just a title').meta.description).toBe(POST_DISCLOSURE);
+  test('a title-only post has no description: the disclosure is the video\'s flag, never a line', () => {
+    expect(parseYouTubeDraft('Just a title').meta.description).toBe('');
   });
 
   test('limits: title 100 characters, description 5000 bytes, tags 500, no angle brackets', () => {
@@ -52,9 +52,8 @@ describe('the draft text becomes the video\'s metadata', () => {
     expect(parseYouTubeDraft('x'.repeat(TITLE_MAX + 1)).detail).toMatch(/101 characters; YouTube allows at most 100/);
     // Code points, not UTF-16 units: 100 emoji is a legal title.
     expect(parseYouTubeDraft('🎬'.repeat(TITLE_MAX)).ok).toBe(true);
-    const room = DESCRIPTION_MAX_BYTES - Buffer.byteLength(`\n\n${POST_DISCLOSURE}`);
-    expect(parseYouTubeDraft(`T\n${'a'.repeat(room)}`).ok).toBe(true);
-    expect(parseYouTubeDraft(`T\n${'a'.repeat(room + 1)}`).detail).toMatch(/5001 bytes with the AI disclosure line/);
+    expect(parseYouTubeDraft(`T\n${'a'.repeat(DESCRIPTION_MAX_BYTES)}`).ok).toBe(true);
+    expect(parseYouTubeDraft(`T\n${'a'.repeat(DESCRIPTION_MAX_BYTES + 1)}`).detail).toMatch(/5001 bytes; YouTube allows at most 5000/);
     // Multi-byte characters count as bytes: 2000 × 3-byte kana is over.
     expect(parseYouTubeDraft(`T\n${'あ'.repeat(2000)}`).ok).toBe(false);
     expect(parseYouTubeDraft('A <b> title').detail).toMatch(/< and >/);
@@ -74,7 +73,7 @@ describe('the draft text becomes the video\'s metadata', () => {
     const resource = buildVideoResource(parseYouTubeDraft('T\nB\ntags: one').meta);
     expect(CONTAINS_SYNTHETIC_MEDIA).toBe(true);
     expect(resource).toEqual({
-      snippet: { title: 'T', description: `B\n\n${POST_DISCLOSURE}`, tags: ['one'] },
+      snippet: { title: 'T', description: 'B', tags: ['one'] },
       status: { privacyStatus: 'unlisted', selfDeclaredMadeForKids: false, containsSyntheticMedia: true },
     });
     expect(buildVideoResource(parseYouTubeDraft('T').meta).snippet.tags).toBeUndefined();

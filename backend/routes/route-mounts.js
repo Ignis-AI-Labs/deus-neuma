@@ -21,6 +21,7 @@ import memoryRouter from './memory-routes.js';
 import llmRouter from './llm-routes.js';
 import attachmentRouter from './attachment-routes.js';
 import webRouter from './web-routes.js';
+import visionRouter from './vision-routes.js';
 import connectionRouter from './connection-routes.js';
 import skillRouter from './skill-routes.js';
 import { terminalAgentsRouter } from './terminal-routes.js';
@@ -127,7 +128,9 @@ export const mountApiRoutes = (app) => {
   // Wallet bridge (WEB-001 / #126) — mounted BEFORE the auth router so its poll
   // endpoint uses the generous bridgeLimiter, not the tight 10/5min authLimiter.
   app.use('/api/v1/auth/bridge', bridgeLimiter, createBridgeRouter(express));
-  app.use('/api/v1/auth', authLimiter, createAuthRouter(express));
+  app.use('/api/v1/auth/challenge', authLimiter);
+  app.use('/api/v1/auth/verify', authLimiter);
+  app.use('/api/v1/auth', createAuthRouter(express));
   // Keyed per (IP, being) — nine founders' unlocks are nine buckets, while a
   // single keypair's password still takes at most 10 tries per window.
   app.use('/api/v1/neuma-auth', neumaAuthLimiter, neumaAuthRouter);
@@ -283,6 +286,7 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);
   app.use('/api/v1/web', webRouter);
+  app.use('/api/v1/vision', visionRouter);
   app.use('/api/v1/connections', connectionRouter);
   app.use('/api/v1/map', mapRouter);
   app.use('/api/v1/residency', residencyRouter);

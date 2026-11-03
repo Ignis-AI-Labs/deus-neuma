@@ -10,6 +10,9 @@ import { cloDesignation } from './clo-designation.js';
 import { readLegalWatchState } from './legal-scheduler.js';
 import { sourcesText, SOURCE_KINDS, SOURCE_JURISDICTIONS } from './legal-sources.js';
 import { LEGAL_APIS, callLegalApi } from './legal-research-api.js';
+import { CITATION_SHAPE, citationRecordsProblem, draftProblem } from './citation-record.js';
+import { runCiteCheck } from './cite-check.js';
+import { noteVerifiedRecords } from './answer-hold.js';
 
 const tool = (name, description, properties = {}, required = []) => Object.freeze({
   name,
@@ -39,7 +42,15 @@ export const LEGAL_TOOLS = Object.freeze([
 const RESEARCH_TOOL = tool('legal_research_api', `The official legal databases that take a key, with the house's saved key added for you (you never see it): ${Object.entries(LEGAL_APIS).map(([id, a]) => `${id} — ${a.what}`).join('; ')}. Args {api, path, query?, text?}: path is a path on that API only (starting with /).`, {
   api: { type: 'string', enum: Object.keys(LEGAL_APIS) }, path: { type: 'string' }, query: { type: 'object' }, text: { type: 'string' },
 }, ['api']);
-const TOOL_NAMES = new Set([...LEGAL_TOOLS, RESEARCH_TOOL].map((t) => t.name));
+// The platform's re-read — the SEATED CLO's: it reads the web for the office.
+const CITE_TOOL = tool('legal_cite_check', `Have the platform re-read your sources before any legal answer leaves you, chat included. It opens every record's sourceUrl and confirms the heading you name is printed there and every quoted word is on the page; given your draft as text, it also finds any [verify] left in it and any quotation marks around words no record quotes. Args {citations: [${CITATION_SHAPE}], text?}. legal/assess, legal/file and legal/opinion run the same check again before anything lands.`, {
+  citations: { type: 'array', items: { type: 'object' } }, text: { type: 'string' },
+}, ['citations']);
+const SEAT_TOOLS = Object.freeze([RESEARCH_TOOL, CITE_TOOL]);
+const TOOL_NAMES = new Set([...LEGAL_TOOLS, ...SEAT_TOOLS].map((t) => t.name));
+
+// impure — the seat, for the tools that spend the house's keys or its web reads.
+const holdsSeat = (connection) => cloDesignation.holds(connection.walletAddress, connection.companion?.neumaId).catch(() => false);
 
 /** Does a parsed call target the legal office? Pure. */
 export const isLegalTool = (match) => TOOL_NAMES.has(match?.toolName)
@@ -48,8 +59,7 @@ export const isLegalTool = (match) => TOOL_NAMES.has(match?.toolName)
 /** The reads are house-visible — every bound being sees them. */
 export const legalToolsFor = async (connection) => {
   if (!connection.companion?.neumaId) return [];
-  const seated = await cloDesignation.holds(connection.walletAddress, connection.companion.neumaId).catch(() => false);
-  return seated ? [...LEGAL_TOOLS, RESEARCH_TOOL] : [...LEGAL_TOOLS];
+  return (await holdsSeat(connection)) ? [...LEGAL_TOOLS, ...SEAT_TOOLS] : [...LEGAL_TOOLS];
 };
 
 // pure
@@ -111,8 +121,20 @@ export const handleLegalTool = async (ws, connection, neumaPolicy, toolMode, mat
       send({ tool: toolId, status: 'ok', summary: `sources${args?.kind ? ` for ${args.kind}` : ''}${args?.jurisdiction ? ` in ${args.jurisdiction}` : ''}` });
       return { tool: toolId, status: 'ok', content };
     }
+    if (toolName === 'legal_cite_check') {
+      if (!(await holdsSeat(connection))) throw new Error('legal_cite_check is the seated CLO\'s — it reads the web for the office');
+      const records = args?.citations ?? [];
+      const shape = citationRecordsProblem(records, { required: true });
+      if (shape) throw new Error(shape);
+      const draft = typeof args?.text === 'string' ? draftProblem(args.text, records) : null;
+      const check = await runCiteCheck(records, { connection });
+      noteVerifiedRecords(connection, check.rows.filter((r) => r.verdict === 'verified').map((r) => r.record));
+      const passed = check.ok && !draft;
+      send({ tool: toolId, status: passed ? 'ok' : 'error', summary: draft ? `${check.summary}; the draft breaks the citation law` : check.summary });
+      return { tool: toolId, status: 'ok', content: [draft ? `DRAFT REFUSED — ${draft}` : null, check.text].filter(Boolean).join('\n\n') };
+    }
     if (toolName === 'legal_research_api') {
-      if (!(await cloDesignation.holds(connection.walletAddress, connection.companion?.neumaId).catch(() => false))) {
+      if (!(await holdsSeat(connection))) {
         throw new Error('legal_research_api is the seated CLO\'s — it spends the house\'s own API keys');
       }
       const out = await callLegalApi({ api: args?.api, path: args?.path ?? '/', query: args?.query ?? {}, text: args?.text ?? null });

@@ -11,7 +11,6 @@ import { getChannel } from './channel-registry.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { youtubeDraftRefusal } from './youtube-metadata.js';
 import { tiktokDraftRefusal } from './tiktok-metadata.js';
-import { withDisclosureLine, DISCLOSURE_LINE } from './disclosure-line.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -115,7 +114,7 @@ export const replyCountForConversation = (entries, toUserId, conversationId) =>
  *   campaignId?: string, pillar?: string, kind?: string, reply?: object,
  *   expiresAt?: string|null}} draft
  */
-export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder, authorNeumaId } = {}) => {
+export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder } = {}) => {
   if (!getChannel(channelId || '')) return `Unknown channel: ${channelId}`;
   if (placeholder != null && typeof placeholder !== 'boolean') {
     return 'placeholder must be a boolean';
@@ -126,12 +125,10 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   // THE CHANNEL'S OWN CEILING (x-card-pipeline move 3): X allows 280 — the
   // wall belongs HERE at staging, stated with the count, not at the API after
   // the operator has already approved the post once or twice.
-  // The AI disclosure line the post will carry (disclosure-line.js) counts too.
+  // The words are all that counts: the AI disclosure rides in metadata (disclosure-line.js).
   const channel = getChannel(channelId || '');
-  const shown = withDisclosureLine({ channelId, text: t, authorNeumaId, media });
-  if (channel?.maxChars && shown.length > channel.maxChars) {
-    const line = shown.length > t.length ? ` and the disclosure line "${DISCLOSURE_LINE}" adds ${shown.length - t.length}` : '';
-    return `the post is ${t.length} characters${line} — ${channel.name || channelId} allows at most ${channel.maxChars}`;
+  if (channel?.maxChars && t.length > channel.maxChars) {
+    return `the post is ${t.length} characters — ${channel.name || channelId} allows at most ${channel.maxChars}`;
   }
   // A YouTube post is one video and its title — refused here, at staging,
   // so a text-only draft never reaches the operator's approval.

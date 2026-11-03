@@ -76,6 +76,9 @@ export const toolLinePath = (summary) => {
  */
 export const openPathMenu = (path, x, y) => window.dispatchEvent(new CustomEvent('neuma:path-menu', { detail: { path, x, y } }));
 
+/** impure — ask the desk host to open a path on plain click/Enter. */
+export const openPathDoor = (path) => window.dispatchEvent(new CustomEvent('neuma:path-open', { detail: { path } }));
+
 /**
  * impure (reads layout) — where a keyboard-raised menu opens: under the door.
  * @param {Element} el

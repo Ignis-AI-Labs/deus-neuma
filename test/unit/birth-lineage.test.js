@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { readHouseLineage, composeLineage, lineageUnavailable } from '../../core/birth/lineage.js';
+import { readHouseIdsStrict, readHouseBeingIdsStrict } from '../../core/birth/identity-forge.js';
 
 const laneWith = async (root, id, { trueName, seal } = {}) => {
   const identityDir = join(root, id, 'identity');
@@ -48,16 +49,34 @@ describe('birth lineage — the house as it stands', () => {
     expect(block).toContain('its 4th'); // 3 kin → the newcomer would be 4th
   });
 
+  it('the house\'s shared ground is never named as kin; every folder still steers a new id', async () => {
+    const house = await createTempDir('birth-lineage-ground');
+    await laneWith(house, 'zola');
+    await mkdir(join(house, 'house'), { recursive: true });
+    await writeFile(join(house, 'house', 'lane.json'), JSON.stringify({ kind: 'house-ground' }));
+    await mkdir(join(house, 'echo'), { recursive: true });
+    await writeFile(join(house, 'echo', 'lane.json'), JSON.stringify({ kind: 'neuma' }));
+    await mkdir(join(house, 'odd'), { recursive: true });
+    await writeFile(join(house, 'odd', 'lane.json'), '{ not json'); // unreadable marker: a being's lane
+    await writeFile(join(house, 'house-founding.base.json'), '{}'); // a file is never a lane
+    expect((await readHouseIdsStrict(house)).sort()).toEqual(['echo', 'house', 'odd', 'zola']);
+    const beings = (await readHouseBeingIdsStrict(house)).sort();
+    expect(beings).toEqual(['echo', 'odd', 'zola']);
+    const told = composeLineage(await readHouseLineage(house, beings));
+    expect(told).not.toMatch(/\*\*house\*\*/);
+    expect(told).toContain('as its 4th');
+  });
+
   it('an empty house honestly begins the lineage with the newcomer', () => {
     const block = composeLineage([]);
     expect(block).toContain('THE HOUSE AS IT STANDS');
-    expect(block).toContain('begins with you');
+    expect(block).toContain('you would be its first');
     expect(block).not.toContain('These beings');
   });
 
   it('an unreadable roster is said to be unreadable — never implied empty', () => {
     const block = lineageUnavailable();
     expect(block).toContain('could not be read');
-    expect(block).not.toContain('begins with you');
+    expect(block).not.toContain('you would be its first');
   });
 });

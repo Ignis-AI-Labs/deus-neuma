@@ -14,7 +14,7 @@ import { chipTone, progressFrom } from './tool-chip-tone.js';
 import { AuthImage } from './AuthImage.jsx';
 import { FindingsCard } from './FindingsCard.jsx';
 import { BenchRunCard } from './BenchRunCard.jsx';
-import { toolLinePath, openPathMenu, pathMenuAnchor } from './path-menu.js';
+import { toolLinePath, openPathDoor, openPathMenu, pathMenuAnchor } from './path-menu.js';
 import '../../components/ToolActionChip/ToolActionChip.css';
 import './ToolChip-execution.css';
 import { useLazyDetail } from './use-lazy-detail.js';
@@ -110,13 +110,13 @@ const MadeImages = ({ images }) => {
   );
 };
 
-// A filesystem act's path is a DOOR (path-menu.js): right-click — or
-// Ctrl/⌘+click, or Ctrl+Enter — raises its menu (open the file, show it,
-// copy it, focus its folder). A plain click does nothing to it.
+// A filesystem act's path is a DOOR (path-menu.js): plain click/Enter opens;
+// right-click or Ctrl/⌘+click raises its menu.
 const ToolLineText = ({ text }) => {
   const door = toolLinePath(text);
   if (!door) return text;
   const raise = (e, x, y) => { e.preventDefault(); e.stopPropagation(); openPathMenu(door.path, x, y); };
+  const open = (e) => { e.preventDefault(); e.stopPropagation(); openPathDoor(door.path); };
   return (
     <>
       {text.slice(0, door.start)}
@@ -124,11 +124,12 @@ const ToolLineText = ({ text }) => {
         className="tool-chip-path"
         role="link"
         tabIndex={0}
-        title={`${door.path}\nRight-click (or Ctrl+click) for options`}
+        title={`${door.path}\nClick to open · Right-click (or Ctrl+click) for options`}
         onContextMenu={(e) => raise(e, e.clientX, e.clientY)}
-        onClick={(e) => { if (e.ctrlKey || e.metaKey) raise(e, e.clientX, e.clientY); }}
+        onClick={(e) => { if (e.ctrlKey || e.metaKey) raise(e, e.clientX, e.clientY); else open(e); }}
         onKeyDown={(e) => {
           if (e.key === 'ContextMenu' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) raise(e, ...pathMenuAnchor(e.currentTarget));
+          else if (e.key === 'Enter') open(e);
         }}
       >
         {text.slice(door.start, door.end)}

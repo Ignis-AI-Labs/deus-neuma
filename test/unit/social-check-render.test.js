@@ -28,7 +28,7 @@ const REPORT = buildHouseCheck({
     factsOf(),
     factsOf({
       account: { id: 'x-2', expectedHandle: null }, company: { id: 'umbrae', name: 'Umbrae', site: null },
-      live: [{ id: 'aaaabbbbccccdddd', channelId: 'x', authorNeumaId: 'kestrel', text: 'Before the line.', status: 'draft' }],
+      live: [{ id: 'aaaabbbbccccdddd', channelId: 'x', authorNeumaId: 'kestrel', text: 'Before the ruling.', status: 'draft', media: [{ path: '/tmp/card.png', alt: 'the card' }] }],
     }),
     // In use through its part in an active campaign alone: no keys, no holder.
     { ...factsOf({ account: { id: 'x-3', configured: false, fields: [{ ...field('accessToken'), set: false }] } }), holder: null, campaigns: ['launch'] },
@@ -68,7 +68,7 @@ describe('an account is one card of marks', () => {
   it('the focused card opens its fixes: titles, doors, the @handle in place, HAND TO only where the rule names a member', () => {
     const html = card('x-2', true);
     const titles = [...html.matchAll(/<span class="sc-fix-title"[^>]*>([^<]*)</g)].map((m) => m[1]);
-    expect(titles).toEqual(['Record the @handle', 'Add the AI line', 'Add the company site']);
+    expect(titles).toEqual(['Record the @handle', 'Mark the images', 'Add the company site']);
     expect(html).toContain('data-handle-for="x-2"');
     expect(html).toContain('value="core_voice"');
     expect(html).toContain('>QUEUE →</button>');
@@ -95,7 +95,7 @@ describe('the guided path and OPTIONAL', () => {
   it('numbers every fix across the accounts, each a door', () => {
     const html = renderToStaticMarkup(createElement(GuidedPath, { steps: fixSteps(REPORT), channelNames: REPORT.channelNames, onStep: () => {} }));
     const steps = [...html.matchAll(/<b class="sc-step-n">(\d+)<\/b><span class="sc-step-t">([^<]*)</g)].map((m) => `${m[1]} ${m[2]}`);
-    expect(steps).toEqual(['1 Record the @handle', '2 Add the AI line', '3 Add the company site', '4 Add the keys', '5 Seat a holder']);
+    expect(steps).toEqual(['1 Record the @handle', '2 Mark the images', '3 Add the company site', '4 Add the keys', '5 Seat a holder']);
     expect(count(html, /<button/g)).toBe(5);
   });
 

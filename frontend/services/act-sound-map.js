@@ -82,7 +82,7 @@ export const ACT_FAMILIES = Object.freeze({
     'speech.accept', 'speech.another',
     'social.queue', // a staged draft is a new entry on the queue, not yet speech
     'marketing.plan', 'board.add', // a plan authored, a task put on the board
-    'legal.file', // research entered on the record — a new matter
+    'legal.file', 'legal.opinion', // research entered on the record — a new matter; a written answer delivered with its check
     'share_findings', // a list handed to the operator — a new artifact on the desk, nothing leaves
     'house.review-packet', // the Optio's packet for the operator — the same shape: a new artifact, nothing leaves
     'campaigns.ask', // a question put on the campaign's shared page — a new entry, nothing leaves the house
@@ -93,7 +93,7 @@ export const ACT_FAMILIES = Object.freeze({
     'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
   ]),
   // Same thing, different place or name.
-  actMove: Object.freeze(['move_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
+  actMove: Object.freeze(['move', 'copy', 'move_file', 'copy_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
   // Taking something away. Rare and consequential — it gets its own voice so
   // it is never mistaken for a write.
   actDelete: Object.freeze([
@@ -115,7 +115,7 @@ export const ACT_FAMILIES = Object.freeze({
   // it keeps platform_data out of READ_TOOLS.
   // The chain reads ride the same wire-law: every verb leaves the machine for
   // the operator's own keyed RPC — egress, journaled, never a local recall.
-  actReach: Object.freeze(['web_fetch', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
+  actReach: Object.freeze(['web_fetch', 'legal_cite_check', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
     'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders',
     'web.download']), // bytes fetched from outside the house
   // Something LEFT the house in the operator's name. The intents (Stage 2/3)

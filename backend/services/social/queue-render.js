@@ -10,6 +10,7 @@
 // re-exported from queue-view.js so existing readers' import paths still
 // stand. Pure throughout: entries in, text out. No IO lives here.
 
+import { altDescription } from './disclosure-line.js';
 import { frameUntrustedContent } from '../untrusted-content.js';
 import { tiktokEntryLines, TIKTOK_COPY_HEADING } from './tiktok-queue-lines.js';
 
@@ -153,7 +154,7 @@ const _fullLine = (e, threads) => [
     : null,
   e.withdrawnBy ? `· withdrawn by ${e.withdrawnBy}${e.withdrawnReason ? ` (${e.withdrawnReason})` : ''}` : null,
   Array.isArray(e.media) && e.media.length
-    ? `· ${_mediaCount(e)}: ${e.media.map((m) => `${m.path.split('/').pop()}${m.alt ? ' [described]' : ' [NO ALT TEXT]'}`).join(', ')}`
+    ? `· ${_mediaCount(e)}: ${e.media.map((m) => `${m.path.split('/').pop()}${altDescription(m.alt) ? ' [described]' : ' [NO ALT TEXT]'}`).join(', ')}`
     : null,
   ...tiktokEntryLines(e),
   // Where it actually landed, so publication can be verified rather than
@@ -400,7 +401,7 @@ export const formatQueueEntryForBeing = (entries, given, { postId = '' } = {}) =
     e.updatedBy ? `· last edited ${e.updatedAt} by ${e.updatedBy}` : null,
     e.withdrawnBy ? `· withdrawn by ${e.withdrawnBy} at ${e.withdrawnAt}${e.withdrawnReason ? ` (${e.withdrawnReason})` : ''}` : null,
     Array.isArray(e.media) && e.media.length
-      ? `· ${_mediaCount(e)}: ${e.media.map((m) => `${m.path}${m.alt ? ` [alt: "${_preview(m.alt, 80)}"]` : ' [NO ALT TEXT]'}`).join('; ')}`
+      ? `· ${_mediaCount(e)}: ${e.media.map((m) => `${m.path}${altDescription(m.alt) ? ` [alt: "${_preview(m.alt, 80)}"]` : ' [NO ALT TEXT]'}`).join('; ')}`
       : null,
     ...tiktokEntryLines(e),
     e.postId && e.channelId !== 'tiktok' ? `· LIVE ${publicPostUrl(e.channelId, e.postId)} (sent ${e.sentAt})` : null,

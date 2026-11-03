@@ -1,4 +1,5 @@
 // @ts-check
+/* global process, fetch, setTimeout, clearTimeout, sessionStorage, localStorage, location, window, WebSocket */
 import { test, expect } from '@playwright/test';
 import { ethers } from 'ethers';
 import { spawn } from 'child_process';
@@ -117,6 +118,7 @@ test.beforeAll(async () => {
     // Keep the spawned backend off the operator's persisted workspace
     // choice — without this it would boot into the LIVE sovereign root.
     NEUMA_WORKSPACE_SETTINGS_PATH: path.join(root, 'workspace-settings.json'),
+    NEUMA_RATE_GLOBAL_MAX: '100000',
   };
   backendProc = spawn('node', ['backend/server.js'], { cwd: REPO, env, stdio: 'ignore', detached: true });
   viteProc = spawn('node', ['node_modules/vite/bin/vite.js'], { cwd: REPO, env, stdio: 'ignore', detached: true });
@@ -131,6 +133,18 @@ test.beforeAll(async () => {
   const sec = await (await fetch(`${BASE}/api/v1/security/status`, { headers: { Authorization: `Bearer ${token}` } })).json().catch(() => null);
   const activeRoot = sec?.roots?.active;
   if (activeRoot && activeRoot !== root) await claimOwner(activeRoot, NEUMA_ID, addr);
+});
+
+test.afterEach(async ({ page }) => {
+  await page.evaluate(async () => {
+    const token = sessionStorage.getItem('authToken') || '';
+    const ids = Object.entries(sessionStorage)
+      .filter(([key]) => key.startsWith('neuma:terminal:'))
+      .map(([, id]) => id);
+    await Promise.all(ids.map((id) => fetch(`/api/v1/terminal/sessions/${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+    })));
+  });
 });
 
 test.afterAll(async () => {
@@ -315,6 +329,7 @@ test('reload rehydration: both terminal windows return with correct titles and f
   await openTwoTerminals(page);
   await page.reload();
   await expect(page.locator('.relink')).toBeVisible({ timeout: 30000 });
+  await passDeskGates(page);
 
   const a = winByTitle(page, T1);
   const b = winByTitle(page, T2);

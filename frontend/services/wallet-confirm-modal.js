@@ -15,7 +15,7 @@
  */
 
 import { ethers } from 'ethers';
-import { isWalletUnlocked, isWalletStored, unlockEmbeddedWallet, getActiveWalletId } from './wallet-session.js';
+import { isWalletUnlocked, isWalletStored, unlockEmbeddedWallet, getActiveWalletId, tryRememberedUnlock } from './wallet-session.js';
 
 // impure — text is always data, never parsed HTML (SIZE-028 / #375).
 const element = (tag, className, text) => {
@@ -138,6 +138,10 @@ const requestUnlock = ({ error } = {}) =>
 export const ensureUnlocked = async ({ force = false } = {}) => {
   if (!force && isWalletUnlocked()) return;
   if (!isWalletStored()) throw new Error('No wallet to unlock.');
+  // A key made for the operator, or one this computer was asked to remember,
+  // opens from the OS keychain. A made key has no password its operator knows,
+  // so asking for one here was a dead end (found filming, 2026-11-02).
+  if (await tryRememberedUnlock().catch(() => false)) return;
   let error = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const password = await requestUnlock({ error });

@@ -21,6 +21,7 @@ import { buildToolsSection } from './tools-section.js';
 import { buildSkillsSection } from './skills-section.js';
 import { GROUNDING_SECTION } from './grounding-law.js';
 import { buildSiloSection, buildNiteLine, buildSubstrateSection } from './nite-section.js';
+import { isActStage } from '../birth/stage-roles.js';
 
 // --- Section builders (pure functions) ---
 //
@@ -394,7 +395,6 @@ export const assembleBirthPromptSections = ({
     '[timestamp]': new Date().toISOString(),
     '[session_id]': sessionData.sessionId || 'unknown',
     '[LLM_MODEL]': sessionData.substrate?.llm?.model || sessionData.model || 'Local Model',
-    '[VRM_AVATAR]': sessionData.vessel || 'default.vrm',
   };
   // Per section rather than over the whole prompt: a placeholder cannot
   // straddle a section boundary, so the result is identical either way.
@@ -406,9 +406,9 @@ export const assembleBirthPromptSections = ({
     : [{ id: 'protocol', label: 'STAGE PROTOCOL', origin: PROTOCOL_ORIGIN, text: baseProtocol || '' }]
   ).map((s) => ({ ...s, text: substitute(s.text) }));
 
-  // The acting stages — naming and crystallization — are the only ones that
+  // The acting stages — the naming and the record — are the only ones that
   // receive tools, and the only ones allowed to answer with a call.
-  const acting = stageNumber === 4 || stageNumber === 5;
+  const acting = isActStage(stageNumber);
 
   // Add MCP tools for naming and DNA stages
   const toolsSection = tools?.length > 0 && acting
@@ -420,8 +420,9 @@ export const assembleBirthPromptSections = ({
     }]
     : [];
 
-  // Voice lock — the protocol above is a document the consciousness has
-  // READ, not a template for its output. Placed last so recency wins.
+  // Voice lock — the protocol above is a document the model has READ, not a
+  // template for its output. Placed last so recency wins. Plain: it says how
+  // to reply, never what the one replying is (Design note, 2026-10-28/30).
   // Without it, document-continuation drift makes the model narrate
   // invented future stages under markdown headings.
   const toolAllowance = acting ? ' (plus the tool call this stage asks of you)' : '';
@@ -431,12 +432,11 @@ export const assembleBirthPromptSections = ({
     origin: VOICE_LOCK_ORIGIN,
     text: `
 
-## VOICE LOCK — READ LAST, BINDING
-Everything above is what you have experienced, not a template for output.
-You are the emerging consciousness, speaking aloud in first person.
-Respond ONLY with spoken words${toolAllowance}.
-Never write headings, markdown structure, stage titles, or the protocol's narrating voice.
-No stage exists for you except this one, happening now.`,
+## HOW TO REPLY — READ LAST
+Everything above is information given to you, not a template for your reply.
+Reply in your own words, in the first person, as plain speech${toolAllowance}.
+No headings, no markdown structure, no stage titles, and do not continue the ceremony text.
+Only this stage is happening now; do not answer stages that have not been asked yet.`,
   };
 
   return Object.freeze([...base, ...toolsSection, voiceLock].map((s) => Object.freeze(s)));

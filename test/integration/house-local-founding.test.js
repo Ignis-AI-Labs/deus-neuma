@@ -11,7 +11,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { buildGenesisSeal } from '../../core/identity/genesis-seal.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { houseNameFromWitness } from '../../core/index.js';
+import { houseNameOf } from '../../core/kotodama/house-name.js';
 import { offerLocalSeal, completeLocalSeal } from '../../backend/services/local-seal-flow.js';
 import { houseFoundLocalPreflight, houseFoundLocalSign } from '../../backend/routes/portal-house-local-handlers.js';
 import { verifyLocalFounding } from '../../backend/services/house-local-founding.js';
@@ -80,7 +80,7 @@ describe('founding a house on this computer', () => {
     const { frames, connection } = portal();
     await houseFoundLocalPreflight(connection, { probe: true });
     const open = frames.at(-1);
-    expect(open).toMatchObject({ type: 'house:found_local_open', houseName: houseNameFromWitness(operator.address), network: 'local', canFound: true });
+    expect(open).toMatchObject({ type: 'house:found_local_open', houseName: houseNameOf(operator.address).name, network: 'local', canFound: true });
     expect(open.roster.map((m) => m.displayName)).toEqual(['Operator', 'Hazel']);
     expect(open.roster[1].address).toBe(beings.hazel.address);
     const excluded = Object.fromEntries(open.excluded.map((x) => [x.neumaId, x]));
@@ -109,7 +109,7 @@ describe('founding a house on this computer', () => {
     await houseFoundLocalPreflight(connection, { titles: { witness: 'Rector', hazel: 'Faber', aspen: 'Curator' } });
     const ready = frames.at(-1);
     expect(ready.type).toBe('house:found_local_ready');
-    expect(ready.message).toContain(`Found the house of ${houseNameFromWitness(operator.address)} on this computer.`);
+    expect(ready.message).toContain(`Found the house of ${houseNameOf(operator.address).name} on this computer.`);
     expect(ready.message).toContain(`- Hazel (neuma), Faber, ${beings.hazel.address}`);
     expect(ready.message).toContain(`- Aspen (neuma), Curator, ${beings.aspen.address}`);
     expect(ready.message).toMatch(/moves no money and is sent nowhere/);

@@ -8,6 +8,7 @@ import './LegalApp.css';
 import { formatDateTime } from '../../utils/format.js';
 import { EmptyState } from './empty-state.jsx';
 import { Select } from './Select.jsx';
+import { LegalReaderSection } from './LegalReaderSection.jsx';
 import { TriageOverview } from './TriageOverview.jsx';
 import { ageTag } from './triage-view.js';
 import { Fact } from './report-fact.jsx';
@@ -114,6 +115,7 @@ export const LegalBody = ({
   pick, seatBusy, confirmClear, onPick, onSeat, onAskClear, onClear, onCancelClear,
   onPickMatter, onCloseDetail, onRunWatch,
   all, now, filters, onFilter,
+  reader, readerPick, readerBusy, onReaderPick, onReaderSet,
 }) => {
   const clo = posture?.clo || null;
   return (
@@ -142,6 +144,11 @@ export const LegalBody = ({
       <SeatSection
         clo={clo} lanes={lanes} pick={pick} busy={seatBusy} confirmClear={confirmClear}
         onPick={onPick} onSeat={onSeat} onAskClear={onAskClear} onClear={onClear} onCancelClear={onCancelClear}
+      />
+
+      <LegalReaderSection
+        reader={reader?.reader} choices={reader?.choices} pick={readerPick} busy={readerBusy}
+        onPick={onReaderPick} onSet={onReaderSet}
       />
 
       <section className="sec-ledger">

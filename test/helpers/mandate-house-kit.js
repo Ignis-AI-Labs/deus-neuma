@@ -25,16 +25,28 @@ export { SERVED_WALLET as HOUSE, NEUMA_ID as CMO };
 /** X's own words when it refuses a post as automated (its 226 refusal). */
 export const SPAM_DETAIL = 'This request looks like it might be automated. To protect our users from spam and other malicious activity, we can\'t complete this action right now.';
 
-// impure — the loopback X: me, a standing post, and POST /2/tweets that
-// answers live (or refuses as spam while `state.mode === 'spam'`).
+// impure — the loopback X: me, a standing post, an image upload and its alt text
+// (recorded as X would keep them), and POST /2/tweets that answers live (or
+// refuses as spam while `state.mode === 'spam'`).
 const standX = async () => {
-  const state = { mode: 'ok', posts: [], next: 7000 };
+  const state = { mode: 'ok', posts: [], next: 7000, uploads: 0, alts: [] };
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://loopback');
     const json = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
     if (url.pathname === '/2/users/me') return json(200, { data: { id: '1000', username: 'neuma_house', name: 'Neuma' } });
     if (url.pathname.startsWith('/2/tweets/') && req.method === 'GET') {
       return json(200, { data: { id: url.pathname.slice('/2/tweets/'.length), author_id: '42' } });
+    }
+    if (url.pathname === '/2/media/upload' && req.method === 'POST') {
+      req.resume();
+      req.on('end', () => { state.uploads += 1; json(200, { data: { id: `m${state.uploads}` } }); });
+      return undefined;
+    }
+    if (url.pathname === '/2/media/metadata' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', () => { const m = JSON.parse(body); state.alts.push({ id: m.id, text: m.metadata?.alt_text?.text }); json(200, {}); });
+      return undefined;
     }
     if (url.pathname === '/2/tweets' && req.method === 'POST') {
       let body = '';
@@ -81,6 +93,7 @@ export const resetHouse = async (h) => {
   h.connection.sessionId = null;
   h.x.state.mode = 'ok';
   h.x.state.posts.length = 0;
+  h.x.state.alts.length = 0;
   h.clientLog.length = 0;
   h.decide = null;
 };

@@ -41,6 +41,7 @@ import { uploadAttachments } from '../../services/attachments-client.js';
 import { prepareAttachmentSend } from './attachment-send.js';
 import { AttachMenu } from './AttachMenu.jsx';
 import { ModeMenu } from './ModeMenu.jsx';
+import { SandboxToggle } from './SandboxToggle.jsx';
 import { VoxChip } from './VoxChip.jsx';
 import { ComposeGauge } from './ComposeGauge.jsx';
 import { escTapChain } from './draft-wipe.js';
@@ -265,6 +266,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
             composer's eye level, never up in the window corner (Founder
             2026-08-26). ModeMenu's drop-up anchors to .relink-compose. */}
         <ModeMenu disabled={!connected} />
+        <SandboxToggle disabled={!connected} />
         <VoxChip disabled={!connected} />
         <div className="relink-input">
           {/* What is being heard flows INTO the field at the caret as a

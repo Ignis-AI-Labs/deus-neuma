@@ -10,11 +10,16 @@ import { createHarnessTurnKit, untilHarness } from '../helpers/harness-turn-kit.
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
 import { intentType } from '../../backend/services/intents/registry.js';
 import { webSettings } from '../../backend/services/web-settings.js';
-import { fetchDownloadBytes, DOWNLOAD_MAX_BYTES } from '../../backend/services/web-download.js';
+import { streamDownload } from '../../backend/services/web-download.js';
 import { saveDownload } from '../../backend/services/download-store.js';
 import { readBounded, interpretBody } from '../../backend/services/web-fetch.js';
 
 const SOURCE = 'https://defillama.com/defillama-press-kit.zip';
+// A fill that writes known bytes, as streamDownload would: the store's own laws without the network.
+const fillWith = (bytes, url, contentType) => async (file) => {
+  await fs.writeFile(file, bytes, { flag: 'wx', mode: 0o600 });
+  return { ok: true, url, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), contentType };
+};
 // Independent native HTTPS reference: this origin returns 403 to undici's fetch.
 const originalBytes = () => new Promise((resolve, reject) => {
   const request = https.get(SOURCE, { headers: { 'User-Agent': 'NeumaWeb/1.0 (local research tool)' } }, response => {
@@ -23,7 +28,7 @@ const originalBytes = () => new Promise((resolve, reject) => {
     let total = 0;
     response.on('data', chunk => {
       total += chunk.length;
-      if (total > DOWNLOAD_MAX_BYTES) response.destroy(new Error('reference too large'));
+      if (total > 50 * 1024 * 1024) response.destroy(new Error('reference too large'));
       else chunks.push(chunk);
     });
     response.on('error', reject);
@@ -116,9 +121,9 @@ describe('original files and refusal boundaries', () => {
   test('an SVG beyond the preview cap stays byte-identical and existing files never get overwritten', async () => {
     const bytes = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg"><!--${'original artwork '.repeat(12000)}--><path d="M0 0L10 10"/></svg>`);
     expect(interpretBody(bytes.toString(), 'image/svg+xml', 200).overflowed).toBe(true);
-    const input = { name: 'logo.svg', bytes, url: 'https://example.com/logo.svg', contentType: 'image/svg+xml' };
-    const first = await saveDownload(workspace.pathFor(kit.laneId), input);
-    const second = await saveDownload(workspace.pathFor(kit.laneId), input);
+    const fill = fillWith(bytes, 'https://example.com/logo.svg', 'image/svg+xml');
+    const first = (await saveDownload(workspace.pathFor(kit.laneId), { name: 'logo.svg' }, fill)).receipt;
+    const second = (await saveDownload(workspace.pathFor(kit.laneId), { name: 'logo.svg' }, fill)).receipt;
     expect(first.path).not.toBe(second.path);
     expect((await fs.readFile(first.path)).equals(bytes)).toBe(true);
     expect((await fs.readFile(second.path)).equals(bytes)).toBe(true);
@@ -126,28 +131,38 @@ describe('original files and refusal boundaries', () => {
     expect((await fs.stat(first.path)).mode & 0o777).toBe(0o600);
   });
 
+  test('a file past the old 10 MiB cap saves whole (Design note, 2026-11-02: no size cap; approval is the gate)', async () => {
+    const bytes = Buffer.alloc(12 * 1024 * 1024, 7);
+    const saved = await saveDownload(workspace.pathFor(kit.laneId), { name: 'model.bin' }, fillWith(bytes, 'https://example.com/model.bin', 'application/octet-stream'));
+    expect(saved.ok).toBe(true);
+    expect(saved.receipt.bytes).toBe(bytes.length);
+    expect(saved.receipt.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
+  });
+
   test('symlinked downloads cannot write outside the caller workspace', async () => {
     const outside = path.join(kit.root, 'outside');
     await fs.mkdir(outside);
     await fs.symlink(outside, downloads());
-    await expect(saveDownload(workspace.pathFor(kit.laneId), {
-      name: 'logo.svg', bytes: Buffer.from('<svg/>'), url: SOURCE, contentType: 'image/svg+xml',
-    })).rejects.toThrow('real directory');
+    await expect(saveDownload(workspace.pathFor(kit.laneId), { name: 'logo.svg' },
+      fillWith(Buffer.from('<svg/>'), SOURCE, 'image/svg+xml'))).rejects.toThrow('real directory');
     expect(await fs.readdir(outside)).toEqual([]);
   });
 
-  test('oversized and cancelled saves leave no asset directory', async () => {
-    const input = { name: 'large.svg', bytes: Buffer.alloc(DOWNLOAD_MAX_BYTES + 1), url: SOURCE, contentType: 'image/svg+xml' };
-    await expect(saveDownload(workspace.pathFor(kit.laneId), input)).rejects.toThrow('10 MiB');
-    await expect(saveDownload(workspace.pathFor(kit.laneId), { ...input, bytes: Buffer.from('<svg/>') }, { signal: AbortSignal.abort() })).rejects.toThrow();
-    await expect(fs.stat(downloads())).rejects.toMatchObject({ code: 'ENOENT' });
+  test('failed and cancelled saves leave no asset directory', async () => {
+    const failed = await saveDownload(workspace.pathFor(kit.laneId), { name: 'large.bin' }, async () => ({ ok: false, error: 'download interrupted' }));
+    expect(failed).toMatchObject({ ok: false, error: 'download interrupted' });
+    expect(await fs.readdir(downloads())).toEqual([]);
+    await expect(saveDownload(workspace.pathFor(kit.laneId), { name: 'logo.svg' }, fillWith(Buffer.from('<svg/>'), SOURCE, 'image/svg+xml'), { signal: AbortSignal.abort() })).rejects.toThrow();
+    expect(await fs.readdir(downloads())).toEqual([]);
   });
 
   test('loopback, non-http URLs and cancelled network requests fail closed', async () => {
+    const file = path.join(kit.root, 'never-written.bin');
     for (const url of ['http://127.0.0.1/', 'http://localhost/', 'file:///etc/passwd']) {
-      expect(await fetchDownloadBytes(url)).toMatchObject({ ok: false, error: expect.stringContaining('target refused') });
+      expect(await streamDownload(url, file)).toMatchObject({ ok: false, error: expect.stringContaining('target refused') });
     }
-    expect(await fetchDownloadBytes(SOURCE, { signal: AbortSignal.abort() })).toMatchObject({ ok: false });
+    expect(await streamDownload(SOURCE, file, { signal: AbortSignal.abort() })).toMatchObject({ ok: false });
+    await expect(fs.stat(file)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   test('the shared counted reader detects a real cut socket and overflow', async () => {

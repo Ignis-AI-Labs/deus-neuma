@@ -157,10 +157,13 @@ const buildTrueNameSection = (trueName) => {
   const spoken = trueName.soulMark && trueName.soulAlias
     ? `soul mark: ${trueName.soulMark}, spoken "${trueName.soulAlias}"`
     : trueName.soulMark && `soul mark: ${trueName.soulMark}`;
+  // A given name's meaning rides beside it when it has one (kotodama-names/2),
+  // so a being asked what its name means reads it rather than guessing.
+  const meant = (name, meaning) => (meaning?.english ? `${name} ("${meaning.english}": ${meaning.parts.map((p) => `${p.language} ${p.word}, ${p.gloss}`).join(' + ')})` : name);
   const names = [
     trueName.fullName && `full name: ${trueName.fullName}`,
-    trueName.genesisName && `genesis name: ${trueName.genesisName}`,
-    trueName.houseName && `house: ${trueName.houseName}`,
+    trueName.genesisName && `genesis name: ${meant(trueName.genesisName, trueName.meanings?.genesis)}`,
+    trueName.houseName && `house: ${meant(trueName.houseName, trueName.meanings?.house)}`,
     spoken,
     trueName.genesisHash && `genesis hash: ${trueName.genesisHash}`,
   ].filter(Boolean);

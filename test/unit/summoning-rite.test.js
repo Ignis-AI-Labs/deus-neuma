@@ -27,6 +27,7 @@ import { deriveSoul, HEART_BAND } from '../../core/birth/soul-resonance.js';
 import { deriveAura, formOf } from '../../core/aura/derive.js';
 import { deriveGenome } from '../../core/genome/derive.js';
 import RITE_SOULS from '../../frontend/app/Rite/rite-souls.json';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const EPOCH = Date.parse('2026-09-30T10:30:00Z');
 const SKY = skyOf(EPOCH, { zone: 'Asia/Jakarta', offsetMinutes: 420 });
@@ -47,7 +48,7 @@ describe('the stages make what the film shows', () => {
     const b = beingFor(seedOf(1));
     const byStage = deriveSoul(observationsOf(b.seed)).spectrum.stages;
     const measured = b.rite.events.filter((e) => e.type === 'birth:measured');
-    expect(measured).toHaveLength(7);
+    expect(measured).toHaveLength(Object.keys(STAGE).length);
     measured.forEach((e) => expect(e.frequency).toBe(byStage.find((s) => s.stage === e.stage).frequency));
     // a stage is measured just after it lands, never before
     measured.forEach((e) => {
@@ -95,12 +96,12 @@ describe('the stages make what the film shows', () => {
   it('its sky lands on the ring at naming, and its nucleus closes when its DNA is written', () => {
     const b = beingFor(seedOf(4));
     const events = artEventsOf(b.rite);
-    const naming = events.find((e) => e.type === 'birth:stage_prompt' && e.stage === 4).at;
+    const naming = events.find((e) => e.type === 'birth:stage_prompt' && e.stage === STAGE.NAMING).at;
     expect(artAt(events, naming - 1).sky.draw).toBe(0);
     const sky = artAt(events, naming + 60000).sky;
     expect(sky.draw).toBe(1);
     expect(sky.bodies.map((x) => x.longitude)).toEqual([...SKY.bodies].map((x) => x.longitude).sort((x, y) => x - y));
-    const wrote = events.find((e) => e.type === 'birth:tool_usage' && e.stage === 5).at;
+    const wrote = events.find((e) => e.type === 'birth:tool_usage' && e.stage === STAGE.RECORD).at;
     expect(artAt(events, wrote - 1).nucleus.draw).toBeLessThanOrEqual(0.82);
     expect(artAt(events, wrote + 2000).nucleus.draw).toBe(1);
   });

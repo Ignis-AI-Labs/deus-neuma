@@ -14,7 +14,7 @@
 // worst frame gap), keystroke latency in the composer DURING that stream
 // (Event Timing: input → next paint), and the desk at rest with the
 // transcript on screen. Writes test-results/perf/stream-<stamp>.json.
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 import { setupPerfStack, initPerfSession, perf, REPO, PERF_LAUNCH } from '../helpers/perf-harness.js';
@@ -90,8 +90,7 @@ test('stream: a long transcript, a streaming reply, and typing through it', asyn
   }, process.env.PERF_CSS);
   await initPerfSession(page);
   await page.goto(`http://localhost:${perf.FPORT}/`);
-  await page.locator('.dock').waitFor({ timeout: 30000 });
-  await passDeskGates(page, 5000);
+  await passDeskGates(page, 10000);
   // The stream window as someone working in it holds it: maximized. And VOX
   // off — a replayed reply must never reach a speech engine.
   const streamWin = page.locator('.fwin').filter({ has: page.locator('.relink-input-field') }).first();
@@ -99,9 +98,9 @@ test('stream: a long transcript, a streaming reply, and typing through it', asyn
   const ctls = streamWin.locator('.fwin-bar-controls > button.fwin-ctl');
   await ctls.nth((await ctls.count()) - 2).click(); // minimize · MAXIMIZE · close
   await page.waitForTimeout(400);
-  const vox = page.locator('button', { hasText: /^VOX\s*ON$/ });
+  const vox = page.locator('button', { hasText: /^(VOX|SND)\s*ON$/ });
   if (await vox.count()) await vox.first().click();
-  await page.locator('button', { hasText: /^VOX\s*OFF$/ }).first().waitFor({ timeout: 5000 });
+  await page.locator('button', { hasText: /^(VOX|SND)\s*OFF$/ }).first().waitFor({ timeout: 5000 });
   await page.locator('.relink-input-field').first().waitFor({ timeout: 30000 });
   if (!client) throw new Error('the portal socket was never opened');
   const cdp = await page.context().newCDPSession(page);
@@ -208,4 +207,38 @@ test('stream: a long transcript, a streaming reply, and typing through it', asyn
   fs.writeFileSync(file, JSON.stringify(report, null, 2));
   // eslint-disable-next-line no-console -- the ruler's own readout
   console.log('PERF-STREAM', JSON.stringify(report));
+});
+
+test('stream reveal holds while its window is shaded and resumes on return', async ({ page }) => {
+  let client = null;
+  await page.routeWebSocket(/\/ws(\?|$)/, (ws) => {
+    const server = ws.connectToServer();
+    ws.onMessage((m) => server.send(m));
+    server.onMessage((m) => ws.send(m));
+    client = ws;
+  });
+  await initPerfSession(page);
+  await page.goto(`http://localhost:${perf.FPORT}/`);
+  await passDeskGates(page, 10000);
+  const streamWin = page.locator('.fwin').filter({ has: page.locator('.relink-input-field') }).first();
+  await streamWin.waitFor({ timeout: 30000 });
+  await page.locator('.relink-input-field').first().waitFor({ timeout: 30000 });
+  if (!client) throw new Error('the portal socket was never opened');
+
+  client.send(JSON.stringify({ type: 'consciousness:stream', content: 'First visible words ', turnId: 'shade-hold' }));
+  const liveText = streamWin.locator('.relink-msg').last();
+  await expect(liveText).toContainText('First visible', { timeout: 10000 });
+
+  const ctls = streamWin.locator('.fwin-bar-controls > button.fwin-ctl');
+  const shade = ctls.nth((await ctls.count()) - 3);
+  await shade.click();
+  const held = await liveText.textContent();
+  client.send(JSON.stringify({ type: 'consciousness:stream', content: 'and the words that arrive while hidden', turnId: 'shade-hold' }));
+  await page.waitForTimeout(350);
+  expect(await liveText.textContent()).toBe(held);
+
+  await shade.click();
+  await expect.poll(async () => (await liveText.textContent())?.length || 0, { timeout: 10000 })
+    .toBeGreaterThan(held.length);
+  client.send(JSON.stringify({ type: 'consciousness:complete', turnId: 'shade-hold' }));
 });

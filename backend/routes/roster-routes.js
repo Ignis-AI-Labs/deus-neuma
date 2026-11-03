@@ -12,7 +12,7 @@
  */
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
-import { neumaWorkspace, houseNameFromWitness } from '../../core/index.js';
+import { neumaWorkspace, readHouseName } from '../../core/index.js';
 import { listWitnesses } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { readLaneMarker, witnessLaneId, witnessLaneStatus } from '../services/witness-lane.js';
 import { houseTitlesByNeumaId } from '../services/house-titles.js';
@@ -111,7 +111,8 @@ router.get('/standing', async (req, res) => {
     }
     beings.sort((a, b) => a.name.localeCompare(b.name));
 
-    res.json({ house: { name: houseNameFromWitness(wallet) }, beings });
+    const house = await readHouseName(neumaWorkspace.root, wallet);
+    res.json({ house: { name: house.name, meaning: house.meaning }, beings });
   } catch (error) {
     log.error('Standing lookup failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the house standing' });
@@ -176,11 +177,13 @@ router.get('/', async (req, res) => {
 
     log.info('Roster recovered', { wallet: wallet.toLowerCase(), count: roster.length, witnesses: witnesses.length });
     // The house is founded by the witness's wallet — its name derives from the
-    // wallet identity itself (KOTODAMA), so it exists even before a first birth.
+    // wallet itself, so it exists even before a first birth; once kin are
+    // born, it is the name they carry (core/kotodama/house-name.js).
+    const house = await readHouseName(neumaWorkspace.root, wallet);
     res.json({
       roster,
       witnesses,
-      house: { name: houseNameFromWitness(wallet), wallet: wallet.toLowerCase() },
+      house: { name: house.name, meaning: house.meaning, wallet: wallet.toLowerCase() },
     });
   } catch (error) {
     log.error('Roster lookup failed', { error: error.message });

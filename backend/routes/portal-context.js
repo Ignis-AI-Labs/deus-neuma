@@ -19,6 +19,7 @@ import { resolveFocusPath } from '../services/user-files.js';
 import { clearSessionRuntime } from './portal-connections.js';
 import { markTurnAsked } from '../services/turn-timing-probe.js';
 import { lineTurn } from '../services/turn-line.js';
+import { takePlatformFollowUp } from '../services/platform-follow-up.js';
 
 const log = createLogger('Portal');
 
@@ -81,8 +82,17 @@ export const runTurnAndDrain = async (connection, first) => {
         connection.interruptRequested = false;
       }
     }
+    // A turn the platform owes (a held legal answer) is taken now, before the
+    // operator's held words — and dropped if a settle ended this drain.
+    const owed = takePlatformFollowUp(connection);
     // A settle while this turn ran (navigation, an interjection) ended this drain.
     if ((connection.drainEpoch || 0) !== epoch) return;
+    if (owed) {
+      connection.ws?.send(JSON.stringify(owed.frame));
+      connection._turnOrigin = owed.origin;
+      next = { thought: owed.thought };
+      continue;
+    }
     next = connection.pendingThoughts?.shift() || null;
     announceTakenThought(connection, next);
   }

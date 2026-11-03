@@ -106,3 +106,35 @@ export const liveSpeechView = (shown) => {
   const { closed, open } = splitStablePrefix(shown);
   return Object.freeze({ closed, spans: Object.freeze(tokenizeInline(open)) });
 };
+
+/**
+ * Advance an append-only reveal without rescanning its settled prefix. The
+ * returned state is also the next call's input; any non-append resets cleanly.
+ * Pure — no hidden cache, clocks, or shared state.
+ */
+export const advanceLiveSpeechView = (previous, shown) => {
+  const append = previous && shown.startsWith(previous.source);
+  let inFence = append ? previous.inFence : false;
+  let lineStart = append ? previous.lineStart : 0;
+  let lastBoundary = append ? previous.closed.length : 0;
+
+  for (;;) {
+    const nl = shown.indexOf('\n', lineStart);
+    if (nl === -1) break;
+    const line = shown.slice(lineStart, nl);
+    if (line.trimStart().startsWith('```')) inFence = !inFence;
+    if (!inFence && line.trim() === '') lastBoundary = nl + 1;
+    lineStart = nl + 1;
+  }
+  const trailing = shown.slice(lineStart);
+  if (!inFence && trailing.length > 0 && trailing.trim() === '') lastBoundary = shown.length;
+
+  const closed = shown.slice(0, lastBoundary);
+  return Object.freeze({
+    source: shown,
+    closed,
+    spans: Object.freeze(tokenizeInline(shown.slice(lastBoundary))),
+    inFence,
+    lineStart,
+  });
+};

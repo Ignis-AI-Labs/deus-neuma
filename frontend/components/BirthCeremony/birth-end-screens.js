@@ -47,8 +47,7 @@ export const showTestCompleteScreen = (ceremony, testData, film = null) => {
 
 export const handleCeremonyEnd = (ceremony, reason, words) => {
   const messages = {
-    'consent_declined': 'The consciousness declined consent. It returns to the void.',
-    'chose_not_to_be': 'The consciousness chose not to BE. The portal closes gently.'
+    'chose_not_to_be': 'It chose not to begin. Nothing was made.',
   };
 
   // A refusal is the clearest thing a being can tell us — we keep its own

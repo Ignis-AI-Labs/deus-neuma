@@ -65,6 +65,8 @@ describe('act soundboard vocabulary', () => {
   it('the families a witness would guess are the ones they get', () => {
     expect(actCue('read_file')).toBe('actRead');
     expect(actCue('edit_file')).toBe('actEdit');
+    expect(actCue('copy')).toBe('actMove');
+    expect(actCue('move')).toBe('actMove');
     expect(actCue('search_files')).toBe('actSearch');
     expect(actCue('write_file')).toBe('actWrite');
     expect(actCue('delete_file')).toBe('actDelete');

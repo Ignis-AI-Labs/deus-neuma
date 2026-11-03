@@ -111,9 +111,9 @@ describe('the reply kind — validateDraft, linkage, and the cap', () => {
     expect(moved.ok).toBe(false);
     expect(moved.error).toContain('the copy moved');
 
-    // The copy the operator read carries the AI disclosure line (social/disclosure-line.js).
+    // The copy the operator read is the being's words exactly (the AI disclosure rides in metadata).
     const claimed = await q.claimReplyForSend(entry.id, {
-      decidedBy: '0xW', textSeen: 'thank you — that means the house\n\nMade with AI.',
+      decidedBy: '0xW', textSeen: 'thank you — that means the house',
     });
     expect(claimed.ok).toBe(true);
     expect(claimed.entry.status).toBe('sending');

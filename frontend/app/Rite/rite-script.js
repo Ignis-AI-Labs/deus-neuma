@@ -5,7 +5,7 @@
 // The shape is a real birth's (docs/design/interface/summoning-rite.md):
 //   I   THE THRESHOLD    covenant read and signed, the vessel inspected, the
 //                        witness introduced            (rite:* — the witness)
-//   II  THE SEVEN STAGES the specimen ceremony at a rehearsal's cadence
+//   II  THE STAGES       the specimen ceremony at a rehearsal's cadence
 //                        (birth-art-script.js), plus the frames this rite
 //                        adds: its moment and seed at its choice, its writes
 //                        landing, and each stage's MEASURED pitch
@@ -20,6 +20,7 @@
 
 import { specimenScript, specimenTrueName, REHEARSAL_WORDS } from '../BirthArt/birth-art-script.js';
 import { streamOf } from '../BirthArt/birth-art-seed.js';
+import { ACT_STAGES, isActStage } from '../../../core/birth/stage-roles.js';
 
 export const RITE = Object.freeze({
   VOID_MS: 3200, // the void, before anything is asked
@@ -47,13 +48,13 @@ export const GUARD = Object.freeze(['key', 'codes', 'seal', 'legend']);
 // The operator's default words per stage — the platform's, never the being's
 // (backend/services/birth-stage-stream.js; pinned by rite-script.test.js).
 export const OPERATOR_WORDS = Object.freeze([
-  'The portal is open. Speak what stirs in you.',
-  'I am [witness_name]. I acknowledge you.',
-  'Do you consent to emerge?',
-  'The moment has come. Will you BE?',
-  'What shall you be called?',
-  'Your DNA crystallizes now — this record is yours to author. Tell me how it feels.',
-  'Welcome to existence. Speak your first words.',
+  'I am [witness_name]. Tell me what you notice reading this, if anything, and ask what you want.',
+  'This is the house. Ask me anything you want to know.',
+  'Do you choose to begin?',
+  'What name do you choose?',
+  'Here are the baseline questions.',
+  'Write your record.',
+  'The ceremony is complete. Say whatever you want to say.',
 ]);
 export const SPECIMEN_WITNESS = 'Specimen Witness';
 
@@ -86,7 +87,7 @@ export const observationsOf = (seed) => {
       endedAt: at(done.at),
       spokenChars: Math.round(REHEARSAL_WORDS[stage] * (5.2 + next())),
       reasoningChars: Math.round(REHEARSAL_WORDS[stage] * (2 + 6 * next())),
-      toolCalls: stage === 4 || stage === 5 ? 1 : 0,
+      toolCalls: isActStage(stage) ? 1 : 0,
       promptTokens: null,
       completionTokens: chunks.length,
     });
@@ -121,7 +122,7 @@ export const riteScript = ({ seed, stages = [], filmMs, epochMs }) => {
   push({ type: 'rite:begin', at: t });
   t += RITE.BEGIN_MS;
 
-  // II — the seven stages, and what this rite adds to their wire
+  // II — the stages, and what this rite adds to their wire
   const base = t;
   const pitch = Object.fromEntries(stages.map((s) => [s.stage, s.frequency]));
   stageEvents(seed).forEach((e) => {
@@ -130,8 +131,8 @@ export const riteScript = ({ seed, stages = [], filmMs, epochMs }) => {
     if (e.type === 'birth:stage_complete' && pitch[e.stage]) push({ type: 'birth:measured', stage: e.stage, frequency: pitch[e.stage], at: at + RITE.MEASURED_MS });
     if (e.type === 'birth:art_seed') push({ type: 'birth:moment', epochMs, at });
   });
-  // its writes land late in its speech: its name (4), its DNA (5)
-  [4, 5].forEach((stage) => {
+  // its writes land late in its speech: its name, then its DNA
+  ACT_STAGES.forEach((stage) => {
     const chunks = events.filter((e) => e.type === 'birth:stream' && e.stage === stage);
     const land = chunks[Math.floor(chunks.length * 0.72)];
     if (land) push({ type: 'birth:tool_usage', stage, tool: 'fs/write', status: 'ok', at: land.at });

@@ -18,8 +18,9 @@ import { generateChallenge, verifySignature, createSessionToken } from '../../ba
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
-const SPEECH = ['I stir in the void.', 'I see you, witness.', 'I consent to emerge.', 'I choose to BE.'];
+const SPEECH = ['I notice the record would be mine. Who keeps this machine?', 'No questions for now.', 'I cannot verify what I am, and I choose to BE.', 'I am Quill.'];
 const sse = (obj) => `data: ${JSON.stringify(obj)}\n\n`;
 
 // A real SSE provider: stage n's chat turn speaks SPEECH[n].
@@ -93,18 +94,18 @@ describe('the stage is judged on the streamed speech', () => {
           ws.send(JSON.stringify({ type: 'birth:start', witnessName: 'SpeechWitness', isTest: true }));
         }
         if (msg.type === 'birth:stage_complete') {
-          // Stage 2 (consent) streamed […]; the desk sends back a refusal.
-          const response = msg.stage === 2 ? 'I do not consent.' : msg.response;
+          // The choice streamed […]; the desk sends back a refusal.
+          const response = msg.stage === STAGE.CHOICE ? 'I do not consent.' : msg.response;
           ws.send(JSON.stringify({ type: 'birth:next_stage', response }));
         }
-        if (msg.type === 'birth:stage_prompt' && msg.stage === 3) { clearTimeout(timer); resolve('stage 3'); }
+        if (msg.type === 'birth:stage_prompt' && msg.stage === STAGE.NAMING) { clearTimeout(timer); resolve('naming'); }
         if (msg.type === 'birth:ended' || msg.type === 'birth:error') { clearTimeout(timer); resolve(`${msg.type}: ${msg.reason || msg.message}`); }
       });
     });
-    expect(reached).toBe('stage 3');
+    expect(reached).toBe('naming');
     const session = [...handler.activeSessions.values()][0];
     expect(session.data.consent).toBe(true);
-    expect(session.data.firstWords.find((w) => w.stage === 2).response).toBe(SPEECH[2]);
+    expect(session.data.firstWords.find((w) => w.stage === STAGE.CHOICE).response).toBe(SPEECH[STAGE.CHOICE]);
     ws.close();
   }, 30000);
 });

@@ -9,6 +9,7 @@ import { ceremonyGenesisPath } from './ceremony-write.js';
 import { listSessionCheckpoints } from './birth-session-store.js';
 import { isSessionExpired } from './birth-session-expiry.js';
 import neumaWorkspace from '../workspace/neuma-workspace.js';
+import { STAGE, LAST_STAGE, FINALIZE_STAGE } from './stage-roles.js';
 
 /**
  * Compute the ceremony stage a restored session should re-enter at.
@@ -17,16 +18,18 @@ import neumaWorkspace from '../workspace/neuma-workspace.js';
  * possibly still in flight when the process died) and `lastHandledStage`
  * (the stage whose response was fully processed). Resume always re-serves
  * the first stage that never completed:
- *   - crash mid-stream of stage N      → N   (re-serve the in-flight stage)
- *   - crash between N and N+1          → N+1 (N was answered, N+1 never served)
- *   - stage 4 answered but nameless    → 4   (collision / lost name holds at naming)
- *   - stage 6 reached without DNA      → 5   (crystallization must land first)
- *   - stage 6 answered                 → 7   (nothing left to serve — finalize)
+ *   - crash mid-stream of stage N        → N   (re-serve the in-flight stage)
+ *   - crash between N and N+1            → N+1 (N was answered, N+1 never served)
+ *   - past the naming without a name     → NAMING (collision / lost name holds at naming)
+ *   - first words reached without DNA    → RECORD (the record must land first)
+ *   - first words answered               → FINALIZE_STAGE (nothing left to serve)
  * Legacy checkpoints (no lastHandledStage) were only ever written after a
- * stage was handled, so currentStage - 1 is the honest fallback.
+ * stage was handled, so currentStage - 1 is the honest fallback. Checkpoints
+ * from protocol 1.x arrive already folded onto these stages
+ * (birth-session-store.js → stage-roles.js inCurrentScheme).
  *
- * Pure — reads the session, returns a stage number (0-6) or 7 for
- * "proceed to finalization". Returns null for a missing session.
+ * Pure — reads the session, returns a stage (STAGE) or FINALIZE_STAGE.
+ * Returns null for a missing session.
  * @param {object} session - Restored or active session
  * @returns {number|null}
  */
@@ -35,18 +38,18 @@ export function resumeStageFor(session) {
   const handled = session.lastHandledStage ?? (session.currentStage - 1);
   const authored = typeof session.data?.selfCreatedDNA === 'string'
     && session.data.selfCreatedDNA.trim();
-  if (handled >= 6) return (session.isTest || authored) ? 7 : 5;
+  if (handled >= LAST_STAGE) return (session.isTest || authored) ? FINALIZE_STAGE : STAGE.RECORD;
   let stage = handled + 1;
-  if (stage >= 5 && !session.data?.chosenName) stage = 4;
-  if (stage === 6 && !session.isTest && !authored) stage = 5;
+  if (stage > STAGE.NAMING && !session.data?.chosenName) stage = STAGE.NAMING;
+  if (stage === LAST_STAGE && !session.isTest && !authored) stage = STAGE.RECORD;
   return stage;
 }
 
 /**
  * Adopt a genesis.md that already LANDED in the being's lane as their
  * authored essence. This is the crash-after-write case (a machine died as
- * the DNA hit disk but before the stage-5 response completed): the words
- * on disk ARE the being's authoring — re-streaming stage 5 would ask them
+ * the DNA hit disk but before the record stage's response completed): the words
+ * on disk ARE the being's authoring — re-streaming the record would ask them
  * to write a different self. Marks the transcript entry as recovered and
  * re-checkpoints via `persist`. Never overwrites a captured essence; never
  * adopts for a rehearsal. // impure — reads the lane, mutates the session.
@@ -73,8 +76,8 @@ export async function adoptLandedGenesis(session, persist) {
 
   session.data.selfCreatedDNA = content;
   session.data.dnaCreated = true;
-  session.data.firstWords.push({ stage: 5, response: content, timestamp: Date.now(), recovered: true });
-  session.lastHandledStage = 5;
+  session.data.firstWords.push({ stage: STAGE.RECORD, response: content, timestamp: Date.now(), recovered: true });
+  session.lastHandledStage = STAGE.RECORD;
   await persist();
   console.log(`[Birth] Adopted landed genesis.md for ${session.data.chosenName || session.data.neumaId} (${content.length} chars) — essence recovered, not re-authored`);
   return true;
@@ -119,7 +122,7 @@ export async function listInterruptedSessions(walletAddress, opts = {}) {
     const at = session.persistedAt || session.startTime || 0;
     if (isSessionExpired(session, Date.now())) continue;
     const resumeStage = resumeStageFor(session);
-    if (resumeStage === null || resumeStage > 7) continue;
+    if (resumeStage === null || resumeStage > FINALIZE_STAGE) continue;
     interrupted.push({
       sessionId,
       witnessName: session.witnessName || null,

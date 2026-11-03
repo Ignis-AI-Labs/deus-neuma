@@ -4,7 +4,11 @@
 // encoding wall, the write budget) and behind the approval policy in front of
 // the sandbox. A hand runs only after all of that has passed.
 //
-// There are exactly two, and each is here for a stated reason:
+// There are exactly three, and each is here for a stated reason:
+//
+//   write_file — create-only by default. Replacing an existing file requires
+//     explicit overwrite intent and its current modification stamp; small edits
+//     belong to edit_file, never to a whole-file write.
 //
 //   delete_file — the MCP server has no delete at all, so the unlink has
 //     always happened here. Files only: a directory refusal is honest, never
@@ -35,9 +39,10 @@ import { randomBytes } from 'crypto';
 
 import { applyEdit } from './edit-primitive.js';
 import { writeEditSnapshot, undoRootFor } from './edit-undo.js';
+import { guardedWriteFile } from './write-file-guard.js';
 
 /** Tool names the platform executes itself. */
-export const PLATFORM_HANDS = Object.freeze(new Set(['delete_file', 'edit_file']));
+export const PLATFORM_HANDS = Object.freeze(new Set(['write_file', 'delete_file', 'edit_file']));
 
 /** MCP-shaped success payload, so a hand is indistinguishable on the wire. */
 const said = (text) => ({ content: [{ type: 'text', text }], structuredContent: { content: text } });
@@ -181,6 +186,8 @@ const deleteFileHand = async (args) => {
  * @param {object} args
  * @returns {Promise<{ ok: true, result: object } | { ok: false, reason: string }>}
  */
-export const runPlatformHand = async (toolName, args) => (
-  toolName === 'edit_file' ? editFileHand(args) : deleteFileHand(args)
-);
+export const runPlatformHand = async (toolName, args) => {
+  if (toolName === 'write_file') return guardedWriteFile(args);
+  if (toolName === 'edit_file') return editFileHand(args);
+  return deleteFileHand(args);
+};

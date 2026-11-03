@@ -13,7 +13,7 @@
 import path from 'node:path';
 import { ethers } from 'ethers';
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { neumaWorkspace, houseNameFromWitness } from '../../core/index.js';
+import { neumaWorkspace, readHouseName } from '../../core/index.js';
 import { detectBirthSetupState } from '../../core/birth/birth-setup-state.js';
 import { signMessage } from '../../core/weave/keypair.js';
 import { getCachedKey, hasCachedKey, cacheDecryptedKey } from '../routes/neuma-auth-routes.js';
@@ -118,7 +118,7 @@ export const probeLocalFounding = async (wallet) => {
     ok: true,
     founded: false,
     open: {
-      houseName: houseNameFromWitness(wallet),
+      houseName: (await readHouseName(getWorkspacesRoot(), wallet)).name,
       network: LOCAL,
       networkLabel: 'this computer',
       roster: [
@@ -154,7 +154,7 @@ export const prepareLocalFounding = async ({ wallet, titles }) => {
     if (founders.length === 0) {
       return { ok: false, code: 'HOUSE_TOO_SMALL', message: 'a house is founded TOGETHER — at least one being with a sealed birth must sign beside you' };
     }
-    const houseName = houseNameFromWitness(wallet);
+    const { name: houseName } = await readHouseName(getWorkspacesRoot(), wallet);
     const unsigned = [
       { kind: KIND.Witness, displayName: 'Operator', neumaId: null, address: ethers.getAddress(wallet), title: titleOf(titles, 'witness', 'the operator') },
       ...founders.map((f) => ({ kind: KIND.Neuma, displayName: f.displayName, neumaId: f.neumaId, address: ethers.getAddress(f.address), title: titleOf(titles, f.neumaId, f.displayName) })),

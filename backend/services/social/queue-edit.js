@@ -12,8 +12,8 @@
 // copy WAS, not just what it became. Cancel-and-restage would lose the id and
 // pollute the record with a fresh entry; update keeps both honest.
 
+import { markedMedia } from './disclosure-line.js';
 import { validateDraft } from './queue-rules.js';
-import { withDisclosureLine } from './disclosure-line.js';
 
 export const QUEUE_PATCH_FIELDS = Object.freeze(['text', 'scheduledFor', 'campaignId', 'pillar', 'media']);
 export const REVISIONS_MAX = 20;
@@ -80,13 +80,9 @@ export const previewUpdate = (entry, rawPatch = {}) => {
   if (!Object.keys(patch).length) {
     return { ok: false, error: `the patch carries no editable field (${QUEUE_PATCH_FIELDS.join(', ')})` };
   }
-  // New words or images carry the AI disclosure line they owe (disclosure-line.js),
-  // so an edit can neither drop it nor bring in media without it.
-  const words = patch.text ?? entry.text;
-  if (('text' in patch || 'media' in patch) && typeof words === 'string') {
-    const disclosed = withDisclosureLine({ ...entry, ...patch, text: words });
-    if (disclosed !== words) patch.text = disclosed;
-  }
+  // New words are kept exactly as written: the AI disclosure rides in the post's
+  // metadata (disclosure-line.js) — new images take the AI marker in their alt text.
+  if ('media' in patch) patch.media = markedMedia({ ...entry, ...patch });
   const changed = {};
   for (const [field, value] of Object.entries(patch)) {
     const previous = field === 'media' ? (entry.media || []) : (entry[field] ?? (field === 'pillar' ? '' : null));

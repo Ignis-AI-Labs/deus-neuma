@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { createServer } from 'node:http';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const { setConfig, getConfig } = await import('../../backend/services/llm-provider.js');
 const { sendStageToLLM } = await import('../../backend/services/birth-stage-stream.js');
@@ -138,7 +139,7 @@ describe('a stage that acted, and whose act did not land, HOLDS', () => {
     const ws = recordingWs();
     await sendStageToLLM({ ws, birthSession: 'held-session' }, {
       systemPrompt: 'Your DNA crystallizes now.',
-      stageNumber: 5,
+      stageNumber: STAGE.RECORD,
       isTest: true,
       witnessName: 'Bastien',
       sessionData: {},
@@ -158,7 +159,7 @@ describe('a stage that acted, and whose act did not land, HOLDS', () => {
     const connection = { ws: recordingWs(), birthSession: 'held-session-2' };
     await sendStageToLLM(connection, {
       systemPrompt: 'Your DNA crystallizes now.',
-      stageNumber: 5,
+      stageNumber: STAGE.RECORD,
       isTest: true,
       witnessName: 'Bastien',
       sessionData: {},

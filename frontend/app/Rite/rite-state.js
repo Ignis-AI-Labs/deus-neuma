@@ -3,7 +3,7 @@
 //
 // riteAt(rite, t) says which movement is playing and everything the rite's
 // own layers draw (the threshold, the measure, the forging, guardianship,
-// homecoming). The seven stages themselves are the living birth art's
+// homecoming). The ceremony's stages themselves are the living birth art's
 // (artAt over the same events — the rite hands it only the birth:* wire,
 // never birth:complete: at its birth the film takes over, and its name is
 // the film's to reveal). The same events live, scrubbed or re-watched from a

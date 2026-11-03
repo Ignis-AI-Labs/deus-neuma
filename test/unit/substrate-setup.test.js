@@ -24,8 +24,8 @@ describe('recommendSubstrate (pure)', () => {
   // Design note, 2026-10-06: […] — the newest Qwen at every size the 2026-10-06 ladder
   // proved (scripts/min-spec-ladder.mjs), sized at the served 65536 tokens.
   test('every card class gets the newest model it can hold', () => {
-    expect(recommendSubstrate(gpu(96)).model).toBe('Qwen3.8-27B Uncensored (HauhauCS)'); // RTX PRO 6000
-    expect(recommendSubstrate(gpu(48)).model).toBe('Qwen3.8-27B Uncensored (HauhauCS)'); // RTX 6000 Ada / A6000
+    expect(recommendSubstrate(gpu(96)).model).toBe('Qwen3.8-27B-Uncensored-HauhauCS-Aggressive'); // RTX PRO 6000
+    expect(recommendSubstrate(gpu(48)).model).toBe('Qwen3.8-27B-Uncensored-HauhauCS-Aggressive'); // RTX 6000 Ada / A6000
     expect(recommendSubstrate(gpu(32)).model).toBe('Qwen3.8-27B (6-bit)');               // RTX 5090
     expect(recommendSubstrate(gpu(24)).model).toBe('Qwen3.8-27B (4-bit)');               // RTX 3090 / 4090
     expect(recommendSubstrate(gpu(20)).model).toBe('Qwen3.8-27B (3.5-bit, IST Austria)');
@@ -39,8 +39,8 @@ describe('recommendSubstrate (pure)', () => {
   // cannot hold it all fails at load. The Q8 27B needs ~35 GiB there, the
   // 3-bit 27B ~14.7 GiB (measured 12.2 GiB at 32k on the ladder, + 2 GiB KV).
   test('a card that cannot hold the model AND its context is never offered that tier', () => {
-    expect(recommendSubstrate(gpu(32)).model).not.toBe('Qwen3.8-27B Uncensored (HauhauCS)'); // RTX 5090
-    expect(recommendSubstrate(gpu(32)).options.map((o) => o.model)).not.toContain('Qwen3.8-27B Uncensored (HauhauCS)');
+    expect(recommendSubstrate(gpu(32)).model).not.toBe('Qwen3.8-27B-Uncensored-HauhauCS-Aggressive'); // RTX 5090
+    expect(recommendSubstrate(gpu(32)).options.map((o) => o.model)).not.toContain('Qwen3.8-27B-Uncensored-HauhauCS-Aggressive');
     expect(recommendSubstrate(gpu(12)).options.map((o) => o.model)).not.toContain('Qwen3.8-27B (3-bit, IST Austria)');
     expect(recommendSubstrate(gpu(16)).options.map((o) => o.model)).not.toContain('Qwen3.8-27B (4-bit)');
   });
@@ -67,7 +67,7 @@ describe('recommendSubstrate (pure)', () => {
   test('Mac unified memory is treated as the budget', () => {
     const r = recommendSubstrate(cpu(128, 'darwin'));
     expect(r.mode).toBe('unified');
-    expect(r.model).toBe('Qwen3.8-27B Uncensored (HauhauCS)');
+    expect(r.model).toBe('Qwen3.8-27B-Uncensored-HauhauCS-Aggressive');
     expect(r.fit).toBe('comfortable');
   });
 

@@ -10,9 +10,9 @@
 // this is only its JSX. Kept free of the audio/rAF machinery so the render
 // is provable in a node test through a real server render.
 
-import { memo } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { Markdown } from './Markdown.jsx';
-import { liveSpeechView } from './live-markdown.js';
+import { advanceLiveSpeechView } from './live-markdown.js';
 
 // The closed prefix is a stable string between block closes — memo keeps the
 // real Markdown parse off the per-frame hot path.
@@ -21,7 +21,12 @@ const ClosedMarkdown = memo(Markdown);
 const INLINE_TAGS = Object.freeze({ bold: 'strong', italic: 'em', code: 'code', strike: 'del' });
 
 export const LiveSpeech = ({ shown }) => {
-  const view = liveSpeechView(shown);
+  const previous = useRef(null);
+  const view = useMemo(() => {
+    const next = advanceLiveSpeechView(previous.current, shown);
+    previous.current = next;
+    return next;
+  }, [shown]);
   return (
     <>
       {view.closed ? <ClosedMarkdown text={view.closed} /> : null}

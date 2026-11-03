@@ -15,8 +15,10 @@ import { createTrailingBatch } from '../../../utils/trailing-batch.js';
 import { AppTitle } from '../app-title.jsx';
 import { EmptyState } from '../empty-state.jsx';
 import { lazyChunk } from '../lazy-chunk.jsx';
+import { loadLanguageFor } from './editor-language.js';
 
-const CodeEditor = lazyChunk(() => import('./CodeEditor.jsx'), 'THE EDITOR');
+const loadCodeEditor = () => import('./CodeEditor.jsx');
+const CodeEditor = lazyChunk(loadCodeEditor, 'THE EDITOR');
 
 const EditorIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -45,6 +47,10 @@ const EditorBody = ({ payload }) => {
     if (!path) return undefined;
     if (draftRef.current !== baselineRef.current) return undefined;
     let settled = false;
+    // React's lazy boundary still owns error presentation; this only starts the
+    // download now instead of after the disk read settles.
+    void loadCodeEditor().catch(() => null);
+    void loadLanguageFor(path).catch(() => null);
     (async () => {
       try {
         const r = await readFile(path);

@@ -133,9 +133,13 @@ describe('Native filesystem organ', () => {
       expect(await fs.readFile(target, 'utf-8')).toBe('I choose this name');
     });
 
-    test('write_file overwrites atomically', async () => {
+    test('write_file replaces atomically only with explicit intent and the current stamp', async () => {
       const target = path.join(root, 'authored.txt');
-      await mcpService.callTool(SERVER, 'write_file', { path: target, content: 'revised' });
+      const expectedMtimeMs = (await fs.stat(target)).mtimeMs;
+      const result = await mcpService.callTool(SERVER, 'write_file', {
+        path: target, content: 'revised', overwrite: true, expectedMtimeMs,
+      });
+      expect(result.isError).toBeUndefined();
       expect(await fs.readFile(target, 'utf-8')).toBe('revised');
     });
 

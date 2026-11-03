@@ -20,10 +20,7 @@
  * records `fullResponse` as accumulated across completed rounds. So this
  * function never throws: the error rides back in the result beside the
  * accumulated state, and the caller adopts `fullResponse` BEFORE rethrowing.
- * No hidden mutation contract — everything the remaining turn reads comes
- * back in the return, explicitly.
- *
- * Follow-up rounds after tool execution: the being may chain acts (read, then write), never unbounded.
+ * No hidden mutation contract — everything the remaining turn reads comes back explicitly.
  */
 import { recordBenchmarkExtraCall } from './benchmark-extra-calls.js';
 import { noteRoundRoom } from './read-room.js';
@@ -40,6 +37,7 @@ import { wireContextSections } from './turn-context-carry.js';
 import { markTurnText, recordThoughtStretch } from './tool-action-record.js';
 import { RESULTS_FOLLOW_UP, formatToolResult, formatToolResults, nativeToolExchange } from './tool-exchange.js';
 import { pastFoldBoundary, foldWorkingContext, workingContextNote } from './working-context.js';
+import { contextRecoveryOptions } from './context-overflow.js';
 import { withProtocolReminders } from './protocol-classifier.js';
 import { composeVisionTurn } from './portal-turn-input.js';
 import {
@@ -246,6 +244,7 @@ export const runToolRounds = async ({
       }),
       ...contextScope,
     });
+    const contextRecovery = contextRecoveryOptions(wireHead, (recovery) => { messages = recovery.messages; foldedRounds += recovery.foldedRounds; });
     // One speechless recovery per turn — never a loop (THE SPEECHLESS ROUND).
     let speechlessRecovered = false;
     // THE REFINEMENT LAYERS (ARC-HARNESS L1/L2, #531 — turn-supervisor.js /
@@ -271,7 +270,7 @@ export const runToolRounds = async ({
     const closeWithNote = async (note) => {
       messages.push({ role: 'user', content: note });
       const { content: closeResponse, toolCalls: closeCalls } = await _runLLMStream(ws, messages, companionName, voiceDNA, preset, callerCloseTools(connection, nativeToolsForRound), interrupt.signal, captureUsage, route, turnLora, turnEffort, take,
-        (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection), undefined, { closeTools: nativeToolsForRound() });
+        (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection), undefined, { ...contextRecovery, closeTools: nativeToolsForRound() });
       await adoptClose(closeResponse, closeCalls);
     };
   try {
@@ -283,7 +282,7 @@ export const runToolRounds = async ({
         (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection),
         (telemetry) => captureTelemetry(telemetry, round),
         // The wire's own word for a budget cut (N1) — read per round below.
-        { onFinishReason: (reason) => { lastFinishReason = reason; },
+        { ...contextRecovery, onFinishReason: (reason) => { lastFinishReason = reason; },
           // The thought leash's re-ask is a second call behind this answer — counted (#567).
           onReask: (second) => recordBenchmarkExtraCall(connection, 'thought-leash', second?.content, roundReasoning) });
       latestResponse = roundResponse;
@@ -322,7 +321,7 @@ export const runToolRounds = async ({
         // The close rides the template's proven thinking-off switch — a
         // reasoning-on close under the same shared cap is a coin flip.
         const { content: closeResponse, toolCalls: closeCalls } = await _runLLMStream(ws, messages, companionName, voiceDNA, preset, acting ? nativeToolsForRound() : callerCloseTools(connection, nativeToolsForRound), interrupt.signal, captureUsage, route, turnLora, turnEffort, take,
-          (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection), undefined, { noThink: true, closeTools: nativeToolsForRound() });
+          (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection), undefined, { ...contextRecovery, noThink: true, closeTools: nativeToolsForRound() });
         recordBenchmarkExtraCall(connection, 'speechless', closeResponse, roundReasoning);
         const closeActs = acting ? _roundActs(closeCalls, closeResponse) : [];
         if (closeActs.length === 0 || interrupt.signal.aborted) {

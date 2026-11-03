@@ -67,3 +67,14 @@ export const readChatModePref = (neumaId) => {
 export const writeChatModePref = (neumaId, mode) => {
   try { localStorage.setItem(chatModeKeyFor(neumaId), mode); } catch { /* private mode */ }
 };
+
+// OS isolation is independent from the approval stance. Direct execution is
+// the default; only an explicit "1" opts this participant into the sandbox.
+const SANDBOX_MODE_KEY = 'neuma.sandbox.enabled';
+export const sandboxModeKeyFor = (neumaId) => (neumaId ? `${SANDBOX_MODE_KEY}:${neumaId}` : SANDBOX_MODE_KEY);
+export const readSandboxModePref = (neumaId) => {
+  try { return localStorage.getItem(sandboxModeKeyFor(neumaId)) === '1'; } catch { return false; }
+};
+export const writeSandboxModePref = (neumaId, enabled) => {
+  try { localStorage.setItem(sandboxModeKeyFor(neumaId), enabled ? '1' : '0'); } catch { /* private mode */ }
+};

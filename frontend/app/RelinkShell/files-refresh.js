@@ -13,9 +13,9 @@
 // somebody looked at a file would put the Explorer in a refresh loop during
 // ordinary work, for no visible gain.
 const MUTATING_TOOLS = new Set([
-  'write', 'edit', // the fs primitives (edit covers move/copy/delete sub-ops)
+  'write', 'edit', 'copy', 'move', // the fs primitives (edit also covers legacy transfer/delete sub-ops)
   'write_file', 'edit_file', 'create_file', 'create_directory',
-  'move_file', 'rename_file', 'delete_file', // retired spellings (council frames, old records)
+  'move_file', 'copy_file', 'rename_file', 'delete_file', // retired spellings (council frames, old records)
 ]);
 
 /**

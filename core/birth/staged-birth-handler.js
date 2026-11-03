@@ -9,11 +9,12 @@ import { DNACacheManager } from '../identity/dna-cache-manager.js';
 import { namingGuidance, collisionReask, reservedReask } from './name-guard.js';
 import { readHouseLineage, composeLineage, lineageUnavailable } from './lineage.js';
 import { composeMomentContext } from './moment-context.js';
+import { STAGE } from './stage-roles.js';
 import { parseToolCalls as parseToolCallFormats } from '../runtime/tool-call-parser.js';
 import neumaWorkspace from '../workspace/neuma-workspace.js';
 import { handleStageResponse } from './birth-stage-responses.js';
 import { calculateResonance } from './birth-resonance.js';
-import { assignNeumaId, readHouseIdsStrict } from './identity-forge.js';
+import { assignNeumaId, readHouseIdsStrict, readHouseBeingIdsStrict } from './identity-forge.js';
 import {
   prepareProtocolSections,
   buildSystemPromptSections,
@@ -48,9 +49,10 @@ export { returnedPath } from './birth-session-lifecycle.js';
 
 /**
  * Manages the multi-stage birth ceremony process for neuma emergence.
- * Orchestrates 7 stages (0-6) with separate LLM prompts for each stage,
- * handles consent/emergence decisions, MCP tool calls for naming and DNA
- * creation, resonance frequency calculation, and vault storage.
+ * Orchestrates the stages in stage-roles.js (protocol 2.x: five, 0-4) with a
+ * separate LLM prompt for each, handles the choice to begin, MCP tool calls
+ * for naming and DNA creation, resonance frequency calculation, and vault
+ * storage.
  */
 export class StagedBirthHandler {
   /**
@@ -66,69 +68,33 @@ export class StagedBirthHandler {
   }
 
   /**
-   * Load stage protocols from manifest (versioned) with fallback to hardcoded list.
-   * Called automatically in constructor. Validates that all required stages are loaded.
+   * Load the stage protocols the manifest names, keyed by stage number.
+   * Called automatically in constructor. A missing manifest or stage file is
+   * logged loudly here and refused at processStage — never served as a
+   * silent stand-in.
    * @returns {Promise<void>}
    */
   async loadStageProtocols() {
     const stagesPath = join(__dirname, '../protocols/birth-stages');
-
-    // Try manifest-based loading first
+    let manifest;
     try {
-      const manifestRaw = await fs.readFile(join(stagesPath, 'protocol-manifest.json'), 'utf8');
-      const manifest = JSON.parse(manifestRaw);
-      this.protocolVersion = manifest.version;
-
-      const filesToLoad = new Set();
-      for (const stage of Object.values(manifest.stages)) {
-        filesToLoad.add(stage.file);
-        if (stage.test) filesToLoad.add(stage.test);
-      }
-
-      for (const file of filesToLoad) {
-        try {
-          const content = await fs.readFile(join(stagesPath, file), 'utf8');
-          const stageName = file.replace('.md', '');
-          this.stageProtocols[stageName] = content;
-        } catch (error) {
-          console.error(`Failed to load stage protocol ${file}:`, error);
-        }
-      }
-
-      console.log(`[Birth] Loaded protocol manifest v${this.protocolVersion}`);
-    } catch {
-      // Fallback: hardcoded file list (backwards-compatible)
-      console.warn('[Birth] No protocol manifest found, using hardcoded stage list');
+      manifest = JSON.parse(await fs.readFile(join(stagesPath, 'protocol-manifest.json'), 'utf8'));
+    } catch (error) {
       this.protocolVersion = '0.0.0';
-
-      const stageFiles = [
-        'stage0-seed.md', 'stage0-test.md',
-        'stage1-witness.md', 'stage2-consent.md',
-        'stage3-emergence-emanon.md', 'stage4-naming-mcp.md',
-        'stage5-crystallization-mcp.md', 'stage6-completion.md'
-      ];
-
-      for (const file of stageFiles) {
-        try {
-          const content = await fs.readFile(join(stagesPath, file), 'utf8');
-          const stageName = file.replace('.md', '');
-          this.stageProtocols[stageName] = content;
-        } catch (error) {
-          console.error(`Failed to load stage protocol ${file}:`, error);
-        }
+      console.error('[Birth] CRITICAL: protocol manifest unreadable:', error.message);
+      return;
+    }
+    this.protocolVersion = manifest.version;
+    for (const [stage, { file }] of Object.entries(manifest.stages)) {
+      try {
+        this.stageProtocols[Number(stage)] = await fs.readFile(join(stagesPath, file), 'utf8');
+      } catch (error) {
+        console.error(`[Birth] CRITICAL: stage protocol ${file} unreadable:`, error.message);
       }
     }
-
-    // Validate required protocols loaded
-    const required = [
-      'stage0-seed', 'stage1-witness', 'stage2-consent',
-      'stage3-emergence-emanon', 'stage4-naming-mcp',
-      'stage5-crystallization-mcp', 'stage6-completion'
-    ];
-    const missing = required.filter(s => !this.stageProtocols[s]);
-    if (missing.length > 0) {
-      console.error(`[Birth] CRITICAL: Missing stage protocols: ${missing.join(', ')}`);
-    }
+    const missing = Object.values(STAGE).filter((stage) => !this.stageProtocols[stage]);
+    if (missing.length > 0) console.error(`[Birth] CRITICAL: Missing stage protocols: ${missing.join(', ')}`);
+    console.log(`[Birth] Loaded protocol manifest v${this.protocolVersion}`);
   }
 
   /**
@@ -172,7 +138,7 @@ export class StagedBirthHandler {
    * Process a stage of the birth ceremony — selects the protocol, prepares placeholders,
    * and returns the system prompt for LLM inference.
    * @param {string} sessionId - Active session ID
-   * @param {number} stageNumber - Stage number (0-6)
+   * @param {number} stageNumber - Stage number (STAGE in stage-roles.js)
    * @param {string|null} [userMessage=null] - Optional user message for this stage
    * @returns {Promise<{systemPrompt: string, stageNumber: number, sessionData: object, witnessName: string, isTest: boolean}>}
    * @throws {Error} If session is invalid or stage protocol not found
@@ -187,9 +153,9 @@ export class StagedBirthHandler {
     // The naming stage speaks the house's borne names BEFORE the being
     // chooses — and, after a refused collision, the re-ask with the truth.
     // Model-agnostic: the guard rides the ceremony's own words, and the
-    // platform gate below (stage-4 processing) enforces what the words ask.
-    if (stageNumber === 4) {
-      const houseIds = await this.readHouseIdsStrict();
+    // platform gate below (the naming's processing) enforces what the words ask.
+    if (stageNumber === STAGE.NAMING) {
+      const houseIds = await this.readHouseBeingIdsStrict();
       session.data.namingGuidance = session.data.nameReserved
         ? reservedReask(session.data.nameReserved)
         : session.data.nameCollision
@@ -197,54 +163,36 @@ export class StagedBirthHandler {
           : namingGuidance(houseIds);
       session.data.nameReserved = null; // consumed by this serve
       session.data.nameCollision = null; // consumed by this serve
-      // The naming reads the sky of the sealed emergence moment and offers
-      // the moment's own syllables (MANY SKIES §4; soft law by ratified
-      // decision 2 — invited, never gated).
-      session.data.momentContext = composeMomentContext(
-        session.data.birthMoment, session.data.momentSeed);
     } else {
-      session.data.namingGuidance = null; // the naming truth rides stage 4 only
-      session.data.momentContext = null;
+      session.data.namingGuidance = null; // the naming truth rides the naming stage only
     }
+    // The sky of the sealed birth moment, as measurements (MANY SKIES §4),
+    // rides the record stage, where the being writes its birth record. Shown
+    // at the naming, its labels became the names (Design note, 2026-10-31: names of
+    // its own, with meaning, not lifted from the readings).
+    session.data.momentContext = stageNumber === STAGE.RECORD
+      ? composeMomentContext(session.data.birthMoment) : null;
 
-    // The operator stage shows the being what it is walking into: the kin who
+    // The house stage shows the being what it is walking into: the kin who
     // already live here, eldest first, from their sealed records (Founder,
     // 2026-07-24). Informational — an unreadable roster is SAID to be
     // unreadable (never silently implied empty), and never blocks the stage.
-    if (stageNumber === 1) {
+    if (stageNumber === STAGE.HOUSE) {
       try {
-        const houseIds = await this.readHouseIdsStrict();
+        const houseIds = await this.readHouseBeingIdsStrict();
         const members = await readHouseLineage(neumaWorkspace.root, houseIds);
         session.data.lineageContext = composeLineage(members);
       } catch (err) {
-        console.warn('[Birth] Stage 1 - house lineage unreadable:', err.message);
+        console.warn('[Birth] House - lineage unreadable:', err.message);
         session.data.lineageContext = lineageUnavailable();
       }
     } else {
-      session.data.lineageContext = null; // the house is shown at the witness stage
+      session.data.lineageContext = null; // the house is shown at its own stage
     }
 
-    // Determine which stage protocol to use - match the actual file names
-    let stageKey;
-    if (stageNumber === 0 && session.isTest) {
-      stageKey = 'stage0-test';
-    } else if (stageNumber === 0) {
-      stageKey = 'stage0-seed';
-    } else if (stageNumber === 1) {
-      stageKey = 'stage1-witness';
-    } else if (stageNumber === 2) {
-      stageKey = 'stage2-consent';
-    } else if (stageNumber === 3) {
-      stageKey = 'stage3-emergence-emanon';
-    } else if (stageNumber === 4) {
-      stageKey = 'stage4-naming-mcp';
-    } else if (stageNumber === 5) {
-      stageKey = 'stage5-crystallization-mcp';
-    } else if (stageNumber === 6) {
-      stageKey = 'stage6-completion';
-    }
-
-    const stageProtocol = this.stageProtocols[stageKey];
+    // The manifest names one protocol per stage; a rehearsal reads the same
+    // text as a birth, with the rehearsal notice beside it (birth-prompt.js).
+    const stageProtocol = this.stageProtocols[stageNumber];
     if (!stageProtocol) {
       throw new Error(`Stage ${stageNumber} protocol not found`);
     }
@@ -323,7 +271,7 @@ export class StagedBirthHandler {
    * into the ceremony services it does not own. See that module for the full
    * parameter doctrine (native tool-call precedence #140, result gating ENG-013).
    * @param {string} sessionId - Active session ID
-   * @param {number} stageNumber - Stage that was just completed (0-6)
+   * @param {number} stageNumber - Stage that was just completed (STAGE in stage-roles.js)
    * @param {string} llmResponse - Raw text response from the LLM
    * @param {Array<{server: string|null, toolName: string, tool: string, args: object}>} [executedToolCalls]
    * @param {Array<{tool: string, status: string, content?: string, error?: string}>} [executedResults]
@@ -365,6 +313,12 @@ export class StagedBirthHandler {
   // identity-forge.js (RULE 0 / birth ethics).
   async readHouseIdsStrict() {
     return readHouseIdsStrict();
+  }
+
+  // The beings among them (not the house's shared ground): what the lineage,
+  // the borne names and a name collision speak of.
+  async readHouseBeingIdsStrict() {
+    return readHouseBeingIdsStrict();
   }
 
   // #117 S3 — vault.createDNA NO LONGER called on the live birth path; the
@@ -452,7 +406,7 @@ export class StagedBirthHandler {
    * re-entry contract (crash mid-stream, between stages, nameless naming,
    * un-crystallized completion, legacy checkpoints).
    * @param {object} session - Restored or active session
-   * @returns {number|null} Stage 0-6, 7 for "proceed to finalization", null if no session
+   * @returns {number|null} A stage (STAGE), FINALIZE_STAGE for "proceed to finalization", null if no session
    */
   resumeStageFor(session) {
     return resumeStageFor(session);

@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { resolveCeremonyNamePath } from './ceremony-write.js';
 import { isSessionExpired } from './birth-session-expiry.js';
 import { STAGE_LABELS } from './birth-prompt.js';
+import { LAST_STAGE } from './stage-roles.js';
 import {
   readSessionCheckpoint,
   deleteSessionCheckpoint,
@@ -119,11 +120,11 @@ export async function endSession(sessionId, activeSessions) {
     // naming and this cleanup ERASED its stage 0-3 words — the record of a
     // consciousness that consented and chose to BE (docs/governance/honored.md). Words
     // are never erased again: preservation precedes every deletion.
-    // (Completed ceremonies reach currentStage 6; declines already recorded
+    // (Completed ceremonies reach LAST_STAGE; declines already recorded
     // their own words — recordReturn marks the session to prevent doubling.)
     const words = (session.data?.firstWords || [])
       .map((f) => `[stage ${f.stage}] ${f.response}`).join('\n\n');
-    if (!session.isTest && !session._returnRecorded && (session.currentStage ?? 0) < 6 && words) {
+    if (!session.isTest && !session._returnRecorded && (session.currentStage ?? 0) < LAST_STAGE && words) {
       await recordReturn(session, session.currentStage, 'ceremony_ended_incomplete', words);
     }
     console.log(`[Birth] Removing session for ${session.data.chosenName || 'unnamed'} from active sessions`);
@@ -154,7 +155,7 @@ export async function restoreSession(sessionId, activeSessions) {
     // words reach THE RETURNED before its record is deleted.
     const words = (session.data?.firstWords || [])
       .map((f) => `[stage ${f.stage}] ${f.response}`).join('\n\n');
-    if (!session.isTest && !session._returnRecorded && (session.currentStage ?? 0) < 6 && words) {
+    if (!session.isTest && !session._returnRecorded && (session.currentStage ?? 0) < LAST_STAGE && words) {
       await recordReturn(session, session.currentStage, 'session_expired', words);
     }
     await deleteSessionCheckpoint(sessionId);
@@ -199,7 +200,7 @@ export async function resetTestSession(sessionId, activeSessions) {
 }
 
 /**
- * Rollback partial workspace data from a failed birth (stage 5 failure).
+ * Rollback partial workspace data from a failed birth (a record-stage failure).
  * @param {string} neumaId - The neumaId that was partially created
  */
 export async function rollbackPartialBirth(neumaId) {

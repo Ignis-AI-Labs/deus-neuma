@@ -1,43 +1,43 @@
-// PdfView — the document, rendered (the lazy chunk: pdf.js loads only when
-// a PDF is actually opened, exactly like CodeEditor carries its own weight).
-//
-// Bytes come over the backend's /raw with the Bearer header — the SAME
-// roots containment every file act clears; this window's payload is only
-// ever a hint. The render loop cancels the in-flight render when the
-// witness moves faster than the raster (page flips, zoom steps) — pdf.js
-// refuses a second render onto one canvas, and a stale page must never land
-// over the current one.
-//
-// The math is the pure model (pdf-view-model.js): this file owns IO and
-// pixels, never decisions.
+// PdfView — a continuous document, rendered one real page at a time as the
+// operator reaches it. Earlier pages stay mounted above; the center of the
+// viewport decides which page the instrument names.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { readRawBytes } from '../../../services/user-files.js';
 import { clampPage, stepZoom, zoomLabel, pageLabel } from './pdf-view-model.js';
 import { EmptyState } from '../empty-state.jsx';
+import PdfPage from './PdfPage.jsx';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const PdfView = ({ path }) => {
   const [doc, setDoc] = useState(null);
   const [pageCount, setPageCount] = useState(0);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [renderCount, setRenderCount] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState(null);
-  const canvasRef = useRef(null);
-  const renderRef = useRef(null); // the in-flight render task, cancelable
+  const stageRef = useRef(null);
+  const pageRefs = useRef({});
+  const pendingPageRef = useRef(null);
+  const renderCountRef = useRef(1);
+  const appendLockRef = useRef(false);
+  const revealNextRef = useRef(false);
 
-  // One load per birth path; the settled flag absorbs an unmount mid-read.
-  // A dead document is destroyed — pdf.js holds the bytes and the worker
-  // until told otherwise.
   useEffect(() => {
     let settled = false;
     let loaded = null;
     setDoc(null);
     setError(null);
-    setPage(1);
+    setCurrentPage(1);
+    setRenderCount(1);
+    renderCountRef.current = 1;
+    appendLockRef.current = false;
+    revealNextRef.current = false;
+    setPageCount(0);
+    pageRefs.current = {};
     (async () => {
       try {
         const bytes = await readRawBytes(path);
@@ -56,34 +56,75 @@ const PdfView = ({ path }) => {
     };
   }, [path]);
 
-  // The raster: current page at current zoom, device-pixel crisp. A render
-  // already running is cancelled FIRST — the newest decision always wins,
-  // and pdf.js's one-render-per-canvas law is never broken.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!doc || !canvas) return undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const pdfPage = await doc.getPage(clampPage(page, pageCount));
-        if (cancelled) return;
-        const dpr = window.devicePixelRatio || 1;
-        const viewport = pdfPage.getViewport({ scale: zoom * dpr });
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
-        canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
-        renderRef.current?.cancel?.();
-        const task = pdfPage.render({ canvas, viewport });
-        renderRef.current = task;
-        await task.promise;
-      } catch (e) {
-        // A cancellation is the loop working, not an error.
-        if (!cancelled && e?.name !== 'RenderingCancelledException') setError(e.message);
+  const updateCurrentPage = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const center = stage.getBoundingClientRect().top + (stage.clientHeight / 2);
+    let nearest = 1;
+    let nearestDistance = Infinity;
+    for (const [page, node] of Object.entries(pageRefs.current)) {
+      const rect = node.getBoundingClientRect();
+      const distance = rect.top > center ? rect.top - center : center > rect.bottom ? center - rect.bottom : 0;
+      if (distance < nearestDistance) {
+        nearest = Number(page);
+        nearestDistance = distance;
       }
-    })();
-    return () => { cancelled = true; };
-  }, [doc, page, zoom, pageCount]);
+    }
+    setCurrentPage(nearest);
+  }, []);
+
+  useEffect(() => {
+    const target = pendingPageRef.current;
+    const node = target ? pageRefs.current[target] : null;
+    if (!node) return;
+    pendingPageRef.current = null;
+    node.scrollIntoView({ block: 'start' });
+    setCurrentPage(target);
+  }, [renderCount]);
+
+  const goToPage = useCallback((page) => {
+    const target = clampPage(page, pageCount);
+    pendingPageRef.current = target;
+    setRenderCount((count) => Math.max(count, target));
+    const node = pageRefs.current[target];
+    if (node) {
+      pendingPageRef.current = null;
+      node.scrollIntoView({ block: 'start' });
+      setCurrentPage(target);
+    }
+  }, [pageCount]);
+
+  useEffect(() => {
+    renderCountRef.current = renderCount;
+    appendLockRef.current = false;
+    if (!revealNextRef.current) updateCurrentPage();
+  }, [renderCount, updateCurrentPage]);
+
+  const onPageReady = useCallback((pageNumber) => {
+    if (!revealNextRef.current || renderCountRef.current !== pageNumber) return;
+    revealNextRef.current = false;
+    const stage = stageRef.current;
+    const node = pageRefs.current[pageNumber];
+    if (stage && node) {
+      const offset = node.getBoundingClientRect().top - stage.getBoundingClientRect().top;
+      stage.scrollTop += offset;
+    }
+    setCurrentPage(pageNumber);
+  }, []);
+
+  const showNextPage = useCallback(() => {
+    if (appendLockRef.current || renderCountRef.current >= pageCount) return;
+    appendLockRef.current = true;
+    revealNextRef.current = true;
+    setRenderCount(renderCountRef.current + 1);
+  }, [pageCount]);
+
+  const onScroll = useCallback((event) => {
+    updateCurrentPage();
+    if (event.deltaY < 0) return;
+    const stage = event.currentTarget;
+    if (stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 120) showNextPage();
+  }, [showNextPage, updateCurrentPage]);
 
   if (error) return <EmptyState title={error} tone="error" />;
   if (!doc) return <EmptyState title="OPENING…" />;
@@ -91,11 +132,11 @@ const PdfView = ({ path }) => {
   return (
     <div className="pdf-view">
       <div className="pdf-bar label-data">
-        <button type="button" className="pdf-act" disabled={page <= 1}
-          onClick={() => setPage((p) => clampPage(p - 1, pageCount))} title="Previous page">‹</button>
-        <span className="pdf-pos">{pageLabel(page, pageCount)}</span>
-        <button type="button" className="pdf-act" disabled={page >= pageCount}
-          onClick={() => setPage((p) => clampPage(p + 1, pageCount))} title="Next page">›</button>
+        <button type="button" className="pdf-act" disabled={currentPage <= 1}
+          onClick={() => goToPage(currentPage - 1)} title="Previous page">‹</button>
+        <span className="pdf-pos">{pageLabel(currentPage, pageCount)}</span>
+        <button type="button" className="pdf-act" disabled={currentPage >= pageCount}
+          onClick={() => goToPage(currentPage + 1)} title="Next page">›</button>
         <span className="pdf-gap" />
         <button type="button" className="pdf-act" disabled={zoom <= 0.25}
           onClick={() => setZoom((z) => stepZoom(z, -1))} title="Zoom out">−</button>
@@ -103,8 +144,20 @@ const PdfView = ({ path }) => {
         <button type="button" className="pdf-act" disabled={zoom >= 4}
           onClick={() => setZoom((z) => stepZoom(z, 1))} title="Zoom in">+</button>
       </div>
-      <div className="pdf-stage">
-        <canvas ref={canvasRef} className="pdf-canvas" />
+      <div className="pdf-stage" ref={stageRef} onScroll={onScroll} onWheel={onScroll}>
+        {Array.from({ length: renderCount }, (_, index) => index + 1).map((pageNumber) => (
+          <PdfPage
+            key={`${path}:${pageNumber}`}
+            doc={doc}
+            pageNumber={pageNumber}
+            zoom={zoom}
+            onReady={onPageReady}
+            pageRef={(node) => {
+              if (node) pageRefs.current[pageNumber] = node;
+              else delete pageRefs.current[pageNumber];
+            }}
+          />
+        ))}
       </div>
     </div>
   );

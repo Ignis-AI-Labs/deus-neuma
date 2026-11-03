@@ -445,7 +445,8 @@ describe('the queue read layer — a being can enumerate the whole month, not on
         media: [{ path: '/tmp/one.png', alt: 'a routed swap' }, { path: '/tmp/two.png' }],
       });
       const result = await call('queue_get', { id: staged.id });
-      expect(result.content).toContain('alt: "a routed swap"');
+      // the image's description, after the AI marker it carries as metadata (social/disclosure-line.js)
+      expect(result.content).toContain('alt: "AI-generated. a routed swap"');
       expect(result.content).toContain('NO ALT TEXT');
     });
   });

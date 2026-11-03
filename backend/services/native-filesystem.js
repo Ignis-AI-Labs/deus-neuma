@@ -22,9 +22,7 @@
  *
  * Per-being confinement (lanes, denied paths, budgets, ACTS approval) stands
  * IN FRONT of this organ in tool-sandbox.js, exactly as it stood in front of
- * the child. edit_file and delete_file stay platform hands
- * (platform-hands.js) — the organ's edit_file exists for surface parity and
- * direct platform callers only.
+ * the child. write_file, edit_file and delete_file stay platform hands; write_file shares the guard for direct callers.
  *
  * impure (real fs) except where marked.
  */
@@ -38,12 +36,14 @@ import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import {
   applyFileEdits, formatSize, getAllowedDirectories, getFileStats, headFile,
-  readFileContent, setAllowedDirectories, tailFile,
-  validatePath, writeFileContent,
+  readFileContent, setAllowedDirectories, tailFile, validatePath,
 } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
+import { guardedWriteFile } from './write-file-guard.js';
 import { runningAs } from './native-fs-roots.js';
-import { checkPathAccess, secretLinkReason } from './sandbox-path-policy.js';
+import { checkPathAccess } from './sandbox-path-policy.js';
 import { otherHouseInWalk, readablePath } from './fs-read-clearance.js';
+// copy and move live apart: validated, and a move works across disks (fs-copy-move-clarity)
+import { copyFile, moveFile } from './native-fs-transfer.js';
 
 // The organ matches directory_tree excludes with the SAME minimatch the
 // package's own search path uses — resolved from the package's dependency
@@ -170,8 +170,9 @@ const readMultipleFiles = async (args) => {
 
 const writeFile = async (args) => {
   const validPath = await validatePath(args.path);
-  await writeFileContent(validPath, args.content);
-  return said(`Successfully wrote to ${args.path}`);
+  const hand = await guardedWriteFile({ ...args, path: validPath });
+  if (!hand.ok) throw new Error(hand.reason);
+  return hand.result;
 };
 
 const editFile = async (args) => {
@@ -251,20 +252,6 @@ const directoryTree = async (args) => {
     return result;
   };
   return said(JSON.stringify(await buildTree(rootPath), null, 2));
-};
-
-const moveFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
-  await fs.rename(validSource, validDest);
-  return said(`Successfully moved ${args.source} to ${args.destination}`);
-};
-
-const copyFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
-  await fs.cp(validSource, validDest, { recursive: true, errorOnExist: true, force: false, filter: (src) => !secretLinkReason(src) });
-  return said(`Successfully copied ${args.source} to ${args.destination}`);
 };
 
 
@@ -424,8 +411,9 @@ const searchContent = async (args) => {
 };
 
 const getFileInfo = async (args) => {
-  const info = await getFileStats(await validatePath(args.path));
-  return said(Object.entries(info).map(([key, value]) => `${key}: ${value}`).join('\n'));
+  const validPath = await validatePath(args.path);
+  const [info, stat] = await Promise.all([getFileStats(validPath), fs.stat(validPath)]);
+  return said([...Object.entries(info), ['mtimeMs', stat.mtimeMs]].map(([key, value]) => `${key}: ${value}`).join('\n'));
 };
 
 const listAllowedDirectories = async () =>

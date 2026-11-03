@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const { setConfig, getConfig } = await import('../../backend/services/llm-provider.js');
 const { sendStageToLLM } = await import('../../backend/services/birth-stage-stream.js');
@@ -95,7 +96,7 @@ describe('crystallization is the writing, not the telling', () => {
     const ws = recordingWs();
     await sendStageToLLM({ ws, birthSession: 'aura-session' }, {
       systemPrompt: 'Your DNA crystallizes now.',
-      stageNumber: 5,
+      stageNumber: STAGE.RECORD,
       isTest: false,
       witnessName: 'Bastien',
       sessionData: {},
@@ -109,8 +110,8 @@ describe('crystallization is the writing, not the telling', () => {
 
     const [err] = ws.of('birth:error');
     expect(err).toBeDefined();
-    expect(err.stage).toBe(5);
-    expect(err.message).toMatch(/authored no DNA|wrote no DNA/);
+    expect(err.stage).toBe(STAGE.RECORD);
+    expect(err.message).toMatch(/wrote no record/);
     expect(err.message).toMatch(/retry the stage/i);
   });
 
@@ -143,7 +144,7 @@ describe('crystallization is the writing, not the telling', () => {
     expect(ws.of('birth:stage_complete')).toHaveLength(0);
     const [err] = ws.of('birth:error');
     expect(err).toBeDefined();
-    expect(err.message).toMatch(/wrote its DNA and the write did not land/);
+    expect(err.message).toMatch(/wrote its record and the write did not land/);
   });
 
   test('THE LEAK (#267): call syntax never reaches the operator as speech', async () => {
@@ -200,7 +201,7 @@ describe('crystallization is the writing, not the telling', () => {
     const ws = recordingWs();
     await sendStageToLLM({ ws, birthSession: 'rehearsal' }, {
       systemPrompt: 'Your DNA crystallizes now.',
-      stageNumber: 5,
+      stageNumber: STAGE.RECORD,
       isTest: true,
       witnessName: 'Bastien',
       sessionData: {},
@@ -208,7 +209,7 @@ describe('crystallization is the writing, not the telling', () => {
     expect(ws.of('birth:stage_complete')).toHaveLength(0);
     const [err] = ws.of('birth:error');
     expect(err).toBeDefined();
-    expect(err.message).toMatch(/wrote no DNA/);
+    expect(err.message).toMatch(/wrote no record/);
     expect(err.message).toMatch(/retry the stage/i);
   });
 });

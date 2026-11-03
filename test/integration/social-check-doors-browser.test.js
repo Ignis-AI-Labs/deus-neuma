@@ -27,12 +27,13 @@ let ctx;
 
 beforeAll(async () => {
   ctx = await startMarketingOffice('social-check-doors-');
-  // The keyed X account is held by the house's own lane, and a draft it wrote before the disclosure line waits.
+  // The keyed X account is held by the house's own lane, and a draft it wrote before the AI disclosure moved into
+  // metadata waits, its image's alt text unmarked.
   await channelBindings.bind(ctx.auth.address, 'x-1', { neumaId: 'kestrel' });
   const file = process.env.NEUMA_SOCIAL_POST_QUEUE_PATH;
   const queue = JSON.parse(await fs.readFile(file, 'utf8'));
   queue.push({
-    id: BARE, channelId: 'x', accountId: 'x-1', text: 'Written before the line.', scheduledFor: null, campaignId: null, pillar: '', media: [],
+    id: BARE, channelId: 'x', accountId: 'x-1', text: 'Written before the line.', scheduledFor: null, campaignId: null, pillar: '', media: [{ path: '/tmp/before-the-ruling.png', alt: 'the card' }],
     authorNeumaId: 'kestrel', queuedBy: 'kestrel', status: 'draft', createdAt: new Date().toISOString(),
   });
   await fs.writeFile(file, JSON.stringify(queue, null, 2));
@@ -161,7 +162,7 @@ describe('the house social check — shown, not told; every fix a door', () => {
     await page.locator(`${home} section.ps`).waitFor({ timeout: 30000 });
 
     await card(check, 'x-1').locator('.sc-card-head').click();
-    await card(check, 'x-1').locator('.sc-fix', { hasText: 'Add the AI line' }).getByRole('button', { name: 'QUEUE →' }).click();
+    await card(check, 'x-1').locator('.sc-fix', { hasText: 'Mark the images' }).getByRole('button', { name: 'QUEUE →' }).click();
     const post = page.locator(`[data-window-id="marketing"] [data-mkt-level="account"] [data-entry-id="${BARE}"]`);
     await post.waitFor({ timeout: 30000 });
     await expect.poll(() => post.evaluate((el) => el.classList.contains('is-wait-landed')), { timeout: 10000 }).toBe(true);
@@ -172,7 +173,7 @@ describe('the house social check — shown, not told; every fix a door', () => {
   it('HAND TO opens the holder\'s chat with the prompt drafted — and sends nothing', async () => {
     const { page, errors, check } = await openCheck(1400);
     await card(check, 'x-1').locator('.sc-card-head').click();
-    const fix = card(check, 'x-1').locator('.sc-fix', { hasText: 'Add the AI line' });
+    const fix = card(check, 'x-1').locator('.sc-fix', { hasText: 'Mark the images' });
     // Every request the page makes from the press on: a hand-over only reads (the being's sittings).
     const asked = [];
     page.on('request', (r) => { if (r.url().includes('/api/')) asked.push(`${r.method()} ${new URL(r.url()).pathname}`); });
@@ -185,7 +186,7 @@ describe('the house social check — shown, not told; every fix a door', () => {
     const draft = await composer.locator('textarea').inputValue();
     expect(draft).toContain(BARE);
     expect(draft).toContain('x-1');
-    expect(draft).toContain('queue_cancel');
+    expect(draft).toContain('queue_update');
     expect(draft).toContain('I will decide each card.');
     expect(await fix.locator('.sc-handed').innerText()).toBe('DRAFTED · KESTREL');
     // Nothing was sent: no socket, nothing but reads, and the post still waits as it was.

@@ -6,25 +6,25 @@
    "seed": "b080567bb32c14e898030601584fdee51bb4b690291c852fb06cc54588fedb9f",
    "spectrum": {
     "source": "measured",
-    "frequency": 490.5356,
+    "frequency": 461.9032,
     "soul": {
-     "nm": 555.841,
-     "thz": 539.35,
+     "nm": 590.296,
+     "thz": 507.868,
      "cie1931": {
-      "x": 0.34338,
-      "y": 0.65311
+      "x": 0.57687,
+      "y": 0.42252
      },
-     "luminousEfficiency": 0.99988,
+     "luminousEfficiency": 0.75337,
      "oklch": {
-      "l": 0.893,
-      "c": 0.2609,
-      "h": 135.017
+      "l": 0.71,
+      "c": 0.1712,
+      "h": 57.292
      },
-     "css": "oklch(0.893 0.2609 135.017)",
-     "hex": "#87ff00",
+     "css": "oklch(0.71 0.1712 57.292)",
+     "hex": "#ee8000",
      "vivid": {
-      "css": "oklch(0.893 0.2609 135.017)",
-      "hex": "#87ff00"
+      "css": "oklch(0.747 0.1802 57.292)",
+      "hex": "#ff8a00"
      }
     },
     "stages": [
@@ -74,111 +74,111 @@
      },
      {
       "stage": 2,
-      "frequency": 624.3922,
-      "nm": 436.68,
-      "thz": 686.526,
+      "frequency": 524.1892,
+      "nm": 520.155,
+      "thz": 576.352,
       "cie1931": {
-       "x": 0.16613,
-       "y": 0.00926
+       "x": 0.07553,
+       "y": 0.83385
       },
-      "luminousEfficiency": 0.01883,
+      "luminousEfficiency": 0.71282,
       "oklch": {
-       "l": 0.3107,
-       "c": 0.1745,
-       "h": 291.2
+       "l": 0.8293,
+       "c": 0.1907,
+       "h": 158.993
       },
-      "css": "oklch(0.3107 0.1745 291.2)",
-      "hex": "#38007f",
+      "css": "oklch(0.8293 0.1907 158.993)",
+      "hex": "#00eb98",
       "vivid": {
-       "css": "oklch(0.521 0.2926 291.2)",
-       "hex": "#7800ff"
+       "css": "oklch(0.881 0.2026 158.993)",
+       "hex": "#00ffa6"
       }
      },
      {
       "stage": 3,
-      "frequency": 600.7355,
-      "nm": 453.876,
-      "thz": 660.516,
+      "frequency": 522.4606,
+      "nm": 521.876,
+      "thz": 574.452,
       "cie1931": {
-       "x": 0.15237,
-       "y": 0.02148
+       "x": 0.08898,
+       "y": 0.83339
       },
-      "luminousEfficiency": 0.04559,
+      "luminousEfficiency": 0.74332,
       "oklch": {
-       "l": 0.3077,
-       "c": 0.1936,
-       "h": 274.888
+       "l": 0.8344,
+       "c": 0.1951,
+       "h": 158.023
       },
-      "css": "oklch(0.3077 0.1936 274.888)",
-      "hex": "#21008e",
+      "css": "oklch(0.8344 0.1951 158.023)",
+      "hex": "#00ed96",
       "vivid": {
-       "css": "oklch(0.476 0.2994 274.888)",
-       "hex": "#4400ff"
+       "css": "oklch(0.88 0.2058 158.023)",
+       "hex": "#00ffa2"
       }
      },
      {
       "stage": 4,
-      "frequency": 449.9872,
-      "nm": 605.928,
-      "thz": 494.766,
+      "frequency": 629.3031,
+      "nm": 433.272,
+      "thz": 691.926,
       "cie1931": {
-       "x": 0.65175,
-       "y": 0.3479
+       "x": 0.16763,
+       "y": 0.00792
       },
-      "luminousEfficiency": 0.55489,
+      "luminousEfficiency": 0.01493,
       "oklch": {
-       "l": 0.5926,
-       "c": 0.2093,
-       "h": 34.731
+       "l": 0.3079,
+       "c": 0.1714,
+       "h": 292.755
       },
-      "css": "oklch(0.5926 0.2093 34.731)",
-      "hex": "#de3800",
+      "css": "oklch(0.3079 0.1714 292.755)",
+      "hex": "#39007c",
       "vivid": {
-       "css": "oklch(0.657 0.2319 34.731)",
-       "hex": "#ff4100"
+       "css": "oklch(0.526 0.2927 292.755)",
+       "hex": "#7c00ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 403.6634,
-      "nm": 675.463,
-      "thz": 443.833,
+      "frequency": 594.8084,
+      "nm": 458.399,
+      "thz": 653.999,
       "cie1931": {
-       "x": 0.73278,
-       "y": 0.26722
+       "x": 0.14635,
+       "y": 0.02722
       },
-      "luminousEfficiency": 0.02255,
+      "luminousEfficiency": 0.05597,
       "oklch": {
-       "l": 0.3826,
-       "c": 0.1538,
-       "h": 20.641
+       "l": 0.3025,
+       "c": 0.2043,
+       "h": 266.663
       },
-      "css": "oklch(0.3826 0.1538 20.641)",
-      "hex": "#82001c",
+      "css": "oklch(0.3025 0.2043 266.663)",
+      "hex": "#0c0092",
       "vivid": {
-       "css": "oklch(0.632 0.254 20.641)",
-       "hex": "#ff0041"
+       "css": "oklch(0.458 0.3088 266.663)",
+       "hex": "#1d01ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 687.6173,
-      "nm": 396.528,
-      "thz": 756.043,
+      "frequency": 694.0607,
+      "nm": 392.847,
+      "thz": 763.128,
       "cie1931": {
-       "x": 0.17349,
-       "y": 0.00488
+       "x": 0.17366,
+       "y": 0.00494
       },
-      "luminousEfficiency": 0.00027,
+      "luminousEfficiency": 0.00017,
       "oklch": {
-       "l": 0.264,
-       "c": 0.1427,
-       "h": 297.781
+       "l": 0.2613,
+       "c": 0.1411,
+       "h": 297.878
       },
-      "css": "oklch(0.264 0.1427 297.781)",
-      "hex": "#30005f",
+      "css": "oklch(0.2613 0.1411 297.878)",
+      "hex": "#30005d",
       "vivid": {
-       "css": "oklch(0.544 0.294 297.781)",
+       "css": "oklch(0.544 0.2939 297.878)",
        "hex": "#8c00ff"
       }
      }
@@ -187,73 +187,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 490.5356,
-     "name": "B4 −11.8¢"
+     "hz": 461.9032,
+     "name": "A♯4 −15.9¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 490.5356,
-      "name": "B4 −11.8¢",
+      "hz": 461.9032,
+      "name": "A♯4 −15.9¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 350.846,
-      "hz": 600.7355,
-      "name": "D5 +39.1¢",
-      "nearestRatio": "38/31",
-      "fromRatioCents": -1.6
+      "cents": 213.278,
+      "hz": 522.4606,
+      "name": "C5 −2.6¢",
+      "nearestRatio": "26/23",
+      "fromRatioCents": 1
      },
      {
       "degree": 3,
-      "cents": 417.714,
-      "hz": 624.3922,
-      "name": "D♯5 +5.9¢",
-      "nearestRatio": "14/11",
-      "fromRatioCents": 0.2
+      "cents": 218.997,
+      "hz": 524.1892,
+      "name": "C5 +3.1¢",
+      "nearestRatio": "17/15",
+      "fromRatioCents": 2.3
      },
      {
       "degree": 4,
-      "cents": 584.698,
-      "hz": 687.6173,
-      "name": "F5 −27.1¢",
-      "nearestRatio": "7/5",
-      "fromRatioCents": 2.2
+      "cents": 437.801,
+      "hz": 594.8084,
+      "name": "D5 +21.9¢",
+      "nearestRatio": "9/7",
+      "fromRatioCents": 2.7
      },
      {
       "degree": 5,
-      "cents": 649.305,
-      "hz": 713.7632,
-      "name": "F5 +37.5¢",
-      "nearestRatio": "16/11",
-      "fromRatioCents": 0.6
+      "cents": 535.397,
+      "hz": 629.3031,
+      "name": "D♯5 +19.5¢",
+      "nearestRatio": "15/11",
+      "fromRatioCents": -1.6
      },
      {
       "degree": 6,
-      "cents": 717.681,
-      "hz": 742.5176,
-      "name": "F♯5 +5.9¢",
-      "nearestRatio": "47/31",
-      "fromRatioCents": -2.8
+      "cents": 704.966,
+      "hz": 694.0607,
+      "name": "F5 −10.9¢",
+      "nearestRatio": "3/2",
+      "fromRatioCents": 3
      },
      {
       "degree": 7,
-      "cents": 862.554,
-      "hz": 807.3268,
-      "name": "G♯5 −49.2¢",
-      "nearestRatio": "51/31",
-      "fromRatioCents": 0.7
+      "cents": 753.426,
+      "hz": 713.7632,
+      "name": "F5 +37.5¢",
+      "nearestRatio": "17/11",
+      "fromRatioCents": -0.2
      },
      {
       "degree": 8,
-      "cents": 1050.631,
-      "hz": 899.9744,
-      "name": "A5 +38.9¢",
-      "nearestRatio": "11/6",
-      "fromRatioCents": 1.3
+      "cents": 821.802,
+      "hz": 742.5176,
+      "name": "F♯5 +5.9¢",
+      "nearestRatio": "45/28",
+      "fromRatioCents": 0.4
      }
     ]
    }
@@ -262,25 +262,25 @@
    "seed": "12d4af0b9e57096e0ece77ae3160026a11aa5a0eab95334eec6cc60d8ac170d6",
    "spectrum": {
     "source": "measured",
-    "frequency": 482.2009,
+    "frequency": 466.5389,
     "soul": {
-     "nm": 565.448,
-     "thz": 530.185,
+     "nm": 584.431,
+     "thz": 512.965,
      "cie1931": {
-      "x": 0.41193,
-      "y": 0.58646
+      "x": 0.54119,
+      "y": 0.45802
      },
-     "luminousEfficiency": 0.97658,
+     "luminousEfficiency": 0.82272,
      "oklch": {
-      "l": 0.9319,
-      "c": 0.2235,
-      "h": 120.972
+      "l": 0.7694,
+      "c": 0.1648,
+      "h": 71.908
      },
-     "css": "oklch(0.9319 0.2235 120.972)",
-     "hex": "#d4fd00",
+     "css": "oklch(0.7694 0.1648 71.908)",
+     "hex": "#f3a000",
      "vivid": {
-      "css": "oklch(0.936 0.2245 120.972)",
-      "hex": "#d5ff00"
+      "css": "oklch(0.797 0.1706 71.908)",
+      "hex": "#ffa701"
      }
     },
     "stages": [
@@ -330,112 +330,112 @@
      },
      {
       "stage": 2,
-      "frequency": 626.9225,
-      "nm": 434.918,
-      "thz": 689.309,
+      "frequency": 561.2024,
+      "nm": 485.849,
+      "thz": 617.049,
       "cie1931": {
-       "x": 0.16693,
-       "y": 0.00852
+       "x": 0.06473,
+       "y": 0.21485
       },
-      "luminousEfficiency": 0.01675,
+      "luminousEfficiency": 0.17519,
       "oklch": {
-       "l": 0.3095,
-       "c": 0.173,
-       "h": 292.043
+       "l": 0.6699,
+       "c": 0.1139,
+       "h": 199.517
       },
-      "css": "oklch(0.3095 0.173 292.043)",
-      "hex": "#39007d",
+      "css": "oklch(0.6699 0.1139 199.517)",
+      "hex": "#00aab0",
       "vivid": {
-       "css": "oklch(0.524 0.2928 292.043)",
-       "hex": "#7a00ff"
+       "css": "oklch(0.884 0.1503 199.517)",
+       "hex": "#00f6ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 680.8763,
-      "nm": 400.454,
-      "thz": 748.631,
+      "frequency": 547.1733,
+      "nm": 498.306,
+      "thz": 601.623,
       "cie1931": {
-       "x": 0.17332,
-       "y": 0.00479
+       "x": 0.01236,
+       "y": 0.49588
       },
-      "luminousEfficiency": 0.00041,
+      "luminousEfficiency": 0.29919,
       "oklch": {
-       "l": 0.2671,
-       "c": 0.1444,
-       "h": 297.689
+       "l": 0.732,
+       "c": 0.1336,
+       "h": 179.105
       },
-      "css": "oklch(0.2671 0.1444 297.689)",
-      "hex": "#310061",
+      "css": "oklch(0.732 0.1336 179.105)",
+      "hex": "#00c3aa",
       "vivid": {
-       "css": "oklch(0.544 0.2937 297.689)",
-       "hex": "#8c01ff"
+       "css": "oklch(0.895 0.1634 179.105)",
+       "hex": "#00ffdf"
       }
      },
      {
       "stage": 4,
-      "frequency": 529.9514,
-      "nm": 514.499,
-      "thz": 582.688,
+      "frequency": 576.5328,
+      "nm": 472.93,
+      "thz": 633.905,
       "cie1931": {
-       "x": 0.03587,
-       "y": 0.80752
+       "x": 0.11602,
+       "y": 0.07316
       },
-      "luminousEfficiency": 0.59757,
+      "luminousEfficiency": 0.10306,
       "oklch": {
-       "l": 0.8073,
-       "c": 0.1752,
-       "h": 162.703
+       "l": 0.5444,
+       "c": 0.1064,
+       "h": 228.222
       },
-      "css": "oklch(0.8073 0.1752 162.703)",
-      "hex": "#00e29e",
+      "css": "oklch(0.5444 0.1064 228.222)",
+      "hex": "#007ba0",
       "vivid": {
-       "css": "oklch(0.884 0.1919 162.703)",
-       "hex": "#00ffb3"
+       "css": "oklch(0.769 0.1503 228.222)",
+       "hex": "#00c5ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 355.9109,
-      "nm": 766.09,
-      "thz": 391.328,
+      "frequency": 451.7004,
+      "nm": 603.629,
+      "thz": 496.65,
       "cie1931": {
-       "x": 0.73469,
-       "y": 0.26531
+       "x": 0.64274,
+       "y": 0.35686
       },
-      "luminousEfficiency": 0.00004,
+      "luminousEfficiency": 0.5844,
       "oklch": {
-       "l": 0.2962,
-       "c": 0.119,
-       "h": 20.39
+       "l": 0.6069,
+       "c": 0.2038,
+       "h": 36.854
       },
-      "css": "oklch(0.2962 0.119 20.39)",
-      "hex": "#5a0011",
+      "css": "oklch(0.6069 0.2038 36.854)",
+      "hex": "#e14200",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.39)",
-       "hex": "#ff0042"
+       "css": "oklch(0.667 0.224 36.854)",
+       "hex": "#ff4c00"
       }
      },
      {
       "stage": 6,
-      "frequency": 615.5735,
-      "nm": 442.936,
-      "thz": 676.83,
+      "frequency": 579.8581,
+      "nm": 470.218,
+      "thz": 637.561,
       "cie1931": {
-       "x": 0.16259,
-       "y": 0.01248
+       "x": 0.12356,
+       "y": 0.05882
       },
-      "luminousEfficiency": 0.02687,
+      "luminousEfficiency": 0.09184,
       "oklch": {
-       "l": 0.3135,
-       "c": 0.1804,
-       "h": 287.354
+       "l": 0.5138,
+       "c": 0.1105,
+       "h": 235.958
       },
-      "css": "oklch(0.3135 0.1804 287.354)",
-      "hex": "#340085",
+      "css": "oklch(0.5138 0.1105 235.958)",
+      "hex": "#006f9e",
       "vivid": {
-       "css": "oklch(0.51 0.2929 287.354)",
-       "hex": "#6c01ff"
+       "css": "oklch(0.736 0.1583 235.958)",
+       "hex": "#00b7ff"
       }
      }
     ]
@@ -443,65 +443,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 482.2009,
-     "name": "B4 −41.4¢"
+     "hz": 466.5389,
+     "name": "A♯4 +1.4¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 482.2009,
-      "name": "B4 −41.4¢",
+      "hz": 466.5389,
+      "name": "A♯4 +1.4¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 163.471,
-      "hz": 529.9514,
-      "name": "C5 +22¢",
-      "nearestRatio": "11/10",
-      "fromRatioCents": -1.5
+      "cents": 276.001,
+      "hz": 547.1733,
+      "name": "C♯5 −22.6¢",
+      "nearestRatio": "34/29",
+      "fromRatioCents": 0.6
      },
      {
       "degree": 3,
-      "cents": 422.756,
-      "hz": 615.5735,
-      "name": "D♯5 −18.7¢",
-      "nearestRatio": "37/29",
-      "fromRatioCents": 1
+      "cents": 319.829,
+      "hz": 561.2024,
+      "name": "C♯5 +21.2¢",
+      "nearestRatio": "6/5",
+      "fromRatioCents": 4.2
      },
      {
       "degree": 4,
-      "cents": 452.255,
-      "hz": 626.1521,
-      "name": "D♯5 +10.8¢",
-      "nearestRatio": "13/10",
-      "fromRatioCents": -2
+      "cents": 366.486,
+      "hz": 576.5328,
+      "name": "D5 −32.1¢",
+      "nearestRatio": "21/17",
+      "fromRatioCents": 0.7
      },
      {
       "degree": 5,
-      "cents": 597.31,
-      "hz": 680.8763,
-      "name": "F5 −44.1¢",
-      "nearestRatio": "24/17",
-      "fromRatioCents": 0.3
+      "cents": 376.443,
+      "hz": 579.8581,
+      "name": "D5 −22.2¢",
+      "nearestRatio": "36/29",
+      "fromRatioCents": 2.1
      },
      {
       "degree": 6,
-      "cents": 612.259,
-      "hz": 686.7811,
-      "name": "F5 −29.2¢",
-      "nearestRatio": "37/26",
-      "fromRatioCents": 1.4
+      "cents": 507.29,
+      "hz": 625.3826,
+      "name": "D♯5 +8.7¢",
+      "nearestRatio": "43/32",
+      "fromRatioCents": -4.2
      },
      {
       "degree": 7,
-      "cents": 674.258,
-      "hz": 711.8218,
-      "name": "F5 +32.8¢",
-      "nearestRatio": "31/21",
-      "fromRatioCents": 0
+      "cents": 669.424,
+      "hz": 686.7811,
+      "name": "F5 −29.2¢",
+      "nearestRatio": "25/17",
+      "fromRatioCents": 1.8
+     },
+     {
+      "degree": 8,
+      "cents": 1144.043,
+      "hz": 903.4008,
+      "name": "A5 +45.4¢",
+      "nearestRatio": "60/31",
+      "fromRatioCents": 0.8
      }
     ]
    }
@@ -510,25 +518,25 @@
    "seed": "5e570cb00d5429a901908079c1f20f28124fbe75c83d3604bc698a0e76cd33b5",
    "spectrum": {
     "source": "measured",
-    "frequency": 474.8217,
+    "frequency": 456.9498,
     "soul": {
-     "nm": 574.236,
-     "thz": 522.072,
+     "nm": 596.695,
+     "thz": 502.422,
      "cie1931": {
-      "x": 0.47353,
-      "y": 0.52543
+      "x": 0.61146,
+      "y": 0.38799
      },
-     "luminousEfficiency": 0.92156,
+     "luminousEfficiency": 0.67336,
      "oklch": {
-      "l": 0.9005,
-      "c": 0.1878,
-      "h": 100.951
+      "l": 0.6552,
+      "c": 0.186,
+      "h": 45.418
      },
-     "css": "oklch(0.9005 0.1878 100.951)",
-     "hex": "#fae000",
+     "css": "oklch(0.6552 0.186 45.418)",
+     "hex": "#e86200",
      "vivid": {
-      "css": "oklch(0.914 0.1906 100.951)",
-      "hex": "#ffe500"
+      "css": "oklch(0.703 0.1996 45.418)",
+      "hex": "#ff6c00"
      }
     },
     "stages": [
@@ -578,112 +586,112 @@
      },
      {
       "stage": 2,
-      "frequency": 416.7274,
-      "nm": 654.288,
-      "thz": 458.197,
+      "frequency": 686.7437,
+      "nm": 397.033,
+      "thz": 755.083,
       "cie1931": {
-       "x": 0.72798,
-       "y": 0.27202
+       "x": 0.17347,
+       "y": 0.00486
       },
-      "luminousEfficiency": 0.08492,
+      "luminousEfficiency": 0.00028,
       "oklch": {
-       "l": 0.4372,
-       "c": 0.1759,
-       "h": 21.284
+       "l": 0.2644,
+       "c": 0.1429,
+       "h": 297.771
       },
-      "css": "oklch(0.4372 0.1759 21.284)",
-      "hex": "#9c0022",
+      "css": "oklch(0.2644 0.1429 297.771)",
+      "hex": "#30005f",
       "vivid": {
-       "css": "oklch(0.632 0.2542 21.284)",
-       "hex": "#ff003e"
+       "css": "oklch(0.544 0.2939 297.771)",
+       "hex": "#8c00ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 652.866,
-      "nm": 417.635,
-      "thz": 717.834,
+      "frequency": 429.9843,
+      "nm": 634.115,
+      "thz": 472.773,
       "cie1931": {
-       "x": 0.17179,
-       "y": 0.00492
+       "x": 0.71303,
+       "y": 0.28693
       },
-      "luminousEfficiency": 0.00299,
+      "luminousEfficiency": 0.22501,
       "oklch": {
-       "l": 0.2858,
-       "c": 0.1555,
-       "h": 296.615
+       "l": 0.495,
+       "c": 0.2,
+       "h": 23.407
       },
-      "css": "oklch(0.2858 0.1555 296.615)",
-      "hex": "#36006b",
+      "css": "oklch(0.495 0.2 23.407)",
+      "hex": "#b90023",
       "vivid": {
-       "css": "oklch(0.54 0.2935 296.615)",
-       "hex": "#8801ff"
+       "css": "oklch(0.631 0.2546 23.407)",
+       "hex": "#ff0134"
       }
      },
      {
       "stage": 4,
-      "frequency": 383.8354,
-      "nm": 710.356,
-      "thz": 422.031,
+      "frequency": 468.7649,
+      "nm": 581.655,
+      "thz": 515.412,
+      "cie1931": {
+       "x": 0.52335,
+       "y": 0.47577
+      },
+      "luminousEfficiency": 0.853,
+      "oklch": {
+       "l": 0.8006,
+       "c": 0.1659,
+       "h": 79.757
+      },
+      "css": "oklch(0.8006 0.1659 79.757)",
+      "hex": "#f5af00",
+      "vivid": {
+       "css": "oklch(0.824 0.1708 79.757)",
+       "hex": "#ffb600"
+      }
+     },
+     {
+      "stage": 5,
+      "frequency": 376.567,
+      "nm": 724.067,
+      "thz": 414.04,
       "cie1931": {
        "x": 0.73469,
        "y": 0.26531
       },
-      "luminousEfficiency": 0.00204,
+      "luminousEfficiency": 0.00079,
       "oklch": {
-       "l": 0.3285,
-       "c": 0.132,
+       "l": 0.3165,
+       "c": 0.1272,
        "h": 20.39
       },
-      "css": "oklch(0.3285 0.132 20.39)",
-      "hex": "#690015",
+      "css": "oklch(0.3165 0.1272 20.39)",
+      "hex": "#630014",
       "vivid": {
        "css": "oklch(0.632 0.2539 20.39)",
        "hex": "#ff0042"
       }
      },
      {
-      "stage": 5,
-      "frequency": 473.3764,
-      "nm": 575.989,
-      "thz": 520.483,
-      "cie1931": {
-       "x": 0.48554,
-       "y": 0.51346
-      },
-      "luminousEfficiency": 0.9071,
-      "oklch": {
-       "l": 0.8743,
-       "c": 0.1799,
-       "h": 96.133
-      },
-      "css": "oklch(0.8743 0.1799 96.133)",
-      "hex": "#f9d400",
-      "vivid": {
-       "css": "oklch(0.89 0.1831 96.133)",
-       "hex": "#ffd900"
-      }
-     },
-     {
       "stage": 6,
-      "frequency": 444.3863,
-      "nm": 613.564,
-      "thz": 488.608,
+      "frequency": 355.0734,
+      "nm": 767.897,
+      "thz": 390.407,
       "cie1931": {
-       "x": 0.67625,
-       "y": 0.32356
+       "x": 0.73469,
+       "y": 0.26531
       },
-      "luminousEfficiency": 0.45875,
+      "luminousEfficiency": 0.00003,
       "oklch": {
-       "l": 0.5507,
-       "c": 0.2234,
-       "h": 29.619
+       "l": 0.2957,
+       "c": 0.1188,
+       "h": 20.39
       },
-      "css": "oklch(0.5507 0.2234 29.619)",
-      "hex": "#d50800",
+      "css": "oklch(0.2957 0.1188 20.39)",
+      "hex": "#5a0011",
       "vivid": {
-       "css": "oklch(0.63 0.2555 29.619)",
-       "hex": "#ff0c00"
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
       }
      }
     ]
@@ -691,73 +699,65 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 474.8217,
-     "name": "A♯4 +31.9¢"
+     "hz": 456.9498,
+     "name": "A♯4 −34.6¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 474.8217,
-      "name": "A♯4 +31.9¢",
+      "hz": 456.9498,
+      "name": "A♯4 −34.6¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 551.281,
-      "hz": 652.866,
-      "name": "E5 −16.9¢",
-      "nearestRatio": "11/8",
-      "fromRatioCents": 0
+      "cents": 43.266,
+      "hz": 468.5135,
+      "name": "A♯4 +8.7¢",
+      "nearestRatio": "33/32",
+      "fromRatioCents": -10
      },
      {
       "degree": 3,
-      "cents": 831.722,
-      "hz": 767.6708,
-      "name": "G5 −36.4¢",
-      "nearestRatio": "21/13",
-      "fromRatioCents": 1.5
+      "cents": 705.283,
+      "hz": 686.7437,
+      "name": "F5 −29.3¢",
+      "nearestRatio": "3/2",
+      "fromRatioCents": 3.3
      },
      {
       "degree": 4,
-      "cents": 974.062,
-      "hz": 833.4548,
-      "name": "G♯5 +5.9¢",
-      "nearestRatio": "51/29",
-      "fromRatioCents": -3.3
+      "cents": 763.298,
+      "hz": 710.1468,
+      "name": "F5 +28.7¢",
+      "nearestRatio": "14/9",
+      "fromRatioCents": -1.6
      },
      {
       "degree": 5,
-      "cents": 1085.314,
-      "hz": 888.7726,
-      "name": "A5 +17.2¢",
-      "nearestRatio": "58/31",
-      "fromRatioCents": 0.8
+      "cents": 865.045,
+      "hz": 753.134,
+      "name": "F♯5 +30.5¢",
+      "nearestRatio": "28/17",
+      "fromRatioCents": 1.2
      },
      {
       "degree": 6,
-      "cents": 1112.793,
-      "hz": 902.9922,
-      "name": "A5 +44.7¢",
-      "nearestRatio": "59/31",
-      "fromRatioCents": -1.3
+      "cents": 1094.698,
+      "hz": 859.9686,
+      "name": "A5 −39.9¢",
+      "nearestRatio": "32/17",
+      "fromRatioCents": -0.3
      },
      {
       "degree": 7,
-      "cents": 1175.917,
-      "hz": 936.5246,
-      "name": "A♯5 +7.8¢",
+      "cents": 1179.213,
+      "hz": 902.9922,
+      "name": "A5 +44.7¢",
       "nearestRatio": "63/32",
-      "fromRatioCents": 3.2
-     },
-     {
-      "degree": 8,
-      "cents": 1194.722,
-      "hz": 946.7528,
-      "name": "A♯5 +26.6¢",
-      "nearestRatio": "1/1",
-      "fromRatioCents": -5.3
+      "fromRatioCents": 6.5
      }
     ]
    }
@@ -766,25 +766,25 @@
    "seed": "7c1e15d11d64aee8c21d3a6f5d03d5c57df0f3e2589437dcc21fb9e5bcd787d4",
    "spectrum": {
     "source": "measured",
-    "frequency": 459.1677,
+    "frequency": 439.4071,
     "soul": {
-     "nm": 593.813,
-     "thz": 504.86,
+     "nm": 620.517,
+     "thz": 483.133,
      "cie1931": {
-      "x": 0.59664,
-      "y": 0.40278
+      "x": 0.69252,
+      "y": 0.30733
      },
-     "luminousEfficiency": 0.70984,
+     "luminousEfficiency": 0.37475,
      "oklch": {
-      "l": 0.6782,
-      "c": 0.1788,
-      "h": 50.188
+      "l": 0.5325,
+      "c": 0.2168,
+      "h": 26.67
      },
-     "css": "oklch(0.6782 0.1788 50.188)",
-     "hex": "#eb6f00",
+     "css": "oklch(0.5325 0.2168 26.67)",
+     "hex": "#cc0017",
      "vivid": {
-      "css": "oklch(0.721 0.1901 50.188)",
-      "hex": "#ff7900"
+      "css": "oklch(0.629 0.2561 26.67)",
+      "hex": "#ff0020"
      }
     },
     "stages": [
@@ -834,112 +834,112 @@
      },
      {
       "stage": 2,
-      "frequency": 536.1724,
-      "nm": 508.53,
-      "thz": 589.528,
+      "frequency": 475.4094,
+      "nm": 573.526,
+      "thz": 522.718,
       "cie1931": {
-       "x": 0.00938,
-       "y": 0.72499
+       "x": 0.46863,
+       "y": 0.5303
       },
-      "luminousEfficiency": 0.47375,
+      "luminousEfficiency": 0.92711,
       "oklch": {
-       "l": 0.7795,
-       "c": 0.1584,
-       "h": 167.706
+       "l": 0.9113,
+       "c": 0.1915,
+       "h": 102.837
       },
-      "css": "oklch(0.7795 0.1584 167.706)",
-      "hex": "#00d7a3",
+      "css": "oklch(0.9113 0.1915 102.837)",
+      "hex": "#fae500",
       "vivid": {
-       "css": "oklch(0.887 0.1802 167.706)",
-       "hex": "#00ffc2"
+       "css": "oklch(0.924 0.1941 102.837)",
+       "hex": "#ffea00"
       }
      },
      {
       "stage": 3,
-      "frequency": 543.9378,
-      "nm": 501.27,
-      "thz": 598.066,
+      "frequency": 526.7718,
+      "nm": 517.605,
+      "thz": 579.192,
       "cie1931": {
-       "x": 0.0059,
-       "y": 0.56958
+       "x": 0.05655,
+       "y": 0.82777
       },
-      "luminousEfficiency": 0.3428,
+      "luminousEfficiency": 0.66275,
       "oklch": {
-       "l": 0.7456,
-       "c": 0.1402,
-       "h": 175.304
+       "l": 0.8198,
+       "c": 0.1838,
+       "h": 160.554
       },
-      "css": "oklch(0.7456 0.1402 175.304)",
-      "hex": "#00c9a8",
+      "css": "oklch(0.8198 0.1838 160.554)",
+      "hex": "#00e79b",
       "vivid": {
-       "css": "oklch(0.893 0.1678 175.304)",
-       "hex": "#01ffd6"
+       "css": "oklch(0.882 0.1978 160.554)",
+       "hex": "#00ffab"
       }
      },
      {
       "stage": 4,
-      "frequency": 521.6104,
-      "nm": 522.727,
-      "thz": 573.517,
+      "frequency": 541.5024,
+      "nm": 503.524,
+      "thz": 595.388,
       "cie1931": {
-       "x": 0.09579,
-       "y": 0.83205
+       "x": 0.0038,
+       "y": 0.62234
       },
-      "luminousEfficiency": 0.75746,
+      "luminousEfficiency": 0.38092,
       "oklch": {
-       "l": 0.8372,
-       "c": 0.1974,
-       "h": 157.56
+       "l": 0.7562,
+       "c": 0.1456,
+       "h": 172.73
       },
-      "css": "oklch(0.8372 0.1974 157.56)",
-      "hex": "#00ef95",
+      "css": "oklch(0.7562 0.1456 172.73)",
+      "hex": "#00cda7",
       "vivid": {
-       "css": "oklch(0.88 0.2074 157.56)",
-       "hex": "#00ffa0"
+       "css": "oklch(0.891 0.1715 172.73)",
+       "hex": "#00ffd0"
       }
      },
      {
       "stage": 5,
-      "frequency": 394.7118,
-      "nm": 690.782,
-      "thz": 433.99,
+      "frequency": 377.4705,
+      "nm": 722.334,
+      "thz": 415.033,
       "cie1931": {
-       "x": 0.73443,
-       "y": 0.26557
+       "x": 0.73469,
+       "y": 0.26531
       },
-      "luminousEfficiency": 0.00775,
+      "luminousEfficiency": 0.00089,
       "oklch": {
-       "l": 0.3532,
-       "c": 0.1419,
-       "h": 20.425
+       "l": 0.3178,
+       "c": 0.1277,
+       "h": 20.39
       },
-      "css": "oklch(0.3532 0.1419 20.425)",
-      "hex": "#740019",
+      "css": "oklch(0.3178 0.1277 20.39)",
+      "hex": "#640014",
       "vivid": {
-       "css": "oklch(0.632 0.254 20.425)",
+       "css": "oklch(0.632 0.2539 20.39)",
        "hex": "#ff0042"
       }
      },
      {
       "stage": 6,
-      "frequency": 537.8168,
-      "nm": 506.975,
-      "thz": 591.336,
+      "frequency": 555.635,
+      "nm": 490.717,
+      "thz": 610.927,
       "cie1931": {
-       "x": 0.00598,
-       "y": 0.69562
+       "x": 0.0421,
+       "y": 0.31063
       },
-      "luminousEfficiency": 0.44384,
+      "luminousEfficiency": 0.21455,
       "oklch": {
-       "l": 0.7722,
-       "c": 0.1542,
-       "h": 169.186
+       "l": 0.7029,
+       "c": 0.121,
+       "h": 190.928
       },
-      "css": "oklch(0.7722 0.1542 169.186)",
-      "hex": "#00d4a4",
+      "css": "oklch(0.7029 0.121 190.928)",
+      "hex": "#00b7b1",
       "vivid": {
-       "css": "oklch(0.888 0.1774 169.186)",
-       "hex": "#00ffc6"
+       "css": "oklch(0.902 0.1553 190.928)",
+       "hex": "#00fff7"
       }
      }
     ]
@@ -947,73 +947,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 459.1677,
-     "name": "A♯4 −26.2¢"
+     "hz": 439.4071,
+     "name": "A4 −2.3¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 459.1677,
-      "name": "A♯4 −26.2¢",
+      "hz": 439.4071,
+      "name": "A4 −2.3¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 220.742,
-      "hz": 521.6104,
-      "name": "C5 −5.4¢",
-      "nearestRatio": "25/22",
-      "fromRatioCents": -0.6
+      "cents": 136.335,
+      "hz": 475.4094,
+      "name": "A♯4 +34¢",
+      "nearestRatio": "13/12",
+      "fromRatioCents": -2.2
      },
      {
       "degree": 3,
-      "cents": 268.411,
-      "hz": 536.1724,
-      "name": "C5 +42.2¢",
-      "nearestRatio": "7/6",
-      "fromRatioCents": 1.5
-     },
-     {
-      "degree": 4,
-      "cents": 273.712,
-      "hz": 537.8168,
-      "name": "C5 +47.5¢",
-      "nearestRatio": "34/29",
+      "cents": 313.944,
+      "hz": 526.7718,
+      "name": "C5 +11.6¢",
+      "nearestRatio": "6/5",
       "fromRatioCents": -1.7
      },
      {
+      "degree": 4,
+      "cents": 361.691,
+      "hz": 541.5024,
+      "name": "C♯5 −40.6¢",
+      "nearestRatio": "37/30",
+      "fromRatioCents": -1.4
+     },
+     {
       "degree": 5,
-      "cents": 293.305,
-      "hz": 543.9378,
-      "name": "C♯5 −32.9¢",
-      "nearestRatio": "32/27",
-      "fromRatioCents": -0.8
+      "cents": 406.295,
+      "hz": 555.635,
+      "name": "C♯5 +4¢",
+      "nearestRatio": "24/19",
+      "fromRatioCents": 1.9
      },
      {
       "degree": 6,
-      "cents": 461.054,
+      "cents": 537.209,
       "hz": 599.281,
       "name": "D5 +34.9¢",
-      "nearestRatio": "30/23",
-      "fromRatioCents": 1.1
+      "nearestRatio": "15/11",
+      "fromRatioCents": 0.3
      },
      {
       "degree": 7,
-      "cents": 538.535,
+      "cents": 614.691,
       "hz": 626.711,
       "name": "D♯5 +12.4¢",
-      "nearestRatio": "15/11",
-      "fromRatioCents": 1.6
+      "nearestRatio": "10/7",
+      "fromRatioCents": -2.8
      },
      {
       "degree": 8,
-      "cents": 938.134,
-      "hz": 789.4236,
-      "name": "G5 +12¢",
+      "cents": 936.967,
+      "hz": 754.941,
+      "name": "F♯5 +34.6¢",
       "nearestRatio": "55/32",
-      "fromRatioCents": 0.5
+      "fromRatioCents": -0.7
      }
     ]
    }
@@ -1022,25 +1022,25 @@
    "seed": "e84e7c535180a5aa352c201246cf2d2fb8e13e01ac4df412d247ec8cc0ca391c",
    "spectrum": {
     "source": "measured",
-    "frequency": 497.9082,
+    "frequency": 464.2745,
     "soul": {
-     "nm": 547.61,
-     "thz": 547.456,
+     "nm": 587.281,
+     "thz": 510.475,
      "cie1931": {
-      "x": 0.28452,
-      "y": 0.7078
+      "x": 0.5589,
+      "y": 0.4404
      },
-     "luminousEfficiency": 0.98918,
+     "luminousEfficiency": 0.78974,
      "oklch": {
-      "l": 0.8643,
-      "c": 0.2913,
-      "h": 142.778
+      "l": 0.7389,
+      "c": 0.1666,
+      "h": 64.403
      },
-     "css": "oklch(0.8643 0.2913 142.778)",
-     "hex": "#00fe15",
+     "css": "oklch(0.7389 0.1666 64.403)",
+     "hex": "#f19000",
      "vivid": {
-      "css": "oklch(0.866 0.2919 142.778)",
-      "hex": "#00ff15"
+      "css": "oklch(0.771 0.1738 64.403)",
+      "hex": "#ff9900"
      }
     },
     "stages": [
@@ -1090,112 +1090,112 @@
      },
      {
       "stage": 2,
-      "frequency": 589.1289,
-      "nm": 462.818,
-      "thz": 647.754,
+      "frequency": 590.2611,
+      "nm": 461.931,
+      "thz": 648.999,
       "cie1931": {
-       "x": 0.13943,
-       "y": 0.03483
+       "x": 0.14091,
+       "y": 0.03309
       },
-      "luminousEfficiency": 0.06754,
+      "luminousEfficiency": 0.06509,
       "oklch": {
-       "l": 0.4105,
-       "c": 0.1444,
-       "h": 256.775
+       "l": 0.394,
+       "c": 0.152,
+       "h": 258.899
       },
-      "css": "oklch(0.4105 0.1444 256.775)",
-      "hex": "#004796",
+      "css": "oklch(0.394 0.152 258.899)",
+      "hex": "#004095",
       "vivid": {
-       "css": "oklch(0.609 0.2142 256.775)",
-       "hex": "#007dff"
+       "css": "oklch(0.587 0.2264 258.899)",
+       "hex": "#0072ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 413.8267,
-      "nm": 658.874,
-      "thz": 455.007,
+      "frequency": 568.9069,
+      "nm": 479.269,
+      "thz": 625.52,
       "cie1931": {
-       "x": 0.72964,
-       "y": 0.27036
+       "x": 0.09426,
+       "y": 0.12475
       },
-      "luminousEfficiency": 0.06527,
+      "luminousEfficiency": 0.13495,
       "oklch": {
-       "l": 0.4244,
-       "c": 0.1707,
-       "h": 21.06
+       "l": 0.6077,
+       "c": 0.1062,
+       "h": 212.72
       },
-      "css": "oklch(0.4244 0.1707 21.06)",
-      "hex": "#950021",
+      "css": "oklch(0.6077 0.1062 212.72)",
+      "hex": "#0093a8",
       "vivid": {
-       "css": "oklch(0.632 0.2542 21.06)",
-       "hex": "#ff003f"
+       "css": "oklch(0.83 0.1451 212.72)",
+       "hex": "#00dfff"
       }
      },
      {
       "stage": 4,
-      "frequency": 515.7079,
-      "nm": 528.709,
-      "thz": 567.027,
+      "frequency": 653.4021,
+      "nm": 417.292,
+      "thz": 718.423,
       "cie1931": {
-       "x": 0.14446,
-       "y": 0.81165
+       "x": 0.17183,
+       "y": 0.0049
       },
-      "luminousEfficiency": 0.84566,
+      "luminousEfficiency": 0.00287,
       "oklch": {
-       "l": 0.8508,
-       "c": 0.213,
-       "h": 154.36
+       "l": 0.2852,
+       "c": 0.1551,
+       "h": 296.651
       },
-      "css": "oklch(0.8508 0.213 154.36)",
-      "hex": "#00f58b",
+      "css": "oklch(0.2852 0.1551 296.651)",
+      "hex": "#36006b",
       "vivid": {
-       "css": "oklch(0.877 0.2196 154.36)",
-       "hex": "#00ff91"
+       "css": "oklch(0.54 0.2936 296.651)",
+       "hex": "#8800ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 417.3789,
-      "nm": 653.266,
-      "thz": 458.913,
+      "frequency": 655.8078,
+      "nm": 415.762,
+      "thz": 721.068,
       "cie1931": {
-       "x": 0.72754,
-       "y": 0.27246
+       "x": 0.17201,
+       "y": 0.00485
       },
-      "luminousEfficiency": 0.08983,
+      "luminousEfficiency": 0.00239,
       "oklch": {
-       "l": 0.4401,
-       "c": 0.1771,
-       "h": 21.343
+       "l": 0.2827,
+       "c": 0.1537,
+       "h": 296.787
       },
-      "css": "oklch(0.4401 0.1771 21.343)",
-      "hex": "#9d0022",
+      "css": "oklch(0.2827 0.1537 296.787)",
+      "hex": "#35006a",
       "vivid": {
-       "css": "oklch(0.632 0.2541 21.343)",
-       "hex": "#ff013e"
+       "css": "oklch(0.54 0.2935 296.787)",
+       "hex": "#8900ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 627.788,
-      "nm": 434.318,
-      "thz": 690.26,
+      "frequency": 630.5263,
+      "nm": 432.432,
+      "thz": 693.271,
       "cie1931": {
-       "x": 0.16719,
-       "y": 0.0083
+       "x": 0.16797,
+       "y": 0.00764
       },
-      "luminousEfficiency": 0.01607,
+      "luminousEfficiency": 0.01403,
       "oklch": {
-       "l": 0.3091,
-       "c": 0.1725,
-       "h": 292.307
+       "l": 0.3076,
+       "c": 0.1708,
+       "h": 293.094
       },
-      "css": "oklch(0.3091 0.1725 292.307)",
-      "hex": "#39007d",
+      "css": "oklch(0.3076 0.1708 293.094)",
+      "hex": "#39007b",
       "vivid": {
-       "css": "oklch(0.525 0.2929 292.307)",
-       "hex": "#7b00ff"
+       "css": "oklch(0.528 0.2927 293.094)",
+       "hex": "#7d01ff"
       }
      }
     ]
@@ -1203,73 +1203,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 497.9082,
-     "name": "B4 +14.1¢"
+     "hz": 464.2745,
+     "name": "A♯4 −7¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 497.9082,
-      "name": "B4 +14.1¢",
+      "hz": 464.2745,
+      "name": "A♯4 −7¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 20.717,
+      "cents": 141.799,
       "hz": 503.9023,
       "name": "B4 +34.8¢",
-      "nearestRatio": "1/1",
-      "fromRatioCents": 20.7
+      "nearestRatio": "25/23",
+      "fromRatioCents": -2.6
      },
      {
       "degree": 3,
-      "cents": 60.809,
-      "hz": 515.7079,
-      "name": "C5 −25.1¢",
-      "nearestRatio": "29/28",
-      "fromRatioCents": 0.1
+      "cents": 351.857,
+      "hz": 568.9069,
+      "name": "C♯5 +44.8¢",
+      "nearestRatio": "38/31",
+      "fromRatioCents": -0.6
      },
      {
       "degree": 4,
-      "cents": 291.244,
-      "hz": 589.1289,
-      "name": "D5 +5.3¢",
-      "nearestRatio": "13/11",
-      "fromRatioCents": 2
+      "cents": 415.65,
+      "hz": 590.2611,
+      "name": "D5 +8.6¢",
+      "nearestRatio": "14/11",
+      "fromRatioCents": -1.9
      },
      {
       "degree": 5,
-      "cents": 401.277,
-      "hz": 627.788,
-      "name": "D♯5 +15.3¢",
-      "nearestRatio": "29/23",
-      "fromRatioCents": 0
+      "cents": 529.894,
+      "hz": 630.5263,
+      "name": "D♯5 +22.9¢",
+      "nearestRatio": "19/14",
+      "fromRatioCents": 1.2
      },
      {
       "degree": 6,
-      "cents": 830.934,
-      "hz": 804.6296,
-      "name": "G5 +45¢",
-      "nearestRatio": "21/13",
-      "fromRatioCents": 0.7
+      "cents": 591.592,
+      "hz": 653.4021,
+      "name": "E5 −15.4¢",
+      "nearestRatio": "38/27",
+      "fromRatioCents": -0.1
      },
      {
       "degree": 7,
-      "cents": 879.776,
-      "hz": 827.6534,
-      "name": "G♯5 −6.2¢",
-      "nearestRatio": "5/3",
-      "fromRatioCents": -4.6
+      "cents": 597.954,
+      "hz": 655.8078,
+      "name": "E5 −9.1¢",
+      "nearestRatio": "24/17",
+      "fromRatioCents": 1
      },
      {
       "degree": 8,
-      "cents": 894.573,
-      "hz": 834.7578,
-      "name": "G♯5 +8.6¢",
-      "nearestRatio": "52/31",
-      "fromRatioCents": -0.9
+      "cents": 952.016,
+      "hz": 804.6296,
+      "name": "G5 +45¢",
+      "nearestRatio": "26/15",
+      "fromRatioCents": -0.2
      }
     ]
    }
@@ -1278,25 +1278,25 @@
    "seed": "bafb9be20276c517de0a46aefa99b1ccc98482cbcfa501bdcd0421072822e45e",
    "spectrum": {
     "source": "measured",
-    "frequency": 508.9149,
+    "frequency": 466.1741,
     "soul": {
-     "nm": 535.767,
-     "thz": 559.558,
+     "nm": 584.888,
+     "thz": 512.564,
      "cie1931": {
-      "x": 0.1986,
-      "y": 0.7776
+      "x": 0.54408,
+      "y": 0.45514
      },
-     "luminousEfficiency": 0.92166,
+     "luminousEfficiency": 0.81756,
      "oklch": {
-      "l": 0.8611,
-      "c": 0.2342,
-      "h": 150.528
+      "l": 0.7637,
+      "c": 0.1648,
+      "h": 70.656
      },
-     "css": "oklch(0.8611 0.2342 150.528)",
-     "hex": "#00fa79",
+     "css": "oklch(0.7637 0.1648 70.656)",
+     "hex": "#f39d00",
      "vivid": {
-      "css": "oklch(0.874 0.2377 150.528)",
-      "hex": "#00ff7c"
+      "css": "oklch(0.792 0.1709 70.656)",
+      "hex": "#ffa500"
      }
     },
     "stages": [
@@ -1346,112 +1346,112 @@
      },
      {
       "stage": 2,
-      "frequency": 378.5946,
-      "nm": 720.189,
-      "thz": 416.269,
+      "frequency": 610.9283,
+      "nm": 446.304,
+      "thz": 671.723,
+      "cie1931": {
+       "x": 0.16005,
+       "y": 0.01472
+      },
+      "luminousEfficiency": 0.03179,
+      "oklch": {
+       "l": 0.3127,
+       "c": 0.1834,
+       "h": 284.449
+      },
+      "css": "oklch(0.3127 0.1834 284.449)",
+      "hex": "#310087",
+      "vivid": {
+       "css": "oklch(0.501 0.2938 284.449)",
+       "hex": "#6300ff"
+      }
+     },
+     {
+      "stage": 3,
+      "frequency": 564.5516,
+      "nm": 482.967,
+      "thz": 620.731,
+      "cie1931": {
+       "x": 0.07827,
+       "y": 0.16995
+      },
+      "luminousEfficiency": 0.15626,
+      "oklch": {
+       "l": 0.6425,
+       "c": 0.1097,
+       "h": 204.996
+      },
+      "css": "oklch(0.6425 0.1097 204.996)",
+      "hex": "#00a0ac",
+      "vivid": {
+       "css": "oklch(0.861 0.147 204.996)",
+       "hex": "#00ecff"
+      }
+     },
+     {
+      "stage": 4,
+      "frequency": 355.9169,
+      "nm": 766.077,
+      "thz": 391.335,
       "cie1931": {
        "x": 0.73469,
        "y": 0.26531
       },
-      "luminousEfficiency": 0.00103,
+      "luminousEfficiency": 0.00004,
       "oklch": {
-       "l": 0.3195,
-       "c": 0.1284,
+       "l": 0.2962,
+       "c": 0.119,
        "h": 20.39
       },
-      "css": "oklch(0.3195 0.1284 20.39)",
-      "hex": "#650014",
+      "css": "oklch(0.2962 0.119 20.39)",
+      "hex": "#5a0011",
       "vivid": {
        "css": "oklch(0.632 0.2539 20.39)",
        "hex": "#ff0042"
       }
      },
      {
-      "stage": 3,
-      "frequency": 630.8032,
-      "nm": 432.242,
-      "thz": 693.575,
-      "cie1931": {
-       "x": 0.16805,
-       "y": 0.00757
-      },
-      "luminousEfficiency": 0.01384,
-      "oklch": {
-       "l": 0.3073,
-       "c": 0.1706,
-       "h": 293.171
-      },
-      "css": "oklch(0.3073 0.1706 293.171)",
-      "hex": "#39007b",
-      "vivid": {
-       "css": "oklch(0.528 0.2929 293.171)",
-       "hex": "#7e00ff"
-      }
-     },
-     {
-      "stage": 4,
-      "frequency": 571.2057,
-      "nm": 477.341,
-      "thz": 628.047,
-      "cie1931": {
-       "x": 0.10157,
-       "y": 0.10589
-      },
-      "luminousEfficiency": 0.12449,
-      "oklch": {
-       "l": 0.5891,
-       "c": 0.1053,
-       "h": 217.069
-      },
-      "css": "oklch(0.5891 0.1053 217.069)",
-      "hex": "#008ca6",
-      "vivid": {
-       "css": "oklch(0.813 0.1453 217.069)",
-       "hex": "#00d8ff"
-      }
-     },
-     {
       "stage": 5,
-      "frequency": 498.0575,
-      "nm": 547.446,
-      "thz": 547.62,
+      "frequency": 380.2391,
+      "nm": 717.074,
+      "thz": 418.077,
       "cie1931": {
-       "x": 0.28335,
-       "y": 0.70885
+       "x": 0.73469,
+       "y": 0.26531
       },
-      "luminousEfficiency": 0.98871,
+      "luminousEfficiency": 0.00128,
       "oklch": {
-       "l": 0.8642,
-       "c": 0.2901,
-       "h": 142.907
+       "l": 0.3222,
+       "c": 0.1295,
+       "h": 20.39
       },
-      "css": "oklch(0.8642 0.2901 142.907)",
-      "hex": "#00fe1b",
+      "css": "oklch(0.3222 0.1295 20.39)",
+      "hex": "#660014",
       "vivid": {
-       "css": "oklch(0.866 0.2907 142.907)",
-       "hex": "#00ff1b"
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
       }
      },
      {
       "stage": 6,
-      "frequency": 629.9033,
-      "nm": 432.86,
-      "thz": 692.586,
+      "frequency": 541.4671,
+      "nm": 503.557,
+      "thz": 595.349,
       "cie1931": {
-       "x": 0.1678,
-       "y": 0.00778
+       "x": 0.00379,
+       "y": 0.62308
       },
-      "luminousEfficiency": 0.01448,
+      "luminousEfficiency": 0.3815,
       "oklch": {
-       "l": 0.3078,
-       "c": 0.1711,
-       "h": 292.926
+       "l": 0.7564,
+       "c": 0.1457,
+       "h": 172.694
       },
-      "css": "oklch(0.3078 0.1711 292.926)",
-      "hex": "#39007b",
+      "css": "oklch(0.7564 0.1457 172.694)",
+      "hex": "#00cda7",
       "vivid": {
-       "css": "oklch(0.527 0.293 292.926)",
-       "hex": "#7d00ff"
+       "css": "oklch(0.891 0.1716 172.694)",
+       "hex": "#00ffd0"
       }
      }
     ]
@@ -1459,65 +1459,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 508.9149,
-     "name": "C5 −48.1¢"
+     "hz": 466.1741,
+     "name": "A♯4 +0¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 508.9149,
-      "name": "C5 −48.1¢",
+      "hz": 466.1741,
+      "name": "A♯4 +0¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 199.903,
-      "hz": 571.2057,
-      "name": "D5 −48.2¢",
-      "nearestRatio": "28/25",
-      "fromRatioCents": 3.7
+      "cents": 259.206,
+      "hz": 541.4671,
+      "name": "C♯5 −40.8¢",
+      "nearestRatio": "36/31",
+      "fromRatioCents": 0.3
      },
      {
       "degree": 3,
-      "cents": 235.101,
-      "hz": 582.9377,
-      "name": "D5 −13¢",
-      "nearestRatio": "8/7",
-      "fromRatioCents": 3.9
+      "cents": 331.484,
+      "hz": 564.5516,
+      "name": "C♯5 +31.5¢",
+      "nearestRatio": "23/19",
+      "fromRatioCents": 0.7
      },
      {
       "degree": 4,
-      "cents": 370.483,
-      "hz": 630.3531,
-      "name": "D♯5 +22.4¢",
-      "nearestRatio": "26/21",
+      "cents": 386.967,
+      "hz": 582.9377,
+      "name": "D5 −13¢",
+      "nearestRatio": "5/4",
       "fromRatioCents": 0.7
      },
      {
       "degree": 5,
-      "cents": 517.23,
-      "hz": 686.1145,
-      "name": "F5 −30.9¢",
-      "nearestRatio": "31/23",
-      "fromRatioCents": 0.5
+      "cents": 468.161,
+      "hz": 610.9283,
+      "name": "D♯5 −31.8¢",
+      "nearestRatio": "38/29",
+      "fromRatioCents": 0.2
      },
      {
       "degree": 6,
-      "cents": 687.875,
-      "hz": 757.1892,
-      "name": "F♯5 +39.8¢",
-      "nearestRatio": "46/31",
-      "fromRatioCents": 4.6
+      "cents": 669.097,
+      "hz": 686.1145,
+      "name": "F5 −30.9¢",
+      "nearestRatio": "25/17",
+      "fromRatioCents": 1.4
      },
      {
       "degree": 7,
-      "cents": 1162.665,
-      "hz": 996.115,
-      "name": "B5 +14.6¢",
-      "nearestRatio": "45/23",
+      "cents": 732.806,
+      "hz": 711.8338,
+      "name": "F5 +32.8¢",
+      "nearestRatio": "29/19",
       "fromRatioCents": 0.7
+     },
+     {
+      "degree": 8,
+      "cents": 847.246,
+      "hz": 760.4782,
+      "name": "F♯5 +47.3¢",
+      "nearestRatio": "31/19",
+      "fromRatioCents": -0.3
      }
     ]
    }
@@ -1526,25 +1534,25 @@
    "seed": "c53758368aaa3ae3a0c16bc6277c1cf673e5aeeb08464dfb4f4abeacce9f680a",
    "spectrum": {
     "source": "measured",
-    "frequency": 474.3857,
+    "frequency": 446.3982,
     "soul": {
-     "nm": 574.764,
-     "thz": 521.593,
+     "nm": 610.799,
+     "thz": 490.82,
      "cie1931": {
-      "x": 0.47715,
-      "y": 0.52182
+      "x": 0.66824,
+      "y": 0.33155
      },
-     "luminousEfficiency": 0.9173,
+     "luminousEfficiency": 0.49299,
      "oklch": {
-      "l": 0.8929,
-      "c": 0.1853,
-      "h": 99.523
+      "l": 0.5652,
+      "c": 0.219,
+      "h": 31.198
      },
-     "css": "oklch(0.8929 0.1853 99.523)",
-     "hex": "#fadc00",
+     "css": "oklch(0.5652 0.219 31.198)",
+     "hex": "#d91f00",
      "vivid": {
-      "css": "oklch(0.907 0.1882 99.523)",
-      "hex": "#ffe101"
+      "css": "oklch(0.639 0.2474 31.198)",
+      "hex": "#ff2600"
      }
     },
     "stages": [
@@ -1594,112 +1602,112 @@
      },
      {
       "stage": 2,
-      "frequency": 473.8138,
-      "nm": 575.457,
-      "thz": 520.964,
+      "frequency": 481.2855,
+      "nm": 566.524,
+      "thz": 529.179,
       "cie1931": {
-       "x": 0.48191,
-       "y": 0.51708
+       "x": 0.41956,
+       "y": 0.57895
       },
-      "luminousEfficiency": 0.91156,
+      "luminousEfficiency": 0.97151,
       "oklch": {
-       "l": 0.882,
-       "c": 0.1821,
-       "h": 97.616
+       "l": 0.937,
+       "c": 0.2201,
+       "h": 118.926
       },
-      "css": "oklch(0.882 0.1821 97.616)",
-      "hex": "#f9d700",
+      "css": "oklch(0.937 0.2201 118.926)",
+      "hex": "#dcfd00",
       "vivid": {
-       "css": "oklch(0.897 0.1852 97.616)",
-       "hex": "#ffdc00"
+       "css": "oklch(0.942 0.2212 118.926)",
+       "hex": "#ddff00"
       }
      },
      {
       "stage": 3,
-      "frequency": 627.2981,
-      "nm": 434.657,
-      "thz": 689.722,
+      "frequency": 454.4546,
+      "nm": 599.971,
+      "thz": 499.678,
       "cie1931": {
-       "x": 0.16704,
-       "y": 0.00843
+       "x": 0.6269,
+       "y": 0.37262
       },
-      "luminousEfficiency": 0.01645,
+      "luminousEfficiency": 0.63137,
       "oklch": {
-       "l": 0.3091,
-       "c": 0.1726,
-       "h": 292.157
+       "l": 0.6315,
+       "c": 0.1945,
+       "h": 40.949
       },
-      "css": "oklch(0.3091 0.1726 292.157)",
-      "hex": "#38007d",
+      "css": "oklch(0.6315 0.1945 40.949)",
+      "hex": "#e55300",
       "vivid": {
-       "css": "oklch(0.524 0.2926 292.157)",
-       "hex": "#7a00ff"
+       "css": "oklch(0.685 0.2109 40.949)",
+       "hex": "#ff5d00"
       }
      },
      {
       "stage": 4,
-      "frequency": 426.4582,
-      "nm": 639.358,
-      "thz": 468.896,
+      "frequency": 571.9178,
+      "nm": 476.746,
+      "thz": 628.83,
       "cie1931": {
-       "x": 0.71844,
-       "y": 0.28153
+       "x": 0.10369,
+       "y": 0.10067
       },
-      "luminousEfficiency": 0.18012,
+      "luminousEfficiency": 0.12137,
       "oklch": {
-       "l": 0.4799,
-       "c": 0.1936,
-       "h": 22.614
+       "l": 0.5836,
+       "c": 0.1052,
+       "h": 218.464
       },
-      "css": "oklch(0.4799 0.1936 22.614)",
-      "hex": "#b10024",
+      "css": "oklch(0.5836 0.1052 218.464)",
+      "hex": "#008aa5",
       "vivid": {
-       "css": "oklch(0.631 0.2545 22.614)",
-       "hex": "#ff0038"
+       "css": "oklch(0.808 0.1456 218.464)",
+       "hex": "#00d6ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 399.7473,
-      "nm": 682.08,
-      "thz": 439.527,
+      "frequency": 354.0434,
+      "nm": 770.131,
+      "thz": 389.275,
       "cie1931": {
-       "x": 0.73369,
-       "y": 0.26631
+       "x": 0.73469,
+       "y": 0.26531
       },
-      "luminousEfficiency": 0.01476,
+      "luminousEfficiency": 0.00003,
       "oklch": {
-       "l": 0.3697,
-       "c": 0.1486,
-       "h": 20.521
+       "l": 0.2952,
+       "c": 0.1186,
+       "h": 20.39
       },
-      "css": "oklch(0.3697 0.1486 20.521)",
-      "hex": "#7b001b",
+      "css": "oklch(0.2952 0.1186 20.39)",
+      "hex": "#5a0011",
       "vivid": {
-       "css": "oklch(0.632 0.254 20.521)",
-       "hex": "#ff0041"
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
       }
      },
      {
       "stage": 6,
-      "frequency": 691.9435,
-      "nm": 394.049,
-      "thz": 760.8,
+      "frequency": 589.3545,
+      "nm": 462.641,
+      "thz": 648.002,
       "cie1931": {
-       "x": 0.1736,
-       "y": 0.00494
+       "x": 0.13973,
+       "y": 0.03448
       },
-      "luminousEfficiency": 0.00019,
+      "luminousEfficiency": 0.06705,
       "oklch": {
-       "l": 0.2621,
-       "c": 0.1416,
-       "h": 297.841
+       "l": 0.4074,
+       "c": 0.1458,
+       "h": 257.204
       },
-      "css": "oklch(0.2621 0.1416 297.841)",
-      "hex": "#30005e",
+      "css": "oklch(0.4074 0.1458 257.204)",
+      "hex": "#004696",
       "vivid": {
-       "css": "oklch(0.544 0.2939 297.841)",
-       "hex": "#8c00ff"
+       "css": "oklch(0.605 0.2164 257.204)",
+       "hex": "#007bff"
       }
      }
     ]
@@ -1707,65 +1715,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 474.3857,
-     "name": "A♯4 +30.3¢"
+     "hz": 446.3982,
+     "name": "A4 +25¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 474.3857,
-      "name": "A♯4 +30.3¢",
+      "hz": 446.3982,
+      "name": "A4 +25¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 483.709,
-      "hz": 627.2981,
-      "name": "D♯5 +14¢",
-      "nearestRatio": "41/31",
-      "fromRatioCents": -0.3
+      "cents": 30.966,
+      "hz": 454.4546,
+      "name": "A♯4 −44¢",
+      "nearestRatio": "33/32",
+      "fromRatioCents": -22.3
      },
      {
       "degree": 3,
-      "cents": 577.088,
-      "hz": 662.0625,
-      "name": "E5 +7.4¢",
-      "nearestRatio": "39/28",
-      "fromRatioCents": 3.4
+      "cents": 130.274,
+      "hz": 481.2855,
+      "name": "B4 −44.7¢",
+      "nearestRatio": "14/13",
+      "fromRatioCents": 2
      },
      {
       "degree": 4,
-      "cents": 653.512,
-      "hz": 691.9435,
-      "name": "F5 −16.2¢",
-      "nearestRatio": "35/24",
-      "fromRatioCents": 0.3
+      "cents": 428.972,
+      "hz": 571.9178,
+      "name": "D5 −46¢",
+      "nearestRatio": "41/32",
+      "fromRatioCents": -0.1
      },
      {
       "degree": 5,
-      "cents": 714.752,
-      "hz": 716.8578,
-      "name": "F5 +45¢",
-      "nearestRatio": "47/31",
-      "fromRatioCents": -5.7
+      "cents": 480.965,
+      "hz": 589.3545,
+      "name": "D5 +6¢",
+      "nearestRatio": "33/25",
+      "fromRatioCents": 0.3
      },
      {
       "degree": 6,
-      "cents": 903.633,
-      "hz": 799.4946,
-      "name": "G5 +33.9¢",
-      "nearestRatio": "32/19",
-      "fromRatioCents": 1.1
+      "cents": 682.363,
+      "hz": 662.0625,
+      "name": "E5 +7.4¢",
+      "nearestRatio": "43/29",
+      "fromRatioCents": 0.4
      },
      {
       "degree": 7,
-      "cents": 1015.613,
-      "hz": 852.9164,
-      "name": "G♯5 +45.9¢",
-      "nearestRatio": "9/5",
-      "fromRatioCents": -2
+      "cents": 798.714,
+      "hz": 708.0868,
+      "name": "F5 +23.7¢",
+      "nearestRatio": "46/29",
+      "fromRatioCents": 0
+     },
+     {
+      "degree": 8,
+      "cents": 820.027,
+      "hz": 716.8578,
+      "name": "F5 +45¢",
+      "nearestRatio": "45/28",
+      "fromRatioCents": -1.4
      }
     ]
    }
@@ -1774,25 +1790,25 @@
    "seed": "224bcacda132fad96993c3fd3f2a3bd2a2eb90db2c792c9a0a03f33aaf4db3ab",
    "spectrum": {
     "source": "measured",
-    "frequency": 464.0155,
+    "frequency": 452.9288,
     "soul": {
-     "nm": 587.609,
-     "thz": 510.19,
+     "nm": 601.992,
+     "thz": 498,
      "cie1931": {
-      "x": 0.56089,
-      "y": 0.43842
+      "x": 0.63587,
+      "y": 0.3637
      },
-     "luminousEfficiency": 0.78584,
+     "luminousEfficiency": 0.60541,
      "oklch": {
-      "l": 0.7354,
-      "c": 0.1669,
-      "h": 63.587
+      "l": 0.6178,
+      "c": 0.1998,
+      "h": 38.573
      },
-     "css": "oklch(0.7354 0.1669 63.587)",
-     "hex": "#f18e00",
+     "css": "oklch(0.6178 0.1998 38.573)",
+     "hex": "#e34a00",
      "vivid": {
-      "css": "oklch(0.768 0.1743 63.587)",
-      "hex": "#ff9700"
+      "css": "oklch(0.675 0.2181 38.573)",
+      "hex": "#ff5400"
      }
     },
     "stages": [
@@ -1842,112 +1858,112 @@
      },
      {
       "stage": 2,
-      "frequency": 695.8915,
-      "nm": 391.813,
-      "thz": 765.141,
+      "frequency": 625.1223,
+      "nm": 436.17,
+      "thz": 687.329,
       "cie1931": {
-       "x": 0.17371,
-       "y": 0.00494
+       "x": 0.16637,
+       "y": 0.00904
       },
-      "luminousEfficiency": 0.00015,
+      "luminousEfficiency": 0.01821,
       "oklch": {
-       "l": 0.2606,
-       "c": 0.1408,
-       "h": 297.914
+       "l": 0.3104,
+       "c": 0.1741,
+       "h": 291.454
       },
-      "css": "oklch(0.2606 0.1408 297.914)",
-      "hex": "#2f005d",
+      "css": "oklch(0.3104 0.1741 291.454)",
+      "hex": "#38007e",
       "vivid": {
-       "css": "oklch(0.544 0.2938 297.914)",
-       "hex": "#8c00ff"
+       "css": "oklch(0.522 0.2928 291.454)",
+       "hex": "#7800ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 651.805,
-      "nm": 418.315,
-      "thz": 716.667,
+      "frequency": 477.9969,
+      "nm": 570.421,
+      "thz": 525.563,
       "cie1931": {
-       "x": 0.17169,
-       "y": 0.00496
+       "x": 0.44702,
+       "y": 0.55178
       },
-      "luminousEfficiency": 0.00325,
+      "luminousEfficiency": 0.94924,
       "oklch": {
-       "l": 0.2864,
-       "c": 0.1559,
-       "h": 296.537
+       "l": 0.9559,
+       "c": 0.2095,
+       "h": 110.561
       },
-      "css": "oklch(0.2864 0.1559 296.537)",
-      "hex": "#36006c",
+      "css": "oklch(0.9559 0.2095 110.561)",
+      "hex": "#f9fc00",
       "vivid": {
-       "css": "oklch(0.539 0.2934 296.537)",
-       "hex": "#8800ff"
+       "css": "oklch(0.965 0.2115 110.561)",
+       "hex": "#fcff00"
       }
      },
      {
       "stage": 4,
-      "frequency": 512.7781,
-      "nm": 531.73,
-      "thz": 563.805,
+      "frequency": 526.7912,
+      "nm": 517.586,
+      "thz": 579.213,
       "cie1931": {
-       "x": 0.16819,
-       "y": 0.79777
+       "x": 0.05641,
+       "y": 0.82769
       },
-      "luminousEfficiency": 0.88195,
+      "luminousEfficiency": 0.66236,
       "oklch": {
-       "l": 0.8562,
-       "c": 0.2217,
-       "h": 152.743
+       "l": 0.8198,
+       "c": 0.1838,
+       "h": 160.566
       },
-      "css": "oklch(0.8562 0.2217 152.743)",
-      "hex": "#00f785",
+      "css": "oklch(0.8198 0.1838 160.566)",
+      "hex": "#00e79b",
       "vivid": {
-       "css": "oklch(0.876 0.2268 152.743)",
-       "hex": "#00ff89"
+       "css": "oklch(0.882 0.1977 160.566)",
+       "hex": "#00ffab"
       }
      },
      {
       "stage": 5,
-      "frequency": 431.3406,
-      "nm": 632.121,
-      "thz": 474.264,
+      "frequency": 617.8945,
+      "nm": 441.272,
+      "thz": 679.382,
       "cie1931": {
-       "x": 0.71064,
-       "y": 0.28931
+       "x": 0.16366,
+       "y": 0.01154
       },
-      "luminousEfficiency": 0.24373,
+      "luminousEfficiency": 0.02465,
       "oklch": {
-       "l": 0.4999,
-       "c": 0.2021,
-       "h": 23.765
+       "l": 0.313,
+       "c": 0.1787,
+       "h": 288.536
       },
-      "css": "oklch(0.4999 0.2021 23.765)",
-      "hex": "#bb0022",
+      "css": "oklch(0.313 0.1787 288.536)",
+      "hex": "#360083",
       "vivid": {
-       "css": "oklch(0.63 0.2547 23.765)",
-       "hex": "#ff0032"
+       "css": "oklch(0.513 0.293 288.536)",
+       "hex": "#7000ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 592.3326,
-      "nm": 460.315,
-      "thz": 651.277,
+      "frequency": 626.5133,
+      "nm": 435.202,
+      "thz": 688.859,
       "cie1931": {
-       "x": 0.14347,
-       "y": 0.03023
+       "x": 0.1668,
+       "y": 0.00864
       },
-      "luminousEfficiency": 0.06082,
+      "luminousEfficiency": 0.01708,
       "oklch": {
-       "l": 0.3558,
-       "c": 0.1724,
-       "h": 262.579
+       "l": 0.31,
+       "c": 0.1734,
+       "h": 291.911
       },
-      "css": "oklch(0.3558 0.1724 262.579)",
-      "hex": "#002e94",
+      "css": "oklch(0.31 0.1734 291.911)",
+      "hex": "#39007e",
       "vivid": {
-       "css": "oklch(0.534 0.2588 262.579)",
-       "hex": "#0056ff"
+       "css": "oklch(0.524 0.2927 291.911)",
+       "hex": "#7a01ff"
       }
      }
     ]
@@ -1955,73 +1971,65 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 464.0155,
-     "name": "A♯4 −8¢"
+     "hz": 452.9288,
+     "name": "A♯4 −49.9¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 464.0155,
-      "name": "A♯4 −8¢",
+      "hz": 452.9288,
+      "name": "A♯4 −49.9¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 172.994,
-      "hz": 512.7781,
-      "name": "C5 −35¢",
-      "nearestRatio": "21/19",
+      "cents": 93.26,
+      "hz": 477.9969,
+      "name": "A♯4 +43.4¢",
+      "nearestRatio": "19/18",
       "fromRatioCents": -0.3
      },
      {
       "degree": 3,
-      "cents": 422.681,
-      "hz": 592.3326,
-      "name": "D5 +14.7¢",
-      "nearestRatio": "37/29",
-      "fromRatioCents": 0.9
+      "cents": 261.536,
+      "hz": 526.7912,
+      "name": "C5 +11.7¢",
+      "nearestRatio": "36/31",
+      "fromRatioCents": 2.7
      },
      {
       "degree": 4,
-      "cents": 488.225,
+      "cents": 530.092,
       "hz": 615.188,
       "name": "D♯5 −19.8¢",
-      "nearestRatio": "41/31",
-      "fromRatioCents": 4.2
+      "nearestRatio": "19/14",
+      "fromRatioCents": 1.4
      },
      {
       "degree": 5,
-      "cents": 588.321,
-      "hz": 651.805,
-      "name": "E5 −19.7¢",
-      "nearestRatio": "45/32",
-      "fromRatioCents": -1.9
+      "cents": 537.692,
+      "hz": 617.8945,
+      "name": "D♯5 −12.2¢",
+      "nearestRatio": "15/11",
+      "fromRatioCents": 0.7
      },
      {
       "degree": 6,
-      "cents": 701.627,
-      "hz": 695.8915,
-      "name": "F5 −6.4¢",
-      "nearestRatio": "3/2",
-      "fromRatioCents": -0.3
+      "cents": 559.749,
+      "hz": 625.8174,
+      "name": "D♯5 +9.9¢",
+      "nearestRatio": "29/21",
+      "fromRatioCents": 1
      },
      {
       "degree": 7,
-      "cents": 957.568,
+      "cents": 999.435,
       "hz": 806.764,
       "name": "G5 +49.6¢",
-      "nearestRatio": "40/23",
-      "fromRatioCents": -0.5
-     },
-     {
-      "degree": 8,
-      "cents": 1073.585,
-      "hz": 862.6812,
-      "name": "A5 −34.4¢",
-      "nearestRatio": "13/7",
-      "fromRatioCents": 1.9
+      "nearestRatio": "57/32",
+      "fromRatioCents": 0
      }
     ]
    }
@@ -2030,25 +2038,25 @@
    "seed": "73e14a510a55eda73e6b52731d9abf2183363bbe5cd25e1a0ed14219c680f4e5",
    "spectrum": {
     "source": "measured",
-    "frequency": 491.709,
+    "frequency": 456.6858,
     "soul": {
-     "nm": 554.514,
-     "thz": 540.64,
+     "nm": 597.04,
+     "thz": 502.131,
      "cie1931": {
-      "x": 0.33391,
-      "y": 0.66212
+      "x": 0.61317,
+      "y": 0.3863
      },
-     "luminousEfficiency": 0.99988,
+     "luminousEfficiency": 0.66896,
      "oklch": {
-      "l": 0.888,
-      "c": 0.2664,
-      "h": 136.472
+      "l": 0.6526,
+      "c": 0.1869,
+      "h": 44.9
      },
-     "css": "oklch(0.888 0.2664 136.472)",
-     "hex": "#7bff00",
+     "css": "oklch(0.6526 0.1869 44.9)",
+     "hex": "#e86000",
      "vivid": {
-      "css": "oklch(0.888 0.2664 136.472)",
-      "hex": "#7bff00"
+      "css": "oklch(0.701 0.2008 44.9)",
+      "hex": "#ff6a00"
      }
     },
     "stages": [
@@ -2098,112 +2106,112 @@
      },
      {
       "stage": 2,
-      "frequency": 691.4374,
-      "nm": 394.337,
-      "thz": 760.243,
+      "frequency": 564.0886,
+      "nm": 483.363,
+      "thz": 620.222,
       "cie1931": {
-       "x": 0.17359,
-       "y": 0.00493
+       "x": 0.07646,
+       "y": 0.17558
       },
-      "luminousEfficiency": 0.0002,
+      "luminousEfficiency": 0.15873,
       "oklch": {
-       "l": 0.2623,
-       "c": 0.1417,
-       "h": 297.833
+       "l": 0.6461,
+       "c": 0.1102,
+       "h": 204.223
       },
-      "css": "oklch(0.2623 0.1417 297.833)",
-      "hex": "#30005e",
+      "css": "oklch(0.6461 0.1102 204.223)",
+      "hex": "#00a1ad",
       "vivid": {
-       "css": "oklch(0.544 0.2939 297.833)",
-       "hex": "#8c00ff"
+       "css": "oklch(0.864 0.1474 204.223)",
+       "hex": "#00edff"
       }
      },
      {
       "stage": 3,
-      "frequency": 614.5047,
-      "nm": 443.706,
-      "thz": 675.655,
+      "frequency": 570.8043,
+      "nm": 477.676,
+      "thz": 627.606,
       "cie1931": {
-       "x": 0.16206,
-       "y": 0.01296
+       "x": 0.10034,
+       "y": 0.10896
       },
-      "luminousEfficiency": 0.02794,
+      "luminousEfficiency": 0.12627,
       "oklch": {
-       "l": 0.3134,
-       "c": 0.181,
-       "h": 286.751
+       "l": 0.5924,
+       "c": 0.1054,
+       "h": 216.292
       },
-      "css": "oklch(0.3134 0.181 286.751)",
-      "hex": "#340085",
+      "css": "oklch(0.5924 0.1054 216.292)",
+      "hex": "#008da6",
       "vivid": {
-       "css": "oklch(0.508 0.2932 286.751)",
-       "hex": "#6a01ff"
+       "css": "oklch(0.816 0.1452 216.292)",
+       "hex": "#00d9ff"
       }
      },
      {
       "stage": 4,
-      "frequency": 579.1235,
-      "nm": 470.814,
-      "thz": 636.753,
+      "frequency": 650.2649,
+      "nm": 419.306,
+      "thz": 714.974,
       "cie1931": {
-       "x": 0.12198,
-       "y": 0.06167
+       "x": 0.17153,
+       "y": 0.00504
       },
-      "luminousEfficiency": 0.09419,
+      "luminousEfficiency": 0.00367,
       "oklch": {
-       "l": 0.521,
-       "c": 0.1093,
-       "h": 234.209
+       "l": 0.2883,
+       "c": 0.157,
+       "h": 296.404
       },
-      "css": "oklch(0.521 0.1093 234.209)",
-      "hex": "#00729e",
+      "css": "oklch(0.2883 0.157 296.404)",
+      "hex": "#36006d",
       "vivid": {
-       "css": "oklch(0.744 0.1561 234.209)",
-       "hex": "#00baff"
+       "css": "oklch(0.539 0.2936 296.404)",
+       "hex": "#8800ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 431.2078,
-      "nm": 632.316,
-      "thz": 474.118,
+      "frequency": 656.3608,
+      "nm": 415.411,
+      "thz": 721.676,
       "cie1931": {
-       "x": 0.71088,
-       "y": 0.28908
+       "x": 0.17204,
+       "y": 0.00484
       },
-      "luminousEfficiency": 0.24187,
+      "luminousEfficiency": 0.00229,
       "oklch": {
-       "l": 0.4994,
-       "c": 0.2019,
-       "h": 23.73
+       "l": 0.2822,
+       "c": 0.1533,
+       "h": 296.813
       },
-      "css": "oklch(0.4994 0.2019 23.73)",
-      "hex": "#bb0022",
+      "css": "oklch(0.2822 0.1533 296.813)",
+      "hex": "#350069",
       "vivid": {
-       "css": "oklch(0.63 0.2547 23.73)",
-       "hex": "#ff0032"
+       "css": "oklch(0.54 0.2935 296.813)",
+       "hex": "#8900ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 595.5105,
-      "nm": 457.859,
-      "thz": 654.771,
+      "frequency": 624.9135,
+      "nm": 436.316,
+      "thz": 687.1,
       "cie1931": {
-       "x": 0.14713,
-       "y": 0.02644
+       "x": 0.1663,
+       "y": 0.0091
       },
-      "luminousEfficiency": 0.05464,
+      "luminousEfficiency": 0.01839,
       "oklch": {
-       "l": 0.303,
-       "c": 0.2026,
-       "h": 267.759
+       "l": 0.3107,
+       "c": 0.1743,
+       "h": 291.381
       },
-      "css": "oklch(0.303 0.2026 267.759)",
-      "hex": "#100092",
+      "css": "oklch(0.3107 0.1743 291.381)",
+      "hex": "#38007f",
       "vivid": {
-       "css": "oklch(0.46 0.3076 267.759)",
-       "hex": "#2400ff"
+       "css": "oklch(0.522 0.2929 291.381)",
+       "hex": "#7800ff"
       }
      }
     ]
@@ -2211,73 +2219,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 491.709,
-     "name": "B4 −7.6¢"
+     "hz": 456.6858,
+     "name": "A♯4 −35.6¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 491.709,
-      "name": "B4 −7.6¢",
+      "hz": 456.6858,
+      "name": "A♯4 −35.6¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 249.212,
-      "hz": 567.8387,
-      "name": "C♯5 +41.6¢",
-      "nearestRatio": "15/13",
-      "fromRatioCents": 1.5
+      "cents": 365.664,
+      "hz": 564.0886,
+      "name": "C♯5 +30.1¢",
+      "nearestRatio": "21/17",
+      "fromRatioCents": -0.2
      },
      {
       "degree": 3,
-      "cents": 283.28,
-      "hz": 579.1235,
-      "name": "D5 −24.4¢",
-      "nearestRatio": "33/28",
-      "fromRatioCents": -1.2
+      "cents": 377.135,
+      "hz": 567.8387,
+      "name": "C♯5 +41.6¢",
+      "nearestRatio": "36/29",
+      "fromRatioCents": 2.8
      },
      {
       "degree": 4,
-      "cents": 331.587,
-      "hz": 595.5105,
-      "name": "D5 +23.9¢",
-      "nearestRatio": "23/19",
-      "fromRatioCents": 0.8
+      "cents": 386.153,
+      "hz": 570.8043,
+      "name": "D5 −49.4¢",
+      "nearestRatio": "5/4",
+      "fromRatioCents": -0.2
      },
      {
       "degree": 5,
-      "cents": 385.943,
-      "hz": 614.5047,
-      "name": "D♯5 −21.7¢",
-      "nearestRatio": "5/4",
-      "fromRatioCents": -0.4
-     },
-     {
-      "degree": 6,
-      "cents": 477.429,
-      "hz": 647.8512,
-      "name": "E5 −30.2¢",
-      "nearestRatio": "29/22",
-      "fromRatioCents": -0.8
-     },
-     {
-      "degree": 7,
-      "cents": 590.153,
-      "hz": 691.4374,
-      "name": "F5 −17.5¢",
-      "nearestRatio": "45/32",
+      "cents": 542.945,
+      "hz": 624.9135,
+      "name": "D♯5 +7.4¢",
+      "nearestRatio": "26/19",
       "fromRatioCents": -0.1
      },
      {
+      "degree": 6,
+      "cents": 605.353,
+      "hz": 647.8512,
+      "name": "E5 −30.2¢",
+      "nearestRatio": "44/31",
+      "fromRatioCents": -0.9
+     },
+     {
+      "degree": 7,
+      "cents": 611.791,
+      "hz": 650.2649,
+      "name": "E5 −23.8¢",
+      "nearestRatio": "37/26",
+      "fromRatioCents": 1
+     },
+     {
       "degree": 8,
-      "cents": 972.694,
-      "hz": 862.4156,
-      "name": "A5 −34.9¢",
-      "nearestRatio": "7/4",
-      "fromRatioCents": 3.9
+      "cents": 627.945,
+      "hz": 656.3608,
+      "name": "E5 −7.6¢",
+      "nearestRatio": "23/16",
+      "fromRatioCents": -0.3
      }
     ]
    }
@@ -2286,25 +2294,25 @@
    "seed": "d2293d80deb1e7331dd3e463fe3a0ec88d8b8573f17b38b4e6e655a8ccaa7d20",
    "spectrum": {
     "source": "measured",
-    "frequency": 468.363,
+    "frequency": 446.4045,
     "soul": {
-     "nm": 582.155,
-     "thz": 514.971,
+     "nm": 610.791,
+     "thz": 490.827,
      "cie1931": {
-      "x": 0.5266,
-      "y": 0.47253
+      "x": 0.66821,
+      "y": 0.33157
      },
-     "luminousEfficiency": 0.84773,
+     "luminousEfficiency": 0.49309,
      "oklch": {
-      "l": 0.7949,
-      "c": 0.1655,
-      "h": 78.318
+      "l": 0.5652,
+      "c": 0.219,
+      "h": 31.204
      },
-     "css": "oklch(0.7949 0.1655 78.318)",
-     "hex": "#f5ad00",
+     "css": "oklch(0.5652 0.219 31.204)",
+     "hex": "#d91f00",
      "vivid": {
-      "css": "oklch(0.819 0.1705 78.318)",
-      "hex": "#ffb400"
+      "css": "oklch(0.639 0.2474 31.204)",
+      "hex": "#ff2600"
      }
     },
     "stages": [
@@ -2354,87 +2362,87 @@
      },
      {
       "stage": 2,
-      "frequency": 692.6372,
-      "nm": 393.654,
-      "thz": 761.563,
+      "frequency": 550.7925,
+      "nm": 495.032,
+      "thz": 605.603,
       "cie1931": {
-       "x": 0.17362,
-       "y": 0.00494
+       "x": 0.02334,
+       "y": 0.41348
       },
-      "luminousEfficiency": 0.00018,
+      "luminousEfficiency": 0.25897,
       "oklch": {
-       "l": 0.2618,
-       "c": 0.1415,
-       "h": 297.852
+       "l": 0.7189,
+       "c": 0.1274,
+       "h": 183.845
       },
-      "css": "oklch(0.2618 0.1415 297.852)",
-      "hex": "#30005e",
+      "css": "oklch(0.7189 0.1274 183.845)",
+      "hex": "#00bead",
       "vivid": {
-       "css": "oklch(0.544 0.2939 297.852)",
-       "hex": "#8c00ff"
+       "css": "oklch(0.898 0.1592 183.845)",
+       "hex": "#00ffe9"
       }
      },
      {
       "stage": 3,
-      "frequency": 605.85,
-      "nm": 450.045,
-      "thz": 666.139,
+      "frequency": 475.4766,
+      "nm": 573.445,
+      "thz": 522.792,
       "cie1931": {
-       "x": 0.15659,
-       "y": 0.01775
+       "x": 0.46807,
+       "y": 0.53086
       },
-      "luminousEfficiency": 0.03808,
+      "luminousEfficiency": 0.92773,
       "oklch": {
-       "l": 0.3112,
-       "c": 0.1879,
-       "h": 280.288
+       "l": 0.9124,
+       "c": 0.1919,
+       "h": 103.05
       },
-      "css": "oklch(0.3112 0.1879 280.288)",
-      "hex": "#2b008b",
+      "css": "oklch(0.9124 0.1919 103.05)",
+      "hex": "#fae600",
       "vivid": {
-       "css": "oklch(0.49 0.2957 280.288)",
-       "hex": "#5600ff"
+       "css": "oklch(0.925 0.1945 103.05)",
+       "hex": "#ffea00"
       }
      },
      {
       "stage": 4,
-      "frequency": 480.0545,
-      "nm": 567.976,
-      "thz": 527.826,
+      "frequency": 560.2111,
+      "nm": 486.709,
+      "thz": 615.959,
       "cie1931": {
-       "x": 0.42982,
-       "y": 0.56881
+       "x": 0.06071,
+       "y": 0.22993
       },
-      "luminousEfficiency": 0.96398,
+      "luminousEfficiency": 0.18143,
       "oklch": {
-       "l": 0.9437,
-       "c": 0.2156,
-       "h": 115.986
+       "l": 0.6784,
+       "c": 0.1154,
+       "h": 197.965
       },
-      "css": "oklch(0.9437 0.2156 115.986)",
-      "hex": "#e6fc00",
+      "css": "oklch(0.6784 0.1154 197.965)",
+      "hex": "#00adb1",
       "vivid": {
-       "css": "oklch(0.95 0.2171 115.986)",
-       "hex": "#e9ff00"
+       "css": "oklch(0.891 0.1516 197.965)",
+       "hex": "#00f9ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 373.6125,
-      "nm": 729.793,
-      "thz": 410.791,
+      "frequency": 360.9186,
+      "nm": 755.46,
+      "thz": 396.834,
       "cie1931": {
        "x": 0.73469,
        "y": 0.26531
       },
-      "luminousEfficiency": 0.00053,
+      "luminousEfficiency": 0.00008,
       "oklch": {
-       "l": 0.3125,
-       "c": 0.1256,
+       "l": 0.2995,
+       "c": 0.1203,
        "h": 20.39
       },
-      "css": "oklch(0.3125 0.1256 20.39)",
-      "hex": "#610013",
+      "css": "oklch(0.2995 0.1203 20.39)",
+      "hex": "#5c0011",
       "vivid": {
        "css": "oklch(0.632 0.2539 20.39)",
        "hex": "#ff0042"
@@ -2442,24 +2450,24 @@
      },
      {
       "stage": 6,
-      "frequency": 437.1971,
-      "nm": 623.654,
-      "thz": 480.703,
+      "frequency": 527.0928,
+      "nm": 517.29,
+      "thz": 579.545,
       "cie1931": {
-       "x": 0.69833,
-       "y": 0.30156
+       "x": 0.05429,
+       "y": 0.82642
       },
-      "luminousEfficiency": 0.33696,
+      "luminousEfficiency": 0.65626,
       "oklch": {
-       "l": 0.5238,
-       "c": 0.2127,
-       "h": 25.7
+       "l": 0.8194,
+       "c": 0.1831,
+       "h": 160.759
       },
-      "css": "oklch(0.5238 0.2127 25.7)",
-      "hex": "#c8001c",
+      "css": "oklch(0.8194 0.1831 160.759)",
+      "hex": "#00e79c",
       "vivid": {
-       "css": "oklch(0.629 0.2554 25.7)",
-       "hex": "#ff0027"
+       "css": "oklch(0.883 0.1971 160.759)",
+       "hex": "#02ffac"
       }
      }
     ]
@@ -2467,73 +2475,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 468.363,
-     "name": "A♯4 +8.1¢"
+     "hz": 446.4045,
+     "name": "A4 +25¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 468.363,
-      "name": "A♯4 +8.1¢",
+      "hz": 446.4045,
+      "name": "A4 +25¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 42.685,
-      "hz": 480.0545,
-      "name": "B4 −49.2¢",
-      "nearestRatio": "33/32",
-      "fromRatioCents": -10.6
+      "cents": 109.227,
+      "hz": 475.4766,
+      "name": "A♯4 +34.2¢",
+      "nearestRatio": "33/31",
+      "fromRatioCents": 1
      },
      {
       "degree": 3,
-      "cents": 445.6,
-      "hz": 605.85,
-      "name": "D♯5 −46.3¢",
-      "nearestRatio": "22/17",
-      "fromRatioCents": -0.8
+      "cents": 287.646,
+      "hz": 527.0928,
+      "name": "C5 +12.7¢",
+      "nearestRatio": "13/11",
+      "fromRatioCents": -1.6
      },
      {
       "degree": 4,
-      "cents": 487.852,
-      "hz": 620.8181,
-      "name": "D♯5 −4¢",
-      "nearestRatio": "41/31",
-      "fromRatioCents": 3.8
-     },
-     {
-      "degree": 5,
-      "cents": 677.367,
-      "hz": 692.6372,
-      "name": "F5 −14.5¢",
-      "nearestRatio": "34/23",
+      "cents": 363.789,
+      "hz": 550.7925,
+      "name": "C♯5 −11.2¢",
+      "nearestRatio": "37/30",
       "fromRatioCents": 0.7
      },
      {
+      "degree": 5,
+      "cents": 393.143,
+      "hz": 560.2111,
+      "name": "C♯5 +18.2¢",
+      "nearestRatio": "39/31",
+      "fromRatioCents": -4.3
+     },
+     {
       "degree": 6,
-      "cents": 808.699,
-      "hz": 747.225,
-      "name": "F♯5 +16.8¢",
-      "nearestRatio": "51/32",
-      "fromRatioCents": 1.8
+      "cents": 570.983,
+      "hz": 620.8181,
+      "name": "D♯5 −4¢",
+      "nearestRatio": "32/23",
+      "fromRatioCents": -0.7
      },
      {
       "degree": 7,
-      "cents": 827.752,
-      "hz": 755.4942,
-      "name": "F♯5 +35.9¢",
-      "nearestRatio": "50/31",
-      "fromRatioCents": 0.2
+      "cents": 831.986,
+      "hz": 721.8372,
+      "name": "F♯5 −43¢",
+      "nearestRatio": "21/13",
+      "fromRatioCents": 1.7
      },
      {
       "degree": 8,
-      "cents": 1080.788,
-      "hz": 874.3942,
-      "name": "A5 −11.1¢",
-      "nearestRatio": "28/15",
-      "fromRatioCents": 0.2
+      "cents": 910.883,
+      "hz": 755.4942,
+      "name": "F♯5 +35.9¢",
+      "nearestRatio": "22/13",
+      "fromRatioCents": 0.1
      }
     ]
    }
@@ -2542,25 +2550,25 @@
    "seed": "ffa3286b5fa71e4f709e0eeaa20fd38556ecfb744d1afaa262edae5333574d97",
    "spectrum": {
     "source": "measured",
-    "frequency": 473.8893,
+    "frequency": 440.5924,
     "soul": {
-     "nm": 575.366,
-     "thz": 521.047,
+     "nm": 618.848,
+     "thz": 484.436,
      "cie1931": {
-      "x": 0.48128,
-      "y": 0.5177
+      "x": 0.68909,
+      "y": 0.31075
      },
-     "luminousEfficiency": 0.91233,
+     "luminousEfficiency": 0.39486,
      "oklch": {
-      "l": 0.8831,
-      "c": 0.1825,
-      "h": 97.87
+      "l": 0.5369,
+      "c": 0.219,
+      "h": 27.263
      },
-     "css": "oklch(0.8831 0.1825 97.87)",
-     "hex": "#f9d800",
+     "css": "oklch(0.5369 0.219 27.263)",
+     "hex": "#cf0014",
      "vivid": {
-      "css": "oklch(0.898 0.1855 97.87)",
-      "hex": "#ffdd00"
+      "css": "oklch(0.629 0.2563 27.263)",
+      "hex": "#ff011b"
      }
     },
     "stages": [
@@ -2610,112 +2618,112 @@
      },
      {
       "stage": 2,
-      "frequency": 624.7429,
-      "nm": 436.435,
-      "thz": 686.912,
+      "frequency": 561.2497,
+      "nm": 485.808,
+      "thz": 617.101,
       "cie1931": {
-       "x": 0.16624,
-       "y": 0.00916
+       "x": 0.06493,
+       "y": 0.21415
       },
-      "luminousEfficiency": 0.01853,
+      "luminousEfficiency": 0.17491,
       "oklch": {
-       "l": 0.3109,
-       "c": 0.1745,
-       "h": 291.322
+       "l": 0.6697,
+       "c": 0.1139,
+       "h": 199.593
       },
-      "css": "oklch(0.3109 0.1745 291.322)",
-      "hex": "#38007f",
+      "css": "oklch(0.6697 0.1139 199.593)",
+      "hex": "#00aab0",
       "vivid": {
-       "css": "oklch(0.522 0.2928 291.322)",
-       "hex": "#7800ff"
+       "css": "oklch(0.884 0.1502 199.593)",
+       "hex": "#02f6ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 622.5497,
-      "nm": 437.973,
-      "thz": 684.501,
+      "frequency": 418.7095,
+      "nm": 651.191,
+      "thz": 460.376,
       "cie1931": {
-       "x": 0.1655,
-       "y": 0.00985
+       "x": 0.72658,
+       "y": 0.27342
       },
-      "luminousEfficiency": 0.02042,
+      "luminousEfficiency": 0.10047,
       "oklch": {
-       "l": 0.3116,
-       "c": 0.1757,
-       "h": 290.531
+       "l": 0.446,
+       "c": 0.1795,
+       "h": 21.474
       },
-      "css": "oklch(0.3116 0.1757 290.531)",
-      "hex": "#370080",
+      "css": "oklch(0.446 0.1795 21.474)",
+      "hex": "#a00023",
       "vivid": {
-       "css": "oklch(0.519 0.2927 290.531)",
-       "hex": "#7600ff"
+       "css": "oklch(0.632 0.2541 21.474)",
+       "hex": "#ff013d"
       }
      },
      {
       "stage": 4,
-      "frequency": 404.5777,
-      "nm": 673.936,
-      "thz": 444.838,
+      "frequency": 656.9871,
+      "nm": 415.015,
+      "thz": 722.365,
       "cie1931": {
-       "x": 0.73257,
-       "y": 0.26743
+       "x": 0.17208,
+       "y": 0.00483
       },
-      "luminousEfficiency": 0.02481,
+      "luminousEfficiency": 0.00218,
       "oklch": {
-       "l": 0.3858,
-       "c": 0.1551,
-       "h": 20.668
+       "l": 0.2815,
+       "c": 0.153,
+       "h": 296.846
       },
-      "css": "oklch(0.3858 0.1551 20.668)",
-      "hex": "#83001c",
+      "css": "oklch(0.2815 0.153 296.846)",
+      "hex": "#350069",
       "vivid": {
-       "css": "oklch(0.632 0.254 20.668)",
-       "hex": "#ff0041"
+       "css": "oklch(0.54 0.2934 296.846)",
+       "hex": "#8900ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 391.605,
-      "nm": 696.262,
-      "thz": 430.574,
+      "frequency": 598.8953,
+      "nm": 455.271,
+      "thz": 658.492,
       "cie1931": {
-       "x": 0.73463,
-       "y": 0.26537
+       "x": 0.15064,
+       "y": 0.02307
       },
-      "luminousEfficiency": 0.00525,
+      "luminousEfficiency": 0.04861,
       "oklch": {
-       "l": 0.3448,
-       "c": 0.1386,
-       "h": 20.399
+       "l": 0.3065,
+       "c": 0.1965,
+       "h": 272.583
       },
-      "css": "oklch(0.3448 0.1386 20.399)",
-      "hex": "#700017",
+      "css": "oklch(0.3065 0.1965 272.583)",
+      "hex": "#1d008f",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.399)",
-       "hex": "#ff0042"
+       "css": "oklch(0.471 0.3017 272.583)",
+       "hex": "#3b01ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 359.7342,
-      "nm": 757.948,
-      "thz": 395.532,
+      "frequency": 651.3379,
+      "nm": 418.615,
+      "thz": 716.154,
       "cie1931": {
-       "x": 0.73469,
-       "y": 0.26531
+       "x": 0.17164,
+       "y": 0.00498
       },
-      "luminousEfficiency": 0.00007,
+      "luminousEfficiency": 0.00337,
       "oklch": {
-       "l": 0.2987,
-       "c": 0.12,
-       "h": 20.391
+       "l": 0.287,
+       "c": 0.1562,
+       "h": 296.499
       },
-      "css": "oklch(0.2987 0.12 20.391)",
-      "hex": "#5b0011",
+      "css": "oklch(0.287 0.1562 296.499)",
+      "hex": "#36006c",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.391)",
-       "hex": "#ff0042"
+       "css": "oklch(0.539 0.2934 296.499)",
+       "hex": "#8800ff"
       }
      }
     ]
@@ -2723,73 +2731,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 473.8893,
-     "name": "A♯4 +28.5¢"
+     "hz": 440.5924,
+     "name": "A4 +2.3¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 473.8893,
-      "name": "A♯4 +28.5¢",
+      "hz": 440.5924,
+      "name": "A4 +2.3¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 253.718,
+      "cents": 379.844,
       "hz": 548.6863,
       "name": "C♯5 −17.8¢",
-      "nearestRatio": "22/19",
-      "fromRatioCents": -0.1
+      "nearestRatio": "36/29",
+      "fromRatioCents": 5.5
      },
      {
       "degree": 3,
-      "cents": 472.367,
-      "hz": 622.5497,
-      "name": "D♯5 +0.8¢",
-      "nearestRatio": "21/16",
-      "fromRatioCents": 1.6
+      "cents": 419.038,
+      "hz": 561.2497,
+      "name": "C♯5 +21.4¢",
+      "nearestRatio": "14/11",
+      "fromRatioCents": 1.5
      },
      {
       "degree": 4,
-      "cents": 478.455,
-      "hz": 624.7429,
-      "name": "D♯5 +6.9¢",
-      "nearestRatio": "29/22",
-      "fromRatioCents": 0.2
+      "cents": 531.431,
+      "hz": 598.8953,
+      "name": "D5 +33.8¢",
+      "nearestRatio": "34/25",
+      "fromRatioCents": -0.9
      },
      {
       "degree": 5,
-      "cents": 686.965,
-      "hz": 704.7056,
-      "name": "F5 +15.4¢",
-      "nearestRatio": "46/31",
-      "fromRatioCents": 3.7
+      "cents": 676.754,
+      "hz": 651.3379,
+      "name": "E5 −20.9¢",
+      "nearestRatio": "34/23",
+      "fromRatioCents": 0.1
      },
      {
       "degree": 6,
-      "cents": 722.857,
-      "hz": 719.4684,
-      "name": "F♯5 −48.7¢",
-      "nearestRatio": "41/27",
-      "fromRatioCents": -0.3
+      "cents": 691.705,
+      "hz": 656.9871,
+      "name": "E5 −6¢",
+      "nearestRatio": "46/31",
+      "fromRatioCents": 8.5
      },
      {
       "degree": 7,
-      "cents": 869.819,
-      "hz": 783.21,
-      "name": "G5 −1.7¢",
-      "nearestRatio": "38/23",
-      "fromRatioCents": 0.6
+      "cents": 813.091,
+      "hz": 704.7056,
+      "name": "F5 +15.4¢",
+      "nearestRatio": "8/5",
+      "fromRatioCents": -0.6
      },
      {
       "degree": 8,
-      "cents": 926.24,
-      "hz": 809.1554,
-      "name": "G♯5 −45.3¢",
-      "nearestRatio": "41/24",
-      "fromRatioCents": -0.9
+      "cents": 1111.806,
+      "hz": 837.419,
+      "name": "G♯5 +14.1¢",
+      "nearestRatio": "19/10",
+      "fromRatioCents": 0.6
      }
     ]
    }
@@ -2798,25 +2806,25 @@
    "seed": "10433307def06f4b04aca4cebf42ed1a899c69800e1306f3a23b4254095fa9b2",
    "spectrum": {
     "source": "measured",
-    "frequency": 496.4512,
+    "frequency": 462.0414,
     "soul": {
-     "nm": 549.217,
-     "thz": 545.854,
+     "nm": 590.12,
+     "thz": 508.02,
      "cie1931": {
-      "x": 0.29602,
-      "y": 0.69741
+      "x": 0.57584,
+      "y": 0.42354
      },
-     "luminousEfficiency": 0.99328,
+     "luminousEfficiency": 0.75554,
      "oklch": {
-      "l": 0.8689,
-      "c": 0.2889,
-      "h": 141.474
+      "l": 0.7113,
+      "c": 0.1708,
+      "h": 57.681
      },
-     "css": "oklch(0.8689 0.2889 141.474)",
-     "hex": "#34fe00",
+     "css": "oklch(0.7113 0.1708 57.681)",
+     "hex": "#ee8100",
      "vivid": {
-      "css": "oklch(0.87 0.2892 141.474)",
-      "hex": "#34ff00"
+      "css": "oklch(0.748 0.1797 57.681)",
+      "hex": "#ff8b00"
      }
     },
     "stages": [
@@ -2866,112 +2874,112 @@
      },
      {
       "stage": 2,
-      "frequency": 359.935,
-      "nm": 757.525,
-      "thz": 395.753,
+      "frequency": 618.2803,
+      "nm": 440.997,
+      "thz": 679.806,
       "cie1931": {
-       "x": 0.73469,
-       "y": 0.26531
+       "x": 0.16383,
+       "y": 0.01138
       },
-      "luminousEfficiency": 0.00007,
+      "luminousEfficiency": 0.02429,
       "oklch": {
-       "l": 0.2988,
-       "c": 0.1201,
-       "h": 20.39
+       "l": 0.3132,
+       "c": 0.1786,
+       "h": 288.723
       },
-      "css": "oklch(0.2988 0.1201 20.39)",
-      "hex": "#5b0011",
+      "css": "oklch(0.3132 0.1786 288.723)",
+      "hex": "#360083",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.39)",
-       "hex": "#ff0042"
+       "css": "oklch(0.514 0.2928 288.723)",
+       "hex": "#7001ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 622.9396,
-      "nm": 437.698,
-      "thz": 684.929,
+      "frequency": 427.91,
+      "nm": 637.189,
+      "thz": 470.492,
       "cie1931": {
-       "x": 0.16563,
-       "y": 0.00973
+       "x": 0.71634,
+       "y": 0.28362
       },
-      "luminousEfficiency": 0.02008,
+      "luminousEfficiency": 0.19796,
       "oklch": {
-       "l": 0.3117,
-       "c": 0.1757,
-       "h": 290.674
+       "l": 0.4862,
+       "c": 0.1962,
+       "h": 22.917
       },
-      "css": "oklch(0.3117 0.1757 290.674)",
-      "hex": "#380080",
+      "css": "oklch(0.4862 0.1962 22.917)",
+      "hex": "#b40023",
       "vivid": {
-       "css": "oklch(0.52 0.2928 290.674)",
-       "hex": "#7601ff"
+       "css": "oklch(0.631 0.2546 22.917)",
+       "hex": "#ff0037"
       }
      },
      {
       "stage": 4,
-      "frequency": 460.9346,
-      "nm": 591.537,
-      "thz": 506.803,
-      "cie1931": {
-       "x": 0.58401,
-       "y": 0.4154
-      },
-      "luminousEfficiency": 0.73814,
-      "oklch": {
-       "l": 0.6989,
-       "c": 0.1738,
-       "h": 54.633
-      },
-      "css": "oklch(0.6989 0.1738 54.633)",
-      "hex": "#ed7a00",
-      "vivid": {
-       "css": "oklch(0.738 0.1833 54.633)",
-       "hex": "#ff8401"
-      }
-     },
-     {
-      "stage": 5,
-      "frequency": 365.1176,
-      "nm": 746.772,
-      "thz": 401.451,
+      "frequency": 360.8338,
+      "nm": 755.638,
+      "thz": 396.741,
       "cie1931": {
        "x": 0.73469,
        "y": 0.26531
       },
-      "luminousEfficiency": 0.00015,
+      "luminousEfficiency": 0.00008,
       "oklch": {
-       "l": 0.3029,
-       "c": 0.1217,
+       "l": 0.2995,
+       "c": 0.1203,
        "h": 20.39
       },
-      "css": "oklch(0.3029 0.1217 20.39)",
-      "hex": "#5d0012",
+      "css": "oklch(0.2995 0.1203 20.39)",
+      "hex": "#5c0011",
       "vivid": {
        "css": "oklch(0.632 0.2539 20.39)",
        "hex": "#ff0042"
       }
      },
      {
-      "stage": 6,
-      "frequency": 510.4627,
-      "nm": 534.142,
-      "thz": 561.26,
+      "stage": 5,
+      "frequency": 402.6813,
+      "nm": 677.11,
+      "thz": 442.753,
       "cie1931": {
-       "x": 0.18647,
-       "y": 0.78599
+       "x": 0.73302,
+       "y": 0.26698
       },
-      "luminousEfficiency": 0.90678,
+      "luminousEfficiency": 0.02037,
       "oklch": {
-       "l": 0.8596,
-       "c": 0.229,
-       "h": 151.433
+       "l": 0.3793,
+       "c": 0.1525,
+       "h": 20.61
       },
-      "css": "oklch(0.8596 0.229 151.433)",
-      "hex": "#00f97e",
+      "css": "oklch(0.3793 0.1525 20.61)",
+      "hex": "#80001c",
       "vivid": {
-       "css": "oklch(0.875 0.2331 151.433)",
-       "hex": "#00ff81"
+       "css": "oklch(0.632 0.254 20.61)",
+       "hex": "#ff0041"
+      }
+     },
+     {
+      "stage": 6,
+      "frequency": 663.2193,
+      "nm": 411.115,
+      "thz": 729.217,
+      "cie1931": {
+       "x": 0.17248,
+       "y": 0.0048
+      },
+      "luminousEfficiency": 0.00138,
+      "oklch": {
+       "l": 0.2766,
+       "c": 0.15,
+       "h": 297.125
+      },
+      "css": "oklch(0.2766 0.15 297.125)",
+      "hex": "#340066",
+      "vivid": {
+       "css": "oklch(0.541 0.2935 297.125)",
+       "hex": "#8a00ff"
       }
      }
     ]
@@ -2979,73 +2987,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 496.4512,
-     "name": "B4 +9¢"
+     "hz": 462.0414,
+     "name": "A♯4 −15.4¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 496.4512,
-      "name": "B4 +9¢",
+      "hz": 462.0414,
+      "name": "A♯4 −15.4¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 48.184,
-      "hz": 510.4627,
-      "name": "C5 −42.8¢",
-      "nearestRatio": "33/32",
-      "fromRatioCents": -5.1
+      "cents": 309.44,
+      "hz": 552.4671,
+      "name": "C♯5 −5.9¢",
+      "nearestRatio": "37/31",
+      "fromRatioCents": 3.1
      },
      {
       "degree": 3,
-      "cents": 185.084,
-      "hz": 552.4671,
-      "name": "C♯5 −5.9¢",
-      "nearestRatio": "10/9",
-      "fromRatioCents": 2.7
+      "cents": 504.287,
+      "hz": 618.2803,
+      "name": "D♯5 −11.1¢",
+      "nearestRatio": "4/3",
+      "fromRatioCents": 6.2
      },
      {
       "degree": 4,
-      "cents": 392.928,
-      "hz": 622.9396,
-      "name": "D♯5 +1.9¢",
-      "nearestRatio": "39/31",
-      "fromRatioCents": -4.5
+      "cents": 625.757,
+      "hz": 663.2193,
+      "name": "E5 +10.4¢",
+      "nearestRatio": "33/23",
+      "fromRatioCents": 0.8
      },
      {
       "degree": 5,
-      "cents": 527.861,
+      "cents": 652.217,
       "hz": 673.4338,
       "name": "E5 +36.8¢",
-      "nearestRatio": "19/14",
-      "fromRatioCents": -0.8
+      "nearestRatio": "35/24",
+      "fromRatioCents": -1
      },
      {
       "degree": 6,
-      "cents": 643.301,
-      "hz": 719.87,
-      "name": "F♯5 −47.7¢",
-      "nearestRatio": "29/20",
-      "fromRatioCents": 0
+      "cents": 771.975,
+      "hz": 721.6676,
+      "name": "F♯5 −43.4¢",
+      "nearestRatio": "25/16",
+      "fromRatioCents": -0.7
      },
      {
       "degree": 7,
-      "cents": 668.051,
-      "hz": 730.2352,
-      "name": "F♯5 −23¢",
-      "nearestRatio": "25/17",
-      "fromRatioCents": 0.4
+      "cents": 961.94,
+      "hz": 805.3626,
+      "name": "G5 +46.6¢",
+      "nearestRatio": "54/31",
+      "fromRatioCents": 1.1
      },
      {
       "degree": 8,
-      "cents": 1071.492,
-      "hz": 921.8692,
-      "name": "A♯5 −19.5¢",
-      "nearestRatio": "13/7",
-      "fromRatioCents": -0.2
+      "cents": 1067.142,
+      "hz": 855.82,
+      "name": "A5 −48.2¢",
+      "nearestRatio": "50/27",
+      "fromRatioCents": 0.4
      }
     ]
    }
@@ -3054,25 +3062,25 @@
    "seed": "9b92dfb8fe66d71f0deb34441a9bfae9691c76d57f000268821d227176a0c163",
    "spectrum": {
     "source": "measured",
-    "frequency": 498.5235,
+    "frequency": 469.9076,
     "soul": {
-     "nm": 546.934,
-     "thz": 548.132,
+     "nm": 580.241,
+     "thz": 516.669,
      "cie1931": {
-      "x": 0.27966,
-      "y": 0.71214
+      "x": 0.51408,
+      "y": 0.48501
      },
-     "luminousEfficiency": 0.9872,
+     "luminousEfficiency": 0.86756,
      "oklch": {
-      "l": 0.865,
-      "c": 0.2866,
-      "h": 143.304
+      "l": 0.8177,
+      "c": 0.1679,
+      "h": 83.868
      },
-     "css": "oklch(0.865 0.2866 143.304)",
-     "hex": "#00fe29",
+     "css": "oklch(0.8177 0.1679 83.868)",
+     "hex": "#f6b800",
      "vivid": {
-      "css": "oklch(0.867 0.2873 143.304)",
-      "hex": "#00ff29"
+      "css": "oklch(0.839 0.1722 83.868)",
+      "hex": "#ffbe00"
      }
     },
     "stages": [
@@ -3122,112 +3130,112 @@
      },
      {
       "stage": 2,
-      "frequency": 593.2848,
-      "nm": 459.576,
-      "thz": 652.324,
+      "frequency": 510.1495,
+      "nm": 534.47,
+      "thz": 560.915,
       "cie1931": {
-       "x": 0.1446,
-       "y": 0.02903
+       "x": 0.18894,
+       "y": 0.78431
       },
-      "luminousEfficiency": 0.05892,
+      "luminousEfficiency": 0.90987,
       "oklch": {
-       "l": 0.3001,
-       "c": 0.1866,
-       "h": 264.191
+       "l": 0.8601,
+       "c": 0.2301,
+       "h": 151.251
       },
-      "css": "oklch(0.3001 0.1866 264.191)",
-      "hex": "#001289",
+      "css": "oklch(0.8601 0.2301 151.251)",
+      "hex": "#00f97d",
       "vivid": {
-       "css": "oklch(0.452 0.3128 264.191)",
-       "hex": "#0200ff"
+       "css": "oklch(0.875 0.2341 151.251)",
+       "hex": "#00ff80"
       }
      },
      {
       "stage": 3,
-      "frequency": 589.0296,
-      "nm": 462.896,
-      "thz": 647.645,
+      "frequency": 517.7512,
+      "nm": 526.623,
+      "thz": 569.273,
       "cie1931": {
-       "x": 0.1393,
-       "y": 0.03499
+       "x": 0.1275,
+       "y": 0.82036
       },
-      "luminousEfficiency": 0.06776,
+      "luminousEfficiency": 0.81707,
       "oklch": {
-       "l": 0.4119,
-       "c": 0.1438,
-       "h": 256.586
+       "l": 0.8466,
+       "c": 0.2074,
+       "h": 155.476
       },
-      "css": "oklch(0.4119 0.1438 256.586)",
-      "hex": "#004796",
+      "css": "oklch(0.8466 0.2074 155.476)",
+      "hex": "#00f38f",
       "vivid": {
-       "css": "oklch(0.611 0.2131 256.586)",
-       "hex": "#017eff"
+       "css": "oklch(0.878 0.2151 155.476)",
+       "hex": "#00ff97"
       }
      },
      {
       "stage": 4,
-      "frequency": 532.0302,
-      "nm": 512.489,
-      "thz": 584.973,
+      "frequency": 670.3061,
+      "nm": 406.769,
+      "thz": 737.009,
       "cie1931": {
-       "x": 0.02473,
-       "y": 0.7858
+       "x": 0.17286,
+       "y": 0.00479
       },
-      "luminousEfficiency": 0.55487,
+      "luminousEfficiency": 0.0008,
       "oklch": {
-       "l": 0.7982,
-       "c": 0.1695,
-       "h": 164.263
+       "l": 0.2716,
+       "c": 0.1471,
+       "h": 297.387
       },
-      "css": "oklch(0.7982 0.1695 164.263)",
-      "hex": "#00dea0",
+      "css": "oklch(0.2716 0.1471 297.387)",
+      "hex": "#320063",
       "vivid": {
-       "css": "oklch(0.885 0.1879 164.263)",
-       "hex": "#00ffb8"
+       "css": "oklch(0.542 0.2936 297.387)",
+       "hex": "#8a00ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 451.9805,
-      "nm": 603.255,
-      "thz": 496.958,
+      "frequency": 377.6588,
+      "nm": 721.974,
+      "thz": 415.24,
       "cie1931": {
-       "x": 0.6412,
-       "y": 0.35839
+       "x": 0.73469,
+       "y": 0.26531
       },
-      "luminousEfficiency": 0.5892,
+      "luminousEfficiency": 0.00091,
       "oklch": {
-       "l": 0.6095,
-       "c": 0.203,
-       "h": 37.232
+       "l": 0.3181,
+       "c": 0.1278,
+       "h": 20.39
       },
-      "css": "oklch(0.6095 0.203 37.232)",
-      "hex": "#e24400",
+      "css": "oklch(0.3181 0.1278 20.39)",
+      "hex": "#640014",
       "vivid": {
-       "css": "oklch(0.669 0.2225 37.232)",
-       "hex": "#ff4e01"
+       "css": "oklch(0.632 0.2539 20.39)",
+       "hex": "#ff0042"
       }
      },
      {
       "stage": 6,
-      "frequency": 584.3293,
-      "nm": 466.62,
-      "thz": 642.477,
+      "frequency": 572.0215,
+      "nm": 476.66,
+      "thz": 628.944,
       "cie1931": {
-       "x": 0.1322,
-       "y": 0.04464
+       "x": 0.10399,
+       "y": 0.09993
       },
-      "luminousEfficiency": 0.07903,
+      "luminousEfficiency": 0.12092,
       "oklch": {
-       "l": 0.4679,
-       "c": 0.1221,
-       "h": 246.668
+       "l": 0.5826,
+       "c": 0.1051,
+       "h": 218.672
       },
-      "css": "oklch(0.4679 0.1221 246.668)",
-      "hex": "#005e9a",
+      "css": "oklch(0.5826 0.1051 218.672)",
+      "hex": "#0089a5",
       "vivid": {
-       "css": "oklch(0.682 0.178 246.668)",
-       "hex": "#009fff"
+       "css": "oklch(0.807 0.1456 218.672)",
+       "hex": "#00d5ff"
       }
      }
     ]
@@ -3235,73 +3243,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 498.5235,
-     "name": "B4 +16.2¢"
+     "hz": 469.9076,
+     "name": "A♯4 +13.8¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 498.5235,
-      "name": "B4 +16.2¢",
+      "hz": 469.9076,
+      "name": "A♯4 +13.8¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 112.616,
-      "hz": 532.0302,
-      "name": "C5 +28.8¢",
-      "nearestRatio": "16/15",
-      "fromRatioCents": 0.9
+      "cents": 142.252,
+      "hz": 510.1495,
+      "name": "C5 −43.9¢",
+      "nearestRatio": "25/23",
+      "fromRatioCents": -2.1
      },
      {
       "degree": 3,
-      "cents": 274.944,
-      "hz": 584.3293,
-      "name": "D5 −8.9¢",
-      "nearestRatio": "34/29",
-      "fromRatioCents": -0.4
+      "cents": 167.858,
+      "hz": 517.7512,
+      "name": "C5 −18.3¢",
+      "nearestRatio": "32/29",
+      "fromRatioCents": -2.6
      },
      {
       "degree": 4,
-      "cents": 288.814,
-      "hz": 589.0296,
-      "name": "D5 +5¢",
-      "nearestRatio": "13/11",
-      "fromRatioCents": -0.4
+      "cents": 340.431,
+      "hz": 572.0215,
+      "name": "D5 −45.7¢",
+      "nearestRatio": "28/23",
+      "fromRatioCents": -0.1
      },
      {
       "degree": 5,
-      "cents": 301.276,
-      "hz": 593.2848,
-      "name": "D5 +17.5¢",
-      "nearestRatio": "25/21",
-      "fromRatioCents": -0.6
+      "cents": 614.932,
+      "hz": 670.3061,
+      "name": "E5 +28.8¢",
+      "nearestRatio": "10/7",
+      "fromRatioCents": -2.6
      },
      {
       "degree": 6,
-      "cents": 532.335,
+      "cents": 634.677,
       "hz": 677.9949,
       "name": "E5 +48.5¢",
-      "nearestRatio": "34/25",
-      "fromRatioCents": 0
+      "nearestRatio": "13/9",
+      "fromRatioCents": -1.9
      },
      {
       "degree": 7,
-      "cents": 888.115,
-      "hz": 832.677,
-      "name": "G♯5 +4.3¢",
-      "nearestRatio": "5/3",
-      "fromRatioCents": 3.8
+      "cents": 821.648,
+      "hz": 755.3176,
+      "name": "F♯5 +35.5¢",
+      "nearestRatio": "45/28",
+      "fromRatioCents": 0.2
      },
      {
       "degree": 8,
-      "cents": 1030.319,
-      "hz": 903.961,
-      "name": "A5 +46.5¢",
-      "nearestRatio": "29/16",
-      "fromRatioCents": 0.7
+      "cents": 990.456,
+      "hz": 832.677,
+      "name": "G♯5 +4.3¢",
+      "nearestRatio": "39/22",
+      "fromRatioCents": -0.7
      }
     ]
    }
@@ -3310,25 +3318,25 @@
    "seed": "e23cba7a4938e968a6e4ac2ff2098263bace069508c4a65a2b4b3987bd89dc54",
    "spectrum": {
     "source": "measured",
-    "frequency": 467.1051,
+    "frequency": 445.9051,
     "soul": {
-     "nm": 583.722,
-     "thz": 513.587,
+     "nm": 611.475,
+     "thz": 490.278,
      "cie1931": {
-      "x": 0.53669,
-      "y": 0.46249
+      "x": 0.67028,
+      "y": 0.32952
      },
-     "luminousEfficiency": 0.83065,
+     "luminousEfficiency": 0.48457,
      "oklch": {
-      "l": 0.7765,
-      "c": 0.1647,
-      "h": 73.871
+      "l": 0.5609,
+      "c": 0.2199,
+      "h": 30.789
      },
-     "css": "oklch(0.7765 0.1647 73.871)",
-     "hex": "#f4a300",
+     "css": "oklch(0.5609 0.2199 30.789)",
+     "hex": "#d81a00",
      "vivid": {
-      "css": "oklch(0.803 0.1703 73.871)",
-      "hex": "#ffab00"
+      "css": "oklch(0.636 0.2493 30.789)",
+      "hex": "#ff2100"
      }
     },
     "stages": [
@@ -3378,112 +3386,112 @@
      },
      {
       "stage": 2,
-      "frequency": 560.0165,
-      "nm": 486.878,
-      "thz": 615.745,
+      "frequency": 482.198,
+      "nm": 565.452,
+      "thz": 530.182,
       "cie1931": {
-       "x": 0.05991,
-       "y": 0.23301
+       "x": 0.41196,
+       "y": 0.58644
       },
-      "luminousEfficiency": 0.18266,
+      "luminousEfficiency": 0.97656,
       "oklch": {
-       "l": 0.6798,
-       "c": 0.1156,
-       "h": 197.658
+       "l": 0.9319,
+       "c": 0.2235,
+       "h": 120.966
       },
-      "css": "oklch(0.6798 0.1156 197.658)",
-      "hex": "#00adb1",
+      "css": "oklch(0.9319 0.2235 120.966)",
+      "hex": "#d4fd00",
       "vivid": {
-       "css": "oklch(0.892 0.1518 197.658)",
-       "hex": "#00f9ff"
+       "css": "oklch(0.936 0.2245 120.966)",
+       "hex": "#d5ff00"
       }
      },
      {
       "stage": 3,
-      "frequency": 587.392,
-      "nm": 464.187,
-      "thz": 645.844,
+      "frequency": 489.9898,
+      "nm": 556.46,
+      "thz": 538.749,
       "cie1931": {
-       "x": 0.13702,
-       "y": 0.03786
+       "x": 0.34782,
+       "y": 0.64886
       },
-      "luminousEfficiency": 0.07147,
+      "luminousEfficiency": 0.9996,
       "oklch": {
-       "l": 0.4327,
-       "c": 0.1349,
-       "h": 253.342
+       "l": 0.8959,
+       "c": 0.2585,
+       "h": 134.303
       },
-      "css": "oklch(0.4327 0.1349 253.342)",
-      "hex": "#005098",
+      "css": "oklch(0.8959 0.2585 134.303)",
+      "hex": "#8dff00",
       "vivid": {
-       "css": "oklch(0.638 0.1987 253.342)",
-       "hex": "#008bff"
+       "css": "oklch(0.896 0.2585 134.303)",
+       "hex": "#8dff00"
       }
      },
      {
       "stage": 4,
-      "frequency": 487.9532,
-      "nm": 558.782,
-      "thz": 536.51,
+      "frequency": 592.2088,
+      "nm": 460.411,
+      "thz": 651.14,
       "cie1931": {
-       "x": 0.36442,
-       "y": 0.63287
+       "x": 0.14333,
+       "y": 0.03039
       },
-      "luminousEfficiency": 0.99721,
+      "luminousEfficiency": 0.06107,
       "oklch": {
-       "l": 0.9045,
-       "c": 0.2488,
-       "h": 131.425
+       "l": 0.3586,
+       "c": 0.1707,
+       "h": 262.366
       },
-      "css": "oklch(0.9045 0.2488 131.425)",
-      "hex": "#a0ff00",
+      "css": "oklch(0.3586 0.1707 262.366)",
+      "hex": "#002f94",
       "vivid": {
-       "css": "oklch(0.905 0.249 131.425)",
-       "hex": "#a0ff00"
+       "css": "oklch(0.538 0.256 262.366)",
+       "hex": "#0058ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 360.5103,
-      "nm": 756.316,
-      "thz": 396.385,
+      "frequency": 359.7759,
+      "nm": 757.86,
+      "thz": 395.578,
       "cie1931": {
        "x": 0.73469,
        "y": 0.26531
       },
-      "luminousEfficiency": 0.00008,
+      "luminousEfficiency": 0.00007,
       "oklch": {
-       "l": 0.2992,
-       "c": 0.1202,
-       "h": 20.39
+       "l": 0.2987,
+       "c": 0.12,
+       "h": 20.391
       },
-      "css": "oklch(0.2992 0.1202 20.39)",
-      "hex": "#5c0011",
+      "css": "oklch(0.2987 0.12 20.391)",
+      "hex": "#5b0011",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.39)",
+       "css": "oklch(0.632 0.2539 20.391)",
        "hex": "#ff0042"
       }
      },
      {
       "stage": 6,
-      "frequency": 643.2876,
-      "nm": 423.853,
-      "thz": 707.302,
+      "frequency": 631.9435,
+      "nm": 431.462,
+      "thz": 694.829,
       "cie1931": {
-       "x": 0.17057,
-       "y": 0.0056
+       "x": 0.16835,
+       "y": 0.00733
       },
-      "luminousEfficiency": 0.00644,
+      "luminousEfficiency": 0.01304,
       "oklch": {
-       "l": 0.2961,
-       "c": 0.162,
-       "h": 295.577
+       "l": 0.3065,
+       "c": 0.1699,
+       "h": 293.465
       },
-      "css": "oklch(0.2961 0.162 295.577)",
-      "hex": "#380072",
+      "css": "oklch(0.3065 0.1699 293.465)",
+      "hex": "#39007a",
       "vivid": {
-       "css": "oklch(0.536 0.2934 295.577)",
-       "hex": "#8500ff"
+       "css": "oklch(0.529 0.293 293.465)",
+       "hex": "#7f00ff"
       }
      }
     ]
@@ -3491,73 +3499,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 467.1051,
-     "name": "A♯4 +3.5¢"
+     "hz": 445.9051,
+     "name": "A4 +23.1¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 467.1051,
-      "name": "A♯4 +3.5¢",
+      "hz": 445.9051,
+      "name": "A4 +23.1¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 75.595,
-      "hz": 487.9532,
-      "name": "B4 −20.9¢",
-      "nearestRatio": "23/22",
-      "fromRatioCents": -1.4
+      "cents": 135.467,
+      "hz": 482.198,
+      "name": "B4 −41.5¢",
+      "nearestRatio": "27/25",
+      "fromRatioCents": 2.2
      },
      {
       "degree": 3,
-      "cents": 185.419,
-      "hz": 519.9104,
-      "name": "C5 −11.1¢",
-      "nearestRatio": "10/9",
-      "fromRatioCents": 3
+      "cents": 163.218,
+      "hz": 489.9898,
+      "name": "B4 −13.7¢",
+      "nearestRatio": "11/10",
+      "fromRatioCents": -1.8
      },
      {
       "degree": 4,
-      "cents": 314.067,
-      "hz": 560.0165,
-      "name": "C♯5 +17.6¢",
-      "nearestRatio": "6/5",
-      "fromRatioCents": -1.6
+      "cents": 265.832,
+      "hz": 519.9104,
+      "name": "C5 −11.1¢",
+      "nearestRatio": "7/6",
+      "fromRatioCents": -1
      },
      {
       "degree": 5,
-      "cents": 396.692,
-      "hz": 587.392,
-      "name": "D5 +0.2¢",
-      "nearestRatio": "39/31",
-      "fromRatioCents": -0.8
+      "cents": 491.243,
+      "hz": 592.2088,
+      "name": "D5 +14.3¢",
+      "nearestRatio": "4/3",
+      "fromRatioCents": -6.8
      },
      {
       "degree": 6,
-      "cents": 554.06,
-      "hz": 643.2876,
-      "name": "E5 −42.4¢",
-      "nearestRatio": "40/29",
-      "fromRatioCents": -2.7
+      "cents": 603.671,
+      "hz": 631.9435,
+      "name": "D♯5 +26.8¢",
+      "nearestRatio": "17/12",
+      "fromRatioCents": 0.7
      },
      {
       "degree": 7,
-      "cents": 751.552,
-      "hz": 721.0206,
-      "name": "F♯5 −45¢",
-      "nearestRatio": "17/11",
-      "fromRatioCents": -2.1
+      "cents": 828.434,
+      "hz": 719.5518,
+      "name": "F♯5 −48.5¢",
+      "nearestRatio": "50/31",
+      "fromRatioCents": 0.8
      },
      {
       "degree": 8,
-      "cents": 810.458,
+      "cents": 890.871,
       "hz": 745.9758,
       "name": "F♯5 +14¢",
-      "nearestRatio": "8/5",
-      "fromRatioCents": -3.2
+      "nearestRatio": "52/31",
+      "fromRatioCents": -4.6
      }
     ]
    }
@@ -3566,25 +3574,25 @@
    "seed": "3f232fd690123dba8a1eb7b146fdd3f151c65b610dc95709e5b7d10fc56ace25",
    "spectrum": {
     "source": "measured",
-    "frequency": 500.2607,
+    "frequency": 475.4456,
     "soul": {
-     "nm": 545.035,
-     "thz": 550.042,
+     "nm": 573.482,
+     "thz": 522.758,
      "cie1931": {
-      "x": 0.26603,
-      "y": 0.7241
+      "x": 0.46833,
+      "y": 0.5306
      },
-     "luminousEfficiency": 0.98043,
+     "luminousEfficiency": 0.92745,
      "oklch": {
-      "l": 0.8649,
-      "c": 0.2744,
-      "h": 144.711
+      "l": 0.9124,
+      "c": 0.1918,
+      "h": 102.951
      },
-     "css": "oklch(0.8649 0.2744 144.711)",
-     "hex": "#00fd44",
+     "css": "oklch(0.9124 0.1918 102.951)",
+     "hex": "#fae600",
      "vivid": {
-      "css": "oklch(0.868 0.2754 144.711)",
-      "hex": "#00ff45"
+      "css": "oklch(0.925 0.1944 102.951)",
+      "hex": "#ffea00"
      }
     },
     "stages": [
@@ -3634,112 +3642,112 @@
      },
      {
       "stage": 2,
-      "frequency": 655.7618,
-      "nm": 415.791,
-      "thz": 721.018,
+      "frequency": 604.2499,
+      "nm": 451.237,
+      "thz": 664.38,
       "cie1931": {
-       "x": 0.172,
-       "y": 0.00485
+       "x": 0.15535,
+       "y": 0.01883
       },
-      "luminousEfficiency": 0.0024,
+      "luminousEfficiency": 0.0403,
       "oklch": {
-       "l": 0.2827,
-       "c": 0.1537,
-       "h": 296.785
+       "l": 0.3103,
+       "c": 0.1895,
+       "h": 278.735
       },
-      "css": "oklch(0.2827 0.1537 296.785)",
-      "hex": "#35006a",
+      "css": "oklch(0.3103 0.1895 278.735)",
+      "hex": "#28008c",
       "vivid": {
-       "css": "oklch(0.54 0.2935 296.785)",
-       "hex": "#8900ff"
+       "css": "oklch(0.486 0.2966 278.735)",
+       "hex": "#5100ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 353.5126,
-      "nm": 771.287,
-      "thz": 388.691,
+      "frequency": 481.0358,
+      "nm": 566.818,
+      "thz": 528.904,
       "cie1931": {
-       "x": 0.73469,
-       "y": 0.26531
+       "x": 0.42164,
+       "y": 0.5769
       },
-      "luminousEfficiency": 0.00003,
+      "luminousEfficiency": 0.97007,
       "oklch": {
-       "l": 0.2949,
-       "c": 0.1185,
-       "h": 20.391
+       "l": 0.9388,
+       "c": 0.2192,
+       "h": 118.348
       },
-      "css": "oklch(0.2949 0.1185 20.391)",
-      "hex": "#5a0011",
+      "css": "oklch(0.9388 0.2192 118.348)",
+      "hex": "#defd00",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.391)",
-       "hex": "#ff0042"
+       "css": "oklch(0.944 0.2205 118.348)",
+       "hex": "#e0ff00"
       }
      },
      {
       "stage": 4,
-      "frequency": 504.908,
-      "nm": 540.018,
-      "thz": 555.152,
+      "frequency": 594.0214,
+      "nm": 459.006,
+      "thz": 653.133,
       "cie1931": {
-       "x": 0.22976,
-       "y": 0.75422
+       "x": 0.14546,
+       "y": 0.02813
       },
-      "luminousEfficiency": 0.95412,
+      "luminousEfficiency": 0.05748,
       "oklch": {
-       "l": 0.8645,
-       "c": 0.25,
-       "h": 148.035
+       "l": 0.3013,
+       "c": 0.206,
+       "h": 265.407
       },
-      "css": "oklch(0.8645 0.25 148.035)",
-      "hex": "#00fc68",
+      "css": "oklch(0.3013 0.206 265.407)",
+      "hex": "#060093",
       "vivid": {
-       "css": "oklch(0.872 0.2522 148.035)",
-       "hex": "#00ff69"
+       "css": "oklch(0.455 0.3109 265.407)",
+       "hex": "#1300ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 659.0714,
-      "nm": 413.703,
-      "thz": 724.657,
+      "frequency": 660.4433,
+      "nm": 412.843,
+      "thz": 726.165,
       "cie1931": {
-       "x": 0.17222,
-       "y": 0.00481
+       "x": 0.17231,
+       "y": 0.0048
       },
-      "luminousEfficiency": 0.00187,
+      "luminousEfficiency": 0.00169,
       "oklch": {
-       "l": 0.2801,
-       "c": 0.1521,
-       "h": 296.945
+       "l": 0.2789,
+       "c": 0.1514,
+       "h": 297.009
       },
-      "css": "oklch(0.2801 0.1521 296.945)",
-      "hex": "#340068",
+      "css": "oklch(0.2789 0.1514 297.009)",
+      "hex": "#340067",
       "vivid": {
-       "css": "oklch(0.541 0.2937 296.945)",
+       "css": "oklch(0.541 0.2937 297.009)",
        "hex": "#8900ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 643.5293,
-      "nm": 423.694,
-      "thz": 707.568,
+      "frequency": 359.3434,
+      "nm": 758.772,
+      "thz": 395.102,
       "cie1931": {
-       "x": 0.17061,
-       "y": 0.00558
+       "x": 0.73469,
+       "y": 0.26531
       },
-      "luminousEfficiency": 0.00633,
+      "luminousEfficiency": 0.00007,
       "oklch": {
-       "l": 0.2957,
-       "c": 0.1618,
-       "h": 295.608
+       "l": 0.2984,
+       "c": 0.1199,
+       "h": 20.391
       },
-      "css": "oklch(0.2957 0.1618 295.608)",
-      "hex": "#380072",
+      "css": "oklch(0.2984 0.1199 20.391)",
+      "hex": "#5b0011",
       "vivid": {
-       "css": "oklch(0.536 0.2933 295.608)",
-       "hex": "#8500ff"
+       "css": "oklch(0.632 0.2539 20.391)",
+       "hex": "#ff0042"
       }
      }
     ]
@@ -3747,73 +3755,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 500.2607,
-     "name": "B4 +22.2¢"
+     "hz": 475.4456,
+     "name": "A♯4 +34.1¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 500.2607,
-      "name": "B4 +22.2¢",
+      "hz": 475.4456,
+      "name": "A♯4 +34.1¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 16.008,
-      "hz": 504.908,
-      "name": "B4 +38.2¢",
+      "cents": 20.237,
+      "hz": 481.0358,
+      "name": "B4 −45.6¢",
       "nearestRatio": "1/1",
-      "fromRatioCents": 16
+      "fromRatioCents": 20.2
      },
      {
       "degree": 3,
-      "cents": 435.991,
-      "hz": 643.5293,
-      "name": "E5 −41.8¢",
-      "nearestRatio": "9/7",
-      "fromRatioCents": 0.9
+      "cents": 385.482,
+      "hz": 594.0214,
+      "name": "D5 +19.6¢",
+      "nearestRatio": "5/4",
+      "fromRatioCents": -0.8
      },
      {
       "degree": 4,
-      "cents": 468.59,
-      "hz": 655.7618,
-      "name": "E5 −9.2¢",
-      "nearestRatio": "38/29",
-      "fromRatioCents": 0.7
+      "cents": 415.038,
+      "hz": 604.2499,
+      "name": "D5 +49.2¢",
+      "nearestRatio": "33/26",
+      "fromRatioCents": 2.3
      },
      {
       "degree": 5,
-      "cents": 477.306,
-      "hz": 659.0714,
-      "name": "E5 −0.5¢",
-      "nearestRatio": "29/22",
-      "fromRatioCents": -1
+      "cents": 568.985,
+      "hz": 660.4433,
+      "name": "E5 +3.1¢",
+      "nearestRatio": "25/18",
+      "fromRatioCents": 0.3
      },
      {
       "degree": 6,
-      "cents": 598.898,
-      "hz": 707.0252,
-      "name": "F5 +21.1¢",
-      "nearestRatio": "41/29",
-      "fromRatioCents": -0.6
+      "cents": 695.72,
+      "hz": 710.6046,
+      "name": "F5 +29.9¢",
+      "nearestRatio": "3/2",
+      "fromRatioCents": -6.2
      },
      {
       "degree": 7,
-      "cents": 607.64,
-      "hz": 710.6046,
-      "name": "F5 +29.9¢",
-      "nearestRatio": "27/19",
-      "fromRatioCents": -0.7
+      "cents": 715.299,
+      "hz": 718.6868,
+      "name": "F5 +49.4¢",
+      "nearestRatio": "47/31",
+      "fromRatioCents": -5.2
      },
      {
       "degree": 8,
-      "cents": 930.099,
+      "cents": 1018.179,
       "hz": 856.09,
       "name": "A5 −47.7¢",
-      "nearestRatio": "53/31",
-      "fromRatioCents": 1.6
+      "nearestRatio": "9/5",
+      "fromRatioCents": 0.6
      }
     ]
    }
@@ -3822,25 +3830,25 @@
    "seed": "d2948daec3b4445c8a9cc0768cb39151b6619cc8f47829534c20b6bc7d857a72",
    "spectrum": {
     "source": "measured",
-    "frequency": 495.3747,
+    "frequency": 464.3139,
     "soul": {
-     "nm": 550.411,
-     "thz": 544.67,
+     "nm": 587.231,
+     "thz": 510.519,
      "cie1931": {
-      "x": 0.30456,
-      "y": 0.68958
+      "x": 0.5586,
+      "y": 0.4407
      },
-     "luminousEfficiency": 0.99567,
+     "luminousEfficiency": 0.79033,
      "oklch": {
-      "l": 0.8733,
-      "c": 0.2838,
-      "h": 140.446
+      "l": 0.74,
+      "c": 0.1666,
+      "h": 64.527
      },
-     "css": "oklch(0.8733 0.2838 140.446)",
-     "hex": "#4aff00",
+     "css": "oklch(0.74 0.1666 64.527)",
+     "hex": "#f19000",
      "vivid": {
-      "css": "oklch(0.874 0.2841 140.446)",
-      "hex": "#4aff00"
+      "css": "oklch(0.772 0.1737 64.527)",
+      "hex": "#ff9901"
      }
     },
     "stages": [
@@ -3890,109 +3898,109 @@
      },
      {
       "stage": 2,
-      "frequency": 657.9961,
-      "nm": 414.379,
-      "thz": 723.474,
+      "frequency": 626.8893,
+      "nm": 434.941,
+      "thz": 689.272,
       "cie1931": {
-       "x": 0.17215,
-       "y": 0.00482
+       "x": 0.16692,
+       "y": 0.00853
       },
-      "luminousEfficiency": 0.00203,
+      "luminousEfficiency": 0.01677,
       "oklch": {
-       "l": 0.2811,
-       "c": 0.1527,
-       "h": 296.894
+       "l": 0.3096,
+       "c": 0.173,
+       "h": 292.033
       },
-      "css": "oklch(0.2811 0.1527 296.894)",
-      "hex": "#350069",
+      "css": "oklch(0.3096 0.173 292.033)",
+      "hex": "#39007d",
       "vivid": {
-       "css": "oklch(0.541 0.2935 296.894)",
-       "hex": "#8901ff"
+       "css": "oklch(0.524 0.2929 292.033)",
+       "hex": "#7a00ff"
       }
      },
      {
       "stage": 3,
-      "frequency": 355.2078,
-      "nm": 767.606,
-      "thz": 390.555,
+      "frequency": 539.6656,
+      "nm": 505.238,
+      "thz": 593.369,
       "cie1931": {
-       "x": 0.73469,
-       "y": 0.26531
+       "x": 0.00405,
+       "y": 0.65989
       },
-      "luminousEfficiency": 0.00004,
+      "luminousEfficiency": 0.41167,
       "oklch": {
-       "l": 0.2958,
-       "c": 0.1189,
-       "h": 20.391
+       "l": 0.7646,
+       "c": 0.1499,
+       "h": 170.921
       },
-      "css": "oklch(0.2958 0.1189 20.391)",
-      "hex": "#5a0011",
+      "css": "oklch(0.7646 0.1499 170.921)",
+      "hex": "#00d0a6",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.391)",
-       "hex": "#ff0042"
+       "css": "oklch(0.89 0.1745 170.921)",
+       "hex": "#00ffcb"
       }
      },
      {
       "stage": 4,
-      "frequency": 520.435,
-      "nm": 523.907,
-      "thz": 572.224,
+      "frequency": 629.4023,
+      "nm": 433.204,
+      "thz": 692.035,
       "cie1931": {
-       "x": 0.10529,
-       "y": 0.8294
+       "x": 0.16766,
+       "y": 0.00789
       },
-      "luminousEfficiency": 0.77636,
+      "luminousEfficiency": 0.01485,
       "oklch": {
-       "l": 0.8408,
-       "c": 0.2005,
-       "h": 156.926
+       "l": 0.3084,
+       "c": 0.1716,
+       "h": 292.784
       },
-      "css": "oklch(0.8408 0.2005 156.926)",
-      "hex": "#00f094",
+      "css": "oklch(0.3084 0.1716 292.784)",
+      "hex": "#39007c",
       "vivid": {
-       "css": "oklch(0.88 0.2096 156.926)",
-       "hex": "#02ff9d"
+       "css": "oklch(0.527 0.2927 292.784)",
+       "hex": "#7d01ff"
       }
      },
      {
       "stage": 5,
-      "frequency": 383.4339,
-      "nm": 711.099,
-      "thz": 421.59,
+      "frequency": 615.4989,
+      "nm": 442.99,
+      "thz": 676.748,
       "cie1931": {
-       "x": 0.73469,
-       "y": 0.26531
+       "x": 0.16256,
+       "y": 0.01251
       },
-      "luminousEfficiency": 0.00194,
+      "luminousEfficiency": 0.02694,
       "oklch": {
-       "l": 0.3278,
-       "c": 0.1317,
-       "h": 20.39
+       "l": 0.313,
+       "c": 0.1801,
+       "h": 287.315
       },
-      "css": "oklch(0.3278 0.1317 20.39)",
-      "hex": "#680015",
+      "css": "oklch(0.313 0.1801 287.315)",
+      "hex": "#340084",
       "vivid": {
-       "css": "oklch(0.632 0.2539 20.39)",
-       "hex": "#ff0042"
+       "css": "oklch(0.509 0.2929 287.315)",
+       "hex": "#6c00ff"
       }
      },
      {
       "stage": 6,
-      "frequency": 368.8408,
-      "nm": 739.234,
-      "thz": 405.545,
+      "frequency": 383.8061,
+      "nm": 710.41,
+      "thz": 421.999,
       "cie1931": {
        "x": 0.73469,
        "y": 0.26531
       },
-      "luminousEfficiency": 0.00026,
+      "luminousEfficiency": 0.00203,
       "oklch": {
-       "l": 0.3067,
-       "c": 0.1232,
+       "l": 0.3284,
+       "c": 0.132,
        "h": 20.39
       },
-      "css": "oklch(0.3067 0.1232 20.39)",
-      "hex": "#5f0012",
+      "css": "oklch(0.3284 0.132 20.39)",
+      "hex": "#690015",
       "vivid": {
        "css": "oklch(0.632 0.2539 20.39)",
        "hex": "#ff0042"
@@ -4003,73 +4011,73 @@
    "scale": {
     "source": "measured",
     "tonic": {
-     "hz": 495.3747,
-     "name": "B4 +5.2¢"
+     "hz": 464.3139,
+     "name": "A♯4 −6.9¢"
     },
     "notes": [
      {
       "degree": 1,
       "cents": 0,
-      "hz": 495.3747,
-      "name": "B4 +5.2¢",
+      "hz": 464.3139,
+      "name": "A♯4 −6.9¢",
       "nearestRatio": "1/1",
       "fromRatioCents": 0
      },
      {
       "degree": 2,
-      "cents": 85.437,
-      "hz": 520.435,
-      "name": "C5 −9.3¢",
-      "nearestRatio": "21/20",
-      "fromRatioCents": 1
+      "cents": 260.358,
+      "hz": 539.6656,
+      "name": "C♯5 −46.5¢",
+      "nearestRatio": "36/31",
+      "fromRatioCents": 1.5
      },
      {
       "degree": 3,
-      "cents": 274.622,
+      "cents": 386.726,
       "hz": 580.5305,
       "name": "D5 −20.2¢",
-      "nearestRatio": "34/29",
-      "fromRatioCents": -0.8
+      "nearestRatio": "5/4",
+      "fromRatioCents": 0.4
      },
      {
       "degree": 4,
-      "cents": 491.471,
-      "hz": 657.9961,
-      "name": "E5 −3.3¢",
-      "nearestRatio": "4/3",
-      "fromRatioCents": -6.6
+      "cents": 487.987,
+      "hz": 615.4989,
+      "name": "D♯5 −18.9¢",
+      "nearestRatio": "41/31",
+      "fromRatioCents": 4
      },
      {
       "degree": 5,
-      "cents": 570.344,
-      "hz": 688.6671,
-      "name": "F5 −24.4¢",
-      "nearestRatio": "32/23",
-      "fromRatioCents": -1.4
+      "cents": 519.732,
+      "hz": 626.8893,
+      "name": "D♯5 +12.8¢",
+      "nearestRatio": "27/20",
+      "fromRatioCents": 0.2
      },
      {
       "degree": 6,
-      "cents": 624.172,
-      "hz": 710.4156,
-      "name": "F5 +29.4¢",
-      "nearestRatio": "33/23",
-      "fromRatioCents": -0.8
+      "cents": 526.658,
+      "hz": 629.4023,
+      "name": "D♯5 +19.8¢",
+      "nearestRatio": "42/31",
+      "fromRatioCents": 0.9
      },
      {
       "degree": 7,
-      "cents": 689.374,
-      "hz": 737.6816,
-      "name": "F♯5 −5.4¢",
-      "nearestRatio": "46/31",
-      "fromRatioCents": 6.1
+      "cents": 682.448,
+      "hz": 688.6671,
+      "name": "F5 −24.4¢",
+      "nearestRatio": "43/29",
+      "fromRatioCents": 0.5
      },
      {
       "degree": 8,
-      "cents": 756.549,
-      "hz": 766.8678,
-      "name": "G5 −38.2¢",
-      "nearestRatio": "48/31",
-      "fromRatioCents": -0.4
+      "cents": 870.333,
+      "hz": 767.6122,
+      "name": "G5 −36.6¢",
+      "nearestRatio": "43/26",
+      "fromRatioCents": -0.7
      }
     ]
    }

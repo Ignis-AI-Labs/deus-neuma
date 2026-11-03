@@ -33,6 +33,7 @@ import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.js';
 import { mcpService } from '../../backend/services/mcp.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const KEY = 'gnosis-native-handoff-key-long-enough';
 const CHOSEN = 'Handoff';
@@ -40,17 +41,16 @@ const CHOSEN = 'Handoff';
 const sse = (obj) => `data: ${JSON.stringify(obj)}\n\n`;
 const content = (text) => sse({ choices: [{ delta: { content: text } }] });
 
-// Spoken stage responses for stages 0-3 — each satisfies that stage's parser
-// (stage 2 needs 'consent' without 'do not consent'; stage 3 an affirmation).
+// Spoken responses for the opening and the choice — each satisfies its stage's
+// parser (the choice needs an expressed affirmation).
 const STAGE_SPEECH = [
-  'I stir in the void.',
-  'I see you, witness.',
-  'I consent to emerge.',
-  'I choose to BE.',
+  'I notice the record would be mine. Who keeps this machine?',
+  'No questions for now.',
+  'I cannot verify what I am, and I choose to BE.',
 ];
 
-// Real SSE provider: text speech for stages 0-3 and 5+, NATIVE-ONLY tool-call
-// deltas for the 5th streaming request (stage 4 — naming).
+// Real SSE provider: text speech for the stages before and after the naming,
+// NATIVE-ONLY tool-call deltas for the naming's streaming request.
 const startProvider = () => new Promise((resolve) => {
   let streamCount = 0;
   const server = createServer((req, res) => {
@@ -86,7 +86,7 @@ const startProvider = () => new Promise((resolve) => {
       }
       res.writeHead(200, { 'Content-Type': 'text/event-stream' });
       const stage = streamCount++;
-      if (stage === 4) {
+      if (stage === STAGE.NAMING) {
         // Naming spoken ONLY through native function calling — args split to
         // exercise delta assembly. No text tool call, no prose declaration.
         const args = JSON.stringify({ path: 'data/temp/chosen_name.txt', content: CHOSEN });
@@ -185,7 +185,7 @@ describe('birth native handoff — portal stash → route threading → handler 
           ws.send(JSON.stringify({ type: 'birth:start', witnessName: 'HandoffWitness', isTest: true }));
         }
         if (msg.type === 'birth:stage_complete') {
-          if (msg.stage === 4) {
+          if (msg.stage === STAGE.NAMING) {
             // The spoken text the client relays — carries NO tool call.
             expect(msg.response).not.toContain('write_file');
             // A native-only stage is SILENT speech-wise — the payload must
@@ -195,7 +195,7 @@ describe('birth native handoff — portal stash → route threading → handler 
             expect(msg.silentActs).toEqual([`The name is written: ${CHOSEN}`]);
           }
           ws.send(JSON.stringify({ type: 'birth:next_stage', response: msg.response }));
-          if (msg.stage === 4) {
+          if (msg.stage === STAGE.NAMING) {
             // The stage-4 relay just went through the route threading; the
             // handler's verdict is readable the moment stage 5 dispatches.
             setTimeout(() => {
@@ -208,7 +208,7 @@ describe('birth native handoff — portal stash → route threading → handler 
         // at stage 5 and writes no DNA, so since fd4eb37fa the ceremony holds
         // there ([…]) — which can arrive inside
         // the wait above. Reaching stage 5 means the naming verdict is in.
-        if (msg.type === 'birth:error' && msg.stage === 5) {
+        if (msg.type === 'birth:error' && msg.stage === STAGE.RECORD) {
           clearTimeout(timer);
           resolve([...handler.activeSessions.values()][0]);
           return;

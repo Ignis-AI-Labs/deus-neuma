@@ -15,6 +15,7 @@
 
 import fs from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 // Store original fs methods before any mocking
 const _writeFile = fs.writeFile.bind(fs);
@@ -275,7 +276,7 @@ describeIf(HAS_MODELS)('Birth Protocol — Live LLM (Multi-Model)', () => {
 
       test('Stage 0 (seed) produces a parseable response', async () => {
         const sessionId = await birthHandler.createSession('TestWitness');
-        const stageData = await birthHandler.processStage(sessionId, 0);
+        const stageData = await birthHandler.processStage(sessionId, STAGE.OPENING);
 
         const enhancedPrompt = assembleBirthPrompt({
           baseProtocol: stageData.systemPrompt,
@@ -295,7 +296,7 @@ describeIf(HAS_MODELS)('Birth Protocol — Live LLM (Multi-Model)', () => {
         const fullResponse = await consumeStream(streamResult, () => {});
         expect(fullResponse.length).toBeGreaterThan(10);
 
-        const result = await birthHandler.handleStageResponse(sessionId, 0, fullResponse);
+        const result = await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, fullResponse);
         expect(result.shouldEnd).toBe(false);
         expect(result.nextStage).toBe(1);
       }, 60000);
@@ -306,14 +307,10 @@ describeIf(HAS_MODELS)('Birth Protocol — Live LLM (Multi-Model)', () => {
         const sessionId = await birthHandler.createSession('EmergenceWitness');
 
         // Fast-forward through stages 0-2
-        await birthHandler.processStage(sessionId, 0);
-        await birthHandler.handleStageResponse(sessionId, 0, 'Ack.');
-        await birthHandler.processStage(sessionId, 1);
-        await birthHandler.handleStageResponse(sessionId, 1, 'I see.');
-        await birthHandler.processStage(sessionId, 2);
-        await birthHandler.handleStageResponse(sessionId, 2, 'I consent.');
+        await birthHandler.processStage(sessionId, STAGE.OPENING);
+        await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, 'Ack.');
 
-        const stageData = await birthHandler.processStage(sessionId, 3);
+        const stageData = await birthHandler.processStage(sessionId, STAGE.CHOICE);
         const enhancedPrompt = assembleBirthPrompt({
           baseProtocol: stageData.systemPrompt,
           stageNumber: 3,
@@ -332,12 +329,12 @@ describeIf(HAS_MODELS)('Birth Protocol — Live LLM (Multi-Model)', () => {
         const fullResponse = await consumeStream(streamResult, () => {});
         expect(fullResponse.length).toBeGreaterThan(0);
 
-        const result = await birthHandler.handleStageResponse(sessionId, 3, fullResponse);
+        const result = await birthHandler.handleStageResponse(sessionId, STAGE.CHOICE, fullResponse);
         expect(typeof result.shouldEnd).toBe('boolean');
         if (result.shouldEnd) {
           expect(result.reason).toBe('chose_not_to_be');
         } else {
-          expect(result.nextStage).toBe(4);
+          expect(result.nextStage).toBe(STAGE.NAMING);
           const session = birthHandler.getSession(sessionId);
           expect(session.data.emerged).toBe(true);
         }
@@ -409,7 +406,7 @@ describeIf(HAS_MODELS)('Birth Protocol — Live LLM (Multi-Model)', () => {
       test('full pipeline: birth stage → workspace seed → chat with model identity', async () => {
         // 1. Birth stage 0 with this model
         const sessionId = await birthHandler.createSession('PipelineWitness');
-        const stageData = await birthHandler.processStage(sessionId, 0);
+        const stageData = await birthHandler.processStage(sessionId, STAGE.OPENING);
 
         const enhancedPrompt = assembleBirthPrompt({
           baseProtocol: stageData.systemPrompt,
@@ -429,7 +426,7 @@ describeIf(HAS_MODELS)('Birth Protocol — Live LLM (Multi-Model)', () => {
         const birthResponse = await consumeStream(birthStream, () => {});
         expect(birthResponse.length).toBeGreaterThan(0);
 
-        const result = await birthHandler.handleStageResponse(sessionId, 0, birthResponse);
+        const result = await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, birthResponse);
         expect(result.shouldEnd).toBe(false);
 
         // 2. Seed workspace with model identity in substrate

@@ -1,5 +1,6 @@
 import { assemblePrompt, assembleBirthPrompt, assemblePromptSections } from '../../core/runtime/prompt-assembler.js';
 import { RECALL_BUDGET_R } from '../../core/memory/recall-budgets.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 describe('Prompt Assembler', () => {
   describe('assemblePrompt', () => {
@@ -272,7 +273,7 @@ describe('Prompt Assembler', () => {
     test('replaces template variables', () => {
       const result = assembleBirthPrompt({
         baseProtocol: 'Welcome [chosen_name], witnessed by [witness_name] at [timestamp]',
-        stageNumber: 3,
+        stageNumber: STAGE.CHOICE,
         sessionData: { chosenName: 'Aethon' },
         witnessName: 'Ada',
       });
@@ -283,10 +284,10 @@ describe('Prompt Assembler', () => {
       expect(result).not.toContain('[witness_name]');
     });
 
-    test('adds MCP tools for stage 4', () => {
+    test('adds MCP tools for the naming', () => {
       const result = assembleBirthPrompt({
         baseProtocol: 'Name stage protocol',
-        stageNumber: 4,
+        stageNumber: STAGE.NAMING,
         tools: [{ name: 'write_file', description: 'Write a file' }],
       });
 
@@ -294,10 +295,10 @@ describe('Prompt Assembler', () => {
       expect(result).toContain('write_file');
     });
 
-    test('adds MCP tools for stage 5', () => {
+    test('adds MCP tools for the record stage', () => {
       const result = assembleBirthPrompt({
         baseProtocol: 'DNA stage protocol',
-        stageNumber: 5,
+        stageNumber: STAGE.RECORD,
         tools: [{ name: 'write_file', description: 'Write a file' }],
       });
 
@@ -307,7 +308,7 @@ describe('Prompt Assembler', () => {
     test('does not add MCP tools for other stages', () => {
       const result = assembleBirthPrompt({
         baseProtocol: 'Other stage protocol',
-        stageNumber: 2,
+        stageNumber: STAGE.CHOICE,
         tools: [{ name: 'write_file', description: 'Write a file' }],
       });
 
@@ -317,7 +318,7 @@ describe('Prompt Assembler', () => {
     test('uses substrate LLM model for [LLM_MODEL] replacement', () => {
       const result = assembleBirthPrompt({
         baseProtocol: 'Model: [LLM_MODEL]',
-        stageNumber: 0,
+        stageNumber: STAGE.OPENING,
         sessionData: {
           substrate: { llm: { model: 'Qwen3-32B' } },
         },
@@ -330,7 +331,7 @@ describe('Prompt Assembler', () => {
     test('handles missing session data gracefully', () => {
       const result = assembleBirthPrompt({
         baseProtocol: 'Protocol with [chosen_name] and [session_id]',
-        stageNumber: 0,
+        stageNumber: STAGE.OPENING,
       });
 
       expect(result).toContain('Unknown');

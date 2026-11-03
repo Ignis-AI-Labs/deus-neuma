@@ -74,10 +74,15 @@ export const FILESYSTEM_TOOL_CATALOG = Object.freeze([
     }, ['paths'], READ_ONLY),
 
   tool('write_file', 'Write File',
-    'Create a new file or completely overwrite an existing file with new content. '
-    + 'Use with caution as it will overwrite existing files without warning. '
-    + 'Handles text content with proper encoding. Only works within allowed directories.',
-    { path: PATH_ARG, content: { type: 'string' } }, ['path', 'content'],
+    'Create a NEW file. Existing paths are refused: use edit_file for small changes. '
+    + 'A deliberate whole-file replacement requires overwrite:true plus expectedMtimeMs '
+    + 'from get_file_info, and writes nothing if the file changed. Only works within allowed directories.',
+    {
+      path: PATH_ARG,
+      content: { type: 'string' },
+      overwrite: { type: 'boolean', description: 'Explicit whole-file replacement only' },
+      expectedMtimeMs: { type: 'number', description: 'Current mtimeMs from get_file_info; required with overwrite' },
+    }, ['path', 'content'],
     Object.freeze({ readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false })),
 
   tool('edit_file', 'Edit File',

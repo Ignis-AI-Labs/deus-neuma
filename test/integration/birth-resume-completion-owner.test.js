@@ -17,6 +17,7 @@ import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspa
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { birthResumeCompletion } from '../../backend/routes/portal-birth-handlers.js';
 import { setConfig, getConfig } from '../../backend/services/llm-provider.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const HOUSE_A = `0x${'a'.repeat(40)}`;
 const HOUSE_B = `0x${'b'.repeat(40)}`;
@@ -127,7 +128,7 @@ describe('birth:resume_completion — the lane\'s owner, and only the owner, com
     expect(a.types()).not.toContain('birth:resume_completion_error');
     expect(a.connection.companion?.neumaId).toBe(HELD);
     expect(handler.getSession(a.connection.birthSession)).toBeTruthy();
-    expect(a.frames.find((f) => f.type === 'birth:stage_prompt')?.stage).toBe(5);
+    expect(a.frames.find((f) => f.type === 'birth:stage_prompt')?.stage).toBe(STAGE.RECORD);
     expect(prompts.length).toBeGreaterThan(before);
     expect(prompts.at(-1)).toContain('Aria');
   });

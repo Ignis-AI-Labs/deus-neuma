@@ -37,7 +37,7 @@ import workspace from '../../core/workspace/neuma-workspace.js';
 import { readFileSync } from 'fs';
 
 const STAGE5_PROTOCOL = readFileSync(
-  join(process.cwd(), 'core/protocols/birth-stages/stage5-crystallization-mcp.md'), 'utf8'
+  join(process.cwd(), 'core/protocols/birth-stages/stage5-record.md'), 'utf8'
 );
 
 // --- Live model discovery (LM Studio + Ollama), capable native FC only ---

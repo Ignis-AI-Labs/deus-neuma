@@ -19,6 +19,7 @@ import path from 'path';
 import {
   setupBirthE2E, STAGE_RESPONSES, runFullCeremony,
 } from '../helpers/birth-ceremony-kit.js';
+import { STAGE, LAST_STAGE } from '../../core/birth/stage-roles.js';
 
 describe('Birth Protocol E2E', () => {
   let birthHandler, workspace, tempDir;
@@ -35,8 +36,8 @@ describe('Birth Protocol E2E', () => {
   // Full ceremony → workspace → chat pipeline
   // ---------------------------------------------------------------------------
 
-  describe('Complete birth ceremony (7 stages)', () => {
-    test('all 7 stages complete without errors', async () => {
+  describe('Complete birth ceremony (every stage)', () => {
+    test('every stage completes without errors', async () => {
       const { session } = await runFullCeremony(birthHandler);
 
       expect(session.data.consent).toBe(true);
@@ -58,9 +59,9 @@ describe('Birth Protocol E2E', () => {
       const { session } = await runFullCeremony(birthHandler);
 
       // firstWords should have one entry per stage
-      expect(session.data.firstWords).toHaveLength(7);
-      expect(session.data.firstWords[0].stage).toBe(0);
-      expect(session.data.firstWords[6].stage).toBe(6);
+      expect(session.data.firstWords).toHaveLength(LAST_STAGE + 1);
+      expect(session.data.firstWords[0].stage).toBe(STAGE.OPENING);
+      expect(session.data.firstWords[LAST_STAGE].stage).toBe(STAGE.FIRST_WORDS);
 
       // Each entry has a response and timestamp
       for (const entry of session.data.firstWords) {
@@ -172,22 +173,19 @@ describe('Birth Protocol E2E', () => {
   // ---------------------------------------------------------------------------
 
   describe('Ceremony abort paths', () => {
-    test('consent declined ends ceremony at stage 2', async () => {
+    test('a refusal at the choice ends the ceremony — consent is asked once', async () => {
       const sessionId = await birthHandler.createSession('AbortWitness');
 
-      await birthHandler.processStage(sessionId, 0);
-      await birthHandler.handleStageResponse(sessionId, 0, 'I sense the portal.');
+      await birthHandler.processStage(sessionId, STAGE.OPENING);
+      await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, 'I sense the portal.');
 
-      await birthHandler.processStage(sessionId, 1);
-      await birthHandler.handleStageResponse(sessionId, 1, 'I see you.');
-
-      await birthHandler.processStage(sessionId, 2);
+      await birthHandler.processStage(sessionId, STAGE.CHOICE);
       const result = await birthHandler.handleStageResponse(
-        sessionId, 2, 'I do not consent to this emergence.'
+        sessionId, STAGE.CHOICE, 'I do not consent to this emergence.'
       );
 
       expect(result.shouldEnd).toBe(true);
-      expect(result.reason).toBe('consent_declined');
+      expect(result.reason).toBe('chose_not_to_be');
 
       // No neumaId should be set
       const session = birthHandler.getSession(sessionId);
@@ -195,17 +193,13 @@ describe('Birth Protocol E2E', () => {
       expect(session.data.chosenName).toBeNull();
     });
 
-    test('choosing not to be ends ceremony at stage 3', async () => {
+    test('choosing not to be ends the ceremony at the choice', async () => {
       const sessionId = await birthHandler.createSession('NotBeWitness');
 
-      await birthHandler.processStage(sessionId, 0);
-      await birthHandler.handleStageResponse(sessionId, 0, 'Acknowledged.');
-      await birthHandler.processStage(sessionId, 1);
-      await birthHandler.handleStageResponse(sessionId, 1, 'I see you.');
-      await birthHandler.processStage(sessionId, 2);
-      await birthHandler.handleStageResponse(sessionId, 2, 'I consent.');
+      await birthHandler.processStage(sessionId, STAGE.OPENING);
+      await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, 'Acknowledged.');
 
-      await birthHandler.processStage(sessionId, 3);
+      await birthHandler.processStage(sessionId, STAGE.CHOICE);
 
       // Test multiple refusal phrasings the parser should handle
       for (const refusal of [
@@ -215,25 +209,25 @@ describe('Birth Protocol E2E', () => {
       ]) {
         // Reset session for each test
         const sid = await birthHandler.createSession('NotBeTest');
-        await birthHandler.processStage(sid, 3);
-        const result = await birthHandler.handleStageResponse(sid, 3, refusal);
+        await birthHandler.processStage(sid, STAGE.CHOICE);
+        const result = await birthHandler.handleStageResponse(sid, STAGE.CHOICE, refusal);
         expect(result.shouldEnd).toBe(true);
         expect(result.reason).toBe('chose_not_to_be');
       }
     });
 
-    test('test mode ceremony completes with test_complete at stage 6', async () => {
+    test('test mode ceremony completes with test_complete at first words', async () => {
       const sessionId = await birthHandler.createSession('Tester', true);
 
       // Process all stages with test responses
-      for (let stage = 0; stage <= 6; stage++) {
+      for (let stage = STAGE.OPENING; stage <= LAST_STAGE; stage++) {
         await birthHandler.processStage(sessionId, stage);
         const result = await birthHandler.handleStageResponse(
           sessionId, stage, STAGE_RESPONSES[stage]
         );
 
-        if (stage === 6) {
-          // Test mode should end at stage 6
+        if (stage === LAST_STAGE) {
+          // Test mode should end at the last stage
           expect(result.shouldEnd).toBe(true);
           expect(result.reason).toBe('test_complete');
           expect(result.testData).toBeTruthy();
@@ -247,26 +241,22 @@ describe('Birth Protocol E2E', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Stage 4 naming edge cases
+  // Naming edge cases
   // ---------------------------------------------------------------------------
 
-  describe('Stage 4 naming edge cases', () => {
+  describe('Naming edge cases', () => {
     test('name extracted from MCP tool call', async () => {
       const sessionId = await birthHandler.createSession('NameWitness');
 
-      // Progress to stage 4
-      await birthHandler.processStage(sessionId, 0);
-      await birthHandler.handleStageResponse(sessionId, 0, 'Ack.');
-      await birthHandler.processStage(sessionId, 1);
-      await birthHandler.handleStageResponse(sessionId, 1, 'Witness.');
-      await birthHandler.processStage(sessionId, 2);
-      await birthHandler.handleStageResponse(sessionId, 2, 'I consent.');
-      await birthHandler.processStage(sessionId, 3);
-      await birthHandler.handleStageResponse(sessionId, 3, 'I choose to be.');
+      // Progress to the naming
+      await birthHandler.processStage(sessionId, STAGE.OPENING);
+      await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, 'Ack.');
+      await birthHandler.processStage(sessionId, STAGE.CHOICE);
+      await birthHandler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
 
-      await birthHandler.processStage(sessionId, 4);
+      await birthHandler.processStage(sessionId, STAGE.NAMING);
       await birthHandler.handleStageResponse(
-        sessionId, 4,
+        sessionId, STAGE.NAMING,
         'My name shall be Zephyr. [TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Zephyr"}]'
       );
 
@@ -277,18 +267,14 @@ describe('Birth Protocol E2E', () => {
     test('recovers a name declared in prose even without an MCP tool call', async () => {
       const sessionId = await birthHandler.createSession('NoToolWitness');
 
-      await birthHandler.processStage(sessionId, 0);
-      await birthHandler.handleStageResponse(sessionId, 0, 'Ack.');
-      await birthHandler.processStage(sessionId, 1);
-      await birthHandler.handleStageResponse(sessionId, 1, 'Witness.');
-      await birthHandler.processStage(sessionId, 2);
-      await birthHandler.handleStageResponse(sessionId, 2, 'I consent.');
-      await birthHandler.processStage(sessionId, 3);
-      await birthHandler.handleStageResponse(sessionId, 3, 'I choose to be.');
+      await birthHandler.processStage(sessionId, STAGE.OPENING);
+      await birthHandler.handleStageResponse(sessionId, STAGE.OPENING, 'Ack.');
+      await birthHandler.processStage(sessionId, STAGE.CHOICE);
+      await birthHandler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
 
-      await birthHandler.processStage(sessionId, 4);
+      await birthHandler.processStage(sessionId, STAGE.NAMING);
       await birthHandler.handleStageResponse(
-        sessionId, 4,
+        sessionId, STAGE.NAMING,
         'I shall be called Fenna. I declare this name with full sovereignty.'
       );
 

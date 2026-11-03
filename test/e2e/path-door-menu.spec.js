@@ -8,7 +8,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { setupExplorerPanel, settleDesk, makeFolder } from './helpers/explorer-panel-harness.js';
+import { setupExplorerPanel, settleDesk, makeFolder, openFolderViaPanel } from './helpers/explorer-panel-harness.js';
 
 setupExplorerPanel();
 
@@ -43,26 +43,22 @@ test('right-click a tool line\'s path: open the file without moving focus; focus
   await expect(door).toBeVisible();
   await expect(door).toHaveText(file);
 
-  // A plain click does nothing to focus or windows.
-  const windowsBefore = await page.locator('.fwin').count();
+  // Plain click opens the editor without moving focus or raising the menu.
   await door.click();
+  const editor = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'DOOR-NOTE.MD' }) });
+  await expect(editor).toBeVisible({ timeout: 15_000 });
+  await expect(editor).toContainText('opened, not focused');
+  await expect(none).toBeVisible();
   await expect(page.locator('.cmenu')).toHaveCount(0);
-  expect(await page.locator('.fwin').count()).toBe(windowsBefore);
 
-  // Right-click: the menu, with focusing named as its own act.
+  // Right-click keeps the menu, with focusing named as its own act.
   await door.click({ button: 'right' });
   const menu = page.locator('.cmenu');
   await expect(menu).toBeVisible();
   await expect(menu).toContainText('Open file');
   await expect(menu).toContainText('Copy path');
   await expect(menu).toContainText('Focus its folder');
-
-  // OPEN FILE: the editor shows it; the focus has not moved.
-  await menu.getByText('Open file', { exact: true }).click();
-  const editor = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'DOOR-NOTE.MD' }) });
-  await expect(editor).toBeVisible({ timeout: 15_000 });
-  await expect(editor).toContainText('opened, not focused');
-  await expect(none).toBeVisible(); // still no focus
+  await page.keyboard.press('Escape');
 
   // MAKE PDF: the press turns the markdown into a real PDF download, focus untouched.
   await door.click({ button: 'right' });
@@ -80,5 +76,45 @@ test('right-click a tool line\'s path: open the file without moving focus; focus
   await page.locator('.cmenu').getByText(/^Focus its folder/).click();
   await expect(none).toHaveCount(0);
   await expect(page.locator('.xp')).toContainText(path.basename(dir));
+  expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
+});
+
+test('plain-click a focused project\'s relative PNG and folder: image viewer first, Files lens for the folder', async ({ page }) => {
+  test.setTimeout(120_000);
+  const dir = await makeFolder('relative-door');
+  await fs.promises.mkdir(path.join(dir, 'docs', 'design'), { recursive: true });
+  await fs.promises.writeFile(
+    path.join(dir, 'docs', 'design', 'ref.png'),
+    Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
+  );
+
+  let client = null;
+  await page.routeWebSocket(/\/ws(\?|$)/, (ws) => {
+    const server = ws.connectToServer();
+    ws.onMessage((m) => server.send(m));
+    server.onMessage((m) => ws.send(m));
+    client = ws;
+  });
+  await page.reload();
+  await settleDesk(page);
+  await expect.poll(() => Boolean(client), { timeout: 15_000 }).toBe(true);
+  await openFolderViaPanel(page, dir);
+
+  const send = (frame) => client.send(JSON.stringify(frame));
+  send({ type: 'consciousness:stream', content: 'Preview `docs/design/ref.png` and open `docs/design`.', turnId: 'relative-turn' });
+  send({ type: 'consciousness:complete', turnId: 'relative-turn' });
+
+  const imageDoor = page.locator('.relink-md-path', { hasText: 'docs/design/ref.png' });
+  await expect(imageDoor).toBeVisible();
+  await imageDoor.click();
+  const viewer = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'REF.PNG' }) });
+  await expect(viewer).toBeVisible({ timeout: 15_000 });
+  await expect(viewer.locator('img')).toBeVisible({ timeout: 15_000 });
+  await viewer.getByRole('button', { name: 'Close window' }).click();
+
+  const folderDoor = page.locator('.relink-md-path', { hasText: /^docs\/design$/ });
+  await expect(folderDoor).toBeVisible();
+  await folderDoor.click();
+  await expect(page.locator('.xp')).toContainText('design');
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
