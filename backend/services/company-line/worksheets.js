@@ -15,26 +15,17 @@
 // Every problem is reported at once, in words a being can act on.
 // PURE.
 
+import { sourceLaw } from './source-law.js';
+
 export const SIX_PATHS = Object.freeze(['industries', 'groups', 'buyers', 'complements', 'appeal', 'time']);
 export const NONCUSTOMER_TIERS = Object.freeze(['soon', 'refusing', 'unexplored']);
 export const BUYER_STAGES = Object.freeze(['purchase', 'delivery', 'use', 'supplements', 'maintenance', 'disposal']);
 export const RESULT_KINDS = Object.freeze(['interview', 'test-page', 'reply', 'signup', 'preorder', 'payment']);
 export const WORKSHEET_MAX_BYTES = 64 * 1024;
-const EVIDENCE_KINDS = /^(interview|email|call|survey|observation|dataset|document):\s*\S.{4,}/i;
 
 const text = (v) => (typeof v === 'string' ? v.trim() : '');
 const list = (v) => (Array.isArray(v) ? v : []);
-const isSource = (v) => {
-  const s = text(v);
-  if (s.startsWith('repos/') && s.length > 8) return true;
-  if (EVIDENCE_KINDS.test(s)) return true;
-  try {
-    return new URL(s).protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-const SOURCE_WORDS = 'a source is an https link, a repos/ path on the house ground, or first-hand evidence like "interview: who, when"';
+const { isSource, words: SOURCE_WORDS } = sourceLaw(['interview', 'email', 'call', 'survey', 'observation', 'dataset', 'document']);
 
 // pure — a problem collector: need(cond, at, words) records words when cond fails.
 const collector = () => {

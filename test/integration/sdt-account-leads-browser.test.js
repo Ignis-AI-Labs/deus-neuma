@@ -350,14 +350,14 @@ describe('SDT-6 — the account level, the post card and LEADS show; every numbe
     if (MODE === 'before') return;
     const { page, errors } = await stand('account', 1400);
     // In the month view the composer stays mounted but is not shown (#595).
-    const composer = page.locator(`${LEVEL} .settings-realm:has(input[placeholder="What should go out?"])`);
+    const composer = page.locator(`${LEVEL} .settings-realm:has(textarea[placeholder="What should go out?"])`);
     await composer.waitFor({ state: 'attached', timeout: 15000 });
     expect(await composer.isVisible()).toBe(false);
     // Into a day (the four weeks' today): the composer belongs to the day view.
     await page.locator(`${LEVEL} .pc-strip-day.is-today`).click();
     await composer.waitFor({ timeout: 15000 });
     expect(await composer.locator('[aria-label="Account"]').count()).toBe(0);
-    await composer.locator('input[placeholder="What should go out?"]').fill('SDT-6: staged on the account level.');
+    await composer.locator('textarea[placeholder="What should go out?"]').fill('SDT-6: staged on the account level.');
     await composer.getByRole('button', { name: 'STAGE DRAFT' }).click();
     await expect.poll(async () => (await postQueue.load()).find((e) => e.text === 'SDT-6: staged on the account level.')?.accountId ?? null, { timeout: 15000 }).toBe('x-1');
     const staged = (await postQueue.load()).find((e) => e.text === 'SDT-6: staged on the account level.');
@@ -369,7 +369,8 @@ describe('SDT-6 — the account level, the post card and LEADS show; every numbe
       expect(await tg.page.locator('.pc-head.is-account').count()).toBe(0);
       await tg.page.locator('.pc-standing-btn').click();
       expect(await tg.page.locator('.ps-cell-k').allInnerTexts()).toEqual(['KEYS', 'HOLDER', 'CREW']);
-      expect(await tg.page.locator('.outreach-tabs [role="tab"]').allInnerTexts()).toEqual(['CAMPAIGNS', 'QUEUE']);
+      // COMMUNITY's TELEGRAM also holds its CHATS (who may talk with the house through its bot, the chat bridge).
+      expect(await tg.page.locator('.outreach-tabs [role="tab"]').allInnerTexts()).toEqual(['CAMPAIGNS', 'QUEUE', 'CHATS']);
       await legible(tg.page, `telegram at ${width}px`, '.outreach-panel .outreach-panel');
       expect(tg.errors).toEqual([]);
       await tg.page.close();

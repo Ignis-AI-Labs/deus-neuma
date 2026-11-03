@@ -23,10 +23,13 @@ import { trimDegenerationTail, parseToolCalls, stripToolBlocks, stripHarmonyLeak
 import { withProtocolReminders } from './protocol-classifier.js';
 import { isFinalToolRound, withinToolRounds } from './tool-rounds.js';
 import { pastFoldBoundary, foldWorkingContext, workingContextNote, withWorkingContextNote } from './working-context.js';
+import { contextRecoveryOptions } from './context-overflow.js';
 import { sightForResults, withSight } from './image-forge/image-sight.js';
 import { markTurnText } from './tool-action-record.js';
 import { formatWitnessToolResults } from './witness-tools.js';
 import { noteToolResultSightings } from './security/injection-sightings.js';
+import { injectedValueSplit, noteTaintedResults } from './security/injected-value-gate.js';
+import { recordHeldActs } from './security/injected-value-record.js';
 // The disclosure law is the being seat's own (being-tool-surface.js) — the
 // seat-agnostic half, read live: the wire recomputes from the connection's
 // turn catalog + disclosure set, never from a snapshot taken at turn start.
@@ -72,6 +75,7 @@ export const runWitnessToolRounds = async (ctx) => {
   const nativeToolsForRound = () => (routeCapabilities.tools
     ? toOpenAITools(disclosedNativeTools(connection))
     : []);
+  const contextRecovery = contextRecoveryOptions(wireHead, (recovery) => { ctx.messages = recovery.messages; ctx.foldedRounds += recovery.foldedRounds; });
   const closeToolLoop = async (reason) => {
     const closeMessage = {
       role: 'user',
@@ -98,6 +102,7 @@ export const runWitnessToolRounds = async (ctx) => {
           temperature: preset.temperature,
           topP: preset.topP,
           maxTokens: turnMaxTokens,
+          ...contextRecovery,
           signal: interrupt.signal,
           route,
           ...(effort.directive ? { effort: effort.directive } : {}),
@@ -168,6 +173,7 @@ export const runWitnessToolRounds = async (ctx) => {
           temperature: preset.temperature,
           topP: preset.topP,
           maxTokens: turnMaxTokens,
+          ...contextRecovery,
           signal: interrupt.signal,
           route,
           ...(effort.directive ? { effort: effort.directive } : {}),
@@ -228,13 +234,22 @@ export const runWitnessToolRounds = async (ctx) => {
       return { blocked: true };
     }
     if (!calls.length) break;
+    // An act carrying a value planted by injected text is HELD on this seat as on the being's
+    // (caller-tools.js processRoundActs; security/injected-value-gate.js), and what the round's
+    // acts read is looked at for planted values before the next round.
+    const taint = injectedValueSplit(connection, calls);
+    if (taint.refused.length > 0) {
+      connection._taintHeld = (connection._taintHeld ?? 0) + taint.refused.length;
+      recordHeldActs(connection, taint.refused); // fire-and-forget: the hold already happened
+    }
+    const taintHeld = new Map(taint.refused.map(({ act, result }) => [act, result]));
     // A REPEAT IS NOT A RUNAWAY: a repeated call is ANSWERED with the
     // result it already produced and the loop carries on (one repeat used
     // to end the turn — fatal to truncated-page re-fetches). Only a round
     // of nothing-but-repeats, twice consecutively, is spinning. Epochs: a
     // read issued after a write asks a genuinely different question and
     // must run (BE-142 #214).
-    const results = await processWitnessToolBatch({ ws, connection, calls, runtime, turn });
+    const results = noteTaintedResults(connection, await processWitnessToolBatch({ ws, connection, calls, runtime, turn, taintHeld }));
     ctx.mutationEpoch = turn.epoch;
     noteToolResultSightings(connection, results); // a flag for the CSO, never awaited, never a gate (G13)
     if (!results.length || interrupt.signal.aborted) break;

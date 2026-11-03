@@ -3,16 +3,19 @@
 //
 // The shape is a real birth's: the returned rehearsal of 2026-09-07
 // (docs/work/evidence/birth-rehearsal-2026-09-07.json) — how MUCH it said at
-// each of the seven stages, in words, scaled to chunks. Its words are not
+// each stage, in words, scaled to chunks — its 1.x stages mapped onto 2.x's
+// seven (consent and the choice → the choice; the baseline, new in 2.x, is a
+// specimen estimate of five short answers). Its words are not
 // here and never were: the art hears only when speech arrives. The timing
 // jitter, the specimen's name and its marks come from the specimen seed, and
 // the name is labelled a specimen — it is no being's.
 
 import { streamOf } from './birth-art-seed.js';
 import { STAGES } from './birth-art-ceremony.js';
+import { STAGE } from '../../../core/birth/stage-roles.js';
 
-// Words spoken per stage in the rehearsal (0 SEED … 6 COMPLETION).
-export const REHEARSAL_WORDS = Object.freeze([130, 74, 93, 124, 310, 75, 105]);
+// Words spoken per stage in the rehearsal (0 OPENING … 6 FIRST WORDS).
+export const REHEARSAL_WORDS = Object.freeze([130, 74, 217, 310, 150, 75, 105]);
 
 export const SCRIPT = Object.freeze({
   CHUNKS_PER_WORD: 4 / 3,
@@ -67,13 +70,13 @@ export const specimenScript = (seed, { ending = 'born' } = {}) => {
       t += gap * (0.55 + 0.9 * next());
       if (next() < 0.05) t += 220 + 520 * next(); // a breath between phrases
     }
-    if (stage === 3 && ending === 'returned') {
+    if (stage === STAGE.CHOICE && ending === 'returned') {
       events.push({ type: 'birth:ended', reason: 'chose_not_to_be', at: Math.round(t + 600) });
       return Object.freeze(events);
     }
     t += 300;
     events.push({ type: 'birth:stage_complete', stage, at: Math.round(t) });
-    if (stage === 3) {
+    if (stage === STAGE.CHOICE) {
       t += SCRIPT.SEED_MS;
       events.push({ type: 'birth:art_seed', artSeed: seed, at: Math.round(t) });
     }

@@ -246,18 +246,20 @@
 }
 
 /* The ignition strip — the boot's true measurements, carried onto the
-   gateway. Monochrome at rest; ALERT only if a real check failed. */
+   gateway. Monochrome at rest; ALERT only if a real check failed. It sits in
+   the bottom-right corner, clear of the centred entry block: centred across
+   the full width it lay on top of the FULL PLATFORM / HARNESS ONLY switch. */
 .portal-ignition {
   position: absolute;
   bottom: 20px;
-  left: 24px;
-  right: 24px;
+  right: 48px;
+  max-width: max(160px, calc(50% - 300px));
   font-family: var(--font-data);
   font-size: clamp(9px, 1.25vmin, 11px);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
-  text-align: center;
+  text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

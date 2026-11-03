@@ -12,6 +12,7 @@ import { EmptyState } from '../empty-state.jsx';
 import { WorksheetView } from './WorksheetView.jsx';
 import { SalesSection } from './SalesSection.jsx';
 import { BooksSection } from './BooksSection.jsx';
+import { RaiseSection } from './RaiseSection.jsx';
 import {
   MODE_WORDS, holderName, statusWords, currentStage, upWords, stepWords, operatorMove, lineOverview,
   ANSWER_ASKS, openHands, domainOf, handOnReady,
@@ -43,17 +44,19 @@ const Rail = ({ company, names }) => (
 );
 
 // The operator's own move on one line: hand on a stage they master, or answer an inspection.
-const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect }) => {
+const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect, onEndGap }) => {
   const move = operatorMove(company);
   const stage = currentStage(company);
   const set = (field) => (e) => onDraft(company.id, field, e.target.value);
   if (move.kind === 'hand-on') {
     const ready = handOnReady(stage, draft);
+    const no = (draft.flaw ?? '').trim();
     return (
       <div className="cline-move cham" data-company-move={company.id}>
         <div className="cline-move-in cham-in">
-          <p className="cline-move-h label-data">{company.name} · {stage.name} — YOURS TO DO</p>
+          <p className="cline-move-h label-data">{company.name} · {stage.name} — {move.ownYes ? 'YOUR YES OR NO' : 'YOURS TO DO'}</p>
           <p className="cline-move-t">{stage.handsOn}</p>
+          {move.ownYes ? <p className="cline-move-t">Handing it on is your yes — nothing comes back to you for a second look.{move.stoppable ? ' Or end the gap here, and say why.' : ''}</p> : null}
           {stage.id === 'choose' ? (
             <>
               <p className="cline-co-line label-data">THE GAP SHAPED: {company.worksheets?.shape?.candidate ?? '—'}</p>
@@ -70,10 +73,19 @@ const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect }) => {
             <input className="cline-input" aria-label="Where the work lies" placeholder="Where the work lies — a path, a link, or what was filed"
               value={draft.artifact ?? ''} disabled={busy} onChange={set('artifact')} />
           )}
-          <textarea className="cline-input" rows={2} aria-label="A note for the inspector" placeholder="A note for the inspector (optional)"
-            value={draft.note ?? ''} disabled={busy} onChange={set('note')} />
+          {move.ownYes ? null : (
+            <textarea className="cline-input" rows={2} aria-label="A note for the inspector" placeholder="A note for the inspector (optional)"
+              value={draft.note ?? ''} disabled={busy} onChange={set('note')} />
+          )}
+          {move.ownYes && move.stoppable ? (
+            <textarea className="cline-input" rows={2} aria-label="Why this gap ends here" placeholder="Why this gap ends here (only to end it)"
+              value={draft.flaw ?? ''} disabled={busy} onChange={set('flaw')} />
+          ) : null}
           <div className="cline-actions">
             <button type="button" className="sec-scan label-data" disabled={busy || !ready} onClick={() => onHandOn(company)}>HAND ON</button>
+            {move.ownYes && move.stoppable ? (
+              <button type="button" className="sec-scan cline-danger label-data" disabled={busy || !no} onClick={() => onEndGap(company)}>END THE GAP</button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -168,8 +180,8 @@ const OpenForm = ({ draft, busy, onDraft, onOpen }) => (
 );
 
 export const CompanyLineBody = ({
-  board, names, error, loading, busy, drafts, onDraft, onRefresh, onOpen, onHandOn, onInspect, onAnswer, onCharter,
-  sales = null, onSales = null, books = null, onBooks = null,
+  board, names, error, loading, busy, drafts, onDraft, onRefresh, onOpen, onHandOn, onInspect, onAnswer, onCharter, onEndGap = () => {},
+  sales = null, onSales = null, books = null, onBooks = null, raises = null, onRaise = null,
 }) => {
   const view = lineOverview(board);
   const mine = (board?.companies ?? []).filter((c) => operatorMove(c));
@@ -192,7 +204,7 @@ export const CompanyLineBody = ({
           <section className="cline-sec" aria-label="your moves">
             <p className="cline-h label-data">YOUR MOVES</p>
             {mine.length === 0 ? <EmptyState title="NOTHING ON THE LINE WAITS ON YOU" /> : mine.map((c) => (
-              <YourMove key={c.id} company={c} draft={drafts[c.id] ?? {}} busy={busy} onDraft={onDraft} onHandOn={onHandOn} onInspect={onInspect} />
+              <YourMove key={c.id} company={c} draft={drafts[c.id] ?? {}} busy={busy} onDraft={onDraft} onHandOn={onHandOn} onInspect={onInspect} onEndGap={onEndGap} />
             ))}
           </section>
           <section className="cline-sec" aria-label="your hands">
@@ -216,8 +228,9 @@ export const CompanyLineBody = ({
               <CompanyCard key={c.id} company={c} names={names} />
             ))}
           </section>
-          {onSales ? <SalesSection sales={sales} names={names} busy={busy} {...onSales} /> : null}
+          {onSales ? <SalesSection sales={sales} names={names} busy={busy} drafts={drafts} onDraft={onDraft} {...onSales} /> : null}
           {onBooks ? <BooksSection books={books} names={names} busy={busy} {...onBooks} /> : null}
+          {onRaise ? <RaiseSection raises={raises} drafts={drafts} busy={busy} onDraft={onDraft} {...onRaise} /> : null}
           <OpenForm draft={drafts._open ?? {}} busy={busy} onDraft={onDraft} onOpen={onOpen} />
         </>
       )}

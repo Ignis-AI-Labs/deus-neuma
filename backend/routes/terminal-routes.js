@@ -1,7 +1,8 @@
 /**
  * Terminal routes — the WebSocket connection handler for the integrated
  * terminal. Mirrors the portal's auth-on-connect (`?token=` → verify → close
- * 4001), then binds an owned PTY. Disposal detaches; explicit close kills.
+ * 4001), admits only the install owner or a co-owner (else close 4003), then
+ * binds an owned PTY. Disposal detaches; explicit close kills.
  *
  * The shell's cwd honors the window's focus (`?cwd=`) — an UNTRUSTED client
  * path that must clear resolveFocusPath (the one focus-path containment
@@ -13,6 +14,7 @@
 import fs from 'fs/promises';
 import { Router } from 'express';
 import { verifySessionToken, requireAuth } from '../services/auth.js';
+import { passesInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { getRoots, resolveFocusPath } from '../services/user-files.js';
 import { getActiveProject } from '../services/user-projects.js';
@@ -63,6 +65,20 @@ export const setupTerminalRoutes = (wss) => {
       killTerminal(ws, { code: 1006 });
       log.warn('Terminal transport error', { err: err.message });
     });
+    // The shell runs as this computer's OS user, so it is the machine's, not a
+    // house's: any wallet can sign in, but only the install owner or a co-owner
+    // at this computer's own desk opens one. An unreadable owner record refuses.
+    req.walletAddress = session.address;
+    const mayOpen = await passesInstallOwner(req).catch((err) => {
+      log.error('Terminal owner check failed', { err: err.message });
+      return false;
+    });
+    if (ws.readyState !== ws.OPEN) return;
+    if (!mayOpen) {
+      log.info('Terminal refused to a guest', { wallet: session.address });
+      ws.close(4003, 'owner only');
+      return;
+    }
     const termId = params.get('term');
     const cwd = termId ? undefined : await resolveCwd(params.get('cwd'), session.address);
     if (ws.readyState !== ws.OPEN) return;

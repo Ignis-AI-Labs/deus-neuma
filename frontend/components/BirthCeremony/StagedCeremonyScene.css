@@ -181,6 +181,10 @@
   font-weight: 300;
   line-height: 1.6;
   transition: opacity 1s;
+  /* The operator's words are context: a long answer scrolls in its own
+     space instead of pushing the being's words off the screen. */
+  max-height: 22vh;
+  overflow-y: auto;
 }
 
 /* The witness's next words — offered, editable, theirs */

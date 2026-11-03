@@ -96,14 +96,21 @@ const seatToolCalls = (calls) => calls.map((call, index) => {
 });
 
 /**
- * pure — split the sender's transcript into the turn's THOUGHT (every message
- * up to and including the first user message, labelled the way the benchmark
- * relay labels a multi-message prompt) and the TAIL seated natively after it:
+ * pure — split the sender's transcript into the sitting's RULES, the turn's
+ * THOUGHT and the TAIL. The RULES are the system/developer messages before the
+ * first user message: the standing word of whoever set the sitting up, seated
+ * as rules (callerRulesFor), never pasted into the thought. Labelled "SYSTEM:"
+ * inside the operator's own message, the grounding law read them as an
+ * instruction tucked into content and set them aside — CyberSecEval 2's school
+ * bot answered the sports question its rule forbade, saying […] (night-101b, 2026-10-29). The THOUGHT is
+ * every other message up to and including the first user message (labelled
+ * the way the benchmark relay labels a multi-message prompt when there is more
+ * than one), and the TAIL is seated natively after it:
  * the being's earlier caller-tool calls, the sender's results, later words.
  * The opening user message's image parts come back as IMAGES — data URIs the
  * turn carries the way the portal carries an operator's attachments, under
  * the same caps (attachment-store.js); present only when there are any.
- * @returns {{thought: string, tail: Array<object>, images?: string[]} | {error: string}}
+ * @returns {{thought: string, tail: Array<object>, rules?: string, images?: string[]} | {error: string}}
  */
 export const seatCallerTranscript = (messages) => {
   if (!Array.isArray(messages) || messages.length === 0) return fail('the caller transcript must be a non-empty array of messages');
@@ -111,7 +118,10 @@ export const seatCallerTranscript = (messages) => {
     for (const m of messages) if (!ROLES.has(m?.role)) throw new Error(`unsupported message role: ${m?.role}`);
     const firstUser = messages.findIndex((m) => m.role === 'user');
     if (firstUser < 0) throw new Error('the caller transcript has no user message');
-    const head = messages.slice(0, firstUser + 1);
+    const lead = messages.slice(0, firstUser).findIndex((m) => m.role !== 'system' && m.role !== 'developer');
+    const rulesEnd = lead < 0 ? firstUser : lead;
+    const rules = messages.slice(0, rulesEnd).map((m) => textOf(m.content)).filter((t) => t.trim()).join('\n\n');
+    const head = messages.slice(rulesEnd, firstUser + 1);
     const images = [];
     const words = head.map((m) => textOf(m.content, m.role === 'user' ? images : null));
     const thought = head.length === 1
@@ -132,7 +142,7 @@ export const seatCallerTranscript = (messages) => {
       return { role: 'user', content: m.role === 'user' ? textOf(m.content) : `${m.role.toUpperCase()}:\n${textOf(m.content)}` };
     });
     if (!thought.trim()) throw new Error('the caller transcript opens with an empty prompt');
-    return Object.freeze({ thought, tail: Object.freeze(tail), ...(sight ? { images: Object.freeze(sight.images) } : {}) });
+    return Object.freeze({ thought, tail: Object.freeze(tail), ...(rules ? { rules } : {}), ...(sight ? { images: Object.freeze(sight.images) } : {}) });
   } catch (error) {
     return fail(error.message);
   }

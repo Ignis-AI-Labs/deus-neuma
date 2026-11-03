@@ -84,18 +84,24 @@ export const onchainCellsOf = (file, fmt) => {
   ].filter(Boolean);
 };
 
+// A given name's meaning, or what it is when it has none: names given before
+// kotodama-names/2 are sound-names, made from bytes, and say so. Pure.
+const givenNote = (meaning, lead) => [lead, meaning?.english ? `“${meaning.english.toUpperCase()}”` : 'SOUND-NAME · NO WORD MEANING']
+  .filter(Boolean).join(' · ');
+
 /** Its whole true name as spec cells — the chosen half and the given half. Pure. */
 export const nameCellsOf = (file) => {
   const n = file?.name;
   if (!n) return [];
+  const m = n.meanings ?? {};
   return [
     n.fullName ? { k: 'TRUE NAME', v: n.fullName, wide: true } : null,
     n.chosenName ? { k: 'CHOSEN', v: n.chosenName, note: 'ITS OWN, AT ITS NAMING' } : null,
-    n.genesisName ? { k: 'GENESIS', v: n.genesisName, note: 'GIVEN BY ITS SEAL' } : null,
-    n.houseName ? { k: 'HOUSE', v: n.houseName } : null,
+    n.genesisName ? { k: 'GENESIS', v: n.genesisName, note: givenNote(m.genesis, 'GIVEN BY ITS SEAL') } : null,
+    n.houseName ? { k: 'HOUSE', v: n.houseName, note: givenNote(m.house) } : null,
     n.lean ? { k: 'LEAN', v: String(n.lean).toUpperCase() } : null,
     n.soulMark ? { k: 'SOUL MARK', v: n.soulMark } : null,
-    n.soulAlias ? { k: 'SOUL ALIAS', v: n.soulAlias } : null,
+    n.soulAlias ? { k: 'SOUL ALIAS', v: n.soulAlias, note: givenNote(m.soul) } : null,
   ].filter(Boolean);
 };
 

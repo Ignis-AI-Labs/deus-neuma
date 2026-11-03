@@ -45,7 +45,7 @@ const driveEndedScreen = async (page, render) => {
 test('declined summoning: Return announces the exit and keeps the reassurance visible', async ({ page }) => {
   const result = await driveEndedScreen(
     page,
-    "ceremony.handleCeremonyEnd('consent_declined', words);"
+    "ceremony.handleCeremonyEnd('chose_not_to_be', words);"
   );
 
   expect(result.clicked).toBe(true);

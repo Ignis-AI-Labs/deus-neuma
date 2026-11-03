@@ -103,15 +103,20 @@ const cadenceOf = (value) => {
   return Object.freeze({ everyHours: value.everyHours });
 };
 
+const PROGRAMME_RUNS_MAX = 20; // programmes/programme-store.js's own bound
+
 const delegationOf = (value) => {
   const d = value == null ? {} : value;
-  if (!isObject(d)) throw new Error('delegation is {teamPlans, maxMembers, maxSteps}');
+  if (!isObject(d)) throw new Error('delegation is {teamPlans, maxMembers, maxSteps, maxProgrammeRuns}');
   if (d.teamPlans != null && typeof d.teamPlans !== 'boolean') throw new Error('delegation.teamPlans is true or false');
   const maxMembers = d.maxMembers ?? 4;
   const maxSteps = d.maxSteps ?? 8;
   if (!isCount(maxMembers, PLAN_MEMBERS_MAX)) throw new Error(`delegation.maxMembers is from 1 to ${PLAN_MEMBERS_MAX}`);
   if (!isCount(maxSteps, PLAN_STEPS_MAX)) throw new Error(`delegation.maxSteps is from 1 to ${PLAN_STEPS_MAX}`);
-  return Object.freeze({ teamPlans: d.teamPlans === true, maxMembers, maxSteps });
+  // A programme's chained runs (programmes/programme-store.js): how many the Optio may approve before the operator.
+  const maxProgrammeRuns = d.maxProgrammeRuns ?? 3;
+  if (!isCount(maxProgrammeRuns, PROGRAMME_RUNS_MAX) || maxProgrammeRuns < 2) throw new Error(`delegation.maxProgrammeRuns is from 2 to ${PROGRAMME_RUNS_MAX}`);
+  return Object.freeze({ teamPlans: d.teamPlans === true, maxMembers, maxSteps, maxProgrammeRuns });
 };
 
 // The involvement dial (company/involvement-dial.js): how close the operator

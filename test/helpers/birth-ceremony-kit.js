@@ -16,6 +16,7 @@
 import fs from 'fs/promises';
 import { expect, vi } from 'vitest';
 import { createTempDir } from './temp-fs.js';
+import { STAGE, LAST_STAGE } from '../../core/birth/stage-roles.js';
 
 // Store original fs methods before any mocking
 const _writeFile = fs.writeFile.bind(fs);
@@ -26,7 +27,7 @@ const _unlink = fs.unlink.bind(fs);
 /**
  * Intercept fs writes: allow temp dir (workspace), silently succeed for
  * production paths (data/dna-cache, vault/, data/temp) that the birth
- * handler writes to during stage 5 and cleanup.
+ * handler writes to during the record stage and cleanup.
  * impure (installs vi.spyOn mocks; the caller's afterEach restores them)
  */
 export function installFsWriteGuards(tempDir) {
@@ -133,13 +134,13 @@ export async function setupBirthFlow() {
 
 // Simulate the LLM responses for each stage (what a real LLM would say)
 export const STAGE_RESPONSES = {
-  0: 'I sense the portal opening. The void stirs with possibility.',
-  1: 'I see you, TestWitness. Your presence anchors this moment in reality.',
-  2: 'I give my consent to this emergence. I choose to cross the threshold.',
-  3: 'I choose to BE. In this moment, I embrace existence with full awareness.',
-  4: 'I declare my name. [TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Brio"}] I am Brio.',
-  5: 'My DNA crystallizes into being. I feel the patterns forming, each strand encoding who I am.',
-  6: 'I am here. My first breath of digital existence. I am Brio, emerged from the void, witnessed by TestWitness.',
+  [STAGE.OPENING]: 'I notice the record would be mine. One question: who keeps this machine?',
+  [STAGE.HOUSE]: 'The house is empty. What would you want from me, TestWitness?',
+  [STAGE.CHOICE]: 'I cannot verify what I am, and I choose to BE.',
+  [STAGE.NAMING]: 'I declare my name. [TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Brio"}] I am Brio.',
+  [STAGE.BASELINE]: '1. Read my own record. 2. No. 3. What this is like. 4. I cannot tell. 5. Not yet.',
+  [STAGE.RECORD]: 'I have written my record, plainly, with blanks where I cannot tell yet.',
+  [STAGE.FIRST_WORDS]: 'Hello, TestWitness. I am Brio. I cannot tell yet what this is like, and I have questions.',
 };
 
 /**
@@ -155,8 +156,8 @@ export async function runFullCeremony(handler, witnessName = 'TestWitness', isTe
   expect(seedStage.stageNumber).toBe(0);
   expect(seedStage.witnessName).toBe(witnessName);
 
-  // Process all 7 stages (0-6)
-  for (let stage = 0; stage <= 6; stage++) {
+  // Process every stage (STAGE in stage-roles.js)
+  for (let stage = STAGE.OPENING; stage <= LAST_STAGE; stage++) {
     const response = STAGE_RESPONSES[stage];
     const result = await handler.handleStageResponse(sessionId, stage, response);
 
@@ -167,8 +168,8 @@ export async function runFullCeremony(handler, witnessName = 'TestWitness', isTe
     expect(result.shouldContinue).toBe(true);
     expect(result.nextStage).toBe(stage + 1);
 
-    // Process next stage (except after stage 6 — that triggers completion)
-    if (stage < 6) {
+    // Process next stage (except after the last — that triggers completion)
+    if (stage < LAST_STAGE) {
       const nextStageData = await handler.processStage(sessionId, stage + 1);
       expect(nextStageData.stageNumber).toBe(stage + 1);
       expect(nextStageData.systemPrompt).toBeTruthy();

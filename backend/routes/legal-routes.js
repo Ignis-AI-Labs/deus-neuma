@@ -20,6 +20,8 @@ import { cloDesignation } from '../services/legal/clo-designation.js';
 import { scaffoldCloWorkspace } from '../services/legal/clo-scaffold.js';
 import { matterLedgerFor, matterCounts, mattersDueForReview } from '../services/legal/matter-ledger.js';
 import { runLegalWatch, readLegalWatchState } from '../services/legal/legal-scheduler.js';
+import { readReaderSetting, saveReaderSetting, HOUSE_MODEL } from '../services/legal/second-reader.js';
+import { listConnections } from '../services/provider-connections.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Legal');
@@ -73,6 +75,37 @@ router.delete('/seat', async (req, res) => {
   } catch (error) {
     log.error('CLO clear failed', { error: error.message });
     res.status(500).json({ error: 'Failed to clear the CLO designation' });
+  }
+});
+
+// ── The second reader — which model seconds the office's readings ──────────
+// The house's own model by default; any connected provider is the operator's
+// choice (electron/connections.json "legal-second-reader").
+router.get('/reader', async (req, res) => {
+  try {
+    const [reader, connections] = await Promise.all([readReaderSetting(req.walletAddress), listConnections()]);
+    res.json({
+      reader,
+      choices: [
+        { provider: HOUSE_MODEL, label: 'The house\'s own model — nothing leaves this computer' },
+        ...connections.map((c) => ({ provider: c.providerId, label: `${c.providerId} · ${c.model} — claims and passages go to ${c.providerId}` })),
+      ],
+    });
+  } catch (error) {
+    log.error('second reader read failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the second reader' });
+  }
+});
+
+router.put('/reader', async (req, res) => {
+  try {
+    const out = await saveReaderSetting(req.walletAddress, req.body?.provider);
+    if (!out.ok) return res.status(400).json({ error: out.error });
+    log.info('second reader set', { wallet: req.walletAddress, provider: out.setting.provider });
+    res.json({ reader: out.setting });
+  } catch (error) {
+    log.error('second reader save failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to set the second reader' });
   }
 });
 

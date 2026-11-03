@@ -12,6 +12,7 @@ import { claimOwner } from '../helpers/claim-owner.js';
 import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
 import { openDockApp } from './helpers/dock.js';
 import { settleDesk } from './helpers/explorer-panel-harness.js';
+import { ownerClaimHeaders } from './helpers/owner-claim.js';
 
 /**
  * THE MANDATE, GRANTED AND WITHDRAWN IN A REAL BROWSER — Design note, 2026-10-24: […].
@@ -96,7 +97,7 @@ const mintToken = async () => {
   const { challenge } = await (await fetch(`${BASE}/api/v1/auth/challenge?address=${w.address}`)).json();
   const signature = await w.signMessage(challenge);
   const res = await fetch(`${BASE}/api/v1/auth/verify`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...ownerClaimHeaders(path.join(root, 'data')) },
     body: JSON.stringify({ address: w.address, signature, challenge }),
   });
   const { token: t } = await res.json();

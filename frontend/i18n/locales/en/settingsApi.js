@@ -77,6 +77,20 @@ export default Object.freeze({
     envLockedNote: '«NOTICE» The operator\'s launch env ({{env}}) holds egress off regardless of this switch — the switch takes effect only once the lock lifts.',
   }),
 
+  vision: Object.freeze({
+    heading: 'IMAGE VISION',
+    note: 'Images are on by default for every model. An inconclusive capability probe never switches them off; a model positively known to be blind is still refused. Turn image input off explicitly whenever you want.',
+    key: 'Image input',
+    on: 'ON — images may reach the model',
+    off: 'OFF — text only',
+    lockedByOperator: 'LOCKED BY OPERATOR',
+    reading: 'Reading the switch…',
+    switching: 'SWITCHING…',
+    switchOff: 'SWITCH OFF',
+    switchOn: 'SWITCH ON',
+    envLockedNote: '«NOTICE» The operator\'s launch env ({{env}}) holds image input off regardless of this switch — it takes effect only once the lock lifts.',
+  }),
+
   serviceKeys: Object.freeze({
     heading: 'SERVICE KEYS',
     note: 'Keys and addresses for outside services that are not models: web search, the page reader, model downloads, chain RPC, and the benchmarks\' search. Sealed on this machine in the same encrypted store as your provider keys and never shown again. A value saved here is used instead of the same setting in the env file, so developers can keep their env file and everyone else never needs it.',

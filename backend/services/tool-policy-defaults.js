@@ -28,7 +28,7 @@
 // still fail closed (checkToolAccess defaults to approval_required).
 export const GLOBAL_DEFAULTS = Object.freeze({
   // The 16 organ names are INTERNAL now (Stage 3 batch 3, #357): beings are
-  // advertised the five fs/* primitives and fs-primitives.js routes them onto
+  // advertised the seven fs/* primitives and fs-primitives.js routes them onto
   // the organ inside the sandbox, so no being-facing call ever carries these
   // names and no row here names them. Two platform-owned names stay:
   // request_file_access — asking for sensitive access is the being's own act,
@@ -41,23 +41,22 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     denied: [],
     requireApproval: ['delete_file'],
   },
-  // THE FS PRIMITIVES — the whole being-facing filesystem in five tools. The
-  // sovereign own-lane law above applies verbatim: write/edit are
+  // THE FS PRIMITIVES — the whole being-facing filesystem in seven tools. The
+  // sovereign own-lane law above applies verbatim: write/edit/copy/move are
   // self-authorship inside the being's lane (the sandbox enforces fail-closed
   // confinement exactly as it did for the old names), read/list/search are
   // observation. The delete sub-op never resolves here — it routes to
   // filesystem/delete_file above, so a blanket edit grant can never cover an
   // irreversible act.
   fs: {
-    allowed: ['read', 'write', 'list', 'search', 'edit'],
+    allowed: ['read', 'write', 'list', 'search', 'edit', 'copy', 'move'],
     denied: [],
     requireApproval: [],
   },
-  // A neuma's isolated coding workspace: routine execution is autonomous.
-  // Witness defaults retain execution approval. Both seats still run inside
-  // bubblewrap with no host credentials and (ungranted) no network; shell
-  // writes land in the overlay layer, never the live folder, and the shell's
-  // masked `.git` makes in-shell git see no repository at all.
+  // Execution approval is independent from OS isolation. A neuma's routine
+  // execution is autonomous; witnesses retain execution approval. SANDBOX OFF
+  // runs directly with the operator's normal environment; SANDBOX ON keeps the
+  // original bubblewrap, overlay, network and masked-.git confinement.
   //
   // THE GIT-STATE PROTECTION LAW (Design note, 2026-09-05: a git state is the
   // operator's until the operator says otherwise. Every explicit Git tool is
@@ -409,8 +408,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'campaigns.ask',
       // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
       'marketing.board-arrange', 'marketing.company-links',
-      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*: the company line, the Mercator's deals, the Logista's books (Design note, 2026-10-29 — records on the house's realm, no egress, no spend; validate re-judges the seat.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met',
+      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [
@@ -418,13 +417,13 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'security.scan', 'security.assess', 'security.escalate', 'security.circuit-breaker',
       // The CLO office's acts: the operator's one yes per filing (a reading
       // the house will act on, a run, a matter entered on the record).
-      'legal.scan', 'legal.assess', 'legal.file',
+      'legal.scan', 'legal.assess', 'legal.file', 'legal.opinion',
       'email.send',
       'media.save', 'web.download', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
       // A video render (image/generate on a video pipeline) asks on its own row:
       // it holds the machine for minutes, so ALWAYS for stills never covers it.
       'video.generate',
-      'vault.publish',
+      'vault.publish', 'delivery.publish',
       'tasks.add', 'tasks.update', 'tasks.focus', 'tasks.take', 'tasks.operator-add', 'tasks.operator-update', 'tasks.operator-drop',
       'leads.add', 'leads.touch',
       'campaigns.create', 'campaigns.update',
@@ -462,7 +461,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   legal: {
     allowed: ['legal_posture', 'legal_matters_list', 'legal_matter_get', 'legal_sources', 'legal_research_api'],
     denied: [],
-    requireApproval: [],
+    requireApproval: ['legal_cite_check'], // the platform's re-read of cited sources: web reads, so it asks like one
   },
   // The Quaestor's office: the treasury read, the seated CFO's alone; it moves nothing.
   treasury: { allowed: ['treasury_board'], denied: [], requireApproval: [] },

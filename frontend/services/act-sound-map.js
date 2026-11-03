@@ -47,6 +47,7 @@ export const ACT_FAMILIES = Object.freeze({
     'social_check', // every account the house uses, checked whole (campaign plan §6.1)
     'board_read', // the operator's marketing board at a level, read whole
     'bench_list', 'bench_status', // the connected benchmarks, and what runs on the machine
+    'open_chats', // the chats open right now — a spread of what exists
   ]),
   // Hunting for something not yet known to be there.
   actSearch: Object.freeze([
@@ -64,6 +65,7 @@ export const ACT_FAMILIES = Object.freeze({
     'tasks.operator-update', 'staff.dispatch-update', 'board.update',
     'team.tune', // a working run's width and clocks change — the run already existed
     'marketing.board-arrange', // the operator's marketing board laid out anew — the board already existed
+    'accounts.void', // a booked entry voided with why — the books already held it
   ]),
   // Bringing something into being on disk.
   actWrite: Object.freeze([
@@ -80,14 +82,18 @@ export const ACT_FAMILIES = Object.freeze({
     'speech.accept', 'speech.another',
     'social.queue', // a staged draft is a new entry on the queue, not yet speech
     'marketing.plan', 'board.add', // a plan authored, a task put on the board
-    'legal.file', // research entered on the record — a new matter
+    'legal.file', 'legal.opinion', // research entered on the record — a new matter; a written answer delivered with its check
     'share_findings', // a list handed to the operator — a new artifact on the desk, nothing leaves
     'house.review-packet', // the Optio's packet for the operator — the same shape: a new artifact, nothing leaves
     'campaigns.ask', // a question put on the campaign's shared page — a new entry, nothing leaves the house
     'marketing.company-links', // a company's links proposed to the operator — a new entry, nothing changes until approved
+    // The house's company (2026-10-29/30): a new record each — a company opened, an ask of the operator's hands,
+    // a deal, a booked entry, a deadline, a raise's mandate, facts, investor and terms, an invoice issued.
+    'company.open', 'company.hands', 'revenue.deal', 'accounts.book', 'accounts.deadline',
+    'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
   ]),
   // Same thing, different place or name.
-  actMove: Object.freeze(['move_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
+  actMove: Object.freeze(['move', 'copy', 'move_file', 'copy_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
   // Taking something away. Rare and consequential — it gets its own voice so
   // it is never mistaken for a write.
   actDelete: Object.freeze([
@@ -109,7 +115,7 @@ export const ACT_FAMILIES = Object.freeze({
   // it keeps platform_data out of READ_TOOLS.
   // The chain reads ride the same wire-law: every verb leaves the machine for
   // the operator's own keyed RPC — egress, journaled, never a local recall.
-  actReach: Object.freeze(['web_fetch', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
+  actReach: Object.freeze(['web_fetch', 'legal_cite_check', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
     'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders',
     'web.download']), // bytes fetched from outside the house
   // Something LEFT the house in the operator's name. The intents (Stage 2/3)
@@ -117,7 +123,10 @@ export const ACT_FAMILIES = Object.freeze({
   // is mail, word to a housemate is word leaving the lane.
   actSend: Object.freeze(['house.post', 'vault_publish', 'social.post', 'email.send', 'wallet.send', 'vault.publish',
     'staff.dispatch', // a charge sent to a housemate — word leaving the lane
-    'team.post']), // word to a teammate — word leaving the lane, house.post narrowed to one run
+    'team.post', // word to a teammate — word leaving the lane, house.post narrowed to one run
+    'chat.send', // word to another open chat — word leaving this one
+    'raise.reach', // a message to an investor, through the house mailbox
+    'delivery.publish']), // finished work published for a buyer — bytes leaving the house
   // Making an artifact — an image, a document.
   actForge: Object.freeze(['image.generate', 'video.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
   // A mark on a ledger: noted, pinned, touched, proposed. Small by design.
@@ -126,6 +135,10 @@ export const ACT_FAMILIES = Object.freeze({
     'sovereignty.consent', // the being's recorded answer to its operator's change
     'staff.ack', // a charge's holder marks received/working/done
     'treasury.review', 'treasury.flag', // the Quaestor's advice and alarm — marks beside the operator's decision
+    // A stage handed on or answered, a deal moved, a deadline met, an investor cleared or updated, terms
+    // checked, an invoice marked paid: each a mark on a record that already stood.
+    'company.hand-on', 'company.inspect', 'revenue.move', 'accounts.deadline-met',
+    'raise.clear', 'raise.update', 'raise.terms-check', 'treasury.invoice-paid', 'programme.close',
     'meditate']), // a standing request marked for the cycle — nothing acts yet
   // The being sensing its own state — capacity, adapters, its own birth sky.
   actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'mandate_read', 'post_check',

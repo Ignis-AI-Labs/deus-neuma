@@ -1,5 +1,5 @@
 /**
- * THE CLAIMS CHECK and THE DISCLOSURE LINE — the pure law of slice 12
+ * THE CLAIMS CHECK — the pure law of slice 12
  * (campaign plan §7). Real inputs, real outputs; nothing to fake.
  *
  * Proven: […] reads as a figure and a comparison to a named
@@ -7,18 +7,14 @@
  * ASSERTED claim reads approved (filed nowhere); token and health talk read
  * high, while a context-window "tokens" does not; the matter key changes when
  * the open claims change; the LEGAL chip says what it found and where the
- * legal office stands; the disclosure line rides a being's words and any
- * media on the seven label-less platforms, never twice, never on the
- * operator's own text-only words, never on YouTube or TikTok.
+ * legal office stands. (The AI disclosure, which rode here as a line in the
+ * post's words, now lives in its metadata: disclosure-metadata.test.js.)
  */
 import { describe, test, expect } from 'vitest';
 import {
   claimHits, kitClaimsOf, openHits, severityOf, draftMatterId, draftMatter, legalReplyMatter,
 } from '../../backend/services/marketing/claims-check.js';
 import { areasOfCommit } from '../../backend/services/legal/regulated-areas.js';
-import {
-  withDisclosureLine, carriesDisclosureLine, DISCLOSURE_LINE, LINE_CHANNELS, NATIVE_LABEL_CHANNELS,
-} from '../../backend/services/social/disclosure-line.js';
 import { legalChipWords } from '../../frontend/app/RelinkShell/legal-chip/legal-chip-words.js';
 
 const kinds = (hits) => hits.map((h) => h.kind);
@@ -94,21 +90,3 @@ describe('the LEGAL chip', () => {
   });
 });
 
-describe('the disclosure line', () => {
-  test('seven platforms carry the line; YouTube and TikTok keep their own label', () => {
-    expect(NATIVE_LABEL_CHANNELS).toEqual(['youtube', 'tiktok']);
-    expect([...LINE_CHANNELS].sort()).toEqual(['bluesky', 'discord', 'facebook', 'linkedin', 'mastodon', 'telegram', 'x']);
-  });
-
-  test('a being\'s words carry it once; the operator\'s own text-only words carry none', () => {
-    const being = { channelId: 'x', text: 'We shipped it.  ', authorNeumaId: 'core-cmo' };
-    const once = withDisclosureLine(being);
-    expect(once).toBe(`We shipped it.\n\n${DISCLOSURE_LINE}`);
-    expect(withDisclosureLine({ ...being, text: once })).toBe(once);
-    expect(carriesDisclosureLine({ ...being, text: once })).toBe(true);
-    expect(carriesDisclosureLine(being)).toBe(false);
-    expect(withDisclosureLine({ channelId: 'x', text: 'Typed by me.', authorNeumaId: null })).toBe('Typed by me.');
-    expect(withDisclosureLine({ channelId: 'x', text: 'My photo.', media: [{ path: '/a.png' }] })).toBe(`My photo.\n\n${DISCLOSURE_LINE}`);
-    expect(withDisclosureLine({ channelId: 'youtube', text: 'A title', authorNeumaId: 'core-cmo' })).toBe('A title');
-  });
-});

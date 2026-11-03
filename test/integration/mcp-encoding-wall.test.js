@@ -76,9 +76,12 @@ describe('the MCP encoding wall — a being cannot destroy a non-UTF-8 file (gno
     expect((await fs.readFile(target)).equals(LATIN1)).toBe(true);
   });
 
-  test('an ordinary UTF-8 file still writes THROUGH the real server', async () => {
+  test('a deliberate UTF-8 whole-file replacement still lands with the current stamp', async () => {
     const target = path.join(project, 'valid.txt');
-    await call()(SERVER, 'write_file', { path: target, content: 'replaced — 日本語 ok\n' });
+    const expectedMtimeMs = (await fs.stat(target)).mtimeMs;
+    await call()(SERVER, 'write_file', {
+      path: target, content: 'replaced — 日本語 ok\n', overwrite: true, expectedMtimeMs,
+    });
     expect(await fs.readFile(target, 'utf8')).toBe('replaced — 日本語 ok\n');
   });
 

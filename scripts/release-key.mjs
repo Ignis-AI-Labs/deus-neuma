@@ -7,19 +7,20 @@
  *   node scripts/release-key.mjs --generate <dir>
  *     Makes a new keypair. Asks for a passphrase (typed twice, never shown) and writes the PRIVATE
  *     key ENCRYPTED with it to <dir>/deus-neuma-release-ed25519.pem, never over an existing file,
- *     and never anywhere inside this repo. Prints the line for electron/release-public-key.cjs.
- *     Keep <dir> on removable media.
+ *     and never anywhere inside this repo. Prints the line for electron/release-public-key.cjs,
+ *     as the release key or as the offline backup key. Keep <dir> on removable media.
  *
  *   node scripts/release-key.mjs --sign [--key <private.pem>] [--dir release]
  *     Asks for the passphrase, then signs every latest*.yml in --dir, and SHA256SUMS when it is
  *     there, writing <name>.sig beside each. The key path comes from --key or
- *     DEUS_NEUMA_RELEASE_KEY_FILE. Refuses a key whose public half is not the one embedded in this
- *     checkout — a signature no app trusts is worse than none.
+ *     DEUS_NEUMA_RELEASE_KEY_FILE. Refuses a key whose public half is not the release key (the
+ *     first trusted key) embedded in this checkout — a signature no app trusts is worse than none.
  *
  *   node scripts/release-key.mjs --verify [--dir release]
- *     Checks every <name>.sig in --dir against the public key EMBEDDED in this checkout, and every
- *     SHA256SUMS line against the file of that name when it is there. Prints the key's
- *     fingerprint. Needs no private key and no passphrase; exits 1 on any problem.
+ *     Checks every <name>.sig in --dir against the public keys EMBEDDED in this checkout (the
+ *     release key and the backup), saying which key made each, and every SHA256SUMS line against
+ *     the file of that name when it is there. Prints each key's fingerprint. Needs no private key
+ *     and no passphrase; exits 1 on any problem.
  *
  * Why a passphrase: every process this user runs — AI agents included — can read a file it owns,
  * and most removable media (FAT, exFAT, a phone) keep no file permissions at all. Encrypted, the
@@ -38,7 +39,7 @@ import process from 'node:process';
 import signature from '../electron/release-signature.cjs';
 import embedded from '../electron/release-public-key.cjs';
 
-const { SIGNATURE_SUFFIX, checkSignature, embeddedFormOf, releasePublicKey, signFeed } = signature;
+const { SIGNATURE_SUFFIX, checkSignature, embeddedFormOf, releasePublicKey, releasePublicKeys, signFeed } = signature;
 export const REPO_ROOT = realpathSync(resolve(import.meta.dirname, '..'));
 export const PRIVATE_KEY_NAME = 'deus-neuma-release-ed25519.pem';
 export const MIN_PASSPHRASE = 12;
@@ -133,6 +134,9 @@ export const signFeeds = ({ dir, keyPath, expectedPublicKeyText, passphrase = nu
 /** The fingerprint people compare: sha256 (hex) of the key's embedded bytes. Pure. */
 export const fingerprintOf = (publicKeyText) => createHash('sha256').update(Buffer.from(String(publicKeyText).trim(), 'base64')).digest('hex');
 
+/** What a trusted key is called, by its place in the list: the release key, then the backups. Pure. */
+export const keyLabel = (index) => (index === 0 ? 'the release key' : `backup key ${index}`);
+
 /** SHA256SUMS text as [{ hex, name }], plus the lines that are not sums. Pure. */
 export const parseSums = (text) => {
   const rows = [];
@@ -153,14 +157,20 @@ const sha256Of = (path) => new Promise((done, fail) => {
 
 /**
  * Check a folder of release files the way a person who downloaded them would: every .sig against
- * the embedded public key, every SHA256SUMS line against the file of that name. impure (reads the folder)
- * @returns {Promise<{ fingerprint: string|null, verified: string[], absent: string[], problems: string[] }>}
- *   verified: what held (`<name>.sig`, `<name> sha256`); absent: SHA256SUMS names not in the folder
+ * the embedded public keys, every SHA256SUMS line against the file of that name. impure (reads the folder)
+ * @param {{ dir: string, publicKeyText?: string|string[] }} input — one embedded key or the trusted list
+ * @returns {Promise<{ fingerprint: string|null, fingerprints: string[], verified: string[],
+ *   signedBy: Object<string, number>, absent: string[], problems: string[] }>}
+ *   fingerprint: the release key's; fingerprints: every trusted key's, in order; verified: what held
+ *   (`<name>.sig`, `<name> sha256`); signedBy: each held .sig's key, by its place in the list;
+ *   absent: SHA256SUMS names not in the folder
  */
-export const verifyRelease = async ({ dir, publicKeyText = embedded.RELEASE_PUBLIC_KEY }) => {
-  const publicKey = releasePublicKey(publicKeyText);
-  const result = { fingerprint: publicKey ? fingerprintOf(publicKeyText) : null, verified: [], absent: [], problems: [] };
-  if (!publicKey) {
+export const verifyRelease = async ({ dir, publicKeyText = embedded.RELEASE_PUBLIC_KEYS }) => {
+  const trusted = [].concat(publicKeyText ?? []).filter((text) => releasePublicKey(text));
+  const publicKey = releasePublicKeys(trusted);
+  const fingerprints = trusted.map(fingerprintOf);
+  const result = { fingerprint: fingerprints[0] ?? null, fingerprints, verified: [], signedBy: {}, absent: [], problems: [] };
+  if (publicKey.length === 0) {
     result.problems.push('no release public key is embedded in this build — nothing can be verified');
     return result;
   }
@@ -171,8 +181,10 @@ export const verifyRelease = async ({ dir, publicKeyText = embedded.RELEASE_PUBL
     const name = sig.slice(0, -SIGNATURE_SUFFIX.length);
     if (!names.includes(name)) { result.problems.push(`${sig}: ${name} is not here`); continue; }
     const verdict = checkSignature({ fileName: name, bytes: readFileSync(join(dir, name)), sigText: readFileSync(join(dir, sig), 'utf8'), publicKey });
-    if (verdict.ok) result.verified.push(sig);
-    else result.problems.push(`${sig}: ${verdict.reason}`);
+    if (verdict.ok) {
+      result.verified.push(sig);
+      result.signedBy[sig] = verdict.signer;
+    } else result.problems.push(`${sig}: ${verdict.reason}`);
   }
   if (!names.includes(SUMS_NAME)) {
     result.problems.push(`no ${SUMS_NAME} — the downloads are not covered`);
@@ -227,8 +239,10 @@ const main = async () => {
     const { keyPath, publicKeyText, permissionsHeld } = generateReleaseKey(args.generate, { passphrase });
     process.stdout.write(`private key written, encrypted with your passphrase: ${keyPath}\n`);
     if (!permissionsHeld) process.stdout.write('(this drive keeps no file permissions — the passphrase is what protects the key)\n');
-    process.stdout.write('put this line in electron/release-public-key.cjs:\n\n');
-    process.stdout.write(`module.exports = { RELEASE_PUBLIC_KEY: '${publicKeyText}' };\n`);
+    process.stdout.write('as the release key, put this line in electron/release-public-key.cjs:\n\n');
+    process.stdout.write(`module.exports = { RELEASE_PUBLIC_KEY: '${publicKeyText}' };\n\n`);
+    process.stdout.write('or, as the offline backup key, add this entry to RELEASE_PUBLIC_KEYS there, after the release key:\n\n');
+    process.stdout.write(`  '${publicKeyText}',\n`);
     return;
   }
   if (args.sign) {
@@ -242,9 +256,9 @@ const main = async () => {
     return;
   }
   if (args.verify) {
-    const { fingerprint, verified, absent, problems } = await verifyRelease({ dir: resolve(args.dir) });
-    if (fingerprint) process.stdout.write(`release key fingerprint (sha256): ${fingerprint}\n`);
-    for (const line of verified) process.stdout.write(`ok      ${line}\n`);
+    const { fingerprints, verified, signedBy, absent, problems } = await verifyRelease({ dir: resolve(args.dir) });
+    fingerprints.forEach((fp, i) => process.stdout.write(`fingerprint of ${keyLabel(i)} (sha256): ${fp}\n`));
+    for (const line of verified) process.stdout.write(`ok      ${line}${line in signedBy ? ` (signed by ${keyLabel(signedBy[line])})` : ''}\n`);
     for (const name of absent) process.stdout.write(`absent  ${name} (named in ${SUMS_NAME}, not in this folder)\n`);
     for (const problem of problems) process.stdout.write(`FAIL    ${problem}\n`);
     if (problems.length) throw new Error(`${problems.length} problem(s) — do not trust these files`);

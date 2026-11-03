@@ -8,6 +8,7 @@ describe('HR-TERMINAL wallet custody', () => {
     kit = await startTerminalKit();
     a = await kit.signIn();
     b = await kit.signIn();
+    await kit.seatOwners(a, [b]);
   });
   afterAll(async () => { await kit?.dispose(); });
 
@@ -122,10 +123,56 @@ describe('HR-TERMINAL wallet custody', () => {
     } finally { await kit.close(a, id); }
   }, 330000);
 
+  test('a guest wallet is refused at the door with 4003 and never sees a shell; the owner still gets one', async () => {
+    const guest = await kit.signIn();
+    const owner = connectTerminal(kit, a);
+    const pid = await terminalPid(owner);
+    try {
+      for (const termId of [null, owner.hello.id]) {
+        const client = connectTerminal(kit, guest, termId);
+        await until(() => client.closed);
+        expect(client.closed).toBe(4003);
+        expect(client.hello).toBeNull();
+        expect(client.output).toBe('');
+      }
+      expect(await kit.count(a)).toBe(1);
+      expect(pidAlive(pid)).toBe(true);
+    } finally {
+      owner.ws.close(1000, 'operator close');
+      await until(() => !pidAlive(pid));
+    }
+  });
+
+  test('on an install no one owns yet only the wallet with the owner claim owns the shell; the next is a guest', async () => {
+    const fresh = await startTerminalKit();
+    try {
+      const first = await fresh.signIn();
+      const second = await fresh.signIn();
+      const claim = await fresh.ownerClaim();
+      expect(claim).toMatch(/^[a-f0-9]{64}$/);
+      const unclaimed = connectTerminal(fresh, first);
+      await until(() => unclaimed.closed);
+      expect(unclaimed.closed).toBe(4003);
+      expect(unclaimed.hello).toBeNull();
+
+      const owner = connectTerminal(fresh, first, null, { ownerClaim: claim });
+      const pid = await terminalPid(owner);
+      expect(await fresh.ownerClaim()).toBeNull();
+      const guest = connectTerminal(fresh, second, null, { ownerClaim: claim });
+      await until(() => guest.closed);
+      expect(guest.closed).toBe(4003);
+      expect(guest.hello).toBeNull();
+      expect(await fresh.count(first)).toBe(1);
+      owner.ws.close(1000, 'operator close');
+      await until(() => !pidAlive(pid));
+    } finally { await fresh.dispose(); }
+  }, 30000);
+
   test('backend process boundary reaps detached PTYs; a new registry refuses the old ID', async () => {
     let isolated = await startTerminalKit();
     try {
       const owner = await isolated.signIn(a.wallet);
+      await isolated.seatOwners(owner);
       const client = connectTerminal(isolated, owner);
       const pid = await terminalPid(client);
       const id = client.hello.id;
@@ -135,6 +182,7 @@ describe('HR-TERMINAL wallet custody', () => {
       await until(() => !pidAlive(pid));
       isolated = await startTerminalKit();
       const reauthenticated = await isolated.signIn(a.wallet);
+      await isolated.seatOwners(reauthenticated);
       const stale = connectTerminal(isolated, reauthenticated, id);
       await until(() => stale.closed);
       expect(stale.closed).toBe(1008);

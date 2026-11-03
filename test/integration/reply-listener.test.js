@@ -22,6 +22,10 @@ import { replyCandidatesOf } from '../../backend/services/social/reply-candidate
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { useServedHouse, SERVED_WALLET } from '../helpers/served-house.js';
 import { makeInstallOwner } from '../helpers/install-owner-kit.js';
+import { writeCharter, approveCharter } from '../../backend/services/house-clock/charter-store.js';
+import { setWakeSink } from '../../backend/services/house-clock/wake-signal.js';
+import { takeSignal } from '../../backend/services/house-clock/house-clock.js';
+import { readWakeQueue } from '../../backend/services/house-clock/wake-queue.js';
 
 const ENV_KEYS = [
   'X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET',
@@ -126,6 +130,16 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
           userFields: url.searchParams.get('user.fields'),
         };
         if (mode === '429') return json(429, { detail: 'Too Many Requests' });
+        if (mode === 'fresher') {
+          // A reply the TICK lands new — the bridge wakes its holder.
+          return json(200, {
+            data: [...MENTIONS.data, {
+              id: '2008', author_id: '48', created_at: '2026-07-28T02:00:00Z', text: 'does the weekly sheet cover Brine harbour?',
+              conversation_id: '960', in_reply_to_user_id: '1000', referenced_tweets: [{ type: 'replied_to', id: '3002' }],
+            }],
+            includes: { users: [...MENTIONS.includes.users, { id: '48', username: 'harbourmaster' }] },
+          });
+        }
         if (mode === 'fresh') {
           // One NEW reply in the window — what a being-driven read sees land
           // between ticks.
@@ -277,6 +291,29 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
     mode = 'ok';
   }, 30000);
 
+  test('THE BRIDGE — a reply the tick lands new wakes its holder, inside the charter (the real clock)', async () => {
+    const charter = await writeCharter(SERVED_WALLET, {
+      goal: 'Answer the people who reply to the house.', linesOfWork: ['replies'], seats: [{ laneId: HOLDER, dailyCap: 5 }],
+    }, { by: SERVED_WALLET, ownedLanes: [HOLDER] });
+    await approveCharter(SERVED_WALLET, { version: charter.version, by: SERVED_WALLET });
+    setWakeSink(takeSignal); // the clock wires itself in exactly so at boot; no runner, so the wake waits in view
+    mode = 'fresher';
+    try {
+      const outcome = await replyListenerTick();
+      expect(outcome).toMatchObject({ ok: true });
+      expect(outcome.landed).toBeGreaterThan(0);
+      let wake = null;
+      for (let i = 0; i < 100 && !wake; i += 1) {
+        wake = (await readWakeQueue(SERVED_WALLET)).items.find((x) => x.reason === 'reply') ?? null;
+        if (!wake) await new Promise((r) => setTimeout(r, 20));
+      }
+      expect(wake).toMatchObject({ seat: HOLDER, reason: 'reply', ref: 'reply:2008', detail: { channel: 'x', accountId: expect.stringMatching(/^x/) } });
+    } finally {
+      setWakeSink(null);
+      mode = 'ok';
+    }
+  }, 30000);
+
   test('ANOTHER HOUSE HOLDS X — the tick stands aside: no read, no candidate', async () => {
     // Two houses on one machine are never confused (ruling, 2026-10-16). X bound
     // in the machine record by another house, to a lane id this backend's own
@@ -288,7 +325,7 @@ describe('reply listener tick (real loopback X + real stores, gnosis)', () => {
       const outcome = await replyListenerTick();
       expect(outcome).toMatchObject({ ok: true, landed: 0, skipped: 'X is not held by a house this backend serves' });
       expect(lastMentionsRequest).toBeNull();
-      expect(await store.load()).toHaveLength(5);
+      expect(await store.load()).toHaveLength(6);
     } finally {
       await fs.writeFile(bindings, JSON.stringify({ x: { neumaId: HOLDER, boundBy: SERVED_WALLET } }));
     }

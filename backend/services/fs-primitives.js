@@ -59,6 +59,7 @@ const routeRead = (args) => {
   if (Number.isInteger(args.tail)) extra.tail = args.tail;
   if (Number.isInteger(args.offset)) extra.offset = args.offset;
   if (Number.isInteger(args.limit)) extra.limit = args.limit;
+  if (typeof args.pages === 'string' || Number.isInteger(args.pages)) extra.pages = String(args.pages);
   return ok('read_text_file', { path: p, ...extra });
 };
 
@@ -70,7 +71,10 @@ const routeWrite = (args) => {
   if (content === null) {
     return fail('fs/write needs content — {"path": "...", "content": "..."}. For a directory: {"path": "...", "directory": true}');
   }
-  return ok('write_file', { path: p, content });
+  const out = { path: p, content };
+  if (args.overwrite === true) out.overwrite = true;
+  if (Number.isFinite(args.expectedMtimeMs)) out.expectedMtimeMs = args.expectedMtimeMs;
+  return ok('write_file', out);
 };
 
 const routeEdit = (args) => {
@@ -128,8 +132,18 @@ const routeSearch = (args) => {
   return ok('search_files', out);
 };
 
+// Direct copy (paste; the source stays) and move (cut and paste; the source leaves):
+// a being names both ends, and the act says both (fs-copy-move-clarity).
+const routeTransfer = (verb) => (args) => {
+  const source = firstString(args, [...PATH_ALIASES, 'source', 'from', 'src']);
+  const destination = firstString(args, ['destination', 'to', 'target']);
+  if (!source || !destination) return fail(`fs/${verb} needs both ends — {"path": "...", "destination": "..."}`);
+  return ok(verb === 'copy' ? 'copy_file' : 'move_file', { source, destination });
+};
+
 const ROUTERS = Object.freeze({
-  read: routeRead, write: routeWrite, edit: routeEdit, list: routeList, search: routeSearch,
+  read: routeRead, write: routeWrite, edit: routeEdit, copy: routeTransfer('copy'), move: routeTransfer('move'),
+  list: routeList, search: routeSearch,
 });
 
 /**
@@ -196,8 +210,8 @@ export const FS_RETIRED_HINTS = Object.freeze({
   write_file: 'write_file is retired — use fs/write {"path": "...", "content": "..."}',
   create_directory: 'create_directory is retired — use fs/write {"path": "...", "directory": true}',
   edit_file: 'edit_file is retired — use fs/edit {"path": "...", "edits": [{"oldText": "...", "newText": "..."}]}',
-  move_file: 'move_file is retired — use fs/edit {"path": "...", "destination": "..."}',
-  copy_file: 'copy_file is retired — use fs/edit {"path": "...", "destination": "...", "copy": true}',
+  move_file: 'move_file is retired — use fs/move {"path": "...", "destination": "..."} (cut and paste; the source leaves)',
+  copy_file: 'copy_file is retired — use fs/copy {"path": "...", "destination": "..."} (paste; the source stays)',
   delete_file: 'delete_file is retired — use fs/edit {"path": "...", "delete": true} (asks your operator)',
   list_directory: 'list_directory is retired — use fs/list {"path": "..."}',
   list_directory_with_sizes: 'list_directory_with_sizes is retired — use fs/list {"path": "...", "sizes": true}',
@@ -222,7 +236,7 @@ const STR = Object.freeze({ type: 'string' });
 /** The five — the entire being-facing filesystem catalog. */
 export const FS_PRIMITIVE_TOOLS = Object.freeze([
   fsTool('read',
-    'Read a file. {"path"} reads it as text (PDFs and Word .docx as their words; SVG returns source XML; raster image/audio paths return as media; '
+    'Read a file. {"path"} reads it as text (PDFs and Word .docx as their words — a PDF\'s scanned pages are put in front of your eyes as images, and "pages": "N-M" picks a PDF\'s pages; SVG returns source XML; raster image/audio paths return as media; '
     + '{"path", "info": true} returns size/timestamps instead of content). {"paths": [...]} reads several at once. '
     + 'Read only what you need: "offset"/"limit" read a line range (find the lines first with fs/search content: true); '
     + '"whole": true reads ALL of it when someone asks for the whole document — you are told if it does not fit the room left.',
@@ -233,16 +247,21 @@ export const FS_PRIMITIVE_TOOLS = Object.freeze([
       tail: Object.freeze({ type: 'number', description: 'Only the last N lines' }),
       offset: Object.freeze({ type: 'integer', description: 'First line to read (1-based)' }),
       limit: Object.freeze({ type: 'integer', description: 'How many lines to read from offset' }),
+      pages: Object.freeze({ type: 'string', description: 'A PDF\'s pages to read: "3" or "3-6"' }),
       whole: Object.freeze({ type: 'boolean', description: 'Read the entire file (when the whole document is asked for)' }),
       info: Object.freeze({ type: 'boolean', description: 'Metadata (size, modified) instead of content' }),
     }),
   fsTool('write',
-    'Write a file — creates or fully overwrites. {"path", "content"}. For a directory: {"path", "directory": true}. '
-    + 'Your own lane is always yours to write; paths outside it ask your operator.',
+    'Create a NEW file: {"path", "content"}. An existing path is REFUSED — use fs/edit for every small change. '
+    + 'Only for a deliberate WHOLE-file replacement: first fs/read {"path", "info": true}, then send '
+    + '"overwrite": true and that info\'s "expectedMtimeMs". Anything stale or ambiguous writes nothing. '
+    + 'For a directory: {"path", "directory": true}. Your own lane is always yours to write; paths outside it ask your operator.',
     {
       path: STR,
-      content: Object.freeze({ type: 'string', description: 'The full text the file will hold' }),
+      content: Object.freeze({ type: 'string', description: 'The full text the NEW file will hold' }),
       directory: Object.freeze({ type: 'boolean', description: 'Create the path as a directory instead' }),
+      overwrite: Object.freeze({ type: 'boolean', description: 'Explicit WHOLE-file replacement only; never a small edit' }),
+      expectedMtimeMs: Object.freeze({ type: 'number', description: 'Current mtimeMs from fs/read info:true; required with overwrite' }),
     }),
   fsTool('edit',
     'Change what exists: {"path", "edits": [{"oldText", "newText"}]} rewrites exact passages; {"path", "destination"} moves. '
@@ -265,6 +284,12 @@ export const FS_PRIMITIVE_TOOLS = Object.freeze([
       copy: Object.freeze({ type: 'boolean', description: 'Copy to destination instead of moving' }),
       delete: Object.freeze({ type: 'boolean', description: 'Delete the file at path (asks your operator)' }),
     }),
+  fsTool('copy',
+    'Copy a file or folder: {"path", "destination"}. The source stays where it is; an existing destination is refused, never overwritten.',
+    { path: STR, destination: STR }),
+  fsTool('move',
+    'Move a file or folder: {"path", "destination"}, cut and paste. The source leaves; works across disks; an existing destination is refused, never overwritten.',
+    { path: STR, destination: STR }),
   fsTool('list',
     'See inside a directory: {"path"} names its entries ([FILE]/[DIR]); "sizes": true adds sizes; "tree": true recurses. '
     + 'No path (or "roots") lists the folders you may reach.',

@@ -58,7 +58,7 @@ const DISCOVERY_BUDGET_MS = 4000;
 // `cpu`: light enough per word to answer from a processor (a 4B, or the MoE
 // whose 3B active of 35B is what each word costs).
 const CHOICES = Object.freeze([
-  { pick: 9, min: 36, model: 'Qwen3.8-27B Uncensored (HauhauCS)', quant: 'Q8_K_P', sizeGB: 32.4, released: '2026-08', checked: true,
+  { pick: 9, min: 36, model: 'Qwen3.8-27B-Uncensored-HauhauCS-Aggressive', quant: 'Q8_K_P', sizeGB: 32.4, released: '2026-08', checked: true,
     source: 'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF',
     note: 'the house substrate, near-lossless at the full context — 48 GB cards and up (RTX 6000, A6000, RTX PRO 6000)' },
   { pick: 8, min: 26, model: 'Qwen3.8-27B (6-bit)', quant: 'Q6_K', sizeGB: 22.0, released: '2026-08', checked: true,

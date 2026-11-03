@@ -8,6 +8,7 @@ import { liveTerminalCount } from '../../backend/services/terminal-manager.js';
 import { setRoots } from '../../backend/services/user-files.js';
 import { setRealmRoot } from '../../backend/services/user-realm.js';
 import { loadConfig } from '../../backend/config.js';
+import { prepareOwnerClaim } from '../../backend/services/install-owner.js';
 
 loadConfig();
 setRoots([process.env.HOME]);
@@ -21,5 +22,7 @@ app.get('/fixture/count', requireAuth, (req, res) => res.json({ count: liveTermi
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/terminal-ws' });
 setupTerminalRoutes(wss);
+// As server-boot.js does: a fresh install's owner claim stands before the listen.
+await prepareOwnerClaim();
 server.listen(0, '127.0.0.1', () => process.send({ port: server.address().port }));
 process.on('SIGTERM', () => process.exit(0));

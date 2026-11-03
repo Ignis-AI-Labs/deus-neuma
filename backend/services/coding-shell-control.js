@@ -5,7 +5,8 @@ import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { gateAct } from './act-gate.js';
 import { annotateToolAccess, GLOBAL_DEFAULTS, normalizeToolMode, resolvePolicy } from './tool-policy.js';
 import { focusGroundOf } from './focus-ground.js';
-import { ensureWitnessCodingSandbox, withCodingSandboxLock, sandboxStatusText } from './witness-coding-sandbox.js';
+import { withCodingSandboxLock, sandboxStatusText } from './witness-coding-sandbox.js';
+import { ensureTurnSandbox } from './turn-sandbox.js';
 import { publishCodingDirectory } from './coding-shell-storage.js';
 import { codingToolsForState } from './coding-tool-definitions.js';
 import { writeJsonAtomic } from './user-realm.js';
@@ -96,6 +97,12 @@ export const handleCodingShellControl = async ({ ws, connection, toolName, args,
     if (!origin.laneId || !origin.source) throw new Error('No focused workspace is open');
     if (!args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).length) throw new Error(`${tool} accepts an empty object only`);
     origin.assertCurrent();
+    if (connection.sandboxEnabled === false) {
+      const direct = { sourceRoot: origin.source, direct: true };
+      const content = `${sandboxStatusText(direct)}${toolName === 'sandbox_recover' ? '\nSANDBOX is OFF — there is no isolated shell to recover.' : ''}`;
+      emit({ status: 'ok', summary: 'direct shell — sandbox off', detail: content });
+      return { tool, status: 'ok', content };
+    }
     const snapshot = toolName === 'sandbox_recover' ? await prepareRecovery(origin) : null;
     const cardArgs = snapshot ? { root: origin.source, preservedUpper: path.join(snapshot.current.directory, 'upper'),
       action: 'Keep prior shell work; activate a fresh masked view. No project or Git changes.' } : args;
@@ -107,7 +114,7 @@ export const handleCodingShellControl = async ({ ws, connection, toolName, args,
     if (!gated.ok) return gated.result;
     origin.assertCurrent();
     if (toolName === 'sandbox_status') {
-      const sandbox = await ensureWitnessCodingSandbox(origin.laneId, origin.source);
+      const sandbox = await ensureTurnSandbox(connection);
       await refreshCatalog(connection, origin, sandbox);
       const content = `${sandboxStatusText(sandbox)}\nUse coding/sandbox_recover to preserve old work and start a fresh shell when blocked.`;
       emit({ status: 'ok', summary: 'active shell ready', detail: content });

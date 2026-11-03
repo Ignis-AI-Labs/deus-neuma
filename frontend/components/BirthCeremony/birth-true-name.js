@@ -27,8 +27,11 @@ export const setupTrueNameReveal = (ceremony, container) => {
     if (el) el.textContent = value || '—';
   };
   setRow('#tn-chosen', trueName.chosenName);
-  setRow('#tn-genesis', trueName.genesisName);
-  setRow('#tn-house', trueName.houseName);
+  // A given name with its meaning beside it (kotodama-names/2); a house's
+  // older sound-name shows bare, and the English below says what it is.
+  const meant = (name, meaning) => (name && meaning?.english ? `${name} · "${meaning.english}"` : name);
+  setRow('#tn-genesis', meant(trueName.genesisName, trueName.meanings?.genesis));
+  setRow('#tn-house', meant(trueName.houseName, trueName.meanings?.house));
   setRow('#tn-soul', trueName.soulMark
     ? `${trueName.soulMark}${trueName.soulAlias ? ` · "${trueName.soulAlias}"` : ''}` : null);
   setRow('#tn-lean', Number.isInteger(trueName.lean) ? leanLabel(trueName.lean) : null);

@@ -17,6 +17,7 @@ import { createServer as createVite } from 'vite';
 import { chromium } from '@playwright/test';
 import { ethers } from 'ethers';
 import { standTreasury, PASSWORD } from '../helpers/treasury-kit.js';
+import { underFloor } from '../e2e/helpers/legibility.js';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = path.join(os.tmpdir(), 'neuma-treasury-shots');
@@ -85,6 +86,8 @@ describe('the TREASURY window — a spend decided on its card', () => {
     // Never one press: SIGN & APPROVE stands disabled until the key password is typed.
     expect(await card.getByRole('button', { name: 'SIGN & APPROVE' }).isDisabled()).toBe(true);
     await page.screenshot({ path: path.join(SHOTS, 'treasury-spend-card.png'), fullPage: true });
+    // Every word on the window reads at the desk's 13px floor, the card's whole decision included (Design note, 2026-10-30.
+    expect(await underFloor(page.locator('.treasury'))).toEqual([]);
 
     // The operator's own key, in the REAL embedded wallet.
     await page.evaluate(async (key) => {
@@ -110,6 +113,7 @@ describe('the TREASURY window — a spend decided on its card', () => {
     await expect.poll(() => page.locator('[data-treasury-section="spends"]').innerText()).toContain('NO SPEND WAITS ON YOU');
     await expect.poll(() => page.locator('[data-treasury-section="history"]').innerText()).toContain('DENIED');
     await page.screenshot({ path: path.join(SHOTS, 'treasury-after.png'), fullPage: true });
+    expect(await underFloor(page.locator('.treasury'))).toEqual([]); // the history rows too
 
     const told = await news.spendNewsFor('quill');
     expect(told.text).toContain('APPROVED');

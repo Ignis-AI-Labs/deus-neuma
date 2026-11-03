@@ -44,12 +44,12 @@
 // downloads only its own file type (AppImage on Linux, exe on Windows).
 
 const { refreshResidency } = require('./residency.cjs');
-const { RELEASE_PUBLIC_KEY } = require('./release-public-key.cjs');
+const { RELEASE_PUBLIC_KEYS } = require('./release-public-key.cjs');
 const {
   SIGNATURE_SUFFIX,
   channelFileFor,
   checkSignedFeed,
-  releasePublicKey,
+  releasePublicKeys,
   unfitForPlatform,
 } = require('./release-signature.cjs');
 const { notesText } = require('./update-notes.cjs');
@@ -223,7 +223,7 @@ const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile, fresh = false) =
  * The verdict on an offer from the signed feed on the site. A failing verdict is asked again once,
  * past every cache, before it stands — it still fails closed. impure (network)
  * @param {{ fetchImpl: Function, feedUrl: string, channelFile: string,
- *   publicKey: import('node:crypto').KeyObject, offered: object }} input
+ *   publicKey: import('node:crypto').KeyObject|import('node:crypto').KeyObject[], offered: object }} input
  * @returns {Promise<{ ok: true, signed: object, refreshed: boolean } | { ok: false, reason: string,
  *   firstReason?: string }>}
  */
@@ -248,9 +248,10 @@ const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered
  * (scripts/prove-update-signature.mjs), so the proof drives this exact code.
  *
  * @param {{ updater: object, form: 'self'|'notify', feedUrl: string, Notification: any,
- *   refreshTray: () => void, log: object, publicKeyText: string, fetchImpl: Function,
- *   channelFile: string, platform?: string }} deps — publicKeyText: the embedded form
- *   (release-public-key.cjs); channelFile: the feed name derived from THIS app's platform + arch
+ *   refreshTray: () => void, log: object, publicKeyText: string|string[], fetchImpl: Function,
+ *   channelFile: string, platform?: string }} deps — publicKeyText: the embedded form, or the list
+ *   of trusted ones (release-public-key.cjs); channelFile: the feed name derived from THIS app's
+ *   platform + arch
  * @returns {{ check: () => Promise<boolean> }}
  */
 // impure
@@ -258,7 +259,7 @@ const wireUpdater = ({
   updater, form, feedUrl, Notification, refreshTray, log, publicKeyText, fetchImpl, channelFile,
   platform = process.platform,
 }) => {
-  const publicKey = releasePublicKey(publicKeyText);
+  const publicKeys = releasePublicKeys(publicKeyText);
   state = { form, ready: false, availableVersion: null, notes: null };
   const noticed = new Set(); // one OS notice per kind per version per run
   const announce = (key, { title, body }, silent) => {
@@ -274,8 +275,8 @@ const wireUpdater = ({
 
   // impure — the verdict on an offer; without a key there is nothing to fetch
   const verdictOn = async (info) => {
-    if (!publicKey) return { ok: false, reason: 'no release public key is embedded in this build' };
-    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey, offered: info });
+    if (publicKeys.length === 0) return { ok: false, reason: 'no release public key is embedded in this build' };
+    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey: publicKeys, offered: info });
     if (verdict.refreshed) log.info?.(`[neuma] update ${info.version}: the first read was stale (${verdict.firstReason}); the fresh read verified`);
     return verdict;
   };
@@ -381,7 +382,7 @@ const init = ({
     Notification,
     refreshTray,
     log,
-    publicKeyText: RELEASE_PUBLIC_KEY,
+    publicKeyText: RELEASE_PUBLIC_KEYS,
     fetchImpl: (url, options) => net.fetch(url, options),
     channelFile: channelFileFor(platform, process.arch),
     platform,

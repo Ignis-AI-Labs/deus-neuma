@@ -31,6 +31,8 @@ import { claimFiledIntent } from './intents/intent-owners.js';
 import { amendIdentityRecord, identityWriteFor } from './identity-record-writes.js';
 import { getWitnessesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { getHarnessRoot } from '../../core/workspace/lane-grounds.js';
+import { isOtherHouse } from './explorer-walls.js';
+import { withReadGrants } from './fs-read-clearance.js';
 
 const log = createLogger('ToolSandbox');
 
@@ -102,11 +104,8 @@ export const recordWrite = (connection) => {
  * @param {string} toolName - Tool name
  * @returns {boolean}
  */
-export const isWriteOperation = (toolName) => {
-  const writeTools = ['write_file', 'edit_file', 'create_file', 'create_directory', 'move_file', 'rename_file', 'copy_file', 'delete_file', 'write', 'edit'];
-
-  return writeTools.includes(toolName);
-};
+export const isWriteOperation = (toolName) =>
+  ['write_file', 'edit_file', 'create_file', 'create_directory', 'move_file', 'rename_file', 'copy_file', 'delete_file', 'write', 'edit', 'copy', 'move'].includes(toolName);
 
 /**
  * The SENSITIVE-GRANT DOOR (ruling, 2026-08-18): a denied-pattern refusal is a
@@ -207,6 +206,16 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', reason);
       throw new Error(reason);
     };
+    // ANOTHER HOUSE (explorer-walls.js): a focus or a grant may cover the whole house or the realm,
+    // but another wallet's lanes and realm dir are never read or written from this connection —
+    // the operator's own explorer holds the same wall. The being's own lane is always its own.
+    const reader = String(connection.walletAddress || '').toLowerCase();
+    const guardOtherHouse = async (filePath, laneRoot) => {
+      if ((laneRoot && isWithinRoots(filePath, [laneRoot])) || !isOtherHouse(path.resolve(filePath), reader)) return;
+      const reason = 'That path is another house\'s data — it is never yours to read or write.';
+      await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', reason);
+      throw new Error(reason);
+    };
     // A write with no recognizable path arg must fail closed — confinement can't
     // be name-guessing. Without this, a write tool whose path uses a key outside
     // PATH_ARG_KEYS would dispatch unconfined (bounded only by the MCP server's
@@ -225,6 +234,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     }
     for (const p of pathArgs) {
       await guardPlatformState(p, workspaceRoot);
+      await guardOtherHouse(p, workspaceRoot);
       const pathCheck = checkPathAccess(p, roots, { requireRoot: isWrite });
       if (!pathCheck.allowed) {
         const reason = sensitiveDeniedReason(connection, isWrite, p, pathCheck);
@@ -243,11 +253,9 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     // grant door applies here identically.
     for (const p of pathArgs) {
       const real = await realpathOfNearestExisting(p);
-      await guardPlatformState(
-        real,
-        workspaceRoot ? await realpathOfNearestExisting(workspaceRoot) : null,
-        await Promise.all(grounds.map(realpathOfNearestExisting)),
-      );
+      const realLane = workspaceRoot ? await realpathOfNearestExisting(workspaceRoot) : null;
+      await guardPlatformState(real, realLane, await Promise.all(grounds.map(realpathOfNearestExisting)));
+      await guardOtherHouse(real, realLane);
       if (real === path.resolve(p)) continue; // no link in the chain — lexical verdict stands
       const realRoots = await Promise.all(roots.map(realpathOfNearestExisting));
       const realCheck = checkPathAccess(real, [...new Set([...roots, ...realRoots])], { requireRoot: isWrite });
@@ -364,7 +372,11 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'success', null);
       return hand.result;
     }
-    const result = await mcpService.callTool(serverName, toolName, args);
+    // The organ judges a read's path again as it opens it, with these grants, and a search walk
+    // judges each entry against this connection's house (fs-read-clearance.js).
+    const ownLane = workspaceRoot ? [workspaceRoot, await realpathOfNearestExisting(workspaceRoot)] : [];
+    const result = await withReadGrants(connection._sensitiveGrants, () => mcpService.callTool(serverName, toolName, args),
+      { reader, lanes: ownLane });
 
     // 4. Check read size
     if (result && typeof result === 'string' && result.length > MAX_READ_SIZE_BYTES) {

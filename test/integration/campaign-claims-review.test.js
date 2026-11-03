@@ -1,14 +1,14 @@
 /**
  * LEGAL ON EVERY DRAFT — the claims check over a house's real drafts, the
  * matters it files with the CLO office, the LEGAL flag on the desk's queue
- * read, and the AI disclosure line at staging (campaign plan slice 12). Real
+ * read, and a being's words staged exactly as written (campaign plan slice 12). Real
  * tmp disk, the real queue store, the real account store and brand kits, the
  * real matter ledger, the real reply record, the real queue route over a
  * real signed-wallet session. No double anywhere (RULE 0); no social key.
  *
- * Proven: a being's draft carries "Made with AI." and the line counts
- * against X's 280; an edit cannot drop it; the operator's own text-only
- * words carry none; […] files ONE campaign-review matter for
+ * Proven: a being's draft and its edits keep exactly its own words (the AI
+ * disclosure rides in the post's metadata since 2026-10-30, never a line), and
+ * only those words count against X's 280; […] files ONE campaign-review matter for
  * the account's company, with citations' starting points, and a second
  * review files nothing; an edit that adds a NEVER ASSERTED claim files a new,
  * high matter; a reply that speaks of a lawsuit files a matter too; another
@@ -35,7 +35,6 @@ import { reviewHouseDrafts, withLegalFlags } from '../../backend/services/market
 import { houseEntries } from '../../backend/services/social/queue-house.js';
 import channelRouter from '../../backend/routes/social-channel-routes.js';
 
-const LINE = '\n\nMade with AI.';
 const DOORS = ['NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_SECTOR_CREW_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH'];
 
 let houses;
@@ -79,16 +78,14 @@ const stage = (text, extra = {}) => postQueue.add({
 });
 const ledgerOf = async (wallet) => (await matterLedgerFor(wallet)).load();
 
-describe('the disclosure line at staging', () => {
-  test('a being\'s words carry it, the line counts against X, an edit keeps it, the operator\'s own words carry none', async () => {
-    const draft = await stage('We shipped the new desk.');
-    expect(draft.text).toBe(`We shipped the new desk.${LINE}`);
+describe('a being\'s words at staging', () => {
+  test('a draft and its edits keep exactly their words; only the words count against X', async () => {
+    const draft = await stage('We shipped the new desk.\n\nMore tomorrow.');
+    expect(draft.text).toBe('We shipped the new desk.\n\nMore tomorrow.');
     const edited = await postQueue.update(draft.id, { text: 'We shipped the new desk today.' }, { by: 'alpha-cmo' });
-    expect(edited).toMatchObject({ ok: true, entry: { text: `We shipped the new desk today.${LINE}` } });
-    // An edit that tries to drop the line gets it back.
-    const dropped = await postQueue.update(draft.id, { text: 'We shipped it.' }, { by: 'alpha-cmo' });
-    expect(dropped.entry.text).toBe(`We shipped it.${LINE}`);
-    await expect(stage('a'.repeat(270))).rejects.toThrow('the post is 270 characters and the disclosure line "Made with AI." adds 15 — X (Twitter) allows at most 280');
+    expect(edited).toMatchObject({ ok: true, entry: { text: 'We shipped the new desk today.' } });
+    expect((await stage('a'.repeat(280))).text).toHaveLength(280);
+    await expect(stage('a'.repeat(281))).rejects.toThrow('the post is 281 characters — X (Twitter) allows at most 280');
     const own = await postQueue.add({ channelId: 'x', text: 'Typed by the operator.', authorNeumaId: null, queuedBy: auth.address });
     expect(own.text).toBe('Typed by the operator.');
   });

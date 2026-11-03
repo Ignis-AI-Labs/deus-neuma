@@ -45,6 +45,39 @@
       "default": false
     },
     {
+      "id": "mail-watch",
+      "name": "House mailbox watch",
+      "to": "the mail server you connected for the house mailbox",
+      "when": "every 5 minutes",
+      "sends": "the house mailbox's sign-in, to list the newest messages read-only",
+      "whileOff": "new mail waits until a being or you check the mailbox",
+      "detail": "Once you turn it on, every 5 minutes the app signs in to the mail server you connected for the house mailbox and lists the newest messages, read-only: it marks nothing read and sends nothing. A new message from an investor or a lead the house is talking to wakes the seat that holds that conversation; any other new message wakes the being that holds the mailbox. Every wake stays inside your house charter. Your mail provider sees the sign-in from this computer, as it does when you check mail yourself. While it is off, the house reads mail only when a being checks it.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "sanctions-list",
+      "name": "Sanctions list",
+      "to": "treasury.gov (the US Treasury's public sanctions list)",
+      "when": "once a day, while the legal watch runs",
+      "sends": "a request for the public list: no identifier, your IP address as any request shows it",
+      "whileOff": "buyers and investors are not screened, and the legal office says so",
+      "detail": "Once you turn it on, the legal office downloads the US Treasury's public sanctions list (the Specially Designated Nationals list and its other names, from treasury.gov) at most once a day and keeps it on this computer. It checks the names of the house's buyers and investors against that copy here; no name ever leaves your machine. The request carries no account or identifier; the Treasury's site sees your IP address. A match is only a possible match, filed for you and your CLO to look at. While it is off, nothing is screened.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "chat-bridge",
+      "name": "Chats with the house",
+      "to": "Telegram's and Discord's servers, through the bots you connected",
+      "when": "all the time while on: Telegram is asked for new messages every 25 seconds, Discord holds one open line",
+      "sends": "your bots' tokens, to hear the messages sent to them, and the answers of the beings who hold them",
+      "whileOff": "your bots post what you approve, but hear nobody",
+      "detail": "Once you turn it on, each Telegram and Discord bot you connected for the house, and gave a holder, listens for messages sent to it. A person you approve can then talk with the being who holds that bot, in a direct chat, or in a group you approved when the message names the bot. A stranger only gets a pairing code back, and nothing they send is read until you approve that code (WAITING ON YOU, or the platform's CHATS tab). Telegram and Discord see what is sent and answered, as with any chat on their services. While it is off, the bots only post what you approve.",
+      "control": "switch",
+      "default": false
+    },
+    {
       "id": "web",
       "name": "The web",
       "to": "the search index and the pages a neuma reads",
@@ -83,11 +116,20 @@
     {
       "id": "legal-research",
       "name": "Legal research",
-      "to": "public US legal databases",
+      "to": "public legal databases, the pages it cites, and regulators' feeds",
       "when": "once you seat a legal officer",
-      "sends": "the question a neuma is researching",
-      "detail": "A neuma you seat as your house's legal officer may query public US legal databases (Congress.gov, GovInfo, Regulations.gov, CourtListener, Open States) with the question it is researching, without asking you each time. Until you seat one, nothing is asked.",
+      "sends": "the question a neuma is researching, the addresses of the pages it cites, and its search terms",
+      "detail": "A neuma you seat as your house's legal officer may query public US legal databases (Congress.gov, GovInfo, Regulations.gov, CourtListener, Open States) with the question it is researching, without asking you each time. Before its readings and opinions are recorded, the app also opens again every page it cites, to check that the quoted words and headings are really there, and searches official sources (the Federal Register, legislation.gov.uk, and the SEC, CFTC, FTC, FCA, ESMA and EDPB news feeds) for anything from the last 120 days on its search terms. These reads go only to those public sites and carry no account or identifier; each site sees your IP address. Turning web access off in Settings stops them. Until you seat a legal officer, nothing is asked.",
       "control": "setup"
+    },
+    {
+      "id": "legal-second-reader",
+      "name": "Second legal reader",
+      "to": "the connected provider you choose",
+      "when": "only if you choose a connected provider as your legal officer's second reader",
+      "sends": "each claim your legal officer cites, with the passage of law it rests on",
+      "detail": "Before your legal officer's opinions and readings are recorded, a second reader checks each cited passage against the claim it is cited for. By default that reader is your house's own model on this computer, and nothing leaves your machine. If you choose one of your connected providers instead, in the LEGAL window, each claim and the passage of law it rests on go to that provider, under its terms. A provider on this computer's own key can only be chosen by its owner. Choose the house's own model again to stop.",
+      "control": "choice"
     },
     {
       "id": "channels",

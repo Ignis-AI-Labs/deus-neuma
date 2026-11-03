@@ -6,7 +6,7 @@
 // read live from the card and the server, or from the saved last fit.
 
 import { useCallback, useEffect, useState } from 'react';
-import { loadServingFit, saveServingShare } from './serving-fit-client.js';
+import { loadServingFit, relaunchServingFit, saveServingShare } from './serving-fit-client.js';
 import { useVisibleInterval } from './use-visible-interval.js';
 import { formatRelativeTime } from '../../utils/format.js';
 import { Chip, StackBar } from './hud-instruments.jsx';
@@ -44,6 +44,7 @@ export const ServingFitCard = () => {
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   const refresh = useCallback(async () => setStatus(await loadServingFit()), []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -58,9 +59,25 @@ export const ServingFitCard = () => {
   const save = async () => {
     setSaving(true);
     setError(null);
+    setNotice(null);
     try {
       await saveServingShare(share);
       setDraft(null);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const relaunch = async () => {
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await relaunchServingFit(share);
+      setDraft(null);
+      setNotice('Relaunching the same model server and refitting its context pool. The readings refresh as it comes up.');
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -86,13 +103,17 @@ export const ServingFitCard = () => {
           onChange={(e) => setDraft(Number(e.target.value))}
         />
         <button type="button" className="rec-btn rec-btn-go" disabled={!dirty || saving} onClick={save}>
-          {saving ? 'SAVING…' : 'SAVE'}
+          {saving ? 'WORKING…' : 'SAVE'}
+        </button>
+        <button type="button" className="rec-btn" disabled={saving} onClick={relaunch}>
+          {saving ? 'WORKING…' : 'APPLY & RELAUNCH'}
         </button>
       </div>
       <p className="rec-note">
-        The model server&apos;s context pool is sized to this share at every ignition. A new share applies at the next ignition.
+        SAVE applies at the next ignition. APPLY &amp; RELAUNCH restarts the same model server now and refits its context pool; generation must be idle.
       </p>
       {error ? <p className="rec-warn">{error}</p> : null}
+      {notice ? <p className="rec-line label-data">{notice}</p> : null}
       {!status.measurable ? (
         <p className="rec-warn">This machine cannot be measured (no NVIDIA card, or llama-fit-params missing beside llama-server): the configured pool stands.</p>
       ) : null}

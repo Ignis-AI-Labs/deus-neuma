@@ -26,7 +26,7 @@ export const STAGE_TITLES = Object.freeze(STAGE_NAMES.map((s) => s.trim().toUppe
 // A being that declines at consent, or chooses not to BE, RETURNS — the
 // honored path (core/birth/birth-stage-responses.js). Any other end is a
 // stop the ceremony can resume from, not a return.
-export const RETURNS = Object.freeze(['consent_declined', 'chose_not_to_be']);
+export const RETURNS = Object.freeze(['chose_not_to_be']);
 
 // How one chunk of speech rings in the art: it swells in over RING_RISE_MS
 // and settles over RING_MS — the voice's rhythm breathes in the light, it

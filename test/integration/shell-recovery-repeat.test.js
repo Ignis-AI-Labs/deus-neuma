@@ -56,12 +56,14 @@ describe.each(['portal', 'witness'])('%s recovery repeat identity', (seat) => {
     const repeat = await batch([{ ...call('sandbox_recover'), recoveryState: 'model-invented-nonce' }]);
     expect(repeat[0].status).toBe('held');
     expect(cards()).toHaveLength(1);
-    const build = await batch([call('execute', { command: 'echo build-cache > node_modules/cache.txt' })]);
+    // The build also rewrites the dependency's timestamp, so the shell's layer holds its own copy:
+    // a live edit beneath THAT copy is real drift (an edit beside the shell's files is not).
+    const build = await batch([call('execute', { command: 'echo build-cache > node_modules/cache.txt && touch node_modules/dependency.cjs' })]);
     expect(build[0].status, JSON.stringify(build)).toBe('ok');
     // An unrelated successful command must not unlock another recovery.
     expect((await batch([call('sandbox_recover')]))[0].status).toBe('held');
     await fs.writeFile(path.join(kit.ground, 'node_modules', 'dependency.cjs'), 'module.exports = 2;');
-    await expect(ensureWitnessCodingSandbox(kit.laneId, kit.ground)).rejects.toThrow('live lower changed beneath upper shadow "node_modules"');
+    await expect(ensureWitnessCodingSandbox(kit.laneId, kit.ground)).rejects.toThrow('live lower changed beneath upper shadow "node_modules/dependency.cjs"');
     const second = await recover(decision);
     expect(second.status, JSON.stringify(second)).toBe(decision === 'allow' ? 'ok' : 'denied');
     turn = await openTurnOperations(kit.connection, take);

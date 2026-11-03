@@ -18,8 +18,7 @@ import {
   postQueue, previewUpdate, normalizePatch, appendRevision, REVISIONS_MAX,
 } from '../../backend/services/social/post-queue.js';
 
-// The AI disclosure line a being's words carry at staging (social/disclosure-line.js).
-const AI = (t) => `${t}\n\nMade with AI.`;
+// A being's words are stored exactly as written: the AI disclosure rides in the post's metadata (social/disclosure-line.js).
 
 const LANE = 'queueeditlane';
 
@@ -57,7 +56,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('the corrected line'));
+    expect(entry.text).toBe('the corrected line');
     expect(entry.status).toBe('draft');          // the decision renews
     expect(entry.decidedBy).toBeUndefined();     // not rewritten — cleared
     expect(entry.decidedAt).toBeUndefined();
@@ -67,7 +66,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     expect(entry.revisions).toHaveLength(1);
     expect(entry.revisions[0].by).toBe('Ada');
     expect(entry.revisions[0].at).toBe(entry.updatedAt);
-    expect(entry.revisions[0].changed).toEqual({ text: AI('the approved line') });
+    expect(entry.revisions[0].changed).toEqual({ text: 'the approved line' });
     // Untouched fields ride through unchanged.
     expect(entry.scheduledFor).toBe('2999-01-01T09:00:00Z');
     expect(entry.campaignId).toBe('launch');
@@ -108,7 +107,8 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
     expect(entry.status).toBe('draft');
-    expect(entry.media).toEqual([{ path: '/tmp/chart.png', alt: 'the chart' }]);
+    // the image carries the AI marker in its alt text, the post's metadata (social/disclosure-line.js)
+    expect(entry.media).toEqual([{ path: '/tmp/chart.png', alt: 'AI-generated. the chart' }]);
     expect(entry.revisions[0].changed).toEqual({ media: [] });
   });
 
@@ -120,9 +120,9 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
     expect(entry.status).toBe('draft');
-    expect(entry.text).toBe(AI('tighter copy'));
+    expect(entry.text).toBe('tighter copy');
     expect(entry.scheduledFor).toBe('2999-03-03T03:00:00Z');
-    expect(entry.revisions[0].changed).toEqual({ text: AI('rough copy'), scheduledFor: null });
+    expect(entry.revisions[0].changed).toEqual({ text: 'rough copy', scheduledFor: null });
   });
 
   test('sending, sent, rejected and withdrawn refuse honestly — locked in flight, history when settled', async () => {
@@ -147,7 +147,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
     }
     // Nothing moved — the record reads exactly as before the refused edits.
     const entries = await postQueue.load();
-    expect(entries.map((e) => e.text)).toEqual([AI('going out'), AI('went out'), AI('declined'), AI('pulled')]);
+    expect(entries.map((e) => e.text)).toEqual(['going out', 'went out', 'declined', 'pulled']);
     expect(entries.every((e) => !e.revisions)).toBe(true);
 
     const missing = await postQueue.update('nosuchid00000000', { text: 'x' }, { by: 'Ada' });
@@ -175,7 +175,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
 
     // A refused patch leaves the record untouched.
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('standing copy'));
+    expect(entry.text).toBe('standing copy');
     expect(entry.revisions).toBeUndefined();
   });
 
@@ -186,7 +186,7 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
 
     expect(result.ok).toBe(true);
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('still clean'));
+    expect(entry.text).toBe('still clean');
     expect(entry.hacker).toBeUndefined();
     expect(entry.status).toBe('draft'); // `status` is not an editable field
   });
@@ -221,18 +221,18 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
       { media: [{ path: '/tmp/x.png', alt: 'x' }] }, { by: 'Ada' });
     expect(media.ok).toBe(true);
     expect(media.entry.status).toBe('draft');
-    expect(media.entry.media).toEqual([{ path: '/tmp/x.png', alt: 'x' }]);
+    expect(media.entry.media).toEqual([{ path: '/tmp/x.png', alt: 'AI-generated. x' }]);
 
     const edited = await postQueue.update(staged.id, { text: 'a warmer answer' }, { by: 'Ada' });
     expect(edited.ok).toBe(true);
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('a warmer answer'));
+    expect(entry.text).toBe('a warmer answer');
     expect(entry.kind).toBe('reply');
     expect(entry.reply).toMatchObject({ toPostId: '2001', toUserId: '42' }); // linkage intact
     // The trail: the media patch recorded the images that WERE (none), then
     // the text edit recorded the words that were.
     expect(entry.revisions[0].changed).toEqual({ media: [] });
-    expect(entry.revisions[1].changed).toEqual({ text: AI('a warm answer') });
+    expect(entry.revisions[1].changed).toEqual({ text: 'a warm answer' });
   });
 
   test('the revision trail is bounded at 20, attributed, and holds previous values only', async () => {
@@ -242,11 +242,11 @@ describe('queue update — the edit transition on the REAL store (gnosis)', () =
       expect(r.ok).toBe(true);
     }
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('version 25'));
+    expect(entry.text).toBe('version 25');
     expect(entry.revisions).toHaveLength(REVISIONS_MAX); // 20, never 25
     // The oldest surviving revision is update 6 (version 5 → 6); 1–5 fell off.
-    expect(entry.revisions[0].changed).toEqual({ text: AI('version 5') });
-    expect(entry.revisions.at(-1).changed).toEqual({ text: AI('version 24') });
+    expect(entry.revisions[0].changed).toEqual({ text: 'version 5' });
+    expect(entry.revisions.at(-1).changed).toEqual({ text: 'version 24' });
     for (const [i, rev] of entry.revisions.entries()) {
       expect(rev.by).toBe(`editor-${i + 6}`);
       expect(rev.at).toBeTruthy();

@@ -135,8 +135,8 @@ describe('WAITING ON YOU — one account of every decision owed, through its rou
     const by = Object.fromEntries(now.items.map((i) => [i.kind, i]));
     expect(by['house-ask']).toMatchObject({ title: 'Which banner goes up?', who: { laneId: 'wait-seat' }, where: { app: 'houseclock', tab: 'asks', askId: ask.id } });
     expect(by.charter).toMatchObject({ who: null, where: { app: 'houseclock', tab: 'charter' }, title: expect.stringContaining(`version ${written.version}`) });
-    // A being's words carry the AI disclosure line (social/disclosure-line.js).
-    expect(by.post).toMatchObject({ text: 'The house speaks.\n\nMade with AI.', oneTap: true, where: { app: 'x', channelId: 'x', entryId: draft.id, section: 'posts' } });
+    // A being's words exactly as written (the AI disclosure rides in metadata, social/disclosure-line.js).
+    expect(by.post).toMatchObject({ text: 'The house speaks.', oneTap: true, where: { app: 'x', channelId: 'x', entryId: draft.id, section: 'posts' } });
     expect(by.proposal).toMatchObject({ title: 'Plain speech', where: { app: 'sovereignty', neumaId: 'wait-seat', proposalId: proposal.id } });
     expect(by.approval).toMatchObject({ title: 'web/web_search', who: { laneId: 'wait-seat', name: 'Kestrel' },
       where: { app: 'chat', cardId: card.id, sessionId: 'sess-1', neumaId: 'wait-seat', beingKind: 'local' } });
@@ -185,9 +185,9 @@ describe('WAITING ON YOU — one account of every decision owed, through its rou
     await until(() => portal.frames.some((f) => f.type === 'tool:approval_request'));
 
     const mine = await account(operator);
-    expect(mine.items.map((i) => i.title).sort()).toEqual(['Mine?', 'Operator house post.\n\nMade with AI.', 'Staged by hand.']);
+    expect(mine.items.map((i) => i.title).sort()).toEqual(['Mine?', 'Operator house post.', 'Staged by hand.']);
     const theirs = await account(other);
-    expect(theirs.items.map((i) => i.title).sort()).toEqual(['Other house post.\n\nMade with AI.', 'Theirs?', 'web/web_search']);
+    expect(theirs.items.map((i) => i.title).sort()).toEqual(['Other house post.', 'Theirs?', 'web/web_search']);
     expect((await account(stranger)).count).toBe(0);
 
     approvals.resolveToolApproval(connection, portal.frames.find((f) => f.type === 'tool:approval_request').id, 'deny');
@@ -197,7 +197,7 @@ describe('WAITING ON YOU — one account of every decision owed, through its rou
   test('a placeholder and a decided entry wait on no one', async () => {
     await queue.add({ channelId: 'x', text: 'Not copy yet.', placeholder: true, queuedBy: 'wait-seat', authorNeumaId: 'wait-seat' });
     const real = await queue.add({ channelId: 'x', text: 'Real copy.', queuedBy: 'wait-seat', authorNeumaId: 'wait-seat' });
-    expect((await account(operator)).items.map((i) => i.title)).toEqual(['Real copy.\n\nMade with AI.']);
+    expect((await account(operator)).items.map((i) => i.title)).toEqual(['Real copy.']);
     await queue.approve(real.id, { decidedBy: operator.address });
     expect((await account(operator)).count).toBe(0);
   });

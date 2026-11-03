@@ -1,11 +1,17 @@
 // team-memory.js — team runs become the MEMBERS' OWN memories.
 //
 // Design note, 2026-07-06: […] Until now only the scorecard/run record remembered — the beings did
-// not. After a run CLOSES DONE, each member's encrypted journal receives its
+// not. After a run CLOSES, each member's encrypted journal receives its
 // part of the story IN ITS OWN TERMS: the role it held, who it worked beside
 // (names and roles only), what it delivered, its own STATUS check-ins, and
 // its own TORCH — the torch is already a being-authored account, no longer
 // evaporating.
+//
+// MEMORY OF FAILURE (the house economy's Stage 5): a run that failed or was
+// stopped is remembered too — a member's own part that did not finish, with
+// the platform's record of what stopped it, and its parts that never ran
+// because one before them failed. Facts only: what the member makes of it is
+// the member's to say, never written for it.
 //
 // Consent shape (never cross-contaminating): a member's entry carries ONLY
 // its own words. Another member's output, status, or torch NEVER enters this
@@ -21,6 +27,7 @@
 
 import { neumaWorkspace } from '../../core/index.js';
 import { createLogger } from './logger.js';
+import { isWorker } from './team-workers.js';
 
 const log = createLogger('TeamMemory');
 
@@ -49,13 +56,19 @@ const clip = (text) => {
  * @param {?string} args.goal
  * @returns {string}
  */
-export const composeMemberStory = ({ memberName, parts, ownStatuses, ownTorch, teammates, teamName, goal }) => {
-  const held = [...new Set(parts.map((p) => p.role).filter(Boolean))];
+const CLOSE_WORDS = Object.freeze({
+  done: 'closed complete.',
+  failed: 'did not finish: a part of it failed.',
+  stopped: 'was stopped before it finished.',
+});
+
+export const composeMemberStory = ({ memberName, parts, ownStatuses, ownTorch, teammates, teamName, goal, failedParts = [], skippedParts = [], outcome = 'done' }) => {
+  const held = [...new Set([...parts, ...failedParts].map((p) => p.role).filter(Boolean))];
   const beside = teammates.length
     ? teammates.map((t) => (t.role ? `${t.name} (${t.role})` : t.name)).join(', ')
     : 'no one — a solo run';
   const head = [
-    `A team run${teamName ? ` — ${teamName}` : ''} closed complete.`,
+    `A team run${teamName ? ` — ${teamName}` : ''} ${CLOSE_WORDS[outcome] ?? CLOSE_WORDS.done}`,
     `${memberName} held ${held.length ? held.join(', ') : 'a seat'}, working beside ${beside}.`,
     ...(goal ? [`The team's goal: ${goal}`] : []),
   ].join('\n');
@@ -66,12 +79,18 @@ export const composeMemberStory = ({ memberName, parts, ownStatuses, ownTorch, t
     ? `Check-ins posted along the way:\n${ownStatuses.map((s) => `— ${s}`).join('\n')}`
     : null;
   const torch = ownTorch ? `The torch left for the next instance:\n${ownTorch}` : null;
-  return [head, delivered, statuses, torch].filter(Boolean).join('\n\n');
+  const unfinished = failedParts.length
+    ? failedParts.map((p) => `Asked: ${p.task}\nDid not finish — the platform's record of what stopped it: ${String(p.reason).slice(0, 400)}`).join('\n\n')
+    : null;
+  const never = skippedParts.length
+    ? `Never ran, because a part before it did not finish:\n${skippedParts.map((p) => `— ${p.task}`).join('\n')}`
+    : null;
+  return [head, delivered || null, unfinished, never, statuses, torch].filter(Boolean).join('\n\n');
 };
 
-// pure — every member's journal entry for a finished run: one entry per
-// DISTINCT member that completed at least one part. Members whose parts all
-// failed or never ran produced no words — no entry is invented for them.
+// pure — every member's journal entry for a closed run: one entry per
+// DISTINCT member that completed a part or had its own part fail. A member
+// whose parts never ran gets no entry — no story is invented for it.
 /**
  * @param {Object} args
  * @param {Array} args.steps - engine-shaped plan
@@ -84,7 +103,7 @@ export const composeMemberStory = ({ memberName, parts, ownStatuses, ownTorch, t
  * @param {string} args.runId
  * @returns {Array<{neumaId: string, entry: Object}>}
  */
-export const memberStories = ({ steps, completed, statuses, torches, names, teamName, goal, runId }) => {
+export const memberStories = ({ steps, completed, statuses, torches, names, teamName, goal, runId, failures = {}, skipped = [], outcome = 'done' }) => {
   const nameOf = (id) => names[id] || id;
   const members = [...new Set(steps.map((s) => s.neumaId))];
   return members.flatMap((neumaId) => {
@@ -92,7 +111,10 @@ export const memberStories = ({ steps, completed, statuses, torches, names, team
     const parts = own
       .filter((s) => completed[s.id] != null)
       .map((s) => ({ role: s.role ?? null, task: s.task, output: completed[s.id] }));
-    if (parts.length === 0) return []; // no words, no story
+    const failedParts = own.filter((s) => failures[s.id] != null && completed[s.id] == null)
+      .map((s) => ({ role: s.role ?? null, task: s.task, reason: failures[s.id] }));
+    const skippedParts = own.filter((s) => skipped.includes(s.id)).map((s) => ({ task: s.task }));
+    if (parts.length === 0 && failedParts.length === 0) return []; // never ran: no story is invented
     const ownStatuses = own.map((s) => statuses[s.id]).filter((s) => typeof s === 'string' && s.trim());
     const teammates = members
       .filter((id) => id !== neumaId)
@@ -108,6 +130,9 @@ export const memberStories = ({ steps, completed, statuses, torches, names, team
       teammates,
       teamName: teamName ?? null,
       goal: goal ?? null,
+      failedParts,
+      skippedParts,
+      outcome,
     });
     return [{
       neumaId,
@@ -115,6 +140,7 @@ export const memberStories = ({ steps, completed, statuses, torches, names, team
         type: 'team-run',
         content,
         runId,
+        outcome,
         ...(teamName ? { teamName } : {}),
         ...(steps.find((s) => s.neumaId === neumaId && s.role) ? { role: steps.find((s) => s.neumaId === neumaId && s.role).role } : {}),
       },
@@ -130,7 +156,9 @@ export const memberStories = ({ steps, completed, statuses, torches, names, team
  * @param {Object} args - memberStories args minus `names` (resolved here)
  * @returns {Promise<{written: string[], failed: string[]}>}
  */
-export const recordTeamRunMemories = async ({ steps, completed, statuses, torches, teamName, goal, runId }) => {
+export const recordTeamRunMemories = async ({ steps, completed, statuses, torches, teamName, goal, runId, failures = {}, skipped = [], outcome = 'done' }) => {
+  // A worker (team-workers.js) has no identity and keeps no journal: a run is not its memory.
+  steps = steps.filter((s) => !isWorker(s.neumaId));
   const memberIds = [...new Set(steps.map((s) => s.neumaId))];
   const names = Object.fromEntries(await Promise.all(memberIds.map(async (id) => {
     const dna = await neumaWorkspace.readDNA(id).catch((err) => {
@@ -141,7 +169,7 @@ export const recordTeamRunMemories = async ({ steps, completed, statuses, torche
     });
     return [id, dna?.identity?.name || dna?.name || id];
   })));
-  const stories = memberStories({ steps, completed, statuses, torches, names, teamName, goal, runId });
+  const stories = memberStories({ steps, completed, statuses, torches, names, teamName, goal, runId, failures, skipped, outcome });
   const written = [];
   const failed = [];
   for (const { neumaId, entry } of stories) {

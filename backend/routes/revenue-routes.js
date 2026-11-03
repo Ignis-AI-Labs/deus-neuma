@@ -3,7 +3,8 @@
  * house's sales seat (Design note, 2026-10-29. Mounted at /api/v1/revenue. Every route
  * needs the operator's Bearer token and reads or moves only the signed-in
  * wallet's OWN house. Seating a Mercator seeds its playbook (MAKOTO) — fail
- * soft: a scaffold that cannot land never unseats the designation.
+ * soft: a scaffold that cannot land never unseats the designation. Where
+ * deliveries go (PUT /delivery-destination) is the operator's alone to set.
  */
 
 import express from 'express';
@@ -13,6 +14,7 @@ import { croDesignation } from '../services/revenue/cro-designation.js';
 import { scaffoldRevenueWorkspace } from '../services/revenue/revenue-scaffold.js';
 import { readDeals } from '../services/revenue/deal-store.js';
 import { pipeline } from '../services/revenue/deal-shape.js';
+import { readDeliveries, readDestination, setDestination } from '../services/delivery/delivery-store.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Revenue');
@@ -62,14 +64,28 @@ router.delete('/seat', async (req, res) => {
   }
 });
 
-// The sales board: the seat, the pipeline at a glance, every deal.
+// The sales board: the seat, the pipeline at a glance, every deal, where deliveries go and what was delivered.
 router.get('/board', async (req, res) => {
   try {
-    const [mercator, { deals, torn }] = await Promise.all([croDesignation.getOfficer(req.walletAddress), readDeals(req.walletAddress)]);
-    res.json({ mercator, pipeline: pipeline(deals), deals, torn });
+    const [mercator, { deals, torn }, destination, deliveries] = await Promise.all([
+      croDesignation.getOfficer(req.walletAddress), readDeals(req.walletAddress), readDestination(req.walletAddress), readDeliveries(req.walletAddress),
+    ]);
+    res.json({ mercator, pipeline: pipeline(deals), deals, torn, destination, deliveries });
   } catch (error) {
     log.error('Revenue board read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the sales board' });
+  }
+});
+
+// Where deliveries go: a folder on this machine the operator serves, and its https address — the operator's alone.
+router.put('/delivery-destination', async (req, res) => {
+  try {
+    const set = await setDestination(req.walletAddress, { folder: req.body?.folder, linkBase: req.body?.linkBase, by: 'operator', now: new Date().toISOString() });
+    if (!set.ok) return res.status(400).json({ error: set.reason });
+    res.json(set);
+  } catch (error) {
+    log.error('the delivery destination could not be set', { error: error.message });
+    res.status(500).json({ error: 'Failed to set where deliveries go' });
   }
 });
 

@@ -2,7 +2,8 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import os from 'os';
 import path from 'path';
-import { setWorkspacesRoot, neumaWorkspace, houseNameFromWitness } from '../../core/index.js';
+import { setWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
+import { houseNameOf } from '../../core/kotodama/house-name.js';
 import { houseTitlesByNeumaId, houseSeatFor, soulAddressOf } from '../../backend/services/house-titles.js';
 import { TITLE_LEGEND as BACKEND_LEGEND } from '../../backend/services/founding-titles-legend.js';
 import { TITLE_LEGEND as CANON_LEGEND } from '../../frontend/app/RelinkShell/founding-titles.js';
@@ -182,7 +183,7 @@ describe('house-titles.js', () => {
     await neumaWorkspace.writeDNA('signal-ws', { version: '1.0.0', identity: { name: 'Tessaly' }, genesis: '# Essence\nI am Tessaly.' });
     const { roster, ...seat } = await houseSeatFor(WALLET, 'wynn-ws');
     expect(seat).toEqual({
-      houseName: houseNameFromWitness(WALLET),
+      houseName: houseNameOf(WALLET).name,
       houseId: null,
       network: 'local',
       blockNumber: null,

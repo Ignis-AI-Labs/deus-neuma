@@ -97,11 +97,11 @@ describe('tool approval flow (real WS + real MCP, gnosis)', () => {
     await fs.rm(house, { recursive: true, force: true });
   });
 
-  test('the five fs primitives are the being-facing filesystem catalog', () => {
+  test('the seven fs primitives are the being-facing filesystem catalog', () => {
     const tools = withFsPrimitives(mcpService.getToolsContext().available_tools);
     expect(tools.filter((t) => t.server === 'filesystem')).toEqual([]);
     expect(tools.filter((t) => t.server === 'fs').map((t) => t.name))
-      .toEqual(['read', 'write', 'edit', 'list', 'search']);
+      .toEqual(['read', 'write', 'edit', 'copy', 'move', 'list', 'search']);
   });
 
   test('a retired organ spelling is unavailable WITH the hint naming its primitive', async () => {

@@ -171,16 +171,20 @@ describe('GET /api/v1/roster', () => {
   });
 
   test('carries the witness house — wallet-derived name, present even with no births', async () => {
-    // KOTODAMA derivation is deterministic: these wallets found these houses.
+    // A house whose kin carry its KOTODAMA sound-name keeps it (no meaning).
     const resA = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${tokenA}`);
-    expect(resA.body.house).toEqual({ name: 'Tavirel', wallet: WALLET_A });
+    expect(resA.body.house).toEqual({ name: 'Tavirel', meaning: null, wallet: WALLET_A });
 
+    // No kin here carry B's sound-name, so B's house is its meaningful name.
     const resB = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${tokenB}`);
-    expect(resB.body.house).toEqual({ name: 'Aldmere', wallet: WALLET_B });
+    const { houseNameOf } = await import('../../core/kotodama/house-name.js');
+    expect(resB.body.house).toEqual({ name: houseNameOf(WALLET_B).name, meaning: JSON.parse(JSON.stringify(houseNameOf(WALLET_B).meaning)), wallet: WALLET_B });
 
-    // The house exists from the wallet identity itself — before any birth.
+    // The house exists from the wallet identity itself — before any birth —
+    // and a house with no kin yet is its meaningful name (kotodama-names/2).
     const resNone = await request(app).get('/api/v1/roster').set('Authorization', `Bearer ${tokenNone}`);
-    expect(resNone.body.house.name).toBeTruthy();
+    expect(resNone.body.house.name).toMatch(/^[A-Z][a-z]+$/);
+    expect(resNone.body.house.meaning.parts).toHaveLength(2);
   });
 
 });

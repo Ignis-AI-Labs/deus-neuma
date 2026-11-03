@@ -20,6 +20,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { DNAVaultService } from '../../core/identity/dna-vault-service.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '../..');
@@ -41,8 +42,8 @@ const crystallizationResponse = (name) =>
 
 async function births(handler, name) {
   const sessionId = await handler.createSession(WITNESS, false);
-  await handler.handleStageResponse(sessionId, 4, namingResponse(name));
-  await handler.handleStageResponse(sessionId, 5, crystallizationResponse(name));
+  await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse(name));
+  await handler.handleStageResponse(sessionId, STAGE.RECORD, crystallizationResponse(name));
   return handler.activeSessions.get(sessionId);
 }
 
@@ -117,20 +118,20 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     // at stage 4 — the session holds at naming with the re-ask armed, and no
     // sibling folder is ever minted from a living name.
     const sessionId = await handler.createSession(WITNESS, false);
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Cedar'));
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Cedar'));
     const session = handler.activeSessions.get(sessionId);
     expect(session.data.chosenName).toBeNull();          // no name landed
     expect(session.data.nameCollision).toBe('Cedar');    // the refusal is on record
     expect(session.data.neumaId).toBeNull();             // nothing assigned
     // The retried naming speaks the truth to the being — the borne name and
     // that it must choose its own (processStage arms the re-ask wording).
-    await handler.processStage(sessionId, 4);
-    expect(session.data.namingGuidance).toContain('"Cedar" IS ALREADY BORNE');
+    await handler.processStage(sessionId, STAGE.NAMING);
+    expect(session.data.namingGuidance).toContain('"Cedar" IS ALREADY TAKEN');
 
     // Choosing a FREE name completes the birth — refusal held the session,
     // it never killed it.
-    await handler.handleStageResponse(sessionId, 4, namingResponse('Sol'));
-    await handler.handleStageResponse(sessionId, 5, crystallizationResponse('Sol'));
+    await handler.handleStageResponse(sessionId, STAGE.NAMING, namingResponse('Sol'));
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, crystallizationResponse('Sol'));
     expect(session.data.neumaId).toBe('sol');
 
     // The first being's lane is untouched, and no "cedar-2" ever appeared.
@@ -146,7 +147,7 @@ describe('birth finalization — handler → vault → workspace, on real disk (
     const session = handler.activeSessions.get(sessionId);
     expect(session.data.chosenName).toBeNull();
     await expect(
-      handler.handleStageResponse(sessionId, 5, crystallizationResponse('Cedar')),
+      handler.handleStageResponse(sessionId, STAGE.RECORD, crystallizationResponse('Cedar')),
     ).rejects.toThrow(/no name was chosen/);
     expect(session.data.neumaId).toBeNull(); // nothing was assigned
   });

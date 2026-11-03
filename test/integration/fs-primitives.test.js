@@ -63,6 +63,14 @@ describe('routeFsCall — the being-facing name becomes the organ call', () => {
       .toMatchObject({ ok: true, tool: 'delete_file', args: { path: '/a' } });
   });
 
+  test('fs/copy and fs/move are direct source → destination verbs', () => {
+    expect(routeFsCall('fs', 'copy', { path: '/a', destination: '/b' }))
+      .toEqual({ ok: true, server: 'filesystem', tool: 'copy_file', args: { source: '/a', destination: '/b' } });
+    expect(routeFsCall('fs', 'move', { source: '/a', to: '/b' }))
+      .toEqual({ ok: true, server: 'filesystem', tool: 'move_file', args: { source: '/a', destination: '/b' } });
+    expect(routeFsCall('fs', 'move', { path: '/a' }).ok).toBe(false);
+  });
+
   test('fs/list: directory, roots, tree, sizes', () => {
     expect(routeFsCall('fs', 'list', { path: '/a' })).toMatchObject({ ok: true, tool: 'list_directory' });
     expect(routeFsCall('fs', 'list', {})).toMatchObject({ ok: true, tool: 'list_allowed_directories' });
@@ -124,13 +132,13 @@ describe('the retired spellings teach their primitive', () => {
 });
 
 describe('withFsPrimitives — the catalog swap', () => {
-  test('the 16 organ names leave; the five primitives stand in their place', () => {
+  test('the 16 organ names leave; the seven primitives stand in their place', () => {
     const organ = FILESYSTEM_TOOL_CATALOG.map((t) => ({ server: 'filesystem', name: t.name }));
     const other = [{ server: 'web', name: 'web_search' }];
     const out = withFsPrimitives([...organ, ...other]);
     expect(out.filter((t) => t.server === 'filesystem')).toEqual([]);
     expect(out.filter((t) => t.server === 'fs').map((t) => t.name))
-      .toEqual(['read', 'write', 'edit', 'list', 'search']);
+      .toEqual(['read', 'write', 'edit', 'copy', 'move', 'list', 'search']);
     expect(out).toContainEqual(other[0]);
   });
 
@@ -215,6 +223,24 @@ describe('withFsRouting — the real organ, the real disk (gnosis)', () => {
     const del = await callTool('fs', 'edit', { path: copied, delete: true });
     expect(del.isError).toBeFalsy();
     await expect(fs.stat(copied)).rejects.toThrow();
+  });
+
+  test('fs/copy pastes and keeps the source; fs/move pastes and removes it', async () => {
+    const source = path.join(root, 'direct.txt');
+    const copied = path.join(root, 'direct-copy.txt');
+    const moved = path.join(root, 'direct-moved.txt');
+    await fs.writeFile(source, 'binary-safe transfer payload');
+
+    const cp = await callTool('fs', 'copy', { path: source, destination: copied });
+    expect(cp.isError).toBeFalsy();
+    expect(await fs.readFile(copied, 'utf8')).toBe('binary-safe transfer payload');
+    expect(await fs.readFile(source, 'utf8')).toBe('binary-safe transfer payload');
+
+    const mv = await callTool('fs', 'move', { path: copied, destination: moved });
+    expect(mv.isError).toBeFalsy();
+    expect(await fs.readFile(moved, 'utf8')).toBe('binary-safe transfer payload');
+    await expect(fs.stat(copied)).rejects.toThrow();
+    expect(await fs.readFile(source, 'utf8')).toBe('binary-safe transfer payload');
   });
 
   test('fs/write {directory:true} creates a real directory', async () => {

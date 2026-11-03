@@ -24,7 +24,8 @@ import { mcpService } from './services/mcp.js';
 import { connectFilesystemServer } from './services/mcp-filesystem.js';
 import { installFdCustody } from './services/fd-custody.js';
 import platform from './services/supabase.js';
-import { getWorkspacesRoot } from '../core/index.js';
+import { getWorkspacesRoot, neumaWorkspace } from '../core/index.js';
+import { sweepExpiredRehearsals } from '../core/birth/rehearsal-sweep.js';
 import { testConnection, getConfig as getLlmConfig } from './services/llm-provider.js';
 import { launchReady, activeLaunchConfig } from './services/llama-server-supervisor.js';
 import { getSubstrateProfile } from './services/substrate-detector.js';
@@ -47,6 +48,9 @@ import { startSecurityScheduler } from './services/security/security-scheduler.j
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
 import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
+import { startCostMeter } from './services/cost-meter/cost-meter-scheduler.js';
+import { startMailWatch } from './services/mail-watch/mail-watch.js';
+import { startChatBridge } from './services/channels/chat-supervisor.js';
 import { startBenchWatchdog, stopBenchWatchdog } from './services/bench/bench-watchdog.js';
 import { settleLostChains } from './services/bench/bench-matched.js';
 import { resumeBenchChain } from './services/bench/bench-launch.js';
@@ -54,6 +58,7 @@ import { startLineWidthWatch } from './services/substrate-lease.js';
 import { comfyShutdown } from './services/image-forge/comfyui-supervisor.js';
 import { startRemoteTunnel, stopRemoteTunnel } from './services/remote/wire.js';
 import { hydrateStoredSecrets } from './services/stored-secrets.js';
+import { prepareOwnerClaim } from './services/install-owner.js';
 
 /**
  * Run the whole boot sequence and wire the shutdown paths.
@@ -89,6 +94,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
   let stopSecurityScheduler = null;
   let stopLegalScheduler = null;
   let stopMoneyIn = null;
+  let stopCostMeter = null;
+  let stopMailWatch = null;
+  let stopChatBridge = null;
   let stopStatusSweep = null;
   let stopHouseClock = null;
 
@@ -187,6 +195,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // calls degrade rather than crash).
     // Keys saved in Settings → API (search, page reader, downloads, chain RPC) load before anything asks for one.
     await hydrateStoredSecrets();
+    // A fresh install's owner claim is on disk before the first sign-in can ask
+    // for it (install-owner.js); prepareOwnerClaim never rejects.
+    await prepareOwnerClaim();
 
     try {
       await platform.init();
@@ -286,6 +297,15 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     startGuarded('claims review', startDraftReview);
     // The money-in watch — what the house received, every 10 minutes, read-only.
     stopMoneyIn = startGuarded('money-in watch', startMoneyInScheduler);
+    // The cost meter — the GPU's power draw once a minute, only for a house
+    // whose operator set the electricity rate.
+    stopCostMeter = startGuarded('cost meter', startCostMeter);
+    // The house mailbox watch — a reply wakes the seat that holds the
+    // conversation; off until the operator turns the connection on.
+    stopMailWatch = startGuarded('mail watch', startMailWatch);
+    // The chat bridge — the house's Telegram and Discord bots hear the people
+    // the operator approved; off until the operator turns the connection on.
+    stopChatBridge = startGuarded('chat bridge', startChatBridge);
     // The Optio office's cadence — standing status checks on open charges.
     stopStatusSweep = startGuarded('status sweep', startStatusScheduler);
     // The house clock — the house wakes itself for its own work, inside the
@@ -300,6 +320,13 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The house's model line runs as wide as this rig was MEASURED to run — the
     // only cap on parallel sittings; open tabs are never capped (2026-10-15).
     startGuarded('line width', startLineWidthWatch);
+    // Rehearsals abandoned mid-walk leave their lanes in the house; past their
+    // two-hour life they are swept, at boot and every hour (rehearsal-sweep.js).
+    startGuarded('rehearsal sweep', () => {
+      const sweep = () => sweepExpiredRehearsals(neumaWorkspace, log).catch((err) => log.warn('rehearsal sweep failed', { err: err.message }));
+      sweep();
+      setInterval(sweep, 60 * 60 * 1000).unref();
+    });
     // The meditation loop — piggyback-only dreams; the portal turn truth is injected.
     stopMeditation = startGuarded('meditation scheduler', () => startMeditationScheduler({ turnSnapshot: localTurnSnapshot }));
     // The native road (Road B) — binds only if a native road is already on;
@@ -325,6 +352,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopSecurityScheduler?.(); // the CSO's watch stops with the server
     stopLegalScheduler?.(); // the CLO's watch stops with the server
     stopMoneyIn?.(); // the money-in watch stops with the server
+    stopCostMeter?.(); // the cost meter's minute stops with the server
+    stopMailWatch?.(); // the mailbox watch stops with the server
+    stopChatBridge?.(); // every chat bot's line closes with the server
     stopStatusSweep?.(); // the office's cadence stops with the server
     stopHouseClock?.(); // no wake starts into the drain window
     stopBenchWatchdog(); // the bench watch stops with the server

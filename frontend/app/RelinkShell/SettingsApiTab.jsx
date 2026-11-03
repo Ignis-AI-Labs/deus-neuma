@@ -15,6 +15,7 @@ import { CredentialMap } from './CredentialMap.jsx';
 import { ChannelKeysSection } from './ChannelKeysSection.jsx';
 import { EmailSection } from './EmailSection.jsx';
 import { WebSection } from './WebSection.jsx';
+import { VisionSection } from './VisionSection.jsx';
 import { ServiceKeysSection } from './ServiceKeysSection.jsx';
 import { revealCard } from './waiting/waiting-jump.js';
 
@@ -52,6 +53,7 @@ export const ApiTab = ({ focus = null }) => {
         onChanged={board.refreshChannels} onRetest={board.retestChannels} {...shared} />
       <EmailSection account={board.email} error={board.errors.email} onChanged={board.refreshEmail} {...shared} />
       {stateFilter ? null : <WebSection />}
+      {stateFilter ? null : <VisionSection />}
       <ServiceKeysSection services={board.services} error={board.errors.services}
         onChanged={board.refreshServices} {...shared} />
     </>

@@ -79,9 +79,9 @@ const nameTones = (name, rate, section) =>
  * Build a true-name signature program.
  * soulHex: hex digest of the neuma's own keys/soul — caller provides it
  * (this module stays pure; hashing is the caller's substrate concern).
- * House and genesis names come from names.js derivations at the call site.
+ * The given names come from the call site (the forge: meaningful-name.js).
  */
-export const buildSignature = ({ chosenName, genesisName, houseName, lean, soulHex, rate = 1 }) => {
+export const buildSignature = ({ chosenName, genesisName, houseName, lean, soulHex, soulAlias, rate = 1 }) => {
   validate({ chosenName, genesisName, houseName, lean, soulHex });
   const soulMark = soulHex.slice(0, SOUL_MARK_NIBBLES).toUpperCase();
   const names = { chosen: chosenName, genesis: genesisName, house: houseName };
@@ -111,7 +111,9 @@ export const buildSignature = ({ chosenName, genesisName, houseName, lean, soulH
     fullName: `${chosenName} ${genesisName} ${houseName}`,
     lean,
     soulMark,
-    soulAlias: nameFromHex(soulMark),
+    // The spoken form of the mark: the forge gives a meaningful one
+    // (meaningful-name.js, Node-only); a v1 sound-name otherwise.
+    soulAlias: soulAlias ?? nameFromHex(soulMark),
     rate,
     items: Object.freeze(items),
   });

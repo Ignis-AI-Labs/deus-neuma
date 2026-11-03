@@ -13,7 +13,9 @@
 // It is written once, at first read, from the earliest durable fact of who
 // set the install up — the first genesis seal under the install's own
 // workspaces root — and on a fresh install by the first wallet that signs in
-// at the local desk.
+// at the local desk AND presents the install's owner claim (owner-claim.js:
+// a secret only the OS user running the app can read), so another account on
+// a shared computer cannot take a fresh install by opening the app first.
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -22,6 +24,7 @@ import { writeJsonAtomic } from './user-realm.js';
 import { upgradeAccess } from './remote/access-guard.js';
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { createLogger } from './logger.js';
+import { OWNER_CLAIM_HEADER, clearOwnerClaim, ensureOwnerClaim, ownerClaimMatches } from './owner-claim.js';
 
 const log = createLogger('InstallOwner');
 
@@ -29,6 +32,8 @@ const SCHEMA = 'install-owner/1';
 const WALLET = /^0x[a-f0-9]{40}$/;
 export const GUEST_REFUSAL = "This computer's settings belong to its owner. Your house is yours to run; "
   + 'the machine is theirs — ask them, or ask to be made a co-owner.';
+export const UNCLAIMED_REFUSAL = 'No one owns this computer yet. Sign in with the Deus Neuma app on this computer, '
+  + 'as the account that installed it, to become its owner.';
 export const DESK_REFUSAL = "This computer's settings change only at its own desk, never from a paired phone.";
 
 const recordPath = () => path.join(getSettingsDir(), 'install-owner.json');
@@ -115,6 +120,8 @@ const readRecordFile = async () => {
 const writeRecord = async (record) => {
   const next = normalizeRecord(record);
   await writeJsonAtomic(recordPath(), next);
+  // An owner stands: the claim that could seat one is spent.
+  await clearOwnerClaim().catch((error) => log.warn('owner claim not removed', { error: error.message }));
   return next;
 };
 
@@ -149,8 +156,9 @@ export const installDeskHouse = async () => {
 };
 
 /**
- * On an install no one owns yet, the first wallet at the local desk becomes
- * its owner. A no-op once an owner stands. impure (fs).
+ * On an install no one owns yet, this wallet becomes its owner. A no-op once
+ * an owner stands. Unconditional: every request reaches it only through
+ * ownerOrClaim, which asks for the owner claim first. impure (fs).
  * @param {string} wallet
  * @returns {Promise<Readonly<object>|null>}
  */
@@ -161,18 +169,48 @@ export const recordFirstLocalOwner = async (wallet) => {
   return writeRecord({ owner: wallet, recordedAt: new Date().toISOString(), source: 'first-local-sign-in' });
 };
 
+// impure (fs) — the record; on an install no one owns yet, this wallet is
+// seated only when it presents the owner claim, else the install stays unowned
+const ownerOrClaim = async (wallet, claim) => {
+  const current = await readInstallOwner();
+  if (current) return current;
+  if (!(await ownerClaimMatches(claim))) {
+    log.info('a first owner was not seated — no owner claim presented', { wallet: lower(wallet) });
+    return null;
+  }
+  return recordFirstLocalOwner(wallet);
+};
+
+const claimOf = (req) => req.headers?.[OWNER_CLAIM_HEADER];
+
+/**
+ * At boot: while no owner stands, the owner claim is there for the desk app to
+ * read; once one does, it is gone. Never fails the boot. impure (fs).
+ */
+export const prepareOwnerClaim = async () => {
+  try {
+    if (await readInstallOwner()) await clearOwnerClaim();
+    else await ensureOwnerClaim();
+  } catch (error) {
+    log.error('owner claim not prepared', { error: error.message });
+  }
+};
+
 /**
  * A sign-in at this computer's own desk: on an install no one owns yet, this
- * wallet becomes its owner. A sign-in never fails on the owner record — a
- * failure is logged, and the gate asks again at the first machine change.
- * impure (fs).
+ * wallet becomes its owner when it presents the owner claim. A sign-in never
+ * fails on the owner record — a failure is logged, and the gate asks again at
+ * the first machine change. impure (fs).
  * @param {string} wallet
+ * @param {unknown} claim - the X-Neuma-Owner-Claim header, if any
+ * @returns {Promise<'owner'|'co-owner'|'guest'|'unowned'|null>} null when unknown
  */
-export const noteLocalSignIn = async (wallet) => {
+export const noteLocalSignIn = async (wallet, claim) => {
   try {
-    await recordFirstLocalOwner(wallet);
+    return standingIn(await ownerOrClaim(wallet, claim), wallet);
   } catch (error) {
     log.error('install owner not recorded at sign-in', { error: error.message });
+    return null;
   }
 };
 
@@ -208,17 +246,19 @@ export const isLocalDesk = (req) => (req.accessScope ?? upgradeAccess(req).scope
  */
 export const machineStanding = async (req) => standingIn(await readInstallOwner(), req.walletAddress);
 
+// impure (fs) — the record as a request sees it: the first-owner seat is open
+// only at this computer's own desk, and only with the owner claim
+const recordFor = (req) => (isLocalDesk(req) ? ownerOrClaim(req.walletAddress, claimOf(req)) : readInstallOwner());
+
 /**
  * The caller's standing, where a wallet at this computer's own desk on an
- * install no one owns yet becomes its owner — the sign-in's first-local rule,
- * for a desk whose session began before the rule. impure (fs).
+ * install no one owns yet becomes its owner with the owner claim — the
+ * sign-in's first-local rule, for a desk whose session began before the rule.
+ * impure (fs).
  * @param {import('express').Request} req - after requireAuth
  * @returns {Promise<'owner'|'co-owner'|'guest'|'unowned'>}
  */
-export const deskStanding = async (req) => standingIn(
-  isLocalDesk(req) ? await recordFirstLocalOwner(req.walletAddress) : await readInstallOwner(),
-  req.walletAddress,
-);
+export const deskStanding = async (req) => standingIn(await recordFor(req), req.walletAddress);
 
 /**
  * Would the owner gate let this request change the machine? The same rule as
@@ -230,21 +270,21 @@ export const deskStanding = async (req) => standingIn(
  * @returns {Promise<boolean>}
  */
 export const passesInstallOwner = async (req) => isLocalDesk(req)
-  && ['owner', 'co-owner'].includes(standingIn(await recordFirstLocalOwner(req.walletAddress), req.walletAddress));
+  && ['owner', 'co-owner'].includes(standingIn(await recordFor(req), req.walletAddress));
 
 /**
  * The gate on every machine-wide change: the caller is the owner or a
  * co-owner AND is at this computer's own desk. On an install no one owns yet,
- * the first local wallet becomes its owner here too. Guests get a 403 that
- * says why — never a silent no-op. impure (fs).
+ * the first local wallet with the owner claim becomes its owner here too.
+ * Guests get a 403 that says why — never a silent no-op. impure (fs).
  * @param {{ownerOnly?: boolean}} [opts] - co-owners refused too
  */
 export const requireInstallOwnerOf = ({ ownerOnly = false } = {}) => async (req, res, next) => {
   try {
     if (!isLocalDesk(req)) return res.status(403).json({ error: DESK_REFUSAL, code: 'INSTALL_OWNER_DESK_ONLY' });
-    const record = await recordFirstLocalOwner(req.walletAddress);
-    const standing = standingIn(record, req.walletAddress);
+    const standing = standingIn(await recordFor(req), req.walletAddress);
     if (standing === 'owner' || (standing === 'co-owner' && !ownerOnly)) return next();
+    if (standing === 'unowned') return res.status(403).json({ error: UNCLAIMED_REFUSAL, code: 'INSTALL_OWNER_UNCLAIMED', standing });
     log.info('machine change refused to a guest', { wallet: lower(req.walletAddress), method: req.method, path: req.originalUrl });
     return res.status(403).json({ error: GUEST_REFUSAL, code: 'INSTALL_OWNER_ONLY', standing });
   } catch (error) {

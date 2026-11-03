@@ -11,6 +11,7 @@ import { expect, test } from 'vitest';
 import router from '../../backend/routes/user-files-routes.js';
 import { getRoots, setRoots } from '../../backend/services/user-files.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test.skipIf(process.platform === 'win32')('FilesApp preserves exact rename input through signed HTTP and the filesystem', async () => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-rename-'));
@@ -23,7 +24,9 @@ test.skipIf(process.platform === 'win32')('FilesApp preserves exact rename input
     await fs.writeFile(path.join(repo, ' leading-space.txt'), 'contents');
     await fs.mkdir(path.join(repo, 'dir with trailing space '));
     setRoots([repo]);
-    const { token } = await fullAuth();
+    const { token, address } = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(address);
     vite = await createServer({ configFile: false,
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(temp, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },

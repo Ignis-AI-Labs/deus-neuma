@@ -150,7 +150,7 @@ describe('the type gate itself', () => {
 });
 
 describe('THE BEING’S ACTUAL VERB: fs/read, through the real routing layer', () => {
-  // A being never sees the 16 organ names — it has five primitives, and
+  // A being never sees the 16 organ names — it has seven primitives, and
   // `fs/read` is the only read it knows (fs-primitives.js). `withFsRouting`
   // wraps the SANDBOX, so this is the exact composition a turn runs:
   //     fs/read  →  routing  →  sandbox (where sight is stamped)  →  organ

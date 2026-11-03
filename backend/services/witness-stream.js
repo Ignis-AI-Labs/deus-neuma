@@ -45,8 +45,10 @@ import {
   resolveRetryTurn,
 } from './portal-turn-input.js';
 import { runWitnessToolRounds } from './witness-tool-loop.js';
+import { noteOperatorWords } from './security/injected-value-gate.js';
 import { composeFailedRecord, failureLeavesTake, spokenThrough } from './turn-failure-record.js';
 import { compactWitnessSession } from './witness-compaction.js';
+import { compactBeforeTurn } from './context-overflow.js';
 import { nearContextBoundary } from './solo-torch.js';
 // The pure epoch/repeat law lives in witness-tool-epochs.js; its tests pin
 // this path, so the stream keeps the barrel.
@@ -189,6 +191,8 @@ export const streamWitnessTurn = async (connection, message) => {
     ? await getWalletPreset(connection.walletAddress).catch(() => undefined)
     : undefined));
   const sessionId = await ensureSession(connection, laneId);
+  // Only the operator's words exempt a planted value (injected-value-gate.js); a watch's never do.
+  noteOperatorWords(connection, thought, { origin: connection._turnOrigin || null });
   // Take identity for this turn (THE TAKES): a fresh ask opens a turn-point,
   // a retry answers the resolved point as its next take. It rides every
   // speech frame + the complete so the desk targets the take, never a new post.
@@ -245,6 +249,7 @@ export const streamWitnessTurn = async (connection, message) => {
 
   try {
     ctx.turnOperations = turnOperations ?? await openTurnOperations(connection, take);
+    await compactBeforeTurn({ connection, contextWindow: routeCapabilities?.contextWindow, compact: () => compactWitnessSession(laneId, sessionId, true), onState: (state) => safeSend(ws, { type: 'session:compact', state, automatic: true }) });
     // The assembled ground of the turn — own-lane recall, recent fold, prompt
     // sections, the composed current turn, and the composition telemetry
     // (witness-turn-context.js). ONE options object in, the wire out.
@@ -358,6 +363,7 @@ export const streamWitnessTurn = async (connection, message) => {
 
     if (interrupt.signal.reason !== QUEUED_ACTION_REASON) notifyWitnessTurnEnded(connection, laneId, companionName, sessionId, take, interrupted);
   } catch (error) {
+    connection.contextRecoveryPending = true;
     if (interrupt.signal.aborted) {
       await persistExchange(
         connection,

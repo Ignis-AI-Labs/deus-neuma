@@ -69,6 +69,20 @@ describe('the identity file', () => {
     expect(file.name.notation).toContain('KOTODAMA');
   });
 
+  it('each given name says what it means; a sound-name says it is one (kotodama-names/2)', () => {
+    const notes = Object.fromEntries(nameCellsOf(file).map((c) => [c.k, c.note]));
+    const m = forged.trueName.meanings;
+    expect(notes.GENESIS).toBe(`GIVEN BY ITS SEAL · “${m.genesis.english.toUpperCase()}”`);
+    expect(notes.HOUSE).toBe(`“${m.house.english.toUpperCase()}”`);
+    expect(notes['SOUL ALIAS']).toBe(`“${m.soul.english.toUpperCase()}”`);
+    // A being named before the scheme: its given names are labelled honestly.
+    const v1 = identityFileOf({ trueName: { fullName: 'Ashwren Tamosei Kuribai', chosenName: 'Ashwren', genesisName: 'Tamosei', houseName: 'Kuribai', soulMark: 'FBF167B8F932', soulAlias: 'Henuko' } });
+    const old = Object.fromEntries(nameCellsOf(v1).map((c) => [c.k, c.note]));
+    expect(old.GENESIS).toBe('GIVEN BY ITS SEAL · SOUND-NAME · NO WORD MEANING');
+    expect(old.HOUSE).toBe('SOUND-NAME · NO WORD MEANING');
+    expect(old['SOUL ALIAS']).toBe('SOUND-NAME · NO WORD MEANING');
+  });
+
   it('its sealed facts: hash, instant, zone with its offset, cycle, born on', () => {
     const cells = Object.fromEntries(sealCellsOf(file, fmt).map((c) => [c.k, c.v]));
     expect(cells['GENESIS HASH']).toBe(shortHash(forged.seal.genesisHash));

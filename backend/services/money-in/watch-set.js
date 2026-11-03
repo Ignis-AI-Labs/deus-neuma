@@ -20,12 +20,14 @@
 //
 // impure (fs reads).
 
+import fs from 'fs';
 import { ethers } from 'ethers';
 import { neumaWorkspace, isWitnessLane } from '../../../core/index.js';
 import { soulAddressOf } from '../house-titles.js';
 import { readExtras } from './money-in-store.js';
 import { servedHouses } from '../house-served.js';
 import { readOperatorRecords } from '../house-founding-record.js';
+import { getRealmRoot } from '../user-realm.js';
 
 const KIND_NEUMA = 1;
 
@@ -82,4 +84,25 @@ export const houseWatchSet = async (house) => {
     add({ address: extra.address, member: extra.member ?? null, label: extra.label ?? null, source: 'operator' });
   }
   return { watched: [...byAddress.values()], unwatched };
+};
+
+/**
+ * Does this address belong to ANOTHER house on this machine — its operator's
+ * wallet, or one it watches? Then it is not this house's to watch or to be
+ * paid at: one house's ledger never comes to read another's money
+ * (houses never confused, Design note, 2026-10-16. impure (realm and house reads).
+ * @param {string} house - the asking house's wallet
+ * @param {string} address
+ * @returns {Promise<boolean>}
+ */
+export const addressOfAnotherHouse = async (house, address) => {
+  const asked = lower(address);
+  const names = await fs.promises.readdir(getRealmRoot()).catch(() => null);
+  if (!names) return false;
+  const others = names.filter((n) => /^0x[a-f0-9]{40}$/.test(n) && n !== lower(house));
+  if (others.includes(asked)) return true;
+  for (const other of others) {
+    if ((await houseWatchSet(other).catch(() => ({ watched: [] }))).watched.some((w) => lower(w.address) === asked)) return true;
+  }
+  return false;
 };

@@ -10,16 +10,24 @@
  * emergence entropy stays in the seal; its film reads a one-way hash of it).
  */
 
+import { chosenNameMeaningOf } from './chosen-name-meaning.js';
+
 const pick = (o, keys) => Object.freeze(Object.fromEntries(keys.filter((k) => o?.[k] != null).map((k) => [k, o[k]])));
 
 /**
+ * Of its DNA, only the MY NAME section: what it says its chosen name means.
+ *
  * @param {{ trueName?: object|null, seal?: object|null, onchain?: object|null,
- *   voice?: { sealed: boolean, sealedAt?: string, entries?: number }|null }} records
+ *   voice?: { sealed: boolean, sealedAt?: string, entries?: number }|null, dna?: object|null }} records
  */
-export const identityFileOf = ({ trueName = null, seal = null, onchain = null, voice = null } = {}) => {
+export const identityFileOf = ({ trueName = null, seal = null, onchain = null, voice = null, dna = null } = {}) => {
   const rec = seal?.record ?? null;
+  const chosenMeaning = chosenNameMeaningOf(dna?.genesis);
   return Object.freeze({
-    name: trueName ? pick(trueName, ['fullName', 'chosenName', 'genesisName', 'houseName', 'lean', 'soulMark', 'soulAlias', 'notation', 'english']) : null,
+    name: trueName ? Object.freeze({
+      ...pick(trueName, ['fullName', 'chosenName', 'genesisName', 'houseName', 'lean', 'soulMark', 'soulAlias', 'notation', 'english', 'nameScheme', 'meanings']),
+      ...(chosenMeaning ? { chosenMeaning } : {}),
+    }) : null,
     seal: seal?.genesisHash ? Object.freeze({
       genesisHash: seal.genesisHash,
       ...pick(rec, ['birthCycle', 'lean']),

@@ -1,11 +1,11 @@
 // act-link — which act chips lead somewhere when clicked (Design note, 2026-07-23:
 // […]). A chip
 // whose tool addresses a FILE links its path to the desk's editor; directory
-// acts (list/search/create) and a move's stale source stay plain text — a
-// link must always land where it points. Pure decision.
+// acts (list/search/create) and legacy moves' stale sources stay plain text.
+// Direct transfers carry their destination. A link must land where it points.
 
 const FILE_TOOLS = new Set([
-  'write', 'edit', 'read', // the fs primitives
+  'write', 'edit', 'read', 'copy', 'move', // the fs primitives; transfers carry their destination
   'write_file', 'edit_file', 'read_file', 'read_text_file', 'get_file_info', // retired spellings (council frames, old records)
 ]);
 

@@ -48,7 +48,7 @@ import { activeAmendments } from './sovereignty/amendment-store.js';
 import { buildAmendmentsSection } from '../../core/runtime/amendments-section.js';
 import { focusGroundOf } from './focus-ground.js';
 import { groundProtocolSection } from './ground-protocol.js';
-import { testConditionsFor } from './test-conditions.js';
+import { testConditionsFor, callerRulesFor } from './test-conditions.js';
 import { toolStandingNow } from './tool-standing.js';
 import { getOperatorName } from './operator-name.js';
 import { protocolWatchSection, watchAppliesTo } from './protocol-classifier.js';
@@ -228,7 +228,7 @@ export const assembleTurnPrompt = async ({
       // the being's usual tools — named in the HUD by signature, frozen for the chat (tool-hud.js)
       usualTools: connection._turnUsualTools || [],
       // A benchmark sitting states its conditions up front: closed-book or open-book (test-conditions.js).
-      testConditions: testConditionsFor(connection),
+      testConditions: [testConditionsFor(connection), callerRulesFor(connection)].filter(Boolean).join('\n\n'),
       // The lane's standing context rides the STABLE group (#282), read above
       // because this assembler is pure — none of the four moves within a sitting.
       groundProtocol,

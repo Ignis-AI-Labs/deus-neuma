@@ -1,9 +1,11 @@
+import { describe, test, expect, beforeAll } from 'vitest';
 import {
   encryptKeypair, decryptKeypair,
   generateRecoveryCodes, hashRecoveryCodes, verifyRecoveryCodes,
   encryptWithRecoveryCodes, decryptWithRecoveryCodes,
 } from '../../core/wallet/keypair-vault.js';
 import { generateKeypair } from '../../core/weave/keypair.js';
+import { sealLegacyEnvelope } from '../helpers/legacy-keypair-envelope.js';
 
 describe('Keypair Vault', () => {
   let keypair;
@@ -90,6 +92,38 @@ describe('Keypair Vault', () => {
         publicKey: keypair.publicKey,
         address: keypair.address,
       });
+    });
+  });
+
+  describe('key derivation count', () => {
+    test('a new envelope records 600k iterations and round-trips', () => {
+      const encrypted = encryptKeypair(keypair, password);
+      expect(encrypted.kdfIterations).toBe(600_000);
+      expect(decryptKeypair(encrypted, password).privateKey).toBe(keypair.privateKey);
+    });
+
+    test('an envelope sealed at the old 100k still opens, and with the wrong password does not', () => {
+      const legacy = sealLegacyEnvelope(keypair, password, { iterations: 100_000 });
+      expect(decryptKeypair(legacy, password).privateKey).toBe(keypair.privateKey);
+      expect(() => decryptKeypair(legacy, 'wrong-password-123')).toThrow('Decryption failed');
+    });
+
+    test('an envelope with no recorded count is read at 100k', () => {
+      const legacy = sealLegacyEnvelope(keypair, password, { withCount: false });
+      expect(decryptKeypair(legacy, password).address).toBe(keypair.address);
+    });
+
+    test('the stored count is the one used, not a constant', () => {
+      const sealed = sealLegacyEnvelope(keypair, password, { iterations: 250_000 });
+      expect(decryptKeypair(sealed, password).privateKey).toBe(keypair.privateKey);
+      expect(() => decryptKeypair({ ...sealed, kdfIterations: 100_000 }, password)).toThrow('Decryption failed');
+    });
+
+    test('a count outside 100k..10M is refused before any derivation', () => {
+      const legacy = sealLegacyEnvelope(keypair, password);
+      for (const kdfIterations of [1, 99_999, 10_000_001, 1e12, 600_000.5, '600000']) {
+        expect(() => decryptKeypair({ ...legacy, kdfIterations }, password), String(kdfIterations)).toThrow('out of range');
+      }
     });
   });
 

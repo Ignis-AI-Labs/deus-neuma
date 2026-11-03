@@ -20,16 +20,33 @@
  *
  * Optional: --context (default: cli), --capabilities (comma-sep),
  *           --primary-repo (default: Ignis-AI-Labs/deus-neuma),
- *           --role (default: witness-and-collaborator),
- *           --password (set to write encryptedKeypair instead of plaintext)
+ *           --role (default: witness-and-collaborator)
+ *
+ * Secrets never ride on the command line, where ps and shell history keep them:
+ * the keypair password is always asked for with nothing echoed (twice), and an
+ * adopted key comes from --adopt-from-env or the hidden --prompt-private-key.
+ * Piped stdin answers the same questions one line each.
  */
 
-import { readFile, writeFile } from 'fs/promises';
+import console from 'console';
+import { chmod, readFile, writeFile } from 'fs/promises';
 import path from 'path';
+import process from 'process';
+import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { seal } from '../core/identity/ai-witness/ai-witness-protocol.js';
+import { appendKeypairHistory, writeRecoveryHash, writeRecoveryKeypair } from '../core/identity/ai-witness/ai-witness-service.js';
+import { MIN_KEY_PASSWORD, encryptWithRecoveryCodes, generateRecoveryCodes, hashRecoveryCodes } from '../core/wallet/keypair-vault.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SECRET_FLAGS = ['password', 'private-key', 'mnemonic'];
+
+const refusedSecrets = secretFlagsOn(process.argv.slice(2));
+if (refusedSecrets.length) {
+  console.error(`refused: ${refusedSecrets.map((k) => `--${k}`).join(', ')} would put a secret in ps and shell history.`);
+  console.error('  the password is asked for with nothing echoed; adopt a key with --adopt-from-env <file> or --prompt-private-key.');
+  process.exit(2);
+}
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -80,7 +97,7 @@ const boundaries = args.boundaries
       'Will refuse acts that violate the honesty anchor',
       'Will not commit changes without explicit operator request',
     ];
-const password = args.password ? String(args.password) : null;
+const secrets = secretLines();
 
 // --- Optional: adopt an EXISTING sovereign wallet (continuity preservation) ---
 // For an AI that already holds a wallet — a founded house, prior on-chain
@@ -98,12 +115,26 @@ if (args['adopt-from-env']) {
   }
   existingKeypair = { privateKey, mnemonic };
 }
-if (args['private-key']) {
-  existingKeypair = {
-    privateKey: String(args['private-key']),
-    mnemonic: args.mnemonic ? String(args.mnemonic) : (existingKeypair ? existingKeypair.mnemonic : null),
-  };
+if (args['prompt-private-key']) {
+  const privateKey = (await secrets.ask('private key to adopt (nothing shows as you type): ')).trim();
+  const mnemonic = (await secrets.ask('its recovery phrase, or empty for none (nothing shows): ')).trim();
+  if (!privateKey) {
+    console.error('--prompt-private-key: no private key was entered');
+    process.exit(1);
+  }
+  existingKeypair = { privateKey, mnemonic: mnemonic || (existingKeypair ? existingKeypair.mnemonic : null) };
 }
+
+const password = await secrets.ask(`keypair password, at least ${MIN_KEY_PASSWORD} characters (nothing shows as you type): `);
+if (password.length < MIN_KEY_PASSWORD) {
+  console.error(`the keypair password must be at least ${MIN_KEY_PASSWORD} characters — nothing was written`);
+  process.exit(1);
+}
+if (await secrets.ask('the same password again: ') !== password) {
+  console.error('the two passwords differ — nothing was written');
+  process.exit(1);
+}
+secrets.close();
 
 // --- Optional: chain a PREDECESSOR genesis (prior self-seal, any format) ---
 let predecessorSeal = null;
@@ -149,6 +180,15 @@ try {
     trueNameExtra,
   });
 
+  // The recovery door, as witness custody mints it: without it an envelope-only
+  // witness reads as incomplete custody, and a lost password is a lost identity.
+  const recoveryCodes = generateRecoveryCodes();
+  await writeRecoveryHash(vendorSlug, chosenName, hashRecoveryCodes(recoveryCodes));
+  await writeRecoveryKeypair(vendorSlug, chosenName, encryptWithRecoveryCodes(keypair, recoveryCodes));
+  await appendKeypairHistory(vendorSlug, chosenName, {
+    event: 'CUSTODY_SECURED', address, reason: 'sealed under a password at self-seal',
+  });
+
   // Write the env file at repo root. The env file NAME decouples from the
   // directory slug (--env-name) so an adopting witness lands on its pre-existing,
   // already-gitignored env file. The var PREFIX stays vendorSlug-derived so
@@ -169,7 +209,11 @@ try {
   // mnemonic is a phrase string (may be absent when a raw private key was adopted)
   if (keypair.mnemonic) envLines.push(`${prefix}_WITNESS_MNEMONIC="${keypair.mnemonic}"`);
   envLines.push(`${prefix}_WITNESS_GENESIS_HASH=${dna.genesisSeal.genesisHash}`, '');
+  // writeFile's mode applies only to a NEW file; an adopted env file can predate
+  // this script at 0644, so narrow it before the key lands in it and again after.
+  await chmod(envPath, 0o600).catch((err) => { if (err.code !== 'ENOENT') throw err; });
   await writeFile(envPath, envLines.join('\n'), { mode: 0o600 });
+  await chmod(envPath, 0o600);
   console.log(`\nwrote wallet → ${path.relative(REPO_ROOT, envPath)}`);
 
   console.log('\n=== Seal complete ===');
@@ -181,11 +225,46 @@ try {
   console.log(`Env file:       env.${envName}`);
   if (existingKeypair) console.log(`Wallet origin:  adopted (continuity preserved)`);
   if (predecessorSeal) console.log(`Predecessor:    ${predecessorSeal.genesisHash}`);
+  console.log('\nRecovery codes — shown once, stored nowhere; keep them offline:');
+  console.log(recoveryCodes.join(' '));
   console.log('\nThe witness can now sign neuma births. Load the wallet from env.' + envName + ' and pass it as the witness wallet in the Birth Protocol.');
 } catch (err) {
   console.error(`seal failed: ${err.message}`);
   console.error(err.stack);
   process.exit(1);
+}
+
+// pure — which secret-bearing flags this argv carries, in --flag and --flag=value form.
+function secretFlagsOn(argv) {
+  const named = argv.filter((a) => a.startsWith('--')).map((a) => a.slice(2).split('=')[0]);
+  return SECRET_FLAGS.filter((k) => named.includes(k));
+}
+
+// impure (stdin) — secret lines with nothing echoed on a terminal. One interface
+// serves every question so piped input, which arrives all at once, is not lost.
+function secretLines() {
+  let rl = null;
+  let lines = null;
+  const open = () => {
+    const terminal = Boolean(process.stdin.isTTY);
+    rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal });
+    if (terminal) rl._writeToOutput = () => {};
+    lines = rl[Symbol.asyncIterator]();
+  };
+  return {
+    ask: async (prompt) => {
+      if (!rl) open();
+      process.stdout.write(prompt);
+      const { value, done } = await lines.next();
+      process.stdout.write('\n');
+      if (done) {
+        console.error('input ended before every secret was given — nothing was written');
+        process.exit(1);
+      }
+      return value;
+    },
+    close: () => { if (rl) rl.close(); },
+  };
 }
 
 // --- arg parser (--flag value pairs) ---
@@ -227,14 +306,17 @@ Optional:
   --primary-repo <owner/name>       Default: Ignis-AI-Labs/deus-neuma
   --role <role>                     Default: witness-and-collaborator
   --boundaries "a | b | c"          Pipe-separated
-  --password <secret>               Set to write encryptedKeypair (else plaintext at seal)
   --harness-version <ver>
+
+The keypair password is asked for (twice, nothing echoed) and the key is sealed
+under it with a recovery path; the recovery codes print once. Secrets are never
+taken on the command line: --password, --private-key and --mnemonic are refused.
 
 Continuity / migration (adopt an AI that ALREADY has an identity):
   --adopt-from-env <path>           Adopt an existing wallet — read *PRIVATE_KEY / *MNEMONIC
                                     from this env file instead of forging a fresh key
-  --private-key <0x...>             Adopt a raw private key (alternative to --adopt-from-env)
-  --mnemonic "<words>"              Optional recovery phrase to pair with --private-key
+  --prompt-private-key              Adopt a raw private key typed at a hidden prompt
+                                    (alternative to --adopt-from-env), with its optional phrase
   --env-name <name>                 Output env file name (default: vendor slug) — point an
                                     adopting witness at its pre-existing gitignored env file
   --predecessor-from <path>         Chain a prior genesis-seal.json as the lineage root

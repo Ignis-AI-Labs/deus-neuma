@@ -9,6 +9,7 @@ import { createServer } from 'vite';
 import { chromium } from '@playwright/test';
 import { expect, test } from 'vitest';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('folder color applies live, survives reload and presets, and releases to lavender', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-look-folder-'));
@@ -18,6 +19,8 @@ test('folder color applies live, survives reload and presets, and releases to la
   let vite; let server; let browser;
   try {
     const auth = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     const app = express();
     app.use(express.json());
     app.use('/api/v1/look', (await import('../../backend/routes/look-routes.js')).default);

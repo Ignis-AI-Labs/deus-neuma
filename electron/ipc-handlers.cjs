@@ -19,6 +19,9 @@ const { cleanNotifyText, activationOf } = require('./notify-text.cjs');
 const { dragIcon } = require('./drag-icon.cjs');
 const { define } = require('./dictionary.cjs');
 const { primaryBounds } = require('./primary-placement.cjs');
+const { dataRootFor } = require('./connections.cjs');
+const { readOwnerClaim } = require('./owner-claim.cjs');
+const { openDevBrowser } = require('./dev-browser.cjs');
 
 // impure — register every handler on ipcMain. `deskWindows` is the
 // createDeskWindows() surface (desk-windows.cjs).
@@ -145,6 +148,12 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
   // require 'electron', hence IPC rather than a require of hotkeys.cjs.)
   handle('hotkeys:list', () => APP_HOTKEYS);
 
+  // A fresh install's owner claim, for the desk's own first sign-in only
+  // (owner-claim.cjs): null once an owner stands.
+  handle('app:ownerClaim', () => readOwnerClaim(dataRootFor({
+    env: process.env, isPackaged: app.isPackaged, home: app.getPath('home'), repoRoot: path.join(__dirname, '..'),
+  })));
+
   // Open a URL in the user's real browser (used by the wallet bridge to reach
   // their Rabby/MetaMask). http(s) only — never file:// or custom schemes,
   // even though the renderer is our own app.
@@ -178,6 +187,8 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
     shell.showItemInFolder(rawPath);
     return { ok: true };
   });
+
+  handle('browser:open', (_event, url) => openDevBrowser(url));
 
   // THE IMAGE FORGE workbench (FR-37) — ComfyUI's own UI in a dedicated,
   // UNPRIVILEGED child window. ComfyUI is a high-privilege tool; this

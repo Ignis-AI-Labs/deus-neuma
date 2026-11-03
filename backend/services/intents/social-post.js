@@ -19,7 +19,7 @@ import { readMediaFile, setAltText, uploadMedia } from '../social/x-media.js';
 import { posterFor } from '../social/poster-registry.js';
 import { resolvePostMedia } from '../social/post-media.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
-import { withDisclosureLine, DISCLOSURE_LINE } from '../social/disclosure-line.js';
+import { markedMedia } from '../social/disclosure-line.js';
 
 // Defensive ceiling only — each API is the authority on its own limit (local
 // counting gets CJK/URL weighting wrong in both directions).
@@ -59,10 +59,9 @@ export const socialPostIntent = Object.freeze({
     if (channel.queueOnly) {
       return { ok: false, status: 'invalid', reason: `${channel.name} posts go through the campaign queue (social/queue) so your operator sees the video before it goes out; there is no instant ${channel.name} post` };
     }
-    // Every word a being publishes says it is AI-made (disclosure-line.js),
-    // and the line counts against the platform's own ceiling.
-    const text = typeof payload?.text === 'string'
-      ? withDisclosureLine({ channelId: channel.id, text: payload.text, authorNeumaId: connection.companion?.neumaId || 'being' }) : '';
+    // The words go out exactly as written; that a being made the post rides in
+    // its metadata, its images' alt text (disclosure-line.js).
+    const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
     // Media is authorised BEFORE the operator's card: an unreachable path
     // should cost the operator nothing, and the card they answer should
     // describe a post that can actually be sent.
@@ -72,7 +71,7 @@ export const socialPostIntent = Object.freeze({
       return { ok: false, status: 'invalid', reason: text ? 'the post text is far beyond any postable length' : 'the post needs text' };
     }
     if (channel.maxChars && text.length > channel.maxChars) {
-      return { ok: false, status: 'invalid', reason: `the post is ${text.length} characters with the disclosure line "${DISCLOSURE_LINE}" — ${channel.name} allows at most ${channel.maxChars}` };
+      return { ok: false, status: 'invalid', reason: `the post is ${text.length} characters — ${channel.name} allows at most ${channel.maxChars}` };
     }
     // A key in a public post is out for good: refused before any card.
     const secret = checkOutboundSecrets('the post', [text, ...resolvedMedia.media.map((m) => m.alt)]);
@@ -90,9 +89,11 @@ export const socialPostIntent = Object.freeze({
     const chosen = chooseAccount(usable, payload, channel);
     if (!chosen.ok) return { ok: false, status: 'denied', reason: chosen.reason };
     const postsAs = await postsAsWords(house, chosen.account);
+    // A being's post: its images' alt text opens with the AI marker, on the card as it will go out.
+    const media = markedMedia({ authorNeumaId: 'being', media: resolvedMedia.media });
     return {
       ok: true,
-      value: { channel, accountId: chosen.account.id, text, media: resolvedMedia.media, house, card: { 'posts as': postsAs, ...payload, text } },
+      value: { channel, accountId: chosen.account.id, text, media, house, card: { 'posts as': postsAs, ...payload, text, ...(media.length ? { media } : {}) } },
     };
   },
 

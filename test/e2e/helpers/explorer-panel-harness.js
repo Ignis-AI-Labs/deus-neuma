@@ -1,4 +1,5 @@
 // @ts-check
+/* global process, fetch, setTimeout, localStorage, sessionStorage */
 import { test, expect } from '@playwright/test';
 import { ethers } from 'ethers';
 import { spawn } from 'child_process';
@@ -8,6 +9,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { claimOwner } from '../../helpers/claim-owner.js';
+import { ownerClaimHeaders } from './owner-claim.js';
 
 /**
  * Shared harness for the EXPLORER PANEL e2e specs (test/e2e/explorer-panel-*.spec.js)
@@ -55,14 +57,14 @@ const freePort = async (start) => {
 };
 
 /** Authenticate a disposable test wallet through the isolated backend. Impure. */
-export const mintToken = async (base = BASE) => {
+export const mintToken = async (base = BASE, ownerHeaders = {}) => {
   const w = ethers.Wallet.createRandom();
   const addr = w.address;
   const { challenge } = await (await fetch(`${base}/api/v1/auth/challenge?address=${addr}`)).json();
   const signature = await w.signMessage(challenge);
   const res = await fetch(`${base}/api/v1/auth/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders },
     body: JSON.stringify({ address: addr, signature, challenge }),
   });
   const { token } = await res.json();
@@ -198,6 +200,8 @@ export const setupExplorerPanel = () => {
       PORT: String(BPORT),
       FRONTEND_PORT: String(FPORT),
       WORKSPACES_ROOT: root,
+      NEUMA_DATA_ROOT: path.join(root, 'data'),
+      NEUMA_ROOT_LOCK_PATH: path.join(root, 'root-lock.json'),
       NEUMA_WORKSPACE_SETTINGS_PATH: path.join(root, 'workspace-settings.json'),
       NEUMA_FILES_SETTINGS_PATH: path.join(root, 'files-settings.json'),
       NEUMA_REALM_SETTINGS_PATH: path.join(root, 'realm-settings.json'),
@@ -213,7 +217,7 @@ export const setupExplorerPanel = () => {
     await waitFor(`${BASE}/api/v1/health`);
     await waitFor([`http://127.0.0.1:${FPORT}/`, `http://[::1]:${FPORT}/`]);
 
-    ({ token, addr } = await mintToken());
+    ({ token, addr } = await mintToken(BASE, ownerClaimHeaders(path.join(root, 'data'))));
     await claimOwner(root, NEUMA_ID, addr);
     const sec = await (await fetch(`${BASE}/api/v1/security/status`, { headers: { Authorization: `Bearer ${token}` } })).json().catch(() => null);
     const activeRoot = sec?.roots?.active;

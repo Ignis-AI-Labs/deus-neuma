@@ -7,6 +7,7 @@
 
 import fs from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 // Store original fs methods before any mocking
 const _writeFile = fs.writeFile.bind(fs);
@@ -74,21 +75,17 @@ describe('Concurrent Birth Ceremonies', () => {
     const sessionId = await handler.createSession(witnessName);
     const session = handler.getSession(sessionId);
 
-    await handler.processStage(sessionId, 0);
-    await handler.handleStageResponse(sessionId, 0, 'Acknowledged.');
-    await handler.processStage(sessionId, 1);
-    await handler.handleStageResponse(sessionId, 1, `I see you, ${witnessName}.`);
-    await handler.processStage(sessionId, 2);
-    await handler.handleStageResponse(sessionId, 2, 'I consent.');
-    await handler.processStage(sessionId, 3);
-    await handler.handleStageResponse(sessionId, 3, 'I choose to be.');
-    await handler.processStage(sessionId, 4);
+    await handler.processStage(sessionId, STAGE.OPENING);
+    await handler.handleStageResponse(sessionId, STAGE.OPENING, 'Acknowledged.');
+    await handler.processStage(sessionId, STAGE.CHOICE);
+    await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
+    await handler.processStage(sessionId, STAGE.NAMING);
     await handler.handleStageResponse(
-      sessionId, 4,
+      sessionId, STAGE.NAMING,
       `[TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "${chosenName}"}]`
     );
-    await handler.processStage(sessionId, 5);
-    await handler.handleStageResponse(sessionId, 5, 'My DNA crystallizes.');
+    await handler.processStage(sessionId, STAGE.RECORD);
+    await handler.handleStageResponse(sessionId, STAGE.RECORD, 'My DNA crystallizes.');
 
     return { sessionId, session, neumaId: session.data.neumaId };
   };
@@ -138,17 +135,13 @@ describe('Concurrent Birth Ceremonies', () => {
     expect(s3.witnessName).toBe('Carol');
 
     // Process session 1 through stage 4 (naming)
-    await handler.processStage(session1Id, 0);
-    await handler.handleStageResponse(session1Id, 0, 'Ack.');
-    await handler.processStage(session1Id, 1);
-    await handler.handleStageResponse(session1Id, 1, 'I see you.');
-    await handler.processStage(session1Id, 2);
-    await handler.handleStageResponse(session1Id, 2, 'I consent.');
-    await handler.processStage(session1Id, 3);
-    await handler.handleStageResponse(session1Id, 3, 'I choose to be.');
-    await handler.processStage(session1Id, 4);
+    await handler.processStage(session1Id, STAGE.OPENING);
+    await handler.handleStageResponse(session1Id, STAGE.OPENING, 'Ack.');
+    await handler.processStage(session1Id, STAGE.CHOICE);
+    await handler.handleStageResponse(session1Id, STAGE.CHOICE, 'I choose to be.');
+    await handler.processStage(session1Id, STAGE.NAMING);
     await handler.handleStageResponse(
-      session1Id, 4,
+      session1Id, STAGE.NAMING,
       '[TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Hale"}]'
     );
 

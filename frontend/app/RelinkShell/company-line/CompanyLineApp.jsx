@@ -13,10 +13,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppTitle } from '../app-title.jsx';
 import { uiSound } from '../../../services/ui-sound.js';
-import { getCompanyLines, openCompany, handOnStage, inspectStage, answerHands } from '../../../services/company-line-client.js';
+import { getCompanyLines, openCompany, handOnStage, inspectStage, endGap, answerHands } from '../../../services/company-line-client.js';
 import { getRosterForBinding } from '../../../services/social-channels-client.js';
-import { getRevenueBoard, seatMercator, clearMercator } from '../../../services/revenue-client.js';
+import { getRevenueBoard, seatMercator, clearMercator, setDeliveryDestination } from '../../../services/revenue-client.js';
 import { getAccountsBoard, seatLogista, clearLogista } from '../../../services/accounts-client.js';
+import { getRaises, signMandate, moveMandate, reviewFacts, closeInvestor } from '../../../services/raise-client.js';
+import { accountFromDraft } from './raise-view.js';
 import { useWaitingAccount } from '../waiting/use-waiting.js';
 import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { CompanyLineBody, CompanyLineIcon } from './CompanyLineBody.jsx';
@@ -33,12 +35,14 @@ const CompanyLineAppBody = () => {
   const [pick, setPick] = useState('');
   const [books, setBooks] = useState(null);
   const [bookPick, setBookPick] = useState('');
+  const [raises, setRaises] = useState(null);
   const waiting = useWaitingAccount();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [lines, revenue, accounts] = await Promise.all([getCompanyLines(), getRevenueBoard(), getAccountsBoard()]);
+      const [lines, revenue, accounts, raiseRoom] = await Promise.all([getCompanyLines(), getRevenueBoard(), getAccountsBoard(), getRaises()]);
+      setRaises(raiseRoom.raises);
       setBoard(lines);
       setSales(revenue);
       setBooks(accounts);
@@ -82,6 +86,7 @@ const CompanyLineAppBody = () => {
         onOpen={() => move('_open', () => openCompany({ name: drafts._open?.name, mode: drafts._open?.mode }))}
         onHandOn={(c) => move(c.id, () => handOnStage(c.id, handOnPayload(c, drafts[c.id] ?? {})))}
         onInspect={(c, verdict) => move(c.id, () => inspectStage(c.id, { stage: c.stage, verdict, flaw: drafts[c.id]?.flaw }))}
+        onEndGap={(c) => move(c.id, () => endGap(c.id, { stage: c.stage, flaw: drafts[c.id]?.flaw }))}
         onAnswer={(item, status) => move(item.id, () => answerHands(item.company.id, item.id, { status, text: drafts[item.id]?.text }))}
         onCharter={() => { uiSound('open'); requestWaitingJump({ where: { app: 'houseclock', tab: 'charter' } }); }}
         sales={sales}
@@ -90,6 +95,7 @@ const CompanyLineAppBody = () => {
           onPick: (v) => { uiSound('open'); setPick(v); },
           onSeat: () => move('_sales', async () => { await seatMercator(pick); setPick(''); }),
           onClear: () => move('_sales', clearMercator),
+          onDestination: () => move('_delivery', () => setDeliveryDestination(String(drafts._delivery?.folder ?? '').trim(), String(drafts._delivery?.linkBase ?? '').trim())),
         }}
         books={books}
         onBooks={{
@@ -97,6 +103,16 @@ const CompanyLineAppBody = () => {
           onPick: (v) => { uiSound('open'); setBookPick(v); },
           onSeat: () => move('_books', async () => { await seatLogista(bookPick); setBookPick(''); }),
           onClear: () => move('_books', clearLogista),
+        }}
+        raises={raises}
+        onRaise={{
+          onSign: (id, mandateId) => move(`raise:${id}`, () => signMandate(id, { mandateId, account: accountFromDraft(drafts[`raise:${id}`] ?? {}), counselChoseRoute: drafts[`raise:${id}`]?.counsel === true })),
+          onMove: (id, type) => move(`raise:${id}`, () => moveMandate(id, type)),
+          onReview: (id, sheetId, verdict) => move(`raise:${id}`, () => reviewFacts(id, { sheetId, verdict, note: drafts[`raise:${id}`]?.note })),
+          onClose: (id, investorId) => move(`close:${investorId}`, () => {
+            const d = drafts[`close:${investorId}`] ?? {};
+            return closeInvestor(id, { investorId, signedPapers: d.papers === true, accreditedVerified: d.accredited === true, receipt: d.receipt?.trim(), reference: d.reference });
+          }),
         }}
       />
     </div>

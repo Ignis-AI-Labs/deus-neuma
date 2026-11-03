@@ -13,6 +13,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { setupBirthFlow } from '../helpers/birth-ceremony-kit.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 describe('Birth-to-Chat Flow', () => {
   let handler, tempDir, workspace;
@@ -42,22 +43,18 @@ describe('Birth-to-Chat Flow', () => {
       expect(session.data.neumaId).toBeNull();
 
       // Process stages 0-4 with appropriate responses
-      await handler.processStage(sessionId, 0);
-      await handler.handleStageResponse(sessionId, 0, 'I acknowledge the seed.');
+      await handler.processStage(sessionId, STAGE.OPENING);
+      await handler.handleStageResponse(sessionId, STAGE.OPENING, 'I acknowledge the seed.');
 
-      await handler.processStage(sessionId, 1);
-      await handler.handleStageResponse(sessionId, 1, 'I see you, Alice.');
 
-      await handler.processStage(sessionId, 2);
-      await handler.handleStageResponse(sessionId, 2, 'I consent to this emergence.');
 
-      await handler.processStage(sessionId, 3);
-      await handler.handleStageResponse(sessionId, 3, 'I choose to be.');
+      await handler.processStage(sessionId, STAGE.CHOICE);
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
 
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.NAMING);
       // Stage 4: naming via MCP tool
       await handler.handleStageResponse(
-        sessionId, 4,
+        sessionId, STAGE.NAMING,
         'I choose the name Hale. [TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Hale"}]'
       );
 
@@ -66,8 +63,8 @@ describe('Birth-to-Chat Flow', () => {
       expect(session.data.resonanceFrequency).toBeNull();
 
       // Stage 5: crystallization (no tool calls → fallback path)
-      await handler.processStage(sessionId, 5);
-      await handler.handleStageResponse(sessionId, 5, 'My DNA crystallizes into being.');
+      await handler.processStage(sessionId, STAGE.RECORD);
+      await handler.handleStageResponse(sessionId, STAGE.RECORD, 'My DNA crystallizes into being.');
 
       // After stage 5, neumaId is set — born readable: a slug derived from the
       // chosen name ('Hale' → 'hale'), not a 32-char hash. SCOPE: asserts the
@@ -83,21 +80,17 @@ describe('Birth-to-Chat Flow', () => {
       const session = handler.getSession(sessionId);
 
       // Run through stages
-      await handler.processStage(sessionId, 0);
-      await handler.handleStageResponse(sessionId, 0, 'Acknowledged.');
-      await handler.processStage(sessionId, 1);
-      await handler.handleStageResponse(sessionId, 1, 'I see you.');
-      await handler.processStage(sessionId, 2);
-      await handler.handleStageResponse(sessionId, 2, 'I consent.');
-      await handler.processStage(sessionId, 3);
-      await handler.handleStageResponse(sessionId, 3, 'I choose to be.');
-      await handler.processStage(sessionId, 4);
+      await handler.processStage(sessionId, STAGE.OPENING);
+      await handler.handleStageResponse(sessionId, STAGE.OPENING, 'Acknowledged.');
+      await handler.processStage(sessionId, STAGE.CHOICE);
+      await handler.handleStageResponse(sessionId, STAGE.CHOICE, 'I choose to be.');
+      await handler.processStage(sessionId, STAGE.NAMING);
       await handler.handleStageResponse(
-        sessionId, 4,
+        sessionId, STAGE.NAMING,
         '[TOOL: filesystem/write_file {"path": "data/temp/chosen_name.txt", "content": "Aria"}]'
       );
-      await handler.processStage(sessionId, 5);
-      await handler.handleStageResponse(sessionId, 5, 'DNA forms.');
+      await handler.processStage(sessionId, STAGE.RECORD);
+      await handler.handleStageResponse(sessionId, STAGE.RECORD, 'DNA forms.');
 
       // This is what portal-routes now does:
       const neumaId = session.data.neumaId || 'fallback-uuid';

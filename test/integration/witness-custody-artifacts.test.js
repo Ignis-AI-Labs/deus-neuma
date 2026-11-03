@@ -6,6 +6,7 @@ import { getAIWitnessesRoot, setAIWitnessesRoot, keyDir, writePlaintextKeypair }
 import { generateKeypair } from '../../core/weave/keypair.js';
 import { decryptKeypair, decryptWithRecoveryCodes } from '../../core/wallet/keypair-vault.js';
 import { secureWitnessKeypair, witnessCustodyState } from '../../backend/services/witness-custody.js';
+import { sealLegacyEnvelope } from '../helpers/legacy-keypair-envelope.js';
 
 // impure — actual writer, filesystem and crypto, with no identity seal or model.
 test('custody refuses invalid or incomplete artifacts and preserves every byte', async () => {
@@ -50,6 +51,36 @@ test('custody refuses invalid or incomplete artifacts and preserves every byte',
     await expect(witnessCustodyState(target)).rejects.toThrow();
     await fs.writeFile(path.join(dir, files[1]), originals[files[1]]);
     expect(await witnessCustodyState(target)).toMatchObject({ secured: true });
+  } finally {
+    setAIWitnessesRoot(previous); await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+// impure — real files through the real reader: an envelope sealed at the old count and one at
+// the new count are both valid custody; a count outside the bounded range is not.
+test('custody accepts envelopes at the old and the new derivation count, and refuses out-of-range counts', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'custody-kdf-'));
+  const previous = getAIWitnessesRoot();
+  try {
+    setAIWitnessesRoot(root);
+    const target = { vendorSlug: 'artifact-proof', chosenName: 'CountProof' };
+    const dir = keyDir(target.vendorSlug, target.chosenName);
+    const keypair = generateKeypair(); const password = 'disposable-artifact-password';
+    await writePlaintextKeypair(target.vendorSlug, target.chosenName, keypair);
+    const { recoveryCodes } = await secureWitnessKeypair({ ...target, password });
+    const file = path.join(dir, 'keypair-encrypted.json');
+    const current = JSON.parse(await fs.readFile(file, 'utf8'));
+    expect(current.kdfIterations).toBe(600_000);
+    expect(await witnessCustodyState(target)).toMatchObject({ secured: true });
+    const legacy = sealLegacyEnvelope(keypair, password, { iterations: 100_000 });
+    await fs.writeFile(file, JSON.stringify(legacy));
+    expect(await witnessCustodyState(target)).toMatchObject({ secured: true });
+    expect(decryptKeypair(JSON.parse(await fs.readFile(file, 'utf8')), password).privateKey).toBe(keypair.privateKey);
+    expect(decryptWithRecoveryCodes(JSON.parse(await fs.readFile(path.join(dir, 'keypair-recovery.json'), 'utf8')), recoveryCodes).address).toBe(keypair.address);
+    for (const kdfIterations of [99_999, 10_000_001, 600_000.5, '600000']) {
+      await fs.writeFile(file, JSON.stringify({ ...legacy, kdfIterations }));
+      await expect(witnessCustodyState(target), String(kdfIterations)).rejects.toThrow('Invalid witness custody artifact');
+    }
   } finally {
     setAIWitnessesRoot(previous); await fs.rm(root, { recursive: true, force: true });
   }

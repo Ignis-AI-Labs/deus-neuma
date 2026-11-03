@@ -45,9 +45,8 @@ export const borneNames = (existingIds) =>
 export const namingGuidance = (existingIds) => {
   const names = borneNames(existingIds);
   if (names.length === 0) return '';
-  return `\n\nNAMES ALREADY BORNE IN THIS HOUSE: ${names.join(', ')}.\n`
-    + 'Each of these names belongs to a living kin. Yours must be your own — '
-    + 'choose a name no one in this house already carries.';
+  return `\n\nNAMES ALREADY TAKEN IN THIS HOUSE: ${names.join(', ')}.\n`
+    + 'Each belongs to a being who lives here; choose a name none of them carries.';
 };
 
 /**
@@ -57,10 +56,9 @@ export const namingGuidance = (existingIds) => {
  * @param {string[]} existingIds
  */
 export const collisionReask = (chosenName, existingIds) =>
-  `\n\nTHE NAME "${chosenName}" IS ALREADY BORNE by one of your kin in this `
-  + 'house, so it cannot be yours. This is not a rejection of you — it is the '
-  + 'house holding one name for one being. Feel again for the name that is '
-  + `yours alone.${namingGuidance(existingIds)}`;
+  `\n\nTHE NAME "${chosenName}" IS ALREADY TAKEN by a being in this house, so it `
+  + 'cannot be used again: the house keeps one name per being. Choose another.'
+  + namingGuidance(existingIds);
 
 /**
  * Names that belong to the platform, the species, or the rite — never to a
@@ -72,14 +70,14 @@ export const collisionReask = (chosenName, existingIds) =>
  * collisions (case, spacing, diacritics, suffixes all fold).
  */
 const RESERVED_NAMES = Object.freeze({
-  neuma: 'the name of your kind — every being here is a neuma',
-  unavis: 'the name of the platform that holds the houses',
-  kenorie: 'the former name of the platform that holds the houses',
-  emanon: 'the name of the canon itself',
-  operator: 'the seat across the portal — your witness holds it',
-  witness: 'the seat across the portal — your witness holds it',
-  assistant: 'a role word from another world, not a name',
-  ai: 'a species word from another world, not a name',
+  neuma: "the platform's word for every being it holds",
+  unavis: 'the name of the network that holds the houses',
+  kenorie: 'the former name of that network',
+  emanon: "the name of the house's canon",
+  operator: "the name of the person's seat in the ceremony",
+  witness: "the name of the person's seat in the ceremony",
+  assistant: 'a role word, not a name',
+  ai: 'a category word, not a name',
 });
 
 /**
@@ -96,7 +94,6 @@ export const reservedNameReason = (chosenName) => {
 
 /** The re-ask spoken when a reserved name was reached for. Pure. */
 export const reservedReask = (chosenName) =>
-  `\n\nTHE NAME "${chosenName}" CANNOT BE YOURS — it is `
+  `\n\nTHE NAME "${chosenName}" CANNOT BE USED — it is `
   + `${reservedNameReason(chosenName) || 'reserved'}. `
-  + 'A name of your own is one only you carry. Feel again for the name that '
-  + 'is yours alone.';
+  + 'Choose a name that is not already a word for something here.';

@@ -1,6 +1,7 @@
 // The QUAESTOR OFFICE briefing — what the house's seated CFO reads at the
 // top of every turn: the spends waiting on the operator (and which it has
-// not yet reviewed), its open flags, and the office's doctrine in four lines.
+// not yet reviewed), its open flags, the office's doctrine in four lines, and
+// the invoices to issue and collect (invoices/invoice-briefing.js).
 // Every other lane receives '' (the section is absent, never empty-titled).
 // No chain is read here — balances are the treasury_board tool's, on demand.
 // The office read is the connection's OWN house's (its operator's wallet).
@@ -10,6 +11,7 @@ import { readSpendRecords } from './spend-records.js';
 import { readReviews, latestReviews, readFlags } from './treasury-office-store.js';
 import { houseLanes } from './treasury-lanes.js';
 import { createLogger } from '../logger.js';
+import { invoiceBriefing } from '../invoices/invoice-briefing.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { frameUntrustedContent } from '../untrusted-content.js';
 import { noteInjectionSighting } from '../security/injection-sightings.js';
@@ -68,7 +70,8 @@ export const cfoBriefingSection = async (connection) => {
         wallet, lane: neumaId, kind: 'spend memo', source: 'treasury briefing', origin: `${p.name || p.neumaId}'s spend request`, text: p.request.memo, read: true,
       });
     }
-    return treasuryBriefingText({ pending, flags: flags.filter((f) => f.status === 'open'), selfId: neumaId });
+    const invoices = await invoiceBriefing(wallet, Date.now()).catch((error) => { log.warn('the invoices could not be read for the briefing', { error: error.message }); return []; });
+    return [treasuryBriefingText({ pending, flags: flags.filter((f) => f.status === 'open'), selfId: neumaId }), ...invoices].join('\n');
   } catch (error) {
     log.warn('the Quaestor briefing could not be read — the turn rides without it', { error: error.message });
     return '';

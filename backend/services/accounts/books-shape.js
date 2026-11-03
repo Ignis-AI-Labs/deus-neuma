@@ -17,20 +17,12 @@
 // PURE, but for the random ids.
 
 import crypto from 'crypto';
+import { sourceLaw } from '../company-line/source-law.js';
 
 export const CATEGORIES = Object.freeze(['revenue', 'investment', 'cost-of-sales', 'compute', 'software', 'fees', 'taxes', 'contractors', 'other']);
 const CURRENCY = /^[A-Z]{2,6}$/;
 const clean = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '').slice(0, max);
-const isSource = (v) => {
-  const s = clean(v, 300);
-  if (/^(invoice|receipt|bank|statement|document):\s*\S.{4,}/i.test(s) || (s.startsWith('repos/') && s.length > 8)) return true;
-  try {
-    return new URL(s).protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-const SOURCE_WORDS = 'a source: an https link, a repos/ path, or "invoice: …", "bank: …", "receipt: …"';
+const { isSource, words: SOURCE_WORDS } = sourceLaw(['invoice', 'bank', 'receipt', 'statement', 'document']);
 
 const id = (prefix) => `${prefix}-${crypto.randomBytes(4).toString('hex')}`;
 

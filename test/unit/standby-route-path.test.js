@@ -24,6 +24,7 @@ import express from 'express';
 import substrateRouter from '../../backend/routes/substrate-routes.js';
 import { createSessionToken } from '../../backend/services/auth.js';
 import { BASE } from '../../frontend/services/standby.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -47,6 +48,8 @@ let token = '';
 
 beforeAll(async () => {
   token = createSessionToken('0x1111111111111111111111111111111111111111');
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner('0x1111111111111111111111111111111111111111');
   const app = express();
   app.use(express.json());
   app.use(mountedPrefix(), substrateRouter); // mounted exactly as the server does

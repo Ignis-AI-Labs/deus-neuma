@@ -107,6 +107,56 @@ describe('persistent overlay provenance', () => {
     expect(result.stdout).toBe('afterkeep');
   }, 60_000);
 
+  // The live house loop (2026-10-30): a being's shell on a repo touched one empty probe file
+  // deep under docs/, and from then on every commit to anything under docs/ refused every
+  // shell command — […]. A write deep in a folder
+  // is not a claim on the folder.
+  test('a shell write deep in a folder keeps the shell running while live work goes on beside it', async () => {
+    await fs.mkdir(path.join(source, 'docs', 'legal', 'pdf'), { recursive: true });
+    await fs.writeFile(path.join(source, 'docs', 'readme.md'), 'v1');
+    await fs.writeFile(path.join(source, 'docs', 'legal', 'pdf', 'terms.pdf'), 'terms');
+    const sandbox = await ensureWitnessCodingSandbox(LANE, source);
+    expect((await runWitnessCommand({ ...sandbox, mode: 'write', command: 'touch docs/legal/pdf/.overlay-probe' })).exitCode).toBe(0);
+    await fs.writeFile(path.join(source, 'docs', 'readme.md'), 'v2');
+    await fs.writeFile(path.join(source, 'docs', 'legal', 'pdf', 'filing.pdf'), 'scan');
+    await fs.mkdir(path.join(source, 'docs', 'work'));
+    const reopened = await ensureWitnessCodingSandbox(LANE, source);
+    const result = await runWitnessCommand({ ...reopened, command: 'cat docs/readme.md; ls -a docs/legal/pdf docs' });
+    expect(result.exitCode, result.stderr).toBe(0);
+    expect(result.stdout).toContain('v2');
+    expect(result.stdout).toContain('filing.pdf');
+    expect(result.stdout).toContain('.overlay-probe');
+    expect(result.stdout).toContain('work');
+    // the shell's own file is still a shadow: the live ground changing beneath IT refuses
+    await fs.writeFile(path.join(source, 'docs', 'legal', 'pdf', '.overlay-probe'), 'live');
+    await expect(runWitnessCommand({ ...reopened, command: 'true' }))
+      .rejects.toThrow(/freshness conflict.*docs\/legal\/pdf\/\.overlay-probe/);
+  }, 60_000);
+
+  test('a replaced folder hides its whole lower: a NEW live file under it refuses, a merged folder does not', async () => {
+    await fs.mkdir(path.join(source, 'lib'), { recursive: true });
+    await fs.mkdir(path.join(source, 'src'), { recursive: true });
+    await fs.writeFile(path.join(source, 'lib', 'old.js'), 'old');
+    await fs.writeFile(path.join(source, 'src', 'a.js'), 'a');
+    const sandbox = await ensureWitnessCodingSandbox(LANE, source);
+    expect((await runWitnessCommand({ ...sandbox, mode: 'write',
+      command: 'rm -rf lib; mkdir lib; printf own > lib/own.js; printf b > src/b.js' })).exitCode).toBe(0);
+    await fs.writeFile(path.join(source, 'src', 'c.js'), 'c');
+    expect((await runWitnessCommand({ ...sandbox, command: 'cat src/a.js src/b.js src/c.js' })).stdout).toBe('abc');
+    await fs.writeFile(path.join(source, 'lib', 'added.js'), 'hidden from the shell');
+    await expect(runWitnessCommand({ ...sandbox, command: 'true' })).rejects.toThrow(/freshness conflict.*"lib"/);
+  }, 60_000);
+
+  test('a merged folder whose live counterpart became a file refuses', async () => {
+    await fs.mkdir(path.join(source, 'out'), { recursive: true });
+    await fs.writeFile(path.join(source, 'out', 'x.txt'), 'x');
+    const sandbox = await ensureWitnessCodingSandbox(LANE, source);
+    expect((await runWitnessCommand({ ...sandbox, mode: 'write', command: 'printf y > out/y.txt' })).exitCode).toBe(0);
+    await fs.rm(path.join(source, 'out'), { recursive: true });
+    await fs.writeFile(path.join(source, 'out'), 'now a file');
+    await expect(runWitnessCommand({ ...sandbox, command: 'true' })).rejects.toThrow(/freshness conflict.*"out"/);
+  }, 60_000);
+
   test('concurrent live drift discards the result and preserves shell work', async () => {
     await fs.writeFile(path.join(source, 'value.txt'), 'before');
     const sandbox = await ensureWitnessCodingSandbox(LANE, source);
@@ -127,6 +177,29 @@ describe('persistent overlay provenance', () => {
     await expect(runWitnessCommand({ ...sandbox, mode: 'write', signal: controller.signal, command: 'touch marker' }))
       .rejects.toMatchObject({ name: 'AbortError' });
     await expect(fs.stat(path.join(sandbox.workspace, 'marker'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+});
+
+// Opaque folders are read from the kernel's own xattrs through python3. On a machine without
+// it the check must fall back to the coarse answer (every upper folder with a lower hides it),
+// never a looser one. A hand-built upper with no xattrs is a plain merge to the kernel.
+describe('without python3 the folder check is coarse, never loose', () => {
+  test('a live edit beside a shell folder refuses with no python3 on PATH, and passes with it', async () => {
+    const { prepareOverlayFreshness, assertOverlayFresh } = await import('../../backend/services/overlay-freshness.js');
+    await fs.mkdir(path.join(source, 'lib'));
+    await fs.writeFile(path.join(source, 'lib', 'a.js'), 'a');
+    const upper = path.join(root, 'shell', 'upper');
+    await fs.mkdir(upper, { recursive: true });
+    await prepareOverlayFreshness({ workspace: upper, sourceRoot: source, masks: { dirs: [], files: [] } });
+    await fs.mkdir(path.join(upper, 'lib'));
+    await fs.writeFile(path.join(upper, 'lib', 'own.js'), 'own');
+    await fs.writeFile(path.join(source, 'lib', 'b.js'), 'b');
+    await expect(assertOverlayFresh({ workspace: upper, sourceRoot: source })).resolves.toBeUndefined();
+    const PATH = process.env.PATH;
+    process.env.PATH = path.join(root, 'no-tools');
+    try {
+      await expect(assertOverlayFresh({ workspace: upper, sourceRoot: source })).rejects.toThrow(/freshness conflict.*"lib"/);
+    } finally { process.env.PATH = PATH; }
   });
 });
 

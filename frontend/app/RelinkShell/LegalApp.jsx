@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { AppTitle } from './app-title.jsx';
 import { uiSound } from '../../services/ui-sound.js';
 import {
-  getLegalPosture, getLegalWatch, getMatters, getMatter, runLegalWatch, seatClo, clearClo,
+  getLegalPosture, getLegalWatch, getMatters, getMatter, runLegalWatch, seatClo, clearClo, getReader, setReader,
 } from '../../services/legal-client.js';
 import { getRosterForBinding } from '../../services/social-channels-client.js';
 import { filterMatters } from './legal-view.js';
@@ -31,9 +31,13 @@ const LegalAppBody = () => {
   const [pick, setPick] = useState('');
   const [seatBusy, setSeatBusy] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  // The second reader: the house's choice, and the press that changes it.
+  const [reader, setReaderState] = useState(null);
+  const [readerPick, setReaderPick] = useState('');
+  const [readerBusy, setReaderBusy] = useState(false);
 
-  const loadAll = () => Promise.all([getLegalPosture(), getLegalWatch(), getMatters()])
-    .then(([p, w, m]) => { setPosture(p); setWatch(w.watch); setMatters(m.matters); setError(null); })
+  const loadAll = () => Promise.all([getLegalPosture(), getLegalWatch(), getMatters(), getReader()])
+    .then(([p, w, m, r]) => { setPosture(p); setWatch(w.watch); setMatters(m.matters); setReaderState(r); setError(null); })
     .catch((e) => setError(e.message)); // surfaced, never swallowed
 
   // The holder pool: the operator's own neuma lanes — the seat is a house
@@ -76,6 +80,11 @@ const LegalAppBody = () => {
       onAskClear={() => { uiSound('open'); setConfirmClear(true); }}
       onClear={() => { setConfirmClear(false); return act(setSeatBusy, clearClo); }}
       onCancelClear={() => { uiSound('close'); setConfirmClear(false); }}
+      reader={reader}
+      readerPick={readerPick}
+      readerBusy={readerBusy}
+      onReaderPick={(v) => { uiSound('open'); setReaderPick(v); }}
+      onReaderSet={() => act(setReaderBusy, async () => { await setReader(readerPick); setReaderPick(''); })}
       onPickMatter={(m) => {
         uiSound('open');
         getMatter(m.id).then((r) => { setDetail(r.matter); setError(null); }).catch((e) => setError(e.message));

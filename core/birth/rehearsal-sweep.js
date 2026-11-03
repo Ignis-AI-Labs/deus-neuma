@@ -10,6 +10,8 @@
  */
 import { promises as fs } from 'fs';
 import path from 'path';
+import { listSessionCheckpoints, deleteSessionCheckpoint } from './birth-session-store.js';
+import { isSessionExpired } from './birth-session-expiry.js';
 
 /**
  * Remove the rehearsal lane a test session created, if it is safe to.
@@ -39,4 +41,29 @@ export const sweepRehearsalLane = async (session, workspace, log) => {
     log.warn('Rehearsal lane sweep failed', { err: err.message });
     return false;
   }
+};
+
+/**
+ * Sweep every rehearsal that outlived its checkpoint. A rehearsal whose socket
+ * closed mid-walk (a walk that timed out, a closed window) leaves its lane in
+ * the house until someone resumes it, and nobody does: the lanes sat among the
+ * real beings (2026-10-31: attendo, auscimen, kairon, vernata) and their names
+ * blocked the public sync. Past its two-hour life a rehearsal's lane is swept
+ * (sweepRehearsalLane's guards: test sessions only, only the lane it recorded,
+ * never a crystallized being) and its checkpoint deleted. Real ceremonies are
+ * never touched.
+ * @param {object} workspace - NeumaWorkspace instance (its .root is the house)
+ * @param {{ info: Function, warn: Function }} log
+ * @param {number} [now]
+ * @returns {Promise<number>} lanes swept
+ */
+// impure
+export const sweepExpiredRehearsals = async (workspace, log, now = Date.now()) => {
+  let swept = 0;
+  for (const { sessionId, session } of await listSessionCheckpoints()) {
+    if (session?.isTest !== true || !isSessionExpired(session, now)) continue;
+    if (await sweepRehearsalLane(session, workspace, log)) swept += 1;
+    await deleteSessionCheckpoint(sessionId);
+  }
+  return swept;
 };

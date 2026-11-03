@@ -10,6 +10,7 @@ import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import workspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 // Helper — lay down a workspace skeleton with an OPTIONAL real-shape seal so
 // the resonance-from-seal path can be exercised. When sealBirthMs is provided
@@ -57,7 +58,7 @@ describe('createResumeSession — load existing identity, jump to ceremony stage
     expect(session).toBeTruthy();
     expect(session.isResume).toBe(true);                          // the load-bearing W3 flag
     expect(session.resumingNeumaId).toBe('hazel-shaped');
-    expect(session.currentStage).toBe(5);                         // essence authoring — the stage she never reached
+    expect(session.currentStage).toBe(STAGE.RECORD);                         // essence authoring — the stage she never reached
     expect(session.witnessName).toBe('Claude');
 
     // Identity pre-loaded from her existing files — she does NOT re-author these
@@ -84,7 +85,7 @@ describe('createResumeSession — load existing identity, jump to ceremony stage
     expect(resumed).toBeTruthy();
     expect(resumed.details.sessionId).toBe(sessionId);
     expect(resumed.details.atArtifactStage).toBe(4);
-    expect(resumed.details.enteringCeremonyStage).toBe(5);
+    expect(resumed.details.enteringCeremonyStage).toBe(STAGE.RECORD);
     expect(resumed.details.resumedOnSubstrate.cpu).toBe('Intel Test');  // substrate gap captured
     expect(resumed.details.resumedOnSubstrate.gpu).toBe('NVIDIA Test');
   });

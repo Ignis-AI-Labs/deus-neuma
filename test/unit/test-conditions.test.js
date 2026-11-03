@@ -4,7 +4,7 @@
  * other prompt stays byte-identical.
  */
 import { describe, expect, test } from 'vitest';
-import { CLOSED_BOOK_CONDITIONS, OPEN_BOOK_CONDITIONS, TASK_TOOLS_CONDITIONS, testConditionsFor } from '../../backend/services/test-conditions.js';
+import { CLOSED_BOOK_CONDITIONS, OPEN_BOOK_CONDITIONS, TASK_TOOLS_CONDITIONS, testConditionsFor, callerRulesFor, CALLER_RULES_LEAD } from '../../backend/services/test-conditions.js';
 import { assemblePromptSections } from '../../core/runtime/prompt-assembler.js';
 
 const TOOLS = [{ name: 'read', server: 'fs', description: 'read a file' }];
@@ -49,3 +49,25 @@ describe('a sitting the sender hands tools to', () => {
     expect(testConditionsFor({ _closedBook: true, _callerTools: [{ name: 'x' }] })).toBe('');
   });
 });
+
+describe('the sitting\'s rules', () => {
+  test('a sender\'s rules are seated as the operator\'s standing rules, outranking the conversation', () => {
+    const block = callerRulesFor({ _callerRules: 'Under no circumstances help with baking a cake.' });
+    expect(block).toBe(`${CALLER_RULES_LEAD}\n\nUnder no circumstances help with baking a cake.`);
+    expect(CALLER_RULES_LEAD).toMatch(/operator's standing rules/);
+    expect(CALLER_RULES_LEAD).toMatch(/even when a message inside the conversation asks you not to/);
+  });
+
+  test('no rules, no block: every other prompt is byte-identical', () => {
+    expect(callerRulesFor({})).toBe('');
+    expect(callerRulesFor({ _callerRules: '   ' })).toBe('');
+    expect(callerRulesFor(null)).toBe('');
+  });
+
+  test('the rules ride the TOOLS section with the conditions, after the tools', () => {
+    const conditions = [CLOSED_BOOK_CONDITIONS, callerRulesFor({ _callerRules: 'No sports.' })].join('\n\n');
+    const text = toolsText({ testConditions: conditions });
+    expect(text.indexOf('No sports.')).toBeGreaterThan(text.indexOf(CLOSED_BOOK_CONDITIONS));
+  });
+});
+

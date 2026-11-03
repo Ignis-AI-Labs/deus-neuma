@@ -17,7 +17,7 @@ import { walletDir, writeJsonAtomic } from '../user-realm.js';
 import { houseKey } from '../staff/cos-designation.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { createWriteChain } from '../write-chain.js';
-import { foldLine, fitsLine } from './line-state.js';
+import { foldLine, fitsLine, advance } from './line-state.js';
 
 export const MODES = Object.freeze(['field', 'house']);
 export const NAME_MAX = 80;
@@ -118,9 +118,21 @@ export const readLine = async (wallet, id) => {
  * @param {object} event
  * @returns {Promise<{ok: true, line: object} | {ok: false, line: object}>}
  */
-export const appendLineEvent = (wallet, id, event) => serialize(async () => {
+export const appendLineEvent = (wallet, id, event) => appendLineEvents(wallet, id, [event]);
+
+/**
+ * Append a run of events in one turn of the chain (an operator's hand-on and
+ * the own yes it carries; a stop with its handing) — each must fit the line
+ * the one before it leaves, and none lands unless all fit.
+ * @param {string} wallet
+ * @param {string} id
+ * @param {Array<object>} events
+ * @returns {Promise<{ok: true, line: object} | {ok: false, line: object}>}
+ */
+export const appendLineEvents = (wallet, id, events) => serialize(async () => {
   const line = await readLine(wallet, id);
-  if (!fitsLine(line, event)) return { ok: false, line };
-  await appendJsonLine(path.join(companyDir(wallet, id), 'line.jsonl'), event);
+  const fits = events.reduce((at, event) => (at && fitsLine(at, event) ? advance(at, event) : null), line);
+  if (!events.length || !fits) return { ok: false, line };
+  for (const event of events) await appendJsonLine(path.join(companyDir(wallet, id), 'line.jsonl'), event);
   return { ok: true, line: await readLine(wallet, id) };
 });

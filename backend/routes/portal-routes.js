@@ -117,6 +117,8 @@ export const setupPortalRoutes = (wss, { birthHandler }) => {
       walletAddress: session.address,
       notifySubstrateActivity: broadcastSubstrateActivity,
     });
+    req.walletAddress = session.address;
+    connection.httpRequest = req;
     // Which operator state this desk is — the harness or the full platform —
     // until it binds a lane (core/runtime/operator-state.js).
     connection.declaredState = declaredStateOf(urlParams.get('state'));

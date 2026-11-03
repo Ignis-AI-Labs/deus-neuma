@@ -66,6 +66,20 @@
   overflow-wrap: anywhere;
 }
 
+/* The composer writes in the card's own type, so what is typed reads as it will post:
+   line breaks kept, the box growing with the post (QueueComposer). */
+.settings-control.queue-composer-words { flex-direction: column; align-items: stretch; gap: var(--space-1); }
+.settings-input.queue-composer-text {
+  font-family: var(--font-voice);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.queue-composer-count { align-self: flex-end; color: var(--color-text-tertiary); }
+.queue-composer-count[data-over] { color: var(--color-warning, var(--signal)); }
+
 .queue-preview-foot {
   display: flex;
   align-items: baseline;

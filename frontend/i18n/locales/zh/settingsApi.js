@@ -72,6 +72,20 @@ export default Object.freeze({
     envLockedNote: '«注意» 操作者的启动环境（{{env}}）将出口保持为关闭，此开关无法改变——只有解除锁定后开关才会生效。',
   }),
 
+  vision: Object.freeze({
+    heading: '图像视觉',
+    note: '所有模型默认启用图像输入。能力探测不确定不会将其关闭；只有明确不支持视觉的模型才会被拒绝。你可以随时显式关闭。',
+    key: '图像输入',
+    on: '开启 — 图像可发送至模型',
+    off: '关闭 — 仅文本',
+    lockedByOperator: '操作者锁定',
+    reading: '正在读取开关…',
+    switching: '正在切换…',
+    switchOff: '关闭',
+    switchOn: '开启',
+    envLockedNote: '«NOTICE» 启动环境 ({{env}}) 已将图像输入关闭，解除锁定后此开关才会生效。',
+  }),
+
   serviceKeys: Object.freeze({
     heading: '服务密钥',
     note: '不属于模型的外部服务所用的密钥。目前是 Tavily 网页搜索：需要搜索的基准测试通过其自带工具使用它；本宅自己的网页搜索不会使用它。与您的提供商密钥封存在本机同一个加密存储中，之后不再显示。',

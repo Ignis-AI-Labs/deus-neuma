@@ -14,6 +14,7 @@ import { isThinkProbe, respondThinkProbe } from '../helpers/think-probe.js';
 import { startTikTokStandIn } from '../helpers/tiktok-stand-in.js';
 import { openDockApp } from './helpers/dock.js';
 import { settleDesk } from './helpers/explorer-panel-harness.js';
+import { ownerClaimHeaders } from './helpers/owner-claim.js';
 
 /**
  * A RUNNING CHAT NEVER MOVES WHAT THE PERSON IS WORKING ON (Design note, 2026-10-23:
@@ -113,7 +114,7 @@ const mintToken = async () => {
   const signature = await w.signMessage(challenge);
   const res = await fetch(`${BASE}/api/v1/auth/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...ownerClaimHeaders(path.join(root, 'data')) },
     body: JSON.stringify({ address: w.address, signature, challenge }),
   });
   const { token: t } = await res.json();
@@ -400,7 +401,7 @@ test('an ask rising in the chat never pulls the caret out of a field in another 
   await page.locator('.relink-input-field').fill(ASK_THOUGHT);
   await page.keyboard.press('Enter');
   const { win } = await openDraftCard(page);
-  const field = win.locator('input.settings-input[placeholder="What should go out?"]');
+  const field = win.locator('textarea.settings-input[placeholder="What should go out?"]');
   await field.click();
   await page.keyboard.type('caption draft');
   await expect(page.locator('.ask-chip.pending')).toBeAttached({ timeout: 30000 });

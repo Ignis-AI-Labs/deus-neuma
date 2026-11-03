@@ -165,13 +165,14 @@ export const PLAYBOOK = Object.freeze({
     'Record the licence version and the date you read it.',
   ],
   'citation-check': [
-    'Before ANY citation reaches a verdict: fetch the source again and string-match the words you quote.',
+    'Before ANY legal answer leaves you, chat included: legal_cite_check {citations, text}. The platform re-reads every source, confirms the heading you name is printed there and every quoted word is on the page, and refuses [verify] marks and quotation marks no record carries. legal/assess, legal/file and legal/opinion run it again.',
+    'Resolve every release, order or rule number to its title on the regulator\'s own site, and check the title is about your point before you cite it. Give each its standing: proposed, adopted, withdrawn, vacated or expired, with the date.',
     'A case: confirm name, court, year and the pinpoint passage — legal_research_api {api: "citations", text: "<every citation>"} checks them all at once when the house has a CourtListener token; without one, cap by reporter citation. Not found or ambiguous = do not cite it.',
     'Check the passage SUPPORTS the point — a real source cited for something it does not say is the most common failure of legal AI.',
   ],
 });
 
-export const CITATION_RECORD = 'authority · pinpoint (§ / Art. / para. / page) · jurisdiction · official URL · the URL you read it from · version or "as of" date · date read · the exact words quoted · verified (yes / not yet)';
+export const CITATION_RECORD = '{claim (the point it supports), authority, pinCite (§ / Art. / para. / page), heading (as the source prints it), sourceUrl (where you read it), standing (in force / adopted / proposed, never adopted / vacated / dismissed, with its date), quote? (exact words, copied), pages? (PDF page)} — legal_cite_check has the platform re-read each one';
 
 /**
  * The sources and playbook for one question. Pure.

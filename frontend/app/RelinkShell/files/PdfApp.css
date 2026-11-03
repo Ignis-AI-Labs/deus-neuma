@@ -65,12 +65,27 @@
   min-height: 0;
   overflow: auto;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
   padding: var(--space-4);
 }
 
+.pdf-page {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.pdf-page-loading {
+  padding: var(--space-3);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
 .pdf-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
   box-shadow: 0 0 0 1px var(--color-border-primary), var(--shadow-2xl);
   background: #fff;
 }

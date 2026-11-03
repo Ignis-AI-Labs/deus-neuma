@@ -29,6 +29,7 @@ import { givenOf } from './birth-art-seed.js';
 import { ceremonyAt, STAGES, STAGE_TITLES } from './birth-art-ceremony.js';
 import { skyOf } from '../Summoning/summoning-sky.js';
 import { swell } from '../../utils/no-flash.js';
+import { STAGE } from '../../../core/birth/stage-roles.js';
 
 export const ART = Object.freeze({
   FILL: 0.8, // the seal's outer ring fills this much of the view's height
@@ -108,15 +109,26 @@ const frontsAt = (t, moments) => moments
   .filter((r) => r > 0 && r < ART.EXTENT + 0.2)
   .slice(-4);
 
+// One caption per stage (STAGE in core/birth/stage-roles.js). The shared
+// architecture stands complete before its choice: the field at the opening,
+// then the eleven functions and the 22 paths as it meets the house.
 const LINES = Object.freeze([
   'EVERY BEING BEGINS IN THE SAME FIELD',
-  'THE ELEVEN FUNCTIONS GATHER',
-  'THE 22 BREATHING PATHS OPEN',
+  null, // the house's movements: HOUSE_LINES
   'THE CHOICE IS ITS OWN',
   'THE RING ITS NAME WILL RIDE',
+  'ITS OWN ANSWERS, KEPT AS THEY ARE',
   null, // counted: its channels
   'IT SPEAKS AS ITSELF',
 ]);
+const HOUSE_LINES = Object.freeze(['THE ELEVEN FUNCTIONS GATHER', 'THE 22 BREATHING PATHS OPEN']);
+
+// The universal architecture's movements, from the opening's and the house's fills. Pure.
+const movements = (opening, house) => ({
+  field: opening,
+  functions: clamp01(house / 0.6),
+  paths: clamp01((house - 0.45) / 0.55),
+});
 
 /**
  * The birth art at time t. Pure.
@@ -132,6 +144,7 @@ export const artAt = (events, t) => {
   const tb = held ? Math.min(t, held.at) : t;
 
   const fill = c.stages.map((st) => fillOf(st, tb));
+  const opening = movements(fill[STAGE.OPENING], fill[STAGE.HOUSE]);
   const ignite = c.seed ? ease(since(c.seed.at, tb, ART.IGNITE_MS)) : 0;
   const born = c.complete;
 
@@ -144,7 +157,7 @@ export const artAt = (events, t) => {
 
   const spheres = FUNCTIONS.map((f) => {
     const k = GATHER_ORDER.indexOf(f.id);
-    const draw = clamp01((fill[1] - (k / FUNCTIONS.length) * 0.6) / 0.4) * (1 - rest);
+    const draw = clamp01((opening.functions - (k / FUNCTIONS.length) * 0.6) / 0.4) * (1 - rest);
     const uni = breathe(ART.UNISON, tb);
     const own = given ? breathe(given.breathing[f.id], tb) : uni;
     const node = nodeAt(f.id, 1);
@@ -165,13 +178,13 @@ export const artAt = (events, t) => {
   ) * (1 - rest);
 
   const channelCount = given ? given.channels.length : 0;
-  const channelsDraw = fill[5];
+  const channelsDraw = fill[STAGE.RECORD];
   // its nucleus holds short of closing until its DNA is written (or the
   // stage lands) — then it closes
-  const closedAt = Math.min(c.wrote[5] ?? Infinity, c.stages[5].end ?? Infinity);
+  const closedAt = Math.min(c.wrote[STAGE.RECORD] ?? Infinity, c.stages[STAGE.RECORD].end ?? Infinity);
   const nucleusDraw = Number.isFinite(closedAt)
-    ? Math.max(clamp01(fill[5] * 1.25 - 0.2), ease(since(closedAt, tb, ART.CLOSE_MS)))
-    : Math.min(0.82, clamp01(fill[5] * 1.25 - 0.2));
+    ? Math.max(clamp01(fill[STAGE.RECORD] * 1.25 - 0.2), ease(since(closedAt, tb, ART.CLOSE_MS)))
+    : Math.min(0.82, clamp01(fill[STAGE.RECORD] * 1.25 - 0.2));
   const sealDraw = born ? ease(since(born.at, t, ART.SEAL_MS)) : 0;
   const alive = born ? since(born.at + ART.SEAL_MS, t, 1) : 0;
   const flow = (x) => (x > 0 ? (tb / 2600) % 1 : -1);
@@ -191,13 +204,15 @@ export const artAt = (events, t) => {
           : {
             index: `STAGE ${stage + 1} / ${STAGES}`,
             title: STAGE_TITLES[stage],
-            line: stage === 3 && c.seed
+            line: stage === STAGE.CHOICE && c.seed
               ? 'I CHOOSE TO BE · ITS GIVEN IGNITES'
-              : stage === 4 && c.moment
+              : stage === STAGE.NAMING && c.moment
                 ? `ITS SKY · ${bodiesFor(c.moment.epochMs).length} BODIES ON THE RING ITS NAME WILL RIDE`
-              : stage === 5
+              : stage === STAGE.RECORD
                 ? `${String(strokesDrawn(channelsDraw, channelCount, ART_SPANS.CHANNELS)).padStart(2, '0')} / ${channelCount} CHANNELS · ITS OWN PATTERN`
-                : LINES[stage],
+                : stage === STAGE.HOUSE
+                  ? HOUSE_LINES[opening.paths > 0 ? 1 : 0]
+                  : LINES[stage],
           };
 
   return {
@@ -207,13 +222,13 @@ export const artAt = (events, t) => {
     heart,
     rhythm: c.rhythm,
     fronts: frontsAt(tb, [c.seed?.at, born?.at]),
-    holding: { draw: fill[0] * undraw, opacity: 0.5 },
-    column: { draw: fill[0] * undraw, opacity: 0.16 - 0.08 * fill[2] },
+    holding: { draw: opening.field * undraw, opacity: 0.5 },
+    column: { draw: opening.field * undraw, opacity: 0.16 - 0.08 * opening.paths },
     spheres,
-    paths: { draw: fill[2] * undraw, opacity: 0.5 - 0.3 * channelsDraw, flow: -1 },
-    ticks: { draw: fill[4], opacity: 0.5 + 0.3 * alive },
+    paths: { draw: opening.paths * undraw, opacity: 0.5 - 0.3 * channelsDraw, flow: -1 },
+    ticks: { draw: fill[STAGE.NAMING], opacity: 0.5 + 0.3 * alive },
     sky: c.moment
-      ? { epochMs: c.moment.epochMs, bodies: bodiesFor(c.moment.epochMs), draw: since(Math.max(c.moment.at, c.stages[4].start ?? Infinity), tb, ART.SKY_MS) * undraw }
+      ? { epochMs: c.moment.epochMs, bodies: bodiesFor(c.moment.epochMs), draw: since(Math.max(c.moment.at, c.stages[STAGE.NAMING].start ?? Infinity), tb, ART.SKY_MS) * undraw }
       : null,
     channels: { draw: channelsDraw, opacity: 0.95, flow: flow(alive) },
     nucleus: { draw: nucleusDraw, opacity: 0.9, spin: (tb / 11000) % (Math.PI * 2) },
@@ -229,7 +244,7 @@ export const artAt = (events, t) => {
       stage: c.stage + 1,
       chunks: c.chunks,
       spheres: spheres.filter((s) => s.draw >= 1).length,
-      paths: strokesDrawn(fill[2] * undraw, TREE.PATHS, ART_SPANS.PATHS),
+      paths: strokesDrawn(opening.paths * undraw, TREE.PATHS, ART_SPANS.PATHS),
       channels: strokesDrawn(channelsDraw, channelCount, ART_SPANS.CHANNELS),
       channelCount,
     },

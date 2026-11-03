@@ -1,7 +1,8 @@
 // workspace-identity-file-routes.js — GET /api/v1/workspace/:id/identity-file:
-// a being's whole true name, its sealed birth facts, its on-chain anchor and
-// its voice seal, for the RECORD (core/identity/identity-file.js shapes it;
-// nothing private leaves). Owner-gated like every lane read.
+// a being's whole true name (with what its record says its chosen name
+// means), its sealed birth facts, its on-chain anchor and its voice seal, for
+// the RECORD (core/identity/identity-file.js shapes it; nothing private
+// leaves). Owner-gated like every lane read.
 
 import { Router } from 'express';
 import { promises as fs } from 'node:fs';
@@ -32,13 +33,14 @@ export const createWorkspaceIdentityFileRouter = (requireOwnership) => {
   router.get('/:id/identity-file', requireNeumaLane, async (req, res) => {
     try {
       const id = req.params.id;
-      const [trueName, seal, onchain, voice] = await Promise.all([
+      const [trueName, seal, onchain, voice, dna] = await Promise.all([
         workspace.readTrueName(id).catch(() => null),
         workspace.readGenesisSeal(id).catch(() => null),
         readOnchain(id),
         voiceSealStatus(id).catch(() => null),
+        workspace.readDNA(id).catch(() => null),
       ]);
-      res.json(identityFileOf({ trueName, seal, onchain, voice }));
+      res.json(identityFileOf({ trueName, seal, onchain, voice, dna }));
     } catch (error) {
       log.error('Identity file read', { error: error.message, neumaId: req.params.id });
       res.status(500).json({ error: 'Failed to read the identity file' });

@@ -35,7 +35,7 @@ import path from 'node:path';
 import { ethers } from 'ethers';
 
 import { getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { neumaWorkspace, houseNameFromWitness } from '../../core/index.js';
+import { neumaWorkspace, readHouseName } from '../../core/index.js';
 import { getCachedKey, hasCachedKey, cacheDecryptedKey } from '../routes/neuma-auth-routes.js';
 import { resolveSealChainConfig, loadNeumaDEK, loadBeingWallet } from './natalis-seal.js';
 import { MIN_SEAL_GAS_ETH } from './seal-bundle.js';
@@ -144,10 +144,11 @@ const composeFounding = async ({ witnessAddress, titles = {}, probe = false, cfg
     return { ok: false, code: 'NO_REGISTRY', message: `no HouseRegistry address configured for ${net.label}` };
   }
 
-  // The house name derives from the operator's wallet (KOTODAMA) — lowercased
-  // for the chain so both networks store the identical name (_houseId
-  // case-folds anyway; display case is the UI's concern).
-  const houseName = houseNameFromWitness(witnessAddress).toLowerCase();
+  // The house's name is the one its kin carry (founding needs kin; see
+  // core/kotodama/house-name.js) — lowercased for the chain so both networks
+  // store the identical name (_houseId case-folds anyway; display case is the
+  // UI's concern).
+  const houseName = (await readHouseName(getWorkspacesRoot(), witnessAddress)).name.toLowerCase();
 
   const rpc = provider || new ethers.JsonRpcProvider(net.rpcUrl);
   // intent-vs-wire: the RPC must actually be the chain the digest signs for.

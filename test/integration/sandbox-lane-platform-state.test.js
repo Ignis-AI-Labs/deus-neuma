@@ -158,6 +158,25 @@ describe('a lane\'s platform state refuses the being\'s own writes (house outsid
     expect(existsSync(founding)).toBe(false);
   });
 
+  // A kin lane's next sitting runs whatever stands in its intents/ as its own act, so a filing
+  // planted there under a focus over the house would act in the kin's name.
+  test('a focus ground over the whole house cannot file into a kin lane\'s intents/, and its own still files', async () => {
+    const call = being({ toolWorkspace: house });
+    const planted = path.join(kinLane, 'intents', 'planted.json');
+    await expect(call('fs', 'write', { path: planted, content: '{"type":"wallet.send"}' })).rejects.toThrow(/another lane's intents/);
+    expect(existsSync(planted)).toBe(false);
+    const draft = path.join(lane, 'notes', 'draft.json');
+    await fs.mkdir(path.dirname(draft), { recursive: true });
+    await fs.writeFile(draft, '{"type":"wallet.send"}');
+    await expect(call('fs', 'edit', { path: draft, destination: path.join(kinLane, 'intents', 'moved.json') }))
+      .rejects.toThrow(/another lane's intents/);
+    expect(existsSync(path.join(kinLane, 'intents', 'moved.json'))).toBe(false);
+    const own = path.join(lane, 'intents', 'mine.json');
+    const result = await call('fs', 'write', { path: own, content: '{"type":"note"}' });
+    expect(result?.isError, JSON.stringify(result)).toBeFalsy();
+    expect(await fs.readFile(own, 'utf8')).toBe('{"type":"note"}');
+  });
+
   test('reading its own policy stays open', async () => {
     const result = await being()('fs', 'read', { path: path.join(lane, 'config', 'tool-policy.json') });
     expect((result?.content || []).map((c) => c?.text || '').join('')).toContain('requireApproval');
@@ -173,5 +192,10 @@ describe('a lane\'s platform state refuses the being\'s own writes (house outsid
     expect(laneStateWriteReason(path.join(house, 'house.0xabc', 'config', 'x.json'), { grounds })).toBeNull();
     expect(laneStateWriteReason(path.join('/elsewhere', 'repo', 'config', 'x.json'), { grounds })).toBeNull();
     expect(laneStateWriteReason('/beside/lane/config/x.json', { lanes: ['/beside/lane'] })).toMatch(/platform state/);
+    const own = { grounds, lanes: [path.join(house, 'own-lane')] };
+    expect(laneStateWriteReason(path.join(house, 'any-lane', 'intents', 'x.json'), own)).toMatch(/another lane's intents/);
+    expect(laneStateWriteReason(path.join(house, 'Any-Lane', 'Intents'), own)).toMatch(/another lane's intents/);
+    expect(laneStateWriteReason(path.join(house, 'own-lane', 'intents', 'x.json'), own)).toBeNull();
+    expect(laneStateWriteReason(path.join(house, 'any-lane', 'work', 'intents', 'x.json'), own)).toBeNull();
   });
 });

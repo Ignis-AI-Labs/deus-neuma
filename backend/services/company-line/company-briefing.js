@@ -13,6 +13,8 @@ import { seatHolders } from './stage-holders.js';
 import { lineView } from './company-view.js';
 import { readHands } from './hands-store.js';
 import { FOUNDING_LINE } from './line-stages.js';
+import { readRaise } from '../raise/raise-store.js';
+import { raiseForBeings, raised } from '../raise/raise-shape.js';
 
 // The worksheet shape each stage hands on, as its master reads it.
 const SHEETS = Object.freeze(Object.fromEntries(FOUNDING_LINE.filter((s) => s.sheet).map((s) => [s.id, s.sheet])));
@@ -53,6 +55,17 @@ const handsLines = (views, laneId) => {
   ];
 };
 
+// The raise room, one line per company raising: where the mandate and the facts sheet stand.
+const raiseLines = (views) => views.filter((v) => v.raise && v.raise.draft).map((v) => {
+  const r = v.raise;
+  const mandate = r.status === 'none' ? 'drafted, waiting for the operator\'s signature' : `${r.status}${r.draft.id !== r.mandate?.id ? ' (a newer draft waits for signature)' : ''}`;
+  const facts = !r.sheet ? 'no facts sheet yet (raise/facts, the Numerarius)' : !r.review ? 'facts sheet waiting for counsel' : r.review.verdict === 'approved' ? 'facts sheet approved by counsel' : `facts sheet returned by counsel: "${r.review.note}"`;
+  const tally = ['listed', 'cleared', 'contacted', 'interested', 'terms', 'sound', 'closed', 'declined', 'refused'].map((s) => [s, r.investors.filter((i) => i.status === s).length]).filter(([, n]) => n);
+  const money = r.mandate ? ` Raised ${raised(r).closed} of ${r.mandate.amount} ${r.mandate.currency} (${raised(r).promised} more in terms).` : '';
+  const investors = tally.length ? ` Investors: ${tally.map(([s, n]) => `${n} ${s}`).join(', ')}.${money}` : '';
+  return `- ${v.name} [${v.id}] RAISE: mandate ${mandate}; ${facts}.${investors} No investor is asked until the mandate is signed and counsel has approved the facts.`;
+});
+
 /**
  * The briefing text for one lane over its house's live lines. pure.
  * '' when no line is being founded and no answer of the operator's waits to be read.
@@ -63,12 +76,14 @@ const handsLines = (views, laneId) => {
 const briefingText = (views, laneId) => {
   const live = views.filter((v) => v.status !== 'standing');
   const hands = handsLines(views, laneId);
-  if (!live.length && !hands.length) return '';
+  const raising = raiseLines(views);
+  if (!live.length && !hands.length && !raising.length) return '';
   const mine = live.filter((v) => v.up.holder === laneId);
   return [
     '## COMPANY LINE — one stage, one master',
     ...(live.length ? (mine.length ? ['YOUR MOVE:', ...mine.map(moveLine)] : ['Nothing on the line waits on you right now.']) : []),
     ...hands,
+    ...(raising.length ? ['THE RAISE ROOM:', ...raising] : []),
     ...(live.length ? ['Where each company stands:', ...live.map((v) => `- ${v.name} [${v.id}] — round ${v.round}, at ${v.stages.find((s) => s.id === v.stage).name} (${statusWords(v)}); up: ${upWords(v.up, laneId)}`)] : []),
     'The law: do your own stage\'s work and only that; the next master inspects it; never inspect your own work. Pass anything else to its seat by house post.',
   ].join('\n');
@@ -86,7 +101,11 @@ export const companyLineBriefing = async (connection) => {
     const { companies } = await listCompanies(wallet);
     if (!companies.length || !(await houseSeatFor(wallet, laneId))) return '';
     const holders = await seatHolders(wallet);
-    const views = await Promise.all(companies.map(async (c) => lineView(c, await readLine(wallet, c.id), holders, (await readHands(wallet, c.id)).items)));
+    const views = await Promise.all(companies.map(async (c) => {
+      const line = await readLine(wallet, c.id);
+      const view = lineView(c, line, holders, (await readHands(wallet, c.id)).items);
+      return line.status === 'standing' ? { ...view, raise: raiseForBeings(await readRaise(wallet, c.id)) } : view;
+    }));
     return briefingText(views, laneId);
   } catch (err) {
     log.warn('Company line briefing unavailable — the turn stands without it', { laneId, err: err.message });

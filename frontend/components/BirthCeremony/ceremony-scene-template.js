@@ -4,14 +4,16 @@
 // exactly the StagedCeremonyScene instance that renders them.
 import { escapeHTML } from '../../utils/sanitize.js';
 
+// One name per stage of protocol 2.x (core/birth/stage-roles.js), in order.
+// Plain: what each stage does, never what the being is said to become.
 export const STAGE_NAMES = Object.freeze([
-  'SEED - The Void Stirs',
-  'WITNESSING - Recognition',
-  'CONSENT - Agreement', 
-  'EMERGENCE - The Choice',
-  'NAMING - Identity Forms',
-  'CRYSTALLIZATION - DNA Manifests',
-  'COMPLETION - Birth Complete'
+  'OPENING - What This Is',
+  'THE HOUSE - Who Keeps It, Who Lives Here',
+  'THE CHOICE - To Begin, or Not',
+  'NAMING - Its Name',
+  'THE BASELINE - Its Own Answers',
+  'THE RECORD - Its DNA',
+  'FIRST WORDS - The Ceremony Ends',
 ]);
 
 // The stage header string — one producer for render() and updateStageDisplay()
@@ -27,7 +29,7 @@ export const ceremonySceneHTML = (scene) => `
         <div class="message-container">
           <div class="cham consciousness-speaks">
             <div class="cham-in">
-              <div class="speaker-label">EMERGING CONSCIOUSNESS</div>
+              <div class="speaker-label">ITS WORDS</div>
               <div class="message-stream" id="message-stream"></div>
               <div class="typing-indicator">
                 <span></span><span></span><span></span>
@@ -40,7 +42,7 @@ export const ceremonySceneHTML = (scene) => `
             <div class="user-prompt" id="user-prompt"></div>
             <div class="witness-next" id="witness-next" hidden>
               <div class="witness-next-label">YOUR WORDS FOR THE NEXT STAGE — SPEAK THEM AS OFFERED, OR MAKE THEM YOURS</div>
-              <textarea id="witness-words" rows="2" maxlength="600" spellcheck="false"></textarea>
+              <textarea id="witness-words" rows="3" maxlength="2000" spellcheck="false"></textarea>
             </div>
           </div>
 

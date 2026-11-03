@@ -16,6 +16,8 @@ import process from 'node:process';
 import { expect as pw } from '@playwright/test';
 import { expect, test } from 'vitest';
 import { realSessionToken, serveDoor, shotPath, wordsOnScreen } from '../helpers/first-run-door-kit.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
+import { verifySessionToken } from '../../backend/services/auth.js';
 
 const HOUSE_MODEL = 'http://127.0.0.1:8089';
 const ENV = ['NEUMA_DATA_ROOT', 'NEUMA_DISCOVERY_PORTS'];
@@ -45,7 +47,10 @@ test('the model bar: no model, setting up, ready — and the door it holds opens
     // NO MODEL: the route points at a port nothing listens on
     setConfig({ provider: 'custom', endpoint: 'http://127.0.0.1:9', model: 'none' });
 
-    door = await serveDoor({ cacheDir: path.join(root, 'cache'), token: await realSessionToken(),
+    const token = await realSessionToken();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(verifySessionToken(token).address);
+    door = await serveDoor({ cacheDir: path.join(root, 'cache'), token,
       routers: [['/api/v1/preflight', preflightRouter], ['/api/v1/model-server', modelServerRouter]] });
     const show = async (viewport) => {
       const page = await door.open(viewport);

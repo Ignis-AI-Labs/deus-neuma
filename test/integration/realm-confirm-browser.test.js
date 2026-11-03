@@ -13,6 +13,7 @@ import realmRouter from '../../backend/routes/user-realm-routes.js';
 import { getRealmRoot, setRealmRoot, walletDir } from '../../backend/services/user-realm.js';
 import { saveRealmSettings, loadRealmSettings } from '../../backend/services/user-realm-settings.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 test('realm confirmation preserves source files, cancels and retries a refused pointer switch', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'realm-confirm-'));
@@ -24,6 +25,8 @@ test('realm confirmation preserves source files, cancels and retries a refused p
     process.env.NEUMA_REALM_SETTINGS_PATH = path.join(root, 'settings.json');
     setRealmRoot(original); await saveRealmSettings({ root: original });
     const auth = await fullAuth();
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(auth.address);
     await fs.mkdir(walletDir(auth.address), { recursive: true });
     const sourceFile = path.join(walletDir(auth.address), 'preserved.txt');
     await fs.writeFile(sourceFile, 'realm-source-survives');

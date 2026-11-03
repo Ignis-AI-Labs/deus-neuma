@@ -48,7 +48,7 @@ const latchLanding = (item) => {
   if (w.app === 'houseclock') requestHouseClockTab(w.tab || 'asks');
   else if (w.app === 'settings' && w.focus) requestSettingsFocus(w.focus);
   else if (w.app === 'sovereignty') requestCardLanding('sovereignty', { neumaId: w.neumaId, proposalId: w.proposalId });
-  else if (w.channelId) requestCardLanding(w.channelId, { entryId: w.entryId, section: w.section, ...(w.accountId ? { accountId: w.accountId } : {}) });
+  else if (w.channelId) requestCardLanding(w.channelId, { entryId: w.entryId, section: w.section, ...(w.accountId ? { accountId: w.accountId } : {}), ...(w.code ? { code: w.code } : {}) });
   // A company's proposed links land on its BRAND tab, at SITE & CODE, where their card stands.
   else if (w.app === 'marketing' && w.tab) {
     if (w.companyId && w.section) requestBrandSection(w.companyId, w.section);

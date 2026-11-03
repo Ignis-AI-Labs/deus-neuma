@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { splitStablePrefix, tokenizeInline, liveSpeechView } from '../../frontend/app/RelinkShell/live-markdown.js';
+import { splitStablePrefix, tokenizeInline, liveSpeechView, advanceLiveSpeechView } from '../../frontend/app/RelinkShell/live-markdown.js';
 import { LiveSpeech } from '../../frontend/app/RelinkShell/LiveSpeech.jsx';
 
 const renderLive = (shown) => renderToStaticMarkup(createElement(LiveSpeech, { shown }));
@@ -103,6 +103,25 @@ describe('liveSpeechView', () => {
       { kind: 'bold', text: 'going' },
       { kind: 'text', text: ' here' },
     ]);
+  });
+});
+
+describe('advanceLiveSpeechView', () => {
+  it('matches the whole-text parser at every character boundary, including fences', () => {
+    const text = '# Title\n\nfirst **paragraph**\n\n```js\nconst a = 1;\n\nconst b = 2;\n```\n\nlast `tail` and **bold**';
+    let state = null;
+    for (let length = 1; length <= text.length; length += 1) {
+      const shown = text.slice(0, length);
+      state = advanceLiveSpeechView(state, shown);
+      expect({ closed: state.closed, spans: state.spans }).toEqual(liveSpeechView(shown));
+    }
+  });
+
+  it('resets rather than reusing state when the text is not an append', () => {
+    const previous = advanceLiveSpeechView(null, 'old\n\nsettled');
+    const next = advanceLiveSpeechView(previous, 'new **text**');
+    expect(next.closed).toBe('');
+    expect(next.spans).toEqual(liveSpeechView('new **text**').spans);
   });
 });
 

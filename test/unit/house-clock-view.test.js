@@ -23,7 +23,7 @@ const NAMES = { 'lane-quae': 'Quae', 'lane-optio': 'Corin' };
 const BASE = {
   v: 1, goal: 'Find a real gap and build for it.', linesOfWork: ['research digests'],
   seats: [{ laneId: 'lane-quae', dailyCap: 2 }], quietHours: { start: '22:00', end: '07:00' }, cadence: { everyHours: 24 },
-  delegation: { teamPlans: true, maxMembers: 3, maxSteps: 5 }, allow: ['intents/social.post'], escalate: [MONEY_OUT],
+  delegation: { teamPlans: true, maxMembers: 3, maxSteps: 5, maxProgrammeRuns: 3 }, allow: ['intents/social.post'], escalate: [MONEY_OUT],
   paused: false, pausedAt: null, version: 1, updatedAt: '2026-10-16T10:00:00.000Z',
   approvedAt: null, approvedBy: null, approvedVersion: null,
 };
@@ -172,7 +172,7 @@ describe('house-clock-view — the charter form, both ways', () => {
     const fields = charterFromDraft({ ...draftFromCharter(null, lanes), goal: '  Keep the digest going.  ', seats: { 'lane-quae': { on: true, cap: '4' }, 'lane-optio': { on: false, cap: '3' } } });
     expect(fields).toEqual({
       goal: 'Keep the digest going.', linesOfWork: [], seats: [{ laneId: 'lane-quae', dailyCap: 4 }],
-      quietHours: null, cadence: null, delegation: { teamPlans: false, maxMembers: 4, maxSteps: 8 }, allow: [], escalate: [],
+      quietHours: null, cadence: null, delegation: { teamPlans: false, maxMembers: 4, maxSteps: 8, maxProgrammeRuns: 3 }, allow: [], escalate: [],
       // A blank charter stands at the dial's default until the operator chooses (company line, 2026-10-29).
       involvement: 'PARTNER',
     });
@@ -183,7 +183,7 @@ describe('house-clock-view — the charter form, both ways', () => {
     const lines = Object.fromEntries(charterLines(approved, NAMES).map((l) => [l.label, l.value]));
     expect(lines['MAY WAKE']).toBe('Quae — up to 2 a day');
     expect(lines['QUIET HOURS']).toBe('22:00 to 07:00, nothing wakes');
-    expect(lines['THE OPTIO MAY APPROVE']).toBe('team plans of up to 3 members and 5 steps');
+    expect(lines['THE OPTIO MAY APPROVE']).toBe('team plans of up to 3 members and 5 steps, and a programme\'s runs up to 3');
     expect(lines['ALWAYS COMES TO YOU']).toBe(MONEY_OUT);
   });
 });

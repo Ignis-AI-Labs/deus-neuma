@@ -222,7 +222,7 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   'media_library', 'map_read', 'read_architecture', 'read_history', 'read_x', 'read_tiktok',
   'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon',
   'retrieve_result', 'image_search',
-  // The filesystem lane — the five primitives (organ spellings are internal)
+  // The filesystem lane — the observation verbs among the seven primitives
   'read', 'list', 'search',
   // The outside world. Nothing local changes, and a re-fetch after a write is
   // the model verifying rather than repeating itself.

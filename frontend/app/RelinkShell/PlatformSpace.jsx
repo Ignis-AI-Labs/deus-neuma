@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { CampaignsSection } from './CampaignsSection.jsx';
 import { CampaignQueueSection } from './CampaignQueueSection.jsx';
+import { ChatsSection } from './ChatsSection.jsx';
 import { TikTokAccount } from './TikTokAccount.jsx';
 import { PlatformHeader } from './PlatformHeader.jsx';
 import { StandingPanel, StandingNotice } from './StandingPanel.jsx';
@@ -50,9 +51,13 @@ const SUBS = [
 // board: the account as the platform shows it (TikTok today).
 const ACCOUNT_BOARDS = Object.freeze({ tiktok: TikTokAccount });
 const ACCOUNT_SUB = { id: 'account', label: 'ACCOUNT', title: 'the account as the platform shows it — read through the platform\'s one connection' };
+// A platform whose bot can be talked with (the chat bridge) has a CHATS board: who may.
+const CHAT_PLATFORMS = Object.freeze(['telegram', 'discord']);
+const CHATS_SUB = { id: 'chats', label: 'CHATS', title: 'who may talk with the house through its bot' };
 const subsFor = (channelId, inOffice) => {
   const subs = inOffice ? SUBS.filter((s) => s.id !== 'campaigns') : SUBS;
-  return ACCOUNT_BOARDS[channelId] ? [ACCOUNT_SUB, ...subs] : subs;
+  const chats = !inOffice && CHAT_PLATFORMS.includes(channelId) ? [CHATS_SUB] : [];
+  return [...(ACCOUNT_BOARDS[channelId] ? [ACCOUNT_SUB] : []), ...subs, ...chats];
 };
 
 // A window this short or shorter folds its console head to its counts, so the
@@ -78,8 +83,10 @@ export const PlatformSpace = ({ channelId, accountId = undefined, landing = null
   const AccountBoard = ACCOUNT_BOARDS[channelId] || null;
   // A WAITING ON YOU row that opened this window (or MARKETING's account level) names the card it lands on.
   const [landed] = useState(() => (inOffice ? landing : takeCardLanding(channelId)));
-  const toQueue = Boolean(landed && !standingDrawer(landed) && (!inOffice || landed.entryId || landed.section));
-  const [sub, setSub] = useState(toQueue ? 'queue' : AccountBoard ? 'account' : inOffice ? 'queue' : 'campaigns');
+  const toChats = landed?.section === 'chats';
+  const toQueue = Boolean(landed && !toChats && !standingDrawer(landed) && (!inOffice || landed.entryId || landed.section));
+  const [sub, setSub] = useState(toChats ? 'chats' : toQueue ? 'queue' : AccountBoard ? 'account' : inOffice ? 'queue' : 'campaigns');
+  const [chatCode, setChatCode] = useState(toChats ? landed.code ?? null : null);
   const [standingOpen, setStandingOpen] = useState(Boolean(standingDrawer(landed)));
   const [drawer, setDrawer] = useState(() => standingDrawer(landed));
   // A console door's destination; `n` remounts the queue board on each press.
@@ -123,7 +130,10 @@ export const PlatformSpace = ({ channelId, accountId = undefined, landing = null
     setFocus((f) => ({ ...to, n: f.n + 1 }));
   };
   const openStanding = (to) => { uiSound('toggle'); setStandingOpen(true); setDrawer(to); };
-  const land = (item) => (standingDrawer(item) ? openStanding(standingDrawer(item)) : openQueue(landingFocus(item)));
+  const land = (item) => {
+    if (item?.section === 'chats') { setSub('chats'); setChatCode(item.code ?? null); return; }
+    if (standingDrawer(item)) openStanding(standingDrawer(item)); else openQueue(landingFocus(item));
+  };
   useEffect(() => (inOffice ? undefined : onCardLanding(channelId, land)), [channelId, inOffice]);
   // MARKETING hands each new landing down numbered; the one this level mounted on is already open.
   const handled = useRef(landing?.n ?? 0);
@@ -210,7 +220,8 @@ export const PlatformSpace = ({ channelId, accountId = undefined, landing = null
           ) : tabs}
 
           {/* Keyed by board so each mounts fresh on entry (the account re-reads on every entry). */}
-          {sub === 'account' && AccountBoard ? <AccountBoard key={`account-${channel.id}`} />
+          {sub === 'chats' ? <ChatsSection key={`chats-${channel.id}-${chatCode ?? ''}`} channelId={channel.id} focusCode={chatCode} />
+            : sub === 'account' && AccountBoard ? <AccountBoard key={`account-${channel.id}`} />
             : sub === 'campaigns' ? <CampaignsSection key={`campaigns-${channel.id}`} channelId={channel.id} calm={calm} />
             : <CampaignQueueSection key={`queue-${channel.id}-${focus.n}`} channelId={channel.id} channelName={inOffice ? null : channel.name} entryFilter={ofCompany}
                 focus={focus.n ? focus : null} onChanged={boardChanged} calm={calm} reload={boardReload}

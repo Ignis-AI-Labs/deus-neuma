@@ -11,7 +11,7 @@
  * unused account and every unconnected platform stand OPTIONAL and never
  * count; the tree rolls up its own companies only; the same X user connected
  * in another house is caught (naming no house); a keys file opened to 0644
- * reads red; a waiting post without the disclosure line reads red; no key
+ * reads red; a waiting post whose image lacks the AI marker in its alt text reads red; no key
  * value ever leaves; and the being's read says the same in words.
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
@@ -97,12 +97,13 @@ beforeAll(async () => {
   await setAppFields(HOUSE_B, 'x', X_APP);
   await setAccountFields(HOUSE_B, 'x-1', { accessToken: 'ph-x-token-2', accessSecret: 'ph-x-secret-2' });
 
-  // A being's draft on x-1 carries the line; a pre-line draft on x-2 does not.
+  // A being's draft on x-1; on x-2 a draft staged before the AI disclosure moved into metadata (2026-10-30):
+  // the old line still in its words, its image's alt text unmarked.
   await postQueue.add({ channelId: 'x', accountId: 'x-1', text: 'The week, in one line.', authorNeumaId: 'core-cmo', queuedBy: 'core-cmo' });
   const queue = JSON.parse(await fs.readFile(process.env.NEUMA_SOCIAL_POST_QUEUE_PATH, 'utf8'));
   queue.push({
-    id: 'aaaabbbbccccdddd', channelId: 'x', accountId: 'x-2', text: 'Written before the line.', scheduledFor: null,
-    campaignId: null, pillar: '', media: [], authorNeumaId: 'sub-cmo', queuedBy: 'sub-cmo', status: 'draft', createdAt: new Date().toISOString(),
+    id: 'aaaabbbbccccdddd', channelId: 'x', accountId: 'x-2', text: 'Written before the ruling.\n\nMade with AI.', scheduledFor: null,
+    campaignId: null, pillar: '', media: [{ path: '/tmp/before-the-ruling.png', alt: 'the card' }], authorNeumaId: 'sub-cmo', queuedBy: 'sub-cmo', status: 'draft', createdAt: new Date().toISOString(),
   });
   await fs.writeFile(process.env.NEUMA_SOCIAL_POST_QUEUE_PATH, JSON.stringify(queue));
 
@@ -150,9 +151,9 @@ describe('the house social check (real disk, real loopback X, real route)', () =
       title: 'Fix the keys or @handle', words: expect.stringMatching(/Replace the keys/),
       door: { kind: 'handle', channelId: 'x', accountId: 'x-2', seen: 'sub_voice' },
     });
-    // The pre-line draft's fix lands on that post, and its holder — a lane of THIS house, keyed — may take it.
+    // The pre-ruling draft's fix lands on that post, and its holder — a lane of THIS house, keyed — may take it.
     expect(checkOf(x2, 'disclosure').fix).toMatchObject({
-      title: 'Add the AI line', door: { kind: 'queue', channelId: 'x', accountId: 'x-2', entryId: 'aaaabbbbccccdddd' },
+      title: 'Mark the images', door: { kind: 'queue', channelId: 'x', accountId: 'x-2', entryId: 'aaaabbbbccccdddd' },
       handTo: { neumaId: 'sub-cmo', role: 'holder', prompt: expect.stringContaining('aaaabbbbccccdddd') },
     });
     // Sharing with another house is the operator's to settle: a door, never a hand-over.
@@ -163,6 +164,8 @@ describe('the house social check (real disk, real loopback X, real route)', () =
     expect(checkOf(x2, 'not-shared').words).toContain('another house on this machine connects the same account');
     expect(checkOf(x2, 'not-shared').words).not.toContain(HOUSE_B);
     expect(checkOf(x2, 'disclosure')).toMatchObject({ verdict: 'fail', detail: 'aaaabbbbccccdddd' });
+    // and its words read without the old line, kept clean from here on
+    expect((await postQueue.load()).find((e) => e.id === 'aaaabbbbccccdddd')).toMatchObject({ text: 'Written before the ruling.', disclosure: 'metadata' });
 
     // UNSORTED reads red; it stands apart from every tree.
     expect(checkOf(x3, 'company')).toMatchObject({ verdict: 'fail', words: 'It belongs to no company (UNSORTED).' });

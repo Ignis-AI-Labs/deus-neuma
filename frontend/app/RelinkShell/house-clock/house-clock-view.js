@@ -152,6 +152,8 @@ const REASONS = Object.freeze({
   'operator-answer': 'your answer to what it filed',
   scheduled: 'its calendar said it was time',
   'charge-due': 'a charge it holds came due',
+  mail: 'new mail came to the house mailbox',
+  reply: 'someone replied to the house\'s posts',
 });
 
 /** @param {string} reason @returns {string} */
@@ -325,6 +327,7 @@ export const draftFromCharter = (charter, lanes) => ({
   teamPlans: charter?.delegation?.teamPlans === true,
   maxMembers: String(charter?.delegation?.maxMembers ?? 4),
   maxSteps: String(charter?.delegation?.maxSteps ?? 8),
+  maxProgrammeRuns: String(charter?.delegation?.maxProgrammeRuns ?? 3),
   allow: (charter?.allow ?? []).join('\n'),
   // Money out is fixed in escalate by the server; the form shows it as a rule, not a line to delete.
   escalate: (charter?.escalate ?? []).filter((id) => id !== MONEY_OUT).join('\n'),
@@ -342,7 +345,7 @@ export const charterFromDraft = (draft) => ({
   seats: Object.entries(draft.seats).filter(([, s]) => s.on).map(([laneId, s]) => ({ laneId, dailyCap: Number(s.cap) })),
   quietHours: draft.quietOn ? { start: draft.quietStart, end: draft.quietEnd } : null,
   cadence: draft.cadenceOn ? { everyHours: Number(draft.cadenceHours) } : null,
-  delegation: { teamPlans: draft.teamPlans, maxMembers: Number(draft.maxMembers), maxSteps: Number(draft.maxSteps) },
+  delegation: { teamPlans: draft.teamPlans, maxMembers: Number(draft.maxMembers), maxSteps: Number(draft.maxSteps), maxProgrammeRuns: Number(draft.maxProgrammeRuns ?? 3) },
   allow: lines(draft.allow),
   escalate: lines(draft.escalate),
   involvement: draft.involvement,
@@ -366,7 +369,7 @@ export const charterLines = (charter, names) => [
   {
     label: 'THE OPTIO MAY APPROVE',
     value: charter.delegation?.teamPlans
-      ? `team plans of up to ${charter.delegation.maxMembers} members and ${charter.delegation.maxSteps} steps`
+      ? `team plans of up to ${charter.delegation.maxMembers} members and ${charter.delegation.maxSteps} steps, and a programme's runs up to ${charter.delegation.maxProgrammeRuns ?? 3}`
       : 'nothing — every plan comes to you',
   },
   { label: 'ALLOWED WITHOUT ASKING', value: charter.allow?.length ? charter.allow.join(' · ') : 'nothing' },

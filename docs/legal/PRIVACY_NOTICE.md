@@ -1,6 +1,6 @@
 # NEUMA PRIVACY NOTICE
 
-*Version 1.1 · Early access · Effective 28 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.2 · Early access · Effective 2 November 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
 
 This Privacy Notice explains what personal data Deus Neuma processes, why, and the rights you have over it. It covers the Deus Neuma app and its website, deusneuma.ai. It is a disclosure, not a contract: you do not "accept" it, but the acceptance you sign at your ceremony attests that you have read it in full. It is read together with the Terms of Service (which govern access) and the Neuma Covenant (which governs conduct). Where this Notice and those documents differ on data handling, this Notice states the data handling and the Terms and Covenant state the legal terms.
 
@@ -30,7 +30,7 @@ We hold no central store of your data. Personal data leaves your computer only i
 - **Connections you turn on or use.** The app keeps its own list of every connection it can make: what each sends, where, and what you do without while it is off. It is in the app under Settings, Security, Connections, and at deusneuma.ai/privacy. Each connection that would run on its own starts off. The rest — the web, a cloud model, a wallet, a social channel, any service you connect — run only when you use a feature, connect a service, or approve a step. Each of those services handles what it receives under its own terms.
 - **On chain, if you choose.** Sealing a birth or founding a house on Ethereum puts a record on a public blockchain, where it is public and permanent. A seal's record is encrypted on your computer before it is sent, so the chain holds ciphertext, hashes, and the wallet addresses that signed it. No one, including us, can remove it.
 - **When you write to us.** What you send in a support request, a covenant appeal, or a legal matter.
-- **This website.** deusneuma.ai sets no cookies and runs no analytics or tracking scripts. It stores nothing in your browser unless you choose a look for it; then your browser keeps that choice, the colours only, under deusneuma-look, and never sends it to us. Its fonts and images are served from the site itself. It does not track you across other sites or let anyone else do so, so a browser's Do Not Track signal changes nothing here. Booking a session on the work-with-us page asks Ignis AI Labs' booking service at www.ignislabs.ai for open times straight from your browser, so it receives your IP address and time zone; if you book, you give your name, email, and topic there, under Ignis AI Labs' privacy policy.
+- **This website.** deusneuma.ai sets no cookies and runs no analytics or tracking scripts. It stores nothing in your browser unless you choose a look for it; then your browser keeps that choice, the colours only, under deusneuma-look, and never sends it to us. Its fonts and images are served from the site itself. It does not track you across other sites or let anyone else do so, so a browser's Do Not Track signal changes nothing here. We keep daily totals for deusneuma.ai (page views, unique addresses counted per day, countries, and downloads per file), never an IP address or anything that identifies you. Booking a session on the work-with-us page reads open times from Ignis AI Labs' booking service at www.ignislabs.ai through deusneuma.ai, which passes on only the session you chose, never your IP address or time zone; if you book, you give your name, email, and topic there, under Ignis AI Labs' privacy policy.
 
 ## 5. Why, and on what basis
 
@@ -45,6 +45,7 @@ The connections in §4 run because you turn them on or use them; the service you
 
 - **What stays with you:** for as long as you keep it. We do not hold it, so we set no clock.
 - **Requests to the website and the update service:** we keep no request logs. Cloudflare keeps its own security data as its policy says.
+- **Website daily totals:** we retain the aggregate history of page views, unique addresses counted per day, countries, and downloads per file. It contains no IP address, request-level record, or anything finer than a day.
 - **What you write to us:** while the matter is live, then as long as the law requires.
 - **Bookings:** as long as it takes to arrange and hold the session and to meet our legal duties; ask, and we delete them.
 - **On chain:** permanent, by the nature of a public blockchain.

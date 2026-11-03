@@ -97,7 +97,7 @@ export const sitePrompt = (company) => [
  * @param {Array<{id: string, scheduledFor?: ?string}>} bare
  */
 export const disclosurePrompt = (account, bare) => [
-  `The house social check found ${bare.length} waiting ${account.channelName} post(s) on ${account.id} without the AI disclosure line: ${bare.map((e) => e.id).join(', ')}.`,
-  'For each one: pull it back with queue_cancel (reason: written before the disclosure line), then stage the same words again with social/queue for the same account, keeping its time and campaign — staging adds the line.',
+  `The house social check found ${bare.length} waiting ${account.channelName} post(s) on ${account.id} whose images lack the AI marker in their alt text: ${bare.map((e) => e.id).join(', ')}.`,
+  'For each one: update its media with queue_update, keeping each image and its description; the queue opens each alt text with the marker when it reads the post. The words stay as they are.',
   'I will decide each card.',
 ].join(' ');

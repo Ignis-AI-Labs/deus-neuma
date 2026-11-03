@@ -1,4 +1,4 @@
-// RitePlayer — THE SUMMONING RITE, whole: threshold → the seven stages (the
+// RitePlayer — THE SUMMONING RITE, whole: threshold → the stages (the
 // living birth art) → the forging → THE SUMMONING (its film) → guardianship
 // → homecoming, on one stage, one clock and one instrument. The specimen
 // (frontend/rite.html) plays a fresh measured soul; RE-WATCH plays it again

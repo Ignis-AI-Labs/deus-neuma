@@ -57,11 +57,12 @@ export const stepWords = (company) => {
 /**
  * What the operator may do on this line now, or null when it waits on someone else.
  * @param {object} company
- * @returns {null | {kind: 'hand-on'} | {kind: 'inspect', counsel: boolean, stoppable: boolean}}
+ * @returns {null | {kind: 'hand-on', ownYes: boolean, stoppable: boolean} | {kind: 'inspect', counsel: boolean, stoppable: boolean}}
+ *   ownYes: handing it on is the operator's own yes — no second look follows
  */
 export const operatorMove = (company) => {
   if (company?.up?.holder !== 'operator') return null;
-  if (company.up.kind === 'master') return { kind: 'hand-on' };
+  if (company.up.kind === 'master') return { kind: 'hand-on', ownYes: company.ownYes === true, stoppable: Boolean(currentStage(company)?.stoppable) };
   return { kind: 'inspect', counsel: company.up.as === 'counsel', stoppable: Boolean(currentStage(company)?.stoppable) };
 };
 

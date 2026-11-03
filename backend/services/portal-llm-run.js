@@ -108,6 +108,8 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
     ...(preset.superviseLlamaServer === false ? { superviseLlamaServer: false } : {}),
     // A benchmark sitting reads the images each accepted request carried (wire-images.js).
     ...(preset.onWireBody ? { onWireBody: preset.onWireBody } : {}),
+    ...(Number.isInteger(roundOpts?.contextHead) ? { contextHead: roundOpts.contextHead } : {}),
+    ...(roundOpts?.onContextRecovery ? { onContextRecovery: roundOpts.onContextRecovery } : {}),
     // Resolved route / refined adapter; absent means machine config / bare base.
     ...(route ? { route } : {}), ...(lora ? { lora } : {}),
   };

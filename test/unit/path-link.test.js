@@ -31,6 +31,21 @@ describe('openablePath — which code spans are doors', () => {
     expect(openablePath('write_file')).toBeNull();
   });
 
+  it('allows a project-relative path only when the caller supplies the focused-base mode', () => {
+    expect(openablePath('docs/design/references/base/rive_female_bone.png', { relative: true }))
+      .toBe('docs/design/references/base/rive_female_bone.png');
+    expect(openablePath('docs/design/', { relative: true })).toBe('docs/design');
+    expect(openablePath('docs/design')).toBeNull();
+  });
+
+  it('keeps relative traversal, rootless names, and commands as plain text', () => {
+    expect(openablePath('../outside/file.md', { relative: true })).toBeNull();
+    expect(openablePath('./notes.md', { relative: true })).toBeNull();
+    expect(openablePath('docs//file.md', { relative: true })).toBeNull();
+    expect(openablePath('notes.md', { relative: true })).toBeNull();
+    expect(openablePath('npm run build', { relative: true })).toBeNull();
+  });
+
   it('refuses a command that merely begins with a slash', () => {
     // `/usr/bin/env node` is an instruction, not a place. A link that lands
     // somewhere wrong is worse than text.
@@ -87,7 +102,7 @@ describe('changedPath — what makes the Explorer re-list', () => {
   });
 
   it('covers every mutating act', () => {
-    for (const tool of ['write_file', 'edit_file', 'create_file', 'create_directory', 'move_file', 'rename_file', 'delete_file']) {
+    for (const tool of ['write', 'edit', 'copy', 'move', 'write_file', 'edit_file', 'create_file', 'create_directory', 'move_file', 'copy_file', 'rename_file', 'delete_file']) {
       expect(changedPath({ tool, status: 'ok', path: '/g/x' }), tool).toBe('/g/x');
     }
   });

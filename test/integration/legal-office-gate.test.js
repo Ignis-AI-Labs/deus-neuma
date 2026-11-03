@@ -43,7 +43,14 @@ const MATTER = {
   severity: 'medium', summary: 'gate fixture', regimes: ['GDPR (EU) / UK GDPR'],
   affected: ['012345678 2026-10-01 feat(birth): read the place from the machine'],
 };
-const CITATION = 'https://eur-lex.europa.eu/eli/reg/2016/679/oj (GDPR Art. 13)';
+// A citation is a record the platform re-reads from the real source (the citation law).
+const CITATION = Object.freeze({
+  claim: 'A controller must tell people what it collects when it collects it.',
+  authority: 'UK GDPR', pinCite: 'Art. 13', standing: 'in force (retained EU law, as amended)',
+  heading: 'Information to be provided where personal data are collected from the data subject',
+  sourceUrl: 'https://www.legislation.gov.uk/eur/2016/679/article/13',
+  quote: 'the controller shall, at the time when personal data are obtained, provide the data subject with all of the following information',
+});
 
 describe('legal office gate (reads universal, acts seat-locked; real stores + real WS)', () => {
   let house, houses, httpServer, wss, serverWs, client;
@@ -121,13 +128,14 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
     expect(LEGAL_TOOLS.every((t) => t.server === 'legal')).toBe(true);
     await cloDesignation.designate(HOUSE_A, CLO_LANE);
     const names = ['legal_posture', 'legal_matters_list', 'legal_sources', 'legal_matter_get'];
-    // The keyed research APIs spend the house's own quota: the seated CLO's alone.
-    expect((await legalToolsFor(freshConnection(CLO_LANE))).map((t) => t.name)).toEqual([...names, 'legal_research_api']);
+    // The keyed research APIs spend the house's own quota, and the citation check reads the web for
+    // the office: the seated CLO's alone.
+    expect((await legalToolsFor(freshConnection(CLO_LANE))).map((t) => t.name)).toEqual([...names, 'legal_research_api', 'legal_cite_check']);
     expect((await legalToolsFor(freshConnection(OTHER_LANE))).map((t) => t.name)).toEqual(names);
     expect(await legalToolsFor({ companion: {} })).toEqual([]);
 
     const seated = await intentSectionFor(freshConnection(CLO_LANE));
-    for (const type of ['legal/scan', 'legal/assess', 'legal/file']) expect(seated).toContain(type);
+    for (const type of ['legal/scan', 'legal/assess', 'legal/file', 'legal/opinion']) expect(seated).toContain(type);
     expect(await intentSectionFor(freshConnection(OTHER_LANE))).not.toContain('legal/');
   });
 
@@ -162,31 +170,46 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
     expect(uncited[0].error).toMatch(/cite/);
     expect((await (await ledgerA()).get(entry.id)).status).toBe('new');
 
+    // A reading the house acts on owes the app's recency sweep (and a second
+    // reader — a model, so proven live, never in this suite).
+    await fileIntent(CLO_LANE, 'unswept', {
+      type: 'legal/assess', id: entry.id, status: 'concern', assessment: 'Reading the place is collection of personal data.', citations: [CITATION],
+    });
+    expect((await sweep(freshConnection(CLO_LANE), 'auto'))[0].error).toMatch(/search terms for the app's recency sweep/);
+
+    // A hand-off to counsel is checked, never swept or second-read: it lands.
     await fileIntent(CLO_LANE, 'cited', {
-      type: 'legal/assess', id: entry.id.slice(0, 10), status: 'concern',
-      assessment: 'Reading the place from the machine is collection of personal data; the notice must name it before collection.',
+      type: 'legal/assess', id: entry.id.slice(0, 10), status: 'needs_counsel',
+      assessment: 'Reading the place from the machine is collection of personal data; counsel should say what the notice must name before collection.',
       citations: [CITATION], reviewBy: '2027-04-01',
     });
     const settled = await sweep(freshConnection(CLO_LANE), 'auto');
     expect(settled[0].status).toBe('ok');
-    expect(await (await ledgerA()).get(entry.id)).toMatchObject({ status: 'concern', assessedBy: CLO_LANE, reviewBy: '2027-04-01', citations: [CITATION] });
+    const settledEntry = await (await ledgerA()).get(entry.id);
+    expect(settledEntry).toMatchObject({ status: 'needs_counsel', assessedBy: CLO_LANE, reviewBy: '2027-04-01' });
+    expect(settledEntry.citations[0]).toContain('UK GDPR, Art. 13');
+    expect(settledEntry.citations[0]).toContain('re-read by the platform'); // the platform read the source before it landed
     const drawer = path.join(houses.rootA, CLO_LANE, 'legal', 'opinions');
     const [note] = await fs.readdir(drawer);
-    expect(await fs.readFile(path.join(drawer, note), 'utf8')).toContain('GDPR Art. 13');
+    expect(await fs.readFile(path.join(drawer, note), 'utf8')).toContain('UK GDPR, Art. 13');
   }, 30000);
 
-  test('FILE and SCAN — research enters the record as new; the watch runs on the seat\'s word', async () => {
+  test('FILE and SCAN — research owes the app\'s sweep before it enters; the watch runs on the seat\'s word', async () => {
     await cloDesignation.designate(HOUSE_A, CLO_LANE);
     await fileIntent(CLO_LANE, 'research', {
-      type: 'legal/file', title: 'EU AI Act Art. 50 transparency duties apply from 2026-08-02',
-      summary: 'Beings that speak to people outside the house must say they are an AI.',
-      citations: ['https://eur-lex.europa.eu/eli/reg/2024/1689/oj (Art. 50)'], severity: 'high', regimes: ['EU AI Act'],
+      type: 'legal/file', title: 'FTC Act section 5 reaches AI speech that hides what it is',
+      summary: 'Beings that speak to people outside the house must not deceive them about being an AI.',
+      citations: [{
+        claim: 'The FTC Act forbids deceptive practices in commerce.', authority: '15 U.S.C. § 45', pinCite: '(a)(1)',
+        heading: 'Unfair methods of competition unlawful; prevention by Commission', standing: 'in force',
+        sourceUrl: 'https://www.law.cornell.edu/uscode/text/15/45',
+        quote: 'unfair or deceptive acts or practices in or affecting commerce, are hereby declared unlawful',
+      }], severity: 'high', regimes: ['FTC Act'],
     });
     const filed = await sweep(freshConnection(CLO_LANE), 'auto');
-    expect(filed[0].status).toBe('ok');
-    const research = (await (await ledgerA()).load()).find((m) => m.source === 'research');
-    expect(research).toMatchObject({ area: 'regulation', status: 'new', severity: 'high', filedBy: CLO_LANE });
-    expect(research.citations[0]).toContain('2024/1689');
+    expect(filed[0].status).toBe('error');
+    expect(filed[0].error).toMatch(/search terms for the app's recency sweep/);
+    expect((await (await ledgerA()).load()).find((m) => m.source === 'research')).toBeUndefined();
 
     await fileIntent(CLO_LANE, 'scan', { type: 'legal/scan' });
     const scanned = await sweep(freshConnection(CLO_LANE), 'auto');
@@ -197,12 +220,12 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
   }, 30000);
 
   test('READS ride the real ledger for ANY bound lane', async () => {
-    const listed = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_matters_list' }, { status: 'concern' });
+    const listed = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_matters_list' }, { status: 'needs_counsel' });
     expect(listed.status).toBe('ok');
     expect(listed.content).toContain('personal data and location');
     const posture = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_posture' }, {});
     expect(posture.content).toContain(`CLO seat: ${CLO_LANE}`);
-    expect(posture.content).toMatch(/concern: 1/);
+    expect(posture.content).toMatch(/needs_counsel: 1/);
     const missing = await handleLegalTool(serverWs, freshConnection(OTHER_LANE), null, 'auto', { toolName: 'legal_matter_get' }, { id: 'lm_nope' });
     expect(missing.status).toBe('error');
     // Where the law is read: the official source, the route, the reading order, the citation check.
@@ -260,7 +283,8 @@ describe('legal office gate (reads universal, acts seat-locked; real stores + re
     const own = await cloBriefingSection(twin());
     expect(own).toMatch(/^## CLO office/);
     expect(own).not.toContain('personal data and location');
-    expect(await cloBriefingSection(freshConnection(CLO_LANE))).toContain('personal data and location');
+    expect(own).not.toContain('wait on counsel');
+    expect(await cloBriefingSection(freshConnection(CLO_LANE))).toContain('1 matter(s) wait on counsel');
     await cloDesignation.clear(HOUSE_B);
     houses.asHouse(HOUSE_A);
   });

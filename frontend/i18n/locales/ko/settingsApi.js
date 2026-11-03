@@ -72,6 +72,20 @@ export default Object.freeze({
     envLockedNote: '«알림» 오퍼레이터의 시작 환경({{env}})이 이그레스를 끔으로 고정합니다. 잠금이 풀리기 전까지 이 스위치는 효력이 없습니다.',
   }),
 
+  vision: Object.freeze({
+    heading: '이미지 비전',
+    note: '모든 모델에서 이미지 입력이 기본으로 켜져 있습니다. 기능 확인이 불확실핬도 꺼지지 않으며, 시각 기능이 없다고 확인된 모델만 거부합니다. 원할 때는 명시적으로 끌 수 있습니다.',
+    key: '이미지 입력',
+    on: '켜짐 — 모델에 이미지를 볼 수 있음',
+    off: '꺼짐 — 텍스트 전용',
+    lockedByOperator: '운영자 잠금',
+    reading: '설정 읽는 중…',
+    switching: '전환 중…',
+    switchOff: '끄기',
+    switchOn: '켜기',
+    envLockedNote: '«NOTICE» 시작 환경 ({{env}})에서 이미지 입력이 꺼져 있습니다. 잠금이 해제되어야 이 설정이 적용됩니다.',
+  }),
+
   serviceKeys: Object.freeze({
     heading: '서비스 키',
     note: '모델이 아닌 외부 서비스의 키입니다. 현재는 Tavily 웹 검색으로, 검색이 필요한 벤치마크가 자체 도구로 사용합니다. 하우스 자체의 웹 검색은 사용하지 않습니다. 공급자 키와 같은 암호화 저장소에 이 기기에서 봉인되며 다시 표시되지 않습니다.',

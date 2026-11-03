@@ -22,9 +22,7 @@
  *
  * Per-being confinement (lanes, denied paths, budgets, ACTS approval) stands
  * IN FRONT of this organ in tool-sandbox.js, exactly as it stood in front of
- * the child. edit_file and delete_file stay platform hands
- * (platform-hands.js) — the organ's edit_file exists for surface parity and
- * direct platform callers only.
+ * the child. write_file, edit_file and delete_file stay platform hands; write_file shares the guard for direct callers.
  *
  * impure (real fs) except where marked.
  */
@@ -32,17 +30,20 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { inflateRawSync } from 'zlib';
-import { pdfText } from './pdf-text.js';
+import { pdfRead, pdfText } from './pdf-text.js';
 import { docxText } from '../../core/documents/docx-text.js';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import {
   applyFileEdits, formatSize, getAllowedDirectories, getFileStats, headFile,
-  readFileContent, setAllowedDirectories, tailFile,
-  validatePath, writeFileContent,
+  readFileContent, setAllowedDirectories, tailFile, validatePath,
 } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
+import { guardedWriteFile } from './write-file-guard.js';
 import { runningAs } from './native-fs-roots.js';
-import { checkPathAccess, secretLinkReason } from './sandbox-path-policy.js';
+import { checkPathAccess } from './sandbox-path-policy.js';
+import { otherHouseInWalk, readablePath } from './fs-read-clearance.js';
+// copy and move live apart: validated, and a move works across disks (fs-copy-move-clarity)
+import { copyFile, moveFile } from './native-fs-transfer.js';
 
 // The organ matches directory_tree excludes with the SAME minimatch the
 // package's own search path uses — resolved from the package's dependency
@@ -77,7 +78,6 @@ export const nameSearchGlob = (pattern) => {
 };
 
 
-
 // --- Handlers (one per catalog entry, mirroring dist/index.js) ---------------
 
 const MEDIA_MIME_TYPES = Object.freeze({
@@ -99,7 +99,7 @@ export const isSightablePath = (filePath) =>
   ['image/png', 'image/jpeg', 'image/webp'].includes(mediaMimeFor(filePath));
 
 const readTextFile = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await readablePath(args.path);
   if (args.head && args.tail) {
     throw new Error('Cannot specify both head and tail parameters simultaneously');
   }
@@ -113,13 +113,13 @@ const readTextFile = async (args) => {
   // ignored rather than refused — asking for the first 20 lines of a PNG is a
   // wrong question, not a fatal one.
   if (isSightablePath(validPath)) return readMediaFile({ path: validPath });
-  // A PDF or a Word document reads as its words (pdf-text.js, docx-text.js), never as decoded bytes.
+  // A PDF or a Word document reads as its words (pdf-text.js, docx-text.js), never as decoded bytes; a PDF's scanned pages go to the eye.
   const asWords = /\.pdf$/i.test(validPath) ? pdfText
     : /\.docx$/i.test(validPath) ? async (p) => docxText(await fs.readFile(p), inflateRawSync) : null;
   if (Number.isInteger(args.offset) || Number.isInteger(args.limit)) {
     return said(lineRange(asWords ? await asWords(validPath) : await readFileContent(validPath), args));
   }
-  if (asWords) return said(await asWords(validPath));
+  if (asWords) return asWords === pdfText ? pdfRead(validPath, args) : said(await asWords(validPath));
   const content = args.tail ? await tailFile(validPath, args.tail)
     : args.head ? await headFile(validPath, args.head)
     : await readFileContent(validPath);
@@ -137,7 +137,7 @@ const lineRange = (text, { offset, limit }) => {
 };
 
 const readMediaFile = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await readablePath(args.path);
   const mimeType = MEDIA_MIME_TYPES[path.extname(validPath).toLowerCase()] || 'application/octet-stream';
   const data = (await fs.readFile(validPath)).toString('base64');
   const contentItem = mimeType.startsWith('image/') ? { type: 'image', data, mimeType }
@@ -151,7 +151,7 @@ const readMultipleFiles = async (args) => {
   if (paths.length === 0) throw new Error('At least one file path must be provided');
   const results = await Promise.all(paths.map(async (filePath) => {
     try {
-      const valid = await validatePath(filePath);
+      const valid = await readablePath(filePath);
       // A batch read is a TEXT gesture — it joins many files into one string,
       // and an image has no place in that. Rather than returning the same
       // silent nothing the single read used to, it says what the file is and
@@ -170,8 +170,9 @@ const readMultipleFiles = async (args) => {
 
 const writeFile = async (args) => {
   const validPath = await validatePath(args.path);
-  await writeFileContent(validPath, args.content);
-  return said(`Successfully wrote to ${args.path}`);
+  const hand = await guardedWriteFile({ ...args, path: validPath });
+  if (!hand.ok) throw new Error(hand.reason);
+  return hand.result;
 };
 
 const editFile = async (args) => {
@@ -253,20 +254,6 @@ const directoryTree = async (args) => {
   return said(JSON.stringify(await buildTree(rootPath), null, 2));
 };
 
-const moveFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
-  await fs.rename(validSource, validDest);
-  return said(`Successfully moved ${args.source} to ${args.destination}`);
-};
-
-const copyFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
-  await fs.cp(validSource, validDest, { recursive: true, errorOnExist: true, force: false, filter: (src) => !secretLinkReason(src) });
-  return said(`Successfully copied ${args.source} to ${args.destination}`);
-};
-
 
 // search_files bounds — the name walk once had NONE: every entry re-crossed
 // the wall one at a time, node_modules and .git included, every hit returned.
@@ -276,12 +263,12 @@ const copyFile = async (args) => {
 // default excludes.
 const NAME_SEARCH = Object.freeze({ MAX_ENTRIES: 50000, MAX_RESULTS: 200 });
 
-// pure — the sandbox judged only a search's root; a walk judges every entry,
-// as named and as resolved, by the same deny law, so a secret is never read
-// or listed. node_modules is denied as noise, not secret: excludePatterns opens it.
+// impure (owner reads) — the sandbox judged only a search's root; a walk judges every entry, as named
+// and as resolved, by the same deny law and the other-house wall, so a secret or another house's data is
+// never read or listed. node_modules is denied as noise, not secret: excludePatterns opens it.
 const withheldByPolicy = (...paths) => paths.some((p) => {
   const verdict = checkPathAccess(p);
-  return !verdict.allowed && verdict.deniedPattern !== 'node_modules/';
+  return (!verdict.allowed && verdict.deniedPattern !== 'node_modules/') || otherHouseInWalk(p);
 });
 const withheldNote = (n) => `[${n} path(s) withheld by the secret-path policy — never read or listed]`;
 
@@ -424,8 +411,9 @@ const searchContent = async (args) => {
 };
 
 const getFileInfo = async (args) => {
-  const info = await getFileStats(await validatePath(args.path));
-  return said(Object.entries(info).map(([key, value]) => `${key}: ${value}`).join('\n'));
+  const validPath = await validatePath(args.path);
+  const [info, stat] = await Promise.all([getFileStats(validPath), fs.stat(validPath)]);
+  return said([...Object.entries(info), ['mtimeMs', stat.mtimeMs]].map(([key, value]) => `${key}: ${value}`).join('\n'));
 };
 
 const listAllowedDirectories = async () =>

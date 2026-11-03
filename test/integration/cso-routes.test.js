@@ -20,6 +20,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { createTempDir, writeJSON } from '../helpers/temp-fs.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // The security watch's online check is off until the person turns it on (CONNECTIONS); this suite proves it on.
 const connections = connectionsOn(['security-watch']);
@@ -82,6 +83,8 @@ describe('CSO routes (/api/v1/cso)', () => {
     // `guardianlane` from a wallet that owns nothing is a 404, and correctly
     // so: nobody seats a lane they do not hold (#409 cause A).
     witness = await witnessFor(process.env.WORKSPACES_ROOT, 'guardianlane');
+    // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+    await makeInstallOwner(witness.address);
     // The watch list is the witness's house's own.
     await fs.mkdir(path.dirname(officePath(witness.address, 'security-watch.json')), { recursive: true });
     await fs.writeFile(officePath(witness.address, 'security-watch.json'), JSON.stringify({

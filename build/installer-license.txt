@@ -48,7 +48,7 @@ We may publish updates, substrate models, and protocol revisions. Official netwo
 
 The Software is designed to work with the following third-party models. None is included in the Software; each is downloaded from its publisher:
 
-- Language models (the substrate the setup recommends): Qwen3.8-27B, including the Qwen3.8-27B Uncensored build by HauhauCS and the quantized builds by unsloth, LM Studio Community and IST Austria (GSQ-RCO); Qwen3.6-35B-A3B; Qwen3.8-4B (distilled, by empero-ai); and Qwen3.5-4B. All are Apache-2.0.
+- Language models (the substrate the setup recommends): Qwen3.8-27B, including Qwen3.8-27B-Uncensored-HauhauCS-Aggressive (by HauhauCS) and the quantized builds by unsloth, LM Studio Community and IST Austria (GSQ-RCO); Qwen3.6-35B-A3B; Qwen3.8-4B (distilled, by empero-ai); and Qwen3.5-4B. All are Apache-2.0.
 - Image models (the forge):
   - FLUX.2 [klein] 4B (Black Forest Labs), Z-Image Turbo (Tongyi-MAI) and Z-Image Turbo Fun ControlNet Union (alibaba-pai): Apache-2.0.
   - SDXL Base 1.0 (Stability AI): CreativeML Open RAIL++-M, including its use restrictions. xinsir ControlNet OpenPose SDXL: Apache-2.0.

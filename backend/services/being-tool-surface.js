@@ -3,11 +3,11 @@
  * coding shell (LANE-D2; Design note, 2026-08-11: […]).
  *
  * THE MIRROR LAW. The shell family is the witness seat's own, never a parallel
- * implementation: the definitions are read live from witness-tools.js, the
- * overlay shell is prepared and executed by the SAME sandbox factory
- * (bubblewrap, scrubbed environment, no network, empty HOME, bounded output),
- * and the tiers are the SAME ACTS rows every seat resolves. Only the
- * seat-shaped parts differ: the policy cascade and refusal wording.
+ * implementation: the definitions are read live from witness-tools.js, and the
+ * SAME runner handles SANDBOX OFF (direct execution, normal environment) and
+ * SANDBOX ON (bubblewrap, scrubbed environment, bounded output). The tiers are
+ * the SAME ACTS rows every seat resolves. Only the seat-shaped parts differ:
+ * the policy cascade and refusal wording.
  *
  * The sovereignty boundary in one line: a witness-seated connection never
  * enters here. The witness keeps its own path (witness-tools.js); this file
@@ -335,8 +335,8 @@ export const isBeingCodingTool = (match, connection) => {
  * defaults → lane → session, then the session mode on top), so coding/execute
  * asks the operator exactly the way delete_file does, and an ALWAYS lands
  * through the desk's own grant seam. The command itself runs through the
- * witness seat's real runner: bubblewrap, the live ground read through a
- * kernel overlay, no network, no host credentials. The post-approval abort
+ * witness seat's real runner: directly with SANDBOX OFF, or through the
+ * isolated shell with SANDBOX ON. The post-approval abort
  * check is the being lane's own #200 law: an interrupt that lands between the
  * operator's yes and the spawn stops the act, not just the speech.
  *

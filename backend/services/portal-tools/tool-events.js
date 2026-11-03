@@ -47,7 +47,7 @@ export const TOOL_DETAIL_MAX_CHARS = 2000;
 // Past-tense verbs for the one-line action summary the operator reads
 const TOOL_VERBS = Object.freeze({
   write_file: 'wrote', write: 'wrote', read_file: 'read', read_text_file: 'read', read: 'read',
-  edit_file: 'edited', edit: 'edited', create_directory: 'created', move_file: 'moved',
+  edit_file: 'edited', edit: 'edited', create_directory: 'created',
   list_directory: 'listed', list: 'listed', list_directory_with_sizes: 'listed',
   search_files: 'searched', search_content: 'grepped', search: 'searched',
 });
@@ -72,12 +72,27 @@ const outcomeOf = (content) => {
   return line ? oneLine(line, 60) : null;
 };
 
+const transferSummary = (toolName, args, active = false) => {
+  const isTransfer = ['move', 'copy', 'move_file', 'copy_file'].includes(toolName)
+    || (toolName === 'edit' && args?.destination);
+  if (!isTransfer) return null;
+  const source = args?.path || args?.source;
+  const destination = args?.destination || args?.to || args?.target;
+  if (!source || !destination) return null;
+  const copying = toolName === 'copy' || toolName === 'copy_file' || args?.copy === true;
+  const verb = active ? (copying ? 'copying' : 'moving') : (copying ? 'copied' : 'moved');
+  return `${verb} ${oneLine(source, 80)} → ${oneLine(destination, 80)}`;
+};
+
+export const toolActivitySummary = (toolName, args) => transferSummary(toolName, args, true);
+
 // One human line per action: "wrote data/dna-cache/FENNA.md" — an fs/edit sub-op names its real act (a delete never wears an edit's word).
 // Any other tool reads […]: the act and its result, both from the event.
 export const toolSummary = (toolName, args, content) => {
+  const transfer = transferSummary(toolName, args);
+  if (transfer) return transfer;
   const target = args?.path || args?.url || args?.query || args?.name || targetOf(args);
-  const subOp = toolName !== 'edit' ? null
-    : args?.delete === true ? 'deleted' : args?.destination ? (args?.copy === true ? 'copied' : 'moved') : null;
+  const subOp = toolName === 'edit' && args?.delete === true ? 'deleted' : null;
   const verb = subOp || TOOL_VERBS[toolName];
   if (verb && target) return `${verb} ${target}`;
   const base = target ? `${toolName} ${target}` : toolName;

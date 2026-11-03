@@ -22,6 +22,8 @@ const WAKE_REASON_WORDS = Object.freeze({
   'operator-answer': 'your answer',
   scheduled: 'its calendar',
   'charge-due': 'a charge due now',
+  mail: 'new mail',
+  reply: 'new replies to the house\'s posts',
 });
 
 /** @param {string} reason @returns {string} */

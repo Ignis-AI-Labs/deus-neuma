@@ -19,6 +19,7 @@ export const createPortalConnection = ({ ws, walletAddress = null, notifySubstra
     ws,
     walletAddress,
     companion: null,
+    sandboxEnabled: true,
     established: new Date(),
     _pongPending: false,
     _recentMessageIds: new Set(),

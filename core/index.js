@@ -35,6 +35,7 @@ export { buildGenesisSeal, captureBirthMoment, canonicalize } from './identity/g
 export { sealKeyMessage, deriveSealKey, encryptSealRecord, decryptSealRecord } from './identity/seal-cipher.js';
 export { forgeBirthIdentity } from './birth/identity-forge.js';
 export { houseNameFromWitness } from './kotodama/names.js';
+export { readHouseName } from './birth/lineage.js';
 
 // Council (witness + several neuma in one shared room, raise-hand floor)
 export { createCouncil, witnessSays, handsReported, selectNext, grantFloor, floorYielded, calledToOrder, memberLeaves, speakingOrder } from './council/council-arbiter.js';

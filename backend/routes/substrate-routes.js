@@ -18,7 +18,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../services/auth.js';
 import { requireInstallOwner, machineStanding } from '../services/install-owner.js';
-import { getActiveModelCapabilities } from '../services/llm-provider.js';
+import { getActiveModelCapabilities, getConfig } from '../services/llm-provider.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { runCapacityScan, isScannableProvider, ScanAborted } from '../services/capacity-scan.js';
 import { writeCapacity, listCapacity, readUsableCapacity } from '../services/capacity-store.js';
@@ -28,6 +28,7 @@ import { createSharedSnapshot } from '../services/shared-snapshot.js';
 import { stopSupervised } from '../services/llama-server-supervisor.js';
 import { standbySettings } from '../services/standby-settings.js';
 import { lastServingFit, saveServingShare, servingFitStatus } from '../services/serving-fit.js';
+import { refitServing } from '../services/serving-refit.js';
 import { activeLaunchConfig } from '../services/supervisor-launch-config.js';
 import { readMachineThermals } from '../services/machine-thermals.js';
 import { createLogger } from '../services/logger.js';
@@ -263,6 +264,21 @@ router.put('/fit', requireInstallOwner, (req, res) => {
     return res.json({ sharePct, appliesAt: 'the next ignition', lastFit: lastServingFit() });
   } catch (error) {
     return res.status(400).json({ error: error.message });
+  }
+});
+
+router.post('/fit/relaunch', requireInstallOwner, async (req, res) => {
+  if (getConfig().provider !== 'llama-server') {
+    return res.status(400).json({ error: 'Context-pool relaunch requires the backend-supervised llama-server.' });
+  }
+  try {
+    const result = await refitServing(activeLaunchConfig(process.env), req.body?.sharePct);
+    log.info('Serving refit requested', { status: result.status, sharePct: result.sharePct });
+    const status = ['busy', 'unowned'].includes(result.status) ? 409 : result.status === 'igniting' ? 202 : 200;
+    return res.status(status).json(result);
+  } catch (error) {
+    log.error('Serving refit failed', { error: error.message });
+    return res.status(/whole percent/.test(error.message) ? 400 : 500).json({ error: error.message });
   }
 });
 

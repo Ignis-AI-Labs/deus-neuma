@@ -206,8 +206,10 @@ const createWalletService = (config) => {
     try { fs.unlinkSync(rememberPath); } catch { /* none */ }
   };
 
+  // The password rests on the keychain alone here, so only a real one takes it
+  // (`strong`: never Linux basic_text); an older blob still opens on `available`.
   const writeRemember = (id, password) => {
-    if (!outerSeal.available) return;
+    if (outerSeal.strong !== true) return;
     const blob = outerSeal.encrypt(JSON.stringify({ id, password }));
     fs.writeFileSync(rememberPath, blob, { mode: 0o600 });
     try { fs.chmodSync(rememberPath, 0o600); } catch { /* non-posix */ }
@@ -244,9 +246,10 @@ const createWalletService = (config) => {
   // still sign in, so a key is made for them in one click). The password is
   // generated HERE and never reaches the renderer; it is kept sealed by the OS
   // keychain in its own file, apart from remember.dat (one slot another
-  // wallet's […] would overwrite). No keychain, no made key: refused.
+  // wallet's […] would overwrite). No real keychain (none, or one that
+  // is only obfuscation), no made key: refused. A key made before still opens.
   const madePath = (id) => path.join(walletDir, `made-${id}.dat`);
-  const canKeepMadeKey = () => outerSeal.available === true;
+  const canKeepMadeKey = () => outerSeal.strong === true;
   const readMadeKey = (id) => {
     try { return outerSeal.decrypt(fs.readFileSync(madePath(id))); } catch { return null; }
   };

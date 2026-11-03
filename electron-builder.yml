@@ -103,6 +103,10 @@ extraResources:
 # so the whole app ships unpacked. Proven by the 2026-07-31 boot test.
 asar: false
 
+# The AppImage starts through build/appimage-launcher.sh, put in front of the
+# binary here; a `--linux dir` pack (the rpm and deb input) is left as packed.
+afterPack: ./scripts/appimage-launcher-hook.cjs
+
 mac:
   category: public.app-category.productivity
   extendInfo:
@@ -139,11 +143,12 @@ win:
 linux:
   category: Utility
   executableName: neuma
-  # The desktop entry's arguments. --no-sandbox is electron-builder's own
-  # AppImage default, which a set value replaces; the display flag keeps the
-  # desk on X11 / XWayland (electron/display-flags.cjs).
+  # The desktop entry's arguments: the display flag keeps the desk on X11 /
+  # XWayland (electron/display-flags.cjs). Setting them replaces
+  # electron-builder's own AppImage default, --no-sandbox, which ran every
+  # renderer unsandboxed; the AppImage's launcher turns the sandbox off only
+  # where the system cannot run it (build/appimage-launcher.sh).
   executableArgs:
-    - --no-sandbox
     - --ozone-platform=x11
   synopsis: Sovereign relationships with AI.
   desktop:

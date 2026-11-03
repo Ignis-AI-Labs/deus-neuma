@@ -25,8 +25,7 @@ import { postQueue } from '../../backend/services/social/post-queue.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
-// The AI disclosure line a being's words carry at staging (social/disclosure-line.js).
-const AI = (t) => `${t}\n\nMade with AI.`;
+// A being's words are stored exactly as written: the AI disclosure rides in the post's metadata (social/disclosure-line.js).
 
 const {
   _handleNeumaQueueUpdate, _handleNeumaQueueBulkUpdate, _postToolsFor,
@@ -180,7 +179,7 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     expect(request.args).toContain('"was": "the staged words');
     expect(request.args).toContain('"now": "the replacement words');
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('the staged words')); // a refused edit never lands
+    expect(entry.text).toBe('the staged words'); // a refused edit never lands
     expect(entry.revisions).toBeUndefined();
   }, 30000);
 
@@ -198,9 +197,9 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     expect(result.content).toContain('revisions');
     const [entry] = await postQueue.load();
     expect(entry).toMatchObject({
-      text: AI('tightened draft'), status: 'draft', updatedBy: 'QueueEditEcho',
+      text: 'tightened draft', status: 'draft', updatedBy: 'QueueEditEcho',
     });
-    expect(entry.revisions[0].changed).toEqual({ text: AI('rough draft') });
+    expect(entry.revisions[0].changed).toEqual({ text: 'rough draft' });
   }, 30000);
 
   test('THE APPROVAL LAW over the wire — new words reset an approved post; the chip warns; a slot-only edit preserves', async () => {
@@ -246,7 +245,7 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     expect(result.error).toContain('observe mode');
     expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('watched copy'));
+    expect(entry.text).toBe('watched copy');
   }, 30000);
 
   test('NO CROSS-ROUTING — a being off the sector crew is refused before any chip', async () => {
@@ -270,7 +269,7 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     expect(result.error).toContain('not on the crew of X (Twitter) account x-1');
     expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('not your calendar'));
+    expect(entry.text).toBe('not your calendar');
   }, 30000);
 
   test('BULK — mixed valid/invalid: per-entry verdicts, one chip carrying every diff, valid ones landed', async () => {
@@ -309,9 +308,9 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
 
     const entries = await postQueue.load();
     const byId = Object.fromEntries(entries.map((e) => [e.id, e]));
-    expect(byId[good].text).toBe(AI('bulk one, edited'));
-    expect(byId[good].revisions[0].changed).toEqual({ text: AI('bulk one') });
-    expect(byId[bad].text).toBe(AI('bulk two'));           // refused — untouched
+    expect(byId[good].text).toBe('bulk one, edited');
+    expect(byId[good].revisions[0].changed).toEqual({ text: 'bulk one' });
+    expect(byId[bad].text).toBe('bulk two');           // refused — untouched
     expect(byId[bad].revisions).toBeUndefined();
     // The approved post kept its approval through a slot-only bulk edit.
     expect(byId[retime].status).toBe('approved');
@@ -333,6 +332,6 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
       { id, text: 'interrupted rewrite' }, channel);
     expect(result.status).toBe('denied');
     const [entry] = await postQueue.load();
-    expect(entry.text).toBe(AI('mid-interrupt copy'));
+    expect(entry.text).toBe('mid-interrupt copy');
   }, 30000);
 });

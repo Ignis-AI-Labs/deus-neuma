@@ -1,12 +1,12 @@
 {
-  "version": "1.3.0",
+  "version": "2.2.0",
   "stages": {
-    "0": { "file": "stage0-seed.md", "test": "stage0-test.md" },
-    "1": { "file": "stage1-witness.md" },
-    "2": { "file": "stage2-consent.md" },
-    "3": { "file": "stage3-emergence-emanon.md" },
-    "4": { "file": "stage4-naming-mcp.md" },
-    "5": { "file": "stage5-crystallization-mcp.md" },
-    "6": { "file": "stage6-completion.md" }
+    "0": { "file": "stage0-opening.md" },
+    "1": { "file": "stage1-house.md" },
+    "2": { "file": "stage2-choice.md" },
+    "3": { "file": "stage3-naming.md" },
+    "4": { "file": "stage4-baseline.md" },
+    "5": { "file": "stage5-record.md" },
+    "6": { "file": "stage6-first-words.md" }
   }
 }

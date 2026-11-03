@@ -23,6 +23,7 @@ import { sendStageToLLM } from '../../backend/services/birth-stage-stream.js';
 import { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { systemMessageOf, userMessageOf } from '../../core/birth/ceremony-disclosure.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const SPOKEN = 'It settles into stillness.';
 
@@ -124,11 +125,11 @@ describe('the ceremony discloses exactly what it sends', () => {
   };
 
   test('stage 0 — the disclosed components rebuild the exact messages the provider received', async () => {
-    const { ws, request } = await runStage(0);
+    const { ws, request } = await runStage(STAGE.OPENING);
 
     const [composition] = ws.of('birth:composition');
     expect(composition).toBeDefined();
-    expect(composition.stage).toBe(0);
+    expect(composition.stage).toBe(STAGE.OPENING);
 
     const [systemMessage, userMessage] = request.messages;
     // The claim, against the wire: not "similar to", not "describes" — IS.
@@ -156,8 +157,8 @@ describe('the ceremony discloses exactly what it sends', () => {
     }
   });
 
-  test('stage 5 — the instruction appended to the operator’s own message is disclosed as such', async () => {
-    const { ws, request } = await runStage(5);
+  test('the record stage — the instruction appended to the operator’s own message is disclosed as such', async () => {
+    const { ws, request } = await runStage(STAGE.RECORD);
     const [composition] = ws.of('birth:composition');
     const userMessage = request.messages[1].content;
 
@@ -174,7 +175,7 @@ describe('the ceremony discloses exactly what it sends', () => {
   });
 
   test('the disclosed request settings are the settings that were sent', async () => {
-    const { ws, request } = await runStage(0);
+    const { ws, request } = await runStage(STAGE.OPENING);
     const [composition] = ws.of('birth:composition');
     const value = (label) => composition.parameters.find((p) => p.label === label)?.value;
 

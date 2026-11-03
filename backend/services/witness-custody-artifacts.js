@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { keyDir } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { derivePublicIdentity } from '../../core/weave/keypair.js';
+import { kdfIterationsValid } from '../../core/wallet/keypair-vault.js';
 
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const hex = (value, length) => typeof value === 'string'
@@ -13,7 +14,7 @@ const address = value => typeof value === 'string' && /^0x[0-9a-f]{40}$/i.test(v
 // pure — validate the current writer/decryptor contract, not cipher authenticity.
 const envelopeValid = value => record(value)
   && value.version === '1.0.0' && value.algorithm === 'aes-256-gcm'
-  && value.kdf === 'pbkdf2' && value.kdfIterations === 100_000
+  && value.kdf === 'pbkdf2' && kdfIterationsValid(value.kdfIterations)
   && hex(value.salt, 64) && hex(value.iv, 24) && hex(value.tag, 32)
   && hex(value.ciphertext) && address(value.address);
 

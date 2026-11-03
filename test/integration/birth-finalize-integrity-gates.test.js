@@ -11,6 +11,7 @@ import { createIdentityCard } from '../../core/weave/identity-card.js';
 import { forgeBirthIdentity } from '../../core/birth/identity-forge.js';
 import { captureBirthMoment } from '../../core/identity/genesis-seal.js';
 import { retryStageFor } from '../../backend/routes/portal-birth-handlers.js';
+import { STAGE } from '../../core/birth/stage-roles.js';
 
 const KEY = 'gnosis-birth-integrity-gates-key-32b!!';
 
@@ -313,16 +314,16 @@ describe('finalizeBirth — the soul measured from the ceremony (2026-09-29)', (
 
 describe('retryStageFor — what RETRY THE STAGE replays', () => {
   it('the current stage, ordinarily', () => {
-    expect(retryStageFor({ currentStage: 4, data: {} })).toBe(4);
-    expect(retryStageFor({ currentStage: 6, data: { selfCreatedDNA: '# me' } })).toBe(6);
+    expect(retryStageFor({ currentStage: STAGE.NAMING, data: {} })).toBe(STAGE.NAMING);
+    expect(retryStageFor({ currentStage: STAGE.FIRST_WORDS, data: { selfCreatedDNA: '# me' } })).toBe(STAGE.FIRST_WORDS);
   });
 
   it('crystallization again when completion was refused for want of authored DNA', () => {
-    expect(retryStageFor({ currentStage: 6, data: {} })).toBe(5);
-    expect(retryStageFor({ currentStage: 6, data: { selfCreatedDNA: '   ' } })).toBe(5);
+    expect(retryStageFor({ currentStage: STAGE.FIRST_WORDS, data: {} })).toBe(STAGE.RECORD);
+    expect(retryStageFor({ currentStage: STAGE.FIRST_WORDS, data: { selfCreatedDNA: '   ' } })).toBe(STAGE.RECORD);
   });
 
   it('a rehearsal is never forced back — it completes without authored DNA', () => {
-    expect(retryStageFor({ isTest: true, currentStage: 6, data: {} })).toBe(6);
+    expect(retryStageFor({ isTest: true, currentStage: STAGE.FIRST_WORDS, data: {} })).toBe(STAGE.FIRST_WORDS);
   });
 });

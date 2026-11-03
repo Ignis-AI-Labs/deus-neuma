@@ -152,6 +152,10 @@ export const reducer = (state, action) => {
     case 'LINK_ARRIVED':
       return pushMessage(state, 'link', action.text, [], action.at);
 
+    // The citation law held the CLO's last answer (legal/answer-hold.js) — its words open the turn that re-checks it.
+    case 'CITATION_HELD':
+      return pushMessage(state, 'hold', action.text, [], action.at);
+
     // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
     case 'QUEUE_CLEAR':

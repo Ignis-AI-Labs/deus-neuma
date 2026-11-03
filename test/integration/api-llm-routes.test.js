@@ -30,6 +30,7 @@ import express from 'express';
 import request from 'supertest';
 import http from 'http';
 import { startLocalProvider, closedProviderEndpoint } from '../helpers/local-provider.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const MODEL = 'test-model';
 
@@ -46,6 +47,8 @@ const buildApp = async () => {
   // module instance; a stale import 401s honestly).
   const { strangerWitness } = await import('../helpers/witness.js');
   const witness = strangerWitness();
+  // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
+  await makeInstallOwner(witness.address);
 
   const { default: router } = await import('../../backend/routes/llm-routes.js');
   const app = express();

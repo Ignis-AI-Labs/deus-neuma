@@ -8,9 +8,8 @@
 // door.
 //
 // Pure decision, deliberately narrow. A code span becomes a door only when its
-// WHOLE content is one absolute path — never a fragment of prose, never a
-// command line that happens to start with a slash. A link that sometimes lands
-// somewhere wrong is worse than text, so everything uncertain stays text.
+// WHOLE content is one path — absolute by default, project-relative only where
+// the caller supplies a focused base. Prose, commands, and traversal stay text.
 
 import { isAbsolutePath } from '../../utils/path.js';
 
@@ -20,20 +19,20 @@ import { isAbsolutePath } from '../../utils/path.js';
 const TRAILING_PUNCT = /[.,;:!?]+$/;
 
 /**
- * The absolute path a code span addresses, or null when it is just text.
+ * The path a code span addresses, or null when it is just text.
  *
  * @param {unknown} raw - the code span's text content
- * @returns {string|null} a normalized absolute path, or null
+ * @param {{relative?: boolean}} [options] - allow project-relative paths for a caller with a focused base
+ * @returns {string|null} a normalized path, or null
  */
-export const openablePath = (raw) => {
+export const openablePath = (raw, { relative = false } = {}) => {
   if (typeof raw !== 'string') return null;
   const text = raw.trim();
   if (text.length < 2 || text.length > 4096) return null;
-  // ABSOLUTE only, on any platform the desk runs on. A relative path has no
-  // single meaning from here — relative to the being's lane, the ground, the
-  // desk? — so it stays text. This read `startsWith('/')` until 2026-08-13,
-  // which made every Windows path a being ever named unclickable (#227).
-  if (!isAbsolutePath(text)) return null;
+  const absolute = isAbsolutePath(text);
+  // Markdown may explicitly allow a project-relative path; PathOpener supplies
+  // the focused base. Tool lines keep the absolute-only default.
+  if (!absolute && (!relative || !text.includes('/'))) return null;
   // One line, one path. A multi-line span is a code block, not an address.
   if (/[\n\r\t]/.test(text)) return null;
   // Control characters have no place in a path and are a UI-injection shape.
@@ -56,6 +55,8 @@ export const openablePath = (raw) => {
   const normalized = trimmed.length > 1 && /[\\/]$/.test(trimmed)
     ? trimmed.slice(0, -1)
     : trimmed;
-  return normalized.length >= 2 ? normalized : null;
+  if (normalized.length < 2) return null;
+  if (!absolute && normalized.split('/').some((part) => !part || part === '.' || part === '..')) return null;
+  return normalized;
 };
 

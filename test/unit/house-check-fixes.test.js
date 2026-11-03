@@ -37,7 +37,8 @@ const factsOf = ({ account = {}, ...over } = {}) => ({
   ...over,
 });
 const checkOf = (facts, id) => checkAccount(facts).find((c) => c.id === id);
-const BARE = [{ id: 'aaaabbbbccccdddd', channelId: 'x', authorNeumaId: 'kestrel', text: 'Written before the line.', status: 'draft' }];
+// A being's post staged before the AI disclosure moved into metadata (2026-10-30): its image's alt text unmarked.
+const BARE = [{ id: 'aaaabbbbccccdddd', channelId: 'x', authorNeumaId: 'kestrel', text: 'Written before the ruling.', status: 'draft', media: [{ path: '/tmp/card.png', alt: 'the card' }] }];
 
 describe('every failing check names its fix as data', () => {
   it('a clear account owes nothing: no check carries a fix', () => {
@@ -128,15 +129,15 @@ describe('every failing check names its fix as data', () => {
 });
 
 describe('the disclosure fix — the one a member can do', () => {
-  it('lands on the first bare post, and hands to the holder: pull back with queue_cancel, stage again with social/queue', () => {
+  it('lands on the first unmarked post, and hands to the holder: update its media with queue_update, the words untouched', () => {
     const c = checkOf(factsOf({ live: BARE }), 'disclosure');
-    expect(c.fix.title).toBe('Add the AI line');
+    expect(c.fix.title).toBe('Mark the images');
     expect(c.fix.door).toEqual({ kind: 'queue', channelId: 'x', accountId: 'x-1', entryId: 'aaaabbbbccccdddd' });
     expect(c.fix.handTo).toMatchObject({ neumaId: 'kestrel', name: 'Kestrel', role: 'holder' });
     expect(c.fix.handTo.prompt).toContain('aaaabbbbccccdddd');
     expect(c.fix.handTo.prompt).toContain('x-1');
-    expect(c.fix.handTo.prompt).toContain('queue_cancel');
-    expect(c.fix.handTo.prompt).toContain('social/queue');
+    expect(c.fix.handTo.prompt).toContain('queue_update');
+    expect(c.fix.handTo.prompt).toContain('The words stay as they are.');
     expect(c.fix.handTo.prompt).toContain('I will decide each card.');
   });
 
@@ -172,7 +173,7 @@ describe('the guided path and the being\'s words over the fixes', () => {
       [1, 'Record the @handle', ['x-1']],
       [2, 'Lock the keys file', ['x-1', 'x-2']],
       [3, 'Add the company site', ['x-1', 'x-2']],
-      [4, 'Add the AI line', ['x-2']],
+      [4, 'Mark the images', ['x-2']],
     ]);
     expect(steps[3].handTo).toMatchObject({ neumaId: 'kestrel' });
     expect(steps.slice(0, 3).every((s) => s.handTo === null)).toBe(true);

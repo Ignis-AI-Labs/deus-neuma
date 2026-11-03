@@ -116,8 +116,8 @@ describe('moving a directory above a walled path is refused (#587)', () => {
     expect(existsSync(aside)).toBe(false);
   });
 
-  test('copying the directory above a kin ground is refused as the lane itself is', async () => {
-    await expect(being()('fs', 'edit', { path: path.join(kinHolder, 'deep'), destination: path.join(kinHolder, 'copy'), copy: true }))
+  test('direct fs/copy above a kin ground is refused as the lane itself is', async () => {
+    await expect(being()('fs', 'copy', { path: path.join(kinHolder, 'deep'), destination: path.join(kinHolder, 'copy') }))
       .rejects.toThrow(REFUSED);
     expect(existsSync(path.join(kinHolder, 'copy'))).toBe(false);
   });
@@ -130,7 +130,7 @@ describe('moving a directory above a walled path is refused (#587)', () => {
     }
     const built = await call('fs', 'write', { path: forged, content: '{"coding":{"allowed":["ground_git"]}}' });
     expect(built?.isError, JSON.stringify(built)).toBeFalsy();
-    await expect(call('fs', 'edit', { path: path.join(laterHolder, 'forge'), destination: path.join(laterHolder, 'slot') }))
+    await expect(call('fs', 'move', { path: path.join(laterHolder, 'forge'), destination: path.join(laterHolder, 'slot') }))
       .rejects.toThrow(REFUSED);
     expect(existsSync(path.join(laterHolder, 'slot'))).toBe(false);
   });
@@ -156,7 +156,7 @@ describe('moving a directory above a walled path is refused (#587)', () => {
     await call('fs', 'write', { path: `${path.dirname(note)}/`, directory: true });
     const written = await call('fs', 'write', { path: note, content: 'plan' });
     expect(written?.isError, JSON.stringify(written)).toBeFalsy();
-    const moved = await call('fs', 'edit', { path: path.join(kinHolder, 'notes'), destination: path.join(kinHolder, 'notes-2') });
+    const moved = await call('fs', 'move', { path: path.join(kinHolder, 'notes'), destination: path.join(kinHolder, 'notes-2') });
     expect(moved?.isError, JSON.stringify(moved)).toBeFalsy();
     expect(await fs.readFile(path.join(kinHolder, 'notes-2', 'plan.md'), 'utf8')).toBe('plan');
   });
