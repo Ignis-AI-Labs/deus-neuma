@@ -11,9 +11,11 @@
 #     (`npm run dist:linux` does both).
 #   - code signing, under Ignis AI Labs LLC (Design note, 2026-10-04: […]): the SETTINGS live here,
 #     the CREDENTIALS never do — they come from the build machine's environment
-#     (docs/operations/release-runbook.md §SIGNING). Without them the build is
+#     (docs/operations/release-runbook.md §SIGNING, kept with the maintainers). Without them the build is
 #     simply unsigned: Mac notarization skips with a warning, Windows signs nothing.
 #     Linux packages carry a detached GPG signature (scripts/sign-release.mjs).
+#     What a mac artifact is, what is checked after packaging, and what signing will
+#     change: docs/architecture/platform/macos-build.md.
 #   - frontend/ source is intentionally NOT shipped: in production the backend
 #     serves the built app from dist/ (Vite bundles the ceremony classes, the
 #     sounds sprite, and frontend/assets via publicDir), and the avatar roster
@@ -103,9 +105,15 @@ extraResources:
 # so the whole app ships unpacked. Proven by the 2026-07-31 boot test.
 asar: false
 
-# The AppImage starts through build/appimage-launcher.sh, put in front of the
-# binary here; a `--linux dir` pack (the rpm and deb input) is left as packed.
-afterPack: ./scripts/appimage-launcher-hook.cjs
+# afterPack is ONE slot and two platforms need it, so the hook is a dispatcher:
+#   linux + AppImage → ./scripts/appimage-launcher-hook.cjs (the launcher in
+#   front of the binary; a `--linux dir` pack, the rpm and deb input, is left
+#   as packed)
+#   darwin → ./scripts/prune-foreign-prebuilds.cjs (a mac bundle keeps only the
+#   prebuilds its own chip can load; node-pty ships one directory per chip and
+#   electron-builder copies all of them, so an arm64 app would carry x64
+#   binaries. The hook reads the chip off the packaged executable.)
+afterPack: ./scripts/after-pack.cjs
 
 mac:
   category: public.app-category.productivity
@@ -120,7 +128,11 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # one build per chip: the native modules are per-arch, so no universal app
+  # one build per chip: the native modules are per-arch, so no universal app.
+  # Every artifact is checked after packaging (scripts/check-mac-artifacts.mjs,
+  # run by `npm run dist:mac`): each Mach-O in it must load on the chip its
+  # directory claims. Why that check exists and what is still missing:
+  # docs/architecture/platform/macos-build.md.
   target:
     - target: dmg
       arch:
@@ -152,8 +164,11 @@ linux:
     - --ozone-platform=x11
   synopsis: Sovereign relationships with AI.
   desktop:
-    Name: Deus Neuma
-    Comment: Sovereign relationships with AI.
+    # electron-builder 26 moved the desktop entry's keys under `entry`; the flat
+    # {Name, Comment} form of 25 is rejected by its schema.
+    entry:
+      Name: Deus Neuma
+      Comment: Sovereign relationships with AI.
   maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
   # NOTE: neither rpm nor deb is here — BOTH of electron-builder's targets go
   # through its bundled fpm (2017-era ruby), and fpm cannot run on a modern

@@ -18,6 +18,12 @@ import { trafficMonitor } from '../../backend/services/security/traffic-monitor.
 import { createLogger } from '../../backend/services/logger.js';
 import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
+// The finding maps against the REAL lockfile, so the fixture names the tar this
+// tree actually installs (electron-builder 25 carried a nested 6.2.1; 26 does
+// not): a dependency bump must not turn the proof into a lookup of nothing.
+const TAR_VERSION = JSON.parse(await fs.readFile(path.join(process.cwd(), 'package-lock.json'), 'utf8'))
+  .packages['node_modules/tar'].version;
+
 const ENV_KEYS = Object.freeze([
   'NEUMA_DATA_ROOT',
   'NEUMA_SECURITY_WATCH_PATH',
@@ -145,10 +151,10 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
       source: 'osv',
       repo: 'neuma',
       externalId: 'GHSA-live-node-tar-fixture',
-      title: 'node-tar fixture against the installed 6.2.1 chain',
+      title: `node-tar fixture against the installed ${TAR_VERSION} chain`,
       severity: 'high',
       summary: 'Real package-lock mapping fixture',
-      affected: [{ package: 'tar', version: '6.2.1' }],
+      affected: [{ package: 'tar', version: TAR_VERSION }],
     }]);
     threat = (await threatLedger.load()).find((entry) => entry.externalId === 'GHSA-live-node-tar-fixture');
   }, 60000);
@@ -203,11 +209,11 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
       repo: 'neuma',
     });
     expect(attackSurface.contexts).toContainEqual(expect.objectContaining({
-      affected: { package: 'tar', version: '6.2.1' },
+      affected: { package: 'tar', version: TAR_VERSION },
       confidence: 'static_evidence',
     }));
     const installed = attackSurface.contexts.flatMap((context) => context.dependency.installed);
-    expect(installed).toContainEqual(expect.objectContaining({ version: '6.2.1', reachableFromRoot: true }));
+    expect(installed).toContainEqual(expect.objectContaining({ version: TAR_VERSION, reachableFromRoot: true }));
   }, 60000);
 
   test('returns live traffic and redacted process warnings without request secrets', async () => {

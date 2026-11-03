@@ -11,7 +11,7 @@ Neuma is an Electron desktop app with a Node backend. It builds on **Linux**,
 
 ## Prerequisites
 
-- **Node.js 20 or newer.** 22 is recommended.
+- **Node.js 24.15 or newer** (the `engines` floor in `package.json`).
 - **Git.**
 - **A C/C++ toolchain**, for native modules (`better-sqlite3`):
   - **Linux:** `build-essential` (Debian/Ubuntu) or `gcc-c++ make` (Fedora),
@@ -48,8 +48,8 @@ Node for `dev` and tests, Electron for the app
 | Linux | `npm run dist:linux` | AppImage |
 | Linux (Fedora) | `npm run dist:rpm` | `.rpm` |
 | Linux (Debian/Ubuntu) | `npm run dist:deb` | `.deb` |
-| Windows | `npx electron-builder --win` (after `npm run build`) | NSIS installer |
-| macOS | `npx electron-builder --mac` (after `npm run build`) | `.dmg` |
+| Windows | `npm run dist:win` | NSIS installer |
+| macOS | `npm run dist:mac` | `.dmg` and `.zip`, then `check:mac` proves each chip |
 
 Build each platform **on that platform**. Cross-building a native module
 rarely works.
@@ -89,7 +89,10 @@ We do not release for macOS: there is no signed or notarized Mac build, and
 the core team has never tested one. If you are on a Mac, you can help:
 
 1. Run `npm install` and `npm run electron:dev`, and tell us what breaks.
-2. Build the `.dmg` and install it.
+2. Build with `npm run dist:mac` and install the `.dmg`. Build each chip on
+   that chip (an Intel Mac for x64): `check:mac` refuses an artifact that
+   carries a binary its chip cannot load. What it checks:
+   `docs/architecture/platform/macos-build.md`.
 3. Open a **Platform report** issue with what you found.
 
 A Mac build you make yourself is unsigned, so macOS needs right-click → Open

@@ -11,6 +11,7 @@
 // over a ground that spans the house never lists another house's data.
 import { AsyncLocalStorage } from 'async_hooks';
 import { validatePath } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
+import { getNativeFilesystemRoots } from './native-fs-roots.js';
 import { checkPathAccess, isWithinRoots } from './sandbox-path-policy.js';
 import { houseRoots, isOtherHouse } from './explorer-walls.js';
 import { requestablePattern, sensitiveGrantCovers } from './sensitive-grants.js';
@@ -61,7 +62,7 @@ export const readTimeRefusal = (realPath) => {
  * @returns {Promise<string>} the resolved path, cleared to read
  */
 export const readablePath = async (requested) => {
-  const real = await validatePath(requested);
+  const real = await validatePath(requested, getNativeFilesystemRoots());
   const refusal = readTimeRefusal(real);
   if (refusal) throw new Error(`${refusal} (judged again as the file was opened)`);
   return real;

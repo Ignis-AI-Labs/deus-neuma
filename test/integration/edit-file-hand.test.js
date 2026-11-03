@@ -196,14 +196,19 @@ describe('edit_file — the platform hand refuses to guess (gnosis, no mock)', (
       expect(after).not.toMatch(/[^\r]\n/);         // every LF still preceded by CR
     });
 
-    test('CONTROL — the upstream server flattens the same CRLF file to LF', async () => {
+    // server-filesystem 1.x (2026.7.10) flattened a CRLF file to LF here; 2.x
+    // writes back the file's own predominant ending (lib.js, detectLineEnding).
+    // The control now holds that parity: if upstream regresses, this says so.
+    test('CONTROL — the upstream server (2.x) keeps the same CRLF file CRLF', async () => {
       const crlf = path.join(project, 'crlf-control.js');
       await fs.writeFile(crlf, FIXTURE.replace(/\n/g, '\r\n'));
       await mcpService.callTool(SERVER, 'edit_file', {
         path: crlf,
         edits: [{ oldText: 'return [...tasks, task];', newText: 'return tasks.concat(task);' }],
       });
-      expect(await fs.readFile(crlf, 'utf-8')).not.toContain('\r\n');
+      const after = await fs.readFile(crlf, 'utf-8');
+      expect(after).toContain('tasks.concat(task)');
+      expect(after).not.toMatch(/[^\r]\n/);
     });
   });
 

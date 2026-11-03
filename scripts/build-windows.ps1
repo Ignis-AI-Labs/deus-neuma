@@ -6,7 +6,7 @@
 # not Python, not Visual Studio (the app carries its own Node; the installer's System check lists what a PC needs).
 #
 # What it does, and why each step exists (docs: BUILDING.md, the release runbook):
-#   1. preflight: 64-bit Windows, disk space, Git and Node 22+ (installed with winget if missing), the npm registry
+#   1. preflight: 64-bit Windows, disk space, Git and Node 24.15+ (installed with winget if missing), the npm registry
 #   2. clones or updates the public repository and checks out -Ref, in -Dir (never your own checkout);
 #      with -Here it builds the checkout the script lives in instead, uncommitted work and all
 #   3. npm ci, then better-sqlite3 for Electron: the OFFICIAL prebuild when one exists for this Electron, else
@@ -44,7 +44,7 @@ Step 1 'preflight: what this build needs, installed for you where it can be'
 function Refresh-Path {
   $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 }
-function Node-Major { if (Get-Command node -ErrorAction SilentlyContinue) { [int]((node -p 'process.versions.node').Split('.')[0]) } else { 0 } }
+function Node-Version { if (Get-Command node -ErrorAction SilentlyContinue) { [version](node -p 'process.versions.node') } else { [version]'0.0.0' } }
 # Windows ships a `python` alias that only opens the Microsoft Store: it answers to the name and is no Python
 function Python-Ok { try { [bool]((& python --version 2>&1 | Out-String) -match '^Python 3\.') } catch { $false } }
 function Cpp-Tools-Ok {
@@ -69,7 +69,7 @@ if (-not [Environment]::Is64BitOperatingSystem) { Fail 'Deus Neuma builds for 64
 $free = [math]::Round((Get-PSDrive -Name (Split-Path -Qualifier $HOME).TrimEnd(':')).Free / 1GB, 1)
 if ($free -lt 12) { Fail "the build needs about 12 GB free on $(Split-Path -Qualifier $HOME); there are $free GB. Free some space and run this again." }
 Ensure 'Git' 'Git.Git' { [bool](Get-Command git -ErrorAction SilentlyContinue) } 'to unpack the source'
-Ensure 'Node.js 22 or newer' 'OpenJS.NodeJS.LTS' { (Node-Major) -ge 22 } 'to build the app'
+Ensure 'Node.js 24.15 or newer' 'OpenJS.NodeJS.LTS' { (Node-Version) -ge [version]'24.15.0' } 'to build the app'
 try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 15 'https://registry.npmjs.org/-/ping' | Out-Null }
 catch { Fail 'the build downloads its packages from registry.npmjs.org, which cannot be reached. Check the internet connection and run this again.' }
 Write-Host "   64-bit Windows - $free GB free - git $((git --version) -replace 'git version ','') - node $(node -p 'process.versions.node') - npm registry reachable"

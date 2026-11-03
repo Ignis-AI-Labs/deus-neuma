@@ -35,11 +35,11 @@ import { docxText } from '../../core/documents/docx-text.js';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import {
-  applyFileEdits, formatSize, getAllowedDirectories, getFileStats, headFile,
-  readFileContent, setAllowedDirectories, tailFile, validatePath,
+  applyFileEdits, formatSize, getFileStats, headFile,
+  readFileContent, tailFile, validatePath,
 } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
 import { guardedWriteFile } from './write-file-guard.js';
-import { runningAs } from './native-fs-roots.js';
+import { getNativeFilesystemRoots, runningAs, setNativeFilesystemRoots } from './native-fs-roots.js';
 import { checkPathAccess } from './sandbox-path-policy.js';
 import { otherHouseInWalk, readablePath } from './fs-read-clearance.js';
 // copy and move live apart: validated, and a move works across disks (fs-copy-move-clarity)
@@ -169,25 +169,25 @@ const readMultipleFiles = async (args) => {
 };
 
 const writeFile = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await validatePath(args.path, getNativeFilesystemRoots());
   const hand = await guardedWriteFile({ ...args, path: validPath });
   if (!hand.ok) throw new Error(hand.reason);
   return hand.result;
 };
 
 const editFile = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await validatePath(args.path, getNativeFilesystemRoots());
   return said(await applyFileEdits(validPath, args.edits, args.dryRun ?? false));
 };
 
 const createDirectory = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await validatePath(args.path, getNativeFilesystemRoots());
   await fs.mkdir(validPath, { recursive: true });
   return said(`Successfully created directory ${args.path}`);
 };
 
 const listDirectory = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await validatePath(args.path, getNativeFilesystemRoots());
   const entries = await fs.readdir(validPath, { withFileTypes: true });
   if (entries.length === 0) {
     return said(`(empty directory — 0 entries at ${validPath}. The path exists and is readable. This is not a refusal, not a hidden folder, and not a policy deny.)`);
@@ -199,7 +199,7 @@ const listDirectory = async (args) => {
 
 
 const listDirectoryWithSizes = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await validatePath(args.path, getNativeFilesystemRoots());
   const entries = await fs.readdir(validPath, { withFileTypes: true });
   const detailed = await Promise.all(entries.map(async (entry) => {
     const stats = await fs.stat(path.join(validPath, entry.name)).catch(() => null);
@@ -237,7 +237,7 @@ const directoryTree = async (args) => {
   const rootPath = args.path;
   const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : [];
   const buildTree = async (currentPath) => {
-    const validPath = await validatePath(currentPath);
+    const validPath = await validatePath(currentPath, getNativeFilesystemRoots());
     const entries = await fs.readdir(validPath, { withFileTypes: true });
     const result = [];
     for (const entry of entries) {
@@ -273,7 +273,7 @@ const withheldByPolicy = (...paths) => paths.some((p) => {
 const withheldNote = (n) => `[${n} path(s) withheld by the secret-path policy — never read or listed]`;
 
 const searchFiles = async (args) => {
-  const rootPath = await validatePath(args.path);
+  const rootPath = await validatePath(args.path, getNativeFilesystemRoots());
   const pattern = nameSearchGlob(args.pattern);
   const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
   const results = [];
@@ -290,7 +290,7 @@ const searchFiles = async (args) => {
       const relativePath = path.relative(rootPath, fullPath);
       if (isExcluded(relativePath, excludePatterns)) continue;
       let validPath;
-      try { validPath = await validatePath(fullPath); } catch { continue; }
+      try { validPath = await validatePath(fullPath, getNativeFilesystemRoots()); } catch { continue; }
       if (withheldByPolicy(...new Set([fullPath, validPath]))) { withheld += 1; continue; }
       if (minimatch(relativePath, pattern, { dot: true })) {
         results.push(fullPath);
@@ -346,7 +346,7 @@ const searchContent = async (args) => {
   if (typeof args.pattern !== 'string' || args.pattern.length === 0) {
     throw new Error('pattern must be a non-empty string');
   }
-  const rootPath = await validatePath(args.path);
+  const rootPath = await validatePath(args.path, getNativeFilesystemRoots());
   const matches = buildLineMatcher(args);
   const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
   const maxResults = Math.min(Math.max(1, Math.trunc(args.maxResults) || CONTENT_SEARCH.DEFAULT_MAX_RESULTS), CONTENT_SEARCH.RESULT_CEILING);
@@ -384,7 +384,7 @@ const searchContent = async (args) => {
       // re-crosses the wall — a link out of the roots is skipped exactly as
       // the name search skips it.
       let validPath;
-      try { validPath = await validatePath(fullPath); } catch { continue; }
+      try { validPath = await validatePath(fullPath, getNativeFilesystemRoots()); } catch { continue; }
       if (withheldByPolicy(...new Set([fullPath, validPath]))) { withheld += 1; continue; }
       if (entry.isDirectory()) { await walk(validPath); continue; }
       if (!entry.isFile()) continue;
@@ -411,13 +411,13 @@ const searchContent = async (args) => {
 };
 
 const getFileInfo = async (args) => {
-  const validPath = await validatePath(args.path);
+  const validPath = await validatePath(args.path, getNativeFilesystemRoots());
   const [info, stat] = await Promise.all([getFileStats(validPath), fs.stat(validPath)]);
   return said([...Object.entries(info), ['mtimeMs', stat.mtimeMs]].map(([key, value]) => `${key}: ${value}`).join('\n'));
 };
 
 const listAllowedDirectories = async () =>
-  said(`Allowed directories:\n${getAllowedDirectories().join('\n')}`);
+  said(`Allowed directories:\n${getNativeFilesystemRoots().join('\n')}`);
 
 const HANDLERS = Object.freeze({
   read_file: readTextFile,
@@ -480,6 +480,8 @@ export const nativeFilesystemClient = Object.freeze({
   },
 
   async close() {
-    setAllowedDirectories([]);
+    // Emptying the roots refuses every path from here on: the organ is closed,
+    // and the wall it leaves behind must not admit anything.
+    await setNativeFilesystemRoots([]);
   },
 });
