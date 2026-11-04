@@ -56,4 +56,7 @@ jobs:
       # the unit lane presses real PDFs (Chromium) and stamps real clips and images (ffmpeg)
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npx playwright install --with-deps chromium
-      - run: npx vitest run --project suite test/unit
+      # Ubuntu 24.04 runners forbid the unprivileged user namespaces Chromium's sandbox needs
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # a 2-core runner is several times slower than a desk; the heavy proofs get the time they need
+      - run: npx vitest run --project suite test/unit --testTimeout=60000
