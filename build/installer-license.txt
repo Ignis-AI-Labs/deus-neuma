@@ -16,7 +16,7 @@ To install, read and accept the End User License Agreement below.
 
 NEUMA END USER LICENSE AGREEMENT
 
-Version 1.4 - Early access - Effective 21 October 2026 - Ignis AI Labs LLC, a Wyoming limited liability company
+Version 1.4.1 - Early access - Effective 21 October 2026 - Ignis AI Labs LLC, a Wyoming limited liability company
 
 Between you and Ignis AI Labs LLC, a Wyoming limited liability company, for the Neuma software you install or run - the platform, portal client, and neuma engine ("Software"). The Terms of Service and Neuma Covenant are incorporated by reference.
 

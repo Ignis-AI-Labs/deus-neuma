@@ -66,7 +66,7 @@ describe('the COMPANY LINE window', () => {
     expect(html).toContain(`data-company-line="${COMPANY.id}"`);
     expect(html).toContain('YOUR DIAL — PARTNER');
     // The rail names each stage's master in this house: the Speculator's stage is Keir's.
-    expect(html).toContain('SURVEY</span><span class="cline-stage-m label-data">BASUNORR');
+    expect(html).toContain('SURVEY</span><span class="cline-stage-m label-data">KEIR');
   });
 
   test('a line waiting on a being: no move of the operator\'s, and the rail says whose turn it is', () => {

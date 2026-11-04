@@ -60,6 +60,8 @@ describe('the watch closes, reopens, and tells the operator (real scheduler, rea
   });
   afterEach(() => houses.restore());
 
+  // real scans: their self-checks import the whole route tree (self-check.js, machine-owner-gate),
+  // ~4 s cold in a worker alone and past the 15 s default under the full parallel lane
   test('vanish → closed by the watch; return → reopened and carded; an errored OSV leg closes nothing', async () => {
     // Rows from an earlier era of the watch: an advisory on this repo, and a
     // listener long gone from the host.
@@ -112,7 +114,7 @@ describe('the watch closes, reopens, and tells the operator (real scheduler, rea
     expect(allCards).toHaveLength(cardsBefore + 1);
     expect(allCards.at(-1).detail).toContain('sweep:aws-access-key:config.txt');
     expect(await cards(HOUSE_B)).toHaveLength(0);
-  });
+  }, 60_000);
 
   test('a scope is whole only when every leg that feeds it ran clean', async () => {
     // Real leg results: the real sweep of the real tmp repo, and the real

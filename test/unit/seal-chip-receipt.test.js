@@ -12,7 +12,7 @@ beforeAll(async () => {
   // The import graph's module-level browser facts (the sound engine's
   // listener and its idle warm-up's storage read) — provisioned, never
   // exercised: no sound plays in a static render.
-  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true };
+  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true, requestIdleCallback: () => {} };
   globalThis.localStorage = globalThis.localStorage ?? {
     getItem: () => null, setItem: () => {}, removeItem: () => {},
   };

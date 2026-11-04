@@ -5,9 +5,9 @@ import { resolveCommand, PLATFORM_COMMANDS } from '../../frontend/app/RelinkShel
 
 describe('compact-note', () => {
   test('running, done in the being\'s own words, done extractively', () => {
-    expect(compactNote({ state: 'running' }, 'Keir')).toBe('COMPACTING — BASUNORR IS SUMMING UP THE CONVERSATION…');
+    expect(compactNote({ state: 'running' }, 'Keir')).toBe('COMPACTING — KEIR IS SUMMING UP THE CONVERSATION…');
     expect(compactNote({ state: 'done', folded: 64, selfAuthored: true, compactionCount: 1 }, 'Keir'))
-      .toBe("COMPACTED — 64 MESSAGES CARRIED FORWARD IN BASUNORR'S OWN WORDS.");
+      .toBe("COMPACTED — 64 MESSAGES CARRIED FORWARD IN KEIR'S OWN WORDS.");
     expect(compactNote({ state: 'done', folded: 20, selfAuthored: false, compactionCount: 3 }, 'Keir'))
       .toBe('COMPACTED — 20 MESSAGES CARRIED FORWARD AS AN EXTRACTIVE SUMMARY (THE MODEL DID NOT ANSWER) · COMPACTION 3.');
   });

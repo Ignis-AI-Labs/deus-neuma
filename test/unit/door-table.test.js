@@ -97,14 +97,15 @@ describe('failed-post-door — the cause picks the door', () => {
   const failed = (over) => ({ id: 'f1', status: 'failed', channelId: 'x', accountId: 'x-1', error: '', ...over });
 
   it('keys refused → that account\'s keys row; the platform stumbled → TRY AGAIN; the words refused → REVISE', () => {
-    expect(failedPostDoor(failed({ error: 'Unauthorized', errorStatus: 401 }))).toEqual({ cause: 'keys', door: { kind: 'keys', channelId: 'x', accountId: 'x-1' }, label: 'FIX KEYS' });
+    // again: TRY AGAIN stands beside the door only where nothing went out (keys, retry)
+    expect(failedPostDoor(failed({ error: 'Unauthorized', errorStatus: 401 }))).toEqual({ cause: 'keys', door: { kind: 'keys', channelId: 'x', accountId: 'x-1' }, label: 'FIX KEYS', again: true });
     expect(failedPostDoor(failed({ error: 'X credentials are not configured' })).cause).toBe('keys');
-    expect(failedPostDoor(failed({ error: 'X answered HTTP 503' }))).toEqual({ cause: 'retry', door: { kind: 'queue', channelId: 'x', entryId: 'f1' }, label: 'TRY AGAIN' });
+    expect(failedPostDoor(failed({ error: 'X answered HTTP 503' }))).toEqual({ cause: 'retry', door: { kind: 'queue', channelId: 'x', entryId: 'f1' }, label: 'TRY AGAIN', again: true });
     expect(failedPostDoor(failed({ error: 'Service Unavailable', errorStatus: 503 })).cause).toBe('retry');
     expect(failedPostDoor(failed({ error: 'You are not allowed to create a Tweet with duplicate content.', errorStatus: 403 })))
-      .toEqual({ cause: 'content', door: { kind: 'queue', channelId: 'x', entryId: 'f1' }, label: 'REVISE' });
+      .toEqual({ cause: 'content', door: { kind: 'queue', channelId: 'x', entryId: 'f1' }, label: 'REVISE', again: false });
     expect(failedPostDoor(failed({ error: 'the author is no longer on the crew of x-1, or x-1 has no holder — approval does not outlive membership' })))
-      .toEqual({ cause: 'standing', door: { kind: 'standing', channelId: 'x', drawer: 'holder' }, label: 'HOLDER' });
+      .toEqual({ cause: 'standing', door: { kind: 'standing', channelId: 'x', drawer: 'holder' }, label: 'HOLDER', again: false });
   });
 
   it('a send whose outcome is unknown, or anything else, has no door (its card says why); nor has a post that did not fail', () => {
