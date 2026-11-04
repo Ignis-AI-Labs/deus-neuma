@@ -4,6 +4,7 @@
  */
 import fs from 'fs/promises';
 import { validatePath } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
+import { getNativeFilesystemRoots } from './native-fs-roots.js';
 import { secretLinkReason } from './sandbox-path-policy.js';
 
 const said = (text) => ({ content: [{ type: 'text', text }], structuredContent: { content: text } });
@@ -19,15 +20,15 @@ const completeMoveCopy = (source) => {
 };
 
 export const copyFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
+  const validSource = await validatePath(args.source, getNativeFilesystemRoots());
+  const validDest = await validatePath(args.destination, getNativeFilesystemRoots());
   await copyPath(validSource, validDest, (source) => !secretLinkReason(source));
   return said(`Successfully copied ${args.source} to ${args.destination}`);
 };
 
 export const moveFile = async (args) => {
-  const validSource = await validatePath(args.source);
-  const validDest = await validatePath(args.destination);
+  const validSource = await validatePath(args.source, getNativeFilesystemRoots());
+  const validDest = await validatePath(args.destination, getNativeFilesystemRoots());
   try {
     await fs.rename(validSource, validDest);
   } catch (error) {

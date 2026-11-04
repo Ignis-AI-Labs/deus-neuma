@@ -13,6 +13,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeDurableDir } from '../helpers/durable-dir.js';
 import { writeOwner } from '../helpers/audit-auth.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
@@ -203,9 +204,9 @@ describe('CoS designation — one seat per house (real tmp disk, gnosis)', () =>
   test('a TEST process never moves a live (non-temp) legacy seat — it serves no house and stays untouched', async () => {
     // A legacy file outside the temp tree, the shape of the operator's real
     // data/settings/staff-cos.json when a test forgets to pin its path.
-    const liveDir = path.join(process.cwd(), `.cos-guard-${process.pid}`);
+    // (outside the OS temp dir even when the checkout sits under it)
+    const liveDir = makeDurableDir('cos-guard');
     const liveLegacy = path.join(liveDir, 'staff-cos.json');
-    await fs.mkdir(liveDir, { recursive: true });
     try {
       const raw = JSON.stringify({ laneId: 'laurel', designatedAt: '2026-10-04T19:24:45.443Z' });
       await fs.writeFile(liveLegacy, raw);

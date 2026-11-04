@@ -17,7 +17,10 @@ const { compareVersions, notesText, selectNotes, whatsNewDue, barFor } = require
 const { SEEN_FILE, BUNDLED_NOTES, launchWhatsNew } = require('../../electron/update-bar.cjs');
 
 const REPO = path.resolve(import.meta.dirname, '../..');
-const realNotes = (v) => fs.readFileSync(path.join(REPO, 'docs/operations', `release-notes-${v}.md`), 'utf8');
+// the shipped notes files, frozen as they went out (docs/operations/ is private-tree text;
+// test/fixtures/release-notes/ holds verbatim copies of the versions these tests read)
+const NOTES_DIR = path.join(REPO, 'test/fixtures/release-notes');
+const realNotes = (v) => fs.readFileSync(path.join(NOTES_DIR, `release-notes-${v}.md`), 'utf8');
 
 describe('compareVersions', () => {
   it('orders x.y.z numerically, never as text', () => {
@@ -154,7 +157,7 @@ describe('launchWhatsNew — on a real directory', () => {
   it('an update since the last seen version opens its notes, and records nothing until read', () => {
     const { userData, appPath } = scratch();
     fs.writeFileSync(path.join(userData, SEEN_FILE), JSON.stringify({ lastSeenVersion: '0.1.36' }));
-    fs.copyFileSync(path.join(REPO, 'docs/operations/release-notes-0.1.39.md'), path.join(appPath, BUNDLED_NOTES));
+    fs.copyFileSync(path.join(NOTES_DIR, 'release-notes-0.1.39.md'), path.join(appPath, BUNDLED_NOTES));
     const shown = launchWhatsNew({ userData, appPath, current: '0.1.39', log });
     expect(shown.version).toBe('0.1.39');
     expect(shown.notes.map((n) => n.version)).toEqual(['0.1.39', '0.1.38', '0.1.37']);

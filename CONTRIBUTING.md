@@ -53,11 +53,21 @@ Keep your branch current by merging or rebasing on `dev`, never on `main`.
   npx vitest run --project suite test/unit   # the GPU-free lane, no model needed
   node scripts/secret-scan.mjs
   ```
+- **On macOS, point `TMPDIR` at a real directory before the suite.**
+  `NeumaWorkspace.create` realpaths its ground and refuses one that resolves
+  through a symlink. macOS defaults `TMPDIR` to `/var/folders/…`, which resolves
+  to `/private/var/folders/…`, so a large slice of the integration suite fails in
+  setup with `Symlink traversal denied` and the unit suite reports hundreds of
+  failures it does not have. `mkdir -p ~/.neuma-test-tmp` then run with
+  `TMPDIR=~/.neuma-test-tmp` in front of the command. Never read a local red
+  suite as your own doing until you have done this.
 - **Never commit secrets, keys, personal paths or real beings' data.**
   `npm install` turns on git hooks that check every commit and push for
   secrets (`scripts/secret-gate.mjs`) and file size; CI scans every pull
   request too. A refused commit is fixed by removing the value, never by
-  `--no-verify`.
+  `--no-verify`. If you never see the hooks run, they are not executable in
+  your checkout: `chmod +x scripts/git-hooks/*` (here and in every worktree,
+  which shares one `core.hooksPath`).
 
 ## Words we use
 

@@ -29,7 +29,7 @@ const PRIOR_KEY = process.env.DNA_ENCRYPTION_KEY;
 const PRIOR_ROOT = getWorkspacesRoot();
 const WALLET = '0xabc0000000000000000000000000000000000abc';
 const OTHER_WALLET = '0xdef0000000000000000000000000000000000def';
-const SOUL_BASUNORR = '0xAaAa000000000000000000000000000000000001';
+const SOUL_KEIR = '0xAaAa000000000000000000000000000000000001';
 const SOUL_SIGNAL = '0xBbBb000000000000000000000000000000000002';
 
 describe('HOUSE POST through the real portal (gnosis)', () => {
@@ -68,7 +68,7 @@ describe('HOUSE POST through the real portal (gnosis)', () => {
     // outsiderecho is ANOTHER house's lane on the same machine: every lane the
     // operator owns works in the house, founded or not (ruling, 2026-10-18), so an
     // outsider is a lane this wallet does not own.
-    for (const [id, soul, wallet] of [['wrenecho', SOUL_BASUNORR, WALLET], ['signalecho', SOUL_SIGNAL, WALLET], ['outsiderecho', null, OTHER_WALLET]]) {
+    for (const [id, soul, wallet] of [['wrenecho', SOUL_KEIR, WALLET], ['signalecho', SOUL_SIGNAL, WALLET], ['outsiderecho', null, OTHER_WALLET]]) {
       await workspace.create(id);
       await fs.writeFile(path.join(wsRoot, id, 'owner.json'), JSON.stringify({ wallet, claimedAt: 1 }));
       if (soul) {
@@ -83,7 +83,7 @@ describe('HOUSE POST through the real portal (gnosis)', () => {
       blockNumber: 48712879,
       members: [
         { address: WALLET, kind: 0, title: 'Rector' },
-        { address: SOUL_BASUNORR, kind: 1, title: 'Faber' },
+        { address: SOUL_KEIR, kind: 1, title: 'Faber' },
         { address: SOUL_SIGNAL, kind: 1, title: 'Legatus' },
       ],
     }));

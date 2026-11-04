@@ -54,7 +54,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getAllowedDirectories } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
+import { getNativeFilesystemRoots } from './native-fs-roots.js';
 import { createLogger } from './logger.js';
 import { getDataRoot } from './data-root.js';
 import { getRoots as explorerRoots } from './user-files.js';
@@ -149,7 +149,7 @@ const currentRoots = () => {
     // reach: the organ's roots, the Explorer's opened folders, every live
     // connection's focus ground, and every granted read or write root.
     allowed: [...new Set([
-      ...getAllowedDirectories(), ...explorerRoots(), ...filesystemFocusRoots(), ...filesystemGrantedRoots,
+      ...getNativeFilesystemRoots(), ...explorerRoots(), ...filesystemFocusRoots(), ...filesystemGrantedRoots,
     ])].sort(),
     data: path.resolve(getDataRoot()),
     grounds: [house, getWitnessesRoot(), getHarnessRoot(house)].map((g) => path.resolve(g)),

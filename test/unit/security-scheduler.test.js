@@ -72,6 +72,8 @@ describe('security scheduler, per house (real tmp state)', () => {
     expect(await ran()).toEqual([HOUSE_A]);
   });
 
+  // a real scan: its self-checks import the whole route tree (self-check.js, machine-owner-gate),
+  // ~4 s cold in a worker alone and past the 15 s default under the full parallel lane
   test('a real run lands in its own house; the host inventory is the machine\'s, read by both', async () => {
     const emptyWatch = createWatchStore({ path: path.join(houses.tmp, 'empty-watch.json'), seedRepos: [] });
     const summary = await runSecurityScan({ wallet: HOUSE_A, trigger: 'manual', watchStore: emptyWatch });
@@ -85,5 +87,5 @@ describe('security scheduler, per house (real tmp state)', () => {
     expect(b.host).toEqual(a.host); // one machine, one kernel
     expect(await houses.readJson(stateOf(HOUSE_A))).not.toHaveProperty('host');
     await expect(runSecurityScan({ trigger: 'manual' })).rejects.toThrow(/runs for a house/);
-  });
+  }, 60_000);
 });

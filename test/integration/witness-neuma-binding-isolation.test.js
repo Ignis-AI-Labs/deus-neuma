@@ -16,7 +16,7 @@ import { nativeFilesystemClient } from '../../backend/services/native-filesystem
 import { createSandboxedCallTool } from '../../backend/services/tool-sandbox.js';
 import { searchMemory } from '../../core/memory/memory-query.js';
 import { neumaRecall } from '../../core/index.js';
-import { getAllowedDirectories, setAllowedDirectories } from '@modelcontextprotocol/server-filesystem/dist/lib.js';
+import { getNativeFilesystemRoots, setNativeFilesystemRoots } from '../../backend/services/native-fs-roots.js';
 
 const NEUMA = 'binding-neuma-fixture';
 const WITNESS = 'witness-openai-BindingFixture';
@@ -54,8 +54,8 @@ beforeAll(async () => {
   await makeInstallOwner(kit.connection.walletAddress);
   await send({ type: 'companion:manifest', neumaId: WITNESS }, 'companion:anchored');
   mcpService.registerNativeServer('binding-fixture-fs', nativeFilesystemClient);
-  oldAllowedRoots = getAllowedDirectories();
-  setAllowedDirectories([kit.root]);
+  oldAllowedRoots = getNativeFilesystemRoots();
+  await setNativeFilesystemRoots([kit.root]);
   for (const [id, key, text] of [[NEUMA, 'a', 'NEUMA_PRIVATE_HISTORY'], [WITNESS, 'b', 'WITNESS_PRIVATE_HISTORY']]) {
     await writeOwner(path.dirname(workspace.pathFor(id)), id, kit.connection.walletAddress);
     await workspace.writeNeumaDEK(id, key.repeat(64));
@@ -66,7 +66,7 @@ beforeAll(async () => {
 afterAll(async () => {
   setAIWitnessesRoot(oldWitnessRoot);
   await mcpService.disconnect('binding-fixture-fs');
-  setAllowedDirectories(oldAllowedRoots || []);
+  await setNativeFilesystemRoots(oldAllowedRoots || []);
   neumaRecall.invalidate(NEUMA);
   neumaRecall.invalidate(WITNESS);
   if (oldRoutesPath === undefined) delete process.env.NEUMA_ROUTES_PATH;

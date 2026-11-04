@@ -140,7 +140,7 @@ test('the STREAM button cycles its windows, restores a minimized one, and lists 
     const rows = list.getByRole('menuitem');
     await expect(rows).toHaveCount(3);
     await expect(list.locator('.dock-menu-item.is-focused')).toHaveAttribute('data-window-id', 'chat');
-    await expect(rows.nth(1)).toHaveText(/BASUNORR\s*·\s*NEW CHAT/);
+    await expect(rows.nth(1)).toHaveText(/KEIR\s*·\s*NEW CHAT/);
     await expect(rows.nth(2)).toHaveText('STREAM 3');
     await page.waitForTimeout(300); // the offline label read settles to {} first
     await page.evaluate(({ session }) => window.announceChatLabels({ [`metidar:${session}`]: 'TikTok test' }), { session: SESSION });

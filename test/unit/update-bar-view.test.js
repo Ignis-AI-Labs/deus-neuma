@@ -16,7 +16,8 @@ const require = createRequire(import.meta.url);
 const { barFor } = require('../../electron/update-notes.cjs');
 
 const REPO = path.resolve(import.meta.dirname, '../..');
-const notes54 = fs.readFileSync(path.join(REPO, 'docs/operations/release-notes-0.1.54.md'), 'utf8');
+// the shipped 0.1.54 notes, frozen as they went out (test/fixtures/release-notes/)
+const notes54 = fs.readFileSync(path.join(REPO, 'test/fixtures/release-notes/release-notes-0.1.54.md'), 'utf8');
 const noop = () => {};
 const render = (el) => renderToStaticMarkup(el);
 const buttons = (html) => [...html.matchAll(/<button[^>]*>(.*?)<\/button>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));

@@ -42,7 +42,8 @@ const StreamingSpeechView = ({ text, live, onReveal }) => {
 
   const revealing = isRevealing(visible, text.length);
   const windowShown = useWindowShown();
-  const [pageVisible, setPageVisible] = useState(() => !document.hidden);
+  // (no document outside a browser — a server render draws the page as visible)
+  const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
   useEffect(() => {
     const onVisibility = () => setPageVisible(!document.hidden);
     document.addEventListener('visibilitychange', onVisibility);

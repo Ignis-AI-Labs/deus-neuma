@@ -41,8 +41,8 @@ Steps:
    nvidia-smi; AMD: rocm-smi or lspci; Apple: system_profiler). Report them.
 2. Check the prerequisites and install what is missing (asking first):
    - Git.
-   - Node.js 22 (20 or newer works). If Node is missing or older, prefer a
-     version manager (nvm, fnm, or nvm-windows) over a system install.
+   - Node.js 24.15 or newer. If Node is missing or older, prefer a version
+     manager (nvm, fnm, or nvm-windows) over a system install.
    - A C/C++ toolchain for native modules, plus Python 3:
      Linux: build-essential (Debian/Ubuntu) or gcc-c++ and make (Fedora).
      Windows: Visual Studio Build Tools with "Desktop development with C++".

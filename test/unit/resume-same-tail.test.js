@@ -16,8 +16,10 @@ describe('the resume tail is one number', () => {
     expect(RECENT_ROWS).toBeGreaterThanOrEqual(40);
   });
 
-  it('portal resume, latest-session load, and gather all name RECENT_ROWS', () => {
-    expect(src('backend/routes/portal-bind-handlers.js')).toContain('slice(-RECENT_ROWS)');
+  it('latest-session load and gather name RECENT_ROWS; the portal resume carries no tail of its own', () => {
+    // portal:resumed carries no history since 8365a7110 — the desk reads the chat over REST
+    // (the display view), so the resume cannot drift to a tail length of its own
+    expect(src('backend/routes/portal-bind-handlers.js')).not.toContain('recentMessages');
     expect(src('backend/services/memory-context.js')).toContain('slice(-RECENT_ROWS)');
     expect(src('frontend/app/RelinkShell/session-history.js')).toContain('RECENT_ROWS');
     // a stream's resume loads through the navigation history loader (c13da2087)
