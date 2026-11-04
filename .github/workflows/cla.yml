@@ -28,4 +28,5 @@ jobs:
           path-to-signatures: signatures/cla.json
           path-to-document: https://github.com/Ignis-AI-Labs/deus-neuma/blob/main/CLA.md
           branch: cla-signatures
-          allowlist: dependabot[bot]
+          # the company's own pipeline identity (it commits every export) and its founder sign no CLA to themselves
+          allowlist: dependabot[bot],founder-account,Ignis AI Labs

@@ -9,9 +9,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 let ApprovalChip;
 beforeAll(async () => {
-  // The sound engine registers a module-level `window` listener on import — a
-  // browser fact the static render never exercises.
-  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true };
+  // The sound engine registers a module-level `window` listener on import, and
+  // schedules an idle warm-up that reads localStorage — browser facts the static
+  // render never exercises (requestIdleCallback is inert, so the warm-up never runs
+  // and never throws into a later test).
+  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true, requestIdleCallback: () => {} };
   ({ ApprovalChip } = await import('../../frontend/app/RelinkShell/ApprovalChip.jsx'));
 });
 

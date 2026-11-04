@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLATFORM_COMMANDS, resolveCommand, commandFromInput } from '../../frontend/app/RelinkShell/commands.js';
 
-const KNOWN_TYPES = new Set(['summon', 'rehearse', 'new', 'open', 'remia', 'attune', 'switch', 'say']);
+const KNOWN_TYPES = new Set(['summon', 'rehearse', 'new', 'open', 'remia', 'attune', 'switch', 'say', 'compact']);
 
 describe('PLATFORM_COMMANDS', () => {
   it('every command has a name, description, and a runnable intent', () => {

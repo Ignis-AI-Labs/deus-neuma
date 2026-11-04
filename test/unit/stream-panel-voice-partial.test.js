@@ -23,7 +23,7 @@ import { reducer, initialState } from '../../frontend/app/RelinkShell/stream-red
 // stream-panel-retry.test.js).
 let StreamPanel;
 beforeAll(async () => {
-  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true };
+  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true, requestIdleCallback: () => {} };
   globalThis.localStorage = globalThis.localStorage ?? {
     getItem: () => null, setItem: () => {}, removeItem: () => {},
   };

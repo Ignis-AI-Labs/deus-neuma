@@ -26,7 +26,7 @@ let StreamPanel;
 beforeAll(async () => {
   // The import graph's module-level browser facts (sound engine's listener,
   // the wallet registry's storage read) — provisioned, never exercised.
-  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true };
+  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true, requestIdleCallback: () => {} };
   globalThis.localStorage = globalThis.localStorage ?? {
     getItem: () => null, setItem: () => {}, removeItem: () => {},
   };

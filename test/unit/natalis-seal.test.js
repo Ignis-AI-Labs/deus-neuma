@@ -139,10 +139,11 @@ describe('natalis-seal — encodeSealCalldata', () => {
 });
 
 describe('natalis-seal — preflightSeal refusal lanes', () => {
+  // (the lanes run on Base mainnet: its keys are the ones resolveSealChainConfig reads)
   const cfg = {
-    natalisAddress: NATALIS_ADDR,
-    houseRegistryAddress: '0x' + 'bb'.repeat(20),
-    baseSepoliaRpcUrl: 'http://127.0.0.1:1',
+    natalisMainnetAddress: NATALIS_ADDR,
+    houseRegistryMainnetAddress: '0x' + 'bb'.repeat(20),
+    baseMainnetRpcUrl: 'http://127.0.0.1:1',
   };
   const readerOf = (over = {}) => async () => ({
     enabled: true,
@@ -153,12 +154,25 @@ describe('natalis-seal — preflightSeal refusal lanes', () => {
   });
   // these lanes are proven on Base's kenorie-v2 law (the bundle assemble() builds);
   // the default network moved to Ethereum (v3) on 2026-10-04
+  // (provider may be a function of the bundle, for a wire that answers its digest)
   const run = async ({ reader = readerOf(), provider, network = 'base' } = {}) => {
     const bundle = await assemble({ witnessAddress: WITNESS.address });
     return preflightSeal({
       bundle, network, gasPayerAddress: WITNESS.address, cfg,
-      createReader: reader, provider,
+      createReader: reader, provider: typeof provider === 'function' ? provider(bundle) : provider,
     });
+  };
+  // A wire past every identity check: Natalis.sealDigest answers `digest` (ABI-encoded by the
+  // contract's own ABI), a 1-wei fee, and the payer holds `balance`.
+  const wire = ({ digest, balance }) => {
+    const natalis = new ethers.Interface(loadNatalisAbi('kenorie-v2'));
+    return {
+      getNetwork: async () => ({ chainId: BigInt(CHAIN_ID) }),
+      call: async () => natalis.encodeFunctionResult('sealDigest', [digest]),
+      getFeeData: async () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 0n, gasPrice: 1n }),
+      getBlock: async () => ({ baseFeePerGas: 1n }),
+      getBalance: async () => balance,
+    };
   };
 
   it('UNKNOWN_NETWORK', async () => {
@@ -202,15 +216,19 @@ describe('natalis-seal — preflightSeal refusal lanes', () => {
     expect(out.message).toContain('genesisHash');
   });
 
-  it('GAS_FLOOR below MIN_SEAL_GAS_ETH', async () => {
+  it('GAS_FLOOR below MIN_SEAL_GAS_ETH — asked last, once the digest verifies', async () => {
     const out = await run({
-      provider: {
-        getNetwork: async () => ({ chainId: BigInt(CHAIN_ID) }),
-        getBalance: async () => ethers.parseEther(MIN_SEAL_GAS_ETH) - 1n,
-      },
+      provider: (bundle) => wire({ digest: bundle.digest, balance: ethers.parseEther(MIN_SEAL_GAS_ETH) - 1n }),
     });
     expect(out).toMatchObject({ ok: false, code: 'GAS_FLOOR' });
     expect(out.message).toContain(MIN_SEAL_GAS_ETH);
+    // the measured gas at a 1-wei fee is far below the floor: the floor is what the wallet needs
+    expect(out.funding).toMatchObject({ needWei: String(ethers.parseEther(MIN_SEAL_GAS_ETH)), shortWei: '1', enough: false });
+  });
+
+  it('DIGEST_MISMATCH is refused before money: a seal that cannot verify is never a reason to buy ETH', async () => {
+    const out = await run({ provider: () => wire({ digest: '0x' + 'ee'.repeat(32), balance: 0n }) });
+    expect(out).toMatchObject({ ok: false, code: 'DIGEST_MISMATCH' });
   });
 });
 

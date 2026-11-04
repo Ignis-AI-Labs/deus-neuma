@@ -11,7 +11,7 @@ import { tailStart, STREAM_WINDOW } from '../../frontend/app/RelinkShell/use-str
 let StreamPanel;
 beforeAll(async () => {
   // The import graph's module-level browser facts — provisioned, never exercised.
-  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true };
+  globalThis.window = globalThis.window ?? { addEventListener: () => {}, dispatchEvent: () => true, requestIdleCallback: () => {} };
   globalThis.localStorage = globalThis.localStorage ?? { getItem: () => null, setItem: () => {}, removeItem: () => {} };
   ({ StreamPanel } = await import('../../frontend/app/RelinkShell/StreamPanel.jsx'));
 });

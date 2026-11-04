@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { setRealmRoot } from '../../backend/services/user-realm.js';
+import { makeDurableDir } from '../helpers/durable-dir.js';
 import {
   loadHouseWorkspace, setHouseWorkspace, houseWorkspaceStatus, ensureBeingGround,
   ensureHouseGround, defaultHouseGround,
@@ -65,8 +66,8 @@ describe('house workspace — the shared ground', () => {
     // under tmp (a fully isolated stack, where everything is throwaway by
     // design and a tmp ground is legitimate), so the refusal is asserted
     // against a durable realm — the operator's real situation.
-    const durableRealm = path.join(process.cwd(), 'test', `.house-ws-durable-realm-${process.pid}`);
-    mkdirSync(durableRealm, { recursive: true });
+    // (outside the OS temp dir even when the checkout sits under it)
+    const durableRealm = makeDurableDir('house-ws-durable-realm');
     setRealmRoot(durableRealm);
     try {
       await expect(setHouseWorkspace(WALLET, path.join(os.tmpdir(), 'house-here'))).rejects.toThrow(/temp dir/);

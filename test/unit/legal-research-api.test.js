@@ -2,8 +2,10 @@
  * LEGAL RESEARCH APIS (legal/legal-research-api.js) — the official legal databases
  * that take a key, reached by the CLO office without it ever holding the key.
  * The request builder and scrubber are pure; the live calls go to the REAL APIs
- * (CourtListener search needs no key; Congress.gov takes the public DEMO_KEY).
- * No mocks (RULE 0).
+ * (CourtListener needs its free token, search included, since 2026-11; Congress.gov
+ * takes the public DEMO_KEY). No mocks (RULE 0) — and no network unless summoned:
+ * a unit lane never depends on a third party answering. RUN_LEGAL_API_LIVE=1 runs
+ * them; the CourtListener call also needs COURTLISTENER_API_TOKEN.
  */
 import { describe, expect, test } from 'vitest';
 import { LEGAL_APIS, buildRequest, callLegalApi, safeApiPath, scrubKey } from '../../backend/services/legal/legal-research-api.js';
@@ -41,8 +43,10 @@ describe('the saved key, placed where each API wants it', () => {
     expect(r.url).toBe('https://www.courtlistener.com/api/rest/v4/citation-lookup/');
     expect(buildRequest({ api: 'citations', text: '129 F.3d 327' }, none).ok).toBe(false);
   });
-  test('no key saved: case-law search still works, data.gov falls back to the public demo key, the rest say where to save one', () => {
-    expect(buildRequest({ api: 'courtlistener', path: '/search/' }, none).ok).toBe(true);
+  test('no key saved: data.gov falls back to the public demo key, the rest (case-law search too) say where to save one', () => {
+    const search = buildRequest({ api: 'courtlistener', path: '/search/' }, none);
+    expect(search.ok).toBe(false);
+    expect(search.error).toContain('Settings → API');
     expect(new URL(buildRequest({ api: 'govinfo', path: '/packages' }, none).url).searchParams.get('api_key')).toBe('DEMO_KEY');
     const missing = buildRequest({ api: 'openstates', path: '/bills' }, none);
     expect(missing.ok).toBe(false);
@@ -58,9 +62,13 @@ describe('scrubKey — the key never comes back', () => {
   });
 });
 
-describe('the real APIs', () => {
-  test('CourtListener case-law search answers with no key', async () => {
-    const out = await callLegalApi({ api: 'courtlistener', path: '/search/', query: { q: '"member-managed"', type: 'o' } }, { keyFor: none });
+const LIVE = process.env.RUN_LEGAL_API_LIVE === '1';
+const COURTLISTENER_TOKEN = process.env.COURTLISTENER_API_TOKEN || '';
+
+describe.skipIf(!LIVE)('the real APIs (RUN_LEGAL_API_LIVE=1)', () => {
+  test.skipIf(!COURTLISTENER_TOKEN)('CourtListener case-law search answers with the saved token', async () => {
+    const out = await callLegalApi({ api: 'courtlistener', path: '/search/', query: { q: '"member-managed"', type: 'o' } },
+      { keyFor: (id) => (id === 'courtlistener' ? COURTLISTENER_TOKEN : '') });
     expect(out.ok, out.error).toBe(true);
     expect(out.text).toContain('"results"');
   }, 30_000);
