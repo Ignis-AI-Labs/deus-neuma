@@ -161,7 +161,7 @@ export const recordWorkAgainstFocus = async (connection, toolName, args) => {
 
 // Pure — the ACTS a round attempted: the substrate's native calls when it made
 // them, the parsed text otherwise — the loop and its protocol reminder can never disagree.
-const _roundActs = (nativeToolCalls, response) => unwrapCalls(nativeToolCalls.length > 0 ? nativeToolCalls : parseToolCalls(response)); // system/call → the tool it names (tool-hud.js)
+const _roundActs = (nativeToolCalls, response) => unwrapCalls(nativeToolCalls.length > 0 ? nativeToolCalls : parseToolCalls(response, { told: true })); // system/call → the tool it names (tool-hud.js); unreadable args are told
 
 // Executes every tool call in a completed response and returns the outcomes so
 // the caller can hand them back to the consciousness for a follow-up round —

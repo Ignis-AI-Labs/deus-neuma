@@ -21,10 +21,17 @@ describe('parsePrometheus', () => {
 
 describe('summarizeActivity', () => {
   test('maps known metrics; absent ones stay null (never faked zeros)', () => {
-    const a = summarizeActivity({ 'llamacpp:predicted_tokens_seconds': 31.6, 'llamacpp:requests_processing': 1 });
+    const a = summarizeActivity({ 'llamacpp:requests_processing': 1 }, { genTokPerSec: 31.6, promptTokPerSec: 900 });
     expect(a.genTokPerSec).toBe(31.6);
+    expect(a.promptTokPerSec).toBe(900);
     expect(a.requestsProcessing).toBe(1);
     expect(a.kvUsage).toBeNull();
+  });
+
+  test('the server\'s *_tokens_seconds gauges are never the rate — they read 0 through a whole reply', () => {
+    const a = summarizeActivity({ 'llamacpp:predicted_tokens_seconds': 0, 'llamacpp:prompt_tokens_seconds': 0 });
+    expect(a.genTokPerSec).toBeNull();
+    expect(a.promptTokPerSec).toBeNull();
   });
 });
 
