@@ -399,7 +399,7 @@ export const streamConsciousness = async (connection, message) => {
     fullResponse = rounds.fullResponse;
     if (rounds.error) throw rounds.error;
     const { latestResponse, turnUsage, standingUsage, turnAffect, toolContextSections, standingCacheTelemetry } = rounds;
-    await settleCitationHold({ connection, text: latestResponse, interrupted: interrupt.signal.aborted, origin }); // the CLO's unchecked law is held (legal/answer-hold.js)
+    await settleCitationHold({ connection, text: latestResponse, interrupted: interrupt.signal.aborted, origin, recent: memories.recentConversation, thought }); // the CLO's unchecked law is held (legal/answer-hold.js)
 
     const interrupted = interrupt.signal.aborted;
     const turnTools = turnRecordFor(ws);

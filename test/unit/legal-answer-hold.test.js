@@ -6,7 +6,7 @@
  * test/integration/legal-citation-law.test.js.
  */
 import { describe, it, expect } from 'vitest';
-import { citationMentions, holdProblems, holdThought, HOLD_HEAD } from '../../backend/services/legal/answer-hold.js';
+import { citationMentions, holdProblems, holdThought, wordsSaidInChat, HOLD_HEAD } from '../../backend/services/legal/answer-hold.js';
 
 // Excerpts of the audited answer, as it was written.
 const AUDITED = [
@@ -36,7 +36,7 @@ describe('what the hold finds unconfirmed', () => {
   it('the audited answer, nothing checked: a mark, no check, every cite uncovered, the invented quotation', () => {
     const problems = holdProblems(AUDITED, []);
     expect(problems[0]).toBe('it still carries [verify]');
-    expect(problems[1]).toBe('no citation check passed this turn, yet it cites law');
+    expect(problems[1]).toBe('no citation check has passed in this chat, yet it cites law');
     expect(problems[2]).toMatch(/^it cites what no confirmed record covers: 15 U\.S\.C\. § 77b; 15 U\.S\.C\. § 78c; 17 CFR 240\.3b-16/);
     // Both quotations the audit found invented: row 7's "evidence of ownership" and row 9's release sentence.
     expect(problems[3]).toMatch(/^quotation marks around words no confirmed record quotes: "any evidence of ownership\."; "Digital securities are tokenized/);
@@ -58,13 +58,58 @@ describe('what the hold finds unconfirmed', () => {
   it('an answer that cites no law is not held, whatever it quotes', () => {
     expect(holdProblems('You said "run the watch tonight please" — it will run at nine.', [])).toEqual([]);
   });
+
+  it('a record for a CFR Part covers the Part however it is written, and its section pin covers that section', () => {
+    const part = record('16 CFR Part 255', '§ 255.5');
+    expect(holdProblems('The endorsement guides (16 CFR 255; 16 C.F.R. Part 255) apply.', [part])).toEqual([]);
+    expect(holdProblems('Material connections must be disclosed (16 CFR 255.5).', [part])).toEqual([]);
+    expect(holdProblems('See 16 CFR 256.', [part])).toEqual(['it cites what no confirmed record covers: 16 CFR 256']);
+  });
+});
+
+// The answer that taught this (2026-11-04): the CLO, mid-work, quoting its
+// operator's own words beside the law it had confirmed earlier in the chat.
+describe('the words said to the CLO in the chat are theirs to quote', () => {
+  const WORKING = [
+    'You said "I don\'t have to go through all this stuff", so the terms stay short: commission "locked for life", and we "screen before every payout".',
+    'The FTC endorsement guides (16 CFR 255) I have confirmed. Backup withholding is 26 U.S.C. §3406; e-signatures are 15 U.S.C. §7001.',
+  ].join('\n');
+  const CONFIRMED = [record('16 CFR Part 255', '§ 255.5'), record('26 U.S.C. § 3406', '(a)(1)'), record('15 U.S.C. § 7001', '(a)')];
+  const ASKED = 'Make the referral program simple, I don\'t have to go through all this stuff. Commission is locked for life and we screen before every payout.';
+
+  it('quotation marks around the operator\'s words, beside confirmed law: nothing held', () => {
+    expect(holdProblems(WORKING, CONFIRMED, [ASKED])).toEqual([]);
+  });
+
+  it('the same quotations nobody said are still held', () => {
+    expect(holdProblems(WORKING, CONFIRMED, ['Draft the referral terms.'])).toEqual([
+      'quotation marks around words no confirmed record quotes: "I don\'t have to go through all this stuff"; "locked for life"; "screen before every payout"',
+    ]);
+  });
+
+  it('the operator\'s turns are the words said — never a row the platform wrote, the being\'s own, or a compaction', () => {
+    const rows = [
+      { role: 'user', content: ASKED },
+      { role: 'user', content: 'a watch reported', origin: 'watch' },
+      { role: 'assistant', content: 'the being\'s own words' },
+      { role: 'user', content: 'a summary', compacted: true },
+    ];
+    expect(wordsSaidInChat(rows, 'and this turn', null)).toEqual([ASKED, 'and this turn']);
+    expect(wordsSaidInChat(rows, 'a hold\'s words', 'hold')).toEqual([ASKED]);
+  });
+
+  it('the hold\'s own send-back, quoting the spans it held, never binds them', () => {
+    const thought = holdThought(holdProblems(WORKING, CONFIRMED, []));
+    const said = wordsSaidInChat([{ role: 'user', content: thought, origin: 'hold' }], thought, 'hold');
+    expect(holdProblems(WORKING, CONFIRMED, said)[0]).toMatch(/^quotation marks around words no confirmed record quotes/);
+  });
 });
 
 describe('what the CLO is sent back with', () => {
   it('names itself the platform\'s, lists the problems, and says what to do', () => {
-    const thought = holdThought(['no citation check passed this turn, yet it cites law']);
+    const thought = holdThought(['no citation check has passed in this chat, yet it cites law']);
     expect(thought.startsWith(HOLD_HEAD)).toBe(true);
-    expect(thought).toContain('- no citation check passed this turn, yet it cites law');
+    expect(thought).toContain('- no citation check has passed in this chat, yet it cites law');
     expect(thought).toContain('Run legal_cite_check');
   });
 });

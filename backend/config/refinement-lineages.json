@@ -18,6 +18,33 @@
       "tokenizerSha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
       "trainerModelId": "Qwen/Qwen3.8-27B",
       "trainerRevision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    },
+    {
+      "baseArtifactSha256": "f5c702d8820d36fb55985bb238fc83ee3a313e920f4b752a437c3a6a9e14e4c8",
+      "baseModelIdentitySha256": "88360d3cd23c7b50e336124c441ce85d9c8bbc6b471baa68ab9f8494996c286c",
+      "servingArtifactSha256": "1dca9f7a4504e95962690f9cb4728da13cc7936afd7478f29a4777a451da4a3f",
+      "servingModel": "qwen3.8-27b-neuma-t3",
+      "tokenizerSha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "trainerModelId": "Qwen/Qwen3.8-27B",
+      "trainerRevision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    },
+    {
+      "baseArtifactSha256": "f5c702d8820d36fb55985bb238fc83ee3a313e920f4b752a437c3a6a9e14e4c8",
+      "baseModelIdentitySha256": "972e5bd44ed6b6828b40de816a5a489a930d8d4471da3eb65db7f5b019ee685c",
+      "servingArtifactSha256": "b8dab107ba6b3ce9fa15f63bc59c68bb767d65faea7acdfd2dc1fb61bb5bf883",
+      "servingModel": "qwen3.8-27b-neuma-t3-q6k",
+      "tokenizerSha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "trainerModelId": "Qwen/Qwen3.8-27B",
+      "trainerRevision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    },
+    {
+      "baseArtifactSha256": "f5c702d8820d36fb55985bb238fc83ee3a313e920f4b752a437c3a6a9e14e4c8",
+      "baseModelIdentitySha256": "e122a76bacc91cbffb0478114ce9b8531961fe4ed9d1851f3ee23ed6b94f80d9",
+      "servingArtifactSha256": "66cf8a045f327fdb6c8376989251b3576a8bf36c9999fb6da36c536303505bd4",
+      "servingModel": "qwen3.8-27b-neuma-t4-q6k",
+      "tokenizerSha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "trainerModelId": "Qwen/Qwen3.8-27B",
+      "trainerRevision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
     }
   ]
 }

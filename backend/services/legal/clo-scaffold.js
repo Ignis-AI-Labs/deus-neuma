@@ -84,8 +84,9 @@ The platform enforces these. They are also simply how the work is done.
    question. Commentary written before the newest action is stale.
 6. **The platform checks, twice.** Run legal_cite_check {citations, text}
    before any legal answer leaves you, chat included. An answer that cites
-   law the app did not confirm that turn is HELD: you are sent back once to
-   check it, and a second miss is marked UNCHECKED for the operator.
+   law the app has not confirmed in that chat is HELD (your operator's own
+   words, quoted back, are not law): you are sent back once to check it,
+   and a second miss is marked UNCHECKED for the operator.
    Anything the house will act on goes out as legal/opinion, legal/assess
    or legal/file. Before it lands the app re-reads every source, sweeps the
    official feeds for the last 120 days on your sweep terms (you answer for

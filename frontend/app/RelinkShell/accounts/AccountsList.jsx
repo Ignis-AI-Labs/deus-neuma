@@ -2,7 +2,8 @@
 // CHANNEL KEYS (campaign plan §2.6). The developer app is stored once (its
 // fields serve every account); each account row carries its company, its
 // live proof, its own keys (CONNECT for a sign-in platform, paste for the
-// rest) and REMOVE. ADD ACCOUNT opens the next one under a chosen company.
+// rest) and REMOVE. ADD ACCOUNT opens the next one under a chosen company;
+// NEW COMPANY adds a company to choose (AddCompany.jsx).
 //
 // Keys are sealed on this machine and never echoed back — a set field shows
 // only THAT it is set and where it came from. WHO may post through an
@@ -17,6 +18,7 @@ import {
 } from '../../../services/social-accounts-client.js';
 import { ChannelConnect } from '../ChannelConnect.jsx';
 import { CompanyPicker } from './CompanyPicker.jsx';
+import { AddCompany } from './AddCompany.jsx';
 import { FlightLine } from './FlightLine.jsx';
 import { handleOf } from './account-words.js';
 import './accounts.css';
@@ -153,6 +155,7 @@ export const AccountsList = ({ channel, house, tests, onChanged, onRetest }) => 
           ADD ACCOUNT
         </button>
       </div>
+      <AddCompany companies={house.companies} onAdded={async (company) => { await onChanged(); setCompanyId(company.id); }} />
       {error ? <p className="settings-err">{error}</p> : null}
     </div>
   );

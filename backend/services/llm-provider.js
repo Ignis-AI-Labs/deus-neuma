@@ -34,6 +34,7 @@ import {
 } from './provider-stream-telemetry.js';
 import { dialectOf, buildHeaders, buildChatUrl, buildStreamBody } from './llm-request-builders.js';
 import { isLocalLlamaWire, toolCallBan } from './close-prefix.js';
+import { openReply, stepReply, closeReply } from './reply-meter.js';
 import { readStreamLine } from './llm-stream-frames.js';
 import { stripThinkTags, createThinkFilter } from './llm-think-filter.js';
 import { probeThinkBehavior } from './llm-think-probe.js';
@@ -382,7 +383,7 @@ export const createStreamRequest = async (messages, options = {}) => {
 
   // The body the substrate just accepted, as it went out — a benchmark sitting reads its images off it (wire-images.js).
   notifyObserver('onWireBody', options.onWireBody, body);
-  return { response: releasingWithBody(response, lease), provider: config.provider, dialect: dialectOf(config), requestStartedAt };
+  return { response: releasingWithBody(response, lease), provider: config.provider, dialect: dialectOf(config), requestStartedAt, local: localWire };
 };
 
 /** Max silence between stream chunks before the stream is declared dead.
@@ -430,6 +431,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
   // ONE channel for both shapes: a vendor's own reasoning field (above) and a
   // local template's <think> markers (here) reach the operator the same way.
   const filteredOnContent = createThinkFilter(onContent, options);
+  const reply = streamResult.local ? openReply(requestStartedAt) : null; // timed by phase for the ACTIVITY panel (reply-meter.js)
   const actionBoundary = createStreamActionBoundary(options.onActionBoundary, options);
   let buffer = '';
   let fullResponse = '';
@@ -445,6 +447,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
   // onTelemetry callback; absence remains null and never becomes a fake zero.
   // options.onFinishReason follows the same once-at-end contract.
   const finish = () => {
+    if (reply) closeReply(reply);
     const usage = tokenUsageOnly(observedUsage);
     if (usage === null && wire !== 'ollama' && wire !== 'anthropic') {
       log.debug('Stream ended without a usage chunk — token counts downgrade to approx', { provider });
@@ -486,6 +489,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
       if (evt.error) {
         throw Object.assign(new Error(evt.error), evt.code ? { code: evt.code } : {});
       }
+      if (reply) stepReply(reply, evt, performance.now());
       if (evt.usage) observedUsage = mergeStreamUsage(observedUsage, evt.usage);
       if (evt.finishReason) finishReason = evt.finishReason;
       if (firstOutputAt === null && hasProviderOutput(evt)) {

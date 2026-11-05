@@ -11,6 +11,10 @@ import { describe, expect, it } from 'vitest';
 import { localDayKey } from '../../core/vessel/day-key.js';
 import { dayComplete, dailiesInForce, dailyStreakDays } from '../../core/vessel/dailies.js';
 
+// On a UTC host (a CI runner) local and UTC days never split, so the case this file exists
+// for cannot happen there: pin such a host to the operator's own +07:00. Elsewhere the host's zone stands.
+if (new Date().getTimezoneOffset() === 0) process.env.TZ = 'Asia/Jakarta';
+
 const DAY_MS = 86400000;
 /** The OLD law — UTC epoch days — kept here only to document what broke. */
 const utcDayKey = (iso) => Math.floor(Date.parse(iso) / DAY_MS);

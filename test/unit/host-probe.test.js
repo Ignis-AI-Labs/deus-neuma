@@ -136,8 +136,11 @@ describe('host-probe LIVE collectors (the real rig, no doubles)', () => {
     expect(probe.errors).not.toContain('ss failed — listeners unmeasured');
     expect(probe.inventory.listeners.length).toBeGreaterThan(0);
     for (const l of probe.inventory.listeners) expect(['loopback', 'tailnet', 'network']).toContain(l.scope);
-    // NVIDIA is present on this rig (AGENTS.md: the substrate lives on it).
-    expect(probe.inventory.nvidiaDriver).toMatch(/^\d+\.\d+/);
+    // The driver is read wherever nvidia-smi answers (the operator's rig: AGENTS.md, the substrate
+    // lives on it); a machine with no NVIDIA card (a CI runner) reads none, never a made-up value.
+    const smi = await execFileP('nvidia-smi', ['--query-gpu=driver_version', '--format=csv,noheader']).then(() => true, () => false);
+    if (smi) expect(probe.inventory.nvidiaDriver).toMatch(/^\d+\.\d+/);
+    else expect(probe.inventory.nvidiaDriver ?? null).toBeNull();
     for (const f of probe.findings) {
       expect(f).toMatchObject({ layer: 'hardware', source: 'host-probe' });
       expect(f.externalId).toMatch(/^host:listener:(tailnet|network):\d+$/);

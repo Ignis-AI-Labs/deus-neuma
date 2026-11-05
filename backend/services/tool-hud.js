@@ -23,6 +23,7 @@
  */
 
 import { signatureOf } from '../../core/runtime/tool-signature.js';
+import { tryParseArgs } from '../../core/runtime/tool-call-parser.js';
 
 export const CALL_ID = 'system/call';
 
@@ -61,11 +62,13 @@ const plain = (value) => value !== null && typeof value === 'object' && !Array.i
  * @param {{server?: string, toolName?: string, tool?: string, args?: object, callId?: string}} match
  * @returns {object} the named call, carrying `_wire` (what the model sent)
  */
-// a model may send arguments as a JSON string, at either level — read it as sent
+// a model may send arguments as a JSON string, at either level — read it as sent, with the
+// repairs a text call gets (a written document's raw newlines and unescaped quotes, 2026-11-04)
 const asObject = (value) => {
   if (plain(value)) return value;
   if (typeof value !== 'string') return null;
-  try { const parsed = JSON.parse(value); return plain(parsed) ? parsed : null; } catch { return null; }
+  const parsed = tryParseArgs(value.trim());
+  return plain(parsed) ? parsed : null;
 };
 const NAME_KEYS = Object.freeze(['tool', 'name', 'tool_name', 'id']);
 
@@ -198,5 +201,5 @@ export const unreadArgsResult = (tool, raw) => Object.freeze({
   // 'invalid', never 'error': nothing was dispatched — an audit reads 'error' as "ran and failed"
   status: 'invalid',
   error: `The arguments for ${tool} were not a JSON object, so nothing ran: ${JSON.stringify(String(raw))}. `
-    + 'Send the call again with its arguments as one JSON object.',
+    + 'Send the call again with its arguments as one JSON object — inside a string, every quotation mark written \\" and every line break \\n.',
 });

@@ -8,7 +8,7 @@
 
 import { listBrandNames } from '../branding/kit-locate.js';
 import { brandsDir } from '../branding/brand-tokens.js';
-import { readKit, writeKit } from '../branding/kit-store.js';
+import { brandNameRefusal, kitSkeleton, readKit, writeKit } from '../branding/kit-store.js';
 import { companyOf, companyRefusals } from '../branding/kit-shape.js';
 import { settleTree, treeOrder } from './company-tree.js';
 import { campaignStoreFor } from './campaign-store.js';
@@ -31,6 +31,36 @@ const readCompanies = async (wallet) => {
  * @returns {Promise<Array<{id, name, parentId, rootId, depth, problem, site, legalEntity, repos, where}>>}
  */
 export const listCompanies = async (wallet) => treeOrder(settleTree(await readCompanies(wallet)));
+
+/** A company's short id from its name: "Deus Neuma" → "deus-neuma". Pure. */
+export const companyIdOf = (name) => String(name ?? '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^[^a-z]+/, '').slice(0, 40).replace(/-+$/, '');
+
+/**
+ * Add a company to the house: a new kit in the house's own ground, named as
+ * the operator wrote it, on its own or under a parent. A company needs only
+ * its name to hold accounts; its brand voice is filled later in BRAND KITS
+ * (Design note, 2026-11-05: […]). Refused in words: no name, a name that makes no short id,
+ * a company already here, a parent that is not. impure.
+ * @param {string} wallet
+ * @param {{name: string, parentId?: string|null}} input
+ */
+export const addCompany = async (wallet, { name, parentId = null } = {}) => {
+  const display = String(name ?? '').trim();
+  if (!display || display.length > 80) return { ok: false, error: 'a company needs a name of at most 80 characters' };
+  const id = companyIdOf(display);
+  if (brandNameRefusal(id)) return { ok: false, error: `"${display}" makes no short name — start it with a letter` };
+  // Every kit folder counts, readable or not: a new company never writes over one.
+  if ((await listBrandNames(wallet, brandsDir())).some((n) => n.brand === id)) {
+    return { ok: false, conflict: true, error: `"${id}" is already a company in this house` };
+  }
+  if (parentId && !(await readCompanies(wallet)).some((c) => c.id === parentId)) {
+    return { ok: false, error: `there is no "${parentId}" company in this house` };
+  }
+  const written = await writeKit(id, wallet, { ...kitSkeleton(id, { name: display }), ...(parentId ? { company: { parentId } } : {}) });
+  if (!written.ok) return written;
+  return { ok: true, company: (await listCompanies(wallet)).find((c) => c.id === id) };
+};
 
 /**
  * Record a company's place and papers on its kit. Refused in words when the

@@ -5,6 +5,7 @@
  * its own), its site and its legal entity.
  *
  *   GET /             every company of the caller's house, in tree order
+ *   POST /            add one {name, parentId?} — a new kit in the house's own ground
  *   PUT /:companyId   its company block {parentId?, site?, legalEntity?, repos?}
  *
  * COMPANY SOURCES (2026-10-24) — each company's site and code repos, and
@@ -22,7 +23,7 @@
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { passesInstallOwner, requireInstallOwner } from '../services/install-owner.js';
-import { listCompanies, setCompanyBlock, setCompanyRepos } from '../services/marketing/companies.js';
+import { addCompany, listCompanies, setCompanyBlock, setCompanyRepos } from '../services/marketing/companies.js';
 import { companySources, proposeRepos } from '../services/marketing/company-sources.js';
 import { grantRepoRead, revokeRepoRead } from '../services/marketing/company-repo-grants.js';
 import { createLogger } from '../services/logger.js';
@@ -37,6 +38,18 @@ router.get('/', async (req, res) => {
   } catch (error) {
     log.error('companies read failed', { error: error.message });
     res.status(500).json({ error: 'Failed to read the house\'s companies' });
+  }
+});
+
+router.post('/', async (req, res) => {
+  try {
+    const out = await addCompany(req.walletAddress, { name: req.body?.name, parentId: req.body?.parentId || null });
+    if (!out.ok) return res.status(out.conflict ? 409 : 400).json({ error: out.error });
+    log.info('company added', { companyId: out.company?.id, parentId: out.company?.parentId ?? null, wallet: req.walletAddress });
+    return res.status(201).json({ company: out.company });
+  } catch (error) {
+    log.error('company add failed', { error: error.message });
+    return res.status(500).json({ error: 'The company was not added' });
   }
 });
 

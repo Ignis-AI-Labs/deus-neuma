@@ -12,12 +12,15 @@
 //   3. if that answer still fails, an UNCHECKED chip with the failures, and a
 //      card in the operator's tray. A passing re-answer earns a CHECKED chip.
 //
-// "Confirmed" means: a record the app re-read and found verified THIS turn —
-// through legal_cite_check, or a legal act that landed (act-review.js).
+// "Confirmed" means: a record the app re-read and found verified in THIS CHAT
+// — through legal_cite_check, or a legal act that landed (act-review.js). A
+// long working chat is not made to re-check, turn after turn, what the
+// platform already read in it (Design note, 2026-11-04: the per-turn hold […]). Quotation marks around words the operator said in
+// the chat quote the operator, not the law: they are not held.
 // An answer with no citation, no section sign and no mark is not a legal
 // answer to hold. A wake turn (the house clock) is not held: no chat waits on it.
 
-import { squeeze, unresolvedMarks, unboundQuotes } from './citation-record.js';
+import { squeeze, unresolvedMarks, unboundQuotes, quoteSegments, holdsInOrder } from './citation-record.js';
 import { cloDesignation } from './clo-designation.js';
 import { sendToolEvent } from '../portal-tools/tool-events.js';
 import { queuePlatformFollowUp } from '../platform-follow-up.js';
@@ -30,6 +33,8 @@ const log = createLogger('Legal.AnswerHold');
 export const HOLD_ORIGIN = 'hold';
 export const HOLD_HEAD = '[HELD BY THE CITATION LAW — the platform, not your operator]';
 const HOLD_TOOL = 'legal/citation_hold';
+const CHATS_KEPT = 20;
+const RECORDS_KEPT = 200;
 
 // Citation shapes the hold reads, each keyed the way a record's authority and
 // pin cite squeeze, so a mention is covered by the record that confirms it.
@@ -57,38 +62,76 @@ export const citationMentions = (text) => {
   return [...seen.values()];
 };
 
+// A code's title in an authority ([…] → "16 CFR"), so a
+// section pin under it ("§ 255.5") keys as "16 CFR 255.5".
+const CODE_TITLE = /\b\d{1,2}\s*(?:U\.?\s?S\.?\s?C|C\.?\s?F\.?\s?R)\b\.?/i;
+
+// pure — what a record covers: its squeezed authority and pin cite, and the
+// same citation keyed the way a mention is — […] covers
+// "16 CFR 255", its pin "§ 255.5" covers "16 CFR 255.5".
+const coverKeys = (record) => {
+  const authority = String(record?.authority ?? '');
+  const pin = String(record?.pinCite ?? '');
+  const title = authority.match(CODE_TITLE)?.[0];
+  const cited = [`${authority} ${pin}`, ...(title ? [`${title} ${pin}`] : [])];
+  return [squeeze(cited[0]), ...cited.flatMap((t) => citationMentions(t).map((m) => m.key))];
+};
+
+/**
+ * The words people said to the CLO in this chat: the operator's own turns —
+ * never a turn the platform wrote (a hold, a watch, a wake: those rows carry
+ * an origin) nor a compaction summary. Pure.
+ * @param {Array<Object>} recent the chat's rows
+ * @param {string|null} thought this turn's message
+ * @param {string|null} origin this turn's mark
+ * @returns {string[]}
+ */
+export const wordsSaidInChat = (recent, thought, origin) => [
+  ...(Array.isArray(recent) ? recent : [])
+    .filter((m) => m?.role === 'user' && !m.origin && !m.compacted && typeof m.content === 'string')
+    .map((m) => m.content),
+  ...(!origin && typeof thought === 'string' ? [thought] : []),
+];
+
 /**
  * What in an answer the app did not confirm — [] when nothing is, or when it
  * is not a legal answer at all. Pure.
  * @param {string} text the answer
- * @param {Array<Object>} confirmed citation records verified this turn
+ * @param {Array<Object>} confirmed citation records verified in this chat
+ * @param {string[]} [said] the words said to the CLO in this chat — quoting them is not quoting law
  * @returns {string[]}
  */
-export const holdProblems = (text, confirmed) => {
+export const holdProblems = (text, confirmed, said = []) => {
   const marks = unresolvedMarks(text);
   const mentions = citationMentions(text);
   if (!marks.length && !mentions.length && !LEGAL_SIGNS.test(String(text ?? ''))) return [];
-  const covers = confirmed.map((r) => squeeze(`${r.authority} ${r.pinCite}`));
+  const covers = confirmed.flatMap(coverKeys);
   const uncovered = mentions.filter((m) => !covers.some((c) => c.includes(m.key)));
-  const unbound = unboundQuotes(text, confirmed);
+  const heard = said.map(squeeze).filter(Boolean);
+  const unbound = unboundQuotes(text, confirmed)
+    .filter((span) => !heard.some((words) => holdsInOrder(words, quoteSegments(span))));
   return [
     marks.length ? `it still carries ${marks.join(', ')}` : null,
-    confirmed.length ? null : 'no citation check passed this turn, yet it cites law',
+    confirmed.length ? null : 'no citation check has passed in this chat, yet it cites law',
     uncovered.length ? `it cites what no confirmed record covers: ${uncovered.slice(0, 8).map((m) => m.text).join('; ')}${uncovered.length > 8 ? ` (+${uncovered.length - 8} more)` : ''}` : null,
     unbound.length ? `quotation marks around words no confirmed record quotes: ${unbound.slice(0, 4).map((s) => `"${s.length > 80 ? `${s.slice(0, 80)}…` : s}"`).join('; ')}` : null,
   ].filter(Boolean);
 };
 
-/** impure — remember records the app confirmed during THIS turn (keyed on the turn's own controller). */
+const chatKey = (connection) => String(connection?.sessionId || '(unsessioned)');
+
+/** impure — remember records the app confirmed in this chat; past the cap the oldest chat on the connection is forgotten. */
 export const noteVerifiedRecords = (connection, records) => {
   if (!connection || !records?.length) return;
-  const turn = connection.activeTurn ?? null;
-  const prior = connection._citeVerified?.turn === turn ? connection._citeVerified.records : [];
-  connection._citeVerified = { turn, records: [...prior, ...records] };
+  const chats = connection._citeVerified ??= new Map();
+  const key = chatKey(connection);
+  const prior = chats.get(key) ?? [];
+  chats.delete(key);
+  chats.set(key, [...prior, ...records].slice(-RECORDS_KEPT));
+  if (chats.size > CHATS_KEPT) chats.delete(chats.keys().next().value);
 };
 
-const confirmedThisTurn = (connection) =>
-  (connection._citeVerified?.turn === (connection.activeTurn ?? null) ? connection._citeVerified.records : []);
+const confirmedInChat = (connection) => connection._citeVerified?.get(chatKey(connection)) ?? [];
 
 /** What the CLO is sent back with. Pure. */
 export const holdThought = (problems) => [
@@ -99,14 +142,15 @@ export const holdThought = (problems) => [
 
 /**
  * impure — judge the seated CLO's final answer at the end of its turn. Never throws.
- * @param {{connection: Object, text: string, interrupted: boolean, origin: string|null}} turn
+ * @param {{connection: Object, text: string, interrupted: boolean, origin: string|null, recent?: Array<Object>, thought?: string}} turn
+ *   recent: the chat's rows; thought: this turn's message (the words said to the CLO)
  */
-export const settleCitationHold = async ({ connection, text, interrupted, origin }) => {
+export const settleCitationHold = async ({ connection, text, interrupted, origin, recent = [], thought = null }) => {
   try {
     const { ws, companion, walletAddress } = connection;
     if (interrupted || origin === 'wake' || !companion?.neumaId || !String(text ?? '').trim()) return;
     if (!(await cloDesignation.holds(walletAddress, companion.neumaId))) return;
-    const problems = holdProblems(text, confirmedThisTurn(connection));
+    const problems = holdProblems(text, confirmedInChat(connection), wordsSaidInChat(recent, thought, origin));
     const second = origin === HOLD_ORIGIN;
     if (!problems.length) {
       if (second) sendToolEvent(ws, companion, { tool: HOLD_TOOL, status: 'ok', summary: 'CHECKED — every citation and quotation in this answer was confirmed by the app' });
