@@ -1,2 +1,0 @@
-Added
-- On a Linux PC with an NVIDIA graphics card, SET IT UP FOR ME now installs llama.cpp, the engine Deus Neuma's own house runs on, instead of Ollama. The model is fitted to your card, several conversations can run at once, and the Qwen3.8 27B models use their own built-in predictor to write ahead. The engine and every model file are checked against their published SHA-256 before use. Other machines still get Ollama, as before.

@@ -144,7 +144,7 @@ describe('the drafter is never a catalog model, and its VRAM is counted', () => 
     expect(models.map((m) => m.name)).toEqual(['qwen3.8-27B-Neuma-T3-Q6_K']);
   });
   it('adds the drafter and its draft context to the fit estimate', () => {
-    expect(estimatedExtraMiB({ mmprojMiB: 900, drafterMiB: 1962 })).toBe(900 + 1536 + 1962 + 2048);
-    expect(estimatedExtraMiB({ mmprojMiB: 900, mtp: true })).toBe(900 + 1536 + 4096);
+    expect(estimatedExtraMiB({ mmprojMiB: 900, drafterMiB: 1962 })).toBe(256 + 900 + 256 + 1962 + 2048);
+    expect(estimatedExtraMiB({ mmprojMiB: 900, mtp: true })).toBe(256 + 900 + 256 + 3328);
   });
 });

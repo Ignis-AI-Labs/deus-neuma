@@ -83,10 +83,23 @@ const LMSTUDIO_REV = '5a7da681f60570ab5b439a587e912d2e5eddb582';
 const ISTA = 'ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF';
 const ISTA_REV = 'd562806dbafae37109975e970aae91b43e73b440';
 const ISTA_MMPROJ = hf(ISTA, ISTA_REV, 'mmproj-Qwen3.8-27B-BF16.gguf', 931_146_528, '13cb7bebccbd04afc8f4090cb949ecf8937cdf7377c5799b1a0c594e7c0d3e16');
+// Our own model (Design note, 2026-11-09: […]), published by Ignis AI Labs.
+// The revision is the upload's own commit; every file is checked against its SHA-256 on arrival.
+export const T4 = 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF';
+const T4_REV = '7c360edd681047e3c62bec35f9de99a733235462';
+const T4_FILE = (quant, size, sha256) => hf(T4, T4_REV, `Qwen3.8-27B-Neuma-T4-${quant}.gguf`, size, sha256);
+const T4_MMPROJ = hf(T4, T4_REV, 'mmproj-Qwen3.8-27B-Neuma-T4-BF16.gguf', 931_145_888, 'de2a49866988ea272c43dc2a43ee2662c25725a717ca5b9059ea420a97f53fe8');
 const DISTILL = 'empero-ai/Qwen3.8-4B-Distill-GGUF';
 const DISTILL_REV = '391fc7d103e3942a408def3e4f51c2f85d464417';
 
 const MODEL_FILES = Object.freeze({
+  // T4, card by card (measured 2026-11-09): 48 GB+ Q6_K, 32 GB IQ4_XS, 24 GB IQ3_M on the engine; the
+  // 12 and 16 GB builds (IQ3_XXS, IQ3_M) do not fit the full-GPU launch and take the Ollama path
+  // (engineFits), which reads these same files from the same repository.
+  [`${T4}:Q6_K`]: Object.freeze({ folder: 'qwen3.8-27b-neuma-t4-q6_k', model: T4_FILE('Q6_K', 22_533_850_848, '66cf8a045f327fdb6c8376989251b3576a8bf36c9999fb6da36c536303505bd4'), mmproj: T4_MMPROJ, drafter: DRAFTER }),
+  [`${T4}:IQ4_XS`]: Object.freeze({ folder: 'qwen3.8-27b-neuma-t4-iq4_xs', model: T4_FILE('IQ4_XS', 15_533_827_808, 'f0a43dae1ceff2c716ca45983be31a846117a673750090a19aa09947c995f0fb'), mmproj: T4_MMPROJ, drafter: DRAFTER }),
+  [`${T4}:IQ3_M`]: Object.freeze({ folder: 'qwen3.8-27b-neuma-t4-iq3_m', model: T4_FILE('IQ3_M', 13_032_195_808, 'f8a66ba6cbfae79a3e6ac6edbf431745fb3b3104d46bdc1aad26a2db67c1e3ac'), mmproj: T4_MMPROJ, drafter: null }),
+  [`${T4}:IQ3_XXS`]: Object.freeze({ folder: 'qwen3.8-27b-neuma-t4-iq3_xxs', model: T4_FILE('IQ3_XXS', 11_637_692_128, '75e4d0e48feb947c9b790e004a501c3efb45741b83fbd9160eb92dcf3c7d7a2e'), mmproj: T4_MMPROJ, drafter: null }),
   [`${HAUHAU}:Q8_K_P`]: Object.freeze({
     folder: 'qwen3.8-27b-hauhaucs-q8_k_p',
     model: hf(HAUHAU, HAUHAU_REV, 'Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf', 31_457_990_784, '4e7735df4d1e2ec721f2551f531b815702a2f89123238c564797eda4b0304bc2'),
@@ -128,6 +141,32 @@ const MODEL_FILES = Object.freeze({
 /** The pinned files a recommended choice is served from, or null. Pure. */
 export const modelFilesFor = (choice) => MODEL_FILES[`${choice?.source}:${choice?.quant}`] || null;
 
+const MiB = 1024 * 1024;
+// What our launch holds beyond the weights at a 16K pool, the least a birth needs: measured on the rig
+// 2026-11-09 for every T4 build (neuma-research inference-speed/runs/fitprobe-20261109T140823Z.json,
+// the production argv, 6 slots): ~6.26 GB with the vision projector and the MTP draft, ~5.1 GB without
+// the projector. The drafter, where one rides, adds its file and its draft context.
+const OVER_WEIGHTS_MIB = Object.freeze({ projector: 6260, bare: 5120 });
+// the desktop's own share of the card, and the fit's margin (serving-fit.js FIT_MARGIN_MIB)
+const DESKTOP_MIB = 600;
+const MARGIN_MIB = 512;
+const SHARE = 0.85;
+
+/** MiB the served model holds at a 16K pool, by what is beside it. Pure. */
+export const servedMiB = (files) => Math.ceil(files.model.size / MiB)
+  + (files.mmproj ? OVER_WEIGHTS_MIB.projector : OVER_WEIGHTS_MIB.bare)
+  + (files.drafter ? Math.ceil(files.drafter.size / MiB) + 2048 : 0);
+
+/**
+ * Does our full-GPU launch fit this card under the default share, at a pool a birth can use? A card it
+ * does not fit takes the Ollama path, which can put part of the model on the processor. Before this
+ * check a 16 or 24 GB card was handed the engine and failed at load (2026-11-09). Pure.
+ * @param {object} files - modelFilesFor()
+ * @param {{vramGB?: number}|null} gpu
+ */
+export const engineFits = (files, gpu) => Number(gpu?.vramGB) > 0
+  && servedMiB(files) + DESKTOP_MIB + MARGIN_MIB <= gpu.vramGB * 1024 * SHARE;
+
 /** Every file a choice downloads, model first, each once. Pure. */
 export const filesOf = (files) => [files.model, files.mmproj, files.drafter].filter(Boolean);
 
@@ -147,7 +186,9 @@ const MODEL_HEADROOM = 1.1;
 export const enginePlan = ({ platform, arch, gpu, computeCap, recommendation, installed, present = [], freeBytes, verify = true }) => {
   const variant = engineVariantFor({ platform, arch, gpu, computeCap });
   const files = recommendation?.model && recommendation.mode === 'gpu' ? modelFilesFor(recommendation) : null;
-  if (!variant || !files) return null;
+  // the card, or the operator's smaller model budget (NEUMA_MODEL_BUDGET_GB) where one is set
+  const card = { vramGB: Math.min(Number(gpu?.vramGB) || 0, Number(recommendation.budgetGB) || Infinity) };
+  if (!variant || !files || !engineFits(files, card)) return null;
   const missing = filesOf(files).filter((f) => !present.includes(f.name));
   const steps = [];
   if (!installed) {

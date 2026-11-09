@@ -62,6 +62,7 @@ from its publisher's repository. Licences read from each Hugging Face model card
 
 | Model | Repository | Licence | Notes |
 | --- | --- | --- | --- |
+| Qwen3.8-27B-Neuma-T4 (6-bit, 4-bit, 3.5-bit, 3-bit, and its vision projector) | IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF | Apache-2.0 | Our own tuned build of Qwen/Qwen3.8-27B, by Ignis AI Labs. |
 | Qwen3.8-27B-Uncensored-HauhauCS-Aggressive, Q8_K_P | HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF | Apache-2.0 | Fine-tune of Qwen/Qwen3.8-27B. |
 | Qwen3.8-27B (6-bit, 4-bit) | unsloth/Qwen3.8-27B-GGUF, lmstudio-community/Qwen3.8-27B-GGUF | Apache-2.0 | Quantized builds of Qwen/Qwen3.8-27B. |
 | Qwen3.8-27B (3.5-bit, 3-bit) | ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF | Apache-2.0 | IST Austria GSQ-RCO quantization. |
@@ -78,6 +79,17 @@ its GitHub release, checked against its published SHA-256, and kept under the pl
 | Component | Source | Licence | Notes |
 | --- | --- | --- | --- |
 | Ollama 0.40.7 | github.com/ollama/ollama (release v0.40.7) | MIT | Downloaded at setup, not bundled; the version and checksums are pinned in `managed-ollama-plan.js`. |
+
+On Linux with an NVIDIA card our launch fits (`backend/services/managed-engine.js`), the setup instead
+downloads llama.cpp's own release build and the CUDA runtime it ships with, each checked against the
+SHA-256 GitHub publishes, and on cards of 32 GB and up a speculative drafter beside the model. Nothing
+here is bundled.
+
+| Component | Source | Licence | Notes |
+| --- | --- | --- | --- |
+| llama.cpp b12212 | github.com/ggml-org/llama.cpp (release b12212) | MIT | Downloaded at setup; the build and checksums are pinned in `managed-engine-plan.js`. |
+| NVIDIA CUDA runtime (cudart, cuBLAS, cuBLASLt) | the same release's `cudart-llama-*` archive | NVIDIA CUDA Toolkit EULA (redistributable components) | As redistributed by the llama.cpp release; downloaded at setup. |
+| Qwen3.8-27B DFlash2 drafter, Q8_0 | z-lab/Qwen3.8-27B-DFlash2-GGUF | Apache-2.0 | Downloaded beside the model on 32 GB cards and up. Licence read from its model card 2026-11-09. |
 
 ## Image & Video Forge (models the pack recognises — NOT shipped)
 

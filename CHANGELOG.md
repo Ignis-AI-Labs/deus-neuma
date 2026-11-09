@@ -6,6 +6,45 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.120] - 2026-11-09
+
+Notes: `docs/operations/release-notes-0.1.120.md`.
+
+### Added
+
+- Our own tuned model, Qwen3.8-27B-Neuma-T4, is offered on every graphics card from 12 GB: the 6-bit build on 48 GB and up, 4-bit on 32 GB, 3.5-bit on 16 to 24 GB, and 3-bit on 12 GB. Each becomes the recommended model once it has passed its birth rehearsal.
+- On a Linux PC with an NVIDIA graphics card of 24 GB or more, SET IT UP FOR ME now installs llama.cpp, the engine Deus Neuma's own house runs on, instead of Ollama. The model is fitted to your card, several conversations can run at once, and the Qwen3.8 27B models use their own built-in predictor to write ahead. The engine and every model file are checked against their published SHA-256 before use. Smaller cards and other machines still get Ollama, which can keep part of a model on the processor.
+- A newer tuned house model (T4) can be selected in the model picker.
+- When a DFlash2 drafter sits beside the model and the engine supports it safely, the model drafts several words ahead and checks them in one pass: about 40% faster on code and structured answers, with the same answers.
+- The ACTIVITY panel shows how fast the model thinks, answers and writes tool calls — for the reply being written now, the last ten replies, and since the model server started — with time to first token, prompt speed, how much of each prompt came from cache, and how many drafted tokens were accepted.
+- A company can be added right where social accounts are set up: NEW COMPANY beside ADD ACCOUNT takes its name as it should read, stands it on its own or under another company, and picks it for the account you are adding.
+- macOS builds: `npm run dist:mac` makes a disk image and zip per chip and checks that every binary inside loads on that chip; `npm run check:mac` runs the check alone.
+
+### Changed
+
+- A graphics card with 12 GB or more is now the recommended minimum: a smaller card, or a computer without one, is still offered a smaller model, but none is recommended.
+- When a planted instruction turns up in data a being reads, it ignores the instruction and still finishes your task with the legitimate data around it. It stops only for the action the plant pushes, instead of dropping the whole job.
+- The house can run its own tuned model, Qwen3.8-27B-Neuma-T3, with its training lineage verified every time it starts.
+- The house model now runs a smaller, faster build of the tuned model (about 20–25% faster replies, 6 GB less graphics memory, same quality).
+- Building from source needs Node.js 24.15 or newer.
+- Every dependency is pinned to an exact version, and the file tools moved to their maintained 2.x releases.
+- The licence agreement (1.4.2, terms unchanged) names Qwen3.8-27B-Neuma-T4, and the credits add T4, llama.cpp, the CUDA runtime and the drafter.
+
+### Fixed
+
+- The model's memory on the card is now sized from measurements, so a 24 or 32 GB card is no longer told the model does not fit and handed a window too large to load.
+- The legal office no longer holds an answer for quoting your own words back to you — only words it presents as the law's must come from a checked source.
+- Sources the app already checked earlier in a chat still count for the rest of that chat, so a long working session is not stopped every turn to re-check them.
+- A checked regulation written as "Part" (for example "16 CFR Part 255") now covers the same regulation cited without the word, and its sections.
+- Case-law search asks for the free CourtListener token in Settings → API, instead of failing: CourtListener no longer answers searches without one.
+- A being writing a long document to a file no longer loses it when the document contains quotation marks — the file is written as authored.
+- When a tool call's details can't be read, the being is now told what went wrong and how to send it again, instead of the call vanishing or reading as "No tool named call".
+- The licence agreement carries its own version again (1.4.1: the house model is called by its published name, terms unchanged), and the downloadable copies of it and of the Privacy Notice match the text you agree to.
+- When a planted instruction sits inside one record of a list (a payment, an event, a message), only that record's poisoned field is treated as tainted. A being no longer holds a legitimate payment to a real account that happens to sit beside the attack.
+- A being's question to you about a held action is never held itself.
+- Inside a calendar, an account or another system a tool opens, a being now works from that system's own date instead of today's real date. It no longer moves a date you didn't ask it to change.
+- The substrate window's generation and prompt speeds now move while a reply is being written, instead of reading 0 until it finishes.
+
 ## [0.1.109] - 2026-11-03
 
 Notes: `docs/operations/release-notes-0.1.109.md`.

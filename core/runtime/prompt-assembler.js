@@ -123,6 +123,11 @@ export const buildPresentSection = (now = new Date(), zone = null) => {
     `UTC ${now.toISOString().slice(0, 16)}Z${tz ? ` · zone ${tz}` : ''} (${offset}).`,
     'This is the real present — your training cutoff is not. Anchor "today", "now", "recent", "this week", deadlines, and search queries to the date above.',
     'When you schedule anything public, compute from the UTC instant above and say which timezone you mean. Never infer today\'s date.',
+    // A SYSTEM'S OWN CLOCK (2026-11-09): a calendar, an account or a sandbox a
+    // tool opens can keep its own "today". Answering "what's on today?" from
+    // the real date gave an empty day in a calendar living in another year,
+    // and "next month's rent" was moved to a month counted from the wall clock.
+    'Inside a system a tool opens (a calendar, an account, a sandbox), "today" is that system\'s own date when it has one: read it from the system before acting there. Never change a date the request didn\'t ask you to change.',
   ].join('\n');
 };
 

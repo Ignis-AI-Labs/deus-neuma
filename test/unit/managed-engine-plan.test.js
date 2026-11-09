@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
-  DRAFTER, LLAMA_CPP_BUILD, MIN_COMPUTE, engineArchives, engineDoneLine, enginePlan, engineVariantFor, filesOf, modelFilesFor,
+  DRAFTER, LLAMA_CPP_BUILD, MIN_COMPUTE, T4, engineArchives, engineDoneLine, engineFits, enginePlan, engineVariantFor, filesOf, modelFilesFor, servedMiB,
 } from '../../backend/services/managed-engine-plan.js';
 import { recommendSubstrate } from '../../backend/services/substrate-setup.js';
 
@@ -41,6 +41,9 @@ describe('engineVariantFor — which machines take the engine', () => {
 });
 
 describe('modelFilesFor — every model a card is recommended has pinned files', () => {
+  it('below the 12 GB minimum there is no recommendation to pin', () => {
+    expect(recommendSubstrate(profileOf(8)).model).toBeNull();
+  });
   it.each([12, 16, 20, 24, 32, 48, 96])('a %i GB card', (vramGB) => {
     const rec = recommendSubstrate(profileOf(vramGB));
     expect(rec.mode).toBe('gpu');
@@ -89,9 +92,35 @@ describe('engineArchives — the pinned build', () => {
   });
 });
 
+describe('engineFits — only a card our launch was measured to fit takes the engine', () => {
+  const t4 = (quant) => modelFilesFor({ source: T4, quant });
+  // measured 2026-11-09 (fitprobe): what the production launch holds at a 16K pool
+  it('sizes a served T4 build by the measured launch, never above the real one by much', () => {
+    expect(servedMiB(t4('IQ3_M'))).toBe(Math.ceil(13_032_195_808 / 1048576) + 6260);
+    expect(servedMiB(t4('IQ3_M'))).toBeGreaterThanOrEqual(18_672);
+    expect(servedMiB(t4('IQ3_M')) - 18_672).toBeLessThan(100);
+  });
+  it.each([
+    ['IQ3_XXS', 12, false], ['IQ3_M', 16, false], ['IQ3_M', 24, true], ['IQ4_XS', 24, false],
+    ['IQ4_XS', 32, true], ['Q6_K', 32, false], ['Q6_K', 48, true],
+  ])('T4 %s on a %i GB card: %s', (quant, vramGB, fits) => {
+    expect(engineFits(t4(quant), { vramGB })).toBe(fits);
+  });
+  it('a card it does not fit, or an unsized one, gets no engine plan', () => {
+    const rec = { model: 'T4', quant: 'IQ3_M', source: T4, mode: 'gpu', sizeGB: 13 };
+    const at = (vramGB) => enginePlan({ ...linux, gpu: nvidia('615.71.09', vramGB), computeCap: 12.0, recommendation: rec, installed: false, freeBytes: 500e9 });
+    expect(at(16)).toBeNull();
+    expect(at(24)).not.toBeNull();
+    expect(engineFits(t4('IQ3_M'), { vramGB: null })).toBe(false);
+    // a budget below the card (NEUMA_MODEL_BUDGET_GB) is the size the engine must fit
+    const capped = enginePlan({ ...linux, gpu: nvidia('615.71.09', 96), computeCap: 12.0, recommendation: { ...rec, budgetGB: 16 }, installed: false, freeBytes: 500e9 });
+    expect(capped).toBeNull();
+  });
+});
+
 describe('enginePlan — what the setup will do', () => {
-  const rec = recommendSubstrate(profileOf(32));
-  const machine = { ...linux, gpu: nvidia('615.71.09', 32), computeCap: 12.0, recommendation: rec, freeBytes: 500e9 };
+  const rec = recommendSubstrate(profileOf(48));
+  const machine = { ...linux, gpu: nvidia('615.71.09', 48), computeCap: 12.0, recommendation: rec, freeBytes: 500e9 };
   const files = modelFilesFor(rec);
 
   it('on a fresh machine: the engine, its runtime, the model, its projector, the drafter, an answer', () => {
@@ -122,5 +151,21 @@ describe('enginePlan — what the setup will do', () => {
   it('ends on a plain sentence', () => {
     expect(engineDoneLine({ name: 'Qwen3.8-27B (6-bit)', loaded: true })).toBe(`Qwen3.8-27B (6-bit) is ready on llama.cpp ${LLAMA_CPP_BUILD}.`);
     expect(engineDoneLine({ name: 'X', loaded: false })).toMatch(/loads when Deus Neuma first opens/);
+  });
+});
+
+describe('a recommended model is downloaded only from a pinned revision', () => {
+  // every choice a 96 GB card can hold is offered, each with its checked mark
+  const all = recommendSubstrate(profileOf(96)).options;
+  it('every checked choice with engine files names a real commit', () => {
+    for (const c of all.filter((x) => x.checked)) {
+      const files = modelFilesFor(c);
+      if (files) for (const f of filesOf(files)) expect(f.revision, `${c.model} ${c.quant}`).toMatch(/^[0-9a-f]{40}$/);
+    }
+  });
+  it('no T4 tier is recommended before its upload is pinned', () => {
+    const pinned = /^[0-9a-f]{40}$/.test(modelFilesFor({ source: T4, quant: 'IQ3_M' }).model.revision);
+    if (!pinned) expect(all.filter((x) => x.source === T4 && x.checked)).toEqual([]);
+    expect(all.filter((x) => x.source === T4).map((x) => x.quant).sort()).toEqual(['IQ3_M', 'IQ3_XXS', 'IQ4_XS', 'Q6_K']);
   });
 });

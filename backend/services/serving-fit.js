@@ -60,23 +60,25 @@ export const linearProjection = (low, high) => {
 /**
  * pure — the pool that fits. `othersMiB` is what other programs hold on the
  * card now; `extraMiB` is what the server holds that the projection does not
- * (the vision projector, the speculative draft).
+ * (the vision projector, the speculative draft), and `extraPerTokenMiB` the
+ * part of it that grows with the pool (the MTP draft's own attention layer).
  * @returns {{fits: boolean, contextLength?: number, ceilingMiB: number, projectedMiB?: number, reason?: string}}
  */
-export const planServingPool = ({ totalMiB, othersMiB, share, projection, extraMiB = 0, trainCtx, slots }) => {
+export const planServingPool = ({ totalMiB, othersMiB, share, projection, extraMiB = 0, extraPerTokenMiB = 0, trainCtx, slots }) => {
   const ceilingMiB = Math.floor(totalMiB * share);
   const budgetMiB = ceilingMiB - othersMiB - extraMiB - FIT_MARGIN_MIB;
-  const fitting = Math.floor((budgetMiB - projection.baseMiB) / projection.perTokenMiB);
+  const perTokenMiB = projection.perTokenMiB + extraPerTokenMiB;
+  const fitting = Math.floor((budgetMiB - projection.baseMiB) / perTokenMiB);
   const pool = Math.min(fitting, trainCtx * slots);
   const contextLength = pool - (pool % 256);
   if (!(contextLength >= FIT_MIN_CONTEXT)) {
-    return Object.freeze({ fits: false, ceilingMiB, reason: `the model and a ${FIT_MIN_CONTEXT}-token pool need ${Math.ceil(projection.baseMiB + projection.perTokenMiB * FIT_MIN_CONTEXT + extraMiB)} MiB; ${Math.max(0, ceilingMiB - othersMiB)} MiB is free under the share` });
+    return Object.freeze({ fits: false, ceilingMiB, reason: `the model and a ${FIT_MIN_CONTEXT}-token pool need ${Math.ceil(projection.baseMiB + perTokenMiB * FIT_MIN_CONTEXT + extraMiB)} MiB; ${Math.max(0, ceilingMiB - othersMiB)} MiB is free under the share` });
   }
   return Object.freeze({
     fits: true,
     contextLength,
     ceilingMiB,
-    projectedMiB: Math.ceil(projection.baseMiB + projection.perTokenMiB * contextLength + extraMiB),
+    projectedMiB: Math.ceil(projection.baseMiB + perTokenMiB * contextLength + extraMiB),
   });
 };
 
@@ -117,15 +119,27 @@ const projectAt = async (bin, model, slots, ctx) => {
 };
 
 /**
- * What the server holds beyond llama.cpp's projection: the vision projector,
- * the speculative draft's context and CUDA's own. Measured on this rig
- * (2026-10-20, Qwen3.8-27B Q8 + BF16 projector + MTP draft, 262k pool): the
- * live server held 52,496 MiB against a 46,030 MiB projection. A first boot
- * estimates it; after a boot the measured excess is recorded and used.
- * @returns {number} MiB
+ * What the server holds beyond llama.cpp's projection, measured part by part
+ * (2026-11-09, neuma-research inference-speed/runs/fitprobe-*: T4-IQ3_M, the
+ * production argv, 16K and 64K pools; each part switched on alone, and the
+ * parts add up): ~230 MiB on its own; the vision projector its file + ~250;
+ * the MTP draft ~3.3 GB fixed (its own compute) plus ~4.4 KiB per pool token
+ * (its one attention layer, estimatedExtraPerTokenMiB). The guess it replaces
+ * (projector + 1,536 + 4,096, read off one 262k house boot) overstated a small
+ * card by ~2 GB, so a 24 or 32 GB card "did not fit" and fell back to the
+ * configured pool, which no longer fit at all. A first boot estimates; after a
+ * boot the measured excess is recorded and used.
+ * @returns {number} MiB, the part that does not grow with the pool
  */
 export const estimatedExtraMiB = ({ mmprojMiB = 0, mtp = false, drafterMiB = 0 }) =>
-  mmprojMiB + 1536 + (mtp ? 4096 : 0) + (drafterMiB > 0 ? drafterMiB + 2048 : 0);
+  256 + (mmprojMiB > 0 ? mmprojMiB + 256 : 0) + (mtp ? 3328 : 0) + (drafterMiB > 0 ? drafterMiB + 2048 : 0);
+
+/**
+ * The part of the excess that grows with the pool, per token: ~0.9 KiB on its
+ * own, ~4.4 KiB more with the MTP draft (measured as above). Pure.
+ * @returns {number} MiB per pool token
+ */
+export const estimatedExtraPerTokenMiB = ({ mtp = false }) => (0.9 + (mtp ? 4.4 : 0)) / 1024;
 
 // The machine's serving choices and measurements, beside its model selection
 // (~/.neuma/substrate-selection.json): { sharePct, calibration: { [launch]: {extraMiB, at} } }.
@@ -183,8 +197,11 @@ export const fitServingPool = async (launch, { slots, trainCtx, mtp = false, dra
   if (!bin || !gpu || !launch.model) return null;
   const projection = linearProjection(await projectAt(bin, launch.model, slots, FIT_MIN_CONTEXT), await projectAt(bin, launch.model, slots, trainCtx));
   const mmprojMiB = launch.mmproj && existsSync(launch.mmproj) ? Math.ceil(statSync(launch.mmproj).size / MiB) : 0;
-  const extraMiB = calibratedExtraMiB(launch, speculative) ?? estimatedExtraMiB({ mmprojMiB, mtp, drafterMiB });
-  const plan = planServingPool({ totalMiB: gpu.totalMiB, othersMiB: gpu.usedMiB, share: shareFrom(readServingFit()), projection, extraMiB, trainCtx, slots });
+  // a calibrated excess was measured whole at this machine's own pool; an estimate grows with the pool
+  const calibrated = calibratedExtraMiB(launch, speculative);
+  const extraMiB = calibrated ?? estimatedExtraMiB({ mmprojMiB, mtp, drafterMiB });
+  const extraPerTokenMiB = calibrated === null ? estimatedExtraPerTokenMiB({ mtp }) : 0;
+  const plan = planServingPool({ totalMiB: gpu.totalMiB, othersMiB: gpu.usedMiB, share: shareFrom(readServingFit()), projection, extraMiB, extraPerTokenMiB, trainCtx, slots });
   return plan.fits ? Object.freeze({ ...plan, projection, extraMiB }) : plan;
 };
 
