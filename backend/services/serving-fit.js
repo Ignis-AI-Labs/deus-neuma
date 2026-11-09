@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import { createLogger } from './logger.js';
 import { modelHasMtpHeads, modelTrainContext } from './gguf-mtp.js';
+import { drafterFor, engineSupportsReplay, speculativePlan } from './serving-drafter.js';
 import { SERVING_SERVER_SLOTS, validatedServingLaunchConfig } from './serving-launch-config.js';
 import { readClaim } from './substrate-claim-registry.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
@@ -123,12 +124,16 @@ const projectAt = async (bin, model, slots, ctx) => {
  * estimates it; after a boot the measured excess is recorded and used.
  * @returns {number} MiB
  */
-export const estimatedExtraMiB = ({ mmprojMiB = 0, mtp = false }) => mmprojMiB + 1536 + (mtp ? 4096 : 0);
+export const estimatedExtraMiB = ({ mmprojMiB = 0, mtp = false, drafterMiB = 0 }) =>
+  mmprojMiB + 1536 + (mtp ? 4096 : 0) + (drafterMiB > 0 ? drafterMiB + 2048 : 0);
 
 // The machine's serving choices and measurements, beside its model selection
 // (~/.neuma/substrate-selection.json): { sharePct, calibration: { [launch]: {extraMiB, at} } }.
 const FIT_FILE = () => join(process.env.NEUMA_SUBSTRATE_CLAIM_DIR || join(homedir(), '.neuma'), 'serving-fit.json');
-const calibrationKey = (launch) => `${launch.model}|${launch.mmproj || ''}`;
+// A DFlash launch holds a different set of buffers, so it calibrates under its
+// own key; MTP and plain launches keep the original key (no recalibration).
+const calibrationKey = (launch, speculative = 'mtp') =>
+  `${launch.model}|${launch.mmproj || ''}${speculative === 'dflash' ? '|dflash' : ''}`;
 
 /** impure — the saved serving choices, or {} . */
 export const readServingFit = () => {
@@ -154,16 +159,16 @@ export const saveServingShare = (sharePct) => {
 };
 
 /** impure — the measured excess for this launch, or null. */
-const calibratedExtraMiB = (launch) => {
-  const value = readServingFit().calibration?.[calibrationKey(launch)]?.extraMiB;
+const calibratedExtraMiB = (launch, speculative) => {
+  const value = readServingFit().calibration?.[calibrationKey(launch, speculative)]?.extraMiB;
   return Number.isFinite(value) && value >= 0 ? value : null;
 };
 
 /** impure — record what a healthy server really holds beyond the projection (the next fit uses it). */
-export const recordServingExcess = (launch, { actualMiB, projectedMiB }) => {
+export const recordServingExcess = (launch, { actualMiB, projectedMiB, speculative }) => {
   if (!Number.isFinite(actualMiB) || !Number.isFinite(projectedMiB)) return;
   const saved = readServingFit();
-  const calibration = { ...saved.calibration, [calibrationKey(launch)]: { extraMiB: Math.max(0, Math.round(actualMiB - projectedMiB)), at: new Date().toISOString() } };
+  const calibration = { ...saved.calibration, [calibrationKey(launch, speculative)]: { extraMiB: Math.max(0, Math.round(actualMiB - projectedMiB)), at: new Date().toISOString() } };
   writeServingFit({ ...saved, calibration });
 };
 
@@ -172,13 +177,13 @@ export const recordServingExcess = (launch, { actualMiB, projectedMiB }) => {
  * measured (no NVIDIA card, no llama-fit-params) — the configured pool stands.
  * @param {{bin: string, model: string, mmproj?: string}} launch
  */
-export const fitServingPool = async (launch, { slots, trainCtx, mtp = false, gpuIndex = 0 }) => {
+export const fitServingPool = async (launch, { slots, trainCtx, mtp = false, drafterMiB = 0, speculative = 'mtp', gpuIndex = 0 }) => {
   const bin = fitParamsBinFor(launch.bin);
   const gpu = await readGpuMemory(gpuIndex);
   if (!bin || !gpu || !launch.model) return null;
   const projection = linearProjection(await projectAt(bin, launch.model, slots, FIT_MIN_CONTEXT), await projectAt(bin, launch.model, slots, trainCtx));
   const mmprojMiB = launch.mmproj && existsSync(launch.mmproj) ? Math.ceil(statSync(launch.mmproj).size / MiB) : 0;
-  const extraMiB = calibratedExtraMiB(launch) ?? estimatedExtraMiB({ mmprojMiB, mtp });
+  const extraMiB = calibratedExtraMiB(launch, speculative) ?? estimatedExtraMiB({ mmprojMiB, mtp, drafterMiB });
   const plan = planServingPool({ totalMiB: gpu.totalMiB, othersMiB: gpu.usedMiB, share: shareFrom(readServingFit()), projection, extraMiB, trainCtx, slots });
   return plan.fits ? Object.freeze({ ...plan, projection, extraMiB }) : plan;
 };
@@ -202,7 +207,7 @@ const gpuMiBOfPid = async (pid) => {
  * impure — once the fitted server is up, measure what it really holds and
  * record the excess over the projection, so the next fit lands exactly.
  */
-const calibrateWhenServing = (launch, plan) => {
+const calibrateWhenServing = (launch, plan, speculative) => {
   let tries = 0;
   const tick = async () => {
     tries += 1;
@@ -211,7 +216,7 @@ const calibrateWhenServing = (launch, plan) => {
     const actualMiB = healthy && pid ? await gpuMiBOfPid(pid) : null;
     if (actualMiB) {
       const projectedMiB = plan.projection.baseMiB + plan.projection.perTokenMiB * plan.contextLength;
-      recordServingExcess(launch, { actualMiB, projectedMiB });
+      recordServingExcess(launch, { actualMiB, projectedMiB, speculative });
       saveLastFit({ ...lastServingFit(), actualMiB, measuredAt: new Date().toISOString() });
       log.info('serving fit measured', { pool: plan.contextLength, actualMiB, projectedMiB: Math.round(projectedMiB), plannedMiB: plan.projectedMiB });
       return;
@@ -219,6 +224,19 @@ const calibrateWhenServing = (launch, plan) => {
     if (tries < 40) setTimeout(tick, 15_000).unref?.();
   };
   setTimeout(tick, 15_000).unref?.();
+};
+
+/**
+ * impure — the speculative facts the fit needs: the same plan the spawn takes
+ * (serving-drafter.js), with the drafter's size when DFlash is chosen.
+ * @param {{bin: string, model: string}} launch
+ */
+const launchSpeculation = async (launch) => {
+  const mtp = await modelHasMtpHeads(launch.model);
+  const drafter = await drafterFor(launch.model);
+  const plan = speculativePlan({ mtp, drafter, replay: (mtp || drafter !== null) && await engineSupportsReplay(launch.bin) });
+  const drafterMiB = plan.kind === 'dflash' && existsSync(plan.drafter) ? Math.ceil(statSync(plan.drafter).size / MiB) : 0;
+  return { mtp: plan.kind === 'mtp', drafterMiB, speculative: plan.kind };
 };
 
 /**
@@ -231,7 +249,8 @@ export const fittedLaunch = async (launch) => {
   if (!launch?.model) return launch;
   try {
     const trainCtx = await modelTrainContext(launch.model);
-    const plan = trainCtx ? await fitServingPool(launch, { slots: SERVING_SERVER_SLOTS, trainCtx, mtp: await modelHasMtpHeads(launch.model) }) : null;
+    const spec = await launchSpeculation(launch);
+    const plan = trainCtx ? await fitServingPool(launch, { slots: SERVING_SERVER_SLOTS, trainCtx, ...spec }) : null;
     if (!plan?.fits) {
       const reason = plan?.reason ?? 'this machine cannot be measured (no NVIDIA card or llama-fit-params)';
       saveLastFit({ fitted: false, reason, pool: launch.contextLength, model: launch.model, at: new Date().toISOString() });
@@ -241,7 +260,7 @@ export const fittedLaunch = async (launch) => {
     const fit = { pool: plan.contextLength, trainCtx, slots: SERVING_SERVER_SLOTS, ceilingMiB: plan.ceilingMiB, plannedMiB: plan.projectedMiB, sharePct: Math.round(shareFrom(readServingFit()) * 100), model: launch.model, at: new Date().toISOString() };
     saveLastFit(fit);
     log.info('serving pool fitted to the machine', fit);
-    calibrateWhenServing(launch, plan);
+    calibrateWhenServing(launch, plan, spec.speculative);
     return validatedServingLaunchConfig({ ...launch, contextLength: plan.contextLength });
   } catch (error) {
     log.warn('serving pool fit failed — the configured pool stands', { error: error.message, pool: launch.contextLength });

@@ -173,6 +173,14 @@ export const recommendSubstrate = (profile, { capGB = null } = {}) => {
   });
 };
 
+/**
+ * The recommendation for this machine's profile under the operator's budget cap:
+ * NEUMA_MODEL_BUDGET_GB caps the budget (a shared GPU, or a lighter model by choice). impure (env)
+ * @param {object} profile - getSubstrateProfile()
+ */
+export const recommendForMachine = (profile) =>
+  recommendSubstrate(profile, { capGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null });
+
 /** Model names from an Ollama /api/tags payload. Pure. */
 export const parseOllamaTags = (json) =>
   Array.isArray(json?.models) ? json.models.map((m) => m.name).filter(Boolean) : [];
@@ -287,8 +295,7 @@ export const getSetupStatus = async () => {
       // an NVIDIA driver on Windows below its card's floor: said, with the update link (gpu-driver-guard.js)
       gpuDriver,
     },
-    // NEUMA_MODEL_BUDGET_GB caps the budget (a shared GPU, or a lighter model by choice)
-    recommendation: recommendSubstrate(profile, { capGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null }),
+    recommendation: recommendForMachine(profile),
     providers,
     ready,
   };

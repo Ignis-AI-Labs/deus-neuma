@@ -33,6 +33,7 @@ export const ModelServerSetup = ({ onDone }) => {
         {' '}<strong>{plan.model.name}</strong> ({plan.model.quant}, {plan.model.sizeGB} GB).
         {plan.server === 'download' ? ' The server is Ollama, kept inside Deus Neuma\'s own folder; no admin rights needed.' : ''}
         {plan.server === 'installed' ? ' Ollama is already installed here; it will be started.' : ''}
+        {plan.server === 'engine-download' ? ` The server is llama.cpp ${plan.build}, kept inside Deus Neuma\'s own folder; no admin rights needed.` : ''}
       </p>
       {(plan.notes || []).map((n) => <p key={n} className="harness-setup-note">{n}</p>)}
       <GpuDriverNotice notice={plan.gpuDriver} onChange={reread} />

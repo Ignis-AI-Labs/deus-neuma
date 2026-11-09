@@ -3,11 +3,13 @@
 // (POST /install), the screen polls its progress (GET /status), and may stop it (POST /cancel).
 // An NVIDIA driver older than its card needs keeps the model on the processor; the install owner
 // may choose to use the graphics card anyway, or go back (POST /gpu-driver).
-// The work is managed-ollama.js; the decisions are managed-ollama-plan.js.
+// Which setup runs is model-server-setup.js: the house's llama.cpp engine on Linux with an NVIDIA
+// card (managed-engine.js), Ollama everywhere else (managed-ollama.js).
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { requireInstallOwner } from '../services/install-owner.js';
-import { cancelJob, chooseGpuAnyway, currentPlan, installHome, jobStatus, startJob } from '../services/managed-ollama.js';
+import { chooseGpuAnyway } from '../services/managed-ollama.js';
+import { cancelJob, jobStatus, planView, startJob } from '../services/model-server-setup.js';
 import { createLogger } from '../services/logger.js';
 
 const router = express.Router();
@@ -16,7 +18,7 @@ router.use(requireAuth);
 
 router.get('/plan', async (req, res) => {
   try {
-    res.json({ plan: await currentPlan(), job: jobStatus(), home: installHome() });
+    res.json(await planView());
   } catch (err) {
     log.error('plan failed', { error: err.message });
     res.status(500).json({ error: 'The machine could not be read for a setup plan.' });

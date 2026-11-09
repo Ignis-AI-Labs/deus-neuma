@@ -14,6 +14,7 @@ import { clearSelection, readSelection, writeSelection } from './substrate-claim
 import { resolveServingLaunchConfig, validatedServingLaunchConfig } from './serving-launch-config.js';
 import { claimedLaunch } from './served-model-truth.js';
 import { portTaken } from './served-health-cache.js';
+import { managedEngineBin } from './managed-engine-record.js';
 
 /**
  * Select the model the supervised substrate serves. The selection IS the persisted
@@ -27,9 +28,11 @@ export const selectSubstrateModel = (modelPath, key = null) => {
 
 /** Resolve the launch the substrate should run: the operator's persisted
  *  selection, then a LIVE persisted claim, then env; projector discovered
- *  beside the model. */
+ *  beside the model. The engine is LLAMA_SERVER_BIN when it is set, else the
+ *  llama.cpp the setup installed (managed-engine.js), else none. */
 export const activeLaunchConfig = (env) => {
-  const cfg = resolveServingLaunchConfig(env);
+  const declared = resolveServingLaunchConfig(env);
+  const cfg = declared.bin ? declared : { ...declared, bin: managedEngineBin() || '' };
   const sel = readSelection();
   // servingModel is a LINEAGE identity, never the display key: a selected
   // model with no lineage evidence boots base-only, not into a gate it can

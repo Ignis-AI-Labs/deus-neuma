@@ -14,6 +14,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'fs';
 import path from 'path';
+import { isDrafterFile } from './serving-drafter.js';
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
@@ -77,7 +78,8 @@ export const groupModels = (files) => {
   const byId = new Map();
   for (const f of files) {
     const base = path.basename(f.relPath);
-    if (!base.endsWith('.gguf') || isProjectorFile(base)) continue;
+    // A projector or a speculative drafter rides beside a model; neither is one.
+    if (!base.endsWith('.gguf') || isProjectorFile(base) || isDrafterFile(base)) continue;
     const id = modelIdFor(f.relPath);
     const entry = byId.get(id) ?? { id, name: path.basename(id), path: null, sizeBytes: 0, shards: 0 };
     entry.sizeBytes += f.sizeBytes;
