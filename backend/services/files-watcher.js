@@ -156,6 +156,32 @@ const ignoredDirsOf = async (root) => {
 };
 
 /**
+ * impure — what git says is not source under a root. A root that is itself a repo answers for
+ * itself; a folder OF repos (/workspace/repos) asks each repo inside it, up to two levels down, so
+ * every repo's build output, caches and data stay out of the budget the operator's source needs.
+ * @param {string} root
+ * @returns {Promise<Set<string>>}
+ */
+const ignoredDirsUnder = async (root) => {
+  const own = await ignoredDirsOf(root);
+  if (own.size || fsSync.existsSync(path.join(root, '.git'))) return own;
+  const repos = [];
+  const scan = async (dir, depth) => {
+    const entries = await fsSync.promises.readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const e of entries) {
+      if (!e.isDirectory() || NOISE_DIRECTORY_NAMES.has(e.name) || e.name.startsWith('.')) continue;
+      const child = path.join(dir, e.name);
+      if (fsSync.existsSync(path.join(child, '.git'))) repos.push(child);
+      else if (depth < 2) await scan(child, depth + 1);
+    }
+  };
+  await scan(root, 1);
+  const all = new Set();
+  for (const repo of repos) for (const dir of await ignoredDirsOf(repo)) all.add(dir);
+  return all;
+};
+
+/**
  * Fold a pending accumulation into the wire frame, or null when there is
  * nothing to say. Overflowed roots swallow their own file paths. Pure.
  * @param {{paths: Map<string, string>, bulk: Set<string>, git: boolean}} pending
@@ -193,6 +219,41 @@ export const foldPending = (pending) => {
 // looking at; anything deeper is one REFRESH away.
 export const MAX_DIRS_PER_ROOT = 4096;
 
+/**
+ * The directories one root may watch, sized from what the kernel allows: an eighth of
+ * fs.inotify.max_user_watches (the rest stays for the editor, the file manager and everything else
+ * that watches), never below MAX_DIRS_PER_ROOT, never above 65,536 (~70 MB of kernel memory).
+ *
+ * THE CAUSE (Design note, 2026-11-10: […]): the flat 4,096 came from the ENOSPC days, when every directory was registered. His
+ * desk opens /workspace/repos, ~36,000 watchable directories across 50 repos even after each repo's
+ * own ignores, so the shallow 4,096 filled and the folders he edits (six deep) were never watched.
+ * His kernel allows 1,048,576. Pure.
+ * @param {number|null} maxUserWatches
+ */
+export const watchBudget = (maxUserWatches) => {
+  const n = Number(maxUserWatches);
+  if (!Number.isFinite(n) || n <= 0) return MAX_DIRS_PER_ROOT;
+  return Math.max(MAX_DIRS_PER_ROOT, Math.min(65_536, Math.floor(n / 8)));
+};
+
+// impure — read once: the kernel's limit on this machine (Linux), else the floor
+const DIR_BUDGET = (() => {
+  try { return watchBudget(Number(fsSync.readFileSync('/proc/sys/fs/inotify/max_user_watches', 'utf8').trim())); } catch { return MAX_DIRS_PER_ROOT; }
+})();
+
+/**
+ * The opened folders nested inside each watched root, most specific first. They are walked BEFORE
+ * their outer root, so the folders the operator opened on purpose are covered first wherever the
+ * budget runs short. Pure.
+ * @param {string[]} outer - watchableRoots()
+ * @param {string[]} roots - every opened folder
+ * @returns {Map<string, string[]>}
+ */
+export const nestedOpened = (outer, roots) => new Map(outer.map((root) => [root, [...new Set((roots || [])
+  .map((r) => path.resolve(r))
+  .filter((r) => r !== root && r.startsWith(root + path.sep)))]
+  .sort((a, b) => b.split(path.sep).length - a.split(path.sep).length)]));
+
 // ── the running state (module singleton — one desk, one set of eyes) ────────
 // impure below this line.
 
@@ -228,7 +289,7 @@ const record = (root, change) => {
 };
 
 const watchDir = (root, dir, dirs) => {
-  if (dirs.size >= MAX_DIRS_PER_ROOT) return false;
+  if (dirs.size >= DIR_BUDGET) return false;
   try {
     const w = fsSync.watch(dir, (eventType, filename) => onDirEvent(root, dir, filename == null ? null : String(filename), dirs));
     // A dir that vanishes closes its own watcher rather than crashing the
@@ -276,7 +337,7 @@ const onDirEvent = (root, dir, filename, dirs) => {
 
 // impure - root coverage is immediate; deep discovery yields to the portal.
 // A bulk refresh on new coverage reconciles writes during initialization.
-const watchRoot = (root) => {
+const watchRoot = (root, priority = []) => {
   const dirs = new Map();
   if (!watchDir(root, root, dirs)) {
     log.warn('files watch could not open a root', { root });
@@ -286,22 +347,24 @@ const watchRoot = (root) => {
   const isIgnored = (dir) => isIgnoredWatchDir(dir, ignored.get(root));
   const isLive = () => watchers.get(root) === dirs;
   walks.set(root, createFilesWatchWalk({
-    dirs, cap: MAX_DIRS_PER_ROOT,
+    dirs, cap: DIR_BUDGET,
     isLive,
     isIgnored, isNoise: (name) => NOISE_DIRECTORY_NAMES.has(name),
     watchDir: (dir) => watchDir(root, dir, dirs),
     onComplete: ({ opened, capped }) => {
       if (opened) record(root, { kind: 'bulk' });
-      if (capped) log.warn('files watch capped', { root, cap: MAX_DIRS_PER_ROOT });
+      if (capped) log.warn('files watch capped', { root, cap: DIR_BUDGET });
     },
     onError: (error) => log.warn('files watch discovery failed', { root, error: error.message }),
   }));
+  for (const nested of priority) registerTree(root, nested, dirs);
   registerTree(root, root, dirs);
-  ignoredDirsOf(root).then(async (set) => {
+  ignoredDirsUnder(root).then(async (set) => {
     if (watchers.get(root) !== dirs) return; // closed while the probe was out
     ignored.set(root, set);
     await pruneIgnoredWatches({ dirs, isIgnored, isLive });
     // Revisit watched ancestors too: pruning frees slots, not source coverage.
+    for (const nested of priority) registerTree(root, nested, dirs);
     registerTree(root, root, dirs);
   }).catch((error) => log.warn('files watch ignore initialization failed', { root, error: error.message }));
 };
@@ -324,12 +387,14 @@ const closeRoot = (root) => {
 
 export const syncFilesWatchers = (roots) => {
   if (!sink) return;
-  const want = new Set(watchableRoots(roots));
+  const outer = watchableRoots(roots);
+  const want = new Set(outer);
+  const nested = nestedOpened(outer, roots);
   for (const [root] of watchers) {
     if (!want.has(root)) closeRoot(root);
   }
   for (const root of want) {
-    if (!watchers.has(root)) watchRoot(root);
+    if (!watchers.has(root)) watchRoot(root, nested.get(root));
   }
 };
 

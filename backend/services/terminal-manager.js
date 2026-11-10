@@ -81,7 +81,7 @@ export const spawnTerminal = (ws, { wallet, cwd, cols = 80, rows = 24, launch = 
     if (existing.idleTimer) { clearTimeout(existing.idleTimer); existing.idleTimer = null; }
     existing.sockets.add(ws);
     socketTerms.set(ws, termId);
-    ws.send(JSON.stringify({ type: 'terminal:hello', id: termId, attached: true }));
+    ws.send(JSON.stringify({ type: 'terminal:hello', id: termId, attached: true, cwd: existing.cwd || os.homedir() }));
     for (const chunk of existing.buffer) {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'terminal:data', data: chunk }));
     }
@@ -126,11 +126,12 @@ export const spawnTerminal = (ws, { wallet, cwd, cols = 80, rows = 24, launch = 
     bufferBytes: 0,
     idleTimer: null,
     launch,
+    cwd: cwd || os.homedir(),
     exited: false,
   };
   terminals.set(id, entry);
   socketTerms.set(ws, id);
-  ws.send(JSON.stringify({ type: 'terminal:hello', id, attached: false }));
+  ws.send(JSON.stringify({ type: 'terminal:hello', id, attached: false, cwd: entry.cwd }));
   proc.onData((data) => {
     entry.buffer.push(data);
     entry.bufferBytes += Buffer.byteLength(data);

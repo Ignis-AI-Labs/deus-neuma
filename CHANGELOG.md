@@ -6,6 +6,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.123] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.123.md`.
+
+### Added
+
+- Click a web address or filesystem path in the terminal to open it. Right-click web addresses to choose the integrated or external browser; relative paths resolve against the terminal's working directory.
+
+### Fixed
+
+- The Explorer shows edits the moment they happen anywhere in a large opened folder, such as a folder holding many repositories. Folders deep inside one were never watched, so a change only appeared after reloading the folder. The live watch now sizes itself to what your system allows, skips each repository's ignored build and cache folders, and covers the folders you opened yourself first.
+
 ## [0.1.122] - 2026-11-10
 
 Notes: `docs/operations/release-notes-0.1.122.md`.

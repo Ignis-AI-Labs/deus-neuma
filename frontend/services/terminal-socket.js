@@ -15,7 +15,7 @@ export const listTerminalAgents = () =>
 
 /**
  * @param {{token?: string, cwd?: string|null, launch?: string|null, termId?: string|null,
- *          onHello?: (info:{id:string, attached:boolean})=>void,
+ *          onHello?: (info:{id:string, attached:boolean, cwd?:string})=>void,
  *          onData?: (s:string)=>void, onExit?: (code:number)=>void, onError?: (message:string, code?:string)=>void, onOpen?: ()=>void, onClose?: (info:{code?:number})=>void}} h
  *   `launch` is an agent catalog id (claude/kimi/grok/opencode…) — the server
  *   resolves it against the closed allowlist and spawns that binary instead
@@ -47,7 +47,7 @@ export const openTerminalSocket = ({ token = sessionStorage.getItem('authToken')
     let msg;
     try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === 'terminal:data') onData?.(msg.data);
-    else if (msg.type === 'terminal:hello') onHello?.({ id: msg.id, attached: Boolean(msg.attached) });
+    else if (msg.type === 'terminal:hello') onHello?.({ id: msg.id, attached: Boolean(msg.attached), cwd: msg.cwd });
     else if (msg.type === 'terminal:exit') onExit?.(msg.code);
     else if (msg.type === 'terminal:error') onError?.(msg.message, msg.code);
   };
