@@ -5,6 +5,7 @@
 // Bearer-token auth follows the same pattern.
 
 import { apiCall, authHeadersOrNull as authHeaders } from '../../utils/http.js';
+import { toWav16k } from '../../utils/wav16k.js';
 
 // impure — wake the whisper sidecar so the model is loading while the witness
 // is still speaking. Fire-and-forget: transcribe() launches it anyway if this
@@ -20,15 +21,27 @@ export const warmTranscriber = () => {
 // A missing-components refusal keeps its structure (err.code + err.missing)
 // so the composer can prompt the install instead of flashing a bare error.
 // { preview } asks for the fast live read; { signal } lets a stale one be dropped.
+// The processor speech engine of an installed app reads only 16 kHz WAV: told so once (STT_WANTS_WAV),
+// every later recording is converted before it is sent.
+let wantsWav = false;
+
 export const transcribe = async (blob, { preview = false, signal } = {}) => {
   const headers = authHeaders();
   if (!headers) throw new Error('not signed in');
-  const res = await fetch(`/api/v1/voice/transcribe${preview ? '?preview=1' : ''}`, {
+  const send = (body) => fetch(`/api/v1/voice/transcribe${preview ? '?preview=1' : ''}`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': blob.type || 'audio/webm' },
-    body: blob,
+    headers: { ...headers, 'Content-Type': body.type || 'audio/webm' },
+    body,
     signal,
   });
+  let res = await send(wantsWav ? await toWav16k(blob) : blob);
+  if (res.status === 415 && !wantsWav) {
+    const told = await res.json().catch(() => ({}));
+    if (told.code === 'STT_WANTS_WAV') {
+      wantsWav = true;
+      res = await send(await toWav16k(blob));
+    }
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = new Error(body.error || `transcription failed (${res.status})`);

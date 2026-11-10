@@ -12,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { requireAuth } from '../services/auth.js';
 import { requireInstallOwner } from '../services/install-owner.js';
+import { ensureSttServer, startSttJob, sttJob, sttReadiness, usesManagedStt } from '../services/managed-stt.js';
 import {
   launch, stop, getStatus, listStatus, healthCheck, shutdownAll,
   isUvAvailable, engineReadiness, uvBin,
@@ -48,6 +49,31 @@ const LOG_DIR = path.join(REPO_ROOT, 'voice-engines', '_logs');
 
 router.get('/local', (_req, res) => {
   res.json({ engines: listStatus() });
+});
+
+// An installed app has no Python speech server (it ships only engines.json), so its dictation is
+// whisper.cpp on the processor (managed-stt.js): readiness, setup, status and launch answer from
+// there. A machine with the repo's sidecar falls through to the routes below, unchanged.
+router.get('/local/whisper', async (req, res, next) => {
+  if (!usesManagedStt()) return next();
+  const readiness = await sttReadiness();
+  return res.json({ id: 'whisper', engine: 'whisper.cpp', downloaded: readiness.ready, readiness });
+});
+router.post('/local/whisper/download', requireInstallOwner, (req, res, next) => {
+  if (!usesManagedStt()) return next();
+  return res.json({ ok: true, download: startSttJob() });
+});
+router.get('/local/whisper/download/status', (req, res, next) => {
+  if (!usesManagedStt()) return next();
+  return res.json(sttJob());
+});
+router.post('/local/whisper/launch', requireInstallOwner, async (req, res, next) => {
+  if (!usesManagedStt()) return next();
+  try {
+    return res.json({ id: 'whisper', engine: 'whisper.cpp', state: 'running', port: await ensureSttServer() });
+  } catch (err) {
+    return res.status(400).json({ error: err.message, code: err.code });
+  }
 });
 
 router.get('/local/:id', async (req, res) => {

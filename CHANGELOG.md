@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.122] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.122.md`.
+
+### Fixed
+
+- Dictation works on an installed app. DOWNLOAD MODEL used to fail at once ("Download did not start. (500)"): the speech engine was never part of the install. Now the app downloads a small speech engine that runs on your processor, not your graphics card, so it never competes with your model for graphics memory. It uses at most a third of your processor, starts when you speak and frees its memory after ten idle minutes. It understands many languages, Thai among them.
+
 ## [0.1.121] - 2026-11-10
 
 Notes: `docs/operations/release-notes-0.1.121.md`.
