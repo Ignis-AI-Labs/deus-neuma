@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.121] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.121.md`.
+
+### Fixed
+
+- An update now replaces the running version completely. The previous version's backend is stopped before the new one starts, so after updating you land on your own desk with your own wallet instead of an error that a port is already in use, or a sign-in that cannot find your wallet.
+- Opening Deus Neuma after an update, a crash or a forced quit takes over a backend the previous run left behind, instead of refusing to start. A backend that another open desk is still using is never touched.
+- On Windows, a backend whose desk has gone now shuts itself down, as it already did on Linux.
+
 ## [0.1.120] - 2026-11-09
 
 Notes: `docs/operations/release-notes-0.1.120.md`.

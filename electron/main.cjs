@@ -18,7 +18,7 @@
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
 const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, session } = require('electron');
-const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
+const { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
 const { fromDesk } = require('./desk-links.cjs');
@@ -79,7 +79,7 @@ if (!app.requestSingleInstanceLock()) {
       tray.ensureTray(); // the corner tab — present from the first desk onward
       // An offer that changes reaches the tray and every desk's bar together.
       const refreshTray = () => { tray.rebuildTrayMenu(); updateBar.publish(); };
-      autoUpdate.init({ app, shell, Notification, refreshTray });
+      autoUpdate.init({ app, shell, Notification, refreshTray, stopBackend });
     } catch (err) {
       dialog.showErrorBox('Deus Neuma', `Could not start the local backend.\n\n${err.message}`);
       app.quit();

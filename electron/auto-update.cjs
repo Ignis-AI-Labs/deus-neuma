@@ -182,9 +182,13 @@ const checkNow = async () => {
   return { ok: checked, version: state.availableVersion };
 };
 
+// The update REPLACES the installation: the backend is stopped and waited out BEFORE the
+// installer runs and the new version starts, so the new version never finds the old backend
+// still serving in its place (2026-11-10: a new desk beside an old backend).
 const restartToUpdate = () => {
   if (!live || !state.ready) return false;
-  live.updater.quitAndInstall(false, true);
+  live.app.isQuitting = true; // the backend's exit is ours, not a crash to offer a restart for
+  live.stopBackend().finally(() => live.updater.quitAndInstall(false, true));
   return true;
 };
 
@@ -339,8 +343,8 @@ const wireUpdater = ({
  * Wire the updater. No-ops in dev. Never throws: an update check is the least
  * important thing the app does, and it must never cost a boot.
  *
- * @param {{ app: object, shell: object, Notification: any,
- *   refreshTray: () => void, env?: object, platform?: string, log?: object }} deps
+ * @param {{ app: object, shell: object, Notification: any, refreshTray: () => void,
+ *   stopBackend?: () => Promise<void>, env?: object, platform?: string, log?: object }} deps
  */
 // impure
 const init = ({
@@ -348,6 +352,7 @@ const init = ({
   shell,
   Notification,
   refreshTray,
+  stopBackend = () => Promise.resolve(),
   env = process.env,
   platform = process.platform,
   log = console,
@@ -388,7 +393,7 @@ const init = ({
     platform,
   });
 
-  live = { form, updater, shell, check };
+  live = { form, updater, shell, check, app, stopBackend };
 
   // OFF UNTIL TURNED ON (CONNECTIONS, Design note, 2026-10-25: the timers ask the person's switch at every
   // tick, so turning it on or off in Settings takes effect without a restart, and nothing is asked
