@@ -215,25 +215,6 @@
   color: var(--alert);
 }
 
-.relink-attach-menu-sect {
-  padding: var(--space-2) var(--space-3) var(--space-1);
-  border-top: 1px solid var(--line);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: var(--color-text-tertiary);
-}
-
-.relink-attach-menu-empty {
-  padding: var(--space-1) var(--space-3) var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--color-text-disabled);
-}
-
-.relink-attach-menu-row.is-project .relink-attach-menu-name {
-  font-family: var(--font-voice);
-  letter-spacing: 0;
-}
-
 .relink-attach-menu-mark {
   flex: 0 0 auto;
   width: 6px;

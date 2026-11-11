@@ -27,7 +27,6 @@ const log = createLogger('Portal');
  * (logs the budget decision when it bites).
  * @param {Object} args
  * @param {ReadonlyArray<{id: string, label: string, text: string}>} args.baseSections
- * @param {Object|null} [args.projectFilesSection] - project shared-files section
  * @param {string} [args.expressionInvite]
  * @param {string} [args.cmoBriefing]
  * @param {string} [args.csoBriefing]
@@ -52,9 +51,9 @@ const log = createLogger('Portal');
  *   report} before the logs; never changes the ladder's choice
  * @returns {ReadonlyArray<{id: string, label: string, text: string}>} the sections to send
  */
-export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
+export const finalizeTurnEnvelope = ({ baseSections, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
   const assembled = [
-    ...(projectFilesSection ? [...baseSections, projectFilesSection] : baseSections),
+    ...baseSections,
     ...(expressionInvite ? [{ id: 'expression', label: 'FEELING', text: expressionInvite }] : []),
     ...(cmoBriefing ? [{ id: 'cmoOffice', label: 'CMO OFFICE', text: cmoBriefing }] : []),
     ...(csoBriefing ? [{ id: 'csoOffice', label: 'CSO OFFICE', text: csoBriefing }] : []),

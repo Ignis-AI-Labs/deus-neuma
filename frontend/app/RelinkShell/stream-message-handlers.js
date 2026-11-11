@@ -15,8 +15,6 @@ import { runLinkHistoryLoad } from './stream-link-history.js';
 import { isWitness } from './house-members.js';
 import { reconnectFrames, streamSession, resumedSession, lifecycleAction } from './stream-lifecycle-actions.js';
 import { feedHeard } from './voice-purpose-state.js';
-import { isNewProjectChat } from './project-space.js';
-import { focusProject } from './desk-focus.js';
 import { announceFileChange } from './files-refresh.js';
 import { announceCampaignChange } from './campaign-refresh.js';
 import { announceBoardArrangement } from './marketing/board-change.js';
@@ -27,7 +25,7 @@ import { isBootActive } from '../Opening/opening-state.js';
 export const createStreamHandlers = ({
   wsService, dispatch, flushSpeech, ensureFilter, ensureSink, applyPurpose,
   setHeldCount, setToolModeState, setChatModeState, sendThought, portalFocusFrame,
-  houseRef, focusRef, projectsRef, onProjectChatCreatedRef, projectChatSeenRef,
+  houseRef, focusRef,
   storageWarningRef, companionRef, navigationSeqRef, transitioningRef, filterRef,
   streamSeenRef, historyLoadedRef, currentTakeRef, erroredRef, connectedRef,
   turnStartedRef, voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
@@ -94,14 +92,6 @@ export const createStreamHandlers = ({
     // THIS chat instead of forking a new one.
     if (data?.sessionId) {
       wsService.setSessionState(streamSession(companionRef.current, data.sessionId));
-      // A chat born under an active project just got its server-minted id —
-      // the backend has already pinned it to the project; refresh so it
-      // appears in the project's chat list. Fires once per new id (resume /
-      // new-session pre-seed the ref), never mid-conversation.
-      if (isNewProjectChat(focusProject(focusRef.current, projectsRef.current), data.sessionId, projectChatSeenRef.current)) {
-        onProjectChatCreatedRef.current?.();
-      }
-      projectChatSeenRef.current = data.sessionId;
     }
     // A turn that yielded no stream frames still names its point here —
     // the stamp is idempotent, so a turn that already stamped on its first
@@ -243,7 +233,7 @@ export const createStreamHandlers = ({
     // law live in stream-link-history.js — one module, one job.
     historyReadyRef.current = runLinkHistoryLoad({
       wsService, dispatch, portalFocusFrame, companionRef, navigationSeqRef,
-      turnStartedRef, projectChatSeenRef, focusRef, projectsRef, historyFailedRef,
+      turnStartedRef, focusRef, historyFailedRef,
       target, navigationSeq,
     });
   };

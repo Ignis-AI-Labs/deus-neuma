@@ -1,11 +1,12 @@
 // @ts-check
-// Desk e2e — FILES rail + PROJECTS app. Split from desk.spec.js (SIZE-017).
+// Desk e2e — the FILES rail. Split from desk.spec.js (SIZE-017); the PROJECTS
+// app it also covered was removed (2026-11-10).
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { openDockApp } from './helpers/dock.js';
-import { REPO, BACKEND, token, setupDesk } from './helpers/desk-harness.js';
+import { REPO, setupDesk } from './helpers/desk-harness.js';
 
 setupDesk();
 
@@ -89,60 +90,5 @@ test('FILES: create, rename, and delete inside an opened folder', async ({ page 
     await page.locator('.files-rowwrap', { hasText: path.basename(tmp) }).first()
       .getByLabel('Close folder').click().catch(() => {});
     fs.rmSync(tmp, { recursive: true, force: true });
-  }
-});
-
-test('PROJECTS: create a project, hold it in the focus view, and a ground click re-points Files + status', async ({ page }) => {
-  const projName = `e2e-proj-${process.pid}`;
-  try {
-    await openDockApp(page, 'PROJECTS');
-    await expect(page.locator('.proj')).toBeVisible();
-
-    // Create a project pointing at the repo (a stable, existing folder).
-    await page.locator('.proj-new').click();
-    await page.locator('.proj-input').first().fill(projName);
-    await page.locator('.proj-input').nth(1).fill(REPO);
-    await page.locator('.proj-create').click();
-
-    // Creation ENTERS the project: the FOCUS view holds it — the heading
-    // names the focus, the working column (new chat, grounds, conversations)
-    // and the knowing rail (knowledge, memory) all stand, and the status
-    // strip reflects the activation.
-    const focus = page.locator('.proj-focus');
-    await expect(focus).toBeVisible();
-    await expect(focus.locator('.proj-focus-title')).toHaveText(projName);
-    await expect(page.locator('.relink-status-project')).toContainText(projName);
-    await expect(focus.locator('.proj-newchat')).toBeEnabled();
-    await expect(focus.locator('.proj-files-title', { hasText: 'FOLDERS & REPOSITORIES' })).toBeVisible();
-    await expect(focus.locator('.proj-files-title', { hasText: 'CONVERSATIONS' })).toBeVisible();
-    await expect(focus.locator('.proj-files-title', { hasText: 'KNOWLEDGE' })).toBeVisible();
-    await expect(focus.locator('.proj-memory')).toBeVisible();
-
-    // ‹ ALL PROJECTS returns to the shelf (the entered project wears the
-    // active mark), and picking it re-enters the focus view.
-    await focus.locator('.proj-back').click();
-    const projItem = page.locator('.proj-item', { hasText: projName });
-    await expect(projItem).toBeVisible();
-    await expect(projItem).toHaveClass(/is-active/);
-    await projItem.locator('.proj-pick').click();
-    await expect(focus.locator('.proj-focus-title')).toHaveText(projName);
-
-    // The ground row is the "go work here" gesture: Files opens on the folder.
-    // (Last — the raised Files window may cover the Projects window.)
-    await focus.locator('.proj-folder-pick', { hasText: path.basename(REPO) }).click();
-    await expect(page.locator('.files')).toBeVisible();
-    await expect(page.locator('.files-name', { hasText: path.basename(REPO) }).first()).toBeVisible();
-
-    expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
-  } finally {
-    // Clean up via the API, not the UI: activating opened the Files window over
-    // the Projects window, so its buttons are obscured — an API delete is fast
-    // and stacking-independent.
-    await fetch(`${BACKEND}/api/v1/user/projects`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then(({ projects }) => Promise.all((projects || [])
-        .filter((p) => p.name === projName)
-        .map((p) => fetch(`${BACKEND}/api/v1/user/projects/${p.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }))))
-      .catch(() => {});
   }
 });

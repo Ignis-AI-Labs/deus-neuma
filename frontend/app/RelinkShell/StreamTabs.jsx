@@ -26,7 +26,6 @@ import { getRoster, getWitnesses } from '../../utils/companion-data.js';
 import { isWitness } from './house-members.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { useTabActivity } from './tab-activity.js';
-import { useProjects } from './projects/project-context.js';
 import { useStripWindowId } from './StripRegistrar.jsx';
 import { markStripFocused } from './stream-strips.js';
 import { groundMark } from './desk-focus.js';
@@ -57,7 +56,6 @@ export const StreamTabs = () => {
   const windows = useWindows();
   const { activeCompanion, wsService } = useConsciousnessPick('activeCompanion', 'wsService');
   const activity = useTabActivity();
-  const projects = useProjects();
 
   // SEED — the sitting already in progress becomes the first tab.
   //
@@ -158,7 +156,7 @@ export const StreamTabs = () => {
   // entry at all, which is what keeps the strip as clean as it was (Founder,
   // 2026-08-29: […]).
   const grounds = tabs.tabs.reduce((acc, t) => {
-    const mark = t.focus ? groundMark(t.focus, projects?.projects ?? null) : null;
+    const mark = t.focus ? groundMark(t.focus) : null;
     return mark ? { ...acc, [t.id]: mark } : acc;
   }, {});
 

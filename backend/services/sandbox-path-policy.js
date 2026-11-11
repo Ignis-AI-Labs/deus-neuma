@@ -365,8 +365,7 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
  * directly, so walk up to the nearest existing ancestor, realpath that, and
  * re-append the remaining lexical tail. When nothing in the chain exists the
  * lexical resolution is returned unchanged (there is no link to follow).
- * Mirrors the TOCTOU stance of user-projects.js (realpath both sides, then
- * compare) — SEC-032.
+ * Realpath both sides, then compare (the TOCTOU stance) — SEC-032.
  * @param {string} filePath - Path to resolve
  * @returns {Promise<string>} Absolute, symlink-resolved path
  */
@@ -439,31 +438,10 @@ export const findUngrantedReadPaths = (args, readRoots) => findGrantableGaps(arg
 
 /**
  * Write-scope gaps: grantable paths a WRITE reaches outside its allowed roots.
- * The operator may lift these into `_grantedWriteRoots` — but only when they land
- * inside the active project's folders (that bound is enforced by the portal
- * gate, not here). Denied patterns/extensions never surface (hard-deny holds).
+ * The operator may lift these into `_grantedWriteRoots`, one target folder at a
+ * time (the portal gate asks). Denied patterns/extensions never surface (hard-deny holds).
  * @param {Object} args - Parsed tool args
  * @param {string[]} writeRoots - Roots currently allowed for writes
  * @returns {string[]} Out-of-scope-but-grantable paths
  */
 export const findUngrantedWritePaths = (args, writeRoots) => findGrantableGaps(args, writeRoots);
-
-/**
- * The blast-radius bound on write grants: given out-of-lane write gaps and the
- * active project's folders, the set of project folders an operator may be asked to
- * grant — for each gap, the single project folder that contains it. A gap inside
- * no project folder contributes nothing, so it stays hard-denied (never grants
- * write reach outside the active project). Pure.
- * @param {string[]} gaps - Out-of-lane grantable write paths
- * @param {string[]} projectFolders - The active project's attached folders
- * @returns {string[]} Distinct project folders to grant (a subset of projectFolders)
- */
-export const writeGrantScope = (gaps, projectFolders) => {
-  // When project folders nest (e.g. /repos/proj and /repos/proj/backend), grant
-  // the MOST specific (longest) folder that contains the gap — least privilege,
-  // so a write to /repos/proj/backend/x doesn't grant all of /repos/proj.
-  const containing = (p) => projectFolders
-    .filter((f) => isWithinRoots(p, [f]))
-    .sort((a, b) => b.length - a.length)[0];
-  return [...new Set(gaps.map(containing).filter(Boolean))];
-};

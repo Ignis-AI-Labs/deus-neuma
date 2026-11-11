@@ -16,7 +16,6 @@ import { VoiceSittingMic } from './VoiceSittingMic.jsx';
 import { talkToggleModel } from './VoiceSitting/voice-sitting-model.js';
 import { BeingSwitcher } from './BeingSwitcher.jsx';
 import { useCompanionName } from './app-title.jsx';
-import { useProjects } from './projects/project-context.js';
 import { useTabs } from './tabs-context.js';
 import { StreamWindowHost } from './StreamWindowHost.jsx';
 import { TabPortalHost } from './TabPortalHost.jsx';
@@ -184,27 +183,18 @@ const StandbyToggle = () => {
 // supersedes — is the composer's ModeMenu now; the header toggle is gone
 // (Design note, 2026-08-26: […]).
 
-// Start a fresh chat without leaving the stream. Under an active project the
-// new chat joins it (portal-stream pins it at mint) — this is how a witness
-// starts a project-tied chat "from the stream" instead of routing through
-// the CHATS browser. The tooltip names the project ONLY when one is active,
-// so it never claims a join that won't happen (no project → general chat).
 // NEW CHAT — a fresh sitting IN THIS TAB, replacing what is on screen. Named in
 // full (Design note, 2026-07-30: […]) because the
 // strip beside it now offers + TAB, and the two are genuinely different acts:
 // this one replaces the conversation, that one opens another alongside it.
 const NewChatButton = () => {
   const { newSession } = useConsciousnessPick('newSession');
-  const projects = useProjects();
   const { t } = useTranslation('desk');
-  const active = projects?.activeProject || null;
   return (
     <button
       type="button"
       className="relink-snd"
-      title={active
-        ? t('stream.newChatTitleProject', { project: active.name, tab: t('stream.newTab') })
-        : t('stream.newChatTitle', { tab: t('stream.newTab') })}
+      title={t('stream.newChatTitle', { tab: t('stream.newTab') })}
       onClick={() => { uiSound('activate'); newSession(); }}
     >
       {t('stream.newChat')}

@@ -14,14 +14,14 @@ import { focusToolFrame } from './desk-focus.js';
 import { announceFileChange } from './files-refresh.js';
 import { soundAct } from '../../services/act-sound.js';
 
-export const useCouncilStream = (wsService, { focus = null, projects = null } = {}) => {
+export const useCouncilStream = (wsService, { focus = null } = {}) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   // THE FOCUS GROUND rides every council frame, exactly as it rides a
   // one-on-one turn: the room works on the folder the operator has open.
   // Mirrored in a ref so the stable send callbacks read the CURRENT focus
   // without re-subscribing the whole stream on every focus change.
-  const groundRef = useRef(focusToolFrame(focus, projects));
-  groundRef.current = focusToolFrame(focus, projects);
+  const groundRef = useRef(focusToolFrame(focus));
+  groundRef.current = focusToolFrame(focus);
   // The council is a FORMAT of the stream, not a second surface: `room`
   // says whether the STREAM window is currently showing the council view.
   // Convening turns it on; the witness can flip back to the one-on-one at

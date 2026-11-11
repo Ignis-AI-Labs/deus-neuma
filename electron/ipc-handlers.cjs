@@ -295,15 +295,22 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
     onShowLogs: app.isPackaged ? () => revealBackendLog(shell, app.getPath('home')) : null,
   })));
 
-  // Native folder picker — lets the witness browse to a workspace home in the
-  // pre-flight HOME & ALLOCATION step instead of typing the absolute path.
-  // Returns the chosen path, or null if cancelled. The renderer can only
-  // request the dialog; it gains no other filesystem access. The sheet
-  // attaches to the desk that ASKED, never a sibling window.
-  handle('dialog:openDirectory', async (event) => {
+  // THE SYSTEM'S OWN FOLDER DIALOG (Design note, 2026-11-10: […]): every OPEN FOLDER in the app asks
+  // for this sheet, the one the operator already knows (KDE's through the
+  // desktop portal, Explorer's, Finder's). Returns the chosen path, or null if
+  // cancelled. The renderer can only request the dialog; it gains no other
+  // filesystem access. It may name a title and a starting folder, both checked
+  // here. The sheet attaches to the desk that ASKED, never a sibling window.
+  handle('dialog:openDirectory', async (event, opts) => {
     const asking = BrowserWindow.fromWebContents(event.sender);
+    const title = typeof opts?.title === 'string' && opts.title.trim()
+      ? opts.title.trim().slice(0, 120)
+      : 'Choose the workspace home for your neuma';
+    const start = typeof opts?.defaultPath === 'string' && path.isAbsolute(opts.defaultPath)
+      && fs.existsSync(opts.defaultPath) ? opts.defaultPath : undefined;
     const result = await dialog.showOpenDialog(asking || undefined, {
-      title: 'Choose the workspace home for your neuma',
+      title,
+      ...(start ? { defaultPath: start } : {}),
       properties: ['openDirectory', 'createDirectory'],
     });
     return result.canceled || !result.filePaths.length ? null : result.filePaths[0];

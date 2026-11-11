@@ -1,18 +1,20 @@
 /**
  * Write-scope gate (Unit 2) — the witness's yes on a neuma WRITE that reaches
- * into the active project's folder, proven end to end with NO mock on the
- * claimed path (AGENTS.md RULE 0): REAL WebSocket pair, REAL
+ * outside its own lane, proven end to end with NO mock on the claimed path
+ * (AGENTS.md RULE 0): REAL WebSocket pair, REAL
  * @modelcontextprotocol/server-filesystem, REAL NeumaWorkspace + realm on disk,
- * REAL policy cascade + project store.
+ * REAL policy cascade.
  *
- * This is the gnosis for […] A write into an active-project folder
- * prompts with the folder as the stakes; a yes lands at every layer (connection
- * sandbox, persisted policy, the real server process, reconnected with the
- * root) and the bytes appear on disk. A write OUTSIDE the project's folders
- * ASKS too (Design note, 2026-07-23, universal approval: […]) — the WITNESS is the blast-radius bound,
- * and only her yes ever widens a wall.
+ * This is the gnosis for […] A write into a folder prompts with
+ * the folder as the stakes; a yes lands at every layer (connection sandbox,
+ * persisted policy, the real server process, reconnected with the root) and
+ * the bytes appear on disk. The grant is the target's OWN folder — least
+ * privilege, never its parent (the project-folder bound went with Projects,
+ * 2026-11-10). Every such write ASKS (Design note, 2026-07-23, universal approval: […]) — the WITNESS is the
+ * blast-radius bound, and only her yes ever widens a wall.
  */
 import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
+import { setTimeout } from 'node:timers';
 import fs from 'fs/promises';
 import path from 'path';
 import { createServer } from 'http';
@@ -23,22 +25,20 @@ import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.j
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { setRealmRoot } from '../../backend/services/user-realm.js';
-import { createProject } from '../../backend/services/user-projects.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
 const { processToolCalls } = __test;
 const NEUMA_ID = 'writegate';
 const WALLET = '0x1111111111111111111111111111111111111111';
 
-describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
-  let house, origRoot, httpServer, wss, serverWs, client, port, project, projectId;
+describe('write-scope gate (real WS + real MCP + a real folder, gnosis)', () => {
+  let house, origRoot, httpServer, wss, serverWs, client, port, project;
   let clientLog, decide;
 
   const freshConnection = () => ({
     ws: serverWs,
     companion: { name: 'WriteGate', neumaId: NEUMA_ID },
     walletAddress: WALLET,
-    space: { id: projectId, kind: 'project', label: 'P' },
     _writeOps: 0,
   });
 
@@ -69,7 +69,6 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     setRealmRoot(await createTempDir('write-gate-realm'));
     project = await createTempDir('write-gate-project');
     await fs.mkdir(path.join(project, '.git'), { recursive: true }); // a repo, to prove denylist holds
-    projectId = (await createProject(WALLET, { name: 'P', folder: project })).id;
 
     await connectFilesystemServer(); // real MCP server, real disk
 
@@ -102,7 +101,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
   const writeCall = (file, content) =>
     `[TOOL: fs/write {"path": "${path.join(project, file)}", "content": "${content}"}]`;
 
-  test('WRITE ALLOW — a write into the active project folder prompts, then lands on real disk', async () => {
+  test('WRITE ALLOW — a write into a folder prompts, then lands on real disk', async () => {
     const connection = freshConnection();
     wireApprovals(connection);
     clientLog.length = 0;
@@ -119,6 +118,21 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     expect(results[0].status).toBe('ok');
     expect(await fs.readFile(path.join(project, 'main.js'), 'utf8')).toContain('export const ok = 1;');
     expect(connection._grantedWriteRoots).toContain(project);
+  }, 45000);
+
+  test('LEAST PRIVILEGE — a yes grants the target\'s own folder, never its parent', async () => {
+    const connection = freshConnection();
+    wireApprovals(connection);
+    clientLog.length = 0;
+    decide = () => 'allow';
+    const sub = path.join(project, 'src', 'deep');
+    await fs.mkdir(sub, { recursive: true });
+
+    const results = await processToolCalls(serverWs, writeCall(path.join('src', 'deep', 'leaf.js'), 'x'), connection);
+
+    expect(results[0].status).toBe('ok');
+    expect(connection._grantedWriteRoots).toContain(sub);
+    expect(connection._grantedWriteRoots).not.toContain(project);
   }, 45000);
 
   test('WRITE ALWAYS — the grant persists (pathGrants.write) and the next session writes with no prompt', async () => {
@@ -160,7 +174,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     expect(landed).toBe(false);
   }, 45000);
 
-  test('a write OUTSIDE the project folders ASKS — the witness, not the envelope, is the bound', async () => {
+  test('a write into ANOTHER folder ASKS too — the witness, not the envelope, is the bound', async () => {
     // The universal-approval law (ruling, 2026-07-23): the being may request
     // access on every level; the witness's card is the one grant surface.
     // Her NO is the wall — nothing lands, no grant materializes.
@@ -200,7 +214,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(true);
   }, 45000);
 
-  test('.git inside the granted project folder stays hard-denied — never a prompt', async () => {
+  test('.git inside a granted folder stays hard-denied — never a prompt', async () => {
     const connection = freshConnection();
     connection._grantedWriteRoots = [project]; // already granted the folder
     clientLog.length = 0;

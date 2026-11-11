@@ -1,0 +1,2 @@
+Fixed
+- Each social account can now carry its own developer app. On X every account has its own app, and pairing a second account with the first account's app keys was refused as "Unauthorized". Paste an account's own Consumer Key and Secret on its row. The X keys screen also has folded setup steps, including setting the app to Read and write before making the access token, and says in plain words what an "Unauthorized" answer means.

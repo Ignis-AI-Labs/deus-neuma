@@ -31,13 +31,11 @@ test('Explorer follows tab focus and external filesystem changes', async () => {
     oldRoots = files.getRoots();
     files.setRoots(folders);
     const { default: router } = await import('../../backend/routes/user-files-routes.js');
-    const { default: projectsRouter } = await import('../../backend/routes/user-projects-routes.js');
     const { createAuthRouter } = await import('../../backend/services/auth.js');
     const app = express();
     app.use(express.json());
     app.use('/api/v1/auth', createAuthRouter(express));
     app.use('/api/v1/user/files', router);
-    app.use('/api/v1/user/projects', projectsRouter);
     vite = await createServer({ configFile: false,
       root: fileURLToPath(new URL('../..', import.meta.url)), cacheDir: path.join(root, 'cache'),
       appType: 'custom', esbuild: { jsx: 'automatic' },

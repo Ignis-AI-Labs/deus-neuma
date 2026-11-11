@@ -145,4 +145,20 @@ describe('the grant screen is a danger act, disarmed until every check passes, g
     expect(await readMandate(k.operator.address)).toBeNull();
     expect(errors).toEqual([]);
   }, 90000);
+
+  it('ANSWER EASY REPLIES names what still asks you, and its REPLIES A DAY box (up to 50) is what the grant holds', async () => {
+    const { page, errors } = await open();
+    await toggle(page, 'x-1');
+    const replies = page.locator('.mandate-acts .mandate-toggle', { hasText: 'ANSWER EASY REPLIES' });
+    await replies.click();
+    expect(await replies.textContent()).toContain('money, migration, arguments, claims and promises still ask you');
+    await page.getByRole('spinbutton', { name: 'replies a day, up to 50' }).fill('30');
+    await page.locator('.mandate-hold:not([disabled])').waitFor({ timeout: 30000 });
+    await hold(page, 2400);
+    await page.locator('.mandate-head[data-tone="live"]').waitFor({ timeout: 15000 });
+    expect(await readMandate(k.operator.address)).toMatchObject({ status: 'active', replyPace: 30, acts: { replies: true } });
+    await page.locator('.mandate-head .mandate-withdraw').click();
+    await page.getByRole('button', { name: 'GRANT A MANDATE…' }).waitFor({ timeout: 15000 });
+    expect(errors).toEqual([]);
+  }, 90000);
 });

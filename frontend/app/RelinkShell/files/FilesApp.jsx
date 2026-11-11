@@ -33,7 +33,6 @@ import { deleteSetFor, isUnder } from './delete-set.js';
 import { DeleteConfirm } from './DeleteConfirm.jsx';
 import { FilesIcon } from './files-glyphs.jsx';
 import { FileNode } from './FileNode.jsx';
-import { useProjects } from '../projects/project-context.js';
 import { FocusContext } from '../use-desk-focus.js';
 import { releaseFocusOnRootClose } from '../desk-focus.js';
 import { useWindows } from '../../windowing/use-windows.js';
@@ -44,7 +43,7 @@ import { CtxMenu } from '../CtxMenu.jsx';
 import { treeMenuItems } from './files-menu.js';
 import { isFavorite, toggleFavorite } from '../folder-shelf.js';
 import { loadDeskPrefs, loadShelf, saveDeskPrefs, saveShelf } from '../../windowing/window-storage.js';
-import { useOpenFolder } from '../projects/use-open-folder.js';
+import { useOpenFolder } from '../use-open-folder.js';
 
 const joinPath = (dir, name) => `${dir.replace(/\/+$/, '')}/${name}`;
 
@@ -59,8 +58,6 @@ const FilesBody = ({ focusRoots = null }) => {
   const [confirmDel, setConfirmDel] = useState(null); // [{path,name,type}] — the popup's delete set
   const rootsRef = useRef([]);
 
-  const projects = useProjects();
-  const activeFolder = projects?.activeProject?.folder;
   // THIS window's focus lens — read for the D9 root-close release only.
   const focusLens = useContext(FocusContext);
   // File clicks spawn EDITOR windows through the desk's window manager.
@@ -71,7 +68,7 @@ const FilesBody = ({ focusRoots = null }) => {
   // Roots/git/dir refresh machinery — the calm poll and the announcement
   // listeners as ONE unit (live-watch RCA law; use-files-roots.js).
   const { gitByRoot, refreshGit, refreshDir } = useFilesRoots({
-    activeFolder, expanded, setExpanded, rootsRef, setRoots, setNote, setChildrenMap,
+    expanded, setExpanded, rootsRef, setRoots, setNote, setChildrenMap,
   });
 
   const toggleDir = useCallback(async (entry) => {

@@ -86,7 +86,6 @@ import userRealmRouter from './user-realm-routes.js';
 import dreamRouter from './dream-routes.js';
 import lookRouter from './look-routes.js';
 import userFilesRouter, { mapLaneQueryToken } from './user-files-routes.js';
-import userProjectsRouter from './user-projects-routes.js';
 import taskRouter, { calendarFeedRouter } from './task-routes.js';
 import vitalRouter from './vital-routes.js';
 import modelFolderRouter from './model-folder-routes.js';
@@ -281,7 +280,6 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/user/dreams', dreamRouter);
   app.use('/api/v1/look', lookRouter);
   app.use('/api/v1/user/files', userFilesRouter);
-  app.use('/api/v1/user/projects', userProjectsRouter);
   app.use('/api/v1/tasks', taskRouter);
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);

@@ -64,7 +64,6 @@ import { markSpendsTold } from './treasury/spend-records.js';
 import { recordSectionDrift } from './section-drift.js';
 import {
   sectorSectionFor,
-  projectFilesSection as _projectFilesSection,
   houseSeatSection as _houseSeatSection,
   cmoBriefingSection as _cmoBriefingSection,
   replyCandidatesSection as _replyCandidatesSection,
@@ -241,11 +240,7 @@ export const assembleTurnPrompt = async ({
       // THE HARNESS ARM mounts no silo: no identity is read for a platform-only sitting.
       identityDriver: platformOnly ? null : await mountForTurn(connection, companion?.neumaId, route || getConfig()),
     });
-    // A project's shared files ride as an extra section when the chat belongs
-    // to a project — appended (not folded into core's assembler) so its tokens
-    // are counted honestly in BOTH composition emissions below.
-    const projectFilesSection = await _projectFilesSection(connection);
-    // The CMO's office briefing rides beside it — a string section ('' for
+    // The CMO's office briefing rides as an extra section — a string ('' for
     // every other lane), wrapped in the section shape the assembler joins.
     const cmoBriefing = await _cmoBriefingSection(connection);
     // The CSO's watch briefing rides the same law — '' (prompt
@@ -304,7 +299,7 @@ export const assembleTurnPrompt = async ({
     // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
-      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing,
+      baseSections, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing,
       sovereigntyKnock, housePost, walletNews: walletNews.text, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
       voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,

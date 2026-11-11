@@ -23,6 +23,7 @@ import { drafterFor, engineSupportsReplay, speculativePlan } from './serving-dra
 import { SERVING_SERVER_SLOTS, validatedServingLaunchConfig } from './serving-launch-config.js';
 import { readClaim } from './substrate-claim-registry.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
+import { SPILL_POOL, fitTargetMiB, parseMeminfo, ramBudgetMiB, ramShareFrom, spillPlan } from './memory-plan.js';
 
 const execFileAsync = promisify(execFile);
 const log = createLogger('ServingFit');
@@ -80,6 +81,44 @@ export const planServingPool = ({ totalMiB, othersMiB, share, projection, extraM
     ceilingMiB,
     projectedMiB: Math.ceil(projection.baseMiB + perTokenMiB * contextLength + extraMiB),
   });
+};
+
+/**
+ * pure — when the model and the smallest pool do not fit the card's share, the serving that spills:
+ * a SPILL_POOL pool (never past every slot at the trained window), what does not fit the card's room
+ * in system RAM, inside the RAM budget. llama.cpp places the layers itself (`--fit on`), told to
+ * leave free everything above the operator's ceiling plus what it does not count (the excess: the
+ * projector, the draft's own buffers) — counted once more than strictly needed, so the card stays
+ * under the share and the spill is a little larger, never the other way round.
+ * @returns {{fits: true, spill: true, contextLength: number, ceilingMiB: number, projectedMiB: number,
+ *   cardMiB: number, ramMiB: number, placement: {fitTargetMiB: number, minCtx: number}}|{fits: false, ceilingMiB: number, reason: string}}
+ */
+export const planSpill = ({ totalMiB, othersMiB, share, projection, extraMiB = 0, extraPerTokenMiB = 0, trainCtx, slots, ramBudget }) => {
+  const ceilingMiB = Math.floor(totalMiB * share);
+  const pool = Math.min(SPILL_POOL, trainCtx * slots);
+  const contextLength = pool - (pool % 256);
+  const needMiB = Math.ceil(projection.baseMiB + (projection.perTokenMiB + extraPerTokenMiB) * contextLength + extraMiB);
+  const spill = spillPlan({ needMiB, cardRoomMiB: ceilingMiB - othersMiB - FIT_MARGIN_MIB, ramBudgetMiB: ramBudget });
+  if (!spill.fits) return Object.freeze({ fits: false, ceilingMiB, reason: spill.reason });
+  return Object.freeze({
+    fits: true,
+    spill: true,
+    contextLength,
+    ceilingMiB,
+    projectedMiB: needMiB,
+    cardMiB: spill.cardMiB,
+    ramMiB: spill.ramMiB,
+    placement: Object.freeze({ fitTargetMiB: fitTargetMiB({ totalMiB, ceilingMiB, marginMiB: FIT_MARGIN_MIB, uncountedMiB: extraMiB }), minCtx: contextLength }),
+  });
+};
+
+/** impure — the machine's total and available RAM (MiB), or null where it cannot be read. */
+export const readRamMemory = () => {
+  try {
+    return parseMeminfo(readFileSync('/proc/meminfo', 'utf8'));
+  } catch {
+    return null;
+  }
 };
 
 /** impure — the card's total and used MiB (nvidia-smi), or null where it cannot answer. */
@@ -172,6 +211,14 @@ export const saveServingShare = (sharePct) => {
   return pct;
 };
 
+/** impure — save the operator's share of system RAM a spilled model may take (a percent, 20-80). */
+export const saveServingRamShare = (ramSharePct) => {
+  const pct = Number(ramSharePct);
+  if (!Number.isInteger(pct) || pct < 20 || pct > 80) throw new Error('the RAM share is a whole percent from 20 to 80');
+  writeServingFit({ ...readServingFit(), ramSharePct: pct });
+  return pct;
+};
+
 /** impure — the measured excess for this launch, or null. */
 const calibratedExtraMiB = (launch, speculative) => {
   const value = readServingFit().calibration?.[calibrationKey(launch, speculative)]?.extraMiB;
@@ -201,8 +248,15 @@ export const fitServingPool = async (launch, { slots, trainCtx, mtp = false, dra
   const calibrated = calibratedExtraMiB(launch, speculative);
   const extraMiB = calibrated ?? estimatedExtraMiB({ mmprojMiB, mtp, drafterMiB });
   const extraPerTokenMiB = calibrated === null ? estimatedExtraPerTokenMiB({ mtp }) : 0;
-  const plan = planServingPool({ totalMiB: gpu.totalMiB, othersMiB: gpu.usedMiB, share: shareFrom(readServingFit()), projection, extraMiB, extraPerTokenMiB, trainCtx, slots });
-  return plan.fits ? Object.freeze({ ...plan, projection, extraMiB }) : plan;
+  const saved = readServingFit();
+  const inputs = { totalMiB: gpu.totalMiB, othersMiB: gpu.usedMiB, share: shareFrom(saved), projection, extraMiB, extraPerTokenMiB, trainCtx, slots };
+  const plan = planServingPool(inputs);
+  if (plan.fits) return Object.freeze({ ...plan, projection, extraMiB });
+  // The card cannot hold it: the rest from system RAM, inside the RAM share (memory-plan.js).
+  const ram = readRamMemory();
+  if (!ram) return plan;
+  const spill = planSpill({ ...inputs, ramBudget: ramBudgetMiB(ram, ramShareFrom(saved)) });
+  return spill.fits ? Object.freeze({ ...spill, projection, extraMiB }) : Object.freeze({ ...plan, reason: `${plan.reason}; ${spill.reason}` });
 };
 
 /** The last fit made on this machine (saved, so any process can report it), or null. */
@@ -274,11 +328,17 @@ export const fittedLaunch = async (launch) => {
       log.warn('serving pool not fitted — the configured pool stands', { reason, pool: launch.contextLength });
       return launch;
     }
-    const fit = { pool: plan.contextLength, trainCtx, slots: SERVING_SERVER_SLOTS, ceilingMiB: plan.ceilingMiB, plannedMiB: plan.projectedMiB, sharePct: Math.round(shareFrom(readServingFit()) * 100), model: launch.model, at: new Date().toISOString() };
+    const fit = { pool: plan.contextLength, trainCtx, slots: SERVING_SERVER_SLOTS, ceilingMiB: plan.ceilingMiB, plannedMiB: plan.projectedMiB, sharePct: Math.round(shareFrom(readServingFit()) * 100), model: launch.model, at: new Date().toISOString(),
+      ...(plan.spill ? { spill: true, cardMiB: plan.cardMiB, ramMiB: plan.ramMiB, ramSharePct: Math.round(ramShareFrom(readServingFit()) * 100) } : {}) };
     saveLastFit(fit);
+    if (plan.spill) {
+      // the excess is measured against a whole-card projection; a spilled serving would record nonsense
+      log.info('serving spills to system RAM — the card cannot hold it', fit);
+      return validatedServingLaunchConfig({ ...launch, contextLength: plan.contextLength, placement: plan.placement });
+    }
     log.info('serving pool fitted to the machine', fit);
     calibrateWhenServing(launch, plan, spec.speculative);
-    return validatedServingLaunchConfig({ ...launch, contextLength: plan.contextLength });
+    return validatedServingLaunchConfig({ ...launch, contextLength: plan.contextLength, placement: null });
   } catch (error) {
     log.warn('serving pool fit failed — the configured pool stands', { error: error.message, pool: launch.contextLength });
     return launch;
@@ -310,6 +370,7 @@ export const servingFitStatus = async (launch, { gpuIndex = 0 } = {}) => {
   const base = `http://${launch.host}:${launch.port}`;
   const read = (path) => fetch(`${base}${path}`, { signal: AbortSignal.timeout(3000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [props, models, gpu] = await Promise.all([read('/props'), read('/v1/models'), readGpuMemory(gpuIndex)]);
+  const ram = readRamMemory();
   // llama-server reports each SLOT's window here (it caps a slot at the trained
   // context); the shared pool is the -c the running server was launched with.
   const slotWindow = props?.default_generation_settings?.n_ctx ?? null;
@@ -320,6 +381,8 @@ export const servingFitStatus = async (launch, { gpuIndex = 0 } = {}) => {
   return Object.freeze({
     sharePct: Math.round(shareFrom(saved) * 100),
     shareSaved: Number.isFinite(saved.sharePct),
+    ramSharePct: Math.round(ramShareFrom(saved) * 100),
+    ram: ram ? { totalMiB: ram.totalMiB, availableMiB: ram.availableMiB, budgetMiB: ramBudgetMiB(ram, ramShareFrom(saved)) } : null,
     measurable: Boolean(fitParamsBinFor(launch.bin)) && Boolean(gpu),
     serving: pool !== null,
     pool,

@@ -37,7 +37,7 @@ export const readUserTasks = async (wallet) => {
 // over the store, so a reader can never observe a half-written file.
 const writeUserTasks = async (wallet, plan) => writeJsonAtomic(tasksFile(wallet), plan);
 
-// impure — per-wallet mutation queue (user-projects pattern): every op below
+// impure — per-wallet mutation queue: every op below
 // is read-modify-write on ONE json file; racing writes lose updates or tear
 // the file. Chaining a wallet's mutations makes each see the last one's store.
 const storeQueues = new Map();

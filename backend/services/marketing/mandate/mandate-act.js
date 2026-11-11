@@ -5,7 +5,8 @@
 //     under the mandate (decidedBy = the house that granted it,
 //     decidedUnder = the mandate's id), so no card waits; the scheduler sends it.
 //   · a reply the CMO stages (queue_reply_to_x), when replies were granted:
-//     covered → sent at once, through the same publishEntry every send uses.
+//     an EASY answer (reply-tier.js) → sent at once, through the same
+//     publishEntry every send uses; an AWARENESS one waits as a draft.
 //   · a render (image/generate, video/generate): covered → no card.
 //   · at SEND time the scheduler asks again: a post decided under a mandate
 //     leaves only while that mandate stands (paused → held; withdrawn or
@@ -34,6 +35,7 @@ import { coverPost, coverRender, legalTrips, isSpamRefusal, mandateStanding } fr
 import { readMandate, journalMandate } from './mandate-store.js';
 import { tripMandate } from './mandate-tripwire.js';
 import { heldFor } from './mandate-hostile.js';
+import { replyTier } from './reply-tier.js';
 import { noteInjectionSighting } from '../../security/injection-sightings.js';
 import { createLogger } from '../../logger.js';
 
@@ -128,25 +130,47 @@ export const approveUnderMandate = async ({ laneId, entry, sessionId = null, tex
   }
 };
 
+// impure — the claims check over an answer not yet staged (a probe entry
+// through the same withLegalFlags the desk reads). Unreadable reads as a
+// claim to check: an answer the check cannot see waits on the operator.
+const answerHits = async (house, accountId, text) => {
+  try {
+    const [flagged] = await withLegalFlags([{ id: 'reply-tier', status: 'draft', channelId: 'x', accountId, text }], house);
+    return flagged?.legal?.hits || [];
+  } catch (err) {
+    log.warn('the claims check could not read an answer — it waits on the operator', { error: err.message });
+    return [{ label: 'the claims check could not read it', match: '—', approved: false }];
+  }
+};
+
 /**
  * May the CMO stage a reply with no card? Only when replies were granted, the
- * account is in scope, nothing holds that conversation or chat, and the reply
- * it answers is not itself hostile text — a stranger's […] is answered only with the operator's yes (the full judgment
- * runs again at send). impure.
- * @param {{laneId: string, accountId: string, sessionId?: ?string, postId?: ?string, answering?: string}} q
- *   answering — the words of the reply being answered
+ * account is in scope, nothing holds that conversation or chat, the reply it
+ * answers is not itself hostile text — a stranger's […] is answered only with the operator's yes — and the answer is
+ * in the EASY tier (reply-tier.js; Design note, 2026-11-11: an AWARENESS answer
+ * stages as the operator's draft with its reasons, and the mandate goes on.
+ * The full judgment runs again at send. impure.
+ * @param {{laneId: string, accountId: string, sessionId?: ?string, postId?: ?string,
+ *   answering?: string, category?: string, text?: string, raised?: boolean}} q
+ *   answering — the words of the reply being answered; category — its reply
+ *   category; text — the CMO's answer; raised — the CMO asked for the operator's eyes
+ * @returns {Promise<{covered: boolean, tier?: {tier: string, reasons: object[]}}>}
+ *   tier — only when a standing mandate would otherwise have sent it
  */
-export const replyMandateFor = async ({ laneId, accountId, sessionId = null, postId = null, answering = '' }) => {
+export const replyMandateFor = async ({
+  laneId, accountId, sessionId = null, postId = null, answering = '', category = 'ordinary', text = '', raised = false,
+}) => {
   const house = await houseOfLane(laneId).catch(() => null);
   const mandate = await seatedMandate(house, laneId).catch(() => null);
   if (!(mandate && mandateStanding(mandate) === 'active' && mandate.acts.replies
-    && mandate.accounts.some((a) => a.id === accountId))) return false;
+    && mandate.accounts.some((a) => a.id === accountId))) return { covered: false };
   const hostile = await noteInjectionSighting({
     wallet: house, lane: laneId, kind: 'reply', source: 'reply', origin: `the reply to post ${postId || '—'}`,
     text: answering, read: true, sessionId, postId,
   });
-  if (hostile) return false;
-  return !(await heldFor({ house, laneId, sessionId, postId }));
+  if (hostile || await heldFor({ house, laneId, sessionId, postId })) return { covered: false };
+  const tier = replyTier({ answering, category, text, raised, hits: await answerHits(house, accountId, text) });
+  return { covered: tier.tier === 'easy', tier };
 };
 
 /**

@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, test, expect } from 'vitest';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import {
   checkPathAccess, checkWriteBudget, recordWrite, isWriteOperation,
   collectPathArgs, findUngrantedReadPaths, resolveGrantDir,
-  findUngrantedWritePaths, isWithinRoots, writeGrantScope,
+  findUngrantedWritePaths, isWithinRoots,
 } from '../../backend/services/tool-sandbox.js';
 import { writePayloadBytes, checkWorkspaceBudget } from '../../backend/services/write-metering.js';
 
@@ -214,28 +214,6 @@ describe('findUngrantedWritePaths — grantable out-of-lane write gaps', () => {
   it('checks source AND destination (move/rename carry both)', () => {
     const gaps = findUngrantedWritePaths({ source: '/house/neuma-a/x', destination: '/repos/proj/x' }, [lane]);
     expect(gaps).toEqual(['/repos/proj/x']);
-  });
-});
-
-describe('writeGrantScope — the active-project blast-radius bound', () => {
-  const folders = ['/repos/proj/backend', '/repos/proj/frontend'];
-  it('maps a gap to the single project folder that contains it', () => {
-    expect(writeGrantScope(['/repos/proj/backend/foo.js'], folders)).toEqual(['/repos/proj/backend']);
-  });
-  it('dedups multiple gaps under one folder', () => {
-    expect(writeGrantScope(['/repos/proj/backend/a.js', '/repos/proj/backend/b.js'], folders))
-      .toEqual(['/repos/proj/backend']);
-  });
-  it('drops a gap that lands in NO project folder — it stays hard-denied', () => {
-    expect(writeGrantScope(['/somewhere/else/x.js'], folders)).toEqual([]);
-    expect(writeGrantScope(['/repos/proj/backend/a.js', '/tmp/evil/x'], folders))
-      .toEqual(['/repos/proj/backend']); // only the in-project gap is grantable
-  });
-  it('grants the MOST specific folder when project folders nest (least privilege)', () => {
-    const nested = ['/repos/proj', '/repos/proj/backend'];
-    expect(writeGrantScope(['/repos/proj/backend/x.js'], nested)).toEqual(['/repos/proj/backend']);
-    expect(writeGrantScope(['/repos/proj/backend/x.js'], [...nested].reverse()))
-      .toEqual(['/repos/proj/backend']); // order-independent — longest wins
   });
 });
 

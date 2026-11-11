@@ -109,7 +109,6 @@ export const SHED_LADDER = Object.freeze([
   'emanon',          // navigation core
   'sovereignty',     // gateway posture
   'voiceSitting',    // speech-mode signal
-  'projectFiles',    // project shared files
   'skills',          // the Craft menu
   'voice',           // the Voice Pack — late: the being's own words outlast
                      // standing context, but EXTENDED sheds before CORE ever

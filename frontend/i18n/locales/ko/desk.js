@@ -20,7 +20,6 @@ export default Object.freeze({
     innerlife: '내면',
     map: '저장소 지도',
     pdf: 'PDF',
-    projects: '프로젝트',
     refinement: 'NITE',
     security: '보안',
     legal: '법무',
@@ -97,7 +96,6 @@ export default Object.freeze({
     routeProviderUnknown: '라우트 — {{provider}} — 알 수 없음',
     session: '세션 {{clock}}',
     turn: '턴 {{count}}',
-    project: '프로젝트 — {{name}}',
     folder: '폴더 — {{name}}',
   }),
 
@@ -105,7 +103,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: '새 채팅',
-    newChatTitleProject: '{{project}}에서 새 채팅 시작 — 현재 채팅을 대체합니다. {{tab}}은 나란히 새로 엽니다',
     newChatTitle: '여기서 새 채팅 시작 — 현재 채팅을 대체합니다. {{tab}}은 나란히 새로 엽니다',
     council: '평의회',
     councilTitleEnter: '이 창을 평의회로 전환 — 여러 네우마, 하나의 방',

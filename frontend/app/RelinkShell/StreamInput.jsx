@@ -254,7 +254,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
         {/* Missing speech components — invite the install instead of a bare
             error flash; anchored above the composer. */}
         {setup ? <DictationSetup missing={setup.missing} onDismiss={dismissSetup} /> : null}
-        {/* Everything a witness can bring in — files, a folder focus, a project.
+        {/* Everything a witness can bring in — files and a folder focus.
             Lives BESIDE the chamfered box: its drop-up would be clipped inside. */}
         <AttachMenu
           disabled={!connected}

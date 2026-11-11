@@ -47,7 +47,7 @@ import {
   rejectBlockedInput as _rejectBlockedInput, rejectImageTurn as _rejectImageTurn,
   rejectRefusedTurn as _rejectRefusedTurn, redeemAttachments, resolveRetryTurn,
   composeVisionTurn, composeDocsBlock, ensureSession as _ensureSession, formatEchoTurn,
-  pinSessionToProject as _pinSessionToProject, composeInterruptedRecord, sanitizeSpeaker,
+  composeInterruptedRecord, sanitizeSpeaker,
 } from './portal-turn-input.js';
 import {
   resolveVoiceDNA as _resolveVoiceDNA, resolveTurnEffort as _resolveTurnEffort,
@@ -195,7 +195,6 @@ export const streamConsciousness = async (connection, message) => {
     }
   }
 
-  const wasNewChat = !connection.sessionId;
   const sessionId = await _ensureSession(connection, companion);
   noteOperatorWords(connection, thought, { visitor: Boolean(speaker), origin }); // only the operator's words exempt a planted value
   // Take identity for this turn (THE TAKES): a fresh ask opens a new
@@ -206,9 +205,6 @@ export const streamConsciousness = async (connection, message) => {
   const take = retryTurn
     ? { ...retryTurn.take, userOnDisk: true, ...(retryTurn.revised ? { ask: retryTurn.thought } : {}) }
     : { turnId: randomUUID(), takeIndex: 1, userOnDisk: false };
-  // A chat started fresh under an active project joins it at mint (once —
-  // resumed chats already carry a sessionId, so this never re-fires).
-  if (wasNewChat && sessionId) await _pinSessionToProject(connection, companion, sessionId, thought);
   // The point lands BEFORE the provider is asked (RETRY-ANYWHERE): every
   // check the turn must pass has passed, so a provider failure from here on
   // leaves a retryable point on disk — the ask never vanishes with the error.

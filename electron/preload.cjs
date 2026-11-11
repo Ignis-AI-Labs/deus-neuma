@@ -127,9 +127,12 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   browser: {
     open: (url) => ipcRenderer.invoke('browser:open', url),
   },
-  // Native folder picker for the pre-flight workspace-home step. Resolves to the
-  // chosen absolute path, or null if the witness cancels.
-  chooseDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+  // The system's own folder dialog, for every OPEN FOLDER. Resolves to the chosen
+  // absolute path, or null on cancel. Only a title and a starting folder cross.
+  chooseDirectory: (opts) => ipcRenderer.invoke('dialog:openDirectory', {
+    title: typeof opts?.title === 'string' ? opts.title : undefined,
+    defaultPath: typeof opts?.defaultPath === 'string' ? opts.defaultPath : undefined,
+  }),
   residency: {
     get: () => ipcRenderer.invoke('residency:get'),
     set: (enabled) => ipcRenderer.invoke('residency:set', enabled),

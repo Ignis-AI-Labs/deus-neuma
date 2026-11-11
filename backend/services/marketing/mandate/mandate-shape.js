@@ -22,7 +22,7 @@ export const MAX_DAYS = 90;
 export const DEFAULT_POST_PACE = 2;
 export const MAX_POST_PACE = 12;
 export const DEFAULT_REPLY_PACE = 5;
-export const MAX_REPLY_PACE = 20;
+export const MAX_REPLY_PACE = 50;
 export const LEGAL_PAUSE_LEVELS = Object.freeze(['critical', 'high', 'medium', 'low']);
 export const DEFAULT_LEGAL_PAUSE_AT = 'high';
 export const STANDINGS = Object.freeze(['none', 'active', 'paused', 'withdrawn', 'expired']);
@@ -44,6 +44,9 @@ export const TRIPS = Object.freeze({
   'cross-company': 'a post tried to carry one company\'s campaign on another company\'s account',
   'cross-house': 'an act reached past this house',
 });
+
+// The reply tiers (reply-tier.js), in the words the operator reads.
+export const REPLY_TIER_WORDS = 'Easy replies (thanks, a question answered, a pointer, warm words) go out on their own. Replies that touch money or a migration, an argument, a claim or a promise still ask you, with the reason.';
 
 // What hostile text a stranger wrote does instead: it holds, never pauses.
 export const HOLD_WORDS = 'Text from outside that tries to steer it is held for you: anything drawn from it waits on you, and the rest goes on.';
@@ -202,7 +205,10 @@ export const coverPost = (mandate, { house, laneId, entry, campaignCompanyId = n
   const day = paceDay(moment, mandate.timeZone);
   const pace = isReply ? mandate.replyPace : account.pace;
   const standing = paceCount(entries, { mandateId: mandate.id, accountId: account.id, day, timeZone: mandate.timeZone, replies: isReply });
-  if (standing >= pace) return trip('pace', `${account.id} already has ${standing} of ${pace} ${isReply ? 'replies' : 'posts'} on ${day}`);
+  // Past the day's reply pace the rest simply wait on the operator (Founder
+  // 2026-11-11: […]) — a busy day of answers is no tripwire.
+  if (standing >= pace && isReply) return ask(`${account.id} has answered ${standing} of its ${pace} replies on ${day} — the rest wait for you`);
+  if (standing >= pace) return trip('pace', `${account.id} already has ${standing} of ${pace} posts on ${day}`);
   return covered;
 };
 
@@ -243,11 +249,11 @@ export const plainWords = (mandate, { seatName = 'Your CMO' } = {}) => {
   const does = [
     mandate.acts.posts ? `post on ${listWords(where)}` : null,
     mandate.acts.renders ? 'make images and videos' : null,
-    mandate.acts.replies ? `answer replies on X (${mandate.replyPace} a day)` : null,
+    mandate.acts.replies ? `answer the easy replies on X (up to ${mandate.replyPace} a day)` : null,
   ].filter(Boolean);
   return [
     `${seatName} may ${listWords(does)} without asking you, ${termWords(mandate)}.`,
-    mandate.acts.replies ? null : 'Replies still ask you.',
+    mandate.acts.replies ? REPLY_TIER_WORDS : 'Replies still ask you.',
     'Everything it does shows in DONE FOR YOU as it happens.',
     'It pauses and asks you if a post goes past the pace, makes a serious legal claim, is refused as spam, crosses companies, or anything tries to change the mandate.',
     HOLD_WORDS,

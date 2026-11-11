@@ -28,15 +28,14 @@ test('skill selection, allocation controls and composer retain keyboard operatio
       import {SendLayer} from ${modulePath('frontend/app/RelinkShell/WalletAppSend.jsx')};
       import {StreamInput} from ${modulePath('frontend/app/RelinkShell/StreamInput.jsx')};
       import { ConsciousnessProvider } from ${modulePath('frontend/app/RelinkShell/consciousness-context.js')};
-      import {ProjectContext} from ${modulePath('frontend/app/RelinkShell/projects/project-context.js')};
       import {WindowManager} from ${modulePath('frontend/app/windowing/WindowManager.jsx')};
       import ${modulePath('frontend/styles/tokens.css')};
       const Page = () => { const [sent,setSent]=useState(''); return <ConsciousnessProvider value={{}}>
-        <ProjectContext.Provider value={{projects:[]}}><WindowManager registry={{}}>
+        <WindowManager registry={{}}>
           <section id="skills"><skillsApp.Body /></section>
           <section id="allocation"><SendLayer wallet={{balance:'1'}} identities={[]} /></section>
           <section id="composer"><StreamInput connected onSend={setSent} /><output>{sent}</output></section>
-        </WindowManager></ProjectContext.Provider></ConsciousnessProvider>; };
+        </WindowManager></ConsciousnessProvider>; };
       createRoot(document.getElementById('root')).render(<Page />);`;
     const bundle = await build({ configFile: false, root: process.cwd(), logLevel: 'error',
       esbuild: { jsx: 'automatic', loader: 'jsx' },

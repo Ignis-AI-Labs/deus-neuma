@@ -9,8 +9,6 @@ import { saveTabs, loadTabs } from '../../frontend/app/windowing/window-storage.
 import { sittingGround } from '../../frontend/app/RelinkShell/desk-focus.js';
 import { ExplorerPanel } from '../../frontend/app/RelinkShell/ExplorerPanel.jsx';
 import { FocusContext } from '../../frontend/app/RelinkShell/use-desk-focus.js';
-import { ProjectContext } from '../../frontend/app/RelinkShell/projects/project-context.js';
-import { useProjectsState } from '../../frontend/app/RelinkShell/projects/use-projects.js';
 import { useFilesWatch } from '../../frontend/app/RelinkShell/use-files-watch.js';
 
 const diskRoot = new URLSearchParams(window.location.search).get('root');
@@ -43,12 +41,9 @@ function Stream({ id }) {
 }
 function Explorer({ ground }) {
   useFilesWatch();
-  const projects = useProjectsState();
-  return <ProjectContext.Provider value={projects}>
-    <FocusContext.Provider value={{ focus: sittingGround(ground) }}>
-      <ExplorerPanel collapsed={false} />
-    </FocusContext.Provider>
-  </ProjectContext.Provider>;
+  return <FocusContext.Provider value={{ focus: sittingGround(ground) }}>
+    <ExplorerPanel collapsed={false} />
+  </FocusContext.Provider>;
 }
 function Fixture() {
   const [open, setOpen] = useState(true);

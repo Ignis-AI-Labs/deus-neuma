@@ -23,15 +23,3 @@ export const getHouseWorkspace = async () => {
 export const setHouseWorkspace = async (root) =>
   apiCall('PUT', BASE, { body: { root }, errorPrefix: 'Could not set the house workspace' });
 
-// impure — raise (idempotently) a being's own working ground inside the
-// house → { path }. Unset ground or any failure reads as no path, so
-// callers fall back instead of blocking on a missing ground.
-export const ensureBeingGround = async (neumaId) => {
-  try {
-    return await apiCall('POST', `${BASE}/being-ground`, {
-      body: { neumaId }, errorPrefix: "Could not raise the being's ground",
-    });
-  } catch {
-    return { path: null };
-  }
-};

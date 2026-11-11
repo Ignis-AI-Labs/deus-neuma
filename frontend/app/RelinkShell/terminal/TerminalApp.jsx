@@ -14,7 +14,6 @@
 import { Suspense, useContext, useState } from 'react';
 import { AppTitle } from '../app-title.jsx';
 import { FocusContext } from '../use-desk-focus.js';
-import { useProjects } from '../projects/project-context.js';
 import { focusFolderPath } from '../desk-focus.js';
 import { useWindows } from '../../windowing/use-windows.js';
 import { useSettled } from '../use-settled.js';
@@ -39,16 +38,14 @@ const TerminalFallback = () => (
   <div className="vessel-fallback"><span className="label-data">TERMINAL — STARTING</span></div>
 );
 
-// The shell opens where THIS window is focused (D4): a bare folder is the
-// cwd, a project focus contributes its working folder, unfocused defers to
-// the server's legacy resolution. The value is only a HINT — the server
+// The shell opens in the folder in focus (D4); with nothing in focus the
+// server opens it in the home folder. The value is only a HINT — the server
 // re-validates it against the opened roots (resolveFocusPath) before any
 // spawn, so a hostile path can never become a shell's cwd (D3).
 const TerminalBody = ({ windowId, payload }) => {
   const focus = useContext(FocusContext);
-  const projects = useProjects();
   const { dispatch } = useWindows();
-  const cwd = focusFolderPath(focus?.focus ?? null, projects?.projects || null);
+  const cwd = focusFolderPath(focus?.focus ?? null);
   const [agents, setAgents] = useState([]);
 
   // Which CLI agents this machine can actually spawn — asked once at mount.

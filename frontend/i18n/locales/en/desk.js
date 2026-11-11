@@ -33,7 +33,6 @@ export default Object.freeze({
     innerlife: 'INNER LIFE',
     map: 'REPO MAP',
     pdf: 'PDF',
-    projects: 'PROJECTS',
     refinement: 'NITE',
     security: 'SECURITY',
     legal: 'LEGAL',
@@ -110,7 +109,6 @@ export default Object.freeze({
     routeProviderUnknown: 'ROUTE — {{provider}} — UNKNOWN',
     session: 'SESSION {{clock}}',
     turn: 'TURN {{count}}',
-    project: 'PROJECT — {{name}}',
     folder: 'FOLDER — {{name}}',
   }),
 
@@ -118,7 +116,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: 'NEW CHAT',
-    newChatTitleProject: 'Start a fresh chat in {{project}} — replaces this one; {{tab}} opens another alongside it',
     newChatTitle: 'Start a fresh chat here — replaces this one; {{tab}} opens another alongside it',
     council: 'COUNCIL',
     councilTitleEnter: 'Switch this window to the council — several neuma, one room',

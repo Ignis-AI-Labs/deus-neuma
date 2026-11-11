@@ -20,8 +20,8 @@ import { loadLatestSession } from './session-history.js';
 
 export const runLinkHistoryLoad = ({
   wsService, dispatch, portalFocusFrame,
-  companionRef, navigationSeqRef, turnStartedRef, projectChatSeenRef,
-  focusRef, projectsRef, historyFailedRef,
+  companionRef, navigationSeqRef, turnStartedRef,
+  focusRef, historyFailedRef,
   target, navigationSeq,
 }) => (async () => {
   let result = await loadLatestSession(target?.neumaId);
@@ -55,13 +55,9 @@ export const runLinkHistoryLoad = ({
   if (!sessionId || turnStartedRef.current) return;
   const neumaId = target?.neumaId;
   if (!neumaId) return;
-  // This session already exists — account for it so its first complete
-  // is not mistaken for a new project chat (the same guard resumeSession
-  // sets; without it a link-up under a project spuriously refreshes).
-  projectChatSeenRef.current = sessionId;
   const bind = { neumaId, companionName: target?.name || 'Unknown', sessionId };
   wsService.setSessionState(bind); // reconnects re-bind the same chat
-  wsService.send('portal:resume', { ...bind, ...portalFocusFrame(focusRef.current, projectsRef.current) });
+  wsService.send('portal:resume', { ...bind, ...portalFocusFrame(focusRef.current) });
   // A failed load must never swallow a gated thought — the gate resolves
   // either way and the send checks historyFailedRef before flying.
 })().catch((error) => {

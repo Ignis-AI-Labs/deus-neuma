@@ -65,7 +65,7 @@ export {
   deniedPatternsFor, matchesDeniedPattern, laneStateWriteReason, moveDestination, collectPathArgs,
   normalizeToolArgs, checkPathAccess, realpathOfNearestExisting,
   resolveGrantDir, isWithinRoots, findUngrantedReadPaths,
-  findUngrantedWritePaths, writeGrantScope,
+  findUngrantedWritePaths,
 } from './sandbox-path-policy.js';
 
 // impure (reads the current roots) — every ground that holds lanes, wherever

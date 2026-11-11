@@ -32,7 +32,7 @@ export const readVitals = async (wallet, { limit } = {}) => {
   }
 };
 
-// impure — per-wallet append queue (user-projects pattern): appends are
+// impure — per-wallet append queue: appends are
 // read-free single lines, but racing appends must not interleave a write.
 const appendQueues = new Map();
 const withAppendQueue = (wallet, task) => {

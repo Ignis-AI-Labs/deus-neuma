@@ -44,6 +44,13 @@ export const capacityBanner = (capacity) => {
   }
 
   const scanned = latest?.substrate?.model ? String(latest.substrate.model).toUpperCase() : null;
+  // never scanned on this model: the machine's measurement carries over (scanForModel)
+  if (latest?.carriedFrom) {
+    return {
+      line: `${head ? `${head} — ` : ''}RUNS UP TO ${ceiling} IN PARALLEL (MEASURED WITH ${String(latest.carriedFrom).toUpperCase()})`,
+      stale: false,
+    };
+  }
   if (model && scanned && scanned !== model) {
     return {
       line: `${head} — CEILING ${ceiling} WAS MEASURED ON ${scanned} · RE-SCAN IN RECORD`,

@@ -22,10 +22,8 @@ import { createLogger } from './logger.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { materializeRecurrence } from '../../core/tasks/assigned-plan.js';
 import { readVoicePack } from '../../core/voice-pack/voice-store.js';
-import { readProjectStore } from './user-projects.js';
 import { readUserTasks } from './user-tasks.js';
 import { readVitals } from './user-vitals.js';
-import { buildProjectFilesSection } from './project-files.js';
 import { getSubstrateProfile } from './substrate-detector.js';
 import { readUsableCapacity } from './capacity-store.js';
 import { houseSeatFor, chargeOfTitle, seatLabelOf } from './house-titles.js';
@@ -71,31 +69,11 @@ let cachedCapacity = null;
 let capacityExpiresAt = 0;
 const getCapacity = async () => {
   if (Date.now() > capacityExpiresAt) {
-    cachedCapacity = await readUsableCapacity().catch(() => null);
+    const served = (await getSubstrate().catch(() => null))?.llm?.model ?? null;
+    cachedCapacity = await readUsableCapacity(served).catch(() => null);
     capacityExpiresAt = Date.now() + SUBSTRATE_TTL_MS;
   }
   return cachedCapacity;
-};
-
-// impure — the active project's shared files as an always-on prompt section,
-// or null. Read FRESH each turn (not cached) so a file the operator adds
-// mid-conversation lands on the very next message. Wallet-scoped and strictly
-// non-critical: any failure yields null and the turn proceeds without the
-// extra context rather than breaking.
-const _projectFilesSection = async (connection) => {
-  const space = connection.space;
-  if (!space || space.kind !== 'project' || !connection.walletAddress) return null;
-  try {
-    const store = await readProjectStore(connection.walletAddress);
-    const project = store.projects.find((p) => p.id === space.id);
-    if (!project || !project.sharedFiles?.length) return null;
-    const { section, skipped } = await buildProjectFilesSection(project);
-    if (skipped.length) log.info('project shared files skipped', { project: space.id, count: skipped.length });
-    return section;
-  } catch (err) {
-    log.warn('project files context failed', { project: space.id, err: err.message });
-    return null;
-  }
 };
 
 // impure — the CMO's office briefing as an always-on prompt section, or ''.
@@ -432,7 +410,6 @@ const _loadOperatorVitals = async (connection) => {
 export {
   getSubstrate,
   getCapacity,
-  _projectFilesSection as projectFilesSection,
   _houseSeatSection as houseSeatSection,
   _cmoBriefingSection as cmoBriefingSection,
   _replyCandidatesSection as replyCandidatesSection,

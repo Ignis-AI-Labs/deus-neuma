@@ -36,7 +36,7 @@ export const handleCodingTool = async (ws, connection, identity, args, sandbox, 
   if (!sandbox) {
     const error = connection._turnSandboxError
       ? `The coding shell is unavailable this turn: ${connection._turnSandboxError}`
-      : 'No focused workspace is open. Focus an opened folder or project before using coding tools.';
+      : 'No focused workspace is open. Focus an opened folder before using coding tools.';
     sendToolEvent(ws, connection.companion, { tool, status: 'unavailable', summary: 'coding shell unavailable', detail: error });
     return { tool, status: 'unavailable', error };
   }

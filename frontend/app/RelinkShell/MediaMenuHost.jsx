@@ -15,7 +15,6 @@
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { useWindows } from '../windowing/use-windows.js';
 import { FocusContext } from './use-desk-focus.js';
-import { useProjects } from './projects/project-context.js';
 import { focusRootsOf } from './desk-focus.js';
 import { getRoots, openFolder as openFilesRoot } from '../../services/user-files.js';
 import { dirOf } from '../../utils/path.js';
@@ -40,9 +39,8 @@ const desktopShell = () => (typeof window !== 'undefined' && typeof window.neuma
 const MediaMenuHostView = () => {
   const windows = useWindows();
   const focusLens = useContext(FocusContext);
-  const projects = useProjects();
   // The roots the Explorer tree SHOWS through this desk's focus (null: all).
-  const within = focusRootsOf(focusLens?.focus ?? null, projects?.projects || null, null);
+  const within = focusRootsOf(focusLens?.focus ?? null, null);
   const [menu, setMenu] = useState(null); // { media, player, at, page } | null
   const [loupe, setLoupe] = useState(null); // { src, alt } | null
   const [note, setNote] = useState(null);

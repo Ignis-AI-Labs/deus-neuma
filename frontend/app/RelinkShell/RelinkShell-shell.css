@@ -105,13 +105,14 @@
   color: var(--color-text-tertiary);
 }
 
-/* Active project — sits before the wallet, marked as the live context */
-.relink-status-project {
-  margin-left: auto;
-  color: var(--color-text-secondary);
-}
+/* The folder in focus sits before the wallet; whichever comes first after
+   the turn count carries the strip's right alignment. */
 .relink-status-folder {
+  margin-left: auto;
   color: var(--color-text-tertiary);
+}
+.relink-status-turn + .relink-status-wallet {
+  margin-left: auto;
 }
 
 /* Window title bar content — the connection dot, the neuma's name, and

@@ -9,7 +9,7 @@ import { useSettled } from './use-settled.js';
 import { getHouseWorkspace, setHouseWorkspace } from '../../services/house-workspace.js';
 import { getAllianceGrounds, setAllianceRoot } from '../../services/alliance-ground.js';
 import { uiSound } from '../../services/ui-sound.js';
-import { FolderPicker } from './picker/FolderPicker.jsx';
+import { ChooseFolder } from './picker/ChooseFolder.jsx';
 
 // THE GROUND — the house's shared workspace, set once by the operator. All
 // the house's repositories live under <root>/repos, and councils may work
@@ -62,8 +62,8 @@ export const HouseGround = () => {
       </p>
       {editing || !ground.root ? (
         <div className="house-ground-set">
-          {/* BROWSE is the door — the real disk, the same picker as FILES
-              and PROJECTS. The typed path stays as the power fallback. */}
+          {/* BROWSE is the door — the system's own folder dialog, the same
+              one OPEN FOLDER uses. The typed path stays as the power fallback. */}
           <button type="button" className="house-ground-go label-data" onClick={() => { uiSound('open'); setPicking(true); }}>
             BROWSE…
           </button>
@@ -92,7 +92,7 @@ export const HouseGround = () => {
       ) : null}
       {note ? <p className="house-ground-note label-data">{note}</p> : null}
       {picking ? createPortal(
-        <FolderPicker
+        <ChooseFolder
           initialPath={ground?.root || undefined}
           onPick={(abs) => { setPicking(false); setDraft(abs); saveRoot(abs); }}
           onCancel={() => setPicking(false)}
@@ -185,7 +185,7 @@ export const AllianceGround = () => {
       ) : null}
       {note ? <p className="house-ground-note label-data">{note}</p> : null}
       {picking ? createPortal(
-        <FolderPicker
+        <ChooseFolder
           initialPath={state?.root || state?.suggestion || undefined}
           onPick={(abs) => { setPicking(false); setDraft(abs); saveRoot(abs); }}
           onCancel={() => setPicking(false)}

@@ -333,8 +333,8 @@ export const addGrantedReadRoot = (layer, dir) => {
  * Return a new policy layer with `dir` added to the operator-granted WRITE
  * scopes (pathGrants.write). Pure — never mutates; null grows a fresh layer.
  * A write grant is a deliberate escalation past the being's own lane, so it is
- * only ever handed out for a folder inside the ACTIVE project (the portal write
- * gate enforces that bound + default-deny), and the sandbox's denied-path list
+ * only ever handed out for the target's own folder on the operator's yes (the
+ * portal write gate asks; default-deny), and the sandbox's denied-path list
  * still fires first — a granted folder never opens .git/.env/keys/config or
  * another being's DNA. Write scope also grants read (you can read where you can
  * write); the sandbox folds pathGrants.write into the read roots.

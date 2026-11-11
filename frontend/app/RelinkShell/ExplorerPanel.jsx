@@ -1,9 +1,8 @@
 // ExplorerPanel — the desk's persistent left rail (D6/D12).
 //
 // The witness's working surface: this window's focus (name + branch) up top,
-// OPEN FOLDER riding the existing FolderOpenFlow, the widen-to-project
-// affordance when the focused folder already belongs to a project, and the
-// FILES tree HOSTED, never forked — the one mount of filesApp.Body anywhere
+// OPEN FOLDER riding the existing FolderOpenFlow, and the FILES tree HOSTED,
+// never forked — the one mount of filesApp.Body anywhere
 // (panel-only law D12), scoped through the pure focusRootsOf lens — and the
 // FolderShelf (FAVORITES/RECENTS macros) at the rail's foot. Collapsed
 // it thins to a rail; the body stays MOUNTED (hidden) so the one-mount law
@@ -13,9 +12,8 @@
 import { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import './ExplorerPanel.css';
 import { FocusContext } from './use-desk-focus.js';
-import { useProjects } from './projects/project-context.js';
-import { focusLabel, focusOwner, focusRootsOf } from './desk-focus.js';
-import { FolderOpenFlow } from './projects/FolderOpenFlow.jsx';
+import { focusLabel, focusRootsOf } from './desk-focus.js';
+import { FolderOpenFlow } from './FolderOpenFlow.jsx';
 import { FolderShelf } from './FolderShelf.jsx';
 import { filesApp } from './files/FilesApp.jsx';
 import { gitStatus } from '../../services/user-files.js';
@@ -35,12 +33,9 @@ const RailGlyph = ({ open }) => (
 
 const ExplorerPanelView = ({ collapsed, onToggle, width = PANEL_WIDTH_DEFAULT, onWidth }) => {
   const focusLens = useContext(FocusContext);
-  const projects = useProjects();
   const focus = focusLens?.focus ?? null;
-  const projectList = projects?.projects || null;
-  const label = focusLabel(focus, projectList);
-  const owner = focusOwner(focus, projectList);
-  const focusRoots = focusRootsOf(focus, projectList, []);
+  const label = focusLabel(focus);
+  const focusRoots = focusRootsOf(focus, []);
 
   // THE RESIZE. The rail's width is the operator's, not the design's — a
   // fixed 300px is a guess about someone else's monitor, their font size, and
@@ -101,13 +96,9 @@ const ExplorerPanelView = ({ collapsed, onToggle, width = PANEL_WIDTH_DEFAULT, o
   const [openNote, setOpenNote] = useState('');
   // The focus repo's live truth: branch, divergence, and the STATE the
   // focus name wears (clean = green, dirty = amber, conflicted = red —
-  // witness law). Probed for folder AND project focuses (the project's
-  // working folder); the path is only a HINT — the server contains it
-  // against the open roots (D3); a refusal or error degrades to no color.
-  const focusPath = focus?.kind === 'folder'
-    ? focus.path
-    : (projectList?.find((p) => p.id === focus?.id)?.folder ?? null);
-  const knownBranch = label?.folder?.branch ?? null;
+  // witness law). The path is only a HINT — the server contains it against
+  // the open roots (D3); a refusal or error degrades to no color.
+  const focusPath = focus?.kind === 'folder' ? focus.path : null;
   const [liveGit, setLiveGit] = useState(null); // { branch, ahead, behind, state } | null
 
   const gitPathRef = useRef(focusPath);
@@ -154,8 +145,8 @@ const ExplorerPanelView = ({ collapsed, onToggle, width = PANEL_WIDTH_DEFAULT, o
     return () => window.removeEventListener('neuma:files-focus-root', onFocusRoot);
   }, [collapsed, onToggle]);
 
-  const branch = knownBranch ?? liveGit?.branch ?? null;
-  const divergence = knownBranch ? '' : divergenceLabel(liveGit?.ahead ?? 0, liveGit?.behind ?? 0);
+  const branch = liveGit?.branch ?? null;
+  const divergence = divergenceLabel(liveGit?.ahead ?? 0, liveGit?.behind ?? 0);
   // The focus name wears the repo's state (clean/dirty/conflicted); a
   // non-repo focus stays uncolored.
   const state = liveGit?.state ?? null;
@@ -190,17 +181,7 @@ const ExplorerPanelView = ({ collapsed, onToggle, width = PANEL_WIDTH_DEFAULT, o
             </div>
 
             <div className="xp-focus">
-              {label?.kind === 'project' ? (
-                <>
-                  <span className="xp-kind label-data">PROJECT</span>
-                  <span className={`xp-name${state ? ` is-${state}` : ''}`} title={label.name}>{label.name}</span>
-                  {label.folder ? (
-                    <span className="xp-sub label-data">
-                      {label.folder.name}{label.folder.branch ? ` · ${label.folder.branch}` : ''}
-                    </span>
-                  ) : null}
-                </>
-              ) : label?.kind === 'folder' ? (
+              {label?.kind === 'folder' ? (
                 <>
                   <span className="xp-kind label-data">FOLDER</span>
                   <span className={`xp-name${state ? ` is-${state}` : ''}`} title={label.folder.name}>{label.folder.name}</span>
@@ -212,19 +193,6 @@ const ExplorerPanelView = ({ collapsed, onToggle, width = PANEL_WIDTH_DEFAULT, o
             </div>
 
             <button type="button" className="xp-open" onClick={() => setPicking(true)}>OPEN FOLDER…</button>
-
-            {owner && focus?.kind === 'folder' ? (
-              // Widen-to-project: a pure focus transition (D5) — no store
-              // mutation, the window simply looks through the owning project.
-              <button
-                type="button"
-                className="xp-widen"
-                title={`Work through the whole project — ${owner.name}`}
-                onClick={() => focusLens?.setFocus({ kind: 'project', id: owner.id })}
-              >
-                WIDEN TO PROJECT — {owner.name}
-              </button>
-            ) : null}
 
             {openNote ? <p className="xp-note label-data">{openNote}</p> : null}
           </div>

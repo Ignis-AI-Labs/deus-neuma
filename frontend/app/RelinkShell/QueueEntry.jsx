@@ -15,6 +15,7 @@ import { mediaMenuDoor } from './media-menu.js';
 import { XPostLink } from './XPostLink.jsx';
 import { AccountMark } from './accounts/AccountMark.jsx';
 import { LegalChip } from './legal-chip/LegalChip.jsx';
+import { ReplyTierMark } from './ReplyTierMark.jsx';
 import { Bar } from './hud-instruments.jsx';
 import { CountdownMark } from './CountdownMark.jsx';
 import { cardWhen } from './queue-when.js';
@@ -350,6 +351,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
                       {String(entry.reply.category).toUpperCase()}
                     </span>
                   ) : null}
+                  <ReplyTierMark tier={entry.tier} />
                 </div>
                 <p className="queue-preview-text">{entry.reply.toTextPreview}</p>
               </div>

@@ -16,8 +16,7 @@
 
 import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { FocusContext } from './use-desk-focus.js';
-import { useOpenFolder } from './projects/use-open-folder.js';
-import { useProjects } from './projects/project-context.js';
+import { useOpenFolder } from './use-open-folder.js';
 import { focusFolderPath } from './desk-focus.js';
 import { useWindows } from '../windowing/use-windows.js';
 import { browseDir, getRoots, openFolder as openFilesRoot, readFile } from '../../services/user-files.js';
@@ -39,11 +38,10 @@ const within = (path, root) => path === root || path.startsWith(`${root.replace(
 
 const PathOpenerView = () => {
   const focusLens = useContext(FocusContext);
-  const projects = useProjects();
   const { openFolder } = useOpenFolder();
   const windows = useWindows();
   const [note, setNote] = useState(null);
-  const baseDir = focusFolderPath(focusLens?.focus ?? null, projects?.projects || null);
+  const baseDir = focusFolderPath(focusLens?.focus ?? null);
   const resolvePath = useCallback((path) => {
     if (typeof path !== 'string') return null;
     if (isAbsolutePath(path)) return path;

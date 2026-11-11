@@ -19,7 +19,6 @@ import { useConsciousness } from './consciousness-context.js';
 import { DeskTabs } from './DeskTabs.jsx';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
-import { useProjects } from './projects/project-context.js';
 import { useWindows } from '../windowing/use-windows.js';
 import { autotitleChats } from './workspace-sessions.js';
 import { ChatSearch } from './ChatSearch.jsx';
@@ -216,7 +215,6 @@ const ChatsBody = () => {
   // switch here re-renders it.
   const { t } = useTranslation('desk');
   const { state: streamState, resumeSession, newSession, activeCompanion } = useConsciousness();
-  const projects = useProjects();
   const { dispatch } = useWindows();
   const council = useCouncil();
   // Which register of the history is showing: 'ones' | 'councils'.
@@ -268,17 +266,6 @@ const ChatsBody = () => {
     setActiveId(null);
     newSession();
     openStream();
-  };
-
-  const onPin = async (id) => {
-    if (!projects?.activeProjectId) return;
-    uiSound('activate');
-    try {
-      await projects.pin(projects.activeProjectId, {
-        neumaId, companionName, sessionId: id, label: displayLabel(id),
-      });
-      setNote(`Pinned to ${projects.activeProject?.name || 'project'}`);
-    } catch (e) { setNote(e.message); }
   };
 
   const startRename = (id) => { uiSound('open'); setNote(''); setRenaming(id); setDraft(labels[keyOf(id)] || ''); };
@@ -423,15 +410,6 @@ const ChatsBody = () => {
               <button type="button" className="chats-ctx-item" onClick={() => { onResume(menu.id); setMenu(null); }}>OPEN</button>
               <button type="button" className="chats-ctx-item" onClick={() => { startRename(menu.id); setMenu(null); }}>RENAME</button>
               <button type="button" className="chats-ctx-item" onClick={() => { runAutotitle({ sessionIds: [menu.id], force: true }); setMenu(null); }}>AUTO-TITLE</button>
-              <button
-                type="button"
-                className="chats-ctx-item"
-                disabled={!projects?.activeProjectId}
-                title={projects?.activeProjectId ? '' : 'Activate a project first'}
-                onClick={() => { onPin(menu.id); setMenu(null); }}
-              >
-                {projects?.activeProjectId ? `PIN TO ${(projects.activeProject?.name || 'PROJECT').toUpperCase()}` : 'PIN TO PROJECT'}
-              </button>
             </>
           )}
         </div>,

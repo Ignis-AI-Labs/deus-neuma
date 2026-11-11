@@ -19,6 +19,7 @@ import { join } from 'path';
 import { createLogger } from './logger.js';
 import { getDataRoot } from './data-root.js';
 import { SERVING_PARALLEL_SLOTS } from './serving-launch-config.js';
+import { scanForModel } from '../../core/runtime/tab-budget.js';
 
 const CAPACITY_DIR = join(getDataRoot(), 'capacity');
 const log = createLogger('CapacityStore');
@@ -119,6 +120,22 @@ export const usableCapacity = (latest, served = SERVING_PARALLEL_SLOTS) => (
     : latest
 );
 
-// impure — the most recent run as the platform may use it (usableCapacity).
-/** @returns {Promise<?Object>} */
-export const readUsableCapacity = async () => usableCapacity(await readLatestCapacity());
+// impure — the run that speaks for `model` (scanForModel: its own newest finished
+// scan, else the machine's newest, carried and marked `carriedFrom`), in full.
+/**
+ * @param {?string} model - the model served now; null = the newest run
+ * @returns {Promise<?Object>}
+ */
+export const readCapacityFor = async (model) => {
+  const pick = scanForModel(await listCapacity(), model);
+  if (!pick) return null;
+  const run = await readCapacity(pick.run.id);
+  return run && pick.carriedFrom ? { ...run, carriedFrom: pick.carriedFrom } : run;
+};
+
+// impure — the run for `model` as the platform may use it (usableCapacity).
+/**
+ * @param {?string} [model] - the model served now; absent = the newest run
+ * @returns {Promise<?Object>}
+ */
+export const readUsableCapacity = async (model = null) => usableCapacity(await readCapacityFor(model));

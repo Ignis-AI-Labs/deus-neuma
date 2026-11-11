@@ -34,7 +34,7 @@ import { landsInOpenFolder } from './open-folder-autonomy.js';
 import { requestToolApproval } from './tool-approval.js';
 import { checkToolArgs } from './rogue-detector.js';
 import { requestablePattern, sensitiveGrantCovers } from './sensitive-grants.js';
-import { createSandboxedCallTool, findUngrantedReadPaths, findUngrantedWritePaths, normalizeToolArgs, resolveGrantDir, writeGrantScope, isWithinRoots, isWriteOperation, collectPathArgs, checkPathAccess, logToolCall } from './tool-sandbox.js';
+import { createSandboxedCallTool, findUngrantedReadPaths, findUngrantedWritePaths, normalizeToolArgs, resolveGrantDir, isWriteOperation, collectPathArgs, checkPathAccess, logToolCall } from './tool-sandbox.js';
 import { withFsPrimitives, withFsRouting, fsPolicyTarget, fsRetiredHint } from './fs-primitives.js';
 import { focusGroundOf, focusGroundRoots, ensureFocusGroundReachable } from './focus-ground.js';
 import { resolveCeremonyScratchDir, ceremonyWriteRoots } from '../../core/birth/ceremony-write.js';
@@ -54,7 +54,6 @@ import {
   hydratePathGrants as _hydratePathGrants,
   grantReadScope as _grantReadScope,
   grantApprovedScope as _grantApprovedScope,
-  activeProjectFolders as _activeProjectFolders,
 } from './portal-tool-grants.js';
 import {
   persistOverCapResult as _persistOverCapResult,
@@ -316,15 +315,9 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         ];
         const gaps = findUngrantedWritePaths(normArgs, writeRoots);
         if (gaps.length > 0) {
-          // Least privilege stays: when the gap lands inside an ACTIVE
-          // project's folders, grant the most specific project folder;
-          // otherwise grant the target's own directory — the operator's
-          // yes/no is the governor, not the project registry.
-          const projectFolders = await _activeProjectFolders(connection);
-          const projectScoped = writeGrantScope(gaps, projectFolders);
-          const bare = gaps.filter((g) => !isWithinRoots(g, projectFolders));
-          const bareDirs = await Promise.all(bare.map((g) => resolveGrantDir(toolName, g)));
-          writeScopeDirs = [...new Set([...projectScoped, ...bareDirs])];
+          // Least privilege: grant the target's own directory — the operator's
+          // yes/no is the governor.
+          writeScopeDirs = [...new Set(await Promise.all(gaps.map((g) => resolveGrantDir(toolName, g))))];
         }
       }
 

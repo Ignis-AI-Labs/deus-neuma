@@ -212,7 +212,8 @@ export const describeCapacity = (capacity) => {
   const ceiling = capacity?.ceiling;
   if (!Number.isInteger(ceiling) || ceiling < 1) return '';
   const date = typeof capacity.runAt === 'string' ? capacity.runAt.slice(0, 10) : '';
-  const when = date ? ` (measured ${date})` : '';
+  const on = capacity.carriedFrom ? ` with ${capacity.carriedFrom}` : '';
+  const when = date || on ? ` (measured${date ? ` ${date}` : ''}${on})` : '';
 
   if (ceiling === 1) {
     return capacity.boundClass === 'B'

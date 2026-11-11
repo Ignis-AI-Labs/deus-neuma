@@ -20,7 +20,6 @@ export default Object.freeze({
     innerlife: '内心',
     map: '仓库图',
     pdf: 'PDF',
-    projects: '项目',
     refinement: 'NITE',
     security: '安全',
     legal: '法务',
@@ -97,7 +96,6 @@ export default Object.freeze({
     routeProviderUnknown: '路由 — {{provider}} — 未知',
     session: '会话 {{clock}}',
     turn: '回合 {{count}}',
-    project: '项目 — {{name}}',
     folder: '文件夹 — {{name}}',
   }),
 
@@ -105,7 +103,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: '新聊天',
-    newChatTitleProject: '在 {{project}} 中开始新聊天 — 替换当前这一个；{{tab}} 会并排另开一个',
     newChatTitle: '在此处开始新聊天 — 替换当前这一个；{{tab}} 会并排另开一个',
     council: '议事会',
     councilTitleEnter: '将此窗口切换到议事会 — 多个 neuma，同一个房间',

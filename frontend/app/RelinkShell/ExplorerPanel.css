@@ -185,8 +185,7 @@
   color: var(--color-text-disabled);
 }
 
-.xp-open,
-.xp-widen {
+.xp-open {
   background: transparent;
   border: 1px solid var(--line);
   color: var(--color-text-secondary);
@@ -199,16 +198,9 @@
   transition: color var(--snap), border-color var(--snap);
 }
 
-.xp-open:hover,
-.xp-widen:hover {
+.xp-open:hover {
   color: var(--signal);
   border-color: var(--signal-dim);
-}
-
-.xp-widen {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .xp-note {
