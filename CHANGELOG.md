@@ -6,6 +6,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.126] - 2026-11-11
+
+Notes: `docs/operations/release-notes-0.1.126.md`.
+
+### Added
+
+- A model too large for your graphics card can now run with the rest of it in system RAM, instead of failing to load. It stays inside your GPU share and a RAM share (half of your RAM by default) that always leaves 8 GB free for everything else. It runs slower than a model that fits the card.
+- When your marketing mandate answers replies, easy X replies now go out on their own: thanks, a question answered, a pointer, warm words. A reply that touches money, a migration, an argument, a claim or a promise waits for you instead, and the reply card shows ASKS YOU with the reason. Your marketing lead can also send any reply to you on purpose.
+- The mandate screen has a REPLIES A DAY box, up to 50 a day. Once the day's replies are used up, the rest wait for you instead of pausing the whole mandate.
+
+### Changed
+
+- On 12 GB graphics cards, the model's memory for conversation (its cache) now takes about half the space at the same speed, so the recommended model stays wholly on the card instead of spilling into system RAM.
+- OPEN FOLDER now uses your computer's own folder dialog (KDE's, Windows Explorer's or Finder's), with its places, new folder and search. The desk's own picker appears only when the desk is opened in a plain web browser.
+- The terminal opens in the folder in focus, and in your home folder when nothing is in focus. It no longer opens in a project's folder.
+
+### Removed
+
+- Projects. The folder in focus is now the workspace: the Explorer, terminal, map and beings' coding tools all work in the folder you open. Your saved project data stays on disk untouched. When a being asks to write outside its own space, approving gives it that folder only, not a whole project.
+
+### Fixed
+
+- Each social account can now carry its own developer app. On X every account has its own app, and pairing a second account with the first account's app keys was refused as "Unauthorized". Paste an account's own Consumer Key and Secret on its row. The X keys screen also has folded setup steps, including setting the app to Read and write before making the access token, and says in plain words what an "Unauthorized" answer means.
+- Switching models no longer asks for a new parallel capacity scan. Every model you have scanned keeps its own result, and a model you have never scanned uses this machine's latest measurement, named as such, instead of dropping to one conversation at a time.
+- An approved X post with images no longer fails because of a brief network drop. The image upload is tried again for up to a minute, and if it still fails, the post's error says why the network failed.
+
 ## [0.1.123] - 2026-11-10
 
 Notes: `docs/operations/release-notes-0.1.123.md`.
