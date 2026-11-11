@@ -215,13 +215,23 @@ export const humanBytes = (n) => {
  *   device and the Vulkan path is off, so the model is loaded on the processor only.
  * - Ollama's own cloud models are off (2026-10-24): they send prompts to Ollama's servers, and a
  *   neuma lives only on a model in the operator's custody (docs/protocols/sovereignty-boundary.md).
+ * - An 8-bit KV cache, with the flash attention it needs (2026-11-11, neuma-research
+ *   inference-speed/runs/ollama-12g-2026-11-11T07-27-40-292Z.tsv, T4 IQ3_XXS, the 12 GB tier): the
+ *   served model takes 11.0 GiB of the card at the 20,480 window instead of 11.6, 11.5 instead of
+ *   12.4 at 32,768, at the same speed (~80 tok/s on the rig). On an RTX 5070's 12 GB, with the
+ *   desktop's share taken, that is the whole model on the card rather than part of it in RAM.
+ *   The person's own setting stands.
  * @param {{window: number, holdGpu?: boolean, env?: Record<string, string|undefined>}} input
  * @returns {Readonly<Record<string, string>>} the keys to set
  */
+/** The KV cache the platform's own Ollama keeps (managedServeEnv), and its size against f16. */
+export const OLLAMA_KV_CACHE = 'q8_0';
 export const managedServeEnv = ({ window, holdGpu = false, env = {} }) => Object.freeze({
   OLLAMA_CONTEXT_LENGTH: String(window),
   OLLAMA_NUM_PARALLEL: env.OLLAMA_NUM_PARALLEL || '1',
   OLLAMA_MAX_LOADED_MODELS: env.OLLAMA_MAX_LOADED_MODELS || '1',
   OLLAMA_NO_CLOUD: env.OLLAMA_NO_CLOUD || '1',
+  OLLAMA_FLASH_ATTENTION: env.OLLAMA_FLASH_ATTENTION || '1',
+  OLLAMA_KV_CACHE_TYPE: env.OLLAMA_KV_CACHE_TYPE || OLLAMA_KV_CACHE,
   ...(holdGpu ? { CUDA_VISIBLE_DEVICES: '-1', OLLAMA_VULKAN: '0' } : {}),
 });

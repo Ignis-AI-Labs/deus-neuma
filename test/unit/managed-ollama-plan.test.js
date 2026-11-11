@@ -182,7 +182,13 @@ describe('pull progress', () => {
 
 describe("the platform's own server: what it is started with (2026-10-23)", () => {
   test('the fitted window as its default, one model and one slot', () => {
-    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1' });
+    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1', OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+  });
+
+  test('flash attention with an 8-bit KV cache: half the cache on the card, more of the model with it; the person\'s own setting stands', () => {
+    expect(managedServeEnv({ window: 20480 })).toMatchObject({ OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+    expect(managedServeEnv({ window: 20480, env: { OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' } }))
+      .toMatchObject({ OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' });
   });
 
   test("Ollama's cloud models are off by default (prompts stay on this PC); the person's own setting stands", () => {

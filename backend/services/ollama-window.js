@@ -59,6 +59,9 @@ export const kvBytesPerToken = (info) => {
   return Math.ceil(layers / interval) * kvHeads * (keyLen + valueLen) * 2;
 };
 
+/** q8_0 keeps 32 values in 34 bytes where f16 takes 64: the KV the platform's own Ollama holds. */
+export const Q8_KV_SCALE = 34 / 64;
+
 /** GPU memory a model needs at a window: weights + KV + the runtime around them. Pure. */
 export const gpuBytesAt = (window, { weightsBytes, kvPerToken }) =>
   weightsBytes + window * (kvPerToken ?? UNKNOWN_KV_PER_TOKEN) + RUNTIME_BASE + window * RUNTIME_PER_TOKEN;

@@ -197,7 +197,7 @@ const runJob = async (given, signal, loadModel) => {
  * Fitted before the load, so the card's free memory is the truth. impure
  */
 const loadAndAnswer = async (plan, signal, { bin, endpoint, started, guard, startedWindow }) => {
-  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold });
+  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold, ownServer: Boolean(plan.managed) });
   await keepWindow(fit.window);
   let at = endpoint;
   if (started && fit.window !== startedWindow) at = await restartServer(bin, plan.managed, endpoint, { window: fit.window, holdGpu: guard.hold });
@@ -450,7 +450,7 @@ export const startManagedAtBoot = async () => {
     }
     // Fitted at every start, before the model loads: the card's free memory is today's, not the setup's
     if (started && hasModel) {
-      const fit = await fitManagedWindow(endpoint, record.model, { onGpu: !guard.hold });
+      const fit = await fitManagedWindow(endpoint, record.model, { onGpu: !guard.hold, ownServer: true });
       await keepWindow(fit.window);
       if (fit.window !== window) endpoint = await restartServer(bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
       log.info('model window fitted to the graphics card', { window: fit.window, onGpu: fit.onGpu, line: fit.line });
