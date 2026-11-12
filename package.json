@@ -1,6 +1,6 @@
 {
   "name": "neuma",
-  "version": "0.1.128",
+  "version": "0.1.129",
   "license": "FSL-1.1-ALv2",
   "description": "Deus Neuma — sovereign relationships with AI.",
   "homepage": "https://deusneuma.ai",
@@ -61,6 +61,7 @@
     "postinstall": "node scripts/native-abi-cache.mjs harvest --never-fail && node scripts/patch-typeless-deps.mjs && node scripts/patch-nsis-template.mjs",
     "native:abi": "node scripts/native-abi-cache.mjs status",
     "lint": "eslint backend/ core/ frontend/ --ext .js,.cjs,.mjs",
+    "lint:a11y": "node scripts/check-a11y.mjs",
     "dist:win": "npm run build && electron-builder --win",
     "predist:win": "node scripts/ensure-native-abi.mjs electron",
     "dist:mac": "npm run build && electron-builder --mac && node scripts/check-mac-artifacts.mjs",
@@ -124,9 +125,13 @@
   "overrides": {
     "express@4.22.3": {
       "body-parser": "1.20.9"
+    },
+    "eslint-plugin-jsx-a11y": {
+      "eslint": "$eslint"
     }
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@electron/rebuild": "4.1.0",
     "@eslint/eslintrc": "3.3.7",
     "@eslint/js": "10.0.1",
@@ -139,6 +144,7 @@
     "electron-builder": "26.18.0",
     "eslint": "10.10.0",
     "eslint-plugin-jsdoc": "64.3.6",
+    "eslint-plugin-jsx-a11y": "6.10.2",
     "natural": "8.1.0",
     "supertest": "7.2.2",
     "vite": "5.4.19",

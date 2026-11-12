@@ -19,6 +19,12 @@
 // the chat quote the operator, not the law: they are not held.
 // An answer with no citation, no section sign and no mark is not a legal
 // answer to hold. A wake turn (the house clock) is not held: no chat waits on it.
+//
+// BALANCE (Design note, 2026-11-12: the hold was […] — it held the
+// CLO walking him through a grant form, for quoting the form). What is held
+// is what is presented AS LAW: a quotation only on a line that names a
+// citation or a legal authority, and a bare section sign only beside one.
+// Quoting a form, a document, a post or a person is ordinary writing.
 
 import { squeeze, unresolvedMarks, unboundQuotes, quoteSegments, holdsInOrder } from './citation-record.js';
 import { cloDesignation } from './clo-designation.js';
@@ -49,6 +55,19 @@ const MENTIONS = Object.freeze([
   [/\b([A-Z][\w.&'-]*)\s+v\.\s+([A-Z][\w.&'-]*)/g, (m) => `${m[1]}v${m[2]}`],
 ]);
 const LEGAL_SIGNS = /§|\bArt\.\s*\d/;
+// A legal authority named in words: a regulator, a named Act, a numbered
+// Rule or lettered Regulation, or the law's own nouns.
+const AUTHORITY_NAMED = /\b(?:SEC|CFTC|FTC|FINRA|FCA|ESMA|EDPB|IRS|DOJ|OFAC|MiCA|MiFID|GDPR)\b|\b[A-Z][\w-]*(?:\s+[A-Z][\w-]*)*\s+Act\b|\bthe Act\b|\bRule\s+\d|\bRegulation\s+[A-Z]{1,3}\b/;
+const AUTHORITY_WORDS = /\b(?:statut\w*|regulations?|directives?|courts?|case law|precedent)\b/i;
+
+/** Does this line speak AS law — a citation the hold keys, or a legal authority named? Pure. */
+export const speaksAsLaw = (line) => {
+  const text = String(line ?? '');
+  return citationMentions(text).length > 0 || AUTHORITY_NAMED.test(text) || AUTHORITY_WORDS.test(text);
+};
+
+// pure — the line of the answer a quoted span sits on.
+const lineOf = (text, span) => String(text ?? '').split('\n').find((line) => line.includes(span)) ?? '';
 
 /** Every citation the text makes that the hold can key. Pure. */
 export const citationMentions = (text) => {
@@ -107,14 +126,17 @@ export const holdProblems = (text, confirmed, said = []) => {
   if (!marks.length && !mentions.length && !LEGAL_SIGNS.test(String(text ?? ''))) return [];
   const covers = confirmed.flatMap(coverKeys);
   const uncovered = mentions.filter((m) => !covers.some((c) => c.includes(m.key)));
+  // A section or article sign the hold cannot key counts only beside a named authority.
+  const signed = String(text ?? '').split('\n').some((line) => LEGAL_SIGNS.test(line) && speaksAsLaw(line));
   const heard = said.map(squeeze).filter(Boolean);
   const unbound = unboundQuotes(text, confirmed)
+    .filter((span) => speaksAsLaw(lineOf(text, span)))
     .filter((span) => !heard.some((words) => holdsInOrder(words, quoteSegments(span))));
   return [
     marks.length ? `it still carries ${marks.join(', ')}` : null,
-    confirmed.length ? null : 'no citation check has passed in this chat, yet it cites law',
+    !confirmed.length && (mentions.length || signed) ? 'no citation check has passed in this chat, yet it cites law' : null,
     uncovered.length ? `it cites what no confirmed record covers: ${uncovered.slice(0, 8).map((m) => m.text).join('; ')}${uncovered.length > 8 ? ` (+${uncovered.length - 8} more)` : ''}` : null,
-    unbound.length ? `quotation marks around words no confirmed record quotes: ${unbound.slice(0, 4).map((s) => `"${s.length > 80 ? `${s.slice(0, 80)}…` : s}"`).join('; ')}` : null,
+    unbound.length ? `quotation marks around words of law no confirmed record quotes: ${unbound.slice(0, 4).map((s) => `"${s.length > 80 ? `${s.slice(0, 80)}…` : s}"`).join('; ')}` : null,
   ].filter(Boolean);
 };
 

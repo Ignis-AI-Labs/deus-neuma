@@ -14,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import './StreamChats.css';
 import { useConsciousness } from './consciousness-context.js';
+import { useCouncil } from './council-context.js';
+import { ChatBatchItems } from './ChatBatchItems.jsx';
 import { useWindows } from '../windowing/use-windows.js';
 import { ChatSearch } from './ChatSearch.jsx';
 import { useChatSearch } from './use-chat-search.js';
@@ -31,6 +33,7 @@ import { uiSound } from '../../services/ui-sound.js';
 export const StreamChats = () => {
   const { activeCompanion, resumeSession, newSession, wsService, state } = useConsciousness() || {};
   const windows = useWindows();
+  const council = useCouncil();
   const { t } = useTranslation('desk');
   const neumaId = activeCompanion?.neumaId || null;
   const companionName = activeCompanion?.name || 'Unknown';
@@ -193,7 +196,7 @@ export const StreamChats = () => {
           <button
             type="button"
             className="stream-chats-new label-data"
-            onClick={() => { playSound('confirm'); newSession(); }}
+            onClick={() => { playSound('confirm'); council?.leaveRoom(); newSession(); }}
           >
             {t('stream.newChatRail')}
           </button>
@@ -241,6 +244,7 @@ export const StreamChats = () => {
                     onMouseLeave={() => setTip(null)}
                     onBlur={() => setTip(null)}
                     onClick={() => {
+                      council?.leaveRoom(); // a one-on-one shows in the one-on-one view (#25)
                       if (r.live) return; // already on screen — a no-op, not a reload
                       playSound('menuOpen');
                       resumeSession({ neumaId, companionName, sessionId: r.id });
@@ -282,19 +286,17 @@ export const StreamChats = () => {
       {menu ? createPortal(
         <div
           className="stream-chats-ctx"
-          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 150) }}
+          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 200) }}
           onMouseDown={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
         >
           {menu.batch ? (
-            <>
-              <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ force: false }); setMenu(null); }}>TITLE UNTITLED</button>
-              <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ force: true }); setMenu(null); }}>RETITLE ALL</button>
-            </>
+            <ChatBatchItems itemClass="stream-chats-ctx-item" titling={titling} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
           ) : (
             <>
               <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { startRename(menu.id); setMenu(null); }}>RENAME</button>
               <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ sessionIds: [menu.id], force: true }); setMenu(null); }}>AUTO-TITLE</button>
+              <ChatBatchItems itemClass="stream-chats-ctx-item" separatorClass="stream-chats-ctx-sep" titling={titling} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
             </>
           )}
         </div>,

@@ -23,7 +23,7 @@ import { safeSend as _safeSend } from './ws-send.js';
 import { mcpService } from './mcp.js';
 import { withFsPrimitives, namingTools } from './fs-primitives.js';
 import { birthProviderGate } from './birth-provider-gate.js';
-import { createStreamRequest, decodeToolCallDeltas, mergeToolCallDelta, getConfig, createThinkFilter, readWithStallGuard, readStreamLine, frameChannelBytes, tallyChannelBytes, getThinkBehavior, stripThinkTags, THINK_TOKEN_BUDGET, getActiveModelCapabilities } from './llm-provider.js';
+import { createStreamRequest, decodeToolCallDeltas, mergeToolCallDelta, getConfig, createThinkFilter, readWithStallGuard, stallLimitFor, readStreamLine, frameChannelBytes, tallyChannelBytes, getThinkBehavior, stripThinkTags, THINK_TOKEN_BUDGET, getActiveModelCapabilities } from './llm-provider.js';
 import { completionBudget, promptFits, estimateTokens, describeBudget } from './context-budget.js';
 import { getCapabilities } from './model-capabilities.js';
 import { toOpenAITools } from './tool-schema.js';
@@ -363,6 +363,7 @@ export const sendStageToLLM = async (connection, stageData) => {
     // somewhere no field in this log could name). The census names the field
     // whatever it turns out to be. Field names and sizes only, never content.
     const channelBytes = {};
+    const stallLimit = stallLimitFor(streamResult); // a stage's DNA write is one long tool call
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullResponse = '';
@@ -645,7 +646,7 @@ export const sendStageToLLM = async (connection, stageData) => {
     while (true) {
       // Stall-guarded read — a silent half-open stream throws instead of
       // freezing the ceremony forever
-      const { value, done } = await readWithStallGuard(reader);
+      const { value, done } = await readWithStallGuard(reader, stallLimit);
       if (done) break;
       firstFrameAt ??= Date.now();
 

@@ -17,8 +17,11 @@
  * A per-level measurement produced by the scan runner.
  * @typedef {Object} CapacitySample
  * @property {number} concurrency - ladder level (simultaneous requests fired)
- * @property {number} aggregateTokPerSec - summed completion tok/s across the level
+ * @property {number} aggregateTokPerSec - completion tokens the level delivered
+ *   per second of its generation window (first token to last end)
  * @property {number} perAgentLatencyMs - median per-request wall-clock latency
+ * @property {number} [slowestLatencyMs] - median across waves of the slowest
+ *   request's latency (absent on scans stored before #23)
  * @property {boolean} ok - whether every request at this level completed
  * @property {string} tokenSource - how tokens were counted (provenance)
  */
@@ -189,9 +192,12 @@ export const classifyBound = (samples, opts = {}) => {
     // COMPLETED: a config-bound server queues the second request and answers it
     // slowly. An errored level-2 (latency from a timeout, not a queue) is a
     // different failure — never let it masquerade as "single slot configured".
+    // The SLOWEST request carries the queue: in a one-slot queue the median of
+    // two is 1.5× (one waited, one did not) and the signature never fired (#23).
+    const level2Latency = level2?.slowestLatencyMs ?? level2?.perAgentLatencyMs;
     const serialized =
       level1 && level2 && level2.ok && level1.perAgentLatencyMs > 0 &&
-      level2.perAgentLatencyMs >= latencyRatioB * level1.perAgentLatencyMs &&
+      level2Latency >= latencyRatioB * level1.perAgentLatencyMs &&
       gainOver(level1, level2) < gainB;
     return serialized ? 'B' : 'C';
   }

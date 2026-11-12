@@ -189,13 +189,14 @@ const StandbyToggle = () => {
 // this one replaces the conversation, that one opens another alongside it.
 const NewChatButton = () => {
   const { newSession } = useConsciousnessPick('newSession');
+  const council = useCouncil();
   const { t } = useTranslation('desk');
   return (
     <button
       type="button"
       className="relink-snd"
       title={t('stream.newChatTitle', { tab: t('stream.newTab') })}
-      onClick={() => { uiSound('activate'); newSession(); }}
+      onClick={() => { uiSound('activate'); council?.leaveRoom(); newSession(); }}
     >
       {t('stream.newChat')}
     </button>

@@ -23,7 +23,7 @@
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { passesInstallOwner, requireInstallOwner } from '../services/install-owner.js';
-import { addCompany, listCompanies, setCompanyBlock, setCompanyRepos } from '../services/marketing/companies.js';
+import { addCompany, listCompanies, setCompanyBlock, setCompanyParent, setCompanyRepos } from '../services/marketing/companies.js';
 import { companySources, proposeRepos } from '../services/marketing/company-sources.js';
 import { grantRepoRead, revokeRepoRead } from '../services/marketing/company-repo-grants.js';
 import { createLogger } from '../services/logger.js';
@@ -97,6 +97,20 @@ const grantRoute = (act, verb) => async (req, res) => {
 };
 router.post('/:companyId/repos/read-grant', requireInstallOwner, grantRoute(grantRepoRead, 'granted'));
 router.delete('/:companyId/repos/read-grant', requireInstallOwner, grantRoute(revokeRepoRead, 'taken back'));
+
+// Move a company in the tree {parentId: id | null}, keeping the rest of its block.
+router.put('/:companyId/parent', async (req, res) => {
+  try {
+    const parentId = typeof req.body?.parentId === 'string' && req.body.parentId.trim() ? req.body.parentId.trim() : null;
+    const set = await setCompanyParent(req.walletAddress, req.params.companyId, parentId);
+    if (!set.ok) return res.status(400).json({ error: set.error });
+    log.info('company moved', { companyId: req.params.companyId, parentId, wallet: req.walletAddress });
+    return res.json({ company: set.company });
+  } catch (error) {
+    log.error('company move failed', { companyId: req.params.companyId, error: error.message });
+    return res.status(500).json({ error: 'Failed to move the company' });
+  }
+});
 
 router.put('/:companyId', async (req, res) => {
   try {

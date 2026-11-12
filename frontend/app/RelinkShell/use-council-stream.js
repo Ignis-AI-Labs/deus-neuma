@@ -108,9 +108,12 @@ export const useCouncilStream = (wsService, { focus = null } = {}) => {
     };
     const onApprovalSettled = (d) => safe({ type: 'APPROVAL_SETTLED', id: d.id, decision: d.decision });
     const onError = (d) => safe({ type: 'ERROR', code: d.code, message: d.message });
+    // A dissolved council has no room to show: the stream returns to the
+    // one-on-one (#25 — it stayed in the empty council view).
     const onClosed = () => {
       endFilter();
       safe({ type: 'CLOSED' });
+      if (!settled()) setRoom(false);
     };
 
     wsService.on('council:opened', onOpened);

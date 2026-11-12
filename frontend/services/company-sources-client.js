@@ -22,6 +22,9 @@ export const addCompany = ({ name, parentId }) => req('/api/v1/companies', { met
 /** Every company's site and repos, each repo's grant to the seated CMO. impure. */
 export const getCompanySources = () => req('/api/v1/companies/sources');
 
+/** Move a company in the house's tree — under a parent, or to the top (null). impure. */
+export const setCompanyParent = (companyId, parentId) => req(`${at(companyId)}/parent`, { method: 'PUT', body: { parentId: parentId || null } });
+
 /** Replace a company's repos list [{path?, remote?, role?}]. impure. */
 export const setCompanyRepos = (companyId, repos) => req(`${at(companyId)}/repos`, { method: 'PUT', body: { repos } });
 

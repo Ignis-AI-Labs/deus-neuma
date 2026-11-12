@@ -73,6 +73,7 @@ import { campaignCreateIntent, campaignUpdateIntent, campaignAskIntent } from '.
 import { marketingPlanIntent } from './marketing-plan.js';
 import { marketingBoardArrangeIntent } from './marketing-board-arrange.js';
 import { marketingCompanyLinksIntent } from './marketing-company-links.js';
+import { marketingAccountIntents } from './marketing-account-acts.js';
 import {
   memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
   memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
@@ -95,7 +96,7 @@ const TYPES = new Map(
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
     campaignCreateIntent, campaignUpdateIntent, campaignAskIntent,
-    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent,
+    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent, ...marketingAccountIntents,
     memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
     memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
   ].map((t) => [t.name, t]),

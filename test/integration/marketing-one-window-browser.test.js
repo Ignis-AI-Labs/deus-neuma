@@ -176,9 +176,9 @@ describe('MARKETING slice 6 — one window', () => {
     // The crew, in place: the platform's, for every account.
     await at.locator('[data-standing="crew"]').click();
     await at.locator('.ps-drawer[aria-label="the crew"]').waitFor();
-    // Campaigns are the company's: the door lands on Northwind's CAMPAIGNS tab.
-    await at.locator('[data-door="marketing"]', { hasText: 'CAMPAIGNS' }).click();
-    await page.locator(`${OFFICE} .mkt-body[data-mkt-level="northwind"][data-mkt-tab="campaigns"]`).waitFor({ timeout: 30000 });
+    // Campaigns are the company's: the account names the ones it carries, each a press to its page on Northwind's CAMPAIGNS (Design note, 2026-11-12.
+    await at.locator('[data-account-campaigns] [data-account-campaign]').first().click();
+    await page.locator(`${OFFICE} .mkt-body[data-mkt-level="northwind"][data-mkt-tab="campaigns"] [data-campaign-page]`).waitFor({ timeout: 30000 });
     expect(errors).toEqual([]);
     await page.close();
   }, 120000);

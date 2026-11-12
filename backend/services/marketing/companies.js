@@ -103,6 +103,23 @@ export const setCompanyRepos = async (wallet, companyId, repos) => {
 };
 
 /**
+ * Move a company under another (or to the top, parentId null), keeping the
+ * rest of its block — site, legal entity, repos — as it stands (Founder
+ * 2026-11-12: […]).
+ * The block's own door judges the move (a missing parent, a loop). impure.
+ * @param {string} wallet
+ * @param {string} companyId
+ * @param {?string} parentId
+ */
+export const setCompanyParent = async (wallet, companyId, parentId) => {
+  const kit = await readKit(companyId, wallet);
+  if (!kit.ok) return { ok: false, error: kit.error };
+  const block = kit.kit.company && typeof kit.kit.company === 'object' ? kit.kit.company : {};
+  const rest = Object.fromEntries(Object.entries(block).filter(([key]) => key !== 'parentId'));
+  return setCompanyBlock(wallet, companyId, parentId ? { ...rest, parentId } : rest);
+};
+
+/**
  * The company a house's pre-accounts social accounts belong to, and why
  * (account-migrate.js `defaultCompanyFor`). impure.
  * @param {string} wallet

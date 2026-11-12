@@ -19,6 +19,8 @@ import { DoorButton } from './doors/DoorButton.jsx';
 import { CampaignPage } from './campaigns/CampaignPage.jsx';
 import { runsOn } from './campaigns/campaign-form.js';
 import { campaignCard, linkTotals } from './marketing-overview/results-fold.js';
+import { CampaignCardPanel } from './marketing/BoardPanels.jsx';
+import './campaigns/campaign-list.css';
 
 // The campaign board, scoped to ONE space: a platform's own campaigns
 // (channelId = a catalog id), or the MARKETING window's (channelId = null),
@@ -82,6 +84,14 @@ export const CampaignsSection = ({ channelId = null, calm = null, scope = null, 
   const card = useMemo(() => (selected && data
     ? campaignCard(selected, { queue: data.queue, results: data.results, totals: linkTotals(data.links, data.results.links?.counts), now: Date.now() })
     : null), [selected, data]);
+  // MARKETING's list is the BOARD's own campaign panels (Design note, 2026-11-12: […]) — one picture of a campaign wherever it stands; a platform window keeps its rows.
+  const cards = useMemo(() => {
+    if (!inPlace || !data || !scoped) return null;
+    const totals = linkTotals(data.links, data.results.links?.counts);
+    const now = Date.now();
+    return scoped.map((c) => campaignCard(c, { queue: data.queue, results: data.results, totals, now }));
+  }, [inPlace, data, scoped]);
+  const open = (id) => { uiSound('toggle'); setComposing(false); select(id); };
 
   return (
     <section className="settings-sec" data-campaigns-board>
@@ -89,7 +99,15 @@ export const CampaignsSection = ({ channelId = null, calm = null, scope = null, 
         <button type="button" className="outreach-back label-data" onClick={() => { uiSound('toggle'); setComposing(false); select(null); }}>
           ← CAMPAIGNS
         </button>
-      ) : <div className="label-data settings-h">CAMPAIGNS</div>}
+      ) : (
+        <div className="mkc-head">
+          <span className="label-data settings-h">CAMPAIGNS</span>
+          {/* A new campaign starts at the head of the list it joins. */}
+          {inPlace ? (
+            <button type="button" className="settings-set" onClick={() => { uiSound('toggle'); setComposing(true); select(null); }}>NEW CAMPAIGN</button>
+          ) : null}
+        </div>
+      )}
 
       {loadError ? <p className="settings-err">{loadError}</p> : null}
       {!campaigns && !loadError ? <p className="settings-note">Reading the board…</p> : null}
@@ -97,7 +115,16 @@ export const CampaignsSection = ({ channelId = null, calm = null, scope = null, 
       {page ? null : (
         <>
           {scoped?.length === 0 ? <p className="settings-note">No campaigns yet — the field is open.</p> : null}
-          {scoped?.map((c) => (
+          {cards ? (
+            <div className="sub-grid mkc-grid" data-campaign-panels>
+              {cards.map((c) => (
+                // Its name and its OPEN open its page — real buttons, never one wrapped round the others.
+                <div key={c.id} className="sub-span-6 mkc-row">
+                  <CampaignCardPanel card={c} companies={companies} onOpen={open} span={12} nameOpens />
+                </div>
+              ))}
+            </div>
+          ) : scoped?.map((c) => (
             <button key={c.id} type="button" data-campaign-row={c.id}
               className={`settings-provider-row${selectedId === c.id ? ' is-sel' : ''}`}
               onClick={() => { uiSound('toggle'); select(selectedId === c.id ? null : c.id); setComposing(false); }}>
@@ -122,14 +149,7 @@ export const CampaignsSection = ({ channelId = null, calm = null, scope = null, 
           <DoorButton door={{ kind: 'marketing', tab: 'campaigns' }}
             title="MARKETING → CAMPAIGNS — the campaigns on this platform's accounts are each a sub of one company's campaign; give one a sub here and it shows on this board" />
         </div>
-      ) : page ? null : (
-        <div className="settings-control">
-          <button type="button" className="settings-set"
-            onClick={() => { uiSound('toggle'); setComposing(true); select(null); }}>
-            NEW CAMPAIGN
-          </button>
-        </div>
-      )}
+      ) : null}
 
       {composing ? (
         <CampaignEditor
@@ -156,11 +176,14 @@ export const CampaignsSection = ({ channelId = null, calm = null, scope = null, 
         />
       ) : null}
 
-      <div className="settings-control">
-        <button type="button" className="settings-set" onClick={() => refresh().catch((e) => setLoadError(e.message))}>
-          REFRESH
-        </button>
-      </div>
+      {/* MARKETING re-reads on every change a being or the operator makes; a platform window keeps its REFRESH. */}
+      {inPlace ? null : (
+        <div className="settings-control">
+          <button type="button" className="settings-set" onClick={() => refresh().catch((e) => setLoadError(e.message))}>
+            REFRESH
+          </button>
+        </div>
+      )}
     </section>
   );
 };

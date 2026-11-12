@@ -64,7 +64,6 @@
 }
 .ignite-select:hover:not(:disabled) { border-color: var(--line-hover); color: var(--color-text-primary); }
 .ignite-select:disabled { opacity: 0.5; }
-.ignite-select option { background: var(--color-background); color: var(--color-text-primary); }
 /* The substrate model dropdown keeps its bounded width; the shared Select
    owns the rest of its look. */
 .ignite-select-dd { max-width: 260px; }

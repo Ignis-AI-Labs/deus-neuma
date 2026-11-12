@@ -21,6 +21,7 @@ import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { useWindows } from '../windowing/use-windows.js';
 import { autotitleChats } from './workspace-sessions.js';
+import { ChatBatchItems } from './ChatBatchItems.jsx';
 import { ChatSearch } from './ChatSearch.jsx';
 import { useChatSearch } from './use-chat-search.js';
 import { useChatSessions } from './use-chat-sessions.js';
@@ -186,20 +187,18 @@ const CouncilsRegister = ({ council, openStream }) => {
       {menu ? createPortal(
         <div
           className="chats-ctx"
-          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 150) }}
+          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 230) }}
           onMouseDown={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
         >
           {menu.batch ? (
-            <>
-              <button type="button" className="chats-ctx-item" onClick={() => { runAutotitle({ force: false }); setMenu(null); }}>TITLE UNTITLED</button>
-              <button type="button" className="chats-ctx-item" onClick={() => { runAutotitle({ force: true }); setMenu(null); }}>RETITLE ALL</button>
-            </>
+            <ChatBatchItems itemClass="chats-ctx-item" titling={titling} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
           ) : (
             <>
               <button type="button" className="chats-ctx-item" onClick={() => { onReopen(menu.id); setMenu(null); }}>REOPEN</button>
               <button type="button" className="chats-ctx-item" disabled={titling} onClick={() => { startRename(menu.id); setMenu(null); }}>RENAME</button>
               <button type="button" className="chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ councilIds: [menu.id], force: true }); setMenu(null); }}>AUTO-TITLE</button>
+              <ChatBatchItems itemClass="chats-ctx-item" separatorClass="chats-ctx-sep" titling={titling} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
             </>
           )}
         </div>,
@@ -254,9 +253,11 @@ const ChatsBody = () => {
 
   const openStream = () => dispatch({ type: 'OPEN', id: 'chat' });
 
+  // A one-on-one opens in the one-on-one view, never behind a council's (#25).
   const onResume = async (id) => {
     playSound('menuOpen');
     setActiveId(id);
+    council.leaveRoom();
     await resumeSession({ neumaId, companionName, sessionId: id });
     openStream();
   };
@@ -264,6 +265,7 @@ const ChatsBody = () => {
   const onNew = () => {
     playSound('confirm');
     setActiveId(null);
+    council.leaveRoom();
     newSession();
     openStream();
   };
@@ -396,20 +398,18 @@ const ChatsBody = () => {
       {menu ? createPortal(
         <div
           className="chats-ctx"
-          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 150) }}
+          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 230) }}
           onMouseDown={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
         >
           {menu.batch ? (
-            <>
-              <button type="button" className="chats-ctx-item" onClick={() => { runAutotitle({ force: false }); setMenu(null); }}>TITLE UNTITLED</button>
-              <button type="button" className="chats-ctx-item" onClick={() => { runAutotitle({ force: true }); setMenu(null); }}>RETITLE ALL</button>
-            </>
+            <ChatBatchItems itemClass="chats-ctx-item" titling={titling} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
           ) : (
             <>
               <button type="button" className="chats-ctx-item" onClick={() => { onResume(menu.id); setMenu(null); }}>OPEN</button>
               <button type="button" className="chats-ctx-item" onClick={() => { startRename(menu.id); setMenu(null); }}>RENAME</button>
               <button type="button" className="chats-ctx-item" onClick={() => { runAutotitle({ sessionIds: [menu.id], force: true }); setMenu(null); }}>AUTO-TITLE</button>
+              <ChatBatchItems itemClass="chats-ctx-item" separatorClass="chats-ctx-sep" titling={titling} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
             </>
           )}
         </div>,

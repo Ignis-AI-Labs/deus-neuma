@@ -6,7 +6,7 @@
  * test/integration/legal-citation-law.test.js.
  */
 import { describe, it, expect } from 'vitest';
-import { citationMentions, holdProblems, holdThought, wordsSaidInChat, HOLD_HEAD } from '../../backend/services/legal/answer-hold.js';
+import { citationMentions, holdProblems, holdThought, wordsSaidInChat, speaksAsLaw, HOLD_HEAD } from '../../backend/services/legal/answer-hold.js';
 
 // Excerpts of the audited answer, as it was written.
 const AUDITED = [
@@ -39,7 +39,7 @@ describe('what the hold finds unconfirmed', () => {
     expect(problems[1]).toBe('no citation check has passed in this chat, yet it cites law');
     expect(problems[2]).toMatch(/^it cites what no confirmed record covers: 15 U\.S\.C\. § 77b; 15 U\.S\.C\. § 78c; 17 CFR 240\.3b-16/);
     // Both quotations the audit found invented: row 7's "evidence of ownership" and row 9's release sentence.
-    expect(problems[3]).toMatch(/^quotation marks around words no confirmed record quotes: "any evidence of ownership\."; "Digital securities are tokenized/);
+    expect(problems[3]).toMatch(/^quotation marks around words of law no confirmed record quotes: "any evidence of ownership\."; "Digital securities are tokenized/);
   });
 
   it('a cite is covered by the confirmed record that names it; one left out is named', () => {
@@ -52,7 +52,7 @@ describe('what the hold finds unconfirmed', () => {
     const answer = 'A broker is a person "engaged in the business of effecting transactions in securities for the account of others" (15 U.S.C. § 78c).';
     const broker = record('15 U.S.C. § 78c', '(a)(4)(A)', 'engaged in the business of effecting transactions in securities for the account of others');
     expect(holdProblems(answer, [broker])).toEqual([]);
-    expect(holdProblems(answer, [{ ...broker, quote: null }])[0]).toMatch(/^quotation marks around words no confirmed record quotes/);
+    expect(holdProblems(answer, [{ ...broker, quote: null }])[0]).toMatch(/^quotation marks around words of law no confirmed record quotes/);
   });
 
   it('an answer that cites no law is not held, whatever it quotes', () => {
@@ -81,9 +81,10 @@ describe('the words said to the CLO in the chat are theirs to quote', () => {
     expect(holdProblems(WORKING, CONFIRMED, [ASKED])).toEqual([]);
   });
 
-  it('the same quotations nobody said are still held', () => {
-    expect(holdProblems(WORKING, CONFIRMED, ['Draft the referral terms.'])).toEqual([
-      'quotation marks around words no confirmed record quotes: "I don\'t have to go through all this stuff"; "locked for life"; "screen before every payout"',
+  it('quotations on a line that speaks as law, which nobody said and no record quotes, are still held', () => {
+    const asLaw = `${WORKING}\nThe FTC guides require that the connection be "clear and conspicuous in every single post".`;
+    expect(holdProblems(asLaw, CONFIRMED, ['Draft the referral terms.'])).toEqual([
+      'quotation marks around words of law no confirmed record quotes: "clear and conspicuous in every single post"',
     ]);
   });
 
@@ -99,9 +100,40 @@ describe('the words said to the CLO in the chat are theirs to quote', () => {
   });
 
   it('the hold\'s own send-back, quoting the spans it held, never binds them', () => {
-    const thought = holdThought(holdProblems(WORKING, CONFIRMED, []));
+    const asLaw = 'The FTC guides require that the connection be "clear and conspicuous in every single post" (16 CFR 255.5).';
+    const thought = holdThought(holdProblems(asLaw, CONFIRMED, []));
     const said = wordsSaidInChat([{ role: 'user', content: thought, origin: 'hold' }], thought, 'hold');
-    expect(holdProblems(WORKING, CONFIRMED, said)[0]).toMatch(/^quotation marks around words no confirmed record quotes/);
+    expect(holdProblems(asLaw, CONFIRMED, said)[0]).toMatch(/^quotation marks around words of law no confirmed record quotes/);
+  });
+});
+
+// The answer that taught the balance (Design note, 2026-11-12, […]):
+// the CLO walking its operator through a grant form, quoting the form.
+describe('only what is presented AS LAW is held', () => {
+  const FORM = [
+    'Under "Project Summary" write two plain sentences about what the grant pays for.',
+    'In § 3 the form asks "How will you measure the outcome of the project?" — answer with the numbers you already track.',
+    'Scroll down and send me the next section — the project proposal questions — and I\'ll walk it with you.',
+  ].join('\n');
+
+  it('quoting a form, with a section sign that names no law, is ordinary writing: nothing held', () => {
+    expect(holdProblems(FORM, [])).toEqual([]);
+  });
+
+  it('a section sign beside a named authority still cites law', () => {
+    expect(holdProblems('Under § 5 of the Securities Act the offering must be registered.', [])).toEqual(['no citation check has passed in this chat, yet it cites law']);
+  });
+
+  it('a real citation in the same answer is held; the form\'s quotations beside it are not', () => {
+    expect(holdProblems(`${FORM}\nAllowable costs follow 2 CFR 200.403.`, [])).toEqual([
+      'no citation check has passed in this chat, yet it cites law',
+      'it cites what no confirmed record covers: 2 CFR 200.403',
+    ]);
+  });
+
+  it('what speaks as law: a citation, a regulator, a named Act, a numbered Rule, the law\'s own nouns — not a form\'s section', () => {
+    for (const line of ['15 U.S.C. § 78c', 'the SEC said', 'the Securities Act', 'Rule 506(c)', 'the statute reads', 'the court held']) expect(speaksAsLaw(line)).toBe(true);
+    for (const line of ['In § 3 the form asks', 'the next section', 'Project Summary']) expect(speaksAsLaw(line)).toBe(false);
   });
 });
 

@@ -131,11 +131,12 @@ describe('SDT-2 — every MARKETING problem is a door to its exact place', () =>
     expect(await win(page, 'telegram').locator('[data-campaigns-board]').innerText()).not.toContain('Open a campaign in MARKETING');
     await door.click();
     await onTab(page, 'campaigns');
-    // A public platform's account level has no CAMPAIGNS tab: its door lands on its company's CAMPAIGNS.
+    // A public platform's account level has no CAMPAIGNS tab: it names the campaigns it carries (Design note, 2026-11-12,
+    // each a press to its page on its company's CAMPAIGNS.
     await openWindow(page, 'x');
     expect(await xLevel(page).locator('.outreach-tabs [role="tab"]', { hasText: 'CAMPAIGNS' }).count()).toBe(0);
-    await xLevel(page).locator('.ps-tabrow [data-door="marketing"]').click();
-    await office(page).locator('.mkt-body[data-mkt-level="northwind"][data-mkt-tab="campaigns"]').waitFor({ timeout: 30000 });
+    await xLevel(page).locator('.ps-tabrow [data-account-campaigns] [data-account-campaign]').first().click();
+    await office(page).locator('.mkt-body[data-mkt-level="northwind"][data-mkt-tab="campaigns"] [data-campaign-page]').waitFor({ timeout: 30000 });
     expect(errors).toEqual([]);
     await page.close();
   }, 120000);
