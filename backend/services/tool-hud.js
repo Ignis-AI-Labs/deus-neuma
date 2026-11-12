@@ -71,6 +71,7 @@ const asObject = (value) => {
   return plain(parsed) ? parsed : null;
 };
 const NAME_KEYS = Object.freeze(['tool', 'name', 'tool_name', 'id']);
+const FLAT_JOIN = '__'; // tool-schema.js encodeToolName
 
 export const unwrapCall = (match) => {
   if (!isCallDoor(match)) return match;
@@ -85,9 +86,14 @@ export const unwrapCall = (match) => {
   const { [nameKey]: _named, args: nested, ...flat } = sent;
   const args = asObject(nested) || flat;
   const nestedUnread = typeof nested === 'string' && !asObject(nested) ? nested.slice(0, 200) : null;
-  const at = id.indexOf('/');
+  // `server/tool`, or the native function spelling `server__tool` the model
+  // reads in its own function list — split as the parser and the native decode
+  // split it. Kept whole, `caller__get_all_hotels_in_city` reached no server and
+  // was refused as unavailable: 238 wasted rounds, 2026-10-25..11-08 (tool fluency).
+  const slash = id.indexOf('/');
+  const at = slash > 0 ? slash : id.indexOf(FLAT_JOIN);
   const server = at > 0 ? id.slice(0, at) : null;
-  const toolName = at > 0 ? id.slice(at + 1) : id;
+  const toolName = at > 0 ? id.slice(at + (slash > 0 ? 1 : FLAT_JOIN.length)) : id;
   // the door naming the door is refused, never peeled again: a second unwrap
   // downstream would run the inner call past every check that judged the door
   if (isCallDoor({ server, toolName, tool: server ? `${server}/${toolName}` : toolName })) {
@@ -122,8 +128,8 @@ export const contractsOf = (matches, exact) => matches.map((tool) => ({
   call: `system/call {"tool": "${tool.server}/${tool.name}", "args": {…}}`,
 }));
 
-// pure — Levenshtein distance, small strings only (tool names)
-const distance = (a, b) => {
+// pure — Levenshtein distance, small strings only (tool and field names)
+export const distance = (a, b) => {
   const row = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i += 1) {
     let prev = row[0];

@@ -22,10 +22,13 @@ export const warmTranscriber = () => {
 // so the composer can prompt the install instead of flashing a bare error.
 // { preview } asks for the fast live read; { signal } lets a stale one be dropped.
 // The processor speech engine of an installed app reads only 16 kHz WAV: told so once (STT_WANTS_WAV),
-// every later recording is converted before it is sent.
+// every later recording is converted before it is sent. It reads a hold once, on release, and answers
+// a preview with 204: told so once, no later preview is sent (null = no preview from this engine).
 let wantsWav = false;
+let noPreviews = false;
 
 export const transcribe = async (blob, { preview = false, signal } = {}) => {
+  if (preview && noPreviews) return null;
   const headers = authHeaders();
   if (!headers) throw new Error('not signed in');
   const send = (body) => fetch(`/api/v1/voice/transcribe${preview ? '?preview=1' : ''}`, {
@@ -35,6 +38,10 @@ export const transcribe = async (blob, { preview = false, signal } = {}) => {
     signal,
   });
   let res = await send(wantsWav ? await toWav16k(blob) : blob);
+  if (preview && res.status === 204) {
+    noPreviews = true;
+    return null;
+  }
   if (res.status === 415 && !wantsWav) {
     const told = await res.json().catch(() => ({}));
     if (told.code === 'STT_WANTS_WAV') {

@@ -2,9 +2,11 @@
 // platform (managed-stt-plan.js decides; this does). impure (network, fs, child processes).
 //
 // One setup job at a time, polled by the dictation card (the same status shape the old downloader
-// answered). The server starts on the first dictation and stops after IDLE_MS without one, so
-// nothing holds memory while no one speaks (load on demand). Everything lives under
-// <dataRoot>/speech, never inside the install, which is read-only once installed.
+// answered). THE SERVER STAYS UP, the way ears does (2026-11-12: a held key that waits for a model
+// to load is the slowest part of dictation): it starts with the backend once dictation is set up, or when setup finishes, and runs
+// until the backend stops, so a held key never waits for a model to load. The base model holds
+// about 200 MB of memory. Everything lives under <dataRoot>/speech, never inside the install, which
+// is read-only once installed.
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import net from 'node:net';
@@ -17,11 +19,9 @@ import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { plainFailure } from './managed-ollama-errors.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
 import { createLogger } from './logger.js';
-import { WHISPER_CPP_BUILD, sttEngineFor, sttModelFor, sttPlan, sttServerArgs, sttThreads } from './managed-stt-plan.js';
+import { STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttPlan, sttServerArgs, sttThreads } from './managed-stt-plan.js';
 
 const log = createLogger('ManagedSTT');
-// A dictation is short and comes in bursts; the server stays for the next one, then gives its memory back
-const IDLE_MS = 10 * 60_000;
 const START_MS = 60_000;
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -29,19 +29,20 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 /**
  * Does this machine take the processor engine? Yes wherever the repo's Python speech server is not on
  * disk: every installed app (it ships only engines.json). The house and any dev checkout keep the
- * sidecar exactly as before. impure (fs)
+ * sidecar, unless NEUMA_STT_ENGINE=managed asks a checkout for the installed app's engine (to try
+ * what an installed app does). impure (fs, env)
  */
-export const usesManagedStt = () => !fs.existsSync(path.join(REPO_ROOT, 'voice-engines', 'whisper', 'server.py'));
+export const usesManagedStt = () => process.env.NEUMA_STT_ENGINE === 'managed'
+  || !fs.existsSync(path.join(REPO_ROOT, 'voice-engines', 'whisper', 'server.py'));
 
 const home = () => path.join(getDataRoot(), 'speech');
 const engineDir = () => path.join(home(), `whisper.cpp-${WHISPER_CPP_BUILD}`);
 const cores = () => os.availableParallelism?.() ?? os.cpus().length;
-const machineModel = () => sttModelFor(cores());
 
 /** Where the server binary and the model are, and whether both are whole on disk. impure */
 export const sttFiles = () => {
   const engine = sttEngineFor(process.platform, process.arch);
-  const m = machineModel();
+  const m = STT_MODEL;
   const bin = engine ? path.join(engineDir(), engine.bin) : null;
   const modelPath = path.join(home(), 'models', m.name);
   let modelPresent = false;
@@ -106,7 +107,9 @@ export const startSttJob = () => {
   update({ state: 'running', step: 'check', completed: 0, total: 0, error: null, detail: null });
   run().then(() => {
     update({ state: 'succeeded', step: 'done' });
-    log.info('dictation set up', { build: WHISPER_CPP_BUILD, model: machineModel().name });
+    log.info('dictation set up', { build: WHISPER_CPP_BUILD, model: STT_MODEL.name });
+    // set up means ready to speak: the server loads now, not at the first held key
+    ensureSttServer().catch((err) => log.warn('the speech server did not start after setup', { error: err.message }));
   }).catch((err) => {
     log.warn('dictation setup stopped', { error: err.message, code: err.code });
     update({ state: 'failed', ...plainFailure(err) });
@@ -116,7 +119,6 @@ export const startSttJob = () => {
 
 // ── the server ───────────────────────────────────────────────────────────────
 let server = null; // { child, port, ready: Promise }
-let idleTimer = null;
 
 const freePort = () => new Promise((resolve, reject) => {
   const s = net.createServer();
@@ -128,23 +130,15 @@ const answers = async (port) => {
   try { const r = await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1500) }); return r.status < 500; } catch { return false; }
 };
 
-/** Stop the server this process started (idle, or the backend going away). impure */
+/** Stop the server this process started (the backend going away). impure */
 export const stopSttServer = () => {
-  clearTimeout(idleTimer);
-  idleTimer = null;
   if (server?.child && server.child.exitCode === null) server.child.kill();
   server = null;
 };
 
-const touch = () => {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(stopSttServer, IDLE_MS);
-  idleTimer.unref?.();
-};
-
-/** The running server's port: started on first use, on the processor's share. impure */
+/** The running server's port: started once, on the processor's share; started again if it died. impure */
 export const ensureSttServer = async () => {
-  if (server) { touch(); await server.ready; return server.port; }
+  if (server) { await server.ready; return server.port; }
   const f = sttFiles();
   if (!f.installed || !f.modelPresent) throw Object.assign(new Error('dictation is not set up on this machine'), { code: 'STT_COMPONENTS_MISSING' });
   const port = await freePort();
@@ -167,8 +161,24 @@ export const ensureSttServer = async () => {
     throw err;
   }
   log.info('speech server ready', { port, threads: sttThreads(cores()), model: f.model.name });
-  touch();
   return port;
+};
+
+/**
+ * At boot: an installed app with dictation set up starts its speech server now, so the first held
+ * key is answered as quickly as every later one. Nothing is downloaded here; a machine not set up
+ * starts nothing. impure
+ * @param {{managed?: boolean}} [opts] - whether this is an installed app (decided once, from disk)
+ * @returns {Promise<number|null>|null} the server's port once ready (null if it failed), or null when nothing starts
+ */
+export const startSttAtBoot = ({ managed = usesManagedStt() } = {}) => {
+  if (!managed) return null;
+  const f = sttFiles();
+  if (!f.installed || !f.modelPresent) return null;
+  return ensureSttServer().catch((err) => {
+    log.warn('the speech server did not start at boot', { error: err.message });
+    return null;
+  });
 };
 
 /**
@@ -186,7 +196,6 @@ export const transcribeWav = async (wav, { prompt = '' } = {}) => {
   if (prompt) form.append('prompt', prompt);
   const res = await fetch(`http://127.0.0.1:${port}/inference`, { method: 'POST', body: form, signal: AbortSignal.timeout(180_000) });
   const body = await res.json().catch(() => ({}));
-  touch();
   if (!res.ok || typeof body.text !== 'string') throw new Error(body.error || `the speech server answered ${res.status}`);
   return Object.freeze({ text: body.text.trim(), language: body.language ?? null, durationSeconds: body.duration ?? null });
 };

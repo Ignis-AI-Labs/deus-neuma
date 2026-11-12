@@ -62,7 +62,7 @@ import {
 import { createTurnToolEpochs, heldCallResult, recordCallOutcome, recordIntentReceipts } from './portal-tool-epochs.js';
 import { heldRepeatResult } from './witness-tool-epochs.js';
 import { unwrapCalls, unknownToolHint } from './tool-hud.js';
-import { refusedBeforeDispatch } from './turn-catalog-gate.js';
+import { admitCall } from './turn-catalog-gate.js';
 import { beginTurnOperation, finishTurnOperation, checkpointTurnEpoch } from './turn-operation-checkpoint.js';
 import { scopeRecoveryCall } from './coding-recovery-repeat.js';
 import { toolRepeatEvent } from './tool-repeat-event.js';
@@ -199,9 +199,9 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
     // Substrate dialect repair: a smashed "<server>_<tool>" name routes to the
     // real tool instead of reading as unavailable. The list is BEING-FACING:
     // the seven fs primitives stand where the 16 organ spellings used to.
-    const match = noteWorkingSetCall(connection, recordBenchmarkToolCall(connection, await scopeRecoveryCall(_unsmashToolName(rawMatch, withFsPrimitives(mcpService.getToolsContext()?.available_tools || [])), connection)));
+    const { match, refused } = admitCall(connection, noteWorkingSetCall(connection, recordBenchmarkToolCall(connection, await scopeRecoveryCall(_unsmashToolName(rawMatch, withFsPrimitives(mcpService.getToolsContext()?.available_tools || [])), connection))));
     const { toolName, args } = match;
-    const refused = refusedBeforeDispatch(connection, match); if (refused) { results.push(refused); continue; } // unreadable args, a nested door, a tool never offered
+    if (refused) { results.push(refused); continue; } // unreadable args, a nested door, a tool never offered, arguments that do not fit its schema
     // Repeats retain their prior verdict; recovery is scoped to observed shell state.
     const epoch = turnEpochs.epoch;
     const resultIndex = results.length;

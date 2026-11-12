@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { STT_MODELS, WHISPER_CPP_BUILD, sttEngineFor, sttModelFor, sttPlan, sttServerArgs, sttThreads } from '../../backend/services/managed-stt-plan.js';
+import { STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttPlan, sttServerArgs, sttThreads } from '../../backend/services/managed-stt-plan.js';
 import { encodeWav16, mixDown } from '../../frontend/utils/wav16k.js';
 
 describe('the processor share', () => {
@@ -18,10 +18,9 @@ describe('the processor share', () => {
     expect(sttThreads(4)).toBe(3);
     expect(sttThreads(2)).toBe(1);
   });
-  it('the turbo model where a third of the processor is enough for it, the small one below', () => {
-    expect(sttModelFor(24)).toBe(STT_MODELS.turbo);
-    expect(sttModelFor(12)).toBe(STT_MODELS.turbo);
-    expect(sttModelFor(8)).toBe(STT_MODELS.small);
+  it('one model on every processor: base, quick on a held key however many cores (turbo took 8 to 15 s)', () => {
+    for (const cores of [4, 8, 16, 24]) expect(sttPlan({ platform: 'linux', arch: 'x64', cores, installed: false, modelPresent: false, freeBytes: 50e9 }).model).toBe(STT_MODEL);
+    expect(STT_MODEL).toMatchObject({ name: 'ggml-base-q5_1.bin', size: 59_707_625 });
   });
 });
 
@@ -34,7 +33,8 @@ describe('the pinned files', () => {
       expect(e.url).toBe(`https://github.com/ggml-org/whisper.cpp/releases/download/${WHISPER_CPP_BUILD}/${e.name}`);
       expect(e.sha256).toMatch(/^[0-9a-f]{64}$/);
     }
-    for (const m of Object.values(STT_MODELS)) expect(m.url).toMatch(/^https:\/\/huggingface\.co\/ggerganov\/whisper\.cpp\/resolve\/[0-9a-f]{40}\/ggml-/);
+    expect(STT_MODEL.url).toMatch(/^https:\/\/huggingface\.co\/ggerganov\/whisper\.cpp\/resolve\/[0-9a-f]{40}\/ggml-base-q5_1\.bin$/);
+    expect(STT_MODEL.sha256).toMatch(/^[0-9a-f]{64}$/);
   });
   const dir = `/mnt/data/neuma/stt-pin/${WHISPER_CPP_BUILD}`;
   it.skipIf(!fs.existsSync(dir))('the archives downloaded on this rig hash to the pins', () => {

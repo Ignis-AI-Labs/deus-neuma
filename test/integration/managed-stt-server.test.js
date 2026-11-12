@@ -44,7 +44,7 @@ describe.skipIf(process.platform !== 'linux' || process.arch !== 'x64')('the pro
     const r = await sttReadiness();
     expect(r).toMatchObject({ ready: false, missing: ['weights'], engine: 'whisper.cpp' });
     expect(r.label).toMatch(/RUNS ON YOUR PROCESSOR/);
-    expect(r.bytes).toBeGreaterThan(100e6);
+    expect(r.bytes).toBeGreaterThan(50e6); // the engine and the base model
   });
 
   it('starts on first use, answers through it, and is ready once both files are whole', async () => {

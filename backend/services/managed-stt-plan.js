@@ -10,8 +10,15 @@
 //
 // So an installed app downloads whisper.cpp's own processor build, pinned to the SHA-256 GitHub
 // publishes, and a multilingual Whisper model from Hugging Face at a pinned revision. Both live in
-// the app's data folder. The server runs only while dictation is used, on a third of the processor
-// (4 to 8 threads), so the model and the rest of the machine keep their share.
+// the app's data folder. The server runs on a third of the processor (4 to 8 threads), so the model
+// and the rest of the machine keep their share.
+//
+// THE MODEL IS SIZED FOR A HELD KEY (2026-11-12): dictation works like ears, hold, release, and the
+// words land in the box at once. Timed on whisper.cpp b5454 with this
+// build's own server, a 4.5 s and a 14 s recording, the processor busy with the house and its
+// agents: turbo 8 to 15 s a hold (4 s with a shortened audio window, which drops words past 15 s),
+// small 1.7 to 3.1 s, base 0.4 to 0.8 s. Turbo is the ears model, and it is quick on a graphics card,
+// never on a processor; base keeps a release as quick as ears.
 
 export const WHISPER_CPP_BUILD = 'b5454';
 const RELEASE = `https://github.com/ggml-org/whisper.cpp/releases/download/${WHISPER_CPP_BUILD}`;
@@ -33,12 +40,8 @@ const MODEL_REV = '5359861c739e955e79d9a303bcbc70fb988958b1';
 const model = (name, size, sha256, label) => Object.freeze({
   label, name, size, sha256, url: `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REV}/${name}`,
 });
-// Both multilingual (Thai included), MIT. The turbo build on a processor with room for it; the small
-// one where a third of the processor is only a few cores, so a held key still reads back quickly.
-export const STT_MODELS = Object.freeze({
-  turbo: model('ggml-large-v3-turbo-q5_0.bin', 574_041_195, '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2', 'Whisper large-v3 turbo'),
-  small: model('ggml-small-q5_1.bin', 190_085_487, 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb', 'Whisper small'),
-});
+// Multilingual (Thai included), MIT. The SHA-256 is Hugging Face's own (x-linked-etag at this revision).
+export const STT_MODEL = model('ggml-base-q5_1.bin', 59_707_625, '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898', 'Whisper base');
 
 /**
  * Threads the speech server may use: a third of the cores, at least 4 (or every core but one on a
@@ -50,9 +53,6 @@ export const sttThreads = (cores) => {
   return Math.max(Math.min(4, Math.max(1, n - 1)), Math.min(8, Math.floor(n / 3)));
 };
 
-/** The model for this processor. Pure. */
-export const sttModelFor = (cores) => (Number(cores) >= 12 ? STT_MODELS.turbo : STT_MODELS.small);
-
 /**
  * What setting up dictation here takes, or { supported: false } where no build is published. Pure.
  * @param {{platform: string, arch: string, cores: number, installed: boolean, modelPresent: boolean, freeBytes: number|null}} machine
@@ -60,7 +60,7 @@ export const sttModelFor = (cores) => (Number(cores) >= 12 ? STT_MODELS.turbo : 
 export const sttPlan = ({ platform, arch, cores, installed, modelPresent, freeBytes }) => {
   const engine = sttEngineFor(platform, arch);
   if (!engine) return Object.freeze({ supported: false, reason: `There is no whisper.cpp build for ${platform} on ${arch}.` });
-  const m = sttModelFor(cores);
+  const m = STT_MODEL;
   const steps = [];
   if (!installed) steps.push({ id: 'download', label: `Download whisper.cpp ${WHISPER_CPP_BUILD}`, bytes: engine.size });
   if (!modelPresent) steps.push({ id: 'pull', label: `Download ${m.label}`, bytes: m.size });

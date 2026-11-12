@@ -85,8 +85,10 @@ router.post(
       });
     }
 
-    // an installed app: whisper.cpp on the processor (managed-stt.js)
-    if (usesManagedStt()) return transcribeManaged(req, res);
+    // an installed app: whisper.cpp on the processor (managed-stt.js). It reads a hold once, on
+    // release, as ears does: a preview pass would re-read the whole hold on the same processor and
+    // queue the release behind it, so a preview is answered "none" before any work.
+    if (usesManagedStt()) return req.query.preview === '1' ? res.status(204).end() : transcribeManaged(req, res);
 
     try {
       await ensureEngineReady();

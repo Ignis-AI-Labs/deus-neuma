@@ -1,0 +1,2 @@
+Changed
+- Every tool call is now checked against the tool's own description before it runs, the same way for every tool and for both beings and sealed peers. A call that uses another tool system's field names (like file_path or old_string) or writes a number as text now runs as intended. A call with a missing field, a wrong value, or a field name that's almost right is stopped before anything happens, and the model is told exactly what to write instead (for example: "edits[0].old is not a field — did you mean edits[0].oldText?").
