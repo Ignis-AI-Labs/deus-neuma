@@ -43,8 +43,9 @@ describe.skipIf(process.platform !== 'linux' || process.arch !== 'x64')('the pro
     const { sttReadiness } = await import('../../backend/services/managed-stt.js');
     const r = await sttReadiness();
     expect(r).toMatchObject({ ready: false, missing: ['weights'], engine: 'whisper.cpp' });
-    expect(r.label).toMatch(/RUNS ON YOUR PROCESSOR/);
-    expect(r.bytes).toBeGreaterThan(50e6); // the engine and the base model
+    // where it will run is this machine's own answer (a roomy NVIDIA card takes the graphics-card pair too)
+    expect(r.label).toMatch(r.device === 'gpu' ? /TURBO — RUNS ON YOUR GRAPHICS CARD/ : /BASE — RUNS ON YOUR PROCESSOR/);
+    expect(r.bytes).toBeGreaterThan(r.device === 'gpu' ? 700e6 : 50e6);
   });
 
   it('starts on first use, answers through it, and is ready once both files are whole', async () => {

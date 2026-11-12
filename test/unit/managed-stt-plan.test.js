@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttPlan, sttServerArgs, sttThreads } from '../../backend/services/managed-stt-plan.js';
+import { STT_GPU_MODEL, STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttGpuEngineFor, sttPlan, sttServerArgs, sttThreads } from '../../backend/services/managed-stt-plan.js';
 import { encodeWav16, mixDown } from '../../frontend/utils/wav16k.js';
 
 describe('the processor share', () => {
@@ -57,9 +57,28 @@ describe('the plan and the launch', () => {
     expect(sttPlan({ ...base, platform: 'darwin', arch: 'arm64', installed: false, modelPresent: false }).supported).toBe(false);
     expect(sttPlan({ ...base, installed: false, modelPresent: false, freeBytes: 1e6 }).enoughDisk).toBe(false);
   });
-  it('serves on loopback only, on its share, every language, never the graphics card', () => {
+  it('serves on loopback only, on its share, every language, the graphics card only when asked', () => {
     const a = sttServerArgs({ modelPath: '/m/x.bin', threads: 8, port: 4321 });
     expect(a.join(' ')).toBe('-m /m/x.bin -t 8 --host 127.0.0.1 --port 4321 -l auto -ng');
+    expect(sttServerArgs({ modelPath: '/m/t.bin', threads: 4, port: 4321, gpu: true }).join(' ')).toBe('-m /m/t.bin -t 4 --host 127.0.0.1 --port 4321 -l auto');
+  });
+  it('on the card: turbo and the card build, with the processor files kept as the fallback', () => {
+    const base = { platform: 'linux', arch: 'x64', cores: 16, freeBytes: 50e9, device: 'gpu' };
+    const fresh = sttPlan({ ...base, installed: false, modelPresent: false });
+    expect(fresh).toMatchObject({ device: 'gpu', model: STT_GPU_MODEL, ready: false });
+    expect(fresh.steps.map((s) => s.id)).toEqual(['download', 'pull', 'download-gpu', 'pull-gpu']);
+    // dictating on the processor already: ready, the card's pair still to come
+    expect(sttPlan({ ...base, installed: true, modelPresent: true, gpuInstalled: true, gpuModelPresent: false })).toMatchObject({ ready: true, cardReady: false });
+    expect(sttPlan({ ...base, installed: true, modelPresent: true, gpuInstalled: true, gpuModelPresent: true })).toMatchObject({ ready: true, cardReady: true, downloadBytes: 0 });
+    // no card build for Windows: the processor, whatever the device rule said
+    expect(sttPlan({ ...base, platform: 'win32', installed: true, modelPresent: true })).toMatchObject({ device: 'processor', model: STT_MODEL, ready: true });
+  });
+  it('the card build is ours, hosted beside the app, pinned', () => {
+    const g = sttGpuEngineFor('linux', 'x64');
+    expect(g.url).toBe(`https://github.com/Ignis-AI-Labs/deus-neuma/releases/download/speech-whisper.cpp-${WHISPER_CPP_BUILD}-cuda13/whisper-cuda13-linux-x64.tar.gz`);
+    expect(g.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(g.size).toBeGreaterThan(1e6);
+    expect(sttGpuEngineFor('win32', 'x64')).toBeNull();
   });
 });
 

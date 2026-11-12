@@ -32,7 +32,7 @@ export const DictationSetup = ({ missing, onDismiss }) => {
   useEffect(() => () => { alive.current = false; }, []);
 
   useEffect(() => {
-    dictationReadiness().then((r) => { if (alive.current && r?.label) setModel({ label: r.label, bytes: r.bytes }); });
+    dictationReadiness().then((r) => { if (alive.current && r?.label) setModel({ label: r.label, bytes: r.bytes, device: r.device, why: r.why }); });
   }, []);
 
   // Re-probe readiness on a beat while the card is open — an install done in
@@ -42,7 +42,7 @@ export const DictationSetup = ({ missing, onDismiss }) => {
       const r = await dictationReadiness();
       if (!alive.current || !r) return;
       setNeeds([...r.missing]);
-      if (r.label) setModel({ label: r.label, bytes: r.bytes });
+      if (r.label) setModel({ label: r.label, bytes: r.bytes, device: r.device, why: r.why });
       if (r.ready) {
         setNote('READY — HOLD TO SPEAK');
         setTimeout(() => { if (alive.current) onDismiss(); }, 2500);
@@ -98,7 +98,7 @@ export const DictationSetup = ({ missing, onDismiss }) => {
         <div className="dictation-setup-title label-data">«NOTICE» DICTATION NEEDS COMPONENTS</div>
         <p className="dictation-setup-lead">
           {model
-            ? 'Speaking to your neuma runs a local speech engine on your processor, so your graphics card stays free for the model. This machine is missing:'
+            ? `Speaking to your neuma runs a local speech engine on your ${model.device === 'gpu' ? 'graphics card' : 'processor'}${model.why ? ` (${model.why})` : ''}. This machine is missing:`
             : 'Speaking to your neuma runs a local Whisper engine. This machine is missing:'}
         </p>
 

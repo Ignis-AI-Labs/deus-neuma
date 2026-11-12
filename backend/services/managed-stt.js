@@ -19,10 +19,14 @@ import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { plainFailure } from './managed-ollama-errors.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
 import { createLogger } from './logger.js';
-import { STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttPlan, sttServerArgs, sttThreads } from './managed-stt-plan.js';
+import { STT_GPU_MODEL, STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttGpuEngineFor, sttPlan, sttServerArgs, sttThreads } from './managed-stt-plan.js';
+import { sttDeviceFor } from './managed-stt-device.js';
+import { readSttMachine } from './managed-stt-probe.js';
 
 const log = createLogger('ManagedSTT');
 const START_MS = 60_000;
+// on the card the processor does little: a few threads, never its share
+const GPU_THREADS = 4;
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -37,22 +41,39 @@ export const usesManagedStt = () => process.env.NEUMA_STT_ENGINE === 'managed'
 
 const home = () => path.join(getDataRoot(), 'speech');
 const engineDir = () => path.join(home(), `whisper.cpp-${WHISPER_CPP_BUILD}`);
+const gpuEngineDir = () => path.join(home(), `whisper.cpp-${WHISPER_CPP_BUILD}-cuda13`);
 const cores = () => os.availableParallelism?.() ?? os.cpus().length;
 
-/** Where the server binary and the model are, and whether both are whole on disk. impure */
-export const sttFiles = () => {
-  const engine = sttEngineFor(process.platform, process.arch);
-  const m = STT_MODEL;
-  const bin = engine ? path.join(engineDir(), engine.bin) : null;
+/** One engine and its model: where they are, and whether both are whole on disk. impure */
+const fileSet = (engine, dir, m) => {
+  const bin = engine ? path.join(dir, engine.bin) : null;
   const modelPath = path.join(home(), 'models', m.name);
   let modelPresent = false;
   try { modelPresent = fs.statSync(modelPath).size === m.size; } catch { /* absent */ }
-  return { engine, bin, modelPath, model: m, installed: Boolean(bin && fs.existsSync(bin)), modelPresent };
+  return { engine, dir, bin, modelPath, model: m, installed: Boolean(bin && fs.existsSync(bin)), modelPresent };
+};
+
+/** The processor's engine and model. impure */
+export const sttFiles = () => fileSet(sttEngineFor(process.platform, process.arch), engineDir(), STT_MODEL);
+
+/** The graphics card's engine and model, or null where there is no build for this system. impure */
+export const sttGpuFiles = () => {
+  const engine = sttGpuEngineFor(process.platform, process.arch);
+  return engine ? fileSet(engine, gpuEngineDir(), STT_GPU_MODEL) : null;
+};
+
+/** Where dictation runs here and why (managed-stt-device.js), with the CUDA folder it borrows. impure */
+export const currentSttDevice = async () => {
+  const build = Boolean(sttGpuEngineFor(process.platform, process.arch));
+  const machine = build ? await readSttMachine() : { gpu: null, cudaLibDir: null, houseBytes: null };
+  return Object.freeze({ ...sttDeviceFor({ build, ...machine }), cudaLibDir: machine.cudaLibDir });
 };
 
 /** What setting up dictation here takes. impure */
 export const currentSttPlan = async () => {
   const f = sttFiles();
+  const g = sttGpuFiles();
+  const device = await currentSttDevice();
   let freeBytes = null;
   try {
     let dir = home();
@@ -60,18 +81,29 @@ export const currentSttPlan = async () => {
     const s = await fsp.statfs(dir);
     freeBytes = s.bavail * s.bsize;
   } catch { /* unmeasurable: the job finds out */ }
-  return sttPlan({ platform: process.platform, arch: process.arch, cores: cores(), installed: f.installed, modelPresent: f.modelPresent, freeBytes });
+  const plan = sttPlan({
+    platform: process.platform, arch: process.arch, cores: cores(), installed: f.installed, modelPresent: f.modelPresent, freeBytes,
+    device: device.device, gpuInstalled: Boolean(g?.installed), gpuModelPresent: Boolean(g?.modelPresent),
+  });
+  return Object.freeze({ ...plan, why: device.reason });
 };
 
 /** The readiness the dictation card reads: ready, or the one thing missing and its size. impure */
 export const sttReadiness = async () => {
   const plan = await currentSttPlan();
   if (!plan.supported) return Object.freeze({ ready: false, missing: Object.freeze(['unsupported']), engine: 'whisper.cpp', reason: plan.reason });
+  // what answers a held key: the card's pair once it is there, else the processor's; before any setup,
+  // what the setup brings
+  const onCard = plan.cardReady || (!plan.ready && plan.device === 'gpu');
+  const model = onCard ? STT_GPU_MODEL : STT_MODEL;
   return Object.freeze({
     ready: plan.ready,
     missing: Object.freeze(plan.ready ? [] : ['weights']),
     engine: 'whisper.cpp',
-    label: `${plan.model.label.toUpperCase()} — RUNS ON YOUR PROCESSOR`,
+    label: `${model.label.toUpperCase()} — RUNS ON YOUR ${onCard ? 'GRAPHICS CARD' : 'PROCESSOR'}`,
+    device: onCard ? 'gpu' : 'processor',
+    why: plan.why,
+    serving: sttServerDevice(),
     bytes: plan.downloadBytes,
   });
 };
@@ -99,6 +131,17 @@ const run = async () => {
     update({ step: 'pull', completed: 0, total: f.model.size });
     await obtainArchive(f.model, f.modelPath, { onBytes: (n) => update({ completed: n }) });
   }
+  const g = plan.device === 'gpu' ? sttGpuFiles() : null;
+  if (g && !g.installed) {
+    update({ step: 'download-gpu', completed: 0, total: g.engine.size });
+    const archive = path.join(home(), g.engine.name);
+    await obtainArchive(g.engine, archive, { onBytes: (n) => update({ completed: n }) });
+    await installArchive(g.engine, archive, g.dir);
+  }
+  if (g && !g.modelPresent) {
+    update({ step: 'pull-gpu', completed: 0, total: g.model.size });
+    await obtainArchive(g.model, g.modelPath, { onBytes: (n) => update({ completed: n }) });
+  }
 };
 
 /** Start the setup, or answer with the one already running. impure */
@@ -118,7 +161,8 @@ export const startSttJob = () => {
 };
 
 // ── the server ───────────────────────────────────────────────────────────────
-let server = null; // { child, port, ready: Promise }
+let server = null; // { child, port, ready: Promise, device }
+let starting = null; // the start in flight: two holds at once share it
 
 const freePort = () => new Promise((resolve, reject) => {
   const s = net.createServer();
@@ -136,14 +180,15 @@ export const stopSttServer = () => {
   server = null;
 };
 
-/** The running server's port: started once, on the processor's share; started again if it died. impure */
-export const ensureSttServer = async () => {
-  if (server) { await server.ready; return server.port; }
-  const f = sttFiles();
-  if (!f.installed || !f.modelPresent) throw Object.assign(new Error('dictation is not set up on this machine'), { code: 'STT_COMPONENTS_MISSING' });
+/** Start one server on one engine and model, and wait until it answers. impure */
+const startServer = async ({ files, gpu, libDir }) => {
   const port = await freePort();
-  const child = spawn(f.bin, sttServerArgs({ modelPath: f.modelPath, threads: sttThreads(cores()), port }), {
-    cwd: path.dirname(f.bin), env: probeEnvironment(), stdio: 'ignore', windowsHide: true,
+  const threads = gpu ? GPU_THREADS : sttThreads(cores());
+  const base = probeEnvironment();
+  // the CUDA 13 runtime is borrowed (managed-stt-probe.js), so the card's server is told where it is
+  const env = gpu ? { ...base, LD_LIBRARY_PATH: [libDir, base.LD_LIBRARY_PATH].filter(Boolean).join(path.delimiter) } : base;
+  const child = spawn(files.bin, sttServerArgs({ modelPath: files.modelPath, threads, port, gpu }), {
+    cwd: path.dirname(files.bin), env, stdio: 'ignore', windowsHide: true,
   });
   const ready = (async () => {
     for (let t = Date.now(); Date.now() - t < START_MS; await new Promise((r) => setTimeout(r, 300))) {
@@ -152,7 +197,8 @@ export const ensureSttServer = async () => {
     }
     throw new Error('the speech server did not answer within a minute');
   })();
-  server = { child, port, ready };
+  const device = gpu ? 'gpu' : 'processor';
+  server = { child, port, ready, device };
   child.once('exit', () => { if (server?.child === child) server = null; });
   try {
     await ready;
@@ -160,9 +206,37 @@ export const ensureSttServer = async () => {
     stopSttServer();
     throw err;
   }
-  log.info('speech server ready', { port, threads: sttThreads(cores()), model: f.model.name });
+  log.info('speech server ready', { port, device, threads, model: files.model.name });
   return port;
 };
+
+/**
+ * The running server's port: started once and kept, on the graphics card where it has room for the
+ * model (and the card's files are set up), else on the processor; a card server that cannot start
+ * leaves the processor to answer. Started again if it died. impure
+ */
+export const ensureSttServer = async () => {
+  if (server) { await server.ready; return server.port; }
+  if (starting) return starting;
+  starting = (async () => {
+    const cpu = sttFiles();
+    if (!cpu.installed || !cpu.modelPresent) throw Object.assign(new Error('dictation is not set up on this machine'), { code: 'STT_COMPONENTS_MISSING' });
+    const device = await currentSttDevice();
+    const card = device.device === 'gpu' ? sttGpuFiles() : null;
+    if (card?.installed && card.modelPresent) {
+      try {
+        return await startServer({ files: card, gpu: true, libDir: device.cudaLibDir });
+      } catch (err) {
+        log.warn('the speech server could not start on the graphics card; the processor answers', { error: err.message });
+      }
+    }
+    return startServer({ files: cpu, gpu: false });
+  })().finally(() => { starting = null; });
+  return starting;
+};
+
+/** Where the running speech server runs ('gpu' | 'processor'), or null when none runs. impure */
+export const sttServerDevice = () => server?.device ?? null;
 
 /**
  * At boot: an installed app with dictation set up starts its speech server now, so the first held

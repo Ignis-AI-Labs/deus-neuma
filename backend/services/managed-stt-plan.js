@@ -35,6 +35,21 @@ export const sttEngineFor = (platform, arch) => {
   return e ? Object.freeze({ ...e, url: `${RELEASE}/${e.name}` }) : null;
 };
 
+// THE GRAPHICS-CARD BUILD, where the card has room for it (managed-stt-device.js decides). whisper.cpp
+// publishes none for Linux, so the platform builds and hosts its own from the same tag:
+// scripts/speech/build-whisper-cuda.sh (CUDA 13, Ubuntu 22.04's glibc, Turing to Blackwell). It
+// borrows the CUDA 13 runtime from the Ollama the platform sets up rather than shipping it.
+const GPU_RELEASE = `https://github.com/Ignis-AI-Labs/deus-neuma/releases/download/speech-whisper.cpp-${WHISPER_CPP_BUILD}-cuda13`;
+const GPU_ENGINES = Object.freeze({
+  'linux-x64': Object.freeze({ label: 'whisper.cpp (CUDA 13)', name: 'whisper-cuda13-linux-x64.tar.gz', size: 130_623_323, sha256: 'a81df78fdb0b59c705fef0628717cd82082359f976e02b3a31700b01a46c2068', format: 'tar.gz', bin: 'whisper-cuda13-linux-x64/whisper-server' }),
+});
+
+/** The platform's graphics-card build for this system, or null where there is none. Pure. */
+export const sttGpuEngineFor = (platform, arch) => {
+  const e = GPU_ENGINES[`${platform}-${arch}`];
+  return e ? Object.freeze({ ...e, url: `${GPU_RELEASE}/${e.name}` }) : null;
+};
+
 const MODEL_REPO = 'ggerganov/whisper.cpp';
 const MODEL_REV = '5359861c739e955e79d9a303bcbc70fb988958b1';
 const model = (name, size, sha256, label) => Object.freeze({
@@ -42,6 +57,8 @@ const model = (name, size, sha256, label) => Object.freeze({
 });
 // Multilingual (Thai included), MIT. The SHA-256 is Hugging Face's own (x-linked-etag at this revision).
 export const STT_MODEL = model('ggml-base-q5_1.bin', 59_707_625, '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898', 'Whisper base');
+// On the graphics card: turbo, the model ears runs.
+export const STT_GPU_MODEL = model('ggml-large-v3-turbo-q5_0.bin', 574_041_195, '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2', 'Whisper large-v3 turbo');
 
 /**
  * Threads the speech server may use: a third of the cores, at least 4 (or every core but one on a
@@ -54,23 +71,32 @@ export const sttThreads = (cores) => {
 };
 
 /**
- * What setting up dictation here takes, or { supported: false } where no build is published. Pure.
- * @param {{platform: string, arch: string, cores: number, installed: boolean, modelPresent: boolean, freeBytes: number|null}} machine
+ * What setting up dictation here takes, or { supported: false } where no build is published. On the
+ * graphics card the processor's engine and model are set up too: the card's server falls back to
+ * them if it cannot start. `ready` is the processor's pair (dictation works); `cardReady` is the
+ * card's pair beside it, so a machine already dictating never stops for the card's download. Pure.
+ * @param {{platform: string, arch: string, cores: number, installed: boolean, modelPresent: boolean,
+ *   freeBytes: number|null, device?: 'gpu'|'processor', gpuInstalled?: boolean, gpuModelPresent?: boolean}} machine
  */
-export const sttPlan = ({ platform, arch, cores, installed, modelPresent, freeBytes }) => {
+export const sttPlan = ({ platform, arch, cores, installed, modelPresent, freeBytes, device = 'processor', gpuInstalled = false, gpuModelPresent = false }) => {
   const engine = sttEngineFor(platform, arch);
   if (!engine) return Object.freeze({ supported: false, reason: `There is no whisper.cpp build for ${platform} on ${arch}.` });
-  const m = STT_MODEL;
+  const gpuEngine = device === 'gpu' ? sttGpuEngineFor(platform, arch) : null;
+  const onCard = Boolean(gpuEngine);
+  const m = onCard ? STT_GPU_MODEL : STT_MODEL;
   const steps = [];
   if (!installed) steps.push({ id: 'download', label: `Download whisper.cpp ${WHISPER_CPP_BUILD}`, bytes: engine.size });
-  if (!modelPresent) steps.push({ id: 'pull', label: `Download ${m.label}`, bytes: m.size });
+  if (!modelPresent) steps.push({ id: 'pull', label: `Download ${STT_MODEL.label}`, bytes: STT_MODEL.size });
+  if (onCard && !gpuInstalled) steps.push({ id: 'download-gpu', label: `Download ${gpuEngine.label}`, bytes: gpuEngine.size });
+  if (onCard && !gpuModelPresent) steps.push({ id: 'pull-gpu', label: `Download ${STT_GPU_MODEL.label}`, bytes: STT_GPU_MODEL.size });
   const downloadBytes = steps.reduce((n, s) => n + s.bytes, 0);
-  // room for the archive beside what it unpacks to, and the model beside its .part
-  const needBytes = Math.round((installed ? 0 : engine.size * 4) + (modelPresent ? 0 : m.size * 1.1));
+  // room for each archive beside what it unpacks to, and each model beside its .part
+  const needBytes = Math.round(steps.reduce((n, s) => n + s.bytes * (s.id.startsWith('download') ? 4 : 1.1), 0));
   return Object.freeze({
     supported: true,
     engine: 'whisper.cpp',
     build: WHISPER_CPP_BUILD,
+    device: onCard ? 'gpu' : 'processor',
     model: m,
     threads: sttThreads(cores),
     steps: Object.freeze(steps.map((s) => Object.freeze(s))),
@@ -78,10 +104,11 @@ export const sttPlan = ({ platform, arch, cores, installed, modelPresent, freeBy
     needBytes,
     enoughDisk: freeBytes == null || freeBytes >= needBytes,
     ready: installed && modelPresent,
+    cardReady: onCard && gpuInstalled && gpuModelPresent,
   });
 };
 
-/** The engine's arguments: loopback only, the processor's share, every language, no GPU. Pure. */
-export const sttServerArgs = ({ modelPath, threads, port }) => Object.freeze([
-  '-m', modelPath, '-t', String(threads), '--host', '127.0.0.1', '--port', String(port), '-l', 'auto', '-ng',
+/** The engine's arguments: loopback only, its share of the processor, every language; the card only when asked. Pure. */
+export const sttServerArgs = ({ modelPath, threads, port, gpu = false }) => Object.freeze([
+  '-m', modelPath, '-t', String(threads), '--host', '127.0.0.1', '--port', String(port), '-l', 'auto', ...(gpu ? [] : ['-ng']),
 ]);
