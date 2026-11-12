@@ -32,18 +32,19 @@ const MemberRow = ({ member, busy, onChange }) => {
     <div className="hp-row" data-member={member.neumaId}>
       <div className="hp-line">
         <span className="hp-who">{member.name}</span>
-        <span className="hp-title label-data">{member.title ? `${member.title}${legend ? ` · ${legend.position}` : ''}` : 'NO TITLE YET'}</span>
+        <span className="hp-title label-data">{member.title ? `${member.title}${legend ? ` · ${legend.position} — ${legend.seat}` : ''}` : 'NO TITLE YET'}</span>
         <button type="button" className="house-action hp-change" disabled={busy} onClick={() => setEditing(!editing)} aria-expanded={editing}>
           {editing ? 'CANCEL' : 'CHANGE'}
         </button>
       </div>
-      {legend ? <p className="hp-meaning label-data">{legend.meaning}</p> : null}
+      {legend ? <p className="hp-meaning" title={legend.meaning}>{legend.summary}</p> : null}
       {editing ? (
         <div className="hp-edit">
           <select className="settings-input" aria-label={`title for ${member.name}`} value={legendOf(title) ? title : ''} onChange={(e) => setTitle(e.target.value)} disabled={busy}>
             <option value="">choose a title…</option>
-            {TITLE_LEGEND.map((e) => <option key={e.title} value={e.title} disabled={e.title === member.title}>{`${e.title} · ${e.position}`}</option>)}
+            {TITLE_LEGEND.map((e) => <option key={e.title} value={e.title} disabled={e.title === member.title}>{`${e.title} · ${e.position} — ${e.seat}`}</option>)}
           </select>
+          {legendOf(title) ? <p className="hp-meaning" role="status">{legendOf(title).summary}</p> : null}
           <input className="settings-input" aria-label={`or the house's own word for ${member.name}`} placeholder="or the house's own word" maxLength={48}
             value={legendOf(title) ? '' : title} onChange={(e) => setTitle(e.target.value)} disabled={busy} />
           <input className="settings-input" aria-label={`why, for ${member.name}`} placeholder="why (kept on the record)" maxLength={280}

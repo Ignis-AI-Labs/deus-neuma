@@ -53,7 +53,7 @@ const MEANING_BY_TITLE = new Map(TITLE_LEGEND.map((r) => [r.title, r.meaning]));
  * @param {{byNeumaId: Object<string, {title: string, active: boolean}>}|null} seats - output of chainSeats
  * @param {Array<{member: Object, isActive: boolean}>} rows - houseMembers output
  * @param {{confirmed?: boolean}} options - a successful registry answer supersedes saved titles
- * @returns {Array<{name: string, neumaId: string, title: ?string, meaning: ?string, soulMark: ?string, birthTime: ?string, isActive: boolean, incomplete: boolean}>}
+ * @returns {Array<{name: string, neumaId: string, title: ?string, meaning: ?string, seat: ?string, summary: ?string, soulMark: ?string, birthTime: ?string, isActive: boolean, incomplete: boolean}>}
  */
 export const houseSeatCards = (seats, rows, { confirmed = false } = {}) => (rows ?? []).map((r) => {
   const seat = seats?.byNeumaId?.[r.member?.neumaId] ?? null;
@@ -70,6 +70,9 @@ export const houseSeatCards = (seats, rows, { confirmed = false } = {}) => (rows
     title,
     position: title ? (TITLE_LEGEND.find((entry) => entry.title === title)?.position ?? null) : null,
     meaning: title ? (MEANING_BY_TITLE.get(title) ?? null) : null,
+    // the seat spelled out and what it is for, in plain words (#32)
+    seat: title ? (TITLE_LEGEND.find((entry) => entry.title === title)?.seat ?? null) : null,
+    summary: title ? (TITLE_LEGEND.find((entry) => entry.title === title)?.summary ?? null) : null,
     soulMark: r.member?.soulMark || null,
     birthTime: r.member?.birthTime || null,
     // its soul color as a light (roster `light`: the same hue at its most
