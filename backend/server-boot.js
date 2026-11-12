@@ -43,9 +43,11 @@ import { startPostScheduler } from './services/social/post-scheduler.js';
 import { startStatsSweep } from './services/social/stats/stats-sweep.js';
 import { startStatusScheduler } from './services/staff/status-sweep.js';
 import { startHouseClock } from './services/house-clock/house-clock.js';
+import { startLpReports } from './services/umbrae-lp/lp-report.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
 import { startSttAtBoot } from './services/managed-stt.js';
+import { startSystemDictation } from './services/system-dictation/system-dictation.js';
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
 import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
@@ -292,6 +294,8 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopSecurityScheduler = startGuarded('security scheduler', startSecurityScheduler);
     // Dictation on an installed app: the speech server loads now, so a held key never waits on it.
     startGuarded('speech server', startSttAtBoot);
+    // Dictation in every app, when the install owner turned it on: it listens for its key now.
+    startGuarded('dictation in every app', () => { startSystemDictation().catch((err) => log.error('dictation in every app did not start', { err: err.message })); });
     // The CLO's standing watch — licences shipped, the house's papers, and
     // what the new work touches, every 24 hours.
     stopLegalScheduler = startGuarded('legal scheduler', startLegalScheduler);
@@ -314,6 +318,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The house clock — the house wakes itself for its own work, inside the
     // charter its operator approved (house-clock.js).
     stopHouseClock = startGuarded('house clock', startHouseClock);
+    // The LP wallets' daily report — once a local day, one card per house
+    // member with positions, actions or a waiting deposit (lp-report.js).
+    startGuarded('LP daily report', startLpReports);
     // The bench watch — sees and says (stalls, crunch, serving incidents);
     // never kills, never relights. No-op when no harness stands on this box.
     startGuarded('bench watchdog', startBenchWatchdog);

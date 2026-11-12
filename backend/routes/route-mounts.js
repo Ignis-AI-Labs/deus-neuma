@@ -98,6 +98,7 @@ import sovereigntyRouter from './sovereignty-routes.js';
 import voiceRouter from './voice-routes.js';
 import sttRouter from './stt-routes.js';
 import titlingRouter from './titling-routes.js';
+import systemDictationRouter from './system-dictation-routes.js';
 import refineRouter from './refine-routes.js';
 import voiceEngineRouter from './voice-engine-routes.js';
 import voiceForgeRouter from './voice-forge-routes.js';
@@ -275,6 +276,8 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/workspace', workspaceRouter);
   // naming chats in batch as a job the desk watches and can stop (deus-neuma #28)
   app.use('/api/v1/titling', titlingRouter);
+  // dictation in every app: hold a key anywhere on this computer, and the words are typed there
+  app.use('/api/v1/system-dictation', systemDictationRouter);
   // The operator's own record of what their beings did (SEC-035 #213).
   app.use('/api/v1/acts', actRouter);
   app.use('/api/v1/weave', weaveRouter);
