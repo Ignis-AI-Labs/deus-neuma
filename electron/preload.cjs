@@ -167,11 +167,6 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
       return () => ipcRenderer.removeListener('update:changed', handler);
     },
   },
-  // CONNECTIONS (electron/connections-main.cjs): the panel tells main a switch changed, so the
-  // spellcheck switch lands on every session at once.
-  connections: {
-    changed: () => ipcRenderer.invoke('connections:changed'),
-  },
   // THE KEY LOCK (electron/key-lock/key-lock-main.cjs): whether the keychain holds
   // Neuma's key, and the Recovery Kit — shown on request, confirmed saved, or replaced.
   keyLock: {

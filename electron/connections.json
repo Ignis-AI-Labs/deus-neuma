@@ -23,17 +23,6 @@
       "default": false
     },
     {
-      "id": "spellcheck",
-      "name": "Spellcheck dictionary",
-      "to": "Google's dictionary server",
-      "when": "once, then kept on your disk",
-      "sends": "a request for your language's dictionary",
-      "whileOff": "no spelling marks while you type",
-      "detail": "Once you turn it on, the first time the spellchecker needs your language, the framework the app is built on (Electron) downloads a dictionary for it from Google's servers and keeps it on your disk. While it is off, no dictionary is asked for and nothing is checked as you type.",
-      "control": "switch",
-      "default": false
-    },
-    {
       "id": "platform-data",
       "name": "Public platform data",
       "to": "umbrae.io",

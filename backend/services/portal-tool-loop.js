@@ -39,7 +39,7 @@ import { withFsPrimitives, withFsRouting, fsPolicyTarget, fsRetiredHint } from '
 import { focusGroundOf, focusGroundRoots, ensureFocusGroundReachable } from './focus-ground.js';
 import { resolveCeremonyScratchDir, ceremonyWriteRoots } from '../../core/birth/ceremony-write.js';
 import { sweepIntents } from './intents/intent-sweep.js';
-import { recordBenchmarkToolCall } from './benchmark-tool-trail.js';
+import { benchmarkTrailMark, recordBenchmarkToolCall, settleBenchmarkToolTrail } from './benchmark-tool-trail.js';
 import { extractMCPContent } from '../routes/mcp-routes.js';
 import { safeChatId } from '../../core/tasks/task-chat.js';
 import { recordWork, artifactFor } from '../../core/tasks/task-work.js';
@@ -174,6 +174,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
   // substrates, or a native call that the model chose to phrase as text).
   const matches = _roundActs(nativeToolCalls, response);
   const results = [];
+  const trailMark = benchmarkTrailMark(connection); // this batch settles only the trail entries it opens
   turnEpochs ||= createTurnToolEpochs();
 
   // Resolve tool policy for this neuma
@@ -467,6 +468,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
 
   // An interrupted slot must never be filled by an independent intent receipt.
   while (results.length < matches.length) results.push(heldRepeatResult(matches[results.length]));
+  settleBenchmarkToolTrail(connection, results, trailMark);
 
   // Filed intents settle in the same round. Serialized; observe mode holds.
   const receipts = await sweepIntents(connection, {

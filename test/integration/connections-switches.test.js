@@ -60,7 +60,8 @@ describe('the connections that run by themselves start off, and only the install
     const res = await list(owner);
     expect(res.status).toBe(200);
     const rows = byId(res.body.connections);
-    for (const id of ['update-check', 'security-watch', 'spellcheck', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge']) expect(rows[id].on).toBe(false);
+    for (const id of ['update-check', 'security-watch', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge']) expect(rows[id].on).toBe(false);
+    expect(rows.spellcheck).toBeUndefined(); // spelling is checked on this computer; it connects to nothing
     expect(rows.web.on).toBe(true); // the web asks each time; its own switch, its own default
     expect(rows.wallets.on).toBeUndefined();
     await expect(fs.access(path.join(dir, 'data', 'settings', 'connections.json'))).rejects.toThrow();

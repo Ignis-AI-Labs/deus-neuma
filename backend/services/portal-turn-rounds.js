@@ -24,7 +24,6 @@
  */
 import { recordBenchmarkExtraCall } from './benchmark-extra-calls.js';
 import { noteRoundRoom } from './read-room.js';
-import { settleBenchmarkToolTrail } from './benchmark-tool-trail.js';
 import { noteToolResultSightings } from './security/injection-sightings.js';
 import { callerCloseTools, callerYielded, processRoundActs, yieldCloseCalls } from './caller-tools.js';
 import { yieldForQueuedThought, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
@@ -338,7 +337,6 @@ export const runToolRounds = async ({
       const epochBefore = turnToolEpochs.epoch;
       // The sender's own tools (caller-tools.js) are handed back, never run here.
       const toolResults = await processRoundActs(processToolCalls, ws, roundResponse, connection, acts, turnToolEpochs);
-      settleBenchmarkToolTrail(connection, toolResults);
       noteToolResultSightings(connection, toolResults); // a flag for the CSO, never awaited, never a gate (G13)
       log.info('round tools processed', {
         name: companionName,

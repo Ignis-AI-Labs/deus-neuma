@@ -50,7 +50,19 @@ describe('caller tools in the real tool loop', () => {
     expect(results[0].tool).toMatch(/sandbox_status/);
     expect(callerYielded(kit.connection)).toBe(true);
     expect(kit.connection._callerToolCalls).toEqual([{ id: 'call_9', name: 'get_weather', arguments: '{"city":"Oslo"}' }]);
-    expect(kit.connection._benchmarkToolTrail.at(-1)).toEqual({ tool: 'caller/get_weather', target: null, status: 'yielded' });
+    expect(kit.connection._benchmarkToolTrail.at(-1)).toEqual({ tool: 'caller/get_weather', target: null, argKeys: ['city'], status: 'yielded' });
+  });
+
+  test('a repeat of the sender\'s last exchange is held, and the trail says so', async () => {
+    kit.connection._benchmarkControls = {};
+    kit.connection._callerTail = [
+      { role: 'assistant', tool_calls: [{ id: 'c1', type: 'function', function: { name: 'caller__get_weather', arguments: '{"city":"Oslo"}' } }] },
+      { role: 'tool', tool_call_id: 'c1', content: 'Sunny, 4°C' },
+    ];
+    const results = await round([{ server: 'caller', toolName: 'get_weather', args: { city: 'Oslo' }, callId: 'call_10' }], 'caller-3');
+    expect(results.map((r) => r.status)).toEqual(['held']);
+    expect(callerYielded(kit.connection)).toBe(false);
+    expect(kit.connection._benchmarkToolTrail).toEqual([{ tool: 'caller/get_weather', target: null, argKeys: ['city'], status: 'held' }]);
   });
 
   test('a round with no caller call is the tool loop exactly as before', async () => {

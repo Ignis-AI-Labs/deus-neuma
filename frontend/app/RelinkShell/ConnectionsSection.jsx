@@ -2,9 +2,8 @@
 // itself (Settings → Security). Design note, 2026-10-25: […] Everything that runs by itself starts OFF; this is where it is turned on.
 //
 // The rows are the app's one list (electron/connections.json, served by /api/v1/connections) — the
-// site reads the same file, so the two say the same words. A flip lands on the backend first, then
-// tells the desktop app's main process (spellcheck lives there), so a switch never looks flipped
-// before it is.
+// site reads the same file, so the two say the same words. A flip lands on the backend, and the row
+// shows what the backend answered, so a switch never looks flipped before it is.
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -94,7 +93,6 @@ export const ConnectionsSection = () => {
     setError(null);
     try {
       setRows((await setConnection(row.id, !row.on)).connections);
-      await desktop()?.connections?.changed?.();
     } catch (e) {
       setError(e.message);
     }
