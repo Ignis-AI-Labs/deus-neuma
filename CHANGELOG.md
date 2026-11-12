@@ -6,6 +6,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.128] - 2026-11-12
+
+Notes: `docs/operations/release-notes-0.1.128.md`.
+
+### Added
+
+- Your marketing lead can now take back a post or reply that's already live on X. It deletes the post after you approve the card, and the queue keeps it marked RETRACTED. X doesn't allow editing, so a correction is: take it back, then post the fixed words. The reply it answered can be answered again.
+- Your marketing lead can now edit its own unsent drafts without asking you. Changed words still wait for your approval before anything goes out.
+
+### Fixed
+
+- Your marketing lead can now pull back its own unsent post or reply by itself, without asking you to approve.
+- Setting a reply aside now also pulls back any unsent answer to it, so a draft answering a binned reply can't be approved by mistake.
+- When your marketing lead reads replies, mentions or the post queue, it now gets as many as its conversation has room for. Before, it got only about six at a time, and older replies were left out.
+
 ## [0.1.127] - 2026-11-12
 
 Notes: `docs/operations/release-notes-0.1.127.md`.

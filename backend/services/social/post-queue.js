@@ -35,6 +35,7 @@ import { tiktokApproveRefusal } from './tiktok-metadata.js';
 import { channelOfAccountId, firstAccountId } from './account-shape.js';
 import { disclosed, markedMedia, IN_METADATA } from './disclosure-line.js';
 import { restageFailed } from './queue-retry.js';
+import { retractSent } from './queue-retract.js';
 
 const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
 
@@ -42,7 +43,7 @@ const DEFAULT_PATH = join(getSettingsDir(), 'social-post-queue.json');
 export const postQueuePath = () =>
   process.env.NEUMA_SOCIAL_POST_QUEUE_PATH || DEFAULT_PATH;
 
-export const QUEUE_STATUSES = Object.freeze(['draft', 'approved', 'sending', 'sent', 'failed', 'rejected', 'withdrawn']);
+export const QUEUE_STATUSES = Object.freeze(['draft', 'approved', 'sending', 'sent', 'failed', 'rejected', 'withdrawn', 'retracted']);
 
 // The queue's pure LAW (what is due, orphaned, expired, counted, well-formed)
 // lives in ./queue-rules.js, the editing law (#208) in ./queue-edit.js, TRY
@@ -476,9 +477,10 @@ export const createPostQueue = (opts = {}) => {
     },
 
     /** TRY AGAIN: a failed post the platform stumbled on, back to DRAFT — the same entry (queue-retry.js). impure. */
-    restage(id, { by } = {}) {
-      return transition(id, ['failed'], (entry) => restageFailed(entry, { by, at: new Date().toISOString() }));
-    },
+    restage(id, { by } = {}) { return transition(id, ['failed'], (entry) => restageFailed(entry, { by, at: new Date().toISOString() })); },
+
+    /** RETRACT: a SENT post deleted from its platform, kept in the record (queue-retract.js). impure. */
+    retract(id, act = {}) { return transition(id, ['sent'], (entry) => retractSent(entry, { ...act, at: new Date().toISOString() })); },
 
     /** Remove a draft or rejected entry entirely (sent history stays). impure. */
     remove(id) {

@@ -113,6 +113,23 @@ export const fitRead = (room, { server, tool, args, content, defaultCap = TOOL_R
   return { content: `${note}\n${content}` };
 };
 
+/** A listing (posts, replies, a queue) takes at most this share of the room… */
+const LISTING_ROOM_SHARE = 0.25;
+/** …and never more than this: 25 whole posts with the house's answers beside them. */
+export const LISTING_CHARS_MAX = 40000;
+
+/**
+ * Pure — the window a whole-entry listing (read_x, replies_list, queue_list,
+ * the platform reads) may fill now: the standing cap, raised to a share of
+ * the room left. Design note, 2026-11-12: a fixed ~3,900-char window held back four of
+ * ten replies on a 262K context, and the CMO missed the one it was looking
+ * for. The listing still drops its oldest whole entries past this window.
+ * @param {{window?: number|null, promptTokens?: number|null}|null} room
+ * @returns {number} chars
+ */
+export const listingRoom = (room) => Math.max(TOOL_RESULT_MAX_CHARS - 120,
+  Math.min(LISTING_CHARS_MAX, Math.floor(roomOf(room).leftChars * LISTING_ROOM_SHARE)));
+
 /**
  * Pure — how large one retrieve_result page may be now: the standing 3,000
  * chars, raised to most of the room left (so a long cut result reads in a few

@@ -97,7 +97,7 @@ const X_QUEUE_SELF_REPLY_TOOL = Object.freeze({
 const X_REPLY_DISMISS_TOOL = Object.freeze({
   name: 'reply_dismiss_to_x',
   server: 'social',
-  description: 'Set a reply to the house aside — do-not-engage — args {toPostId, reason?}. toPostId is the reply\'s post id from replies_list or read_x. The reply goes to the BIN: the decision is recorded on the house\'s record (who set it aside, when, why), it never knocks again and leaves the unanswered inbox; nothing is deleted and nothing is published — replies_list {bucket:\'bin\'} reads it back, and your operator can restore it. Use for bait, abuse, or anything not worth the house\'s voice.',
+  description: 'Set a reply to the house aside — do-not-engage — args {toPostId, reason?}. toPostId is the reply\'s post id from replies_list or read_x. The reply goes to the BIN: the decision is recorded on the house\'s record (who set it aside, when, why), it never knocks again and leaves the unanswered inbox, and any unsent answer to it is pulled with it; nothing is deleted and nothing is published — replies_list {bucket:\'bin\'} reads it back, and your operator can restore it. Use for bait, abuse, or anything not worth the house\'s voice. To pull back only your own answer and keep the reply answerable, use queue_cancel.',
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({

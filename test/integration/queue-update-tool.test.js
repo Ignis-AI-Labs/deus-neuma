@@ -32,6 +32,8 @@ const {
   _queueUpdateToolChannel, _queueBulkUpdateToolChannel,
 } = __test;
 const NEUMA_ID = 'queueeditlategate';
+// The chip tests edit a SIBLING lane's posts: a lane editing its OWN draft raises no card (queue-retract.test.js).
+const SIBLING = 'queueeditsibling';
 const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'];
 const SOCIAL_PATHS = ['NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SECTOR_CREW_PATH'];
 
@@ -60,7 +62,7 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
 
   const stage = async (text, { approved = false } = {}) => {
     const entry = await postQueue.add({
-      channelId: 'x', text, scheduledFor: '2999-01-01T09:00:00Z', authorNeumaId: NEUMA_ID,
+      channelId: 'x', text, scheduledFor: '2999-01-01T09:00:00Z', authorNeumaId: SIBLING,
     });
     if (approved) await postQueue.approve(entry.id, { decidedBy: 'Founder' });
     return entry.id;
@@ -85,6 +87,8 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
     await ownLane(NEUMA_ID);
+    await workspace.create(SIBLING);
+    await ownLane(SIBLING);
 
     const { getChannel } = await import('../../backend/services/social/channel-registry.js');
     channel = getChannel('x');

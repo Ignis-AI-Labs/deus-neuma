@@ -120,7 +120,7 @@ describe('campaign tools gate (universal access, real stores + real WS, gnosis)'
     // thread only fit in a single-entry read.
     // replies_list joined 2026-10-13 (264e4769f): the reply inbox — what is
     // unanswered, staged, answered — is a read the being needs to answer at all.
-    expect(SOCIAL_TOOLS.map((t) => t.name)).toEqual(['queue_list', 'queue_get', 'read_x', 'queue_cancel', 'replies_list']);
+    expect(SOCIAL_TOOLS.map((t) => t.name)).toEqual(['queue_list', 'queue_get', 'read_x', 'queue_cancel', 'replies_list', 'queue_retract']);
   });
 
   test('ADVERTISING — the bench READ is all that is offered; a seated CMO changes no access', async () => {

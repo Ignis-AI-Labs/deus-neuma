@@ -325,7 +325,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   social: {
     allowed: ['queue_list', 'queue_get', 'replies_list'],
     denied: [],
-    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel'],
+    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel', 'queue_retract'],
   },
   // The being's own working list, and the house lead ledger. Listing is pure
   // observation (same law as the vault and the inbox); every mutation is a

@@ -137,3 +137,34 @@ export const postToX = async (credentials, text, { signal, mediaIds = [], replyT
     return { ok: false, detail: err.message };
   }
 };
+
+/**
+ * Delete one of the account's own posts (X API v2 DELETE /2/tweets/:id).
+ * Never throws: every failure returns {ok:false, status?, detail}. X has no
+ * edit endpoint — a correction is this delete, then the corrected words
+ * posted fresh.
+ * @param {ReturnType<typeof xPostCredentials>} credentials
+ * @param {string} postId
+ * @param {{signal?: AbortSignal}} [opts]
+ * @returns {Promise<{ok: true}|{ok: false, status?: number, detail: string}>}
+ */
+// impure — network + clock + entropy
+export const deleteFromX = async (credentials, postId, { signal } = {}) => {
+  if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
+  const url = `${postEndpoint()}/${encodeURIComponent(String(postId))}`;
+  const header = buildOAuth1Header(credentials, {
+    method: 'DELETE',
+    url,
+    timestamp: String(Math.floor(Date.now() / 1000)),
+    nonce: crypto.randomBytes(16).toString('hex'),
+  });
+  try {
+    const res = await fetch(url, { method: 'DELETE', headers: { Authorization: header }, signal });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body?.data?.deleted === true) return { ok: true };
+    const detail = body?.detail || body?.errors?.[0]?.message || body?.title || `HTTP ${res.status}`;
+    return { ok: false, status: res.status, detail };
+  } catch (err) {
+    return { ok: false, detail: err.name === 'AbortError' ? 'interrupted by your operator before deleting' : err.message };
+  }
+};

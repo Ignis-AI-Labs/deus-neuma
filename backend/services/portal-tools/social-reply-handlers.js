@@ -397,7 +397,15 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: marked.error });
     return { tool, status: 'error', error: marked.error };
   }
-  const content = `Set aside the reply from @${candidate.username || 'the account'}${reason ? ` (${reason})` : ''}. The record of what they said stands; the house simply will not engage it, and it stops surfacing as answerable.`;
+  // A reply set aside is not engaged (Design note, 2026-11-12: an unsent answer to it
+  // is pulled with it, so no draft to a binned reply waits to be approved.
+  const pulled = [];
+  for (const e of await laneHouseEntries(companion?.neumaId).catch(() => [])) {
+    if (e?.kind !== 'reply' || e.reply?.toPostId !== candidate.postId || !['draft', 'approved'].includes(e.status)) continue;
+    const out = await postQueue.withdraw(e.id, { withdrawnBy: companion?.name || 'being', reason: reason || 'the reply it answered was set aside' }).catch(() => ({ ok: false }));
+    if (out.ok) pulled.push(e.id);
+  }
+  const content = `Set aside the reply from @${candidate.username || 'the account'}${reason ? ` (${reason})` : ''}. The record of what they said stands; the house simply will not engage it, and it stops surfacing as answerable.${pulled.length ? ` Its unsent answer ${pulled.join(', ')} was pulled with it and will never publish.` : ''}`;
   _sendToolEvent(ws, companion, {
     tool, status: 'ok',
     summary: `reply set aside (${channel.name})`,
