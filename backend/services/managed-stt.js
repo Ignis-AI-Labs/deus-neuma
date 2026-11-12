@@ -105,6 +105,10 @@ export const sttReadiness = async () => {
     why: plan.why,
     serving: sttServerDevice(),
     bytes: plan.downloadBytes,
+    // dictating on the processor while the card has room: the card's pair is offered, never forced
+    ...(plan.ready && plan.device === 'gpu' && !plan.cardReady ? {
+      upgrade: Object.freeze({ label: `${STT_GPU_MODEL.label.toUpperCase()} — RUNS ON YOUR GRAPHICS CARD`, bytes: plan.downloadBytes, why: plan.why }),
+    } : {}),
   });
 };
 
@@ -151,7 +155,9 @@ export const startSttJob = () => {
   run().then(() => {
     update({ state: 'succeeded', step: 'done' });
     log.info('dictation set up', { build: WHISPER_CPP_BUILD, model: STT_MODEL.name });
-    // set up means ready to speak: the server loads now, not at the first held key
+    // set up means ready to speak: the server loads now, not at the first held key, and one already
+    // running on the processor moves to the card if the card's pair just landed
+    stopSttServer();
     ensureSttServer().catch((err) => log.warn('the speech server did not start after setup', { error: err.message }));
   }).catch((err) => {
     log.warn('dictation setup stopped', { error: err.message, code: err.code });

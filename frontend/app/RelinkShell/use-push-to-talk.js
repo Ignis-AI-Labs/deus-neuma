@@ -12,7 +12,7 @@
 // returns to idle so a failed attempt never wedges the composer).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { transcribe, warmTranscriber } from './stt-client.js';
+import { dictationReadiness, transcribe, warmTranscriber } from './stt-client.js';
 import { openDictationStream } from './stt-stream-client.js';
 
 const ERROR_DISPLAY_MS = 3000;
@@ -36,6 +36,17 @@ const MIN_AUDIO_BYTES = 2048;
 // the last one lands — never a fixed 1.2 s tick waiting behind a busy pass.
 // Only one pass is ever in flight; a slice that lands meanwhile just waits.
 const SLICE_MS = 250;
+
+// THE CARD'S OFFER: once a dictation has worked, the platform is asked (once a page) whether the
+// graphics card has room for the faster model; NOT NOW is kept for good on this desk.
+const UPGRADE_DISMISSED = 'neuma.dictation.cardOffer.dismissed';
+let upgradeAsked = false;
+const askForUpgrade = async () => {
+  if (upgradeAsked) return null;
+  upgradeAsked = true;
+  try { if (localStorage.getItem(UPGRADE_DISMISSED) === '1') return null; } catch { return null; }
+  return (await dictationReadiness())?.upgrade ?? null;
+};
 // The floor between two read starts — a quiet engine is not asked twice per slice.
 const PREVIEW_GAP_MS = 300;
 
@@ -166,6 +177,7 @@ export const usePushToTalk = (onTranscript, onPreview, onFinalError) => {
         if (!liveRef.current) return;
         setState('idle');
         if (text) onTranscript(text);
+        if (text) askForUpgrade().then((upgrade) => { if (upgrade && liveRef.current) setSetup({ missing: [], upgrade }); });
       } catch (err) {
         if (err?.code === 'STT_COMPONENTS_MISSING' && liveRef.current) {
           setSetup({ missing: err.missing || [] });
@@ -201,7 +213,12 @@ export const usePushToTalk = (onTranscript, onPreview, onFinalError) => {
     if (recorder && recorder.state === 'recording') recorder.stop();
   }, []);
 
-  const dismissSetup = useCallback(() => setSetup(null), []);
+  const dismissSetup = useCallback(() => {
+    setSetup((open) => {
+      if (open?.upgrade) { try { localStorage.setItem(UPGRADE_DISMISSED, '1'); } catch { /* private mode: asked again next time */ } }
+      return null;
+    });
+  }, []);
 
   return { state, begin, end, setup, dismissSetup };
 };

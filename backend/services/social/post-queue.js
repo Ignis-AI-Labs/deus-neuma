@@ -28,7 +28,7 @@ import { join, dirname } from 'path';
 import { withFileLock, LOCK_TIMEOUT } from '../file-lock.js';
 import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
-import { validateDraft, queuedSecretRefusal, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
+import { validateDraft, queuedSecretRefusal, quoteFieldsOf, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
 import { approveThreadIn } from './queue-thread.js';
 import { tiktokApproveRefusal } from './tiktok-metadata.js';
@@ -240,7 +240,7 @@ export const createPostQueue = (opts = {}) => {
             expiresAt: draft.expiresAt || new Date(createdAt.getTime() + REPLY_TTL_MS).toISOString(),
           } : {}),
           // Its place in a campaign — angle, group — copied only when set.
-          ...campaignFieldsOf(draft),
+          ...campaignFieldsOf(draft), ...quoteFieldsOf(draft),
           authorNeumaId: draft.authorNeumaId || null,
           queuedBy: String(draft.queuedBy || ''),
           status: 'draft',

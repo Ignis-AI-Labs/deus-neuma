@@ -135,6 +135,7 @@ const _fullLine = (e, threads) => [
   e.kind === 'reply' && e.reply
     ? `· REPLY to @${_flat(e.reply.toUsername || e.reply.toUserId || 'unknown')}`
     : null,
+  e.quote?.url ? `· QUOTES ${_flat(e.quote.url)}` : null,
   _slotMark(e),
   _threadMark(e, threads),
   _campaignMark(e),

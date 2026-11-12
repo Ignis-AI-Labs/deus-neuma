@@ -11,6 +11,9 @@ import { getChannel } from './channel-registry.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { youtubeDraftRefusal } from './youtube-metadata.js';
 import { tiktokDraftRefusal } from './tiktok-metadata.js';
+import { quoteRefusal } from './quote-post.js';
+
+export { quoteFieldsOf } from './quote-post.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -114,7 +117,7 @@ export const replyCountForConversation = (entries, toUserId, conversationId) =>
  *   campaignId?: string, pillar?: string, kind?: string, reply?: object,
  *   expiresAt?: string|null}} draft
  */
-export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder } = {}) => {
+export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder, quote } = {}) => {
   if (!getChannel(channelId || '')) return `Unknown channel: ${channelId}`;
   if (placeholder != null && typeof placeholder !== 'boolean') {
     return 'placeholder must be a boolean';
@@ -130,6 +133,9 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   if (channel?.maxChars && t.length > channel.maxChars) {
     return `the post is ${t.length} characters — ${channel.name || channelId} allows at most ${channel.maxChars}`;
   }
+  // A QUOTE POST (quote-post.js): X only, the quoted link counted in the ceiling, never a reply.
+  const quoted = quoteRefusal({ channelId, text: t, kind, quote }, channel?.maxChars || 280);
+  if (quoted) return quoted;
   // A YouTube post is one video and its title — refused here, at staging,
   // so a text-only draft never reaches the operator's approval.
   if (channelId === 'youtube') {

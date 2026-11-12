@@ -128,6 +128,15 @@
       "sends": "what you approve to post, and reads of your posts' stats and replies",
       "detail": "Social channels (X, Telegram, Discord, Facebook, LinkedIn, Mastodon, Bluesky), email (your own mail server) and remote access (your own relay, your Tailscale network or your local network; there is no Ignis relay) talk only to the services you connect, and only once you do. Once a channel is connected, the app posts what you approved at its time, checks X for replies every 10 minutes, and reads the likes, replies and views of the posts you sent on X, Bluesky and Facebook every 30 minutes. If you save a Deus Neuma site token, it asks deusneuma.ai for your links' visit counts every 6 hours, with that token. A Hugging Face token you save is handed only to the local engines you run.",
       "control": "setup"
+    },
+    {
+      "id": "downloads",
+      "name": "Downloads you start",
+      "to": "GitHub and Hugging Face",
+      "when": "only when you press a download, or set up an engine or a model",
+      "sends": "a request for the file, like any download: your IP address and which file was asked for (and your Hugging Face token to Hugging Face, if you saved one)",
+      "detail": "Setting up the model server downloads Ollama, or the llama.cpp engine, from their releases on GitHub, and the model from Hugging Face. Setting up dictation downloads whisper.cpp from its releases on GitHub (on Linux, with an NVIDIA graphics card that has room for it, the graphics-card build from Deus Neuma's own releases on GitHub) and its speech model from Hugging Face. Every engine, and every model the app downloads itself, is checked against its pinned size and SHA-256 before it is used; a model pulled through Ollama is checked by Ollama's own digests. Nothing here downloads on its own, and no install identifier is sent.",
+      "control": "use"
     }
   ]
 }

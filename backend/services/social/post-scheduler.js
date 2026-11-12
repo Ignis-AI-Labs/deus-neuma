@@ -363,6 +363,8 @@ export const publishEntry = async (entry) => {
       // answers its parent's live post (the thread law, resolved above).
       ...(entry.kind === 'reply' ? { replyToId: entry.reply?.toPostId } : {}),
       ...(entry.kind === 'self-reply' && threadReplyToId ? { replyToId: threadReplyToId } : {}),
+      // a quote post's link rides to the poster, which ends the words with it (quote-post.js)
+      ...(entry.quote?.url ? { quoteUrl: entry.quote.url } : {}),
     })
     : { ok: false, detail: `no poster for channel ${entry.channelId}` };
 

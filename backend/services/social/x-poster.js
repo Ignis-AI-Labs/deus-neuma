@@ -94,14 +94,15 @@ export const xPostCredentials = () => {
  * @param {ReturnType<typeof xPostCredentials>} credentials
  * @param {string} text
  * @param {{signal?: AbortSignal, mediaIds?: Array<string>,
- *   replyToId?: string|null}} [opts] - mediaIds come from
+ *   replyToId?: string|null, quoteUrl?: string|null}} [opts] - mediaIds come from
  *   `x-media.js#uploadMedia`, already uploaded and described; replyToId
- *   makes the post an ANSWER to the named post (the reply lane).
+ *   makes the post an ANSWER to the named post (the reply lane); quoteUrl
+ *   makes it a QUOTE of the post at that link.
  * @returns {Promise<{ok: true, id: string, text: string}
  *   |{ok: false, status?: number, detail: string}>}
  */
 // impure — network + clock + entropy
-export const postToX = async (credentials, text, { signal, mediaIds = [], replyToId = null } = {}) => {
+export const postToX = async (credentials, text, { signal, mediaIds = [], replyToId = null, quoteUrl = null } = {}) => {
   if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
   const header = buildOAuth1Header(credentials, {
     method: 'POST',
@@ -114,7 +115,9 @@ export const postToX = async (credentials, text, { signal, mediaIds = [], replyT
   // may carry BOTH linkage and media — X's API takes `reply` and `media` on
   // the same post — so each rides conditional on its own input, never one
   // winning over the other.
-  const payload = { text };
+  // A quote post (quote-post.js) goes out as X's own quote button builds one: the quoted post's
+  // link at the end of the words, never a counted link.
+  const payload = { text: quoteUrl ? `${text} ${quoteUrl}` : text };
   if (replyToId) payload.reply = { in_reply_to_tweet_id: String(replyToId) };
   if (mediaIds.length) payload.media = { media_ids: mediaIds };
   try {

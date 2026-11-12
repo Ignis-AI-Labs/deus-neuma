@@ -371,6 +371,14 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
               </div>
             ) : null}
             <p className="queue-preview-text">{entry.text}</p>
+            {entry.quote?.postId ? (
+              // A QUOTE POST: the quoted post rides at the end of the words when it goes out; the
+              // operator opens the real post on X before approving.
+              <div className="queue-preview-head">
+                <span className="queue-preview-via">QUOTES</span>
+                <XPostLink postId={entry.quote.postId} className="queue-preview-author">{entry.quote.url}</XPostLink>
+              </div>
+            ) : null}
             {entry.media?.length ? (
               // The attachments themselves — the witness decides the images,
               // not a MEDIA ×N count. Each thumbnail is the real staged file

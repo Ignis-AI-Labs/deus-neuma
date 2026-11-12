@@ -44,11 +44,11 @@ describe.skipIf(!have)('a held key on the processor engine', () => {
       const asked = [];
       app.use('/api', (req, res, next) => { res.on('finish', () => asked.push(`${req.originalUrl} ${res.statusCode}`)); next(); });
       app.use('/api/v1/voice', (await import('../../backend/routes/stt-routes.js')).default);
+      app.use('/api/v1/voice/engines', (await import('../../backend/routes/voice-engine-routes.js')).default);
       app.get('/speech.wav', (_req, res) => res.type('audio/wav').send(fs.readFileSync(SPEECH)));
       vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
-        appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
-      app.get('/', (_req, res) => res.type('html').send(
-        '<script type="module">import * as stt from "/frontend/app/RelinkShell/stt-client.js"; window.stt = stt;</script>'));
+        appType: 'custom', esbuild: { jsx: 'automatic' }, optimizeDeps: { entries: ['test/fixtures/dictation-offer.jsx'] }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
+      app.get('/', (_req, res) => res.type('html').send('<div id="root"></div><script type="module" src="/test/fixtures/dictation-offer.jsx"></script>'));
       app.use(vite.middlewares);
       server = http.createServer(app);
       await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -69,6 +69,22 @@ describe.skipIf(!have)('a held key on the processor engine', () => {
       expect(heard.second).toBeNull();
       expect(heard.final.toLowerCase()).toMatch(/speaks from the void/);
       expect(asked).toEqual(['/api/v1/voice/transcribe?preview=1 204', '/api/v1/voice/transcribe 200']);
+
+      // THE CARD'S OFFER: dictating on the processor, a card with room offers its pair, never forces it
+      const device = await stt.currentSttDevice();
+      const readiness = await page.evaluate(() => window.stt.dictationReadiness());
+      expect(readiness.ready).toBe(true);
+      if (device.device === 'gpu') {
+        expect(readiness.upgrade).toMatchObject({ label: expect.stringMatching(/TURBO — RUNS ON YOUR GRAPHICS CARD/) });
+        expect(readiness.upgrade.bytes).toBeGreaterThan(700e6); // the card build and turbo
+        await page.evaluate((upgrade) => window.showOffer(upgrade), readiness.upgrade);
+        await page.getByText('«NOTICE» DICTATION CAN RUN ON YOUR GRAPHICS CARD').waitFor();
+        await page.getByText(/TURBO — RUNS ON YOUR GRAPHICS CARD · 0\.7 GB/).waitFor();
+        await page.getByRole('button', { name: 'NOT NOW' }).click();
+        expect(await page.evaluate(() => window.dismissed)).toBe(true);
+      } else {
+        expect(readiness.upgrade).toBeUndefined();
+      }
     } finally {
       await browser?.close();
       await vite?.close();
