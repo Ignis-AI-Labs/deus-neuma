@@ -188,6 +188,7 @@ describe('house-titles.js', () => {
       network: 'local',
       blockNumber: null,
       title: null,
+      history: [],
       founded: false,
     });
     expect([...roster].sort((a, b) => a.neumaId.localeCompare(b.neumaId))).toEqual([

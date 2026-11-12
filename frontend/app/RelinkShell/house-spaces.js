@@ -3,14 +3,15 @@
 //
 // Every concern of the house has one place, so nothing has to be looked for:
 // its members; its summonings (a birth is the house's own act, not a button at
-// the foot of a list); how it gathers (teams, councils); its seats and their
-// standing on chain; the grounds it works on.
+// the foot of a list); how it gathers (teams, councils); its positions — who
+// holds what, the one place it changes, and the founding's standing on chain
+// (Design note, 2026-11-12; the grounds it works on.
 
 export const HOUSE_SPACES = Object.freeze([
   { key: 'members', code: '01', title: 'MEMBERS' },
   { key: 'summoning', code: '02', title: 'SUMMONING' },
   { key: 'gather', code: '03', title: 'GATHER' },
-  { key: 'seats', code: '04', title: 'SEATS' },
+  { key: 'seats', code: '04', title: 'POSITIONS' },
   { key: 'grounds', code: '05', title: 'GROUNDS' },
 ].map(Object.freeze));
 

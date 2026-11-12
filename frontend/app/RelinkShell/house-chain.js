@@ -47,7 +47,7 @@ const MEANING_BY_TITLE = new Map(TITLE_LEGEND.map((r) => [r.title, r.meaning]));
 
 /**
  * THE HOUSE, SEATED — one card per member, THE ENTITY FIRST (Design note, 2026-08-10:
- * the being's name, their position (locked on-chain, never a local edit),
+ * the being's name, their position (the founding's, or the house's own later change),
  * and its function when the seat is canonical. No canon grid, no open-seat
  * placeholders, no tiers — […]
  * @param {{byNeumaId: Object<string, {title: string, active: boolean}>}|null} seats - output of chainSeats
@@ -59,8 +59,11 @@ export const houseSeatCards = (seats, rows, { confirmed = false } = {}) => (rows
   const seat = seats?.byNeumaId?.[r.member?.neumaId] ?? null;
   // A failed RPC cannot erase the founding receipt. A confirmed removal or
   // inactive seat must never be resurrected by that older receipt either.
-  const title = seat ? (seat.active !== false ? seat.title || null : null)
-    : confirmed ? null : r.member?.title || null;
+  // A title changed since the founding (the house's own record, Founder
+  // 2026-11-12: titles shift) is the one held now, on chain or not.
+  const title = r.member?.titleChanged && r.member?.title ? r.member.title
+    : seat ? (seat.active !== false ? seat.title || null : null)
+      : confirmed ? null : r.member?.title || null;
   return {
     name: r.member?.name || r.member?.neumaId,
     neumaId: r.member?.neumaId,

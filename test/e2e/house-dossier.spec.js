@@ -7,7 +7,7 @@ import { setupIsolatedHouse, openDesk, settledShot as shot } from './helpers/iso
 /**
  * End-to-end THE HOUSE AS A FILE (2026-10-17) — the HOUSE window as the
  * SHEET's dossier: a cover with every member's light, and five spaces one
- * page at a time (MEMBERS · SUMMONING · GATHER · SEATS · GROUNDS), walked by
+ * page at a time (MEMBERS · SUMMONING · GATHER · POSITIONS · GROUNDS), walked by
  * click and by arrow keys, the last one opened remembered. Every member wears
  * its own soul color — read from the real roster, derived from a real forged
  * birth identity. The SUMMON door opens the ceremony's consent gate and the
@@ -55,7 +55,7 @@ test('the house is a file: its cover, five spaces, every member in its own light
 
   // FIVE SPACES; MEMBERS first, carrying the count
   const tabs = page.locator('.hd .dos-index [role="tab"]');
-  await expect(tabs).toHaveText(['01MEMBERS · 4', '02SUMMONING', '03GATHER', '04SEATS', '05GROUNDS']);
+  await expect(tabs).toHaveText(['01MEMBERS · 4', '02SUMMONING', '03GATHER', '04POSITIONS', '05GROUNDS']);
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.house-seats-card')).toHaveCount(4);
   await expect(page.locator('.house-seats-card.is-linked')).toContainText(MEMBERS[0].name);
@@ -72,7 +72,7 @@ test('the house is a file: its cover, five spaces, every member in its own light
   await expect(page.locator('.hd-birth', { hasText: 'Orrin' }).locator('.hd-birth-nofilm')).toHaveText('NO FILM ON RECORD');
   await shot(win, 'house-02-summoning');
 
-  // ← → walk the strip: GATHER, then SEATS
+  // ← → walk the strip: GATHER, then POSITIONS
   await tabs.nth(1).focus();
   await page.keyboard.press('ArrowRight');
   await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');

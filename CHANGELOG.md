@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.127] - 2026-11-12
+
+Notes: `docs/operations/release-notes-0.1.127.md`.
+
+### Added
+
+- Titles in a house can change. In the HOUSE window, POSITIONS shows who holds each title, with one place to correct or give a member a title (with a reason) and to let two members trade titles. The founding record stays as it was signed, and each member keeps a history of every title they have held and when.
+
 ## [0.1.126] - 2026-11-11
 
 Notes: `docs/operations/release-notes-0.1.126.md`.

@@ -1,0 +1,13 @@
+/* HousePositions — every member's position, and the one place it changes. */
+.hp { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.hp-row { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.hp-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.hp-who { flex: 1 1 160px; min-width: 0; }
+.hp-title { flex: 1 1 160px; min-width: 0; }
+.hp-meaning { margin: 0; color: var(--color-text-secondary); }
+.hp-edit { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.hp-edit .settings-input { flex: 1 1 180px; min-width: 0; }
+.hp-history summary { cursor: pointer; }
+.hp-history ol { margin: var(--space-1) 0 0; padding-left: var(--space-4); display: flex; flex-direction: column; gap: 2px; }
+.hp-trade { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding-top: var(--space-2); }
+.hp-trade .settings-input { flex: 1 1 180px; min-width: 0; }
