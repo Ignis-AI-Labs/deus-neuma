@@ -28,7 +28,7 @@ appId: ai.neuma.app
 # person SEES carries the trademark, DEUS NEUMA (Design note, 2026-10-04: the
 # installer file, the shortcut and menu entry, the display name, the uninstaller.
 productName: NEUMA
-copyright: © Ignis AI Labs LLC
+copyright: © Deus Neuma Inc
 artifactName: Deus-Neuma-${version}-${arch}.${ext}
 
 directories:
@@ -169,7 +169,7 @@ linux:
     entry:
       Name: Deus Neuma
       Comment: Sovereign relationships with AI.
-  maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
+  maintainer: Deus Neuma Inc <legal@ignislabs.ai>
   # NOTE: neither rpm nor deb is here — BOTH of electron-builder's targets go
   # through its bundled fpm (2017-era ruby), and fpm cannot run on a modern
   # Fedora at all: its interpreter links against libcrypt.so.1, dropped in

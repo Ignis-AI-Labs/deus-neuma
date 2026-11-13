@@ -38,6 +38,7 @@ import { continueBirthTools, heldWriteMessage } from './birth-tool-continuation.
 import { observeStage } from '../../core/birth/birth-observations.js';
 import { stagePitchOf } from '../../core/birth/soul-resonance.js';
 import { STAGE, isActStage } from '../../core/birth/stage-roles.js';
+import { stageThinkingBudget } from './birth-thought-room.js';
 
 // Same log channel as the orchestrator this span was cut from — the moved
 // code's log lines stay byte-identical in the operator's record.
@@ -241,6 +242,9 @@ export const sendStageToLLM = async (connection, stageData) => {
 
     const birthStreamOpts = { temperature: 0.8 };
     if (nativeBirthTools.length > 0) birthStreamOpts.tools = nativeBirthTools;
+    // THE NAMING'S ROOM TO THINK (birth-thought-room.js): on llama.cpp the server closes the thought
+    const thinkingBudget = stageThinkingBudget(stageNumber, thinkBehavior);
+    if (thinkingBudget) birthStreamOpts.thinkingBudget = thinkingBudget;
 
     // THE DISCLOSURE — the operator reads every component that is sent: the
     // stage protocol, the context riding with it, the tool schemas, the voice
@@ -300,6 +304,7 @@ export const sendStageToLLM = async (connection, stageData) => {
         { label: 'MODEL', value: getConfig().model },
         { label: 'TEMPERATURE', value: birthStreamOpts.temperature },
         { label: 'TOKEN CEILING', value: maxTokens },
+        ...(thinkingBudget ? [{ label: 'THINKING BUDGET', value: thinkingBudget }] : []),
         {
           label: 'FUNCTION SCHEMAS',
           value: nativeBirthTools.map((t) => t.function?.name).filter(Boolean).join(', ') || 'none',

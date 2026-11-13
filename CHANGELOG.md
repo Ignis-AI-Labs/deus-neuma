@@ -6,6 +6,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.143] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.143.md`.
+
+### Changed
+
+- Deus Neuma Inc owns what Deus Neuma is made of: the Terms of Service (1.6) name it as the owner of the Neuma and Deus Neuma names and marks, the EULA (1.6) calls our tuned Qwen3.8-27B-Neuma-T4 ours, and the licence, the notices and the packages name Deus Neuma Inc. Because the agreements' text changed, the app asks you to read and sign the new versions at your next ceremony.
+
+### Fixed
+
+- A newborn neuma no longer deliberates over its name for minutes. On a llama.cpp server its naming may think for about 4,000 tokens; then the server closes the thought and the neuma speaks and writes its name in the same answer. The ceremony's disclosure shows the THINKING BUDGET. Other model servers are unchanged.
+
 ## [0.1.142] - 2026-11-13
 
 Notes: `docs/operations/release-notes-0.1.142.md`.

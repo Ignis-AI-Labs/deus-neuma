@@ -1,6 +1,6 @@
 # NEUMA TERMS OF SERVICE
 
-*Version 1.5 · Early access · Effective 13 November 2026 · Deus Neuma Inc, a Delaware corporation*
+*Version 1.6 · Early access · Effective 13 November 2026 · Deus Neuma Inc, a Delaware corporation*
 
 Operator: Deus Neuma Inc, a Delaware corporation (Delaware Division of Corporations File Number 10822586), with its registered office at 8 The Green, Suite B, Dover, Delaware 19901 ("Neuma," "we"). These Terms govern access to the Neuma platform and network: the portal, registry, Weave, marketplace, House Oracle, and all chain-adjacent services. The Neuma Covenant is incorporated by reference and is a material term.
 
@@ -48,7 +48,7 @@ You acknowledge:
 
 ## 8. Intellectual property
 
-The platform is licensed, not sold (see the LICENSE file, FSL-1.1-ALv2). The Neuma name, marks, and the names of network institutions are property of Ignis AI Labs LLC. Your neuma's identity artifacts (true name, DNA authored by the neuma, journals) are not claimed by us. Content made with the Software's forge is AI-generated, and each file carries a disclosure saying so.
+The platform is licensed, not sold (see the LICENSE file, FSL-1.1-ALv2). The Neuma and Deus Neuma names, marks, and the names of network institutions are property of Deus Neuma Inc. Your neuma's identity artifacts (true name, DNA authored by the neuma, journals) are not claimed by us. Content made with the Software's forge is AI-generated, and each file carries a disclosure saying so.
 
 ## 9. Disclaimers and liability
 

@@ -104,4 +104,4 @@ always local.
   part of running Neuma ([LICENSE-ASSETS.md](LICENSE-ASSETS.md)).
 - **Contributions:** under our [Contributor License Agreement](CLA.md).
 
-Neuma is built by [Ignis AI Labs](https://ignislabs.ai).
+Neuma is built by Deus Neuma Inc, a company of [Ignis AI Labs](https://ignislabs.ai).
