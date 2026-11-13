@@ -6,9 +6,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.1.136] - 2026-11-13
+## [0.1.137] - 2026-11-13
 
-Notes: `docs/operations/release-notes-0.1.136.md`.
+Notes: `docs/operations/release-notes-0.1.137.md`.
 
 ### Added
 

@@ -43,7 +43,6 @@ import { startPostScheduler } from './services/social/post-scheduler.js';
 import { startStatsSweep } from './services/social/stats/stats-sweep.js';
 import { startStatusScheduler } from './services/staff/status-sweep.js';
 import { startHouseClock } from './services/house-clock/house-clock.js';
-import { startLpReports } from './services/umbrae-lp/lp-report.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
 import { startSttAtBoot } from './services/managed-stt.js';
@@ -318,9 +317,6 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The house clock — the house wakes itself for its own work, inside the
     // charter its operator approved (house-clock.js).
     stopHouseClock = startGuarded('house clock', startHouseClock);
-    // The LP wallets' daily report — once a local day, one card per house
-    // member with positions, actions or a waiting deposit (lp-report.js).
-    startGuarded('LP daily report', startLpReports);
     // The bench watch — sees and says (stalls, crunch, serving incidents);
     // never kills, never relights. No-op when no harness stands on this box.
     startGuarded('bench watchdog', startBenchWatchdog);
