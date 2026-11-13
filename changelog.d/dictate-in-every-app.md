@@ -1,2 +1,0 @@
-Added
-- Dictate in every app (Linux, in Settings, off until you turn it on): hold Right Ctrl (or another key you choose), speak, and let go, and your words are typed into whatever window you are in, through the same local speech engine as dictation in Neuma. The microphone is open only while you hold the key, and nothing leaves your computer. If your computer still needs something for it (the input group, a recorder, ydotool), Settings names it with the command that adds it. Windows and macOS come next.

@@ -6,6 +6,55 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.136] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.136.md`.
+
+### Added
+
+- Right-clicking a chat now also offers TITLE UNTITLED and RETITLE ALL, below the chat's own items, in the Chats window (one-on-ones and councils) and in the stream's chat list. The TITLE button still works as before.
+- The Chats window has a picker for whose chats it shows. It follows the neuma in the stream until you pick another, and opening a chat of another neuma brings that neuma into the stream first. NEW CHAT starts with the neuma shown.
+- ALL NEUMA in that picker lists every neuma's chats together, newest first, each tagged with whose it is, and the search looks through all of them.
+- Naming chats or councils in batch (TITLE UNTITLED, RETITLE ALL) now shows NAMING n / total with a bar and about how long is left, titles appear in the list as they land, and CANCEL stops it (the titles already made stay).
+- Settings > Connections now lists the downloads you start yourself: the model server and its model, and dictation's engine and speech model, from GitHub and Hugging Face, each checked before it is used. Nothing there downloads on its own.
+- Dictate in every app (Linux, in Settings, off until you turn it on): hold Right Ctrl (or another key you choose), speak, and let go, and your words are typed into whatever window you are in, through the same local speech engine as dictation in Neuma. The microphone is open only while you hold the key, and nothing leaves your computer. If your computer still needs something for it (the input group, a recorder, ydotool), Settings names it with the command that adds it. Windows and macOS come next.
+- If you already dictate on your processor and your graphics card has room for the faster model, the app offers it once, after a dictation: DOWNLOAD fetches it (about 0.7 GB) and dictation moves to the card when it lands; NOT NOW is remembered. Dictation keeps working the whole time.
+- On Linux with an NVIDIA graphics card that has room beside your main model, dictation runs on the card with Whisper large-v3 turbo, the more accurate model: a held key comes back in about a tenth of a second. The app checks the card's free memory and the size of your main model first. Where the card is needed for your model (for example a 12 GB card running a 27B model), dictation stays on the processor and your model keeps the whole card. The setup card says where dictation runs and why.
+- Marketing has a company tree down its left side. Every company sits in its real nesting with its accounts listed under it, and accounts without a company are grouped last. One press takes you to any company or account, and the one you're on is highlighted.
+- From the tree you can move a company under another company (or back to the top) and move an account to a company. A company's site, legal name and repos are kept when it moves.
+- An account opened from anywhere in marketing now opens under its own company, so the path always says whose account it is.
+- Your marketing lead can now record an account's @handle by itself. Assigning who speaks for an account, or which company it belongs to, asks you on a card first.
+- Your neuma can stage quote posts on X: a draft names the post it quotes, by its link or id, and goes out as a quote (the quoted post's link ends the words, which X shows as the quoted post). The draft card shows QUOTES with a link to the post, and every quote waits for your approval, even under a mandate.
+
+### Changed
+
+- The legal check on your legal lead's answers is calmer. It now holds only text presented as law: a citation, a named statute or regulator, or a quote of one. Quoting a form, a document or a post no longer marks an answer UNCHECKED. Real legal citations the app hasn't confirmed are still held, just as before.
+- Dictation works like a push-to-talk key: hold, speak, let go, and the words land in the box, in about half a second on most computers. The speech engine now loads when the app opens and stays ready, instead of starting at your first dictation and shutting down after ten quiet minutes.
+- Dictation runs Whisper base, sized for a processor. The larger model it used before took 8 to 15 seconds a hold on most computers. Dictation asks you to download it once (60 MB).
+- The words arrive once, when you let go, with no live preview while the key is held.
+- Campaigns are connected across Marketing. Each company's campaigns appear in the company tree under that company, above its accounts, and one press opens a campaign's page.
+- The Campaigns tab shows each campaign as the same panel the board uses (its goal, time, results, the accounts it runs on), and pressing anywhere on a panel opens it. NEW CAMPAIGN sits at the top of the list.
+- An account's page lists the campaigns that run on it, and each one opens that campaign's page.
+- Spelling is checked on your computer now, with English dictionaries that come with the app. Misspelled words are underlined and right-click offers suggestions, with nothing downloaded and nothing to turn on. The Spellcheck dictionary switch is gone from Settings → Connections, because spellcheck no longer connects to anything.
+- The neuma switcher shows each member's role beside their Roman title, for example OPTIO (COS), with the seat spelled out on hover and for screen readers. A title your house chose itself is shown as you wrote it.
+- In the House, each member and position shows its full seat (for example Quaestor · CFO — CHIEF FINANCIAL OFFICER) and one plain sentence saying what the seat is for and where its neighbour's work begins. The title list shows that sentence as you choose a title.
+- Every tool call is now checked against the tool's own description before it runs, the same way for every tool and for both beings and sealed peers. A call that uses another tool system's field names (like file_path or old_string) or writes a number as text now runs as intended. A call with a missing field, a wrong value, or a field name that's almost right is stopped before anything happens, and the model is told exactly what to write instead (for example: "edits[0].old is not a field — did you mean edits[0].oldText?").
+
+### Fixed
+
+- On the Campaigns tab, a campaign's name is now its own button, so keyboard and screen-reader users open it the same way as everyone else. Before, the whole card was one big button with other buttons inside it, which screen readers can't announce properly.
+- A batch naming that fails now says TITLING FAILED with the reason, instead of NOTHING TO NAME.
+- The parallel capacity scan no longer reports 2 or 3 neuma at once on a model server that runs one request at a time. It now measures what the server delivered over the whole wave, so a queue reads as a queue and a single-slot server is named as one.
+- On Ollama, the capacity scan now uses the server's own token count instead of a word estimate, so its speed readings match what the server reports.
+- Dissolving a council now returns the stream to your one-on-one chat. Before, the empty council view stayed on screen until you pressed COUNCIL.
+- Opening or starting a one-on-one chat from the Chats window, the stream's chat list or NEW CHAT now always shows that chat, even while a council is sitting.
+- Dropdown lists are readable in every look. The title and TRADE dropdowns under House > POSITIONS, and the app's other plain dropdowns, opened a white list with near-white text on dark looks such as STONE. Their lists now use your look's own background and text colours.
+- A being on a model you serve yourself (Ollama, LM Studio, llama.cpp) no longer loses its turn while it writes a long file in one go. Ollama sends a tool call only once it is complete, so the app now waits up to 10 minutes of silence on these models instead of 2. Hosted models keep the 2-minute limit, and you can still interrupt a turn at any time.
+- A model that calls a tool through the general "call" tool using the tool's function-list spelling (like caller__get_weather) now reaches that tool on the first try. Before, the call was answered "unavailable" and the model had to try again: 238 wasted steps in benchmark runs from Oct 25 to Nov 8.
+- When the coding shell can't start, checking its status now gives the real reason (for example, the folder doesn't exist) instead of an internal error message.
+- A benchmark answer's record of tool calls now says why each failed call failed (the refusal or error message) and which argument names the model used, never their values. A round where one call was refused and another ran no longer records the refused call twice and loses the one that ran.
+- A link to an X post written into an X draft is no longer turned into a counted deusneuma.ai/go/ link, so X can show it as the quoted post.
+
 ## [0.1.128] - 2026-11-12
 
 Notes: `docs/operations/release-notes-0.1.128.md`.

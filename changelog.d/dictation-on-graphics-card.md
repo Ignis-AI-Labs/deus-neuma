@@ -1,2 +1,0 @@
-Added
-- On Linux with an NVIDIA graphics card that has room beside your main model, dictation runs on the card with Whisper large-v3 turbo, the more accurate model: a held key comes back in about a tenth of a second. The app checks the card's free memory and the size of your main model first. Where the card is needed for your model (for example a 12 GB card running a 27B model), dictation stays on the processor and your model keeps the whole card. The setup card says where dictation runs and why.
