@@ -1,6 +1,7 @@
 // /api/v1/model-server — set up a local model server for a person who has none.
 // The plan is read from this machine (GET /plan); the install owner starts the setup
 // (POST /install), the screen polls its progress (GET /status), and may stop it (POST /cancel).
+// Before it starts, the install owner may choose the folder the models go in (POST /home).
 // An NVIDIA driver older than its card needs keeps the model on the processor; the install owner
 // may choose to use the graphics card anyway, or go back (POST /gpu-driver).
 // Which setup runs is model-server-setup.js: the house's llama.cpp engine on Linux with an NVIDIA
@@ -9,7 +10,7 @@ import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { requireInstallOwner } from '../services/install-owner.js';
 import { chooseGpuAnyway } from '../services/managed-ollama.js';
-import { cancelJob, jobStatus, planView, startJob } from '../services/model-server-setup.js';
+import { cancelJob, chooseHome, jobStatus, planView, startJob } from '../services/model-server-setup.js';
 import { createLogger } from '../services/logger.js';
 
 const router = express.Router();
@@ -31,6 +32,18 @@ router.post('/install', requireInstallOwner, async (req, res) => {
   } catch (err) {
     log.error('install failed to start', { error: err.message });
     res.status(500).json({ error: 'The setup could not start.' });
+  }
+});
+
+router.post('/home', requireInstallOwner, async (req, res) => {
+  try {
+    const view = await chooseHome(req.body?.home);
+    log.info('model folder chosen', { home: view.homePath, wallet: req.walletAddress });
+    res.json(view);
+  } catch (err) {
+    if (err.code === 'MODEL_HOME') return res.status(400).json({ error: err.message });
+    log.error('model folder choice failed', { error: err.message });
+    return res.status(500).json({ error: 'The folder could not be kept.' });
   }
 });
 

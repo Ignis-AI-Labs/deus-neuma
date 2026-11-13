@@ -18,6 +18,20 @@ const setupLabel = (plan) => {
   return plan.downloadBytes > 0 ? `SET UP ${plan.model.name} · ${size(plan.downloadBytes)}` : `SET UP ${plan.model.name}`;
 };
 
+/**
+ * Where the models go, said before anything downloads, with the folder one press away (Founder,
+ * 2026-11-13: a full C: drive must never be where a 20 GB model lands by default). Only for a
+ * download into Deus Neuma's own folder: a person's own Ollama keeps its models where it does.
+ */
+const FolderLine = ({ plan, home, homeChangeable, canChooseHome, chooseHome }) => (
+  homeChangeable && home && plan?.supported ? (
+    <p className="door-bar-folder">
+      <span>Models: {home}{plan.freeBytes != null ? ` · ${size(plan.freeBytes)} free` : ''}</span>
+      {canChooseHome ? <button type="button" className="door-bar-link" onClick={chooseHome}>change</button> : null}
+    </p>
+  ) : null
+);
+
 /** Everything technical, for whoever opens it. */
 const BarDetails = ({ verdict, mind, plan, home, job, error }) => (
   <div className="door-bar-details" id="door-bar-details">
@@ -69,6 +83,7 @@ export const ModelBar = ({ ref, mind, recheck, readyModel, verdict, waiting, onD
         <p className="door-bar-line" role="status" aria-live="polite">{line}</p>
         {bar.view === 'setting' ? <progress className="door-bar-progress" max={100} value={progress.pct ?? undefined} /> : null}
         {bar.note || waiting ? <p className="door-bar-note">{[bar.note, waiting].filter(Boolean).join(' ')}</p> : null}
+        {bar.act === 'setup' || bar.act === 'retry' ? <FolderLine {...setup} /> : null}
         <GpuDriverNotice notice={verdict?.driver ?? null} onChange={() => { reread(); onDone(); }} />
       </div>
       <div className="door-bar-act">

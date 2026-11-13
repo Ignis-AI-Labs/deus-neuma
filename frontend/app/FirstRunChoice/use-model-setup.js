@@ -13,13 +13,17 @@ const POLL_MS = 1000;
 
 /**
  * @param {{onDone: () => void, enabled?: boolean}} opts - `enabled` false holds the plan read
- * @returns {{plan: object|null, home: string, job: object|null, error: string,
+ * @returns {{plan: object|null, home: string, homePath: string, homeChangeable: boolean, canChooseHome: boolean, job: object|null, error: string,
  *   progress: {done: number|null, total: number|null, pct: number|null, seconds: number|null},
- *   start: () => Promise<void>, stop: () => void, reread: () => void}}
+ *   start: () => Promise<void>, stop: () => void, reread: () => void, chooseHome: () => Promise<void>}}
+ *   `canChooseHome` — the models go into Deus Neuma's own folder and this window can open the
+ *   system's folder dialog (the app, not a plain browser)
  */
 export const useModelSetup = ({ onDone, enabled = true }) => {
   const [plan, setPlan] = useState(null);
   const [home, setHome] = useState('');
+  const [homePath, setHomePath] = useState('');
+  const [homeChangeable, setHomeChangeable] = useState(false);
   const [job, setJob] = useState(null);
   const [error, setError] = useState('');
   const [round, setRound] = useState(0);
@@ -32,7 +36,7 @@ export const useModelSetup = ({ onDone, enabled = true }) => {
     let live = true;
     setError('');
     apiCall('GET', '/api/v1/model-server/plan', { useServerError: true, strictJson: true })
-      .then((r) => { if (live) { setPlan(r.plan); setHome(r.home); setJob(r.job); } })
+      .then((r) => { if (live) { setPlan(r.plan); setHome(r.home); setHomePath(r.homePath || ''); setHomeChangeable(Boolean(r.homeChangeable)); setJob(r.job); } })
       .catch((err) => { if (live) setError(err?.message || 'This machine could not be read for a setup plan.'); });
     return () => { live = false; };
   }, [enabled, round]);
@@ -71,8 +75,20 @@ export const useModelSetup = ({ onDone, enabled = true }) => {
   // impure — stop the setup; the next poll shows it stopped
   const stop = () => { apiCall('POST', '/api/v1/model-server/cancel', { useServerError: false, strictJson: true }).catch(() => null); };
   const reread = useCallback(() => setRound((n) => n + 1), []);
+  // impure — the system's own folder dialog, then the plan read again for the folder's drive
+  const dialog = typeof window !== 'undefined' ? window.neuma?.chooseDirectory : null;
+  const chooseHome = async () => {
+    const picked = await dialog?.({ title: 'Choose where the models go', defaultPath: homePath || undefined }).catch(() => null);
+    if (!picked) return;
+    setError('');
+    const r = await apiCall('POST', '/api/v1/model-server/home', { body: { home: picked }, useServerError: true, strictJson: true })
+      .catch((err) => ({ error: err?.message || 'The folder could not be kept.' }));
+    if (r.error) { setError(r.error); return; }
+    setPlan(r.plan); setHome(r.home); setHomePath(r.homePath || ''); setHomeChangeable(Boolean(r.homeChangeable)); setJob(r.job);
+  };
 
   const progress = setupProgress(job);
   const seconds = progress.total != null && progress.done != null ? secondsLeft(samples, progress.total - progress.done) : null;
-  return { plan, home, job, error, progress: { ...progress, seconds }, start, stop, reread };
+  const canChooseHome = homeChangeable && typeof dialog === 'function' && job?.state !== 'running';
+  return { plan, home, homePath, homeChangeable, canChooseHome, job, error, progress: { ...progress, seconds }, start, stop, reread, chooseHome };
 };

@@ -27,6 +27,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { getDataRoot } from './data-root.js';
+import { chosenModelHome } from './model-home.js';
 import { readManagedRecord, servedOllamaWindow, writeManagedRecord } from './managed-ollama-record.js';
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
@@ -56,14 +57,18 @@ const endpoints = () => managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT);
 
 // impure — read at call time (packaged vs dev data roots)
 const root = () => path.join(getDataRoot(), 'model-server');
-// Where the server and the models are kept: the folder the person chose in the installer (kept in
-// the record), else beside the record. Models are large, so this is the person's choice.
+// Where the server and the models are kept: the folder this job was given, else the folder the
+// setup put them in (the record), else beside the record. Models are large, so this is the
+// person's choice. A NEW setup goes where the person chose (model-home.js: the door's CHANGE, or
+// the Windows installer's folder), even when an older setup lives elsewhere; a server already set
+// up keeps running from its own folder until then.
 let chosenHome = null;
 const serverHome = () => chosenHome || readManagedRecord()?.home || root();
+const setupHome = () => chosenHome || chosenModelHome() || readManagedRecord()?.home || root();
 const modelsDir = () => path.join(serverHome(), 'models');
-const managedBin = () => {
+const managedBin = (home = serverHome()) => {
   const asset = ollamaAssetFor(process.platform, process.arch);
-  return asset ? path.join(serverHome(), 'ollama', asset.bin) : null;
+  return asset ? path.join(home, 'ollama', asset.bin) : null;
 };
 
 /** The record of what the platform set up, or null. impure */
@@ -98,9 +103,9 @@ export const serverState = async (endpoint = endpoints().usual) => {
 export const ollamaUp = async (endpoint = endpoints().usual) => (await serverState(endpoint)).up;
 const usable = (state) => state.up && versionAtLeast(state.version, MIN_OLLAMA_VERSION);
 
-/** Free bytes on the disk that holds the server's home. impure */
+/** Free bytes on the disk the next setup goes into. impure */
 const freeBytes = async () => {
-  let dir = serverHome();
+  let dir = setupHome();
   while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
   try { const s = await fsp.statfs(dir); return s.bavail * s.bsize; } catch { return null; }
 };
@@ -110,7 +115,7 @@ export const currentPlan = async ({ verify = true } = {}) => {
   const setup = await getSetupStatus();
   const record = readRecord();
   const own = record?.managed && record.endpoint ? { endpoint: record.endpoint, ...(await serverState(record.endpoint)) } : null;
-  const bin = managedBin();
+  const bin = managedBin(setupHome());
   return installPlan({
     platform: process.platform,
     arch: process.arch,
@@ -152,7 +157,8 @@ export const cancelJob = () => {
  */
 export const startJob = async ({ plan: given, home, loadModel = true } = {}) => {
   if (job.state === 'running') return job;
-  if (home) chosenHome = path.resolve(home);
+  const target = home || chosenModelHome();
+  if (target) chosenHome = path.resolve(target);
   abort = new AbortController();
   const { signal } = abort;
   update({ state: 'running', plan: null, step: 'check', completed: 0, total: 0, error: null, detail: null, line: 'Reading what this computer needs' });
@@ -481,5 +487,8 @@ export const chooseGpuAnyway = async (useGpuAnyway, wallet = null) => {
   return currentDriverGuard();
 };
 
-/** The home this module installs into, for the screen's honesty line. impure */
-export const installHome = () => serverHome().replace(os.homedir(), '~');
+/** The folder the next setup installs into, as the screen shows it. impure */
+export const installHome = () => setupHome().replace(os.homedir(), '~');
+
+/** The same folder, whole, for the folder dialog to open at. impure */
+export const installHomePath = () => setupHome();

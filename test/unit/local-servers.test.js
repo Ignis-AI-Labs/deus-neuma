@@ -2,7 +2,7 @@
 // birth flight check's own probe payload (GET /api/v1/preflight/setup). Pure.
 import { describe, expect, it } from 'vitest';
 import {
-  localServers, localGuide, endpointToStore, serverModels, sameEndpoint, modelLabel, readyModelLabel,
+  localServers, localGuide, endpointToStore, serverModels, sameEndpoint, modelLabel, readyModelLabel, servedModelLabel,
 } from '../../frontend/app/FirstRunChoice/local-servers.js';
 
 const setup = (providers) => ({ providers });
@@ -121,5 +121,15 @@ describe('the model a person can talk to, named plainly', () => {
   it('names nothing for a server launched from a file descriptor (it reports the descriptor)', () => {
     const fd = { providers: { discovered: [{ provider: 'llama-server', endpoint: 'http://127.0.0.1:8089', models: ['/proc/self/fd/4'] }] } };
     expect(readyModelLabel(fd)).toBeNull();
+  });
+  it('names a server started from a model file by the file, and an Ollama blob by nothing (a teammate\'s Windows door, 2026-11-13)', () => {
+    const blob = 'C:\\Users\\odelp\\.neuma\\data\\model-server\\models\\blobs\\sha256-66cf8a045f327fdb6c8376989251b3576a8bf36c9999fb6da36c536303505bd4';
+    expect(readyModelLabel({ providers: { discovered: [{ provider: 'llama-server', endpoint: 'http://127.0.0.1:8089', models: [blob] }] } })).toBeNull();
+    expect(servedModelLabel(blob)).toBeNull();
+    expect(servedModelLabel('D:\\models\\Qwen3.6-27B-Q4_K_M.gguf')).toBe('Qwen3.6-27B-Q4_K_M');
+    expect(servedModelLabel('/home/x/.neuma/data/model-server/gguf/q/Qwen3.8-27B-Q4_K_M-00001-of-00002.gguf')).toBe('Qwen3.8-27B-Q4_K_M');
+    expect(servedModelLabel('\\\\nas\\models\\Mistral-7B.gguf')).toBe('Mistral-7B');
+    expect(servedModelLabel('hf.co/org/Some-Model-GGUF:Q8_0')).toBe('Some-Model · Q8_0');
+    expect(servedModelLabel('')).toBeNull();
   });
 });

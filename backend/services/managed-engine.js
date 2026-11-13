@@ -21,6 +21,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { getDataRoot } from './data-root.js';
+import { chosenModelHome } from './model-home.js';
 import { boundedExec } from './bounded-exec.js';
 import { obtainArchive, unpackArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
@@ -40,8 +41,11 @@ import {
 const log = createLogger('ManagedEngine');
 const JOB_TRIES = 2;
 
+// the folder this job was given, else where the engine was set up; a NEW setup goes where the
+// person chose (model-home.js), as the Ollama setup does
 let chosenHome = null;
 const serverHome = () => chosenHome || readEngineRecord()?.home || path.join(getDataRoot(), 'model-server');
+const setupHome = () => chosenHome || chosenModelHome() || readEngineRecord()?.home || path.join(getDataRoot(), 'model-server');
 
 /** The card's compute capability (7.5, 8.9, 12.0), or null. impure */
 const computeCap = async () => {
@@ -50,16 +54,16 @@ const computeCap = async () => {
   return Number.isFinite(cap) ? cap : null;
 };
 
-/** Free bytes on the disk that holds the home. impure */
+/** Free bytes on the disk the next setup goes into. impure */
 const freeBytes = async () => {
-  let dir = serverHome();
+  let dir = setupHome();
   while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
   try { const s = await fsp.statfs(dir); return s.bavail * s.bsize; } catch { return null; }
 };
 
 // impure — the names of a choice's files already in its folder at full size
 const presentFiles = (files) => filesOf(files)
-  .filter((f) => { try { return fs.statSync(path.join(ggufDirFor(serverHome()), files.folder, f.name)).size === f.size; } catch { return false; } })
+  .filter((f) => { try { return fs.statSync(path.join(ggufDirFor(setupHome()), files.folder, f.name)).size === f.size; } catch { return false; } })
   .map((f) => f.name);
 
 // impure — the card and the model matched to it, read without probing the model servers (the
@@ -87,7 +91,7 @@ export const currentPlan = async ({ verify = true } = {}) => {
   if (!variant || !files) return null;
   return enginePlan({
     ...machine,
-    installed: fs.existsSync(path.join(engineDirFor(serverHome(), LLAMA_CPP_BUILD, variant.id), 'llama-server')),
+    installed: fs.existsSync(path.join(engineDirFor(setupHome(), LLAMA_CPP_BUILD, variant.id), 'llama-server')),
     present: presentFiles(files),
     freeBytes: await freeBytes(),
     verify,
@@ -116,7 +120,8 @@ export const cancelJob = () => {
  */
 export const startJob = async ({ plan: given, home, loadModel = true } = {}) => {
   if (job.state === 'running') return job;
-  if (home) chosenHome = path.resolve(home);
+  const target = home || chosenModelHome();
+  if (target) chosenHome = path.resolve(target);
   abort = new AbortController();
   const { signal } = abort;
   update({ state: 'running', plan: null, step: 'check', completed: 0, total: 0, error: null, detail: null, line: 'Reading what this computer needs' });
@@ -266,5 +271,8 @@ const run = async (plan, signal, loadModel) => {
   log.info('engine set up', { build: LLAMA_CPP_BUILD, variant: plan.variant, dir, model, key, loaded: loadModel });
 };
 
-/** The home this module installs into, for the screen's honesty line. impure */
-export const installHome = () => serverHome().replace(os.homedir(), '~');
+/** The folder the next setup installs into, as the screen shows it. impure */
+export const installHome = () => setupHome().replace(os.homedir(), '~');
+
+/** The same folder, whole, for the folder dialog to open at. impure */
+export const installHomePath = () => setupHome();

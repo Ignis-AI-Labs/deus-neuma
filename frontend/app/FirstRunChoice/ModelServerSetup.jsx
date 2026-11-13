@@ -10,7 +10,7 @@ import './FirstRunHarness.css';
 
 /** @param {{onDone: () => void}} props */
 export const ModelServerSetup = ({ onDone }) => {
-  const { plan, home, job, error, progress: whole, start, stop, reread } = useModelSetup({ onDone });
+  const { plan, home, canChooseHome, chooseHome, job, error, progress: whole, start, stop, reread } = useModelSetup({ onDone });
   // The progress is what the person watches next: it comes into view when the work starts
   const progress = useRef(null);
   const working = job?.state === 'running';
@@ -43,8 +43,9 @@ export const ModelServerSetup = ({ onDone }) => {
       <p className="label-data">
         DOWNLOAD {size(plan.downloadBytes)} · NEEDS {size(plan.needBytes)} FREE
         {plan.freeBytes != null ? ` · ${size(plan.freeBytes)} FREE ON THIS DISK` : ''}{home ? ` · INTO ${home}` : ''}
+        {canChooseHome ? <>{' '}<button type="button" className="sub-btn" onClick={chooseHome}>CHANGE FOLDER</button></> : null}
       </p>
-      {!plan.enoughDisk ? <p role="alert">This disk does not have room for it. Free some space, then RECHECK.</p> : null}
+      {!plan.enoughDisk ? <p role="alert">This disk does not have room for it. Choose a folder on another drive{canChooseHome ? ' with CHANGE FOLDER' : ''}, or free some space, then RECHECK.</p> : null}
       {working ? (
         <div className="harness-setup-progress" role="status" aria-live="polite" ref={progress}>
           <p className="label-data">{(STEP_TEXT[job.step] || 'Working').toUpperCase()}{pct != null ? ` · ${pct}% · ${size(whole.done)} OF ${size(whole.total)}` : '…'}</p>

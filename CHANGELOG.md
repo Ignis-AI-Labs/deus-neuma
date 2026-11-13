@@ -6,6 +6,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.140] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.140.md`.
+
+### Added
+
+- You choose where your models go before anything downloads. When no model is running, the first screen says which folder the model will go in and how much free space that drive has, and CHANGE opens your computer's own folder dialog, so a full system drive is never where a 20 GB model lands. The setup card in the flight check offers the same CHANGE FOLDER. A model server you already run yourself keeps its models where it always has.
+
+### Fixed
+
+- Windows: the model folder you chose in the installer is now used even when the installer's own download did not finish. Before, the app set the model up again in your user folder on C:.
+- "Model ready" names the model, never a file path. A server started from a model file showed the file's whole path, and for some models a string of letters and numbers.
+
 ## [0.1.139] - 2026-11-13
 
 Notes: `docs/operations/release-notes-0.1.139.md`.
