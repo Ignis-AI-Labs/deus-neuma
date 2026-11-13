@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.142] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.142.md`.
+
+### Changed
+
+- Voice has one place: the chat box. The LIVE button beside the chat box is gone; to dictate, hold the mic (or Space) as before. Where voice conversations are turned on, TALK sits in the chat box beside the mic (it was in the chat's header), so the mic types your words and TALK starts a spoken conversation, side by side and nowhere else.
+
 ## [0.1.141] - 2026-11-13
 
 Notes: `docs/operations/release-notes-0.1.141.md`.

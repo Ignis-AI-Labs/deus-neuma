@@ -2,9 +2,9 @@
 // to speak; the transcript appends to the draft for review, never auto-sends.
 // Inside the field a TAP of Space still types a space — only a HOLD becomes
 // dictation, so speak/pause/hold-again keeps adding to the same thought.
-// Split from StreamInput.jsx (size law); bodies moved verbatim. `live` is
-// the open-mic (LIVE mode) flag — while it owns capture, dictation stands
-// down; `setValue`/`fieldRef` are the composer's draft state and field.
+// Split from StreamInput.jsx (size law); bodies moved verbatim.
+// `setValue`/`fieldRef` are the composer's draft state and field. (The open-mic LIVE toggle it used
+// to stand down for left the composer 2026-11-13: voice is the chat's TALK, one place.)
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePushToTalk } from './use-push-to-talk.js';
@@ -12,7 +12,7 @@ import {
   spliceTranscript, holdsPushToTalkKey, stripHoldSpace, HOLD_TO_TALK_MS,
 } from './dictation.js';
 
-export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
+export const useHoldToTalk = ({ connected, setValue, fieldRef }) => {
   // In-field hold-Space: the pending is-it-a-hold timer, and whether the
   // recording was Space-started (auto-repeats eaten; only a Space release
   // ends it). A pointer hold on the mic button is tracked separately — a
@@ -69,9 +69,8 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
   // keeps speech-yields-floor — that is a voice conversation, not dictation.
   // Named trade: dictating while the neuma speaks aloud may record its voice.
   const beginCapture = useCallback(() => {
-    if (live) return; // the open mic already owns capture — no second recorder
     begin();
-  }, [begin, live]);
+  }, [begin]);
 
   // Hold Space to talk, Claude-voice-mode style. Outside anything typeable a
   // press begins capture at once; inside the field the textarea's keydown
@@ -141,9 +140,8 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
         return true;
       }
       // A mic-button hold in progress (or its mic grant still
-      // pending) keeps Space an ordinary space — as does LIVE mode,
-      // where the open mic owns capture and Space is just typing.
-      if (mic === 'recording' || pointerHoldRef.current || live) return true;
+      // pending) keeps Space an ordinary space.
+      if (mic === 'recording' || pointerHoldRef.current) return true;
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = setTimeout(() => {
         holdTimerRef.current = null;
