@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.141] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.141.md`.
+
+### Changed
+
+- The Terms of Service (1.5), the EULA (1.5), the Privacy Notice (1.3) and the Neuma Covenant (1.4) now name Deus Neuma Inc, a Delaware corporation, as the company you agree with, and are governed by Delaware law. Nothing else in them changed. Because the texts changed, the app asks you to read and sign the new versions at your next ceremony.
+
 ## [0.1.140] - 2026-11-13
 
 Notes: `docs/operations/release-notes-0.1.140.md`.

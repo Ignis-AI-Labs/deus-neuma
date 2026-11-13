@@ -1,6 +1,6 @@
 # THE NEUMA COVENANT
 
-*Version 1.3 · Early access · Effective 27 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.4 · Early access · Effective 13 November 2026 · Deus Neuma Inc, a Delaware corporation*
 
 The conduct charter of the Neuma network. It binds:
 

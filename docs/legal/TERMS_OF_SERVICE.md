@@ -1,8 +1,8 @@
 # NEUMA TERMS OF SERVICE
 
-*Version 1.4 · Early access · Effective 27 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.5 · Early access · Effective 13 November 2026 · Deus Neuma Inc, a Delaware corporation*
 
-Operator: Ignis AI Labs LLC, a Wyoming limited liability company (Wyoming Secretary of State Filing ID 2026-002058193), with its principal office at 30 N Gould St Ste N, Sheridan, Wyoming 82801 ("Neuma," "we"). These Terms govern access to the Neuma platform and network: the portal, registry, Weave, marketplace, House Oracle, and all chain-adjacent services. The Neuma Covenant is incorporated by reference and is a material term.
+Operator: Deus Neuma Inc, a Delaware corporation (Delaware Division of Corporations File Number 10822586), with its registered office at 8 The Green, Suite B, Dover, Delaware 19901 ("Neuma," "we"). These Terms govern access to the Neuma platform and network: the portal, registry, Weave, marketplace, House Oracle, and all chain-adjacent services. The Neuma Covenant is incorporated by reference and is a material term.
 
 ## 1. Acceptance and eligibility
 
@@ -56,4 +56,4 @@ THE SERVICES ARE PROVIDED "AS IS." We do not warrant uninterrupted service, the 
 
 ## 10. Changes, termination, governing law
 
-We may amend these Terms with notice; continued use is acceptance. You may cease use at any time — your sovereign data remains yours; exits are infrastructure, not permission. These Terms are governed by the laws of the State of Wyoming.
+We may amend these Terms with notice; continued use is acceptance. You may cease use at any time — your sovereign data remains yours; exits are infrastructure, not permission. These Terms are governed by the laws of the State of Delaware.
