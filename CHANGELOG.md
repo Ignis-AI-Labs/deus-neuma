@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.139] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.139.md`.
+
+### Fixed
+
+- The Windows installer builds again. Its uninstaller read a check it had not declared, and the build stopped at the installer step, so Windows gets this release too.
+
 ## [0.1.137] - 2026-11-13
 
 Notes: `docs/operations/release-notes-0.1.137.md`.
