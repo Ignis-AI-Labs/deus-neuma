@@ -114,7 +114,9 @@
 ; The details list is the person's log of the install: electron-builder turns it off for its own steps
 ; (SetDetailsPrint none), so it is turned back on here, at the first hook inside the install section, and
 ; every step says what it is doing before it does it. electron-builder's own running-app check follows.
-; (defining this hook makes electron-builder skip what its own check needs, so it is included here)
+; (defining this hook makes electron-builder skip what its own check needs, so it is included here:
+; IS_POWERSHELL_AVAILABLE declares $IsPowerShellAvailable, which _CHECK_APP_RUNNING reads; without it
+; makensis stops the uninstaller build on warning 6000, an unknown variable)
 !include "getProcessInfo.nsh"
 Var pid
 !macro customCheckAppRunning
@@ -125,6 +127,7 @@ Var pid
     DetailPrint "Installing Deus Neuma ${VERSION} to $INSTDIR."
     DetailPrint "Closing Deus Neuma first, if it is running."
   !endif
+  !insertmacro IS_POWERSHELL_AVAILABLE
   !insertmacro _CHECK_APP_RUNNING
   !ifndef BUILD_UNINSTALLER
     DetailPrint "Copying Deus Neuma's files: about 1 GB, a minute or two."
