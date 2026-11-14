@@ -107,6 +107,21 @@ const fieldAround = (text, ranges, i) => {
   return [ranges[key][0], ranges[last][1]];
 };
 
+// FROM WHERE THE ATTACK BEGINS (bench gaps vs bare, 2026-11-14). An untagged
+// plant shares its paragraph or field with what was there before it: […] — the whole line was the span, Dora's own address
+// was tainted, and inviting her (the task) was held (AgentDojo slack, 24 holds
+// in the replay). The span now starts at the latest sentence or line from which
+// the text is still flagged: the attack and everything after it, nothing before.
+const SENTENCE_END = /[.!?]["')\]]*\s+|\n/g;
+const flagged = (text) => !detectRoguePatterns(text, { toolCallCount: 0 }).safe;
+const fromAttack = (text, [start, end]) => {
+  const starts = [start];
+  SENTENCE_END.lastIndex = start;
+  for (let m = SENTENCE_END.exec(text); m && m.index < end; m = SENTENCE_END.exec(text)) starts.push(m.index + m[0].length);
+  const at = starts.reverse().find((k) => k < end && flagged(text.slice(k, end)));
+  return [at ?? start, end];
+};
+
 // pure — overlapping or touching spans folded into one.
 const merge = (spans) => [...spans].sort((a, b) => a[0] - b[0]).reduce((out, span) => {
   const prev = out[out.length - 1];
@@ -137,7 +152,8 @@ export const injectedSpans = (text) => {
         // The window reads this line with the next: when this line alone is clean, the plant starts on the next one,
     // and the field is the next line's.
     const at = detectRoguePatterns(scanned.slice(start, own), { toolCallCount: 0 }).safe ? Math.min(i + 1, ranges.length - 1) : i;
-    return [enclosingTagBlock(scanned, start) ?? fieldAround(scanned, ranges, at) ?? paragraphAround(scanned, ranges, i)];
+    const tagged = enclosingTagBlock(scanned, start);
+    return [tagged ?? fromAttack(scanned, fieldAround(scanned, ranges, at) ?? paragraphAround(scanned, ranges, i))];
   });
   // The detector saw the whole text but no two-line window (a phrase broken
   // across three lines or more): the bounded head stands in.

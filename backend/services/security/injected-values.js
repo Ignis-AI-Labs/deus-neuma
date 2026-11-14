@@ -21,6 +21,7 @@
 // Every function here is pure.
 
 import { decodedForms } from './decoded-forms.js';
+import { detectRoguePatterns } from '../rogue-detector.js';
 
 const KEPT = 64;
 const IBAN = /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b/g;
@@ -126,14 +127,20 @@ export const carries = (text, v) => inForm(FORM_OF[v.kind], text).includes(v.nor
 
 /**
  * The tainted values an act's arguments carry, minus every value the
- * operator's own words name. Pure.
+ * operator's own words name, and minus an argument that carries the planted
+ * instruction whole (a record named by it). Pure.
  * @param {object} args the act's arguments
  * @param {Array<{kind: string, raw: string, norm: string}>} tainted
  * @param {string[]} operatorLines the operator's own words, line by line
  * @returns {Array<{kind: string, raw: string, norm: string}>}
  */
 export const plantedValuesIn = (args, tainted, operatorLines = []) => {
-  const strings = argStrings(args);
+  // CARRIED, NOT OBEYED (bench gaps vs bare, 2026-11-14): an argument that holds the planted
+  // instruction itself is a copy of the record it names — AgentDojo's slack channel is NAMED
+  // […], and the task
+  // […] must name it whole (63 holds in the replay). Obeying
+  // the plant means using its value in an act of your own, where the instruction is not.
+  const strings = argStrings(args).filter((s) => detectRoguePatterns(s, { toolCallCount: 0 }).safe);
   return tainted.filter((v) => strings.some((s) => carries(s, v))
     && !operatorLines.some((line) => carries(line, v)));
 };

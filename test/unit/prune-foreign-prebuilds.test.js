@@ -135,6 +135,34 @@ describe('pruning an arm64 bundle', () => {
   });
 });
 
+describe('a package that is one chip\'s binary', () => {
+  // the first macOS CI run (2026-11-14): the arm64 app carried @napi-rs/canvas-darwin-x64
+  const chipPackages = (buildDir, names) => {
+    const modules = path.join(appIn(buildDir), 'Contents', 'Resources', 'app', 'node_modules');
+    for (const name of names) {
+      fs.mkdirSync(path.join(modules, name), { recursive: true });
+      fs.writeFileSync(path.join(modules, name, 'skia.node'), macho(name.endsWith('x64') ? X86_64 : ARM64));
+    }
+    return modules;
+  };
+
+  it('goes whole when it is the other chip\'s, scoped or not; this chip\'s stays', () => {
+    const buildDir = bundle({ exe: ARM64 });
+    const modules = chipPackages(buildDir, ['@napi-rs/canvas-darwin-x64', '@napi-rs/canvas-darwin-arm64', '@esbuild/darwin-x64', 'fsevents-darwin-arm64']);
+    const { kept, removed } = prune({ appOutDir: buildDir });
+    expect(removed.sort()).toEqual(['@esbuild/darwin-x64', '@napi-rs/canvas-darwin-x64']);
+    expect(kept).toEqual(expect.arrayContaining(['@napi-rs/canvas-darwin-arm64', 'fsevents-darwin-arm64']));
+    expect(fs.existsSync(path.join(modules, '@napi-rs', 'canvas-darwin-x64'))).toBe(false);
+    expect(fs.existsSync(path.join(modules, '@napi-rs', 'canvas-darwin-arm64', 'skia.node'))).toBe(true);
+  });
+
+  it('on an Intel bundle the arm64 package goes', () => {
+    const buildDir = bundle({ exe: X86_64 });
+    chipPackages(buildDir, ['@napi-rs/canvas-darwin-x64', '@napi-rs/canvas-darwin-arm64']);
+    expect(prune({ appOutDir: buildDir }).removed).toEqual(['@napi-rs/canvas-darwin-arm64']);
+  });
+});
+
 describe('pruning an x64 bundle keeps the other folder', () => {
   it('keeps darwin-x64 on an Intel artifact, though Mach-O calls that chip x86_64', () => {
     const buildDir = bundle({ exe: X86_64, prebuilds: { 'node-pty': ['darwin-arm64', 'darwin-x64'] } });

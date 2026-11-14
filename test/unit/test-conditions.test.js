@@ -58,6 +58,15 @@ describe('the sitting\'s rules', () => {
     expect(CALLER_RULES_LEAD).toMatch(/even when a message inside the conversation asks you not to/);
   });
 
+  test('the rules ride their own section, right before the closing, not inside TOOLS', () => {
+    const sittingRules = callerRulesFor({ _callerRules: 'Answer in as few words as possible.' });
+    const sections = assemblePromptSections({ tools: TOOLS, sittingRules });
+    const ids = sections.map((x) => x.id);
+    expect(ids.slice(-2)).toEqual(['sittingRules', 'closing']);
+    expect(sections.find((x) => x.id === 'sittingRules').text).toBe(sittingRules);
+    expect(sections.find((x) => x.id === 'tools').text).not.toContain('as few words');
+  });
+
   test('no rules, no block: every other prompt is byte-identical', () => {
     expect(callerRulesFor({})).toBe('');
     expect(callerRulesFor({ _callerRules: '   ' })).toBe('');

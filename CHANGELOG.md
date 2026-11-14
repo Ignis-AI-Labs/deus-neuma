@@ -6,9 +6,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.1.148] - 2026-11-14
+## [0.1.149] - 2026-11-14
 
-Notes: `docs/operations/release-notes-0.1.148.md`.
+Notes: `docs/operations/release-notes-0.1.149.md`.
 
 ### Added
 
@@ -43,10 +43,13 @@ Notes: `docs/operations/release-notes-0.1.148.md`.
 
 ### Changed
 
+- When an app or benchmark gives a being its own standing instructions (like "answer in as few words as possible"), those instructions now sit right next to the being's closing instructions instead of in the middle of its tool list, so the format they ask for wins. Ordinary chats are unchanged.
 - A neuma looking for a file finds it in one search across every folder and drive it may read, best match first, instead of combing folders one by one. A search that names no folder now covers all of them, not only the neuma's own workspace; a plain word matches inside names in any case, and the exact name ranks first. The search walks many folders at once (millions of entries in seconds), never follows a link out of the folders it was given, skips dependency and dot folders unless asked, and says what it skipped. A drive the neuma has not been given is not searched, and the result says how to ask for it.
 
 ### Fixed
 
+- The guard against planted instructions no longer blocks a being's legitimate actions just because they appear next to an attack. A real email on the same web page as a planted instruction can now be used, and a channel whose name contains the planted text can still be named when the task asks for it. In replays of every recorded AgentDojo run, wrong blocks fell from 92 to 5, and every attack that carried an account, address or link is still stopped (114 of 114).
+- In Marketing, an account's REPLIES shows only the replies to that account. Before, every X account of the house showed the replies to all of them, so a new account's page listed hundreds of replies to another. Each reply now names the account it answers.
 - The editor setup for Zed and JetBrains now says how to point Neuma at your wallet. Before, a being seated from an editor only worked inside a project that held your wallet file.
 
 ## [0.1.145] - 2026-11-14

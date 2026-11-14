@@ -228,7 +228,9 @@ export const assembleTurnPrompt = async ({
       // the being's usual tools — named in the HUD by signature, frozen for the chat (tool-hud.js)
       usualTools: connection._turnUsualTools || [],
       // A benchmark sitting states its conditions up front: closed-book or open-book (test-conditions.js).
-      testConditions: [testConditionsFor(connection), callerRulesFor(connection)].filter(Boolean).join('\n\n'),
+      testConditions: testConditionsFor(connection),
+      // The sender's standing rules ride beside the closing, never buried in TOOLS (prompt-assembler.js).
+      sittingRules: callerRulesFor(connection),
       // The lane's standing context rides the STABLE group (#282), read above
       // because this assembler is pure — none of the four moves within a sitting.
       groundProtocol,
