@@ -71,7 +71,14 @@ jobs:
           APPLE_API_KEY: ${{ steps.apple.outputs.signed == 'true' && format('{0}/apple-api-key.p8', runner.temp) || '' }}
           APPLE_API_KEY_ID: ${{ steps.apple.outputs.signed == 'true' && secrets.APPLE_API_KEY_ID || '' }}
           APPLE_API_ISSUER: ${{ steps.apple.outputs.signed == 'true' && secrets.APPLE_API_ISSUER || '' }}
-        run: npx electron-builder --mac --${{ matrix.arch }} --publish never
+        # An Apple variable set but EMPTY is not "absent" to electron-builder: an empty CSC_LINK is
+        # read as a certificate path, the checkout itself, and the build stops ([…], the
+        # first run, 2026-11-14). So an unsigned build unsets every empty one first.
+        run: |
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          npx electron-builder --mac --${{ matrix.arch }} --publish never
       - name: every binary in the bundle loads on this chip
         run: node scripts/check-mac-artifacts.mjs ${{ steps.apple.outputs.signed == 'true' && '--require-signed' || '' }}
       - name: forget the Apple key file
