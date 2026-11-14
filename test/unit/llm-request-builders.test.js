@@ -285,4 +285,9 @@ describe('the Ollama window', () => {
     expect(buildStreamBody(OLLAMA, TURN, {}).options).toEqual({ temperature: 0.7, num_predict: 512 });
     expect(buildStreamBody(OLLAMA, TURN, { contextWindow: 0 }).options.num_ctx).toBeUndefined();
   });
+  test('the governor\'s re-ask turns thinking off with Ollama\'s own think: false; a plain request sends no field (deus-neuma #34)', () => {
+    expect(buildStreamBody(OLLAMA, TURN, { noThink: true }).think).toBe(false);
+    expect('think' in buildStreamBody(OLLAMA, TURN, {})).toBe(false);
+    expect(buildStreamBody(OLLAMA, TURN, { noThink: true }).chat_template_kwargs).toBeUndefined();
+  });
 });

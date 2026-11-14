@@ -47,7 +47,7 @@ import {
   toolFormatters,
   toolSummary as _toolSummary, toolFailureSummary as _toolFailureSummary,
   toolActivitySummary as _toolActivitySummary, sendToolEvent as _sendToolEvent,
-  chipDetail as _chipDetail,
+  chipDetail as _chipDetail, sendResultDetail,
 } from './portal-tools/tool-events.js';
 import { dispatchPlatformTool } from './portal-tool-dispatch.js';
 import {
@@ -220,7 +220,8 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         ws, connection, companion, policy: neumaPolicy, toolMode, args,
       });
       if (platformResult) {
-        await _persistOverCapResult(connection, platformResult); // a long web page or catalog stays retrievable, never a dead cut
+        const ref = await _persistOverCapResult(connection, platformResult); // a long web page or catalog stays retrievable, never a dead cut
+        sendResultDetail(ws, platformResult, ref); // every act opens to what it returned (tool-events.js)
         results.push(platformResult);
         continue;
       }

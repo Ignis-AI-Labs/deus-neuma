@@ -52,8 +52,9 @@ export const probeHouseFounding = ({ wsService, signal = null, timeoutMs = PROBE
       resolve(outcome);
     };
     signal?.addEventListener('abort', onAbort);
-    // a local founding answers with its record; the network one with the registry's standing
-    const onState = (data) => done({ founded: true, state: mode === 'local' ? data.record : data });
+    // a local founding answers with its record (and the seats its members hold now); the network
+    // one with the registry's standing
+    const onState = (data) => done({ founded: true, state: mode === 'local' ? { ...data.record, seats: data.seats ?? null } : data });
     const onOpen = (data) => done({ founded: false, open: data });
     const onError = (data) => done({ error: data.message || data.code, code: data.code });
     wsService.on(f.state, onState);

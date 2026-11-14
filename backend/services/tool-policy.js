@@ -111,15 +111,16 @@ export const normalizeToolMode = (raw) => (TOOL_MODES.includes(raw) ? raw : 'ask
 // --- Chat modes (the operator's standing mode for this conversation) ---
 //
 // The composer's mode chip. One declaration carries both meanings: the chat's
-// bearing (free flow / strictly planning / hands-off) AND the ACTS tier the
-// gate enforces, derived below — the operator never sets the two separately.
-export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto']);
+// bearing (free flow / strictly planning / hands-off / deep research) AND the
+// ACTS tier the gate enforces, derived below — the operator never sets the two
+// separately. RESEARCH (research-mode.js) acts under DEFAULT's tier.
+export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto', 'research']);
 
 /**
  * Normalize an untrusted chat mode value (fail to 'default' — free flow
  * with per-act cards, the least authority a mode can carry).
  * @param {*} raw - Untrusted mode value (client input)
- * @returns {'default'|'plan'|'auto'} Valid chat mode
+ * @returns {'default'|'plan'|'auto'|'research'} Valid chat mode
  */
 export const normalizeChatMode = (raw) => (CHAT_MODES.includes(raw) ? raw : 'default');
 

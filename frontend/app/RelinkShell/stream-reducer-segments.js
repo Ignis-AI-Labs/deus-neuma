@@ -208,4 +208,24 @@ export const segmentHandlers = Object.freeze({
       return [...segments, resolved];
     }, action.at, action.take);
   },
+
+  // EVERY ACT OPENS TO WHAT IT RETURNED (Design note, 2026-11-14: […]): a platform tool's result arrives after its chip (tool:detail, sendResultDetail
+  // in portal-tools/tool-events.js) and fills the newest chip for that tool that came up with
+  // nothing to open. A chip with its own detail or a stored ref keeps what it has; with no reply
+  // streaming there is no chip of this turn to fill.
+  TOOL_DETAIL: (state, action) => {
+    const { tool, detail } = action.data || {};
+    if (!tool || !detail || !state.messages.some((m) => m.streaming)) return state;
+    return mapStreamingSegments(state, (segments) => {
+      for (let i = segments.length - 1; i >= 0; i -= 1) {
+        const segment = segments[i];
+        if (segment.kind !== 'tool' || segment.label !== tool) continue;
+        if (segment.detail || segment.ref) return segments;
+        const copy = segments.slice();
+        copy[i] = { ...segment, detail };
+        return copy;
+      }
+      return segments;
+    }, action.at, action.take);
+  },
 });

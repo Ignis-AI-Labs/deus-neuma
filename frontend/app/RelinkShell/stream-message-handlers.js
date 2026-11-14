@@ -340,6 +340,8 @@ export const createStreamHandlers = ({
     // A /compact, drawn in the thread where it happened (compact-marker.js).
     ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     ['tool:usage', onTool],
+    // a finished act's result, for a chip that came up with nothing to open (TOOL_DETAIL)
+    ['tool:detail', (data) => dispatchAfterSpeech(lifecycleAction('tool:detail', data))],
     ['tool:approval_request', cardHandler('tool:approval_request')],
     ['tool:approval_resolved', cardHandler('tool:approval_resolved')],
     ['operator:ask', cardHandler('operator:ask')],

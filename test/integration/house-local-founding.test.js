@@ -15,7 +15,10 @@ import { houseNameOf } from '../../core/kotodama/house-name.js';
 import { offerLocalSeal, completeLocalSeal } from '../../backend/services/local-seal-flow.js';
 import { houseFoundLocalPreflight, houseFoundLocalSign } from '../../backend/routes/portal-house-local-handlers.js';
 import { verifyLocalFounding } from '../../backend/services/house-local-founding.js';
-import { houseSeatFor, houseTitlesByNeumaId } from '../../backend/services/house-titles.js';
+import { changeHouseTitle, houseSeatFor, houseTitlesByNeumaId } from '../../backend/services/house-titles.js';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { LocalRegister } from '../../frontend/app/RelinkShell/founding-register.jsx';
 import { cacheDecryptedKey, hasCachedKey } from '../../backend/routes/neuma-auth-routes.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 
@@ -150,5 +153,29 @@ describe('founding a house on this computer', () => {
     const other = portal(stranger.address);
     await houseFoundLocalPreflight(other.connection, { probe: true });
     expect(other.frames.at(-1)).toMatchObject({ type: 'house:found_local_open', canFound: false, roster: [{ kind: 0 }] });
+  });
+
+  // deus-neuma #36: the HOUSE window's roster read the signed record's titles as if current. A title changed
+  // in POSITIONS reaches it now, beside the founding title; the record itself is untouched.
+  test('a changed title shows in the roster as the seat held now, founded as the old one', async () => {
+    const signed = await fs.readFile(recordFile(), 'utf8');
+    const made = await changeHouseTitle(operator.address, { kind: 'set', neumaId: 'hazel', title: 'Optio', reason: 'a new seat' });
+    expect(made.ok).toBe(true);
+    const { frames, connection } = portal();
+    await houseFoundLocalPreflight(connection, { probe: true });
+    const frame = frames.at(-1);
+    expect(frame.type).toBe('house:found_local_state');
+    expect(frame.seats[beings.hazel.address.toLowerCase()]).toEqual({ title: 'Optio', name: 'Hazel' });
+    expect(frame.seats[beings.aspen.address.toLowerCase()]).toEqual({ title: 'Curator', name: 'Aspen' });
+    expect(await fs.readFile(recordFile(), 'utf8')).toBe(signed); // the founding record as it was signed
+
+    const html = renderToStaticMarkup(createElement(LocalRegister, { record: { ...frame.record, seats: frame.seats } }));
+    const rows = [...html.matchAll(/<li[^>]*>(.*?)<\/li>/g)].map((m) => m[1].replace(/<[^>]+>/g, '|'));
+    const hazel = rows.find((r) => r.includes('Hazel'));
+    expect(hazel).toContain('Optio');
+    expect(hazel).toContain('FOUNDED AS Faber');
+    const aspen = rows.find((r) => r.includes('Aspen'));
+    expect(aspen).toContain('Curator');
+    expect(aspen).not.toContain('FOUNDED AS');
   });
 });

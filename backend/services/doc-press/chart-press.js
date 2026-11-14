@@ -56,6 +56,10 @@ function extractSeries(spec) {
   return { labels, datasets };
 }
 
+// A chart scales to the page: with a viewBox the stylesheet's `max-width: 100%; height: auto` shrinks
+// it to the printable width; without one an 800 px chart was cropped on every paper size (#33). Pure.
+const svgOpen = (width, height) => `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+
 function datasetColors(dataset, palette) {
   const declared = dataset.backgroundColor;
   if (Array.isArray(declared) && declared.length > 0) return declared;
@@ -80,8 +84,12 @@ export function pressPieChart(spec, palette) {
   const radius = 150;
   const legendX = centerX + radius + 80;
 
-  const parts = [`<svg width="${width}" height="400" xmlns="http://www.w3.org/2000/svg">`];
+  const parts = [svgOpen(width, 400)];
   parts.push(titleText(specTitle(spec), width / 2));
+  // A pie shows one dataset; the others are named on the chart, never dropped without a word (#33).
+  if (datasets.length > 1) {
+    parts.push(`<text x="${width / 2}" y="${46}" text-anchor="middle" font-family="${FONT}" font-size="11" fill="#888">showing ${escapeMarkup(datasets[0].label || 'the first dataset')} — ${datasets.length - 1} more dataset${datasets.length > 2 ? 's' : ''} not drawn (a pie shows one)</text>`);
+  }
 
   let angle = -Math.PI / 2;
   values.forEach((value, index) => {
@@ -118,18 +126,22 @@ export function pressPieChart(spec, palette) {
  */
 export function pressBarChart(spec, palette) {
   const { labels, datasets } = extractSeries(spec);
+  // Every dataset is drawn, grouped side by side under its label, each in its own colour with a
+  // legend (#33: only the first dataset was drawn). One dataset keeps a colour per bar, as before.
+  const grouped = datasets.length > 1;
   const values = datasets[0].data || [];
   const colors = datasetColors(datasets[0], palette);
+  const seriesColor = (dataset, index) => paletteColor(datasetColors(dataset, palette), grouped && !dataset.backgroundColor ? index : 0);
 
   const width = 800;
   const height = 500;
   const pad = { top: 80, right: 60, bottom: 100, left: 100 };
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;
-  const maxValue = Math.max(...values.map((v) => Number(v || 0))) * 1.1;
+  const maxValue = Math.max(...datasets.flatMap((d) => (d.data || []).map((v) => Number(v || 0)))) * 1.1;
   if (!(maxValue > 0)) throw new Error('bar chart has no positive values');
 
-  const parts = [`<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`];
+  const parts = [svgOpen(width, height)];
   parts.push(titleText(specTitle(spec), width / 2));
   parts.push(`<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#333" stroke-width="2"/>`);
   parts.push(`<line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#333" stroke-width="2"/>`);
@@ -141,15 +153,26 @@ export function pressBarChart(spec, palette) {
   }
 
   const slot = chartWidth / labels.length;
-  const barWidth = slot * 0.7;
-  values.forEach((value, index) => {
-    const v = Number(value || 0);
-    const x = pad.left + index * slot + (slot - barWidth) / 2;
-    const barHeight = (v / maxValue) * chartHeight;
-    const y = height - pad.bottom - barHeight;
-    parts.push(`<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${escapeMarkup(paletteColor(colors, index))}" stroke="white" stroke-width="1"/>`);
-    parts.push(`<text x="${x + barWidth / 2}" y="${y - 8}" text-anchor="middle" font-family="${FONT}" font-size="11" fill="#333" font-weight="bold">${escapeMarkup(v)}</text>`);
+  const groupWidth = slot * 0.7;
+  const barWidth = groupWidth / datasets.length;
+  datasets.forEach((dataset, d) => {
+    (grouped ? (dataset.data || []) : values).forEach((value, index) => {
+      const v = Number(value || 0);
+      const x = pad.left + index * slot + (slot - groupWidth) / 2 + d * barWidth;
+      const barHeight = (v / maxValue) * chartHeight;
+      const y = height - pad.bottom - barHeight;
+      const fill = grouped ? seriesColor(dataset, d) : paletteColor(colors, index);
+      parts.push(`<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${escapeMarkup(fill)}" stroke="white" stroke-width="1"/>`);
+      parts.push(`<text x="${x + barWidth / 2}" y="${y - 8}" text-anchor="middle" font-family="${FONT}" font-size="${grouped ? 9 : 11}" fill="#333" font-weight="bold">${escapeMarkup(v)}</text>`);
+    });
   });
+  if (grouped) {
+    datasets.forEach((dataset, d) => {
+      const x = pad.left + d * 140;
+      parts.push(`<rect x="${x}" y="${height - 40}" width="12" height="12" fill="${escapeMarkup(seriesColor(dataset, d))}"/>`);
+      parts.push(`<text x="${x + 18}" y="${height - 30}" font-family="${FONT}" font-size="11" fill="#333">${escapeMarkup(dataset.label || `series ${d + 1}`)}</text>`);
+    });
+  }
 
   labels.forEach((label, index) => {
     const x = pad.left + index * slot + slot / 2;
@@ -186,7 +209,7 @@ export function pressLineChart(spec, palette) {
     : pad.left + (index / (labels.length - 1)) * chartWidth;
   const yAt = (value) => height - pad.bottom - ((value - scaleMin) / scaleRange) * chartHeight;
 
-  const parts = [`<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`];
+  const parts = [svgOpen(width, height)];
   parts.push(titleText(specTitle(spec), width / 2));
   parts.push(`<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#333" stroke-width="2"/>`);
   parts.push(`<line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#333" stroke-width="2"/>`);

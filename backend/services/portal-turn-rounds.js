@@ -65,6 +65,7 @@ import {
   recordSupervisorRedirect as _recordSupervisorRedirect,
   runSettleGates as _runSettleGates,
 } from './turn-settle.js';
+import { noteResearchRound, researchNextStep } from './research-mode.js';
 
 export { speechlessRoundClose, SPEECHLESS_ROUND_TAIL_CHARS };
 
@@ -338,11 +339,13 @@ export const runToolRounds = async ({
       // The sender's own tools (caller-tools.js) are handed back, never run here.
       const toolResults = await processRoundActs(processToolCalls, ws, roundResponse, connection, acts, turnToolEpochs);
       noteToolResultSightings(connection, toolResults); // a flag for the CSO, never awaited, never a gate (G13)
+      noteResearchRound(connection, acts, toolResults); // RESEARCH counts what was searched and actually read (research-mode.js)
       log.info('round tools processed', {
         name: companionName,
         round,
         results: toolResults.map((r) => `${r.tool}:${r.status}${r.error ? ` — ${String(r.error).slice(0, 200)}` : ''}`).join(','),
       });
+      if (toolResults.length === 0 && researchNextStep(connection, { messages, roundResponse }) === 'continue') continue; // back to the work, or to the report
       if (toolResults.length === 0 || callerYielded(connection)) break;
       // THE SPEECH-LOOP GUARD: no act moved the world (epoch unmoved — a
       // fresh-but-failing call, an error, a denial) AND the round said the

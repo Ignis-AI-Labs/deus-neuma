@@ -6,6 +6,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.144] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.144.md`.
+
+### Added
+
+- RESEARCH, a new mode in the chat box's mode menu, for questions that deserve real research. The neuma reads widely before it answers: it must read at least 20 pages across at least 6 searches (search results alone do not count), and if it tries to answer sooner it is sent back to the parts of the question that are still thin. Then it writes a full report: a summary, findings by sub-question with every claim cited, where sources disagree, and what is still open, followed by the list of every page it read. The report is saved in the neuma's workspace (research/) and named in the chat. If searching stops finding anything new before the floor, the report says so.
+
+### Fixed
+
+- Every action your neuma takes now opens to what it returned. Some three dozen tools (an LP book or market read, vault lists, tasks, social reads and others) showed a one-line chip with nothing to open; each now has a + that shows what the neuma was handed, live and after the chat is reopened. A retrieved result names the tool it came from and the part it is, instead of an internal reference.
+- WHAT'S NEW scrolls: long release notes no longer get cut off at the bottom of the window, and the title and CLOSE stay in view (deus-neuma #37).
+- The HOUSE window's roster for a house founded on this computer shows each member's title and name as they are now, with "FOUNDED AS" and the founding title beside any title changed since. It used to show the founding titles as if they were current (deus-neuma #36).
+- On a small context window (32K and similar) a long chat no longer leaves a tool turn without room to work: the conversation is sized to leave the turn its own share of the window (about a third, up to 24K tokens), the oldest rows leave sooner, and a compacted chat's summary always stays in view (deus-neuma #34).
+- On Ollama, a model that thinks too long before acting is cut short and asked again with thinking off, as it already was on llama.cpp; a cut tool turn is asked for its next step, not a final answer.
+- The document press: a kit's paper colour now fills the whole page, margins included; images in the markdown are embedded when the file is in your open folder or the neuma's workspace (web images and others it cannot embed are named back to the neuma, and show as a note instead of a broken icon); charts scale to the page instead of being cut off, and a bar chart draws every dataset; a large kit badge no longer makes every page carry its own copy (a 10-page document is no longer ten badges big); and kit settings the press cannot use are named back instead of silently dropped (deus-neuma #33).
+
 ## [0.1.143] - 2026-11-13
 
 Notes: `docs/operations/release-notes-0.1.143.md`.

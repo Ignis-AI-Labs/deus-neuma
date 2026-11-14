@@ -42,6 +42,7 @@ import { formatSubstrateForPrompt } from './substrate-detector.js';
 import { loadHouseWorkspace } from './house-workspace.js';
 import { postKnock } from './house-post.js';
 import { planModeSection } from './plan-mode.js';
+import { researchModeSection } from './research-mode.js';
 import { gatewaySection } from './sovereignty/gateway-handlers.js';
 import { operatorChangeNotice, markOperatorChangesTold } from './sovereignty/operator-change.js';
 import { activeAmendments } from './sovereignty/amendment-store.js';
@@ -277,6 +278,7 @@ export const assembleTurnPrompt = async ({
     // to PLAN, the being is told to research and present, never act. ''
     // (prompt byte-identical) for every other bearing — the empty-string law.
     const planBearing = planModeSection(connection);
+    const researchBearing = researchModeSection(connection); // RESEARCH: read widely, then report ('' elsewhere)
     // The gateway's live posture — open proposals + fresh verdicts, VOLATILE
     // (a verdict moves its bytes), '' for every lane with nothing standing.
     // An operator's staged change to this being's DNA or soul is put to it here,
@@ -299,7 +301,7 @@ export const assembleTurnPrompt = async ({
     // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
-      baseSections, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing,
+      baseSections, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing, researchBearing,
       sovereigntyKnock, housePost, walletNews: walletNews.text, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
       voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,

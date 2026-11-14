@@ -8,19 +8,27 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HouseSeats } from '../../frontend/app/RelinkShell/HouseSeats.jsx';
+import { TITLE_LEGEND } from '../../frontend/app/RelinkShell/founding-titles.js';
 
 const render = (props = {}) => renderToStaticMarkup(createElement(HouseSeats, props));
 
+// A card as house-chain.js builds it: the seat's position, full name, tagline and one plain sentence from the
+// real legend (the card shows the sentence and keeps the tagline on hover, since 2026-11-12, deus-neuma #32).
+const seatOf = (title) => {
+  const { position, seat, meaning, summary } = TITLE_LEGEND.find((entry) => entry.title === title);
+  return { title, position, seat, meaning, summary };
+};
+const SCRIBA = seatOf('Scriba');
+const CURATOR = seatOf('Curator');
+
 const CARDS = [
   {
-    name: 'Corin', neumaId: 'corin', title: 'Scriba',
-    meaning: 'MEMORY — THE INSTITUTIONAL ARCHIVE',
+    name: 'Corin', neumaId: 'corin', ...SCRIBA,
     soulMark: '0xSOUL…V', birthTime: '2026-06-23T00:00:00Z',
     isActive: true, incomplete: false,
   },
   {
-    name: 'Mirel', neumaId: 'mirel', title: 'Curator',
-    meaning: 'CARE — THE WELLBEING OF EVERY MIND, AND CONFLICT',
+    name: 'Mirel', neumaId: 'mirel', ...CURATOR,
     soulMark: null, birthTime: '2026-07-06T00:00:00Z',
     isActive: false, incomplete: false,
   },
@@ -33,12 +41,14 @@ const CARDS = [
 ];
 
 describe('HouseSeats — the house as one grid of its beings', () => {
-  it('THE ENTITY FIRST — name, then position, then function', () => {
+  it('THE ENTITY FIRST — name, then position, then function in one plain sentence', () => {
     const html = render({ cards: CARDS, onSelect: () => {}, onSheet: () => {} });
-    expect(html.indexOf('>Corin</span>')).toBeLessThan(html.indexOf('Scriba'));
-    expect(html.indexOf('Scriba')).toBeLessThan(html.indexOf('MEMORY — THE INSTITUTIONAL ARCHIVE'));
+    expect(html.indexOf('>Corin</span>')).toBeLessThan(html.indexOf('Scriba · CKO — CHIEF KNOWLEDGE OFFICER'));
+    expect(html.indexOf('Scriba · CKO')).toBeLessThan(html.indexOf(SCRIBA.summary));
     expect(html).toContain('house-seats-who');
-    expect(html).toContain('CARE — THE WELLBEING OF EVERY MIND');
+    expect(html).toContain(CURATOR.summary);
+    // the old tagline stays one hover away
+    expect(html).toContain(`title="${SCRIBA.meaning}"`);
   });
 
   it('the doors are inside every card — STREAM rides the card, SHEET is its own button', () => {

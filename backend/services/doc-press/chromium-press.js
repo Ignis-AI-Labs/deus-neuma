@@ -17,6 +17,7 @@ import WebSocket from 'ws';
 import { createLogger } from './../logger.js';
 import { helperEnvironment } from '../agent-terminal-environment.js';
 import { PRESS_DIR_PREFIX, recordPressOwner, sweepOrphanedPresses } from './press-orphans.js';
+import { BADGE_MARK } from './document-shell.js';
 
 const log = createLogger('DocPress.Chromium');
 
@@ -235,6 +236,33 @@ export const withPressPolicy = (html) => {
     : `${POLICY_META}${html}`;
 };
 
+// A badge this small rides as it is; a larger raster badge is drawn at a height that prints sharp
+// at 12 px (4x) and that small image takes its place in the running header (deus-neuma #33).
+const BADGE_INLINE_MAX_BYTES = 16 * 1024;
+const BADGE_DRAWN_HEIGHT_PX = 48;
+
+// impure (CDP) — the badge drawn at BADGE_DRAWN_HEIGHT_PX tall on a transparent ground, as a PNG
+// data URI, or null (the caller keeps the original). No page script runs: the page is laid out by
+// Chromium, measured through the DOM domain and photographed by the screenshot domain.
+const drawBadgeSmall = async (cdp, sessionId, badgeUrl, waitLoaded) => {
+  await cdp.send('Emulation.setDefaultBackgroundColorOverride', { color: { r: 0, g: 0, b: 0, a: 0 } }, sessionId);
+  try {
+    const loaded = waitLoaded();
+    await cdp.send('Page.navigate', { url: badgeUrl }, sessionId);
+    await loaded;
+    const { root } = await cdp.send('DOM.getDocument', {}, sessionId);
+    const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#badge' }, sessionId);
+    const { model } = await cdp.send('DOM.getBoxModel', { nodeId }, sessionId);
+    if (!(model?.width > 0 && model?.height > 0)) return null;
+    const { data } = await cdp.send('Page.captureScreenshot', {
+      format: 'png', clip: { x: 0, y: 0, width: model.width, height: model.height, scale: 1 }, captureBeyondViewport: true,
+    }, sessionId);
+    return `data:image/png;base64,${data}`;
+  } finally {
+    await cdp.send('Emulation.setDefaultBackgroundColorOverride', {}, sessionId).catch(() => {});
+  }
+};
+
 /**
  * Renders HTML to PDF bytes through a real Chromium print pipeline. // impure
  * @param {object} params
@@ -243,9 +271,10 @@ export const withPressPolicy = (html) => {
  * @param {string} [params.footerTemplate] - Print-chrome footer
  * @param {string} [params.format] - Letter | A4 | Legal
  * @param {number} [params.marginCm] - Uniform page margin in centimeters
+ * @param {string|null} [params.badge] - the kit's badge data URI, for BADGE_MARK in the header
  * @returns {Promise<Buffer>}
  */
-export async function pressPdf({ html, headerTemplate, footerTemplate, format = 'Letter', marginCm = 1.5 }) {
+export async function pressPdf({ html, headerTemplate, footerTemplate, format = 'Letter', marginCm = 1.5, badge = null }) {
   const paper = PAPER_SIZES_IN[String(format).toLowerCase()];
   if (!paper) {
     throw new Error(`Unsupported paper format: ${format} (supported: ${Object.keys(PAPER_SIZES_IN).join(', ')})`);
@@ -259,6 +288,13 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), PRESS_DIR_PREFIX));
   const htmlPath = path.join(workDir, 'document.html');
   await fs.writeFile(htmlPath, withPressPolicy(html), 'utf8');
+  // the badge alone on a page of its own, when it is a raster too large to repeat on every page
+  const drawBadge = Boolean(badge) && String(headerTemplate || '').includes(BADGE_MARK)
+    && !badge.startsWith('data:image/svg') && badge.length > BADGE_INLINE_MAX_BYTES;
+  const badgePath = path.join(workDir, 'badge.html');
+  if (drawBadge) {
+    await fs.writeFile(badgePath, withPressPolicy(`<!DOCTYPE html><html><body style="margin:0"><img id="badge" src="${badge}" style="height:${BADGE_DRAWN_HEIGHT_PX}px;display:block"></body></html>`), 'utf8');
+  }
 
   const { child, wsUrl } = launchChromium(executable, path.join(workDir, 'profile'));
   let socket = null;
@@ -273,14 +309,24 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
     await cdp.send('Emulation.setScriptExecutionDisabled', { value: true }, sessionId);
 
     const documentUrl = pathToFileURL(htmlPath).href;
+    const badgeUrl = pathToFileURL(badgePath).href;
     cdp.on('Fetch.requestPaused', sessionId, ({ requestId, request }) => {
-      const allowed = pressMayLoad(request.url, documentUrl);
+      const allowed = pressMayLoad(request.url, documentUrl) || (drawBadge && pressMayLoad(request.url, badgeUrl));
       if (!allowed) log.info('press page load blocked', { scheme: request.url.split(':')[0] });
       cdp.send(allowed ? 'Fetch.continueRequest' : 'Fetch.failRequest',
         allowed ? { requestId } : { requestId, errorReason: 'BlockedByClient' }, sessionId)
         .catch((err) => log.warn('press request verdict not delivered', { err: err.message }));
     });
     await cdp.send('Fetch.enable', { patterns: [{ urlPattern: '*' }] }, sessionId);
+
+    let header = headerTemplate || '<div></div>';
+    if (header.includes(BADGE_MARK)) {
+      const small = drawBadge
+        ? await drawBadgeSmall(cdp, sessionId, badgeUrl, () => cdp.waitForEvent('Page.loadEventFired', sessionId, RENDER_TIMEOUT_MS))
+          .catch((err) => { log.warn('the badge could not be drawn small — it rides as it is', { err: err.message }); return null; })
+        : null;
+      header = header.replace(BADGE_MARK, small || badge || '');
+    }
 
     const loaded = cdp.waitForEvent('Page.loadEventFired', sessionId, RENDER_TIMEOUT_MS);
     await cdp.send('Page.navigate', { url: documentUrl }, sessionId);
@@ -292,7 +338,7 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
         {
           printBackground: true,
           displayHeaderFooter: true,
-          headerTemplate: headerTemplate || '<div></div>',
+          headerTemplate: header,
           footerTemplate: footerTemplate || '<div></div>',
           paperWidth: paper.width,
           paperHeight: paper.height,

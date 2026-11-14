@@ -111,8 +111,12 @@ export const thoughtLeashChars = (roomTokens) =>
  * ride provider 'custom' at loopback — the same widening every local gate in
  * llm-provider makes). Pure.
  */
+// Ollama's lever is its own `think: false` (llm-request-builders.js), measured on the bundled Ollama
+// 0.40.7 by a tester (deus-neuma #34): the default request thought 198 characters, `think: false`
+// none, the same answer. Without it the governor never armed there, and single tool rounds reasoned
+// 3,000 to 6,400 tokens on a 32K window. It arms only on a serving the think probe found thinking.
 const isLocalNoThinkWire = (route) =>
-  route?.provider === 'llama-server' || isLoopbackCustom(route?.provider, route?.endpoint);
+  route?.provider === 'llama-server' || route?.provider === 'ollama' || isLoopbackCustom(route?.provider, route?.endpoint);
 
 /**
  * The HOSTED off-lever: the lane's own proven thinking switch, expressed as
@@ -163,10 +167,14 @@ export const LEASH_TAIL_CHARS = 2000;
  */
 export const UNSETTLED_ALLOWANCE = 'If your reasoning did not settle it and the task allows saying so, say that plainly rather than guessing.';
 
-export const leashReaskNote = (tail) => [
+// A round offered tools is mid-work: asked for […], a cut tool turn ended with
+// its work undone (deus-neuma #34). It is asked for its next single step instead.
+export const leashReaskNote = (tail, { tools = false } = {}) => [
   'Your reasoning ran past its room and was cut. It ended here:',
   `"""\n${tail}\n"""`,
-  `Do not deliberate further. Using what you already worked out, give the final answer now, in exactly the form the task requires. ${UNSETTLED_ALLOWANCE}`,
+  tools
+    ? `Do not deliberate further. Using what you already worked out, take the next single step now: one tool call if the work needs one, or the final answer if it is done. ${UNSETTLED_ALLOWANCE}`
+    : `Do not deliberate further. Using what you already worked out, give the final answer now, in exactly the form the task requires. ${UNSETTLED_ALLOWANCE}`,
 ].join('\n\n');
 
 /**
@@ -238,8 +246,8 @@ export const createThoughtGovernor = ({ effort = null, thinkBehavior = null, rou
      * The re-ask's messages: the round's own, plus the cut reasoning's tail
      * handed back (#569). Unchanged when nothing was cut or nothing was said.
      */
-    reaskMessages: (messages) => (tripped && tail.trim()
-      ? [...messages, { role: 'user', content: leashReaskNote(tail.trim()) }]
+    reaskMessages: (messages, { tools = false } = {}) => (tripped && tail.trim()
+      ? [...messages, { role: 'user', content: leashReaskNote(tail.trim(), { tools }) }]
       : messages),
     charsSoFar: () => chars,
     wasTripped: () => tripped,

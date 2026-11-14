@@ -367,6 +367,30 @@ export const houseTitleState = async (wallet) => {
 };
 
 /**
+ * The seats a local founding record's members hold NOW, keyed by member address (lowercase): each
+ * neuma's current title and name (its lane matched by soul address, as every reader here matches;
+ * the title from the ledger, else the founding one). The record is signed and never rewritten, so
+ * the HOUSE window's roster used to read the founding titles as if they were current (deus-neuma
+ * #36: four of nine seats wrong after title changes). The operator's seat is the record's own.
+ * impure (reads lanes and the title ledger)
+ * @param {string} wallet
+ * @param {{members?: Array<{kind: number, address: string, title: string, displayName?: string}>}} record
+ * @returns {Promise<Record<string, {title: string, name: string}>>}
+ */
+export const currentSeatsOf = async (wallet, record) => {
+  const lanes = await ownedLanes(wallet);
+  const bySoul = new Map(lanes.filter((l) => l.soul).map((l) => [l.soul, l]));
+  const changed = currentTitles({}, await titleChanges(wallet));
+  const seats = {};
+  for (const m of Array.isArray(record?.members) ? record.members : []) {
+    const lane = m?.kind === 1 ? bySoul.get(String(m.address || '').toLowerCase()) : null;
+    if (!lane) continue;
+    seats[String(m.address).toLowerCase()] = { title: changed[lane.neumaId] ?? m.title, name: lane.name ?? m.displayName };
+  }
+  return seats;
+};
+
+/**
  * Change a title in the operator's house: give one member a title (a correction, a new seat) or
  * trade two members' titles. Validated against the titles held now; the founding record is never
  * touched. impure.

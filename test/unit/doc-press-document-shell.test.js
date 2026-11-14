@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { buildDocumentHtml, buildPdfChrome } from '../../backend/services/doc-press/document-shell.js';
+import { BADGE_MARK, buildDocumentHtml, buildPdfChrome } from '../../backend/services/doc-press/document-shell.js';
 import { DEFAULT_KIT } from '../../backend/services/doc-press/brand-kit.js';
 
 const brandedKit = {
@@ -44,8 +44,10 @@ describe('buildDocumentHtml (pure)', () => {
 
 describe('buildPdfChrome (pure)', () => {
   test('branded header carries badge, title, and company name', () => {
-    const { headerTemplate, footerTemplate } = buildPdfChrome({ kit: brandedKit, title: 'Quarterly' });
-    expect(headerTemplate).toContain('data:image/svg+xml;base64,BB==');
+    const { headerTemplate, footerTemplate, badge } = buildPdfChrome({ kit: brandedKit, title: 'Quarterly' });
+    // the badge rides as a marker the press fills with it drawn at its printed size (deus-neuma #33)
+    expect(headerTemplate).toContain(`src="${BADGE_MARK}"`);
+    expect(badge).toBe('data:image/svg+xml;base64,BB==');
     expect(headerTemplate).toContain('Quarterly');
     expect(headerTemplate).toContain('Acme &amp; Sons');
     expect(footerTemplate).toContain('pageNumber');

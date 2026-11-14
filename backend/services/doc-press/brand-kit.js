@@ -67,7 +67,8 @@ export const DEFAULT_KIT = Object.freeze({
   logos: Object.freeze({}),
   logoData: Object.freeze({}),
   pdf: DEFAULT_PDF,
-  charts: Object.freeze({ palette: null })
+  charts: Object.freeze({ palette: null }),
+  ignoredKeys: Object.freeze([])
 });
 
 /**
@@ -88,14 +89,14 @@ function requireString(raw, field, fallback) {
   return value;
 }
 
-function mergeSection(defaults, overrides, kitId, section) {
+function mergeSection(defaults, overrides, kitId, section, ignored = []) {
   if (overrides === undefined) return defaults;
   if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
     throw new Error(`brand kit "${kitId}" field "${section}" must be an object`);
   }
   const merged = { ...defaults };
   for (const [key, value] of Object.entries(overrides)) {
-    if (!(key in defaults)) continue;
+    if (!(key in defaults)) { ignored.push(`${section}.${key}`); continue; }
     if (typeof value !== typeof defaults[key] && defaults[key] !== null) {
       throw new Error(`brand kit "${kitId}" field "${section}.${key}" has the wrong type`);
     }
@@ -103,6 +104,9 @@ function mergeSection(defaults, overrides, kitId, section) {
   }
   return merged;
 }
+
+// The top-level keys a kit.json may carry; any other is reported as ignored.
+const KIT_KEYS = new Set(['name', 'companyName', 'documentFooter', 'colors', 'fonts', 'logos', 'pdf', 'charts']);
 
 /**
  * Validates and normalizes a raw kit.json object against defaults. Pure.
@@ -130,16 +134,21 @@ export function validateKit(raw, kitId) {
   if (palette !== undefined && (!Array.isArray(palette) || palette.some((c) => typeof c !== 'string'))) {
     throw new Error(`brand kit "${kitId}" field "charts.palette" must be an array of color strings`);
   }
+  // A key the press cannot express is reported, never silently dropped (deus-neuma #33: a caller
+  // designed a cover page, heading fonts and table colours the kit could not carry, and was never told).
+  const ignoredKeys = Object.keys(raw).filter((key) => !KIT_KEYS.has(key));
+  if (raw.charts && typeof raw.charts === 'object') ignoredKeys.push(...Object.keys(raw.charts).filter((key) => key !== 'palette').map((key) => `charts.${key}`));
   return {
     id: kitId,
     name: requireString(raw, 'name', kitId),
     companyName: requireString(raw, 'companyName', ''),
     documentFooter: requireString(raw, 'documentFooter', ''),
-    colors: mergeSection(DEFAULT_COLORS, raw.colors, kitId, 'colors'),
-    fonts: mergeSection(DEFAULT_FONTS, raw.fonts, kitId, 'fonts'),
+    colors: mergeSection(DEFAULT_COLORS, raw.colors, kitId, 'colors', ignoredKeys),
+    fonts: mergeSection(DEFAULT_FONTS, raw.fonts, kitId, 'fonts', ignoredKeys),
     logos: { ...logos },
-    pdf: mergeSection(DEFAULT_PDF, raw.pdf, kitId, 'pdf'),
-    charts: { palette: palette ?? null }
+    pdf: mergeSection(DEFAULT_PDF, raw.pdf, kitId, 'pdf', ignoredKeys),
+    charts: { palette: palette ?? null },
+    ignoredKeys,
   };
 }
 

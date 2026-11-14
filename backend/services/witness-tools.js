@@ -49,6 +49,7 @@ import { noteTurnSandboxSource, ensureTurnSandbox } from './turn-sandbox.js';
 import { handleCodingTool, handleContextTool } from './witness-coding-tools.js';
 import { hydrateWitnessPathGrants, witnessPathScopeGate } from './witness-path-grants.js';
 import { sendToolEvent } from './witness-tool-events.js';
+import { sendResultDetail } from './portal-tools/tool-events.js';
 // The platform surface, from its decomposed homes directly (size-law
 // breakdown end-sweep) — this was the last static edge closing the
 // portal-stream import ring; the witness lane reads the leaves, not the
@@ -343,7 +344,7 @@ export const processWitnessToolCalls = async (ws, connection, calls, catalog, sa
       args,
     });
     if (platformResult) {
-      await land(platformResult);
+      sendResultDetail(ws, await land(platformResult)); // every act opens to what it returned (tool-events.js)
       continue;
     }
 
