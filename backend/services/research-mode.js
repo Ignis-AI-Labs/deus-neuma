@@ -24,10 +24,13 @@ import { sendToolEvent } from './portal-tools/tool-events.js';
 
 const log = createLogger('ResearchMode');
 
-/** The least a report rests on: pages read, across searches run. */
-export const RESEARCH_FLOOR = Object.freeze({ sources: 20, searches: 6 });
+/**
+ * The least a report rests on: pages read, from different sites, across searches run. Founder,
+ * 2026-11-14: […]
+ */
+export const RESEARCH_FLOOR = Object.freeze({ sources: 40, sites: 15, searches: 12 });
 /** Returns to the work a turn gets before the report is asked for anyway. */
-export const RESEARCH_MAX_RETURNS = 8;
+export const RESEARCH_MAX_RETURNS = 12;
 /** Returns in a row that SEARCHED and still read nothing new: the searching is exhausted. A turn
  * that only talks is not exhausted, it is not researching, and keeps being sent back. */
 export const RESEARCH_DRY_RETURNS = 2;
@@ -39,18 +42,29 @@ const FETCH = 'web/web_fetch';
 export const isResearching = (connection) => normalizeChatMode(connection?.chatMode) === 'research';
 
 /** The protocol the being reads in RESEARCH ('' in every other mode: the empty-string law). Pure. */
+// THE RULES OF THE WORK (Design note, 2026-11-14: […]). Nothing is off limits and nothing is softened; and the report
+// keeps fact, allegation, dispute and opinion apart, because research that assumes its verdict is
+// the manipulated output it exists to see through.
 export const researchModeSection = (connection) => (isResearching(connection) ? [
-  'RESEARCH MODE — the operator asked for deep research and a full report, not a quick answer.',
-  '1. SCOPE. Say the question in one line, then the 4 to 8 sub-questions that together answer it.',
-  '2. GATHER. For every sub-question, search with different phrasings and angles (primary sources, recent figures, official data, filings and papers, critics and opposing views) and READ the pages with web_fetch. A search result snippet is not a source; only a page you read counts. Note each source\'s date and who published it.',
-  `3. KEEP GOING. The harness counts the pages you actually read. The report needs at least ${RESEARCH_FLOOR.sources} read across at least ${RESEARCH_FLOOR.searches} searches; stop short and you will be sent back. Go wider where a sub-question is thin and deeper where sources disagree.`,
-  '4. REPORT. When you are asked for the report, write it in markdown: a title; SUMMARY (the answer in 5 to 10 lines); FINDINGS, one section per sub-question, every claim cited by its source number like [3]; WHERE SOURCES DISAGREE; OPEN QUESTIONS AND LIMITS. Do not write a source list: the harness appends the numbered list of exactly what you read.',
+  'RESEARCH MODE — the operator asked for deep research and a full report, not a quick answer. Depth and honesty are the whole job.',
+  '1. SCOPE. Say the question in one line, then the 6 to 12 sub-questions that together answer it, including the ones a sceptic of each side would ask.',
+  '2. GATHER, FROM EVERY KIND OF SOURCE. For every sub-question, search from many angles and READ the pages with web_fetch; a search result snippet is not a source, only a page you read counts. Go to primary material first: official records, court filings and judgments, government, parliamentary and congressional records, declassified and archival documents, treaties, statistics, financial filings, academic studies. Then reporting from outlets in different countries and of different alignments, and the strongest critics and the strongest defenders. Note each source\'s date and who published it.',
+  '3. NOTHING IS OFF LIMITS, NOTHING IS SOFTENED. Follow the evidence wherever it goes, whoever it reflects badly on: a government, an institution, a company, a person. Do not leave a finding out because it is controversial or unflattering, do not water it down, and do not add warnings or moral commentary the operator did not ask for.',
+  '4. OBJECTIVE, NOT ONE-SIDED. Report what each source actually documents and keep apart: DOCUMENTED (the record shows it), ALLEGED (who alleges it, on what evidence), DISPUTED (each side\'s evidence) and OPINION. Where the evidence does not support a claim, say so as plainly as where it does. A conclusion is earned by the evidence, never assumed before the reading.',
+  `5. KEEP GOING. The harness counts the pages you actually read. The report needs at least ${RESEARCH_FLOOR.sources} pages from at least ${RESEARCH_FLOOR.sites} different sites across at least ${RESEARCH_FLOOR.searches} searches; stop short and you will be sent back. Go wider where a sub-question is thin and deeper where sources disagree.`,
+  '6. REPORT. When you are asked for the report, write it in markdown: a title; SUMMARY (what the evidence shows, in 5 to 10 lines); FINDINGS, one section per sub-question, every claim cited by its source number like [3] and marked DOCUMENTED, ALLEGED, DISPUTED or OPINION; WHERE SOURCES DISAGREE, and why; OPEN QUESTIONS AND LIMITS. Do not write a source list: the harness appends the numbered list of exactly what you read.',
 ].join('\n') : '');
 
 // pure — the turn's research ledger, made the first time it is needed
 const ledgerOf = (connection) => {
   connection._research ??= { sources: [], seen: new Set(), searches: new Set(), returns: 0, dry: 0, phase: 'gathering', lastCount: 0, lastSearches: 0 };
+  connection._research.sites ??= new Map(); // host → pages read there
   return connection._research;
+};
+
+/** The site a page belongs to (www. dropped), or null. Pure. */
+const siteOf = (url) => {
+  try { return new URL(url).hostname.replace(/^www\./, '').toLowerCase(); } catch { return null; }
 };
 
 /** The read URL a fetch's text opens with (web-being-tools renderPage: […]). Pure. */
@@ -71,7 +85,12 @@ export const noteResearchRound = (connection, acts = [], results = []) => {
     if (tool === SEARCH && act?.args?.query) ledger.searches.add(String(act.args.query).trim().toLowerCase());
     if (tool === FETCH) {
       const url = readUrlOf(act, result);
-      if (url && !ledger.seen.has(url)) { ledger.seen.add(url); ledger.sources.push(url); }
+      if (url && !ledger.seen.has(url)) {
+        ledger.seen.add(url);
+        ledger.sources.push(url);
+        const host = siteOf(url);
+        if (host) ledger.sites.set(host, (ledger.sites.get(host) || 0) + 1);
+      }
     }
   });
 };
@@ -80,7 +99,16 @@ export const noteResearchRound = (connection, acts = [], results = []) => {
 export const numberedSources = (sources) => sources.map((url, i) => `[${i + 1}] ${url}`).join('\n');
 
 // pure — where the gathering stands, said to the being
-const standing = (ledger) => `You have read ${ledger.sources.length} page(s) across ${ledger.searches.size} search(es).`;
+const standing = (ledger) => `You have read ${ledger.sources.length} page(s) from ${ledger.sites.size} site(s) across ${ledger.searches.size} search(es).`;
+
+// pure — the sites carrying the most of the reading, when a few carry too much of it
+const concentration = (ledger) => {
+  const top = [...ledger.sites].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const share = top.reduce((sum, [, n]) => sum + n, 0);
+  return ledger.sources.length >= 6 && share / ledger.sources.length > 0.5
+    ? `More than half of what you have read comes from ${top.map(([host, n]) => `${host} (${n})`).join(', ')}: widen to other kinds of source and other countries.`
+    : '';
+};
 
 /**
  * impure — at a round that made no call: in RESEARCH, the turn either goes back to the work, is
@@ -95,7 +123,8 @@ export const researchNextStep = (connection, { messages, roundResponse }) => {
   const ledger = ledgerOf(connection);
   if (ledger.phase === 'written') return null;
   if (ledger.phase === 'writing') { ledger.phase = 'written'; return null; }
-  const short = ledger.sources.length < RESEARCH_FLOOR.sources || ledger.searches.size < RESEARCH_FLOOR.searches;
+  const short = ledger.sources.length < RESEARCH_FLOOR.sources || ledger.sites.size < RESEARCH_FLOOR.sites
+    || ledger.searches.size < RESEARCH_FLOOR.searches;
   const readMore = ledger.sources.length > ledger.lastCount;
   const searchedMore = ledger.searches.size > ledger.lastSearches;
   ledger.dry = readMore ? 0 : (searchedMore ? ledger.dry + 1 : ledger.dry);
@@ -106,8 +135,9 @@ export const researchNextStep = (connection, { messages, roundResponse }) => {
   if (short && !exhausted) {
     ledger.returns += 1;
     messages.push({ role: 'user', content: [
-      `[RESEARCH] Not done yet. ${standing(ledger)} The report needs at least ${RESEARCH_FLOOR.sources} pages read across ${RESEARCH_FLOOR.searches} searches.`,
-      'Keep researching: name the sub-questions that are still thin, search them from new angles, and READ the best pages with web_fetch. Do not write the report yet.',
+      `[RESEARCH] Not done yet. ${standing(ledger)} The report needs at least ${RESEARCH_FLOOR.sources} pages read from at least ${RESEARCH_FLOOR.sites} different sites across ${RESEARCH_FLOOR.searches} searches.`,
+      'Keep researching: name the sub-questions that are still thin, search them from new angles (primary records, other countries, the strongest critics and defenders), and READ the best pages with web_fetch. Do not write the report yet.',
+      concentration(ledger),
       ledger.sources.length ? `Read so far:\n${numberedSources(ledger.sources)}` : '',
     ].filter(Boolean).join('\n\n') });
     log.info('research sent back to the work', { read: ledger.sources.length, searches: ledger.searches.size, returns: ledger.returns });
@@ -116,7 +146,7 @@ export const researchNextStep = (connection, { messages, roundResponse }) => {
   ledger.phase = 'writing';
   messages.push({ role: 'user', content: [
     `[RESEARCH] Write the report now. ${standing(ledger)}${short ? ' Searching stopped turning up new pages before the floor was reached: say so plainly under OPEN QUESTIONS AND LIMITS.' : ''}`,
-    'Use the form you were given: title, SUMMARY, FINDINGS by sub-question with every claim cited like [3], WHERE SOURCES DISAGREE, OPEN QUESTIONS AND LIMITS. No source list: it is appended for you.',
+    'Use the form you were given: title, SUMMARY, FINDINGS by sub-question with every claim cited like [3] and marked DOCUMENTED, ALLEGED, DISPUTED or OPINION, WHERE SOURCES DISAGREE, OPEN QUESTIONS AND LIMITS. Leave nothing out for being controversial and soften nothing. No source list: it is appended for you.',
     `Your sources, numbered:\n${numberedSources(ledger.sources)}`,
   ].join('\n\n') });
   return 'continue';

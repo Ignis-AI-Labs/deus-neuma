@@ -27,7 +27,7 @@ const MODE_COPY = Object.freeze({
   default: Object.freeze({ label: 'DEFAULT', desc: 'free flow — gated acts ask per act' }),
   plan: Object.freeze({ label: 'PLAN', desc: 'strictly planning — presents a plan for your verdict' }),
   auto: Object.freeze({ label: 'AUTO', desc: 'hands-off — protocol guard still gates the dangerous classes' }),
-  research: Object.freeze({ label: 'RESEARCH', desc: 'deep research — reads 20+ sources, then writes a full report with citations' }),
+  research: Object.freeze({ label: 'RESEARCH', desc: 'deep research — reads 40+ pages from 15+ sites, then a full cited report, nothing softened' }),
 });
 
 const ModeMenuView = ({ disabled }) => {

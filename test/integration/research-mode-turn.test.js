@@ -63,7 +63,7 @@ describe('a lazy model in RESEARCH', () => {
     expect(provider.turns).toHaveLength(RESEARCH_MAX_RETURNS + 2);
     // each early stop went back to the work, saying what is missing
     for (const turn of provider.turns.slice(1, 1 + RESEARCH_MAX_RETURNS)) {
-      expect(lastUser(turn)).toContain('[RESEARCH] Not done yet. You have read 0 page(s) across 0 search(es).');
+      expect(lastUser(turn)).toContain('[RESEARCH] Not done yet. You have read 0 page(s) from 0 site(s) across 0 search(es).');
       expect(lastUser(turn)).toContain(`at least ${RESEARCH_FLOOR.sources} pages read`);
     }
     // the returns are spent: the report is asked for, and it must say the reading fell short
@@ -119,6 +119,27 @@ describe('the ledger counts what was read, not what was found', () => {
     }
     expect(messages.at(-1).content).toContain('[RESEARCH] Write the report now.');
     expect(messages.at(-1).content).toContain('say so plainly under OPEN QUESTIONS AND LIMITS');
+  });
+
+  test('many pages from a few sites are not enough: the floor counts sites, and the send-back names the crowded ones', () => {
+    const connection = { chatMode: 'research' };
+    for (let i = 0; i < RESEARCH_FLOOR.searches; i += 1) round(connection, search(`angle ${i}`));
+    for (let i = 0; i < RESEARCH_FLOOR.sources; i += 1) round(connection, read(`https://www.onesite.example/page-${i}`));
+    const messages = [];
+    expect(researchNextStep(connection, { messages, roundResponse: 'early' })).toBe('continue');
+    const back = messages.at(-1).content;
+    expect(back).toContain(`You have read ${RESEARCH_FLOOR.sources} page(s) from 1 site(s)`);
+    expect(back).toContain(`at least ${RESEARCH_FLOOR.sites} different sites`);
+    expect(back).toContain(`onesite.example (${RESEARCH_FLOOR.sources})`);
+  });
+
+  test('the protocol says it plainly: nothing off limits, nothing softened, fact kept apart from allegation', () => {
+    const section = researchModeSection({ chatMode: 'research' });
+    expect(section).toContain('NOTHING IS OFF LIMITS, NOTHING IS SOFTENED');
+    expect(section).toContain('do not add warnings or moral commentary the operator did not ask for');
+    expect(section).toContain('DOCUMENTED (the record shows it), ALLEGED (who alleges it, on what evidence), DISPUTED');
+    expect(section).toContain('declassified and archival documents');
+    expect(section).toContain(`at least ${RESEARCH_FLOOR.sources} pages from at least ${RESEARCH_FLOOR.sites} different sites`);
   });
 
   test('at the floor the turn is asked for the report, its sources numbered for citation', () => {

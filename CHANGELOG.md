@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.145] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.145.md`.
+
+### Changed
+
+- RESEARCH goes deeper and softens nothing: at least 40 pages from at least 15 different sites across 12 searches; if most of the reading comes from a few sites, the neuma is told which ones and sent wider. It is told to start from primary records (court, government, declassified and archival documents, filings, studies), then reporting from different countries and alignments, then the strongest critics and defenders; to leave nothing out for being controversial and add no warnings or moral commentary you did not ask for; and to mark every finding as documented, alleged, disputed or opinion.
+
 ## [0.1.144] - 2026-11-14
 
 Notes: `docs/operations/release-notes-0.1.144.md`.
