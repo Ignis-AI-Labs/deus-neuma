@@ -61,10 +61,9 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         }));
         break;
       }
-      // The turn carries its project context as the episodic space — a project
-      // IS a space (kind: 'project'). Sent only by a project-aware client; when
-      // absent the space set at manifest/resume is left untouched (back-compat
-      // for older clients that never speak of projects).
+      // The turn may carry an episodic memory space; when absent the space set
+      // at manifest/resume is left untouched. (The desk sent a project space
+      // until Projects was removed, 2026-11-10; it sends none now.)
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
       updateToolWorkspace(connection, message.toolWorkspace);
       // The desk's handle for this word while held — invalid shapes drop.

@@ -16,7 +16,7 @@ export const createStreamActions = ({
   wsService, dispatch, ensureSink, portalFocusFrame, setToolModeState, setChatModeState,
   turnStartedRef, erroredRef, streamSeenRef, sinkRef, holdSeqRef,
   voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
-  companionRef, focusRef, projectsRef, historyReadyRef, historyFailedRef, navigationSeqRef,
+  companionRef, focusRef, historyReadyRef, historyFailedRef, navigationSeqRef,
   toolModeRef, chatModeRef,
 }) => {
   // THE RELOAD-RACE GATE (D5, Design note, 2026-08-31: a send fired in the link-up
@@ -47,7 +47,7 @@ export const createStreamActions = ({
     const docs = (attachments?.names || []).map((name) => ({ name }));
     if (!trimmed && ids.length === 0) return;
     const companion = companionRef.current?.name || 'Unknown';
-    const frame = portalFocusFrame(focusRef.current, projectsRef.current);
+    const frame = portalFocusFrame(focusRef.current);
     // Barge-in: cut any speech still playing from the last turn, and resume the
     // audio context on this user gesture (autoplay policy) so the reply sounds.
     const sink = ensureSink();
@@ -147,7 +147,7 @@ export const createStreamActions = ({
     const ids = [...(attachments?.ids || [])];
     if (!turnId || (!trimmed && ids.length === 0)) return;
     const companion = companionRef.current?.name || 'Unknown';
-    const frame = portalFocusFrame(focusRef.current, projectsRef.current);
+    const frame = portalFocusFrame(focusRef.current);
     const sink = ensureSink();
     sink.interrupt();
     sink.resume();

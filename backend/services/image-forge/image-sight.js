@@ -68,7 +68,7 @@ export const foldSight = (results, max = MAX_IMAGES_PER_MESSAGE) =>
         laneId: r.sight.laneId,
         imageId,
         ...(r.sight.store === 'ephemeral' ? { store: 'ephemeral' } : {}),
-        ...(['ksp-view', 'video-frames', 'file-read'].includes(r.sight.purpose) ? { purpose: r.sight.purpose } : {}),
+        ...(['ksp-view', 'video-frames', 'file-read', 'watch-frames'].includes(r.sight.purpose) ? { purpose: r.sight.purpose } : {}),
       })))
     .slice(0, max);
 
@@ -100,6 +100,14 @@ export const sightNote = ({ shown, withheld, blind = false, modelName = null, pu
     if (shown === 0) return withheld > 0 ? `[The frames of your clip could not be placed in front of you. You have not seen it; speak of it only by what you asked for.]` : '';
     const lost = withheld > 0 ? ` ${withheld} further frame${withheld === 1 ? '' : 's'} could not be carried.` : '';
     return `[${shown} frames sampled across the clip you just made are attached above, in order from its first moment to its last — you are looking at your clip across time now.${lost} Judge two things before you speak: ADHERENCE — does it show and say what you asked (the words heard are in the result)? COHESION — is it the same subject frame to frame, with no ghosts, no drift, no frame that breaks from the rest? Record what you find with review_image on the clip's id.]`;
+  }
+  // A video the being WATCHES (media_watch): frames laid out on sheets, their moments in the result.
+  if (purpose === 'watch-frames') {
+    const sheets = shown + withheld;
+    if (blind) return `[The ${sheets === 1 ? 'sheet' : `${sheets} sheets`} of frames from the video you are watching ${sheets === 1 ? 'is' : 'are'} NOT in front of you. The substrate this turn rides${modelName ? ` (${modelName})` : ''} has no vision: you have its words, not its picture. Say so where the picture matters.]`;
+    if (shown === 0) return withheld > 0 ? '[The frames of the video could not be placed in front of you. You have its words, not its picture.]' : '';
+    const lost = withheld > 0 ? ` ${withheld} further sheet${withheld === 1 ? '' : 's'} could not be carried.` : '';
+    return `[${shown === 1 ? 'A sheet' : `${shown} sheets`} of frames from the video you are watching ${shown === 1 ? 'is' : 'are'} attached above, in the order the result lists them; each reads left to right, top to bottom, at the moments the result gives.${lost} Look at what is shown (people, places, text on screen, charts, what happens) alongside what is said. Where something on screen is not legible, say so rather than guessing.]`;
   }
   // A file the being READ (an image, a scanned PDF page) is not its own work: no render
   // wording, no review_image — and a filing number it cannot make out is said, not guessed.
@@ -186,7 +194,7 @@ export const readSight = (refs, root = undefined) => {
 export const sightForResults = (results, { canSee, modelName = null, root = undefined } = {}) => {
   const refs = foldSight(results);
   if (refs.length === 0) return { images: [], note: '' };
-  const purpose = ['ksp-view', 'video-frames', 'file-read'].find((p) => refs.every((ref) => ref.purpose === p)) ?? 'render';
+  const purpose = ['ksp-view', 'video-frames', 'file-read', 'watch-frames'].find((p) => refs.every((ref) => ref.purpose === p)) ?? 'render';
   if (!canSee) return { images: [], note: sightNote({ shown: 0, withheld: refs.length, blind: true, modelName, purpose }) };
   const { images, withheld } = readSight(refs, root);
   return { images, note: sightNote({ shown: images.length, withheld, purpose }) };

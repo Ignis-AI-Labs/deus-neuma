@@ -23,7 +23,7 @@ import { safeSend as _safeSend } from './ws-send.js';
 import { mcpService } from './mcp.js';
 import { withFsPrimitives, namingTools } from './fs-primitives.js';
 import { birthProviderGate } from './birth-provider-gate.js';
-import { createStreamRequest, decodeToolCallDeltas, mergeToolCallDelta, getConfig, createThinkFilter, readWithStallGuard, readStreamLine, frameChannelBytes, tallyChannelBytes, getThinkBehavior, stripThinkTags, THINK_TOKEN_BUDGET, getActiveModelCapabilities } from './llm-provider.js';
+import { createStreamRequest, decodeToolCallDeltas, mergeToolCallDelta, getConfig, createThinkFilter, readWithStallGuard, stallLimitFor, readStreamLine, frameChannelBytes, tallyChannelBytes, getThinkBehavior, stripThinkTags, THINK_TOKEN_BUDGET, getActiveModelCapabilities } from './llm-provider.js';
 import { completionBudget, promptFits, estimateTokens, describeBudget } from './context-budget.js';
 import { getCapabilities } from './model-capabilities.js';
 import { toOpenAITools } from './tool-schema.js';
@@ -38,6 +38,7 @@ import { continueBirthTools, heldWriteMessage } from './birth-tool-continuation.
 import { observeStage } from '../../core/birth/birth-observations.js';
 import { stagePitchOf } from '../../core/birth/soul-resonance.js';
 import { STAGE, isActStage } from '../../core/birth/stage-roles.js';
+import { stageThinkingBudget } from './birth-thought-room.js';
 
 // Same log channel as the orchestrator this span was cut from — the moved
 // code's log lines stay byte-identical in the operator's record.
@@ -241,6 +242,9 @@ export const sendStageToLLM = async (connection, stageData) => {
 
     const birthStreamOpts = { temperature: 0.8 };
     if (nativeBirthTools.length > 0) birthStreamOpts.tools = nativeBirthTools;
+    // THE NAMING'S ROOM TO THINK (birth-thought-room.js): on llama.cpp the server closes the thought
+    const thinkingBudget = stageThinkingBudget(stageNumber, thinkBehavior);
+    if (thinkingBudget) birthStreamOpts.thinkingBudget = thinkingBudget;
 
     // THE DISCLOSURE — the operator reads every component that is sent: the
     // stage protocol, the context riding with it, the tool schemas, the voice
@@ -300,6 +304,7 @@ export const sendStageToLLM = async (connection, stageData) => {
         { label: 'MODEL', value: getConfig().model },
         { label: 'TEMPERATURE', value: birthStreamOpts.temperature },
         { label: 'TOKEN CEILING', value: maxTokens },
+        ...(thinkingBudget ? [{ label: 'THINKING BUDGET', value: thinkingBudget }] : []),
         {
           label: 'FUNCTION SCHEMAS',
           value: nativeBirthTools.map((t) => t.function?.name).filter(Boolean).join(', ') || 'none',
@@ -363,6 +368,7 @@ export const sendStageToLLM = async (connection, stageData) => {
     // somewhere no field in this log could name). The census names the field
     // whatever it turns out to be. Field names and sizes only, never content.
     const channelBytes = {};
+    const stallLimit = stallLimitFor(streamResult); // a stage's DNA write is one long tool call
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullResponse = '';
@@ -645,7 +651,7 @@ export const sendStageToLLM = async (connection, stageData) => {
     while (true) {
       // Stall-guarded read — a silent half-open stream throws instead of
       // freezing the ceremony forever
-      const { value, done } = await readWithStallGuard(reader);
+      const { value, done } = await readWithStallGuard(reader, stallLimit);
       if (done) break;
       firstFrameAt ??= Date.now();
 

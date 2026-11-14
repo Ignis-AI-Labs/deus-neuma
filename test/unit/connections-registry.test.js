@@ -14,7 +14,7 @@ afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 describe('the list', () => {
   test('the four that run by themselves are switched, and every one starts off', () => {
-    expect(SWITCHED).toEqual(['update-check', 'security-watch', 'spellcheck', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge']);
+    expect(SWITCHED).toEqual(['update-check', 'security-watch', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge', 'webhooks']);
     for (const id of SWITCHED) expect(CONNECTIONS.find((c) => c.id === id).default).toBe(false);
   });
 
@@ -43,7 +43,7 @@ describe('a switch', () => {
     expect(switchOn('nope', { nope: true })).toBe(false);
   });
   test('a saved value that is not a boolean falls back to off', () => {
-    expect(switchOn('spellcheck', { spellcheck: 'yes' })).toBe(false);
+    expect(switchOn('update-check', { 'update-check': 'yes' })).toBe(false);
   });
 });
 

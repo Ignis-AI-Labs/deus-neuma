@@ -85,6 +85,11 @@
   flex-direction: column;
   min-height: 0;
   width: 100%;
+  /* The shared .cham-in sets height: 100%, which cannot resolve against a panel that has only a
+     max-height: the box grew to its whole content and the frame's clip cut the notes and the
+     CLOSE row off, with nothing to scroll (deus-neuma #37). auto lets the panel stretch it to the
+     clamped height, so the body below scrolls. */
+  height: auto;
   padding: var(--space-6);
 }
 

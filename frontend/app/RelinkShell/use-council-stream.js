@@ -14,14 +14,14 @@ import { focusToolFrame } from './desk-focus.js';
 import { announceFileChange } from './files-refresh.js';
 import { soundAct } from '../../services/act-sound.js';
 
-export const useCouncilStream = (wsService, { focus = null, projects = null } = {}) => {
+export const useCouncilStream = (wsService, { focus = null } = {}) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   // THE FOCUS GROUND rides every council frame, exactly as it rides a
   // one-on-one turn: the room works on the folder the operator has open.
   // Mirrored in a ref so the stable send callbacks read the CURRENT focus
   // without re-subscribing the whole stream on every focus change.
-  const groundRef = useRef(focusToolFrame(focus, projects));
-  groundRef.current = focusToolFrame(focus, projects);
+  const groundRef = useRef(focusToolFrame(focus));
+  groundRef.current = focusToolFrame(focus);
   // The council is a FORMAT of the stream, not a second surface: `room`
   // says whether the STREAM window is currently showing the council view.
   // Convening turns it on; the witness can flip back to the one-on-one at
@@ -108,9 +108,12 @@ export const useCouncilStream = (wsService, { focus = null, projects = null } = 
     };
     const onApprovalSettled = (d) => safe({ type: 'APPROVAL_SETTLED', id: d.id, decision: d.decision });
     const onError = (d) => safe({ type: 'ERROR', code: d.code, message: d.message });
+    // A dissolved council has no room to show: the stream returns to the
+    // one-on-one (#25 — it stayed in the empty council view).
     const onClosed = () => {
       endFilter();
       safe({ type: 'CLOSED' });
+      if (!settled()) setRoom(false);
     };
 
     wsService.on('council:opened', onOpened);

@@ -11,13 +11,12 @@
  * the legacy global active project, else the first opened root. A hostile
  * path is never spawned into; old clients (no `?cwd=`) are unchanged.
  */
-import fs from 'fs/promises';
+import os from 'node:os';
 import { Router } from 'express';
 import { verifySessionToken, requireAuth } from '../services/auth.js';
 import { passesInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
-import { getRoots, resolveFocusPath } from '../services/user-files.js';
-import { getActiveProject } from '../services/user-projects.js';
+import { resolveFocusPath } from '../services/user-files.js';
 import { spawnTerminal, writeToTerminal, resizeTerminal, killTerminal, closeOwnedTerminal } from '../services/terminal-manager.js';
 import { resolveAgent, binOnPath, availableAgents } from '../services/agent-launch.js';
 
@@ -34,19 +33,10 @@ terminalAgentsRouter.delete('/sessions/:id', (req, res) => {
   res.json({ closed: true });
 });
 
-// The window's contained focus folder is the preferred cwd; else the active
-// project's folder, but only if it still exists — a deleted/renamed project
-// folder must degrade, not crash the spawn — else the first opened root.
-const resolveCwd = async (requestedCwd, wallet) => {
-  const focused = resolveFocusPath(requestedCwd);
-  if (focused) return focused;
-  const project = await getActiveProject(wallet).catch(() => null);
-  if (project?.folder) {
-    const st = await fs.stat(project.folder).catch(() => null);
-    if (st?.isDirectory()) return project.folder;
-  }
-  return getRoots()[0];
-};
+// The shell opens in the folder in focus (contained: resolveFocusPath), and with
+// nothing in focus, in the home folder, where any terminal starts (Founder,
+// 2026-11-10: […]).
+const resolveCwd = (requestedCwd) => resolveFocusPath(requestedCwd) || os.homedir();
 
 /** Bind the authenticated terminal transport; departures detach unless explicitly closed. */
 // impure
@@ -80,7 +70,7 @@ export const setupTerminalRoutes = (wss) => {
       return;
     }
     const termId = params.get('term');
-    const cwd = termId ? undefined : await resolveCwd(params.get('cwd'), session.address);
+    const cwd = termId ? undefined : resolveCwd(params.get('cwd'));
     if (ws.readyState !== ws.OPEN) return;
     if (!verifySessionToken(token)) { ws.close(4001, 'Unauthorized'); return; }
 

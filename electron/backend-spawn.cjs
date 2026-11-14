@@ -13,7 +13,8 @@ const http = require('node:http');
 const { applyElectronPipeline, waitForBackendPort } = require('./pipeline-ports.cjs');
 const { openBackendLog } = require('./backend-log.cjs');
 const { registerKspCapture } = require('./ksp-capture.cjs');
-const { resolvePort, portMovedNotice } = require('./port-resolve.cjs');
+const { resolvePort, portMovedNotice, isHeld } = require('./port-resolve.cjs');
+const { takeOverPort } = require('./backend-takeover.cjs');
 const { backendExitNotice } = require('./backend-exit.cjs');
 const { attachBackend, lockActive } = require('./key-lock/key-lock-main.cjs');
 
@@ -64,6 +65,20 @@ const killBackendTree = () => {
     }
   }
 };
+
+// impure — stop the backend AND WAIT until it is gone (force after `graceMs`). An update must
+// replace the whole installation: the new version starts the moment this one quits, and a
+// backend still serving then is the old one standing in its way.
+const stopBackend = (graceMs = 5000) => new Promise((resolve) => {
+  const child = backend;
+  if (!child || child.exitCode !== null || child.signalCode !== null) { resolve(); return; }
+  const force = setTimeout(() => {
+    try { process.platform === 'win32' ? child.kill() : process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ }
+  }, graceMs);
+  const giveUp = setTimeout(resolve, graceMs * 2); // never hold the update hostage
+  child.once('exit', () => { clearTimeout(force); clearTimeout(giveUp); resolve(); });
+  killBackendTree();
+});
 
 // impure — the backend went down while the app lives: say why, and offer to
 // bring it back. QUIT stays the app's one deliberate exit; Esc restarts,
@@ -250,6 +265,13 @@ const waitForBackend = (timeoutMs = 30000) =>
 // Returns false when the launch must abort (the honest dialog is already
 // shown and quit issued).
 const resolveStartupPort = async () => {
+  // A LEFTOVER OF OURS IS REPLACED, never worked around: the backend of the version an update
+  // just replaced (its desk gone) is stopped before anything else is decided, so the new version
+  // never refuses to start and never moves to another port beside it (backend-takeover.cjs).
+  if (PREFERRED_PORT !== 0) {
+    const took = await takeOverPort(PREFERRED_PORT, { isFree: async (p) => !(await isHeld(p)) });
+    if (took.outcome === 'stopped') console.log(`[neuma] stopped the previous backend (pid ${took.pid}) on port ${PREFERRED_PORT}`);
+  }
   const resolved = PREFERRED_PORT === 0 ? { port: 0, outcome: 'ephemeral' }
     : await resolvePort(PREFERRED_PORT, { span: PIPELINE.pipeline ? 9 : undefined });
   if (resolved.outcome === 'neuma-held') {
@@ -284,4 +306,4 @@ const resolveStartupPort = async () => {
   return true;
 };
 
-module.exports = { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort };
+module.exports = { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort };

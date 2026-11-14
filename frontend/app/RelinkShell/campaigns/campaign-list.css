@@ -1,0 +1,11 @@
+/* The CAMPAIGNS tab's list (CampaignsSection.jsx): the BOARD's own campaign
+   panels on the panel grid, each one's name a press to its page; NEW
+   CAMPAIGN at the head. Colour rises over ≥160ms (no-flash.js). */
+
+.mkc-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.mkc-grid { margin-top: var(--space-2); }
+.mkc-row { min-width: 0; }
+/* The campaign's name is the press that opens it. */
+.mkc-name { background: none; border: 0; padding: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+  cursor: pointer; border-bottom: var(--border-width-thin) solid transparent; transition: color 200ms ease, border-color 200ms ease; }
+.mkc-name:hover, .mkc-name:focus-visible { color: var(--signal); border-bottom-color: var(--signal-dim); outline: none; }

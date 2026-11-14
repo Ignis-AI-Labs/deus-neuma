@@ -26,6 +26,7 @@ import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { operationReceiptLabel } from './operation-result.js';
 import { neutraliseResultText } from './tool-exchange.js';
+import { argsRefusalText, fitToolArgs } from './tool-args-check.js';
 import { persistOverCapResult } from './portal-tool-result-store.js';
 import { compressToolResult } from '../../core/runtime/tool-result-compressor.js';
 import { extractMCPContent } from '../routes/mcp-routes.js';
@@ -48,6 +49,7 @@ import { noteTurnSandboxSource, ensureTurnSandbox } from './turn-sandbox.js';
 import { handleCodingTool, handleContextTool } from './witness-coding-tools.js';
 import { hydrateWitnessPathGrants, witnessPathScopeGate } from './witness-path-grants.js';
 import { sendToolEvent } from './witness-tool-events.js';
+import { sendResultDetail } from './portal-tools/tool-events.js';
 // The platform surface, from its decomposed homes directly (size-law
 // breakdown end-sweep) — this was the last static edge closing the
 // portal-stream import ring; the witness lane reads the leaves, not the
@@ -281,7 +283,16 @@ export const processWitnessToolCalls = async (ws, connection, calls, catalog, sa
       results.push({ tool, status: 'unavailable', error: hint || 'tool identity was not uniquely advertised for this witness' });
       continue;
     }
-    const args = match.args || {};
+    // The one argument check (tool-args-check.js) — the being seat's, word for word.
+    const fit = fitToolArgs(identity.definition?.inputSchema, match.args || {});
+    if (fit.problems.length > 0) {
+      const tool = `${identity.server}/${identity.toolName}`;
+      const error = argsRefusalText(tool, identity.definition.inputSchema, fit.problems);
+      sendToolEvent(ws, connection.companion, { tool, status: 'invalid', detail: error });
+      results.push({ tool, status: 'invalid', error });
+      continue;
+    }
+    const args = fit.args;
     // WHAT WAS DONE, AGAINST WHAT IT WAS FOR — the same seam the neuma runtime
     // records at, and for the same reason: the crash this exists for happens
     // BETWEEN turns, so anything the peer had to remember to declare is exactly
@@ -333,7 +344,7 @@ export const processWitnessToolCalls = async (ws, connection, calls, catalog, sa
       args,
     });
     if (platformResult) {
-      await land(platformResult);
+      sendResultDetail(ws, await land(platformResult)); // every act opens to what it returned (tool-events.js)
       continue;
     }
 

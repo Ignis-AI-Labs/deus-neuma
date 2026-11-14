@@ -19,8 +19,11 @@ import { activeLaunchConfig, supervisorStatus } from './llama-server-supervisor.
 import { substrateModelView } from './substrate-model-view.js';
 import { getRecentIssues } from './logger.js';
 import { readClaim } from './substrate-claim-registry.js';
+import { createRateLens, lifetimeRates } from './token-throughput.js';
+import { replyPerformance } from './reply-meter.js';
 
 const execFileAsync = promisify(execFile);
+const rateLens = createRateLens(); // impure — the previous /slots read, for the live rates
 // No logger here by design: every probe degrades to null/[] (a dead source is
 // an honest "not serving" snapshot, not an error), so there is nothing to log.
 const PROBE_MS = 2500;
@@ -42,10 +45,17 @@ export const parsePrometheus = (text) => {
   return out;
 };
 
-/** llama.cpp metric map → the activity numbers the HUD shows. Pure. */
-export const summarizeActivity = (m) => Object.freeze({
-  genTokPerSec: m['llamacpp:predicted_tokens_seconds'] ?? null,
-  promptTokPerSec: m['llamacpp:prompt_tokens_seconds'] ?? null,
+/**
+ * llama.cpp metric map + the live rates → the activity numbers the HUD shows.
+ * The rates are token-throughput.js's, measured between reads — never the
+ * server's *_tokens_seconds gauges, which move only when a request finishes
+ * and reset on every read (they read 0.0 through a whole reply). Pure.
+ * @param {Object<string, number>} m
+ * @param {{genTokPerSec: number, promptTokPerSec: number}|null} [live]
+ */
+export const summarizeActivity = (m, live = null) => Object.freeze({
+  genTokPerSec: live?.genTokPerSec ?? null,
+  promptTokPerSec: live?.promptTokPerSec ?? null,
   kvUsage: m['llamacpp:kv_cache_usage_ratio'] ?? null,
   kvTokens: m['llamacpp:kv_cache_tokens'] ?? null,
   requestsProcessing: m['llamacpp:requests_processing'] ?? null,
@@ -268,6 +278,7 @@ export const getSubstrateTelemetry = async () => {
     ])
     : [null, null];
 
+  const metrics = parsePrometheus(metricsText);
   return Object.freeze({
     provider: cfg.provider,
     endpoint: base,
@@ -277,7 +288,9 @@ export const getSubstrateTelemetry = async () => {
     contextLength: launchCfg.contextLength,
     adapters: launchCfg.loras,
     sampling: parseSampling(props),
-    activity: withKvFromSlots(summarizeActivity(parsePrometheus(metricsText)), summarizeSlots(slots)),
+    activity: withKvFromSlots(summarizeActivity(metrics, rateLens(slots, performance.now())), summarizeSlots(slots)),
+    // Every token rate the panel can show: per reply by phase, the last few, and since the server started.
+    tokens: Object.freeze({ ...replyPerformance(performance.now()), lifetime: lifetimeRates(metrics) }),
     slots: summarizeSlots(slots),
     gpu: withUnifiedMemory(parseGpu(gpuCsv), meminfo),
     processes: parseComputeApps(appsCsv),

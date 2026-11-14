@@ -30,6 +30,7 @@ import { getSettingsDir } from '../data-root.js';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { webSettings } from '../web-settings.js';
 import { runAdvisoryScan } from './advisory-scan.js';
+import { recheckInstalledExtensions } from '../extensions/extension-install.js';
 import { sweepRepo, sweepFindingsAsThreats } from './secret-sweep.js';
 import { runHostProbe } from './host-probe.js';
 import { runHouseProbe } from './house-probe.js';
@@ -226,6 +227,19 @@ export const runSecurityScan = ({ wallet, trigger = 'manual', watchStore, ledger
       summary.repos.push(leg);
       repoLegs.push({ repo: repo.id, advisories, sweep, history });
     }
+
+    // EXTENSIONS — third-party code this install runs, checked again every day.
+    // A new high or critical finding blocks the extension (extension-install.js);
+    // its findings land in this ledger, so the operator hears of them like any other.
+    const extensionLegs = await recheckInstalledExtensions().catch((err) => {
+      summary.extensionsError = err.message;
+      return [];
+    });
+    for (const leg of extensionLegs) {
+      findings.push(...leg.scan.hits);
+      repoLegs.push({ repo: leg.repo, advisories: leg.scan });
+    }
+    summary.extensions = extensionLegs.map((leg) => ({ id: leg.repo, checked: leg.scan.checked, hits: leg.scan.hits.length, blocked: Boolean(leg.record?.blocked), error: leg.scan.error ?? null }));
 
     // HARDWARE — the rig itself, against the operator's named ports.
     summary.host = await runHostProbe({ expectedPorts: watch.host?.expectedPorts || [] })

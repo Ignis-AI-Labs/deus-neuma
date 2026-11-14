@@ -58,6 +58,7 @@ import { teamTuneIntent } from './team-tune.js';
 import { staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent } from './staff-acts.js';
 import { companyIntents } from './company-acts.js';
 import { revenueIntents } from './revenue-acts.js';
+import { salesIntents } from './sales-acts.js';
 import { invoiceIntents } from './invoice-acts.js';
 import { deliveryIntents } from './delivery-acts.js';
 import { programmeIntents } from './programme-acts.js';
@@ -73,6 +74,7 @@ import { campaignCreateIntent, campaignUpdateIntent, campaignAskIntent } from '.
 import { marketingPlanIntent } from './marketing-plan.js';
 import { marketingBoardArrangeIntent } from './marketing-board-arrange.js';
 import { marketingCompanyLinksIntent } from './marketing-company-links.js';
+import { marketingAccountIntents } from './marketing-account-acts.js';
 import {
   memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
   memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
@@ -89,13 +91,13 @@ const TYPES = new Map(
     teamRunIntent, teamWorkspaceRunIntent, teamPostIntent, teamTuneIntent, sovereigntyProposeIntent, sovereigntyConsentIntent,
     staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent,
     boardAddIntent, boardUpdateIntent,
-    ...companyIntents, ...revenueIntents, ...accountsIntents, ...raiseIntents, ...invoiceIntents, ...deliveryIntents, ...programmeIntents,
+    ...companyIntents, ...revenueIntents, ...salesIntents, ...accountsIntents, ...raiseIntents, ...invoiceIntents, ...deliveryIntents, ...programmeIntents,
     // Stage 3 batch 4 — the state-shaped tools as filed acts.
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
     campaignCreateIntent, campaignUpdateIntent, campaignAskIntent,
-    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent,
+    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent, ...marketingAccountIntents,
     memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
     memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
   ].map((t) => [t.name, t]),

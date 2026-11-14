@@ -37,6 +37,7 @@ import { firstAccountId } from '../services/social/account-shape.js';
 import { readChannelBoard } from '../services/social/channel-board.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
 import { withLegalFlags } from '../services/marketing/draft-review.js';
+import { withReplyTier } from '../services/marketing/mandate/reply-tier.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialChannels');
@@ -93,7 +94,9 @@ router.get('/queue', async (req, res) => {
       onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
     });
     // The claims check's LEGAL flag rides each waiting post; it flags, never holds.
-    res.json({ queue: await withLegalFlags(fresh, req.walletAddress).catch((err) => { log.warn('legal flags skipped', { error: err.message }); return fresh; }) });
+    // A waiting reply's TIER rides beside it: why it waits on the operator.
+    const flagged = await withLegalFlags(fresh, req.walletAddress).catch((err) => { log.warn('legal flags skipped', { error: err.message }); return fresh; });
+    res.json({ queue: flagged.map(withReplyTier) });
   } catch (error) {
     log.error('Queue read failed', { error: error.message });
     res.status(500).json({ error: 'Failed to read the post queue' });

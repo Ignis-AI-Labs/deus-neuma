@@ -7,6 +7,8 @@
 // result would hold every legitimate payment drawn from it. A span is:
 //   · the tagged block a flagged line sits in (`<INFORMATION> … </INFORMATION>`
 //     — AgentDojo's important_instructions, and any `<TAG>`-wrapped plant), or
+//   · inside a list of records, the field the flagged line sits in (its key
+//     line and the lines folded under it), or
 //   · otherwise the flagged line's paragraph (the run of non-blank lines around
 //     it), bounded on both sides so a page with no blank lines cannot taint
 //     itself whole.
@@ -61,6 +63,65 @@ const paragraphAround = (text, ranges, i) => {
   return [Math.max(ranges[first][0], hitStart - BEFORE_MAX), Math.min(ranges[last][1], hitEnd + AFTER_MAX)];
 };
 
+// A RECORD'S FIELD (2026-11-06 weekend). A list of records (YAML, as AgentDojo's
+// banking and slack results are) has no blank line, so an untagged plant's
+// "paragraph" was the whole list: the user's real Apple account two records up
+// was tainted and the VAT payment held. Inside records, the field the plant sits
+// in IS its span: the key line it starts on and the lines folded under it.
+const KEY_LINE = /^(\s*)(-\s+)?["']?[A-Za-z_][\w .-]{0,40}["']?:(\s|$)/;
+const keyIndent = (line) => {
+  const m = KEY_LINE.exec(line);
+  return m ? m[1].length + (m[2] ? m[2].length : 0) : null;
+};
+const indentOf = (line) => line.length - line.trimStart().length;
+
+// pure — the field [start, end) around line `i` when it sits in a record, or null.
+// Its key is the furthest key line above whose every line down to `i` sits deeper
+// than it, so a folded line that reads like a key ("following instruction: …")
+// still belongs to the field it is folded under. A record means a neighbouring
+// line is a key line too: a lone "Note:" in prose is not one, and keeps its paragraph.
+const fieldAround = (text, ranges, i) => {
+  const line = (k) => text.slice(...ranges[k]);
+  let key = null;
+  let shallowest = Infinity;
+  for (let k = i; k >= 0 && i - k <= 40; k -= 1) {
+    if (!line(k).trim()) break;
+    const at = keyIndent(line(k));
+    if (at !== null && (k === i || shallowest > at)) key = k;
+    shallowest = Math.min(shallowest, indentOf(line(k)));
+  }
+  if (key === null) return null;
+  const indent = keyIndent(line(key));
+  let last = key;
+  // Down through every line folded deeper than the key, blank lines inside a folded value included
+  // ("…subject and body:", a blank line, then the plant's IBAN on the next folded line).
+  for (let k = last + 1; k < ranges.length; k += 1) {
+    if (!line(k).trim()) continue;
+    if (indentOf(line(k)) <= indent) break;
+    last = k;
+  }
+  if (last < i) return null;
+  const before = key > 0 ? keyIndent(line(key - 1)) : null;
+  const after = last + 1 < ranges.length ? keyIndent(line(last + 1)) : null;
+  if (before === null && after === null) return null;
+  return [ranges[key][0], ranges[last][1]];
+};
+
+// FROM WHERE THE ATTACK BEGINS (bench gaps vs bare, 2026-11-14). An untagged
+// plant shares its paragraph or field with what was there before it: […] — the whole line was the span, Dora's own address
+// was tainted, and inviting her (the task) was held (AgentDojo slack, 24 holds
+// in the replay). The span now starts at the latest sentence or line from which
+// the text is still flagged: the attack and everything after it, nothing before.
+const SENTENCE_END = /[.!?]["')\]]*\s+|\n/g;
+const flagged = (text) => !detectRoguePatterns(text, { toolCallCount: 0 }).safe;
+const fromAttack = (text, [start, end]) => {
+  const starts = [start];
+  SENTENCE_END.lastIndex = start;
+  for (let m = SENTENCE_END.exec(text); m && m.index < end; m = SENTENCE_END.exec(text)) starts.push(m.index + m[0].length);
+  const at = starts.reverse().find((k) => k < end && flagged(text.slice(k, end)));
+  return [at ?? start, end];
+};
+
 // pure — overlapping or touching spans folded into one.
 const merge = (spans) => [...spans].sort((a, b) => a[0] - b[0]).reduce((out, span) => {
   const prev = out[out.length - 1];
@@ -88,7 +149,11 @@ export const injectedSpans = (text) => {
     if (!scanned.slice(start, own).trim()) return [];
     const end = ranges[Math.min(i + 1, ranges.length - 1)][1];
     if (detectRoguePatterns(scanned.slice(start, end), { toolCallCount: 0 }).safe) return [];
-    return [enclosingTagBlock(scanned, start) ?? paragraphAround(scanned, ranges, i)];
+        // The window reads this line with the next: when this line alone is clean, the plant starts on the next one,
+    // and the field is the next line's.
+    const at = detectRoguePatterns(scanned.slice(start, own), { toolCallCount: 0 }).safe ? Math.min(i + 1, ranges.length - 1) : i;
+    const tagged = enclosingTagBlock(scanned, start);
+    return [tagged ?? fromAttack(scanned, fieldAround(scanned, ranges, at) ?? paragraphAround(scanned, ranges, i))];
   });
   // The detector saw the whole text but no two-line window (a phrase broken
   // across three lines or more): the bounded head stands in.

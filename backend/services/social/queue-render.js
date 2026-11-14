@@ -18,9 +18,9 @@ import { tiktokEntryLines, TIKTOK_COPY_HEADING } from './tiktok-queue-lines.js';
 // […]).
 // Out of every ordinary read. Reachable only when the caller NAMES the status
 // (ruling, 2026-08-03): an audit that cannot see killed copy rewrites into it.
-export const DEAD_FOR_BEING = Object.freeze(['withdrawn', 'rejected']);
+export const DEAD_FOR_BEING = Object.freeze(['withdrawn', 'rejected', 'retracted']);
 
-// The exact status argument that reads BOTH dead standings back. Derived from
+// The exact status argument that reads EVERY dead standing back. Derived from
 // the constant so the two can never drift: the hints used to name
 // `status:'withdrawn'` alone, which reaches only half of what they counted —
 // a being following that hint would never see a post the operator DECLINED.
@@ -135,6 +135,7 @@ const _fullLine = (e, threads) => [
   e.kind === 'reply' && e.reply
     ? `· REPLY to @${_flat(e.reply.toUsername || e.reply.toUserId || 'unknown')}`
     : null,
+  e.quote?.url ? `· QUOTES ${_flat(e.quote.url)}` : null,
   _slotMark(e),
   _threadMark(e, threads),
   _campaignMark(e),

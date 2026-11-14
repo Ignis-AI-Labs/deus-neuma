@@ -18,15 +18,24 @@ import './DictationSetup.css';
 const UV_INSTALL_CMD = 'curl -LsSf https://astral.sh/uv/install.sh | sh';
 const POLL_MS = 3000;
 
-export const DictationSetup = ({ missing, onDismiss }) => {
+// `upgrade` (from readiness): dictation works on the processor and the graphics card has room for
+// the faster model; the same card offers it, once, and NOT NOW is remembered by the caller.
+export const DictationSetup = ({ missing, upgrade = null, onDismiss }) => {
   const [needs, setNeeds] = useState(missing);
   const [downloading, setDownloading] = useState(false);
   const [note, setNote] = useState(null);
   const [copied, setCopied] = useState(false);
+  // what the engine needs, as the platform names it: an installed app's processor engine says its own
+  // model and size (managed-stt.js); without that, the house's Whisper sidecar wording stands
+  const [model, setModel] = useState(null);
   // alive escapes every effect's closure — copyCmd, download, and the poll
   // below all read it — so it stays a component-level ref, not useSettled.
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
+
+  useEffect(() => {
+    dictationReadiness().then((r) => { if (alive.current && r?.label) setModel({ label: r.label, bytes: r.bytes, device: r.device, why: r.why }); });
+  }, []);
 
   // Re-probe readiness on a beat while the card is open — an install done in
   // a terminal beside the app is noticed without any button press.
@@ -35,14 +44,15 @@ export const DictationSetup = ({ missing, onDismiss }) => {
       const r = await dictationReadiness();
       if (!alive.current || !r) return;
       setNeeds([...r.missing]);
-      if (r.ready) {
-        setNote('READY — HOLD TO SPEAK');
+      if (r.label) setModel({ label: r.label, bytes: r.bytes, device: r.device, why: r.why });
+      if (r.ready && !(upgrade && r.upgrade)) {
+        setNote(upgrade ? 'ON YOUR GRAPHICS CARD — HOLD TO SPEAK' : 'READY — HOLD TO SPEAK');
         setTimeout(() => { if (alive.current) onDismiss(); }, 2500);
         clearInterval(iv);
       }
     }, POLL_MS * 2);
     return () => clearInterval(iv);
-  }, [onDismiss]);
+  }, [onDismiss, upgrade]);
 
   const copyCmd = async () => {
     try {
@@ -82,14 +92,21 @@ export const DictationSetup = ({ missing, onDismiss }) => {
   };
 
   const needsUv = needs.includes('uv');
-  const needsWeights = needs.includes('weights');
+  const needsWeights = needs.includes('weights') || Boolean(upgrade);
+  const offer = upgrade ? { label: upgrade.label, bytes: upgrade.bytes } : model;
 
   return (
     <div className="dictation-setup cham" role="dialog" aria-label="Dictation setup">
       <div className="dictation-setup-in cham-in">
-        <div className="dictation-setup-title label-data">«NOTICE» DICTATION NEEDS COMPONENTS</div>
+        <div className="dictation-setup-title label-data">
+          {upgrade ? '«NOTICE» DICTATION CAN RUN ON YOUR GRAPHICS CARD' : '«NOTICE» DICTATION NEEDS COMPONENTS'}
+        </div>
         <p className="dictation-setup-lead">
-          Speaking to your neuma runs a local Whisper engine. This machine is missing:
+          {upgrade
+            ? `Your graphics card has room for the faster, more accurate speech model (${upgrade.why}). Dictation keeps working on your processor until it lands.`
+            : model
+            ? `Speaking to your neuma runs a local speech engine on your ${model.device === 'gpu' ? 'graphics card' : 'processor'}${model.why ? ` (${model.why})` : ''}. This machine is missing:`
+            : 'Speaking to your neuma runs a local Whisper engine. This machine is missing:'}
         </p>
 
         {needsUv ? (
@@ -107,7 +124,9 @@ export const DictationSetup = ({ missing, onDismiss }) => {
 
         {needsWeights ? (
           <div className="dictation-setup-item">
-            <span className="dictation-setup-name label-data">WHISPER LARGE-V3 — SPEECH MODEL · 3.1 GB</span>
+            <span className="dictation-setup-name label-data">
+              {offer ? `${offer.label} · ${(offer.bytes / 1e9).toFixed(1)} GB` : 'WHISPER LARGE-V3 — SPEECH MODEL · 3.1 GB'}
+            </span>
             <p>The platform downloads and keeps this beside your other engines.</p>
             <button
               type="button"

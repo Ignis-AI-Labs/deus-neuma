@@ -41,6 +41,15 @@
   align-items: center;
 }
 
+/* NEW COMPANY beside ADD ACCOUNT (AddCompany.jsx): its name, where it stands, the act */
+.account-new-company {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.account-new-company .settings-input { flex: 2 1 220px; min-width: 0; }
+
 .account-strip {
   display: flex;
   flex-direction: column;
@@ -55,3 +64,10 @@
   padding-left: var(--space-2);
   border-left: 1px solid var(--line);
 }
+
+/* The platform's own setup steps, folded: one line, the steps one press away (account-setup.js). */
+.account-setup { margin: var(--space-1) 0 var(--space-2); }
+.account-setup summary { cursor: pointer; }
+.account-setup ol { margin: var(--space-1) 0 0; padding-left: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); }
+.account-setup li { color: var(--color-text-secondary); line-height: 1.5; }
+.account-hint { margin: 0; }

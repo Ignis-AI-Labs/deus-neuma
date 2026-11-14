@@ -14,6 +14,9 @@
 // OFF until the operator turns on the "House mailbox watch" connection
 // (electron/connections.json; Design note, 2026-10-25. The first look at a mailbox
 // wakes nobody: it marks where the watch begins.
+// Before any wake, each new message settles for the lead engine
+// (sales/mail-upkeep.js): a lead's reply marks the lead; a bounce or a
+// request to be left alone closes the address, by fixed rules, no model.
 // impure (timers, IMAP, the house's files).
 
 import path from 'path';
@@ -29,6 +32,7 @@ import { croDesignation } from '../revenue/cro-designation.js';
 import { listCompanies } from '../company-line/company-store.js';
 import { readRaise } from '../raise/raise-store.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
+import { settleMail } from '../sales/mail-upkeep.js';
 import { signalWake } from '../house-clock/wake-signal.js';
 import { createLogger } from '../logger.js';
 
@@ -95,6 +99,7 @@ export const watchHouse = async (house) => {
   let woke = 0;
   for (const m of fresh) {
     const route = routeMail({ from: m.from, investors, leads, mercator: officer?.laneId ?? null, holder });
+    await settleMail(house, { credentials, message: m, sender: bareAddress(m.from), isLead: Boolean(route?.thread?.startsWith('lead ')), leads });
     if (!route) continue;
     signalWake({ seat: route.seat, reason: 'mail', ref: `mail:${m.uid}`, detail: { uid: m.uid, from: bareAddress(m.from), thread: route.thread } });
     woke += 1;

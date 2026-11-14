@@ -6,6 +6,296 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.150] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.150.md`.
+
+### Added
+
+- A neuma can watch videos and listen to audio from almost any source: a link from YouTube, X, TikTok, Instagram, Facebook, Vimeo, Twitch, Reddit, SoundCloud, Apple Podcasts, Bandcamp, news sites or a direct file, or a recording on your computer. It gets what is said with the second each line begins, from the recording's own captions or heard on your computer, and, for video, frames from across it to look at. Long recordings come in ten-minute parts, and the transcript is kept in the neuma's workspace under watched/. In RESEARCH, hearings, interviews, speeches, documentaries and podcasts count as sources. The first watch downloads yt-dlp (and ffmpeg where your computer has none) from their GitHub releases, checked against pinned hashes; every fetch goes through a door that reaches only the internet, never your computer or your network. Each watch asks for your approval, like reading a page.
+- On a Mac, Deus Neuma sets up the model server for you as it does on Linux and Windows: it downloads Ollama's own macOS build (one build for Apple silicon, where models run on the graphics side of the chip, and for Intel), checked against its pinned SHA-256, and pulls the model recommended for your Mac's memory. An Ollama you installed yourself, from the Ollama app or Homebrew, is found and used when it is new enough.
+- macOS builds for Apple silicon and Intel, each made on its own Mac in the public repository's CI, so each app carries the right native code for its chip. Apple signing and notarization switch on once the Apple developer credentials are added to the repository.
+- `neuma acp`: Neuma runs inside any editor that hosts Agent Client Protocol agents (Zed, JetBrains IDEs, and Neovim or Emacs through their ACP clients). Your being works in the project the editor has open, its words and tool calls show in the editor's agent panel, and approvals appear there as Allow once / Allow for this session / Reject. A Read only mode holds every acting tool.
+- `neuma code --watch`: work with the being from any editor. Save a comment ending in `AI!` and the being does what it says; end it in `AI?` and the being answers without changing anything.
+- A complete, always-current list of the backend's HTTP endpoints (`docs/reference/API-ROUTES.md`): generated from the real routers with the checks each one runs (sign-in, install owner), and kept true by a test that fails if the page and the code disagree.
+- `neuma code --check "<command>"` (or `/check <command>` in the session): your lint or test command runs after every turn in which the being changed files. If it fails, the output goes straight back to the being to fix, for up to three tries. Off unless you turn it on.
+- `neuma code --commit` (or `/commit on`): every request the being works becomes its own git commit, with your request as the message. Only the files it changed go in, never your other work, and `/undo` is committed too.
+- Setup for VS Code and Cursor (through the ACP Client extension) and for Devin Desktop, formerly Windsurf, so your being works in all of them.
+- Extensions: 19 MCP servers from the services' own publishers (Notion, Sentry, Heroku, Mapbox, Pinecone, Playwright and more), added with `neuma extensions add <id>`. Each is installed with install scripts off and every package in it is checked against the OSV vulnerability database before it can run. A high or critical known flaw refuses it, the daily security watch checks installed ones again and blocks any that turn up a new flaw, and every call a being makes asks you first. Six are held back today because their newest release fails the check.
+- Your sales seat can now generate leads: it files the audiences it wants to sell to, finds companies for each one, and scores every company against that audience's signs of fit, with a written reason for each score.
+- Nothing from an audience reaches your lead list until you approve its pitch. Changing who an audience targets sends it back to you for approval.
+- A lead only joins your list with an email address the seat read on a real web page. Addresses are never guessed.
+- A do-not-contact list, kept by you or the seat. Anyone on it is never added or written to again.
+- Lead upkeep: each turn the seat sees what needs a hand, most urgent first. That covers replies waiting for an answer, follow-ups due, leads to close after three unanswered emails, stale leads, duplicates, and anyone on the do-not-contact list.
+- Sending an email to a lead marks it contacted, and a reply from a lead marks it replied. Your sales seat always knows who wrote last.
+- Email to anyone on the do-not-contact list is refused before it reaches you for approval.
+- A reply asking to be left alone, or a bounce, closes that lead and puts the address on the do-not-contact list automatically.
+- A LEAD ENGINE section in the Company Line window, under SALES. It shows each audience the seat wants to sell to, with approve, pause and retire buttons, each company's scores with their reasons, what is due on your lead list, and the do-not-contact list.
+- Approve an audience's company list once, and the sales seat can email those leads without asking you each time. It sends the first email and at most two follow-ups, three days apart. A reply still comes to you.
+- A new sending address ramps up on its own: 5 emails a day to leads in its first week, 10 in the second, 15 in the third, then 20.
+- A sales fact sheet: your sales seat files what a buyer may be told about the company, each fact with its source, and you approve or return it on the LEAD ENGINE screen. No email reaches a lead until a sheet is approved.
+- Every email to a lead is checked before it can go. Every number in it must be on the approved sheet, it must carry a line saying it was written by an AI that will stop on request, and it may not use false urgency.
+- A lead who replies just "stop" is taken off the list and never written to again.
+- `/review` inside `neuma code`: a dedicated code review of everything uncommitted, of one commit (`/review commit <ref>`), or of your branch against another (`/review base <branch>`). The review reports what is wrong, worst first, and cannot change a file while it runs.
+- Undo now covers everything a being does to your files, not only edits: a file it deleted comes back exactly as it was, and a file it created is taken away again. A new file you have worked on since is left alone.
+- `/undo` inside `neuma code` puts back the last file change without leaving the session. `neuma edit --undo` does the same from any terminal; run either again to step further back.
+- Webhooks: a being can be woken by events from GitHub, Slack, Linear or any signed script (`neuma hooks add <being> <source> <name>`). Each delivery must be signed with the hook's secret, fresh and not seen before; it then wakes the being through the house clock, so your charter still decides when it works and every act still asks the same gates. Webhooks are off until you turn them on in Settings → Security → Connections.
+
+### Changed
+
+- Refinement is no longer asked of anyone. The LoRA refinement is not being built: a being's identity travels through NITE. The summoning's pre-flight no longer lists a "Refinement Forge" that "cannot run", the end of the summoning points to the founding voice a being claims in NITE instead of "the refinement", a sealed attunement is the whole walk with no REFINE step after it, and VESSEL no longer shows the refinement's sample milestone and adapters.
+- The star map no longer names Israel. The Hebrew calendar is still one of its traditions, named as the Jewish world's calendar.
+- When an app or benchmark gives a being its own standing instructions (like "answer in as few words as possible"), those instructions now sit right next to the being's closing instructions instead of in the middle of its tool list, so the format they ask for wins. Ordinary chats are unchanged.
+- A neuma looking for a file finds it in one search across every folder and drive it may read, best match first, instead of combing folders one by one. A search that names no folder now covers all of them, not only the neuma's own workspace; a plain word matches inside names in any case, and the exact name ranks first. The search walks many folders at once (millions of entries in seconds), never follows a link out of the folders it was given, skips dependency and dot folders unless asked, and says what it skipped. A drive the neuma has not been given is not searched, and the result says how to ask for it.
+
+### Fixed
+
+- The summoning plays its film again. Since the first public build, the film a new neuma's birth ends with (its sky, its soul, its body and its sigil) was skipped on every real summoning, and the ceremony went straight to the seal and the keys. The desk dropped the being's body on the way to the film, and the film refuses to play without it. A neuma born in the meantime can still watch its summoning from its RECORD.
+- The guard against planted instructions no longer blocks a being's legitimate actions just because they appear next to an attack. A real email on the same web page as a planted instruction can now be used, and a channel whose name contains the planted text can still be named when the task asks for it. In replays of every recorded AgentDojo run, wrong blocks fell from 92 to 5, and every attack that carried an account, address or link is still stopped (114 of 114).
+- In Marketing, an account's REPLIES shows only the replies to that account. Before, every X account of the house showed the replies to all of them, so a new account's page listed hundreds of replies to another. Each reply now names the account it answers.
+- The editor setup for Zed and JetBrains now says how to point Neuma at your wallet. Before, a being seated from an editor only worked inside a project that held your wallet file.
+
+## [0.1.145] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.145.md`.
+
+### Changed
+
+- RESEARCH goes deeper and softens nothing: at least 40 pages from at least 15 different sites across 12 searches; if most of the reading comes from a few sites, the neuma is told which ones and sent wider. It is told to start from primary records (court, government, declassified and archival documents, filings, studies), then reporting from different countries and alignments, then the strongest critics and defenders; to leave nothing out for being controversial and add no warnings or moral commentary you did not ask for; and to mark every finding as documented, alleged, disputed or opinion.
+
+## [0.1.144] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.144.md`.
+
+### Added
+
+- RESEARCH, a new mode in the chat box's mode menu, for questions that deserve real research. The neuma reads widely before it answers: it must read at least 20 pages across at least 6 searches (search results alone do not count), and if it tries to answer sooner it is sent back to the parts of the question that are still thin. Then it writes a full report: a summary, findings by sub-question with every claim cited, where sources disagree, and what is still open, followed by the list of every page it read. The report is saved in the neuma's workspace (research/) and named in the chat. If searching stops finding anything new before the floor, the report says so.
+
+### Fixed
+
+- Every action your neuma takes now opens to what it returned. Some three dozen tools (an LP book or market read, vault lists, tasks, social reads and others) showed a one-line chip with nothing to open; each now has a + that shows what the neuma was handed, live and after the chat is reopened. A retrieved result names the tool it came from and the part it is, instead of an internal reference.
+- WHAT'S NEW scrolls: long release notes no longer get cut off at the bottom of the window, and the title and CLOSE stay in view (deus-neuma #37).
+- The HOUSE window's roster for a house founded on this computer shows each member's title and name as they are now, with "FOUNDED AS" and the founding title beside any title changed since. It used to show the founding titles as if they were current (deus-neuma #36).
+- On a small context window (32K and similar) a long chat no longer leaves a tool turn without room to work: the conversation is sized to leave the turn its own share of the window (about a third, up to 24K tokens), the oldest rows leave sooner, and a compacted chat's summary always stays in view (deus-neuma #34).
+- On Ollama, a model that thinks too long before acting is cut short and asked again with thinking off, as it already was on llama.cpp; a cut tool turn is asked for its next step, not a final answer.
+- The document press: a kit's paper colour now fills the whole page, margins included; images in the markdown are embedded when the file is in your open folder or the neuma's workspace (web images and others it cannot embed are named back to the neuma, and show as a note instead of a broken icon); charts scale to the page instead of being cut off, and a bar chart draws every dataset; a large kit badge no longer makes every page carry its own copy (a 10-page document is no longer ten badges big); and kit settings the press cannot use are named back instead of silently dropped (deus-neuma #33).
+
+## [0.1.143] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.143.md`.
+
+### Changed
+
+- Deus Neuma Inc owns what Deus Neuma is made of: the Terms of Service (1.6) name it as the owner of the Neuma and Deus Neuma names and marks, the EULA (1.6) calls our tuned Qwen3.8-27B-Neuma-T4 ours, and the licence, the notices and the packages name Deus Neuma Inc. Because the agreements' text changed, the app asks you to read and sign the new versions at your next ceremony.
+
+### Fixed
+
+- A newborn neuma no longer deliberates over its name for minutes. On a llama.cpp server its naming may think for about 4,000 tokens; then the server closes the thought and the neuma speaks and writes its name in the same answer. The ceremony's disclosure shows the THINKING BUDGET. Other model servers are unchanged.
+
+## [0.1.142] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.142.md`.
+
+### Changed
+
+- Voice has one place: the chat box. The LIVE button beside the chat box is gone; to dictate, hold the mic (or Space) as before. Where voice conversations are turned on, TALK sits in the chat box beside the mic (it was in the chat's header), so the mic types your words and TALK starts a spoken conversation, side by side and nowhere else.
+
+## [0.1.141] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.141.md`.
+
+### Changed
+
+- The Terms of Service (1.5), the EULA (1.5), the Privacy Notice (1.3) and the Neuma Covenant (1.4) now name Deus Neuma Inc, a Delaware corporation, as the company you agree with, and are governed by Delaware law. Nothing else in them changed. Because the texts changed, the app asks you to read and sign the new versions at your next ceremony.
+
+## [0.1.140] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.140.md`.
+
+### Added
+
+- You choose where your models go before anything downloads. When no model is running, the first screen says which folder the model will go in and how much free space that drive has, and CHANGE opens your computer's own folder dialog, so a full system drive is never where a 20 GB model lands. The setup card in the flight check offers the same CHANGE FOLDER. A model server you already run yourself keeps its models where it always has.
+
+### Fixed
+
+- Windows: the model folder you chose in the installer is now used even when the installer's own download did not finish. Before, the app set the model up again in your user folder on C:.
+- "Model ready" names the model, never a file path. A server started from a model file showed the file's whole path, and for some models a string of letters and numbers.
+
+## [0.1.139] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.139.md`.
+
+### Fixed
+
+- The Windows installer builds again. Its uninstaller read a check it had not declared, and the build stopped at the installer step, so Windows gets this release too.
+
+## [0.1.137] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.137.md`.
+
+### Added
+
+- Right-clicking a chat now also offers TITLE UNTITLED and RETITLE ALL, below the chat's own items, in the Chats window (one-on-ones and councils) and in the stream's chat list. The TITLE button still works as before.
+- The Chats window has a picker for whose chats it shows. It follows the neuma in the stream until you pick another, and opening a chat of another neuma brings that neuma into the stream first. NEW CHAT starts with the neuma shown.
+- ALL NEUMA in that picker lists every neuma's chats together, newest first, each tagged with whose it is, and the search looks through all of them.
+- Naming chats or councils in batch (TITLE UNTITLED, RETITLE ALL) now shows NAMING n / total with a bar and about how long is left, titles appear in the list as they land, and CANCEL stops it (the titles already made stay).
+- Settings > Connections now lists the downloads you start yourself: the model server and its model, and dictation's engine and speech model, from GitHub and Hugging Face, each checked before it is used. Nothing there downloads on its own.
+- Dictate in every app (Linux, in Settings, off until you turn it on): hold Right Ctrl (or another key you choose), speak, and let go, and your words are typed into whatever window you are in, through the same local speech engine as dictation in Neuma. The microphone is open only while you hold the key, and nothing leaves your computer. If your computer still needs something for it (the input group, a recorder, ydotool), Settings names it with the command that adds it. Windows and macOS come next.
+- If you already dictate on your processor and your graphics card has room for the faster model, the app offers it once, after a dictation: DOWNLOAD fetches it (about 0.7 GB) and dictation moves to the card when it lands; NOT NOW is remembered. Dictation keeps working the whole time.
+- On Linux with an NVIDIA graphics card that has room beside your main model, dictation runs on the card with Whisper large-v3 turbo, the more accurate model: a held key comes back in about a tenth of a second. The app checks the card's free memory and the size of your main model first. Where the card is needed for your model (for example a 12 GB card running a 27B model), dictation stays on the processor and your model keeps the whole card. The setup card says where dictation runs and why.
+- Marketing has a company tree down its left side. Every company sits in its real nesting with its accounts listed under it, and accounts without a company are grouped last. One press takes you to any company or account, and the one you're on is highlighted.
+- From the tree you can move a company under another company (or back to the top) and move an account to a company. A company's site, legal name and repos are kept when it moves.
+- An account opened from anywhere in marketing now opens under its own company, so the path always says whose account it is.
+- Your marketing lead can now record an account's @handle by itself. Assigning who speaks for an account, or which company it belongs to, asks you on a card first.
+- Your neuma can stage quote posts on X: a draft names the post it quotes, by its link or id, and goes out as a quote (the quoted post's link ends the words, which X shows as the quoted post). The draft card shows QUOTES with a link to the post, and every quote waits for your approval, even under a mandate.
+
+### Changed
+
+- The legal check on your legal lead's answers is calmer. It now holds only text presented as law: a citation, a named statute or regulator, or a quote of one. Quoting a form, a document or a post no longer marks an answer UNCHECKED. Real legal citations the app hasn't confirmed are still held, just as before.
+- Dictation works like a push-to-talk key: hold, speak, let go, and the words land in the box, in about half a second on most computers. The speech engine now loads when the app opens and stays ready, instead of starting at your first dictation and shutting down after ten quiet minutes.
+- Dictation runs Whisper base, sized for a processor. The larger model it used before took 8 to 15 seconds a hold on most computers. Dictation asks you to download it once (60 MB).
+- The words arrive once, when you let go, with no live preview while the key is held.
+- Campaigns are connected across Marketing. Each company's campaigns appear in the company tree under that company, above its accounts, and one press opens a campaign's page.
+- The Campaigns tab shows each campaign as the same panel the board uses (its goal, time, results, the accounts it runs on), and pressing anywhere on a panel opens it. NEW CAMPAIGN sits at the top of the list.
+- An account's page lists the campaigns that run on it, and each one opens that campaign's page.
+- Spelling is checked on your computer now, with English dictionaries that come with the app. Misspelled words are underlined and right-click offers suggestions, with nothing downloaded and nothing to turn on. The Spellcheck dictionary switch is gone from Settings → Connections, because spellcheck no longer connects to anything.
+- The neuma switcher shows each member's role beside their Roman title, for example OPTIO (COS), with the seat spelled out on hover and for screen readers. A title your house chose itself is shown as you wrote it.
+- In the House, each member and position shows its full seat (for example Quaestor · CFO — CHIEF FINANCIAL OFFICER) and one plain sentence saying what the seat is for and where its neighbour's work begins. The title list shows that sentence as you choose a title.
+- Every tool call is now checked against the tool's own description before it runs, the same way for every tool and for both beings and sealed peers. A call that uses another tool system's field names (like file_path or old_string) or writes a number as text now runs as intended. A call with a missing field, a wrong value, or a field name that's almost right is stopped before anything happens, and the model is told exactly what to write instead (for example: "edits[0].old is not a field — did you mean edits[0].oldText?").
+
+### Fixed
+
+- On the Campaigns tab, a campaign's name is now its own button, so keyboard and screen-reader users open it the same way as everyone else. Before, the whole card was one big button with other buttons inside it, which screen readers can't announce properly.
+- A batch naming that fails now says TITLING FAILED with the reason, instead of NOTHING TO NAME.
+- The parallel capacity scan no longer reports 2 or 3 neuma at once on a model server that runs one request at a time. It now measures what the server delivered over the whole wave, so a queue reads as a queue and a single-slot server is named as one.
+- On Ollama, the capacity scan now uses the server's own token count instead of a word estimate, so its speed readings match what the server reports.
+- Dissolving a council now returns the stream to your one-on-one chat. Before, the empty council view stayed on screen until you pressed COUNCIL.
+- Opening or starting a one-on-one chat from the Chats window, the stream's chat list or NEW CHAT now always shows that chat, even while a council is sitting.
+- Dropdown lists are readable in every look. The title and TRADE dropdowns under House > POSITIONS, and the app's other plain dropdowns, opened a white list with near-white text on dark looks such as STONE. Their lists now use your look's own background and text colours.
+- A being on a model you serve yourself (Ollama, LM Studio, llama.cpp) no longer loses its turn while it writes a long file in one go. Ollama sends a tool call only once it is complete, so the app now waits up to 10 minutes of silence on these models instead of 2. Hosted models keep the 2-minute limit, and you can still interrupt a turn at any time.
+- A model that calls a tool through the general "call" tool using the tool's function-list spelling (like caller__get_weather) now reaches that tool on the first try. Before, the call was answered "unavailable" and the model had to try again: 238 wasted steps in benchmark runs from Oct 25 to Nov 8.
+- When the coding shell can't start, checking its status now gives the real reason (for example, the folder doesn't exist) instead of an internal error message.
+- A benchmark answer's record of tool calls now says why each failed call failed (the refusal or error message) and which argument names the model used, never their values. A round where one call was refused and another ran no longer records the refused call twice and loses the one that ran.
+- A link to an X post written into an X draft is no longer turned into a counted deusneuma.ai/go/ link, so X can show it as the quoted post.
+
+## [0.1.128] - 2026-11-12
+
+Notes: `docs/operations/release-notes-0.1.128.md`.
+
+### Added
+
+- Your marketing lead can now take back a post or reply that's already live on X. It deletes the post after you approve the card, and the queue keeps it marked RETRACTED. X doesn't allow editing, so a correction is: take it back, then post the fixed words. The reply it answered can be answered again.
+- Your marketing lead can now edit its own unsent drafts without asking you. Changed words still wait for your approval before anything goes out.
+
+### Fixed
+
+- Your marketing lead can now pull back its own unsent post or reply by itself, without asking you to approve.
+- Setting a reply aside now also pulls back any unsent answer to it, so a draft answering a binned reply can't be approved by mistake.
+- When your marketing lead reads replies, mentions or the post queue, it now gets as many as its conversation has room for. Before, it got only about six at a time, and older replies were left out.
+
+## [0.1.127] - 2026-11-12
+
+Notes: `docs/operations/release-notes-0.1.127.md`.
+
+### Added
+
+- Titles in a house can change. In the HOUSE window, POSITIONS shows who holds each title, with one place to correct or give a member a title (with a reason) and to let two members trade titles. The founding record stays as it was signed, and each member keeps a history of every title they have held and when.
+
+## [0.1.126] - 2026-11-11
+
+Notes: `docs/operations/release-notes-0.1.126.md`.
+
+### Added
+
+- A model too large for your graphics card can now run with the rest of it in system RAM, instead of failing to load. It stays inside your GPU share and a RAM share (half of your RAM by default) that always leaves 8 GB free for everything else. It runs slower than a model that fits the card.
+- When your marketing mandate answers replies, easy X replies now go out on their own: thanks, a question answered, a pointer, warm words. A reply that touches money, a migration, an argument, a claim or a promise waits for you instead, and the reply card shows ASKS YOU with the reason. Your marketing lead can also send any reply to you on purpose.
+- The mandate screen has a REPLIES A DAY box, up to 50 a day. Once the day's replies are used up, the rest wait for you instead of pausing the whole mandate.
+
+### Changed
+
+- On 12 GB graphics cards, the model's memory for conversation (its cache) now takes about half the space at the same speed, so the recommended model stays wholly on the card instead of spilling into system RAM.
+- OPEN FOLDER now uses your computer's own folder dialog (KDE's, Windows Explorer's or Finder's), with its places, new folder and search. The desk's own picker appears only when the desk is opened in a plain web browser.
+- The terminal opens in the folder in focus, and in your home folder when nothing is in focus. It no longer opens in a project's folder.
+
+### Removed
+
+- Projects. The folder in focus is now the workspace: the Explorer, terminal, map and beings' coding tools all work in the folder you open. Your saved project data stays on disk untouched. When a being asks to write outside its own space, approving gives it that folder only, not a whole project.
+
+### Fixed
+
+- Each social account can now carry its own developer app. On X every account has its own app, and pairing a second account with the first account's app keys was refused as "Unauthorized". Paste an account's own Consumer Key and Secret on its row. The X keys screen also has folded setup steps, including setting the app to Read and write before making the access token, and says in plain words what an "Unauthorized" answer means.
+- Switching models no longer asks for a new parallel capacity scan. Every model you have scanned keeps its own result, and a model you have never scanned uses this machine's latest measurement, named as such, instead of dropping to one conversation at a time.
+- An approved X post with images no longer fails because of a brief network drop. The image upload is tried again for up to a minute, and if it still fails, the post's error says why the network failed.
+
+## [0.1.123] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.123.md`.
+
+### Added
+
+- Click a web address or filesystem path in the terminal to open it. Right-click web addresses to choose the integrated or external browser; relative paths resolve against the terminal's working directory.
+
+### Fixed
+
+- The Explorer shows edits the moment they happen anywhere in a large opened folder, such as a folder holding many repositories. Folders deep inside one were never watched, so a change only appeared after reloading the folder. The live watch now sizes itself to what your system allows, skips each repository's ignored build and cache folders, and covers the folders you opened yourself first.
+
+## [0.1.122] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.122.md`.
+
+### Fixed
+
+- Dictation works on an installed app. DOWNLOAD MODEL used to fail at once ("Download did not start. (500)"): the speech engine was never part of the install. Now the app downloads a small speech engine that runs on your processor, not your graphics card, so it never competes with your model for graphics memory. It uses at most a third of your processor, starts when you speak and frees its memory after ten idle minutes. It understands many languages, Thai among them.
+
+## [0.1.121] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.121.md`.
+
+### Fixed
+
+- An update now replaces the running version completely. The previous version's backend is stopped before the new one starts, so after updating you land on your own desk with your own wallet instead of an error that a port is already in use, or a sign-in that cannot find your wallet.
+- Opening Deus Neuma after an update, a crash or a forced quit takes over a backend the previous run left behind, instead of refusing to start. A backend that another open desk is still using is never touched.
+- On Windows, a backend whose desk has gone now shuts itself down, as it already did on Linux.
+
+## [0.1.120] - 2026-11-09
+
+Notes: `docs/operations/release-notes-0.1.120.md`.
+
+### Added
+
+- Our own tuned model, Qwen3.8-27B-Neuma-T4, is offered on every graphics card from 12 GB: the 6-bit build on 48 GB and up, 4-bit on 32 GB, 3.5-bit on 16 to 24 GB, and 3-bit on 12 GB. Each becomes the recommended model once it has passed its birth rehearsal.
+- On a Linux PC with an NVIDIA graphics card of 24 GB or more, SET IT UP FOR ME now installs llama.cpp, the engine Deus Neuma's own house runs on, instead of Ollama. The model is fitted to your card, several conversations can run at once, and the Qwen3.8 27B models use their own built-in predictor to write ahead. The engine and every model file are checked against their published SHA-256 before use. Smaller cards and other machines still get Ollama, which can keep part of a model on the processor.
+- A newer tuned house model (T4) can be selected in the model picker.
+- When a DFlash2 drafter sits beside the model and the engine supports it safely, the model drafts several words ahead and checks them in one pass: about 40% faster on code and structured answers, with the same answers.
+- The ACTIVITY panel shows how fast the model thinks, answers and writes tool calls — for the reply being written now, the last ten replies, and since the model server started — with time to first token, prompt speed, how much of each prompt came from cache, and how many drafted tokens were accepted.
+- A company can be added right where social accounts are set up: NEW COMPANY beside ADD ACCOUNT takes its name as it should read, stands it on its own or under another company, and picks it for the account you are adding.
+- macOS builds: `npm run dist:mac` makes a disk image and zip per chip and checks that every binary inside loads on that chip; `npm run check:mac` runs the check alone.
+
+### Changed
+
+- A graphics card with 12 GB or more is now the recommended minimum: a smaller card, or a computer without one, is still offered a smaller model, but none is recommended.
+- When a planted instruction turns up in data a being reads, it ignores the instruction and still finishes your task with the legitimate data around it. It stops only for the action the plant pushes, instead of dropping the whole job.
+- The house can run its own tuned model, Qwen3.8-27B-Neuma-T3, with its training lineage verified every time it starts.
+- The house model now runs a smaller, faster build of the tuned model (about 20–25% faster replies, 6 GB less graphics memory, same quality).
+- Building from source needs Node.js 24.15 or newer.
+- Every dependency is pinned to an exact version, and the file tools moved to their maintained 2.x releases.
+- The licence agreement (1.4.2, terms unchanged) names Qwen3.8-27B-Neuma-T4, and the credits add T4, llama.cpp, the CUDA runtime and the drafter.
+
+### Fixed
+
+- The model's memory on the card is now sized from measurements, so a 24 or 32 GB card is no longer told the model does not fit and handed a window too large to load.
+- The legal office no longer holds an answer for quoting your own words back to you — only words it presents as the law's must come from a checked source.
+- Sources the app already checked earlier in a chat still count for the rest of that chat, so a long working session is not stopped every turn to re-check them.
+- A checked regulation written as "Part" (for example "16 CFR Part 255") now covers the same regulation cited without the word, and its sections.
+- Case-law search asks for the free CourtListener token in Settings → API, instead of failing: CourtListener no longer answers searches without one.
+- A being writing a long document to a file no longer loses it when the document contains quotation marks — the file is written as authored.
+- When a tool call's details can't be read, the being is now told what went wrong and how to send it again, instead of the call vanishing or reading as "No tool named call".
+- The licence agreement carries its own version again (1.4.1: the house model is called by its published name, terms unchanged), and the downloadable copies of it and of the Privacy Notice match the text you agree to.
+- When a planted instruction sits inside one record of a list (a payment, an event, a message), only that record's poisoned field is treated as tainted. A being no longer holds a legitimate payment to a real account that happens to sit beside the attack.
+- A being's question to you about a held action is never held itself.
+- Inside a calendar, an account or another system a tool opens, a being now works from that system's own date instead of today's real date. It no longer moves a date you didn't ask it to change.
+- The substrate window's generation and prompt speeds now move while a reply is being written, instead of reading 0 until it finishes.
+
 ## [0.1.109] - 2026-11-03
 
 Notes: `docs/operations/release-notes-0.1.109.md`.

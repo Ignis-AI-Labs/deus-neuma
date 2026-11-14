@@ -428,6 +428,9 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     expect(byId['2001'].answers).toEqual([expect.objectContaining({ status: 'draft', text: 'a real answer, staged' })]);
     expect(byId['2002'].answers).toEqual([]);
     expect(byId['2001'].category).toBe('ordinary');
+    // The queue read carries a waiting reply's TIER beside its legal flag (reply-tier.js).
+    const listed = await request(app).get('/api/v1/social-channels/queue').set(witness.header);
+    expect(listed.body.queue.find((e) => e.kind === 'reply').tier).toEqual({ tier: 'easy', reasons: [] });
   });
 
 

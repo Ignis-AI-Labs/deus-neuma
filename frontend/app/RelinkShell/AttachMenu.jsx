@@ -3,9 +3,8 @@
 //
 //   ADD FILES…       real file chooser → the same admission path as paste/drop
 //                    (honest note when the substrate cannot see images)
-//   OPEN FOLDER…     browse the disk → the shared open-folder flow (the chat's
-//                    working folder / repository focus)
-//   PROJECT          activate a project right here, or open the Projects window
+//   OPEN FOLDER…     the system's folder dialog → the shared open-folder flow
+//                    (the chat's working folder / repository focus)
 //
 // The drop-up must render OUTSIDE the chamfered input box (its clip-path clips
 // positioned descendants — the palette learned this live), so the whole control
@@ -13,9 +12,7 @@
 // .relink-compose, exactly like the slash palette.
 
 import { memo, useEffect, useRef, useState } from 'react';
-import { useProjects } from './projects/project-context.js';
-import { useWindows } from '../windowing/use-windows.js';
-import { FolderOpenFlow } from './projects/FolderOpenFlow.jsx';
+import { FolderOpenFlow } from './FolderOpenFlow.jsx';
 import { attachMenuModel } from './composer-attach.js';
 import { uiSound } from '../../services/ui-sound.js';
 
@@ -35,8 +32,6 @@ const PlusIcon = () => (
  * }} props
  */
 const AttachMenuView = ({ disabled, vision, onFiles, onNote }) => {
-  const { projects, activeProjectId, activate } = useProjects();
-  const { dispatch } = useWindows();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const fileRef = useRef(null);
@@ -55,7 +50,7 @@ const AttachMenuView = ({ disabled, vision, onFiles, onNote }) => {
     };
   }, [open]);
 
-  const model = attachMenuModel({ vision, projects, activeProjectId });
+  const model = attachMenuModel({ vision });
 
   const chooseFiles = () => {
     setOpen(false);
@@ -64,15 +59,6 @@ const AttachMenuView = ({ disabled, vision, onFiles, onNote }) => {
   const focusFolder = () => {
     setOpen(false);
     setPicking(true);
-  };
-  const pickProject = async (p) => {
-    setOpen(false);
-    if (p.active) return;
-    try { await activate(p.id); } catch (e) { onNote(e.message); }
-  };
-  const manageProjects = () => {
-    setOpen(false);
-    dispatch({ type: 'OPEN', id: 'projects' });
   };
 
   return (
@@ -84,7 +70,7 @@ const AttachMenuView = ({ disabled, vision, onFiles, onNote }) => {
         aria-label="Add to this conversation"
         aria-expanded={open}
         aria-haspopup="menu"
-        title="Add files, focus a folder, or switch project"
+        title="Add files or focus a folder"
         onClick={() => { uiSound(open ? 'close' : 'tick'); setOpen((o) => !o); }}
       >
         <PlusIcon />
@@ -109,23 +95,6 @@ const AttachMenuView = ({ disabled, vision, onFiles, onNote }) => {
           <button type="button" role="menuitem" className="relink-attach-menu-row" onClick={focusFolder}>
             <span className="relink-attach-menu-name">OPEN FOLDER…</span>
             <span className="relink-attach-menu-desc">focus the working folder or repository</span>
-          </button>
-          <div className="relink-attach-menu-sect label-data">PROJECT</div>
-          {model.projects.length === 0 ? (
-            <span className="relink-attach-menu-empty label-data">NONE YET — OPEN A FOLDER OR CREATE ONE</span>
-          ) : model.projects.map((p) => (
-            <button
-              key={p.id} type="button" role="menuitemradio" aria-checked={p.active}
-              className={`relink-attach-menu-row is-project${p.active ? ' is-active' : ''}`}
-              onClick={() => pickProject(p)}
-            >
-              <span className="relink-attach-menu-mark" aria-hidden="true" />
-              <span className="relink-attach-menu-name">{p.name}</span>
-              {p.active ? <span className="relink-attach-menu-desc">active</span> : null}
-            </button>
-          ))}
-          <button type="button" role="menuitem" className="relink-attach-menu-row" onClick={manageProjects}>
-            <span className="relink-attach-menu-name">MANAGE PROJECTS…</span>
           </button>
         </div>
       ) : null}

@@ -44,9 +44,20 @@ const WIDTHS = [1400, 720, 420];
 // 174, card 35, draft-card 44, leads 79): the ACCOUNT level 118 (one head of marks, the month once, no heading or
 // lane notes), a failed card 23 and a draft's 26 (identity and status once, the length a bar, the time a countdown),
 // LEADS 26 (the funnel and one row per lead; the acts behind ⋯, the capture form behind + LEAD).
+// THE HOUSE RAIL (Design note, 2026-11-12, docs/work/marketing-navigation.md: […])
+// stands beside every view — the house's tree, 17 words on this ground (HOUSE, six companies' names, five accounts'
+// marks, UNSORTED) — so each ceiling rises by what it measured with it: BOARD 275 → 292, a company 216 → 233,
+// CAMPAIGNS 22 → 39, a campaign's page 101 → 117, ACCOUNTS 107 → 124, BRAND 62 → 79, LEADS 26 → 43, SEAT 28 → 45,
+// the ACCOUNT level 118 → 130, the grant 159 → 180 (4 of those are the reply tiers' ANSWER EASY REPLIES words,
+// 2026-11-11). A card has no rail; its ceilings stand.
+// CAMPAIGNS JOINED THE RAIL the same day (Founder: […]): each company's
+// campaigns stand under it (+2 on every view here: Launch Week); the CAMPAIGNS tab shows the BOARD's own campaign panel,
+// not a row of tags (39 → 53: the dial, time and funnel words the BOARD already carries); the ACCOUNT level names the
+// campaigns it carries in place of its CAMPAIGNS door (130 → 133). BOARD 294, a company 235, a campaign's page 118,
+// ACCOUNTS 126, BRAND 81, LEADS 45, SEAT 47, the grant 182.
 const CEILING = Object.freeze({
-  account: 118,
-  board: 275, 'board-company': 216, campaigns: 22, campaign: 101, accounts: 107, brand: 62, leads: 26, seat: 28, card: 23, 'draft-card': 26, grant: 159,
+  account: 133,
+  board: 294, 'board-company': 235, campaigns: 53, campaign: 118, accounts: 126, brand: 81, leads: 45, seat: 47, card: 23, 'draft-card': 26, grant: 182,
 });
 
 let ctx;

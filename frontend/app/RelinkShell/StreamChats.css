@@ -317,6 +317,7 @@
 
 .stream-chats-ctx-item:hover:not(:disabled) { color: var(--signal); background: var(--color-glass-hover); }
 .stream-chats-ctx-item:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+.stream-chats-ctx-sep { height: 1px; margin: var(--space-1) 0; background: var(--line); }
 
 .stream-chats-foot {
   margin-top: auto;

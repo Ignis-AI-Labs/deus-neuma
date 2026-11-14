@@ -101,11 +101,6 @@ export const makeFolder = async (tag) => {
   return dir;
 };
 
-export const apiProjects = async () => {
-  const r = await fetch(`${BASE}/api/v1/user/projects`, { headers: { Authorization: `Bearer ${token}` } });
-  return (await r.json()).projects || [];
-};
-
 export const initSession = (page) => page.addInitScript(({ t, a, id }) => {
   const w = a.toLowerCase();
   localStorage.setItem('walletAddress', a);

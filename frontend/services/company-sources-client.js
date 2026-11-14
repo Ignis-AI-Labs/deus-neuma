@@ -1,5 +1,5 @@
-// company-sources-client.js — each company's site and code repos, and the
-// CMO's read of them, over REST (/api/v1/companies; backend
+// company-sources-client.js — adding a company to the house, each company's
+// site and code repos, and the CMO's read of them, over REST (/api/v1/companies; backend
 // marketing/company-sources.js); and the link changes the CMO proposed
 // (/api/v1/company-links; backend marketing/link-changes.js). Looking for repos on this machine and lending
 // a read are the install owner's, at the desk — a guest is told so by the
@@ -16,8 +16,14 @@ const req = async (path, { method = 'GET', body } = {}) => {
 };
 const at = (companyId) => `/api/v1/companies/${encodeURIComponent(companyId)}`;
 
+/** Add a company to the house by its name, on its own or under a parent; the server answers {company}. impure. */
+export const addCompany = ({ name, parentId }) => req('/api/v1/companies', { method: 'POST', body: { name, ...(parentId ? { parentId } : {}) } });
+
 /** Every company's site and repos, each repo's grant to the seated CMO. impure. */
 export const getCompanySources = () => req('/api/v1/companies/sources');
+
+/** Move a company in the house's tree — under a parent, or to the top (null). impure. */
+export const setCompanyParent = (companyId, parentId) => req(`${at(companyId)}/parent`, { method: 'PUT', body: { parentId: parentId || null } });
 
 /** Replace a company's repos list [{path?, remote?, role?}]. impure. */
 export const setCompanyRepos = (companyId, repos) => req(`${at(companyId)}/repos`, { method: 'PUT', body: { repos } });

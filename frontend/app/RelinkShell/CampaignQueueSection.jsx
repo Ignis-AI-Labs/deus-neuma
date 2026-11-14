@@ -174,8 +174,11 @@ export const CampaignQueueSection = ({
   // THE INBOUND (ruling, 2026-07-28): the REPLIES section meets WHO KNOCKED,
   // not just what was staged — the replies to the house's own posts. The
   // listener is X's today, so a platform's space meets the knock on its own
-  // lane only.
-  const inboundAll = (!channelId || channelId === 'x') ? (replies || []) : [];
+  // lane only. A reply belongs to the account it was read for, scoped like the
+  // posts (Design note, 2026-11-14: @DeusNeuma showed 200 replies to his other X
+  // account); one read before accounts were named was read with the first.
+  const inboundAll = (!channelId || channelId === 'x')
+    ? (replies || []).filter((r) => !entryFilter || entryFilter({ ...r, channelId: 'x' })) : [];
   const inboundWaiting = inboundAll.filter(replyNeedsAttention).length;
   // The section tabs carry their whole standing pile + the unanswered knock
   // — UNFILTERED by the day, so the badge says where attention is owed even

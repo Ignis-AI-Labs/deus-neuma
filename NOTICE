@@ -1,5 +1,5 @@
 Deus Neuma
-Copyright 2026 Ignis AI Labs LLC
+Copyright 2026 Deus Neuma Inc
 
 The Software in this repository is licensed under the Functional Source
 License, Version 1.1, ALv2 Future License (FSL-1.1-ALv2). See LICENSE.
@@ -19,6 +19,9 @@ NOT COVERED BY THE LICENSE ABOVE
   backend/services/branding/fonts/ (SIL Open Font License, texts alongside).
 - The offline dictionary behind DEFINE is WordNet 3.1, Copyright Princeton
   University, under the WordNet License (node_modules/wordnet-db/LICENSE).
+- The spellcheck dictionaries under electron/dictionaries/ are Chromium's
+  English Hunspell dictionaries, built from SCOWL, Copyright Kevin Atkinson
+  and others, under the terms in the COPYRIGHT_en_*.txt files beside them.
 - No AI model weights and no ComfyUI are included. The image and video forge
   drives a ComfyUI and models the operator installs separately, under their
   publishers' own licences (see docs/legal/THIRD_PARTY_ATTRIBUTIONS.md).
@@ -33,6 +36,6 @@ NOT COVERED BY THE LICENSE ABOVE
   contracts, published so anyone can check them against the chain. Those
   files are marked UNLICENSED: no licence is granted to them.
 
-"Neuma" and "Deus Neuma" are trademarks of Ignis AI Labs LLC. The licence
+"Neuma" and "Deus Neuma" are trademarks of Deus Neuma Inc. The licence
 grants no right to use them, except to identify us as the origin of the
 Software.

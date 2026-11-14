@@ -82,7 +82,7 @@ const FOCUS_KEY = 'desk:focus';
  * geometry, so desk 1 keeps its unprefixed keys. Whatever localStorage holds
  * is validated on the way in: hostile or stale JSON yields null, never a
  * malformed focus.
- * @returns {{kind:'project',id:string}|{kind:'folder',path:string}|null}
+ * @returns {{kind:'folder',path:string}|null}
  */
 // impure
 export const loadFocus = () => {

@@ -15,6 +15,7 @@ import {
 } from '../services/voice/engine-manager.js';
 import { createLogger } from '../services/logger.js';
 import { sidecarFetch } from '../services/voice/sidecar-trust.js';
+import { sttReadiness, transcribeWav, usesManagedStt } from '../services/managed-stt.js';
 
 const log = createLogger('Voice.STT');
 
@@ -24,6 +25,26 @@ const STT_ENGINE = 'whisper';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 const router = Router();
+
+/**
+ * Dictation on an installed app: the processor engine wants 16 kHz WAV (it has no decoder of its
+ * own). Anything else is answered STT_WANTS_WAV and the desk converts, then sends again. impure
+ */
+const transcribeManaged = async (req, res) => {
+  const readiness = await sttReadiness();
+  if (!readiness.ready) {
+    return res.status(503).json({ error: 'dictation components are not installed on this machine', code: 'STT_COMPONENTS_MISSING', missing: readiness.missing });
+  }
+  if (!/^audio\/(wav|wave|x-wav)\b/i.test(req.get('content-type') || '')) {
+    return res.status(415).json({ error: 'the speech engine on this machine reads 16 kHz WAV', code: 'STT_WANTS_WAV' });
+  }
+  try {
+    return res.json(await transcribeWav(req.body, { prompt: hotwordsPhrase() }));
+  } catch (err) {
+    log.error('processor speech engine failed', { err: err.message });
+    return res.status(502).json({ error: `speech engine unavailable: ${err.message}` });
+  }
+};
 router.use(requireAuth);
 
 // Concurrent first-use presses must share one launch instead of racing
@@ -63,6 +84,11 @@ router.post(
         error: 'empty audio body — send raw audio bytes with an audio/* content type',
       });
     }
+
+    // an installed app: whisper.cpp on the processor (managed-stt.js). It reads a hold once, on
+    // release, as ears does: a preview pass would re-read the whole hold on the same processor and
+    // queue the release behind it, so a preview is answered "none" before any work.
+    if (usesManagedStt()) return req.query.preview === '1' ? res.status(204).end() : transcribeManaged(req, res);
 
     try {
       await ensureEngineReady();

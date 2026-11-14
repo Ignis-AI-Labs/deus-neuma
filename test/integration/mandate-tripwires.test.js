@@ -13,6 +13,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import { schedulerTick } from '../../backend/services/social/post-scheduler.js';
+import { postQueue } from '../../backend/services/social/post-queue.js';
 import { getChannel } from '../../backend/services/social/channel-registry.js';
 import { grantMandate } from '../../backend/services/marketing/mandate/mandate-lifecycle.js';
 import { readMandate, mandatePath } from '../../backend/services/marketing/mandate/mandate-store.js';
@@ -174,11 +175,13 @@ describe('renders and replies', () => {
     expect(h.x.state.posts[0].reply).toEqual({ in_reply_to_tweet_id: '2001' });
     expect((await readMandateView(HOUSE)).feed.find((r) => r.what === 'Answered a reply')).toMatchObject({ status: 'sent' });
 
-    // The reply pace is a tripwire too: the second answer today pauses and asks.
-    h.decide = () => 'deny';
+    // Past the reply pace the rest WAIT (Design note, 2026-11-11: […]): the
+    // second answer today stays the operator's draft and the mandate stands.
     const second = await _handleNeumaReply(h.serverWs, h.connection, null, 'ask', { toPostId: '2005', text: 'Count you in.' }, getChannel('x'));
-    expect(second.content).toContain('PAUSED');
-    await pausedFor('pace');
+    expect(second.content).toMatch(/Staged reply draft [0-9a-f]{16} .*has answered 1 of its 1 replies on .* — the rest wait for you\)\.$/);
+    expect(h.x.state.posts).toHaveLength(1);
+    expect((await readMandate(HOUSE)).status).toBe('active');
+    expect((await postQueue.load()).find((e) => e.reply?.toPostId === '2005')).toMatchObject({ status: 'draft' });
   });
 });
 

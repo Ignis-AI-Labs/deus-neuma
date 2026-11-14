@@ -8,6 +8,7 @@ import { describe, test, expect } from 'vitest';
 import {
   allocateEnvelope,
   sessionTailBudgetFor,
+  turnWorkRoomTokens,
   SESSION_TAIL_FLOOR_CHARS,
   UNSHEDDABLE,
 } from '../../backend/services/envelope-budget.js';
@@ -22,15 +23,26 @@ describe('sessionTailBudgetFor — the transcript budget is the window\'s truth 
     expect(sessionTailBudgetFor({ contextWindow: 0, otherSectionTokens: 5000 })).toBe(RECENT_TOTAL_CHARS);
   });
 
-  test('the window minus reserve, completion floor, and the assembled sections — in characters', () => {
-    // (32768 − 512 − 512 − 4000) × 3.6 = 99,878 — no 32K clamp anywhere.
+  test('the window minus reserve, completion floor, the assembled sections and the turn\'s own room — in characters', () => {
+    // (32768 − 512 − 512 − 4000 − 11468) × 3.6 = 58,593 — no 32K clamp anywhere.
+    expect(turnWorkRoomTokens(32768)).toBe(11468);
     expect(sessionTailBudgetFor({ contextWindow: 32768, otherSectionTokens: 4000 }))
-      .toBe(Math.floor((32768 - 512 - 512 - 4000) * 3.6));
+      .toBe(Math.floor((32768 - 512 - 512 - 4000 - 11468) * 3.6));
+  });
+
+  test('the turn keeps room for its own work (deus-neuma #34): 35% of the window, 4,096 to 24,576 tokens', () => {
+    expect(turnWorkRoomTokens(8192)).toBe(4096);
+    expect(turnWorkRoomTokens(16384)).toBe(5734);
+    expect(turnWorkRoomTokens(131072)).toBe(24576);
+    expect(turnWorkRoomTokens(262144)).toBe(24576);
+    // the reporter's 32K turn opened at 17,407 of 32,768 tokens; the tail now leaves the work its share
+    const tailTokens = sessionTailBudgetFor({ contextWindow: 32768, otherSectionTokens: 5227 }) / 3.6;
+    expect(32768 - 5227 - tailTokens).toBeGreaterThanOrEqual(turnWorkRoomTokens(32768));
   });
 
   test('the 262K serving finally gets its room — past the old keyhole by an order of magnitude', () => {
     const budget = sessionTailBudgetFor({ contextWindow: 262144, otherSectionTokens: 12000 });
-    expect(budget).toBe(Math.floor((262144 - 512 - 512 - 12000) * 3.6));
+    expect(budget).toBe(Math.floor((262144 - 512 - 512 - 12000 - 24576) * 3.6));
     expect(budget).toBeGreaterThan(RECENT_TOTAL_CHARS * 10);
   });
 
@@ -41,7 +53,7 @@ describe('sessionTailBudgetFor — the transcript budget is the window\'s truth 
 
   test('a negative section estimate is no estimate at all', () => {
     expect(sessionTailBudgetFor({ contextWindow: 32768, otherSectionTokens: -500 }))
-      .toBe(Math.floor((32768 - 512 - 512) * 3.6));
+      .toBe(Math.floor((32768 - 512 - 512 - 11468) * 3.6));
   });
 });
 

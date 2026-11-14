@@ -4,7 +4,7 @@ This agreement is the Apache Software Foundation's **Individual Contributor
 License Agreement, version 2.2**, used word for word except for three
 changes:
 
-- the party is **Ignis AI Labs LLC** (the "Company") in place of the
+- the party is **Deus Neuma Inc** (the "Company") in place of the
   Foundation;
 - the Foundation's nonprofit undertaking is removed;
 - the paper form is replaced by signing on GitHub.

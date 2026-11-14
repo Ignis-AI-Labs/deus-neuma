@@ -36,6 +36,7 @@ export const STATUS_MARKS = Object.freeze({
   failed: mark('fault', 'alert', 'FAILED'),
   rejected: mark('cross', 'quiet', 'DECLINED'),
   withdrawn: mark('slash', 'quiet', 'WITHDRAWN'),
+  retracted: mark('slash', 'alert', 'RETRACTED'),
   done: mark('check', 'ink', 'DONE'),
   gone: mark('line', 'quiet', 'REMOVED'),
   'mandate-granted': mark('plus', 'ink', 'GRANTED'),

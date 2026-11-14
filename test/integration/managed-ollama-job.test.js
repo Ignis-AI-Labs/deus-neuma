@@ -49,7 +49,7 @@ beforeAll(async () => {
     NEUMA_DATA_ROOT: dataRoot,
     NEUMA_OLLAMA_ENDPOINT: endpoint,
     NEUMA_DISCOVERY_PORTS: String(port),
-    NEUMA_MODEL_BUDGET_GB: '12',
+    NEUMA_MODEL_BUDGET_GB: '16', // the smallest card with a recommendation (12 GB is the minimum; its rung waits on its gate)
     NEUMA_PROVIDER_CHOICE_PATH: choicePath,
     LLAMA_SERVER_URL: 'http://127.0.0.1:9',
   });

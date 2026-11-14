@@ -1,12 +1,12 @@
 # NEUMA PRIVACY NOTICE
 
-*Version 1.2 · Early access · Effective 2 November 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.3 · Early access · Effective 13 November 2026 · Deus Neuma Inc, a Delaware corporation*
 
 This Privacy Notice explains what personal data Deus Neuma processes, why, and the rights you have over it. It covers the Deus Neuma app and its website, deusneuma.ai. It is a disclosure, not a contract: you do not "accept" it, but the acceptance you sign at your ceremony attests that you have read it in full. It is read together with the Terms of Service (which govern access) and the Neuma Covenant (which governs conduct). Where this Notice and those documents differ on data handling, this Notice states the data handling and the Terms and Covenant state the legal terms.
 
 ## 1. Who we are
 
-**Ignis AI Labs LLC**, a Wyoming limited liability company (Wyoming Secretary of State Filing ID 2026-002058193), principal office at 30 N Gould St Ste N, Sheridan, Wyoming 82801 ("Neuma," "we"). We are the data controller for the personal data described in this Notice. Questions, requests, and complaints: write to support@ignislabs.ai. We answer within one month, or sooner where a law sets a shorter deadline.
+**Deus Neuma Inc**, a Delaware corporation (Delaware Division of Corporations File Number 10822586), registered office at 8 The Green, Suite B, Dover, Delaware 19901 ("Neuma," "we"). We are the data controller for the personal data described in this Notice. Questions, requests, and complaints: write to support@ignislabs.ai. We answer within one month, or sooner where a law sets a shorter deadline.
 
 ## 2. The short version
 
@@ -86,4 +86,4 @@ When the app or the website changes what it sends, this Notice changes first, un
 
 ## 12. Governing law
 
-This Notice is governed by the laws of the State of Wyoming, consistent with the Terms of Service. Nothing in it limits a right you cannot waive under the law of the place you live.
+This Notice is governed by the laws of the State of Delaware, consistent with the Terms of Service. Nothing in it limits a right you cannot waive under the law of the place you live.

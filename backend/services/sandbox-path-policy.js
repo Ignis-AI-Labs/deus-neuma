@@ -247,17 +247,23 @@ const ARG_ALIASES = Object.freeze({
 // refusal. Writes are excluded by construction: a write path is never guessed.
 const DEFAULT_ROOT_TOOLS = new Set(['search_files', 'search_content', 'list_directory']);
 
+// What a being writes when it means […] (2026-11-14: a file search with no folder
+// looked in the being's own workspace alone, and the being went folder by folder across the drives).
+const EVERYWHERE = new Set(['roots', 'all', 'everywhere', '*', '**']);
+
 /**
  * Meet the model where its training is strongest (the parser's own law,
  * applied to ARGUMENTS): fill canonical keys from known aliases, and give a
- * root-searching read its ground when no path was named at all. Pure —
- * returns the same object when nothing applies.
+ * root-searching read its ground when no path was named at all. A NAME search
+ * with no folder (or "everywhere") searches every root it may read at once
+ * (`paths`). Pure — returns the same object when nothing applies.
  * @param {string} toolName
  * @param {Object} args
  * @param {string|null} defaultRoot - first standing read root, or null
+ * @param {string[]|null} [readRoots] - every standing read root, for a name search
  * @returns {Object}
  */
-export const normalizeToolArgs = (toolName, args, defaultRoot = null) => {
+export const normalizeToolArgs = (toolName, args, defaultRoot = null, readRoots = null) => {
   const aliases = ARG_ALIASES[toolName];
   if (!aliases || !args || typeof args !== 'object') return args;
   let out = args;
@@ -270,9 +276,11 @@ export const normalizeToolArgs = (toolName, args, defaultRoot = null) => {
     const found = names.map((n) => args[n]).find((v) => typeof v === 'string' && v.length > 0);
     if (found !== undefined) fill(canonical, found);
   }
+  const everywhere = toolName === 'search_files' && typeof out.path === 'string' && EVERYWHERE.has(out.path.trim().toLowerCase());
   if (DEFAULT_ROOT_TOOLS.has(toolName) && defaultRoot
-    && !(typeof out.path === 'string' && out.path.length > 0)) {
+    && (everywhere || !(typeof out.path === 'string' && out.path.length > 0))) {
     fill('path', defaultRoot);
+    if (toolName === 'search_files' && Array.isArray(readRoots) && readRoots.length > 1 && !Array.isArray(out.paths)) fill('paths', [...readRoots]);
   }
   return out;
 };
@@ -365,8 +373,7 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
  * directly, so walk up to the nearest existing ancestor, realpath that, and
  * re-append the remaining lexical tail. When nothing in the chain exists the
  * lexical resolution is returned unchanged (there is no link to follow).
- * Mirrors the TOCTOU stance of user-projects.js (realpath both sides, then
- * compare) — SEC-032.
+ * Realpath both sides, then compare (the TOCTOU stance) — SEC-032.
  * @param {string} filePath - Path to resolve
  * @returns {Promise<string>} Absolute, symlink-resolved path
  */
@@ -439,31 +446,10 @@ export const findUngrantedReadPaths = (args, readRoots) => findGrantableGaps(arg
 
 /**
  * Write-scope gaps: grantable paths a WRITE reaches outside its allowed roots.
- * The operator may lift these into `_grantedWriteRoots` — but only when they land
- * inside the active project's folders (that bound is enforced by the portal
- * gate, not here). Denied patterns/extensions never surface (hard-deny holds).
+ * The operator may lift these into `_grantedWriteRoots`, one target folder at a
+ * time (the portal gate asks). Denied patterns/extensions never surface (hard-deny holds).
  * @param {Object} args - Parsed tool args
  * @param {string[]} writeRoots - Roots currently allowed for writes
  * @returns {string[]} Out-of-scope-but-grantable paths
  */
 export const findUngrantedWritePaths = (args, writeRoots) => findGrantableGaps(args, writeRoots);
-
-/**
- * The blast-radius bound on write grants: given out-of-lane write gaps and the
- * active project's folders, the set of project folders an operator may be asked to
- * grant — for each gap, the single project folder that contains it. A gap inside
- * no project folder contributes nothing, so it stays hard-denied (never grants
- * write reach outside the active project). Pure.
- * @param {string[]} gaps - Out-of-lane grantable write paths
- * @param {string[]} projectFolders - The active project's attached folders
- * @returns {string[]} Distinct project folders to grant (a subset of projectFolders)
- */
-export const writeGrantScope = (gaps, projectFolders) => {
-  // When project folders nest (e.g. /repos/proj and /repos/proj/backend), grant
-  // the MOST specific (longest) folder that contains the gap — least privilege,
-  // so a write to /repos/proj/backend/x doesn't grant all of /repos/proj.
-  const containing = (p) => projectFolders
-    .filter((f) => isWithinRoots(p, [f]))
-    .sort((a, b) => b.length - a.length)[0];
-  return [...new Set(gaps.map(containing).filter(Boolean))];
-};

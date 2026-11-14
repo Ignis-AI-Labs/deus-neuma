@@ -15,6 +15,7 @@ import { createServer as createVite } from 'vite';
 import { chromium } from '@playwright/test';
 import { readMandate } from '../../backend/services/marketing/mandate/mandate-store.js';
 import { buildDeskHouse, teardownDeskHouse } from '../helpers/mandate-desk-kit.js';
+import { a11yCheck } from '../helpers/a11y-scan.js';
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const SHOTS = path.join(os.tmpdir(), 'neuma-mandate-grant-shots');
@@ -99,6 +100,9 @@ describe('the grant screen is a danger act, disarmed until every check passes, g
     expect(await page.locator('[data-mandate-checks]').count()).toBe(0);
     expect(await page.locator('[data-check-marks] [data-check="accounts"]').getAttribute('title')).toBe('Every account is clear on the social check — 1 of 1 clear.');
     expect(await page.locator('.mandate-hold').textContent()).toBe('HOLD 2 S TO GRANT');
+    // The danger act every person can reach (AGENTS.md's accessibility rule): no axe finding past its baseline.
+    const scanned = await a11yCheck(page, 'mandate-grant', { include: '.mandate-grant' });
+    expect(scanned.grown, scanned.detail).toEqual([]);
     expect(await page.locator('[data-mandate-marks]').textContent()).toContain('x-1 · 2/DAY');
     expect(await page.locator('.mandate-term-end').textContent()).toMatch(/^OFF ON [A-Z]{3} \d{1,2}, \d{4} — then everything asks you again$/);
     await page.screenshot({ path: path.join(SHOTS, 'grant-armed.png'), fullPage: true });
@@ -143,6 +147,22 @@ describe('the grant screen is a danger act, disarmed until every check passes, g
     await page.locator('.mandate-head .mandate-withdraw').click();
     await page.getByRole('button', { name: 'GRANT A MANDATE…' }).waitFor({ timeout: 15000 });
     expect(await readMandate(k.operator.address)).toBeNull();
+    expect(errors).toEqual([]);
+  }, 90000);
+
+  it('ANSWER EASY REPLIES names what still asks you, and its REPLIES A DAY box (up to 50) is what the grant holds', async () => {
+    const { page, errors } = await open();
+    await toggle(page, 'x-1');
+    const replies = page.locator('.mandate-acts .mandate-toggle', { hasText: 'ANSWER EASY REPLIES' });
+    await replies.click();
+    expect(await replies.textContent()).toContain('money, migration, arguments, claims and promises still ask you');
+    await page.getByRole('spinbutton', { name: 'replies a day, up to 50' }).fill('30');
+    await page.locator('.mandate-hold:not([disabled])').waitFor({ timeout: 30000 });
+    await hold(page, 2400);
+    await page.locator('.mandate-head[data-tone="live"]').waitFor({ timeout: 15000 });
+    expect(await readMandate(k.operator.address)).toMatchObject({ status: 'active', replyPace: 30, acts: { replies: true } });
+    await page.locator('.mandate-head .mandate-withdraw').click();
+    await page.getByRole('button', { name: 'GRANT A MANDATE…' }).waitFor({ timeout: 15000 });
     expect(errors).toEqual([]);
   }, 90000);
 });

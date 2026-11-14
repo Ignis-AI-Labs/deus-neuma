@@ -429,9 +429,8 @@ export const resolveFocusPath = (rawPath) => {
 // impure — serialize every roots mutation (D9). setRoots + saveFileSettings
 // is a read-modify-write over module state plus one settings file; two desk
 // windows racing it lose updates. Callers wrap the WHOLE read-modify-write
-// so each mutation sees the roots the previous one left. Mirrors the
-// per-wallet store queue in user-projects.js — roots are process-global, so
-// one queue guards them all; the queue survives a failed mutation (errors
+// so each mutation sees the roots the previous one left. Roots are
+// process-global, so one queue guards them all; the queue survives a failed mutation (errors
 // still surface to the caller).
 let rootsMutation = Promise.resolve();
 export const withRootsLock = (task) => {

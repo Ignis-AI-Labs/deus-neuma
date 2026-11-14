@@ -5,7 +5,7 @@
 // CONNECTIONS panel and on the site, which syncs connections.json from a committed revision.
 //
 // connections.json is the list (data). This module is its one reader, shared by the Electron main
-// process (update check, spellcheck) and the backend (security watch, platform data, the panel's
+// process (update check) and the backend (security watch, platform data, the panel's
 // routes), so the two sides can never disagree on where a switch lives or what a missing one means.
 //
 // The switch file is <data root>/settings/connections.json: { "<id>": true|false }. A switch never

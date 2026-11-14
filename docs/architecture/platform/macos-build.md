@@ -95,6 +95,23 @@ Verified on a real build: the arm64 zip contains `node_modules/node-pty/prebuild
 and `node_modules/@napi-rs/canvas-darwin-arm64/` and nothing for the other chip,
 and its dmg verifies (`hdiutil verify`: CRC32 valid).
 
+## Where the release builds are made
+
+Each chip is built on its own GitHub-hosted runner by the public repository's
+`.github/workflows/mac.yml`: Apple silicon on `macos-15`, Intel on
+`macos-15-intel`, pinned so a moved `macos-latest` cannot change the build. Each
+job runs its own `npm ci`, so each bundle carries its own chip's binaries, and
+`check-mac-artifacts.mjs` runs on the result before anything is uploaded.
+
+The workflow does not sign the update feed. That is the release key's, held
+offline and never in CI: the maintainers' ship step downloads the two jobs'
+artifacts, checks every binary again, confirms nothing in either app is missing
+from the public tree at that commit, merges the two chips' `latest-mac.yml`
+into one feed naming all four files, signs the feed and `SHA256SUMS`, and
+publishes. Each job also writes `signing-<arch>.txt` saying whether Apple signed
+it, because off a Mac an Apple signature and the ad-hoc seal electron-builder
+puts on every arm64 app look the same.
+
 ## Unsigned today, on purpose
 
 Mac builds are **unsigned and not notarized**. Three consequences, none visible
@@ -127,6 +144,12 @@ They come from the build machine's environment and are never committed:
 With all five set, `electron-builder` signs with the hardened runtime (the
 entitlements in `build/entitlements.mac.plist`, applied to the app and to
 everything inside it) and notarizes through Apple's notary service.
+
+In CI they are repository secrets of the same names (`APPLE_API_KEY` holds the
+`.p8` file's contents; the job writes it to a file only for the build and
+deletes it after). With them present the job signs, notarizes and runs the
+artifact check with `--require-signed`; without them it builds unsigned and
+says so in a warning on the run.
 
 The procedure lives with the release runbook (`electron-builder.yml` and
 `electron/release-public-key.cjs` both point at

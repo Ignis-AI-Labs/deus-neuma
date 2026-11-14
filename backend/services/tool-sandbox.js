@@ -65,7 +65,7 @@ export {
   deniedPatternsFor, matchesDeniedPattern, laneStateWriteReason, moveDestination, collectPathArgs,
   normalizeToolArgs, checkPathAccess, realpathOfNearestExisting,
   resolveGrantDir, isWithinRoots, findUngrantedReadPaths,
-  findUngrantedWritePaths, writeGrantScope,
+  findUngrantedWritePaths,
 } from './sandbox-path-policy.js';
 
 // impure (reads the current roots) — every ground that holds lanes, wherever
@@ -191,7 +191,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     // Arg drift heals BEFORE confinement, so the checks judge the path the
     // call will actually run with — and the MCP schema never refuses a call
     // whose intent was legible (search_files with no path, live 2026-07-23).
-    args = normalizeToolArgs(toolName, args, isWrite ? null : (roots[0] ?? null));
+    args = normalizeToolArgs(toolName, args, isWrite ? null : (roots[0] ?? null), isWrite ? null : roots);
     const pathArgs = collectPathArgs(args);
     const filesIntent = isWrite && Boolean(intentsDir) && pathArgs.length > 0
       && pathArgs.every((p) => isWithinRoots(p, [intentsDir]));

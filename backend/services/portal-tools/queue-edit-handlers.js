@@ -27,6 +27,9 @@ const _editTarget = (entries, id, channel) => {
   return { entry, refusal: null };
 };
 
+// Did this lane draft the entry itself? pure.
+const isOwn = (entry, companion) => Boolean(entry?.authorNeumaId) && entry.authorNeumaId === companion?.neumaId;
+
 // The diff the operator DECIDES on (pure): every changed field as {was, now} —
 // the chip shows what the copy WAS, never just the patch.
 const _diffForChip = (preview) => Object.fromEntries(
@@ -56,9 +59,12 @@ const _queueEditCrewGate = async (ws, connection, tool, toolName, channel, accou
 // no GLOBAL_DEFAULTS row on purpose, so the default is the fail-closed chip):
 // an ALWAYS granted on staging never unlocks editing, nor the reverse.
 // Returns the refusal, or null when the edit may proceed.
-const _queueEditActsGate = async (ws, connection, neumaPolicy, toolMode, tool, toolName, chipArgs) => {
+// A being revising only ITS OWN staged posts raises no card (Design note, 2026-11-12:
+// […]) — words that change still return the post to
+// DRAFT, so nothing it rewrites goes out unseen.
+const _queueEditActsGate = async (ws, connection, neumaPolicy, toolMode, tool, toolName, chipArgs, ownWork = false) => {
   const gate = await gateAct(connection, {
-    server: 'social', tool: toolName, toolLabel: tool, cardArgs: chipArgs,
+    server: 'social', tool: toolName, toolLabel: tool, cardArgs: chipArgs, ownWork,
     lanePolicy: neumaPolicy, mode: toolMode,
     emit: (event) => _sendToolEvent(ws, connection.companion, event),
   });
@@ -125,7 +131,7 @@ export const handleNeumaQueueUpdate = async (ws, connection, neumaPolicy, toolMo
     ...(preview.resetsApproval
       ? { renewsApproval: 'the words or images change — this edit returns the post to DRAFT for a fresh decision' }
       : {}),
-  });
+  }, isOwn(target.entry, companion));
   if (actsRefusal) return actsRefusal;
 
   _sendToolEvent(ws, companion, { tool, status: 'executing' });
@@ -202,7 +208,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
       results[i] = { id, ok: false, error: preview.error };
       continue;
     }
-    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry) });
+    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry), own: isOwn(target.entry, companion) });
   }
 
   const verdict = () => {
@@ -221,7 +227,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
         changes: _diffForChip(preview),
         ...(preview.resetsApproval ? { renewsApproval: 'returns to DRAFT for a fresh decision' } : {}),
       })),
-    });
+    }, viable.every((v) => v.own));
     if (actsRefusal) return actsRefusal;
 
     _sendToolEvent(ws, companion, { tool, status: 'executing' });

@@ -24,6 +24,7 @@ import { postQueue } from '../../backend/services/social/post-queue.js';
 
 const { _handleSocialTool } = __test;
 const LANE = 'cancelcardlane';
+const SIBLING = 'cancelcardsibling';
 
 describe('the cancellation card — the operator is told which post they are pulling', () => {
   let servedHouse;
@@ -51,13 +52,15 @@ describe('the cancellation card — the operator is told which post they are pul
     tick();
   });
 
+  // Staged by ANOTHER hand (a sibling lane) — pulling it asks the operator.
+  // The lane's own entries pull with no card (the last test).
   const stage = (text, extra = {}) =>
-    postQueue.add({ channelId: 'x', text, authorNeumaId: LANE, queuedBy: LANE, ...extra });
+    postQueue.add({ channelId: 'x', text, authorNeumaId: SIBLING, queuedBy: SIBLING, ...extra });
 
   beforeAll(async () => {
     // The lane is a lane of a served house (owner.json on real disk): the being's
     // queue tools read only its own house's entries (#583).
-    servedHouse = await useServedHouse({ lanes: [LANE] });
+    servedHouse = await useServedHouse({ lanes: [LANE, SIBLING] });
     house = await createTempDir('queue-cancel-card');
     savedPath = process.env.NEUMA_SOCIAL_POST_QUEUE_PATH;
     process.env.NEUMA_SOCIAL_POST_QUEUE_PATH = `${house}/post-queue.json`;
@@ -211,5 +214,18 @@ describe('the cancellation card — the operator is told which post they are pul
     expect(ask.tool).toBe('social/read_x');
     expect(ask.args).toContain('mentions');
     expect(ask.args).toContain('5');
+  }, 30000);
+
+  test('ITS OWN draft is pulled at once by the being itself (ruling 2026-11-12) — no card, withdrawn, never sent', async () => {
+    const connection = freshConnection();
+    serverWs.__connection = connection;
+    const mine = await postQueue.add({ channelId: 'x', text: 'a line I drafted and got wrong', authorNeumaId: LANE, queuedBy: LANE });
+    decide = () => 'deny'; // were a card to rise, the answer would refuse it
+
+    const result = await call(connection, 'queue_cancel', { id: mine.id, reason: 'wrong claim' });
+    expect(result.status).toBe('ok');
+    expect(result.content).toContain(`Staged post ${mine.id} is withdrawn`);
+    expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
+    expect((await postQueue.load()).find((e) => e.id === mine.id)).toMatchObject({ status: 'withdrawn' });
   }, 30000);
 });

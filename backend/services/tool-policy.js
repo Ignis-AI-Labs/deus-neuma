@@ -111,15 +111,16 @@ export const normalizeToolMode = (raw) => (TOOL_MODES.includes(raw) ? raw : 'ask
 // --- Chat modes (the operator's standing mode for this conversation) ---
 //
 // The composer's mode chip. One declaration carries both meanings: the chat's
-// bearing (free flow / strictly planning / hands-off) AND the ACTS tier the
-// gate enforces, derived below — the operator never sets the two separately.
-export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto']);
+// bearing (free flow / strictly planning / hands-off / deep research) AND the
+// ACTS tier the gate enforces, derived below — the operator never sets the two
+// separately. RESEARCH (research-mode.js) acts under DEFAULT's tier.
+export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto', 'research']);
 
 /**
  * Normalize an untrusted chat mode value (fail to 'default' — free flow
  * with per-act cards, the least authority a mode can carry).
  * @param {*} raw - Untrusted mode value (client input)
- * @returns {'default'|'plan'|'auto'} Valid chat mode
+ * @returns {'default'|'plan'|'auto'|'research'} Valid chat mode
  */
 export const normalizeChatMode = (raw) => (CHAT_MODES.includes(raw) ? raw : 'default');
 
@@ -333,8 +334,8 @@ export const addGrantedReadRoot = (layer, dir) => {
  * Return a new policy layer with `dir` added to the operator-granted WRITE
  * scopes (pathGrants.write). Pure — never mutates; null grows a fresh layer.
  * A write grant is a deliberate escalation past the being's own lane, so it is
- * only ever handed out for a folder inside the ACTIVE project (the portal write
- * gate enforces that bound + default-deny), and the sandbox's denied-path list
+ * only ever handed out for the target's own folder on the operator's yes (the
+ * portal write gate asks; default-deny), and the sandbox's denied-path list
  * still fires first — a granted folder never opens .git/.env/keys/config or
  * another being's DNA. Write scope also grants read (you can read where you can
  * write); the sandbox folds pathGrants.write into the read roots.

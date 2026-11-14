@@ -16,8 +16,8 @@ const base = (over = {}) => ({
 });
 
 describe('the pinned Ollama build', () => {
-  test('Linux and Windows on x64 have a pinned file with its SHA-256; nothing else does', () => {
-    for (const [p, a] of [['linux', 'x64'], ['win32', 'x64']]) {
+  test('Linux and Windows on x64, and macOS on both chips, have a pinned file with its SHA-256; nothing else does', () => {
+    for (const [p, a] of [['linux', 'x64'], ['win32', 'x64'], ['darwin', 'arm64'], ['darwin', 'x64']]) {
       const asset = ollamaAssetFor(p, a);
       expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/);
       expect(asset.size).toBeGreaterThan(100e6);
@@ -25,7 +25,9 @@ describe('the pinned Ollama build', () => {
     }
     expect(ollamaAssetFor('linux', 'x64').bin).toBe('bin/ollama');
     expect(ollamaAssetFor('win32', 'x64').bin).toBe('ollama.exe');
-    expect(ollamaAssetFor('darwin', 'arm64')).toBeNull();
+    // one macOS archive serves both chips; the server sits at its root
+    expect(ollamaAssetFor('darwin', 'arm64')).toMatchObject({ name: 'ollama-darwin.tgz', format: 'tar.gz', bin: 'ollama' });
+    expect(ollamaAssetFor('darwin', 'x64').sha256).toBe(ollamaAssetFor('darwin', 'arm64').sha256);
     expect(ollamaAssetFor('linux', 'arm64')).toBeNull();
   });
 });
@@ -135,9 +137,15 @@ describe('the plan for each starting point', () => {
     expect(plan).toEqual({ supported: false, reason: 'Below the recommended floor.' });
   });
   test('an OS with no pinned build and no server is told to install one itself', () => {
-    const plan = installPlan(base({ platform: 'darwin', arch: 'arm64' }));
+    const plan = installPlan(base({ platform: 'linux', arch: 'arm64' }));
     expect(plan.supported).toBe(false);
-    expect(plan.reason).toMatch(/no Ollama build for darwin/);
+    expect(plan.reason).toMatch(/no Ollama build for linux on arm64/);
+  });
+  test('a Mac with no model server gets Ollama\'s own macOS build downloaded and set up for it', () => {
+    const plan = installPlan(base({ platform: 'darwin', arch: 'arm64' }));
+    expect(plan.supported).toBe(true);
+    expect(plan.server).toBe('download');
+    expect(plan.steps.map((st) => st.id)).toEqual(expect.arrayContaining(['download', 'unpack', 'start']));
   });
 });
 
@@ -182,7 +190,13 @@ describe('pull progress', () => {
 
 describe("the platform's own server: what it is started with (2026-10-23)", () => {
   test('the fitted window as its default, one model and one slot', () => {
-    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1' });
+    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1', OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+  });
+
+  test('flash attention with an 8-bit KV cache: half the cache on the card, more of the model with it; the person\'s own setting stands', () => {
+    expect(managedServeEnv({ window: 20480 })).toMatchObject({ OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+    expect(managedServeEnv({ window: 20480, env: { OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' } }))
+      .toMatchObject({ OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' });
   });
 
   test("Ollama's cloud models are off by default (prompts stay on this PC); the person's own setting stands", () => {

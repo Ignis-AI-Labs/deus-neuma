@@ -1,19 +1,19 @@
 // map-client.js — the architecture map, witness side.
 //
-// impure — fetches the active project's architecture graph (routes, channels,
+// impure — fetches a repository's architecture graph (routes, channels,
 // functions/call-graph, anomalies) over REST. Like graph-client, a failure does
 // NOT collapse into an empty success: the Map window renders states honestly, so
-// the HTTP status travels back (404 = no active project, a real distinct state).
+// the HTTP status travels back (404 = nothing to map, a real distinct state).
 
 import { apiCall, authHeadersOrNull as authHeaders } from '../../utils/http.js';
 
 /**
  * Load the architecture map of a folder (this window's focus) or, with no
- * folder, the active project. The folder is only a HINT — the server
+ * folder, the NEUMA repo by default. The folder is only a HINT — the server
  * re-validates it against the opened roots (403 on escape).
  * @param {string|null} folder - focus folder hint
  * @returns {Promise<{ok: true, project: object, graph: object}
- *   | {ok: false, status: number|null}>} status 404 = no active project;
+ *   | {ok: false, status: number|null}>} status 404 = nothing to map;
  *   403 = folder outside the opened roots; null = unauthenticated or the
  *   platform never answered.
  */

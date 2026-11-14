@@ -277,7 +277,7 @@ describe('Native filesystem organ', () => {
       expect(defaults).toContain(path.join(base, 'src', 'engine.js'));
       expect(defaults).not.toContain(path.join('node_modules', 'dep'));
       expect(defaults).not.toContain('leak.js');
-      expect(defaults).toContain('excluded from this walk: node_modules');
+      expect(defaults).toContain('[skipped: node_modules, .git, __pycache__, .venv folders');
       const explicit = textOf(await mcpService.callTool(SERVER, 'search_files', {
         path: base, pattern: '*.js', excludePatterns: [],
       }));
@@ -287,7 +287,7 @@ describe('Native filesystem organ', () => {
       await Promise.all(Array.from({ length: 205 }, (_, i) => fs.writeFile(path.join(many, `m${i}.log`), '')));
       const capped = textOf(await mcpService.callTool(SERVER, 'search_files', { path: many, pattern: '*.log' }));
       expect(capped.split('\n').filter((l) => l.endsWith('.log'))).toHaveLength(200);
-      expect(capped).toContain('[stopped at 200 matches');
+      expect(capped).toContain('[5 more matches not shown');
     });
 
     test('node_modules hides by default, opens with explicit excludePatterns', async () => {

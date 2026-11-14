@@ -192,9 +192,31 @@ const salvagePathContent = (raw) => {
   return { path: m[1], content };
 };
 
+const QUOTED_KEY = /^\{\s*"/;
+
+// The same write, wrapped: the call door's {"tool": "fs/write", "args": {…}} (tool-hud.js),
+// alone or inside Hermes' {"name": …, "arguments": {…}}. Unescaped quotes break it exactly as
+// a bare write (a legal review lost on 2026-11-04 as […]): each wrapper's
+// head is peeled and the write inside salvaged by the same taught-shape rule, names kept.
+const WRAPPER_HEADS = Object.freeze([
+  [/^\{\s*"tool"\s*:\s*"([^"\n]+)"\s*,\s*"args"\s*:\s*/, (name, args) => ({ tool: name, args })],
+  [/^\{\s*"name"\s*:\s*"([^"\n]+)"\s*,\s*"arguments"\s*:\s*/, (name, args) => ({ name, arguments: args })],
+]);
+const salvageWrappedWrite = (raw, depth = 0) => {
+  if (depth > 1) return null;
+  for (const [head, wrap] of WRAPPER_HEADS) {
+    const m = raw.match(head);
+    if (!m) continue;
+    const rest = raw.slice(m[0].length);
+    const inner = salvagePathContent(rest) ?? salvageWrappedWrite(rest, depth + 1);
+    if (inner) return wrap(m[1], inner);
+  }
+  return null;
+};
+
 /**
- * Parse JSON args → control-char repair → path+content salvage → relaxed
- * near-JSON; null skips the call.
+ * Parse JSON args → control-char repair → path+content salvage (bare or
+ * wrapped) → relaxed near-JSON for unquoted keys; null when nothing reads.
  *
  * `wideTail` (#272, Grok round-1 — proven by test): unescaped inner quotes
  * flip scanBalancedJson's string parity, so the balanced slice can close at
@@ -206,8 +228,22 @@ const salvagePathContent = (raw) => {
 export const tryParseArgs = (raw, wideTail = null) => {
   try { return JSON.parse(raw); } catch { /* continue */ }
   try { return JSON.parse(repairJsonStringControlChars(raw)); } catch { /* continue */ }
-  return salvagePathContent(wideTail ?? raw) ?? parseRelaxedArgs(raw);
+  const tail = wideTail ?? raw;
+  const salvaged = salvagePathContent(tail) ?? salvageWrappedWrite(tail);
+  if (salvaged) return salvaged;
+  // A quoted key means the model wrote JSON: the relaxed reading could only
+  // lift unquoted words out of its string values ("**To:** …" → {To: …}) —
+  // junk that reached the call door naming no tool (2026-11-04). Unreadable
+  // is said (the caller's _argsError), never guessed — and an unclosed object
+  // is never read relaxed (its last character would be cut as the brace).
+  return QUOTED_KEY.test(raw) || !/\}\s*$/.test(raw) ? null : parseRelaxedArgs(raw);
 };
+
+/** A call whose arguments would not read — still a call, so the model is TOLD (tool-hud.js unreadArgsResult). Pure. */
+const unreadCall = (server, toolName, raw) => Object.freeze({
+  ...makeCall(server, toolName, {}),
+  _argsError: String(raw ?? '').slice(0, 200),
+});
 
 /** Braceless drift: [TOOL: tool key=value key2="value 2"] */
 const parseKeyValueArgs = (segment) => {
@@ -239,7 +275,9 @@ const parseNeuma = (text) => {
       // parity-broken quoting closed the balanced scan.
       const nextHead = text.indexOf('[TOOL:', argsStart);
       const wideTail = text.slice(argsStart, nextHead === -1 ? undefined : nextHead);
-      if (raw) args = tryParseArgs(raw, wideTail);
+      // The marker is the model's intent: arguments that will not read make a call it is TOLD about, never a silence.
+      args = tryParseArgs(raw ?? wideTail, wideTail);
+      if (!args) { calls.push(unreadCall(m[1] || null, m[2], raw ?? wideTail)); continue; }
     } else {
       const end = text.indexOf(']', argsStart);
       if (end !== -1) args = parseKeyValueArgs(text.slice(argsStart, end));
@@ -270,15 +308,15 @@ const parseGemma = (text) => {
     const jsonStart = m.index + m[0].length;
     if (text[jsonStart] !== '{') continue;
     const raw = scanBalancedJson(text, jsonStart);
-    if (!raw) continue;
     // Wide tail bounded at this call's own closer or the next marker — the
     // salvage must never ingest a later call (#272, Grok round 2).
     const bounds = ['</tool_call>', '<tool_call', '<|tool_call']
       .map((t) => text.indexOf(t, jsonStart)).filter((i) => i !== -1);
     const bound = bounds.length ? Math.min(...bounds) : undefined;
-    const args = tryParseArgs(raw, text.slice(jsonStart, bound));
-    if (!args) continue;
-    calls.push(m[2] ? makeCall(m[1], m[2], args) : makeCall(null, m[1], args));
+    const wide = text.slice(jsonStart, bound);
+    const args = tryParseArgs(raw ?? wide, wide);
+    const [server, name] = m[2] ? [m[1], m[2]] : [null, m[1]];
+    calls.push(args ? makeCall(server, name, args) : unreadCall(server, name, raw ?? wide));
   }
   return calls;
 };
@@ -402,6 +440,7 @@ const parseBareCall = (text) => {
  * heard by BOTH the Gemma parser and the bare-head parser, and executing
  * the same call twice from one utterance is never what the model meant.
  * @param {string} text - Completed model response
+ * @param {{told?: boolean}} [opts] told: keep calls whose arguments will not read, flagged `_argsError`
  * @returns {Array<{server: string|null, toolName: string, tool: string, args: Object}>}
  */
 /**
@@ -417,8 +456,16 @@ const parseHermesJson = (text) => {
     const start = m.index + m[0].length;
     if (text[start] !== '{') continue;
     const raw = scanBalancedJson(text, start);
-    const body = raw ? tryParseArgs(raw) : null;
-    if (!body || typeof body !== 'object' || typeof body.name !== 'string') continue;
+    // Wide tail bounded at this call's closer or the next marker, for the wrapped-write salvage.
+    const bounds = ['</tool_call>', '<tool_call', '<|tool_call'].map((t) => text.indexOf(t, start)).filter((i) => i !== -1);
+    const wide = text.slice(start, bounds.length ? Math.min(...bounds) : undefined);
+    const body = tryParseArgs(raw ?? wide, wide);
+    if (!body || typeof body !== 'object' || typeof body.name !== 'string') {
+      // A named call whose body will not read is told, never dropped.
+      const named = wide.match(/^\{\s*"name"\s*:\s*"([^"\n]+)"/)?.[1]?.match(/^([\w-]+)(?:\/|__|\.|:)(.+)$|^(.+)$/);
+      if (named) calls.push(unreadCall(named[1] ?? null, named[2] ?? named[3], raw ?? wide));
+      continue;
+    }
     const sent = body.arguments ?? body.parameters ?? body.args ?? {};
     const args = typeof sent === 'string' ? (tryParseArgs(sent) ?? { _argsError: sent.slice(0, 200) }) : sent;
     const name = body.name.trim();
@@ -428,7 +475,7 @@ const parseHermesJson = (text) => {
   return calls;
 };
 
-export const parseToolCalls = (text) => {
+export const parseToolCalls = (text, { told = false } = {}) => {
   if (!text) return [];
   const all = [
     ...parseNeuma(text), ...parseGemma(text), ...parseQwenNative(text), ...parseHermesJson(text),
@@ -436,11 +483,15 @@ export const parseToolCalls = (text) => {
     ...parseGptOssChannel(text), ...parseBareCall(text),
   ];
   const seen = new Set();
-  return all.filter((c) => {
+  const calls = all.filter((c) => {
     let key;
     try { key = `${c.server ?? ''}|${c.toolName}|${JSON.stringify(c.args)}`; } catch { return true; }
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+  // A call whose arguments will not read reaches only a caller that TELLS the
+  // model (the being's turn loop, { told: true }); every other reader — the
+  // birth stages, the flight check — never hears it as an act.
+  return told ? calls : calls.filter((c) => c._argsError === undefined);
 };

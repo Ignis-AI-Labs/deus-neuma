@@ -117,6 +117,25 @@ export const collectToolAction = (ws, event) => {
 };
 
 /**
+ * A finished act's result, filled into the newest row for `tool` that has no detail yet, so a
+ * resumed chat opens it as the live one did (sendResultDetail in portal-tools/tool-events.js). A
+ * row with its own detail keeps it. A no-op outside an open turn.
+ * @param {Object} ws
+ * @param {string} tool
+ * @param {string} detail
+ */
+// impure — WeakMap write
+export const fillToolDetail = (ws, tool, detail) => {
+  const actions = records.get(ws);
+  if (!actions || !tool || !detail) return;
+  for (let i = actions.length - 1; i >= 0; i -= 1) {
+    if (actions[i].tool !== tool) continue;
+    if (!actions[i].detail) actions[i] = { ...actions[i], detail: detail.toWellFormed() };
+    return;
+  }
+};
+
+/**
  * The turn's acts, oldest first. Empty outside an open turn.
  * @param {Object} ws
  * @returns {Array<Object>}

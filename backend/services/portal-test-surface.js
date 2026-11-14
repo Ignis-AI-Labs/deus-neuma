@@ -26,7 +26,6 @@ import {
 } from './portal-turn-persist.js';
 import {
   rejectBlockedInput as _rejectBlockedInput,
-  pinSessionToProject as _pinSessionToProject,
   redeemAttachments, composeDocsBlock,
 } from './portal-turn-input.js';
 import { isSkillTool, USE_SKILL_TOOL } from './skill-tool.js';
@@ -58,7 +57,6 @@ import {
   handleNeumaQueueUpdate, handleNeumaQueueBulkUpdate,
 } from './portal-tools/queue-edit-handlers.js';
 import {
-  projectFilesSection as _projectFilesSection,
   houseSeatSection as _houseSeatSection,
   cmoBriefingSection as _cmoBriefingSection,
   replyCandidatesSection as _replyCandidatesSection,
@@ -201,8 +199,6 @@ export const __test = Object.freeze({
   _isVesselLogTool,
   _handleVesselLogTool,
   VESSEL_LOG_TOOL,
-  _pinSessionToProject,
-  _projectFilesSection,
   gatherMemoryContext,
   _compactWithSelfTorch,
   _persistExchange,

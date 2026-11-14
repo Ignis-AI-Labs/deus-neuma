@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { StreamInput } from '../../frontend/app/RelinkShell/StreamInput.jsx';
 import { ConsciousnessProvider } from '../../frontend/app/RelinkShell/consciousness-context.js';
-import { ProjectContext } from '../../frontend/app/RelinkShell/projects/project-context.js';
 import { WindowManager } from '../../frontend/app/windowing/WindowManager.jsx';
 
 const Chat = ({ id, prose }) => {
@@ -21,13 +20,11 @@ const Chat = ({ id, prose }) => {
 
 createRoot(document.getElementById('root')).render(
   <ConsciousnessProvider value={{}}>
-    <ProjectContext.Provider value={{ projects: [] }}>
-      <WindowManager registry={{}}>
-        <div style={{ display: 'flex', gap: 24 }}>
-          <Chat id="w1" prose="The first window speaks of something else entirely." />
-          <Chat id="w2" prose="That's where it lives. And that's not a pedantic point — it's the whole thing! Next." />
-        </div>
-      </WindowManager>
-    </ProjectContext.Provider>
+    <WindowManager registry={{}}>
+      <div style={{ display: 'flex', gap: 24 }}>
+        <Chat id="w1" prose="The first window speaks of something else entirely." />
+        <Chat id="w2" prose="That's where it lives. And that's not a pedantic point — it's the whole thing! Next." />
+      </div>
+    </WindowManager>
   </ConsciousnessProvider>,
 );

@@ -6,18 +6,6 @@ import { isOptional, tallyLine, groupLine } from '../../frontend/components/Birt
 const JARGON = /substrate|probe|tool call|either road|NEUMA_|COMFYUI_|python3|venv|\/scripts\//i;
 
 describe('plain words', () => {
-  test('the refinement note, as the laptop showed it, becomes plain and optional', () => {
-    const p = plainCheck({ id: 'trainer', label: 'Refinement Forge', status: 'warn',
-      detail: 'no trainer interpreter at python3 — births work, refinement cannot run',
-      requirement: 'Set NEUMA_REFINEMENT_PYTHON to a venv with scripts/refinement/requirements.txt installed' });
-    expect(p.name).toBe('Training your neuma later (refinement)');
-    expect(p.means).toBe('Training your neuma later (refinement) is not set up on this computer. You do not need it to summon or talk; it can be added later.');
-    expect(p.todo).toBe('Nothing — you can continue.');
-    expect(p.notYours).toBe('It cannot be set up from inside the app yet.');
-    expect(`${p.means} ${p.todo} ${p.notYours}`).not.toMatch(JARGON);
-    expect(isOptional('trainer')).toBe(true);
-  });
-
   test('the image & video note names the two numbers, plainly, and is optional', () => {
     const p = plainCheck({ id: 'forge', label: 'Image & Video Forge', status: 'warn',
       detail: 'Images: no, needs 7 GB of GPU memory beside the mind, 4.2 GB is left. Video: no, needs 14 GB beside the mind',
@@ -51,14 +39,14 @@ describe('plain words', () => {
 });
 
 describe('optional capabilities stay out of the tally', () => {
-  test('a machine that can summon and talk reads fully clear even with both optional notes', () => {
+  test('a machine that can summon and talk reads fully clear even with the optional note', () => {
     const checks = [
       { id: 'substrate', status: 'pass' }, { id: 'acting', status: 'pass' }, { id: 'disk', status: 'pass' },
-      { id: 'trainer', status: 'warn' }, { id: 'forge', status: 'warn' },
+      { id: 'forge', status: 'warn' },
     ];
     const core = checks.filter((c) => !isOptional(c.id));
     expect(tallyLine(core, core.length)).toBe('3 OF 3 CLEAR');
-    expect(groupLine(checks.filter((c) => isOptional(c.id)), { optional: true })).toBe('0 OF 2 AVAILABLE ON THIS MACHINE');
+    expect(groupLine(checks.filter((c) => isOptional(c.id)), { optional: true })).toBe('0 OF 1 AVAILABLE ON THIS MACHINE');
     expect(groupLine([{ status: 'pass' }], { optional: true })).toBe('ALL AVAILABLE');
   });
 });

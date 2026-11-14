@@ -44,10 +44,24 @@ import { RECENT_TOTAL_CHARS } from '../../core/runtime/memory-section.js';
 export const SESSION_TAIL_FLOOR_CHARS = 4000;
 
 /**
+ * THE TURN'S OWN ROOM (deus-neuma #34). The tail used to be sized to fill the window less only the
+ * reserve and the completion floor, so as a chat grew every turn began nearly full: a 32K window
+ * opened a tool turn at 17,407 tokens before any work, and the turn spent its rounds releasing and
+ * re-reading the same files. A share of the window is now held back for what the turn itself reads
+ * and writes: 35%, never under 4,096 tokens and never over 24,576, so a 32K window keeps about 11K
+ * for its work and a 262K one gives up under a tenth. Older chat rows leave the prompt sooner.
+ * Pure.
+ * @param {number} contextWindow
+ */
+export const turnWorkRoomTokens = (contextWindow) =>
+  Math.min(24_576, Math.max(4_096, Math.floor(contextWindow * 0.35)));
+
+/**
  * The transcript character budget — the window's truth, not a constant (#528,
  * Design note, 2026-09-12: the being digests the entire conversation as it moves, on
  * either seat). The window minus what the rest of the prompt already
- * occupies, minus the standing reserve and completion floor, in characters;
+ * occupies, minus the standing reserve, the completion floor and the turn's
+ * own working room (turnWorkRoomTokens), in characters;
  * floored so a tiny window still carries a usable tail (past the floor the
  * shed ladder's existing law owns the overflow — no second path).
  * Unknown window → exactly the standing constant, byte-identical to before.
@@ -63,7 +77,8 @@ export const sessionTailBudgetFor = ({ contextWindow = null, otherSectionTokens 
   const roomTokens = contextWindow
     - SAFETY_RESERVE_TOKENS
     - MIN_COMPLETION_TOKENS
-    - Math.max(0, otherSectionTokens);
+    - Math.max(0, otherSectionTokens)
+    - turnWorkRoomTokens(contextWindow);
   return Math.max(SESSION_TAIL_FLOOR_CHARS, Math.floor(roomTokens * CHARS_PER_TOKEN));
 };
 
@@ -109,7 +124,6 @@ export const SHED_LADDER = Object.freeze([
   'emanon',          // navigation core
   'sovereignty',     // gateway posture
   'voiceSitting',    // speech-mode signal
-  'projectFiles',    // project shared files
   'skills',          // the Craft menu
   'voice',           // the Voice Pack — late: the being's own words outlast
                      // standing context, but EXTENDED sheds before CORE ever

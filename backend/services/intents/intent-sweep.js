@@ -55,6 +55,7 @@ import { writeJsonAtomic } from '../user-realm.js';
 import { resolvePolicy, checkToolAccess, applyToolMode, normalizeToolMode, GLOBAL_DEFAULTS } from '../tool-policy.js';
 import { OPTIO_OFFICE_INTENTS } from '../tool-policy-defaults.js';
 import { mandateRenderAccess } from '../marketing/mandate/mandate-act.js';
+import { salesSendAccess } from '../sales/sales-cover.js';
 import { tripMandateForLane } from '../marketing/mandate/mandate-tripwire.js';
 import { cosDesignation } from '../staff/cos-designation.js';
 import { applyProtocolGuard, holdForWake } from '../protocol-guard.js';
@@ -247,8 +248,10 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   const explicit = ownRow === 'allowed';
   // A house wake's charter sends its escalated acts back to the operator, grant or none.
   const guarded = applyProtocolGuard(applyToolMode(baseAccess, mode, policyTool), mode, 'intents', policyTool, explicit);
-  // THE MANDATE answers a render's card when it covers renders (marketing/mandate/); a wake's holds still stand over it.
-  const access = holdForWake(connection, await mandateRenderAccess(connection, guarded, policyTool, type.summarize(payload)), 'intents', policyTool);
+  // THE MANDATE answers a render's card when it covers renders (marketing/mandate/); THE SALES COVER an email
+  // to an approved list's lead within its limits (sales/sales-cover.js); a wake's holds still stand over both.
+  const mandated = await mandateRenderAccess(connection, guarded, policyTool, type.summarize(payload));
+  const access = holdForWake(connection, await salesSendAccess(connection, mandated, policyTool, verdict.value), 'intents', policyTool);
   if (access === 'denied') {
     if (baseAccess !== 'denied') return null; // observe: watching, not acting
     await writeResult(dir, name, { status: 'denied', reason: ACT_REFUSALS.policyDenied.error });

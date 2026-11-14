@@ -19,7 +19,7 @@ developing Neuma itself**, including in your own builds of this repository.
 
 ## What you may not do
 
-Without written permission from Ignis AI Labs LLC, you may not:
+Without written permission from Deus Neuma Inc, you may not:
 
 - extract, copy or redistribute the sounds (or the samples they are made
   from) on their own, in a sample pack, or in any other product;

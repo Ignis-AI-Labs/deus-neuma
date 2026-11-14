@@ -123,6 +123,11 @@ export const buildPresentSection = (now = new Date(), zone = null) => {
     `UTC ${now.toISOString().slice(0, 16)}Z${tz ? ` · zone ${tz}` : ''} (${offset}).`,
     'This is the real present — your training cutoff is not. Anchor "today", "now", "recent", "this week", deadlines, and search queries to the date above.',
     'When you schedule anything public, compute from the UTC instant above and say which timezone you mean. Never infer today\'s date.',
+    // A SYSTEM'S OWN CLOCK (2026-11-09): a calendar, an account or a sandbox a
+    // tool opens can keep its own "today". Answering "what's on today?" from
+    // the real date gave an empty day in a calendar living in another year,
+    // and "next month's rent" was moved to a month counted from the wall clock.
+    'Inside a system a tool opens (a calendar, an account, a sandbox), "today" is that system\'s own date when it has one: read it from the system before acting there. Never change a date the request didn\'t ask you to change.',
   ].join('\n');
 };
 
@@ -154,7 +159,7 @@ const CLOSING_TEXT = CLOSING_WITH_COVENANT;
  *   tools, skills, benchmark, present, memory, tasks, assigned, operator,
  *   taste, vitals, session, closing. label = operator-facing caps name.
  */
-export const assemblePromptSections = ({ dna = null, soul = null, trueName = null, memories = null, tools = null, skills = null, session = null, substrate = null, emanonCore = null, benchmark = null, taskLedger = null, assignedPlan = null, planRecord = null, witnessPlan = null, vitals = null, taste = null, focusGround = null, chatId = null, now = null, zone = null, nativeToolsOnWire = false, lazyToolSchemas = false, parallelCalls = false, usualTools = [], houseSeat = null, sectors = null, groundProtocol = null, amendments = null, voiceEntries = null, intents = null, identityDriver = null, identityStanding = 'full', testConditions = '' } = {}) => {
+export const assemblePromptSections = ({ dna = null, soul = null, trueName = null, memories = null, tools = null, skills = null, session = null, substrate = null, emanonCore = null, benchmark = null, taskLedger = null, assignedPlan = null, planRecord = null, witnessPlan = null, vitals = null, taste = null, focusGround = null, chatId = null, now = null, zone = null, nativeToolsOnWire = false, lazyToolSchemas = false, parallelCalls = false, usualTools = [], houseSeat = null, sectors = null, groundProtocol = null, amendments = null, voiceEntries = null, intents = null, identityDriver = null, identityStanding = 'full', testConditions = '', sittingRules = '' } = {}) => {
   // ONE instant for the whole assembly — pinned by tests, the real clock in
   // production. Every time-reading section rides THIS instant, so two
   // sections can never straddle a day boundary (present + vitals share it).
@@ -316,6 +321,12 @@ export const assemblePromptSections = ({ dna = null, soul = null, trueName = nul
     // `instant` above) — a midnight straddle between sections is impossible.
     { id: 'vitals', label: 'OPERATOR VESSEL', text: formatVitalsSection(vitals, instant.toISOString()) },
     { id: 'session', label: 'SESSION', text: buildSessionSection(session) },
+    // THE SITTING'S RULES (test-conditions.js callerRulesFor) — the standing word of whoever started
+    // the sitting, beside the closing that tells the being to deliver a task's output exactly. Riding
+    // inside TOOLS, mid-prompt, SQuAD's […] lost to the closing's own
+    // tone: correct answers in full sentences, failed by exact match (bench gaps vs bare, 2026-11-14).
+    // '' for every turn whose sender set no rules, so every other prompt is byte-identical.
+    { id: 'sittingRules', label: "SITTING'S RULES", text: sittingRules },
     // Last by meaning, not by cache: it is the closing instruction. Small, and
     // everything past the first volatile section is reprocessed regardless.
     { id: 'closing', label: 'CLOSING', text: CLOSING_TEXT },

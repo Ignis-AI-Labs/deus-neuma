@@ -81,7 +81,7 @@ export const DOCK_GROUPS = Object.freeze([
   // it IS the work, which is why it shares the TALK band with the live stream.
   group('workspace', 'WORKSPACE', [
     band('TALK', ['chat', 'chats']),
-    band('WORK', ['staff', 'houseclock', 'companyline', 'projects', 'teams', 'todo', 'workflow']),
+    band('WORK', ['staff', 'houseclock', 'companyline', 'teams', 'todo', 'workflow']),
     band('CRAFT', ['comfyui', 'files', 'gallery', 'terminal']),
     band('WATCH', ['security', 'legal', 'treasury', 'witnesses']),
     band('MEASURE', ['bench']),

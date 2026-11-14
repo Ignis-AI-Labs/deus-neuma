@@ -1,9 +1,8 @@
-// project-files.js — a project's shared files as always-on turn context.
-//
-// A project owns a curated set of files (user-projects.sharedFiles), each
-// proven to live inside the project folder. Before a turn in that project, the
-// stream reads them, extracts text, and injects a bounded PROJECT FILES section
-// so the neuma sees the working material without a tool call.
+// project-files.js — shared files as always-on turn context: a curated set of
+// files, each proven to live inside its owner's folder, read and injected as a
+// bounded section so the neuma sees the working material without a tool call
+// (CAMPAIGN_FILES_SHAPE). The Projects feature that first used it was removed
+// (2026-11-10).
 //
 // "Text-extractable with certainty" means we do NOT trust the extension alone:
 // every file is content-sniffed for a NUL byte and skipped if it looks binary.
@@ -120,14 +119,6 @@ export const buildSharedFilesSection = async (owner, shape, limits = {}) => {
   };
 };
 
-/** The project shape — the original wording, unchanged. */
-const PROJECT_SHAPE = Object.freeze({
-  id: 'projectFiles',
-  label: 'PROJECT FILES',
-  heading: 'Project files',
-  describe: (name) => `The operator has shared these files as always-on context for this project${name ? ` ("${name}")` : ''}. They are reference material you can read directly — no tool is needed to open them.`,
-});
-
 /** The campaign shape — the same reader, aimed at a campaign's own material. */
 export const CAMPAIGN_FILES_SHAPE = Object.freeze({
   id: 'campaignFiles',
@@ -135,13 +126,3 @@ export const CAMPAIGN_FILES_SHAPE = Object.freeze({
   heading: 'Campaign material',
   describe: (name) => `The operator has tied these files to the campaign${name ? ` "${name}"` : ''} — its brief, brand voice, approved copy, and reference material. They are always-on context you can read directly; no tool is needed to open them. Work from THESE rather than inventing new positioning.`,
 });
-
-/**
- * Read a project's shared files into a bounded PROJECT FILES prompt section.
- * A thin wrapper so every existing caller and its behaviour stay identical.
- * @param {{folder: string, name?: string, sharedFiles?: Array<{path: string}>}} project
- * @param {{perFileChars?: number, totalChars?: number, maxFiles?: number}} [limits]
- */
-// impure
-export const buildProjectFilesSection = (project, limits = {}) =>
-  buildSharedFilesSection(project, PROJECT_SHAPE, limits);

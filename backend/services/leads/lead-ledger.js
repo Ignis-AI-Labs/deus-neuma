@@ -35,6 +35,7 @@ const legacyLeadLedgerPath = () =>
   process.env.NEUMA_LEAD_LEDGER_PATH || DEFAULT_LEGACY_PATH;
 
 export const LEAD_STATUSES = Object.freeze(['cold', 'contacted', 'replied', 'qualified', 'won', 'lost']);
+export const TOUCH_DIRECTIONS = Object.freeze(['in', 'out']);
 
 // Where a lead can come from: any social channel the house speaks through,
 // the email lane, or anywhere else the field produced one.
@@ -193,7 +194,9 @@ export const createLeadLedger = ({ path }) => {
      * @param {string} id
      * @param {{name?: string, contact?: string, channelId?: string,
      *   source?: string, status?: string, note?: string,
-     *   ownerNeumaId?: string|null, by: string}} change
+     *   ownerNeumaId?: string|null, direction?: 'in'|'out', by: string}} change
+     *   direction: which way a message went on this touch — 'out' the house
+     *   wrote to them, 'in' they wrote to the house (lead upkeep reads it).
      */
     touch(id, change = {}) {
       return serialize(async () => {
@@ -211,6 +214,7 @@ export const createLeadLedger = ({ path }) => {
         };
         const invalid = validateLead(merged);
         if (invalid) return { ok: false, error: invalid };
+        if (change.direction !== undefined && !TOUCH_DIRECTIONS.includes(change.direction)) return { ok: false, error: `direction is one of ${TOUCH_DIRECTIONS.join(', ')}` };
         const now = new Date().toISOString();
         Object.assign(lead, {
           name: trimmed(merged.name),
@@ -233,6 +237,7 @@ export const createLeadLedger = ({ path }) => {
           by: String(change.by || ''),
           ...(change.status !== undefined ? { status: merged.status } : {}),
           ...(ownerAfter !== ownerBefore ? { ownerFrom: ownerBefore, ownerTo: ownerAfter } : {}),
+          ...(change.direction ? { direction: change.direction } : {}),
           ...(trimmed(change.note) ? { note: trimmed(change.note).slice(0, NOTE_MAX) } : {}),
         });
         await save(leads);

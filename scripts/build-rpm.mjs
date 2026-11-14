@@ -51,8 +51,8 @@ Release: 1%{?dist}
 Summary: ${pkg.description}
 License: ${pkg.license}
 URL: ${pkg.homepage}
-Vendor: Ignis AI Labs LLC
-Packager: Ignis AI Labs LLC <legal@ignislabs.ai>
+Vendor: Deus Neuma Inc
+Packager: Deus Neuma Inc <legal@ignislabs.ai>
 AutoReqProv: no
 ${REQUIRES.map((r) => `Requires: ${r}`).join('\n')}
 

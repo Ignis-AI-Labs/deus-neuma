@@ -28,6 +28,30 @@ const TilesPanel = ({ entry, b, tools }) => (
   </Panel>
 );
 
+/**
+ * One campaign as a panel — the same on the BOARD and on CAMPAIGNS (Founder
+ * 2026-11-12: […]): its
+ * name, company, goal and pace at the head; its KPI, time, funnel, the
+ * accounts it runs on and OPEN below.
+ * @param {{card: object, companies: object[], onOpen?: (id: string) => void, span: number, tools?: object, nameOpens?: boolean}} props
+ *   nameOpens — its name is itself the press that opens it (CAMPAIGNS' list)
+ */
+export const CampaignCardPanel = ({ card, companies, onOpen, span, tools = null, nameOpens = false }) => {
+  const pace = card.status === 'active' ? PACE[paceOf(card)] || ['unknown', 'not measured: no KPI reading or no window'] : null;
+  const company = companies.find((x) => x.id === card.companyId)?.name || 'NO COMPANY';
+  const aside = [company, card.goal ? card.goal.kind.toUpperCase() : null, card.status === 'active' ? null : card.status.toUpperCase(),
+    card.asksForYou ? `◆ ${card.asksForYou} ASK${card.asksForYou === 1 ? '' : 'S'}` : null].filter(Boolean).join(' · ');
+  return (
+    <Panel tools={tools} aside={aside} span={span} part={`campaign:${card.id}`} level={pace?.[0]}
+      title={nameOpens && onOpen
+        ? <button type="button" className="mkc-name" data-campaign-row={card.id} onClick={() => onOpen(card.id)}>{card.name}</button>
+        : card.name}
+      hint={`${pace ? `${pace[1]} · ` : ''}${CAMPAIGN_KEY}`}>
+      <CampaignBody card={card} onOpen={onOpen} />
+    </Panel>
+  );
+};
+
 const CampaignPanel = ({ entry, b, tools }) => {
   const card = b.view.cards.find((c) => c.id === entry.scope.campaignId);
   if (!card) {
@@ -37,16 +61,7 @@ const CampaignPanel = ({ entry, b, tools }) => {
       </Panel>
     );
   }
-  const pace = card.status === 'active' ? PACE[paceOf(card)] || ['unknown', 'not measured: no KPI reading or no window'] : null;
-  const company = b.companies.find((x) => x.id === card.companyId)?.name || 'NO COMPANY';
-  const aside = [company, card.goal ? card.goal.kind.toUpperCase() : null, card.status === 'active' ? null : card.status.toUpperCase(),
-    card.asksForYou ? `◆ ${card.asksForYou} ASK${card.asksForYou === 1 ? '' : 'S'}` : null].filter(Boolean).join(' · ');
-  return (
-    <Panel tools={tools} title={card.name} aside={aside} span={entry.span} part={`campaign:${card.id}`} level={pace?.[0]}
-      hint={`${pace ? `${pace[1]} · ` : ''}${CAMPAIGN_KEY}`}>
-      <CampaignBody card={card} onOpen={b.onOpenCampaign} />
-    </Panel>
-  );
+  return <CampaignCardPanel card={card} companies={b.companies} onOpen={b.onOpenCampaign} span={entry.span} tools={tools} />;
 };
 
 const AccountsPanel = ({ entry, b, tools }) => {

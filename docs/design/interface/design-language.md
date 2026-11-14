@@ -288,6 +288,33 @@ meaning out of words wherever a mark can carry it. Every mark stays true.
 8. **Patterns repeat.** The same mark means the same thing on every surface,
    so the mind learns it once (CHOKKAN 4).
 
+## THE GOLDILOCKS ZONE — the picture carries it, the words complete it
+
+Design note, 2026-11-05, on release notes set as twenty paragraphs: *[…]* *[…]* *[…]*
+
+LESS TEXT keeps all the data; SHOW, DON'T TELL moves meaning into marks. The
+Goldilocks zone says where to stop: neither a wall of words nor marks without a
+key.
+
+1. **The drawing carries the experience.** Every section a person reads leads
+   with one composed drawing that shows its whole shape: what is there, how it
+   connects, where the person stands. Moving through a page is moving from
+   picture to picture, never from paragraph to paragraph.
+2. **The words complete it, then stop.** Beside the drawing, a numbered
+   readout: each mark's name and one line of a few words, with every number in
+   it. Someone who reads only the statement, the drawing and its readout
+   understands the section fully.
+3. **Too much, too little.** Too much: paragraphs in panels, a list standing
+   in for the visual, a sentence repeating a figure. Too little: a mark with no
+   key, a number with no unit, an icon asked to carry a sentence, detail cut
+   instead of drawn.
+4. **The full text stays one press away.** Prose a few readers want (notes in
+   full, the argument, the terms) folds beneath its drawing, named for what it
+   holds; never deleted.
+5. **The test.** Hide the folded text: does the section still say everything a
+   person needs? Hide the readout: does the drawing still show the shape? Both
+   must hold.
+
 ## SOUND REGISTER (reserved — Founder's domain)
 
 Sound design is owned by Founder. The design
@@ -774,6 +801,7 @@ permitted, climbing requires the demand to be real.
 - [ ] CHOKKAN (site): where am I / what is this / what next in the first screen; a process drawn as steps; one primary action per view; plain words; legibility floor met (reading 18px, labels 13px, nothing under 12px).
 - [ ] LESS TEXT, NOT LESS DATA: every number the person needs is on screen; marks carry what words used to; one legend or unit, not repeated labels; human names, not codes; only genuine noise folds, and is marked; they never have to say what the system already knows.
 - [ ] SHOW, DON'T TELL: a mark says it before a word does; fine status is marks, lists only for inventory; every problem opens where it is fixed, or fixes in place; setup is a guided path; a fix a house member can do hands over in one press; one mark, one meaning, everywhere.
+- [ ] THE GOLDILOCKS ZONE: each section leads with a drawing that carries its shape; its readout names every mark in a few words, every number in it; the statement, the drawing and the readout say it all; prose folds beneath, named, one press away.
 - [ ] Every element belongs to a plane; the level's plane allowance holds.
 - [ ] Reduced-motion final states exist and were viewed with my own eyes.
 

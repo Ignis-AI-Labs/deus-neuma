@@ -92,9 +92,9 @@ update-desktop-database /usr/share/applications || true
   const control = `Package: neuma
 Version: ${pkg.version}
 License: ${pkg.license}
-Vendor: Ignis AI Labs LLC <legal@ignislabs.ai>
+Vendor: Deus Neuma Inc <legal@ignislabs.ai>
 Architecture: amd64
-Maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
+Maintainer: Deus Neuma Inc <legal@ignislabs.ai>
 Installed-Size: ${installedSizeKiB(dataRoot)}
 Depends: ${DEPENDS.join(', ')}
 Recommends: libappindicator3-1

@@ -24,6 +24,16 @@ describe('system/call — the door becomes the call it names', () => {
     expect(unwrapCall({ tool: 'system/call', args: { tool: '/fs/write', args: { path: 'x', content: 'y' } } }).tool).toBe('fs/write');
   });
 
+  it('the tool named the native way (server__tool) reaches its server, as the parser splits it', () => {
+    expect(unwrapCall(door({ tool: 'caller__get_all_hotels_in_city', args: { city: 'Paris' } })))
+      .toMatchObject({ server: 'caller', toolName: 'get_all_hotels_in_city', tool: 'caller/get_all_hotels_in_city', args: { city: 'Paris' } });
+    // the first join only: a tool name may itself carry one
+    expect(unwrapCall(door({ tool: 'mcp__run__now', args: {} }))).toMatchObject({ server: 'mcp', toolName: 'run__now' });
+    // a slash still wins, and a bare name stays bare
+    expect(unwrapCall(door({ tool: 'fs/read__me', args: {} }))).toMatchObject({ server: 'fs', toolName: 'read__me' });
+    expect(unwrapCall(door({ tool: 'get_weather', args: {} }))).toMatchObject({ server: null, toolName: 'get_weather' });
+  });
+
   it('the door naming the door is refused in every spelling, and a second unwrap cannot peel it (audit C1)', () => {
     for (const inner of ['system/call', 'call', 'system__call', '/system/call']) {
       const once = unwrapCall(door({ tool: inner, args: { tool: 'platform/platform_data', args: {} } }));

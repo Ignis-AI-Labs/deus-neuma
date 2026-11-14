@@ -131,6 +131,13 @@ export const firstAccountView = (store) => {
  * (pure). Creates the account record when absent, with `meta` for a new one.
  * The record stays even when its fields empty: its company and label are
  * facts too, and the id is never issued again.
+ *
+ * AN ADDED ACCOUNT'S APP IS ITS OWN (Design note, 2026-11-11: […]). App keys pasted on `<channel>-2` and later land in that account's
+ * own app (`apps[accountId]`, `appId` = its id), never on the house app the first
+ * account uses — a second X account's tokens are issued by its own developer app,
+ * and paired with the first account's keys X answers 401. An account with no app
+ * keys of its own still rides the house app (one app, many sign-ins: the OAuth
+ * platforms). Emptying its own app returns it to the house app.
  * @param {object} store - v2
  * @param {string} accountId
  * @param {Record<string, string>} patch
@@ -141,32 +148,36 @@ export const patchAccount = (store, accountId, patch, { meta = {}, at = new Date
   const channel = getChannel(channelId);
   if (!channel) throw new Error(`not an account id: ${accountId}`);
   const prior = store.accounts?.[accountId];
-  const appId = appIdOf(prior || meta, accountId);
+  const writesApp = appFieldsOf(channel).some((f) => patch?.[f.key] !== undefined);
+  const ownApp = writesApp && accountId !== firstAccountId(channelId);
+  const appId = ownApp ? accountId : appIdOf(prior || meta, accountId);
   const appNext = mergeChannelCredential({ fields: appFieldsOf(channel) }, store.apps?.[appId], patch || {});
   const fieldsNext = mergeChannelCredential({ fields: accountFieldsOf(channel) }, prior?.fields, patch || {});
   const apps = { ...store.apps };
-  if (appFieldsOf(channel).some((f) => patch?.[f.key] !== undefined)) {
+  if (writesApp) {
     if (appNext) apps[appId] = appNext;
     else delete apps[appId];
   }
   const n = Number(ACCOUNT_ID.exec(accountId)[2]);
+  const record = {
+    channelId,
+    companyId: null,
+    label: '',
+    expectedHandle: null,
+    platformUserId: null,
+    addedAt: at,
+    ...(prior || {}),
+    ...(prior ? {} : meta),
+    fields: fieldsNext || {},
+  };
+  if (ownApp) {
+    if (appNext) record.appId = accountId;
+    else delete record.appId; // its own app emptied: back on the house app
+  }
   return {
     ...store,
     apps,
-    accounts: {
-      ...store.accounts,
-      [accountId]: {
-        channelId,
-        companyId: null,
-        label: '',
-        expectedHandle: null,
-        platformUserId: null,
-        addedAt: at,
-        ...(prior || {}),
-        ...(prior ? {} : meta),
-        fields: fieldsNext || {},
-      },
-    },
+    accounts: { ...store.accounts, [accountId]: record },
     serial: { ...store.serial, [channelId]: Math.max(Number(store.serial?.[channelId]) || 0, n) },
   };
 };

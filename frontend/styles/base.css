@@ -158,6 +158,15 @@ select:focus {
   box-shadow: 0 0 0 1px var(--color-border-primary);
 }
 
+/* A native dropdown's open list is drawn on the platform's own white unless
+   its options say otherwise, under the theme's light text: unreadable on every
+   dark look (#26). The options carry the look's ground and ink. */
+select option,
+select optgroup {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
 /* ============================================
    UTILITIES
    ============================================ */

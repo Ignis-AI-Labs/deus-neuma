@@ -49,9 +49,9 @@ export const SubstrateConsole = ({ tel, loaded, machine, sense, history, acting,
   const cells = machineHealth(machine, tel?.gpu, (r) => !doubt(r));
   const level = Object.fromEntries(cells.map((c) => [c.part, c.level]));
 
-  const machinePanels = (
+  const gpuPanel = <GpuPanel g={machine?.gpu} tel={tel?.gpu} level={level.gpu} fanService={machine?.fanService} temps={trace('gpuTemp')} span={8} />;
+  const partPanels = (
     <>
-      <GpuPanel g={machine?.gpu} tel={tel?.gpu} level={level.gpu} fanService={machine?.fanService} temps={trace('gpuTemp')} span={8} />
       <CpuPanel cpu={machine?.cpu} readings={readings} level={level.cpu} span={6} />
       <MemoryPanel ram={tel?.ram} readings={readings} level={level.memory} span={3} />
       <StoragePanel readings={readings} drives={machine?.drives} level={level.storage} span={3} />
@@ -73,6 +73,8 @@ export const SubstrateConsole = ({ tel, loaded, machine, sense, history, acting,
     ? <p className="hud-down label-data">MACHINE READINGS UNAVAILABLE — the platform did not answer</p>
     : null;
 
+  const machinePanels = <>{gpuPanel}{partPanels}</>;
+
   if (!tel) {
     // The lens is down, but the machine and the capacity RECORD are their own
     // reads, and the scan card carries its own honest refusals — the operator
@@ -91,7 +93,7 @@ export const SubstrateConsole = ({ tel, loaded, machine, sense, history, acting,
     );
   }
 
-  const { model, provider, serving, contextLength, adapters, sampling, activity, slots, gpu, processes, failures } = tel;
+  const { model, provider, serving, contextLength, adapters, sampling, activity, slots, tokens, gpu, processes, failures } = tel;
 
   return (
     <div className="sub-body" ref={watch} {...calm}>
@@ -107,10 +109,12 @@ export const SubstrateConsole = ({ tel, loaded, machine, sense, history, acting,
       {machineDown}
 
       <div className="sub-grid" ref={watchMachine}>
-        <ActivityPanel activity={activity} slots={slots} gen={trace('gen')} span={4} />
-        {machinePanels}
-        <ModelPanel contextLength={contextLength} sampling={sampling} adapters={adapters} span={3} />
-        <VramPanel gpu={gpu} processes={processes} span={3} />
+        {/* every token rate on one full row (token-performance.jsx); the rows below keep twelve columns each */}
+        <ActivityPanel activity={activity} slots={slots} gen={trace('gen')} tokens={tokens} span={12} />
+        {gpuPanel}
+        <ModelPanel contextLength={contextLength} sampling={sampling} adapters={adapters} span={4} />
+        {partPanels}
+        <VramPanel gpu={gpu} processes={processes} span={6} />
         {controlPanels}
         <FailuresPanel failures={failures} span={12} />
       </div>

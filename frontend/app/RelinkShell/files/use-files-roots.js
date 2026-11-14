@@ -1,7 +1,7 @@
 // use-files-roots — the FILES tree's roots/git/dir refresh machinery,
 // extracted whole from FilesApp (size law). ONE unit by law: the calm git
-// poll and the announcement listeners (focus-root, files-changed, project
-// activation) ride together with the refreshers they call — the live-watch
+// poll and the announcement listeners (focus-root, files-changed) ride
+// together with the refreshers they call — the live-watch
 // seams were RCA'd, and separating the poll from the listeners is how the
 // deaf-desk bug was born. State ownership stays with FilesApp: the hook
 // takes the setters and the shared rootsRef; only gitByRoot lives here,
@@ -11,11 +11,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getRoots, listDir, gitStatusMany } from '../../../services/user-files.js';
 import { mergeRefreshPlans, gitRootsFor } from './files-refresh-apply.js';
 import { createTrailingBatch } from '../../../utils/trailing-batch.js';
-import { useSettled } from '../use-settled.js';
 import { useVisibleInterval } from '../use-visible-interval.js';
 import { revealChain } from './reveal-chain.js';
 
-export const useFilesRoots = ({ activeFolder, expanded, setExpanded, rootsRef, setRoots, setNote, setChildrenMap }) => {
+export const useFilesRoots = ({ expanded, setExpanded, rootsRef, setRoots, setNote, setChildrenMap }) => {
   const [gitByRoot, setGitByRoot] = useState({}); // root → { branch, ahead, behind, files } (repos only)
   const rootsRetryRef = useRef(null);
   // In-flight guard: a 14-way probe round on a heavy repo can outlive the
@@ -129,19 +128,6 @@ export const useFilesRoots = ({ activeFolder, expanded, setExpanded, rootsRef, s
       batch.cancel();
     };
   }, [expanded, refreshDir, refreshGit, rootsRef]);
-
-  // When a project is activated, the backend has already added its folder as a
-  // root — pull the new roots and focus (expand + lazy-load) that folder.
-  useSettled((settled) => {
-    if (!activeFolder) return undefined;
-    (async () => {
-      await refreshRoots();
-      if (settled()) return;
-      setExpanded((prev) => new Set(prev).add(activeFolder));
-      await refreshDir(activeFolder);
-    })();
-    return undefined;
-  }, [activeFolder, refreshRoots, refreshDir]);
 
   return { gitByRoot, refreshGit, refreshDir };
 };

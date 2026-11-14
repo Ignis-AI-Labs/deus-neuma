@@ -20,7 +20,6 @@ export default Object.freeze({
     innerlife: '内面',
     map: 'リポマップ',
     pdf: 'PDF',
-    projects: 'プロジェクト',
     refinement: 'NITE',
     security: 'セキュリティ',
     legal: '法務',
@@ -97,7 +96,6 @@ export default Object.freeze({
     routeProviderUnknown: 'ルート — {{provider}} — 不明',
     session: 'セッション {{clock}}',
     turn: 'ターン {{count}}',
-    project: 'プロジェクト — {{name}}',
     folder: 'フォルダ — {{name}}',
   }),
 
@@ -105,7 +103,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: '新規チャット',
-    newChatTitleProject: '{{project}} で新しいチャットを開始 — このチャットを置き換えます。{{tab}} は隣にもう一つ開きます',
     newChatTitle: 'ここで新しいチャットを開始 — このチャットを置き換えます。{{tab}} は隣にもう一つ開きます',
     council: '評議会',
     councilTitleEnter: 'このウィンドウを評議会に切り替え — 複数のネウマ、一つの部屋',

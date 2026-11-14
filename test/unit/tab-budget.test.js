@@ -15,7 +15,7 @@
  */
 import { describe, expect, test, beforeAll } from 'vitest';
 import {
-  localBudget, substrateFamily, sameSubstrate, LOCAL_BASIS, LOCAL_UNMEASURED_FLOOR,
+  localBudget, substrateFamily, sameSubstrate, scanForModel, LOCAL_BASIS, LOCAL_UNMEASURED_FLOOR,
 } from '../../core/runtime/tab-budget.js';
 
 // The real scan on this machine, if one has ever run. Absent on a fresh
@@ -133,5 +133,53 @@ describe('SAME MODEL, DIFFERENT NAME — the staleness guard on real strings', (
     const b = localBudget(scan, 'qwen3.5-122b-a10b');
     expect(b.basis).toBe(LOCAL_BASIS.stale);
     expect(b.limit).toBe(LOCAL_UNMEASURED_FLOOR);
+  });
+});
+
+// Design note, 2026-11-10: […] Every reader took
+// only the NEWEST scan, so A → B → back to A asked for a scan each time.
+describe('scanForModel — a model switch never throws a measurement away', () => {
+  const run = (id, model, ceiling, extra = {}) => ({ id, ceiling, incomplete: false, substrate: { model }, ...extra });
+  // newest first, as listCapacity answers; the models are this rig's own (2026-11-02..10)
+  const HAUHAU = '/models/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf';
+  const runs = [run('c', 'qwen3.8-27b-neuma-t4-q6k', 4), run('b', 'qwen3.8-27b-neuma-t3', 4), run('a', HAUHAU, 8)];
+
+  test('switching BACK to a scanned model reads its own scan, not the newest', () => {
+    expect(scanForModel(runs, HAUHAU)).toEqual({ run: runs[2], carriedFrom: null });
+    expect(scanForModel(runs, 'qwen3.8-27b-neuma-t3')).toEqual({ run: runs[1], carriedFrom: null });
+  });
+
+  test('a model never scanned CARRIES the newest finished scan, and names it', () => {
+    expect(scanForModel(runs, 'qwen3.8-27b-neuma-t4-iq3_m')).toEqual({ run: runs[0], carriedFrom: 'qwen3.8-27b-neuma-t4-q6k' });
+  });
+
+  test('a scan that never finished is never carried', () => {
+    const withPartial = [run('d', 'gemma-4-31b', 12, { incomplete: true }), ...runs];
+    expect(scanForModel(withPartial, 'qwen3.5-122b-a10b')).toEqual({ run: runs[0], carriedFrom: 'qwen3.8-27b-neuma-t4-q6k' });
+  });
+
+  test('no model known, or nothing finished: the newest run, exactly as before', () => {
+    expect(scanForModel(runs, null)).toEqual({ run: runs[0], carriedFrom: null });
+    expect(scanForModel(runs, 'local-model')).toEqual({ run: runs[0], carriedFrom: null });
+    const partial = [run('p', 'gemma-4-31b', 3, { incomplete: true })];
+    expect(scanForModel(partial, 'qwen3.5-122b-a10b')).toEqual({ run: partial[0], carriedFrom: null });
+    expect(scanForModel([], 'm')).toBeNull();
+  });
+
+  test('a CARRIED scan keeps its number, and the budget names both models', () => {
+    const b = localBudget({ ...runs[0], limitedBy: 'latency', carriedFrom: runs[0].substrate.model }, 'qwen3.8-27b-neuma-t4-iq3_m');
+    expect(b).toMatchObject({ limit: 4, basis: LOCAL_BASIS.carried });
+    expect(b.reason).toContain('qwen3.8-27b-neuma-t4-q6k');
+    expect(b.reason).toContain('qwen3.8-27b-neuma-t4-iq3_m');
+  });
+
+  test('THE REAL HISTORY on this machine: every scanned model reads its own scan', async () => {
+    const { listCapacity } = await import('../../backend/services/capacity-store.js');
+    const history = await listCapacity();
+    for (const r of history.filter((x) => x.incomplete !== true && Number.isFinite(x.ceiling) && x.substrate?.model)) {
+      const pick = scanForModel(history, r.substrate.model);
+      expect(pick.carriedFrom).toBeNull();
+      expect(sameSubstrate(pick.run.substrate?.model, r.substrate.model)).toBe(true);
+    }
   });
 });

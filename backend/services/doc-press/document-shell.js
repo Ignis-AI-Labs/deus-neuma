@@ -31,6 +31,27 @@ function kitTokens(kit) {
   return tokens.join('\n  ');
 }
 
+// A colour as CSS may carry it into a page rule: hex, rgb()/hsl(), or a name. Anything else is
+// left out of @page (a kit's colours are its author's, but a page rule is no place for markup).
+const CSS_COLOR = /^(#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla)\([0-9.,%\s]+\)|[a-zA-Z]{3,30})$/;
+
+// THE PAGE IS THE PAPER (deus-neuma #33): Chromium paints the body's background only inside the
+// print margins, so a tinted kit pressed a tinted box inside a white border on every page. A page
+// rule carrying the margin and the paper colour paints the whole sheet; the running header and
+// footer still print. Pure.
+function pageRule(kit) {
+  const paper = String(kit.colors?.paper || '').trim();
+  const margin = Number(kit.pdf?.marginCm);
+  const parts = [
+    Number.isFinite(margin) && margin >= 0 ? `margin: ${margin}cm;` : '',
+    CSS_COLOR.test(paper) ? `background: ${paper};` : '',
+  ].filter(Boolean);
+  return parts.length ? `@page { ${parts.join(' ')} }` : '';
+}
+
+/** The marker the badge's place carries until the press has drawn it at its printed size (chromium-press.js). */
+export const BADGE_MARK = '__PRESS_BADGE__';
+
 function iconStyles(kit) {
   return Object.keys(kit.logoData)
     .filter((key) => key !== 'primary')
@@ -67,6 +88,7 @@ export function buildDocumentHtml({ bodyHtml, kit, title }) {
 :root {
   ${kitTokens(kit)}
 }
+${pageRule(kit)}
 ${BASE_STYLES}
 ${kit.logoData.bullets ? CUSTOM_BULLET_STYLES : ''}
 ${iconStyles(kit)}
@@ -89,11 +111,15 @@ ${footer}
  * @param {object} params
  * @param {object} params.kit - Loaded brand kit
  * @param {string} params.title - Document title
- * @returns {{headerTemplate: string, footerTemplate: string}}
+ * @returns {{headerTemplate: string, footerTemplate: string, badge: string|null}} `badge` — the
+ *   kit's badge data URI, for the press to draw small and put in BADGE_MARK's place
  */
 export function buildPdfChrome({ kit, title }) {
+  // The running header is drawn on EVERY page and its image is not shared between them, so the badge
+  // rides as a marker the press fills with the badge drawn at its printed size (chromium-press.js):
+  // inlined whole, a 2 MB badge made a 10-page document 23 MB (deus-neuma #33).
   const badge = kit.logoData.badge
-    ? `<img src="${kit.logoData.badge}" style="height: 12px; margin-right: 5px; vertical-align: middle;" />`
+    ? `<img src="${BADGE_MARK}" style="height: 12px; margin-right: 5px; vertical-align: middle;" />`
     : '';
   const headerTemplate = kit.companyName || badge
     ? `<div style="display: flex; width: 100%; font-size: 8px; padding: 0 1cm; align-items: center; font-family: Arial, sans-serif; color: #666;">
@@ -102,5 +128,5 @@ export function buildPdfChrome({ kit, title }) {
 </div>`
     : '<div></div>';
   const footerTemplate = `<div style="width: 100%; text-align: center; font-size: 8px; font-family: Arial, sans-serif; color: #888;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>`;
-  return { headerTemplate, footerTemplate };
+  return { headerTemplate, footerTemplate, badge: kit.logoData.badge || null };
 }

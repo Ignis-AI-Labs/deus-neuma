@@ -47,8 +47,8 @@ const SeatCard = ({ card, wake, onSelect, onSheet }) => {
       {card.isActive ? <span className="house-seats-state label-data">LINKED</span> : null}
       <span className="house-seats-who">{card.name}</span>
       <WakeLabel wake={wake} />
-      <span className="house-seats-seat label-data">{card.title ? `${card.title}${card.position ? ` · ${card.position}` : ''}` : 'Seat not available'}</span>
-      {card.meaning ? <span className="house-seats-meaning label-data">{card.meaning}</span> : null}
+      <span className="house-seats-seat label-data">{card.title ? `${card.title}${card.position ? ` · ${card.position} — ${card.seat}` : ''}` : 'Seat not available'}</span>
+      {card.summary ? <span className="house-seats-meaning" title={card.meaning || undefined}>{card.summary}</span> : null}
       {footOf(card) ? <span className="house-seats-foot label-data">{footOf(card)}</span> : null}
       {select ? <Doors card={card} onSelect={onSelect} onSheet={onSheet} /> : null}
     </article>
@@ -69,8 +69,8 @@ const SeatRow = ({ card, wake, onSelect, onSheet }) => {
         {card.isActive ? <span className="house-seats-state label-data"> LINKED</span> : null}
         <WakeLabel wake={wake} />
       </td>
-      <td className="house-seats-seat label-data">{card.title ? `${card.title}${card.position ? ` · ${card.position}` : ''}` : 'Seat not available'}</td>
-      <td className="house-seats-meaning label-data">{card.meaning || ''}</td>
+      <td className="house-seats-seat label-data">{card.title ? `${card.title}${card.position ? ` · ${card.position} — ${card.seat}` : ''}` : 'Seat not available'}</td>
+      <td className="house-seats-meaning" title={card.meaning || undefined}>{card.summary || ''}</td>
       <td className="house-seats-foot label-data">
         {footOf(card)}
         {select ? <Doors card={card} onSelect={onSelect} onSheet={onSheet} /> : null}

@@ -1,6 +1,6 @@
 /**
  * THE CONNECTIONS PANEL in a real Chromium against the real backend (Settings → Security): every
- * connection listed from the app's one list, the seven that run by themselves reading OFF with what
+ * connection listed from the app's one list, the six that run by themselves reading OFF with what
  * the person does without while off, the install owner turning one on (it lands on disk), and a
  * guest's press answered with the server's own refusal. Real signed-wallet auth; nothing is mocked.
  * Screenshots land in test/e2e/shots/connections-*.png.
@@ -62,10 +62,10 @@ describe('the CONNECTIONS panel', () => {
   };
   const row = (page, id) => page.locator(`[data-connection="${id}"]`);
 
-  test('a fresh install: the seven that run by themselves read OFF and say what is lost; the rest happen only on use', async () => {
+  test('a fresh install: the six that run by themselves read OFF and say what is lost; the rest happen only on use', async () => {
     const page = await open(owner);
-    await pw(page.getByText('RUNS BY ITSELF · 0 OF 7 ON')).toBeVisible();
-    for (const id of ['update-check', 'security-watch', 'spellcheck', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge']) {
+    await pw(page.getByText('RUNS BY ITSELF · 0 OF 6 ON')).toBeVisible();
+    for (const id of ['update-check', 'security-watch', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge']) {
       await pw(row(page, id).locator('.conn-state')).toHaveText('OFF');
       await pw(row(page, id)).toContainText('While off:');
       await pw(row(page, id).getByRole('button', { name: 'TURN ON' })).toBeEnabled();
@@ -74,8 +74,8 @@ describe('the CONNECTIONS panel', () => {
     await pw(row(page, 'web')).toContainText('Settings → API');
     await pw(row(page, 'wallets').getByRole('button')).toHaveCount(0);
     // the privacy policy's whole paragraph, one press away
-    await row(page, 'spellcheck').getByText('MORE').click();
-    await pw(row(page, 'spellcheck')).toContainText('downloads a dictionary for it from Google');
+    await row(page, 'security-watch').getByText('MORE').click();
+    await pw(row(page, 'security-watch')).toContainText('run by Google');
     await page.screenshot({ path: shotPath('connections-fresh-1366'), fullPage: true });
     await page.close();
   }, 90_000);
@@ -93,7 +93,7 @@ describe('the CONNECTIONS panel', () => {
     const page = await open(owner);
     await row(page, 'update-check').getByRole('button', { name: 'TURN ON' }).click();
     await pw(row(page, 'update-check').locator('.conn-state')).toHaveText('ON');
-    await pw(page.getByText('RUNS BY ITSELF · 1 OF 7 ON')).toBeVisible();
+    await pw(page.getByText('RUNS BY ITSELF · 1 OF 6 ON')).toBeVisible();
     await pw(row(page, 'update-check')).not.toContainText('While off:');
     await pw(row(page, 'update-check')).toHaveClass(/is-on/);
     const saved = JSON.parse(await fs.readFile(path.join(dir, 'data', 'settings', 'connections.json'), 'utf8'));

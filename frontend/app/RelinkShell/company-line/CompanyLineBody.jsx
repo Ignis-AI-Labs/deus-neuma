@@ -11,6 +11,7 @@ import './CompanyLine.css';
 import { EmptyState } from '../empty-state.jsx';
 import { WorksheetView } from './WorksheetView.jsx';
 import { SalesSection } from './SalesSection.jsx';
+import { LeadEngineSection } from './LeadEngineSection.jsx';
 import { BooksSection } from './BooksSection.jsx';
 import { RaiseSection } from './RaiseSection.jsx';
 import {
@@ -229,6 +230,7 @@ export const CompanyLineBody = ({
             ))}
           </section>
           {onSales ? <SalesSection sales={sales} names={names} busy={busy} drafts={drafts} onDraft={onDraft} {...onSales} /> : null}
+          {onSales ? <LeadEngineSection /> : null}
           {onBooks ? <BooksSection books={books} names={names} busy={busy} {...onBooks} /> : null}
           {onRaise ? <RaiseSection raises={raises} drafts={drafts} busy={busy} onDraft={onDraft} {...onRaise} /> : null}
           <OpenForm draft={drafts._open ?? {}} busy={busy} onDraft={onDraft} onOpen={onOpen} />

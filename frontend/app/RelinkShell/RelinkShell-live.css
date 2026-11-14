@@ -1,8 +1,8 @@
-/* RelinkShell partial: LIVE (open mic, shared images, desk row, thought bubble, dictation) — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
-/* LIVE — the open mic. Same chamfered control register as the mic button;
-   wider because it carries a word, not a glyph. While on it breathes with
-   the mic's cadence so […] is always visible. */
-.relink-live,
+/* RelinkShell partial: TALK (the voice sitting's button), shared images, desk row, thought bubble, dictation — split of RelinkShell.css (SIZE-030, #377); rules moved byte-identical, order preserved. */
+/* TALK — the chat's voice sitting, beside the mic (it took the place of LIVE, the open mic, on
+   2026-11-13). Same chamfered control register as the mic button; wider because it carries a word,
+   not a glyph. */
+.relink-talk,
 .relink-refine {
   display: flex;
   align-items: center;
@@ -28,13 +28,13 @@
   transition: border-color var(--snap), color var(--snap);
 }
 
-.relink-live:hover:not(:disabled),
+.relink-talk:hover:not(:disabled),
 .relink-refine:hover:not(:disabled) {
   border-color: var(--signal-dim);
   color: var(--signal);
 }
 
-.relink-live:disabled,
+.relink-talk:disabled,
 .relink-refine:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -46,26 +46,9 @@
 .relink-refine.is-refining { color: var(--color-text-tertiary, var(--color-text-secondary)); }
 .relink-refine.is-refined { border-color: var(--signal-dim); color: var(--signal); }
 
-.relink-live.is-on {
+.relink-talk.is-on {
   border-color: var(--signal);
   color: var(--signal);
-}
-
-.relink-live.is-on.is-listening {
-  animation: mic-breathe 2.4s ease-in-out infinite;
-}
-
-.relink-live.is-on.is-capturing {
-  animation: mic-breathe 1.2s ease-in-out infinite;
-}
-
-.relink-live.is-on.is-transcribing {
-  animation: mic-breathe 0.6s ease-in-out infinite;
-}
-
-.relink-live.is-on.is-error {
-  border-color: var(--alert);
-  color: var(--alert);
 }
 
 /* --- Shared images (paste/drop into the composer) --- */

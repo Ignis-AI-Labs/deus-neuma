@@ -110,13 +110,16 @@ const _handleRetrieveResult = async (ws, connection, neumaPolicy, toolMode, args
     return { tool, status: 'error', error };
   }
 
+  // The chip says WHOSE result came back and which part, never the bare ref (Design note, 2026-11-14: a
+  // chip reading […] said nothing); the text itself opens under
+  // it (sendResultDetail, tool-events.js).
+  const part = retrieved.mode === 'page'
+    ? `page ${retrieved.start}-${retrieved.end} of ${retrieved.totalChars} chars`
+    : `${retrieved.mode} — ${retrieved.chunksReturned}/${retrieved.totalChunks} chunks, ${retrieved.response.length} chars`;
   _sendToolEvent(ws, companion, {
     tool,
     status: 'ok',
-    summary: `retrieved ${ref}${query ? ' (searched)' : ''}`,
-    detail: retrieved.mode === 'page'
-      ? `page ${retrieved.start}-${retrieved.end} of ${retrieved.totalChars} chars`
-      : `${retrieved.mode} — ${retrieved.chunksReturned}/${retrieved.totalChunks} chunks, ${retrieved.response.length} chars`,
+    summary: `retrieved ${record.tool || 'an earlier result'}${query ? ' (searched)' : ''} · ${part}`,
   });
   // Sub-cap by retrieveFromRecord's hard invariant — re-enters the round as a
   // normal <tool_response> with no re-compression and, because this branch

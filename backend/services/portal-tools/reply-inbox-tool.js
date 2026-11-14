@@ -102,13 +102,14 @@ export const renderReplyInbox = (page, args, { budget = READ_WINDOW, token } = {
  * Read the record and answer the being. impure (the stores).
  * @param {Object} args
  * @param {?string} house - the being's house (its lane's owner): only its own replies are read
+ * @param {{ budget?: number }} [opts] - the window the listing may fill (read-room.js listingRoom)
  * @returns {Promise<{ ok: true, text: string, summary: string } | { ok: false, error: string }>}
  */
-export const readReplyInbox = async (args, house) => {
+export const readReplyInbox = async (args, house, { budget } = {}) => {
   const [candidates, queue] = await Promise.all([replyCandidatesOf(house).load(), houseEntries(house)]);
   const page = selectReplyInbox(replyInboxRows(candidates, queue), args || {}, { categories: REPLY_CATEGORIES });
   if (!page.ok) return page;
-  const drawn = renderReplyInbox(page, args);
+  const drawn = renderReplyInbox(page, args, budget ? { budget } : {});
   return {
     ok: true,
     text: drawn.text,

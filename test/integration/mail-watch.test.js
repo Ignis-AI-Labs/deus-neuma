@@ -9,7 +9,8 @@
  * Under proof: with the connection off the watch never signs in; its first
  * look wakes nobody; a new message wakes the being that holds the mailbox, a
  * lead's reply wakes the Mercator — inside the charter, as a real turn that
- * names the sender and the message and never carries the message's words.
+ * names the sender and the message and never carries the message's words;
+ * and the lead's own record moves to replied, the reply marked as theirs.
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { createWakeHouse, WALLET, OPTIO, HOUSEMATE, until, userText } from '../helpers/house-wake-kit.js';
@@ -20,6 +21,7 @@ import { emailBinding } from '../../backend/services/email/email-binding.js';
 import { setEmailCredential } from '../../backend/services/email/email-credentials.js';
 import { croDesignation } from '../../backend/services/revenue/cro-designation.js';
 import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
+import { readSuppressions } from '../../backend/services/sales/sales-store.js';
 import { readWakeLedger } from '../../backend/services/house-clock/wake-ledger.js';
 import { mailWatchTick, routeMail, bareAddress } from '../../backend/services/mail-watch/mail-watch.js';
 
@@ -92,5 +94,24 @@ describe('the house mailbox watch — a reply wakes the right seat', () => {
     expect(rows.find((r) => r.seat === OPTIO && r.reason === 'mail')).toMatchObject({ outcome: 'done' });
     const asked = house.provider.turns.map(userText).find((t) => t.includes(`[message ${uid}]`));
     expect(asked).toContain(`from buyer@harbour.example, in the house's conversation with lead [${lead.id}] [message ${uid}]`);
+    // The ledger records the reply itself: replied, they wrote last (direction in).
+    const [after] = (await (await leadLedgerFor(WALLET)).load()).filter((l) => l.id === lead.id);
+    expect(after.status).toBe('replied');
+    expect(after.touches.at(-1)).toMatchObject({ status: 'replied', direction: 'in', note: `wrote to the house (mail #${uid})`, by: 'mail-watch' });
+  });
+
+  test('a lead asking to be left alone, or a bounce naming a lead\'s address, closes it and lists it never to contact — by fixed rules, before any being reads a word', async () => {
+    const ledger = await leadLedgerFor(WALLET);
+    const stop = await ledger.add({ name: 'Quay Co', contact: 'harbourmaster@quay.example', channelId: 'email', status: 'contacted', addedBy: OPTIO });
+    const gone = await ledger.add({ name: 'Old Pier', contact: 'gone@pier.example', channelId: 'email', status: 'contacted', addedBy: OPTIO });
+    const asked = imap.deliver({ from: 'Quay Co <harbourmaster@quay.example>', subject: 'Re: the weekly sheet', body: 'Please remove me from your list.\r\n\r\nOn Monday the Mercator wrote:\r\n> Hello' });
+    const bounced = imap.deliver({ from: 'Mail Delivery Subsystem <mailer-daemon@mail.example>', subject: 'Delivery Status Notification (Failure)', body: 'Final-Recipient: rfc822; gone@pier.example\r\nAction: failed' });
+    await mailWatchTick();
+    const after = await ledger.load();
+    expect(after.find((l) => l.id === stop.id)).toMatchObject({ status: 'lost' });
+    expect(after.find((l) => l.id === stop.id).touches.at(-1).note).toBe(`asked to be left alone (mail #${asked})`);
+    expect(after.find((l) => l.id === gone.id)).toMatchObject({ status: 'lost' });
+    expect(after.find((l) => l.id === gone.id).touches.at(-1).note).toBe(`address bounced (mail #${bounced})`);
+    expect((await readSuppressions(WALLET)).map((e) => [e.value, e.reason])).toEqual([['harbourmaster@quay.example', 'asked'], ['gone@pier.example', 'bounced']]);
   });
 });

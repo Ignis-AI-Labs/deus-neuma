@@ -142,5 +142,46 @@ test('TERMINAL: right-clicking a printed dev-server URL offers both browser door
 
   await page.mouse.click(point.x, point.y + 3 * 17, { button: 'right' });
   await expect(page.getByRole('menuitem', { name: 'Open in integrated browser' })).toHaveCount(0);
+
+  fs.writeFileSync(path.join(root, 'absolute.md'), '# absolute terminal link\n');
+  await screen.click();
+  await page.keyboard.type('clear');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type(`printf 'read ${root}/absolute.md\\n'`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const pathPoint = await screen.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const canvas = document.createElement('canvas').getContext('2d');
+    canvas.font = '13px "JetBrains Mono", monospace';
+    return { x: rect.left + ('read '.length + 0.5) * canvas.measureText('M').width, y: rect.top + 2.5 * 17 };
+  });
+  await page.mouse.click(pathPoint.x, pathPoint.y);
+  const editor = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'ABSOLUTE.MD' }) });
+  await expect(editor).toBeVisible({ timeout: 15_000 });
+  await expect(editor).toContainText('terminal link');
+  expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
+});
+
+test('TERMINAL: a cwd-relative filename opens the actual file on plain click', async ({ page }) => {
+  await openDockApp(page, 'TERMINAL');
+  const screen = page.locator('.terminal-stage .xterm-screen');
+  await expect(screen).toBeVisible();
+  await screen.click();
+  await page.keyboard.type('clear');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type("printf 'read package.json\\n'");
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const point = await screen.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const canvas = document.createElement('canvas').getContext('2d');
+    canvas.font = '13px "JetBrains Mono", monospace';
+    return { x: rect.left + ('read '.length + 0.5) * canvas.measureText('M').width, y: rect.top + 2.5 * 17 };
+  });
+  await page.mouse.click(point.x, point.y);
+  const editor = page.locator('.fwin', { has: page.locator('.fwin-bar-title', { hasText: 'PACKAGE.JSON' }) });
+  await expect(editor).toBeVisible({ timeout: 15_000 });
+  await expect(editor).toContainText('neuma');
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });

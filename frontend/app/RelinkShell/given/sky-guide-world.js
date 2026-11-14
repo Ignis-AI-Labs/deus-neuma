@@ -5,7 +5,8 @@
 export const WORLD_GUIDE = Object.freeze({
   hebrew: {
     title: 'THE HEBREW CALENDAR',
-    kicker: 'ISRAEL · THE JEWISH WORLD · ANCIENT AND STILL KEPT',
+    // a people's calendar, never a state's (Design note, 2026-11-14: Israel is not named on our star map)
+    kicker: 'THE JEWISH WORLD · ANCIENT AND STILL KEPT',
     what: 'The calendar of the Jewish year: lunar months kept in step with the seasons by adding a thirteenth month seven times in every nineteen years, so that Passover always falls in spring. Its years are counted from the traditional date of creation (Anno Mundi, 3761 BCE).',
     how: 'The fixed calendar, traditionally dated to the fourth century: each month starts from the molad, a calculated mean new moon, and the new year (1 Tishri) is moved by up to two days by four rules, so certain holy days never fall on the wrong weekday. Months are numbered from Nisan, as in the Torah, though the year number changes at Tishri in the autumn. Computed after Reingold and Dershowitz, Calendrical Calculations.',
     note: 'A Hebrew day begins at nightfall. A birth after dark belongs, in the tradition, to the next day; the date here is the civil day’s.',

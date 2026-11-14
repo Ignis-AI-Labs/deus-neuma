@@ -44,9 +44,11 @@ const field = (key, label, secret, env, fallback) =>
 // shows a CONNECT button for it, never an input.
 const connectField = (key, label, env) => Object.freeze({ ...field(key, label, true, env), connect: true });
 
-// A field of the developer APP (consumer key, OAuth client): stored once per
-// platform per house and shared by every account the app serves — the
-// platforms' own model (one app, many authorized accounts, one shared quota).
+// A field of the developer APP (consumer key, OAuth client). The first account's
+// app is the house app, and an account with no app keys of its own rides it (one
+// app, many authorized accounts: the OAuth platforms). An account pasted with its
+// own app keys uses its own (Design note, 2026-11-11: on X every account has its own
+// developer app — account-shape.js patchAccount).
 const appField = (key, label, secret, env) => Object.freeze({ ...field(key, label, secret, env), app: true });
 
 /** @type {ReadonlyArray<ChannelEntry>} */
@@ -56,8 +58,9 @@ export const CHANNEL_CATALOG = Object.freeze([
     name: 'X (Twitter)',
     maxChars: 280,
     fields: Object.freeze([
-      appField('apiKey', 'API Key', true, 'X_API_KEY'),
-      appField('apiSecret', 'API Key Secret', true, 'X_API_SECRET'),
+      // named as X's developer portal names them now (Consumer Key), with the older name beside it
+      appField('apiKey', 'Consumer Key (API Key)', true, 'X_API_KEY'),
+      appField('apiSecret', 'Consumer Key Secret', true, 'X_API_SECRET'),
       field('accessToken', 'Access Token', true, 'X_ACCESS_TOKEN'),
       field('accessSecret', 'Access Token Secret', true, 'X_ACCESS_SECRET'),
     ]),

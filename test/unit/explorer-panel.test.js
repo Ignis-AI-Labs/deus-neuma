@@ -1,58 +1,30 @@
 /**
  * Pure tests for the Explorer panel's decision helpers (Wave 3):
- *   focusRootsOf            — D6 tree scoping (folder / project / null lens)
- *   focusOwner              — the widen-to-project affordance's target
+ *   focusRootsOf            — D6 tree scoping (folder / null lens)
  *   releaseFocusOnRootClose — D9 second half: root close releases the focus
  *   normalizePanel          — persisted collapse-state boundary validation
  */
 
 import { describe, expect, test } from 'vitest';
 import {
-  focusRootsOf, focusOwner, releaseFocusOnRootClose,
+  focusRootsOf, releaseFocusOnRootClose,
 } from '../../frontend/app/RelinkShell/desk-focus.js';
 import {
   normalizeDeskPrefs, normalizePanel, clampPanelWidth,
   PANEL_WIDTH_MIN, PANEL_WIDTH_MAX, PANEL_WIDTH_DEFAULT,
 } from '../../frontend/app/windowing/window-storage.js';
 
-const projects = [
-  { id: 'p1', name: 'Alpha', folder: '/a', folders: [{ path: '/a' }, { path: '/b' }] },
-  { id: 'p2', name: 'Beta', folders: [] },
-];
-
 describe('focusRootsOf', () => {
   test('folder focus scopes to exactly that folder', () => {
-    expect(focusRootsOf({ kind: 'folder', path: '/x' }, projects, ['/x', '/y'])).toEqual(['/x']);
+    expect(focusRootsOf({ kind: 'folder', path: '/x' }, ['/x', '/y'])).toEqual(['/x']);
   });
 
-  test('project focus scopes to the project folders', () => {
-    expect(focusRootsOf({ kind: 'project', id: 'p1' }, projects, ['/z'])).toEqual(['/a', '/b']);
-  });
-
-  test('a project with no folders scopes to nothing', () => {
-    expect(focusRootsOf({ kind: 'project', id: 'p2' }, projects, ['/z'])).toEqual([]);
-  });
-
-  test('null focus and a stale project id fall back to allRoots', () => {
-    expect(focusRootsOf(null, projects, ['/x'])).toEqual(['/x']);
-    expect(focusRootsOf({ kind: 'project', id: 'ghost' }, projects, ['/x'])).toEqual(['/x']);
+  test('nothing in focus falls back to allRoots', () => {
+    expect(focusRootsOf(null, ['/x'])).toEqual(['/x']);
   });
 
   test('allRoots defaults to null — the unscoped lens', () => {
-    expect(focusRootsOf(null, projects)).toBeNull();
-  });
-});
-
-describe('focusOwner', () => {
-  test('a focused folder some project already holds is owned by it', () => {
-    expect(focusOwner({ kind: 'folder', path: '/b' }, projects)?.id).toBe('p1');
-  });
-
-  test('an unowned folder, a project focus, and no focus own nothing', () => {
-    expect(focusOwner({ kind: 'folder', path: '/nowhere' }, projects)).toBeNull();
-    expect(focusOwner({ kind: 'project', id: 'p1' }, projects)).toBeNull();
-    expect(focusOwner(null, projects)).toBeNull();
-    expect(focusOwner({ kind: 'folder', path: '/b' }, null)).toBeNull();
+    expect(focusRootsOf(null)).toBeNull();
   });
 });
 
@@ -61,9 +33,8 @@ describe('releaseFocusOnRootClose', () => {
     expect(releaseFocusOnRootClose({ kind: 'folder', path: '/a' }, '/a')).toBe(true);
   });
 
-  test('closing any other root, or under project/no focus, releases nothing', () => {
+  test('closing any other root, or with nothing in focus, releases nothing', () => {
     expect(releaseFocusOnRootClose({ kind: 'folder', path: '/a' }, '/b')).toBe(false);
-    expect(releaseFocusOnRootClose({ kind: 'project', id: 'p1' }, '/a')).toBe(false);
     expect(releaseFocusOnRootClose(null, '/a')).toBe(false);
   });
 });

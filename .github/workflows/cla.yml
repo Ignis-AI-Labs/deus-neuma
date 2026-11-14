@@ -11,6 +11,14 @@ on:
 permissions: {}
 jobs:
   cla:
+    # The company's own pull requests sign nothing to themselves: the export line (sync), the
+    # releases (dev) and the founder's line (main) from this repository, and anything opened by
+    # a member of the organisation. Everyone else signs once.
+    if: >-
+      !(github.event_name == 'pull_request_target'
+        && github.event.pull_request.head.repo.full_name == github.repository
+        && contains(fromJSON('["sync", "dev", "main"]'), github.event.pull_request.head.ref))
+      && !contains(fromJSON('["OWNER", "MEMBER"]'), github.event.pull_request.author_association)
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -28,5 +36,4 @@ jobs:
           path-to-signatures: signatures/cla.json
           path-to-document: https://github.com/Ignis-AI-Labs/deus-neuma/blob/main/CLA.md
           branch: cla-signatures
-          # the company's own pipeline identity (it commits every export) and its founder sign no CLA to themselves
-          allowlist: dependabot[bot],founder-account,Ignis AI Labs
+          allowlist: dependabot[bot]

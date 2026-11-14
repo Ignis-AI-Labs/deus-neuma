@@ -9,14 +9,13 @@ import { useStableList } from './use-stable-list.js';
 import { useTranslation } from 'react-i18next';
 import { StreamPanel } from './StreamPanel.jsx';
 import { StreamInput } from './StreamInput.jsx';
+import { TalkButton } from './ComposerTools.jsx';
 import { StreamTasks } from './StreamTasks.jsx';
 import { useConsciousness, useConsciousnessPick } from './consciousness-context.js';
 import { VoiceSitting } from './VoiceSitting/VoiceSitting.jsx';
 import { VoiceSittingMic } from './VoiceSittingMic.jsx';
-import { talkToggleModel } from './VoiceSitting/voice-sitting-model.js';
 import { BeingSwitcher } from './BeingSwitcher.jsx';
 import { useCompanionName } from './app-title.jsx';
-import { useProjects } from './projects/project-context.js';
 import { useTabs } from './tabs-context.js';
 import { StreamWindowHost } from './StreamWindowHost.jsx';
 import { TabPortalHost } from './TabPortalHost.jsx';
@@ -184,28 +183,20 @@ const StandbyToggle = () => {
 // supersedes — is the composer's ModeMenu now; the header toggle is gone
 // (Design note, 2026-08-26: […]).
 
-// Start a fresh chat without leaving the stream. Under an active project the
-// new chat joins it (portal-stream pins it at mint) — this is how a witness
-// starts a project-tied chat "from the stream" instead of routing through
-// the CHATS browser. The tooltip names the project ONLY when one is active,
-// so it never claims a join that won't happen (no project → general chat).
 // NEW CHAT — a fresh sitting IN THIS TAB, replacing what is on screen. Named in
 // full (Design note, 2026-07-30: […]) because the
 // strip beside it now offers + TAB, and the two are genuinely different acts:
 // this one replaces the conversation, that one opens another alongside it.
 const NewChatButton = () => {
   const { newSession } = useConsciousnessPick('newSession');
-  const projects = useProjects();
+  const council = useCouncil();
   const { t } = useTranslation('desk');
-  const active = projects?.activeProject || null;
   return (
     <button
       type="button"
       className="relink-snd"
-      title={active
-        ? t('stream.newChatTitleProject', { project: active.name, tab: t('stream.newTab') })
-        : t('stream.newChatTitle', { tab: t('stream.newTab') })}
-      onClick={() => { uiSound('activate'); newSession(); }}
+      title={t('stream.newChatTitle', { tab: t('stream.newTab') })}
+      onClick={() => { uiSound('activate'); council?.leaveRoom(); newSession(); }}
     >
       {t('stream.newChat')}
     </button>
@@ -246,33 +237,6 @@ const CouncilButton = () => {
   );
 };
 
-// THE TALK (Design note, 2026-08-01: […]).
-//
-// One button, one gesture. Work is not a mode you select — it is the desk as
-// it stands. TALK opens the sitting (purpose conversation, VOX on, LIVE armed,
-// the composer steps aside); pressing it again, EXIT, or Escape puts the desk
-// back. The backend's purpose law is untouched: this is still just which of
-// the two purposes gets declared.
-const TalkButton = () => {
-  const { voiceSittingActive, enterVoiceSitting, exitVoiceSitting } = useConsciousnessPick('voiceSittingActive', 'enterVoiceSitting', 'exitVoiceSitting');
-  const { t } = useTranslation('desk');
-  const model = talkToggleModel(voiceSittingActive);
-  return (
-    <button
-      type="button"
-      className={`relink-snd${model.live ? ' on' : ''}`}
-      aria-pressed={model.live}
-      title={t(`stream.${model.titleKey}`)}
-      onClick={() => {
-        uiSound('toggle');
-        if (model.live) exitVoiceSitting(); else enterVoiceSitting();
-      }}
-    >
-      {t(`stream.${model.labelKey}`)}
-    </button>
-  );
-};
-
 // A harness talks to the ONE server its person chose (the composer bar names it):
 // the house substrate's IGNITE and STANDBY would light or rest a second server.
 const ChatControls = () => {
@@ -281,7 +245,6 @@ const ChatControls = () => {
     <>
       <BeingSwitcher /><NewChatButton /><CouncilButton />
       {harness ? null : <><IgniteButton /><StandbyToggle /></>}
-      {isComingLater('voice') ? null : <TalkButton />}
       <SoundToggle />
     </>
   );
@@ -293,7 +256,7 @@ const ChatBody = () => {
   // strip uses, never a prop threaded through the desk.
   const tabs = useTabs();
   const { t } = useTranslation('desk');
-  const { state, sendThought, sendRetry, sendRevision, switchTake, stopThought, bargeIn, respondApproval, respondAsk, respondPlan, respondSeal, activeCompanion, heldCount, editQueuedThought, sendQueuedNow, pullQueuedThought, voiceSittingActive, exitVoiceSitting, getPlaybackState, purpose, wsService } = useConsciousness();
+  const { state, sendThought, sendRetry, sendRevision, switchTake, stopThought, bargeIn, respondApproval, respondAsk, respondPlan, respondSeal, activeCompanion, heldCount, editQueuedThought, sendQueuedNow, pullQueuedThought, voiceSittingActive, exitVoiceSitting, getPlaybackState, wsService } = useConsciousness();
   const council = useCouncil();
   // A message pulled back into the field for revision — corrected, not
   // talked around; seq re-seeds the same text twice. THE EDIT-FORK: the
@@ -430,15 +393,14 @@ const ChatBody = () => {
               onSendUrgent={sendUrgent}
               urgentTitle={t('stream.urgentTitle')}
               onStop={stopThought}
-              onBargeIn={bargeIn}
               // Escape's FIRST tap, empty field: the newest held word comes
               // home — the flow untouched. Armed only while words are held.
               onEscapeRecallQueued={heldCount > 0 && state.connected ? recallHeld : null}
               recall={recall}
               sentHistory={sentHistory}
               neumaId={activeCompanion?.neumaId || null}
-              purpose={purpose}
               wsService={wsService}
+              talk={isComingLater('voice') ? null : <TalkButton />}
             />
           </>
         )}

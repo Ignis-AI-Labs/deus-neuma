@@ -7,19 +7,10 @@
 
 import { Router } from 'express';
 import { default as workspace } from '../../core/workspace/neuma-workspace.js';
-import { buildDocs, isValidAt } from '../../core/memory/neuma-recall.js';
-import { normalizeSpace } from '../../core/memory/space.js';
-import { readContextMapField, toContextMapLabel } from '../services/context-map.js';
+import { readContextMapField } from '../services/context-map.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Workspace');
-
-// Space-scoped memory previews — the PROJECTS focus view's MEMORY panel.
-// Same privacy posture as the graph route below: bounded single-line labels,
-// never raw memory text on the wire. Only observations valid NOW (recall
-// semantics — superseded or not-yet-occurred drop out) in the requested
-// project space, newest-first. The general space is refused: […] is not a lens this panel offers.
-const SPACE_OBS_CAP = 50;
 
 export const createWorkspaceMemoryRouter = (requireOwnership) => {
   const router = Router();
@@ -40,29 +31,6 @@ export const createWorkspaceMemoryRouter = (requireOwnership) => {
     } catch (error) {
       log.error('Memory read', { error: error.message });
       res.status(500).json({ error: 'Failed to read memory' });
-    }
-  });
-
-  router.get('/:id/memory/observations', async (req, res) => {
-    try {
-      const requested = String(req.query.space ?? '');
-      const spaceId = normalizeSpace({ id: requested, kind: 'project' }).id;
-      if (!requested || spaceId === 'general') {
-        return res.status(400).json({ error: 'A project space id is required' });
-      }
-      const docs = buildDocs(await workspace.listObservations(req.params.id)); // newest first
-      const inSpace = docs.filter((d) => d.space.id === spaceId && isValidAt(d));
-      const observations = inSpace.slice(0, SPACE_OBS_CAP).map((d) => ({
-        id: d.obsId,
-        label: toContextMapLabel(d.memory),
-        at: d.occurredAt ?? null,
-      }));
-      const payload = { observations, total: inSpace.length };
-      if (inSpace.length > SPACE_OBS_CAP) payload.truncatedTo = SPACE_OBS_CAP;
-      res.json(payload);
-    } catch (error) {
-      log.error('Space memory read', { error: error.message });
-      res.status(500).json({ error: 'Failed to read project memory' });
     }
   });
 

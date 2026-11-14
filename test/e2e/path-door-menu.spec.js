@@ -79,7 +79,7 @@ test('right-click a tool line\'s path: open the file without moving focus; focus
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-test('plain-click a focused project\'s relative PNG and folder: image viewer first, Files lens for the folder', async ({ page }) => {
+test('plain-click a focused folder\'s relative PNG and folder: image viewer first, Files lens for the folder', async ({ page }) => {
   test.setTimeout(120_000);
   const dir = await makeFolder('relative-door');
   await fs.promises.mkdir(path.join(dir, 'docs', 'design'), { recursive: true });

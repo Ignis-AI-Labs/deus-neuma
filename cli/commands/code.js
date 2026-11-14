@@ -15,7 +15,11 @@ import fs from 'node:fs/promises';
 import readline from 'node:readline';
 import { resolveChainConfig } from '../lib/chain-config.js';
 import { findProjectRoot } from '../lib/project-root.js';
+import { HELP, runWorkCommand, checkOnNote, commitOnNote, startCommentWatch } from '../lib/code-commands.js';
+import { committedTurn, isRepository } from '../lib/turn-commits.js';
+import { turnWithCheck } from '../lib/check-after-turn.js';
 import { peekActiveBeing } from '../lib/active-being.js';
+import { mountSeat } from '../lib/seat-mount.js';
 import { stageAttachments } from '../lib/attachments.js';
 import { createCliPortal } from '../lib/terminal-portal.js';
 import { resolveSeatLane, listNeumaSeats } from './agent.js';
@@ -35,24 +39,6 @@ export const resolveDefaultWorkspace = ({ flag, env, active, count, laneIds }) =
 /** One staged attachment entry (a path + how it will ride). Pure. */
 export const describeStaged = (staged) => staged.map((s, i) => `  ${i + 1}. [${s.kind}] ${s.path}`).join('\n');
 
-const HELP = Object.freeze(`
-commands:
-  /attach <paths...>   stage images (png/jpg/webp/gif) or text docs for the next turn
-  /detach              drop every staged attachment
-  /status              seat, session, substrate + vision, staged, usage
-  /server              the machine + LLM serving status, live
-  /model               this being's route — natal / override / effective
-  /model set <p/m>     switch the route (sovereign doors only)
-  /model natal         clear the override — ride the machine default
-  /new                 end this session — the next turn opens a fresh one
-  /being               seat another member of the house (picker)
-  /being <name|lane>   seat directly
-  /preset <name>       inference preset for the next turns (grounded/balanced/expansive)
-  /help                this list
-  /quit                leave the harness (Ctrl+C twice at the prompt works too)
-
-a trailing \\ continues the line; anything that is not a command is a turn.`);
-
 // impure — the substrate + vision truth for /status, resolved live from the
 // same stores the turn path uses. Never throws; unknown reads as unknown.
 const describeRoute = async (laneId) => {
@@ -68,51 +54,6 @@ const describeRoute = async (laneId) => {
     const caps = await getActiveModelCapabilities().catch(() => null);
     return `machine default — vision: ${caps?.vision ? 'yes' : 'no/unknown'}`;
   }
-};
-
-/** The harness session state, rebuilt on /being. impure (stores, fs). */
-const mountSeat = async ({ laneId, ground, yes, wallet }) => {
-  const [
-    { default: workspace },
-    { createPortalConnection },
-    { addAllowedTool },
-    { verifyLaneOwnership },
-    { readExecutionToolPolicy },
-  ] = await Promise.all([
-    import('../../core/workspace/neuma-workspace.js'),
-    import('../../backend/services/portal-connection.js'),
-    import('../../backend/services/tool-policy.js'),
-    import('../../backend/services/lane-ownership.js'),
-    import('../../backend/services/execution-tool-policy.js'),
-  ]);
-  const descriptor = (await listNeumaSeats(workspace)).find((e) => e.laneId === laneId);
-  // Desk parity: the seat verifies the operator owns the lane and never
-  // claims one (a read never claims); a foreign lane is refused.
-  const claim = await verifyLaneOwnership({ workspace, neumaId: laneId, wallet });
-  if (!claim.ok) {
-    const why = claim.reason === 'not-owner' ? `${laneId} belongs to another wallet`
-      : claim.reason === 'not-found' ? `${laneId} holds no being to seat`
-        : claim.reason === 'unclaimed' ? `${laneId} has no owner yet — claim it at the desk first`
-          : `${laneId} could not be verified (${claim.reason})`;
-    throw new Error(why);
-  }
-  const connection = createPortalConnection({ ws: { send() {} }, walletAddress: wallet });
-  connection.companion = {
-    name: descriptor.name,
-    id: descriptor.name,
-    neumaId: laneId,
-    participantKind: 'neuma',
-  };
-  connection.neumaId = laneId;
-  connection.sessionId = null;
-  connection.space = 'general';
-  connection.purpose = 'work';
-  connection.toolMode = 'ask';
-  connection.toolWorkspace = ground;
-  connection.voiceEnabled = false;
-  connection._neumaToolPolicy = await readExecutionToolPolicy(laneId);
-  connection._sessionToolPolicy = yes ? addAllowedTool(null, 'coding', 'execute') : null;
-  return { connection, name: descriptor.name };
 };
 
 /**
@@ -209,6 +150,11 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
   const seated = () => live.connection !== null;
   let preset = typeof argv.preset === 'string' && argv.preset ? argv.preset : undefined;
   let staged = [];
+  // The operator's check (check-after-turn.js): off unless --check or /check names one.
+  const checks = { command: typeof argv.check === 'string' && argv.check.trim() ? argv.check.trim() : null };
+  // The commit switch (turn-commits.js): off unless --commit or /commit on, and only in a repository.
+  const commits = { on: Boolean(argv.commit) && isRepository(findProjectRoot(ground)) };
+  let turnInterrupted = false;
 
   const interruptTurn = () => {
     live.connection.interruptRequested = true;
@@ -229,6 +175,8 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
   };
 
   if (seated()) stderr.write(`[${live.name} · neuma code · ${ground}]\n${HELP.trim()}\n\n`);
+  if (checks.command) stderr.write(`${checkOnNote(checks.command)}\n\n`);
+  if (argv.commit) stderr.write(`${commitOnNote(findProjectRoot(ground), commits.on)}\n\n`);
   else stdout.write(`${formatHouseRoster(seats)}\n`);
   const rl = readline.createInterface({ input: stdin, output: stdout, prompt: seated() ? `${live.name} › ` : 'seat › ' });
   // Async continuations (turn finallys, pick answers) may run after a piped
@@ -262,7 +210,8 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
   };
 
   const runTurn = async (thought) => {
-    rl.pause();
+    // Piped input can end while /review is still reading git: nothing left to pause.
+    if (!closed) rl.pause();
     inTurn = true;
     stdout.write('\n');
     let attachments;
@@ -282,6 +231,7 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
     } catch (error) {
       stderr.write(`  turn failed — ${error.message}\n`);
     } finally {
+      turnInterrupted = Boolean(live.connection.interruptRequested);
       live.connection.interruptRequested = false;
       inTurn = false;
       if (!closed) {
@@ -317,10 +267,17 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
     }
   };
 
+  // The ordinary turn: the operator's words, then their check if one is on.
+  const workTurn = async (thought) => {
+    const say = (text) => stderr.write(`${text}\n`);
+    const run = () => turnWithCheck({ thought, command: checks.command, ground, runTurn, say, interrupted: () => turnInterrupted });
+    const done = commits.on ? await committedTurn({ root: findProjectRoot(ground), request: thought, being: live.name, run, say }) : await run();
+    if (done.checks > 0 || commits.on) safePrompt();
+  };
+
   const dispatchLine = async (line) => {
     if (!line.startsWith('/') || line.startsWith('//')) {
-      const thought = line.startsWith('//') ? line.slice(1) : line;
-      await runTurn(thought);
+      await workTurn(line.startsWith('//') ? line.slice(1) : line);
       return;
     }
     const [cmd, ...rest] = line.slice(1).split(/\s+/);
@@ -369,7 +326,12 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
         break;
       case 'quit':
       case 'exit': rl.close(); return;
-      default: stderr.write(`  unknown command /${cmd} — /help lists them\n`);
+      default: {
+        const work = await runWorkCommand({ cmd, argText, connection: live.connection, ground, runTurn, checks, commits, being: live.name });
+        if (work.ran) return;
+        if (work.known) stdout.write(`${work.said}\n`);
+        else stderr.write(`  unknown command /${cmd} — /help lists them\n`);
+      }
     }
     safePrompt();
   };
@@ -431,8 +393,11 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
     stdout.write('\n(again to exit — /quit also leaves)\n');
     safePrompt();
   });
+  // AI comments (watch-comments.js): an instruction saved in any editor queues like a typed line.
+  const watch = argv.watch ? startCommentWatch({ ground, stderr, enqueue, seated, live, workTurn, runTurn }) : null;
   rl.on('close', () => {
     closed = true;
+    watch?.stop();
     if (live.connection) {
       const sessionId = live.portal.state.sessionId || live.connection.sessionId || 'unrecorded';
       stderr.write(`[${live.name} · ${live.portal.state.acts} act(s) · session ${sessionId}]\n`);
@@ -461,6 +426,9 @@ export const registerCodeCommand = (cli, { stdout = process.stdout, stderr = pro
       .option('ground', { describe: 'working directory the being may act on (default: current directory)', type: 'string' })
       .option('session', { describe: 'resume an existing session id', type: 'string' })
       .option('preset', { describe: 'inference preset — grounded | balanced | expansive', type: 'string' })
+      .option('watch', { describe: 'act on comments ending in AI! (do it) or AI? (answer) saved in any editor', type: 'boolean', default: false })
+      .option('commit', { describe: 'commit each request\'s file changes to git, with a message from your request', type: 'boolean', default: false })
+      .option('check', { describe: 'your lint or test command — runs after every turn that changes files; a failure goes back to the being', type: 'string' })
       .option('yes', { describe: 'pre-approve sandboxed coding/execute for this sitting', type: 'boolean', default: false }),
     async (argv) => {
       const terminalProcess = stdout === process.stdout && stderr === process.stderr;

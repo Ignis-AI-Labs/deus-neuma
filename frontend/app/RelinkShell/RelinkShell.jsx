@@ -28,8 +28,6 @@ import { FlowRail } from './flow-rail.jsx';
 import { useDeskPulse } from './use-desk-pulse.js';
 import { SessionClock } from './SessionClock.jsx';
 import { latestSentId, countTurns, deskChromeName } from './desk-pulse.js';
-import { ProjectContext } from './projects/project-context.js';
-import { useProjectsState } from './projects/use-projects.js';
 import { focusLabel } from './desk-focus.js';
 import { useDeskFocus, FocusContext } from './use-desk-focus.js';
 import { normalizeFocus } from './desk-focus.js';
@@ -65,7 +63,6 @@ import { imageApp } from './files/ImageApp.jsx';
 import { terminalApp } from './terminal/TerminalApp.jsx';
 import { comfyUIWorkbenchApp } from './ComfyUIWorkbenchApp.jsx';
 import { galleryApp } from './gallery/GalleryApp.jsx';
-import { projectsApp } from './projects/ProjectsApp.jsx';
 import { mapApp } from './MapApp.jsx';
 import { dataApp } from './DataApp.jsx';
 import { settingsApp } from './SettingsApp.jsx';
@@ -104,19 +101,14 @@ import { UpdateBar } from './UpdateBar.jsx';
 import { deskRegistryFor, isHarness } from '../harness-mode.js';
 
 // Voice and the 3D body are held back from the early release (coming-later.js).
-const REGISTRY = withoutComingLater({ chat: chatApp, house: houseApp, refinement: refinementApp, sovereignty: sovereigntyApp, innerlife: innerLifeApp, teams: teamsApp, workflow: workflowApp, todo: todoApp, avatar: avatarApp, vessel: vesselApp, chats: chatsApp, sheet: sheetApp, stats: statsApp, skills: skillsApp, contextmap: contextMapApp, map: mapApp, db: dataApp, files: filesApp, editor: editorApp, pdf: pdfApp, image: imageApp, terminal: terminalApp, comfyui: comfyUIWorkbenchApp, gallery: galleryApp, projects: projectsApp, substrate: substrateApp, wallet: walletApp, voice: voiceApp, settings: settingsApp, security: securityApp, legal: legalApp, treasury: treasuryApp, staff: staffApp, houseclock: houseClockApp, companyline: companyLineApp, bench: benchApp, ...outreachApps, witnesses: witnessesApp });
+const REGISTRY = withoutComingLater({ chat: chatApp, house: houseApp, refinement: refinementApp, sovereignty: sovereigntyApp, innerlife: innerLifeApp, teams: teamsApp, workflow: workflowApp, todo: todoApp, avatar: avatarApp, vessel: vesselApp, chats: chatsApp, sheet: sheetApp, stats: statsApp, skills: skillsApp, contextmap: contextMapApp, map: mapApp, db: dataApp, files: filesApp, editor: editorApp, pdf: pdfApp, image: imageApp, terminal: terminalApp, comfyui: comfyUIWorkbenchApp, gallery: galleryApp, substrate: substrateApp, wallet: walletApp, voice: voiceApp, settings: settingsApp, security: securityApp, legal: legalApp, treasury: treasuryApp, staff: staffApp, houseclock: houseClockApp, companyline: companyLineApp, bench: benchApp, ...outreachApps, witnesses: witnessesApp });
 
 const shortWallet = () => formatAddress(localStorage.getItem('walletAddress'), { prefix: 'OPERATOR ' });
 
 export const RelinkShell = ({ wsService }) => {
-  // Project state lives at the desk level, shared with every window via context.
-  // Created before the stream so the working lens can ride every turn (a chat
-  // started under a project joins it and scopes the neuma's memory to it).
-  const projects = useProjectsState();
   // THIS window's working focus (D2/D11) — client-held, per-slot persisted,
-  // shared with every window via FocusContext. Carries the legacy
-  // active-project compat shim until Waves 2-3 ship the switching UX.
-  const deskFocus = useDeskFocus({ activeProject: projects.activeProject });
+  // shared with every window via FocusContext: the folder in focus, or none.
+  const deskFocus = useDeskFocus();
   // THE STREAM IS CREATED BELOW, after `tabs` — it must read the ANCHOR
   // tab's ground, and the tabs state is where the anchor lives (2026-09-01).
   // THE TAB STRIP's state lives HERE, beside the stream, so a sitting outlives
@@ -223,8 +215,6 @@ export const RelinkShell = ({ wsService }) => {
   // elsewhere). An unassigned anchor stays unassigned.
   const consciousness = useConsciousnessStream(wsService, {
     focus: tabs.anchorGround ?? null,
-    projects: projects.projects,
-    onProjectChatCreated: projects.refresh,
   });
 
   useReconnectReload(wsService, { resumeSession: consciousness.resumeSession, messages: consciousness.state.messages });
@@ -237,7 +227,6 @@ export const RelinkShell = ({ wsService }) => {
   // a sitting outlives the COUNCIL window (one stream state, many windows).
   const council = useCouncilStream(wsService, {
     focus: deskFocus.focus,
-    projects: projects.projects,
   });
 
   // EVERY TEAM RUN the operator's portal carries, whatever tab or lead filed
@@ -270,9 +259,8 @@ export const RelinkShell = ({ wsService }) => {
   // the notification tray's mark and section (bottom-right, with the MANDATE
   // row) and every platform window's band.
   const waiting = useWaiting(wsService);
-  // What the strip shows for this window's lens — project name + working
-  // folder, bare folder + branch, or nothing (exactly a no-project desk).
-  const stripLabel = focusLabel(deskFocus.focus, projects.projects);
+  // What the strip shows for this window's lens — the folder in focus, or nothing.
+  const stripLabel = focusLabel(deskFocus.focus);
 
   // THE EXPLORER PANEL (D6/D12) — the persistent left rail. Collapse is this
   // desk's own choice (wallet+slot persisted, validated on read); the dock's
@@ -322,13 +310,8 @@ export const RelinkShell = ({ wsService }) => {
             ticks in its own component so the tick never re-renders the desk. */}
         <SessionClock linkCls={route.cls} />
         <span className="relink-status-turn">{t('hud.turn', { count: countTurns(consciousness.state.messages) })}</span>
-        {stripLabel?.kind === 'project' ? (
-          <span className="relink-status-project">{t('hud.project', { name: stripLabel.name })}</span>
-        ) : null}
         {stripLabel?.folder ? (
-          <span className="relink-status-folder">
-            {t('hud.folder', { name: stripLabel.folder.name })}{stripLabel.folder.branch ? ` · ${stripLabel.folder.branch}` : ''}
-          </span>
+          <span className="relink-status-folder">{t('hud.folder', { name: stripLabel.folder.name })}</span>
         ) : null}
         <span className="relink-status-wallet">{shortWallet()}</span>
       </header>
@@ -344,34 +327,32 @@ export const RelinkShell = ({ wsService }) => {
         <CompositionContext.Provider value={composition}>
           <CouncilContext.Provider value={council}>
           <TeamRunsContext.Provider value={teamRuns}>
-            <ProjectContext.Provider value={projects}>
-              <FocusContext.Provider value={groundedFocus}>
-                {/* The desk row (D6): the Explorer rail + the window region.
-                    The region element is what snap/drag bounds derive from
-                    (setDeskRegion), so windows stay clear of the panel. */}
-                <div className="relink-main">
-                  <WindowManager registry={deskRegistryFor(REGISTRY, consciousness.activeCompanion)} defaultOpen={['chat']}>
-                    <ExplorerPanel collapsed={panelCollapsed} onToggle={togglePanel} width={panelWidth} onWidth={onPanelWidth} />
-                    {/* Ctrl+click a path a being named and land there. Renders
-                        nothing until it has a refusal to report. */}
-                    <PathOpener />
-                    {/* Every image and clip's right-click menu (media-menu.js). */}
-                    <MediaMenuHost />
-                    <NewStreamKey />
-                    <div className="relink-desk" ref={setDeskRegion}>
-                      <WindowLayer />
-                      <Dock panelState={dockPanels} onPanelToggle={togglePanel} />
-                      {/* The announcement lane (bottom-right). Inside the window
-                          manager because a card's click raises a window, and
-                          above the dock's band rather than beside it. */}
-                      <NotificationTray />
-                      {/* A WAITING ON YOU row's jump, carried out where windows open. */}
-                      <WaitingJumps />
-                    </div>
-                  </WindowManager>
-                </div>
-              </FocusContext.Provider>
-            </ProjectContext.Provider>
+            <FocusContext.Provider value={groundedFocus}>
+              {/* The desk row (D6): the Explorer rail + the window region.
+                  The region element is what snap/drag bounds derive from
+                  (setDeskRegion), so windows stay clear of the panel. */}
+              <div className="relink-main">
+                <WindowManager registry={deskRegistryFor(REGISTRY, consciousness.activeCompanion)} defaultOpen={['chat']}>
+                  <ExplorerPanel collapsed={panelCollapsed} onToggle={togglePanel} width={panelWidth} onWidth={onPanelWidth} />
+                  {/* Ctrl+click a path a being named and land there. Renders
+                      nothing until it has a refusal to report. */}
+                  <PathOpener />
+                  {/* Every image and clip's right-click menu (media-menu.js). */}
+                  <MediaMenuHost />
+                  <NewStreamKey />
+                  <div className="relink-desk" ref={setDeskRegion}>
+                    <WindowLayer />
+                    <Dock panelState={dockPanels} onPanelToggle={togglePanel} />
+                    {/* The announcement lane (bottom-right). Inside the window
+                        manager because a card's click raises a window, and
+                        above the dock's band rather than beside it. */}
+                    <NotificationTray />
+                    {/* A WAITING ON YOU row's jump, carried out where windows open. */}
+                    <WaitingJumps />
+                  </div>
+                </WindowManager>
+              </div>
+            </FocusContext.Provider>
           </TeamRunsContext.Provider>
           </CouncilContext.Provider>
         </CompositionContext.Provider>

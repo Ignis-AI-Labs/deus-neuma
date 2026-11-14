@@ -21,6 +21,7 @@ import { gateAct } from '../act-gate.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { publishEntry } from '../social/post-scheduler.js';
 import { replyMandateFor, sendReplyUnderMandate } from '../marketing/mandate/mandate-act.js';
+import { tierWords } from '../marketing/mandate/reply-tier.js';
 
 // impure — stage a FOLLOW-UP to one of the house's own queued posts: the
 // thread lane (Founder/Kagipem 2026-07-29). The same machinery as the
@@ -262,10 +263,12 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   // ALWAYS granted here never unlocks post_to_x or queue_post_to_x. An
   // interrupt that landed while the card waited stops the staging too.
   // THE MANDATE (marketing/mandate/): with replies granted, an in-scope answer needs no card.
+  // An EASY answer needs no card; an AWARENESS one stages for the operator with its reasons.
   const mandated = await replyMandateFor({
     laneId: companion?.neumaId || null, accountId, sessionId: connection.sessionId || null, postId: candidate.postId, answering: candidate.text,
+    category: candidate.category || 'ordinary', text, raised: args?.awareness === true,
   });
-  const gate = mandated ? { ok: true } : await gateAct(connection, {
+  const gate = mandated.covered ? { ok: true } : await gateAct(connection, {
     server: 'social', tool: toolName,
     cardArgs: {
       text,
@@ -314,10 +317,13 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: content });
     return { tool, status: 'error', error: content };
   }
-  const sent = mandated ? await sendReplyUnderMandate({ laneId: companion.neumaId, entry, publish: publishEntry, sessionId: connection.sessionId || null }) : null;
+  const sent = mandated.covered ? await sendReplyUnderMandate({ laneId: companion.neumaId, entry, publish: publishEntry, sessionId: connection.sessionId || null }) : null;
+  const why = mandated.tier?.tier === 'awareness' ? ` Your mandate leaves this one to your operator — awareness: ${tierWords(mandated.tier)}.`
+    : sent?.tripped ? ` Your mandate is now PAUSED (${sent.reason}).`
+      : sent ? ` Your mandate does not cover this one (${sent.reason}).` : '';
   const content = sent?.covered
     ? `Answered @${candidate.username || 'the account'} under your mandate (${entry.id}): ${sent.outcome?.ok ? `live as post ${sent.outcome.id}` : `the send did not land — ${sent.outcome?.detail || 'unknown'}`}. Your operator sees it in DONE FOR YOU.`
-    : `Staged reply draft ${entry.id} answering @${candidate.username || 'the account'}. Nothing is published yet — your operator decides this answer, and the moment they approve it, it goes out.${sent?.tripped ? ` Your mandate is now PAUSED (${sent.reason}).` : sent?.held ? ` Your mandate does not cover this one (${sent.reason}).` : ''}`;
+    : `Staged reply draft ${entry.id} answering @${candidate.username || 'the account'}. Nothing is published yet — your operator decides this answer, and the moment they approve it, it goes out.${why}`;
   _sendToolEvent(ws, companion, {
     tool, status: 'ok',
     summary: sent?.covered ? `reply sent under your mandate (${entry.id})` : `reply queued for ${channel.name} (draft ${entry.id})`,
@@ -391,7 +397,15 @@ export const handleNeumaReplyDismiss = async (ws, connection, neumaPolicy, toolM
     _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: marked.error });
     return { tool, status: 'error', error: marked.error };
   }
-  const content = `Set aside the reply from @${candidate.username || 'the account'}${reason ? ` (${reason})` : ''}. The record of what they said stands; the house simply will not engage it, and it stops surfacing as answerable.`;
+  // A reply set aside is not engaged (Design note, 2026-11-12: an unsent answer to it
+  // is pulled with it, so no draft to a binned reply waits to be approved.
+  const pulled = [];
+  for (const e of await laneHouseEntries(companion?.neumaId).catch(() => [])) {
+    if (e?.kind !== 'reply' || e.reply?.toPostId !== candidate.postId || !['draft', 'approved'].includes(e.status)) continue;
+    const out = await postQueue.withdraw(e.id, { withdrawnBy: companion?.name || 'being', reason: reason || 'the reply it answered was set aside' }).catch(() => ({ ok: false }));
+    if (out.ok) pulled.push(e.id);
+  }
+  const content = `Set aside the reply from @${candidate.username || 'the account'}${reason ? ` (${reason})` : ''}. The record of what they said stands; the house simply will not engage it, and it stops surfacing as answerable.${pulled.length ? ` Its unsent answer ${pulled.join(', ')} was pulled with it and will never publish.` : ''}`;
   _sendToolEvent(ws, companion, {
     tool, status: 'ok',
     summary: `reply set aside (${channel.name})`,

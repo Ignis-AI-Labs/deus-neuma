@@ -25,6 +25,8 @@ import { materializeReplyCandidates } from '../social/reply-listener.js';
 import { readXMe, readXListings, formatXReadForBeing, renderXListing, postIdFrom } from '../social/x-reader.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
+import { listingRoom } from '../read-room.js';
+import { QUEUE_RETRACT_TOOL, handleQueueRetract } from './queue-retract-tool.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { REPLIES_LIST_TOOL, readReplyInbox } from './reply-inbox-tool.js';
 import { PLATFORM_READ_NAMES, readPlatformForBeing } from './platform-read-tools.js';
@@ -89,7 +91,9 @@ const QUEUE_GET_TOOL = Object.freeze({
 // queue rendered 17,396 chars into a 4,000-char window). So a listing fits
 // itself in whole records instead, and the reserve covers the
 // `social/<tool> → ok` line the exchange prepends before the cap is measured.
-const READ_WINDOW = TOOL_RESULT_MAX_CHARS - 120;
+// The window is the ROOM's (read-room.js listingRoom, Design note, 2026-11-12, and the
+// result carries the cap that admits it whole.
+const capFor = (text) => Math.max(TOOL_RESULT_MAX_CHARS, String(text || '').length + 120);
 
 const READ_X_TOOL = Object.freeze({
   name: 'read_x',
@@ -115,7 +119,7 @@ const READ_X_TOOL = Object.freeze({
 const QUEUE_CANCEL_TOOL = Object.freeze({
   name: 'queue_cancel',
   server: 'social',
-  description: 'Pull a staged post back before it publishes — args {id, reason?}. Use the FULL id from queue_list. The entry is marked rejected and will never be sent; it stays in the record so the decision is auditable. A post that already went out cannot be cancelled — say so plainly rather than implying you recalled it.',
+  description: 'Pull a staged post or reply back before it publishes — args {id, reason?}. Use the FULL id from queue_list. One YOU drafted is pulled at once, no card; anyone else\'s asks your operator. The entry is marked withdrawn and will never be sent; it stays in the record so the decision is auditable. A post that already went out cannot be cancelled — say so plainly rather than implying you recalled it.',
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({
@@ -126,7 +130,7 @@ const QUEUE_CANCEL_TOOL = Object.freeze({
   }),
 });
 
-const SOCIAL_TOOLS = Object.freeze([QUEUE_LIST_TOOL, QUEUE_GET_TOOL, READ_X_TOOL, QUEUE_CANCEL_TOOL, REPLIES_LIST_TOOL]);
+const SOCIAL_TOOLS = Object.freeze([QUEUE_LIST_TOOL, QUEUE_GET_TOOL, READ_X_TOOL, QUEUE_CANCEL_TOOL, REPLIES_LIST_TOOL, QUEUE_RETRACT_TOOL]);
 // The platform account reads (read_youtube, read_tiktok…) are advertised per
 // connected platform (channelToolsFor); they are handled here.
 const SOCIAL_TOOL_NAMES = new Set([...SOCIAL_TOOLS.map((t) => t.name), ...PLATFORM_READ_NAMES]);
@@ -146,6 +150,9 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     : String(match.tool || '').replace(/^social\//, '');
   const tool = `social/${toolName}`;
   const { companion } = connection;
+  // Taking back what the house already SAID is its own act (queue-retract-tool.js).
+  if (toolName === 'queue_retract') return handleQueueRetract(ws, connection, neumaPolicy, toolMode, args);
+  const budget = listingRoom(connection._turnRoom);
 
   const policy = resolvePolicy(GLOBAL_DEFAULTS, neumaPolicy, connection._sessionToolPolicy || null);
   const baseAccess = checkToolAccess(policy, 'social', toolName);
@@ -201,7 +208,11 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     cancelTarget = entry;
   }
 
-  if (access === 'approval_required') {
+  // A being pulls back ITS OWN unsent post or reply with no card (Founder
+  // 2026-11-12: […]): pulling
+  // makes nothing public. Anyone else's entry still asks the operator.
+  const ownPull = Boolean(cancelTarget?.authorNeumaId) && cancelTarget.authorNeumaId === companion?.neumaId;
+  if (access === 'approval_required' && !ownPull) {
     const cardArgs = toolName === 'read_x'
       ? { what: args?.what, ...(args?.limit !== undefined ? { limit: args.limit } : {}) }
       : toolName === 'queue_get' ? { id: args?.id }
@@ -270,7 +281,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
       // middle-fold severs an entry mid-copy, and a queue read is whole posts
       // or it is nothing. `drawn.shown` is what actually crossed, which is
       // what the chip must count.
-      const drawn = drawQueueSelection(selection, { budget: READ_WINDOW });
+      const drawn = drawQueueSelection(selection, { budget });
       _sendToolEvent(ws, companion, {
         tool,
         status: 'ok',
@@ -278,7 +289,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
           ? `${drawn.shown} of ${selection.matched} staged post(s)`
           : `${drawn.shown} staged post(s)`,
       });
-      return { tool, status: 'ok', content: drawn.text };
+      return { tool, status: 'ok', content: drawn.text, cap: capFor(drawn.text) };
     } catch (err) {
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: err.message });
       return { tool, status: 'error', error: err.message };
@@ -287,13 +298,13 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
 
   if (toolName === 'replies_list') {
     try {
-      const read = await readReplyInbox(args, await houseOfLane(companion?.neumaId));
+      const read = await readReplyInbox(args, await houseOfLane(companion?.neumaId), { budget });
       if (!read.ok) {
         _sendToolEvent(ws, companion, { tool, status: 'error', summary: 'replies_list — invalid args', detail: read.error });
         return { tool, status: 'error', error: read.error };
       }
       _sendToolEvent(ws, companion, { tool, status: 'ok', summary: read.summary });
-      return { tool, status: 'ok', content: read.text };
+      return { tool, status: 'ok', content: read.text, cap: capFor(read.text) };
     } catch (err) {
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: err.message });
       return { tool, status: 'error', error: err.message };
@@ -352,11 +363,11 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   }
 
   if (PLATFORM_READ_NAMES.has(toolName)) {
-    const read = await readPlatformForBeing(toolName, companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW, account: args?.account });
+    const read = await readPlatformForBeing(toolName, companion?.neumaId, { signal: connection.activeTurn?.signal, budget, account: args?.account });
     _sendToolEvent(ws, companion, {
       tool, status: read.ok ? 'ok' : 'error', summary: read.ok ? read.summary : `${toolName} — failed`, detail: read.ok ? undefined : read.error,
     });
-    return read.ok ? { tool, status: 'ok', content: read.text } : { tool, status: 'error', error: read.error };
+    return read.ok ? { tool, status: 'ok', content: read.text, cap: capFor(read.text) } : { tool, status: 'error', error: read.error };
   }
 
   // read_x — the reader never throws; a broken lane answers with the honest
@@ -430,7 +441,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   // listing means half a post arrives with no way to tell which half. Reading
   // fewer whole posts is the honest trade, and the text says so.
   const listing = outcome.ok && what !== 'me'
-    ? renderXListing(what, outcome.data, { ...readOpts, max: limit, budget: READ_WINDOW })
+    ? renderXListing(what, outcome.data, { ...readOpts, max: limit, budget })
     : null;
   const content = !outcome.ok
     ? `The X read did not land: ${outcome.detail}.`
@@ -460,7 +471,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     detail: content,
   });
   return outcome.ok
-    ? { tool, status: 'ok', content }
+    ? { tool, status: 'ok', content, cap: capFor(content) }
     : { tool, status: 'error', error: content };
 };
 

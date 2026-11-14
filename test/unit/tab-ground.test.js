@@ -33,7 +33,8 @@ const withTabs = (...ids) => ids.reduce((s, id) => openTab(s, tab(id)), emptyTab
 
 const REPO = Object.freeze({ kind: 'folder', path: '/workspace/repos/neuma' });
 const SITE = Object.freeze({ kind: 'folder', path: '/workspace/repos/project-finikum' });
-const PROJECT = Object.freeze({ kind: 'project', id: 'acme-site' });
+// A ground saved before Projects were removed (Design note, 2026-11-10 — it loads as nothing.
+const SAVED_PROJECT = Object.freeze({ kind: 'project', id: 'acme-site' });
 
 describe('LAW: a sitting’s ground is its own', () => {
   test('a fresh tab rides the window’s lens — an untouched desk is untouched', () => {
@@ -55,9 +56,9 @@ describe('LAW: a sitting’s ground is its own', () => {
     // The desk reads the FOCUSED tab's ground; nothing else has to fire.
     let s = withTabs('a', 'b');
     s = setTabFocus(s, 'a', REPO);
-    s = setTabFocus(s, 'b', PROJECT);
+    s = setTabFocus(s, 'b', SITE);
     expect(focusedTab(focusTab(s, 'a')).focus).toEqual(REPO);
-    expect(focusedTab(focusTab(s, 'b')).focus).toEqual(PROJECT);
+    expect(focusedTab(focusTab(s, 'b')).focus).toEqual(SITE);
   });
 
   test('setting one ground touches no other sitting', () => {
@@ -103,10 +104,10 @@ describe('LAW: the ground survives a restart with its sitting', () => {
   test('a round trip through storage returns every ground', () => {
     let s = withTabs('a', 'b', 'c');
     s = setTabFocus(s, 'a', REPO);
-    s = setTabFocus(s, 'c', PROJECT);
+    s = setTabFocus(s, 'c', SITE);
     const wire = JSON.parse(JSON.stringify(serializeTabs(s)));
     const back = normalizeTabs(wire, { normalizeFocus });
-    expect(back.tabs.map((t) => t.focus)).toEqual([REPO, null, PROJECT]);
+    expect(back.tabs.map((t) => t.focus)).toEqual([REPO, null, SITE]);
   });
 });
 
@@ -123,7 +124,12 @@ describe('LAW: a stored ground is untrusted, and the default fails closed', () =
 
   test('with the REAL validator, a real ground comes back', () => {
     expect(normalizeTabs(stored(REPO), { normalizeFocus }).tabs[0].focus).toEqual(REPO);
-    expect(normalizeTabs(stored(PROJECT), { normalizeFocus }).tabs[0].focus).toEqual(PROJECT);
+  });
+
+  test('a ground saved on a PROJECT costs the ground, never the tab', () => {
+    const back = normalizeTabs(stored(SAVED_PROJECT), { normalizeFocus });
+    expect(back.tabs).toHaveLength(1);
+    expect(back.tabs[0].focus).toBeNull();
   });
 
   test('a HOSTILE stored ground is refused, and costs the ground, never the tab', () => {
@@ -179,25 +185,17 @@ describe('LAW: a tear-out carries its ground with it (2026-09-01)', () => {
 });
 
 describe('the strip says WHERE, in one word, and only where there is something to say', () => {
-  // The real projects list shape the desk holds, so the label resolves for real.
-  const projects = [Object.freeze({
-    id: 'acme-site',
-    name: 'Acme Site',
-    folder: '/srv/sites/acme-site',
-    folders: [{ path: '/srv/sites/acme-site', isRepo: true, branch: 'main' }],
-  })];
-
   test('THE CLEANLINESS LAW: a tab riding the window’s lens wears NOTHING', () => {
     // Design note, 2026-08-29: […] Most tabs have no
     // ground of their own, so most strips carry no mark at all and read
     // exactly as they always did. This is the property that makes the feature
     // free to have.
-    expect(groundMark(null, projects)).toBeNull();
-    expect(groundMark(undefined, projects)).toBeNull();
+    expect(groundMark(null)).toBeNull();
+    expect(groundMark(undefined)).toBeNull();
   });
 
   test('a folder is its BASENAME — never a path on the strip', () => {
-    const m = groundMark(REPO, projects);
+    const m = groundMark(REPO);
     expect(m.short).toBe('neuma');
     expect(m.short).not.toContain('/');
     // ...and the whole truth is one hover away, because two folders called
@@ -205,25 +203,16 @@ describe('the strip says WHERE, in one word, and only where there is something t
     expect(m.full).toBe('/workspace/repos/neuma');
   });
 
-  test('a project is its NAME, with the folder it stands on behind it', () => {
-    const m = groundMark(PROJECT, projects);
-    expect(m.short).toBe('Acme Site');
-    expect(m.full).toContain('Acme Site');
-    expect(m.full).toContain('acme-site');   // the folder
-    expect(m.full).toContain('main');      // the branch, when it is a repo
-  });
-
-  test('a stale project id says nothing rather than inventing a name', () => {
-    // The project was deleted out from under the tab. An honest blank beats a
-    // label for something that no longer exists.
-    expect(groundMark({ kind: 'project', id: 'gone' }, projects)).toBeNull();
-    expect(groundMark(PROJECT, null)).toBeNull();
+  test('a ground saved on a project says nothing rather than inventing a name', () => {
+    // Projects are gone (2026-11-10). An honest blank beats a label for
+    // something that no longer exists.
+    expect(groundMark(SAVED_PROJECT)).toBeNull();
   });
 
   test('the short mark stays SHORT — it is a word, not a sentence', () => {
     // The strip has a hard budget: the being's name must always win the room.
-    for (const focus of [REPO, SITE, PROJECT]) {
-      const m = groundMark(focus, projects);
+    for (const focus of [REPO, SITE]) {
+      const m = groundMark(focus);
       if (!m) continue;
       expect(m.short.length, m.short).toBeLessThanOrEqual(24);
       expect(m.short).not.toContain('\n');

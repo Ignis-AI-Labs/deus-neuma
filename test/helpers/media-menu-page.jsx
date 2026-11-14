@@ -10,8 +10,6 @@ import { filesApp } from '../../frontend/app/RelinkShell/files/FilesApp.jsx';
 import { WindowManager } from '../../frontend/app/windowing/WindowManager.jsx';
 import { useWindows } from '../../frontend/app/windowing/use-windows.js';
 import { appIdOf } from '../../frontend/app/windowing/window-manager-reducer.js';
-import { ProjectContext } from '../../frontend/app/RelinkShell/projects/project-context.js';
-import { useProjectsState } from '../../frontend/app/RelinkShell/projects/use-projects.js';
 
 const { token, laneId, video, still, videoPath, stillPath } = window.menuFixture;
 sessionStorage.setItem('authToken', token);
@@ -24,11 +22,8 @@ const GalleryWhenOpen = () => {
   return open ? <section id="gallery-window"><galleryApp.Body /></section> : null;
 };
 
-// The desk's own projects state, over the real projects route, as the desk host provides it.
-const Projects = ({ children }) => <ProjectContext.Provider value={useProjectsState()}>{children}</ProjectContext.Provider>;
-
 createRoot(document.getElementById('root')).render(
-  <Projects><WindowManager registry={{ gallery: galleryApp }}>
+  <WindowManager registry={{ gallery: galleryApp }}>
     <MediaMenuHost />
     <ToolChip segment={{
       phase: 'resolved', label: 'image/generate', status: 'ok', summary: 'generated 2 renders',
@@ -36,5 +31,5 @@ createRoot(document.getElementById('root')).render(
     }} />
     <aside id="explorer"><filesApp.Body /></aside>
     <GalleryWhenOpen />
-  </WindowManager></Projects>,
+  </WindowManager>,
 );

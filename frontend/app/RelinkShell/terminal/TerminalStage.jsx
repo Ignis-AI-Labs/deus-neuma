@@ -18,7 +18,8 @@ import {
   registerTerminalWindow, closeTerminalSession,
 } from '../../../services/terminal-session.js';
 import { useTerminalDictation } from './use-terminal-dictation.js';
-import { linksIn, linkAt, terminalCellAt, TERMINAL_LINK_ITEMS } from './terminal-links.js';
+import { doorsIn, doorAt, terminalCellAt, terminalPathFor, TERMINAL_LINK_ITEMS } from './terminal-links.js';
+import { openPathDoor, openPathMenu } from '../path-menu.js';
 import { CtxMenu } from '../CtxMenu.jsx';
 
 // xterm needs literal values (CSS vars won't resolve inside its canvas), so
@@ -61,6 +62,7 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
   // change must never restart a live shell, so the first value is pinned.
   // The launch id pins the same way — it is the process this window runs.
   const initialCwd = useRef(cwd).current;
+  const terminalCwdRef = useRef(initialCwd);
   const initialLaunch = useRef(launch).current;
   const socketRef = useRef(null);
   const sendToShell = useCallback((text) => socketRef.current?.send(text), []);
@@ -92,6 +94,10 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
       setLinkError(err.message || 'the browser could not open the URL');
     }
   }, []);
+  const openDoor = useCallback((door) => {
+    if (door.kind === 'url') return openLink('integrated', door.value);
+    return openPathDoor(terminalPathFor(door.value, terminalCwdRef.current));
+  }, [openLink, initialCwd]);
 
   useEffect(() => {
     const term = new Terminal({
@@ -108,10 +114,10 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
     const linkProvider = term.registerLinkProvider({
       provideLinks: (y, answer) => {
         const text = term.buffer.active.getLine(y - 1)?.translateToString(true) || '';
-        answer(linksIn(text).map((link) => ({
-          range: { start: { x: link.start + 1, y }, end: { x: link.end, y } },
-          text: link.url,
-          activate: (_event, url) => openLink('integrated', url),
+        answer(doorsIn(text).map((door) => ({
+          range: { start: { x: door.start + 1, y }, end: { x: door.end, y } },
+          text: door.value,
+          activate: (event) => { if (event.ctrlKey || event.metaKey) openDoor(door); },
         })));
       },
     });
@@ -120,22 +126,23 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
       const cell = terminalCellAt({ clientX: event.clientX, clientY: event.clientY, rect, cols: term.cols, rows: term.rows });
       if (!cell) return null;
       const line = term.buffer.active.getLine(term.buffer.active.viewportY + cell.y - 1);
-      return linkAt(line?.translateToString(true) || '', cell.x);
+      return doorAt(line?.translateToString(true) || '', cell.x);
     };
     const onLinkMenu = (event) => {
-      const link = linkAtPointer(event);
-      if (!link) return;
+      const door = linkAtPointer(event);
+      if (!door) return;
       event.preventDefault();
       event.stopPropagation();
-      setLinkMenu({ url: link.url, at: { x: event.clientX, y: event.clientY } });
+      if (door.kind === 'path') openPathMenu(terminalPathFor(door.value, terminalCwdRef.current), event.clientX, event.clientY);
+      else setLinkMenu({ url: door.value, at: { x: event.clientX, y: event.clientY } });
     };
     const onLinkClick = (event) => {
       if (event.button !== 0 || event.ctrlKey || event.metaKey) return;
-      const link = linkAtPointer(event);
-      if (!link) return;
+      const door = linkAtPointer(event);
+      if (!door) return;
       event.preventDefault();
       event.stopPropagation();
-      openLink('integrated', link.url);
+      openDoor(door);
     };
     hostRef.current.addEventListener('contextmenu', onLinkMenu);
     hostRef.current.addEventListener('click', onLinkClick, true);
@@ -168,8 +175,9 @@ export const TerminalStage = ({ windowId, cwd = null, launch = null }) => {
         cwd: initialCwd,
         launch: initialLaunch,
         termId: termIdRef.current,
-        onHello: ({ id, attached }) => {
+        onHello: ({ id, attached, cwd }) => {
           termIdRef.current = id;
+          if (cwd) terminalCwdRef.current = cwd;
           try { rememberTerminalSession(session, id); }
           catch (err) { term.write(`\r\n[terminal recovery storage failed: ${err.message}]\r\n`); }
           retries = 0;

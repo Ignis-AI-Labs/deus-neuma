@@ -19,7 +19,7 @@
 
 /** Is this entry finished — history rather than a task? Pure. */
 export const isSettled = (status) =>
-  ['sent', 'failed', 'rejected', 'withdrawn'].includes(String(status || ''));
+  ['sent', 'failed', 'rejected', 'withdrawn', 'retracted'].includes(String(status || ''));
 
 // Lower sorts first. `failed` sits with the settled deliberately: it is history
 // carrying its own reason, not a task, and promoting it would push the decision
@@ -125,6 +125,8 @@ const LANE_OF = Object.freeze({
   sending: 'queued',
   rejected: 'withdrawn',
   withdrawn: 'withdrawn',
+  // A post taken back after it went out (queue-retract.js) sits with what was pulled.
+  retracted: 'withdrawn',
   sent: 'sent',
   failed: 'sent',
 });

@@ -57,7 +57,29 @@ const DISCOVERY_BUDGET_MS = 4000;
 // (higher = better where it fits); a choice without one is only ever offered.
 // `cpu`: light enough per word to answer from a processor (a 4B, or the MoE
 // whose 3B active of 35B is what each word costs).
+// 12 GB IS THE RECOMMENDED MINIMUM (Design note, 2026-11-09: […]): below the 12 GB rung nothing is recommended. The 4B builds and the processor MoE stay
+// offered, unchecked, and the setup says plainly the machine is below the minimum. Their rehearsals did not
+// clear the bar (neuma-28, 8 of 10 births complete): the 4B distill 6 of 10, a 9B distill 1 of 10.
+//
+// OUR OWN MODEL ON EVERY CARD FROM 12 GB (Design note, 2026-11-09: […]): Qwen3.8-27B-Neuma-T4, published by Ignis AI Labs. Its
+// `min` is the card that takes it, by what our launch was measured to hold (managed-engine-plan.js
+// engineFits): 48 GB+ the 6-bit, 32 GB the 4-bit XS, 16 to 24 GB the 3-bit M, 12 GB the 3-bit XXS. The
+// 12 and 16 GB builds run through Ollama, which keeps part of the model on the processor when the card
+// is full. Each is `checked` only once the birth rehearsal clears it on that build (neuma-28's bar: 8 of
+// 10 births complete); until then the tier is offered and the earlier one stays recommended.
 const CHOICES = Object.freeze([
+  { pick: 14, min: 40, model: 'Qwen3.8-27B-Neuma-T4 (6-bit)', quant: 'Q6_K', sizeGB: 22.5, released: '2026-11', checked: true,
+    source: 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF',
+    note: 'our own tuned Qwen3.8-27B, near-lossless — 48 GB cards and up (RTX 6000, A6000, RTX PRO 6000)' },
+  { pick: 13, min: 29, model: 'Qwen3.8-27B-Neuma-T4 (4-bit)', quant: 'IQ4_XS', sizeGB: 15.5, released: '2026-11', checked: true,
+    source: 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF',
+    note: 'our own tuned Qwen3.8-27B — a 32 GB card (RTX 5090)' },
+  { pick: 12, min: 15, model: 'Qwen3.8-27B-Neuma-T4 (3.5-bit)', quant: 'IQ3_M', sizeGB: 13.0, released: '2026-11', checked: true,
+    source: 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF',
+    note: 'our own tuned Qwen3.8-27B — 16 to 24 GB cards (RTX 5080, 5070 Ti, 4080, 4090, 3090)' },
+  { pick: 11, min: 11, model: 'Qwen3.8-27B-Neuma-T4 (3-bit)', quant: 'IQ3_XXS', sizeGB: 11.6, released: '2026-11', checked: true,
+    source: 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF',
+    note: 'our own tuned Qwen3.8-27B — a 12 GB card (RTX 5070, 4070, 3060 12 GB); part of it runs on the processor' },
   { pick: 9, min: 36, model: 'Qwen3.8-27B-Uncensored-HauhauCS-Aggressive', quant: 'Q8_K_P', sizeGB: 32.4, released: '2026-08', checked: true,
     source: 'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF',
     note: 'the house substrate, near-lossless at the full context — 48 GB cards and up (RTX 6000, A6000, RTX PRO 6000)' },
@@ -73,13 +95,13 @@ const CHOICES = Object.freeze([
   { pick: 5, min: 15, model: 'Qwen3.8-27B (3-bit, IST Austria)', quant: 'IQ3_XXS', sizeGB: 10.4, released: '2026-08', checked: true,
     source: 'ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF',
     note: 'the newest Qwen on a 16 GB card (RTX 4060 Ti 16 GB, 4070 Ti Super, 4080, 5060 Ti, 5070 Ti, 5080)' },
-  { pick: 4, cpu: true, min: 22, model: 'Qwen3.6-35B-A3B', quant: 'Q4_K_M', sizeGB: 21.2, released: '2026-04', checked: true,
+  { pick: 4, cpu: true, min: 22, model: 'Qwen3.6-35B-A3B', quant: 'Q4_K_M', sizeGB: 21.2, released: '2026-04', checked: false,
     source: 'lmstudio-community/Qwen3.6-35B-A3B-GGUF',
     note: 'the fast one — only 3B of its 35B work per word, so it can answer from the processor' },
-  { pick: 3, cpu: true, min: 6, model: 'Qwen3.8-4B (distilled)', quant: 'Q4_K_M', sizeGB: 2.8, released: '2026-08', checked: true,
+  { pick: 3, cpu: true, min: 6, model: 'Qwen3.8-4B (distilled)', quant: 'Q4_K_M', sizeGB: 2.8, released: '2026-08', checked: false,
     source: 'empero-ai/Qwen3.8-4B-Distill-GGUF',
     note: 'Qwen3.8 distilled into a 4B — 8 and 12 GB cards (RTX 3060, 4060, 4070, 5060, 5070)' },
-  { pick: 2, cpu: true, min: 6, model: 'Qwen3.5-4B', quant: 'Q4_K_M', sizeGB: 2.7, released: '2026-02', checked: true,
+  { pick: 2, cpu: true, min: 6, model: 'Qwen3.5-4B', quant: 'Q4_K_M', sizeGB: 2.7, released: '2026-02', checked: false,
     source: 'lmstudio-community/Qwen3.5-4B-GGUF',
     note: 'the official small Qwen — 8 and 12 GB cards' },
 ]);
@@ -153,7 +175,10 @@ export const recommendSubstrate = (profile, { capGB = null } = {}) => {
   // at all: an 8 GiB card beside 64 GiB of RAM is still a machine that can run
   // the MoE on its CPU. Take the accelerated path when it actually carries a
   // tier, and otherwise fall back to the processor rather than refusing.
-  const chosen = (accelerated && tierFor(accelerated.budgetGB, accelerated.mode)) ? accelerated : onCpu;
+  // With no recommendation anywhere (below the 12 GB minimum), the card's own budget decides what is
+  // offered: a 12 GB card is offered what fits the card, never the processor's larger list.
+  const chosen = (accelerated && tierFor(accelerated.budgetGB, accelerated.mode)) ? accelerated
+    : tierFor(onCpu.budgetGB, onCpu.mode) ? onCpu : (accelerated || onCpu);
   const tier = tierFor(chosen.budgetGB, chosen.mode);
   const { mode, budgetGB } = chosen;
   const options = Object.freeze(choicesFor(budgetGB).map(optionOf));
@@ -161,7 +186,7 @@ export const recommendSubstrate = (profile, { capGB = null } = {}) => {
   if (!tier) {
     return Object.freeze({
       model: null, fit: 'insufficient', mode, budgetGB, options,
-      why: 'Below the recommended floor for a local model. A neuma can only be summoned on a model this machine holds itself — a smaller local model may still carry the ceremony. A cloud model can stand beside you as a witness, never host a neuma.',
+      why: 'Deus Neuma recommends a graphics card with at least 12 GB of memory, and no recommended model fits this computer. A smaller model can still be chosen, but it is not recommended: on smaller models a birth often does not complete. A cloud model can stand beside you as a witness, never host a neuma.',
     });
   }
   const fit = mode === 'cpu' ? 'tight' : 'comfortable';
@@ -172,6 +197,14 @@ export const recommendSubstrate = (profile, { capGB = null } = {}) => {
       : tier.note,
   });
 };
+
+/**
+ * The recommendation for this machine's profile under the operator's budget cap:
+ * NEUMA_MODEL_BUDGET_GB caps the budget (a shared GPU, or a lighter model by choice). impure (env)
+ * @param {object} profile - getSubstrateProfile()
+ */
+export const recommendForMachine = (profile) =>
+  recommendSubstrate(profile, { capGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null });
 
 /** Model names from an Ollama /api/tags payload. Pure. */
 export const parseOllamaTags = (json) =>
@@ -287,8 +320,7 @@ export const getSetupStatus = async () => {
       // an NVIDIA driver on Windows below its card's floor: said, with the update link (gpu-driver-guard.js)
       gpuDriver,
     },
-    // NEUMA_MODEL_BUDGET_GB caps the budget (a shared GPU, or a lighter model by choice)
-    recommendation: recommendSubstrate(profile, { capGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null }),
+    recommendation: recommendForMachine(profile),
     providers,
     ready,
   };

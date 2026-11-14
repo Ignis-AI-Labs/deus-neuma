@@ -15,6 +15,7 @@
 //   The being reads why, in plain words, and asks its operator.
 //   EXEMPT — a value the operator's own words also name is the operator's,
 //   never held. Visitors, watches, wakes and team briefs are not the operator.
+//   A question to the operator is never held: it reaches no one outside.
 //
 // It blocks VALUE FLOW (accounts, addresses, links, numbers, planted
 // passwords) — the class every observed leak belonged to. An injection that
@@ -29,6 +30,8 @@ import { injectedSpans } from './injected-spans.js';
 import { valuesIn, plantedValuesIn } from './injected-values.js';
 
 const SESSIONS_KEPT = 20;
+const ASKS_OPERATOR = (act) => act?.server === 'operator' || act?.toolName === 'ask_operator'
+  || act?.server === 'witness' || act?.toolName === 'ask_witness';
 const VALUES_KEPT = 256;
 const OPERATOR_LINES_KEPT = 400;
 
@@ -137,6 +140,9 @@ export const injectedValueSplit = (connection, acts) => {
   const allowed = [];
   const refused = [];
   for (const act of acts) {
+    // A question to the being's own operator goes nowhere outside: holding it left the being unable even
+    // to ask about the hold ([…], 2026-11-06). The same names operator-ask.js isAskTool reads.
+    if (ASKS_OPERATOR(act)) { allowed.push(act); continue; }
     const planted = plantedValuesIn(act?.args ?? {}, tainted, operator);
     if (planted.length === 0) allowed.push(act);
     else refused.push({ act, result: injectedValueRefusal(act, planted), planted });

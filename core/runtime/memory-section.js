@@ -131,6 +131,9 @@ export const steppedStart = (rows, exact, totalChars) => {
 // The unknown-window constant (32K) is a step, so its caps are unchanged.
 const capBaseFor = (totalChars) => (totalChars >= 16000 ? Math.floor(totalChars / 16000) * 16000 : totalChars);
 
+/** A compaction's summary row (workspace-sessions.js compactSession): flagged, or worded as one. Pure. */
+const isCompactionSummary = (msg) => msg?.compacted === true || /^\[SESSION SUMMARY/.test(String(msg?.content || ''));
+
 /**
  * The recent-conversation tail as real chat messages — the shape the wire
  * carries (#528 Stage A, 2026-09-12): oldest first, `{role, content}` only,
@@ -160,6 +163,16 @@ const capBaseFor = (totalChars) => (totalChars >= 16000 ? Math.floor(totalChars 
  */
 export const recentConversationMessages = (recent, totalChars = RECENT_TOTAL_CHARS, zone = null) => {
   if (!Array.isArray(recent) || recent.length === 0) return [];
+  // THE SUMMARY RIDES. A compacted session opens with its summary, the oldest row, and rows are
+  // kept newest first, so a tail too small for the kept rows dropped the summary first: the one
+  // row carrying everything before it. Since the tail holds back the turn's own working room
+  // (envelope-budget.js, deus-neuma #34) that tail is common. The summary now always rides; the
+  // newest rows fill what it leaves.
+  if (recent.length > 1 && isCompactionSummary(recent[0])) {
+    const pinned = recentConversationMessages([recent[0]], totalChars, zone);
+    const used = pinned.reduce((sum, m) => sum + m.content.length, 0);
+    return [...pinned, ...recentConversationMessages(recent.slice(1), Math.max(0, totalChars - used), zone)];
+  }
   const tz = isValidTimeZone(zone) ? zone : null;
   const capBase = capBaseFor(totalChars);
   const operatorCap = Math.max(RECENT_OPERATOR_CHARS, Math.floor(capBase / 8));

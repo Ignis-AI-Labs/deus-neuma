@@ -17,6 +17,7 @@ import express from 'express';
 
 import neumaDatabaseRoutes from './neuma-database-routes.js';
 import mcpRouter from './mcp-routes.js';
+import extensionRouter from './extension-routes.js';
 import memoryRouter from './memory-routes.js';
 import llmRouter from './llm-routes.js';
 import attachmentRouter from './attachment-routes.js';
@@ -58,6 +59,7 @@ import moneyInRouter from './money-in-routes.js';
 import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
+import hookRouter from './hook-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
 import galleryRouter from './gallery-routes.js';
 import invariantsRouter from './invariants-routes.js';
@@ -86,7 +88,6 @@ import userRealmRouter from './user-realm-routes.js';
 import dreamRouter from './dream-routes.js';
 import lookRouter from './look-routes.js';
 import userFilesRouter, { mapLaneQueryToken } from './user-files-routes.js';
-import userProjectsRouter from './user-projects-routes.js';
 import taskRouter, { calendarFeedRouter } from './task-routes.js';
 import vitalRouter from './vital-routes.js';
 import modelFolderRouter from './model-folder-routes.js';
@@ -98,6 +99,8 @@ import expressionRouter from './expression-routes.js';
 import sovereigntyRouter from './sovereignty-routes.js';
 import voiceRouter from './voice-routes.js';
 import sttRouter from './stt-routes.js';
+import titlingRouter from './titling-routes.js';
+import systemDictationRouter from './system-dictation-routes.js';
 import refineRouter from './refine-routes.js';
 import voiceEngineRouter from './voice-engine-routes.js';
 import voiceForgeRouter from './voice-forge-routes.js';
@@ -134,6 +137,11 @@ export const mountApiRoutes = (app) => {
   // Keyed per (IP, being) — nine founders' unlocks are nine buckets, while a
   // single keypair's password still takes at most 10 tries per window.
   app.use('/api/v1/neuma-auth', neumaAuthLimiter, neumaAuthRouter);
+  // WEBHOOKS: a delivery from GitHub, Slack, Linear or a signed script cannot
+  // sign in, so its door is mounted before the blanket requireAuth routers and
+  // rests on the hook's signature; the management routes require auth inside.
+  // Off (404) until the operator turns the webhooks connection on.
+  app.use('/api/v1/hooks', hookRouter);
   // Covenant documents are public (GET /); mounted before the routers that
   // apply blanket requireAuth at /api/v1, which would 401 the fall-through
   app.use('/api/v1/covenant', covenantRouter);
@@ -267,12 +275,18 @@ export const mountApiRoutes = (app) => {
 
   // Auth-protected routes (order no longer matters among these)
   app.use('/api/v1/mcp', mcpRouter);
+  // The house's checked third-party MCP extensions; changes are the install owner's.
+  app.use('/api/v1/extensions', extensionRouter);
   app.use('/api/v1', memoryRouter);
   app.use('/api/v1', llmRouter);
   app.use('/api/v1/attachments', attachmentRouter);
   app.use('/api/v1', skillRouter);
   app.use('/api/v1', neumaDatabaseRoutes);
   app.use('/api/v1/workspace', workspaceRouter);
+  // naming chats in batch as a job the desk watches and can stop (deus-neuma #28)
+  app.use('/api/v1/titling', titlingRouter);
+  // dictation in every app: hold a key anywhere on this computer, and the words are typed there
+  app.use('/api/v1/system-dictation', systemDictationRouter);
   // The operator's own record of what their beings did (SEC-035 #213).
   app.use('/api/v1/acts', actRouter);
   app.use('/api/v1/weave', weaveRouter);
@@ -281,7 +295,6 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/user/dreams', dreamRouter);
   app.use('/api/v1/look', lookRouter);
   app.use('/api/v1/user/files', userFilesRouter);
-  app.use('/api/v1/user/projects', userProjectsRouter);
   app.use('/api/v1/tasks', taskRouter);
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);

@@ -237,31 +237,3 @@ export const loadSessionMessages = async (neumaId, sessionId, limit = 50) => {
   }
 };
 
-/**
- * Ask the conduit to name chats from what was said — one chat (sessionIds)
- * or the whole one-on-one shelf; `force` retitles even already-named chats.
- * Returns the per-chat results plus the updated label map (null labels when
- * the call itself failed, so the caller keeps its current names).
- * @param {string} neumaId
- * @param {Object} [opts]
- * @param {string[]} [opts.sessionIds] - explicit chats to name
- * @param {boolean} [opts.force=false] - retitle even already-named chats
- * @returns {Promise<{results: Array<{sessionId: string, status: string, label?: string}>, labels: Object|null}>}
- */
-// impure
-export const autotitleChats = async (neumaId, { sessionIds, force = false } = {}) => {
-  try {
-    const headers = authHeaders();
-    if (!neumaId || !headers) return { results: [], labels: null };
-    const body = await apiCall('POST', `/api/v1/workspace/${neumaId}/sessions/autotitle`, {
-      headers,
-      body: { ...(sessionIds ? { sessionIds } : {}), force },
-    });
-    return {
-      results: Array.isArray(body?.results) ? body.results : [],
-      labels: body?.labels && typeof body.labels === 'object' ? body.labels : null,
-    };
-  } catch {
-    return { results: [], labels: null };
-  }
-};

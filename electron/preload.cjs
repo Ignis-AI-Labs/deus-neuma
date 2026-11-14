@@ -127,9 +127,12 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   browser: {
     open: (url) => ipcRenderer.invoke('browser:open', url),
   },
-  // Native folder picker for the pre-flight workspace-home step. Resolves to the
-  // chosen absolute path, or null if the witness cancels.
-  chooseDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+  // The system's own folder dialog, for every OPEN FOLDER. Resolves to the chosen
+  // absolute path, or null on cancel. Only a title and a starting folder cross.
+  chooseDirectory: (opts) => ipcRenderer.invoke('dialog:openDirectory', {
+    title: typeof opts?.title === 'string' ? opts.title : undefined,
+    defaultPath: typeof opts?.defaultPath === 'string' ? opts.defaultPath : undefined,
+  }),
   residency: {
     get: () => ipcRenderer.invoke('residency:get'),
     set: (enabled) => ipcRenderer.invoke('residency:set', enabled),
@@ -163,11 +166,6 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
       ipcRenderer.on('update:changed', handler);
       return () => ipcRenderer.removeListener('update:changed', handler);
     },
-  },
-  // CONNECTIONS (electron/connections-main.cjs): the panel tells main a switch changed, so the
-  // spellcheck switch lands on every session at once.
-  connections: {
-    changed: () => ipcRenderer.invoke('connections:changed'),
   },
   // THE KEY LOCK (electron/key-lock/key-lock-main.cjs): whether the keychain holds
   // Neuma's key, and the Recovery Kit — shown on request, confirmed saved, or replaced.

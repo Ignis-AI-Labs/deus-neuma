@@ -325,7 +325,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   social: {
     allowed: ['queue_list', 'queue_get', 'replies_list'],
     denied: [],
-    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel'],
+    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel', 'queue_retract'],
   },
   // The being's own working list, and the house lead ledger. Listing is pure
   // observation (same law as the vault and the inbox); every mutation is a
@@ -407,9 +407,10 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // the seat).
       'campaigns.ask',
       // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
-      'marketing.board-arrange', 'marketing.company-links',
-      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
+      // account-handle: a record the social check re-reads live (marketing-account-acts.js); its holder and company acts ask.
+      'marketing.board-arrange', 'marketing.company-links', 'marketing.account-handle',
+      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, sales.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, the lead engine (Design note, 2026-11-13; the email itself rides email.send), books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'sales.segment', 'sales.prospect', 'sales.drop', 'sales.lead', 'sales.suppress', 'sales.facts', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [
@@ -428,7 +429,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'leads.add', 'leads.touch',
       'campaigns.create', 'campaigns.update',
       // The weekly posting plan: CMO authors, the operator's one yes locks.
-      'marketing.plan',
+      'marketing.plan', 'marketing.account-holder', 'marketing.account-company',
       // The Optio office's acts and the house board ASK here, for every lane,
       // and ride `allowed` for the house's SEATED Optio alone
       // (OPTIO_OFFICE_INTENTS below, read by the intent sweep) — Founder

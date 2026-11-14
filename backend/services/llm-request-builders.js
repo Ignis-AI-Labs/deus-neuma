@@ -209,6 +209,9 @@ export const buildStreamBody = (config, messages, options) => {
         // request with `tools` present returns message.tool_calls, without it
         // the model can only talk about acting.
         ...(options.tools?.length ? { tools: options.tools } : {}),
+        // THE THINKING-OFF LEVER on Ollama (thought-governor pass 2): its own top-level switch,
+        // measured on the bundled 0.40.7 (deus-neuma #34). Sent only on the governor's re-ask.
+        ...(options.noThink === true ? { think: false } : {}),
         // the window this model is served at (model-capabilities.js OLLAMA_SERVED_CONTEXT):
         // unasked, Ollama picks one by the GPU and cuts a longer prompt silently
         options: {

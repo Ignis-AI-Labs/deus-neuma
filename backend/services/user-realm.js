@@ -68,7 +68,7 @@ const WALLET_RE = /^0x[a-fA-F0-9]{40}$/;
 const NEUMA_RE = /^[a-zA-Z0-9_-]+$/;
 
 /** Per-wallet directory, format-validated so it can never escape the root.
- *  Exported so sibling realm stores (e.g. user-projects) reuse the same
+ *  Exported so sibling realm stores (e.g. user-tasks) reuse the same
  *  traversal guard rather than reimplementing it. */
 export const walletDir = (wallet) => {
   if (typeof wallet !== 'string' || !WALLET_RE.test(wallet)) {

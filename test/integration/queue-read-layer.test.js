@@ -245,7 +245,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
 
       const bare = await call('queue_list');
       expect(bare.content).not.toContain('copy the operator killed');
-      expect(bare.content).toContain("read them with status:'withdrawn,rejected'");
+      expect(bare.content).toContain("read them with status:'withdrawn,rejected,retracted'");
 
       // Ruling, 2026-08-03: reachable on explicit opt-in, so an audit does not
       // rewrite a post into copy that was already dropped.

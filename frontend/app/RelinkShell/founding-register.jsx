@@ -87,9 +87,13 @@ export const FoundedRegister = ({ state, result, witnessName = null, collapsible
 };
 
 /**
- * A house founded ON THIS COMPUTER (house-local-founding.js): who founded it, with which title, and when — signed
- * by every founder, kept here, sent nowhere. The network standing (Unavis, on Ethereum) is its own register above.
- * @param {{record: {houseName: string, foundedAt: string, members: Array<{kind: number, title: string, displayName: string, address: string}>}, witnessName?: string|null}} props
+ * A house founded ON THIS COMPUTER (house-local-founding.js): who founded it, and when — signed by every founder,
+ * kept here, sent nowhere. Each member shows the title and name they hold NOW (`record.seats`, house-titles.js
+ * currentSeatsOf), with the founding title beside it where it has changed: the record is signed and never
+ * rewritten, and read alone it showed founding titles as current ones (deus-neuma #36). The network standing
+ * (Unavis, on Ethereum) is its own register above.
+ * @param {{record: {houseName: string, foundedAt: string, members: Array<{kind: number, title: string, displayName: string, address: string}>,
+ *   seats?: Record<string, {title: string, name: string}>|null}, witnessName?: string|null}} props
  */
 export const LocalRegister = ({ record, witnessName = null }) => (
   <div className="house-anchor" data-testid="local-register">
@@ -97,13 +101,20 @@ export const LocalRegister = ({ record, witnessName = null }) => (
       THE HOUSE STANDS ON THIS COMPUTER · FOUNDED {String(record.foundedAt || '').slice(0, 10)} · {(record.members ?? []).length} FOUNDERS
     </p>
     <ul className="house-anchor-roster">
-      {(record.members ?? []).map((m) => (
-        <li key={m.address} className="house-anchor-member label-data">
-          <span className="house-anchor-name">{m.kind === 0 ? (witnessName || 'Operator') : m.displayName}</span>
-          <span className="house-anchor-title">{m.title}</span>
-          <span className="house-anchor-addr">{formatAddress(m.address, { fallback: '—' })}</span>
-        </li>
-      ))}
+      {(record.members ?? []).map((m) => {
+        const seat = record.seats?.[String(m.address || '').toLowerCase()] ?? null;
+        const title = seat?.title ?? m.title;
+        return (
+          <li key={m.address} className="house-anchor-member label-data">
+            <span className="house-anchor-name">{m.kind === 0 ? (witnessName || 'Operator') : (seat?.name ?? m.displayName)}</span>
+            <span className="house-anchor-title">
+              {title}
+              {title !== m.title ? <span className="house-anchor-founded"> · FOUNDED AS {m.title}</span> : null}
+            </span>
+            <span className="house-anchor-addr">{formatAddress(m.address, { fallback: '—' })}</span>
+          </li>
+        );
+      })}
     </ul>
   </div>
 );

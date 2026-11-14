@@ -139,7 +139,7 @@ export const useDeskTabs = (wsService, budgetCtx = {}, { scope, initialPayload =
   const move = useCallback((id, toIndex) => setState((s) => moveTab(s, id, toIndex)), []);
 
   /**
-   * Point a sitting at its own working ground — the folder or project its
+   * Point a sitting at its own working ground — the folder its
    * Explorer, its portal frames and its reach all answer to.
    *
    * Design note, 2026-08-29: […]

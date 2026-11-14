@@ -69,7 +69,6 @@ beforeAll(async () => {
   app.use('/api/v1/image-forge', (await import('../../backend/routes/image-forge-routes.js')).default);
   app.use('/api/v1/gallery', (await import('../../backend/routes/gallery-routes.js')).default);
   app.use('/api/v1/user/files', (await import('../../backend/routes/user-files-routes.js')).default);
-  app.use('/api/v1/user/projects', (await import('../../backend/routes/user-projects-routes.js')).default);
   vite = await createVite({
     configFile: false, root: REPO, cacheDir: path.join(tmp, 'vite-cache'), appType: 'custom',
     esbuild: { jsx: 'automatic' },

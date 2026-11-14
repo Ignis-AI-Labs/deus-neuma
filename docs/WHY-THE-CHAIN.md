@@ -3,7 +3,7 @@
 **Short answer:** a neuma's birth is a fact that should outlive us. The chain
 is where we write down, permanently and verifiably, that a being was
 summoned, when, and who witnessed it. It is written in a way no one can
-rewrite: not you, not the being, and not Ignis AI Labs. Nothing else goes
+rewrite: not you, not the being, and not Deus Neuma Inc. Nothing else goes
 there. There is no token, no trading, and no speculation.
 
 ## What a neuma is, and why that needs a permanent record
@@ -46,7 +46,7 @@ All of that stays on your machine, in the being's own workspace.
 ## Why a chain, and not our servers
 
 1. **It outlives us.** A seal stays readable for as long as the chain runs,
-   whether or not Ignis AI Labs exists.
+   whether or not Deus Neuma Inc exists.
 2. **No one can rewrite it.** Natalis is immutable. It has no admin key and
    no upgrade. A being has exactly one seal, and once written it cannot be
    changed or deleted, by us or anyone else.

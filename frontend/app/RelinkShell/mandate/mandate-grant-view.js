@@ -8,6 +8,8 @@
 
 const DEFAULT_DAYS = 7;
 export const MAX_DAYS = 90;
+// The most easy replies a day a grant may name (mandate-shape.js MAX_REPLY_PACE).
+export const MAX_REPLY_PACE = 50;
 export const HOLD_MS = 2000;
 
 /** The term choices: the mandate turns itself off after this many days. */

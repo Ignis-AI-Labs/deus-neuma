@@ -14,9 +14,9 @@ import { claimOwner } from '../helpers/claim-owner.js';
  * End-to-end REPO MAP — drives the real browser through the /map architecture
  * window against the real backend scanner. Auth is REAL (challenge-sign-verify
  * with Claude's witness wallet); the map data is REAL (the backend scans the
- * activated project folder on disk — no mocked graph). Proves the whole path:
- * activate a project → open REPO MAP → the honest architecture index renders, its
- * lenses switch, and the Tier-1/Tier-2 signals (classes, egress) actually show.
+ * folder in focus on disk — no mocked graph). Proves the whole path: the repo in
+ * focus → open REPO MAP → the honest architecture index renders, its lenses
+ * switch, and the Tier-1/Tier-2 signals (classes, egress) actually show.
  *
  * Needs no LLM — the map is a pure filesystem scan.
  *
@@ -24,7 +24,7 @@ import { claimOwner } from '../helpers/claim-owner.js';
  * PID-derived bind-probed ports with a disposable temp WORKSPACES_ROOT, and
  * routes workspace-settings, files-settings AND the realm into the temp dir
  * (explorer-panel.spec.js precedent + the NEUMA_* isolation doors) so the
- * operator's persisted roots, projects and realm can never leak in — and this
+ * operator's persisted roots and realm can never leak in — and this
  * suite's roots never land on the live settings files.
  */
 
@@ -96,7 +96,6 @@ let backendProc;
 let viteProc;
 let token;
 let addr;
-const projName = `e2e-repo-map-${process.pid}`;
 
 test.beforeAll(async () => {
   FPORT = await freePort(FPORT_BASE);
@@ -123,16 +122,17 @@ test.beforeAll(async () => {
   const sec = await (await fetch(`${BASE}/api/v1/security/status`, { headers: { Authorization: `Bearer ${token}` } })).json().catch(() => null);
   const activeRoot = sec?.roots?.active;
   if (activeRoot && activeRoot !== root) await claimOwner(activeRoot, NEUMA_ID, addr);
+  // The repo stands open in the Explorer (this stack's own files settings), so
+  // it may be the folder in focus the map scans.
+  const opened = await fetch(`${BASE}/api/v1/user/files/roots`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ root: REPO }),
+  });
+  if (!opened.ok) throw new Error(`could not open the repo as a root (${opened.status})`);
 });
 
 test.afterAll(async () => {
-  // Clean slate for the next suite — deletes run SEQUENTIALLY (a backend from
-  // before the store's mutation queue tears projects.json under parallel
-  // read-modify-writes).
-  const { projects } = await (await fetch(`${BASE}/api/v1/user/projects`, { headers: { Authorization: `Bearer ${token}` } })).json().catch(() => ({ projects: [] }));
-  for (const p of (projects || []).filter((p) => p.name === projName)) {
-    await fetch(`${BASE}/api/v1/user/projects/${p.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-  }
   // PROCESS-SAFETY LAW: recorded PIDs ONLY — never pkill/pattern matching.
   // Detached children lead their own process groups; -pid reaches exactly
   // that child and its own descendants.
@@ -148,12 +148,15 @@ test.beforeEach(async ({ page }) => {
   const crashes = [];
   page.on('pageerror', (e) => crashes.push(e.message));
   page.__crashes = crashes;
-  await page.addInitScript(({ t, a, id }) => {
+  await page.addInitScript(({ t, a, id, repo }) => {
     const w = a.toLowerCase();
     localStorage.setItem('walletAddress', a);
     localStorage.setItem(`${w}:neuma-companion`, JSON.stringify({ name: 'Fenna', neumaId: id }));
     sessionStorage.setItem('authToken', t);
-  }, { t: token, a: addr, id: NEUMA_ID });
+    // The repo is this desk's folder in focus — unless a test asked for none.
+    if (sessionStorage.getItem('repo-map-unfocused') === '1') localStorage.removeItem(`${w}:win:desk:focus`);
+    else localStorage.setItem(`${w}:win:desk:focus`, JSON.stringify({ kind: 'folder', path: repo }));
+  }, { t: token, a: addr, id: NEUMA_ID, repo: REPO });
   await page.goto(`http://localhost:${FPORT}/`);
 
   // The synthetic companion owes its custody acts, so the birth-setup gate
@@ -167,23 +170,8 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('.birth-setup-gate')).toHaveCount(0);
   }
 
-  // Activate a project on the repo via the real PROJECTS UI so the map has data.
-  // Focus era: once the store loads, an already-active project (tests after the
-  // first — the store persists across this file's tests) opens straight INTO
-  // its focus view; a fresh stack opens on the shelf, where creating a project
-  // enters it. Wait out LOADING, then take whichever register stands.
-  await openDockApp(page, 'PROJECTS');
-  await expect(page.locator('.proj')).toBeVisible();
-  await expect(page.locator('.proj-panel .empty-state-title', { hasText: 'LOADING' })).toHaveCount(0);
-  const focusTitle = page.locator('.proj-focus-title');
-  if (!(await focusTitle.isVisible().catch(() => false))) {
-    await page.locator('.proj-new').click();
-    await page.locator('.proj-input').first().fill(projName);
-    await page.locator('.proj-input').nth(1).fill(REPO);
-    await page.locator('.proj-create').click();
-  }
-  await expect(focusTitle).toHaveText(projName);
-  await expect(page.locator('.relink-status-project')).toContainText(projName);
+  // The repo in focus — the strip says so.
+  await expect(page.locator('.relink-status-folder')).toContainText(`FOLDER — ${path.basename(REPO)}`);
 });
 
 test('REPO MAP renders the honest architecture index with real, non-zero signals', async ({ page }) => {
@@ -193,7 +181,7 @@ test('REPO MAP renders the honest architecture index with real, non-zero signals
   // It indexes, then shows the readout (not stuck on the loading state).
   // Focus era (D5): the map follows the window's lens — the header names the
   // focused FOLDER (the repo's basename), and the DEFAULT flag stays off:
-  // that flag marks only the no-project fallback (proven two tests below).
+  // that flag marks only the nothing-in-focus fallback (proven two tests below).
   await expect(elo.locator('.elo-proj')).toContainText('neuma', { timeout: 30000 });
   await expect(elo.locator('.elo-default')).not.toBeVisible();
   // «INDEX COMPLETE» announcement means the scan resolved.
@@ -260,14 +248,11 @@ test('REPO MAP lenses switch and each renders its surface', async ({ page }) => 
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-test('with no active project the map defaults to the NEUMA repo, honestly flagged', async ({ page }) => {
-  // Clear every project (the beforeEach just made one) — the true empty slate.
-  // Sequential deletes: a pre-queue backend tears the store under parallel writes.
-  const { projects } = await (await fetch(`${BASE}/api/v1/user/projects`, { headers: { Authorization: `Bearer ${token}` } })).json();
-  for (const p of projects || []) {
-    await fetch(`${BASE}/api/v1/user/projects/${p.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-  }
+test('with nothing in focus the map defaults to the NEUMA repo, honestly flagged', async ({ page }) => {
+  // Release the focus the beforeEach set — the true empty slate.
+  await page.evaluate(() => sessionStorage.setItem('repo-map-unfocused', '1'));
   await page.reload();
+  await expect(page.locator('.relink-status-folder')).toHaveCount(0);
 
   await openDockApp(page, 'REPO MAP');
   const elo = page.locator('.elo');
@@ -282,7 +267,7 @@ test('OPEN… re-points the map: the real disk picker lands a folder as the work
   await openDockApp(page, 'REPO MAP');
   const elo = page.locator('.elo');
   await expect(elo.locator('.elo-ann-ok')).toContainText('INDEX COMPLETE', { timeout: 30000 });
-  await expect(elo.locator('.elo-default')).not.toBeVisible(); // a real project is active
+  await expect(elo.locator('.elo-default')).not.toBeVisible(); // the repo is in focus
 
   // Open a folder from the map itself — the ask that started this surface.
   await elo.locator('.elo-open--head').click();
@@ -296,8 +281,8 @@ test('OPEN… re-points the map: the real disk picker lands a folder as the work
   await expect(picker.locator('.picker-cwd')).toContainText('backend');
   await picker.locator('.picker-open').click();
 
-  // Focus era (D5): the folder lands as THIS WINDOW's working focus (no
-  // project mutation) and the map re-indexes through the focus lens.
+  // Focus era (D5): the folder lands as THIS WINDOW's working focus and the
+  // map re-indexes through the focus lens.
   await expect(page.locator('.relink-status-folder')).toContainText('FOLDER — backend', { timeout: 15000 });
   await expect(elo.locator('.elo-ann-ok')).toContainText('INDEX COMPLETE', { timeout: 30000 });
   await expect(elo.locator('.elo-proj')).toContainText('backend');

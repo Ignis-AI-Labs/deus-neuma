@@ -45,6 +45,8 @@ import { startStatusScheduler } from './services/staff/status-sweep.js';
 import { startHouseClock } from './services/house-clock/house-clock.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
+import { startSttAtBoot } from './services/managed-stt.js';
+import { startSystemDictation } from './services/system-dictation/system-dictation.js';
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
 import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
@@ -289,6 +291,10 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     startGuarded('stats sweep', startStatsSweep);
     // The CSO's standing watch — the 24-hour dependency/secret/host/house scan.
     stopSecurityScheduler = startGuarded('security scheduler', startSecurityScheduler);
+    // Dictation on an installed app: the speech server loads now, so a held key never waits on it.
+    startGuarded('speech server', startSttAtBoot);
+    // Dictation in every app, when the install owner turned it on: it listens for its key now.
+    startGuarded('dictation in every app', () => { startSystemDictation().catch((err) => log.error('dictation in every app did not start', { err: err.message })); });
     // The CLO's standing watch — licences shipped, the house's papers, and
     // what the new work touches, every 24 hours.
     stopLegalScheduler = startGuarded('legal scheduler', startLegalScheduler);

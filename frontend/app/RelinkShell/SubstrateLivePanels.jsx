@@ -8,24 +8,37 @@ import { ratioOf } from './hud-geometry.js';
 import { vramParts } from './machine-view.js';
 import { Panel } from './sub-panel.jsx';
 import { asText } from '../../utils/as-text.js';
+import { TokenColumns } from './token-performance.jsx';
+import { replyInView } from './token-rows.js';
 
 const n0 = (v) => (Number.isFinite(v) ? String(Math.round(v)) : '—');
 const n2 = (v) => (Number.isFinite(v) ? String(Number(v.toFixed(2))) : '—');
 
-export const ActivityPanel = ({ activity, slots, gen, span }) => (
-  <Panel title="ACTIVITY" span={span}>
-    <Trace label="GENERATION" values={gen.values} capacity={gen.capacity} span={gen.span} unit=" tok/s" floor={10} current={activity?.genTokPerSec} digits={1} />
-    <div className="hud-row">
-      <div className="hud-numeral">
-        <span className="hud-label">PROMPT</span>
-        <b>{n0(activity?.promptTokPerSec)}</b>
-        <span className="hud-unit">tok/s</span>
+// The live rates are every slot's tokens between two polls (token-throughput.js);
+// the columns beside them are each reply by phase, the last few, and the
+// server since it started (token-performance.jsx).
+export const ActivityPanel = ({ activity, slots, gen, tokens, span }) => {
+  const view = replyInView(tokens);
+  return (
+    <Panel title="ACTIVITY" aside={view?.live ? `${view.streaming} STREAMING` : null} span={span}>
+      <div className="tok-cols">
+        <section className="tok-col">
+          <Trace label="GENERATION · ALL SLOTS" values={gen.values} capacity={gen.capacity} span={gen.span} unit=" tok/s" floor={10} current={activity?.genTokPerSec} digits={1} />
+          <div className="hud-row">
+            <div className="hud-numeral">
+              <span className="hud-label">PROMPT</span>
+              <b>{n0(activity?.promptTokPerSec)}</b>
+              <span className="hud-unit">tok/s</span>
+            </div>
+            <SegRing label="SLOTS BUSY" busy={slots?.busy} total={slots?.total} />
+            <Dial label="KV CACHE" ratio={ratioOf(activity?.kvUsage, 1)} value={Number.isFinite(activity?.kvUsage) ? n0(activity.kvUsage * 100) : '—'} unit="%" />
+          </div>
+        </section>
+        <TokenColumns tokens={tokens} view={view} />
       </div>
-      <SegRing label="SLOTS BUSY" busy={slots?.busy} total={slots?.total} />
-      <Dial label="KV CACHE" ratio={ratioOf(activity?.kvUsage, 1)} value={Number.isFinite(activity?.kvUsage) ? n0(activity.kvUsage * 100) : '—'} unit="%" />
-    </div>
-  </Panel>
-);
+    </Panel>
+  );
+};
 
 export const ModelPanel = ({ contextLength, sampling, adapters, span }) => (
   <Panel title="MODEL" span={span}>

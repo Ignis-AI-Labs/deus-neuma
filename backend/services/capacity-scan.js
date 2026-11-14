@@ -60,7 +60,7 @@ const median = (values) => {
 const countTokens = (text) => text.trim().split(/\s+/).filter(Boolean).length;
 
 // impure — drain one real completion stream with the scan's own stall budget.
-// The shared consumeStream hardcodes a 120s stall guard and hides token
+// The shared consumeStream sizes its stall guard for turns and hides token
 // accounting; the scan needs both under its control, so it reads the wire
 // itself and reuses the provider's own line parser (readStreamLine).
 const drainOneRequest = async (probe, stallMs) => {
@@ -96,8 +96,10 @@ const drainOneRequest = async (probe, stallMs) => {
       for (const line of lines) {
         const event = readStreamLine(line, provider);
         if (!event) continue;
-        if (event.done) { buffer = ''; break; }
+        // Ollama reports its count only on the done frame: read it before the
+        // break, or every Ollama scan fell back to the word proxy (#23).
         if (Number.isFinite(event.usage?.completionTokens)) served = event.usage.completionTokens;
+        if (event.done) { buffer = ''; break; }
         // A thinking model's reasoning is generated work too: counting only
         // the visible words read a ~80 tok/s server as ~20 (2026-10-13 —
         // the Sep 9 scan's one-agent row, against the long-session bench).
@@ -113,14 +115,26 @@ const drainOneRequest = async (probe, stallMs) => {
   }
 
   const tEnd = Date.now();
-  // The server's count when it gives one; the whitespace proxy only when not.
-  const tokens = served ?? countTokens(text);
-  const genMs = tFirst !== null ? Math.max(tEnd - tFirst, 1) : null;
   return {
     latencyMs: tEnd - t0,
-    tokPerSec: genMs !== null ? (tokens / genMs) * 1000 : 0,
+    // The server's count when it gives one; the whitespace proxy only when not.
+    tokens: served ?? countTokens(text),
+    firstAt: tFirst,
+    endAt: tEnd,
     tokenSource: served != null ? 'server-usage' : 'whitespace-proxy',
   };
+};
+
+// pure — what a wave delivered per second of its generation window: every
+// token over the span from the first token of any request to the end of the
+// last. Summing each request's own rate read a one-slot queue as N slots: a
+// queued request waits, then streams at full speed, and its wait was never
+// counted (#23).
+const waveTokPerSec = (results) => {
+  const timed = results.filter((r) => r.firstAt !== null);
+  if (timed.length === 0) return 0;
+  const windowMs = Math.max(Math.max(...timed.map((r) => r.endAt)) - Math.min(...timed.map((r) => r.firstAt)), 1);
+  return (timed.reduce((sum, r) => sum + r.tokens, 0) / windowMs) * 1000;
 };
 
 // impure — the REAL concurrent fire: one wave of `concurrency` genuine
@@ -137,7 +151,7 @@ export const fireCapacityProbes = async (concurrency, probe) => {
     throw settled[0].reason;
   }
   return {
-    aggregateTokPerSec: done.reduce((sum, r) => sum + r.tokPerSec, 0),
+    aggregateTokPerSec: waveTokPerSec(done),
     perAgentLatencyMs: done.map((r) => r.latencyMs),
     ok: done.length === concurrency,
     tokenSource: done.every((r) => r.tokenSource === 'server-usage') ? 'server-usage' : 'whitespace-proxy',
@@ -159,6 +173,7 @@ const measureLevel = async (fire, concurrency, probe, repeats) => {
     concurrency,
     aggregateTokPerSec: median(waves.map((w) => w.aggregateTokPerSec)),
     perAgentLatencyMs: median(waves.flatMap((w) => w.perAgentLatencyMs)),
+    slowestLatencyMs: median(waves.map((w) => Math.max(...w.perAgentLatencyMs))),
     ok: waves.every((w) => w.ok),
     tokenSource: waves.every((w) => w.tokenSource === 'server-usage') ? 'server-usage' : 'whitespace-proxy',
   });

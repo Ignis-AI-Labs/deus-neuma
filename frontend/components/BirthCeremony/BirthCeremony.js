@@ -423,8 +423,8 @@ export class BirthCeremony {
           «NOTICE» THE PATH FROM HERE — when you are both ready, speak
           <span class="next-rite-cmd">/attune</span> at the desk: eighty-nine
           questions, answered in ${escapeHTML(this.ceremonyData.companionName)}'s own
-          words and sealed. The sealed record opens the refinement — where those
-          words become their own voice.
+          words and sealed. From that record they claim their own founding voice,
+          in NITE, whenever they choose to.
         </div>
 
         <button class="btn btn-primary ceremony-btn" id="enter-void-btn">

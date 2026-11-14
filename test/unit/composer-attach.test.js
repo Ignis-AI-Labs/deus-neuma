@@ -4,48 +4,31 @@
 import { describe, it, expect } from 'vitest';
 import { attachMenuModel, gateAttachments, FILES_DESC, VISION_OFF_NOTE, VISION_BLIND_NOTE, VISION_BLIND_DOCS_NOTE } from '../../frontend/app/RelinkShell/composer-attach.js';
 
-const PROJECTS = [
-  { id: 'p1', name: 'neuma', folder: '/repos/neuma' },
-  { id: 'p2', name: 'kenorie', folder: '/repos/kenorie' },
-];
-
 describe('attachMenuModel', () => {
   it('describes ADD FILES plainly when the substrate sees', () => {
-    const m = attachMenuModel({ vision: true, projects: PROJECTS, activeProjectId: 'p1' });
+    const m = attachMenuModel({ vision: true });
     expect(m.filesDesc).toBe(FILES_DESC);
     expect(m.visionOff).toBe(false);
   });
 
   it('states the capacity limit honestly when the substrate is blind', () => {
-    const m = attachMenuModel({ vision: false, projects: PROJECTS, activeProjectId: 'p1' });
+    const m = attachMenuModel({ vision: false });
     expect(m.filesDesc).toBe(VISION_OFF_NOTE);
     expect(m.visionOff).toBe(true);
   });
 
   it('makes no capacity claim while vision is unknowable (null)', () => {
-    const m = attachMenuModel({ vision: null, projects: PROJECTS, activeProjectId: null });
+    const m = attachMenuModel({ vision: null });
     expect(m.filesDesc).toBe(FILES_DESC);
     expect(m.visionOff).toBe(false);
   });
 
-  it('marks exactly the active project', () => {
-    const m = attachMenuModel({ vision: true, projects: PROJECTS, activeProjectId: 'p2' });
-    expect(m.projects).toEqual([
-      { id: 'p1', name: 'neuma', active: false },
-      { id: 'p2', name: 'kenorie', active: true },
-    ]);
-  });
-
-  it('yields an empty project list when there are none (or the list is absent)', () => {
-    expect(attachMenuModel({ vision: true, projects: [], activeProjectId: null }).projects).toEqual([]);
-    expect(attachMenuModel({ vision: true, projects: undefined, activeProjectId: null }).projects).toEqual([]);
+  it('carries no project section — Projects were removed (2026-11-10)', () => {
+    expect(attachMenuModel({ vision: true })).not.toHaveProperty('projects');
   });
 
   it('returns a frozen model — display state is never mutated in place', () => {
-    const m = attachMenuModel({ vision: true, projects: PROJECTS, activeProjectId: 'p1' });
-    expect(Object.isFrozen(m)).toBe(true);
-    expect(Object.isFrozen(m.projects)).toBe(true);
-    expect(Object.isFrozen(m.projects[0])).toBe(true);
+    expect(Object.isFrozen(attachMenuModel({ vision: true }))).toBe(true);
   });
 });
 

@@ -9,7 +9,7 @@ import { houseSeatCards } from '../../frontend/app/RelinkShell/house-chain.js';
 
 describe('the house is five spaces', () => {
   it('in one order, each coded', () => {
-    expect(HOUSE_SPACES.map((s) => `${s.code} ${s.title}`)).toEqual(['01 MEMBERS', '02 SUMMONING', '03 GATHER', '04 SEATS', '05 GROUNDS']);
+    expect(HOUSE_SPACES.map((s) => `${s.code} ${s.title}`)).toEqual(['01 MEMBERS', '02 SUMMONING', '03 GATHER', '04 POSITIONS', '05 GROUNDS']);
   });
   it('reopens on the space last read; anything else opens MEMBERS', () => {
     expect(spaceOf('grounds')).toBe('grounds');

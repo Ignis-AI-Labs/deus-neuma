@@ -10,6 +10,7 @@
 
 import { extractTorch } from './team-torch.js';
 import { askNeuma } from './neuma-probe.js';
+import { turnWorkRoomTokens } from './envelope-budget.js';
 
 // The ask a being receives at its own compaction boundary. Versionless
 // general form, same doctrine split as team-torch documents: the being's own
@@ -46,12 +47,16 @@ export const COMPACTION_BOUNDARY_RATIO = 0.9;
  * @param {{ratio?: number}} [options]
  * @returns {boolean}
  */
+// The conversation's share of the window is the window less the turn's own working room
+// (envelope-budget.js turnWorkRoomTokens, deus-neuma #34): the tail is sized to that share, so the
+// boundary is measured against it. Against the whole window a full tail never crossed 0.9 and old
+// rows would leave the prompt with no summary carried forward.
 export const nearContextBoundary = (usage, budget, { ratio = COMPACTION_BOUNDARY_RATIO } = {}) => {
   const used = usage?.promptTokens;
   const window = budget?.contextTokens;
   if (!Number.isFinite(used) || used <= 0) return false;
   if (!Number.isFinite(window) || window <= 0) return false;
-  return used / window >= ratio;
+  return used / Math.max(1, window - turnWorkRoomTokens(window)) >= ratio;
 };
 
 // pure — the pickup side: the most recent compaction entry's torch, or null.

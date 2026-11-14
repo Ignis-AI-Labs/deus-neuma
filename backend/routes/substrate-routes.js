@@ -70,9 +70,9 @@ const currentSubstrate = async () => {
 
 router.get('/capacity', async (req, res) => {
   try {
-    const [runs, latest, current] = await Promise.all([
-      listCapacity(), readUsableCapacity(), currentSubstrate(),
-    ]);
+    const [runs, current] = await Promise.all([listCapacity(), currentSubstrate()]);
+    // the scan that speaks for the model served now, carried from another model when it has none
+    const latest = await readUsableCapacity(current?.model ?? null);
     // `scan` is the live truth of a run in flight — the panel reads it on
     // open and on every poll, so progress survives a refresh and a wedged scan
     // is visibly wedged (its elapsed climbs while levelsDone does not).

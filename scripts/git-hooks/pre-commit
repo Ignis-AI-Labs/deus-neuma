@@ -3,7 +3,9 @@
 # scripts/git-hooks; `npm install` sets it too — see package.json "prepare").
 #   1. SECRET GATE: no live secret or key-shaped value enters history
 #      (scripts/secret-gate.mjs; why: commit 422f95aff, 2026-04-14).
-#   2. SIZE LAW: staged files judged against the frozen baseline.
+#   2. ACCESSIBILITY: staged .jsx judged against the frozen jsx-a11y baseline
+#      (scripts/check-a11y.mjs; AGENTS.md's accessibility rule, 2026-11-12).
+#   3. SIZE LAW: staged files judged against the frozen baseline.
 # Then `git lfs install` so the lfs hooks follow the hooksPath.
 # The gate is found beside this hook, not in the checkout: core.hooksPath is
 # absolute, so every worktree (even one checked out at an older commit) runs
@@ -11,5 +13,6 @@
 here="$(cd "$(dirname "$0")" && pwd)"
 node "$here/../secret-gate.mjs" --staged || exit 1
 root="$(git rev-parse --show-toplevel)"
+if [ -f "$root/scripts/check-a11y.mjs" ]; then node "$root/scripts/check-a11y.mjs" --staged || exit 1; fi
 [ -f "$root/scripts/check-file-size.mjs" ] || exit 0
 exec node "$root/scripts/check-file-size.mjs" --staged

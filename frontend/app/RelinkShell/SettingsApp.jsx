@@ -29,6 +29,7 @@ import { RealmSection } from './RealmSection.jsx';
 import { SoundSection } from './SoundSection.jsx';
 import { InferenceSection } from './InferenceSection.jsx';
 import { HotkeysSection } from './HotkeysSection.jsx';
+import { SystemDictationSection } from './SystemDictationSection.jsx';
 import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
@@ -54,6 +55,7 @@ const GeneralTab = () => (
     <RealmSection />
     <DocPressSection />
     <HotkeysSection />
+    <SystemDictationSection />
   </>
 );
 

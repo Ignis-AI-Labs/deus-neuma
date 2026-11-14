@@ -35,7 +35,6 @@ import { useConsciousness, ConsciousnessProvider } from './consciousness-context
 import { CompositionContext, useCompositionEvent } from './composition-context.js';
 import { useContextComposition } from './use-context-composition.js';
 import { useTabs } from './tabs-context.js';
-import { useProjects } from './projects/project-context.js';
 import { sittingGround } from './desk-focus.js';
 import { focusPlan, focusedComposition } from '../../../core/runtime/tabs-model.js';
 import { TabActivityContext } from './tab-activity.js';
@@ -56,13 +55,10 @@ const TabPortal = ({ tab, onActivity, onSession, onValue, onComposition }) => {
   // "Portal established" (or any link status) across the desk's global badge
   // on a mere tab switch (ruling, 2026-08-28).
   const [wsService] = useState(() => new WebSocketService({ quiet: true }));
-  const projects = useProjects();
 
   const consciousness = useConsciousnessStream(wsService, {
     // Background sittings retain their own folder; missing assignments stay null.
     focus: sittingGround(tab?.focus),
-    projects: projects?.projects ?? null,
-    onProjectChatCreated: projects?.refresh ?? null,
     house: false, // the window's own portal answers for the machine
   });
 
