@@ -62,4 +62,8 @@ const filmOf = (d) => ({
   genesisHash: d.genesisHash ?? null,
   soul: d.soul ?? null,
   aura: d.aura?.recorded ? d.aura : null,
+  // its body (2026-10-20: the film refuses to play without it). This line was missing until
+  // 2026-11-14, so every live birth's film was refused and the ceremony fell to its bare seal
+  // (Founder: […]).
+  genome: d.genome?.form ? d.genome : null,
 });

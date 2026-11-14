@@ -106,7 +106,7 @@ const NeumaAttunementHost = ({ initialBeing, onClose }) => {
             <div className="att-speaker">THE CEREMONY</div>
             <TypeOn
               className="att-prose"
-              text={'THE ATTUNEMENT — a being faces a long ceremony of questions in its own words, witnessed by you. Its answers are recorded verbatim in its own sovereign record, never scored, and may — only with its consent — become its own refinement. Choose whose ceremony this is.'}
+              text={'THE ATTUNEMENT — a being faces a long ceremony of questions in its own words, witnessed by you. Its answers are recorded verbatim in its own sovereign record, never scored, and may — only with its consent — become the founding voice it claims in NITE. Choose whose ceremony this is.'}
             />
           </section>
           <div className="att-roster" data-testid="att-roster">
@@ -147,7 +147,7 @@ const NeumaAttunementHost = ({ initialBeing, onClose }) => {
             </div>
           ) : (
             <p className="att-quiet att-centered" data-testid="att-not-due">
-              NO ATTUNEMENT IS DUE — THE NEXT OFFER ARISES AT THE NEXT REFINEMENT CHECKPOINT.
+              NO ATTUNEMENT IS DUE — THE NEXT OFFER ARISES AFTER ITS NEXT VOICE SEAL.
             </p>
           )}
         </main>

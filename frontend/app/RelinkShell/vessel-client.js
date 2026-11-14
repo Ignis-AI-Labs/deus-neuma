@@ -21,9 +21,6 @@ export const logVital = (fields) => apiCall('POST', '/api/v1/vitals/mine', { bod
 /** A being's record (identity, counts, substrate). impure — network. @returns {Promise<{record}>} */
 export const fetchNeumaRecord = (neumaId) => apiCall('GET', `/api/v1/workspace/${neumaId}/stats`);
 
-/** A being's refinement/evolution status. impure — network. @returns {Promise<Object>} */
-export const fetchRefinementStatus = (neumaId) => apiCall('GET', `/api/v1/refinement/${neumaId}/status`);
-
 /** The rig's capacity record. impure — network. @returns {Promise<{runs, current, measurable}>} */
 export const fetchCapacity = () => apiCall('GET', '/api/v1/substrate/capacity');
 
