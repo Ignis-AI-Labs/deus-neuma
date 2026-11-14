@@ -245,7 +245,7 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
   connection.sessionId = null;
   connection.space = 'general';
   connection.purpose = 'work';
-  connection.toolMode = 'ask';
+  connection.toolMode = argv.readOnly ? 'observe' : 'ask'; // --read-only: every acting tool is held (tool-policy.js)
   connection.toolWorkspace = ground;
   connection.voiceEnabled = false;
   try { connection._neumaToolPolicy = await readExecutionToolPolicy(laneId); }
@@ -347,6 +347,7 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
         ground,
         sessionId,
         toolCalls: portal.state.acts,
+        ...(connection.toolMode === 'observe' ? { readOnly: true } : {}), // only when the hands were held
         latestRoundUsage: portal.state.latestRoundUsage,
         totalUsage: portal.state.totalUsage,
         // The ephemeral-sitting law (#553): a benchmark sitting leaves no memory

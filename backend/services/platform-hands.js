@@ -38,7 +38,7 @@ import path from 'path';
 import { randomBytes } from 'crypto';
 
 import { applyEdit } from './edit-primitive.js';
-import { writeEditSnapshot, undoRootFor } from './edit-undo.js';
+import { writeEditSnapshot, writeDeleteSnapshot, undoRootFor } from './edit-undo.js';
 import { guardedWriteFile } from './write-file-guard.js';
 
 /** Tool names the platform executes itself. */
@@ -176,8 +176,20 @@ const deleteFileHand = async (args) => {
   if (st.isDirectory()) {
     return refuse('a delete removes a single FILE — directories are not deletable');
   }
+  // Keep the file before it goes: a delete is undoable like any other act. A
+  // link or special file is not a file's content, so it leaves no record.
+  if (!st.isFile()) {
+    await fs.unlink(target);
+    return { ok: true, result: said(`Deleted ${target}`) };
+  }
+  const snapshot = writeDeleteSnapshot(undoRootFor(target), target, await fs.readFile(target));
   await fs.unlink(target);
-  return { ok: true, result: said(`Deleted ${target}`) };
+  return {
+    ok: true,
+    result: said(snapshot
+      ? `Deleted ${target}. Reverts with 'neuma edit --undo' (${path.basename(snapshot)}).`
+      : `Deleted ${target}. Too large to keep a copy — this one cannot be undone.`),
+  };
 };
 
 /**

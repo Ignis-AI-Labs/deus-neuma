@@ -21,7 +21,7 @@ const log = createLogger('Revenue.Acts');
 const officerRefusal = { ok: false, status: 'denied', reason: 'deals are the Mercator office\'s — only the seated Mercator opens and moves them (house/post reaches them; the operator seats the office)' };
 
 // impure — the filing lane, when it is this house's seated Mercator.
-const officeContext = async (connection) => {
+export const officeContext = async (connection) => {
   const laneId = connection.companion?.neumaId;
   const wallet = connection.walletAddress;
   if (!laneId || !wallet) return null;

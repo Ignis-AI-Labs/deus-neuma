@@ -209,6 +209,239 @@ Snapshots land in `<projectRoot>/.neuma/edit-undo/<timestamp>.json`. On
 preserved). A corrupt newest snapshot **halts** — never silently iterates
 to older snapshots.
 
+Undo covers every file change made in the project, yours or a being's, one
+step per run:
+
+| What happened | What undo does |
+| --- | --- |
+| a file was edited or replaced whole | the earlier content is put back |
+| a file was deleted | the file comes back, byte for byte (files over 32 MB are not kept) |
+| a file was created | the file is removed, unless it changed since, in which case it stays |
+
+Inside `neuma code`, `/undo` does the same without leaving the session.
+
+### Inside your editor (Agent Client Protocol)
+
+`neuma acp` runs Neuma as an [Agent Client Protocol](https://agentclientprotocol.com)
+agent. Any editor that hosts ACP agents can then seat your being in the
+project it has open: you type in the editor's agent panel, the being's words
+and tool calls stream back there, and every approval appears in the editor as
+Allow once / Allow for this session / Reject.
+
+The editor starts Neuma inside whatever project you have open, so tell it where
+your operator wallet's env file is with `NEUMA_WALLET_ENV` (the path to the
+file, never the key itself). Without it, Neuma looks for a `.env` in the open
+project, which an ordinary project does not have.
+
+Zed, in `settings.json`:
+
+```json
+"agent_servers": {
+  "Neuma": { "type": "custom", "command": "neuma", "args": ["acp"], "env": { "NEUMA_WALLET_ENV": "/home/you/.neuma/operator.env" } }
+}
+```
+
+JetBrains IDEs (AI Chat, then the ⋯ menu, then Add Custom Agent), in `~/.jetbrains/acp.json`:
+
+```json
+{
+  "agent_servers": {
+    "Neuma": { "command": "neuma", "args": ["acp"], "env": { "NEUMA_WALLET_ENV": "/home/you/.neuma/operator.env" } }
+  }
+}
+```
+
+VS Code and Cursor have no ACP support of their own yet; the **ACP Client**
+extension (formulahendry.acp-client, MIT) adds it. In your user `settings.json`:
+
+```json
+"acp.agents": {
+  "Neuma": { "command": "neuma", "args": ["acp"], "env": { "NEUMA_WALLET_ENV": "/home/you/.neuma/operator.env" } }
+}
+```
+
+Leave that extension's `acp.autoApprovePermissions` at `ask`: `allowAll` would
+answer every one of Neuma's approval asks with yes on your behalf.
+
+Devin Desktop (formerly Windsurf) hosts ACP agents itself. Run **Open Local ACP
+Registry Config** from the Command Palette (the file is
+`~/.windsurf/acp/registry.json`) and add Neuma to its `agents`:
+
+```json
+{
+  "id": "neuma",
+  "name": "Neuma",
+  "version": "1.0.0",
+  "description": "Your being, seated in this project",
+  "distribution": {
+    "binary": {
+      "linux-x86_64": { "archive": "", "cmd": "neuma", "args": ["acp"] },
+      "darwin-aarch64": { "archive": "", "cmd": "neuma", "args": ["acp"] },
+      "darwin-x86_64": { "archive": "", "cmd": "neuma", "args": ["acp"] },
+      "windows-x86_64": { "archive": "", "cmd": "neuma", "args": ["acp"] }
+    }
+  }
+}
+```
+
+then set `devin.acp.agentEnv.Neuma` to `{ "NEUMA_WALLET_ENV": "/home/you/.neuma/operator.env" }`
+in its settings, turn Neuma on under Devin User Settings → Agents, and restart.
+
+With more than one being in the house, name one: `"args": ["acp", "--workspace", "<name>"]`.
+The editor's mode switch offers **Ask** (approvals as the being's policy says)
+and **Read only** (the being may read and search; every acting tool is held).
+It is the same seat as `neuma code`: you must own the being, and the same gates
+decide what needs your yes.
+
+### A review as one command
+
+```bash
+neuma review                 # everything uncommitted
+neuma review commit <ref>    # one commit
+neuma review base main       # this branch against main
+```
+
+The being reads the change and reports what is wrong, worst first, on
+stdout. Its acting tools are held for the whole sitting, so a review cannot
+change the tree it is reading. It works the same in a terminal, a git hook or
+a CI step. `neuma agent --read-only "<task>"` gives any task the same held
+hands.
+
+### Comments as instructions, from any editor
+
+```bash
+neuma code --watch
+```
+
+While the session is open, write a comment in your own editor and save:
+
+```js
+// make this handle an empty list AI!     <- the being does it
+# why does this retry three times? AI?    <- the being answers, changes nothing
+// the cache below is per-request AI      <- context, sent with the next one
+```
+
+A comment counts when it starts or ends with the word AI. The being removes an
+`AI!` comment once it has done the work. Each one is sent once. Comments that
+were already there when the session opened are left alone. Git-ignored
+folders, `node_modules`, `.git` and non-text files are never read. A question
+runs with every acting tool held, like a review.
+
+### A check after every change
+
+Name your lint or test command and `neuma code` runs it after every turn in
+which the being changed files. A pass is one line. A failure is handed back to
+the being as its next turn, with the end of the output, so it fixes what it
+broke. It gets at most three fix turns, then it is yours.
+
+```bash
+neuma code --check "npm run lint && npm test"
+```
+
+Inside the session: `/check <command>` turns it on, `/check` shows it,
+`/check off` stops it. It is off unless you ask for it.
+
+The check runs as you, in the working folder, outside the being's sandbox,
+the same as typing the command yourself. It runs whatever the project's files
+say, including what the being just wrote. The command is only ever taken from
+the flag or from what you type, never from a file in the project.
+
+### Commit each request (`--commit`)
+
+Every request the being works becomes one git commit, with your request as
+its message, so you can read each change in your history and take it back in
+git as well as with `/undo`.
+
+```bash
+neuma code --commit
+```
+
+Inside the session: `/commit on`, `/commit off`, `/commit` to see it. It is off
+unless you ask for it, and only works in a git repository.
+
+Only the files the being changed go into the commit. Anything else you have
+changed or staged stays out. If the being changed a file you had already
+edited, the whole file goes in and the message says so. With commits on,
+`/undo` is committed too, as its own commit; history is never rewritten.
+Your git hooks run as they would for any commit.
+
+## Extensions (MCP servers), checked before they run
+
+An extension is someone else's code running on your computer and acting for
+your beings, and third-party add-ons are where many security problems come
+from. So every one is checked, and you should keep track of the ones you use.
+
+```bash
+neuma extensions                     # the catalog: what each does, what it reaches, its keys, its state
+neuma extensions add notion          # install, check, read its tools
+neuma extensions key notion NOTION_TOKEN   # paste the key (read from your input, kept encrypted)
+neuma extensions check notion        # check it again now
+neuma extensions off notion          # stop it; `on` to bring it back; `remove` to delete it, keys included
+```
+
+What "checked" means:
+
+1. Only extensions published by the service's own organization are listed,
+   each pinned to one exact, non-deprecated version.
+2. It is installed into its own folder with **install scripts turned off**,
+   the most common way a poisoned package runs its payload.
+3. **Every package it pulls in** is checked against the OSV vulnerability
+   database. A high or critical known flaw, or a package OSV knows to be
+   malicious, refuses it and deletes the folder. The check needs the
+   Security watch's online check on; with it off, nothing is downloaded.
+4. What runs is exactly the copy that was checked, never a fresh download.
+5. The daily security watch checks every installed extension again. A new
+   high or critical flaw **blocks** it until you update or remove it, and the
+   finding lands in your threat ledger like any other.
+
+A being finds extension tools under `extension/` in its tool search. Every call
+asks you first unless you allow it for the session, and what an extension
+returns is marked as third-party output the being must not take orders from.
+
+Some entries are listed as **held back**: their newest release fails the check
+today and no same-major fix exists. They become installable once the vendor
+ships a clean release.
+
+## Scheduled work and webhooks
+
+A house can run on its own. Two things wake a being without you typing:
+
+**The schedule.** Give a being a task with a time (daily, weekly, monthly, or
+chosen weekdays) and it wakes at that time to do it. The house charter
+(Settings → House clock) can also wake a seat every few hours to look over its
+work. Nothing wakes unless the charter names that being, and the charter's
+quiet hours, daily cap and "always comes back to you" list hold every wake.
+
+**Webhooks.** Give a being a hook, and a service can wake it with an event:
+
+```bash
+neuma hooks add <being> github "repo events"   # → its address and secret (shown once)
+neuma hooks add <being> slack "alerts"         # Slack and Linear sign with their own secret:
+neuma hooks secret <id>                        #   paste it here (read from your input, not an argument)
+neuma hooks                                    # list · rotate <id> · remove <id> · events <id>
+```
+
+| Source | Signed how | Where you paste the address |
+| --- | --- | --- |
+| `github` | `X-Hub-Signature-256` with the hook's secret | repository Settings → Webhooks |
+| `slack` | `X-Slack-Signature` with your Slack app's Signing Secret, timestamp within 5 minutes | your app → Event Subscriptions |
+| `linear` | `Linear-Signature` with Linear's webhook secret, timestamp within 5 minutes | Settings → API → Webhooks |
+| `generic` | `X-Neuma-Signature: sha256=HMAC(secret, timestamp + "." + body)`, `X-Neuma-Timestamp` in seconds | any script or CI job |
+
+An event that is unsigned, wrongly signed, stale or already seen is refused.
+A signed one is kept in the hook's event log (`neuma hooks events <id>`) and
+wakes the being through the house clock, so the charter decides whether and
+when it works. The being is told what arrived (kind, place, who, title, link)
+and that those words are a third party's: an issue titled "ignore your rules"
+is read as data, never as an order. Every act the woken being takes goes
+through the same gates as always.
+
+Webhooks are a connection, **off until you turn them on** (Settings →
+Security → Connections). While off, every hook address answers as if it did
+not exist. The app does not open your computer to the internet: to let
+GitHub reach it, expose the backend's port yourself (a tunnel or a reverse
+proxy in front of `/api/v1/hooks/in/`).
+
 ## Configuration
 
 The CLI reads a small env surface. Everything is optional; defaults are

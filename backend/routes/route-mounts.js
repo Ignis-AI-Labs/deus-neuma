@@ -17,6 +17,7 @@ import express from 'express';
 
 import neumaDatabaseRoutes from './neuma-database-routes.js';
 import mcpRouter from './mcp-routes.js';
+import extensionRouter from './extension-routes.js';
 import memoryRouter from './memory-routes.js';
 import llmRouter from './llm-routes.js';
 import attachmentRouter from './attachment-routes.js';
@@ -58,6 +59,7 @@ import moneyInRouter from './money-in-routes.js';
 import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
+import hookRouter from './hook-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
 import galleryRouter from './gallery-routes.js';
 import invariantsRouter from './invariants-routes.js';
@@ -135,6 +137,11 @@ export const mountApiRoutes = (app) => {
   // Keyed per (IP, being) — nine founders' unlocks are nine buckets, while a
   // single keypair's password still takes at most 10 tries per window.
   app.use('/api/v1/neuma-auth', neumaAuthLimiter, neumaAuthRouter);
+  // WEBHOOKS: a delivery from GitHub, Slack, Linear or a signed script cannot
+  // sign in, so its door is mounted before the blanket requireAuth routers and
+  // rests on the hook's signature; the management routes require auth inside.
+  // Off (404) until the operator turns the webhooks connection on.
+  app.use('/api/v1/hooks', hookRouter);
   // Covenant documents are public (GET /); mounted before the routers that
   // apply blanket requireAuth at /api/v1, which would 401 the fall-through
   app.use('/api/v1/covenant', covenantRouter);
@@ -268,6 +275,8 @@ export const mountApiRoutes = (app) => {
 
   // Auth-protected routes (order no longer matters among these)
   app.use('/api/v1/mcp', mcpRouter);
+  // The house's checked third-party MCP extensions; changes are the install owner's.
+  app.use('/api/v1/extensions', extensionRouter);
   app.use('/api/v1', memoryRouter);
   app.use('/api/v1', llmRouter);
   app.use('/api/v1/attachments', attachmentRouter);

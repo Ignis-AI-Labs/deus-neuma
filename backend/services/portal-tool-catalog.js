@@ -27,6 +27,7 @@ import { securityToolsFor } from './security/security-being-tools.js';
 import { legalToolsFor } from './legal/legal-being-tools.js';
 import { treasuryToolsFor } from './treasury/treasury-being-tools.js';
 import { benchToolsFor } from './bench/bench-being-tools.js';
+import { extensionToolsFor } from './extensions/extension-being-tools.js';
 import { isAdvertisedTool, normalizeChatMode } from './tool-policy.js';
 import { ASK_OPERATOR_TOOL } from './operator-ask.js';
 import { PLAN_SUBMIT_TOOL } from './team-tool-defs.js';
@@ -204,6 +205,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   // The connected benchmarks repository, from the conversation — the harness
   // measuring itself, and a being measuring itself (bench-being-tools.js).
   const benchTools = await capability('bench', () => benchToolsFor(connection));
+  // The house's checked third-party extensions (MCP servers) — every call asks the gate (extension-being-tools.js).
+  const extensionTools = await capability('extensions', () => extensionToolsFor());
   // The Quaestor's treasury read — the seated CFO's lane alone (treasury-being-tools.js).
   const treasuryTools = isNeuma ? await capability('treasury', () => treasuryToolsFor(connection)) : [];
   const vaultTools = connection.companion?.neumaId ? VAULT_TOOLS.filter(isAdvertisedTool) : []; // #414
@@ -255,7 +258,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     return {
       skills,
       tools: [...skillTools, ...retrieveTools, ...webTools, ...mediaTools, ...imageTools, ...cardTools,
-        ...mapTools, ...pressTools, ...askTools, ...planPresentTools, ...benchTools],
+        ...mapTools, ...pressTools, ...askTools, ...planPresentTools, ...benchTools, ...extensionTools],
     };
   }
   return {
@@ -266,7 +269,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
       ...leadTools, ...campaignTools, ...socialTools, ...securityTools, ...vesselLogTools,
       ...refinementTools, ...voiceTools, ...retrieveTools, ...memoryTools, ...skiesTools, ...genomeTools,
       ...housePostTools, ...chatLinkTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
-      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools,
+      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools, ...extensionTools,
   ],
   };
 };

@@ -6,19 +6,48 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.1.146] - 2026-11-14
+## [0.1.147] - 2026-11-14
 
-Notes: `docs/operations/release-notes-0.1.146.md`.
+Notes: `docs/operations/release-notes-0.1.147.md`.
 
 ### Added
 
 - A neuma can watch videos and listen to audio from almost any source: a link from YouTube, X, TikTok, Instagram, Facebook, Vimeo, Twitch, Reddit, SoundCloud, Apple Podcasts, Bandcamp, news sites or a direct file, or a recording on your computer. It gets what is said with the second each line begins, from the recording's own captions or heard on your computer, and, for video, frames from across it to look at. Long recordings come in ten-minute parts, and the transcript is kept in the neuma's workspace under watched/. In RESEARCH, hearings, interviews, speeches, documentaries and podcasts count as sources. The first watch downloads yt-dlp (and ffmpeg where your computer has none) from their GitHub releases, checked against pinned hashes; every fetch goes through a door that reaches only the internet, never your computer or your network. Each watch asks for your approval, like reading a page.
 - On a Mac, Deus Neuma sets up the model server for you as it does on Linux and Windows: it downloads Ollama's own macOS build (one build for Apple silicon, where models run on the graphics side of the chip, and for Intel), checked against its pinned SHA-256, and pulls the model recommended for your Mac's memory. An Ollama you installed yourself, from the Ollama app or Homebrew, is found and used when it is new enough.
 - macOS builds for Apple silicon and Intel, each made on its own Mac in the public repository's CI, so each app carries the right native code for its chip. Apple signing and notarization switch on once the Apple developer credentials are added to the repository.
+- `neuma acp`: Neuma runs inside any editor that hosts Agent Client Protocol agents (Zed, JetBrains IDEs, and Neovim or Emacs through their ACP clients). Your being works in the project the editor has open, its words and tool calls show in the editor's agent panel, and approvals appear there as Allow once / Allow for this session / Reject. A Read only mode holds every acting tool.
+- `neuma code --watch`: work with the being from any editor. Save a comment ending in `AI!` and the being does what it says; end it in `AI?` and the being answers without changing anything.
+- A complete, always-current list of the backend's HTTP endpoints (`docs/reference/API-ROUTES.md`): generated from the real routers with the checks each one runs (sign-in, install owner), and kept true by a test that fails if the page and the code disagree.
+- `neuma code --check "<command>"` (or `/check <command>` in the session): your lint or test command runs after every turn in which the being changed files. If it fails, the output goes straight back to the being to fix, for up to three tries. Off unless you turn it on.
+- `neuma code --commit` (or `/commit on`): every request the being works becomes its own git commit, with your request as the message. Only the files it changed go in, never your other work, and `/undo` is committed too.
+- Setup for VS Code and Cursor (through the ACP Client extension) and for Devin Desktop, formerly Windsurf, so your being works in all of them.
+- Extensions: 19 MCP servers from the services' own publishers (Notion, Sentry, Heroku, Mapbox, Pinecone, Playwright and more), added with `neuma extensions add <id>`. Each is installed with install scripts off and every package in it is checked against the OSV vulnerability database before it can run. A high or critical known flaw refuses it, the daily security watch checks installed ones again and blocks any that turn up a new flaw, and every call a being makes asks you first. Six are held back today because their newest release fails the check.
+- Your sales seat can now generate leads: it files the audiences it wants to sell to, finds companies for each one, and scores every company against that audience's signs of fit, with a written reason for each score.
+- Nothing from an audience reaches your lead list until you approve its pitch. Changing who an audience targets sends it back to you for approval.
+- A lead only joins your list with an email address the seat read on a real web page. Addresses are never guessed.
+- A do-not-contact list, kept by you or the seat. Anyone on it is never added or written to again.
+- Lead upkeep: each turn the seat sees what needs a hand, most urgent first. That covers replies waiting for an answer, follow-ups due, leads to close after three unanswered emails, stale leads, duplicates, and anyone on the do-not-contact list.
+- Sending an email to a lead marks it contacted, and a reply from a lead marks it replied. Your sales seat always knows who wrote last.
+- Email to anyone on the do-not-contact list is refused before it reaches you for approval.
+- A reply asking to be left alone, or a bounce, closes that lead and puts the address on the do-not-contact list automatically.
+- A LEAD ENGINE section in the Company Line window, under SALES. It shows each audience the seat wants to sell to, with approve, pause and retire buttons, each company's scores with their reasons, what is due on your lead list, and the do-not-contact list.
+- Approve an audience's company list once, and the sales seat can email those leads without asking you each time. It sends the first email and at most two follow-ups, three days apart. A reply still comes to you.
+- A new sending address ramps up on its own: 5 emails a day to leads in its first week, 10 in the second, 15 in the third, then 20.
+- A sales fact sheet: your sales seat files what a buyer may be told about the company, each fact with its source, and you approve or return it on the LEAD ENGINE screen. No email reaches a lead until a sheet is approved.
+- Every email to a lead is checked before it can go. Every number in it must be on the approved sheet, it must carry a line saying it was written by an AI that will stop on request, and it may not use false urgency.
+- A lead who replies just "stop" is taken off the list and never written to again.
+- `/review` inside `neuma code`: a dedicated code review of everything uncommitted, of one commit (`/review commit <ref>`), or of your branch against another (`/review base <branch>`). The review reports what is wrong, worst first, and cannot change a file while it runs.
+- Undo now covers everything a being does to your files, not only edits: a file it deleted comes back exactly as it was, and a file it created is taken away again. A new file you have worked on since is left alone.
+- `/undo` inside `neuma code` puts back the last file change without leaving the session. `neuma edit --undo` does the same from any terminal; run either again to step further back.
+- Webhooks: a being can be woken by events from GitHub, Slack, Linear or any signed script (`neuma hooks add <being> <source> <name>`). Each delivery must be signed with the hook's secret, fresh and not seen before; it then wakes the being through the house clock, so your charter still decides when it works and every act still asks the same gates. Webhooks are off until you turn them on in Settings → Security → Connections.
 
 ### Changed
 
 - A neuma looking for a file finds it in one search across every folder and drive it may read, best match first, instead of combing folders one by one. A search that names no folder now covers all of them, not only the neuma's own workspace; a plain word matches inside names in any case, and the exact name ranks first. The search walks many folders at once (millions of entries in seconds), never follows a link out of the folders it was given, skips dependency and dot folders unless asked, and says what it skipped. A drive the neuma has not been given is not searched, and the result says how to ask for it.
+
+### Fixed
+
+- The editor setup for Zed and JetBrains now says how to point Neuma at your wallet. Before, a being seated from an editor only worked inside a project that held your wallet file.
 
 ## [0.1.145] - 2026-11-14
 

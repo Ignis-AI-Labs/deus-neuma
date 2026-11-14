@@ -19,7 +19,7 @@ export const PAYMENT_PLACEHOLDER = '{{payment}}';
 export const disclosureLine = (companyName) => `We are a team of AI agents building ${companyName}; we work under ${companyName} and its human operator, who reviews and signs everything.`;
 
 const FORWARD = /\b(will|expect(?:s|ed)?|project(?:s|ed|ion)?|forecast(?:s|ed)?|anticipate[sd]?|plan(?:s|ned)? to|aim(?:s|ed)? to|target(?:s|ed)?|on track to)\b/i;
-const URGENCY = /\b(act now|limited time|last chance|only today|before it'?s too late|don'?t miss out|hurry|closing (?:today|tomorrow)|spots? (?:are )?filling|fomo)\b/i;
+export const URGENCY = /\b(act now|limited time|last chance|only today|before it'?s too late|don'?t miss out|hurry|closing (?:today|tomorrow)|spots? (?:are )?filling|fomo)\b/i;
 const PAYMENT_SHAPES = Object.freeze([
   [/0x[0-9a-fA-F]{40}/, 'a wallet address'],
   [/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/, 'an IBAN'],

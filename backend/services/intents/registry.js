@@ -58,6 +58,7 @@ import { teamTuneIntent } from './team-tune.js';
 import { staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent } from './staff-acts.js';
 import { companyIntents } from './company-acts.js';
 import { revenueIntents } from './revenue-acts.js';
+import { salesIntents } from './sales-acts.js';
 import { invoiceIntents } from './invoice-acts.js';
 import { deliveryIntents } from './delivery-acts.js';
 import { programmeIntents } from './programme-acts.js';
@@ -90,7 +91,7 @@ const TYPES = new Map(
     teamRunIntent, teamWorkspaceRunIntent, teamPostIntent, teamTuneIntent, sovereigntyProposeIntent, sovereigntyConsentIntent,
     staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent,
     boardAddIntent, boardUpdateIntent,
-    ...companyIntents, ...revenueIntents, ...accountsIntents, ...raiseIntents, ...invoiceIntents, ...deliveryIntents, ...programmeIntents,
+    ...companyIntents, ...revenueIntents, ...salesIntents, ...accountsIntents, ...raiseIntents, ...invoiceIntents, ...deliveryIntents, ...programmeIntents,
     // Stage 3 batch 4 — the state-shaped tools as filed acts.
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,

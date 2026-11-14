@@ -13,6 +13,7 @@ import { houseOfLane } from '../social/house-positions.js';
 import { sendEmail, SEND_MAX_RECIPIENTS } from '../email/smtp-sender.js';
 import { journalEmailCall } from '../email/email-being-tools.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
+import { suppressedRecipients, recordSent, leadEmailRefusal } from '../sales/email-ledger.js';
 
 // impure — the mailbox position: this lane holds its own house's mailbox AND
 // that house's account resolves.
@@ -51,6 +52,19 @@ export const emailSendIntent = Object.freeze({
     // A key in a sent mail is out for good: refused before any card.
     const secret = checkOutboundSecrets('the email', [...to, payload.subject, payload.text]);
     if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
+    // The house's do-not-contact list: refused before any card, never asked of the operator.
+    // Both read the house's own records and fail CLOSED: a list that cannot be read sends nothing.
+    const wallet = connection.walletAddress;
+    let blocked; let unchecked;
+    try {
+      blocked = wallet ? await suppressedRecipients(wallet, to) : [];
+      // To a lead: only what the approved sales facts back, from an AI that says so (MAKOTO).
+      unchecked = wallet ? await leadEmailRefusal(wallet, { to, subject: payload.subject, text: payload.text }) : null;
+    } catch (err) {
+      return { ok: false, status: 'denied', reason: `the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is sent until they can` };
+    }
+    if (blocked.length) return { ok: false, status: 'denied', reason: `${blocked.join(', ')} ${blocked.length === 1 ? 'is' : 'are'} on the house's do-not-contact list — never written to again` };
+    if (unchecked) return { ok: false, status: 'invalid', reason: unchecked };
     return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text } };
   },
   summarize: (payload) => {
@@ -67,8 +81,11 @@ export const emailSendIntent = Object.freeze({
       outcome.ok ? `to ${outcome.to.join(', ')} — "${String(value.subject).slice(0, 120)}"` : outcome.detail,
       outcome.ok ? 'ok' : 'error',
     );
+    const leads = outcome.ok && connection.walletAddress
+      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, by: connection.companion?.neumaId, from: credentials?.address })
+      : [];
     return outcome.ok
-      ? { ok: true, detail: `Email sent to ${outcome.to.join(', ')} (message id ${outcome.messageId}).` }
+      ? { ok: true, detail: `Email sent to ${outcome.to.join(', ')} (message id ${outcome.messageId}).${leads.length ? ` Recorded on ${leads.length} lead(s) as contacted.` : ''}` }
       : { ok: false, reason: `The email was not sent: ${outcome.detail}.` };
   },
 });

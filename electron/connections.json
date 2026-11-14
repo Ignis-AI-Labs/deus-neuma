@@ -67,6 +67,17 @@
       "default": false
     },
     {
+      "id": "webhooks",
+      "name": "Webhooks",
+      "to": "this computer, from the services you give a hook to",
+      "when": "whenever one of those services sends an event",
+      "sends": "nothing: services you chose send events in; each must be signed with the secret you gave it",
+      "whileOff": "every hook address answers as if it did not exist, and nothing outside can wake your beings",
+      "detail": "Once you turn it on, the hooks you made (Settings, or neuma hooks add) answer at /api/v1/hooks/in/<id> on this computer. A service such as GitHub, Slack or Linear sends events there, signed with the secret the hook was given; an unsigned, wrongly signed, stale or repeated event is refused. A signed event is kept in the house's event log and wakes the being the hook names, through the house clock: the charter still decides whether and when it works, and every act it takes asks the same gates as always. To reach this computer from the internet you must expose its port yourself (a tunnel or a reverse proxy); the app opens nothing to the internet on its own. While it is off, nothing outside can wake your beings.",
+      "control": "switch",
+      "default": false
+    },
+    {
       "id": "web",
       "name": "The web",
       "to": "the search index and the pages a neuma reads",
@@ -136,6 +147,15 @@
       "when": "only when you press a download, set up an engine or a model, or a neuma first watches or listens to something",
       "sends": "a request for the file, like any download: your IP address and which file was asked for (and your Hugging Face token to Hugging Face, if you saved one)",
       "detail": "Setting up the model server downloads Ollama, or the llama.cpp engine, from their releases on GitHub, and the model from Hugging Face. Setting up dictation downloads whisper.cpp from its releases on GitHub (on Linux, with an NVIDIA graphics card that has room for it, the graphics-card build from Deus Neuma's own releases on GitHub) and its speech model from Hugging Face. Every engine, and every model the app downloads itself, is checked against its pinned size and SHA-256 before it is used; a model pulled through Ollama is checked by Ollama's own digests. The first time a neuma watches a video or listens to a recording, the app downloads yt-dlp from its releases on GitHub and, on a computer without ffmpeg, a static ffmpeg build from GitHub, each checked the same way; when a site changes how it serves video, yt-dlp updates itself from its GitHub releases, checking the update against its publisher's signature, at most once every six hours. A recording without captions sets up speech recognition as dictation would, if it is not set up. Nothing here downloads on its own, and no install identifier is sent.",
+      "control": "use"
+    },
+    {
+      "id": "extensions",
+      "name": "Extensions",
+      "to": "the npm registry and the OSV vulnerability database while you add one; then whatever each extension reaches",
+      "when": "when you add or check an extension, every day for the security check, and when a being calls one",
+      "sends": "the extension's name and version to npm and OSV; to each service, what the being asks that extension to do, with the key you gave it",
+      "detail": "Extensions are MCP servers made by other companies (Notion, Brave, Sentry and the others in the list). When you add one, the app downloads its pinned version from the npm registry with install scripts turned off and asks the OSV vulnerability database about every package in it; one with a high or critical known flaw is refused and deleted. Each installed extension is checked again every day, and blocked if a new flaw appears, until you update or remove it. An extension starts only when a being calls it, every call asks you first unless you allowed it for the session, and it then talks to the service it names (listed beside it) with the key you gave it. Its keys are kept encrypted on this computer. Nothing is installed unless you add it, and the check needs the Security watch's online check on.",
       "control": "use"
     }
   ]
