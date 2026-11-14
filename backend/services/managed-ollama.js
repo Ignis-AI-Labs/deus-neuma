@@ -80,6 +80,8 @@ export const findSystemOllama = () => {
   if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
     candidates.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe'));
   }
+  // an app opened from the Finder gets a bare PATH: Homebrew's and the Ollama app's own are named
+  if (process.platform === 'darwin') candidates.push('/opt/homebrew/bin/ollama', '/usr/local/bin/ollama', '/Applications/Ollama.app/Contents/Resources/ollama');
   for (const bin of candidates) {
     const r = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 5000, windowsHide: true, env: probeEnvironment() });
     if (r.status === 0) return { bin, version: (`${r.stdout}${r.stderr}`.match(/(\d+\.\d+\.\d+)/) || [])[1] || null };

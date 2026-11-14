@@ -247,17 +247,23 @@ const ARG_ALIASES = Object.freeze({
 // refusal. Writes are excluded by construction: a write path is never guessed.
 const DEFAULT_ROOT_TOOLS = new Set(['search_files', 'search_content', 'list_directory']);
 
+// What a being writes when it means […] (2026-11-14: a file search with no folder
+// looked in the being's own workspace alone, and the being went folder by folder across the drives).
+const EVERYWHERE = new Set(['roots', 'all', 'everywhere', '*', '**']);
+
 /**
  * Meet the model where its training is strongest (the parser's own law,
  * applied to ARGUMENTS): fill canonical keys from known aliases, and give a
- * root-searching read its ground when no path was named at all. Pure —
- * returns the same object when nothing applies.
+ * root-searching read its ground when no path was named at all. A NAME search
+ * with no folder (or "everywhere") searches every root it may read at once
+ * (`paths`). Pure — returns the same object when nothing applies.
  * @param {string} toolName
  * @param {Object} args
  * @param {string|null} defaultRoot - first standing read root, or null
+ * @param {string[]|null} [readRoots] - every standing read root, for a name search
  * @returns {Object}
  */
-export const normalizeToolArgs = (toolName, args, defaultRoot = null) => {
+export const normalizeToolArgs = (toolName, args, defaultRoot = null, readRoots = null) => {
   const aliases = ARG_ALIASES[toolName];
   if (!aliases || !args || typeof args !== 'object') return args;
   let out = args;
@@ -270,9 +276,11 @@ export const normalizeToolArgs = (toolName, args, defaultRoot = null) => {
     const found = names.map((n) => args[n]).find((v) => typeof v === 'string' && v.length > 0);
     if (found !== undefined) fill(canonical, found);
   }
+  const everywhere = toolName === 'search_files' && typeof out.path === 'string' && EVERYWHERE.has(out.path.trim().toLowerCase());
   if (DEFAULT_ROOT_TOOLS.has(toolName) && defaultRoot
-    && !(typeof out.path === 'string' && out.path.length > 0)) {
+    && (everywhere || !(typeof out.path === 'string' && out.path.length > 0))) {
     fill('path', defaultRoot);
+    if (toolName === 'search_files' && Array.isArray(readRoots) && readRoots.length > 1 && !Array.isArray(out.paths)) fill('paths', [...readRoots]);
   }
   return out;
 };

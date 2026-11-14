@@ -212,12 +212,14 @@ describe('the culture media lane (real loopback + real broker + real disk, gnosi
 
   test('ADVERTISING — the read rides the switch and a bound being; the save is the intent now', async () => {
     expect((await mediaToolsFor({ companion: null }, settings)).length).toBe(0);
-    expect((await mediaToolsFor(freshConnection(), settings)).map((t) => t.name)).toEqual(['media_library']);
+    // the library read, and watching and listening (Design note, 2026-11-14, on the same switch
+    expect((await mediaToolsFor(freshConnection(), settings)).map((t) => t.name)).toEqual(['media_library', 'media_watch', 'media_listen']);
     await settings.setEnabled(false);
     expect((await mediaToolsFor(freshConnection(), settings)).length).toBe(0);
     await settings.setEnabled(true);
-    // isMediaTool hears both dialects of the read, and nothing else.
+    // isMediaTool hears both dialects of its tools, and nothing else.
     expect(isMediaTool({ toolName: 'media_save' })).toBe(false);
+    expect(isMediaTool({ tool: 'media/media_watch' })).toBe(true);
     expect(isMediaTool({ tool: 'media/media_library' })).toBe(true);
     expect(isMediaTool({ toolName: 'web_fetch' })).toBe(false);
   });

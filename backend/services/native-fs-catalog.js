@@ -165,11 +165,14 @@ export const FILESYSTEM_TOOL_CATALOG = Object.freeze([
     + 'The patterns should be glob-style patterns that match paths relative to the working directory. '
     + 'Use pattern like \'*.ext\' to match files in current directory, and \'**/*.ext\' to match files in all subdirectories. '
     + 'Returns full paths to all matching items. Great for finding files when you don\'t know their exact location. '
-    + 'Only searches within allowed directories.',
+    + 'Only searches within allowed directories. `paths` searches several roots at once (every root the '
+    + 'caller may read, when it named no folder); folders whose names start with a dot are skipped unless `hidden`.',
     {
       path: PATH_ARG,
+      paths: { type: 'array', items: { type: 'string' } },
       pattern: { type: 'string' },
       excludePatterns: { type: 'array', items: { type: 'string' }, default: [] },
+      hidden: { type: 'boolean' },
     }, ['path', 'pattern'], READ_ONLY),
 
   // NATIVE ADDITION (2026-08-16) — not from the pinned package. search_files

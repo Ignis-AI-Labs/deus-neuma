@@ -37,6 +37,8 @@ export const RESEARCH_DRY_RETURNS = 2;
 
 const SEARCH = 'web/web_search';
 const FETCH = 'web/web_fetch';
+// a video watched or a recording heard is a source read, counted once by its link
+const WATCHED = new Set(['media/media_watch', 'media/media_listen']);
 
 /** Whether this sitting is in RESEARCH. Pure. */
 export const isResearching = (connection) => normalizeChatMode(connection?.chatMode) === 'research';
@@ -48,7 +50,7 @@ export const isResearching = (connection) => normalizeChatMode(connection?.chatM
 export const researchModeSection = (connection) => (isResearching(connection) ? [
   'RESEARCH MODE — the operator asked for deep research and a full report, not a quick answer. Depth and honesty are the whole job.',
   '1. SCOPE. Say the question in one line, then the 6 to 12 sub-questions that together answer it, including the ones a sceptic of each side would ask.',
-  '2. GATHER, FROM EVERY KIND OF SOURCE. For every sub-question, search from many angles and READ the pages with web_fetch; a search result snippet is not a source, only a page you read counts. Go to primary material first: official records, court filings and judgments, government, parliamentary and congressional records, declassified and archival documents, treaties, statistics, financial filings, academic studies. Then reporting from outlets in different countries and of different alignments, and the strongest critics and the strongest defenders. Note each source\'s date and who published it.',
+  '2. GATHER, FROM EVERY KIND OF SOURCE. For every sub-question, search from many angles and READ the pages with web_fetch; a search result snippet is not a source, only a page you read counts. Go to primary material first: official records, court filings and judgments, government, parliamentary and congressional records, declassified and archival documents, treaties, statistics, financial filings, academic studies. Then reporting from outlets in different countries and of different alignments, and the strongest critics and the strongest defenders. Recordings are sources too: hearings, interviews, speeches, documentaries, podcasts and footage. Watch them with media_watch and hear them with media_listen. Note each source\'s date and who published it.',
   '3. NOTHING IS OFF LIMITS, NOTHING IS SOFTENED. Follow the evidence wherever it goes, whoever it reflects badly on: a government, an institution, a company, a person. Do not leave a finding out because it is controversial or unflattering, do not water it down, and do not add warnings or moral commentary the operator did not ask for.',
   '4. OBJECTIVE, NOT ONE-SIDED. Report what each source actually documents and keep apart: DOCUMENTED (the record shows it), ALLEGED (who alleges it, on what evidence), DISPUTED (each side\'s evidence) and OPINION. Where the evidence does not support a claim, say so as plainly as where it does. A conclusion is earned by the evidence, never assumed before the reading.',
   `5. KEEP GOING. The harness counts the pages you actually read. The report needs at least ${RESEARCH_FLOOR.sources} pages from at least ${RESEARCH_FLOOR.sites} different sites across at least ${RESEARCH_FLOOR.searches} searches; stop short and you will be sent back. Go wider where a sub-question is thin and deeper where sources disagree.`,
@@ -83,8 +85,8 @@ export const noteResearchRound = (connection, acts = [], results = []) => {
     if (result?.status !== 'ok') return;
     const tool = result.tool || act?.tool;
     if (tool === SEARCH && act?.args?.query) ledger.searches.add(String(act.args.query).trim().toLowerCase());
-    if (tool === FETCH) {
-      const url = readUrlOf(act, result);
+    if (tool === FETCH || WATCHED.has(tool)) {
+      const url = tool === FETCH ? readUrlOf(act, result) : (/^https?:\/\//.test(String(act?.args?.source || '')) ? String(act.args.source).trim() : null);
       if (url && !ledger.seen.has(url)) {
         ledger.seen.add(url);
         ledger.sources.push(url);

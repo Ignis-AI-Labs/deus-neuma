@@ -7,7 +7,8 @@
 // one. Now the platform offers to set one up: Ollama (it drives NVIDIA and AMD cards and the
 // processor on Linux and Windows, and pulls a model straight from Hugging Face), kept under
 // the platform's own data root, no admin rights, and the model the capacity check already
-// recommends for this machine (substrate-setup.js). The first-run discovery then adopts the
+// recommends for this machine (substrate-setup.js). On a Mac it is the same (2026-11-14: Ollama's
+// own macOS build, Metal on Apple silicon). The first-run discovery then adopts the
 // running server as it adopts any other (provider-discovery.js pickAutoAdopt).
 //
 // Why Ollama and not the supervised llama-server: the supervisor launches only with a physical
@@ -39,7 +40,19 @@ export const managedEndpoints = (override) => {
   return Object.freeze({ usual: `http://127.0.0.1:${port}`, alt: `http://127.0.0.1:${port + 1}` });
 };
 
+// macOS: one archive for both chips (Apple silicon serves on Metal, Intel on the processor); the
+// server sits at its root beside its libraries. Signed by Ollama, so Gatekeeper lets it run.
+const MAC = Object.freeze({
+  name: 'ollama-darwin.tgz',
+  size: 174_723_727,
+  sha256: '6c8b378e423a4c959b586c0bb62865d20ae057e817f1a8ee10abcc44bde6abab',
+  format: 'tar.gz',
+  bin: 'ollama',
+});
+
 const ASSETS = Object.freeze({
+  'darwin-arm64': MAC,
+  'darwin-x64': MAC,
   'linux-x64': Object.freeze({
     name: 'ollama-linux-amd64.tar.zst',
     size: 1_505_607_169,

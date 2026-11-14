@@ -155,3 +155,21 @@ describe('the ledger counts what was read, not what was found', () => {
     expect(researchNextStep(connection, { messages, roundResponse: REPORT })).toBe(null);
   });
 });
+
+describe('a recording watched is a source read', () => {
+  test('a video watched or a podcast heard counts once by its link; a file on this computer and a failed watch do not', () => {
+    const connection = { chatMode: 'research' };
+    const watched = (tool, source, status = 'ok') => ({ act: { tool: `media/${tool}`, args: { source } }, result: { tool: `media/${tool}`, status } });
+    const steps = [
+      watched('media_watch', 'https://www.youtube.com/watch?v=hearing'),
+      watched('media_watch', 'https://www.youtube.com/watch?v=hearing'), // the next part of the same video
+      watched('media_listen', 'https://podcasts.apple.com/us/podcast/x/id1?i=2'),
+      watched('media_watch', 'briefing.mkv'),
+      watched('media_watch', 'https://vimeo.com/404', 'error'),
+    ];
+    noteResearchRound(connection, steps.map((s) => s.act), steps.map((s) => s.result));
+    expect(connection._research.sources).toEqual(['https://www.youtube.com/watch?v=hearing', 'https://podcasts.apple.com/us/podcast/x/id1?i=2']);
+    expect([...connection._research.sites.keys()]).toEqual(['youtube.com', 'podcasts.apple.com']);
+    expect(researchModeSection(connection)).toContain('Watch them with media_watch and hear them with media_listen');
+  });
+});

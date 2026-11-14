@@ -119,7 +119,7 @@ const update = (patch) => { job = Object.freeze({ ...job, ...patch, at: new Date
 /** The setup job as the card polls it: idle, running, succeeded or failed. impure (module state) */
 export const sttJob = () => job;
 
-const run = async () => {
+const run = async ({ processor = false } = {}) => {
   const plan = await currentSttPlan();
   if (!plan.supported) throw Object.assign(new Error(plan.reason), { code: 'UNSUPPORTED' });
   if (!plan.enoughDisk) throw Object.assign(new Error(`need ${plan.needBytes} bytes free`), { code: 'DISK_SPACE' });
@@ -135,7 +135,7 @@ const run = async () => {
     update({ step: 'pull', completed: 0, total: f.model.size });
     await obtainArchive(f.model, f.modelPath, { onBytes: (n) => update({ completed: n }) });
   }
-  const g = plan.device === 'gpu' ? sttGpuFiles() : null;
+  const g = plan.device === 'gpu' && !processor ? sttGpuFiles() : null;
   if (g && !g.installed) {
     update({ step: 'download-gpu', completed: 0, total: g.engine.size });
     const archive = path.join(home(), g.engine.name);
@@ -148,17 +148,21 @@ const run = async () => {
   }
 };
 
-/** Start the setup, or answer with the one already running. impure */
-export const startSttJob = () => {
+/**
+ * Start the setup, or answer with the one already running. `processor` sets up the processor's pair
+ * only, and starts the server there: what hearing a recording in a checkout asks for (it never puts
+ * a model on the graphics card on its own). impure
+ */
+export const startSttJob = ({ processor = false } = {}) => {
   if (job.state === 'running') return job;
   update({ state: 'running', step: 'check', completed: 0, total: 0, error: null, detail: null });
-  run().then(() => {
+  run({ processor }).then(() => {
     update({ state: 'succeeded', step: 'done' });
     log.info('dictation set up', { build: WHISPER_CPP_BUILD, model: STT_MODEL.name });
     // set up means ready to speak: the server loads now, not at the first held key, and one already
     // running on the processor moves to the card if the card's pair just landed
     stopSttServer();
-    ensureSttServer().catch((err) => log.warn('the speech server did not start after setup', { error: err.message }));
+    ensureSttServer({ processor }).catch((err) => log.warn('the speech server did not start after setup', { error: err.message }));
   }).catch((err) => {
     log.warn('dictation setup stopped', { error: err.message, code: err.code });
     update({ state: 'failed', ...plainFailure(err) });
@@ -221,14 +225,14 @@ const startServer = async ({ files, gpu, libDir }) => {
  * model (and the card's files are set up), else on the processor; a card server that cannot start
  * leaves the processor to answer. Started again if it died. impure
  */
-export const ensureSttServer = async () => {
+export const ensureSttServer = async ({ processor = false } = {}) => {
   if (server) { await server.ready; return server.port; }
   if (starting) return starting;
   starting = (async () => {
     const cpu = sttFiles();
     if (!cpu.installed || !cpu.modelPresent) throw Object.assign(new Error('dictation is not set up on this machine'), { code: 'STT_COMPONENTS_MISSING' });
     const device = await currentSttDevice();
-    const card = device.device === 'gpu' ? sttGpuFiles() : null;
+    const card = device.device === 'gpu' && !processor ? sttGpuFiles() : null;
     if (card?.installed && card.modelPresent) {
       try {
         return await startServer({ files: card, gpu: true, libDir: device.cudaLibDir });
@@ -261,14 +265,20 @@ export const startSttAtBoot = ({ managed = usesManagedStt() } = {}) => {
   });
 };
 
+// pure — the server's timed segments (verbose_json), in seconds from the recording's start
+const segmentsOf = (body) => (Array.isArray(body.segments) ? body.segments : [])
+  .map((s) => ({ start: Number(s.start ?? (s.t0 ?? 0) / 100), end: Number(s.end ?? (s.t1 ?? 0) / 100), text: String(s.text ?? '').trim() }))
+  .filter((s) => Number.isFinite(s.start) && s.text);
+
 /**
- * One transcription: 16 kHz WAV in, { text, language, durationSeconds } out. The vocabulary rides as
- * the initial prompt, so domain words are heard rather than repaired later. impure
+ * One transcription: 16 kHz WAV in, { text, language, durationSeconds, segments } out (segments: the
+ * timed pieces, for a recording a neuma watches). The vocabulary rides as the initial prompt, so
+ * domain words are heard rather than repaired later. impure
  * @param {Buffer} wav
  * @param {{prompt?: string}} [opts]
  */
-export const transcribeWav = async (wav, { prompt = '' } = {}) => {
-  const port = await ensureSttServer();
+export const transcribeWav = async (wav, { prompt = '', processor = false } = {}) => {
+  const port = await ensureSttServer({ processor });
   const form = new FormData();
   form.append('file', new Blob([wav], { type: 'audio/wav' }), 'speech.wav');
   form.append('response_format', 'verbose_json');
@@ -277,7 +287,7 @@ export const transcribeWav = async (wav, { prompt = '' } = {}) => {
   const res = await fetch(`http://127.0.0.1:${port}/inference`, { method: 'POST', body: form, signal: AbortSignal.timeout(180_000) });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || typeof body.text !== 'string') throw new Error(body.error || `the speech server answered ${res.status}`);
-  return Object.freeze({ text: body.text.trim(), language: body.language ?? null, durationSeconds: body.duration ?? null });
+  return Object.freeze({ text: body.text.trim(), language: body.language ?? null, durationSeconds: body.duration ?? null, segments: segmentsOf(body) });
 };
 
 process.once('exit', () => { try { server?.child?.kill(); } catch { /* gone */ } });

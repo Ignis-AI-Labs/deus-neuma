@@ -129,6 +129,7 @@ const routeSearch = (args) => {
   const out = { pattern };
   if (p) out.path = p;
   if (Array.isArray(args.excludePatterns)) out.excludePatterns = args.excludePatterns;
+  if (args.hidden === true) out.hidden = true;
   return ok('search_files', out);
 };
 
@@ -300,11 +301,13 @@ export const FS_PRIMITIVE_TOOLS = Object.freeze([
       excludePatterns: Object.freeze({ type: 'array', items: STR, description: 'Names/globs to skip (tree only)' }),
     }),
   fsTool('search',
-    'Find by NAME (glob, recursive): {"path", "pattern"}. Add "content": true to search INSIDE files — '
-    + 'faster than walking directories when you know the text but not the file.',
+    'Find a file by NAME: {"pattern"} searches every folder and drive you may read at once, best match first '
+    + '(a plain word matches inside names, any case; a glob like "*.pdf" works too). Name a "path" to search one folder. '
+    + 'To find a file, search first: never walk folders one by one. Add "content": true to search INSIDE files.',
     {
-      path: Object.freeze({ type: 'string', description: 'Where to search — defaults to your ground' }),
-      pattern: Object.freeze({ type: 'string', description: 'Name glob, or the text to find when content is true' }),
+      path: Object.freeze({ type: 'string', description: 'One folder to search — omit to search everywhere you may read' }),
+      pattern: Object.freeze({ type: 'string', description: 'Part of the name, a name glob, or the text to find when content is true' }),
+      hidden: Object.freeze({ type: 'boolean', description: 'Also search folders whose names start with a dot' }),
       content: Object.freeze({ type: 'boolean', description: 'Search INSIDE files instead of by name' }),
       regex: Object.freeze({ type: 'boolean', description: 'Treat the pattern as a regular expression (content mode)' }),
       ignoreCase: Object.freeze({ type: 'boolean', description: 'Case-insensitive (content mode)' }),

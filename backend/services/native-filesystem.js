@@ -31,6 +31,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { inflateRawSync } from 'zlib';
 import { pdfRead, pdfText } from './pdf-text.js';
+import { NAME_SEARCH_EXCLUDES, searchNames } from './fs-name-search.js';
 import { docxText } from '../../core/documents/docx-text.js';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
@@ -59,24 +60,6 @@ const said = (text) => ({ content: [{ type: 'text', text }], structuredContent: 
 
 /** MCP-shaped refusal, as the SDK surfaces a handler throw — pure. */
 const refused = (message) => ({ content: [{ type: 'text', text: message }], isError: true });
-
-/**
- * The package matcher compares the FULL relative path. `*.js` therefore
- * misses `src/a.js`, and a bare name misses everything not at the root.
- * A pattern with no slash becomes a name search at any depth.
- * Pure.
- * @param {unknown} pattern
- * @returns {string}
- */
-export const nameSearchGlob = (pattern) => {
-  const raw = typeof pattern === 'string' ? pattern.trim() : '';
-  if (!raw) return '**/*';
-  if (raw.includes('/') || raw.includes('\\')) return raw;
-  if (raw.startsWith('**')) return raw;
-  if (['*', '?', '['].some(token => raw.includes(token))) return `**/${raw}`;
-  return `**/*${raw}*`;
-};
-
 
 // --- Handlers (one per catalog entry, mirroring dist/index.js) ---------------
 
@@ -255,61 +238,54 @@ const directoryTree = async (args) => {
 };
 
 
-// search_files bounds — the name walk once had NONE: every entry re-crossed
-// the wall one at a time, node_modules and .git included, every hit returned.
-// A being's […] ran 37s over this repo
-// alone and minutes over a home folder — the turn sat on […] (live 2026-09-25). Same cut law as content search: every cut is
-// reported, never silent; an explicit excludePatterns (even []) replaces the
-// default excludes.
-const NAME_SEARCH = Object.freeze({ MAX_ENTRIES: 50000, MAX_RESULTS: 200 });
-
-// impure (owner reads) — the sandbox judged only a search's root; a walk judges every entry, as named
-// and as resolved, by the same deny law and the other-house wall, so a secret or another house's data is
-// never read or listed. node_modules is denied as noise, not secret: excludePatterns opens it.
+// impure (owner reads) — the sandbox judged only a search's root; a walk judges every folder it enters
+// and every name it lists, by the same deny law and the other-house wall, so a secret or another
+// house's data is never read or listed. node_modules is denied as noise, not secret: excludePatterns
+// opens it.
 const withheldByPolicy = (...paths) => paths.some((p) => {
   const verdict = checkPathAccess(p);
   return (!verdict.allowed && verdict.deniedPattern !== 'node_modules/') || otherHouseInWalk(p);
 });
 const withheldNote = (n) => `[${n} path(s) withheld by the secret-path policy — never read or listed]`;
 
+// A name search walks every root it is given at once (fs-name-search.js): `paths` is every folder the
+// being may read (the sandbox fills it when no folder is named), `path` one folder. A root inside
+// another is walked once; one the wall refuses is said, never silently dropped.
 const searchFiles = async (args) => {
-  const rootPath = await validatePath(args.path, getNativeFilesystemRoots());
-  const pattern = nameSearchGlob(args.pattern);
-  const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
-  const results = [];
-  let walked = 0;
-  let withheld = 0;
-  let stopped = null;
-  const walk = async (dir) => {
-    const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
-    for (const entry of entries) {
-      if (stopped) return;
-      if (walked >= NAME_SEARCH.MAX_ENTRIES) { stopped = 'entries'; return; }
-      walked += 1;
-      const fullPath = path.join(dir, entry.name);
-      const relativePath = path.relative(rootPath, fullPath);
-      if (isExcluded(relativePath, excludePatterns)) continue;
-      let validPath;
-      try { validPath = await validatePath(fullPath, getNativeFilesystemRoots()); } catch { continue; }
-      if (withheldByPolicy(...new Set([fullPath, validPath]))) { withheld += 1; continue; }
-      if (minimatch(relativePath, pattern, { dot: true })) {
-        results.push(fullPath);
-        if (results.length >= NAME_SEARCH.MAX_RESULTS) { stopped = 'results'; return; }
-      }
-      if (entry.isDirectory()) await walk(validPath);
+  const asked = Array.isArray(args.paths) && args.paths.length > 0 ? args.paths : [args.path];
+  const roots = [];
+  const refusedRoots = [];
+  for (const p of asked) {
+    try { roots.push(await validatePath(p, getNativeFilesystemRoots())); } catch (err) {
+      if (asked.length === 1) throw err;
+      refusedRoots.push(p);
     }
-  };
-  await walk(rootPath);
-  const notes = [];
-  if (stopped === 'results') notes.push(`[stopped at ${NAME_SEARCH.MAX_RESULTS} matches — narrow the pattern or the path]`);
-  if (stopped === 'entries') notes.push(`[stopped after walking ${NAME_SEARCH.MAX_ENTRIES} entries — search a narrower directory]`);
-  if (withheld > 0) notes.push(withheldNote(withheld));
-  if (excludePatterns.length > 0) {
-    notes.push(`[excluded from this walk: ${excludePatterns.join(', ')} — pass excludePatterns: [] to search them]`);
   }
-  const body = results.length > 0
-    ? results.join('\n')
-    : `No files matching ${JSON.stringify(args.pattern)} under ${rootPath} (searched as ${JSON.stringify(pattern)}). This is a name search, not grep — use fs/search with content: true for text inside files.`;
+  const inside = (a, b) => a !== b && a.startsWith(b.endsWith(path.sep) ? b : b + path.sep);
+  const walkRoots = [...new Set(roots)].filter((r, _i, all) => !all.some((o) => inside(r, o)));
+  const started = Date.now();
+  const r = await searchNames({
+    roots: walkRoots, pattern: args.pattern, excludePatterns: Array.isArray(args.excludePatterns) ? args.excludePatterns : null, hidden: args.hidden === true,
+    withheld: (p) => withheldByPolicy(p),
+    clearLink: async (p) => {
+      try { const real = await validatePath(p, getNativeFilesystemRoots()); return withheldByPolicy(real) ? null : real; } catch { return null; }
+    },
+  });
+  const seconds = ((Date.now() - started) / 1000).toFixed(1);
+  const where = walkRoots.length === 1 ? walkRoots[0] : `${walkRoots.length} folders (${walkRoots.join(', ')})`;
+  const notes = [`[searched ${where}: ${r.walked.toLocaleString('en-US')} entries in ${seconds}s, best match first]`];
+  if (r.more > 0) notes.push(`[${r.more} more matches not shown — narrow the pattern or name a folder]`);
+  if (r.stopped === 'time') notes.push(`[stopped at the time limit; not finished under: ${r.unfinished.join(', ')} — name a folder to search it fully]`);
+  if (r.stopped === 'entries') notes.push(`[stopped after ${r.walked.toLocaleString('en-US')} entries; not finished under: ${r.unfinished.join(', ')} — name a folder]`);
+  if (r.stopped === 'results') notes.push('[stopped at 2,000 matches — narrow the pattern]');
+  if (r.hiddenSkipped > 0) notes.push(`[${r.hiddenSkipped} folder(s) whose names start with a dot were not searched — pass "hidden": true to search them]`);
+  if (r.withheld > 0) notes.push(withheldNote(r.withheld));
+  if (refusedRoots.length > 0) notes.push(`[not searched, outside what you may read: ${refusedRoots.join(', ')}]`);
+  const excludes = Array.isArray(args.excludePatterns) ? args.excludePatterns : NAME_SEARCH_EXCLUDES;
+  if (excludes.length > 0) notes.push(`[skipped: ${excludes.join(', ')} folders — pass excludePatterns: [] to search them]`);
+  const body = r.results.length > 0
+    ? r.results.join('\n')
+    : `No file or folder named like ${JSON.stringify(args.pattern)}. This is a NAME search: use fs/search with content: true for text inside files. A drive or folder you have not been given is not searched — ask your operator for it with request_file_access.`;
   return said([body, ...notes].join('\n'));
 };
 

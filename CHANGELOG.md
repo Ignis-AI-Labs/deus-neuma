@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.146] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.146.md`.
+
+### Added
+
+- A neuma can watch videos and listen to audio from almost any source: a link from YouTube, X, TikTok, Instagram, Facebook, Vimeo, Twitch, Reddit, SoundCloud, Apple Podcasts, Bandcamp, news sites or a direct file, or a recording on your computer. It gets what is said with the second each line begins, from the recording's own captions or heard on your computer, and, for video, frames from across it to look at. Long recordings come in ten-minute parts, and the transcript is kept in the neuma's workspace under watched/. In RESEARCH, hearings, interviews, speeches, documentaries and podcasts count as sources. The first watch downloads yt-dlp (and ffmpeg where your computer has none) from their GitHub releases, checked against pinned hashes; every fetch goes through a door that reaches only the internet, never your computer or your network. Each watch asks for your approval, like reading a page.
+- On a Mac, Deus Neuma sets up the model server for you as it does on Linux and Windows: it downloads Ollama's own macOS build (one build for Apple silicon, where models run on the graphics side of the chip, and for Intel), checked against its pinned SHA-256, and pulls the model recommended for your Mac's memory. An Ollama you installed yourself, from the Ollama app or Homebrew, is found and used when it is new enough.
+- macOS builds for Apple silicon and Intel, each made on its own Mac in the public repository's CI, so each app carries the right native code for its chip. Apple signing and notarization switch on once the Apple developer credentials are added to the repository.
+
+### Changed
+
+- A neuma looking for a file finds it in one search across every folder and drive it may read, best match first, instead of combing folders one by one. A search that names no folder now covers all of them, not only the neuma's own workspace; a plain word matches inside names in any case, and the exact name ranks first. The search walks many folders at once (millions of entries in seconds), never follows a link out of the folders it was given, skips dependency and dot folders unless asked, and says what it skipped. A drive the neuma has not been given is not searched, and the result says how to ask for it.
+
 ## [0.1.145] - 2026-11-14
 
 Notes: `docs/operations/release-notes-0.1.145.md`.
