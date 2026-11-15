@@ -27,7 +27,7 @@ const factLines = (facts) => {
   const shown = facts.approved ?? null;
   return [
     head,
-    ...(shown ? ['What a buyer may be told (every number in an email to a lead must be one of these):', ...shown.facts.map((f) => `- ${f.claim}${f.figure ? ` [${f.figure.value} ${f.figure.unit}]` : ''}`)] : []),
+    ...(shown ? ['What a buyer may be told (every number in an email to a lead must be one stated for its own company):', ...shown.facts.map((f) => `- ${f.company ? `(${f.company}) ` : ''}${f.claim}${f.figure ? ` [${f.figure.value} ${f.figure.unit}]` : ''}`)] : []),
     `Every email to a lead carries this line above your name: "${SALES_DISCLOSURE}"`,
   ];
 };
@@ -40,7 +40,7 @@ const segmentLines = (segments, prospects) => segments.filter((s) => s.state !==
   const open = mine.filter((p) => p.stage === 'found');
   const by = (m) => open.filter((p) => p.match === m).length;
   const state = s.state === 'draft' ? 'DRAFT, waiting for the operator\'s approval' : s.state.toUpperCase();
-  return `- [${s.id}] ${s.name} — ${state} — role: ${s.targetRole} — sends only to ${s.countries.join(', ')} — pool ${open.length} (strong ${by(3)}, weak ${by(2)}, none ${by(1)}), on the ledger ${mine.filter((p) => p.stage === 'promoted').length}`;
+  return `- [${s.id}] ${s.name}${s.company ? ` (for ${s.company})` : ''} — ${state} — role: ${s.targetRole} — sends only to ${s.countries.join(', ')} — pool ${open.length} (strong ${by(3)}, weak ${by(2)}, none ${by(1)}), on the ledger ${mine.filter((p) => p.stage === 'promoted').length}`;
 });
 
 /**

@@ -33,6 +33,7 @@ export const makeSalesSheet = ({ facts, by, now }) => {
   const list = Array.isArray(facts) ? facts.slice(0, FACTS_MAX) : [];
   if (list.length < 3) throw new Error('facts: at least three — what a buyer may be told about the house, each sourced');
   const problems = list.flatMap((f, i) => [
+    ...(!clean(f?.company, 40) ? [`facts[${i}].company: the id of the house company this fact is true of`] : []),
     ...(clean(f?.claim, 400).length < 10 ? [`facts[${i}].claim: state the fact`] : []),
     ...(f?.figure != null && !(Number.isFinite(f.figure.value) && clean(f.figure.unit, 16)) ? [`facts[${i}].figure: {value, unit}, or leave it out`] : []),
     ...(!isSource(f?.source) ? [`facts[${i}].source: ${SOURCE_WORDS}`] : []),
@@ -42,6 +43,7 @@ export const makeSalesSheet = ({ facts, by, now }) => {
     id: `fs-${crypto.randomBytes(4).toString('hex')}`,
     facts: Object.freeze(list.map((f, i) => Object.freeze({
       n: i + 1,
+      company: clean(f.company, 40).toLowerCase(),
       claim: clean(f.claim, 400),
       figure: f.figure ? Object.freeze({ value: f.figure.value, unit: clean(f.figure.unit, 16) }) : null,
       source: clean(f.source, 300),
@@ -50,6 +52,14 @@ export const makeSalesSheet = ({ facts, by, now }) => {
     filedAt: now,
   });
 };
+
+/**
+ * The approved sheet as ONE company may use it: only that company's facts (a
+ * fact filed before facts named a company counts for every company). null
+ * company: the whole sheet. pure.
+ */
+export const factsFor = (approved, company) => (!approved || !company ? approved
+  : { ...approved, facts: approved.facts.filter((f) => !f.company || f.company === company) });
 
 /** The latest sheet, its review, and the sheet the operator last approved. pure. */
 export const foldSalesFacts = (events) => events.reduce((s, e) => {
@@ -76,6 +86,7 @@ export const judgeSheetReview = (state, { sheetId, verdict, note, now }) => {
  * @returns {{ok: true} | {ok: false, problems: string[]}}
  */
 export const checkSalesEmail = ({ subject, text, approved }) => {
+  if (approved && !approved.facts.length) return { ok: false, problems: ['no approved fact is filed for this lead\'s company — file its facts with sales/facts and have the operator approve them'] };
   if (!approved) return { ok: false, problems: ['the operator has not approved a facts sheet — file one with sales/facts; no lead is written to before it is approved'] };
   const all = `${subject}\n${text}`;
   const allowed = new Set(approved.facts.filter((f) => f.figure).map((f) => f.figure.value));

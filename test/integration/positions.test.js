@@ -95,6 +95,11 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     const merc = await positionSection(conn('merc'));
     expect(merc).toContain('SALES (Mercator)');
     expect(merc).not.toContain('BOOKS (Logista)');
+    // Every seat holder reads every company's file: what is known, and what is missing, named.
+    expect(merc).toContain('## THE HOUSE\'S COMPANIES');
+    expect(merc).toMatch(/Umbrae \[umbrae\]: site NOT SET/);
+    expect(merc).toMatch(/MISSING: its site address \(the operator sets it in MARKETING, BRAND, SITE & CODE\); facts a buyer may be told/);
+    expect((await board()).companies.map((c) => c.id)).toEqual(['ignis', 'umbrae']);
     expect(await positionSection(conn('books'))).toContain('BOOKS (Logista)');
     expect(await positionSection(conn('idle'))).toBe('');
     expect(await positionSection({ companion: { neumaId: 'merc' }, walletAddress: `0x${'9'.repeat(40)}` })).toBe('');

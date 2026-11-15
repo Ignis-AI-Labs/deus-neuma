@@ -28,7 +28,7 @@ export const LeadFactsSheet = ({ facts, busy, onReview }) => {
         <>
           <ol className="cline-ws-src" aria-label="sales facts">
             {sheet.facts.map((f) => (
-              <li key={f.n} data-fact={f.n}>{f.claim}{f.figure ? ` [${f.figure.value} ${f.figure.unit}]` : ''} — <SourceOf source={f.source} /></li>
+              <li key={f.n} data-fact={f.n}>{f.company ? `${f.company.toUpperCase()} — ` : ''}{f.claim}{f.figure ? ` [${f.figure.value} ${f.figure.unit}]` : ''} — <SourceOf source={f.source} /></li>
             ))}
           </ol>
           {!facts.review ? (

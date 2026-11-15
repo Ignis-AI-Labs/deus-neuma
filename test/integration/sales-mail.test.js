@@ -126,9 +126,9 @@ describe('the mailbox and the lead engine', () => {
     expect(noSheet.receipt.status).toBe('error');
     expect(noSheet.receipt.error).toMatch(/has not approved a facts sheet/);
     const sheet = makeSalesSheet({ by: LANE, now: new Date().toISOString(), facts: [
-      { claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
-      { claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
-      { claim: 'A marine electrician built and launched his own product after the sessions', source: 'https://ignislabs.ai/testimonials' },
+      { company: 'ignis', claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
+      { company: 'ignis', claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
+      { company: 'ignis', claim: 'A marine electrician built and launched his own product after the sessions', source: 'https://ignislabs.ai/testimonials' },
     ] });
     await fileSalesFacts(POSITION_HOUSE, sheet);
     expect((await send({ to: 'fay@facts.example', subject: 'Hello', text: signed('A short note.') })).receipt.error).toMatch(/has not approved a facts sheet/);
@@ -228,7 +228,7 @@ describe('the sales cover through the real sweep — the operator approved the l
     await croDesignation.designate(POSITION_HOUSE, LANE);
     const now = new Date().toISOString();
     const segment = makeSegment({
-      name: 'Harbour founders', offer: 'One-to-one coaching to build your own product with AI tools', customerProblem: 'They cannot build what they know',
+      name: 'Harbour founders', offer: 'One-to-one coaching to build your own product with AI tools', company: 'ignis', customerProblem: 'They cannot build what they know',
       targetRole: 'Founder', targetGeography: 'United States', countries: ['US'], positiveCriteria: ['Building a software product'], why: 'Raw AI tools leave them stuck', by: LANE, now,
     });
     await fileSegment(POSITION_HOUSE, segment);

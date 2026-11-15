@@ -8,6 +8,7 @@
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
+import process from 'node:process';
 import path from 'path';
 import express from 'express';
 import request from 'supertest';
@@ -19,6 +20,8 @@ import { fullAuth } from '../helpers/audit-auth.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
+import { leadEmailRefusal } from '../../backend/services/sales/email-ledger.js';
+import { SALES_DISCLOSURE } from '../../backend/services/sales/sales-facts.js';
 import revenueRouter from '../../backend/routes/revenue-routes.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 
@@ -29,7 +32,7 @@ const soulOf = (i) => `0x${String(i + 1).padStart(40, 'c')}`;
 
 const SEGMENT = {
   type: 'sales/segment', name: 'Non-developer founders', offer: 'One-to-one coaching to build your own product with AI tools',
-  customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder',
+  company: 'ignis', customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder',
   targetGeography: 'United States', countries: ['US'], targetCompanySize: '1–10',
   positiveCriteria: ['Building a software product', 'Founder is not a developer'], negativeCriteria: ['Software agency'],
   exampleClients: ['Smart Maintenance Systems'], why: 'Raw AI tools leave them with half-built parts',
@@ -145,7 +148,7 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
   test('the Mercator reads the engine in its briefing; re-aiming an approved pitch sends it back for approval', async () => {
     const briefing = await mercatorBriefingSection(conn('merc'));
     expect(briefing).toContain('## LEAD ENGINE');
-    expect(briefing).toMatch(/\[s-[a-f0-9]{8}\] Non-developer founders — APPROVED — role: Founder — sends only to US — pool 2 \(strong 1, weak 0, none 1\), on the ledger 1/);
+    expect(briefing).toMatch(/\[s-[a-f0-9]{8}\] Non-developer founders \(for ignis\) — APPROVED — role: Founder — sends only to US — pool 2 \(strong 1, weak 0, none 1\), on the ledger 1/);
     expect(briefing).toMatch(/SUPPRESSED \[[a-f0-9]{8}\] Ada Lovelace/);
     expect(await mercatorBriefingSection(conn('scout'))).toBe('');
     const [segment] = (await engine()).segments;
@@ -155,9 +158,9 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
 
   test('the Mercator files the facts; the operator approves them; the briefing carries them and the disclosure line', async () => {
     const facts = [
-      { claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
-      { claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
-      { claim: 'A customer launched his own product after the sessions', source: 'https://ignislabs.ai/testimonials' },
+      { company: 'ignis', claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
+      { company: 'ignis', claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
+      { company: 'ignis', claim: 'A customer launched his own product after the sessions', source: 'https://ignislabs.ai/testimonials' },
     ];
     expect(await act('scout', { type: 'sales/facts', facts })).toMatchObject({ status: 'denied' });
     expect(await act('merc', { type: 'sales/facts', facts: facts.slice(0, 2) })).toMatchObject({ status: 'error', error: expect.stringMatching(/at least three/) });
@@ -170,7 +173,23 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     expect((await request(app).post(`/api/v1/revenue/lead-engine/facts/${sheet.id}`).use(as).send({ verdict: 'approved' })).body.facts.approved.id).toBe(sheet.id);
     const briefing = await mercatorBriefingSection(conn('merc'));
     expect(briefing).toContain(`FACTS: sheet [${sheet.id}], APPROVED.`);
-    expect(briefing).toContain('- A session costs 250 US dollars an hour [250 USD]');
+    expect(briefing).toContain('- (ignis) A session costs 250 US dollars an hour [250 USD]');
     expect(briefing).toContain('I am an AI, writing for the company. Reply "stop" and I will not write again.');
+  });
+
+  test('an audience and a fact belong to ONE company of the house; a sister company\'s fact backs nothing in this company\'s email', async () => {
+    expect(await act('merc', { ...SEGMENT, name: 'Somebody else\'s buyers', company: 'acme-corp' })).toMatchObject({ status: 'error', error: expect.stringMatching(/"acme-corp" is not a company of this house — the house's companies are: ignis, umbrae/) });
+    expect(await act('merc', { ...SEGMENT, name: 'No company named', company: '' })).toMatchObject({ status: 'error', error: expect.stringMatching(/company: the id of the house company this audience is sold for/) });
+    const fact = (company, claim, figure) => ({ company, claim, ...(figure ? { figure } : {}), source: 'https://ignislabs.ai/sessions' });
+    expect(await act('merc', { type: 'sales/facts', facts: [fact('ignis', 'Sessions are one to one'), fact('nowhere', 'A fact of no company here'), fact('ignis', 'Sessions run 60 minutes', { value: 60, unit: 'minutes' })] }))
+      .toMatchObject({ status: 'error', error: expect.stringMatching(/"nowhere" is not a company of this house/) });
+    // The 250 figure is now Umbrae's alone. Ada is a lead of the ignis audience: it backs nothing for her.
+    expect((await act('merc', { type: 'sales/facts', facts: [fact('ignis', 'Sessions are one to one with the founder'), fact('umbrae', 'A position starts at 250 US dollars', { value: 250, unit: 'USD' }), fact('ignis', 'Sessions run 60 minutes', { value: 60, unit: 'minutes' })] })).status).toBe('ok');
+    const { sheet } = (await engine()).facts;
+    expect((await request(app).post(`/api/v1/revenue/lead-engine/facts/${sheet.id}`).use(as).send({ verdict: 'approved' })).status).toBe(200);
+    const email = (words) => ({ to: ['ada@acme.dev'], subject: 'Your build', text: `${words} May I send two ideas?\n\n${SALES_DISCLOSURE}\nMerc`, promise: 'two short written ideas', laneId: 'merc' });
+    expect(await leadEmailRefusal(me.address, email('It starts at 250 dollars.'))).toMatch(/250 is not on the approved facts sheet/);
+    // Her own company's figure passes the facts check; what stops it next is only that no model is here to read its claims.
+    expect(await leadEmailRefusal(me.address, email('A session runs 60 minutes.'))).toMatch(/the claims check could not run/);
   });
 });

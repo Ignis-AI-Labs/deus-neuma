@@ -11,6 +11,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { POSITIONS, positionOf, officeOfWaiting, positionMapText } from '../../backend/services/positions/position-map.js';
 import { foldBoard } from '../../backend/services/positions/position-board.js';
+import { companyFile, companiesText } from '../../backend/services/positions/company-file.js';
 import { intentTypes } from '../../backend/services/intents/registry.js';
 import { SHED_LADDER } from '../../backend/services/envelope-budget.js';
 import { finalizeTurnEnvelope } from '../../backend/services/turn-envelope.js';
@@ -75,6 +76,33 @@ describe('the position map', () => {
     expect(finalizeTurnEnvelope({ baseSections: base }).some((s) => s.id === 'positionMap')).toBe(false);
     expect(finalizeTurnEnvelope({ baseSections: base, positionMap: positionMapText(['cao']) }).find((s) => s.id === 'positionMap').label).toBe('YOUR POSITION');
     expect(SHED_LADDER).toContain('positionMap');
+  });
+});
+
+describe('the company file', () => {
+  const umbrae = { id: 'umbrae', name: 'Umbrae', parentId: 'ignis', site: { url: 'https://umbrae.io', links: [] }, legalEntity: null, repos: [{}] };
+  const facts = { sheet: { id: 'fs-1', facts: [] }, review: { verdict: 'approved' }, approved: { id: 'fs-1', facts: [
+    { n: 1, company: 'umbrae', claim: 'Liquidity providers keep 95% of every swap fee' }, { n: 2, company: 'ignis', claim: 'Sessions run 60 minutes' }] } };
+  const segments = [{ id: 's-1', name: 'Base token teams', company: 'umbrae', state: 'approved' }, { id: 's-2', name: 'Founders', company: 'ignis', state: 'draft' }, { id: 's-3', name: 'Old', company: 'umbrae', state: 'retired' }];
+
+  test('joins what stands for ONE company and leaves a sister company out', () => {
+    const file = companyFile(umbrae, { facts, segments, campaigns: [{ id: 'c-1', name: 'Umbrae Market Depth', companyId: 'umbrae' }, { id: 'c-2', name: 'Neuma User Adoption', companyId: 'deus-neuma' }] });
+    expect(file).toMatchObject({ id: 'umbrae', site: 'https://umbrae.io', parent: 'ignis', repos: 1, missing: [] });
+    expect(file.facts.map((f) => f.n)).toEqual([1]);
+    expect(file.audiences).toEqual([{ id: 's-1', name: 'Base token teams', state: 'approved' }]);
+    expect(file.campaigns.map((c) => c.name)).toEqual(['Umbrae Market Depth']);
+    const text = companiesText([file]);
+    expect(text).toContain('Umbrae [umbrae], part of ignis: site https://umbrae.io');
+    expect(text).toContain('- Liquidity providers keep 95% of every swap fee');
+    expect(text).not.toContain('Sessions run 60 minutes');
+    expect(text).not.toContain('MISSING');
+  });
+
+  test('names what is missing and tells the seat to say nothing that rests on it', () => {
+    const bare = companyFile({ id: 'deus-neuma', name: 'Deus Neuma', parentId: null, site: { url: null, links: [] }, repos: [] }, { facts: null, segments: [], campaigns: [] });
+    expect(bare.missing).toHaveLength(2);
+    expect(companiesText([bare])).toMatch(/Deus Neuma \[deus-neuma\]: site NOT SET[\s\S]*MISSING: its site address[\s\S]*Say nothing about Deus Neuma that rests on a missing item/);
+    expect(companiesText([])).toBe('');
   });
 });
 

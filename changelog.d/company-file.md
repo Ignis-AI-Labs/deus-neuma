@@ -1,0 +1,3 @@
+Added
+- Every member who holds a position now reads a file on each of your companies at the top of every turn: its site, its code, the facts a buyer may be told, its audiences and its campaigns. Anything missing is named with where you set it, and the member is told to say nothing that rests on a missing item.
+- Each sales audience and each sales fact now belongs to one of your companies. An email to a lead is checked only against the facts of that lead's own company, so a fact about one company can never back a claim made for another. An audience or fact naming a company your house does not have is refused.

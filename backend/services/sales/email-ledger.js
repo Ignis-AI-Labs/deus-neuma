@@ -9,8 +9,8 @@
 // never costs the email: the mail stands either way.
 // impure (the house's do-not-contact list and lead ledger).
 
-import { readSuppressions, markSender, readSalesFacts } from './sales-store.js';
-import { checkSalesEmail } from './sales-facts.js';
+import { readSuppressions, markSender, readSalesFacts, readProspects, readSegments } from './sales-store.js';
+import { checkSalesEmail, factsFor } from './sales-facts.js';
 import { claimsRead } from './claims-reader.js';
 import { checkFirstEmail, writtenBefore, cleanPromise } from './first-email.js';
 import { normalizeEmail, suppressionMatcher } from './suppress-shape.js';
@@ -35,7 +35,11 @@ export const leadEmailRefusal = async (wallet, { to, subject, text, promise, lan
   const wanted = new Set(to.map(normalizeEmail).filter(Boolean));
   const leads = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
   if (!leads.length) return null;
-  const { approved } = await readSalesFacts(wallet);
+  // The company a lead is sold: its prospect's audience names it. An email speaks for ONE company.
+  const [prospects, segments, sheet] = await Promise.all([readProspects(wallet), readSegments(wallet), readSalesFacts(wallet)]);
+  const companies = [...new Set(leads.map((l) => segments.find((s) => s.id === prospects.find((p) => p.leadId === l.id)?.segmentId)?.company).filter(Boolean))];
+  if (companies.length > 1) return `this email goes to leads of ${companies.join(' and ')} — one email speaks for one company`;
+  const approved = factsFor(sheet.approved, companies[0] ?? null);
   const verdict = checkSalesEmail({ subject, text, approved });
   if (!verdict.ok) return `this email goes to a lead, and it does not pass the facts check: ${verdict.problems.join('; ')}`;
   // The first email to a lead: short, one ask, and the promise it makes named (first-email.js).

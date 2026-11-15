@@ -17,7 +17,7 @@ const NOW = '2026-11-13T08:00:00.000Z';
 const DAY = 86_400_000;
 const base = {
   name: 'Non-developer founders', offer: 'One-to-one coaching to build your product with AI tools',
-  customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder',
+  company: 'ignis', customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder',
   targetGeography: 'United States, United Kingdom', countries: ['us', 'GB', 'GB', 'nowhere'], targetCompanySize: '1–10',
   positiveCriteria: ['Building a software product', 'Founder is not a developer'], negativeCriteria: ['Software agency'],
   exampleClients: ['Smart Maintenance Systems'], why: 'Raw AI tools leave them with half-built parts', by: 'merc', now: NOW,
@@ -209,13 +209,13 @@ describe('the sales cover — approve the list once, then the sequence runs insi
 
 describe('the sales facts — what a buyer may be told, and the check every email to a lead passes', () => {
   const facts = [
-    { claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
-    { claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
-    { claim: 'A customer launched his own product after the sessions', source: 'customer: Darren, by email, 2026-10' },
+    { company: 'ignis', claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
+    { company: 'ignis', claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
+    { company: 'ignis', claim: 'A customer launched his own product after the sessions', source: 'customer: Darren, by email, 2026-10' },
   ];
   test('a sheet needs three sourced facts; every problem is named', () => {
     expect(() => makeSalesSheet({ facts: facts.slice(0, 2), by: 'm', now: NOW })).toThrow(/at least three/);
-    expect(() => makeSalesSheet({ facts: [...facts, { claim: 'We are the best in the world', source: 'trust me' }], by: 'm', now: NOW })).toThrow(/facts\[3\]\.source/);
+    expect(() => makeSalesSheet({ facts: [...facts, { company: 'ignis', claim: 'We are the best in the world', source: 'trust me' }], by: 'm', now: NOW })).toThrow(/facts\[3\]\.source/);
     expect(makeSalesSheet({ facts, by: 'm', now: NOW }).facts.map((f) => f.n)).toEqual([1, 2, 3]);
   });
 

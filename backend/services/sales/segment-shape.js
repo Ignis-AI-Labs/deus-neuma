@@ -6,6 +6,9 @@
 // REQUIRED: a segment with no role picks whoever heads the company, and the
 // list comes back loose.
 //
+// A segment sells ONE company of the house (`company`, its id): the facts a
+// buyer may be told are that company's, never a sister company's.
+//
 // A segment opens as a DRAFT. The operator approves the pitch; only then may
 // its prospects reach the ledger. Changing who it targets after approval
 // returns it to DRAFT — a re-aimed segment is a new pitch, approved again.
@@ -19,7 +22,7 @@ import crypto from 'crypto';
 export const SEGMENT_STATES = Object.freeze(['draft', 'approved', 'paused', 'retired']);
 // The fields that decide who is found and what they are told: a change re-aims.
 export const TARGETING_FIELDS = Object.freeze([
-  'offer', 'customerProblem', 'targetRole', 'targetGeography', 'countries', 'targetCompanySize',
+  'company', 'offer', 'customerProblem', 'targetRole', 'targetGeography', 'countries', 'targetCompanySize',
   'positiveCriteria', 'negativeCriteria', 'exampleClients',
 ]);
 const CRITERIA_MAX = 8;
@@ -41,6 +44,7 @@ const list = (v, max) => (Array.isArray(v) ? v.map((s) => clean(s, 160)).filter(
 export const makeSegment = (f) => {
   const s = {
     name: clean(f.name, 80),
+    company: clean(f.company, 40).toLowerCase(),
     offer: clean(f.offer, 400),
     customerProblem: clean(f.customerProblem, 400),
     targetRole: clean(f.targetRole, 160),
@@ -54,6 +58,7 @@ export const makeSegment = (f) => {
   };
   const problems = [
     ...(s.name.length < 3 ? ['name: what this audience is called'] : []),
+    ...(!s.company ? ['company: the id of the house company this audience is sold for (one company per audience)'] : []),
     ...(s.offer.length < 10 ? ['offer: what you offer them, in one sentence'] : []),
     ...(s.customerProblem.length < 10 ? ['customerProblem: the problem they have'] : []),
     ...(s.targetRole.length < 2 ? ['targetRole: who to reach at the company, by what they are responsible for'] : []),

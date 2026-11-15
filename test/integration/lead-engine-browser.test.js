@@ -38,7 +38,7 @@ beforeAll(async () => {
   const now = new Date().toISOString();
   segment = makeSegment({
     name: 'Non-developer founders', offer: 'One-to-one coaching to build your own product with AI tools',
-    customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder', targetGeography: 'United States, United Kingdom', countries: ['US', 'GB'],
+    company: 'ignis', customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder', targetGeography: 'United States, United Kingdom', countries: ['US', 'GB'],
     targetCompanySize: '1–10', positiveCriteria: ['Building a software product', 'Founder is not a developer'], negativeCriteria: ['Software agency'],
     exampleClients: ['Smart Maintenance Systems'], why: 'Raw AI tools leave them with half-built parts', by: 'merc', now,
   });
@@ -52,9 +52,9 @@ beforeAll(async () => {
     found('harbourapp.co.uk', 5, 4, [{ name: 'Ada Lovelace', role: 'Founder', sourceUrl: 'https://harbourapp.co.uk/team' }]),
   ]);
   await fileSalesFacts(auth.address, makeSalesSheet({ by: 'merc', now, facts: [
-    { claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
-    { claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
-    { claim: 'A customer launched his own product after the sessions', source: 'customer: Darren, by email, 2026-10' },
+    { company: 'ignis', claim: 'One-to-one sessions with the founder, 60 minutes', figure: { value: 60, unit: 'minutes' }, source: 'https://ignislabs.ai/sessions' },
+    { company: 'ignis', claim: 'A session costs 250 US dollars an hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' },
+    { company: 'ignis', claim: 'A customer launched his own product after the sessions', source: 'customer: Darren, by email, 2026-10' },
   ] }));
   const ledger = await leadLedgerFor(auth.address);
   const lead = await ledger.add({ name: 'Grace Hopper', contact: 'grace@navy.example', channelId: 'email', status: 'contacted', addedBy: 'merc' });
@@ -118,7 +118,7 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     // The facts sheet waits for the operator: every fact with its source.
     expect(await page.locator('[data-facts-state]').textContent()).toBe('WAITS FOR YOUR APPROVAL');
     expect(await page.locator('[data-fact]').count()).toBe(3);
-    expect(await page.locator('[data-fact="2"]').textContent()).toBe('A session costs 250 US dollars an hour [250 USD] — https://ignislabs.ai/sessions');
+    expect(await page.locator('[data-fact="2"]').textContent()).toBe('IGNIS — A session costs 250 US dollars an hour [250 USD] — https://ignislabs.ai/sessions');
     const scanned = await a11yCheck(page, 'lead-engine', { include: '[data-lead-engine]' });
     expect(scanned.grown, scanned.detail).toEqual([]);
     await page.screenshot({ path: path.join(SHOTS, 'draft-1280.png'), fullPage: true });

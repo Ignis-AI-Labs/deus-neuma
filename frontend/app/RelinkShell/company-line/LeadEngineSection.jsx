@@ -44,7 +44,7 @@ const Segment = ({ row, busy, onMove, onList }) => {
       <p className="cline-h label-data">{s.name} · <span data-state-words="">{STATE_WORDS[s.state]}</span></p>
       <p className="cline-move-t">OFFER: {s.offer}</p>
       <p className="cline-move-t">THEIR PROBLEM: {s.customerProblem}</p>
-      <p className="cline-move-t">REACH: {s.targetRole} · WHERE: {s.targetGeography}{s.targetCompanySize ? ` · SIZE: ${s.targetCompanySize}` : ''}</p>
+      <p className="cline-move-t">{s.company ? `FOR ${s.company.toUpperCase()} · ` : ''}REACH: {s.targetRole} · WHERE: {s.targetGeography}{s.targetCompanySize ? ` · SIZE: ${s.targetCompanySize}` : ''}</p>
       <p className="cline-move-t" data-countries="">SENT ONLY TO: {(s.countries ?? []).join(', ') || 'NO COUNTRY NAMED — NOTHING CAN BE SENT'}</p>
       <Criteria title="FITS IF" items={s.positiveCriteria} />
       <Criteria title="NOT A FIT IF" items={s.negativeCriteria} />

@@ -24,12 +24,19 @@ import { makeSuppression, normalizeEmail, suppressionMatcher } from '../sales/su
 import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts } from '../sales/sales-store.js';
 import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
+import { listCompanies } from '../marketing/companies.js';
 import { THREAD_REST_DAYS } from '../revenue/deal-shape.js';
 
 const BATCH_MAX = 10;
 const DAY_MS = 86_400_000;
 const officerRefusal = { ok: false, status: 'denied', reason: 'the lead engine is the Mercator office\'s — only the seated Mercator files to it (house/post reaches them; the operator seats the office)' };
 const invalid = (reason) => ({ ok: false, status: 'invalid', reason });
+// impure — why `ids` cannot be filed against: each must be one of the house's companies (its brand kits).
+const companyRefusal = async (wallet, ids) => {
+  const known = (await listCompanies(wallet)).map((c) => c.id);
+  const strangers = [...new Set(ids)].filter((id) => !known.includes(id));
+  return strangers.length ? `${strangers.map((s) => `"${s}"`).join(', ')} ${strangers.length === 1 ? 'is' : 'are'} not a company of this house — the house's companies are: ${known.join(', ') || 'none yet (the operator adds one in MARKETING)'}` : null;
+};
 const availableFor = async ({ connection }) => ((await officeContext(connection).catch(() => null)) ? {} : null);
 
 // impure — the seated Mercator's context, or the refusal.
@@ -38,14 +45,16 @@ const seated = async (connection) => (await officeContext(connection).catch(() =
 const salesSegmentIntent = Object.freeze({
   name: 'sales/segment',
   policyTool: 'sales.segment',
-  fieldsForPrompt: '{id?, name, offer, customerProblem, targetRole, targetGeography, countries: ["US", ..], targetCompanySize?, positiveCriteria: [..], negativeCriteria?: [..], exampleClients?: [..], why}',
+  fieldsForPrompt: '{id?, name, company, offer, customerProblem, targetRole, targetGeography, countries: ["US", ..], targetCompanySize?, positiveCriteria: [..], negativeCriteria?: [..], exampleClients?: [..], why}',
   descriptionForPrompt: 'THE LEAD ENGINE. File an audience to sell to, from what you read on the house\'s own site and its competitors\': the offer, their problem, the role to reach, where (and countries: the ISO codes it may be SENT to — leave out any country whose law limits this offer, such as the UK for anything crypto), how big, the signs a company fits and the signs it does not, real companies that fit, and why they need it. Every claim in the offer must be true of the house today. It waits for the operator\'s approval; pass id to refine one (changing who it targets sends it back for approval).',
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
     if (!context) return officerRefusal;
     try {
-      return { ok: true, value: { context, segment: makeSegment({ ...payload, by: context.laneId, now: new Date().toISOString() }) } };
+      const segment = makeSegment({ ...payload, by: context.laneId, now: new Date().toISOString() });
+      const stranger = await companyRefusal(context.wallet, [segment.company]);
+      return stranger ? invalid(stranger) : { ok: true, value: { context, segment } };
     } catch (err) {
       return invalid(err.message);
     }
@@ -198,14 +207,16 @@ const salesSuppressIntent = Object.freeze({
 const salesFactsIntent = Object.freeze({
   name: 'sales/facts',
   policyTool: 'sales.facts',
-  fieldsForPrompt: '{facts: [{claim, figure?: {value, unit}, source}]}',
-  descriptionForPrompt: `THE LEAD ENGINE. File the facts a buyer may be told about the house, from its own site and records: each claim true today, a figure only where there is one, and its source (an https page, a repos/ path, or "customer: who, when"). It replaces the last sheet and waits for the operator's approval. No email reaches a lead before a sheet is approved; every number in one must stand on it, and it carries this line above your name: "${SALES_DISCLOSURE}"`,
+  fieldsForPrompt: '{facts: [{company, claim, figure?: {value, unit}, source}]}',
+  descriptionForPrompt: `THE LEAD ENGINE. File the facts a buyer may be told, each under the company it is true of (company: its id; one sheet holds every company's facts, and an email is checked only against its own company's), from its own site and records: each claim true today, a figure only where there is one, and its source (an https page, a repos/ path, or "customer: who, when"). It replaces the last sheet and waits for the operator's approval. No email reaches a lead before a sheet is approved; every number in one must stand on it, and it carries this line above your name: "${SALES_DISCLOSURE}"`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
     if (!context) return officerRefusal;
     try {
-      return { ok: true, value: { context, sheet: makeSalesSheet({ facts: payload?.facts, by: context.laneId, now: new Date().toISOString() }) } };
+      const sheet = makeSalesSheet({ facts: payload?.facts, by: context.laneId, now: new Date().toISOString() });
+      const stranger = await companyRefusal(context.wallet, sheet.facts.map((f) => f.company));
+      return stranger ? invalid(stranger) : { ok: true, value: { context, sheet } };
     } catch (err) {
       return invalid(err.message);
     }

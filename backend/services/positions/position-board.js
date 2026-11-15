@@ -24,6 +24,7 @@ import { csoBriefingSection } from '../security/security-briefing.js';
 import { cfoBriefingSection } from '../treasury/treasury-briefing.js';
 import { logistaBriefingSection } from '../accounts/accounts-briefing.js';
 import { POSITIONS, positionOf, officeOfWaiting, positionMapText } from './position-map.js';
+import { companyFiles, companiesText } from './company-file.js';
 
 const SEATS = Object.freeze({
   cos: cosDesignation, cro: croDesignation, cmo: cmoDesignation, clo: cloDesignation,
@@ -69,6 +70,7 @@ export const positionsBoard = async (wallet) => {
   return {
     positions: foldBoard({ holders, names, waiting: account.items ?? [], connections }),
     members: [...names].map(([laneId, name]) => ({ laneId, name })),
+    companies: await companyFiles(wallet),
     gaps: account.gaps ?? [],
   };
 };
@@ -83,7 +85,7 @@ export const positionEyes = async (wallet, office) => {
   const laneId = (await SEATS[office].getOfficer(wallet))?.laneId ?? null;
   if (!laneId) return null;
   const briefing = await BRIEFINGS[office]({ companion: { neumaId: laneId }, walletAddress: wallet });
-  return { laneId, text: [positionMapText([office]), briefing].filter(Boolean).join('\n\n') };
+  return { laneId, text: [positionMapText([office]), companiesText(await companyFiles(wallet)), briefing].filter(Boolean).join('\n\n') };
 };
 
 /**
@@ -96,5 +98,7 @@ export const positionSection = async (connection) => {
   const wallet = connection?.walletAddress;
   if (!laneId || !wallet) return '';
   const holders = await readHolders(wallet).catch(() => ({}));
-  return positionMapText(Object.keys(holders).filter((office) => holders[office] === laneId));
+  const map = positionMapText(Object.keys(holders).filter((office) => holders[office] === laneId));
+  // A seat holder reads every company's file with its position: what is known, and what is missing.
+  return map ? [map, companiesText(await companyFiles(wallet).catch(() => []))].filter(Boolean).join('\n\n') : '';
 };
