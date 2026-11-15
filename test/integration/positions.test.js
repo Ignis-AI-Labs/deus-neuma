@@ -80,6 +80,10 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     expect(sales.connections).toMatchObject([{ id: 'mail-watch', name: 'House mailbox watch', on: false }, { id: 'lead-sources', name: 'Lead sources', on: false }]);
     expect(positions.find((p) => p.office === 'cao').holder.laneId).toBe('books');
     expect(positions.find((p) => p.office === 'cmo').holder).toBe(null);
+    // What the seat still needs is measured from the house itself: the seat is filled, nothing else is yet.
+    expect(sales.setup).toMatchObject({ done: 1, total: 11 });
+    expect(sales.setup.open.map((s) => s.id)).toEqual(['mailbox', 'holder', 'mail-watch', 'lead-sources', 'site', 'campaign', 'facts', 'facts-approved', 'audience', 'audience-approved', 'provider']);
+    expect(positions.find((p) => p.office === 'cmo').setup.steps[0]).toMatchObject({ id: 'seat', done: false });
   });
 
   test('THEIR EYES is the holder\'s own reading: its position map, then its office briefing', async () => {
@@ -97,6 +101,9 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     expect(merc).not.toContain('BOOKS (Logista)');
     // Every seat holder reads every company's file: what is known, and what is missing, named.
     expect(merc).toContain('## THE HOUSE\'S COMPANIES');
+    // …and, while its position is not set up, the steps still open, the operator's in words to pass on.
+    expect(merc).toContain('## SETTING UP YOUR POSITION');
+    expect(merc).toContain('- Connect the mailbox the house sends from. POSITIONS, SALES, MAILBOX');
     expect(merc).toMatch(/Umbrae \[umbrae\]: site NOT SET/);
     expect(merc).toMatch(/MISSING: its site address \(the operator sets it in MARKETING, BRAND, SITE & CODE\); facts a buyer may be told/);
     expect((await board()).companies.map((c) => c.id)).toEqual(['ignis', 'umbrae']);

@@ -14,6 +14,7 @@ import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { seatPosition, clearPosition } from './position-seats.js';
 import { railRow, railSummary, pickPosition, pickTab } from './positions-view.js';
 import { PositionHub } from './PositionHub.jsx';
+import { SeatingStrip } from './SeatingStrip.jsx';
 import { onPositionPlace, POSITION_PLACE_KEY } from '../../windowing/position-tiles.js';
 import '../SecurityApp.css';
 import './Positions.css';
@@ -30,6 +31,7 @@ const Rail = ({ positions, chosen, onChoose }) => (
         <span className="pos-light" aria-hidden="true" />
         <span className="pos-row-name">{row.plain}</span>
         <span className="pos-row-who label-data">{row.title} · {row.holder ?? 'NOBODY'}</span>
+        {row.setupOpen ? <span className="pos-row-setup label-data" aria-label={`setup ${row.setup}`}>SETUP {row.setup}</span> : null}
         {row.waiting ? <span className="pos-row-n label-data" aria-label={`${row.waiting} waiting on you`}>{row.waiting}</span> : null}
       </button>
     ))}
@@ -38,10 +40,12 @@ const Rail = ({ positions, chosen, onChoose }) => (
 
 /**
  * @param {{waitingCount?: number, refreshWaiting?: () => Promise<void>, onTalk?: (laneId: string) => void,
- *   Panel?: Function}} props — the desk hands in its waiting account, the door to a holder's stream and
- *   the function panels; without them the board still reads and seats.
+ *   onDoor?: (door: object) => void, onHand?: (member: {laneId: string, name: string}, prompt: string) => void,
+ *   Panel?: Function, onCouncil?: ?Function}} props — the desk hands in its waiting account, the door to a
+ *   holder's stream, the function panels and the door to a seating council; without them the board still
+ *   reads and seats.
  */
-export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk = () => {}, Panel = null }) => {
+export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk = () => {}, onDoor = () => {}, onHand = () => {}, Panel = null, onCouncil = null }) => {
   const [board, setBoard] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -100,6 +104,8 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
   return (
     <div className="pos sec">
       {error ? <p className="sec-error" role="alert">{error}</p> : null}
+      <SeatingStrip positions={board.positions} members={board.members} seating={board.seating ?? null} onCouncil={onCouncil}
+        onChanged={() => Promise.all([load(), refreshWaiting?.()])} />
       <div className="pos-split">
         <Rail positions={board.positions} chosen={position.office} onChoose={(office) => go({ ...place, office })} />
         <PositionHub
@@ -113,6 +119,8 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
           onTalk={() => { uiSound('open'); onTalk(holderId); }}
           onOpenWaiting={(item) => { uiSound('open'); requestWaitingJump(item); }}
           onSwitch={(c) => move(() => setConnection(c.id, !c.on))}
+          onDoor={(door) => { uiSound('open'); onDoor(door); }}
+          onHand={(member, prompt) => { uiSound('open'); onHand(member, prompt); }}
         />
       </div>
     </div>

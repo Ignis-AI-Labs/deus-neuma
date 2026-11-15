@@ -1,0 +1,5 @@
+Added
+- Every position now has a SETUP tab under POSITIONS. It lists each step the position needs before it can do its job, says whether the step is yours or the member's, and shows whether it is done. Done is measured from your house's own records, never ticked by hand. A step that is still open carries the exact instructions to follow, for example how to connect the mailbox or how to set up the LinkedIn app.
+- The rail shows how far along each position's setup is, so you can see at a glance which seats are not ready.
+- The member who holds a position reads its open steps at the top of every turn: it does its own, and walks you through the ones only you can do, in the same words the tab shows.
+- Every open setup step is one press from where it is done. GO TO takes you to the right tab of the position, OPEN takes you to the place elsewhere on your desk, a link opens the outside page where a key or an app is made, and HAND TO opens the seat holder's chat with the request already written for you to send. For a step that is yours, ASK opens the holder's chat with a request to walk you through it.

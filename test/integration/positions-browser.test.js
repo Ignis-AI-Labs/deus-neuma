@@ -22,6 +22,8 @@ import { croDesignation } from '../../backend/services/revenue/cro-designation.j
 import { caoDesignation } from '../../backend/services/accounts/cao-designation.js';
 import { isConnectionOn } from '../../backend/services/connections/connection-switches.js';
 import { readCampaigns } from '../../backend/services/sales/sales-store.js';
+import { houseSeatingIntent } from '../../backend/services/intents/house-seating.js';
+import { readSeating } from '../../backend/services/positions/position-seating.js';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = path.join(os.tmpdir(), 'neuma-positions-shots');
@@ -104,7 +106,20 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const hub = page.locator('[data-position="cro"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('HELD BY MERC');
-    expect(await hub.getByRole('tab').allTextContents()).toEqual(['CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/2', 'THEIR EYES']);
+    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/11', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/2', 'THEIR EYES']);
+    // SETUP leads while the seat is not ready: each step says who does it, and an open one says exactly how.
+    const setup = hub.locator('[data-setup-step]');
+    expect(await setup.count()).toBe(12);
+    expect(await hub.locator('[data-setup-step="seat"] .pos-step-h').textContent()).toBe('DONE — Seat a member in SALES');
+    expect(await hub.locator('[data-setup-step="mailbox"]').textContent()).toContain('YOURS — Connect the mailbox the house sends from');
+    expect(await hub.locator('[data-setup-step="mailbox"]').textContent()).toContain('myaccount.google.com/apppasswords');
+    // A step is one press from its place: GO TO MAILBOX lands on the mailbox tab, and SETUP is still there to come back to.
+    await hub.getByRole('button', { name: /^GO TO MAILBOX — Connect the mailbox/ }).click();
+    expect(await hub.getByRole('tab', { name: 'MAILBOX' }).getAttribute('aria-selected')).toBe('true');
+    await hub.getByRole('tab', { name: /^SETUP/ }).click();
+    expect(await hub.locator('[data-setup-step="mailbox"] a').getAttribute('href')).toBe('https://myaccount.google.com/apppasswords');
+    await page.screenshot({ path: path.join(SHOTS, 'sales-setup-1280.png'), fullPage: true });
+    await hub.getByRole('tab', { name: 'CAMPAIGNS' }).click();
     // CAMPAIGNS opens first: the operator opens one, and it stands on disk with every count at zero.
     const campaigns = hub.locator('[data-sales-campaigns]');
     await campaigns.waitFor({ timeout: 60000 });
@@ -166,6 +181,38 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     await hub.getByRole('button', { name: 'PRESS AGAIN TO UNSEAT' }).click();
     await hub.locator('.pos-holder').filter({ hasText: 'NOBODY HOLDS THIS POSITION' }).waitFor();
     expect(await caoDesignation.getOfficer(auth.address)).toBe(null);
+    expect(errors).toEqual([]);
+    await page.context().close();
+  }, 240000);
+
+  // Design note, 2026-11-15: seat them yourself, or hold a seating council where the members decide together.
+  it('offers both ways to seat; a seating the members filed is applied seat by seat through each office, then leaves', async () => {
+    let { page, errors } = await open(1280);
+    const strip = page.getByRole('region', { name: 'seating your house' });
+    await strip.waitFor();
+    expect(await strip.locator('.pos-seating-way b').allTextContents()).toEqual(['SEAT THEM YOURSELF', 'HOLD A SEATING COUNCIL · RECOMMENDED']);
+    await page.context().close();
+
+    // a member files what the house decided, through the real act (house/seating): it seats nobody
+    const connection = { walletAddress: auth.address, companion: { neumaId: 'merc', name: 'merc' } };
+    const refused = await houseSeatingIntent.validate({ seats: { BOOKS: 'merc', SALES: 'merc' }, why: 'x' }, { connection });
+    expect(refused).toMatchObject({ ok: false, reason: expect.stringContaining('one member holds one position') });
+    const judged = await houseSeatingIntent.validate({ seats: { books: 'books', Mercator: 'merc' }, why: 'Merc keeps sales; books takes the ledger it already keeps.' }, { connection });
+    expect(judged.ok).toBe(true);
+    await houseSeatingIntent.execute(judged.value);
+    expect(await caoDesignation.getOfficer(auth.address)).toBe(null);
+
+    ({ page, errors } = await open(1280));
+    const filed = page.locator('.pos-seating-filed');
+    await filed.waitFor();
+    expect(await filed.locator('.pos-h').textContent()).toBe("THE HOUSE'S SEATING · FILED BY MERC");
+    expect(await filed.locator('li').allTextContents()).toEqual(['SALES · Mercatormerc (already)', 'BOOKS · Logistabooks']);
+    await page.screenshot({ path: path.join(SHOTS, 'seating-filed-1280.png'), fullPage: true });
+    await filed.getByRole('button', { name: 'APPLY THE SEATING' }).click();
+    await page.locator('.pos-seating-ways').waitFor();
+    expect((await caoDesignation.getOfficer(auth.address)).laneId).toBe('books');
+    expect((await croDesignation.getOfficer(auth.address)).laneId).toBe('merc');
+    expect(await readSeating(auth.address)).toBe(null);
     expect(errors).toEqual([]);
     await page.context().close();
   }, 240000);

@@ -96,6 +96,7 @@ export const ACT_FAMILIES = Object.freeze({
     'company.open', 'company.hands', 'revenue.deal', 'accounts.book', 'accounts.deadline',
     'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
     'sales.segment', 'sales.prospect', 'sales.lead', 'sales.facts', 'sales.campaign', // the lead engine's records, brought into being
+    'house.seating', // the seating the members decided together, filed for the operator
     'lp.goal', 'lp.create-pool', // a named goal; a new pool's first liquidity
   ]),
   // Same thing, different place or name.

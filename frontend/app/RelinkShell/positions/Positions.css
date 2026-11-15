@@ -123,7 +123,27 @@
   overflow-wrap: anywhere;
 }
 
+.pos-row-setup { grid-column: 2 / 4; letter-spacing: 0.1em; color: var(--alert); }
+.pos-setup { list-style: none; margin: 0; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.pos-step { border-left: 2px solid var(--alert-dim); padding-left: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.pos-step.is-done { border-left-color: var(--signal-dim); }
+.pos-step-ways { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.pos-step-link { text-decoration: none; display: inline-flex; align-items: center; }
+.pos-step-h { margin: 0; letter-spacing: 0.12em; color: var(--color-text-primary); }
+.pos-step.is-done .pos-step-h { color: var(--color-text-tertiary); }
+
 @media (max-width: 720px) {
   .pos-split { grid-template-columns: 1fr; }
   .pos-rail { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
 }
+
+/* SEATING YOUR HOUSE (SeatingStrip.jsx): the two ways side by side, or the seating the members filed */
+.pos-seating { border-bottom: 1px solid var(--line, rgba(255,255,255,0.08)); padding: 0.6rem 0.9rem; display: grid; gap: 0.45rem; }
+.pos-seating-ways { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.9rem; align-items: start; }
+.pos-seating-way { margin: 0; font-size: 0.82rem; line-height: 1.4; }
+.pos-seating-way b { display: block; margin-bottom: 0.15rem; }
+.pos-seating-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; max-width: 32rem; }
+.pos-seating-list li { display: flex; justify-content: space-between; gap: 1rem; }
+.pos-seating-why { margin: 0; font-size: 0.82rem; }
+.pos-seating-acts { display: flex; gap: 0.5rem; }
+@media (max-width: 720px) { .pos-seating-ways { grid-template-columns: 1fr; } }

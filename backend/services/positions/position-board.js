@@ -25,7 +25,9 @@ import { cfoBriefingSection } from '../treasury/treasury-briefing.js';
 import { logistaBriefingSection } from '../accounts/accounts-briefing.js';
 import { POSITIONS, positionOf, officeOfWaiting, positionMapText } from './position-map.js';
 import { companyFiles, companiesText } from './company-file.js';
+import { readSeating } from './position-seating.js';
 import { houseCampaigns, linkedText } from './campaign-links.js';
+import { readSetupState, setupOf, setupText } from './position-setup.js';
 
 const SEATS = Object.freeze({
   cos: cosDesignation, cro: croDesignation, cmo: cmoDesignation, clo: cloDesignation,
@@ -45,12 +47,14 @@ export const readHolders = async (wallet) => Object.fromEntries(await Promise.al
  * pure — the board, from what was read.
  * @param {{holders: Record<string, ?string>, names: Map<string, string>, waiting: object[], connections: object[]}} read
  */
-export const foldBoard = ({ holders, names, waiting, connections }) => POSITIONS.map((p) => {
+export const foldBoard = ({ holders, names, waiting, connections, setupState = null }) => POSITIONS.map((p) => {
   const laneId = holders[p.office] ?? null;
   return {
     office: p.office, plain: p.plain, title: p.title, covers: p.covers,
     holder: laneId ? { laneId, name: names.get(laneId) ?? laneId } : null,
     functions: p.functions,
+    // What the seat still needs before it can do its job, measured (position-setup.js).
+    setup: setupState ? setupOf(p.office, laneId, setupState) : null,
     waiting: waiting.filter((item) => officeOfWaiting(item, holders) === p.office),
     connections: p.connections.map((id) => {
       const row = connections.find((c) => c.id === id);
@@ -61,18 +65,21 @@ export const foldBoard = ({ holders, names, waiting, connections }) => POSITIONS
 
 /** impure — one house's board. */
 export const positionsBoard = async (wallet) => {
-  const [holders, lanes, account, connections] = await Promise.all([
+  const [holders, lanes, account, connections, setupState] = await Promise.all([
     readHolders(wallet),
     neumaWorkspace.listNeumaByOwner(wallet).catch(() => []),
     readWaiting(wallet),
     connectionStates(),
+    readSetupState(wallet),
   ]);
   const names = new Map(await Promise.all(lanes.map(async ({ neumaId, owner }) => [neumaId, (await laneName(neumaId, owner)) ?? neumaId])));
   return {
-    positions: foldBoard({ holders, names, waiting: account.items ?? [], connections }),
+    positions: foldBoard({ holders, names, waiting: account.items ?? [], connections, setupState }),
     members: [...names].map(([laneId, name]) => ({ laneId, name })),
     companies: await companyFiles(wallet),
     gaps: account.gaps ?? [],
+    // the seating the members filed together (a seating council), waiting for the operator to apply
+    seating: await readSeating(wallet),
   };
 };
 
@@ -86,7 +93,9 @@ export const positionEyes = async (wallet, office) => {
   const laneId = (await SEATS[office].getOfficer(wallet))?.laneId ?? null;
   if (!laneId) return null;
   const briefing = await BRIEFINGS[office]({ companion: { neumaId: laneId }, walletAddress: wallet });
-  return { laneId, text: [positionMapText([office]), companiesText(await companyFiles(wallet)), linkedText([office], await houseCampaigns(wallet)), briefing].filter(Boolean).join('\n\n') };
+  const setupState = await readSetupState(wallet).catch(() => null);
+  const setup = setupState ? setupText([office], { [office]: setupOf(office, laneId, setupState) }) : '';
+  return { laneId, text: [positionMapText([office]), setup, companiesText(await companyFiles(wallet)), linkedText([office], await houseCampaigns(wallet)), briefing].filter(Boolean).join('\n\n') };
 };
 
 /**
@@ -104,5 +113,8 @@ export const positionSection = async (connection) => {
   // A seat holder reads every company's file with its position: what is known, and what is missing.
   if (!map) return '';
   // …and, for each of its campaigns that works with another position's, that campaign as it stands now.
-  return [map, companiesText(await companyFiles(wallet).catch(() => [])), linkedText(held, await houseCampaigns(wallet).catch(() => []))].filter(Boolean).join('\n\n');
+  // …and, while its position is not fully set up, the steps still open: its own, and the operator's to pass on.
+  const setupState = await readSetupState(wallet).catch(() => null);
+  const setup = setupState ? setupText(held, Object.fromEntries(held.map((office) => [office, setupOf(office, laneId, setupState)]))) : '';
+  return [map, setup, companiesText(await companyFiles(wallet).catch(() => [])), linkedText(held, await houseCampaigns(wallet).catch(() => []))].filter(Boolean).join('\n\n');
 };

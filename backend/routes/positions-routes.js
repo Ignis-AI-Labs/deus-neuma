@@ -12,6 +12,9 @@
  *   POST /campaigns/unlink  {a, b}
  *   GET /:office/eyes   {eyes} — what the seat's holder reads at the top of
  *                       its turn (null when nobody holds the seat)
+ *   DELETE /seating     the seating the members filed (house/seating) leaves the
+ *                       board: applied seat by seat through each office's route,
+ *                       or set aside
  *
  * The links are the one thing written here. Otherwise read-only: a seat is filled, a decision answered and a connection switched
  * through its own route, where every check that act needs already stands. The
@@ -22,6 +25,7 @@ import { requireAuth } from '../services/auth.js';
 import { positionsBoard, positionEyes } from '../services/positions/position-board.js';
 import { positionOf } from '../services/positions/position-map.js';
 import { houseCampaigns, linkCampaigns, unlinkCampaigns } from '../services/positions/campaign-links.js';
+import { clearSeating } from '../services/positions/position-seating.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Positions');
@@ -62,6 +66,17 @@ for (const [path, act] of [['link', linkCampaigns], ['unlink', unlinkCampaigns]]
     }
   });
 }
+
+router.delete('/seating', async (req, res) => {
+  try {
+    await clearSeating(req.walletAddress);
+    log.info('the filed seating left the board');
+    return res.json({ ok: true });
+  } catch (error) {
+    log.error('the filed seating could not be cleared', { error: error.message });
+    return res.status(500).json({ error: 'Failed to clear the seating' });
+  }
+});
 
 router.get('/:office/eyes', async (req, res) => {
   if (!positionOf(req.params.office)) return res.status(404).json({ error: 'No such position' });

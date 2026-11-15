@@ -52,6 +52,7 @@ import { formChampionIntent } from './form-champion.js';
 import { housePostIntent } from './house-post.js';
 import { chatSendIntent } from './chat-send.js';
 import { houseReviewPacketIntent } from './house-review-packet.js';
+import { houseSeatingIntent } from './house-seating.js';
 import { kspCommandIntent } from './ksp-command.js';
 import { voiceSealIntent, voiceClaimIntent } from './voice-rites.js';
 import { speechAcceptIntent, speechAnotherIntent } from './speech-accept.js';
@@ -87,7 +88,7 @@ import {
 const TYPES = new Map(
   [
     socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent, ...lpIntents, lpSwapIntent, lpSendIntent, lpGoalIntent, lpRewardIntent, lpCreatePoolIntent,
-    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
+    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, houseSeatingIntent, kspCommandIntent,
     chatSendIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,

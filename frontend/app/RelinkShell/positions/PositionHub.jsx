@@ -7,7 +7,7 @@
 import { Select } from '../Select.jsx';
 import { DeskTabs } from '../DeskTabs.jsx';
 import { KIND_LABEL, waitedLabel } from '../waiting/waiting-view.js';
-import { hubTabs, seatOptions } from './positions-view.js';
+import { hubTabs, seatOptions, stepWords, helpAsk } from './positions-view.js';
 
 const Waiting = ({ items, now, onOpen }) => (items.length ? (
   <section className="pos-wait" aria-label="waiting on you for this position">
@@ -40,6 +40,36 @@ const Switches = ({ position, busy, onSwitch }) => (
   </ul>
 );
 
+// What the seat still needs: each step with who does it, measured done or not, the exact words to follow,
+// and a press that takes the operator there — a tab of this position, a place on the desk, a page outside —
+// or hands it to the seat's holder with the ask drafted in their chat (never sent from here).
+const Setup = ({ position, busy, onGo, onDoor, onHand }) => {
+  const holder = position.holder;
+  return (
+    <ol className="pos-setup" aria-label={`setting up ${position.plain}`}>
+      {position.setup.steps.map((s) => (
+        <li key={s.id} className={`pos-step${s.done ? ' is-done' : ''}`} data-setup-step={s.id} data-step-done={String(s.done)}>
+          <p className="pos-step-h label-data">{stepWords(s)}</p>
+          {s.done ? null : (
+            <>
+              <p className="pos-covers">{s.how}</p>
+              <div className="pos-step-ways">
+                {s.go ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`GO TO ${s.go.label} — ${s.label}`} onClick={() => onGo(s.go.tab)}>GO TO {s.go.label}</button> : null}
+                {s.door ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`OPEN ${s.door.label} — ${s.label}`} onClick={() => onDoor(s.door)}>OPEN {s.door.label}</button> : null}
+                {s.link ? <a className="sec-scan label-data pos-step-link" href={s.link.url} target="_blank" rel="noreferrer">{s.link.label} ↗</a> : null}
+                {holder && s.who === 'seat' && s.ask
+                  ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`HAND TO ${holder.name} — ${s.label}`} title={`${holder.name}'s chat opens with the ask drafted; you send it`} onClick={() => onHand(holder, s.ask)}>HAND TO {holder.name.toUpperCase()}</button> : null}
+                {holder && s.who === 'operator'
+                  ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`ASK ${holder.name} to walk you through — ${s.label}`} title={`${holder.name}'s chat opens with the question drafted; you send it`} onClick={() => onHand(holder, helpAsk(s))}>ASK {holder.name.toUpperCase()}</button> : null}
+              </div>
+            </>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+};
+
 const Eyes = ({ position, eyes }) => {
   if (!position.holder) return <p className="pos-covers">Nobody holds this position, so nobody is told anything. Seat a member above.</p>;
   if (!eyes) return <p className="pos-covers">Reading…</p>;
@@ -58,7 +88,7 @@ const Eyes = ({ position, eyes }) => {
  *   Panel?: Function}} props — Panel renders one function in place; without it the function's sentence stands
  */
 export const PositionHub = ({ position, members, names, tab, now, busy, pick, confirmClear, eyes,
-  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, Panel = null }) => {
+  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onDoor = () => {}, onHand = () => {}, Panel = null }) => {
   const fn = position.functions.find((f) => f.id === tab) ?? null;
   // The control's name carries the words it shows (a spoken command must match what is seen).
   const placeholder = position.holder ? 'hand it to another member' : 'choose who holds it';
@@ -88,6 +118,7 @@ export const PositionHub = ({ position, members, names, tab, now, busy, pick, co
         {fn && !Panel ? <p className="pos-covers">{fn.what}</p> : null}
         {tab === '_switches' ? <Switches position={position} busy={busy} onSwitch={onSwitch} /> : null}
         {tab === '_eyes' ? <Eyes position={position} eyes={eyes} /> : null}
+        {tab === '_setup' && position.setup ? <Setup position={position} busy={busy} onGo={onTab} onDoor={onDoor} onHand={onHand} /> : null}
       </DeskTabs>
     </section>
   );

@@ -6,6 +6,7 @@
 // impure shell: the desk's contexts handed to PositionsBoard.jsx — the waiting
 // account, the door to a holder's stream, the function panels.
 
+import { useEffect, useState } from 'react';
 import { AppTitle } from '../app-title.jsx';
 import { useWaitingAccount } from '../waiting/use-waiting.js';
 import { useConsciousnessPick } from '../consciousness-context.js';
@@ -14,6 +15,8 @@ import { useCouncil } from '../council-context.js';
 import { useWindows } from '../../windowing/use-windows.js';
 import { PositionsBoard } from './PositionsBoard.jsx';
 import { PositionPanel } from './position-panels.jsx';
+import { openDoor } from '../doors/open-door.js';
+import { handOver } from '../doors/hand-over.js';
 
 const PositionsIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
@@ -27,7 +30,8 @@ const PositionsBody = () => {
   const { switchCompanion } = useConsciousnessPick('switchCompanion');
   const { roster } = useHouseRoster();
   const council = useCouncil();
-  const { dispatch } = useWindows();
+  const windows = useWindows();
+  const { dispatch } = windows;
   // The holder's one-on-one: the same house switch a HOUSE row runs, then the stream.
   const onTalk = async (laneId) => {
     const member = roster.find((m) => m.neumaId === laneId);
@@ -35,7 +39,23 @@ const PositionsBody = () => {
     council.leaveRoom();
     dispatch({ type: 'OPEN', id: 'chat' });
   };
-  return <PositionsBoard waitingCount={waiting?.count ?? 0} refreshWaiting={waiting?.refresh ?? null} onTalk={onTalk} Panel={PositionPanel} />;
+  // A seating council (SeatingStrip.jsx): every member convened, and the operator's opening words said
+  // once the council stands. A council already sitting hears them as it is.
+  const [opening, setOpening] = useState(null);
+  const councilId = council.state?.councilId ?? null;
+  useEffect(() => {
+    if (opening && councilId) { council.say(opening, 'hold'); setOpening(null); }
+  }, [opening, councilId, council]);
+  const onCouncil = (laneIds, words) => {
+    if (councilId) council.say(words, 'hold');
+    else { council.openCouncil(laneIds); setOpening(words); }
+    council.enterRoom();
+    dispatch({ type: 'OPEN', id: 'chat' });
+  };
+  // A setup step's press: a place on the desk (the door table), or the seat's holder with the ask drafted, never sent.
+  const onDoor = (door) => openDoor(door, windows);
+  const onHand = (member, prompt) => handOver({ neumaId: member.laneId, name: member.name, prompt }, windows);
+  return <PositionsBoard waitingCount={waiting?.count ?? 0} refreshWaiting={waiting?.refresh ?? null} onTalk={onTalk} onDoor={onDoor} onHand={onHand} Panel={PositionPanel} onCouncil={onCouncil} />;
 };
 
 export const positionsApp = {

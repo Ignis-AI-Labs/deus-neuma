@@ -11,6 +11,9 @@ const positionsCall = authedCall('/api/v1/positions');
 /** Every position of the operator's house. impure. */
 export const getPositions = () => positionsCall('GET', '/', { errorPrefix: 'Could not read the house positions' });
 
+/** The seating the members filed leaves the board (applied, or set aside). */
+export const clearSeating = () => positionsCall('DELETE', '/seating', { errorPrefix: 'Could not clear the seating' });
+
 /** What the holder of one position reads at the top of its turn (null: nobody holds it). impure. @param {string} office */
 export const getPositionEyes = (office) => positionsCall('GET', `/${encodeURIComponent(office)}/eyes`, { errorPrefix: 'Could not read what this position is told' });
 

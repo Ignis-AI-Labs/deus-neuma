@@ -399,8 +399,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'team.tune',
       // house.review-packet: the seated Optio orders what already waits on the
       // operator (validate re-verifies the seat and every ask) — it answers and
-      // grants nothing, so it rides a wake with no card. house.charter: a member sets its house's charter (Founder 11-13); the operator's three fields and the pause stay theirs.
-      'house.review-packet', 'house.charter',
+      // grants nothing, so it rides a wake with no card. house.charter: a member sets its house's charter (Founder 11-13); the operator's three fields and the pause stay theirs. house.seating: the members' seating; it seats nobody, the operator applies it from POSITIONS.
+      'house.review-packet', 'house.charter', 'house.seating',
       // campaigns.ask: the seated CMO's word to its operator on a campaign (or
       // its answer to theirs) — nothing leaves the house and nothing changes
       // the campaign's declaration, so it carries no card (validate re-verifies

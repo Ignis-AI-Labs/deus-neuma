@@ -12,6 +12,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { POSITIONS, positionOf, officeOfWaiting, positionMapText } from '../../backend/services/positions/position-map.js';
 import { foldBoard } from '../../backend/services/positions/position-board.js';
 import { companyFile, companiesText } from '../../backend/services/positions/company-file.js';
+import { setupOf, setupText } from '../../backend/services/positions/position-setup.js';
+import { stepWords, helpAsk } from '../../frontend/app/RelinkShell/positions/positions-view.js';
 import { intentTypes } from '../../backend/services/intents/registry.js';
 import { SHED_LADDER } from '../../backend/services/envelope-budget.js';
 import { finalizeTurnEnvelope } from '../../backend/services/turn-envelope.js';
@@ -79,6 +81,82 @@ describe('the position map', () => {
   });
 });
 
+describe('setting up a position', () => {
+  const bare = { mailbox: false, mailboxHolder: null, mailWatch: false, leadSources: false, companiesWithoutSite: ['Umbrae'], factsFiled: false, factsApproved: false, audiences: 0, audiencesApproved: 0, salesCampaigns: 0, marketingCampaigns: 0, provider: false, accounts: 0, linkedin: false };
+  const ready = { ...bare, mailbox: true, mailboxHolder: 'merc', mailWatch: true, leadSources: true, companiesWithoutSite: [], factsFiled: true, factsApproved: true, audiences: 1, audiencesApproved: 1, salesCampaigns: 1 };
+
+  test('every step is measured: an empty seat has done nothing; a title or a mailbox held by someone else does not count', () => {
+    const empty = setupOf('cro', null, bare);
+    expect([empty.done, empty.total]).toEqual([0, 11]);
+    expect(empty.steps.map((s) => [s.id, s.who, s.optional])).toEqual([['seat', 'operator', false], ['mailbox', 'operator', false], ['holder', 'operator', false], ['mail-watch', 'operator', false], ['lead-sources', 'operator', false], ['site', 'operator', false], ['campaign', 'seat', false], ['facts', 'seat', false], ['facts-approved', 'operator', false], ['audience', 'seat', false], ['audience-approved', 'operator', false], ['provider', 'operator', true]]);
+    expect(setupOf('cro', 'merc', { ...ready, mailboxHolder: 'someone-else' }).open.map((s) => s.id)).toEqual(['holder', 'provider']);
+    const done = setupOf('cro', 'merc', ready);
+    expect([done.done, done.total, done.open.map((s) => s.id)]).toEqual([11, 11, ['provider']]);
+    // A position with no steps of its own still needs its seat filled.
+    expect(setupOf('clo', null, bare)).toMatchObject({ done: 0, total: 1 });
+    expect(setupOf('clo', 'rugevil', bare)).toMatchObject({ done: 1, total: 1, open: [] });
+  });
+
+  test('the holder reads its own steps, then the operator\'s in the exact words to pass on; a finished position reads only the optional one', () => {
+    const text = setupText(['cro'], { cro: setupOf('cro', 'merc', bare) });
+    expect(text).toMatch(/^## SETTING UP YOUR POSITION — guide your operator through what only they can do\nSALES: 1 of 11 set up\./);
+    expect(text).toContain('Yours to do now:\n- Open the first campaign. File sales/campaign');
+    expect(text).toContain('Only your operator can do these. Tell them each one in these words, one at a time, and say why it matters:\n- Connect the mailbox the house sends from. POSITIONS, SALES, MAILBOX: enter the email address');
+    expect(text).toContain('add the site address for Umbrae');
+    expect(text).toContain('Never say a step is done because you were told so.');
+    expect(setupText(['cro'], { cro: setupOf('cro', 'merc', ready) })).toMatch(/Optional, when they ask for more: Attach a contact-data provider/);
+    expect(setupText(['cro'], { cro: setupOf('cro', 'merc', { ...ready, provider: true }) })).toBe('');
+    expect(setupText(['clo'], { clo: setupOf('clo', 'rugevil', bare) })).toBe('');
+    // Marketing's LinkedIn step carries the address to register, word for word.
+    expect(setupOf('cmo', 'aure', bare).steps.find((s) => s.id === 'linkedin').how).toContain('http://127.0.0.1:53682/linkedin/callback');
+  });
+
+  test('the window words each step by who does it; SETUP leads the tabs while a needed step is open and steps back when all are done', () => {
+    const [seat, mailbox] = setupOf('cro', 'merc', bare).steps;
+    expect(stepWords(seat)).toBe('DONE — Seat a member in SALES');
+    expect(stepWords(mailbox)).toBe('YOURS — Connect the mailbox the house sends from');
+    expect(stepWords(setupOf('cro', 'merc', bare).steps.find((s) => s.id === 'facts'))).toBe('THE SEAT\'S — File what a buyer may be told');
+    expect(stepWords(setupOf('cro', 'merc', ready).steps.at(-1))).toBe('OPTIONAL — Attach a contact-data provider');
+    const position = (state) => foldBoard({ holders: { cos: null, cro: 'merc', cmo: null, clo: null, cso: null, cfo: null, cao: null }, names: new Map([['merc', 'Sol']]), waiting: [], connections: [], setupState: state }).find((p) => p.office === 'cro');
+    expect(hubTabs(position(bare))[0]).toEqual({ id: '_setup', label: 'SETUP · 1/11' });
+    expect(pickTab(position(bare), undefined)).toBe('_setup');
+    expect(hubTabs(position(ready)).map((t) => t.id)).toEqual(['campaigns', 'leads', 'deals', 'mailbox', '_switches', '_eyes', '_setup']);
+    expect(hubTabs(position(ready)).at(-1).label).toBe('SETUP · DONE');
+    expect(railRow(position(bare))).toMatchObject({ setupOpen: 10, setup: '1/11' });
+  });
+
+  test('every open step is one press from its place: a tab here, a door on the desk, a page outside, or the seat with the ask drafted', () => {
+    const state = { ...bare, companiesNoSite: [{ id: 'umbrae', name: 'Umbrae' }] };
+    const by = Object.fromEntries(setupOf('cro', 'merc', state).steps.map((s) => [s.id, s]));
+    expect(by.mailbox.go).toEqual({ tab: 'mailbox', label: 'MAILBOX' });
+    expect(by.mailbox.link).toEqual({ url: 'https://myaccount.google.com/apppasswords', label: 'GOOGLE APP PASSWORDS' });
+    expect(by['mail-watch'].go.tab).toBe('_switches');
+    expect(by['facts-approved'].go.tab).toBe('leads');
+    expect(by.site.door).toEqual({ kind: 'brand', companyId: 'umbrae', section: 'sources', label: 'SITE & CODE' });
+    expect(by.provider).toMatchObject({ optional: true, link: { url: 'https://hunter.io/api-keys' }, door: { kind: 'app', app: 'settings' } });
+    // A seat's step is handed to its holder as an ask that makes it propose first and ask for what it needs.
+    for (const id of ['campaign', 'facts', 'audience']) expect(by[id]).toMatchObject({ who: 'seat', ask: expect.stringMatching(/ask me/i) });
+    // Every open step past the seat reaches somewhere; a tab named is a tab the hub really has.
+    const positions = foldBoard({ holders: { cos: null, cro: 'merc', cmo: 'aure', clo: null, cso: null, cfo: null, cao: null }, names: new Map([['merc', 'Sol'], ['aure', 'Aure']]), waiting: [], connections: [{ id: 'mail-watch' }, { id: 'lead-sources' }], setupState: state });
+    for (const p of positions.filter((x) => ['cro', 'cmo'].includes(x.office))) {
+      const tabs = hubTabs(p).map((t) => t.id);
+      for (const s of p.setup.steps.filter((x) => x.id !== 'seat')) {
+        expect(Boolean(s.go || s.door || s.link || s.ask), `${p.office}.${s.id}`).toBe(true);
+        if (s.go) expect(tabs, `${p.office}.${s.id}`).toContain(s.go.tab);
+      }
+    }
+    expect(helpAsk(by.mailbox)).toMatch(/^Walk me through this setup step for your position, one action at a time, and tell me what you need from me to finish it: Connect the mailbox/);
+    // The hub renders the presses: the tab, the page outside, the door, and the two hands to the holder.
+    const html = renderToStaticMarkup(createElement(PositionHub, { position: positions.find((x) => x.office === 'cro'), members: [], names: {}, tab: '_setup', now: 0, busy: false, pick: '', confirmClear: false, eyes: null,
+      onTab: () => {}, onPick: () => {}, onSeat: () => {}, onAskClear: () => {}, onClear: () => {}, onTalk: () => {}, onOpenWaiting: () => {}, onSwitch: () => {} }));
+    expect(html).toContain('GO TO MAILBOX');
+    expect(html).toContain('href="https://myaccount.google.com/apppasswords"');
+    expect(html).toContain('OPEN SITE &amp; CODE');
+    expect(html).toContain('HAND TO SOL');
+    expect(html).toContain('ASK SOL');
+  });
+});
+
 describe('the company file', () => {
   const umbrae = { id: 'umbrae', name: 'Umbrae', parentId: 'ignis', site: { url: 'https://umbrae.io', links: [] }, legalEntity: null, repos: [{}] };
   const facts = { sheet: { id: 'fs-1', facts: [] }, review: { verdict: 'approved' }, approved: { id: 'fs-1', facts: [
@@ -135,7 +213,7 @@ describe('the positions board and window', () => {
   test('the rail counts what it lists; the window opens on what waits', () => {
     const positions = board();
     expect(railSummary(positions)).toBe('2/7 HELD · 3 WAITING ON YOU');
-    expect(railRow(positions.find((p) => p.office === 'cro'))).toEqual({ office: 'cro', plain: 'SALES', title: 'Mercator', holder: 'Sol', waiting: 1, off: 2 });
+    expect(railRow(positions.find((p) => p.office === 'cro'))).toEqual({ office: 'cro', plain: 'SALES', title: 'Mercator', holder: 'Sol', waiting: 1, off: 2, setupOpen: 0, setup: null });
     expect(pickPosition(positions, 'clo').office).toBe('clo');
     expect(pickPosition(positions, 'nope').office).toBe('cos');
     expect(pickPosition([], 'cro')).toBe(null);
