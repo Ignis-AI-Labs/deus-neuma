@@ -7,13 +7,13 @@ import { parseSendAs, fromFor } from '../../backend/services/email/send-as.js';
 import { EMAIL_ACCOUNT } from '../../backend/services/email/email-registry.js';
 import { resolveChannelCredentials } from '../../backend/services/social/channel-registry.js';
 
-const ACCOUNT = { address: 'Owner@IgnisLabs.ai', sendAs: 'umbrae = Sales@Umbrae.io, deus-neuma = hello@deusneuma.ai\npress@example.com; nonsense, = orphan@x.io, umbrae = sales@umbrae.io' };
+const ACCOUNT = { address: 'Owner@Example.org', sendAs: 'umbrae = Sales@Umbrae.io, deus-neuma = hello@deusneuma.ai\npress@example.org; nonsense, = orphan@x.io, umbrae = sales@umbrae.io' };
 
 describe('send as', () => {
   test('the list reads company = address, a bare address, any separator; rubbish and repeats drop', () => {
     expect(parseSendAs(ACCOUNT.sendAs)).toEqual([
       { address: 'sales@umbrae.io', company: 'umbrae' }, { address: 'hello@deusneuma.ai', company: 'deus-neuma' },
-      { address: 'press@example.com', company: null }, { address: 'orphan@x.io', company: null },
+      { address: 'press@example.org', company: null }, { address: 'orphan@x.io', company: null },
     ]);
     for (const none of ['none', '', null, undefined, 'not an address']) expect(parseSendAs(none)).toEqual([]);
   });
@@ -21,15 +21,15 @@ describe('send as', () => {
   test('a company\'s email leaves from that company\'s address; any other from the account\'s own', () => {
     expect(fromFor(ACCOUNT, { company: 'umbrae' })).toEqual({ ok: true, from: 'sales@umbrae.io' });
     expect(fromFor(ACCOUNT, { company: 'DEUS-NEUMA' })).toEqual({ ok: true, from: 'hello@deusneuma.ai' });
-    expect(fromFor(ACCOUNT, { company: 'ignis' })).toEqual({ ok: true, from: 'owner@example.com' });
-    expect(fromFor(ACCOUNT)).toEqual({ ok: true, from: 'owner@example.com' });
+    expect(fromFor(ACCOUNT, { company: 'ignis' })).toEqual({ ok: true, from: 'owner@example.org' });
+    expect(fromFor(ACCOUNT)).toEqual({ ok: true, from: 'owner@example.org' });
     expect(fromFor({ address: 'a@b.co', sendAs: 'none' }, { company: 'umbrae' })).toEqual({ ok: true, from: 'a@b.co' });
   });
 
   test('an address asked for by name must be one the mailbox holds; a stranger is refused, with the list', () => {
-    expect(fromFor(ACCOUNT, { from: 'press@example.com', company: 'umbrae' })).toEqual({ ok: true, from: 'press@example.com' });
-    expect(fromFor(ACCOUNT, { from: 'OWNER@example.com' })).toEqual({ ok: true, from: 'owner@example.com' });
-    expect(fromFor(ACCOUNT, { from: 'ceo@bigbank.com' })).toEqual({ ok: false, detail: 'ceo@bigbank.com is not an address this mailbox sends as — it sends as owner@example.com, sales@umbrae.io, hello@deusneuma.ai, press@example.com, orphan@x.io' });
+    expect(fromFor(ACCOUNT, { from: 'press@example.org', company: 'umbrae' })).toEqual({ ok: true, from: 'press@example.org' });
+    expect(fromFor(ACCOUNT, { from: 'OWNER@example.org' })).toEqual({ ok: true, from: 'owner@example.org' });
+    expect(fromFor(ACCOUNT, { from: 'ceo@bigbank.com' })).toEqual({ ok: false, detail: 'ceo@bigbank.com is not an address this mailbox sends as — it sends as owner@example.org, sales@umbrae.io, hello@deusneuma.ai, press@example.org, orphan@x.io' });
   });
 
   test('the field is optional: an account saved before it existed still resolves whole', () => {
