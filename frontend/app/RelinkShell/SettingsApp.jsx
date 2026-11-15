@@ -71,9 +71,9 @@ const ModelsTab = ({ focus }) => (
 // windows decide WHO speaks; this tab holds WHAT unlocks the door.
 // Remote sits beside Security: a phone on the tailnet is a security posture
 // before it is a convenience (docs/security/remote-surface.md).
-const SecurityTab = () => (
+const SecurityTab = ({ focus }) => (
   <>
-    <ConnectionsSection />
+    <ConnectionsSection focus={focus} />
     <SecuritySection />
     <RemoteSection />
   </>

@@ -26,6 +26,7 @@
 import { ethers } from 'ethers';
 import { createLogger } from '../logger.js';
 import { serviceValue } from '../stored-secrets.js';
+import { floorProvider } from './public-floor.js';
 
 const log = createLogger('ChainRegistry');
 
@@ -100,7 +101,9 @@ const probeNetwork = (url) => {
  * The verified provider for a chain, or null. impure (real RPC round trip).
  * Unknown key, unset env, dead endpoint, wrong chainId — all null + one log
  * line, never a throw. Failures are NOT cached: a transiently dead endpoint
- * gets a fresh probe next call.
+ * gets a fresh probe next call. A dead endpoint on a chain with a public
+ * floor (public-floor.js) answers through that floor instead of null; an
+ * endpoint on the WRONG chain never falls back — that is a mistake to fix.
  *
  * @param {string} key - a registry key ('ethereum', 'base', …)
  * @param {Record<string, string|undefined>} [env]
@@ -125,8 +128,8 @@ export const providerFor = async (key, env = process.env) => {
   try {
     network = await probeNetwork(url);
   } catch (err) {
-    logOnce(`rpc:${cacheKey}`, 'warn', `chain-registry: ${key} RPC probe failed — reads will refuse until it answers`, { error: redactRpcUrl(err.message) });
-    return null;
+    logOnce(`rpc:${cacheKey}`, 'warn', `chain-registry: ${key} RPC probe failed — reads use the public node where the chain has one, and refuse otherwise`, { error: redactRpcUrl(err.message) });
+    return floorProvider(key, { failedUrl: url, env });
   }
   if (Number(network.chainId) !== c.chainId) {
     // The wrong-chain refusal — loud, and the endpoint is never trusted.

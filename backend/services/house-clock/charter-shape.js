@@ -175,6 +175,41 @@ export const normalizeCharter = (input, { ownedLanes = null, knownActs = null } 
   });
 };
 
+/** What a house member may set in its own house's charter (Design note, 2026-11-13: […]). */
+export const MEMBER_KEYS = Object.freeze(['goal', 'linesOfWork', 'seats', 'seat', 'quietHours', 'cadence', 'delegation']);
+/** What stays the operator's: what a wake may take without asking, what always comes back to them, how close they stand. */
+export const OPERATOR_KEYS = Object.freeze(['allow', 'escalate', 'involvement']);
+const KEPT = Object.freeze(['goal', 'linesOfWork', 'seats', 'quietHours', 'cadence', 'delegation', ...OPERATOR_KEYS]);
+
+/**
+ * A member's change, laid over the charter that stands, as the input
+ * normalizeCharter checks. Only the fields named change; `seat` sets (or,
+ * null, removes) the member's OWN seat and leaves every other seat as it is.
+ * The operator's three are carried over untouched and can never be written
+ * here. Pure — throws with a reason the member can act on.
+ *
+ * @param {?Object} prior - the stored charter, null when the house has none
+ * @param {Object} patch - the member's fields
+ * @param {string} laneId - the member writing
+ * @returns {Object} the whole charter input
+ */
+export const memberCharterInput = (prior, patch, laneId) => {
+  if (!isObject(patch)) throw new Error('a charter change is an object of the fields to set');
+  const theirs = Object.keys(patch).filter((k) => OPERATOR_KEYS.includes(k));
+  if (theirs.length) throw new Error(`${theirs.join(', ')} stay your operator's: what a wake takes without asking, and what always comes back to them (publishing, email, money out of the house), is theirs to set`);
+  const unknown = Object.keys(patch).filter((k) => !MEMBER_KEYS.includes(k));
+  if (unknown.length) throw new Error(`the charter has no field ${unknown.map((k) => `"${k}"`).join(', ')}; a member may set ${MEMBER_KEYS.join(', ')}`);
+  if (!MEMBER_KEYS.some((k) => patch[k] !== undefined)) throw new Error(`name at least one of ${MEMBER_KEYS.join(', ')} to set`);
+  const next = prior ? Object.fromEntries(KEPT.map((k) => [k, prior[k]])) : { allow: [], escalate: [], involvement: null };
+  for (const k of MEMBER_KEYS) if (k !== 'seat' && patch[k] !== undefined) next[k] = patch[k];
+  if (patch.seat !== undefined) {
+    if (patch.seat !== null && !isObject(patch.seat)) throw new Error('seat is {dailyCap} for your own seat, or null to leave the charter\'s seats');
+    const others = (Array.isArray(next.seats) ? next.seats : []).filter((s) => s?.laneId !== laneId);
+    next.seats = patch.seat === null ? others : [...others, { laneId, dailyCap: patch.seat.dailyCap }];
+  }
+  return next;
+};
+
 /**
  * Where a charter stands. Pure.
  * @param {?Object} charter - the stored record

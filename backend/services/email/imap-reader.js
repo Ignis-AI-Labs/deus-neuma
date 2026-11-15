@@ -132,7 +132,7 @@ const _validCredentials = (credentials) => {
 // impure — run one authenticated read-only session: connect, greet, LOGIN,
 // EXAMINE INBOX, hand `exec` to the work function, LOGOUT. Resolves whatever
 // the work returns; every failure resolves {ok:false, detail}. Never throws.
-const _withSession = (credentials, { signal } = {}, work) => new Promise((resolve) => {
+const _withSession = (credentials, { signal, write = false } = {}, work) => new Promise((resolve) => {
   const conn = _validCredentials(credentials);
   if (!conn) return resolve({ ok: false, detail: 'email credentials are not configured' });
   if (signal?.aborted) return resolve({ ok: false, detail: 'interrupted by your operator' });
@@ -184,7 +184,8 @@ const _withSession = (credentials, { signal } = {}, work) => new Promise((resolv
     // Greeting is unsolicited — the first exec's parser simply skips it.
     const login = await exec(`LOGIN ${conn.username} ${conn.password}`);
     if (!login.ok) return finish({ ok: false, detail: `IMAP login refused: ${login.status.slice(0, 120)}` });
-    const examine = await exec('EXAMINE INBOX');
+    // A read opens the inbox read-only; only the label work (write) opens it to change.
+    const examine = await exec(write ? 'SELECT INBOX' : 'EXAMINE INBOX');
     if (!examine.ok) return finish({ ok: false, detail: `could not open INBOX: ${examine.status.slice(0, 120)}` });
     const result = await work(exec);
     await exec('LOGOUT').catch(() => {});
@@ -254,5 +255,77 @@ export const readMessage = (credentials, uid, { signal } = {}) => {
         truncated: item.payload.length >= READ_BODY_CAP_BYTES,
       },
     };
+  });
+};
+
+// ── LABELS — the holder keeps the mailbox in order (Design note, 2026-11-15: […]). On Gmail a label is the
+// X-GM-LABELS item of a message; on any other server it is a folder the
+// message is copied into. Nothing here deletes a message or marks it read.
+
+export const LABEL_MAX = 60;
+/** A label name as it may be written, or null: letters, digits, spaces and / - _ . & only. Pure. */
+export const cleanLabel = (v) => {
+  const name = typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
+  return name && name.length <= LABEL_MAX && /^[\p{L}\p{N} /_.&-]+$/u.test(name) && !/^\//.test(name) ? name : null;
+};
+
+/** The folder/label names in LIST responses, system folders left out. Pure. */
+export const parseListNames = (responses) => responses
+  .map((r) => /^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (?:"((?:[^"\\]|\\.)*)"|(\S+))$/i.exec(r.text))
+  .filter((m) => m && !/\\Noselect/i.test(m[1]))
+  .map((m) => (m[2] ?? m[3]).replace(/\\(.)/g, '$1'))
+  .filter((name) => !/^INBOX$/i.test(name) && !/^\[Gmail\]/i.test(name));
+
+/**
+ * Every label (folder) of the mailbox the holder may use.
+ * @returns {Promise<{ok: true, labels: string[]} | {ok: false, detail: string}>}
+ */
+// impure — network
+export const listLabels = (credentials, { signal } = {}) => _withSession(credentials, { signal }, async (exec) => {
+  const list = await exec('LIST "" "*"');
+  return list.ok ? { ok: true, labels: parseListNames(list.responses).sort((a, b) => a.localeCompare(b)) }
+    : { ok: false, detail: `the labels could not be listed: ${list.status.slice(0, 120)}` };
+});
+
+/**
+ * Put a label on one inbox message (made first when the mailbox has none by
+ * that name), take it off, or archive the message out of the inbox.
+ * @param {{uid: number, label?: string, remove?: boolean, archive?: boolean}} change
+ * @returns {Promise<{ok: true, done: string[]} | {ok: false, detail: string}>}
+ */
+// impure — network
+export const labelMessage = (credentials, { uid, label, remove = false, archive = false }, { signal } = {}) => {
+  const id = parseInt(uid, 10);
+  if (!Number.isInteger(id) || id <= 0) return Promise.resolve({ ok: false, detail: 'a positive message uid is required' });
+  const name = label === undefined || label === null || label === '' ? null : cleanLabel(label);
+  if (label && !name) return Promise.resolve({ ok: false, detail: `label: at most ${LABEL_MAX} characters — letters, digits, spaces and / - _ . &` });
+  if (!name && !archive) return Promise.resolve({ ok: false, detail: 'name a label, or archive: true' });
+  return _withSession(credentials, { signal, write: true }, async (exec) => {
+    const gmail = (await exec('CAPABILITY')).responses.some((r) => /X-GM-EXT-1/i.test(r.text));
+    const found = await exec(`UID FETCH ${id} (FLAGS)`);
+    if (!found.ok || !parseFetchItems(found.responses).some((i) => i.uid === id)) return { ok: false, detail: `no message with uid ${id} in the inbox` };
+    const done = [];
+    if (name) {
+      const quoted = imapQuote(name);
+      if (remove) {
+        if (!gmail) return { ok: false, detail: 'this mail server keeps labels as folders: a copy in a folder is removed in the mail program, not from here' };
+        const off = await exec(`UID STORE ${id} -X-GM-LABELS (${quoted})`);
+        if (!off.ok) return { ok: false, detail: `the label could not be removed: ${off.status.slice(0, 120)}` };
+        done.push(`"${name}" removed`);
+      } else {
+        const made = await exec(`CREATE ${quoted}`);
+        if (made.ok) done.push(`label "${name}" created`);
+        const on = await exec(gmail ? `UID STORE ${id} +X-GM-LABELS (${quoted})` : `UID COPY ${id} ${quoted}`);
+        if (!on.ok) return { ok: false, detail: `the label could not be applied: ${on.status.slice(0, 120)}` };
+        done.push(`"${name}" applied`);
+      }
+    }
+    if (archive) {
+      if (!gmail) return { ok: false, detail: `${done.join('; ') || 'nothing done'} — archiving is only known for Gmail; on this server move it in the mail program` };
+      const out = await exec(`UID STORE ${id} -X-GM-LABELS (\\Inbox)`);
+      if (!out.ok) return { ok: false, detail: `the message could not be archived: ${out.status.slice(0, 120)}` };
+      done.push('archived out of the inbox');
+    }
+    return { ok: true, done };
   });
 };

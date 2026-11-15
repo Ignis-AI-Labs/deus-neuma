@@ -82,3 +82,11 @@
 .conn-detail[open] summary {
   margin-bottom: var(--space-1);
 }
+
+/* A row another window sent the operator to: marked until they leave. */
+.conn-row.is-focus {
+  border-left-color: var(--warn);
+  background: rgba(255, 184, 107, 0.06);
+  outline: 1px solid rgba(255, 184, 107, 0.45);
+}
+.conn-row.is-focus.is-on { border-left-color: var(--signal); outline-color: var(--signal-dim); background: var(--signal-faint); }

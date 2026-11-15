@@ -17,6 +17,7 @@ const { resolvePort, portMovedNotice, isHeld } = require('./port-resolve.cjs');
 const { takeOverPort } = require('./backend-takeover.cjs');
 const { backendExitNotice } = require('./backend-exit.cjs');
 const { attachBackend, lockActive } = require('./key-lock/key-lock-main.cjs');
+const { registerWalletBridgeBackend } = require('./wallet-bridge-ipc.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const SERVER = path.join(ROOT, 'backend', 'server.js');
@@ -217,6 +218,7 @@ const startBackend = ({ onRestarted }) => {
     ...(process.platform === 'win32' ? {} : { detached: true }),
   });
   registerKspCapture(backend);
+  registerWalletBridgeBackend(backend);
   attachBackend(backend);
   // Only a backend that came up speaks here: one that dies before it reports
   // its port fails the caller's await, and the caller says so.

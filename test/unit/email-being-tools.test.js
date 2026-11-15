@@ -112,10 +112,10 @@ describe('isEmailTool (every dialect)', () => {
 });
 
 describe('emailToolsFor — the advertisement gate', () => {
-  test('advertises the two reads only to the bound holder with full credentials', async () => {
+  test('advertises the reads and the label tools only to the bound holder with full credentials', async () => {
     await makeRig({ neumaId: 'holder' });
     expect((await emailToolsFor('holder')).map((t) => t.name))
-      .toEqual(['check_email_inbox', 'read_email']);
+      .toEqual(['check_email_inbox', 'read_email', 'list_email_labels', 'label_email']);
     expect(await emailToolsFor('someone-else')).toEqual([]);
     expect(await emailToolsFor(null)).toEqual([]);
   });

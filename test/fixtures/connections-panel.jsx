@@ -1,5 +1,5 @@
 // Render-only host for the CONNECTIONS panel: the real section with the app's own styles and
-// catalogs, as the Settings window's Security tab mounts it.
+// catalogs, as the Settings window's Security tab mounts it (focus included).
 import '../../frontend/i18n/index.js';
 import '../../frontend/styles/tokens.css';
 import '../../frontend/styles/main.css';
@@ -11,4 +11,5 @@ const host = document.createElement('main');
 host.style.padding = '24px';
 host.style.maxWidth = '760px';
 document.body.append(host);
-createRoot(host).render(<ConnectionsSection />);
+// ?focus=connections/<id> is the deep link another window's door hands Settings.
+createRoot(host).render(<ConnectionsSection focus={new URLSearchParams(window.location.search).get('focus')} />);

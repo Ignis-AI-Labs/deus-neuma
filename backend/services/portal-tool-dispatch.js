@@ -38,7 +38,7 @@ import { isMindTool, handleMindTool } from './mind-tools.js';
 import { isSovereigntyTool, handleSovereigntyTool } from './sovereignty/gateway-handlers.js';
 import { handleSecurityTool, isSecurityTool } from './security/security-being-tools.js'; import { handleExtensionTool, isExtensionTool } from './extensions/extension-being-tools.js';
 import { handleLegalTool, isLegalTool } from './legal/legal-being-tools.js';
-import { handleTreasuryTool, isTreasuryTool } from './treasury/treasury-being-tools.js';
+import { handleTreasuryTool, isTreasuryTool } from './treasury/treasury-being-tools.js'; import { handleLpRead, isLpReadTool } from './umbrae-lp/lp-being-tools.js';
 import { handleBenchTool, isBenchTool } from './bench/bench-being-tools.js';
 import { isSkillSearchTool, isSkillTool } from './skill-tool.js';
 import {
@@ -151,8 +151,8 @@ export const dispatchPlatformTool = async (match, ctx) => {
       results.push(result);
       break dispatch;
     }
-    if (_isWalletViewTool(match)) {
-      results.push(await _handleWalletView(ws, companion));
+    if (_isWalletViewTool(match) || isLpReadTool(match)) { // reads of its own wallet, its book and the public market (lp-being-tools.js) run ahead of any mode check
+      results.push(await (isLpReadTool(match) ? handleLpRead(match, ws, companion, args, { sendToolEvent: _sendToolEvent }) : _handleWalletView(ws, companion)));
       break dispatch;
     }
 

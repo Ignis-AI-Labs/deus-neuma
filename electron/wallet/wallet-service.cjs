@@ -320,14 +320,18 @@ const createWalletService = (config) => {
   };
 
   // Re-verifies against the vault on disk — never the in-memory session.
+  const revealSecret = (id, password) => {
+    const targetId = resolveId(id);
+    const envelope = vaultStore.readVault(vaultPath(targetId), outerSeal);
+    if (!envelope) throw new Error('No wallet found.');
+    return openStored(envelope, password).secret;
+  };
   const revealMnemonic = (id, password) => {
     const targetId = resolveId(id);
     const envelope = vaultStore.readVault(vaultPath(targetId), outerSeal);
     if (!envelope) throw new Error('No wallet found.');
-    const payload = openStored(envelope, password); // throws on wrong pw
-    if (payload.type !== 'mnemonic') {
-      throw new Error('This wallet was imported by private key and has no recovery phrase.');
-    }
+    const payload = openStored(envelope, password);
+    if (payload.type !== 'mnemonic') throw new Error('This wallet was imported by private key and has no recovery phrase.');
     return payload.secret;
   };
 
@@ -406,6 +410,7 @@ const createWalletService = (config) => {
     select,
     lock: lockAndNotify,
     revealMnemonic,
+    revealSecret,
     remove,
     signMessage,
     signTypedData,

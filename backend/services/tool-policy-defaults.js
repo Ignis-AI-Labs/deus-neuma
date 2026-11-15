@@ -272,7 +272,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   email: {
     allowed: [],
     denied: [],
-    requireApproval: ['check_email_inbox', 'read_email'],
+    requireApproval: ['check_email_inbox', 'read_email', 'list_email_labels', 'label_email'],
   },
   // The press: local rendering, no egress — but the output carries the
   // house's official livery, so the first pressings ask the operator (one
@@ -386,21 +386,21 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // (posting-pipeline-v2: one decision per post, at the most-informed
       // moment). The draft sits visible as pending until then — never lost.
       'social.queue',
-      // media.keep copies an image the OPERATOR already shared in this chat
-      // into the house library — no egress, nothing published; the post that
-      // carries it is still its own decision.
+      // media.keep copies an image the OPERATOR already shared in this chat into the house library —
+      // no egress, nothing published; the post that carries it is still its own decision.
       'media.keep',
-      // team.post: word between the members of ONE approved, working run (and
-      // its lead) — the plan of record is the consent, nothing leaves the team.
+      // team.post: word between the members of ONE approved, working run (and its lead) — the plan of record is the consent, nothing leaves the team.
       'team.post',
+      // lp.*: the house member's own LP wallet (Design note, 2026-11-12; 11-13 […]): positions, swaps through Umbrae's router, sends inside the house; the signing rule is the gate (core/wallet/lp-tx-policy.js, trade-policy.js), an optional budget cap holds deposits past it (umbrae-lp/lp-budget.js); goal and reward only file: the operator answers a reward (lp-rewards.js).
+      'lp.open', 'lp.add', 'lp.claim', 'lp.withdraw', 'lp.close', 'lp.swap', 'lp.send', 'lp.goal', 'lp.reward', 'lp.create-pool',
       // team.tune: the run's lead or the house's Optio changes a WORKING run's
       // width and clocks (#577) — the approved plan / the seated office is the
       // consent, and every desk is told who changed what.
       'team.tune',
       // house.review-packet: the seated Optio orders what already waits on the
       // operator (validate re-verifies the seat and every ask) — it answers and
-      // grants nothing, so it rides a wake with no card.
-      'house.review-packet',
+      // grants nothing, so it rides a wake with no card. house.charter: a member sets its house's charter (Founder 11-13); the operator's three fields and the pause stay theirs.
+      'house.review-packet', 'house.charter',
       // campaigns.ask: the seated CMO's word to its operator on a campaign (or
       // its answer to theirs) — nothing leaves the house and nothing changes
       // the campaign's declaration, so it carries no card (validate re-verifies

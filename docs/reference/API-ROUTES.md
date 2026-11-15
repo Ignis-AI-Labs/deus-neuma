@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-685 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+697 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
 
 ## /api/v1/accounts
 
@@ -49,8 +49,6 @@
 | Method | Path | Guards |
 | --- | --- | --- |
 | POST | `/api/v1/auth/bridge/associate` | `mapLaneQueryToken`, `middleware` |
-| GET | `/api/v1/auth/bridge/poll` | `mapLaneQueryToken`, `middleware` |
-| POST | `/api/v1/auth/bridge/start` | `mapLaneQueryToken`, `middleware` |
 | GET | `/api/v1/auth/challenge` | `mapLaneQueryToken`, `middleware` |
 | GET | `/api/v1/auth/session` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/auth/verify` | `mapLaneQueryToken`, `middleware` |
@@ -551,8 +549,20 @@
 | GET | `/api/v1/neuma/:companionName/stats` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/neuma/:companionName/vessel` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:companionName/vessel` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/lp` | `mapLaneQueryToken`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/budget` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/open` | `mapLaneQueryToken`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/pace` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/pending/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/pending/:id/decline` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/decline` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/delivered` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/recovery/export-identity` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/recovery/retired/:address/reveal` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
 | POST | `/api/v1/neuma/:neumaId/recovery/rotate` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/recovery/rotation/ack` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
+| GET | `/api/v1/neuma/:neumaId/recovery/rotation/codes` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
 | GET | `/api/v1/neuma/:neumaId/recovery/status` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/recovery/verify-codes` | `mapLaneQueryToken`, `requireAuth` |
 | DELETE | `/api/v1/neuma/:neumaId/route` | `mapLaneQueryToken`, `requireAuth` |

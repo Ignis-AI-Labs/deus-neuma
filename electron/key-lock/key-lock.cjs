@@ -143,4 +143,4 @@ const replaceKit = ({ file, seal, keys, now = new Date().toISOString() }) => {
   writeAtomic(file, lockUnderNewKit(core.validKeys(keys), seal, now));
 };
 
-module.exports = { confirmKit, isStrong, openKeyLock, readStored, replaceKit, revealKit, unlockWithCode };
+module.exports = { confirmKit, isStrong, openKeyLock, readStored, replaceKit, revealKit, unlockWithCode, writeAtomic };

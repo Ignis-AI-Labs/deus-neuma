@@ -5,7 +5,7 @@
 // site reads the same file, so the two say the same words. A flip lands on the backend, and the row
 // shows what the backend answered, so a switch never looks flipped before it is.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uiSound } from '../../services/ui-sound.js';
 import { getConnections, setConnection } from '../../services/connections-client.js';
@@ -29,7 +29,7 @@ const Detail = ({ row, t }) => (
   </details>
 );
 
-const SwitchedRow = ({ row, busy, onFlip, t }) => {
+const SwitchedRow = ({ row, busy, onFlip, t, focused }) => {
   const [check, setCheck] = useState(null); // null | 'checking' | { key, version }
   const canCheck = row.id === 'update-check' && Boolean(desktop()?.update?.act);
   const checkNow = async () => {
@@ -39,7 +39,7 @@ const SwitchedRow = ({ row, busy, onFlip, t }) => {
     setCheck({ key: checkLine(result), version: result.version });
   };
   return (
-    <li className={`conn-row${row.on ? ' is-on' : ''}`} data-connection={row.id}>
+    <li className={`conn-row${row.on ? ' is-on' : ''}${focused ? ' is-focus' : ''}`} data-connection={row.id}>
       <div className="conn-head">
         <span className="conn-name">{row.name}</span>
         <span className="conn-state label-data">{row.on ? t('connections.on') : t('connections.off')}</span>
@@ -76,11 +76,23 @@ const UsedRow = ({ row, t }) => (
   </li>
 );
 
-export const ConnectionsSection = () => {
+// pure — the row a deep link names ('connections/<id>'), or null.
+const focusedRow = (focus) => (typeof focus === 'string' && focus.startsWith('connections/') ? focus.slice('connections/'.length) : null);
+
+/** @param {{focus?: string|null}} props — a deep link may name one row: 'connections/<id>' */
+export const ConnectionsSection = ({ focus = null }) => {
   const { t } = useTranslation('settingsSecurity');
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null); // the id being switched
+  const listRef = useRef(null);
+  const target = focusedRow(focus);
+
+  // A door from another window lands on its row: scrolled to, and marked.
+  useEffect(() => {
+    if (!target || !rows) return;
+    listRef.current?.querySelector(`[data-connection="${CSS.escape(target)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [target, rows]);
 
   useEffect(() => {
     getConnections().then((r) => setRows(r.connections)).catch((e) => setError(e.message));
@@ -109,8 +121,8 @@ export const ConnectionsSection = () => {
       {rows ? (
         <>
           <div className="label-data conn-group">{t('connections.runsAlone', { on: switched.filter((r) => r.on).length, total: switched.length })}</div>
-          <ul className="conn-list">
-            {switched.map((row) => <SwitchedRow key={row.id} row={row} busy={busy === row.id} onFlip={flip} t={t} />)}
+          <ul className="conn-list" ref={listRef}>
+            {switched.map((row) => <SwitchedRow key={row.id} row={row} busy={busy === row.id} onFlip={flip} t={t} focused={row.id === target} />)}
           </ul>
           <div className="label-data conn-group">{t('connections.onUse')}</div>
           <ul className="conn-list">

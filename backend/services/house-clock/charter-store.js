@@ -24,7 +24,7 @@ import { walletDir, writeJsonAtomic } from '../user-realm.js';
 import { createWriteChain } from '../write-chain.js';
 import { GLOBAL_DEFAULTS } from '../tool-policy-defaults.js';
 import { intentTypes } from '../intents/registry.js';
-import { normalizeCharter } from './charter-shape.js';
+import { normalizeCharter, memberCharterInput } from './charter-shape.js';
 import { readCharter, charterFileOf as fileOf } from './charter-read.js';
 
 // The read lives in its own leaf (charter-read.js): a reader that only needs the
@@ -84,6 +84,40 @@ export const writeCharter = (wallet, input, { by, ownedLanes }) => serialize(asy
   };
   await writeJsonAtomic(fileOf(wallet), record);
   return record;
+});
+
+/**
+ * A house member sets its own house's charter (Design note, 2026-11-13: […]). Its change lays over the charter that stands
+ * (charter-shape.js memberCharterInput) and STANDS AT ONCE: the member's own
+ * filing is the yes, stamped with who wrote it. The operator keeps the record
+ * of every version, the pause (a member's edit never unpauses the house) and
+ * the three fields that are theirs. impure.
+ *
+ * @param {string} wallet - the house
+ * @param {Object} patch - the member's fields
+ * @param {{laneId: string, name?: string, ownedLanes: string[]}} opts
+ * @returns {Promise<{record: Object, prior: ?Object}>}
+ */
+export const writeCharterAsMember = (wallet, patch, { laneId, name, ownedLanes }) => serialize(async () => {
+  const prior = await readCharter(wallet);
+  let fields;
+  try {
+    fields = normalizeCharter(memberCharterInput(prior, patch, laneId), { ownedLanes, knownActs: knownActIds() });
+  } catch (err) {
+    throw new CharterError(err.message);
+  }
+  if (prior) await fs.appendFile(historyOf(wallet), `${JSON.stringify(prior)}\n`, 'utf8');
+  const version = (prior?.version ?? 0) + 1;
+  const at = now();
+  const by = { kind: 'member', laneId, name: name || laneId };
+  const record = {
+    v: 1, ...fields,
+    paused: prior?.paused ?? false, pausedAt: prior?.pausedAt ?? null,
+    version, updatedAt: at, updatedBy: `member:${laneId}`,
+    approvedAt: at, approvedBy: { ...by, via: 'self' }, approvedVersion: version,
+  };
+  await writeJsonAtomic(fileOf(wallet), record);
+  return { record, prior };
 });
 
 /**

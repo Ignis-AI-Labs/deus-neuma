@@ -165,7 +165,7 @@ export const CharterSection = ({ charter, history, names, draft, busy, optio = n
       {history?.length ? (
         <p className="hclock-muted">
           {`${history.length} earlier version${history.length === 1 ? '' : 's'} kept: `}
-          {history.map((h) => `v${h.version}${h.approvedVersion === h.version ? ' (approved)' : ''}`).join(' · ')}
+          {history.map((h) => `v${h.version}${h.approvedBy?.kind === 'member' ? ` (set by ${h.approvedBy.name || h.approvedBy.laneId})` : h.approvedVersion === h.version ? ' (approved)' : ''}`).join(' · ')}
         </p>
       ) : null}
     </section>

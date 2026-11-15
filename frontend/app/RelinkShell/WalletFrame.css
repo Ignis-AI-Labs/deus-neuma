@@ -1,0 +1,72 @@
+/* WalletFrame — the wallet window's frame after the 2026-11-13 redesign: the
+   account bar, a house member's two wallets as tabs, a calm hero, square
+   action tiles, token rows. Loaded last, so it settles the older sheets.
+   Nothing under 13px (design-language.md § CHOKKAN). */
+
+.wal { gap: 20px; }
+
+/* --- Account bar: the refresh rides on the right --- */
+.wal .wal-account .wal-refresh {
+  flex: none; gap: 6px; padding: 6px 10px; min-height: 0;
+  border: 1px solid var(--color-border-primary); font-size: 13px; letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+.wal .wal-account .wal-refresh:hover:not(:disabled) { border-color: var(--signal-dim); color: var(--signal); }
+
+/* --- A house member's wallets: addresses picked like accounts --- */
+.wal-addrs { display: flex; flex-direction: column; border-top: 1px solid var(--color-border-primary); }
+.wal-addr {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 10px 12px; cursor: pointer; text-align: left;
+  background: transparent; border: none; border-bottom: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  transition: background var(--snap), color var(--snap);
+}
+.wal-addr:hover { background: rgba(228, 234, 240, 0.03); }
+.wal-addr.is-on { background: rgba(79, 214, 232, 0.06); color: var(--color-text-primary); }
+.wal-addr-pick { flex: none; width: 12px; height: 12px; border: 1px solid var(--color-border-hover); }
+.wal-addr.is-on .wal-addr-pick { border-color: var(--signal); background: var(--signal); box-shadow: inset 0 0 0 2px #0b0e11; }
+.wal-addr-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wal-addr-k { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-data); font-size: 13px; letter-spacing: 0.14em; }
+.wal-addr-a { font-family: var(--font-data); font-size: 13px; color: var(--color-text-tertiary); }
+.wal-addr.is-on .wal-addr-a { color: var(--signal); }
+.wal-addr-v { font-family: var(--font-data); font-size: 15px; white-space: nowrap; }
+.wal-addr-flag { padding: 0 6px; background: var(--warn); color: #0b0e11; font-size: 13px; letter-spacing: 0.06em; }
+.wal-addr:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+
+/* --- Main wallet: hero without the old rules around it --- */
+.wal-main { display: flex; flex-direction: column; gap: 20px; }
+.wal .wal-head { border: none; padding: 4px 0 0; gap: 8px; }
+.wal .wal-head-bal { font-family: var(--font-data); font-weight: 200; font-size: clamp(2.25rem, 8vw, 2.75rem); letter-spacing: -0.01em; }
+.wal .wal-head-native { font-size: 13px; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.wal .wal-head-row { gap: 8px 16px; }
+.wal .wal-head-addr { font-size: 14px; min-height: 32px; }
+.wal .wal-copy-hint, .wal .wal-head-scan { font-size: 13px; }
+
+/* --- Actions: square tiles, the icon carries the meaning --- */
+.wal .wal-actions { display: flex; gap: 24px; justify-content: flex-start; }
+.wal .wal-action { flex: none; background: none; clip-path: none; }
+.wal .wal-action:hover:not(:disabled) { background: none; }
+.wal .wal-action-in { padding: 0; gap: 8px; background: none; clip-path: none; color: var(--color-text-secondary); }
+.wal .wal-action-ico {
+  width: 52px; height: 52px; display: grid; place-items: center;
+  border: 1px solid var(--color-border-hover); color: var(--color-text-primary);
+  transition: border-color var(--snap), background var(--snap), color var(--snap);
+}
+.wal .wal-action:hover:not(:disabled) .wal-action-ico { border-color: var(--signal); background: var(--signal-faint); color: var(--signal); }
+.wal .wal-action-lbl { font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-secondary); }
+
+/* --- Tokens: one row each --- */
+.wal .wal-toks { gap: 0; margin: 0; border-top: 1px solid var(--color-border-primary); }
+.wal .wal-tok { background: none; margin: 0; border-bottom: 1px solid var(--color-border-primary); clip-path: none; }
+.wal .wal-tok-in { padding: 14px 2px; clip-path: none; }
+.wal .wal-tok-sym { font-size: 14px; }
+.wal .wal-tok-bal, .wal .wal-tok-px { font-size: 13px; }
+.wal .wal-tok-usd { font-size: 15px; }
+
+/* --- Receive: the code, then the address --- */
+.wal-qr { display: block; image-rendering: pixelated; flex: none; }
+.wal-recv .wal-qr { align-self: flex-start; }
+
+/* --- Sub-screens: the way back is as legible as the way in --- */
+.wal .wal-back span, .wal .wal-layer-title { font-size: 13px; letter-spacing: 0.12em; }

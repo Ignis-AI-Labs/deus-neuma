@@ -34,6 +34,39 @@
       "default": false
     },
     {
+      "id": "umbrae-liquidity",
+      "name": "Umbrae liquidity",
+      "to": "umbrae.io, and your Base address (Base's public node when yours does not answer)",
+      "when": "when a neuma you gave a liquidity wallet manages its positions, opens a new pool, swaps, or sends inside your house, and every five minutes while it is on, to keep that wallet's earnings and wake the neuma when its market moves",
+      "sends": "that wallet's address, the transactions it signed, and its Umbrae key",
+      "whileOff": "a neuma cannot read, open or close liquidity positions on Umbrae, swap, or send from that wallet",
+      "detail": "Once you turn it on, a neuma that you gave a liquidity wallet may provide liquidity on Umbrae, a sister Ignis AI Labs product, on the Base network, open a new Umbrae pool for a pair or fee tier Umbrae lacks (seeded with at most $20 of its own, which stays in that pool for good), swap through Umbrae's router, and send to wallets of your house. Umbrae builds each position transaction. The app signs on this computer, with that wallet's key only, and only an Umbrae position action, a new pool on Umbrae's own factory for the pair, fee tier, starting price and seed it planned, a swap through Umbrae's router between tokens its pools trade, or a send to a wallet of your house, to you, or to an address on your list; everything it takes out or buys returns to the same wallet. Position transactions go to umbrae.io; swaps and sends go to your Base address. If you set a budget cap, a deposit past it waits for your approval. Every five minutes the app reads Umbrae's public pool list and that wallet's balances to keep its earnings book and to wake the neuma, inside your house charter, for its portfolio round or when money arrives, a position leaves its range, or a price spread opens. A reward it earned is paid to you from that wallet only when you approve it. umbrae.io sees that wallet's address and your IP address, and marks the wallet as an AI agent's for good. The wallet's key never leaves this computer. While it is off, nothing is asked of Umbrae and nothing is signed.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "market-data",
+      "name": "Market data",
+      "to": "api.geckoterminal.com, api.dexscreener.com and yields.llama.fi",
+      "when": "when a neuma maps the market: pools on a network, every market a token trades in, or yields across chains",
+      "sends": "the network, token or filter it looks up; no wallet address and no key",
+      "whileOff": "a neuma sees only Umbrae's own pools; it cannot map the market outside Umbrae",
+      "detail": "Once you turn it on, your house members can map the market outside Umbrae to find where money can be made: the busiest and newest pools on any network GeckoTerminal covers (Base, Ethereum, Solana, Robinhood's chain and more), the pairs that trade on Base and have no Umbrae pool yet, every market a token trades in on any chain (DexScreener), and yields across every chain and protocol (DefiLlama). These are public reads: nothing is signed, no wallet address and no key are sent, and answers are kept for a few minutes so the sources are not asked too often. Those sites see your IP address and what was looked up. While it is off, none of them is asked.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "swap-aggregator",
+      "name": "Swap aggregator (KyberSwap)",
+      "to": "aggregator-api.kyberswap.com, and your Base address",
+      "when": "when a neuma swaps from its liquidity wallet, or asks what a swap would give",
+      "sends": "the two tokens and the amount of the swap, and that wallet's address",
+      "whileOff": "a neuma's swaps go through Umbrae's router only, at Umbrae's prices",
+      "detail": "Once you turn it on, a neuma's swap from its liquidity wallet also asks KyberSwap, a public swap aggregator, for its best route across the exchanges on Base, and takes whichever of KyberSwap and Umbrae's router pays more. KyberSwap builds the swap as one call to its own router; the app signs it on this computer only when it is that router, the tokens are ones Umbrae's pools trade, what it buys is paid back to the same wallet, no fee goes to anyone, and the least it may pay out sits at or above the app's own floor from the quote and the slippage the neuma set. KyberSwap's router refuses to finish a swap that pays less. KyberSwap sees the tokens, the amount and that wallet's address. While it is off, KyberSwap is never asked and swaps stay on Umbrae's router.",
+      "control": "switch",
+      "default": false
+    },
+    {
       "id": "mail-watch",
       "name": "House mailbox watch",
       "to": "the mail server you connected for the house mailbox",

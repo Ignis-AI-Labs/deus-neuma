@@ -11,6 +11,7 @@
 import crypto from 'crypto';
 import tls from 'tls';
 import { encodeHeaderWord, encodeBase64Body } from './mime.js';
+import { fromFor } from './send-as.js';
 
 export const EMAIL_ADDRESS_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 export const SEND_MAX_RECIPIENTS = 10;
@@ -185,19 +186,22 @@ export const sendEmail = async (credentials, request, { signal } = {}) => {
   const interrupted = 'interrupted by your operator before sending';
   if (signal?.aborted) return { ok: false, detail: interrupted };
 
-  const domain = credentials.address.split('@')[1] || 'neuma.local';
+  // One mailbox, several addresses: the email leaves from the one asked for, or its company's (send-as.js).
+  const sender = fromFor(credentials, { from: request?.from, company: request?.company });
+  if (!sender.ok) return sender;
+  const domain = sender.from.split('@')[1] || 'neuma.local';
   const messageId = `<${crypto.randomBytes(12).toString('hex')}@${domain}>`;
   const message = buildMimeMessage({
-    from: credentials.address,
+    from: sender.from,
     to: valid.to,
     subject: valid.subject,
     text: valid.text,
     date: new Date(),
     messageId,
   });
-  const steps = buildSmtpDialogue(credentials, { from: credentials.address, to: valid.to, message });
+  const steps = buildSmtpDialogue(credentials, { from: sender.from, to: valid.to, message });
   const outcome = await _runSmtpSession(credentials, steps, { signal, interrupted });
-  return outcome.ok ? { ok: true, messageId, to: valid.to } : outcome;
+  return outcome.ok ? { ok: true, messageId, to: valid.to, from: sender.from } : outcome;
 };
 
 /**

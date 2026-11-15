@@ -1,0 +1,2 @@
+Added
+- The member who holds your house mailbox can now keep it in order: list the labels it has, make a new one (for example Leads/Replied), put a label on a message, take it off, and archive a message out of the inbox. Each of these asks you first, like reading the inbox does, and you can allow it once for good. Nothing is ever deleted or marked read. On a mail server other than Gmail, a label is a folder the message is copied into.

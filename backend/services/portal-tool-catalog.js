@@ -15,6 +15,7 @@ import { refinementToolsFor } from './refinement-being-tools.js';
 import { voiceToolsFor } from './voice-being-tools.js';
 import { webToolsFor } from './web-being-tools.js';
 import { chainToolsFor } from './chain/chain-being-tools.js';
+import { lpToolsFor } from './umbrae-lp/lp-being-tools.js';
 import { mediaToolsFor } from './media-being-tools.js';
 import { imageToolsFor, cardToolsFor } from './image-forge/image-being-tools.js';
 import { mapToolsFor } from './map-being-tools.js';
@@ -113,7 +114,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // a sealed witness the address in its seal (Design note, 2026-07-26: […]). The lane decides which one, so neither seat
     // can name another's. SPENDING is the wallet/send INTENT now (Stage 3) —
     // neuma-only, offered where the operator's standing policy exists.
-    capability('wallet', async () => (connection.companion?.neumaId ? [WALLET_VIEW_TOOL] : [])),
+    capability('wallet', async () => (connection.companion?.neumaId ? [WALLET_VIEW_TOOL, ...await lpToolsFor(connection)] : [])),
     // The Craft: the skills menu rides the prompt; the summoning tool is
     // advertised only when there is something to summon.
     skillService.listSkills().catch(() => []),

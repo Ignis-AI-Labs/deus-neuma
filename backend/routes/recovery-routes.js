@@ -8,7 +8,9 @@
  */
 
 import { Router } from 'express';
+import { ethers } from 'ethers';
 import { requireAuth } from '../services/auth.js';
+import { requireLocalScope } from '../services/remote/access-guard.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
 import {
@@ -83,6 +85,11 @@ router.post('/:neumaId/recovery/verify-codes', async (req, res) => {
 router.post('/:neumaId/recovery/rotate', async (req, res) => {
   const { neumaId } = req.params;
   if (!await verifyOwnership(req, res, neumaId)) return;
+
+  const delivered = await neumaWorkspace.readRotationCodes(neumaId);
+  if (delivered) {
+    return res.json({ success: true, newAddress: delivered.address, recoveryCodes: [...delivered.codes], resumed: true });
+  }
 
   const { newPassword, oldPassword } = req.body;
   if (!newPassword || newPassword.length < 12) {
@@ -161,11 +168,51 @@ router.post('/:neumaId/recovery/rotate', async (req, res) => {
     res.json({
       success: true,
       newAddress: newKeypair.address,
-      recoveryCodes: [...recoveryCodes], // Shown once, never stored
+      recoveryCodes: [...recoveryCodes], // Encrypted until the owner acknowledges delivery
     });
   } catch (err) {
     log.error('Rotate error', { error: err.message });
     res.status(500).json({ error: 'Keypair rotation failed' });
+  }
+});
+
+router.get('/:neumaId/recovery/rotation/codes', requireLocalScope, async (req, res) => {
+  const { neumaId } = req.params;
+  if (!await verifyOwnership(req, res, neumaId)) return;
+  const delivered = await neumaWorkspace.readRotationCodes(neumaId);
+  if (!delivered) return res.status(404).json({ error: 'No rotation codes await delivery' });
+  res.json({ newAddress: delivered.address, recoveryCodes: [...delivered.codes] });
+});
+
+router.post('/:neumaId/recovery/rotation/ack', requireLocalScope, async (req, res) => {
+  const { neumaId } = req.params;
+  if (!await verifyOwnership(req, res, neumaId)) return;
+  try {
+    await neumaWorkspace.acknowledgeRotationCodes(neumaId, req.body?.address);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(409).json({ error: error.message });
+  }
+});
+
+/**
+ * Recover a retired address with the current rotation password or recovery codes.
+ * Local desk only: this deliberately returns key material to the lane owner.
+ */
+router.post('/:neumaId/recovery/retired/:address/reveal', requireLocalScope, async (req, res) => {
+  const { neumaId, address } = req.params;
+  if (!ethers.isAddress(address)) return res.status(400).json({ error: 'Invalid retired address' });
+  if (!await verifyOwnership(req, res, neumaId)) return;
+  const record = await neumaWorkspace.readRetiredKeypair(neumaId, address);
+  if (!record) return res.status(404).json({ error: 'No retired keypair exists for that address' });
+  const { password, recoveryCodes } = req.body || {};
+  try {
+    const keypair = password
+      ? decryptKeypair(record.password, password)
+      : decryptWithRecoveryCodes(record.recovery, recoveryCodes);
+    return res.json({ address: keypair.address, privateKey: keypair.privateKey });
+  } catch {
+    return res.status(401).json({ error: 'Could not open the retired keypair with those credentials' });
   }
 });
 

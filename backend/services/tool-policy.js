@@ -176,7 +176,7 @@ export const READ_TOOLS = Object.freeze(new Set([
   // balance, no key and no send. The dispatcher has always run it ahead of any
   // mode check for a neuma; naming it here makes the advertised tier match
   // that, instead of promising a hold the runtime does not honour.
-  'wallet_view',
+  'wallet_view', 'lp_market', 'lp_book', 'market_map', // lp_market: the public market a house member trades on (pool data, the router's quote); lp_book: its own earnings book; market_map: the market outside Umbrae; no key, no send
   // NOTE — the queue, bench, ledger and task-list reads are policy-`allowed`
   // (no approval card) but deliberately NOT here. The line this set draws is
   // the being's OWN record — its memory, its skies, its mail — which opens
@@ -205,7 +205,7 @@ export const OBSERVATION_TOOLS = Object.freeze(new Set([
   'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
   'journal_read', 'chats_list', 'chat_read', 'charter_read',
   // vault reads retired (prompt + fs); vault mutations are intents only
-  'skies_read', 'genome_read', 'post_check', 'open_chats', 'refinement_sense', 'wallet_view',
+  'skies_read', 'genome_read', 'post_check', 'open_chats', 'refinement_sense', 'wallet_view', 'lp_market', 'lp_book', 'market_map',
   'flight_check', 'get_telemetry', 'get_view', 'inspect', 'sandbox_status', 'ground_git',
   // Handing the operator a list REACHES NOTHING — no egress, no store, no
   // change to anything but this conversation's own card. Observe mode holds

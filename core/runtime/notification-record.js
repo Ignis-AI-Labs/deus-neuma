@@ -195,6 +195,14 @@ export const KIND = Object.freeze({
   // another window; this can. Producers phrase the title as an EVENT
   // ("asked for…") so a card read after the answer landed never lies.
   awaitingAnswer: 'awaiting_answer',
+
+  // A house member's LP wallet on Umbrae (Design note, 2026-11-12, […]): the platform's once-a-day report of its positions and what it did,
+  // and the moment a deposit past the budget starts waiting for the operator.
+  // Neuma standing — the house member is the actor; both open the WALLET.
+  lpReport: 'lp_report',
+  lpWaiting: 'lp_waiting',
+  // A house member earned a reward it set as its goal and asks for it (umbrae-lp/lp-rewards.js).
+  lpReward: 'lp_reward',
 });
 
 const KINDS = Object.freeze(Object.values(KIND));
@@ -251,7 +259,10 @@ export const isBeingKind = (kind) => kind === KIND.turnDone
   || kind === KIND.houseAck
   || kind === KIND.houseWake
   || kind === KIND.operatorChangeAnswered
-  || kind === KIND.sovereigntyProposal;
+  || kind === KIND.sovereigntyProposal
+  || kind === KIND.lpReport
+  || kind === KIND.lpWaiting
+  || kind === KIND.lpReward;
 
 /**
  * Build a record. Pure — every varying input is passed in.

@@ -23,6 +23,8 @@ export const EMAIL_ACCOUNT = Object.freeze({
     field('smtpPort', 'SMTP Port (TLS)', false, 'EMAIL_SMTP_PORT', '465'),
     field('imapHost', 'IMAP Host', false, 'EMAIL_IMAP_HOST', 'imap.gmail.com'),
     field('imapPort', 'IMAP Port (TLS)', false, 'EMAIL_IMAP_PORT', '993'),
+    // Other addresses this one account sends as, each for a company (send-as.js). 'none' = only the address above.
+    field('sendAs', 'Send As — other addresses (company = address, comma separated)', false, 'EMAIL_SEND_AS', 'none'),
   ]),
 });
 

@@ -40,6 +40,7 @@ import { sealChatCopies } from './services/user-realm.js';
 import { applyFileSettings } from './services/user-files-settings.js';
 import { installRemoteGate, mountRemoteRoutes, attachRemoteTunnelTarget } from './services/remote/wire.js';
 import { attachUpgradeRouter } from './services/ws-upgrade-router.js';
+import { installWalletBridgeIpc } from './services/auth-bridge-ipc.js';
 
 // --- Bootstrap ---
 
@@ -54,6 +55,7 @@ const __dirname = dirname(__filename);
 
 // Validate all env vars upfront — throws in production on invalid config
 const config = loadConfig();
+installWalletBridgeIpc();
 
 // Apply the witness's persisted workspace choice (root + allocation) before any route touches a workspace path
 await applyWorkspaceSettings();

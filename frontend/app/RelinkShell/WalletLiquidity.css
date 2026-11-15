@@ -1,0 +1,121 @@
+/* WalletLiquidity — what the LIQUIDITY wallet adds under the ordinary wallet
+   screen: the budget as a bar, a card per waiting deposit, a range per position. Monochrome at rest; --signal is
+   money at work, --warn is what waits on the operator, --alert is out of
+   range. Nothing under 13px (design-language.md § CHOKKAN). */
+
+.lpw { display: flex; flex-direction: column; gap: var(--space-5); }
+.lpw-reading { font-size: 13px; color: var(--color-text-tertiary); }
+
+/* --- The door: a problem that opens its own fix --- */
+.lpw-door {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warn); background: rgba(255, 184, 107, 0.06);
+}
+.lpw-door-dot { width: 8px; height: 8px; background: var(--warn); flex: none; }
+.lpw-door-text { flex: 1; font-family: var(--font-voice); font-size: 14px; color: var(--color-text-primary); }
+
+/* --- Marks shared by the bar and its legend --- */
+.lpw-dot { display: inline-block; width: 8px; height: 8px; }
+.lpw-dot.is-used { background: var(--signal); }
+.lpw-dot.is-wait { background: var(--warn); }
+.lpw-warn { color: var(--warn); }
+.lpw-step { margin: 0; font-family: var(--font-voice); font-size: 15px; line-height: 1.5; color: var(--color-text-primary); }
+
+/* --- Cards --- */
+.lpw-card {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-4);
+  background: rgba(228, 234, 240, 0.03);
+  border: 1px solid var(--color-border-primary);
+}
+.lpw-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.lpw-k { font-family: var(--font-data); font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-secondary); text-transform: uppercase; }
+.lpw-id { color: var(--color-text-tertiary); letter-spacing: 0.04em; }
+.lpw-amount { font-family: var(--font-data); font-size: 22px; font-weight: 300; color: var(--color-text-primary); }
+.lpw-sub { margin: 0; font-family: var(--font-voice); font-size: 13px; line-height: 1.5; color: var(--color-text-tertiary); }
+.lpw-fees { font-family: var(--font-data); font-size: 13px; color: var(--signal); }
+.lpw-h {
+  margin: 0 0 var(--space-2); display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-data); font-weight: 400; font-size: 13px; letter-spacing: 0.16em; color: var(--color-text-secondary);
+}
+.lpw-count { min-width: 20px; padding: 0 6px; text-align: center; border: 1px solid var(--color-border-primary); color: var(--color-text-primary); letter-spacing: 0; }
+.lpw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+
+.lpw-chip {
+  font-family: var(--font-data); font-size: 13px; padding: 2px 8px;
+  border: 1px solid var(--color-border-primary); color: var(--color-text-secondary); white-space: nowrap;
+}
+.lpw-chip.is-in { border-color: var(--signal-dim); color: var(--signal); }
+.lpw-chip.is-out { border-color: var(--alert-dim); color: var(--alert); }
+
+/* --- Buttons --- */
+.lpw-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.lpw-btn {
+  font-family: var(--font-data); font-size: 13px; letter-spacing: 0.12em;
+  padding: 8px 14px; cursor: pointer;
+  background: transparent; color: var(--color-text-primary);
+  border: 1px solid var(--color-border-hover);
+  transition: border-color var(--snap), background var(--snap), color var(--snap);
+}
+.lpw-btn:hover:not(:disabled) { border-color: var(--signal); color: var(--signal); }
+.lpw-btn.is-primary { background: var(--signal-faint); border-color: var(--signal-dim); color: var(--signal); }
+.lpw-btn.is-primary:hover:not(:disabled) { background: rgba(79, 214, 232, 0.28); }
+.lpw-btn:disabled { opacity: 0.5; cursor: default; }
+.lpw-btn:focus-visible, .lpw-link:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.lpw-link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--font-data); font-size: 15px; color: var(--color-text-primary);
+}
+.lpw-link:hover { color: var(--signal); }
+
+/* --- Budget bar --- */
+.lpw-bar { position: relative; height: 10px; background: rgba(228, 234, 240, 0.08); }
+.lpw-bar-used { position: absolute; left: 0; top: 0; bottom: 0; background: var(--signal); }
+.lpw-bar-used.is-over { background: var(--alert); }
+.lpw-bar-wait {
+  position: absolute; top: 0; bottom: 0;
+  background: repeating-linear-gradient(135deg, var(--warn) 0 4px, transparent 4px 8px);
+}
+.lpw-bar-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--color-text-primary); }
+.lpw-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: 13px; color: var(--color-text-secondary); }
+.lpw-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lpw-form { display: flex; align-items: center; gap: var(--space-2); }
+.lpw-unit { font-family: var(--font-data); font-size: 15px; color: var(--color-text-secondary); }
+.lpw-in {
+  width: 120px; padding: 7px 10px; font-family: var(--font-data); font-size: 15px;
+  background: rgba(0, 0, 0, 0.25); color: var(--color-text-primary); border: 1px solid var(--color-border-hover);
+}
+.lpw-in:focus { outline: none; border-color: var(--signal); }
+
+/* --- Waiting card: amber, it needs the operator --- */
+.lpw-wait { border-color: rgba(255, 184, 107, 0.45); border-left: 3px solid var(--warn); }
+
+/* --- Position range: the band is the range, the tick is the pool now --- */
+.lpw-pos.is-out { border-left: 3px solid var(--alert); }
+.lpw-range { position: relative; height: 14px; background: rgba(228, 234, 240, 0.06); margin: var(--space-1) 0; }
+.lpw-range-band { position: absolute; top: 3px; bottom: 3px; background: var(--signal-faint); border: 1px solid var(--signal-dim); }
+.lpw-pos.is-out .lpw-range-band { background: rgba(255, 85, 51, 0.1); border-color: var(--alert-dim); }
+.lpw-range-now { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--color-text-primary); }
+
+/* --- The rules, folded --- */
+.lpw-rules summary { cursor: pointer; font-size: 13px; color: var(--color-text-tertiary); }
+.lpw-rules summary:hover { color: var(--color-text-secondary); }
+.lpw-rules ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); font-size: 13px; line-height: 1.6; color: var(--color-text-secondary); }
+
+/* EARNED · ROUND THE CLOCK · GOALS (WalletEarnings.jsx) */
+.lpw-earn.is-up { color: var(--signal); }
+.lpw-earn.is-down { color: var(--alert); }
+.lpw-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
+.lpw-facts div { display: flex; flex-direction: column; gap: 2px; }
+.lpw-facts dt { font-size: 13px; color: var(--color-text-tertiary); }
+.lpw-facts dd { margin: 0; font-family: var(--font-data); font-size: 15px; color: var(--color-text-primary); }
+.lpw-journal { list-style: none; padding-left: 0 !important; display: flex; flex-direction: column; gap: var(--space-2); }
+.lpw-why { color: var(--color-text-tertiary); }
+.lpw-cost { font-size: 17px; }
+.lpw-goal .lpw-in { width: 100%; box-sizing: border-box; }
+/* A result line in the panel reads at the body floor (13px), not the 11px data label it borrows. */
+.lpw > .wal-ok, .lpw > .wal-err, .lpw-card .wal-err { font-size: 13px; }
+.lpw-form select.lpw-in { min-width: 11em; }
+.lpw-goal-state { align-self: flex-start; }
+.lpw-chip.is-ask { border-color: rgba(255, 184, 107, 0.45); color: var(--warn); }

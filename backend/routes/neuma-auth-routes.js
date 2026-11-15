@@ -19,7 +19,7 @@ import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
 import {
   decryptKeypair, encryptKeypair, verifyRecoveryCodes, decryptWithRecoveryCodes,
-  MIN_KEY_PASSWORD,
+  MIN_KEY_PASSWORD, KDF_ITERATIONS_LEGACY,
 } from '../../core/wallet/keypair-vault.js';
 
 const router = Router();
@@ -170,8 +170,10 @@ router.post('/unlock', requireAuth, async (req, res) => {
   // Decrypt
   try {
     const keypair = decryptKeypair(encrypted, password);
+    if ((encrypted.kdfIterations ?? KDF_ITERATIONS_LEGACY) < 600_000) {
+      await neumaWorkspace.writeEncryptedKeypair(neumaId, encryptKeypair(keypair, password));
+    }
 
-    // Cache decrypted key in memory (30-min TTL)
     cacheDecryptedKey(neumaId, keypair);
 
     // Issue neuma token

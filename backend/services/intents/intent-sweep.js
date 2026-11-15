@@ -299,6 +299,12 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   // an executor can hand the stream a payload (a generated image's `sight`).
   const outcome = await type.execute(verdict.value, { connection, signal, emit })
     .catch((err) => ({ ok: false, reason: err.message }));
+  if (outcome.uncertain) {
+    await writeResult(dir, name, { status: 'uncertain', reason: outcome.reason, txHash: outcome.txHash });
+    await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'error', outcome.reason);
+    emit({ tool: tool(policyTool), status: 'uncertain', summary: `${shown} — outcome unknown; reconcile before retry`, detail: outcome.reason });
+    return { tool: tool(policyTool), status: 'uncertain', error: outcome.reason, txHash: outcome.txHash };
+  }
   if (outcome.ok) {
     await writeResult(dir, name, { status: 'done', detail: outcome.detail });
     await clearExecuting(dir, name);

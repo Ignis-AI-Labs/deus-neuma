@@ -24,7 +24,14 @@ export const charterStatus = (charter) => {
     return { key: 'unread', words: 'CHARTER NOT READ YET', detail: 'The charter has not been read yet. Nothing here can change it until it is.' };
   }
   if (!charter) {
-    return { key: 'none', words: 'NO CHARTER', detail: 'Nothing wakes until you write a charter and approve it.' };
+    return { key: 'none', words: 'NO CHARTER', detail: 'Nothing wakes until the house has a charter. Your house members can set it up themselves, or you can write one.' };
+  }
+  // Set by a house member (house/charter): its own filing is the yes; the operator overviews and keeps the pause.
+  if (charter.approvedBy?.kind === 'member' && charter.approvedVersion === charter.version) {
+    const who = charter.approvedBy.name || charter.approvedBy.laneId;
+    return charter.paused
+      ? { key: 'paused', words: `PAUSED — SET BY ${String(who).toUpperCase()} AT VERSION ${charter.version}`, detail: 'Paused: nothing new wakes, and a member\'s edit never resumes it. A wake already running finishes on its own.' }
+      : { key: 'approved', words: `RUNNING — SET BY ${String(who).toUpperCase()} AT VERSION ${charter.version}`, detail: `Your house runs its own clock. ${who} set this version ${formatDateTime(charter.approvedAt)}; every version is kept below, and PAUSE stops every wake.` };
   }
   const approvedThis = Boolean(charter.approvedAt) && charter.approvedVersion === charter.version;
   if (!approvedThis) {

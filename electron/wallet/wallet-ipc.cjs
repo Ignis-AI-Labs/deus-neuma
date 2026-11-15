@@ -18,7 +18,8 @@ const { createRpcStore, maskRpcUrl } = require('./rpc-store.cjs');
 const { validateRpcUrl } = require('./rpc-url.cjs');
 const { pickPersonalSignMessage, parseTypedData, isReadMethod, toChainIdHex } = require('./eip1193-helpers.cjs');
 const { createConfirmWindow } = require('./confirm-window.cjs');
-const { buildSignConfirmView, buildGateView } = require('./confirm-view.cjs');
+const { buildSignConfirmView } = require('./confirm-view.cjs');
+const { gateDialog } = require('./trusted-gate.cjs');
 const { NETWORKS, createNetworkStore } = require('./networks.cjs');
 const { fromDesk } = require('../desk-links.cjs');
 
@@ -39,11 +40,6 @@ const callCtx = new AsyncLocalStorage();
 // human can actually refuse a malicious request. The what-to-show shaping is the
 // pure buildSignConfirmView (confirm-view.cjs), proven by real tests.
 const makeNativeConfirm = (getWindow) => (req) => createConfirmWindow(getWindow(), buildSignConfirmView(req));
-
-// impure — a stern gate for irreversible actions (reveal/delete/reroute RPC),
-// through the same trusted window. Destructive gates pass tone:'alert' so the
-// window lights the theatrical alert register.
-const gateDialog = (getWindow, spec) => createConfirmWindow(getWindow(), buildGateView(spec));
 
 // impure — lazily build + cache the RPC provider for the SELECTED network. The
 // witness's custom RPC (a secret held by rpcStore) wins when set; otherwise the
@@ -162,14 +158,14 @@ const registerWalletIpc = ({ getWindow, userDataPath, getOrigin = null }) => {
     },
     'wallet:reveal': async (_e, id, password) => {
       const ok = await gateDialog(resolveWindow, {
-        message: 'Reveal your recovery phrase?',
+        message: 'Reveal your wallet recovery secret?',
         detail:
-          'Anyone who sees these 24 words controls this wallet and its funds. Make sure no one is watching your screen — including screen share or recording.',
+          'Anyone who sees these words or this private key controls the wallet and its funds. Make sure no one is watching your screen — including screen share or recording.',
         confirmLabel: 'Reveal',
         tone: 'alert',
       });
       if (!ok) throw new Error('Reveal cancelled.');
-      return service.revealMnemonic(id, password);
+      return service.revealSecret(id, password);
     },
     'wallet:remove': async (_e, id, password) => {
       const ok = await gateDialog(resolveWindow, {

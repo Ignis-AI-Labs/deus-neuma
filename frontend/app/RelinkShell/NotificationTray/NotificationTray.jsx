@@ -77,6 +77,9 @@ const kindLabel = (kind) => {
     case KIND.benchDone: return 'BENCHMARK DONE';
     case KIND.awaitingAnswer: return 'AWAITS YOUR ANSWER';
     case KIND.houseWake: return '«NOTICE» HOUSE WAKE';
+    case KIND.lpReport: return 'LIQUIDITY REPORT';
+    case KIND.lpWaiting: return 'DEPOSIT AWAITS YOU';
+    case KIND.lpReward: return 'A REWARD WAS EARNED';
     default: return 'NOTICE';
   }
 };

@@ -14,16 +14,12 @@ import { verifySessionToken, CHALLENGE_CLEANUP_INTERVAL_MS } from './auth.js';
 // Lets the Electron app authenticate with a wallet that only lives in the user's
 // real browser (a Rabby/MetaMask extension Electron can't see). Electron starts a
 // bridge, opens the system browser to /?bridge=<browserCode>; the browser
-// authenticates normally and ASSOCIATES the minted token; Electron POLLS with a
-// separate pollSecret to retrieve it. The token NEVER travels in a URL. The
-// URL-exposed browserCode can only associate an already-valid token (HMAC-checked,
-// first-association-wins); retrieval requires pollSecret, which never leaves
-// Electron. TTL'd, one-time, localhost-bound. (The Electron client also confirms
-// the retrieved address in-app before use — defeats any associate-injection
-// race: a mismatched address is rejected before it becomes the session.)
-// /start is intentionally unauthenticated (the browser side authenticates); the
-// session map is bounded by the bridgeLimiter (120/min/IP) + TTL + a 1-min GC
-// sweep, and the local-first launch is expected to bind loopback.
+// authenticates normally and ASSOCIATES the minted token; Electron starts and
+// polls through the private backend-child channel (auth-bridge-ipc.js), with a
+// separate pollSecret that never reaches the browser or a URL. The token never
+// travels in a URL. Association is HMAC-checked, first-wins, TTL'd and one-time;
+// Electron also confirms the retrieved address before committing the session.
+// The session map is bounded by TTL and a 1-min GC sweep.
 const bridgeSessions = new Map(); // browserCode -> { pollSecret, token, address, expiresAt }
 const BRIDGE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes — the connect window
 
@@ -89,36 +85,18 @@ export const retrieveBridgeToken = (browserCode, pollSecret) => {
 export const _clearBridgeSessions = () => bridgeSessions.clear();
 
 /**
- * Bridge router — mount at /api/v1/auth/bridge, OUTSIDE the tight auth limiter
- * (Electron polls for the token, which would trip a 10/5min limiter). Security
- * model lives in startBridgeSession / associateBridgeToken / retrieveBridgeToken.
+ * Browser association only. Initiation and token retrieval live on the private
+ * Electron/backend-child channel (auth-bridge-ipc.js), never on public HTTP.
  */
 export const createBridgeRouter = (express) => {
   const router = express.Router();
 
-  // Electron begins the handoff and keeps both secrets.
-  router.post('/start', (_req, res) => {
-    res.json(startBridgeSession());
-  });
-
-  // The browser (which just authenticated) hands its token to the session.
   router.post('/associate', (req, res) => {
     const { browserCode, token } = req.body || {};
     if (!browserCode || !token) return res.status(400).json({ error: 'Missing browserCode or token' });
     const r = associateBridgeToken(browserCode, token);
     if (!r.ok) return res.status(r.status).json({ error: r.error });
     res.json({ ok: true, address: r.address });
-  });
-
-  // Electron retrieves the token — gated on the pollSecret it never shared.
-  router.get('/poll', (req, res) => {
-    const browserCode = req.query.code;
-    const pollSecret = req.headers['x-bridge-secret'];
-    if (!browserCode || !pollSecret) return res.status(400).json({ error: 'Missing code or secret' });
-    const r = retrieveBridgeToken(browserCode, pollSecret);
-    if (r.error) return res.status(r.status).json({ error: r.error });
-    if (r.pending) return res.json({ pending: true });
-    res.json({ token: r.token, address: r.address });
   });
 
   return router;

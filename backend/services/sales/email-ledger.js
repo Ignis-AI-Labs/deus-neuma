@@ -27,6 +27,18 @@ export const suppressedRecipients = async (wallet, to) => {
   return to.filter((address) => blocked.email(address));
 };
 
+// pure — the companies these leads are sold: each lead's prospect names its audience, the audience its company.
+const companiesOf = (leads, prospects, segments) => [...new Set(leads.map((l) => segments.find((s) => s.id === prospects.find((p) => p.leadId === l.id)?.segmentId)?.company).filter(Boolean))];
+
+/** The one company an email to `to` speaks for, or null (no lead among them, or more than one company). impure. */
+export const companyOfRecipients = async (wallet, to) => {
+  const wanted = new Set(to.map(normalizeEmail).filter(Boolean));
+  const leads = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
+  if (!leads.length) return null;
+  const companies = companiesOf(leads, await readProspects(wallet), await readSegments(wallet));
+  return companies.length === 1 ? companies[0] : null;
+};
+
 /**
  * Why an email may not go to the leads among `to` (the facts check), or null
  * when none of them is a lead or the email passes.
@@ -37,7 +49,7 @@ export const leadEmailRefusal = async (wallet, { to, subject, text, promise, lan
   if (!leads.length) return null;
   // The company a lead is sold: its prospect's audience names it. An email speaks for ONE company.
   const [prospects, segments, sheet] = await Promise.all([readProspects(wallet), readSegments(wallet), readSalesFacts(wallet)]);
-  const companies = [...new Set(leads.map((l) => segments.find((s) => s.id === prospects.find((p) => p.leadId === l.id)?.segmentId)?.company).filter(Boolean))];
+  const companies = companiesOf(leads, prospects, segments);
   if (companies.length > 1) return `this email goes to leads of ${companies.join(' and ')} — one email speaks for one company`;
   const approved = factsFor(sheet.approved, companies[0] ?? null);
   const verdict = checkSalesEmail({ subject, text, approved });

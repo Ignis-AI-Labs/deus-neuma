@@ -73,6 +73,7 @@ import { authLimiter, neumaAuthLimiter, bridgeLimiter } from '../services/rate-l
 import healthRouter from './health-routes.js';
 import neumaAuthRouter from './neuma-auth-routes.js';
 import neumaWalletRouter from './neuma-wallet-routes.js';
+import lpWalletRouter from './lp-wallet-routes.js';
 import recoveryRouter from './recovery-routes.js';
 import covenantRouter from './covenant-routes.js';
 import preflightRouter from './preflight-routes.js';
@@ -314,6 +315,7 @@ export const mountApiRoutes = (app) => {
   // inside the router (keeps the auth posture; blocks anon-driven outbound fetches).
   app.use('/api/v1/prices', priceRouter);
   app.use('/api/v1/neuma', neumaWalletRouter);
+  app.use('/api/v1/neuma', lpWalletRouter);
   app.use('/api/v1/neuma', recoveryRouter);
   app.use('/api/v1/neuma', neumaRouteRouter);
   // The composer's model bar — one being's models + effort rung (neuma or witness

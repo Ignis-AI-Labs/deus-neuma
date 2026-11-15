@@ -5,7 +5,8 @@
 //
 // ME sends/receives its own ETH. A neuma never gets a raw "send" button — its
 // spending stays agent-requested and policy-gated (the allowlist + threshold
-// live under its Settings). A sealed AI witness is READ-ONLY here: its keys
+// live under its Settings). A neuma's LIQUIDITY layer is its second wallet,
+// for Umbrae only (WalletAppLiquidity.jsx). A sealed AI witness is READ-ONLY here: its keys
 // are its own, so a send is the witness's own act — nothing on this machine
 // signs for it. Backend: backend/routes/neuma-wallet-routes.js.
 //
@@ -28,6 +29,8 @@ import {
 import { trimEth } from './wallet-tx.js';
 import { explorerAddressUrl } from './wallet-receipt.js';
 import { buildWalletPortfolio } from './wallet-portfolio-load.js';
+import { lpPortfolioOf } from './lp-figures.js';
+import { fetchEthPrice } from './wallet-prices.js';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
 import { useBirthRefresh } from './use-birth-refresh.js';
@@ -43,6 +46,11 @@ import { useCopyAddress } from './use-copy-address.js';
 import { SendLayer } from './WalletAppSend.jsx';
 import { NeumaSettings, WitnessSettings } from './WalletAppSettings.jsx';
 import { MeSettings } from './WalletAppMeSettings.jsx';
+import { LiquidityPanel, LiquidityOpen } from './WalletAppLiquidity.jsx';
+import { WalletAddressList } from './WalletAddressList.jsx';
+import { WalletQr } from './WalletQr.jsx';
+import { useLpWallet } from './use-lp-wallet.js';
+import './WalletFrame.css';
 import { operatorLabel } from './use-operator-name.js';
 import { getWitnessName } from './witness-name.js';
 
@@ -131,8 +139,26 @@ const RefreshIcon = () => (
 
 const networkLabel = (key) => (WALLET_NETWORKS.find((n) => n.key === key)?.label || String(key || '')).toUpperCase();
 
-export const BalanceHeader = ({ identity, wallet, portfolio, onRefresh, refreshing }) => {
-  const loading = wallet === undefined;
+/** The window's one re-read: everything, the roster included. */
+export const RefreshButton = ({ onRefresh, refreshing }) => (
+  <button className={`wal-refresh label-data${refreshing ? ' is-busy' : ''}`}
+    onClick={() => { uiSound('tick'); onRefresh(); }} disabled={refreshing}
+    aria-label={refreshing ? 'Reading… refresh balance' : 'Refresh balance'} title="Read everything again">
+    <span className="wal-refresh-glyph"><RefreshIcon /></span>{refreshing ? 'READING…' : 'REFRESH'}
+  </button>
+);
+
+// Hero = the USD total when a price is known; otherwise the raw ETH balance, so
+// a missing price feed degrades to the on-chain truth rather than a blank "—".
+// pure — shared by the balance header and the MAIN wallet tab.
+const heroFigure = (wallet, portfolio) => {
+  if (wallet === undefined) return '—';
+  if (portfolio && portfolio.usdTotal != null) return formatUsd(portfolio.usdTotal);
+  if (wallet && wallet.balance != null) return `${wallet.balance} ETH`;
+  return wallet && wallet.address ? '— ETH' : 'NO WALLET';
+};
+
+export const BalanceHeader = ({ wallet, portfolio }) => {
   const addr = wallet && wallet.address;
   const bal = wallet && wallet.balance;
   const { copied, copy } = useCopyAddress(addr);
@@ -147,22 +173,10 @@ export const BalanceHeader = ({ identity, wallet, portfolio, onRefresh, refreshi
 
   const usdTotal = portfolio ? portfolio.usdTotal : null;
   const change = portfolio ? portfolio.change24h : null;
-  // Hero = the USD total when a price is known; otherwise the raw ETH balance, so
-  // a missing price feed degrades to the on-chain truth rather than a blank "—".
-  const hero = loading ? '—'
-    : usdTotal != null ? formatUsd(usdTotal)
-    : (bal != null ? `${bal} ETH` : (addr ? '— ETH' : 'NO WALLET'));
+  const hero = heroFigure(wallet, portfolio);
 
   return (
     <div className="wal-head">
-      <div className="wal-head-top">
-        <span className="wal-head-who label-data">{identity.label}</span>
-        <button className={`wal-refresh label-data${refreshing ? ' is-busy' : ''}`}
-          onClick={() => { uiSound('tick'); onRefresh(); }} disabled={refreshing}
-          aria-label="Refresh balance">
-          <span className="wal-refresh-glyph"><RefreshIcon /></span>{refreshing ? 'READING…' : 'REFRESH'}
-        </button>
-      </div>
       <div className="wal-head-total">
         <span className="wal-head-bal">{hero}</span>
         {usdTotal != null && change != null ? (
@@ -177,7 +191,7 @@ export const BalanceHeader = ({ identity, wallet, portfolio, onRefresh, refreshi
       ) : null}
       {addr ? (
         <div className="wal-head-row">
-          <button className="wal-head-addr" onClick={copy} title="Copy full address" aria-label="Copy full wallet address">
+          <button className="wal-head-addr" onClick={copy} title="Copy full address">
             {formatAddress(addr, { start: 10, end: 8 })}
             <span className="wal-copy-hint label-data">{copied ? 'COPIED' : 'COPY'}</span>
           </button>
@@ -200,13 +214,14 @@ const ActionButton = ({ label, icon, onClick, disabled }) => (
   </button>
 );
 
-export const HomeScreen = ({ identity, hasWallet, onNav }) => (
+// The LP wallet's settings are its budget, shown on its own screen; it has no SETTINGS layer.
+export const HomeScreen = ({ identity, hasWallet, onNav, lp = false }) => (
   <div className="wal-actions">
     {identity.kind === 'me' ? (
       <ActionButton label="SEND" icon={<SendIcon />} disabled={!hasWallet} onClick={() => onNav('send')} />
     ) : null}
     <ActionButton label="RECEIVE" icon={<ReceiveIcon />} disabled={!hasWallet} onClick={() => onNav('receive')} />
-    <ActionButton label="SETTINGS" icon={<SettingsIcon />} onClick={() => onNav('settings')} />
+    {lp ? null : <ActionButton label="SETTINGS" icon={<SettingsIcon />} onClick={() => onNav('settings')} />}
   </div>
 );
 
@@ -262,6 +277,7 @@ const ReceiveLayer = ({ wallet }) => {
   return (
     <section className="wal-sec wal-recv">
       <p className="wal-note">Your address. Send only ETH and Base assets to it.</p>
+      <WalletQr value={addr} size={148} label={`Address ${addr}`} />
       <div className="wal-recv-box cham"><span className="wal-recv-addr cham-in">{addr}</span></div>
       <button className="wal-btn" onClick={copy}>{copied ? 'COPIED' : 'COPY ADDRESS'}</button>
     </section>
@@ -376,34 +392,66 @@ const WalletBody = () => {
   // Only the failure case was ever re-read, which is exactly backwards for a
   // ledger that GROWS. Both are dropped here, and only here: the per-identity
   // refresh stays cheap, and the deliberate tap pays for the truth.
+  const lpState = useLpWallet(neumaId);
+  const { reload: reloadLp } = lpState;
   const hardRefresh = useCallback(async () => {
     witnessLedgerRef.current = null;
     setIdentities(buildIdentities());
-    await refresh();
-  }, [refresh]);
+    await Promise.all([refresh(), reloadLp()]);
+  }, [refresh, reloadLp]);
 
+  // A house member's wallets are addresses in a list (MAIN, LIQUIDITY), picked
+  // like accounts; every wallet shows the same screen.
+  const [walletId, setWalletId] = useState('main');
   const onSelect = (key) => {
     if (key === selectedKey) return;
-    setSelectedKey(key); setView('home');
+    setSelectedKey(key); setView('home'); setWalletId('main');
   };
+  const lp = lpState.lp;
+  const onLp = identity.kind === 'neuma' && walletId === 'lp';
+  const lpWallet = lp ? { address: lp.address, balance: lp.balanceEth, network: 'base' } : null;
+  const [lpPortfolio, setLpPortfolio] = useState(null);
+  // impure — the LP wallet's holdings: EVERY token Umbrae's pools trade, read on Base
+  // by the backend with Umbrae's prices (the same read its book counts), and ETH at
+  // the desk's market price with its 24h change. (The desk's curated token list
+  // missed WETH: Design note, 2026-11-13, […].)
+  useEffect(() => {
+    let live = true;
+    if (!lp?.address) { setLpPortfolio(null); return undefined; }
+    setLpPortfolio(lpPortfolioOf(lp, null));
+    fetchEthPrice().then((eth) => { if (live) setLpPortfolio(lpPortfolioOf(lp, eth)); }).catch(() => {});
+    return () => { live = false; };
+  }, [lp]);
+  const shownWallet = onLp ? lpWallet : wallet;
+  const shownPortfolio = onLp ? lpPortfolio : portfolio;
+  const addressRows = identity.kind === 'neuma' ? [
+    { id: 'main', label: 'MAIN', address: wallet?.address ?? null, figure: heroFigure(wallet, portfolio) },
+    { id: 'lp', label: 'LIQUIDITY · UMBRAE', address: lp?.address ?? null,
+      figure: lp === undefined ? '…' : lp === null ? 'OPEN +' : heroFigure(lpWallet, lpPortfolio), flag: lp?.pending?.length ?? 0 },
+  ] : null;
 
   return (
     <div className="wal">
-      <WalletIdentityPicker identities={identities} selectedKey={selectedKey} onSelect={(key) => { uiSound('tick'); onSelect(key); }} />
-      {error ? <p className="wal-err label-data">{error}</p> : null}
+      <WalletIdentityPicker identities={identities} selectedKey={selectedKey}
+        onSelect={(key) => { uiSound('tick'); onSelect(key); }}
+        right={<RefreshButton onRefresh={hardRefresh} refreshing={refreshing || lpState.reading} />} />
+      {addressRows && view === 'home' ? <WalletAddressList rows={addressRows} selected={walletId} onSelect={setWalletId} /> : null}
+      {error && !onLp ? <p className="wal-err label-data">{error}</p> : null}
 
-      {view === 'home' ? (
-        <>
-          <BalanceHeader identity={identity} wallet={wallet} portfolio={portfolio}
-            onRefresh={hardRefresh} refreshing={refreshing} />
-          <HomeScreen identity={identity} hasWallet={!!(wallet && wallet.address)} onNav={setView} />
-          <TokenList portfolio={portfolio} />
-        </>
+      {view === 'home' && onLp && lp === null ? (
+        <LiquidityOpen name={identity.label} onOpen={lpState.open} error={lpState.error} />
+      ) : view === 'home' ? (
+        <div className="wal-main">
+          <BalanceHeader wallet={shownWallet} portfolio={shownPortfolio} />
+          <HomeScreen identity={identity} hasWallet={!!(shownWallet && shownWallet.address)} onNav={setView} lp={onLp} />
+          <TokenList portfolio={shownPortfolio} />
+          {onLp ? <LiquidityPanel neumaId={neumaId} name={identity.label} state={lpState} /> : null}
+        </div>
       ) : (
         <div className="wal-layer">
           <LayerHeader title={view.toUpperCase()} onBack={() => setView('home')} />
           {view === 'send' && <SendLayer wallet={wallet} identities={identities} onSent={refresh} />}
-          {view === 'receive' && <ReceiveLayer wallet={wallet} />}
+          {view === 'receive' && <ReceiveLayer wallet={shownWallet} />}
           {view === 'settings' && (
             identity.kind === 'neuma'
               ? <NeumaSettings neumaId={neumaId} entries={entries} setEntries={setEntries}

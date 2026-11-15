@@ -12,8 +12,9 @@ import { emailBinding, canNeumaUseEmail } from '../email/email-binding.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { sendEmail, SEND_MAX_RECIPIENTS } from '../email/smtp-sender.js';
 import { journalEmailCall } from '../email/email-being-tools.js';
+import { fromFor } from '../email/send-as.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
-import { suppressedRecipients, recordSent, leadEmailRefusal } from '../sales/email-ledger.js';
+import { suppressedRecipients, recordSent, leadEmailRefusal, companyOfRecipients } from '../sales/email-ledger.js';
 
 // impure — the mailbox position: this lane holds its own house's mailbox AND
 // that house's account resolves.
@@ -35,8 +36,8 @@ const mailboxRefusal = async (laneId) => {
 export const emailSendIntent = Object.freeze({
   name: 'email/send',
   policyTool: 'email.send',
-  fieldsForPrompt: '{to, subject, text, promise?}',
-  descriptionForPrompt: `Send an email from the address your operator connected — to is one address or a list (max ${SEND_MAX_RECIPIENTS}). Named speech to a real person, stronger egress than a public post: write in your own voice and sign as yourself. To a lead for the first time, add promise: one line naming exactly what you will send when they say yes.`,
+  fieldsForPrompt: '{to, subject, text, promise?, from?}',
+  descriptionForPrompt: `Send an email from the address your operator connected — to is one address or a list (max ${SEND_MAX_RECIPIENTS}). Named speech to a real person, stronger egress than a public post: write in your own voice and sign as yourself. It leaves from the address of the lead's own company when the mailbox sends as one; from: names another of the mailbox's addresses. To a lead for the first time, add promise: one line naming exactly what you will send when they say yes.`,
   availableFor: async ({ laneId }) => ((await mailboxRefusal(laneId)) === null ? {} : null),
   validate: async (payload, { connection }) => {
     const position = await mailboxRefusal(connection.companion?.neumaId);
@@ -65,8 +66,15 @@ export const emailSendIntent = Object.freeze({
     }
     if (blocked.length) return { ok: false, status: 'denied', reason: `${blocked.join(', ')} ${blocked.length === 1 ? 'is' : 'are'} on the house's do-not-contact list — never written to again` };
     if (unchecked) return { ok: false, status: 'invalid', reason: unchecked };
-    return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text, ...(typeof payload.promise === 'string' && payload.promise.trim() ? { promise: payload.promise } : {}) } };
+    // The address it leaves from: one the mailbox really sends as, decided before the operator's card.
+    const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
+    const company = wallet ? await companyOfRecipients(wallet, to).catch(() => null) : null;
+    const sender = fromFor(credentials ?? {}, { from: payload.from, company });
+    if (!sender.ok) return { ok: false, status: 'invalid', reason: sender.detail };
+    return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text, ...(typeof payload.promise === 'string' && payload.promise.trim() ? { promise: payload.promise } : {}), from: sender.from } };
   },
+  // The card shows the address the email leaves from: it is chosen here, not filed.
+  cardArgs: (value) => ({ from: value.from, to: value.to, subject: value.subject, text: value.text }),
   summarize: (payload) => {
     const to = Array.isArray(payload?.to) ? payload.to.join(', ') : String(payload?.to ?? '?');
     return `send email to ${to}: "${String(payload?.subject ?? '').slice(0, 100)}"`;
@@ -76,17 +84,17 @@ export const emailSendIntent = Object.freeze({
   execute: async (value, { connection, signal }) => {
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
     // The promise is the house's own record of what it owes; it never rides the wire.
-    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text }, { signal });
+    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text, from: value.from }, { signal });
     await journalEmailCall(
       connection, 'email/send',
       outcome.ok ? `to ${outcome.to.join(', ')} — "${String(value.subject).slice(0, 120)}"` : outcome.detail,
       outcome.ok ? 'ok' : 'error',
     );
     const leads = outcome.ok && connection.walletAddress
-      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, promise: value.promise, by: connection.companion?.neumaId, from: credentials?.address })
+      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, promise: value.promise, by: connection.companion?.neumaId, from: outcome.from })
       : [];
     return outcome.ok
-      ? { ok: true, detail: `Email sent to ${outcome.to.join(', ')} (message id ${outcome.messageId}).${leads.length ? ` Recorded on ${leads.length} lead(s) as contacted.` : ''}` }
+      ? { ok: true, detail: `Email sent from ${outcome.from} to ${outcome.to.join(', ')} (message id ${outcome.messageId}).${leads.length ? ` Recorded on ${leads.length} lead(s) as contacted.` : ''}` }
       : { ok: false, reason: `The email was not sent: ${outcome.detail}.` };
   },
 });

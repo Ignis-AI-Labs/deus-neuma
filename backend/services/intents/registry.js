@@ -39,6 +39,10 @@ import { legalIntents } from './legal-acts.js';
 import { treasuryIntents } from './treasury-acts.js';
 import { emailSendIntent } from './email-send.js';
 import { walletSendIntent } from './wallet-send.js';
+import { lpIntents } from './lp-acts.js';
+import { lpSwapIntent, lpSendIntent } from './lp-trade-acts.js';
+import { lpGoalIntent, lpRewardIntent } from './lp-reward-acts.js';
+import { lpCreatePoolIntent } from './lp-pool-acts.js';
 import { mediaSaveIntent } from './media-save.js';
 import { mediaKeepIntent } from './media-keep.js';
 import { webDownloadIntent } from './web-download.js';
@@ -82,7 +86,7 @@ import {
 
 const TYPES = new Map(
   [
-    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent,
+    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent, ...lpIntents, lpSwapIntent, lpSendIntent, lpGoalIntent, lpRewardIntent, lpCreatePoolIntent,
     mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
     chatSendIntent,
     formRenderIntent, formChampionIntent,

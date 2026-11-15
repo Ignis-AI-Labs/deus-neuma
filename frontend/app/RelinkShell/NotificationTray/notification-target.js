@@ -123,6 +123,13 @@ export const notificationTarget = (record) => {
           : null,
       };
 
+    // A house member's LP wallet: the WALLET window, where its LIQUIDITY
+    // layer holds the positions and the APPROVE / DECLINE.
+    case KIND.lpReport:
+    case KIND.lpWaiting:
+    case KIND.lpReward:
+      return { appId: 'wallet', payload: null };
+
     // Nothing to open — the reload card's click IS its action, and routing it
     // somewhere would be a lie about what the click does.
     case KIND.codeReload:

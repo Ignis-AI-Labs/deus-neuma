@@ -93,7 +93,7 @@ beforeAll(async () => {
   priorConfig = getConfig();
   setConfig({ provider: 'lm-studio', endpoint: reader.endpoint, model: 'test-model', apiKey: '' });
   await setEmailCredential(POSITION_HOUSE, {
-    address: 'sales@tidewater.example', username: 'sales@tidewater.example', password: 'test-app-password',
+    address: 'sales@tidewater.example', username: 'sales@tidewater.example', password: 'test-app-password', sendAs: 'ignis = hello@ignis.example',
     smtpHost: 'localhost', smtpPort: String(smtp.port), imapHost: 'localhost', imapPort: '1',
   });
   await emailBinding.bind(POSITION_HOUSE, 'email', { neumaId: LANE });
@@ -253,9 +253,17 @@ describe('the sales cover through the real sweep — the operator approved the l
     expect(first.receipt.status).toBe('ok');
     expect(first.cards).toEqual([]);
     expect(smtp.received.slice(sentBefore).map((m) => m.to)).toEqual([['rosa@quay.example']]);
+    // One mailbox, several addresses: Rosa is a lead of the ignis audience, so it left from ignis's own address.
+    expect(smtp.received.at(-1).from).toBe('hello@ignis.example');
+    expect(smtp.received.at(-1).data).toContain('From: <hello@ignis.example>');
+    expect(first.receipt.content ?? first.receipt.detail ?? JSON.stringify(first.receipt)).toContain('from hello@ignis.example');
     expect((await ledger.load()).find((l) => l.id === lead.id).touches.at(-1)).toMatchObject({ direction: 'out', status: 'contacted' });
     // The sending address's first day writing to leads is noted: its ramp counts from here.
-    expect(Object.keys(await readSenders(POSITION_HOUSE))).toEqual(['sales@tidewater.example']);
+    expect(Object.keys(await readSenders(POSITION_HOUSE)).sort()).toEqual(['hello@ignis.example', 'sales@tidewater.example']);
+    // An address the mailbox does not hold is refused before any card, and nothing leaves.
+    const stranger = await send({ to: 'friend@elsewhere.example', subject: 'Lunch', text: 'Thursday?', from: 'ceo@bigbank.example' });
+    expect(stranger.receipt).toMatchObject({ status: 'error', error: expect.stringMatching(/ceo@bigbank\.example is not an address this mailbox sends as/) });
+    expect(stranger.cards).toEqual([]);
 
     const again = await send({ to: 'rosa@quay.example', subject: 'Following up', text: signed('One more thing.') }, 'deny');
     expect(again.cards).toHaveLength(1);

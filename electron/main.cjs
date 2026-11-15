@@ -28,6 +28,7 @@ const { registerUpdateBar } = require('./update-bar.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
 const { placeDictionaries, registerSpellcheck } = require('./spellcheck-main.cjs');
 const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
+const { registerWalletBridgeIpc } = require('./wallet-bridge-ipc.cjs');
 
 // The spellcheck dictionaries go where Chromium looks before the app is ready (spellcheck-main.cjs):
 // userData is final once backend-spawn.cjs has loaded, and after ready the download has already begun.
@@ -68,7 +69,8 @@ if (!app.requestSingleInstanceLock()) {
     guardAppSessions(session, getOrigin);
     // Spellcheck checks the shipped languages and never downloads — set before any page exists.
     registerSpellcheck({ app, session, shipped: spellcheckLanguages });
-    registerKeyLockIpc({ ipcMain, safeStorage, isDesk });
+    registerKeyLockIpc({ ipcMain, safeStorage, isDesk, getWindow: deskWindows.fallbackWindow });
+    registerWalletBridgeIpc({ ipcMain, isDesk });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.

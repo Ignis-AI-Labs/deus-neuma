@@ -49,6 +49,22 @@ const screen = ({ title, lines = [], code = null }) => {
   root.appendChild(wrap);
 };
 
+const confirmDesktopHandoff = () => new Promise((resolve) => {
+  screen({ title: 'Continue from the Neuma desktop?', lines: ['Only continue if you just asked the desktop app to connect this browser wallet.'] });
+  const actions = document.createElement('div');
+  actions.className = 'bridge-screen';
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.textContent = 'CONTINUE';
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.textContent = 'CANCEL';
+  yes.addEventListener('click', () => resolve(true), { once: true });
+  no.addEventListener('click', () => resolve(false), { once: true });
+  actions.append(yes, no);
+  document.querySelector('.bridge-card')?.append(actions);
+});
+
 /**
  * Run the browser side of the bridge: connect a wallet, authenticate, hand the
  * token to the bridge session. Renders its own minimal UI — does NOT boot the
@@ -58,6 +74,10 @@ const screen = ({ title, lines = [], code = null }) => {
  * @returns {Promise<string|null>}
  */
 export const runWalletBridge = async (browserCode) => {
+  if (!await confirmDesktopHandoff()) {
+    screen({ title: 'Cancelled', lines: ['No wallet was connected. You can close this tab.'] });
+    return null;
+  }
   screen({ title: 'Connect your wallet', lines: ['Sign in with your browser wallet to bring it back to NEUMA.'] });
 
   const address = await requireWallet('NEUMA wants to use your browser wallet. Connect and sign to continue on the desktop app.');

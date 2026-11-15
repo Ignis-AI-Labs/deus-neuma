@@ -10,6 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const lock = require('./key-lock.cjs');
 const { askRecoveryCode } = require('./unlock-window.cjs');
+const { gateDialog } = require('../wallet/trusted-gate.cjs');
 
 let opened = null; // { keys, backend, kitPending } once unlocked
 const backends = new Set();
@@ -73,7 +74,7 @@ const kitSaved = () => {
  * top frame only (isDesk — desk-links.cjs fromDesk): revealKit hands out the code that opens every
  * key (re-audit 2026-10-29, M-07 residual).
  */
-const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk }) => {
+const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk, getWindow }) => {
   const seal = () => safeStorageSeal(safeStorage);
   const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
     if (!isDesk(event)) throw new Error(`${channel} refused: not the desk`);
@@ -84,9 +85,23 @@ const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk }) => {
     try { return { ok: true, ...(await fn()) }; } catch (err) { return { ok: false, error: err.message }; }
   };
   handle('keyLock:status', async () => ({ active: lockActive(), backend: opened?.backend ?? null, kitPending: Boolean(opened?.kitPending) }));
-  handle('keyLock:revealKit', guarded(async () => ({ code: lock.revealKit({ file: secretsFile(), seal: seal() }) })));
+  handle('keyLock:revealKit', guarded(async () => {
+    const ok = await gateDialog(getWindow, {
+      message: 'Reveal your Recovery Kit?',
+      detail: 'Anyone who sees this code can recover your keys. Make sure no one is watching or recording your screen.',
+      confirmLabel: 'Reveal', tone: 'alert',
+    });
+    if (!ok) throw new Error('Reveal cancelled.');
+    return { code: lock.revealKit({ file: secretsFile(), seal: seal() }) };
+  }));
   handle('keyLock:confirmKit', guarded(async () => { lock.confirmKit({ file: secretsFile() }); kitSaved(); return {}; }));
   handle('keyLock:newKit', guarded(async () => {
+    const ok = await gateDialog(getWindow, {
+      message: 'Replace your Recovery Kit?',
+      detail: 'Every previous Recovery Kit stops working. This cannot be undone.',
+      confirmLabel: 'Replace', tone: 'alert',
+    });
+    if (!ok) throw new Error('Replacement cancelled.');
     lock.replaceKit({ file: secretsFile(), seal: seal(), keys: opened.keys });
     opened = { ...opened, kitPending: true };
     return { code: lock.revealKit({ file: secretsFile(), seal: seal() }) };

@@ -3,7 +3,9 @@
 // trusted by THIS test process only (tls.setDefaultCACertificates, as
 // smtp-tls-kit.js does), speaking the IMAP the house's reader speaks: LOGIN,
 // EXAMINE INBOX, UID SEARCH ALL, UID FETCH (envelopes, or a whole message),
-// LOGOUT. deliver() puts new mail in the box; logins counts every session.
+// LOGOUT, and the label verbs (CAPABILITY, SELECT INBOX, LIST, CREATE, UID STORE
+// ±X-GM-LABELS, UID COPY). deliver() puts new mail in the box; logins counts
+// every session; state.gmail says whether the server offers Gmail's labels.
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -29,6 +31,17 @@ const session = (socket, box, state) => {
       const [tag, ...rest] = command.split(' ');
       const verb = rest.join(' ');
       if (/^LOGIN /i.test(verb)) { state.logins += 1; line(socket, `${tag} OK logged in`); }
+      else if (/^CAPABILITY/i.test(verb)) { line(socket, `* CAPABILITY IMAP4rev1${state.gmail ? ' X-GM-EXT-1' : ''}`); line(socket, `${tag} OK capability done`); }
+      else if (/^SELECT INBOX/i.test(verb)) { state.selects += 1; line(socket, `* ${box.length} EXISTS`); line(socket, `${tag} OK [READ-WRITE] selected`); }
+      else if (/^LIST /i.test(verb)) { line(socket, '* LIST (\\HasNoChildren) "/" "INBOX"'); for (const name of state.folders) line(socket, `* LIST (\\HasNoChildren) "/" "${name}"`); line(socket, `${tag} OK list done`); }
+      else if (/^CREATE /i.test(verb)) { const name = JSON.parse(verb.slice(7)); if (state.folders.includes(name)) line(socket, `${tag} NO [ALREADYEXISTS] folder exists`); else { state.folders.push(name); line(socket, `${tag} OK created`); } }
+      else if (/^UID STORE \d+ [+-]X-GM-LABELS /i.test(verb)) {
+        const [, uid, sign, item] = /^UID STORE (\d+) ([+-])X-GM-LABELS \((.+)\)$/i.exec(verb);
+        const m = box.find((x) => x.uid === Number(uid)); const name = item.startsWith('"') ? JSON.parse(item) : item;
+        m.labels = sign === '+' ? [...new Set([...(m.labels ?? ['\\Inbox']), name])] : (m.labels ?? ['\\Inbox']).filter((l) => l !== name);
+        line(socket, `${tag} OK store done`);
+      } else if (/^UID COPY /i.test(verb)) { const [, uid, to] = /^UID COPY (\d+) (.+)$/i.exec(verb); state.copies.push([Number(uid), JSON.parse(to)]); line(socket, `${tag} OK copy done`); }
+      else if (/^UID FETCH \d+ \(FLAGS\)$/i.test(verb)) { const m = box.find((x) => x.uid === Number(verb.split(' ')[2])); if (m) line(socket, `* ${box.indexOf(m) + 1} FETCH (UID ${m.uid} FLAGS ())`); line(socket, `${tag} OK fetch done`); }
       else if (/^EXAMINE INBOX/i.test(verb)) { line(socket, `* ${box.length} EXISTS`); line(socket, `${tag} OK [READ-ONLY] examined`); }
       else if (/^UID SEARCH ALL/i.test(verb)) { line(socket, `* SEARCH ${box.map((m) => m.uid).join(' ')}`.trim()); line(socket, `${tag} OK search done`); }
       else if (/^UID FETCH /i.test(verb)) {
@@ -61,12 +74,13 @@ export const startTlsImap = async (dir) => {
   const before = tls.getCACertificates('default');
   tls.setDefaultCACertificates([...before, certPem]);
   const box = [];
-  const state = { logins: 0 };
+  const state = { logins: 0, selects: 0, gmail: true, folders: [], copies: [] };
   const server = tls.createServer({ key: keyPem, cert: certPem }, (socket) => session(socket, box, state));
   const port = await new Promise((resolve) => server.listen(0, 'localhost', () => resolve(server.address().port)));
   return {
     port,
     state,
+    box,
     deliver: (m) => {
       const uid = (box.at(-1)?.uid ?? 100) + 1;
       box.push({ ...m, uid });

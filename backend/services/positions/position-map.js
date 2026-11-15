@@ -31,7 +31,7 @@ export const POSITIONS = Object.freeze([
     functions: [
       fn('leads', 'LEADS', 'Audiences, the companies found for each, the approved facts and the do-not-contact list.', ['sales/segment', 'sales/prospect', 'sales/drop', 'sales/lead', 'sales/facts', 'sales/suppress']),
       fn('deals', 'DEALS', 'The pipeline, each open deal with its next step, and what was delivered.', ['revenue/deal', 'revenue/move', 'delivery/publish']),
-      fn('mailbox', 'MAILBOX', 'The house email account: who holds it, what was sent and what came back.', ['email/send'], ['check_email_inbox', 'read_email']),
+      fn('mailbox', 'MAILBOX', 'The house email account: who holds it, what was sent and what came back, kept in order under labels.', ['email/send'], ['check_email_inbox', 'read_email', 'list_email_labels', 'label_email']),
     ],
     connections: ['mail-watch'],
   }),

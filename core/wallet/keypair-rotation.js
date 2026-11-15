@@ -35,14 +35,23 @@ export const rotateKeypair = async (neumaId, oldKeypair, newPassword, reason = '
   const encrypted = encryptKeypair(newKeypair, newPassword);
   await neumaWorkspace.writeEncryptedKeypair(neumaId, encrypted);
 
-  // 4. Generate new recovery codes
+  // 4. Generate new recovery codes and keep their delivery resumable.
   const recoveryCodes = generateRecoveryCodes();
   const recoveryHash = hashRecoveryCodes(recoveryCodes);
+  await neumaWorkspace.writeRotationCodes(neumaId, newKeypair.address, recoveryCodes);
   await neumaWorkspace.writeRecoveryHash(neumaId, recoveryHash);
 
   // 5. Encrypt with recovery codes
   const recoveryEncrypted = encryptWithRecoveryCodes(newKeypair, recoveryCodes);
   await neumaWorkspace.writeRecoveryKeypair(neumaId, recoveryEncrypted);
+
+  await neumaWorkspace.writeRetiredKeypair(neumaId, oldKeypair.address, {
+    password: encryptKeypair(oldKeypair, newPassword),
+    recovery: encryptWithRecoveryCodes(oldKeypair, recoveryCodes),
+  });
+  await neumaWorkspace.writeRotationBundle(neumaId, {
+    address: newKeypair.address, encrypted, recoveryHash, recoveryEncrypted,
+  });
 
   // 6. Delete plaintext keypair if it exists
   await neumaWorkspace.deletePlaintextKeypair(neumaId);

@@ -1,77 +1,82 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fork } from 'node:child_process';
+import { once } from 'node:events';
+import { ethers } from 'ethers';
 import { connectViaBrowserBridge, applyBridgeSession } from '../../frontend/services/wallet-bridge-core.js';
 
-// The Electron side of the system-browser wallet bridge (WEB-001 / #126): start a
-// session, open the system browser, poll with the pollSecret, store the token.
-// Core is DOM-light, so a couple of global stubs replace a full browser env.
-const makeStore = () => {
-  const m = new Map();
-  return {
-    getItem: (k) => (m.has(k) ? m.get(k) : null),
-    setItem: (k, v) => m.set(k, String(v)),
-    removeItem: (k) => m.delete(k),
-    clear: () => m.clear(),
-  };
+const helper = new URL('../helpers/wallet-bridge-backend-process.mjs', import.meta.url).pathname;
+let child;
+let origin;
+let wallet;
+let token;
+const storage = () => {
+  const values = new Map();
+  return { getItem: (key) => values.has(key) ? values.get(key) : null, setItem: (key, value) => values.set(key, String(value)) };
 };
-const jsonRes = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
-beforeEach(() => {
-  globalThis.window = { location: { origin: 'http://localhost:3355' } };
-  globalThis.sessionStorage = makeStore();
-  globalThis.localStorage = makeStore();
+const request = (action, payload = {}) => new Promise((resolve, reject) => {
+  const requestId = crypto.randomUUID();
+  const receive = (message) => {
+    if (message?.type !== 'neuma:wallet-bridge-result' || message.requestId !== requestId) return;
+    child.off('message', receive);
+    resolve(message.result);
+  };
+  child.on('message', receive);
+  child.send({ type: 'neuma:wallet-bridge', requestId, action, ...payload }, (error) => { if (error) reject(error); });
 });
 
-describe('connectViaBrowserBridge — Electron side of the wallet bridge', () => {
-  it('starts a session, opens the system browser, polls, and returns the token without committing', async () => {
-    const opened = [];
-    const calls = [];
-    const fetchImpl = vi.fn(async (url, opts) => {
-      calls.push({ url, opts });
-      if (url.endsWith('/bridge/start')) return jsonRes(200, { browserCode: 'BC', pollSecret: 'PS', expiresIn: 1000 });
-      if (url.includes('/bridge/poll')) {
-        const polls = calls.filter((c) => c.url.includes('/bridge/poll')).length;
-        return polls < 2 ? jsonRes(200, { pending: true }) : jsonRes(200, { token: 'TOK', address: '0xabc' });
-      }
-      throw new Error('unexpected ' + url);
-    });
-
-    const result = await connectViaBrowserBridge({ open: (u) => opened.push(u), fetchImpl, sleep: async () => {} });
-
-    expect(result).toEqual({ token: 'TOK', address: '0xabc' });
-    expect(opened[0]).toContain('/?bridge=BC');
-
-    // The pollSecret rode in the HEADER, never the URL.
-    const poll = calls.find((c) => c.url.includes('/bridge/poll'));
-    expect(poll.url).not.toContain('PS');
-    expect(poll.opts.headers['x-bridge-secret']).toBe('PS');
-
-    // It does NOT commit on its own — the caller confirms the address first.
-    expect(sessionStorage.getItem('authToken')).toBeNull();
-
-    // applyBridgeSession() commits it like a normal sign-in.
-    applyBridgeSession(result);
-    expect(sessionStorage.getItem('authToken')).toBe('TOK');
-    expect(localStorage.getItem('walletAddress')).toBe('0xabc');
-    expect(localStorage.getItem('walletConnected')).toBe('true');
+beforeAll(async () => {
+  child = fork(helper, [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+  const [ready] = await once(child, 'message');
+  origin = `http://127.0.0.1:${ready.port}`;
+  wallet = ethers.Wallet.createRandom();
+  const challenge = (await (await fetch(`${origin}/api/v1/auth/challenge?address=${wallet.address}`)).json()).challenge;
+  const signature = await wallet.signMessage(challenge);
+  const verified = await fetch(`${origin}/api/v1/auth/verify`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ address: wallet.address, signature, challenge }),
   });
+  token = (await verified.json()).token;
+  globalThis.window = {
+    location: { origin },
+    neuma: {
+      walletBridge: { start: () => request('start'), poll: (browserCode, pollSecret) => request('poll', { browserCode, pollSecret }) },
+    },
+  };
+  globalThis.sessionStorage = storage();
+  globalThis.localStorage = storage();
+});
 
-  it('throws on timeout when the browser never associates', async () => {
-    const fetchImpl = vi.fn(async (url) => {
-      if (url.endsWith('/bridge/start')) return jsonRes(200, { browserCode: 'BC', pollSecret: 'PS' });
-      return jsonRes(200, { pending: true });
-    });
-    await expect(
-      connectViaBrowserBridge({ open: () => {}, fetchImpl, sleep: async () => {}, deadlineMs: -1 })
-    ).rejects.toThrow(/timed out/);
-  });
+afterAll(async () => {
+  if (!child || child.exitCode !== null) return;
+  const exited = once(child, 'exit');
+  child.kill('SIGTERM');
+  await exited;
+  delete globalThis.window;
+  delete globalThis.sessionStorage;
+  delete globalThis.localStorage;
+});
 
-  it('throws when the bridge session expired (410)', async () => {
-    const fetchImpl = vi.fn(async (url) => {
-      if (url.endsWith('/bridge/start')) return jsonRes(200, { browserCode: 'BC', pollSecret: 'PS' });
-      return jsonRes(410, { error: 'expired' });
-    });
-    await expect(
-      connectViaBrowserBridge({ open: () => {}, fetchImpl, sleep: async () => {} })
-    ).rejects.toThrow(/expired/);
-  });
+test('the desktop IPC bridge returns a real authenticated session without committing it early', async () => {
+  const opened = [];
+  const running = connectViaBrowserBridge({ open: (url) => {
+    opened.push(url);
+    const browserCode = new URL(url).searchParams.get('bridge');
+    fetch(`${origin}/api/v1/auth/bridge/associate`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ browserCode, token }),
+    }).catch(() => {});
+  }, sleep: (ms) => new Promise((resolve) => setTimeout(resolve, Math.min(ms, 5))) });
+  const result = await running;
+  expect(result.token).toBe(token);
+  expect(result.address).toBe(wallet.address.toLowerCase());
+  expect(opened[0]).toContain('/?bridge=');
+  expect(sessionStorage.getItem('authToken')).toBeNull();
+  applyBridgeSession(result);
+  expect(sessionStorage.getItem('authToken')).toBe(token);
+  expect(localStorage.getItem('walletAddress')).toBe(result.address);
+  expect(localStorage.getItem('walletConnected')).toBe('true');
+});
+
+test('a real bridge with no association times out without a token', async () => {
+  await expect(connectViaBrowserBridge({
+    open: () => {}, sleep: (ms) => new Promise((resolve) => setTimeout(resolve, Math.min(ms, 2))), deadlineMs: 10,
+  })).rejects.toThrow(/timed out/);
 });
