@@ -11,7 +11,7 @@ jobs:
   # the value. Dependencies install with --ignore-scripts, so nothing in a
   # pull request's lockfile runs before the scan has read it.
   secrets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +33,7 @@ jobs:
   # and failing on them would block every pull request over a toolchain issue.
   # The audit reads the lockfile, so nothing installs and no script runs.
   deps:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,7 +44,9 @@ jobs:
   # Lint and the unit tests of the GPU-free lane (the `suite` project): no
   # model, no GPU, no network service.
   checks:
-    runs-on: ubuntu-latest
+    # pinned (2026-11-15): ubuntu-latest moved to 26.04, which Playwright 1.60 cannot install
+    # Chromium on, and the checks job stopped before its first test
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
