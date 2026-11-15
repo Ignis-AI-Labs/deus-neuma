@@ -15,6 +15,8 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs';
 import fsp from 'fs/promises';
+import process from 'node:process';
+import { setTimeout } from 'node:timers';
 import os from 'os';
 import path from 'path';
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
@@ -30,13 +32,27 @@ import { croDesignation } from '../../backend/services/revenue/cro-designation.j
 import { makeSuppression } from '../../backend/services/sales/suppress-shape.js';
 import { upkeepDue } from '../../backend/services/sales/lead-upkeep.js';
 import { startTlsSmtp } from '../helpers/smtp-tls-kit.js';
+import { startLocalProvider } from '../helpers/local-provider.js';
+import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
 import workspace from '../../core/workspace/neuma-workspace.js';
 
 const LANE = 'mercmail';
-const signed = (words) => `${words}\n\n${SALES_DISCLOSURE}\nThe Mercator`;
+// A lead's email as the seat writes it: the words, ONE ask, the disclosure line, its name.
+const signed = (words) => `${words} May I send two short written ideas?\n\n${SALES_DISCLOSURE}\nThe Mercator`;
+const PROMISE = 'two short written ideas on finishing their field app';
 const ENV = ['WORKSPACES_ROOT', 'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH'];
-let dir; let position; let smtp; let filed = 0;
+let dir; let position; let smtp; let reader; let priorConfig; let filed = 0;
+
+// The house's model, stood in on loopback (local-provider.js): it answers the claims reader from the email it is shown.
+const claimsAnswer = (body) => {
+  if (!String(body.messages?.[0]?.content ?? '').startsWith('You are the CLAIMS READER')) return null;
+  const shown = String(body.messages[1].content);
+  if (shown.includes('yield ladder')) return '1 | one-to-one sessions\nNONE | a Base yield ladder that earns on your balances';
+  if (shown.includes('GARBLED')) return 'Looks fine to me.';
+  if (shown.includes('250 dollars')) return '2 | a session costs 250 dollars an hour';
+  return 'NO CLAIMS';
+};
 const saved = {};
 
 const rig = () => {
@@ -48,7 +64,7 @@ const send = async (payload, decision) => {
   filed += 1;
   const intents = path.join(workspace.pathFor(LANE), 'intents');
   await fsp.mkdir(intents, { recursive: true });
-  await fsp.writeFile(path.join(intents, `mail-${filed}.json`), JSON.stringify({ type: 'email/send', ...payload }));
+  await fsp.writeFile(path.join(intents, `mail-${filed}.json`), JSON.stringify({ type: 'email/send', promise: PROMISE, ...payload }));
   const r = rig();
   const settled = sweepIntents(r.connection, { mode: 'ask', lanePolicy: null, emit: () => {} });
   if (decision) {
@@ -73,6 +89,9 @@ beforeAll(async () => {
   await workspace.create(LANE);
   await ownLane(LANE);
   smtp = await startTlsSmtp(dir);
+  reader = await startLocalProvider({ respond: claimsAnswer });
+  priorConfig = getConfig();
+  setConfig({ provider: 'lm-studio', endpoint: reader.endpoint, model: 'test-model', apiKey: '' });
   await setEmailCredential(POSITION_HOUSE, {
     address: 'sales@tidewater.example', username: 'sales@tidewater.example', password: 'test-app-password',
     smtpHost: 'localhost', smtpPort: String(smtp.port), imapHost: 'localhost', imapPort: '1',
@@ -83,6 +102,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await smtp?.close();
+  if (priorConfig) setConfig(priorConfig);
+  await reader?.close();
   position?.restore();
   for (const k of ENV) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; }
   fs.rmSync(dir, { recursive: true, force: true });
@@ -121,6 +142,43 @@ describe('the mailbox and the lead engine', () => {
     expect(smtp.received.length).toBe(before);
     expect((await send({ to: 'fay@facts.example', subject: 'Your build', text: signed('A 60 minute session is 250 dollars, one to one.') }, 'allow')).receipt.status).toBe('ok');
     expect(smtp.received.length).toBe(before + 1);
+    // The claims reader saw the approved facts and the email, framed as untrusted.
+    const asked = reader.turns.at(-1).messages[1].content;
+    expect(asked).toContain('2. A session costs 250 US dollars an hour [250 USD]');
+    expect(asked).toContain('A 60 minute session is 250 dollars');
+  });
+
+  test('a claim no fact states stops the email before any card; an answer that cannot be read, or no reader at all, sends nothing', async () => {
+    const before = smtp.received.length;
+    const invented = await send({ to: 'fay@facts.example', subject: 'An idea', text: signed('Put your balances in our yield ladder and earn more.') });
+    expect(invented.receipt.status).toBe('error');
+    expect(invented.receipt.error).toMatch(/claims what the approved facts do not state: "a Base yield ladder that earns on your balances"/);
+    expect(invented.cards).toEqual([]);
+    const garbled = await send({ to: 'fay@facts.example', subject: 'An idea', text: signed('GARBLED note.') });
+    expect(garbled.receipt.error).toMatch(/the claims check could not run: the reader's answer could not be read/);
+    setConfig({ endpoint: 'http://127.0.0.1:1' });
+    const unreachable = await send({ to: 'fay@facts.example', subject: 'An idea', text: signed('A short note.') });
+    setConfig({ endpoint: reader.endpoint });
+    expect(unreachable.receipt.error).toMatch(/the claims check could not run \(.+\) — nothing is sent until it can/);
+    expect(smtp.received.length).toBe(before);
+  });
+
+  test('a FIRST email to a lead is short, plainly titled, asks one thing and names its promise — or it stops before any card', async () => {
+    const ledger = await leadLedgerFor(POSITION_HOUSE);
+    await ledger.add({ name: 'Zed, Founder at Zeta', contact: 'zed@zeta.example', channelId: 'email', status: 'cold', addedBy: LANE });
+    const before = smtp.received.length;
+    const refused = async (payload, why) => {
+      const { receipt, cards } = await send({ to: 'zed@zeta.example', subject: 'Your field app', text: signed('A short note.'), ...payload });
+      expect(receipt).toMatchObject({ status: 'error', error: expect.stringMatching(why) });
+      expect(cards).toEqual([]);
+    };
+    await refused({ text: signed('A short note. '.repeat(60)) }, /first email to a lead: a first email is at most 130 words and this one is 18\d/);
+    await refused({ subject: 'Six plain words are one too many' }, /subject is at most 5 plain words/);
+    await refused({ text: signed('Would a call help? Or a demo?') }, /asks ONE thing \(one question\) and this one asks 3/);
+    await refused({ text: `A short note.\n\n${SALES_DISCLOSURE}\nThe Mercator` }, /asks ONE thing \(one question\) and this one asks 0/);
+    await refused({ promise: '' }, /add promise: one line saying exactly what you will send them when they say yes/);
+    expect(smtp.received.length).toBe(before);
+    await ledger.remove((await ledger.load()).find((l) => l.contact === 'zed@zeta.example').id);
   });
 
   test('an email to a lead leaves, and the lead records it itself — contacted, the house wrote last', async () => {
@@ -131,7 +189,9 @@ describe('the mailbox and the lead engine', () => {
     expect(smtp.received.at(-1).to).toEqual(['Ann@Acme.example']);
     const [after] = (await ledger.load()).filter((l) => l.id === lead.id);
     expect(after.status).toBe('contacted');
-    expect(after.touches.at(-1)).toMatchObject({ status: 'contacted', direction: 'out', note: 'emailed: "Building your field app"', by: LANE });
+    expect(after.touches.at(-1)).toMatchObject({ status: 'contacted', direction: 'out', promised: PROMISE, note: 'emailed: "Building your field app"', by: LANE });
+    // The promise is the house's own record: it never rides the wire.
+    expect(JSON.stringify(smtp.received.at(-1))).not.toContain(PROMISE);
     expect(upkeepDue({ leads: [after], now: Date.now() })).toEqual([]);
     expect(upkeepDue({ leads: [after], now: Date.now() + 4 * 86_400_000 })[0]).toMatchObject({ kind: 'follow-up', touches: 1 });
   });
@@ -140,7 +200,12 @@ describe('the mailbox and the lead engine', () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
     const [lead] = (await ledger.load()).filter((l) => l.contact === 'ann@acme.example');
     await ledger.touch(lead.id, { status: 'replied', direction: 'in', note: 'wrote to the house (mail #7)', by: 'mail-watch' });
-    expect(upkeepDue({ leads: await ledger.load(), now: Date.now() })[0]).toMatchObject({ kind: 'answer', leadId: lead.id });
+    // The moment they reply, the seat reads what it owes them, and for how many hours.
+    expect(upkeepDue({ leads: await ledger.load(), now: Date.now() + 5 * 3_600_000 })[0]).toMatchObject({ kind: 'answer', leadId: lead.id, hours: 5, promised: PROMISE });
+    // An answer is not a first email: it may run long, ask twice and promise nothing new.
+    const long = `${'Here is the first idea in full. '.repeat(40)} Does Tuesday work? Or Thursday?`;
+    expect((await send({ to: 'ann@acme.example', subject: 'Re: Building your field app, the two ideas I promised you', text: signed(long), promise: '' }, 'allow')).receipt.status).toBe('ok');
+    await ledger.touch(lead.id, { direction: 'in', note: 'wrote to the house (mail #8)', by: 'mail-watch' });
     expect((await send({ to: 'ann@acme.example', subject: 'Re: Building your field app', text: signed('Tuesday works.') }, 'allow')).receipt.status).toBe('ok');
     const [after] = (await ledger.load()).filter((l) => l.id === lead.id);
     expect(after.status).toBe('replied');
@@ -164,7 +229,7 @@ describe('the sales cover through the real sweep — the operator approved the l
     const now = new Date().toISOString();
     const segment = makeSegment({
       name: 'Harbour founders', offer: 'One-to-one coaching to build your own product with AI tools', customerProblem: 'They cannot build what they know',
-      targetRole: 'Founder', targetGeography: 'United Kingdom', positiveCriteria: ['Building a software product'], why: 'Raw AI tools leave them stuck', by: LANE, now,
+      targetRole: 'Founder', targetGeography: 'United States', countries: ['US'], positiveCriteria: ['Building a software product'], why: 'Raw AI tools leave them stuck', by: LANE, now,
     });
     await fileSegment(POSITION_HOUSE, segment);
     await setSegmentState(POSITION_HOUSE, segment.id, 'approved', 'operator');

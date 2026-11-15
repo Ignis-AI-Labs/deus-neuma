@@ -19,7 +19,7 @@
  */
 import { officeContext } from './revenue-acts.js';
 import { makeSegment } from '../sales/segment-shape.js';
-import { makeProspect, MATCH_WORDS } from '../sales/prospect-shape.js';
+import { makeProspect, MATCH_WORDS, countryOfAddress } from '../sales/prospect-shape.js';
 import { makeSuppression, normalizeEmail, suppressionMatcher } from '../sales/suppress-shape.js';
 import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts } from '../sales/sales-store.js';
 import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
@@ -38,8 +38,8 @@ const seated = async (connection) => (await officeContext(connection).catch(() =
 const salesSegmentIntent = Object.freeze({
   name: 'sales/segment',
   policyTool: 'sales.segment',
-  fieldsForPrompt: '{id?, name, offer, customerProblem, targetRole, targetGeography, targetCompanySize?, positiveCriteria: [..], negativeCriteria?: [..], exampleClients?: [..], why}',
-  descriptionForPrompt: 'THE LEAD ENGINE. File an audience to sell to, from what you read on the house\'s own site and its competitors\': the offer, their problem, the role to reach, where, how big, the signs a company fits and the signs it does not, real companies that fit, and why they need it. Every claim in the offer must be true of the house today. It waits for the operator\'s approval; pass id to refine one (changing who it targets sends it back for approval).',
+  fieldsForPrompt: '{id?, name, offer, customerProblem, targetRole, targetGeography, countries: ["US", ..], targetCompanySize?, positiveCriteria: [..], negativeCriteria?: [..], exampleClients?: [..], why}',
+  descriptionForPrompt: 'THE LEAD ENGINE. File an audience to sell to, from what you read on the house\'s own site and its competitors\': the offer, their problem, the role to reach, where (and countries: the ISO codes it may be SENT to — leave out any country whose law limits this offer, such as the UK for anything crypto), how big, the signs a company fits and the signs it does not, real companies that fit, and why they need it. Every claim in the offer must be true of the house today. It waits for the operator\'s approval; pass id to refine one (changing who it targets sends it back for approval).',
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -62,7 +62,7 @@ const salesSegmentIntent = Object.freeze({
 const salesProspectIntent = Object.freeze({
   name: 'sales/prospect',
   policyTool: 'sales.prospect',
-  fieldsForPrompt: '{segment, companies: [{domain, name, description?, country?, size?, scores: [{criterion, score, reasoning}], people?: [{name, role, sourceUrl}], source}]}',
+  fieldsForPrompt: '{segment, companies: [{domain, name, description?, country (ISO code, e.g. "US"), size?, scores: [{criterion, score, reasoning}], people?: [{name, role, sourceUrl}], source}]}',
   descriptionForPrompt: `THE LEAD ENGINE. File companies you found for a segment (up to ${BATCH_MAX} at a time). Read each company's own pages first. Score EVERY sign of fit the segment lists 0–5, and any sign of non-fit that applies, each with the reason you read; source is the https page where you found the company; people are the ones you read on its own pages, with that page. A company already in the pool or on the do-not-contact list is refused.`,
   availableFor,
   validate: async (payload, { connection }) => {
@@ -130,7 +130,7 @@ const salesLeadIntent = Object.freeze({
   name: 'sales/lead',
   policyTool: 'sales.lead',
   fieldsForPrompt: '{id, person, email, emailSource, note?}',
-  descriptionForPrompt: 'THE LEAD ENGINE. Put a prospect onto the house\'s lead ledger as cold, yours to work: person is the number of one of its people (from 0), email their address as published, emailSource the https page where you read it — never a guessed address. Only from an APPROVED segment, only a weak or strong match, never anyone on the do-not-contact list or already on the ledger.',
+  descriptionForPrompt: 'THE LEAD ENGINE. Put a prospect onto the house\'s lead ledger as cold, yours to work: person is the number of one of its people (from 0), email their address as published, emailSource the https page where you read it — never a guessed address. Only from an APPROVED segment, only a weak or strong match in one of its countries, never anyone on the do-not-contact list or already on the ledger.',
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -140,12 +140,16 @@ const salesLeadIntent = Object.freeze({
     const segment = (await readSegments(context.wallet)).find((s) => s.id === prospect.segmentId);
     if (segment?.state !== 'approved') return invalid(`segment [${prospect.segmentId}] is not approved — the operator approves the pitch before anyone is contacted`);
     if (prospect.match < 2) return invalid(`[${prospect.id}] ${prospect.name} is no match — drop it, or rescore it as a new filing`);
+    if (!prospect.country) return invalid(`[${prospect.id}] has no country — file it again with the ISO code of where the company is, from its own pages`);
+    if (!segment.countries.includes(prospect.country)) return invalid(`[${prospect.id}] is in ${prospect.country}, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
     const person = prospect.people[Number(payload?.person)];
     if (!person) return invalid(`person: the number of one of [${prospect.id}]'s people (0 to ${prospect.people.length - 1}); file the people you read on its pages first`);
     const email = normalizeEmail(payload?.email);
     if (!email) return invalid('email: their address as published');
     if (!/^https:\/\/\S+$/.test(String(payload?.emailSource ?? ''))) return invalid('emailSource: the https page where the address is published — an address is never guessed');
     if (suppressionMatcher(await readSuppressions(context.wallet)).email(email)) return invalid(`${email} is on the do-not-contact list`);
+    const addressCountry = countryOfAddress(email);
+    if (addressCountry && !segment.countries.includes(addressCountry)) return invalid(`${email} is a ${addressCountry} address, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
     const ledger = await leadLedgerFor(context.wallet);
     const refusal = ledgerRefusal(await ledger.load(), email, prospect.domain, Date.now());
     if (refusal) return invalid(refusal);

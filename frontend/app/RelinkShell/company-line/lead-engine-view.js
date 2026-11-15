@@ -65,3 +65,9 @@ export const segmentMoves = (state) => ({
 /** Is this an email address or a company domain the list can hold? */
 export const suppressTargetOk = (v) => /^[^\s@]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(String(v).trim())
   || /^(https?:\/\/)?(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+\/?$/i.test(String(v).trim());
+
+/** How long an upkeep item has stood: a waiting reply in hours (it is answered the same day), the rest in days. pure. */
+export const upkeepAge = (d) => {
+  if (d.kind === 'answer' && Number.isFinite(d.hours)) return d.hours < 48 ? ` (${d.hours} H)` : ` (${d.days} DAYS)`;
+  return d.days ? ` (${d.days} DAYS)` : '';
+};

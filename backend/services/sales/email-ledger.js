@@ -1,6 +1,7 @@
 // THE MAILBOX AND THE LEAD LEDGER — where an email meets the lead engine. A
 // send to anyone on the house's do-not-contact list is refused before any
-// card, and so is one to a lead that fails the facts check (sales-facts.js); a send that leaves records itself on every lead it reached (direction
+// card, and so is one to a lead that fails the facts check (sales-facts.js)
+// or the claims check (claims-reader.js), and a FIRST email that is not short, single-asked and promise-named (first-email.js); a send that leaves records itself on every lead it reached (direction
 // out — a cold or contacted lead moves to contacted, a lead further along
 // keeps its status); a message from a lead records itself the other way
 // (direction in — a cold or contacted lead moves to replied). Lead upkeep
@@ -10,6 +11,8 @@
 
 import { readSuppressions, markSender, readSalesFacts } from './sales-store.js';
 import { checkSalesEmail } from './sales-facts.js';
+import { claimsRead } from './claims-reader.js';
+import { checkFirstEmail, writtenBefore, cleanPromise } from './first-email.js';
 import { normalizeEmail, suppressionMatcher } from './suppress-shape.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { createLogger } from '../logger.js';
@@ -28,12 +31,19 @@ export const suppressedRecipients = async (wallet, to) => {
  * Why an email may not go to the leads among `to` (the facts check), or null
  * when none of them is a lead or the email passes.
  */
-export const leadEmailRefusal = async (wallet, { to, subject, text }) => {
+export const leadEmailRefusal = async (wallet, { to, subject, text, promise, laneId }) => {
   const wanted = new Set(to.map(normalizeEmail).filter(Boolean));
   const leads = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
   if (!leads.length) return null;
-  const verdict = checkSalesEmail({ subject, text, approved: (await readSalesFacts(wallet)).approved });
-  return verdict.ok ? null : `this email goes to a lead, and it does not pass the facts check: ${verdict.problems.join('; ')}`;
+  const { approved } = await readSalesFacts(wallet);
+  const verdict = checkSalesEmail({ subject, text, approved });
+  if (!verdict.ok) return `this email goes to a lead, and it does not pass the facts check: ${verdict.problems.join('; ')}`;
+  // The first email to a lead: short, one ask, and the promise it makes named (first-email.js).
+  const shape = leads.some((l) => !writtenBefore(l)) ? checkFirstEmail({ subject, text, promise }) : [];
+  if (shape.length) return `this is the first email to a lead: ${shape.join('; ')}`;
+  // Words, not just numbers: the house's own model names the fact behind every claim (claims-reader.js).
+  const claims = await claimsRead({ laneId, facts: approved.facts, subject, text });
+  return claims.ok ? null : `this email goes to a lead, and ${claims.reason}`;
 };
 
 // impure — touch every open-or-closed lead whose address is one of `emails`.
@@ -47,11 +57,12 @@ const touchByAddress = async (wallet, emails, changeFor) => {
 };
 
 /** Record a sent email on the leads it reached, and the sending address's first day writing to leads. Never throws. */
-export const recordSent = async (wallet, { to, subject, by, from }) => {
+export const recordSent = async (wallet, { to, subject, promise, by, from }) => {
   try {
     const leads = await touchByAddress(wallet, to, (lead) => ({
       ...(OUT_MOVES.has(lead.status) ? { status: 'contacted' } : {}),
       direction: 'out',
+      ...(cleanPromise(promise) ? { promised: cleanPromise(promise) } : {}),
       note: `emailed: "${String(subject).slice(0, 120)}"`,
       by,
     }));

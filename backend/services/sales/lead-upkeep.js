@@ -9,12 +9,14 @@
 // PURE.
 
 import { normalizeEmail } from './suppress-shape.js';
+import { promiseOf } from './first-email.js';
 
 export const FOLLOW_UP_DAYS = 3;
 // The first email and two follow-ups.
 export const MAX_TOUCHES = 3;
 export const STALE_DAYS = 14;
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 const OPEN = new Set(['cold', 'contacted', 'replied', 'qualified']);
 const ORDER = ['suppressed', 'answer', 'follow-up', 'close-out', 'duplicate', 'stale', 'unreachable'];
 
@@ -36,7 +38,8 @@ export const theyWroteLast = (lead) => {
 const dueOn = (lead, now, suppressed) => {
   const days = Math.floor((now - lastAt(lead)) / DAY_MS);
   if (lead.contact && suppressed(lead.contact)) return { kind: 'suppressed', days };
-  if (theyWroteLast(lead)) return { kind: 'answer', days };
+  // A reply is answered in hours, with what the house said it would send.
+  if (theyWroteLast(lead)) return { kind: 'answer', days, hours: Math.floor((now - lastAt(lead)) / HOUR_MS), promised: promiseOf(lead) };
   if (lead.status === 'contacted' && days >= FOLLOW_UP_DAYS) {
     return contactTouches(lead) >= MAX_TOUCHES ? { kind: 'close-out', days } : { kind: 'follow-up', days, touches: contactTouches(lead) };
   }
@@ -48,7 +51,7 @@ const dueOn = (lead, now, suppressed) => {
 /**
  * What is due on the ledger, most urgent first.
  * @param {{leads: object[], now: number, suppressed?: (contact: string) => boolean}} state
- * @returns {Array<{kind: string, leadId: string, name: string, days: number, touches?: number, with?: string}>}
+ * @returns {Array<{kind: string, leadId: string, name: string, days: number, hours?: number, promised?: ?string, touches?: number, with?: string}>}
  */
 export const upkeepDue = ({ leads, now, suppressed = () => false }) => {
   const open = leads.filter((l) => OPEN.has(l.status));
@@ -70,7 +73,7 @@ export const upkeepDue = ({ leads, now, suppressed = () => false }) => {
 /** What each kind of item asks of the Mercator, in one line. pure. */
 export const UPKEEP_ASK = Object.freeze({
   suppressed: 'on the do-not-contact list: close it (lost, say why) and write nothing more',
-  answer: 'they replied: answer it, one clear next step',
+  answer: 'they replied: answer it today — send exactly what you promised, then one clear next step',
   'follow-up': 'no reply yet: one short follow-up that adds something new, or close it',
   'close-out': `no reply after ${MAX_TOUCHES} emails: close it as lost (no reply)`,
   duplicate: 'the same person as another lead: keep one, remove the other',

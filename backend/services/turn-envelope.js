@@ -34,6 +34,7 @@ const log = createLogger('Portal');
  * @param {string} [args.cosBriefing]
  * @param {string} [args.cfoBriefing] - the seated Quaestor's office (treasury-briefing.js)
  * @param {string} [args.croBriefing] - the seated Mercator's office (revenue-briefing.js)
+ * @param {string} [args.positionMap] - what the lane's position handles, function by function (positions/position-map.js)
  * @param {string} [args.caoBriefing] - the seated Logista's books (accounts-briefing.js)
  * @param {string} [args.companyLine] - the house's company line, and this being's moves on it (company-briefing.js)
  * @param {string} [args.walletNews] - the being's decided spend requests, told once (spend-news.js)
@@ -52,10 +53,11 @@ const log = createLogger('Portal');
  *   report} before the logs; never changes the ladder's choice
  * @returns {ReadonlyArray<{id: string, label: string, text: string}>} the sections to send
  */
-export const finalizeTurnEnvelope = ({ baseSections, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', researchBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
+export const finalizeTurnEnvelope = ({ baseSections, expressionInvite = '', positionMap = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', researchBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
   const assembled = [
     ...baseSections,
     ...(expressionInvite ? [{ id: 'expression', label: 'FEELING', text: expressionInvite }] : []),
+    ...(positionMap ? [{ id: 'positionMap', label: 'YOUR POSITION', text: positionMap }] : []),
     ...(cmoBriefing ? [{ id: 'cmoOffice', label: 'CMO OFFICE', text: cmoBriefing }] : []),
     ...(csoBriefing ? [{ id: 'csoOffice', label: 'CSO OFFICE', text: csoBriefing }] : []),
     ...(cloBriefing ? [{ id: 'cloOffice', label: 'CLO OFFICE', text: cloBriefing }] : []),

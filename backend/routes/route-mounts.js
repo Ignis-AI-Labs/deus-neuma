@@ -52,6 +52,7 @@ import raiseRouter from './raise-routes.js';
 import chatBridgeRouter from './chat-bridge-routes.js';
 import houseClockRouter from './house-clock-routes.js';
 import waitingRouter from './waiting-routes.js';
+import positionsRouter from './positions-routes.js';
 import mandateRouter from './mandate-routes.js';
 import benchRouter from './bench-routes.js';
 import chainRouter from './chain-routes.js';
@@ -217,6 +218,8 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/house-clock', houseClockRouter);
   // Everything waiting on the operator, one read — the desk's WAITING ON YOU.
   app.use('/api/v1/waiting', waitingRouter);
+  // Every position of the house, one read — the POSITIONS window.
+  app.use('/api/v1/positions', positionsRouter);
   // The CMO's MANDATE: grant, withdraw, resume, renew, DONE FOR YOU. Router-level requireAuth inside.
   app.use('/api/v1/mandate', mandateRouter);
 

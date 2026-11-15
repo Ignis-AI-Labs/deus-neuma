@@ -38,7 +38,7 @@ beforeAll(async () => {
   const now = new Date().toISOString();
   segment = makeSegment({
     name: 'Non-developer founders', offer: 'One-to-one coaching to build your own product with AI tools',
-    customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder', targetGeography: 'United States, United Kingdom',
+    customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder', targetGeography: 'United States, United Kingdom', countries: ['US', 'GB'],
     targetCompanySize: '1–10', positiveCriteria: ['Building a software product', 'Founder is not a developer'], negativeCriteria: ['Software agency'],
     exampleClients: ['Smart Maintenance Systems'], why: 'Raw AI tools leave them with half-built parts', by: 'merc', now,
   });
@@ -58,7 +58,8 @@ beforeAll(async () => {
   ] }));
   const ledger = await leadLedgerFor(auth.address);
   const lead = await ledger.add({ name: 'Grace Hopper', contact: 'grace@navy.example', channelId: 'email', status: 'contacted', addedBy: 'merc' });
-  await ledger.touch(lead.id, { status: 'replied', note: 'asked for the price', by: 'operator' });
+  await ledger.touch(lead.id, { direction: 'out', promised: 'two short written ideas on a field app', note: 'emailed: "Your field app"', by: 'merc' });
+  await ledger.touch(lead.id, { status: 'replied', direction: 'in', note: 'asked for the price', by: 'operator' });
 
   const { default: revenue } = await import('../../backend/routes/revenue-routes.js');
   const web = express();
@@ -104,6 +105,7 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect(await row.getAttribute('data-segment-state')).toBe('draft');
     expect(await row.locator('[data-state-words]').textContent()).toBe('DRAFT — WAITS FOR YOUR APPROVAL');
     expect(await row.textContent()).toContain('REACH: Founder · WHERE: United States, United Kingdom · SIZE: 1–10');
+    expect(await row.locator('[data-countries]').textContent()).toBe('SENT ONLY TO: US, GB');
     expect(await row.locator('[data-pool-counts]').textContent()).toBe('COMPANIES: 2 — STRONG 1 · WEAK 1 · NO MATCH 0 · ON THE LEAD LIST 0');
     // Strongest first; the reasons fold one press away, opened by keyboard.
     const firstCompany = row.locator('[data-prospect-id]').first();
@@ -112,7 +114,7 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     await page.keyboard.press('Enter');
     expect(await firstCompany.textContent()).toContain('Founder is not a developer — 4/5: the about page says twenty years as a welder (4)');
     // What is due on the lead list.
-    expect(await page.locator('[data-upkeep="answer"]').textContent()).toBe('Grace Hopper — REPLIED — WAITING FOR AN ANSWER');
+    expect(await page.locator('[data-upkeep="answer"]').textContent()).toBe('Grace Hopper — REPLIED — WAITING FOR AN ANSWER (0 H) — PROMISED: two short written ideas on a field app');
     // The facts sheet waits for the operator: every fact with its source.
     expect(await page.locator('[data-facts-state]').textContent()).toBe('WAITS FOR YOUR APPROVAL');
     expect(await page.locator('[data-fact]').count()).toBe(3);

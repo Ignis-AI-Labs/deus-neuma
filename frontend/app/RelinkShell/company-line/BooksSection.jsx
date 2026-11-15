@@ -14,17 +14,19 @@ const SHOWN = 5;
  * @param {{books: ?object, names: Record<string, string>, pick: string, busy: boolean,
  *   onPick: (v: string) => void, onSeat: () => void, onClear: () => void}} props
  */
-export const BooksSection = ({ books, names, pick, busy, onPick, onSeat, onClear }) => {
+export const BooksSection = ({ books, names, pick, busy, onPick, onSeat, onClear, seatless = false }) => {
   const seat = books?.logista?.laneId ?? null;
   return (
     <section className="cline-sec" aria-label="the books" data-books="">
       <p className="cline-h label-data">THE BOOKS — LOGISTA · {seat ? holderName(seat, names) : 'NOBODY KEEPS THEM'}</p>
-      <div className="cline-open">
-        <Select fill ariaLabel="Logista holder" value={pick} onChange={onPick} disabled={busy}
-          placeholder="— choose the Logista (never the Quaestor) —" options={Object.entries(names).map(([laneId, name]) => ({ value: laneId, label: name }))} />
-        <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
-        {seat ? <button type="button" className="sec-scan cline-danger label-data" disabled={busy} onClick={onClear}>UNSEAT</button> : null}
-      </div>
+      {seatless ? null : (
+        <div className="cline-open">
+          <Select fill ariaLabel="Logista holder" value={pick} onChange={onPick} disabled={busy}
+            placeholder="— choose the Logista (never the Quaestor) —" options={Object.entries(names).map(([laneId, name]) => ({ value: laneId, label: name }))} />
+          <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
+          {seat ? <button type="button" className="sec-scan cline-danger label-data" disabled={busy} onClick={onClear}>UNSEAT</button> : null}
+        </div>
+      )}
       {books ? (
         <>
           {books.books.map((b) => (

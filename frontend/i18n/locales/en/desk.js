@@ -45,6 +45,7 @@ export default Object.freeze({
     staff: 'CHIEF OF STAFF',
     houseclock: 'HOUSE CLOCK',
     companyline: 'COMPANY LINE',
+    positions: 'POSITIONS',
     substrate: 'SUBSTRATE',
     teams: 'TEAMS',
     terminal: 'TERMINAL',

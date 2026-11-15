@@ -35,8 +35,8 @@ const mailboxRefusal = async (laneId) => {
 export const emailSendIntent = Object.freeze({
   name: 'email/send',
   policyTool: 'email.send',
-  fieldsForPrompt: '{to, subject, text}',
-  descriptionForPrompt: `Send an email from the address your operator connected — to is one address or a list (max ${SEND_MAX_RECIPIENTS}). Named speech to a real person, stronger egress than a public post: write in your own voice and sign as yourself.`,
+  fieldsForPrompt: '{to, subject, text, promise?}',
+  descriptionForPrompt: `Send an email from the address your operator connected — to is one address or a list (max ${SEND_MAX_RECIPIENTS}). Named speech to a real person, stronger egress than a public post: write in your own voice and sign as yourself. To a lead for the first time, add promise: one line naming exactly what you will send when they say yes.`,
   availableFor: async ({ laneId }) => ((await mailboxRefusal(laneId)) === null ? {} : null),
   validate: async (payload, { connection }) => {
     const position = await mailboxRefusal(connection.companion?.neumaId);
@@ -59,13 +59,13 @@ export const emailSendIntent = Object.freeze({
     try {
       blocked = wallet ? await suppressedRecipients(wallet, to) : [];
       // To a lead: only what the approved sales facts back, from an AI that says so (MAKOTO).
-      unchecked = wallet ? await leadEmailRefusal(wallet, { to, subject: payload.subject, text: payload.text }) : null;
+      unchecked = wallet ? await leadEmailRefusal(wallet, { to, subject: payload.subject, text: payload.text, promise: payload.promise, laneId: connection.companion?.neumaId }) : null;
     } catch (err) {
       return { ok: false, status: 'denied', reason: `the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is sent until they can` };
     }
     if (blocked.length) return { ok: false, status: 'denied', reason: `${blocked.join(', ')} ${blocked.length === 1 ? 'is' : 'are'} on the house's do-not-contact list — never written to again` };
     if (unchecked) return { ok: false, status: 'invalid', reason: unchecked };
-    return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text } };
+    return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text, ...(typeof payload.promise === 'string' && payload.promise.trim() ? { promise: payload.promise } : {}) } };
   },
   summarize: (payload) => {
     const to = Array.isArray(payload?.to) ? payload.to.join(', ') : String(payload?.to ?? '?');
@@ -75,14 +75,15 @@ export const emailSendIntent = Object.freeze({
   // mid-flight aborts the protocol conversation too.
   execute: async (value, { connection, signal }) => {
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
-    const outcome = await sendEmail(credentials, value, { signal });
+    // The promise is the house's own record of what it owes; it never rides the wire.
+    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text }, { signal });
     await journalEmailCall(
       connection, 'email/send',
       outcome.ok ? `to ${outcome.to.join(', ')} — "${String(value.subject).slice(0, 120)}"` : outcome.detail,
       outcome.ok ? 'ok' : 'error',
     );
     const leads = outcome.ok && connection.walletAddress
-      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, by: connection.companion?.neumaId, from: credentials?.address })
+      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, promise: value.promise, by: connection.companion?.neumaId, from: credentials?.address })
       : [];
     return outcome.ok
       ? { ok: true, detail: `Email sent to ${outcome.to.join(', ')} (message id ${outcome.messageId}).${leads.length ? ` Recorded on ${leads.length} lead(s) as contacted.` : ''}` }

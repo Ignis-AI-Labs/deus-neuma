@@ -1,0 +1,129 @@
+/* Positions — the POSITIONS window: the house's positions on a rail, the chosen
+   position's hub beside it. Rides the office shell (SecurityApp.css: .sec,
+   .sec-scan, .sec-error). Monochrome at rest; signal marks a held seat and the
+   chosen row, alert an empty seat and what waits on the operator.
+   THE FLOOR (design-language.md § Legibility): every word reads at 13px or more. */
+
+.pos .label-data { font-size: var(--text-label); }
+
+.pos-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+}
+
+.pos-rail {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+.pos-h {
+  padding: var(--space-3) var(--space-4);
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+.pos-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: var(--space-2);
+  align-items: center;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-left: 2px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.pos-row:hover { color: var(--color-text-primary); }
+.pos-row.is-on { border-left-color: var(--signal); background: var(--color-glass-light); color: var(--color-text-primary); }
+.pos-light { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
+.pos-row.is-empty .pos-light { background: transparent; border: 1px solid var(--alert); }
+.pos-row-name { font-size: var(--text-md, 15px); letter-spacing: 0.1em; }
+.pos-row-who { grid-column: 2 / 4; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.pos-row.is-empty .pos-row-who { color: var(--alert); }
+.pos-row-n {
+  min-width: 1.6em;
+  text-align: center;
+  padding: 0 6px;
+  border: 1px solid var(--alert-dim);
+  color: var(--alert);
+}
+
+.pos-hub { min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.pos-head { padding: var(--space-4); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-2); }
+.pos-name { margin: 0; font-size: var(--text-lg); font-weight: 500; letter-spacing: 0.12em; color: var(--color-text-primary); }
+.pos-title { margin-left: var(--space-2); color: var(--color-text-tertiary); letter-spacing: 0.14em; }
+.pos-holder { margin: 0; letter-spacing: 0.14em; color: var(--signal); }
+.pos-holder.is-empty { color: var(--alert); }
+.pos-covers { margin: 0; font-size: 14px; line-height: 1.5; color: var(--color-text-secondary); }
+.pos-seat { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pos-seat > :first-child { flex: 1 1 14rem; }
+.pos-danger:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
+
+.pos-wait { border-bottom: 1px solid var(--line); }
+.pos-wait .pos-h { color: var(--alert); padding-bottom: var(--space-1); }
+.pos-wait-list { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.pos-wait-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 9rem 1fr auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-glass-light);
+  border: 1px solid var(--line);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color var(--snap);
+}
+.pos-wait-row:hover { border-color: var(--signal-dim); }
+.pos-wait-kind { color: var(--alert); letter-spacing: 0.12em; }
+.pos-wait-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-wait-age { color: var(--color-text-tertiary); }
+
+.pos-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; border-bottom: 1px solid var(--line); }
+.pos-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  padding: var(--space-2) var(--space-3);
+  letter-spacing: 0.14em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap);
+}
+.pos-tab:hover { color: var(--color-text-primary); }
+.pos-tab.is-on { color: var(--signal); border-color: var(--line); }
+.pos-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.pos-panel > .pos-covers, .pos-door, .pos-switches { padding: var(--space-4); }
+.pos-door { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+
+.pos-switches { list-style: none; margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.pos-switch { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2) var(--space-3); align-items: center; }
+.pos-switch-name { font-size: 14px; color: var(--color-text-primary); }
+.pos-switch .pos-covers { grid-column: 1 / 3; }
+.pos-switch .sec-scan.is-on { color: var(--signal); border-color: var(--signal-dim); }
+
+.pos-eyes {
+  margin: 0 var(--space-4) var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  background: var(--color-glass-light);
+  font-family: var(--font-data);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .pos-split { grid-template-columns: 1fr; }
+  .pos-rail { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
+}

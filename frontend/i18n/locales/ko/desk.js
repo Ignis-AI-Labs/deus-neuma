@@ -32,6 +32,7 @@ export default Object.freeze({
     staff: '비서실장',
     houseclock: 'HOUSE 시계',
     companyline: '회사 라인',
+    positions: '직위',
     substrate: '기판',
     teams: '팀',
     terminal: '터미널',

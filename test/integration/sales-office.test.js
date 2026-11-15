@@ -30,13 +30,13 @@ const soulOf = (i) => `0x${String(i + 1).padStart(40, 'c')}`;
 const SEGMENT = {
   type: 'sales/segment', name: 'Non-developer founders', offer: 'One-to-one coaching to build your own product with AI tools',
   customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder',
-  targetGeography: 'United States, United Kingdom', targetCompanySize: '1–10',
+  targetGeography: 'United States', countries: ['US'], targetCompanySize: '1–10',
   positiveCriteria: ['Building a software product', 'Founder is not a developer'], negativeCriteria: ['Software agency'],
   exampleClients: ['Smart Maintenance Systems'], why: 'Raw AI tools leave them with half-built parts',
 };
 const score = (criterion, n) => ({ criterion, score: n, reasoning: `read on their own pages (${n}/5)` });
 const company = (domain, fit, extra = {}) => ({
-  domain, name: domain.split('.')[0], source: `https://${domain}`,
+  domain, name: domain.split('.')[0], source: `https://${domain}`, country: 'US',
   scores: [score('Building a software product', fit), score('Founder is not a developer', fit)],
   people: [{ name: 'Ada Lovelace', role: 'Founder', sourceUrl: `https://${domain}/team` }], ...extra,
 });
@@ -118,6 +118,11 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     const lead = { type: 'sales/lead', id: acme.id, person: 0, email: 'ada@acme.dev' };
     expect(await act('merc', lead)).toMatchObject({ status: 'error', error: expect.stringMatching(/never guessed/) });
     expect(await act('merc', { ...lead, id: beta.id, emailSource: 'https://beta.dev/contact' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is no match/) });
+    // The country gate: a company outside the audience's countries, or a UK address, never reaches the ledger.
+    expect((await act('merc', { type: 'sales/prospect', segment: segment.id, companies: [company('quay.co.uk', 5, { country: 'GB' })] })).status).toBe('ok');
+    const quay = (await engine()).prospects.find((p) => p.domain === 'quay.co.uk');
+    expect(await act('merc', { ...lead, id: quay.id, email: 'ada@quay.co.uk', emailSource: 'https://quay.co.uk/team' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is in GB, and "Non-developer founders" may only be sent to US/) });
+    expect(await act('merc', { ...lead, email: 'ada@acme.co.uk', emailSource: 'https://acme.dev/contact' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is a GB address, and "Non-developer founders" may only be sent to US/) });
     expect((await act('merc', { ...lead, emailSource: 'https://acme.dev/contact' })).status).toBe('ok');
     const [onLedger] = await (await leadLedgerFor(me.address)).load();
     expect(onLedger).toMatchObject({ name: 'Ada Lovelace, Founder at acme', contact: 'ada@acme.dev', status: 'cold', ownerNeumaId: 'merc', channelId: 'email' });
@@ -140,7 +145,7 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
   test('the Mercator reads the engine in its briefing; re-aiming an approved pitch sends it back for approval', async () => {
     const briefing = await mercatorBriefingSection(conn('merc'));
     expect(briefing).toContain('## LEAD ENGINE');
-    expect(briefing).toMatch(/\[s-[a-f0-9]{8}\] Non-developer founders — APPROVED — role: Founder — pool 1 \(strong 0, weak 0, none 1\), on the ledger 1/);
+    expect(briefing).toMatch(/\[s-[a-f0-9]{8}\] Non-developer founders — APPROVED — role: Founder — sends only to US — pool 2 \(strong 1, weak 0, none 1\), on the ledger 1/);
     expect(briefing).toMatch(/SUPPRESSED \[[a-f0-9]{8}\] Ada Lovelace/);
     expect(await mercatorBriefingSection(conn('scout'))).toBe('');
     const [segment] = (await engine()).segments;

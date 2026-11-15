@@ -194,9 +194,10 @@ export const createLeadLedger = ({ path }) => {
      * @param {string} id
      * @param {{name?: string, contact?: string, channelId?: string,
      *   source?: string, status?: string, note?: string,
-     *   ownerNeumaId?: string|null, direction?: 'in'|'out', by: string}} change
+     *   ownerNeumaId?: string|null, direction?: 'in'|'out', promised?: string, by: string}} change
      *   direction: which way a message went on this touch — 'out' the house
      *   wrote to them, 'in' they wrote to the house (lead upkeep reads it).
+     *   promised: what the house said it would send on a yes (sales/first-email.js).
      */
     touch(id, change = {}) {
       return serialize(async () => {
@@ -238,6 +239,7 @@ export const createLeadLedger = ({ path }) => {
           ...(change.status !== undefined ? { status: merged.status } : {}),
           ...(ownerAfter !== ownerBefore ? { ownerFrom: ownerBefore, ownerTo: ownerAfter } : {}),
           ...(change.direction ? { direction: change.direction } : {}),
+          ...(trimmed(change.promised) ? { promised: trimmed(change.promised).slice(0, FIELD_MAX) } : {}),
           ...(trimmed(change.note) ? { note: trimmed(change.note).slice(0, NOTE_MAX) } : {}),
         });
         await save(leads);

@@ -13,7 +13,7 @@ import { EmptyState } from '../empty-state.jsx';
 import { useLeadEngine } from './use-lead-engine.js';
 import { LeadFactsSheet } from './LeadFactsSheet.jsx';
 import {
-  MATCH_WORDS, STATE_WORDS, UPKEEP_WORDS, SUPPRESS_REASONS, LIST_WORDS, segmentRows, segmentMoves, suppressTargetOk,
+  MATCH_WORDS, STATE_WORDS, UPKEEP_WORDS, upkeepAge, SUPPRESS_REASONS, LIST_WORDS, segmentRows, segmentMoves, suppressTargetOk,
 } from './lead-engine-view.js';
 
 const SHOWN_DUE = 12;
@@ -45,6 +45,7 @@ const Segment = ({ row, busy, onMove, onList }) => {
       <p className="cline-move-t">OFFER: {s.offer}</p>
       <p className="cline-move-t">THEIR PROBLEM: {s.customerProblem}</p>
       <p className="cline-move-t">REACH: {s.targetRole} · WHERE: {s.targetGeography}{s.targetCompanySize ? ` · SIZE: ${s.targetCompanySize}` : ''}</p>
+      <p className="cline-move-t" data-countries="">SENT ONLY TO: {(s.countries ?? []).join(', ') || 'NO COUNTRY NAMED — NOTHING CAN BE SENT'}</p>
       <Criteria title="FITS IF" items={s.positiveCriteria} />
       <Criteria title="NOT A FIT IF" items={s.negativeCriteria} />
       <Criteria title="LIKE" items={s.exampleClients} />
@@ -95,7 +96,7 @@ export const LeadEngineSection = () => {
           {due.length ? (
             <ul className="cline-ws-src" aria-label="lead list upkeep">
               {due.slice(0, SHOWN_DUE).map((d) => (
-                <li key={`${d.kind}:${d.leadId}`} data-upkeep={d.kind}>{d.name} — {UPKEEP_WORDS[d.kind]}{d.days ? ` (${d.days} DAYS)` : ''}</li>
+                <li key={`${d.kind}:${d.leadId}`} data-upkeep={d.kind}>{d.name} — {UPKEEP_WORDS[d.kind]}{upkeepAge(d)}{d.promised ? <span data-promised=""> — PROMISED: {d.promised}</span> : null}</li>
               ))}
             </ul>
           ) : null}

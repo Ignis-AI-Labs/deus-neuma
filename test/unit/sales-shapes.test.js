@@ -5,19 +5,20 @@
  */
 import { describe, test, expect } from 'vitest';
 import { makeSegment, foldSegments, judgeState } from '../../backend/services/sales/segment-shape.js';
-import { makeProspect, normalizeDomain, matchLevel, foldProspects, poolRefusal } from '../../backend/services/sales/prospect-shape.js';
+import { makeProspect, normalizeDomain, matchLevel, foldProspects, poolRefusal, countryOfAddress } from '../../backend/services/sales/prospect-shape.js';
 import { makeSuppression, suppressionMatcher } from '../../backend/services/sales/suppress-shape.js';
 import { upkeepDue, MAX_TOUCHES } from '../../backend/services/sales/lead-upkeep.js';
 import { isBounce, bouncedAddresses, asksToStop } from '../../backend/services/sales/reply-rules.js';
 import { judgeCover, rampCap, DAILY_CAP } from '../../backend/services/sales/sales-cover.js';
 import { makeSalesSheet, foldSalesFacts, judgeSheetReview, checkSalesEmail, SALES_DISCLOSURE } from '../../backend/services/sales/sales-facts.js';
+import { parseClaims, claimsMessages } from '../../backend/services/sales/claims-reader.js';
 
 const NOW = '2026-11-13T08:00:00.000Z';
 const DAY = 86_400_000;
 const base = {
   name: 'Non-developer founders', offer: 'One-to-one coaching to build your product with AI tools',
   customerProblem: 'They know what to build and cannot build it', targetRole: 'Founder',
-  targetGeography: 'United States, United Kingdom', targetCompanySize: '1–10',
+  targetGeography: 'United States, United Kingdom', countries: ['us', 'GB', 'GB', 'nowhere'], targetCompanySize: '1–10',
   positiveCriteria: ['Building a software product', 'Founder is not a developer'], negativeCriteria: ['Software agency'],
   exampleClients: ['Smart Maintenance Systems'], why: 'Raw AI tools leave them with half-built parts', by: 'merc', now: NOW,
 };
@@ -39,6 +40,23 @@ describe('segments', () => {
     expect(foldSegments([...approved, { type: 'filed', segment: reworded, at: NOW }])[0].state).toBe('approved');
     const reaimed = makeSegment({ ...base, id: segment.id, targetRole: 'CTO' });
     expect(foldSegments([...approved, { type: 'filed', segment: reaimed, at: NOW }])[0]).toMatchObject({ state: 'draft', targetRole: 'CTO' });
+  });
+
+  test('a segment names the countries it may be sent to, as ISO codes; changing them re-aims it', () => {
+    expect(segment.countries).toEqual(['US', 'GB']);
+    expect(() => makeSegment({ ...base, countries: [] })).toThrow(/countries: the ISO codes/);
+    const filed = { type: 'filed', segment, at: NOW };
+    const approved = [filed, { type: 'state', id: segment.id, state: 'approved', by: 'operator', at: NOW }];
+    const noUk = makeSegment({ ...base, id: segment.id, countries: ['US'] });
+    expect(foldSegments([...approved, { type: 'filed', segment: noUk, at: NOW }])[0]).toMatchObject({ state: 'draft', countries: ['US'] });
+  });
+
+  test('an address names a country only through a country domain used as one', () => {
+    expect(countryOfAddress('jo@harbour.co.uk')).toBe('GB');
+    expect(countryOfAddress('jo@firma.de')).toBe('DE');
+    expect(countryOfAddress('jo@startup.io')).toBeNull();
+    expect(countryOfAddress('jo@acme.com')).toBeNull();
+    expect(countryOfAddress('jo@studio.ai')).toBeNull();
   });
 
   test('a retired segment never moves, and no state repeats', () => {
@@ -224,5 +242,25 @@ describe('the sales facts — what a buyer may be told, and the check every emai
       expect.stringMatching(/carry the disclosure line/),
       expect.stringMatching(/no false urgency/),
     ]);
+  });
+});
+
+describe('the claims reader — what it is shown, and how its answer is read', () => {
+  const facts = [{ n: 1, claim: 'Liquidity providers keep 95% of every swap fee', figure: { value: 95, unit: '%' } }, { n: 2, claim: 'Trades route to the best price on Base', figure: null }];
+  test('it is shown every fact and the email, framed as untrusted, without the disclosure line', () => {
+    const [system, user] = claimsMessages({ facts, subject: 'Hi', text: `We route to the best price.\n\n${SALES_DISCLOSURE}\nThe Mercator` });
+    expect(system.content).toMatch(/^You are the CLAIMS READER/);
+    expect(user.content).toContain('1. Liquidity providers keep 95% of every swap fee [95 %]');
+    expect(user.content).toContain('We route to the best price.');
+    expect(user.content).not.toContain(SALES_DISCLOSURE);
+  });
+
+  test('every claim keeps its fact; a fact the sheet does not hold is NONE; an answer it cannot read is not a pass', () => {
+    expect(parseClaims('NO CLAIMS', facts)).toEqual({ ok: true, claims: [] });
+    expect(parseClaims('**1** | LPs keep 95% of fees\n9 | a fee rebate\nNONE | a yield ladder', facts)).toEqual({ ok: true, claims: [
+      { fact: 1, claim: 'LPs keep 95% of fees' }, { fact: null, claim: 'a fee rebate' }, { fact: null, claim: 'a yield ladder' },
+    ] });
+    expect(parseClaims('Looks fine to me.', facts)).toEqual({ ok: false, reason: 'the reader\'s answer could not be read' });
+    expect(parseClaims('', facts).ok).toBe(false);
   });
 });

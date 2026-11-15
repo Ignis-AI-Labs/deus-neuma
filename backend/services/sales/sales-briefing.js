@@ -8,6 +8,7 @@ import { readSegments, readProspects, readSuppressions, readSalesFacts } from '.
 import { SALES_DISCLOSURE } from './sales-facts.js';
 import { MATCH_WORDS } from './prospect-shape.js';
 import { suppressionMatcher } from './suppress-shape.js';
+import { FIRST_WORDS_MAX, SUBJECT_WORDS_MAX } from './first-email.js';
 import { upkeepDue, UPKEEP_ASK } from './lead-upkeep.js';
 
 const LIST_CAP = 8;
@@ -15,7 +16,8 @@ const HOW = 'How: read the house\'s own site and its competitors\', then file an
 
 // The first email's shape, learned from the outbound tools this was studied
 // from (lead-engine-plan.md §1.8): short, about them, one small ask.
-const FIRST_EMAIL = 'A first email: four short parts. One specific thing you read on their own pages. One line on who you are and what the house does. What that could mean for them, in their terms. One small ask they can answer yes to (may I send a few short written ideas about it?), not a meeting. A plain subject of two or three words. Every claim true of the house today. Sign as yourself, the house\'s AI, under the disclosure line.';
+const FIRST_EMAIL = 'A first email: four short parts. One specific thing you read on their own pages. One line on who you are and what the house does. What that could mean for them, in their terms. One small ask they can answer yes to (may I send a few short written ideas about it?), not a meeting. A plain subject of two or three words. Every claim true of the house today. Sign as yourself, the house\'s AI, under the disclosure line. '
+  + `It is checked before it goes: at most ${FIRST_WORDS_MAX} words, a subject of at most ${SUBJECT_WORDS_MAX}, exactly one question, and promise: one line naming exactly what you will send when they say yes. That promise is kept on the lead. When they reply, send exactly that, the same day.`;
 
 // pure — the facts the house may tell a buyer, and where the sheet stands.
 const factLines = (facts) => {
@@ -38,7 +40,7 @@ const segmentLines = (segments, prospects) => segments.filter((s) => s.state !==
   const open = mine.filter((p) => p.stage === 'found');
   const by = (m) => open.filter((p) => p.match === m).length;
   const state = s.state === 'draft' ? 'DRAFT, waiting for the operator\'s approval' : s.state.toUpperCase();
-  return `- [${s.id}] ${s.name} — ${state} — role: ${s.targetRole} — pool ${open.length} (strong ${by(3)}, weak ${by(2)}, none ${by(1)}), on the ledger ${mine.filter((p) => p.stage === 'promoted').length}`;
+  return `- [${s.id}] ${s.name} — ${state} — role: ${s.targetRole} — sends only to ${s.countries.join(', ')} — pool ${open.length} (strong ${by(3)}, weak ${by(2)}, none ${by(1)}), on the ledger ${mine.filter((p) => p.stage === 'promoted').length}`;
 });
 
 /**
@@ -60,7 +62,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     ...(segments.length ? ['Segments:', ...segmentLines(segments, prospects)] : ['No segments yet: start by filing the first one.']),
     ...(ready.length ? ['Ready for the ledger (approved segment, not yet contacted):', ...ready.map((p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]}, ${p.people.length} person(s) read`)] : []),
     ...(due.length
-      ? [`Upkeep due (${due.length}):`, ...due.slice(0, LIST_CAP * 2).map((d) => `- ${d.kind.toUpperCase()} [${d.leadId.slice(0, 8)}] ${d.name}${d.days ? `, ${d.days} days` : ''}${d.with ? ` (same as [${d.with.slice(0, 8)}])` : ''} — ${UPKEEP_ASK[d.kind]}`)]
+      ? [`Upkeep due (${due.length}):`, ...due.slice(0, LIST_CAP * 2).map((d) => `- ${d.kind.toUpperCase()} [${d.leadId.slice(0, 8)}] ${d.name}${d.kind === 'answer' ? `, waiting ${d.hours} h${d.promised ? `, you promised: "${d.promised}"` : ''}` : (d.days ? `, ${d.days} days` : '')}${d.with ? ` (same as [${d.with.slice(0, 8)}])` : ''} — ${UPKEEP_ASK[d.kind]}`)]
       : ['Upkeep: nothing due on the ledger.']),
     `Do-not-contact list: ${suppressions.length} entr${suppressions.length === 1 ? 'y' : 'ies'}.`,
   ].join('\n');

@@ -114,6 +114,7 @@ export const SHED_LADDER = Object.freeze([
   'cmoOffice', 'csoOffice', 'cloOffice', 'cfoOffice',      // office briefings
   'croOffice',       // the Mercator's office briefing
   'caoOffice',       // the Logista's books
+  'positionMap',     // the seat's own map — sheds after the briefings it indexes
   'companyLine',     // the company line's moves — a briefing, sheds with them
   'assigned',        // operator-assigned work
   'plan',            // plan of record

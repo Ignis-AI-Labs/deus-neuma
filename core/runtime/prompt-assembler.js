@@ -271,6 +271,14 @@ export const assemblePromptSections = ({ dna = null, soul = null, trueName = nul
     { id: 'intents', label: 'INTENTS', text: intents || '' },
     { id: 'skills', label: 'SKILLS', text: buildSkillsSection(skills, { taskLedger }) },
     { id: 'benchmark', label: 'MEASURED STATE', text: buildBenchmarkSection(benchmark) },
+    // THE SITTING'S RULES (test-conditions.js callerRulesFor) — the standing word of whoever started
+    // the sitting, as its own section and the LAST of the system prompt. Joined onto TOOLS, mid-prompt,
+    // SQuAD's […] lost to the closing's tone (bench gaps vs bare,
+    // 2026-11-14). Never past PRESENT MOMENT: the local wire moves that volatile tail into the user turn
+    // under […] (llm-request-builders localPrefixStableMessages), where
+    // the grounding law sets an instruction aside (CyberSecEval 2, night-101b). Stable within a sitting,
+    // so it stays in the cached run. '' for every turn whose sender set no rules: byte-identical.
+    { id: 'sittingRules', label: "SITTING'S RULES", text: sittingRules },
 
     // ── VOLATILE: moves turn to turn; everything from here is reprocessed ──
     // The real now — always on, every turn (see buildPresentSection). `now`
@@ -321,12 +329,6 @@ export const assemblePromptSections = ({ dna = null, soul = null, trueName = nul
     // `instant` above) — a midnight straddle between sections is impossible.
     { id: 'vitals', label: 'OPERATOR VESSEL', text: formatVitalsSection(vitals, instant.toISOString()) },
     { id: 'session', label: 'SESSION', text: buildSessionSection(session) },
-    // THE SITTING'S RULES (test-conditions.js callerRulesFor) — the standing word of whoever started
-    // the sitting, beside the closing that tells the being to deliver a task's output exactly. Riding
-    // inside TOOLS, mid-prompt, SQuAD's […] lost to the closing's own
-    // tone: correct answers in full sentences, failed by exact match (bench gaps vs bare, 2026-11-14).
-    // '' for every turn whose sender set no rules, so every other prompt is byte-identical.
-    { id: 'sittingRules', label: "SITTING'S RULES", text: sittingRules },
     // Last by meaning, not by cache: it is the closing instruction. Small, and
     // everything past the first volatile section is reprocessed regardless.
     { id: 'closing', label: 'CLOSING', text: CLOSING_TEXT },

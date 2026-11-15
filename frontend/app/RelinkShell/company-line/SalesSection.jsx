@@ -15,9 +15,10 @@ const money = (value) => Object.entries(value ?? {}).map(([c, n]) => `${n} ${c}`
 /**
  * @param {{sales: ?object, names: Record<string, string>, pick: string, busy: boolean,
  *   onPick: (v: string) => void, onSeat: () => void, onClear: () => void,
- *   drafts?: object, onDraft?: Function, onDestination?: () => void}} props
+ *   drafts?: object, onDraft?: Function, onDestination?: () => void, seatless?: boolean}} props
+ *   seatless — the POSITIONS hub seats the Mercator in its own head, so the picker here stands down
  */
-export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear, drafts = {}, onDraft = () => {}, onDestination = () => {} }) => {
+export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear, drafts = {}, onDraft = () => {}, onDestination = () => {}, seatless = false }) => {
   const seat = sales?.mercator?.laneId ?? null;
   const open = (sales?.deals ?? []).filter((d) => d.stage === 'qualified' || d.stage === 'proposed');
   const won = (sales?.deals ?? []).filter((d) => d.stage === 'won');
@@ -25,12 +26,14 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
   return (
     <section className="cline-sec" aria-label="sales" data-sales="">
       <p className="cline-h label-data">SALES — MERCATOR · {seat ? holderName(seat, names) : 'NOBODY HOLDS THE SEAT'}</p>
-      <div className="cline-open">
-        <Select fill ariaLabel="Mercator holder" value={pick} onChange={onPick} disabled={busy}
-          placeholder="— choose the Mercator —" options={Object.entries(names).map(([laneId, name]) => ({ value: laneId, label: name }))} />
-        <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
-        {seat ? <button type="button" className="sec-scan cline-danger label-data" disabled={busy} onClick={onClear}>UNSEAT</button> : null}
-      </div>
+      {seatless ? null : (
+        <div className="cline-open">
+          <Select fill ariaLabel="Mercator holder" value={pick} onChange={onPick} disabled={busy}
+            placeholder="— choose the Mercator —" options={Object.entries(names).map(([laneId, name]) => ({ value: laneId, label: name }))} />
+          <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
+          {seat ? <button type="button" className="sec-scan cline-danger label-data" disabled={busy} onClick={onClear}>UNSEAT</button> : null}
+        </div>
+      )}
       {sales ? (
         <>
           <div className="cline-tiles cline-tiles-flat">

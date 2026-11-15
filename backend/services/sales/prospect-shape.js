@@ -85,6 +85,7 @@ export const makeProspect = (f) => {
     ...(name.length < 2 ? ['name: the company\'s name'] : []),
     ...fit.problems, ...misfit.problems, ...crew.problems,
     ...(!source ? ['source: the https page where you found the company'] : []),
+    ...(f.country != null && f.country !== '' && !/^[A-Za-z]{2}$/.test(String(f.country).trim()) ? ['country: the ISO code of where the company is (e.g. "US")'] : []),
   ];
   if (problems.length) throw new Error(problems.join('; '));
   return Object.freeze({
@@ -93,7 +94,7 @@ export const makeProspect = (f) => {
     domain,
     name,
     description: clean(f.description, 300) || null,
-    country: clean(f.country, 60) || null,
+    country: /^[A-Za-z]{2}$/.test(String(f.country ?? '').trim()) ? String(f.country).trim().toUpperCase() : null,
     size: clean(f.size, 60) || null,
     fit: Object.freeze(fit.scores),
     misfit: Object.freeze(misfit.scores),
@@ -131,4 +132,14 @@ export const poolRefusal = (prospect, pool, suppressedDomain) => {
   if (suppressedDomain(prospect.domain)) return `${prospect.domain} is on the do-not-contact list`;
   const held = pool.find((p) => p.domain === prospect.domain && p.stage !== 'dropped');
   return held ? `${prospect.domain} is already in the pool as [${held.id}]` : null;
+};
+
+// Country-code domains used worldwide as generic names: they say nothing about where a company is.
+const GENERIC_TLDS = new Set(['io', 'ai', 'co', 'me', 'tv', 'cc', 'gg', 'ly', 'so', 'to', 'fm', 'sh', 'ws', 'is', 'it', 'gl', 'im', 'la', 'vc', 'xyz']);
+
+/** The country an email address's domain names, as an ISO code, or null when it names none. pure. */
+export const countryOfAddress = (email) => {
+  const tld = String(email ?? '').trim().toLowerCase().split('.').pop();
+  if (!/^[a-z]{2}$/.test(tld) || GENERIC_TLDS.has(tld)) return null;
+  return tld === 'uk' ? 'GB' : tld.toUpperCase();
 };

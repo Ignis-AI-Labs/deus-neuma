@@ -1,7 +1,7 @@
 // A SEGMENT — one audience the Mercator sells to (the lead engine, docs/design/
 // sales/lead-engine-plan.md §3). Eight targeting fields decide who is found and
 // what they are told: the offer, the customer's problem, the role to reach,
-// where, how big, the signs of a fit, the signs of a non-fit, and companies
+// where (in words, and as the country codes it may be SENT to), how big, the signs of a fit, the signs of a non-fit, and companies
 // that fit. Unlike the outbound tools this was studied from, the role is
 // REQUIRED: a segment with no role picks whoever heads the company, and the
 // list comes back loose.
@@ -19,10 +19,15 @@ import crypto from 'crypto';
 export const SEGMENT_STATES = Object.freeze(['draft', 'approved', 'paused', 'retired']);
 // The fields that decide who is found and what they are told: a change re-aims.
 export const TARGETING_FIELDS = Object.freeze([
-  'offer', 'customerProblem', 'targetRole', 'targetGeography', 'targetCompanySize',
+  'offer', 'customerProblem', 'targetRole', 'targetGeography', 'countries', 'targetCompanySize',
   'positiveCriteria', 'negativeCriteria', 'exampleClients',
 ]);
 const CRITERIA_MAX = 8;
+
+const COUNTRIES_MAX = 60;
+
+/** ISO 3166-1 alpha-2 codes, upper-cased, de-duplicated, in order; anything else is dropped. pure. */
+export const countryCodes = (v) => [...new Set((Array.isArray(v) ? v : []).map((c) => String(c).trim().toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c)))].slice(0, COUNTRIES_MAX);
 
 const clean = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '').slice(0, max);
 const list = (v, max) => (Array.isArray(v) ? v.map((s) => clean(s, 160)).filter(Boolean).slice(0, max) : []);
@@ -40,6 +45,7 @@ export const makeSegment = (f) => {
     customerProblem: clean(f.customerProblem, 400),
     targetRole: clean(f.targetRole, 160),
     targetGeography: clean(f.targetGeography, 300),
+    countries: countryCodes(f.countries),
     targetCompanySize: clean(f.targetCompanySize, 80),
     positiveCriteria: list(f.positiveCriteria, CRITERIA_MAX),
     negativeCriteria: list(f.negativeCriteria, CRITERIA_MAX),
@@ -52,6 +58,7 @@ export const makeSegment = (f) => {
     ...(s.customerProblem.length < 10 ? ['customerProblem: the problem they have'] : []),
     ...(s.targetRole.length < 2 ? ['targetRole: who to reach at the company, by what they are responsible for'] : []),
     ...(s.targetGeography.length < 2 ? ['targetGeography: where they are'] : []),
+    ...(!s.countries.length ? ['countries: the ISO codes of the countries this may be sent to (e.g. ["US","DE"]) — an offer the law limits by country (crypto in the UK) leaves those countries out'] : []),
     ...(!s.positiveCriteria.length ? ['positiveCriteria: at least one sign a company fits'] : []),
     ...(s.why.length < 10 ? ['why: why this audience needs the offer'] : []),
   ];
@@ -59,6 +66,7 @@ export const makeSegment = (f) => {
   return Object.freeze({
     id: clean(f.id, 40) || `s-${crypto.randomBytes(4).toString('hex')}`,
     ...s,
+    countries: Object.freeze(s.countries),
     positiveCriteria: Object.freeze(s.positiveCriteria),
     negativeCriteria: Object.freeze(s.negativeCriteria),
     exampleClients: Object.freeze(s.exampleClients),

@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-683 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+685 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
 
 ## /api/v1/accounts
 
@@ -588,6 +588,13 @@
 | Method | Path | Guards |
 | --- | --- | --- |
 | GET | `/api/v1/portal/status` | `mapLaneQueryToken`, `requireAuth` |
+
+## /api/v1/positions
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| GET | `/api/v1/positions` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/positions/:office/eyes` | `mapLaneQueryToken`, `requireAuth` |
 
 ## /api/v1/preflight
 
