@@ -21,7 +21,8 @@ export const POSITIONS = Object.freeze([
     covers: 'Runs the house day to day: hands each seat its work and tracks it to done.',
     functions: [
       fn('staff', 'THE BOARD', 'Every task handed out, who holds it and where it stands.', ['staff/dispatch', 'staff/dispatch-update', 'staff/ack', 'board/add', 'board/update']),
-      fn('clock', 'HOUSE CLOCK', 'The house waking itself for its own work, under the charter.', ['house/charter']),
+      // its act (house/charter) lands with the charter work that defines it; until then the function names none
+      fn('clock', 'HOUSE CLOCK', 'The house waking itself for its own work, under the charter.', []),
     ],
     waiting: ['house-ask', 'charter', 'plan'],
   }),

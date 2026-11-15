@@ -48,6 +48,7 @@ export const ACT_FAMILIES = Object.freeze({
     'board_read', // the operator's marketing board at a level, read whole
     'bench_list', 'bench_status', // the connected benchmarks, and what runs on the machine
     'open_chats', // the chats open right now — a spread of what exists
+    'list_email_labels', // the mailbox's labels — a spread of what exists
   ]),
   // Hunting for something not yet known to be there.
   actSearch: Object.freeze([
@@ -55,6 +56,7 @@ export const ACT_FAMILIES = Object.freeze({
     'security.scan', // a scan IS a hunt for what is not yet known to be there
     'legal.scan',    // …and the legal watch hunts the same way
     'tool_search',       // hunting the catalog for a capability, same shape
+    'sales.gather', 'sales.contacts', // companies gathered from public lists, the people found at one — hunts
   ]),
   // Changing something that already existed.
   actEdit: Object.freeze([
@@ -66,6 +68,8 @@ export const ACT_FAMILIES = Object.freeze({
     'team.tune', // a working run's width and clocks change — the run already existed
     'marketing.board-arrange', // the operator's marketing board laid out anew — the board already existed
     'accounts.void', // a booked entry voided with why — the books already held it
+    'house.charter', // a member sets its house's charter — the charter already existed
+    'campaigns.link', 'marketing.account-holder', 'marketing.account-company', // links and holders of what already exists
   ]),
   // Bringing something into being on disk.
   actWrite: Object.freeze([
@@ -91,6 +95,8 @@ export const ACT_FAMILIES = Object.freeze({
     // a deal, a booked entry, a deadline, a raise's mandate, facts, investor and terms, an invoice issued.
     'company.open', 'company.hands', 'revenue.deal', 'accounts.book', 'accounts.deadline',
     'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
+    'sales.segment', 'sales.prospect', 'sales.lead', 'sales.facts', 'sales.campaign', // the lead engine's records, brought into being
+    'lp.goal', 'lp.create-pool', // a named goal; a new pool's first liquidity
   ]),
   // Same thing, different place or name.
   actMove: Object.freeze(['move', 'copy', 'move_file', 'copy_file', 'rename_file', 'vault_rename', 'vault_restore', 'vault.rename', 'vault.restore']),
@@ -99,6 +105,7 @@ export const ACT_FAMILIES = Object.freeze({
   actDelete: Object.freeze([
     'delete_file', 'vault_archive', 'memory_archive', 'memory_retract', 'queue_cancel', 'tasks.operator-drop',
     'vault.archive', 'memory.archive', 'memory.retract',
+    'queue_retract', 'sales.drop', // a post taken back; a company dropped from an audience
   ]),
   // Running code. The operator hears their machine being used.
   actExecute: Object.freeze(['execute', 'ground_git', 'inspect', 'sandbox_status', 'use_skill',
@@ -126,7 +133,9 @@ export const ACT_FAMILIES = Object.freeze({
     'team.post', // word to a teammate — word leaving the lane, house.post narrowed to one run
     'chat.send', // word to another open chat — word leaving this one
     'raise.reach', // a message to an investor, through the house mailbox
-    'delivery.publish']), // finished work published for a buyer — bytes leaving the house
+    'delivery.publish', // finished work published for a buyer — bytes leaving the house
+    'lp.open', 'lp.add', 'lp.claim', 'lp.withdraw', 'lp.close', 'lp.swap', 'lp.send', 'lp.reward', // money moving through a liquidity wallet
+  ]),
   // Making an artifact — an image, a document.
   actForge: Object.freeze(['image.generate', 'video.generate', 'press_document', 'media.save', 'media.keep', 'review_image', 'render_card']),
   // A mark on a ledger: noted, pinned, touched, proposed. Small by design.
@@ -139,7 +148,9 @@ export const ACT_FAMILIES = Object.freeze({
     // checked, an invoice marked paid: each a mark on a record that already stood.
     'company.hand-on', 'company.inspect', 'revenue.move', 'accounts.deadline-met',
     'raise.clear', 'raise.update', 'raise.terms-check', 'treasury.invoice-paid', 'programme.close',
-    'meditate']), // a standing request marked for the cycle — nothing acts yet
+    'meditate', // a standing request marked for the cycle — nothing acts yet
+    'label_email', 'sales.suppress', 'marketing.account-handle', // a label; a do-not-contact mark; a recorded handle
+  ]),
   // The being sensing its own state — capacity, adapters, its own birth sky.
   actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'mandate_read', 'post_check',
     'security_posture',            // the house sensing its own defensive state
