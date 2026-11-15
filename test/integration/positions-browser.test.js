@@ -191,6 +191,7 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const strip = page.getByRole('region', { name: 'seating your house' });
     await strip.waitFor();
     expect(await strip.locator('.pos-seating-way b').allTextContents()).toEqual(['SEAT THEM YOURSELF', 'HOLD A SEATING COUNCIL · RECOMMENDED']);
+    expect(errors).toEqual([]);
     await page.context().close();
 
     // a member files what the house decided, through the real act (house/seating): it seats nobody
