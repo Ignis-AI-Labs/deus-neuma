@@ -8,6 +8,8 @@ import {
   DEFAULT_PREFS, LAUNCHER_CATEGORIES, TRAY_APPS, barItems, launcherSections, movePin,
   normalizePrefs, searchApps, togglePin,
 } from '../../frontend/app/windowing/taskbar-model.js';
+import { POSITION_TILES, FOLDED_INTO_POSITIONS, officeOfTile } from '../../frontend/app/windowing/position-tiles.js';
+import { POSITIONS } from '../../backend/services/positions/position-map.js';
 
 const app = (label, extra = {}) => ({ label, ...extra });
 const ENTRIES = [
@@ -18,10 +20,10 @@ const ENTRIES = [
 const IDS = ENTRIES.map(([id]) => id);
 
 describe('the launcher', () => {
-  test('every registered app appears exactly once — an unnamed one in OTHER, never hidden', () => {
+  test('every registered app appears exactly once — an unnamed one in OTHER, never hidden; a window a position took in moved there', () => {
     const sections = launcherSections(ENTRIES);
     const shown = sections.flatMap((s) => s.items.map(([id]) => id));
-    expect([...shown].sort()).toEqual([...IDS].sort());
+    expect([...shown].sort()).toEqual(IDS.filter((id) => !FOLDED_INTO_POSITIONS.includes(id)).sort());
     expect(sections.find((s) => s.id === 'other').items.map(([id]) => id)).toEqual(['newthing']);
   });
 
@@ -35,6 +37,27 @@ describe('the launcher', () => {
   test('REACH lists every public platform beside MARKETING, so none is ever out of reach', () => {
     const reach = LAUNCHER_CATEGORIES.find((c) => c.id === 'reach').apps;
     for (const id of ['marketing', 'x', 'facebook', 'mastodon', 'bluesky', 'linkedin', 'youtube', 'tiktok', 'discord', 'telegram']) expect(reach).toContain(id);
+  });
+
+  test('COMPANY holds one tile per position, in seat order, twinned to the backend\'s position map', () => {
+    expect(POSITION_TILES.map(([office, plain]) => [office, plain])).toEqual(POSITIONS.map((p) => [p.office, p.plain]));
+    const company = LAUNCHER_CATEGORIES.find((c) => c.id === 'company');
+    expect(company.apps).toEqual([...POSITIONS.map((p) => `position-${p.office}`), 'companyline', 'houseclock']);
+    expect(officeOfTile('position-cro')).toBe('cro');
+    expect(officeOfTile('position-nope')).toBe(null);
+    expect(officeOfTile('security')).toBe(null);
+    // Seat order is kept (never alphabetical), and the section reads on a real set of entries.
+    const entries = [...POSITION_TILES.map(([office, label]) => [`position-${office}`, app(label)]), ['companyline', app('COMPANY LINE')], ['houseclock', app('HOUSE CLOCK')]];
+    expect(launcherSections(entries).find((s) => s.id === 'company').items.map(([, a]) => a.label))
+      .toEqual(['MANAGEMENT', 'SALES', 'MARKETING', 'LAW', 'SECURITY', 'TREASURY', 'BOOKS', 'COMPANY LINE', 'HOUSE CLOCK']);
+  });
+
+  test('a window a position took in takes no tile and is not OTHER, yet search still finds it', () => {
+    const entries = [...FOLDED_INTO_POSITIONS.map((id) => [id, app(id.toUpperCase())]), ['position-clo', app('LAW', { keywords: ['legal'] })], ['newthing', app('NEW THING')]];
+    const shown = launcherSections(entries).flatMap((s) => s.items.map(([id]) => id));
+    expect(shown).toEqual(['position-clo', 'newthing']);
+    expect(searchApps(entries, 'legal').map(([id]) => id)).toEqual(['legal', 'position-clo']);
+    expect(searchApps(entries, 'treasury').map(([id]) => id)).toEqual(['treasury']);
   });
 
   test('no app is claimed by two categories', () => {

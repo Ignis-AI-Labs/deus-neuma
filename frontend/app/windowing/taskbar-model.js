@@ -16,17 +16,21 @@
 // Pure — no React/DOM — so every decision is unit-provable.
 
 import { migrateAppIds, MARKETING_PLATFORMS } from './retired-windows.js';
+import { POSITION_TILES, positionTileId, FOLDED_INTO_POSITIONS } from './position-tiles.js';
 
 /** The launcher's categories, in order. Membership by registry id. */
 export const LAUNCHER_CATEGORIES = Object.freeze([
   { id: 'beings', apps: ['avatar', 'house', 'innerlife', 'refinement', 'sovereignty', 'vessel', 'voice'] },
-  { id: 'work', apps: ['chat', 'chats', 'positions', 'staff', 'houseclock', 'companyline', 'teams', 'todo', 'workflow'] },
+  // THE COMPANY: one tile per position, in seat order (`ordered`), then the two windows that are the
+  // whole company's. A position's own windows stand inside its hub (position-tiles.js).
+  { id: 'company', ordered: true, apps: [...POSITION_TILES.map(([office]) => positionTileId(office)), 'companyline', 'houseclock'] },
+  { id: 'work', apps: ['chat', 'chats', 'teams', 'todo', 'workflow'] },
   { id: 'create', apps: ['files', 'terminal', 'comfyui', 'gallery'] },
   // MARKETING holds every public platform, the brand kits and the leads (retired-windows.js); each platform
   // still has its own tile, opening MARKETING on it (Dock.jsx platform entries).
   { id: 'reach', apps: ['marketing', ...MARKETING_PLATFORMS, 'discord', 'telegram'] },
   { id: 'know', apps: ['sheet', 'skills', 'contextmap', 'map', 'db', 'stats'] },
-  { id: 'system', apps: ['settings', 'substrate', 'wallet', 'security', 'legal', 'treasury', 'witnesses', 'bench'] },
+  { id: 'system', apps: ['settings', 'substrate', 'wallet', 'witnesses', 'bench'] },
 ].map((c) => Object.freeze({ ...c, apps: Object.freeze(c.apps) })));
 
 /** The tray's fixed launchers — the rig and the wallet, always one click away. */
@@ -93,10 +97,14 @@ export const barItems = (prefs, openAppIds) => {
  */
 export const launcherSections = (entries, locale = undefined) => {
   const byId = new Map(entries);
-  const named = new Set(LAUNCHER_CATEGORIES.flatMap((c) => c.apps));
+  // A window a position's hub took in takes no tile, and is not OTHER either: it is not lost, it moved.
+  const named = new Set([...LAUNCHER_CATEGORIES.flatMap((c) => c.apps), ...FOLDED_INTO_POSITIONS]);
   const sort = (list) => [...list].sort(([, a], [, b]) => String(a.label).localeCompare(String(b.label), locale));
   const sections = LAUNCHER_CATEGORIES
-    .map((c) => ({ id: c.id, items: sort(c.apps.filter((id) => byId.has(id)).map((id) => [id, byId.get(id)])) }));
+    .map((c) => {
+      const items = c.apps.filter((id) => byId.has(id)).map((id) => [id, byId.get(id)]);
+      return { id: c.id, items: c.ordered ? items : sort(items) };
+    });
   const other = sort(entries.filter(([id]) => !named.has(id)));
   return [...sections, { id: 'other', items: other }].filter((s) => s.items.length > 0);
 };

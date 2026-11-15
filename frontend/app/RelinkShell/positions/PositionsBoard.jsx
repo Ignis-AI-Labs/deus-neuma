@@ -14,10 +14,11 @@ import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { seatPosition, clearPosition } from './position-seats.js';
 import { railRow, railSummary, pickPosition, pickTab } from './positions-view.js';
 import { PositionHub } from './PositionHub.jsx';
+import { onPositionPlace, POSITION_PLACE_KEY } from '../../windowing/position-tiles.js';
 import '../SecurityApp.css';
 import './Positions.css';
 
-const PLACE_KEY = 'neuma:positions:place';
+const PLACE_KEY = POSITION_PLACE_KEY;
 const readPlace = () => { try { return JSON.parse(localStorage.getItem(PLACE_KEY)) ?? {}; } catch { return {}; } };
 
 const Rail = ({ positions, chosen, onChoose }) => (
@@ -52,6 +53,9 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
   const load = useCallback(() => getPositions().then((b) => { setBoard(b); setError(null); }, (e) => setError(e.message)), []);
   // The board follows the desk's waiting account: a decision answered anywhere leaves this window too.
   useEffect(() => { load(); }, [load, waitingCount]);
+
+  // A launcher tile names a position while this window is open: stand on it.
+  useEffect(() => onPositionPlace((office) => setPlace((p) => ({ ...p, office }))), []);
 
   const position = board ? pickPosition(board.positions, place.office) : null;
   const tab = position ? pickTab(position, place.tabs?.[position.office]) : null;
