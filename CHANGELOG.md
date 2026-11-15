@@ -6,9 +6,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.1.150] - 2026-11-14
+## [0.1.153] - 2026-11-15
 
-Notes: `docs/operations/release-notes-0.1.150.md`.
+Notes: `docs/operations/release-notes-0.1.153.md`.
 
 ### Added
 
@@ -40,12 +40,21 @@ Notes: `docs/operations/release-notes-0.1.150.md`.
 - Undo now covers everything a being does to your files, not only edits: a file it deleted comes back exactly as it was, and a file it created is taken away again. A new file you have worked on since is left alone.
 - `/undo` inside `neuma code` puts back the last file change without leaving the session. `neuma edit --undo` does the same from any terminal; run either again to step further back.
 - Webhooks: a being can be woken by events from GitHub, Slack, Linear or any signed script (`neuma hooks add <being> <source> <name>`). Each delivery must be signed with the hook's secret, fresh and not seen before; it then wakes the being through the house clock, so your charter still decides when it works and every act still asks the same gates. Webhooks are off until you turn them on in Settings → Security → Connections.
+- A new POSITIONS window, first in the WORK band. Every position of your house is listed with who holds it and how many decisions wait on you for it. An empty position is marked, so you can see at once which roles nobody holds.
+- Opening a position shows everything it handles in one place: seat or unseat its holder, talk to them, the decisions waiting on you for that position, each of its functions in place (for sales: leads, deals and the mailbox), and the connections it needs with their on and off switch.
+- A THEIR EYES tab shows, word for word, what the member holding a position is told at the top of every turn.
+- A member who holds a position now reads one short map of everything that position handles and the acts for each, before its office briefing. You and the member read the same map.
+- Every member who holds a position now reads a file on each of your companies at the top of every turn: its site, its code, the facts a buyer may be told, its audiences and its campaigns. Anything missing is named with where you set it, and the member is told to say nothing that rests on a missing item.
+- Each sales audience and each sales fact now belongs to one of your companies. An email to a lead is checked only against the facts of that lead's own company, so a fact about one company can never back a claim made for another. An audience or fact naming a company your house does not have is refused.
+- Each audience your sales seat files now names the countries it may be sent to, and you see them when you approve it. No lead outside those countries reaches your list, and neither does an email address whose own country domain (such as .uk) falls outside them. An offer the law limits by country, such as anything crypto in the UK, simply leaves that country out.
+- Every email to a lead now has its claims checked as well as its numbers. Before it can go, your house's own model lists each thing the email says about your company and must point to the approved fact behind it. An email that claims something no fact states is stopped, with the claim named. If the check cannot run, nothing is sent.
+- A first email to a lead is now held to a clear shape before it can go: at most 130 words, a subject of at most 5 words, exactly one question, and a one-line promise of what your sales seat will send when they say yes. That promise is kept on the lead. When the lead replies, the seat and your LEAD ENGINE screen both show the promise and how many hours the reply has waited, so the follow-up delivers exactly what was offered.
 
 ### Changed
 
 - Refinement is no longer asked of anyone. The LoRA refinement is not being built: a being's identity travels through NITE. The summoning's pre-flight no longer lists a "Refinement Forge" that "cannot run", the end of the summoning points to the founding voice a being claims in NITE instead of "the refinement", a sealed attunement is the whole walk with no REFINE step after it, and VESSEL no longer shows the refinement's sample milestone and adapters.
 - The star map no longer names Israel. The Hebrew calendar is still one of its traditions, named as the Jewish world's calendar.
-- When an app or benchmark gives a being its own standing instructions (like "answer in as few words as possible"), those instructions now sit right next to the being's closing instructions instead of in the middle of its tool list, so the format they ask for wins. Ordinary chats are unchanged.
+- When an app or benchmark gives a being its own standing instructions (like "answer in as few words as possible"), those instructions now stand as their own section after the being's tool list, instead of in the middle of it, still among the operator's own instructions, so the format they ask for wins. Ordinary chats are unchanged.
 - A neuma looking for a file finds it in one search across every folder and drive it may read, best match first, instead of combing folders one by one. A search that names no folder now covers all of them, not only the neuma's own workspace; a plain word matches inside names in any case, and the exact name ranks first. The search walks many folders at once (millions of entries in seconds), never follows a link out of the folders it was given, skips dependency and dot folders unless asked, and says what it skipped. A drive the neuma has not been given is not searched, and the result says how to ask for it.
 
 ### Fixed
