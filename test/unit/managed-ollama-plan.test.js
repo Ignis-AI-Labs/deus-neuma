@@ -195,6 +195,9 @@ describe("the platform's own server: what it is started with (2026-10-23)", () =
 
   test('flash attention with an 8-bit KV cache: half the cache on the card, more of the model with it; the person\'s own setting stands', () => {
     expect(managedServeEnv({ window: 20480 })).toMatchObject({ OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+    // the 4-bit cache a narrow card was fitted with (#24); the person's own setting still stands
+    expect(managedServeEnv({ window: 32768, kvCache: 'q4_0' }).OLLAMA_KV_CACHE_TYPE).toBe('q4_0');
+    expect(managedServeEnv({ window: 32768, kvCache: 'q4_0', env: { OLLAMA_KV_CACHE_TYPE: 'f16' } }).OLLAMA_KV_CACHE_TYPE).toBe('f16');
     expect(managedServeEnv({ window: 20480, env: { OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' } }))
       .toMatchObject({ OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' });
   });

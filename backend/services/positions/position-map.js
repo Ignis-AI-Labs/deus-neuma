@@ -29,7 +29,7 @@ export const POSITIONS = Object.freeze([
     office: 'cro', plain: 'SALES', title: 'Mercator',
     covers: 'Brings money in: finds the buyers, writes to them, and carries each deal to delivery.',
     functions: [
-      fn('campaigns', 'CAMPAIGNS', 'Each push with its goal, the audiences that serve it, and what it has brought in by channel.'),
+      fn('campaigns', 'CAMPAIGNS', 'Each push with its goal, the audiences that serve it, what it has brought in by channel, and the campaigns it works with.', ['sales/campaign', 'campaigns/link']),
       fn('leads', 'LEADS', 'Audiences, the companies found for each, the approved facts and the do-not-contact list.', ['sales/segment', 'sales/gather', 'sales/contacts', 'sales/prospect', 'sales/drop', 'sales/lead', 'sales/facts', 'sales/suppress']),
       fn('deals', 'DEALS', 'The pipeline, each open deal with its next step, and what was delivered.', ['revenue/deal', 'revenue/move', 'delivery/publish']),
       fn('mailbox', 'MAILBOX', 'The house email account: who holds it, what was sent and what came back, kept in order under labels.', ['email/send'], ['check_email_inbox', 'read_email', 'list_email_labels', 'label_email']),
@@ -40,6 +40,7 @@ export const POSITIONS = Object.freeze([
     office: 'cmo', plain: 'MARKETING', title: 'CMO',
     covers: 'Makes the house known: campaigns, accounts, the brand and which leads are real.',
     functions: [
+      fn('campaigns', 'CAMPAIGNS', 'Each marketing campaign, and the campaigns of other positions it works with.'),
       fn('marketing', 'MARKETING', 'Campaigns, the post queue, accounts, the brand and the leads.', ['campaigns/create', 'campaigns/update', 'campaigns/ask', 'marketing/plan', 'marketing/account-handle', 'marketing/account-holder', 'marketing/account-company', 'marketing/company-links', 'marketing/board-arrange', 'social/queue', 'social/post'], ['queue_list', 'queue_get']),
       fn('gallery', 'GALLERY', 'Every image and video the house has made.', ['image/generate']),
     ],

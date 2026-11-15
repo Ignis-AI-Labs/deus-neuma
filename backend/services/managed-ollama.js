@@ -28,7 +28,7 @@ import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { getDataRoot } from './data-root.js';
 import { chosenModelHome } from './model-home.js';
-import { readManagedRecord, servedOllamaWindow, writeManagedRecord } from './managed-ollama-record.js';
+import { readManagedRecord, servedKvCache, servedOllamaWindow, writeManagedRecord } from './managed-ollama-record.js';
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
 import { createLogger } from './logger.js';
@@ -206,9 +206,10 @@ const runJob = async (given, signal, loadModel) => {
  */
 const loadAndAnswer = async (plan, signal, { bin, endpoint, started, guard, startedWindow }) => {
   const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold, ownServer: Boolean(plan.managed) });
-  await keepWindow(fit.window);
+  const startedKv = servedKvCache();
+  await keepWindow(fit.window, fit.kvCache);
   let at = endpoint;
-  if (started && fit.window !== startedWindow) at = await restartServer(bin, plan.managed, endpoint, { window: fit.window, holdGpu: guard.hold });
+  if (started && (fit.window !== startedWindow || (fit.kvCache || startedKv) !== startedKv)) at = await restartServer(bin, plan.managed, endpoint, { window: fit.window, holdGpu: guard.hold });
   update({ step: 'verify', completed: 0, total: 0, line: `Checking that ${plan.model.name} answers` });
   await modelAnswers(at, plan.model.ref, signal, fit.window);
   return Object.freeze({ fit, endpoint: at });
@@ -305,7 +306,7 @@ const startServer = async (bin, managed, wanted = endpoints().usual, { window = 
   await fsp.mkdir(serverHome(), { recursive: true });
   const logFile = path.join(serverHome(), 'ollama.log');
   const out = fs.openSync(logFile, 'a');
-  const env = { ...probeEnvironment(), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
+  const env = { ...probeEnvironment(), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, kvCache: servedKvCache(), holdGpu, env: process.env }) };
   if (managed) {
     env.OLLAMA_MODELS = modelsDir();
     await fsp.mkdir(env.OLLAMA_MODELS, { recursive: true });
@@ -330,9 +331,9 @@ const startServer = async (bin, managed, wanted = endpoints().usual, { window = 
  * old one, or the next chat would name the old window and reload the model at it (seen in the
  * 2026-10-23 proof run: refitted to 20,480, the next chat loaded at 32,768). impure
  */
-const keepWindow = async (window) => {
+const keepWindow = async (window, kvCache) => {
   const was = servedOllamaWindow();
-  await writeManagedRecord({ ...readRecord(), window });
+  await writeManagedRecord({ ...readRecord(), window, ...(kvCache ? { kvCache } : {}) });
   if (window !== was) _resetCapsCache();
 };
 

@@ -18,6 +18,9 @@
  * (portal-turn-rounds.js captureUsage), less a reserve for the answer.
  */
 import { TOOL_RESULT_MAX_CHARS } from './tool-exchange.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('ReadRoom');
 import { PAGE_CHARS_MAX } from '../../core/runtime/tool-result-page.js';
 
 /** Conservative chars per token — code and dense prose run 3–4. */
@@ -44,6 +47,11 @@ export const noteRoundRoom = (connection, budget, usage) => {
   if (!connection) return;
   const promptTokens = Number.isFinite(usage?.promptTokens) ? usage.promptTokens : connection._turnRoom?.promptTokens ?? null;
   connection._turnRoom = { window: budget?.contextTokens ?? null, promptTokens };
+  // every round's measured prompt in the backend's own log, so the standing prompt can be seen
+  // without the model server's (deus-neuma #35's observability ask)
+  if (Number.isFinite(usage?.promptTokens)) {
+    log.info('round usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens ?? null, window: budget?.contextTokens ?? null });
+  }
 };
 
 /**

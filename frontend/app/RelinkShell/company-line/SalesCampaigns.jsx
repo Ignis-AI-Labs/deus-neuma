@@ -2,8 +2,8 @@
 // […]). Each campaign: its goal, its numbers counted from the house's
 // own records (gathered → scored → on the lead list → written → replied →
 // qualified → won), the same numbers by channel, and the audiences that serve
-// it. The operator opens and closes campaigns here and puts each audience
-// under one. impure — reads and moves through use-lead-engine.js.
+// it. The operator opens, edits, archives, reopens and deletes campaigns here
+// and puts each audience under one; the sales seat has the same hands by act. impure — reads and moves through use-lead-engine.js.
 
 import { useState } from 'react';
 import { Select } from '../Select.jsx';
@@ -22,12 +22,14 @@ const Funnel = ({ campaign }) => (
   </div>
 );
 
-const Campaign = ({ campaign, loose, busy, onClose, onPut }) => {
+const Campaign = ({ campaign, loose, busy, onMove, onPut }) => {
   const [pick, setPick] = useState('');
+  const [edit, setEdit] = useState(null); // {name, goal} while editing
+  const [sure, setSure] = useState(false);
   const open = campaign.state === 'open';
   return (
     <li className="cline-sec" data-campaign-id={campaign.id} data-campaign-state={campaign.state}>
-      <p className="cline-h label-data">{campaign.name} · FOR {campaign.company.toUpperCase()} · {open ? 'OPEN' : 'CLOSED'}</p>
+      <p className="cline-h label-data">{campaign.name} · FOR {campaign.company.toUpperCase()} · {open ? 'OPEN' : 'ARCHIVED'}</p>
       <p className="cline-move-t">GOAL: {campaign.goal}</p>
       <Funnel campaign={campaign} />
       {campaign.channels.length ? (
@@ -38,25 +40,38 @@ const Campaign = ({ campaign, loose, busy, onClose, onPut }) => {
       <p className="cline-move-t" data-campaign-audiences="">
         AUDIENCES: {campaign.audiences.length ? campaign.audiences.map((a) => `${a.name} (${a.state.toUpperCase()})`).join(' · ') : 'NONE YET'}
       </p>
-      {open ? (
+      {open && loose.length ? (
         <div className="cline-open">
-          {loose.length ? (
-            <>
-              <Select fill ariaLabel={`audience to put under ${campaign.name}`} value={pick} onChange={setPick} disabled={busy}
-                placeholder="put an audience under this campaign" options={loose.map((s) => ({ value: s.id, label: s.name }))} />
-              <button type="button" className="sec-scan label-data" disabled={busy || !pick} aria-label={`ADD the audience to ${campaign.name}`}
-                onClick={() => { onPut(loose.find((s) => s.id === pick), campaign); setPick(''); }}>ADD</button>
-            </>
-          ) : null}
-          <button type="button" className="sec-scan cline-danger label-data" disabled={busy} aria-label={`CLOSE ${campaign.name}`} onClick={() => onClose(campaign)}>CLOSE</button>
+          <Select fill ariaLabel={`audience to put under ${campaign.name}`} value={pick} onChange={setPick} disabled={busy}
+            placeholder="put an audience under this campaign" options={loose.map((s) => ({ value: s.id, label: s.name }))} />
+          <button type="button" className="sec-scan label-data" disabled={busy || !pick} aria-label={`ADD the audience to ${campaign.name}`}
+            onClick={() => { onPut(loose.find((s) => s.id === pick), campaign); setPick(''); }}>ADD</button>
         </div>
       ) : null}
+      {edit ? (
+        <div className="cline-open" data-campaign-edit="">
+          <input className="cline-input" aria-label={`New name for ${campaign.name}`} maxLength={60} disabled={busy} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+          <input className="cline-input" aria-label={`New goal for ${campaign.name}`} maxLength={300} disabled={busy} value={edit.goal} onChange={(e) => setEdit({ ...edit, goal: e.target.value })} />
+          <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`SAVE ${campaign.name}`}
+            onClick={() => { onMove(campaign, { move: 'edit', name: edit.name, goal: edit.goal }, `"${edit.name.trim() || campaign.name}" is saved.`); setEdit(null); }}>SAVE</button>
+          <button type="button" className="sec-scan label-data" disabled={busy} onClick={() => setEdit(null)}>CANCEL</button>
+        </div>
+      ) : (
+        <div className="cline-open">
+          <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`EDIT ${campaign.name}`} onClick={() => setEdit({ name: campaign.name, goal: campaign.goal })}>EDIT</button>
+          {open
+            ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`ARCHIVE ${campaign.name}`} onClick={() => onMove(campaign, { move: 'archive' }, `"${campaign.name}" is archived.`)}>ARCHIVE</button>
+            : <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`REOPEN ${campaign.name}`} onClick={() => onMove(campaign, { move: 'reopen' }, `"${campaign.name}" is open again.`)}>REOPEN</button>}
+          <button type="button" className="sec-scan cline-danger label-data" disabled={busy} aria-label={`${sure ? 'PRESS AGAIN TO DELETE' : 'DELETE'} ${campaign.name}`}
+            onClick={() => { if (sure) onMove(campaign, { move: 'delete' }, `"${campaign.name}" is deleted.`); setSure(!sure); }}>{sure ? 'PRESS AGAIN TO DELETE' : 'DELETE'}</button>
+        </div>
+      )}
     </li>
   );
 };
 
 export const SalesCampaigns = () => {
-  const { engine, busy, error, notice, refresh, openCampaign, closeCampaign, putAudience } = useLeadEngine();
+  const { engine, busy, error, notice, refresh, openCampaign, moveCampaign, putAudience } = useLeadEngine();
   const [draft, setDraft] = useState({ name: '', company: '', goal: '' });
   const campaigns = engine?.campaigns ?? [];
   const loose = engine?.loose ?? [];
@@ -69,7 +84,7 @@ export const SalesCampaigns = () => {
       {notice ? <p className="cline-move-t" role="status" data-campaign-notice="">{notice}</p> : null}
       {engine && !campaigns.length ? <EmptyState title="NO CAMPAIGN YET" /> : null}
       <ul className="cline-list" aria-label="campaigns">
-        {campaigns.map((c) => <Campaign key={c.id} campaign={c} loose={loose.filter((s) => s.company === c.company)} busy={busy} onClose={closeCampaign} onPut={putAudience} />)}
+        {campaigns.map((c) => <Campaign key={c.id} campaign={c} loose={loose.filter((s) => s.company === c.company)} busy={busy} onMove={moveCampaign} onPut={putAudience} />)}
       </ul>
       {loose.length ? <p className="cline-move-t" data-campaign-loose="">UNDER NO CAMPAIGN: {loose.map((s) => s.name).join(' · ')}</p> : null}
       <p className="cline-h label-data">OPEN A CAMPAIGN</p>

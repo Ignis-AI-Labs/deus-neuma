@@ -116,12 +116,16 @@ export const CHANNEL_CATALOG = Object.freeze([
     name: 'LinkedIn',
     maxChars: 3000,
     fields: Object.freeze([
-      field('personUrn', 'Person URN (urn:li:person:…)', false, 'LINKEDIN_PERSON_URN'),
-      field('accessToken', 'Access Token', true, 'LINKEDIN_ACCESS_TOKEN'),
+      // CONNECT signs in with the operator's own LinkedIn app (linkedin-connect.js) and sets the three
+      // fields below; an account connected before CONNECT existed keeps working without a client.
+      field('clientId', 'LinkedIn App Client ID', false, 'LINKEDIN_CLIENT_ID', 'none'),
+      field('clientSecret', 'LinkedIn App Client Secret', true, 'LINKEDIN_CLIENT_SECRET', 'none'),
+      Object.freeze({ ...field('personUrn', 'Person URN (set by CONNECT)', false, 'LINKEDIN_PERSON_URN'), connect: true }),
+      connectField('accessToken', 'Access Token (set by CONNECT)', 'LINKEDIN_ACCESS_TOKEN'),
       // REQUIRED, not optional: LinkedIn issues 60-day access tokens and gates
       // programmatic refresh to partners — the channel cannot be configured
       // without declaring when the token dies, or the lane dies silently.
-      field('tokenExpiresAt', 'Token Expiry (ISO date — the verify script prints it)', false, 'LINKEDIN_TOKEN_EXPIRES_AT'),
+      Object.freeze({ ...field('tokenExpiresAt', 'Token Expiry (set by CONNECT)', false, 'LINKEDIN_TOKEN_EXPIRES_AT'), connect: true }),
     ]),
   }),
   Object.freeze({

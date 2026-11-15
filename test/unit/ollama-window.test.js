@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
-  OLLAMA_SERVED_CONTEXT, OLLAMA_WINDOW_FLOOR, fitOllamaWindow, gpuBytesAt, gpuRoomBytes, kvBytesPerToken,
+  OLLAMA_SERVED_CONTEXT, OLLAMA_WINDOW_FLOOR, Q4_KV_SCALE, Q8_KV_SCALE, fitOllamaWindow, fitOwnServer, gpuBytesAt, gpuRoomBytes, kvBytesPerToken,
 } from '../../backend/services/ollama-window.js';
 
 const GIB = 1024 ** 3;
@@ -112,5 +112,36 @@ describe('the window served', () => {
   test('the usual window is never more than the 65,536 it replaced, and never the 262,144 the name table gives the 4B', () => {
     expect(OLLAMA_SERVED_CONTEXT).toBeLessThan(65536);
     expect(fitOllamaWindow({ roomBytes: 1000 * GIB, ...model }).window).toBe(OLLAMA_SERVED_CONTEXT);
+  });
+});
+
+// deus-neuma #24 (Design note, 2026-11-15: the 4-bit cache, vision kept): the platform's own Ollama keeps the
+// 8-bit cache unless it would narrow the window, then the 4-bit one where that holds more.
+describe('the cache the platform\'s own Ollama keeps', () => {
+  const at = (scale) => ({ weightsBytes: QWEN38_4B_BYTES, kvPerToken: Math.ceil(model.kvPerToken * scale) });
+
+  test('a card that holds the whole window at 8 bits keeps 8 bits', () => {
+    const fit = fitOwnServer({ roomBytes: 1000 * GIB, ...model });
+    expect(fit).toMatchObject({ window: OLLAMA_SERVED_CONTEXT, onGpu: true, kvCache: 'q8_0' });
+  });
+
+  test('a card that would narrow the window at 8 bits keeps it whole at 4 bits, and says so', () => {
+    // room for the whole window at 4 bits, not at 8
+    const roomBytes = gpuBytesAt(OLLAMA_SERVED_CONTEXT, at(Q4_KV_SCALE)) + 1;
+    expect(roomBytes).toBeLessThan(gpuBytesAt(OLLAMA_SERVED_CONTEXT, at(Q8_KV_SCALE)));
+    expect(fitOllamaWindow({ roomBytes, ...at(Q8_KV_SCALE) }).window).toBeLessThan(OLLAMA_SERVED_CONTEXT);
+    const fit = fitOwnServer({ roomBytes, ...model });
+    expect(fit).toMatchObject({ window: OLLAMA_SERVED_CONTEXT, onGpu: true, kvCache: 'q4_0' });
+    expect(fit.line).toMatch(/kept at 4 bits/);
+  });
+
+  test('a card that cannot hold the model wholly either way keeps 8 bits: the smaller cache buys nothing', () => {
+    const fit = fitOwnServer({ roomBytes: 1 * GIB, ...model });
+    expect(fit).toMatchObject({ onGpu: false, kvCache: 'q8_0' });
+  });
+
+  test('an unread card or an unread layout keeps 8 bits', () => {
+    expect(fitOwnServer({ roomBytes: null, ...model }).kvCache).toBe('q8_0');
+    expect(fitOwnServer({ roomBytes: 4.3 * GIB, weightsBytes: QWEN38_4B_BYTES, kvPerToken: null }).kvCache).toBe('q8_0');
   });
 });

@@ -15,7 +15,7 @@ import path from 'node:path';
 import { getSettingsDir } from './data-root.js';
 import { detectGpu, readNvidiaMemory } from './gpu-probe.js';
 import { driverGuard } from './gpu-driver-guard.js';
-import { Q8_KV_SCALE, fitOllamaWindow, gpuRoomBytes, kvBytesPerToken, OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
+import { fitOllamaWindow, fitOwnServer, gpuRoomBytes, kvBytesPerToken, OLLAMA_SERVED_CONTEXT } from './ollama-window.js';
 
 const choicePath = () => path.join(getSettingsDir(), 'gpu-driver.json');
 const REPORT_MS = 3000;
@@ -57,8 +57,9 @@ const report = async (url, body) => {
  * @param {string} endpoint the server holding the model
  * @param {string} model its Ollama name
  * @param {{onGpu?: boolean, ownServer?: boolean}} [opts] onGpu false: the card is not used;
- *   ownServer: the platform's own Ollama, whose KV cache is 8-bit (managedServeEnv)
- * @returns {Promise<Readonly<{window: number, onGpu: boolean|null, line: string}>>}
+ *   ownServer: the platform's own Ollama, whose KV cache it chooses (8-bit, or 4-bit where the 8-bit
+ *   one would narrow the window: ollama-window.js fitOwnServer)
+ * @returns {Promise<Readonly<{window: number, onGpu: boolean|null, line: string, kvCache?: string}>>}
  */
 export const fitManagedWindow = async (endpoint, model, { onGpu = true, ownServer = false } = {}) => {
   if (!onGpu) return Object.freeze({ window: OLLAMA_SERVED_CONTEXT, onGpu: false, line: `Served on the processor at a ${OLLAMA_SERVED_CONTEXT.toLocaleString('en-US')}-token window.` });
@@ -69,5 +70,6 @@ export const fitManagedWindow = async (endpoint, model, { onGpu = true, ownServe
   const totalBytes = memory?.totalBytes ?? (Number.isFinite(gpu?.vramGB) && !gpu?.unified ? gpu.vramGB * 1024 ** 3 : null);
   const roomBytes = gpuRoomBytes({ freeBytes: memory?.freeBytes, totalBytes, budgetGB: Number(process.env.NEUMA_MODEL_BUDGET_GB) || null });
   const kv = kvBytesPerToken(show?.model_info);
-  return fitOllamaWindow({ roomBytes: weightsBytes ? roomBytes : null, weightsBytes, kvPerToken: kv && ownServer ? Math.ceil(kv * Q8_KV_SCALE) : kv });
+  const sized = { roomBytes: weightsBytes ? roomBytes : null, weightsBytes, kvPerToken: kv };
+  return ownServer ? fitOwnServer(sized) : fitOllamaWindow(sized);
 };

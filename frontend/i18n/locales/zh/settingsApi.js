@@ -34,6 +34,8 @@ export default Object.freeze({
       failed: '连接未完成。',
       tiktokWaiting: '请在浏览器中完成 TikTok 登录…',
       tiktokNeedClient: '请先保存 TikTok 的 Client Key 和 Client Secret，再连接。',
+      linkedinWaiting: '请在浏览器中完成 LinkedIn 登录…',
+      linkedinNeedClient: '请先保存你的 LinkedIn 应用的客户端 ID 和密钥，然后点击 CONNECT。',
     }),
   }),
 

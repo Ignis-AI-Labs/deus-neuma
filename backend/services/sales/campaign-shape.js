@@ -7,7 +7,9 @@
 // channel each lead is worked through.
 //
 // The record is append-only events:
-//   { type: 'opened', campaign, at }   { type: 'closed', id, by, at }
+//   { type: 'opened', campaign, at }   { type: 'closed', id, by, at }  (archived)
+//   { type: 'reopened', id, by, at }   { type: 'updated', id, name?, goal?, by, at }
+//   { type: 'deleted', id, by, at }    (only a campaign that holds no audience)
 // PURE, but for makeCampaign's random id.
 
 import crypto from 'crypto';
@@ -36,8 +38,43 @@ export const foldCampaigns = (events) => {
   for (const e of events) {
     if (e?.type === 'opened' && e.campaign?.id) byId.set(e.campaign.id, { ...e.campaign, state: 'open', closedAt: null });
     else if (e?.type === 'closed' && byId.has(e.id)) byId.set(e.id, { ...byId.get(e.id), state: 'closed', closedAt: e.at });
+    else if (e?.type === 'reopened' && byId.has(e.id)) byId.set(e.id, { ...byId.get(e.id), state: 'open', closedAt: null });
+    else if (e?.type === 'updated' && byId.has(e.id)) byId.set(e.id, { ...byId.get(e.id), ...(e.name ? { name: e.name } : {}), ...(e.goal ? { goal: e.goal } : {}) });
+    else if (e?.type === 'deleted') byId.delete(e.id);
   }
   return [...byId.values()];
+};
+
+/** The moves a campaign can make after it is opened. */
+export const CAMPAIGN_MOVES = Object.freeze(['archive', 'reopen', 'delete', 'edit']);
+
+/**
+ * One move on a campaign, as the event to append or the refusal. pure.
+ * @param {?object} campaign - as folded
+ * @param {{move: string, name?: unknown, goal?: unknown, audiences: number, others: object[], by: string, now: string}} m
+ * @returns {{ok: true, event: object} | {ok: false, reason: string}}
+ */
+export const judgeMove = (campaign, { move, name, goal, audiences, others, by, now }) => {
+  if (!campaign) return { ok: false, reason: 'no such campaign' };
+  const stamp = { id: campaign.id, by, at: now };
+  if (move === 'archive') return campaign.state === 'closed' ? { ok: false, reason: 'the campaign is already archived' } : { ok: true, event: { type: 'closed', ...stamp } };
+  if (move === 'reopen') {
+    if (campaign.state === 'open') return { ok: false, reason: 'the campaign is already open' };
+    const clash = openRefusal(campaign, others);
+    return clash ? { ok: false, reason: clash } : { ok: true, event: { type: 'reopened', ...stamp } };
+  }
+  if (move === 'delete') {
+    return audiences ? { ok: false, reason: `${audiences} audience(s) still serve this campaign — move them to another campaign or archive it instead; its record is kept` } : { ok: true, event: { type: 'deleted', ...stamp } };
+  }
+  if (move === 'edit') {
+    const next = { name: clean(name, 60), goal: clean(goal, 300) };
+    if (!next.name && !next.goal) return { ok: false, reason: 'edit names a new name, a new goal, or both' };
+    if (next.name && next.name.length < 3) return { ok: false, reason: 'name: what this campaign is called' };
+    if (next.goal && next.goal.length < 10) return { ok: false, reason: 'goal: what this campaign is meant to bring in, in one sentence' };
+    const clash = next.name && campaign.state === 'open' ? openRefusal({ name: next.name }, others) : null;
+    return clash ? { ok: false, reason: clash } : { ok: true, event: { type: 'updated', ...stamp, ...(next.name ? { name: next.name } : {}), ...(next.goal ? { goal: next.goal } : {}) } };
+  }
+  return { ok: false, reason: `move is one of ${CAMPAIGN_MOVES.join(', ')}` };
 };
 
 /** May a new campaign open beside these? One open campaign per name. pure. */

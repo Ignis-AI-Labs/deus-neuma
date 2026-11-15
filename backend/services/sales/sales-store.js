@@ -12,7 +12,7 @@ import { foldSegments, judgeState, judgeRefile } from './segment-shape.js';
 import { foldProspects, poolRefusal, listable } from './prospect-shape.js';
 import { foldSuppressions, suppressionMatcher } from './suppress-shape.js';
 import { foldSalesFacts, judgeSheetReview } from './sales-facts.js';
-import { foldCampaigns, openRefusal } from './campaign-shape.js';
+import { foldCampaigns, openRefusal, judgeMove } from './campaign-shape.js';
 
 const serialize = createWriteChain();
 const SEGMENTS = 'segments.jsonl';
@@ -177,14 +177,23 @@ export const openCampaign = (wallet, campaign) => serialize(async () => {
   return { ok: true, campaign };
 });
 
-/** Close a campaign: its audiences and their records stand; it takes no new audience. */
-export const closeCampaign = (wallet, id, by) => serialize(async () => {
-  const campaign = (await readCampaigns(wallet)).find((c) => c.id === id);
-  if (!campaign) return { ok: false, reason: 'no such campaign' };
-  if (campaign.state === 'closed') return { ok: false, reason: 'the campaign is already closed' };
-  await appendJsonLine(fileOf(wallet, CAMPAIGNS), { type: 'closed', id, by, at: new Date().toISOString() });
-  return { ok: true };
+/**
+ * Move a campaign: archive it (its audiences and records stand; it takes no
+ * new audience), reopen it, edit its name or goal, or delete one that holds
+ * no audience.
+ * @param {{move: string, name?: unknown, goal?: unknown, by: string}} change
+ */
+export const moveCampaign = (wallet, id, { move, name, goal, by }) => serialize(async () => {
+  const campaigns = await readCampaigns(wallet);
+  const audiences = (await readSegments(wallet)).filter((s) => s.campaign === id && s.state !== 'retired').length;
+  const judged = judgeMove(campaigns.find((c) => c.id === id), { move, name, goal, audiences, others: campaigns.filter((c) => c.id !== id), by, now: new Date().toISOString() });
+  if (!judged.ok) return judged;
+  await appendJsonLine(fileOf(wallet, CAMPAIGNS), judged.event);
+  return { ok: true, campaign: (await readCampaigns(wallet)).find((c) => c.id === id) ?? null };
 });
+
+/** Archive a campaign (kept for the callers that close one). */
+export const closeCampaign = (wallet, id, by) => moveCampaign(wallet, id, { move: 'archive', by });
 
 /** Put an audience under a campaign (null: under none). The campaign must be open and for the audience's own company. */
 export const setSegmentCampaign = (wallet, segmentId, campaignId, by) => serialize(async () => {

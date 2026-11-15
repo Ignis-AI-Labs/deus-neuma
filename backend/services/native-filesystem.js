@@ -116,7 +116,10 @@ const lineRange = (text, { offset, limit }) => {
   const from = Math.min(Math.max(1, Number.isInteger(offset) ? offset : 1), lines.length);
   const to = Number.isInteger(limit) && limit > 0 ? Math.min(lines.length, from + limit - 1) : lines.length;
   const more = to < lines.length ? `; continue at offset ${to + 1}` : '; end of file';
-  return `[lines ${from}–${to} of ${lines.length}${more}]\n${lines.slice(from - 1, to).join('\n')}`;
+  // only the being's own words survive a fold, so it is asked for them while the part is in front
+  // of it (deus-neuma #35: the ask worked at the end of the result, not in a digest read later)
+  const note = to < lines.length ? '\n[Before you read on: note in 2 to 6 lines, in your own words, what in this part matters. A fold keeps only your words and the position above.]' : '';
+  return `[lines ${from}–${to} of ${lines.length}${more}]\n${lines.slice(from - 1, to).join('\n')}${note}`;
 };
 
 const readMediaFile = async (args) => {

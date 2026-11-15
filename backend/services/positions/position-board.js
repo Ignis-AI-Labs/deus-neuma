@@ -25,6 +25,7 @@ import { cfoBriefingSection } from '../treasury/treasury-briefing.js';
 import { logistaBriefingSection } from '../accounts/accounts-briefing.js';
 import { POSITIONS, positionOf, officeOfWaiting, positionMapText } from './position-map.js';
 import { companyFiles, companiesText } from './company-file.js';
+import { houseCampaigns, linkedText } from './campaign-links.js';
 
 const SEATS = Object.freeze({
   cos: cosDesignation, cro: croDesignation, cmo: cmoDesignation, clo: cloDesignation,
@@ -85,7 +86,7 @@ export const positionEyes = async (wallet, office) => {
   const laneId = (await SEATS[office].getOfficer(wallet))?.laneId ?? null;
   if (!laneId) return null;
   const briefing = await BRIEFINGS[office]({ companion: { neumaId: laneId }, walletAddress: wallet });
-  return { laneId, text: [positionMapText([office]), companiesText(await companyFiles(wallet)), briefing].filter(Boolean).join('\n\n') };
+  return { laneId, text: [positionMapText([office]), companiesText(await companyFiles(wallet)), linkedText([office], await houseCampaigns(wallet)), briefing].filter(Boolean).join('\n\n') };
 };
 
 /**
@@ -98,7 +99,10 @@ export const positionSection = async (connection) => {
   const wallet = connection?.walletAddress;
   if (!laneId || !wallet) return '';
   const holders = await readHolders(wallet).catch(() => ({}));
-  const map = positionMapText(Object.keys(holders).filter((office) => holders[office] === laneId));
+  const held = Object.keys(holders).filter((office) => holders[office] === laneId);
+  const map = positionMapText(held);
   // A seat holder reads every company's file with its position: what is known, and what is missing.
-  return map ? [map, companiesText(await companyFiles(wallet).catch(() => []))].filter(Boolean).join('\n\n') : '';
+  if (!map) return '';
+  // …and, for each of its campaigns that works with another position's, that campaign as it stands now.
+  return [map, companiesText(await companyFiles(wallet).catch(() => [])), linkedText(held, await houseCampaigns(wallet).catch(() => []))].filter(Boolean).join('\n\n');
 };

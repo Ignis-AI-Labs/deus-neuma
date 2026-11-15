@@ -26,6 +26,7 @@ import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { listCompanies } from '../marketing/companies.js';
 import { salesGatherIntents } from './sales-gather-acts.js';
+import { campaignManageIntents } from './campaign-manage-acts.js';
 import { THREAD_REST_DAYS } from '../revenue/deal-shape.js';
 
 const BATCH_MAX = 10;
@@ -233,4 +234,4 @@ const salesFactsIntent = Object.freeze({
   },
 });
 
-export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents]);
+export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...campaignManageIntents]);

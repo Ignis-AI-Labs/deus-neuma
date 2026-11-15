@@ -24,6 +24,9 @@ import { readCandidates } from '../../backend/services/sales/sales-store.js';
 import { tokensOfPools, candidateOf, protocolsOnBase, peopleOfHunter, candidateLine, LEAD_SOURCES } from '../../backend/services/sales/lead-sources.js';
 import { getService } from '../../backend/services/provider-registry.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
+import { campaignStoreFor } from '../../backend/services/marketing/campaign-store.js';
+import { cmoDesignation } from '../../backend/services/marketing/cmo-designation.js';
+import { houseCampaigns } from '../../backend/services/positions/campaign-links.js';
 
 const { processToolCalls } = __test;
 const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_CONNECTIONS_PATH', 'NEUMA_LEAD_SOURCE_GECKO', 'NEUMA_LEAD_SOURCE_LLAMA', 'NEUMA_LEAD_SOURCE_HUNTER', 'HUNTER_API_KEY'].map((k) => [k, process.env[k]]));
@@ -189,6 +192,44 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(scored.status).toBe('ok');
     expect((await readCandidates(me.address)).find((c) => c.domain === 'limitless.exchange').state).toBe('scored');
     expect(await mercatorBriefingSection(conn('merc'))).toMatch(/waiting for your score \(2;/);
+  });
+
+  test('the sales seat manages its own campaigns: opens one, files an audience under it, edits, archives, reopens; deletes only an empty one', async () => {
+    expect(await act('scout', { type: 'sales/campaign', name: 'User acquisition', company: 'umbrae', goal: 'Teams with a token on Base opening a pool' })).toMatchObject({ status: 'denied' });
+    expect(await act('merc', { type: 'sales/campaign', name: 'User acquisition', company: 'nowhere', goal: 'Teams with a token on Base opening a pool' })).toMatchObject({ status: 'error', error: expect.stringMatching(/"nowhere" is not a company of this house/) });
+    const opened = await act('merc', { type: 'sales/campaign', name: 'User acquisition', company: 'umbrae', goal: 'Teams with a token on Base opening a pool' });
+    expect(opened.status).toBe('ok');
+    const id = /\[(k-[a-f0-9]{8})\]/.exec(opened.content)[1];
+    expect(await act('merc', { ...SEGMENT, id: await segmentId(), campaign: 'k-nope' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is not an open campaign for umbrae/) });
+    expect((await act('merc', { ...SEGMENT, id: await segmentId(), campaign: id })).status).toBe('ok');
+    const read = async () => (await request(app).get('/api/v1/revenue/lead-engine').use(as)).body.campaigns.find((c) => c.id === id);
+    expect(await read()).toMatchObject({ name: 'User acquisition', state: 'open', gathered: 3, scored: 1, audiences: [{ name: 'Base token teams' }] });
+    expect(await mercatorBriefingSection(conn('merc'))).toMatch(/Your campaigns \(sales\/campaign opens, edits, archives or deletes one/);
+    expect(await act('merc', { type: 'sales/campaign', id, move: 'delete' })).toMatchObject({ status: 'error', error: expect.stringMatching(/1 audience\(s\) still serve this campaign/) });
+    expect((await act('merc', { type: 'sales/campaign', id, move: 'edit', name: 'Base pools' })).status).toBe('ok');
+    expect((await act('merc', { type: 'sales/campaign', id, move: 'archive' })).content).toMatch(/it is archived/);
+    expect(await read()).toMatchObject({ name: 'Base pools', state: 'closed' });
+    expect((await act('merc', { type: 'sales/campaign', id, move: 'reopen' })).status).toBe('ok');
+    // An empty campaign goes; the operator has the same hands through the route.
+    const spare = /\[(k-[a-f0-9]{8})\]/.exec((await act('merc', { type: 'sales/campaign', name: 'Spare', company: 'umbrae', goal: 'Nothing serves this one yet' })).content)[1];
+    expect((await act('merc', { type: 'sales/campaign', id: spare, move: 'delete' })).content).toBe(`Campaign [${spare}] is deleted.`);
+    expect((await request(app).post(`/api/v1/revenue/lead-engine/campaigns/${id}`).use(as).send({ move: 'edit', goal: 'Base token teams opening a pool on Umbrae' })).body.campaign.goal).toBe('Base token teams opening a pool on Umbrae');
+    expect((await request(app).post(`/api/v1/revenue/lead-engine/campaigns/${id}`).send({ move: 'archive' })).status).toBe(401);
+  });
+
+  test('a seat links its own campaign with another position\'s; a member with no campaign seat cannot, and nobody links a campaign that is not theirs', async () => {
+    const bench = await campaignStoreFor(me.address);
+    const made = await bench.add({ name: 'Umbrae Market Depth', company: 'umbrae', angles: ['Depth'] });
+    const theirs = `cmo:${(made.campaign ?? made).id}`;
+    const mine = (await houseCampaigns(me.address)).find((c) => c.office === 'cro').key;
+    expect(await act('scout', { type: 'campaigns/link', mine, with: theirs })).toMatchObject({ status: 'denied', error: expect.stringMatching(/only a member who holds a position that runs campaigns/) });
+    expect(await act('merc', { type: 'campaigns/link', mine: theirs, with: mine })).toMatchObject({ status: 'error', error: expect.stringMatching(/mine: a campaign of a position you hold \(cro\)/) });
+    expect((await act('merc', { type: 'campaigns/link', mine, with: theirs, note: 'the same launch week' })).status).toBe('ok');
+    expect((await houseCampaigns(me.address)).find((c) => c.key === mine).links).toMatchObject([{ key: theirs, note: 'the same launch week' }]);
+    // Marketing's holder, once seated, can take the link away from its own side.
+    await cmoDesignation.designate(me.address, 'scout');
+    expect((await act('scout', { type: 'campaigns/link', mine: theirs, with: mine, unlink: true })).status).toBe('ok');
+    expect((await houseCampaigns(me.address)).every((c) => c.links.length === 0)).toBe(true);
   });
 
   test('people come only from the operator\'s own key; without one the seat is sent to the company\'s pages; an address with no page is never offered', async () => {

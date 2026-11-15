@@ -17,6 +17,7 @@ import { sttReadiness, transcribeWav, usesManagedStt } from '../managed-stt.js';
 import { HOLD_KEYS, parseKeyboards, parseKeyEvents } from './input-events.js';
 import { HOLD_MS, IDLE, holdStep } from './hold-machine.js';
 import { MIN_SPEECH_BYTES, RECORDERS, pcmToWav } from './audio.js';
+import { withoutSpeechArtifacts } from '../../../core/text/speech-artifacts.js';
 
 const log = createLogger('SystemDictation');
 const DEFAULTS = Object.freeze({ on: false, key: 'rightctrl' });
@@ -118,7 +119,8 @@ const finishRecording = async (run) => {
   const pcm = Buffer.concat(rec.chunks);
   if (pcm.length < MIN_SPEECH_BYTES) return;
   try {
-    const { text } = await transcribeWav(pcmToWav(pcm));
+    // a line Whisper wrote over silence is never typed (core/text/speech-artifacts.js)
+    const text = withoutSpeechArtifacts((await transcribeWav(pcmToWav(pcm))).text);
     // one hold's words after the last's, never interleaved, with ears' trailing space
     if (text) run.typing = run.typing.then(() => typeText(`${text} `));
   } catch (err) {

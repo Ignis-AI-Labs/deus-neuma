@@ -10,7 +10,7 @@
  */
 
 import express from 'express';
-import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, readCandidates, readCampaigns, openCampaign, closeCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
+import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, readCandidates, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
 import { makeCampaign, campaignBoard } from '../services/sales/campaign-shape.js';
@@ -105,6 +105,19 @@ router.post('/campaigns/:id/close', async (req, res) => {
   } catch (error) {
     log.error('Campaign close failed', { error: error.message });
     return res.status(500).json({ error: 'Could not close the campaign' });
+  }
+});
+
+// The operator archives, reopens, edits or deletes a campaign: {move, name?, goal?}.
+router.post('/campaigns/:id', async (req, res) => {
+  try {
+    const moved = await moveCampaign(req.walletAddress, req.params.id, { move: String(req.body?.move ?? ''), name: req.body?.name, goal: req.body?.goal, by: 'operator' });
+    if (!moved.ok) return res.status(moved.reason === 'no such campaign' ? 404 : 409).json({ error: moved.reason });
+    log.info('Sales campaign moved by the operator', { id: req.params.id, move: req.body?.move });
+    return res.json(moved);
+  } catch (error) {
+    log.error('Campaign move failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not change the campaign' });
   }
 });
 

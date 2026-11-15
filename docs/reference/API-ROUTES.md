@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-698 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+702 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
 
 ## /api/v1/accounts
 
@@ -605,6 +605,9 @@
 | --- | --- | --- |
 | GET | `/api/v1/positions` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/positions/:office/eyes` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/positions/campaigns` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/positions/campaigns/link` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/positions/campaigns/unlink` | `mapLaneQueryToken`, `requireAuth` |
 
 ## /api/v1/preflight
 
@@ -680,6 +683,7 @@
 | PUT | `/api/v1/revenue/delivery-destination` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/revenue/lead-engine` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/campaigns` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/campaigns/:id` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/campaigns/:id/close` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/facts/:sheetId` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `mapLaneQueryToken`, `requireAuth` |
@@ -743,9 +747,9 @@
 | Method | Path | Guards |
 | --- | --- | --- |
 | GET | `/api/v1/social-channels` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/social-channels/:channel(youtube|tiktok)/connect` | `mapLaneQueryToken` |
-| GET | `/api/v1/social-channels/:channel(youtube|tiktok)/connect` | `mapLaneQueryToken` |
-| POST | `/api/v1/social-channels/:channel(youtube|tiktok)/connect` | `mapLaneQueryToken` |
+| DELETE | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | `mapLaneQueryToken` |
+| GET | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | `mapLaneQueryToken` |
+| POST | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | `mapLaneQueryToken` |
 | DELETE | `/api/v1/social-channels/:channelId/binding` | `mapLaneQueryToken`, `requireAuth` |
 | PUT | `/api/v1/social-channels/:channelId/binding` | `mapLaneQueryToken`, `requireAuth` |
 | DELETE | `/api/v1/social-channels/:channelId/credentials` | `mapLaneQueryToken`, `requireAuth` |

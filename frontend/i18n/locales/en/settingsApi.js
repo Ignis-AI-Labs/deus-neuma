@@ -39,6 +39,8 @@ export default Object.freeze({
       failed: 'The connect did not finish.',
       tiktokWaiting: 'Finish the TikTok sign-in in your browser…',
       tiktokNeedClient: 'Save the TikTok client key and secret first, then CONNECT.',
+      linkedinWaiting: "Finish the LinkedIn sign-in in your browser…",
+      linkedinNeedClient: "Save your LinkedIn app's client ID and secret first, then CONNECT.",
     }),
   }),
 

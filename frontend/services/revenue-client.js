@@ -37,8 +37,8 @@ export const reviewSalesFacts = (sheetId, verdict, note) => revenueCall('POST', 
 /** Open a sales campaign: a name, the company it is for, what it is meant to bring in. impure. */
 export const openSalesCampaign = (campaign) => revenueCall('POST', '/lead-engine/campaigns', { body: campaign, errorPrefix: 'Could not open the campaign' });
 
-/** Close a sales campaign; its audiences and records stand. impure. @param {string} id */
-export const closeSalesCampaign = (id) => revenueCall('POST', `/lead-engine/campaigns/${encodeURIComponent(id)}/close`, { errorPrefix: 'Could not close the campaign' });
+/** Move a sales campaign: archive, reopen, edit (name, goal) or delete. impure. @param {string} id @param {{move: string, name?: string, goal?: string}} change */
+export const moveSalesCampaign = (id, change) => revenueCall('POST', `/lead-engine/campaigns/${encodeURIComponent(id)}`, { body: change, errorPrefix: 'Could not change the campaign' });
 
 /** Put an audience under a campaign (null: under none). impure. */
 export const setAudienceCampaign = (segmentId, campaignId) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(segmentId)}/campaign`, { body: { campaign: campaignId }, errorPrefix: 'Could not move the audience' });

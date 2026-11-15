@@ -18,6 +18,7 @@ import { resolveServe } from '../voice/engine-manager.js';
 import { probeHealth } from '../voice/engine-process.js';
 import { linesIn, paragraphs, parseCaptions } from './watch-plan.js';
 import { pcmSlice, pcmWindow, wavOf } from './watch-media.js';
+import { withoutSpeechArtifacts } from '../../../core/text/speech-artifacts.js';
 
 const log = createLogger('WatchHear');
 /** One piece of a recording heard in one go. */
@@ -67,14 +68,15 @@ const hearPiece = async (file, from, to) => {
     const processor = route === 'processor';
     await readySpeech(processor);
     const heard = await transcribeWav(wavOf(pcm), { processor });
-    if (heard.segments?.length) return heard.segments.map((s) => ({ at: from + s.start, text: s.text })).filter((l) => l.text);
-    return heard.text ? [{ at: from, text: heard.text }] : [];
+    if (heard.segments?.length) return heard.segments.map((s) => ({ at: from + s.start, text: withoutSpeechArtifacts(s.text) })).filter((l) => l.text);
+    const said = withoutSpeechArtifacts(heard.text);
+    return said ? [{ at: from, text: said }] : [];
   }
   const lines = [];
   for (let t = from; t < to; t += SIDECAR_STEP_S) {
     const step = pcmSlice(pcm, from, t, Math.min(to, t + SIDECAR_STEP_S));
     if (step.length < 3200) continue;
-    const { text } = await transcribeRecording(wavOf(step), 'audio/wav');
+    const text = withoutSpeechArtifacts((await transcribeRecording(wavOf(step), 'audio/wav')).text);
     if (text) lines.push({ at: t, text });
   }
   return lines;

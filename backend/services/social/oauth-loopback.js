@@ -34,7 +34,7 @@ const page = (message) => `<!doctype html><html><head><meta charset="utf-8"><tit
  *   done: Promise<{ok: true, tokens: object}|{ok: false, detail: string}>,
  *   cancel: () => void}>}
  */
-export const openOAuthLoopback = async ({ platform, callbackPath = '', mint, buildAuthUrl, exchange, timeoutMs = CONSENT_TIMEOUT_MS }) => {
+export const openOAuthLoopback = async ({ platform, callbackPath = '', port = 0, mint, buildAuthUrl, exchange, timeoutMs = CONSENT_TIMEOUT_MS }) => {
   const pkce = mint();
   let settle;
   const answered = new Promise((resolve) => { settle = resolve; });
@@ -66,7 +66,9 @@ export const openOAuthLoopback = async ({ platform, callbackPath = '', mint, bui
   });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
+    // port 0: any free port (a platform that accepts any loopback port). A platform that matches the
+    // redirect address exactly names its one port; when that port is taken the consent cannot open.
+    server.listen(port, '127.0.0.1', resolve);
   });
   const redirectUri = `http://127.0.0.1:${server.address().port}${callbackPath}`;
   const timer = setTimeout(() => settle({ ok: false, detail: 'the sign-in was not finished within five minutes; start CONNECT again' }), timeoutMs);

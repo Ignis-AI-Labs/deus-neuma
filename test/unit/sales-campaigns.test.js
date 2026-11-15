@@ -4,7 +4,7 @@
  * and how the CAMPAIGNS tab words them.
  */
 import { describe, test, expect } from 'vitest';
-import { makeCampaign, foldCampaigns, openRefusal, campaignBoard, campaignLine } from '../../backend/services/sales/campaign-shape.js';
+import { makeCampaign, foldCampaigns, openRefusal, judgeMove, campaignBoard, campaignLine } from '../../backend/services/sales/campaign-shape.js';
 import { makeSegment, foldSegments } from '../../backend/services/sales/segment-shape.js';
 import { funnelOf, channelWords } from '../../frontend/app/RelinkShell/company-line/sales-campaign-view.js';
 
@@ -27,6 +27,27 @@ describe('a sales campaign', () => {
     const closed = foldCampaigns([...events, { type: 'closed', id: a.id, by: 'operator', at: NOW }, { type: 'closed', id: 'k-nope', at: NOW }]);
     expect(closed).toMatchObject([{ state: 'closed', closedAt: NOW }]);
     expect(openRefusal({ name: 'Funding' }, closed)).toBe(null);
+  });
+
+  test('a campaign is archived, reopened, edited, and deleted only when no audience serves it', () => {
+    const c = { id: 'k-1', name: 'Funding', company: 'umbrae', goal: 'Funds that back DeFi on Base', state: 'open' };
+    const m = (move, extra = {}) => judgeMove(extra.campaign ?? c, { move, audiences: 0, others: [], by: 'merc', now: NOW, ...extra });
+    expect(m('archive')).toEqual({ ok: true, event: { type: 'closed', id: 'k-1', by: 'merc', at: NOW } });
+    expect(m('archive', { campaign: { ...c, state: 'closed' } })).toEqual({ ok: false, reason: 'the campaign is already archived' });
+    expect(m('reopen', { campaign: { ...c, state: 'closed' } }).event.type).toBe('reopened');
+    expect(m('reopen', { campaign: { ...c, state: 'closed' }, others: [{ name: 'funding', state: 'open' }] }).reason).toMatch(/already open/);
+    expect(m('edit', { name: ' Seed  round ', goal: '' }).event).toEqual({ type: 'updated', id: 'k-1', by: 'merc', at: NOW, name: 'Seed round' });
+    expect(m('edit', {}).reason).toBe('edit names a new name, a new goal, or both');
+    expect(m('edit', { goal: 'short' }).reason).toMatch(/^goal:/);
+    expect(m('delete', { audiences: 2 }).reason).toMatch(/2 audience\(s\) still serve this campaign — move them to another campaign or archive it instead/);
+    expect(m('delete').event.type).toBe('deleted');
+    expect(m('explode').reason).toBe('move is one of archive, reopen, delete, edit');
+    expect(judgeMove(undefined, { move: 'archive' }).reason).toBe('no such campaign');
+    // The log folds them: edited, archived, reopened, then gone.
+    const opened = { type: 'opened', campaign: c, at: NOW };
+    expect(foldCampaigns([opened, m('edit', { name: 'Seed round' }).event, m('archive').event])[0]).toMatchObject({ name: 'Seed round', state: 'closed' });
+    expect(foldCampaigns([opened, m('archive').event, { type: 'reopened', id: 'k-1' }])[0].state).toBe('open');
+    expect(foldCampaigns([opened, m('delete').event])).toEqual([]);
   });
 
   test('an audience serves one campaign; moving it never sends an approved pitch back for approval; refiling keeps it', () => {

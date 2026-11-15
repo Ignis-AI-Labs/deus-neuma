@@ -63,7 +63,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     HOW,
     FIRST_EMAIL,
     ...factLines(facts),
-    ...(board.campaigns.length ? ['Campaigns the operator opened (file each audience under the one it serves, campaign: its id):', ...board.campaigns.map(campaignLine), ...(board.loose.length ? [`Audiences under no campaign: ${board.loose.map((s) => s.name).join('; ')}`] : [])] : []),
+    ...(board.campaigns.length ? ['Your campaigns (sales/campaign opens, edits, archives or deletes one; file each audience under the one it serves, campaign: its id; campaigns/link ties one to a marketing campaign):', ...board.campaigns.map(campaignLine), ...(board.loose.length ? [`Audiences under no campaign: ${board.loose.map((s) => s.name).join('; ')}`] : [])] : ['No campaign is open: open one with sales/campaign (name, company, goal) before filing audiences, so each push is counted on its own.']),
     ...(segments.length ? ['Segments:', ...segmentLines(segments, prospects)] : ['No segments yet: start by filing the first one.']),
     ...(waiting.length ? [`Candidates gathered, waiting for your score (${waiting.length}; sales/prospect for the ones that fit, sales/contacts for their people):`, ...waiting.slice(0, LIST_CAP).map((c) => `- [${c.id}] ${candidateLine(c)}`)] : []),
     ...(ready.length ? ['Ready for the ledger (approved segment, not yet contacted):', ...ready.map((p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]}, ${p.people.length} person(s) read`)] : []),
