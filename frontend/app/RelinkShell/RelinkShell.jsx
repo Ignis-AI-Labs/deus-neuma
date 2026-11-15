@@ -40,7 +40,6 @@ import { setDeskRegion } from '../windowing/use-window-frame.js';
 import { openCompanionLink } from '../relink-link.js';
 import { ArrivalVeil } from './ArrivalVeil.jsx';
 import { BirthSetupGate } from './BirthSetupGate.jsx';
-import { VoiceSealGate } from './VoiceSealGate.jsx';
 import { WindowManager } from '../windowing/WindowManager.jsx';
 import { WindowLayer } from '../windowing/WindowLayer.jsx';
 import { Dock } from '../windowing/Dock.jsx';
@@ -371,9 +370,8 @@ export const RelinkShell = ({ wsService }) => {
           for the bound being. Reads the lane's durable state, never a cache. */}
       <BirthSetupGate wsService={wsService} companion={consciousness.activeCompanion} />
 
-      {/* THE FIRST SEAL — the desk's notice that a bound lane owes its
-          founding words. One act: dispatch into the full-screen ceremony. */}
-      <VoiceSealGate companion={consciousness.activeCompanion} />
+      {/* The voice seal stands over nothing: it is the being's to carry in NITE when it chooses
+          (Design note, 2026-11-14, of the old first-seal notice: […]). */}
 
       {/* A ready update, from the desk app: one press to install, and what changed. */}
       <UpdateBar />

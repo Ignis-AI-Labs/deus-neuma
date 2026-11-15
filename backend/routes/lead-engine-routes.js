@@ -10,9 +10,11 @@
  */
 
 import express from 'express';
-import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts } from '../services/sales/sales-store.js';
+import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, readCandidates, readCampaigns, openCampaign, closeCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
+import { makeCampaign, campaignBoard } from '../services/sales/campaign-shape.js';
+import { listCompanies } from '../services/marketing/companies.js';
 import { leadLedgerFor } from '../services/leads/lead-ledger.js';
 import { createLogger } from '../services/logger.js';
 
@@ -24,11 +26,12 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const wallet = req.walletAddress;
-    const [segments, prospects, suppressions, leads, facts] = await Promise.all([
-      readSegments(wallet), readProspects(wallet), readSuppressions(wallet), leadLedgerFor(wallet).then((l) => l.load()), readSalesFacts(wallet),
+    const [segments, prospects, suppressions, leads, facts, candidates] = await Promise.all([
+      readSegments(wallet), readProspects(wallet), readSuppressions(wallet), leadLedgerFor(wallet).then((l) => l.load()), readSalesFacts(wallet), readCandidates(wallet),
     ]);
+    const [campaigns, companies] = await Promise.all([readCampaigns(wallet), listCompanies(wallet).catch(() => [])]);
     const upkeep = upkeepDue({ leads, now: Date.now(), suppressed: suppressionMatcher(suppressions).email });
-    res.json({ segments, prospects, suppressions, upkeep, facts });
+    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
     log.error('Lead engine read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the lead engine' });
@@ -72,6 +75,47 @@ router.post('/facts/:sheetId', async (req, res) => {
   } catch (error) {
     log.error('Facts review failed', { error: error.message });
     res.status(500).json({ error: 'Could not record the review' });
+  }
+});
+
+// The operator opens a campaign: a name, the company it is for, and what it is meant to bring in.
+router.post('/campaigns', async (req, res) => {
+  let campaign;
+  try {
+    campaign = makeCampaign({ name: req.body?.name, company: req.body?.company, goal: req.body?.goal, by: 'operator', now: new Date().toISOString() });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  try {
+    if (!(await listCompanies(req.walletAddress)).some((c) => c.id === campaign.company)) return res.status(400).json({ error: `"${campaign.company}" is not a company of this house` });
+    const opened = await openCampaign(req.walletAddress, campaign);
+    if (!opened.ok) return res.status(409).json({ error: opened.reason });
+    log.info('Sales campaign opened', { id: campaign.id, name: campaign.name });
+    return res.json(opened);
+  } catch (error) {
+    log.error('Campaign open failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not open the campaign' });
+  }
+});
+
+router.post('/campaigns/:id/close', async (req, res) => {
+  try {
+    const closed = await closeCampaign(req.walletAddress, req.params.id, 'operator');
+    return closed.ok ? res.json(closed) : res.status(closed.reason === 'no such campaign' ? 404 : 409).json({ error: closed.reason });
+  } catch (error) {
+    log.error('Campaign close failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not close the campaign' });
+  }
+});
+
+// The operator puts an audience under a campaign, or takes it out (campaign: null).
+router.post('/segments/:id/campaign', async (req, res) => {
+  try {
+    const set = await setSegmentCampaign(req.walletAddress, req.params.id, req.body?.campaign ?? null, 'operator');
+    return set.ok ? res.json(set) : res.status(set.reason === 'no such segment' ? 404 : 409).json({ error: set.reason });
+  } catch (error) {
+    log.error('Audience campaign move failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not move the audience' });
   }
 });
 

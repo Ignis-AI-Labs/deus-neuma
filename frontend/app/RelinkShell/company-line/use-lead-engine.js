@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
-import { getLeadEngine, setSegmentState, suppressContact, approveSegmentList, reviewSalesFacts } from '../../../services/revenue-client.js';
+import { getLeadEngine, setSegmentState, suppressContact, approveSegmentList, reviewSalesFacts, openSalesCampaign, closeSalesCampaign, setAudienceCampaign } from '../../../services/revenue-client.js';
 
 export const useLeadEngine = () => {
   const [engine, setEngine] = useState(null);
@@ -45,6 +45,9 @@ export const useLeadEngine = () => {
     moveSegment: (segment, state) => press(() => setSegmentState(segment.id, state), `"${segment.name}" is ${state}.`),
     approveList: (segment, count) => press(() => approveSegmentList(segment.id), `${count} compan${count === 1 ? 'y' : 'ies'} on "${segment.name}" approved for outreach.`),
     reviewFacts: (sheet, verdict, note) => press(() => reviewSalesFacts(sheet.id, verdict, note), verdict === 'approved' ? 'The facts sheet is approved: emails to leads may now go, checked against it.' : 'The facts sheet went back to the Mercator.'),
+    openCampaign: (draft) => press(() => openSalesCampaign({ name: draft.name.trim(), company: draft.company, goal: draft.goal.trim() }), `"${draft.name.trim()}" is open.`),
+    closeCampaign: (campaign) => press(() => closeSalesCampaign(campaign.id), `"${campaign.name}" is closed.`),
+    putAudience: (segment, campaign) => press(() => setAudienceCampaign(segment.id, campaign.id), `"${segment.name}" now serves "${campaign.name}".`),
     suppress: (target, reason) => press(() => suppressContact(target.trim(), reason), `${target.trim()} is on the do-not-contact list.`),
   };
 };

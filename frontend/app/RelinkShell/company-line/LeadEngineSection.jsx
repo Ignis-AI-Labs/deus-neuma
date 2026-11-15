@@ -77,6 +77,7 @@ export const LeadEngineSection = () => {
   const [reason, setReason] = useState('asked');
   const rows = segmentRows(engine);
   const due = engine?.upkeep ?? [];
+  const waiting = (engine?.candidates ?? []).filter((c) => c.state === 'waiting').length;
   const okTarget = suppressTargetOk(target);
   return (
     <section className="cline-sec" aria-label="lead engine" data-lead-engine="">
@@ -92,6 +93,7 @@ export const LeadEngineSection = () => {
           {rows.length === 0
             ? <EmptyState title="NO AUDIENCE YET" />
             : <ul className="cline-ws-src" aria-label="audiences">{rows.map((r) => <Segment key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} />)}</ul>}
+          <p className="cline-move-t" data-candidates="">GATHERED FROM LEAD SOURCES: {(engine?.candidates ?? []).length} — {waiting} WAITING FOR THE SALES SEAT TO SCORE</p>
           <p className="cline-h label-data">LEAD LIST UPKEEP · {due.length ? `${due.length} DUE` : 'NOTHING DUE'}</p>
           {due.length ? (
             <ul className="cline-ws-src" aria-label="lead list upkeep">

@@ -33,3 +33,12 @@ export const approveSegmentList = (id) => revenueCall('POST', `/lead-engine/segm
 
 /** Approve or return the Mercator's latest sales facts sheet. impure. @param {string} sheetId @param {'approved'|'returned'} verdict @param {string} [note] */
 export const reviewSalesFacts = (sheetId, verdict, note) => revenueCall('POST', `/lead-engine/facts/${encodeURIComponent(sheetId)}`, { body: { verdict, note }, errorPrefix: 'Could not record the review' });
+
+/** Open a sales campaign: a name, the company it is for, what it is meant to bring in. impure. */
+export const openSalesCampaign = (campaign) => revenueCall('POST', '/lead-engine/campaigns', { body: campaign, errorPrefix: 'Could not open the campaign' });
+
+/** Close a sales campaign; its audiences and records stand. impure. @param {string} id */
+export const closeSalesCampaign = (id) => revenueCall('POST', `/lead-engine/campaigns/${encodeURIComponent(id)}/close`, { errorPrefix: 'Could not close the campaign' });
+
+/** Put an audience under a campaign (null: under none). impure. */
+export const setAudienceCampaign = (segmentId, campaignId) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(segmentId)}/campaign`, { body: { campaign: campaignId }, errorPrefix: 'Could not move the audience' });

@@ -12,6 +12,7 @@ import { foldSegments, judgeState, judgeRefile } from './segment-shape.js';
 import { foldProspects, poolRefusal, listable } from './prospect-shape.js';
 import { foldSuppressions, suppressionMatcher } from './suppress-shape.js';
 import { foldSalesFacts, judgeSheetReview } from './sales-facts.js';
+import { foldCampaigns, openRefusal } from './campaign-shape.js';
 
 const serialize = createWriteChain();
 const SEGMENTS = 'segments.jsonl';
@@ -19,6 +20,8 @@ const PROSPECTS = 'prospects.jsonl';
 const SUPPRESS = 'suppress.jsonl';
 const SENDERS = 'senders.jsonl';
 const FACTS = 'sales-facts.jsonl';
+const CANDIDATES = 'candidates.jsonl';
+const CAMPAIGNS = 'campaigns.jsonl';
 const fileOf = (wallet, name) => officeFile(wallet, 'revenue', name);
 const events = async (wallet, name) => (await readJsonLines(fileOf(wallet, name))).records;
 
@@ -124,5 +127,74 @@ export const reviewSalesFacts = (wallet, review) => serialize(async () => {
   const judged = judgeSheetReview(await readSalesFacts(wallet), { ...review, now: new Date().toISOString() });
   if (!judged.ok) return judged;
   await appendJsonLine(fileOf(wallet, FACTS), judged.event);
+  return { ok: true };
+});
+
+// ── CANDIDATES — companies gathered in bulk from a lead source (lead-sources.js),
+// waiting for the seat to score them. A candidate whose company reached the
+// prospect pool is SCORED; nothing else moves it.
+
+/** Every candidate, oldest first, each `waiting` or `scored`. */
+export const readCandidates = async (wallet) => {
+  const scored = new Set((await readProspects(wallet)).map((p) => p.domain));
+  return (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'gathered' && e.candidate?.domain)
+    .map((e) => ({ ...e.candidate, id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' }));
+};
+
+/**
+ * Add gathered candidates for a segment; a company already gathered, pooled
+ * or on the do-not-contact list is left out.
+ * @returns {Promise<object[]>} the ones added
+ */
+export const addCandidates = (wallet, segmentId, rows, by) => serialize(async () => {
+  const have = new Set([...(await readCandidates(wallet)).map((c) => c.domain), ...(await readProspects(wallet)).map((p) => p.domain)]);
+  const blocked = suppressionMatcher(await readSuppressions(wallet));
+  const added = [];
+  for (const candidate of rows) {
+    if (have.has(candidate.domain) || blocked.domain(candidate.domain)) continue;
+    have.add(candidate.domain);
+    const event = { type: 'gathered', id: `c-${Date.now().toString(36)}${added.length.toString(36)}`, segmentId, candidate, by, at: new Date().toISOString() };
+    await appendJsonLine(fileOf(wallet, CANDIDATES), event);
+    added.push({ ...candidate, id: event.id });
+  }
+  return added;
+});
+
+/** Keep what a contact-data provider returned for a company (the people, each with the page its address was found on). */
+export const noteContacts = (wallet, domain, source, people, by) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain, source, people, by, at: new Date().toISOString() }));
+
+// ── CAMPAIGNS — the operator's pushes, each holding the audiences that serve it (campaign-shape.js).
+
+/** The house's sales campaigns, oldest first. */
+export const readCampaigns = async (wallet) => foldCampaigns(await events(wallet, CAMPAIGNS));
+
+/** Open a campaign. @returns {Promise<{ok: true, campaign: object} | {ok: false, reason: string}>} */
+export const openCampaign = (wallet, campaign) => serialize(async () => {
+  const reason = openRefusal(campaign, await readCampaigns(wallet));
+  if (reason) return { ok: false, reason };
+  await appendJsonLine(fileOf(wallet, CAMPAIGNS), { type: 'opened', campaign, at: campaign.openedAt });
+  return { ok: true, campaign };
+});
+
+/** Close a campaign: its audiences and their records stand; it takes no new audience. */
+export const closeCampaign = (wallet, id, by) => serialize(async () => {
+  const campaign = (await readCampaigns(wallet)).find((c) => c.id === id);
+  if (!campaign) return { ok: false, reason: 'no such campaign' };
+  if (campaign.state === 'closed') return { ok: false, reason: 'the campaign is already closed' };
+  await appendJsonLine(fileOf(wallet, CAMPAIGNS), { type: 'closed', id, by, at: new Date().toISOString() });
+  return { ok: true };
+});
+
+/** Put an audience under a campaign (null: under none). The campaign must be open and for the audience's own company. */
+export const setSegmentCampaign = (wallet, segmentId, campaignId, by) => serialize(async () => {
+  const segment = (await readSegments(wallet)).find((s) => s.id === segmentId);
+  if (!segment) return { ok: false, reason: 'no such segment' };
+  if (campaignId) {
+    const campaign = (await readCampaigns(wallet)).find((c) => c.id === campaignId);
+    if (!campaign || campaign.state !== 'open') return { ok: false, reason: 'no such open campaign' };
+    if (campaign.company !== segment.company) return { ok: false, reason: `"${campaign.name}" is a campaign for ${campaign.company}, and this audience sells ${segment.company}` };
+  }
+  await appendJsonLine(fileOf(wallet, SEGMENTS), { type: 'campaign', id: segmentId, campaign: campaignId || null, by, at: new Date().toISOString() });
   return { ok: true };
 });

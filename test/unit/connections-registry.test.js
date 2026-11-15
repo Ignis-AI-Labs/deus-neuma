@@ -14,7 +14,7 @@ afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 describe('the list', () => {
   test('the four that run by themselves are switched, and every one starts off', () => {
-    expect(SWITCHED).toEqual(['update-check', 'security-watch', 'platform-data', 'umbrae-liquidity', 'market-data', 'swap-aggregator', 'mail-watch', 'sanctions-list', 'chat-bridge', 'webhooks']);
+    expect(SWITCHED).toEqual(['update-check', 'security-watch', 'platform-data', 'umbrae-liquidity', 'market-data', 'swap-aggregator', 'mail-watch', 'lead-sources', 'sanctions-list', 'chat-bridge', 'webhooks']);
     for (const id of SWITCHED) expect(CONNECTIONS.find((c) => c.id === id).default).toBe(false);
   });
 

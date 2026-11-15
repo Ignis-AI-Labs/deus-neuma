@@ -76,8 +76,8 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     const { positions } = await board();
     const sales = positions.find((p) => p.office === 'cro');
     expect(sales.holder.laneId).toBe('merc');
-    expect(sales.functions.map((f) => f.id)).toEqual(['leads', 'deals', 'mailbox']);
-    expect(sales.connections).toMatchObject([{ id: 'mail-watch', name: 'House mailbox watch', on: false }]);
+    expect(sales.functions.map((f) => f.id)).toEqual(['campaigns', 'leads', 'deals', 'mailbox']);
+    expect(sales.connections).toMatchObject([{ id: 'mail-watch', name: 'House mailbox watch', on: false }, { id: 'lead-sources', name: 'Lead sources', on: false }]);
     expect(positions.find((p) => p.office === 'cao').holder.laneId).toBe('books');
     expect(positions.find((p) => p.office === 'cmo').holder).toBe(null);
   });

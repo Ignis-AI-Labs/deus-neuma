@@ -10,6 +10,7 @@ import { legalApp } from '../LegalApp.jsx';
 import { securityApp } from '../SecurityApp.jsx';
 import { treasuryApp } from '../TreasuryApp.jsx';
 import { LeadEngineSection } from '../company-line/LeadEngineSection.jsx';
+import { SalesCampaigns } from '../company-line/SalesCampaigns.jsx';
 import { SalesSection } from '../company-line/SalesSection.jsx';
 import { BooksSection } from '../company-line/BooksSection.jsx';
 import { EmailSection } from '../EmailSection.jsx';
@@ -84,6 +85,7 @@ const door = (app) => ({ fn }) => <Door app={app} label={fn.label} what={fn.what
 
 const PANELS = Object.freeze({
   'cos.staff': body(staffApp), 'cos.clock': door('houseclock'),
+  'cro.campaigns': () => <div className="cline"><SalesCampaigns /></div>,
   'cro.leads': () => <div className="cline"><LeadEngineSection /></div>, 'cro.deals': Deals, 'cro.mailbox': Mailbox,
   'cmo.marketing': door(MARKETING_WINDOW), 'cmo.gallery': door('gallery'),
   'clo.legal': body(legalApp), 'cso.security': body(securityApp),

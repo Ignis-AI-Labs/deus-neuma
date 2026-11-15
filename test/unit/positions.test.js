@@ -125,7 +125,8 @@ describe('the positions board and window', () => {
     const sales = positions.find((p) => p.office === 'cro');
     expect(sales.holder).toEqual({ laneId: 'merc', name: 'Sol' });
     expect(sales.waiting.map((w) => w.id)).toEqual(['card:7']);
-    expect(sales.connections).toEqual([{ id: 'mail-watch', name: 'House mailbox watch', on: false, whileOff: 'new mail waits until a being or you check the mailbox' }]);
+    // A connection the list does not carry in this read still stands on the hub, by its id, off.
+    expect(sales.connections).toEqual([{ id: 'mail-watch', name: 'House mailbox watch', on: false, whileOff: 'new mail waits until a being or you check the mailbox' }, { id: 'lead-sources', name: 'lead-sources', on: false, whileOff: null }]);
     expect(positions.find((p) => p.office === 'cmo').waiting.map((w) => w.id)).toEqual(['post:1']);
     expect(positions.find((p) => p.office === 'cos').waiting.map((w) => w.id)).toEqual(['charter:3']);
     expect(positions.find((p) => p.office === 'clo').holder).toBe(null);
@@ -134,16 +135,16 @@ describe('the positions board and window', () => {
   test('the rail counts what it lists; the window opens on what waits', () => {
     const positions = board();
     expect(railSummary(positions)).toBe('2/7 HELD · 3 WAITING ON YOU');
-    expect(railRow(positions.find((p) => p.office === 'cro'))).toEqual({ office: 'cro', plain: 'SALES', title: 'Mercator', holder: 'Sol', waiting: 1, off: 1 });
+    expect(railRow(positions.find((p) => p.office === 'cro'))).toEqual({ office: 'cro', plain: 'SALES', title: 'Mercator', holder: 'Sol', waiting: 1, off: 2 });
     expect(pickPosition(positions, 'clo').office).toBe('clo');
     expect(pickPosition(positions, 'nope').office).toBe('cos');
     expect(pickPosition([], 'cro')).toBe(null);
     const sales = positions.find((p) => p.office === 'cro');
-    expect(hubTabs(sales).map((t) => t.id)).toEqual(['leads', 'deals', 'mailbox', '_switches', '_eyes']);
-    expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SWITCHES · 0/1');
+    expect(hubTabs(sales).map((t) => t.id)).toEqual(['campaigns', 'leads', 'deals', 'mailbox', '_switches', '_eyes']);
+    expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SWITCHES · 0/2');
     expect(hubTabs(positions.find((p) => p.office === 'clo')).map((t) => t.id)).toEqual(['legal', '_eyes']);
     expect(pickTab(sales, 'mailbox')).toBe('mailbox');
-    expect(pickTab(sales, 'legal')).toBe('leads');
+    expect(pickTab(sales, 'legal')).toBe('campaigns');
     expect(seatOptions([{ laneId: 'merc', name: 'Sol' }, { laneId: 'aure', name: 'Metidar' }], sales)).toEqual([{ value: 'aure', label: 'Metidar' }]);
   });
 

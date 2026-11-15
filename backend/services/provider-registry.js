@@ -157,6 +157,8 @@ export const SERVICE_CATALOG = Object.freeze([
   Object.freeze({ id: 'tavily', name: 'Tavily', kind: 'service', service: 'web-search', endpoint: 'https://api.tavily.com', keyEnv: null, requiresKey: true, group: 'Benchmarks', format: 'key' }),
   // Set in the desk for everyone; the env name stays the developers' door
   // (stored-secrets.js: saved wins, env is the fallback).
+  // LEAD DATA — a contact-data provider the operator attaches with their own key (sales/lead-sources.js).
+  Object.freeze({ id: 'hunter', name: 'Hunter (people and addresses at a company)', kind: 'service', service: 'lead-data', endpoint: 'https://api.hunter.io/v2', keyEnv: 'HUNTER_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
   Object.freeze({ id: 'exa', name: 'Exa (web search)', kind: 'service', service: 'web-search', endpoint: 'https://api.exa.ai', keyEnv: 'EXA_API_KEY', requiresKey: true, group: 'Web search', format: 'key' }),
   Object.freeze({ id: 'brave', name: 'Brave Search (web and image search)', kind: 'service', service: 'web-search', endpoint: 'https://api.search.brave.com', keyEnv: 'BRAVE_SEARCH_API_KEY', requiresKey: true, group: 'Web search', format: 'key' }),
   Object.freeze({ id: 'searxng', name: 'SearXNG address (self-hosted search)', kind: 'service', service: 'web-search', endpoint: null, keyEnv: 'SEARXNG_URL', requiresKey: true, group: 'Web search', format: 'url' }),

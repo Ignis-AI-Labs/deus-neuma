@@ -21,10 +21,11 @@ import { officeContext } from './revenue-acts.js';
 import { makeSegment } from '../sales/segment-shape.js';
 import { makeProspect, MATCH_WORDS, countryOfAddress } from '../sales/prospect-shape.js';
 import { makeSuppression, normalizeEmail, suppressionMatcher } from '../sales/suppress-shape.js';
-import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts } from '../sales/sales-store.js';
+import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts, readCampaigns } from '../sales/sales-store.js';
 import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { listCompanies } from '../marketing/companies.js';
+import { salesGatherIntents } from './sales-gather-acts.js';
 import { THREAD_REST_DAYS } from '../revenue/deal-shape.js';
 
 const BATCH_MAX = 10;
@@ -45,7 +46,7 @@ const seated = async (connection) => (await officeContext(connection).catch(() =
 const salesSegmentIntent = Object.freeze({
   name: 'sales/segment',
   policyTool: 'sales.segment',
-  fieldsForPrompt: '{id?, name, company, offer, customerProblem, targetRole, targetGeography, countries: ["US", ..], targetCompanySize?, positiveCriteria: [..], negativeCriteria?: [..], exampleClients?: [..], why}',
+  fieldsForPrompt: '{id?, name, company, campaign?, offer, customerProblem, targetRole, targetGeography, countries: ["US", ..], targetCompanySize?, positiveCriteria: [..], negativeCriteria?: [..], exampleClients?: [..], why}',
   descriptionForPrompt: 'THE LEAD ENGINE. File an audience to sell to, from what you read on the house\'s own site and its competitors\': the offer, their problem, the role to reach, where (and countries: the ISO codes it may be SENT to — leave out any country whose law limits this offer, such as the UK for anything crypto), how big, the signs a company fits and the signs it does not, real companies that fit, and why they need it. Every claim in the offer must be true of the house today. It waits for the operator\'s approval; pass id to refine one (changing who it targets sends it back for approval).',
   availableFor,
   validate: async (payload, { connection }) => {
@@ -54,7 +55,11 @@ const salesSegmentIntent = Object.freeze({
     try {
       const segment = makeSegment({ ...payload, by: context.laneId, now: new Date().toISOString() });
       const stranger = await companyRefusal(context.wallet, [segment.company]);
-      return stranger ? invalid(stranger) : { ok: true, value: { context, segment } };
+      if (stranger) return invalid(stranger);
+      // An audience may serve one of the operator's open campaigns for the same company.
+      const campaign = segment.campaign ? (await readCampaigns(context.wallet)).find((c) => c.id === segment.campaign) : null;
+      if (segment.campaign && (!campaign || campaign.state !== 'open' || campaign.company !== segment.company)) return invalid(`campaign: "${segment.campaign}" is not an open campaign for ${segment.company} — your briefing lists the campaigns the operator opened`);
+      return { ok: true, value: { context, segment } };
     } catch (err) {
       return invalid(err.message);
     }
@@ -228,4 +233,4 @@ const salesFactsIntent = Object.freeze({
   },
 });
 
-export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent]);
+export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents]);

@@ -21,6 +21,7 @@ import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/work
 import { croDesignation } from '../../backend/services/revenue/cro-designation.js';
 import { caoDesignation } from '../../backend/services/accounts/cao-designation.js';
 import { isConnectionOn } from '../../backend/services/connections/connection-switches.js';
+import { readCampaigns } from '../../backend/services/sales/sales-store.js';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = path.join(os.tmpdir(), 'neuma-positions-shots');
@@ -103,7 +104,25 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const hub = page.locator('[data-position="cro"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('HELD BY MERC');
-    expect(await hub.getByRole('tab').allTextContents()).toEqual(['LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/1', 'THEIR EYES']);
+    expect(await hub.getByRole('tab').allTextContents()).toEqual(['CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/2', 'THEIR EYES']);
+    // CAMPAIGNS opens first: the operator opens one, and it stands on disk with every count at zero.
+    const campaigns = hub.locator('[data-sales-campaigns]');
+    await campaigns.waitFor({ timeout: 60000 });
+    expect(await campaigns.getByRole('button', { name: 'OPEN the campaign' }).isDisabled()).toBe(true);
+    await campaigns.getByLabel('Campaign name').fill('User acquisition');
+    await campaigns.getByRole('button', { name: 'company the campaign is for', exact: true }).click();
+    await page.getByRole('listbox', { name: 'company the campaign is for' }).getByText('Umbrae', { exact: true }).click();
+    await campaigns.getByLabel('What the campaign is meant to bring in').fill('Teams with a token on Base opening a pool on Umbrae');
+    await campaigns.getByRole('button', { name: 'OPEN the campaign' }).click();
+    const card = campaigns.locator('[data-campaign-id]');
+    await card.waitFor();
+    expect(await card.locator('.cline-h').textContent()).toBe('User acquisition · FOR UMBRAE · OPEN');
+    expect(await card.locator('[data-campaign-funnel] .cline-tile-l').allTextContents()).toEqual(['GATHERED', 'SCORED', 'LEADS', 'WRITTEN', 'REPLIED', 'QUALIFIED', 'WON']);
+    expect(await card.locator('[data-campaign-funnel] .cline-tile-n').allTextContents()).toEqual(['0', '0', '0', '0', '0', '0', '0']);
+    expect((await readCampaigns(auth.address)).map((c) => [c.name, c.company, c.state])).toEqual([['User acquisition', 'umbrae', 'open']]);
+    await page.screenshot({ path: path.join(SHOTS, 'sales-campaigns-1280.png'), fullPage: true });
+
+    await hub.getByRole('tab', { name: 'LEADS' }).click();
     await hub.locator('[data-lead-engine]').waitFor({ timeout: 60000 });
 
     await hub.getByRole('tab', { name: 'DEALS' }).click();
@@ -112,8 +131,8 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
 
     await hub.getByRole('tab', { name: /SWITCHES/ }).click();
     expect(isConnectionOn('mail-watch')).toBe(false);
-    await hub.getByRole('button', { name: 'OFF' }).click();
-    await hub.getByRole('tab', { name: 'SWITCHES · 1/1' }).waitFor();
+    await hub.getByRole('button', { name: 'OFF' }).first().click();
+    await hub.getByRole('tab', { name: 'SWITCHES · 1/2' }).waitFor();
     expect(isConnectionOn('mail-watch')).toBe(true);
 
     await hub.getByRole('tab', { name: 'THEIR EYES' }).click();

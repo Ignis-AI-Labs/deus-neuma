@@ -15,6 +15,7 @@
 //
 // The record is append-only events, folded here:
 //   { type: 'filed', segment, at }   { type: 'state', id, state, by, note?, at }
+//   { type: 'campaign', id, campaign, by, at }  — the campaign it serves (sales/campaign-shape.js)
 // PURE, but for makeSegment's random id.
 
 import crypto from 'crypto';
@@ -45,6 +46,7 @@ export const makeSegment = (f) => {
   const s = {
     name: clean(f.name, 80),
     company: clean(f.company, 40).toLowerCase(),
+    campaign: clean(f.campaign, 40) || null,
     offer: clean(f.offer, 400),
     customerProblem: clean(f.customerProblem, 400),
     targetRole: clean(f.targetRole, 160),
@@ -99,7 +101,10 @@ export const foldSegments = (events) => {
       const standing = keeps
         ? { state: prior.state, stateAt: prior.stateAt, stateBy: prior.stateBy }
         : { state: 'draft', stateAt: e.at, stateBy: e.segment.filedBy };
-      byId.set(e.segment.id, { ...e.segment, ...standing });
+      // A refiling that names no campaign keeps the one the audience already serves.
+      byId.set(e.segment.id, { ...e.segment, campaign: e.segment.campaign ?? prior?.campaign ?? null, ...standing });
+    } else if (e?.type === 'campaign' && prior) {
+      byId.set(e.id, { ...prior, campaign: e.campaign || null });
     } else if (e?.type === 'state' && prior && SEGMENT_STATES.includes(e.state)) {
       byId.set(e.id, { ...prior, state: e.state, stateAt: e.at, stateBy: e.by });
     }
