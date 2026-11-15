@@ -33,7 +33,7 @@ export const POSITION_PLACE_KEY = 'neuma:positions:place';
 
 /** impure — ask the POSITIONS window (open or about to be) to stand on one position. */
 export const requestPositionPlace = (office) => {
-  let place = {};
+  let place;
   try { place = JSON.parse(localStorage.getItem(POSITION_PLACE_KEY)) ?? {}; } catch { place = {}; }
   localStorage.setItem(POSITION_PLACE_KEY, JSON.stringify({ ...place, office }));
   window.dispatchEvent(new CustomEvent(EVENT, { detail: { office } }));

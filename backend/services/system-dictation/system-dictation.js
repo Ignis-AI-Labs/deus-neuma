@@ -60,7 +60,7 @@ const chooseTypist = () => {
 
 /** The keyboards this process may read. impure (fs) */
 const readableKeyboards = () => {
-  let text = '';
+  let text;
   try { text = fs.readFileSync('/proc/bus/input/devices', 'utf8'); } catch { return []; }
   return parseKeyboards(text).filter((k) => { try { fs.accessSync(`/dev/input/${k.event}`, fs.constants.R_OK); return true; } catch { return false; } });
 };

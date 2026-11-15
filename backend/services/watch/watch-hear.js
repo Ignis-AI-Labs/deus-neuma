@@ -120,7 +120,7 @@ export const heardIn = async (entry, start, end) => {
 export const heardSoFar = async (entry) => {
   if (entry.captions) return paragraphs(parseCaptions(await fsp.readFile(entry.captions, 'utf8')));
   const heardDir = path.join(entry.dir, 'heard');
-  let names = [];
+  let names;
   try { names = await fsp.readdir(heardDir); } catch { return []; }
   const pieces = await Promise.all(names.filter((n) => n.endsWith('.json')).sort((a, b) => parseFloat(a) - parseFloat(b))
     .map(async (n) => JSON.parse(await fsp.readFile(path.join(heardDir, n), 'utf8'))));

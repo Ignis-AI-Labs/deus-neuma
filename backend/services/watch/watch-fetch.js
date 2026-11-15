@@ -92,7 +92,7 @@ const fetchWithUpdate = async (want, url, dir) => {
   const first = await runYtDlp(want, url, dir);
   if (first.ok || !first.stale || first.refusedInside) return first;
   const egress = await startWatchEgress();
-  let updated = false;
+  let updated;
   try { updated = await updateYtDlp({ proxy: egress.url }); } finally { await egress.close(); }
   if (!updated) return first;
   log.info('trying the fetch again on the updated yt-dlp', { want });
