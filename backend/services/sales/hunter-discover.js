@@ -26,6 +26,16 @@
 // nearest), keywords (phrases, any or all), exclude — and then Hunter's guess is not used at all;
 // and DISCOVER LOOKS FIRST (previewDiscover, sales/discover): how Hunter reads the search, how many
 // match, the first companies — free, nothing kept — before a gather fills the pool.
+//
+// A WIDE NET FIRST, THEN FILTER DOWN (Design note, 2026-11-16: […]). The
+// API answers exactly what Hunter's own screen shows — the same companies, the same order, the same
+// address counts (proven 11-16: 97,856 matches, Revolut 7,574, IBM 3,107, Crypto.com 2,822 …). The
+// gather used to ask size by size, smallest first, and stop at the count asked for: twenty-five
+// one-to-ten-person companies, never the screen's list. Now one gather walks every search a free
+// plan answers, each with its own first hundred: the search as Hunter ranks it (the screen's list),
+// then each size, then each of the audience's countries by size — every company once, the most
+// addresses first, each with the count the screen shows. Filtering down is the pool's work after:
+// read the sites, score the fit.
 // The shaping is PURE; the calls are impure (network), never throw.
 
 import process from 'node:process';
@@ -33,7 +43,7 @@ import { HUNTER_URL } from './lead-providers.js';
 import { SIZES } from './company-index.js';
 import INDUSTRIES from './hunter-industries.json' with { type: 'json' };
 
-export const DISCOVER_MAX = 500;
+export const DISCOVER_MAX = 3000;
 const PER_CALL = 100;
 const SAMPLE = 15; // what a look shows
 const PACE_MS = 1300; // Hunter allows 50 Discover calls a minute
@@ -90,18 +100,25 @@ export const filtersWords = (filters = {}) => [
   filters.headcount?.length ? `sizes: ${filters.headcount.join(', ')}` : null,
 ].filter(Boolean).join(' · ') || 'no filter';
 
-/** pure — how many addresses Hunter holds for a company, in words. */
-export const heldWords = (n) => (n.personal ? `Hunter holds ${n.personal} named ${n.personal === 1 ? 'person' : 'people'} there${n.generic ? ` and ${n.generic} general address${n.generic === 1 ? '' : 'es'}` : ''}`
-  : n.generic ? `Hunter holds no named person there, only ${n.generic} general address${n.generic === 1 ? '' : 'es'}` : 'Hunter holds no address there');
+/** pure — how many addresses Hunter holds for a company, in words: the number its own screen shows, then who they are. */
+export const heldWords = (n) => {
+  const total = Number(n?.total) || (Number(n?.personal) || 0) + (Number(n?.generic) || 0);
+  if (!total) return 'Hunter holds no address there';
+  const people = n.personal ? `${n.personal.toLocaleString('en-US')} named ${n.personal === 1 ? 'person' : 'people'}` : 'no named person';
+  return `${total.toLocaleString('en-US')} address${total === 1 ? '' : 'es'} at Hunter (${people}${n.generic ? `, ${n.generic.toLocaleString('en-US')} general` : ''})`;
+};
+
+// pure — a candidate's line of what the list says: its size when known, and what Hunter holds there.
+const signalOf = (size, held) => [size ? `${size} people` : null, heldWords(held)].filter(Boolean).join(' · ');
 
 /** pure — one Discover answer as candidate rows; a row with no usable domain is left out. */
 export const companiesOfDiscover = (answer, size = null) => (Array.isArray(answer?.data) ? answer.data : []).flatMap((c) => {
   const domain = String(c?.domain ?? '').trim().toLowerCase();
   if (!HOST.test(domain)) return [];
-  const held = { personal: Number(c.emails_count?.personal) || 0, generic: Number(c.emails_count?.generic) || 0 };
+  const held = { personal: Number(c.emails_count?.personal) || 0, generic: Number(c.emails_count?.generic) || 0, total: Number(c.emails_count?.total) || 0 };
   return [{
     source: 'hunter-discover', domain, name: String(c.organization || domain).slice(0, 80), symbol: null, description: '', site: `https://${domain}`, twitter: null, telegram: null, categories: [],
-    size: SIZES.includes(size) ? size : null, hunterEmails: held, signal: [size ? `${size} people` : null, heldWords(held)].filter(Boolean).join(' · '), sourceUrl: `https://${domain}`,
+    size: SIZES.includes(size) ? size : null, hunterEmails: held, signal: signalOf(SIZES.includes(size) ? size : null, held), sourceUrl: `https://${domain}`,
   }];
 });
 
@@ -134,8 +151,8 @@ const searchOf = async (query, { apiKey, signal, onProgress = () => {} }) => {
  *   apiKey: string, paceMs?: number, signal?: AbortSignal, onProgress?: (words: string) => void}} opts
  * @returns {Promise<{candidates: object[], looked: number, stopped: ?string, matched?: number}>}
  */
-export const gatherHunterDiscover = async ({ count = PER_CALL, known = { domains: new Set() }, segment = null, query = {}, apiKey, paceMs = PACE_MS, signal, onProgress = () => {} } = {}) => {
-  const want = Math.min(Math.max(parseInt(count, 10) || PER_CALL, 1), DISCOVER_MAX);
+export const gatherHunterDiscover = async ({ count = DISCOVER_MAX, known = { domains: new Set() }, segment = null, query = {}, apiKey, paceMs = PACE_MS, signal, onProgress = () => {} } = {}) => {
+  const want = Math.min(Math.max(parseInt(count, 10) || DISCOVER_MAX, 1), DISCOVER_MAX);
   const candidates = [];
   let looked = 0;
   let matched = 0;
@@ -147,20 +164,32 @@ export const gatherHunterDiscover = async ({ count = PER_CALL, known = { domains
     const { filters } = search;
     matched = search.matched;
     const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
+    const sizes = query.sizes?.length ? query.sizes : SIZES;
     const take = (answer, size) => {
       for (const row of companiesOfDiscover(answer, size)) {
         looked += 1;
-        if (candidates.length < want && !known.domains.has(row.domain) && !candidates.some((c) => c.domain === row.domain)) candidates.push(row);
+        const had = candidates.find((c) => c.domain === row.domain);
+        // Seen already in a wider search: a size search says how big it is.
+        if (had) { if (size && !had.size) Object.assign(had, { size, signal: signalOf(size, had.hunterEmails) }); continue; }
+        if (candidates.length < want && !known.domains.has(row.domain)) candidates.push(row);
       }
     };
-    // One search a size: each has its own first hundred. The sizes asked for, else every size, smallest first.
-    for (const size of query.sizes?.length ? query.sizes : SIZES) {
+    // THE WIDE NET: every search a free plan answers with its own first hundred — the search as Hunter
+    // ranks it (its screen's list), each size, then each of the audience's countries by size.
+    const searches = [
+      { words: 'as Hunter ranks it', sizes, countries },
+      ...sizes.map((size) => ({ words: `size ${size}`, sizes: [size], countries })),
+      ...(countries.length > 1 ? countries.flatMap((country) => sizes.map((size) => ({ words: `${country}, size ${size}`, sizes: [size], countries: [country] }))) : []),
+    ];
+    for (const [i, search] of searches.entries()) {
       if (candidates.length >= want) break;
-      await wait(paceMs, signal);
-      const page = await discover({ ...discoverFilters({ filters, countries, sizes: [size] }), limit: PER_CALL }, { apiKey, signal });
-      take(page, size);
-      onProgress(`${candidates.length} of ${want} found — size ${size} searched (${(Number(page?.meta?.results) || 0).toLocaleString('en-US')} match there)`);
+      if (i) await wait(paceMs, signal);
+      const page = await discover({ ...discoverFilters({ filters, countries: search.countries, sizes: search.sizes }), limit: PER_CALL }, { apiKey, signal });
+      take(page, search.sizes.length === 1 ? search.sizes[0] : null);
+      onProgress(`${candidates.length} companies so far — ${i + 1} of ${searches.length} searches, ${search.words} (${(Number(page?.meta?.results) || 0).toLocaleString('en-US')} match there)`);
     }
+    // The most addresses first, as Hunter's own screen orders them.
+    candidates.sort((a, b) => (b.hunterEmails.total || 0) - (a.hunterEmails.total || 0));
     return { candidates, looked, matched, asked: filtersWords(filters), stopped: null };
   } catch (err) {
     return { candidates, looked, matched, stopped: err.message };

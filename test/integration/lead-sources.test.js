@@ -192,8 +192,9 @@ describe('GATHERING through the real stack (gnosis)', () => {
       if (req.body.query) return res.json({ data: [], meta: { results: 1139, filters: { keywords: { match: 'any', include: ['defi', 'token'] } } } });
       // Hunter's own industry filter: the chain teams themselves.
       if (req.body.industry) return res.json({ data: [{ domain: 'sui.io', organization: 'Sui', emails_count: { personal: 32, generic: 3, total: 35 } }], meta: { results: 2212 } });
-      const size = req.body.headcount?.[0];
-      const rows = { '1-10': [{ domain: 'indexcoop.com', organization: 'Index Coop', emails_count: { personal: 21, generic: 10, total: 31 } }, { domain: 'limitless.exchange', organization: 'Limitless', emails_count: { personal: 3, generic: 1, total: 4 } }], '11-50': [{ domain: 'nmkr.io', organization: 'NMKR', emails_count: { personal: 0, generic: 4, total: 4 } }, { domain: 'not a domain', organization: 'Broken' }] }[size] ?? [];
+      // As Hunter ranks a search: every size it was asked for, the most addresses first.
+      const bySize = { '1-10': [{ domain: 'indexcoop.com', organization: 'Index Coop', emails_count: { personal: 21, generic: 10, total: 31 } }, { domain: 'limitless.exchange', organization: 'Limitless', emails_count: { personal: 3, generic: 1, total: 4 } }], '11-50': [{ domain: 'nmkr.io', organization: 'NMKR', emails_count: { personal: 0, generic: 4, total: 4 } }, { domain: 'not a domain', organization: 'Broken' }] };
+      const rows = (req.body.headcount ?? Object.keys(bySize)).flatMap((size) => bySize[size] ?? []).sort((a, b) => (b.emails_count?.total ?? 0) - (a.emails_count?.total ?? 0));
       return res.json({ data: rows, meta: { results: rows.length } });
     });
     // Hunter's verifier and finder, as their documentation shapes the answers.
@@ -382,13 +383,14 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'short' })).toMatchObject({ status: 'error', error: expect.stringMatching(/needs industries or keywords \(best\), or words: one plain sentence/) });
     const found = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'token projects on Base that need deeper liquidity', sizes: ['1-10', '11-50'] });
     expect(found.status, found.error).toBe('ok');
-    // The words were read once by Hunter; its filters were then asked a size at a time, in the audience's own countries.
+    // THE WIDE NET: the words read once by Hunter; then the search as Hunter ranks it, then each size, in the audience's own countries.
     expect(discoverAsked[0]).toEqual({ query: 'token projects on Base that need deeper liquidity', limit: 1 });
-    expect(discoverAsked.slice(1).map((b) => [b.headcount, b.keywords.include, b.limit, b.headquarters_location.include.length > 0])).toEqual([[['1-10'], ['defi', 'token'], 100, true], [['11-50'], ['defi', 'token'], 100, true]]);
-    // limitless.exchange was gathered before, so it is not gathered twice; the broken row is left out.
+    expect(discoverAsked.slice(1).map((b) => [b.headcount, b.keywords.include, b.limit, b.headquarters_location.include.length > 0])).toEqual([[['1-10', '11-50'], ['defi', 'token'], 100, true], [['1-10'], ['defi', 'token'], 100, true], [['11-50'], ['defi', 'token'], 100, true]]);
+    // limitless.exchange was gathered before, so it is not gathered twice; the broken row is left out; the size searches say how big each is.
     expect(found.content).toMatch(/2 new candidate\(s\)/);
-    expect(found.content).toContain('Index Coop — indexcoop.com — 1-10 people · Hunter holds 21 named people there and 10 general addresses');
-    expect(found.content).toContain('NMKR — nmkr.io — 11-50 people · Hunter holds no named person there, only 4 general addresses');
+    expect(found.content).toContain('Index Coop — indexcoop.com — 1-10 people · 31 addresses at Hunter (21 named people, 10 general)');
+    expect(found.content).toContain('NMKR — nmkr.io — 11-50 people · 4 addresses at Hunter (no named person, 4 general)');
+    expect(found.content.indexOf('Index Coop')).toBeLessThan(found.content.indexOf('NMKR')); // the most addresses first
     expect(await spend()).toMatchObject({ spent: 4 });
     // DISCOVER LOOKS FIRST, AIMED: Hunter's own industry and the being's keywords, never its guess at words; nothing kept.
     expect(await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['Blockchain'] })).toMatchObject({ status: 'error', error: expect.stringMatching(/"Blockchain" is not one of Hunter's industries — nearest: Blockchain Services/) });
@@ -396,7 +398,7 @@ describe('GATHERING through the real stack (gnosis)', () => {
     const look = await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['blockchain services'], keywords: ['defi', 'decentralized exchange'], exclude: ['casino'] });
     expect(look.status, look.error).toBe('ok');
     expect(discoverAsked.slice(looked)).toEqual([{ industry: { include: ['Blockchain Services'] }, keywords: { include: ['defi', 'decentralized exchange'], exclude: ['casino'], match: 'any' }, headquarters_location: expect.any(Object), limit: 15 }]);
-    expect(look.content).toMatch(/^Hunter, asked as industry: Blockchain Services · keywords \(any\): defi, decentralized exchange · excluding: casino: 2,212 companies match in the countries of ".+"\. Nothing was kept or spent\.\n- Sui — sui\.io — Hunter holds 32 named people there and 3 general addresses\n/);
+    expect(look.content).toMatch(/^Hunter, asked as industry: Blockchain Services · keywords \(any\): defi, decentralized exchange · excluding: casino: 2,212 companies match in the countries of ".+"\. Nothing was kept or spent\.\n- Sui — sui\.io — 35 addresses at Hunter \(32 named people, 3 general\)\n/);
     expect((await readCandidates(me.address)).some((c) => c.domain === 'sui.io')).toBe(false);
     // The gather with the same fields asks Hunter those filters, size by size: no reading of words.
     const aimed = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', industries: ['Blockchain Services'], keywords: ['defi'], sizes: ['1-10'] });
