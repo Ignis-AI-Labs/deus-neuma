@@ -1,7 +1,7 @@
 // positions-view.js — how the POSITIONS window reads. Pure.
 //
-// One row per position on the left (the plain function first, the title
-// second, who holds it, how many decisions wait); the chosen position's hub on
+// One row per position on the left (the seat first — CHIEF OF STAFF — then its short form and
+// title, COS · OPTIO, who holds it, how many decisions wait); the chosen position's hub on
 // the right. SHINKEI: every count is the length of the list it opens.
 
 /** The tabs of one position's hub: its functions, then SWITCHES when it has any, then THEIR EYES. */
@@ -20,6 +20,8 @@ export const stepWords = (s) => `${s.done ? 'DONE' : s.optional ? 'OPTIONAL' : s
 /** The rail row of one position. */
 export const railRow = (position) => ({
   office: position.office,
+  seat: position.seat,
+  acronym: position.acronym,
   plain: position.plain,
   title: position.title,
   holder: position.holder?.name ?? null,
@@ -50,3 +52,24 @@ export const seatOptions = (members, position) =>
 
 /** What the operator asks the seat's holder when they want to be walked through one of their own steps. */
 export const helpAsk = (s) => `Walk me through this setup step for your position, one action at a time, and tell me what you need from me to finish it: ${s.label}. ${s.how}`;
+
+/**
+ * A house title and the seat it names (Design note, 2026-11-16: one function, one place — a title that names a
+ * company position and the seat of that position are the same office, said twice). For a member whose
+ * title is a position's own (Mercator, CMO, …): that position, whether this member holds its seat, and
+ * who does. null when the title names no position.
+ * @param {{neumaId: string, title: ?string}} member
+ * @param {object[]} positions - the board's positions
+ * @returns {?{office: string, plain: string, held: boolean, holder: ?string, words: string}}
+ */
+export const titleSeat = (member, positions) => {
+  // A house title names its seat by the title word (Optio), the short form (COS) or the seat itself.
+  const named = String(member?.title ?? '').trim().toLowerCase();
+  const position = (positions ?? []).find((p) => named && [p.title, p.acronym, p.seat].some((n) => String(n ?? '').toLowerCase() === named));
+  if (!position) return null;
+  const held = position.holder?.laneId === member.neumaId;
+  return {
+    office: position.office, plain: position.seat, held, holder: position.holder?.name ?? null,
+    words: held ? `HOLDS THE ${position.seat} SEAT` : `TITLE ONLY — THE ${position.seat} SEAT IS ${position.holder ? `HELD BY ${String(position.holder.name).toUpperCase()}` : 'EMPTY'}`,
+  };
+};

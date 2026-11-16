@@ -8,7 +8,9 @@ import { readHoldings } from './lp-holdings.js';
 import { bookTick, bookLines } from './lp-book.js';
 import { callUmbrae, UMBRAE_LP_CONNECTION } from './umbrae-lp-client.js';
 import { lpWalletAddress, readUmbraeKey } from './lp-wallet.js';
+import { lpFundsAddress, readAgentVault } from '../agent-vault/vault-store.js';
 import { readLpBudget, listPendingDeposits } from './lp-budget.js';
+import { readLpCapitalControls } from './lp-capital-controls.js';
 import { houseRecipients } from './lp-house.js';
 import { positionStrings } from '../../../core/wallet/lp-book-math.js';
 
@@ -51,7 +53,7 @@ export const readPositions = async (neumaId) => {
   if (!isConnectionOn(UMBRAE_LP_CONNECTION)) return { note: 'not read: the Umbrae liquidity connection is off' };
   const key = await readUmbraeKey(neumaId);
   if (!key) return { note: 'none yet (the wallet signs in to Umbrae on its first action)' };
-  const out = await callUmbrae('positions', { token: key, body: {} });
+  const out = await callUmbrae('positions', { token: key, body: { walletAddress: await lpFundsAddress(neumaId) } });
   if (!out.ok) return { note: `not read: ${out.error}` };
   return { pools: Array.isArray(out.payload) ? out.payload : [out.payload] };
 };
@@ -68,15 +70,18 @@ export const readPositions = async (neumaId) => {
  *   tokens — null when they could not be read; book — the earnings book (lp-book.js) as just looked at
  */
 export const readLpView = async (neumaId) => {
-  const address = await lpWalletAddress(neumaId);
-  if (!address) return null;
+  const agentAddress = await lpWalletAddress(neumaId);
+  if (!agentAddress) return null;
+  const vault = await readAgentVault(neumaId);
+  const address = vault?.safe ?? agentAddress;
   const payload = await readPoolList();
-  const [holdings, budgetUsd, pending, held, house] = await Promise.all([
+  const [holdings, budgetUsd, pending, held, house, capital] = await Promise.all([
     readHoldings(address, { pools: payload ?? { groups: [] } }).catch(() => null),
     readLpBudget(neumaId),
     listPendingDeposits(neumaId),
     readPositions(neumaId),
     houseRecipients(neumaId).catch(() => []),
+    readLpCapitalControls(neumaId),
   ]);
   const pools = payload ? flattenPools(payload) : [];
   const eth = holdings?.find((h) => h.key === 'ETH');
@@ -84,7 +89,7 @@ export const readLpView = async (neumaId) => {
   // positions join when they were read. Without them it is not read, never shown as $0.
   const looked = payload && holdings ? await bookTick(neumaId, { holdings, positions: held.pools ?? null }).catch(() => null) : null;
   return Object.freeze({
-    address, balanceEth: eth ? ethers.formatEther(eth.raw) : null, ethPriceUsd: eth?.priceUsd ?? null, budgetUsd, pending,
+    address, agentAddress: vault ? agentAddress : null, vault, balanceEth: eth ? ethers.formatEther(eth.raw) : null, ethPriceUsd: eth?.priceUsd ?? null, budgetUsd, pending, capital,
     positions: held.pools ?? null, positionsNote: held.note ?? null,
     connectionOn: isConnectionOn(UMBRAE_LP_CONNECTION),
     // Token balances are found through the pool list; without it they were not read.

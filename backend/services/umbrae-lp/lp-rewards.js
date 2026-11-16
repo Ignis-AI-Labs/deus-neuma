@@ -114,7 +114,7 @@ export const requestReward = async (neumaId, goalId) => {
  * @param {'approved'|'declined'|'delivered'} answer
  * @param {{note?: string, provider?: object}} [opts]
  */
-export const answerReward = async (neumaId, goalId, answer, { note, provider } = {}) => {
+export const answerReward = async (neumaId, goalId, answer, { note, provider, receiptProvider, receiptConfirmations } = {}) => {
   const goals = await readGoals(neumaId);
   const goal = goals.find((g) => g.id === goalId);
   const said = typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : null;
@@ -131,7 +131,7 @@ export const answerReward = async (neumaId, goalId, answer, { note, provider } =
     // Marked before paying, so a second press finds it no longer waiting and pays nothing.
     goal.status = 'paying';
     await writeGoals(neumaId, goals);
-    const paid = await runSend(neumaId, { to: 'operator', token: 'USDC', amount: goal.costUsd.toFixed(2), why: `reward: ${goal.what}` }, { purpose: 'reward', provider });
+    const paid = await runSend(neumaId, { to: 'operator', token: 'USDC', amount: goal.costUsd.toFixed(2), why: `reward: ${goal.what}` }, { purpose: 'reward', provider, receiptProvider, receiptConfirmations });
     if (!paid.ok) {
       goal.status = 'requested';
       await writeGoals(neumaId, goals);

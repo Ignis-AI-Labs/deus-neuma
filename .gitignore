@@ -48,6 +48,12 @@ data/acts/
 data/diagnostics/
 # Brand kits carry a company's private livery (logos, palettes) — local runtime data
 data/brand-kits/
+# The speech engine and its weights (managed-stt.js) and the watch tools and their cache
+# (watch-tools.js) — downloaded binaries, local to this machine
+data/speech/
+data/watch/
+# PDF renders made for Founder to read; the markdown beside them is the record
+docs/work/reviews/*.pdf
 # ComfyUI spike artifacts (outputs, user data) — machine-local runtime, never source
 data/comfyui/
 # The culture library (downloaded images + provenance manifest) — runtime, curated per machine

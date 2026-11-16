@@ -31,7 +31,7 @@ const KYBER = new ethers.Interface(KYBER_ABI);
 let anvil, provider, root, originalRoot, umbrae, kyber, connections, lp;
 const priorRpc = process.env.BASE_MAINNET_RPC_URL;
 const nonce = async (address) => Number(await provider.send('eth_getTransactionCount', [address, 'latest']));
-const swapUsdc = () => runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000005', why: 'enter at the deeper price' }, { provider });
+const swapUsdc = () => runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000005', why: 'enter at the deeper price' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
 
 beforeAll(async () => {
   anvil = await startAnvil({ chainId: 8453 });
@@ -67,7 +67,7 @@ beforeEach(() => {
   umbrae.reset();
   kyber.reset();
   connections?.restore();
-  connections = connectionsOn(['umbrae-liquidity', 'swap-aggregator']);
+  connections = connectionsOn(['umbrae-liquidity', 'swap-aggregator', 'market-data']);
 });
 
 describe('the aggregator road', () => {

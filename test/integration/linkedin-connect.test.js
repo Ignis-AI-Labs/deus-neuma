@@ -17,7 +17,7 @@ import { setChannelCredential } from '../../backend/services/social/channel-cred
 import { addAccount, resolveAccountCredential, loadAccountStore } from '../../backend/services/social/account-store.js';
 import { startLinkedInConnect, pollLinkedInConnect, cancelLinkedInConnect } from '../../backend/services/social/linkedin-connect.js';
 import { LINKEDIN_REDIRECT_URI, buildLinkedInAuthorizeUrl, missingLinkedInScopes, linkedinTokenRecord } from '../../backend/services/social/linkedin-oauth.js';
-import { getChannel } from '../../backend/services/social/channel-registry.js';
+import { getChannel, resolveChannelCredentials, maskChannelCredentials } from '../../backend/services/social/channel-registry.js';
 
 const ENV = ['NEUMA_LINKEDIN_OAUTH_ROOT', 'NEUMA_LINKEDIN_API_ROOT'];
 const APP = Object.freeze({ clientId: 'ph-li-client', clientSecret: 'ph-li-secret' });
@@ -94,8 +94,16 @@ describe('the LinkedIn sign-in, as it is asked and read (pure)', () => {
   });
   test('the channel keeps working for an account connected by hand: the app client is optional, the rest is set by CONNECT', () => {
     const fields = Object.fromEntries(getChannel('linkedin').fields.map((f) => [f.key, f]));
-    expect(fields.clientId.fallback).toBe('none');
-    expect(fields.clientSecret).toMatchObject({ secret: true, fallback: 'none' });
+    expect(fields.clientId).toMatchObject({ optional: true });
+    expect(fields.clientSecret).toMatchObject({ secret: true, optional: true });
+    expect(fields.clientId.fallback).toBeUndefined();
+    // Empty, the client is shown as NOT set (never "set (default)"), yet a pasted-token account is whole without it.
+    const pasted = { personUrn: 'urn:li:person:X', accessToken: 't', tokenExpiresAt: '2027-01-01T00:00:00.000Z' };
+    expect(resolveChannelCredentials(getChannel('linkedin'), pasted, {})).toEqual(pasted);
+    const masked = maskChannelCredentials(getChannel('linkedin'), pasted, {});
+    expect(masked.configured).toBe(true);
+    expect(masked.fields.filter((f) => f.key.startsWith('client')).map((f) => [f.set, f.source, f.optional])).toEqual([[false, 'none', true], [false, 'none', true]]);
+    expect(resolveChannelCredentials(getChannel('linkedin'), { clientId: 'a', clientSecret: 'b' }, {})).toBe(null);
     expect(['personUrn', 'accessToken', 'tokenExpiresAt'].every((k) => fields[k].connect === true)).toBe(true);
   });
 });

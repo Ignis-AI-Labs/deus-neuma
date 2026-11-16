@@ -9,15 +9,17 @@
 // The tile order and names twin backend/services/positions/position-map.js; a
 // unit test pins the two together. Pure, but for the one event.
 
-/** [office, the plain name on the tile, the words search also answers to]. */
+/** [office, the seat on the tile, the words search also answers to] — the seat's corporate name,
+ *  as the POSITIONS rail names it (Design note, 2026-11-16: the same terms and titles everywhere); its short
+ *  form, house title and function are what search also finds it by. */
 export const POSITION_TILES = Object.freeze([
-  ['cos', 'MANAGEMENT', ['optio', 'chief of staff', 'board']],
-  ['cro', 'SALES', ['mercator', 'leads', 'deals', 'mailbox', 'email', 'outreach']],
-  ['cmo', 'MARKETING', ['cmo', 'campaigns', 'brand', 'posts']],
-  ['clo', 'LAW', ['clo', 'legal']],
-  ['cso', 'SECURITY', ['cso', 'guard']],
-  ['cfo', 'TREASURY', ['quaestor', 'cfo', 'spend', 'invoices']],
-  ['cao', 'BOOKS', ['logista', 'accounts', 'ledger']],
+  ['cos', 'CHIEF OF STAFF', ['cos', 'optio', 'management', 'board']],
+  ['cro', 'CHIEF REVENUE OFFICER', ['cro', 'mercator', 'sales', 'leads', 'deals', 'mailbox', 'email', 'outreach']],
+  ['cmo', 'CHIEF MARKETING OFFICER', ['cmo', 'legatus', 'marketing', 'campaigns', 'brand', 'posts']],
+  ['clo', 'CHIEF LEGAL OFFICER', ['clo', 'praetor', 'law', 'legal']],
+  ['cso', 'CHIEF SECURITY OFFICER', ['cso', 'praefectus', 'security', 'guard']],
+  ['cfo', 'CHIEF FINANCIAL OFFICER', ['cfo', 'quaestor', 'treasury', 'spend', 'invoices']],
+  ['cao', 'CHIEF ACCOUNTING OFFICER', ['cao', 'logista', 'books', 'accounts', 'ledger']],
 ].map((t) => Object.freeze(t)));
 
 const PREFIX = 'position-';
@@ -31,17 +33,20 @@ export const FOLDED_INTO_POSITIONS = Object.freeze(['positions', 'staff', 'legal
 const EVENT = 'neuma:position-place';
 export const POSITION_PLACE_KEY = 'neuma:positions:place';
 
-/** impure — ask the POSITIONS window (open or about to be) to stand on one position. */
-export const requestPositionPlace = (office) => {
+/** pure — a kept place moved onto one position, and onto one of its tabs when a tab is named. */
+export const placeOn = (place, office, tab = null) => ({ ...place, office, ...(tab ? { tabs: { ...(place?.tabs ?? {}), [office]: tab } } : {}) });
+
+/** impure — ask the POSITIONS window (open or about to be) to stand on one position, and one of its tabs. */
+export const requestPositionPlace = (office, tab = null) => {
   let place;
   try { place = JSON.parse(localStorage.getItem(POSITION_PLACE_KEY)) ?? {}; } catch { place = {}; }
-  localStorage.setItem(POSITION_PLACE_KEY, JSON.stringify({ ...place, office }));
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: { office } }));
+  localStorage.setItem(POSITION_PLACE_KEY, JSON.stringify(placeOn(place, office, tab)));
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: { office, tab } }));
 };
 
 /** impure — hear a place asked for while the window is open. */
 export const onPositionPlace = (handler) => {
-  const listener = (e) => handler(e.detail?.office);
+  const listener = (e) => handler(e.detail?.office, e.detail?.tab ?? null);
   window.addEventListener(EVENT, listener);
   return () => window.removeEventListener(EVENT, listener);
 };

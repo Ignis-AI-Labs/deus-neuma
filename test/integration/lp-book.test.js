@@ -71,7 +71,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   connections?.restore();
-  connections = connectionsOn(['umbrae-liquidity']);
+  connections = connectionsOn(['umbrae-liquidity', 'market-data']);
   signals = [];
   setWakeSink((s) => { signals.push(s); });
 });
@@ -92,7 +92,7 @@ describe('the book', () => {
 
   test('a send to a housemate is money handed on: the sender\'s earned holds (less gas), the receiver is FUNDED', async () => {
     umbrae.state.wethPrice = 3520;
-    const out = await runSend('tenekom', { to: 'rugevil', token: 'USDC', amount: '100', why: 'Rugevil needs working capital' }, { provider });
+    const out = await runSend('tenekom', { to: 'rugevil', token: 'USDC', amount: '100', why: 'Rugevil needs working capital' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     expect(out.ok).toBe(true);
     expect(out.walletChangeUsd).toBeLessThan(-100); // 100 USDC and a little gas left the wallet
     const sender = await view('tenekom');
@@ -127,7 +127,7 @@ describe('rewards, paid only from what it earned', () => {
     const asked = await requestReward('tenekom', gpu.id);
     expect(asked.ok).toBe(true);
     expect((await readGoals('tenekom')).find((g) => g.id === gpu.id).status).toBe('requested');
-    const paid = await answerReward('tenekom', gpu.id, 'approved', { note: 'ordering it tonight', provider });
+    const paid = await answerReward('tenekom', gpu.id, 'approved', { note: 'ordering it tonight', provider, receiptProvider: provider, receiptConfirmations: 1 });
     expect(paid.ok).toBe(true);
     expect(await token().balanceOf(OPERATOR)).toBe(ethers.parseUnits('300', 6));
     expect((await answerReward('tenekom', gpu.id, 'approved', { provider })).reason).toMatch(/not waiting/);

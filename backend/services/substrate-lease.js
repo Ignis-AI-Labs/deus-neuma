@@ -114,6 +114,8 @@ export const linePlace = () => {
   };
 };
 
+/** The kind of place this route holds ('turn', 'member', 'wake'…), or null outside a lease. */
+export const leaseKind = () => context.getStore()?.lease?.who?.kind ?? null;
 /** Run work that takes its places as `kind` (e.g. 'background') — never riding a caller's lease. */
 export const withLineKind = (kind, fn) => context.run({ kind }, fn);
 

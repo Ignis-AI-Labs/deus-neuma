@@ -40,6 +40,7 @@ import { collectOutputs } from '../image-forge/image-store.js';
 import { ensureBeingGround } from '../house-workspace.js';
 import { loadBrand, loadTemplate, listTemplates, listBrandsDetailed, listGuestSlugs, embedFaces, loadMarks, loadGuest, brandsDir } from './brand-tokens.js';
 import { resolveBrandDir } from './kit-locate.js';
+import { listDesigns } from './card-designs.js';
 import { renderCardSvg, fontFaceBlock } from './card-svg.js';
 import { recordProvenance } from './card-provenance.js';
 import { fetchPlatformStats, milestoneFrom, FACT_NAMES } from './platform-stats.js';
@@ -72,6 +73,14 @@ export const describeCards = async ({ wallet = null } = {}) => {
     const found = await resolveBrandDir(b.brand, wallet, brandsDir());
     const guests = await listGuestSlugs(b.brand, { dir: found?.dir, wallet });
     lines.push(`  ${b.brand} — ${b.where} kit at ${found?.dir || '(not found)'}; guest logos on hand: ${guests.join(', ') || 'none yet'}`);
+    // A company's own card designs are drawn INSTEAD of the shared ones of the same name, and
+    // may add card types no other company has — with fields of their own (card-designs.js).
+    for (const own of await listDesigns(b.brand, wallet)) {
+      const t = await loadTemplate(own.name, { brand: b.brand, wallet });
+      if (!t.ok) { lines.push(`    its own ${own.name} card cannot be drawn: ${t.error}`); continue; }
+      const fields = Object.entries(t.spec.fields || {}).map(([field, rule]) => `${field}${rule.required ? '*' : ''}${rule.max ? `≤${rule.max}` : ''}`).join(', ');
+      lines.push(`    its OWN ${own.name} card (drawn instead of the shared one) — fields: ${fields}`);
+    }
   }
   lines.push('');
   for (const name of templates) {
@@ -184,7 +193,8 @@ export const renderCardForLane = async ({ laneId, args, rasterize, laneDir = nul
   // same name happens to ship in the repo.
   const brand = await loadBrand(brandName, { wallet });
   if (!brand.ok) return { ok: false, errors: [brand.error] };
-  const template = await loadTemplate(templateName);
+  // The company's OWN design of this card wins over the shared one (card-designs.js).
+  const template = await loadTemplate(templateName, { brand: brandName, wallet });
   if (!template.ok) return { ok: false, errors: [template.error] };
 
   // A live figure fills the card; anything the being wrote itself still wins,

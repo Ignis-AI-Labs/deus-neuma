@@ -46,14 +46,14 @@ describe('links between campaigns (pure)', () => {
   });
   test('each holder reads the other side as it stands; a seat with no linked campaign reads nothing', () => {
     const linked = withLinks(rows, [{ a: 'cmo:m1', b: 'cro:k1', note: 'same launch' }]);
-    expect(linkedText(['cro'], linked)).toContain('- Your campaign "User acquisition" works with MARKETING\'s campaign "Umbrae Market Depth" (open): angles: The Account — why they are linked: same launch');
-    expect(linkedText(['cmo'], linked)).toContain('- Your campaign "Umbrae Market Depth" works with SALES\'s campaign "User acquisition" (open): goal: pools opened');
+    expect(linkedText(['cro'], linked)).toContain('- Your campaign "User acquisition" works with the CHIEF MARKETING OFFICER\'s campaign "Umbrae Market Depth" (open): angles: The Account — why they are linked: same launch');
+    expect(linkedText(['cmo'], linked)).toContain('- Your campaign "Umbrae Market Depth" works with the CHIEF REVENUE OFFICER\'s campaign "User acquisition" (open): goal: pools opened');
     expect(linkedText(['clo'], linked)).toBe('');
     expect(linkedText(['cro'], withLinks(rows, []))).toBe('');
     // The screen offers only another position's campaign of the same company, not one already linked.
     expect(linkChoices(linked[1], linked)).toEqual([]);
-    expect(linkChoices(withLinks(rows, [])[1], withLinks(rows, []))).toEqual([{ value: 'cmo:m1', label: 'MARKETING · Umbrae Market Depth' }]);
-    expect(officeWords('cro')).toBe('SALES');
+    expect(linkChoices(withLinks(rows, [])[1], withLinks(rows, []))).toEqual([{ value: 'cmo:m1', label: 'CMO · Umbrae Market Depth' }]);
+    expect(officeWords('cro')).toBe('CRO');
   });
 });
 
@@ -114,15 +114,15 @@ describe('LINKED CAMPAIGNS through the real stack (gnosis)', () => {
     expect((await request(app).post('/api/v1/positions/campaigns/link').use(as).send({ a: b, b: a })).body.error).toMatch(/already linked/);
     const merc = await positionSection(conn('merc'));
     expect(merc).toContain('## LINKED CAMPAIGNS — keep these in step');
-    expect(merc).toContain('Your campaign "User acquisition" works with MARKETING\'s campaign "Umbrae Market Depth"');
+    expect(merc).toContain('Your campaign "User acquisition" works with the CHIEF MARKETING OFFICER\'s campaign "Umbrae Market Depth"');
     const aure = await positionSection(conn('aure'));
-    expect(aure).toContain('Your campaign "Umbrae Market Depth" works with SALES\'s campaign "User acquisition" (open): goal: Teams with a token on Base opening a pool');
+    expect(aure).toContain('Your campaign "Umbrae Market Depth" works with the CHIEF REVENUE OFFICER\'s campaign "User acquisition" (open): goal: Teams with a token on Base opening a pool');
     expect((await request(app).get('/api/v1/positions/cro/eyes').use(as)).body.eyes.text).toContain('## LINKED CAMPAIGNS');
   });
 
   test('the other side\'s state is read live: a closed campaign reads closed; unlinking ends the reading', async () => {
     expect((await request(app).post(`/api/v1/revenue/lead-engine/campaigns/${salesId}/close`).use(as)).status).toBe(200);
-    expect(await positionSection(conn('aure'))).toContain('SALES\'s campaign "User acquisition" (closed)');
+    expect(await positionSection(conn('aure'))).toContain('CHIEF REVENUE OFFICER\'s campaign "User acquisition" (closed)');
     const a = `cmo:${marketingId}`; const b = `cro:${salesId}`;
     expect((await request(app).post('/api/v1/positions/campaigns/unlink').use(as).send({ a: b, b: a })).status).toBe(200);
     expect((await request(app).post('/api/v1/positions/campaigns/unlink').use(as).send({ a, b })).body.error).toBe('those two campaigns are not linked');

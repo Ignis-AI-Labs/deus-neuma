@@ -33,6 +33,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { startAnvil, miniErc20Initcode, MINI_ERC20_ABI } from '../helpers/money-in-kit.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
 import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
+import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
 import { startUmbraeStandIn, POOL, USDC } from '../helpers/umbrae-stand-in.js';
 import { setGoal, requestReward } from '../../backend/services/umbrae-lp/lp-rewards.js';
@@ -62,7 +63,7 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
   const root = await createTempDir('lp-layer');
   const previous = getWorkspacesRoot();
   const priorRpc = process.env.BASE_MAINNET_RPC_URL;
-  let server; let browser; let anvil; let provider; let umbrae; let connections;
+  let server; let browser; let anvil; let provider; let umbrae; let connections; let receiptRpc;
   try {
     setWorkspacesRoot(root);
     const auth = await fullAuth();
@@ -70,6 +71,7 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     await workspace.writeEncryptedKeypair(LANE, { address: ethers.Wallet.createRandom().address });
     anvil = await startAnvil({ chainId: 8453 });
     provider = new ethers.JsonRpcProvider(anvil.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 100 });
+    receiptRpc = await startLpReceiptRpc(anvil.url);
     process.env.BASE_MAINNET_RPC_URL = anvil.url;
     loadConfig({ BASE_MAINNET_RPC_URL: anvil.url });
     resetChainProviders();
@@ -133,6 +135,23 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     await page.getByLabel('Budget in dollars').fill('10');
     await page.getByRole('button', { name: 'SET', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Change budget' })).toContainText('$10.00');
+
+    const capital = page.getByRole('region', { name: 'Capital controls' });
+    await expect(capital).toContainText('EOA MODE: application policies restrict signing');
+    await expect(capital).toContainText('$25,000.00 per action · $50,000.00 daily');
+    await capital.getByLabel('Per-action limit in dollars').fill('100');
+    await capital.getByLabel('Daily movement limit in dollars').fill('1000');
+    await capital.getByRole('button', { name: 'SAVE LIMITS' }).click();
+    await expect(page.getByText('Capital controls updated.')).toBeVisible();
+    await expect(capital).toContainText('$100.00 per action · $1,000.00 daily');
+    await capital.getByRole('button', { name: 'REQUIRE PRIVATE BROADCAST' }).click();
+    await expect(capital.getByText('PRIVATE BROADCAST REQUIRED', { exact: true })).toBeVisible();
+    await capital.getByRole('button', { name: 'PAUSE NEW CAPITAL' }).click();
+    await expect(capital).toContainText('PAUSED: new capital actions are stopped.');
+    await capital.getByRole('button', { name: 'RESUME CAPITAL ACTIONS' }).click();
+    await expect(capital).toContainText('ACTIVE: independently priced limits are enforced');
+    await capital.getByRole('button', { name: 'ALLOW PUBLIC BROADCAST' }).click();
+    await expect(capital.getByText('PUBLIC BROADCAST ALLOWED', { exact: true })).toBeVisible();
 
     // The house member asks for more than the budget; after a refresh it waits as a card.
     await provider.send('anvil_setBalance', [lpAddress, ethers.toQuantity(ethers.parseEther('1'))]);
@@ -211,6 +230,7 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     if (server?.listening) await new Promise((resolve) => server.close(resolve));
     connections?.restore();
     await umbrae?.close();
+    await receiptRpc?.close();
     provider?.destroy();
     await anvil?.stop();
     if (priorRpc === undefined) delete process.env.BASE_MAINNET_RPC_URL; else process.env.BASE_MAINNET_RPC_URL = priorRpc;

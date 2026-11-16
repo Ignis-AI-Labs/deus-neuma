@@ -32,7 +32,7 @@ export const suppressContact = (target, reason) => revenueCall('POST', '/lead-en
 export const approveSegmentList = (id) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(id)}/list`, { errorPrefix: 'Could not approve the list' });
 
 /** Approve or return the Mercator's latest sales facts sheet. impure. @param {string} sheetId @param {'approved'|'returned'} verdict @param {string} [note] */
-export const reviewSalesFacts = (sheetId, verdict, note) => revenueCall('POST', `/lead-engine/facts/${encodeURIComponent(sheetId)}`, { body: { verdict, note }, errorPrefix: 'Could not record the review' });
+export const reviewSalesFacts = (sheetId, verdict, note, only) => revenueCall('POST', `/lead-engine/facts/${encodeURIComponent(sheetId)}`, { body: { verdict, note, only }, errorPrefix: 'Could not record the review' });
 
 /** Open a sales campaign: a name, the company it is for, what it is meant to bring in. impure. */
 export const openSalesCampaign = (campaign) => revenueCall('POST', '/lead-engine/campaigns', { body: campaign, errorPrefix: 'Could not open the campaign' });
@@ -42,3 +42,12 @@ export const moveSalesCampaign = (id, change) => revenueCall('POST', `/lead-engi
 
 /** Put an audience under a campaign (null: under none). impure. */
 export const setAudienceCampaign = (segmentId, campaignId) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(segmentId)}/campaign`, { body: { campaign: campaignId }, errorPrefix: 'Could not move the audience' });
+
+/** When paid lead data may be spent: 'ask' | 'free-first' | 'paid-first', and the month's cap in credits. impure. */
+export const setLeadSpend = (mode, cap) => revenueCall('POST', '/lead-engine/spend', { body: { mode, cap }, errorPrefix: 'Could not set the paid lead data rule' });
+
+/** Rewrite one fact of the sales facts sheet on screen ({n, claim?, source?}), or take it off ({n, remove: true}). impure. */
+export const changeSalesFact = (sheetId, change) => revenueCall('POST', `/lead-engine/facts/${encodeURIComponent(sheetId)}/fact`, { body: change, errorPrefix: 'Could not change the fact' });
+
+/** Re-file one lead under what it is to the house (buyer, applicant, partner, investor, press, vendor, other). impure. */
+export const setLeadKind = (leadId, kind) => revenueCall('POST', `/lead-engine/leads/${encodeURIComponent(leadId)}/kind`, { body: { kind }, errorPrefix: 'Could not re-file the lead' });

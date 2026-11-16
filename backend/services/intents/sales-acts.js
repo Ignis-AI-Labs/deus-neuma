@@ -21,12 +21,14 @@ import { officeContext } from './revenue-acts.js';
 import { makeSegment } from '../sales/segment-shape.js';
 import { makeProspect, MATCH_WORDS, countryOfAddress } from '../sales/prospect-shape.js';
 import { makeSuppression, normalizeEmail, suppressionMatcher } from '../sales/suppress-shape.js';
-import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts, readCampaigns } from '../sales/sales-store.js';
+import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts, readCampaigns, addProspectPerson } from '../sales/sales-store.js';
 import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { listCompanies } from '../marketing/companies.js';
 import { salesGatherIntents } from './sales-gather-acts.js';
 import { campaignManageIntents } from './campaign-manage-acts.js';
+import { companyModelIntent } from './company-model-act.js';
+import { salesInboundIntents } from './sales-inbound-acts.js';
 import { THREAD_REST_DAYS } from '../revenue/deal-shape.js';
 
 const BATCH_MAX = 10;
@@ -144,8 +146,8 @@ const ledgerRefusal = (leads, email, domain, now) => {
 const salesLeadIntent = Object.freeze({
   name: 'sales/lead',
   policyTool: 'sales.lead',
-  fieldsForPrompt: '{id, person, email, emailSource, note?}',
-  descriptionForPrompt: 'THE LEAD ENGINE. Put a prospect onto the house\'s lead ledger as cold, yours to work: person is the number of one of its people (from 0), email their address as published, emailSource the https page where you read it — never a guessed address. Only from an APPROVED segment, only a weak or strong match in one of its countries, never anyone on the do-not-contact list or already on the ledger.',
+  fieldsForPrompt: '{id, person: number | {name, role}, email, emailSource, note?}',
+  descriptionForPrompt: 'THE LEAD ENGINE. Put a prospect onto the house\'s lead ledger as cold, yours to work: person is the number of one of its people (from 0), or {name, role} for a person or team you read together with the address after scoring; email their address as published, emailSource the https page where you read it — never a guessed address. Only from an APPROVED segment, only a weak or strong match in one of its countries, never anyone on the do-not-contact list or already on the ledger.',
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -157,25 +159,30 @@ const salesLeadIntent = Object.freeze({
     if (prospect.match < 2) return invalid(`[${prospect.id}] ${prospect.name} is no match — drop it, or rescore it as a new filing`);
     if (!prospect.country) return invalid(`[${prospect.id}] has no country — file it again with the ISO code of where the company is, from its own pages`);
     if (!segment.countries.includes(prospect.country)) return invalid(`[${prospect.id}] is in ${prospect.country}, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
-    const person = prospect.people[Number(payload?.person)];
-    if (!person) return invalid(`person: the number of one of [${prospect.id}]'s people (0 to ${prospect.people.length - 1}); file the people you read on its pages first`);
     const email = normalizeEmail(payload?.email);
     if (!email) return invalid('email: their address as published');
     if (!/^https:\/\/\S+$/.test(String(payload?.emailSource ?? ''))) return invalid('emailSource: the https page where the address is published — an address is never guessed');
+    // The person: one already filed on the prospect (its number), or one read now with the address ({name, role}).
+    const fresh = payload?.person && typeof payload.person === 'object' ? { name: String(payload.person.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 120), role: String(payload.person.role ?? '').replace(/\s+/g, ' ').trim().slice(0, 120), sourceUrl: String(payload.emailSource) } : null;
+    if (fresh && (fresh.name.length < 2 || fresh.role.length < 2)) return invalid('person: {name, role} — who the address belongs to, as its page says (a team address: name "Venice support team", role "support")');
+    const person = fresh ?? prospect.people[Number(payload?.person)];
+    if (!person) return invalid(prospect.people.length ? `person: the number of one of [${prospect.id}]'s people (0 to ${prospect.people.length - 1}), or {name, role} for one you read with the address` : `person: [${prospect.id}] has no person filed yet — give {name, role}: who the address belongs to, as the page you read it on says`);
     if (suppressionMatcher(await readSuppressions(context.wallet)).email(email)) return invalid(`${email} is on the do-not-contact list`);
     const addressCountry = countryOfAddress(email);
     if (addressCountry && !segment.countries.includes(addressCountry)) return invalid(`${email} is a ${addressCountry} address, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
     const ledger = await leadLedgerFor(context.wallet);
     const refusal = ledgerRefusal(await ledger.load(), email, prospect.domain, Date.now());
     if (refusal) return invalid(refusal);
-    return { ok: true, value: { context, ledger, prospect, segment, person, email, emailSource: String(payload.emailSource), note: String(payload?.note ?? '').trim() } };
+    return { ok: true, value: { context, ledger, prospect, segment, person, fresh: Boolean(fresh), email, emailSource: String(payload.emailSource), note: String(payload?.note ?? '').trim() } };
   },
   summarize: (payload) => `lead from prospect ${payload?.id ?? '?'}`,
-  execute: async ({ context, ledger, prospect, segment, person, email, emailSource, note }) => {
+  execute: async ({ context, ledger, prospect, segment, person, fresh, email, emailSource, note }) => {
+    if (fresh) await addProspectPerson(context.wallet, prospect.id, person, context.laneId);
     const lead = await ledger.add({
       name: `${person.name}, ${person.role} at ${prospect.name}`,
       contact: email,
       channelId: 'email',
+      kind: 'buyer', // a company scored against an audience is someone the house sells to
       source: `lead engine [${segment.id}] ${segment.name} · address: ${emailSource}`,
       status: 'cold',
       ownerNeumaId: context.laneId,
@@ -234,4 +241,4 @@ const salesFactsIntent = Object.freeze({
   },
 });
 
-export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...campaignManageIntents]);
+export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...campaignManageIntents, companyModelIntent, ...salesInboundIntents]);

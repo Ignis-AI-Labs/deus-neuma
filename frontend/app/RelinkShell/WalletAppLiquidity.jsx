@@ -7,7 +7,8 @@
 // Backend: backend/routes/lp-wallet-routes.js. Figures: lp-figures.js.
 
 import { useState } from 'react';
-import { setLpBudget, answerLpDeposit, setLpPace, answerLpReward } from './lp-wallet-client.js';
+import { setLpBudget, setLpCapital, answerLpDeposit, setLpPace, answerLpReward } from './lp-wallet-client.js';
+import { WalletCapitalControls } from './WalletCapitalControls.jsx';
 import { positionRows, poolNamed, lpTotals, nameCase } from './lp-figures.js';
 import { BudgetMeter, WaitingCard, PositionCard } from './WalletLiquidityCards.jsx';
 import { EarningsCard, ClockCard, GoalsCard } from './WalletEarnings.jsx';
@@ -99,6 +100,13 @@ export const LiquidityPanel = ({ neumaId, name, state }) => {
     await reload();
     return null;
   };
+  const saveCapital = async (patch) => {
+    setBusy('capital');
+    const r = await setLpCapital(neumaId, patch);
+    setBusy(null);
+    setResult(r.ok ? { ok: true, text: 'Capital controls updated.' } : { ok: false, text: r.reason || r.error });
+    await reload();
+  };
 
   return (
     <div className="lpw" aria-label="Liquidity on Umbrae" role="region">
@@ -109,6 +117,7 @@ export const LiquidityPanel = ({ neumaId, name, state }) => {
       <ClockCard clock={lp.clock} name={name} onPace={savePace} />
 
       <BudgetMeter budgetUsd={lp.budgetUsd} inPositionsUsd={inPositions} waitingUsd={waitingUsd} onSave={saveBudget} />
+      {lp.capital ? <WalletCapitalControls capital={lp.capital} vault={lp.vault} busy={busy === 'capital'} onSave={saveCapital} /> : null}
 
       {lp.pending.length ? (
         <section aria-label="Waiting for you">

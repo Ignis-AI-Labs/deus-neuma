@@ -50,7 +50,7 @@ export const readHolders = async (wallet) => Object.fromEntries(await Promise.al
 export const foldBoard = ({ holders, names, waiting, connections, setupState = null }) => POSITIONS.map((p) => {
   const laneId = holders[p.office] ?? null;
   return {
-    office: p.office, plain: p.plain, title: p.title, covers: p.covers,
+    office: p.office, seat: p.seat, acronym: p.acronym, title: p.title, plain: p.plain, covers: p.covers,
     holder: laneId ? { laneId, name: names.get(laneId) ?? laneId } : null,
     functions: p.functions,
     // What the seat still needs before it can do its job, measured (position-setup.js).

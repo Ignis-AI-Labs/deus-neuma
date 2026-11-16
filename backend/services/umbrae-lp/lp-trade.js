@@ -30,6 +30,10 @@ import { KYBER_ROUTER } from '../../../core/wallet/aggregator-policy.js';
 import { classifyLpTransaction, checkLpIntent } from '../../../core/wallet/lp-tx-policy.js';
 import { guardLpExecution, recordLpBroadcast, settleLpExecution } from './lp-executions.js';
 import { swapOutputFromReceipt } from '../../../core/wallet/swap-receipt.js';
+import { proveLpReceipt } from './lp-receipt-proof.js';
+import { reserveCapitalAssets } from './lp-capital-controls.js';
+import { broadcastLpTransaction, prepareLpBroadcast } from './lp-broadcast.js';
+import { readAgentVault } from '../agent-vault/vault-store.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('LpTrade');
@@ -113,12 +117,20 @@ const receiptOf = async (provider, hash, timeoutMs = 120000) => {
   return null;
 };
 
+const receiptEvidence = (ctx) => ({
+  secondary: ctx.receiptProvider,
+  minConfirmations: ctx.receiptConfirmations,
+  timeoutMs: ctx.receiptTimeoutMs ?? 120000,
+});
+
 // impure — sign through the rule, broadcast through our Base node, wait for the receipt.
 const signAndSend = async (ctx, tx, asked, maxApprove) => {
   const guardedTx = { ...tx, chainId: 8453 };
-  const guard = await guardLpExecution({ neumaId: ctx.neumaId, tx: guardedTx, asked, provider: ctx.provider });
+  const ready = await prepareLpBroadcast({ neumaId: ctx.neumaId });
+  if (!ready.ok) return refuse(ready.reason);
+  const guard = await guardLpExecution({ neumaId: ctx.neumaId, tx: guardedTx, asked, provider: ctx.provider, ...receiptEvidence(ctx) });
   if (!guard.ok) return guard;
-  const signed = await signLpTransaction({ signer: ctx.signer, provider: ctx.provider, tx: guardedTx, asked, maxApprove, tokens: ctx.tokens, recipients: ctx.recipients });
+  const signed = await signLpTransaction({ signer: ctx.signer, provider: ctx.provider, tx: guardedTx, asked, maxApprove, tokens: ctx.tokens, recipients: ctx.recipients, vault: ctx.vault });
   if (!signed.ok) return signed;
   const recorded = await recordLpBroadcast({ neumaId: ctx.neumaId, actionHash: guard.actionHash, signed });
   if (!recorded.ok) return recorded;
@@ -126,7 +138,12 @@ const signAndSend = async (ctx, tx, asked, maxApprove) => {
     log.error('LP execution settlement was not written', { neumaId: ctx.neumaId, state, error: error.message });
   });
   try {
-    await ctx.provider.broadcastTransaction(signed.signedTransaction);
+    const sent = await broadcastLpTransaction({ neumaId: ctx.neumaId, signed, provider: ctx.provider });
+    if (!sent.ok) {
+      const uncertain = sent.sent !== false;
+      await mark(uncertain ? 'unknown' : 'aborted');
+      return refuse(sent.reason, { txHash: signed.hash, ...(uncertain ? { uncertain: true } : {}) });
+    }
     const receipt = await receiptOf(ctx.provider, signed.hash, ctx.receiptTimeoutMs ?? 120000);
     if (!receipt) {
       await mark('unknown');
@@ -136,8 +153,13 @@ const signAndSend = async (ctx, tx, asked, maxApprove) => {
       await mark('reverted');
       return refuse('Base ran the transaction and it failed. Nothing moved.', { txHash: signed.hash });
     }
+    const proof = await proveLpReceipt({ primary: ctx.provider, hash: signed.hash, ...receiptEvidence(ctx) });
+    if (!proof.ok) {
+      await mark('unknown');
+      return refuse('The transaction has not been independently confirmed yet. Reconcile its hash before trying again.', { txHash: signed.hash, uncertain: true });
+    }
     await mark('confirmed');
-    return { ok: true, txHash: signed.hash };
+    return { ok: true, txHash: signed.hash, receipt: proof.receipt };
   } catch (err) {
     await mark('unknown');
     return refuse(`The transaction outcome is unknown: ${err.shortMessage || err.message}`, { txHash: signed.hash, uncertain: true });
@@ -150,9 +172,9 @@ const contextFor = async (neumaId, provider, opts = {}) => {
   if (!signer) return refuse('This house member has no LP wallet yet.');
   const base = provider ?? await lpBase();
   if (!base) return refuse('Base did not answer, so nothing can be signed.');
-  const [pools, house] = await Promise.all([readPools(), houseRecipients(neumaId)]);
+  const [pools, house, vault] = await Promise.all([readPools(), houseRecipients(neumaId), readAgentVault(neumaId)]);
   const book = tokenBook(pools);
-  return { ok: true, neumaId, signer, provider: base, pools, book, house, tokens: new Set(book.keys()), recipients: new Set(house.map((r) => r.address)), receiptTimeoutMs: opts.receiptTimeoutMs };
+  return { ok: true, neumaId, signer, provider: base, pools, book, house, vault, wallet: vault?.safe ?? signer.address, tokens: new Set(book.keys()), recipients: new Set(house.map((r) => r.address)), receiptTimeoutMs: opts.receiptTimeoutMs, receiptProvider: opts.receiptProvider, receiptConfirmations: opts.receiptConfirmations };
 };
 
 // The swap itself (runSwap's body); may throw on an unanswered read.
@@ -175,7 +197,7 @@ const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } 
   const to = tokenOf(ctx.book, tokenOut);
   if (!from || !to) return refuse(`Swaps are between tokens Umbrae's pools trade: ${[...ctx.book.values()].join(', ')}.`);
   const roundTrip = from === to;
-  const wallet = ctx.signer.address;
+  const wallet = ctx.wallet;
   let decimalsIn; let decimalsOut; let held;
   try {
     [[decimalsIn], [decimalsOut], [held]] = await Promise.all([
@@ -238,6 +260,8 @@ const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } 
     };
   }
 
+  const admitted = await reserveCapitalAssets(neumaId, [{ token: from, amount: amountIn, decimals: Number(decimalsIn) }]);
+  if (!admitted.ok) return admitted;
   const txHashes = [];
   const [allowance] = await call(ctx.provider, from, ERC20, 'allowance', [wallet, road.spender]);
   if (allowance < amountIn) {
@@ -248,8 +272,8 @@ const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } 
   const swapped = await signAndSend(ctx, road.tx, { kind: 'swap', tokenIn: from, tokenOut: to, amountIn: amountIn.toString(), amountOutMin: amountOutMin.toString() });
   if (!swapped.ok) return Object.freeze({ ...swapped, txHashes });
   txHashes.push(swapped.txHash);
-  const receipt = await ctx.provider.send('eth_getTransactionReceipt', [swapped.txHash]).catch(() => null);
-  const executedOut = swapOutputFromReceipt({ receipt, tokenOut: to, wallet });
+  const receipt = swapped.receipt ?? await ctx.provider.send('eth_getTransactionReceipt', [swapped.txHash]).catch(() => null);
+  const executedOut = swapOutputFromReceipt({ receipt, tokenOut: to, wallet, sources: viaAgg ? null : new Set(best.route.pools) });
   const route = viaAgg ? [ctx.book.get(from), ctx.book.get(to)] : best.route.path.map((t) => ctx.book.get(t));
   await neumaWorkspace.audit(neumaId, 'LP_ACTION', { type: 'swap', via: road.via, route, amountIn: String(amount), compared, txHashes });
   const amountOut = executedOut === null ? 'an unread amount of' : ethers.formatUnits(executedOut, decimalsOut);
@@ -281,6 +305,10 @@ const sendOnce = async (neumaId, { to, token = 'ETH', amount } = {}, options = {
   } catch {
     return refuse(`That token has ${decimals} decimal places.`);
   }
+  const admitted = await reserveCapitalAssets(neumaId, [{
+    token: tokenAddress ?? tokenOf(ctx.book, 'WETH'), amount: raw, decimals: Number(decimals),
+  }]);
+  if (!admitted.ok) return admitted;
   const tx = native
     ? { to: target.address, data: '0x', value: raw.toString() }
     : { to: tokenAddress, data: ERC20.encodeFunctionData('transfer', [target.address, raw]) };

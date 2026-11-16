@@ -138,7 +138,7 @@ export default Object.freeze({
     retryIgnite: 'RETRY IGNITE',
     igniteTitle: 'Start the local substrate model',
     witnessTag: 'WITNESS',
-    urgentTitle: 'Interject NOW — cut the reply and take the floor',
+    urgentTitle: 'Interject NOW (Ctrl+Enter) — cut the reply and take the floor',
     micBlocked: 'MIC BLOCKED — NO INPUT, SEE THE CONSOLE',
     micOff: 'MIC OFF',
     micOpening: 'MIC OPENING…',

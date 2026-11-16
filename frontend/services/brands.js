@@ -98,8 +98,19 @@ export const uploadBrandMark = async (brand, name, file) => {
  * document-level `@font-face` rules instead. That is the difference between an
  * 8KB response and a 1.6MB one on every keystroke.
  */
-export const previewBrandCard = async (brand, { kit, template, data = null, signal } = {}) =>
+export const previewBrandCard = async (brand, { kit, template, data = null, design = null, signal } = {}) =>
   apiCall('POST', `${BASE}/${encodeURIComponent(brand)}/preview`, {
-    body: { kit, template, data },
+    // design: an unsaved {svg, spec} from the card designer, drawn instead of the saved one
+    body: { kit, template, data, ...(design ? { design } : {}) },
     signal,
   });
+
+// A company's cards (brand-card-routes.js): every card type, whether each is its own design or
+// the shared one, and how alike it is to other companies' — then one design, kept or let go.
+const cardsUrl = (brand, template = null) =>
+  `${BASE}/${encodeURIComponent(brand)}/cards${template ? `/${encodeURIComponent(template)}` : ''}`;
+export const listBrandCards = async (brand) => apiCall('GET', cardsUrl(brand));
+export const getBrandCard = async (brand, template) => apiCall('GET', cardsUrl(brand, template));
+export const saveBrandCard = async (brand, template, { svg, spec }) =>
+  apiCall('PUT', cardsUrl(brand, template), { body: { svg, spec } });
+export const dropBrandCard = async (brand, template) => apiCall('DELETE', cardsUrl(brand, template));

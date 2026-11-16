@@ -1,6 +1,6 @@
 /* BrandKits — shell, header and rail.
    Split by zone; the editors are in BrandKits-fields.css and the palette,
-   type, marks and preview in BrandKits-craft.css.
+   type, marks and preview in BrandKits-craft.css, the cards in BrandKits-cards.css.
 
    Every colour here is a token. This panel is the one place a BRAND's own hues
    are shown at full strength, so the chrome around them must never compete with
@@ -8,6 +8,7 @@
 
 @import './BrandKits-fields.css';
 @import './BrandKits-craft.css';
+@import './BrandKits-cards.css';
 
 .bk {
   display: flex;

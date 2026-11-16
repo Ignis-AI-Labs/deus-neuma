@@ -24,32 +24,34 @@
 //
 // impure — reads marks and the template off disk.
 
-import { loadTemplate, loadMarks, loadGuest } from './brand-tokens.js';
-import { renderCardSvg } from './card-svg.js';
-import { sampleFor } from './card-sample.js';
+import { loadTemplate, brandsDir } from './brand-tokens.js';
 import { resolveBrandDir } from './kit-locate.js';
-import { brandsDir } from './brand-tokens.js';
-
-/** The fixture that stands in for a guest logo. Ours, and committed for
- *  exactly this — a preview must never require someone else's trademark. */
-const SAMPLE_GUEST = 'example-token';
+import { drawDesign } from './card-design-save.js';
 
 /**
  * Draw one card from a draft kit.
+ *
+ * The card drawn is the company's OWN design when it has one (card-designs.js), else the shared
+ * one; given `design` ({svg, spec}, unsaved, straight from the card designer) that is drawn
+ * instead, so a redesign is seen as it is typed. An unsaved design is held to the same safety
+ * law as a saved one (card-safety.js) before it is drawn, because the panel draws it inline.
  *
  * @param {object} params
  * @param {string} params.brand the brand whose ARTWORK to load (marks live on disk)
  * @param {object} params.kit the draft — unsaved, straight from the panel
  * @param {string} params.template
+ * @param {?{svg: string, spec: object}} [params.design] an unsaved design to draw instead
  * @param {object} [params.data] copy to draw; anything absent is sampled
  * @param {string} [params.wallet]
- * @returns {Promise<{ok: true, svg: string, missing: string[], sample: object}
+ * @returns {Promise<{ok: true, svg: string, missing: string[], sample: object, source: string}
  *                  | {ok: false, errors: string[]}>}
  */
-export const previewCard = async ({ brand, kit, template, data = null, wallet = null }) => {
+export const previewCard = async ({ brand, kit, template, design = null, data = null, wallet = null }) => {
   if (!kit || typeof kit !== 'object') return { ok: false, errors: ['no kit to preview'] };
 
-  const loaded = await loadTemplate(template);
+  const loaded = design && typeof design === 'object'
+    ? { ok: true, svg: design.svg, spec: design.spec, source: 'draft' }
+    : await loadTemplate(template, { brand, wallet });
   if (!loaded.ok) return { ok: false, errors: [loaded.error] };
 
   // Artwork resolves from wherever this brand's kit LIVES, so a workspace kit
@@ -57,44 +59,11 @@ export const previewCard = async ({ brand, kit, template, data = null, wallet = 
   // rule loadBrand keeps. A brand with no directory yet (a kit being created)
   // simply has no marks, and the refusal will say which one it wanted.
   const found = await resolveBrandDir(brand, wallet, brandsDir());
-  const dir = found?.dir || null;
-
-  const { marks, missing: markMiss } = await loadMarks(brand, kit, { dir, wallet });
-
-  // Only fetched when the template actually declares a guest slot — most do
-  // not, and reading a file for a placeholder nobody draws is waste.
-  // ⚠️ `guest` is a TOP-LEVEL key of the sidecar, not one of its `fields`. It
-  // describes an image the template mounts, not a piece of copy the caller
-  // supplies, so it never belonged in the field table `fieldRefusals` walks.
-  let guest = {};
-  const guestMiss = [];
-  if (loaded.spec?.guest) {
-    const got = await loadGuest(brand, SAMPLE_GUEST, { dir, wallet });
-    if (got.mark) guest = { mark: got.mark };
-    else guestMiss.push(got.missing);
-  }
-
-  const sample = sampleFor(loaded.spec, kit);
-  const drawn = { ...sample, ...(data && typeof data === 'object' ? data : {}) };
-
-  const result = renderCardSvg(loaded.svg, {
-    tokens: kit,
-    data: drawn,
-    spec: loaded.spec,
-    fontFace: '',
-    marks,
-    guest,
-  });
-  if (!result.ok) return { ok: false, errors: result.errors };
-
-  return {
-    ok: true,
-    svg: result.svg,
-    // Named, never swallowed: a mark that did not load is the difference
-    // between […] and […].
-    missing: [...markMiss, ...guestMiss],
-    sample,
-  };
+  const drawn = await drawDesign({ brand, kit, svg: loaded.svg, spec: loaded.spec, data, dir: found?.dir || null, wallet });
+  if (!drawn.ok) return drawn;
+  // Named, never swallowed: a mark that did not load is the difference
+  // between […] and […].
+  return { ok: true, svg: drawn.svg, missing: drawn.missing, sample: drawn.sample, source: loaded.source };
 };
 
 /**

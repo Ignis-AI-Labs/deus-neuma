@@ -34,7 +34,7 @@ let anvil, provider, root, originalRoot, umbrae, connections, lp;
 const priorRpc = process.env.BASE_MAINNET_RPC_URL;
 const nonce = async (address) => Number(await provider.send('eth_getTransactionCount', [address, 'latest']));
 const ask = (extra = {}) => ({ baseToken: NEW_TOKEN, quoteToken: 'USDC', binStep: 25, baseFee: 30, seedQuote: '0.000005', ...extra });
-const create = (extra) => runCreatePool('tenekom', ask(extra), { provider, pollMs: 50 });
+const create = (extra) => runCreatePool('tenekom', ask(extra), { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 });
 // The factory's real tiers on Base (getAllFeeConfigs, read 2026-11-14).
 const TIERS = [[1, 1, 4], [1, 2, 4], [5, 4, 15], [10, 8, 30], [15, 12, 40], [20, 20, 80], [25, 30, 150], [50, 50, 300], [100, 80, 500]];
 /**
@@ -94,7 +94,7 @@ beforeEach(async () => {
   await provider.send('anvil_setStorageAt', [UMBRAE_FACTORY, ethers.toBeHex(0, 32), ethers.toBeHex(0, 32)]);
   umbrae.reset();
   connections?.restore();
-  connections = connectionsOn(['umbrae-liquidity']);
+  connections = connectionsOn(['umbrae-liquidity', 'market-data']);
 });
 
 describe('opening a new pool', () => {

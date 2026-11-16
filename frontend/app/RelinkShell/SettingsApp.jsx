@@ -103,6 +103,7 @@ const TAB_OF_FOCUS = Object.freeze({
   providers: 'models',
   route: 'models',
   'channel-keys': 'api',
+  'service-keys': 'api',
   email: 'api',
   web: 'api',
   security: 'security',

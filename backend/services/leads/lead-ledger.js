@@ -36,6 +36,28 @@ const legacyLeadLedgerPath = () =>
 
 export const LEAD_STATUSES = Object.freeze(['cold', 'contacted', 'replied', 'qualified', 'won', 'lost']);
 export const TOUCH_DIRECTIONS = Object.freeze(['in', 'out']);
+// WHAT A LEAD IS TO THE HOUSE (Design note, 2026-11-16: […]). A buyer may pay the house; an applicant wants to work
+// for it; a partner wants to build with it; an investor may fund it; press writes about it; a vendor sells TO
+// it. Each is worked differently, so each is filed apart.
+// NOBODY IS CALLED A BUYER BY DEFAULT (Design note, 2026-11-16: […]). A lead nobody has sorted reads as UNSORTED until the sales seat or the operator
+// says what it is. Only a lead the lead engine itself put on the list (a company scored against an audience) is a
+// buyer without being told.
+export const LEAD_KINDS = Object.freeze(['buyer', 'applicant', 'partner', 'investor', 'press', 'vendor', 'other']);
+export const UNSORTED = 'unsorted';
+// WHERE A LEAD CAME FROM (Design note, 2026-11-16: […]). The lane it was recorded on says; a lead recorded on no lane ('other') is read
+// from how it is reached: an address is email, a profile link names its platform.
+const SOURCE_OF_HOST = Object.freeze([[/(^|\.)(x|twitter)\.com$/, 'x'], [/(^|\.)linkedin\.com$/, 'linkedin'], [/(^|\.)(t\.me|telegram\.org)$/, 'telegram'], [/(^|\.)(discord\.com|discord\.gg)$/, 'discord'],
+  [/(^|\.)facebook\.com$/, 'facebook'], [/(^|\.)(youtube\.com|youtu\.be)$/, 'youtube'], [/(^|\.)tiktok\.com$/, 'tiktok'], [/(^|\.)bsky\.app$/, 'bluesky']]);
+/** pure — the channel a lead came through: its lane, else what its contact shows, else 'other'. */
+export const sourceOf = (lead) => {
+  if (lead?.channelId && lead.channelId !== 'other') return lead.channelId;
+  const contact = String(lead?.contact ?? '').trim().toLowerCase();
+  if (/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(contact)) return 'email';
+  const host = /^(?:https?:\/\/)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})(?:\/|$)/.exec(contact)?.[1] ?? '';
+  return SOURCE_OF_HOST.find(([re]) => re.test(host))?.[1] ?? (contact.startsWith('@') ? 'x' : 'other');
+};
+/** pure — the kind a lead is filed under. */
+export const kindOf = (lead) => (LEAD_KINDS.includes(lead?.kind) ? lead.kind : String(lead?.source ?? '').startsWith('lead engine [') ? 'buyer' : UNSORTED);
 
 // Where a lead can come from: any social channel the house speaks through,
 // the email lane, or anywhere else the field produced one.
@@ -49,7 +71,7 @@ const NOTE_MAX = 2000;
  * @param {{name?: string, contact?: string, channelId?: string,
  *   source?: string, status?: string, campaignId?: string, accountId?: string}} lead
  */
-export const validateLead = ({ name, contact, channelId, source, status, campaignId, accountId } = {}) => {
+export const validateLead = ({ name, contact, channelId, source, status, campaignId, accountId, kind } = {}) => {
   const n = typeof name === 'string' ? name.trim() : '';
   const c = typeof contact === 'string' ? contact.trim() : '';
   if (!n && !c) return 'a lead needs a name or a way to reach them';
@@ -65,6 +87,7 @@ export const validateLead = ({ name, contact, channelId, source, status, campaig
   if (channelId != null && !KNOWN_LANES.includes(channelId) && !getChannel(channelId)) {
     return `Unknown lane: ${channelId}`;
   }
+  if (kind != null && kind !== UNSORTED && !LEAD_KINDS.includes(kind)) return `kind is one of: ${LEAD_KINDS.join(', ')}`;
   if (status != null && !LEAD_STATUSES.includes(status)) {
     return `Unknown status: ${status}`;
   }
@@ -169,6 +192,7 @@ export const createLeadLedger = ({ path }) => {
           channelId: lead.channelId || 'other',
           source: trimmed(lead.source),
           status: lead.status || 'cold',
+          ...(lead.kind ? { kind: lead.kind } : {}),
           campaignId: trimmed(lead.campaignId) || null,
           accountId: trimmed(lead.accountId) || null,
           ownerNeumaId: lead.ownerNeumaId || null,
@@ -179,6 +203,7 @@ export const createLeadLedger = ({ path }) => {
             by: String(lead.addedBy || ''),
             status: lead.status || 'cold',
             ...(lead.ownerNeumaId ? { ownerTo: lead.ownerNeumaId } : {}),
+            ...(lead.direction && TOUCH_DIRECTIONS.includes(lead.direction) ? { direction: lead.direction } : {}),
             ...(trimmed(lead.note) ? { note: trimmed(lead.note).slice(0, NOTE_MAX) } : {}),
           }],
         };
@@ -212,17 +237,20 @@ export const createLeadLedger = ({ path }) => {
           status: change.status !== undefined ? change.status : lead.status,
           campaignId: change.campaignId !== undefined ? change.campaignId : lead.campaignId,
           accountId: change.accountId !== undefined ? change.accountId : lead.accountId,
+          kind: change.kind !== undefined ? change.kind : kindOf(lead),
         };
         const invalid = validateLead(merged);
         if (invalid) return { ok: false, error: invalid };
         if (change.direction !== undefined && !TOUCH_DIRECTIONS.includes(change.direction)) return { ok: false, error: `direction is one of ${TOUCH_DIRECTIONS.join(', ')}` };
         const now = new Date().toISOString();
+        const kindBefore = kindOf(lead);
         Object.assign(lead, {
           name: trimmed(merged.name),
           contact: trimmed(merged.contact),
           channelId: merged.channelId || 'other',
           source: trimmed(merged.source),
           status: merged.status,
+          ...(merged.kind !== UNSORTED ? { kind: merged.kind } : {}),
           // Which campaign and account it came through can be set later (slice 6).
           campaignId: trimmed(merged.campaignId) || null,
           accountId: trimmed(merged.accountId) || null,
@@ -237,6 +265,7 @@ export const createLeadLedger = ({ path }) => {
           at: now,
           by: String(change.by || ''),
           ...(change.status !== undefined ? { status: merged.status } : {}),
+          ...(change.kind !== undefined && change.kind !== kindBefore ? { kindFrom: kindBefore, kindTo: merged.kind } : {}),
           ...(ownerAfter !== ownerBefore ? { ownerFrom: ownerBefore, ownerTo: ownerAfter } : {}),
           ...(change.direction ? { direction: change.direction } : {}),
           ...(trimmed(change.promised) ? { promised: trimmed(change.promised).slice(0, FIELD_MAX) } : {}),

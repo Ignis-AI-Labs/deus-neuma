@@ -113,6 +113,8 @@ export const foldProspects = (events) => {
     if (e?.type === 'found' && e.prospect?.id) byId.set(e.prospect.id, { ...e.prospect, stage: 'found' });
     const prior = byId.get(e?.id);
     if (e?.type === 'dropped' && prior) byId.set(e.id, { ...prior, stage: 'dropped', dropReason: e.reason, droppedAt: e.at });
+    // A person read after the company was scored (the address is often found last) joins its people.
+    if (e?.type === 'people' && prior && Array.isArray(e.people)) byId.set(e.id, { ...prior, people: [...prior.people, ...e.people] });
     if (e?.type === 'promoted' && prior) byId.set(e.id, { ...prior, stage: 'promoted', leadId: e.leadId, promotedAt: e.at });
     if (e?.type === 'listed' && Array.isArray(e.ids)) {
       for (const id of e.ids) if (byId.has(id)) byId.set(id, { ...byId.get(id), listApproved: true, listedAt: e.at });

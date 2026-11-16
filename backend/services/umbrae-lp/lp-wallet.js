@@ -8,7 +8,8 @@
 // It differs from the identity wallet in one way, on purpose (Founder 11-12): no
 // password stands between the house member and a signature, so it can tend a
 // position with nobody at the desk. What it can sign is held by lp-signer.js;
-// what it holds is whatever the operator chose to send to its address.
+// funds sit either at this session address or, after registration, at its
+// treasury-owned Safe whose Roles policy is enforced by the EVM.
 //
 // The Umbrae key (the platform's own credential for this wallet) is kept in
 // the same folder the same way.

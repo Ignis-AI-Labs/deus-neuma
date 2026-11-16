@@ -14,7 +14,7 @@ import { checkSalesEmail, factsFor } from './sales-facts.js';
 import { claimsRead } from './claims-reader.js';
 import { checkFirstEmail, writtenBefore, cleanPromise } from './first-email.js';
 import { normalizeEmail, suppressionMatcher } from './suppress-shape.js';
-import { leadLedgerFor } from '../leads/lead-ledger.js';
+import { leadLedgerFor, kindOf, UNSORTED } from '../leads/lead-ledger.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('Sales.EmailLedger');
@@ -45,7 +45,10 @@ export const companyOfRecipients = async (wallet, to) => {
  */
 export const leadEmailRefusal = async (wallet, { to, subject, text, promise, laneId }) => {
   const wanted = new Set(to.map(normalizeEmail).filter(Boolean));
-  const leads = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
+  // The sales checks are for people the house SELLS to, and for anyone not yet sorted (until someone says they are
+  // not a buyer, the careful rule holds). An applicant, a partner or the press is answered like any other email:
+  // by the operator's own approval, with no pitch to check.
+  const leads = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)) && ['buyer', UNSORTED].includes(kindOf(l)));
   if (!leads.length) return null;
   // The company a lead is sold: its prospect's audience names it. An email speaks for ONE company.
   const [prospects, segments, sheet] = await Promise.all([readProspects(wallet), readSegments(wallet), readSalesFacts(wallet)]);

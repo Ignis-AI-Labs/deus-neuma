@@ -48,6 +48,8 @@ export const callerToolsNote = (tools) => (tools.some((tool) => tool.server === 
 const HUD_DOCTRINE = Object.freeze([
   ['operator/ask_operator', 'Decisions go to your operator through operator/ask_operator — 2-4 options, your recommendation first; never a question in prose. It is the AskUserQuestion your skills name.'],
   ['team/plan_submit', 'A plan is delivered through team/plan_submit and waits for the verdict; a plan written as prose cannot be approved.'],
+  // Design note, 2026-11-16: a being splits itself to take on a large job — […].
+  ['team/shadow_clone', 'A job that splits into parts that do not depend on each other (a set of files, a list of sources, separate features) goes to team/shadow_clone: copies of you work the parts at once on every free slot of the rig, and each one\'s report comes back to you. One focused task, you work yourself.'],
 ]);
 
 const idOf = (tool) => `${tool.server}/${tool.name}`;

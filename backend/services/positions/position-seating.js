@@ -15,10 +15,11 @@ import { POSITIONS } from './position-map.js';
 const FILE = 'house-seating.json';
 const WHY_MAX = 1200;
 
-// pure — a position by its office code, its plain name or its title, any case
+// pure — a position by its seat (Chief of Staff), its short form (COS), its title (Optio) or its
+// function word (MANAGEMENT), any case
 const positionNamed = (raw) => {
   const k = String(raw ?? '').trim().toLowerCase();
-  return POSITIONS.find((p) => [p.office, p.plain, p.title].some((n) => String(n).toLowerCase() === k)) ?? null;
+  return POSITIONS.find((p) => [p.office, p.seat, p.acronym, p.title, p.plain].some((n) => String(n).toLowerCase() === k)) ?? null;
 };
 
 /**
@@ -41,12 +42,12 @@ export const seatingFields = (payload, members) => {
   const seats = [];
   for (const [where, who] of Object.entries(raw)) {
     const position = positionNamed(where);
-    if (!position) return { ok: false, reason: `no position is called "${where}" — the positions are ${POSITIONS.map((p) => p.plain).join(', ')}` };
-    if (seats.some((s) => s.office === position.office)) return { ok: false, reason: `${position.plain} is named twice` };
+    if (!position) return { ok: false, reason: `no position is called "${where}" — the positions are ${POSITIONS.map((p) => `${p.seat} (${p.acronym})`).join(', ')}` };
+    if (seats.some((s) => s.office === position.office)) return { ok: false, reason: `the ${position.seat} is named twice` };
     const member = memberOf(who);
     if (!member) return { ok: false, reason: `"${who}" is not a member of this house — its members are ${members.map((m) => m.name).join(', ')}` };
     if (seats.some((s) => s.laneId === member.laneId)) return { ok: false, reason: `${member.name} is given two positions: one member holds one position` };
-    seats.push({ office: position.office, plain: position.plain, title: position.title, laneId: member.laneId, name: member.name });
+    seats.push({ office: position.office, seat: position.seat, acronym: position.acronym, title: position.title, plain: position.plain, laneId: member.laneId, name: member.name });
   }
   const why = String(payload?.why ?? '').trim();
   if (!why) return { ok: false, reason: 'why says, in a few lines, how the house decided' };

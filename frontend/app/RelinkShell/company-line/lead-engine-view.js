@@ -14,6 +14,7 @@ export const STATE_WORDS = Object.freeze({
 
 export const UPKEEP_WORDS = Object.freeze({
   suppressed: 'ON THE DO-NOT-CONTACT LIST — CLOSE IT',
+  sort: 'NOT SORTED YET — SAY WHAT THEY ARE',
   answer: 'REPLIED — WAITING FOR AN ANSWER',
   'follow-up': 'NO REPLY — FOLLOW-UP DUE',
   'close-out': 'NO REPLY AFTER THREE EMAILS — CLOSE IT',
@@ -49,6 +50,8 @@ export const segmentRows = (engine) => {
     return {
       segment,
       pool,
+      // the companies of this audience already on the lead list, each with the people read for it
+      leads: mine.filter((p) => p.stage === 'promoted'),
       listable: segment.state === 'approved' ? pool.filter((p) => p.match >= 2 && !p.listApproved).length : 0,
       counts: { strong: pool.filter((p) => p.match === 3).length, weak: pool.filter((p) => p.match === 2).length, none: pool.filter((p) => p.match === 1).length, onLedger: mine.filter((p) => p.stage === 'promoted').length },
     };

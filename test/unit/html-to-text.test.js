@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { htmlToText, extractTitle, decodeEntities } from '../../backend/services/html-to-text.js';
+import { htmlToText, extractTitle, decodeEntities, revealAddresses } from '../../backend/services/html-to-text.js';
 
 describe('html-to-text.js', () => {
   test('drops script/style/template CONTENT, keeps the readable text', () => {
@@ -33,5 +33,17 @@ describe('html-to-text.js', () => {
     const capped = htmlToText(long, 40);
     expect(capped.endsWith('[… truncated]')).toBe(true);
     expect(capped.length).toBeLessThan(60);
+  });
+
+  test('an address the page publishes outside its words is read as published: Cloudflare-protected, or only in a mailto link', () => {
+    // Cloudflare's form: the first byte is the key, every other byte the address XORed with it.
+    const protect = (email, key = 0x5a) => [key, ...[...email].map((c) => c.charCodeAt(0) ^ key)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const hex = protect('team@venice.example');
+    expect(htmlToText(`<p>Write to <a href="/cdn-cgi/l/email-protection#${hex}"><span class="__cf_email__" data-cfemail="${hex}">[email&#160;protected]</span></a> today</p>`)).toBe('Write to team@venice.example today');
+    expect(htmlToText(`<p><a class="x" href="/cdn-cgi/l/email-protection#${hex}">Email support</a></p>`)).toBe('Email support team@venice.example');
+    expect(htmlToText('<p><a href="mailto:hi%40x.example?subject=a">Email us</a> or <a href="mailto:jo@x.example">jo@x.example</a></p>')).toBe('Email us (hi@x.example) or jo@x.example');
+    // Hex that does not decode to an address is left exactly as the page shows it: nothing is invented.
+    expect(htmlToText('<span data-cfemail="zz">[email&#160;protected]</span> <span data-cfemail="5a3b38">x</span>')).toMatch(/^\[email.protected\] x$/);
+    expect(revealAddresses('<p>plain</p>')).toBe('<p>plain</p>');
   });
 });

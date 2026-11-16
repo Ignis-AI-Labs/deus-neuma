@@ -64,6 +64,7 @@ const ServiceKeyCard = ({ service, item, open, onToggle, onChanged }) => {
           spellCheck={false}
           autoComplete="off"
           aria-label={t('serviceKeys.keyAria', { name: service.name })}
+          data-service-input={service.id}
           disabled={busy}
         />
         <button type="button" className="settings-set" disabled={busy || !draft.trim()}

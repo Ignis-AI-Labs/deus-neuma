@@ -16,7 +16,8 @@ import { useKitMarks } from './use-kit-marks.js';
 import { sectionProgress, firstUnfinished } from './kit-progress.js';
 import { KitHeader } from './KitHeader.jsx';
 import { SectionRail } from './SectionRail.jsx';
-import { SectionEditor, RAW_SECTION, SOURCES_SECTION } from './SectionEditor.jsx';
+import { SectionEditor, RAW_SECTION, SOURCES_SECTION, CARDS_SECTION } from './SectionEditor.jsx';
+import { useKitCards } from './use-kit-cards.js';
 import { ReadinessReport } from './ReadinessReport.jsx';
 import { NewKitDialog } from './NewKitDialog.jsx';
 import { CardPreview } from './CardPreview.jsx';
@@ -46,6 +47,7 @@ export const BrandKitsShell = ({ brand = null }) => {
   );
 
   const marks = useKitMarks(kit.open, kit.detail);
+  const cards = useKitCards(kit.open);
   const preview = useKitPreview(kit.open, kit.draft, { enabled: showPreview && Boolean(kit.draft) });
 
   if (specError) return <EmptyState title="THE BRAND KIT FORM COULD NOT BE READ" tone="error"><small>{specError}</small></EmptyState>;
@@ -55,12 +57,12 @@ export const BrandKitsShell = ({ brand = null }) => {
   // Opens on the first section that still needs something — the panel's job is
   // getting a kit FINISHED, not showing it from the top.
   const current = active || (kit.draft ? firstUnfinished(spec.form, kit.draft) : null);
-  const section = current === RAW_SECTION || current === SOURCES_SECTION
+  const section = [RAW_SECTION, SOURCES_SECTION, CARDS_SECTION].includes(current)
     ? { id: current }
     : spec.form.sections.find((s) => s.id === current);
 
   return (
-    <KitContext.Provider value={{ ...kit, ...spec, brand: kit.open, marks: marks.marks, reloadMarks: marks.reload }}>
+    <KitContext.Provider value={{ ...kit, ...spec, brand: kit.open, marks: marks.marks, reloadMarks: marks.reload, cards }}>
       <div className={`bk${showPreview ? ' has-preview' : ''}`}>
         <KitHeader
           kits={kit.kits}
@@ -94,6 +96,15 @@ export const BrandKitsShell = ({ brand = null }) => {
           <div className="bk-body">
             <div className="bk-rail-col">
               <SectionRail sections={progress} active={current} onPick={setActive} />
+              {/* The cards the kit draws, each a design of the company's own or the shared one. */}
+              <button
+                type="button"
+                className={`bk-rail-row bk-rail-raw${current === CARDS_SECTION ? ' is-on' : ''}`}
+                onClick={() => setActive(CARDS_SECTION)}
+              >
+                <span className="bk-rail-name label-data">CARDS</span>
+                {cards.gallery ? <span className="bk-rail-n label-data">{cards.gallery.own}/{cards.gallery.cards.length}</span> : null}
+              </button>
               <button
                 type="button"
                 className={`bk-rail-row bk-rail-raw${current === SOURCES_SECTION ? ' is-on' : ''}`}
@@ -120,7 +131,7 @@ export const BrandKitsShell = ({ brand = null }) => {
               <SectionEditor section={section} progress={progress.find((p) => p.id === current)} />
             </main>
 
-            {showPreview ? <CardPreview preview={preview} onCollapse={() => setShowPreview(false)} /> : null}
+            {showPreview ? <CardPreview preview={preview} cards={cards.gallery?.cards} onCollapse={() => setShowPreview(false)} /> : null}
           </div>
         )}
 

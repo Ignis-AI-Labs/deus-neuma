@@ -16,7 +16,8 @@
 // as that house's lane on this backend's grounds — and never journals into a
 // lane it does not serve (the ghost lane found live 2026-10-16).
 
-import { readMediaFile, setAltText, uploadMedia } from './x-media.js';
+import { setAltText } from './x-media.js';
+import { uploadXMedia } from './x-post-media.js';
 import { markedMedia } from './disclosure-line.js';
 import { reverifyMediaFile } from './media-source.js';
 import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './post-queue.js';
@@ -189,10 +190,8 @@ const uploadEntryMedia = async (credentials, entry) => {
   for (const item of markedMedia(entry)) { // an AI-made post's images say so in their alt text
     const verified = await reverifyMediaFile(item.path);
     if (!verified.ok) return { ok: false, detail: `media refused — ${verified.detail}` };
-    const read = await readMediaFile(verified.path);
-    if (!read.ok) return { ok: false, detail: `media refused — ${read.detail}` };
-    const up = await uploadMedia(credentials, read);
-    if (!up.ok) return { ok: false, detail: `media upload failed — ${up.detail}` };
+    const up = await uploadXMedia(credentials, verified.path); // a still, or one video sent in pieces
+    if (!up.ok) return { ok: false, detail: `${up.refused ? 'media refused' : 'media upload failed'} — ${up.detail}` };
     if (item.alt) {
       // Alt text failing must not sink a post that is otherwise ready; it is
       // logged loudly instead, because shipping an undescribed image is a real

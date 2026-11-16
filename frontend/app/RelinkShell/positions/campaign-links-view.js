@@ -1,8 +1,8 @@
 // campaign-links-view.js — how linked campaigns read on a position's hub. Pure.
 
-const PLAIN = Object.freeze({ cmo: 'MARKETING', cro: 'SALES' });
+const PLAIN = Object.freeze({ cmo: 'CMO', cro: 'CRO' });
 
-/** A position's plain name on a link line. */
+/** A position's short form on a link line (the seat's own, as the rail names it). */
 export const officeWords = (office) => PLAIN[office] ?? String(office).toUpperCase();
 
 /**

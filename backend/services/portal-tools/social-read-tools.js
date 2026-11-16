@@ -47,11 +47,12 @@ const log = createLogger('Portal');
 const QUEUE_LIST_TOOL = Object.freeze({
   name: 'queue_list',
   server: 'social',
-  description: `Read the campaign queue — every arg optional: {status?, campaignId?, channelId?, kind?, pillar?, from?, to?, q?, order?, view?, limit?, offset?}. With no args you get the decision view: what awaits your operator and what is coming, ${PAGE_DEFAULT.full} at a time, each with its copy VERBATIM. To audit a whole month use view:'index' — one line per post, the densest walk there is — then queue_get the ones you mean to change. Every read is fitted to your context window in WHOLE entries: if fewer arrive than the page holds, the answer says so and names the exact next call, so a short page is a window and never a shorter record. status: live (default — withdrawn/declined copy stays out of your context) | all | ${QUEUE_STATUSES.join(' | ')}. kind: ${QUEUE_KINDS.join(' | ')} (a self-reply is a thread follow-up). from/to are ISO times bounding the SCHEDULE, so unscheduled copy falls outside them. q searches the text — the duplicate check before you stage another line. order: decision (default: awaiting you, then coming, then the record) | calendar (the month as it will actually happen). Page with offset; every answer that has more tells you the exact next call. Reading the lane is everyone's; staging follows the marketing team's lead — if you are not on the marketing team, feed them what they need and let them shape the calendar.`,
+  description: `Read the campaign queue — every arg optional: {view?, status?, day?, campaignId?, channelId?, kind?, pillar?, from?, to?, q?, order?, limit?, offset?}. START with view:'summary': the whole record at a glance with no copy — how many posts stand in each standing, the days they went out, were pulled or are coming, each campaign and channel — then read exactly the slice you mean. With no args you get what can still move (status open: draft, approved, sending, failed), ${PAGE_DEFAULT.full} at a time, copy VERBATIM; sent and withdrawn posts stay out until you name them. status: open | live (open + sent) | dead (withdrawn, declined, taken down) | all | ${QUEUE_STATUSES.join(' | ')} — several comma-separated; pending = draft, scheduled = approved, declined = rejected. day: YYYY-MM-DD, today or yesterday — the day a post HAPPENED (a sent post by when it went out, a pulled one by when it was pulled, the rest by their slot); with day and no status you get everything on that day. view:'index' gives one line per post — the densest walk — then queue_get the ones you mean to change. Every read is fitted to your context window in WHOLE entries and names the exact next call, filters kept. kind: ${QUEUE_KINDS.join(' | ')} (a self-reply is a thread follow-up). from/to are ISO times bounding the SCHEDULE. q searches the text — the duplicate check before you stage another line (with q and no status you search open and sent). order: decision (default: awaiting you, then coming, then the record) | calendar. Reading the lane is everyone's; staging follows the marketing team's lead — if you are not on the marketing team, feed them what they need and let them shape the calendar.`,
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({
-      status: Object.freeze({ type: 'string', description: `live (default) | all | ${QUEUE_STATUSES.join(' | ')} — or several, comma-separated` }),
+      status: Object.freeze({ type: 'string', description: `open (default) | live | dead | all | ${QUEUE_STATUSES.join(' | ')} — or several, comma-separated` }),
+      day: Object.freeze({ type: 'string', description: 'YYYY-MM-DD, today or yesterday — only posts that happened that day (sent, pulled, or scheduled for it)' }),
       campaignId: Object.freeze({ type: 'string', description: 'Only posts on this campaign (the id campaign_list shows)' }),
       channelId: Object.freeze({ type: 'string', description: 'Only posts for this channel (x, telegram, discord, …)' }),
       kind: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_KINDS]), description: 'post | reply | self-reply' }),
@@ -60,7 +61,7 @@ const QUEUE_LIST_TOOL = Object.freeze({
       to: Object.freeze({ type: 'string', description: 'ISO-8601 — only posts scheduled at or before this moment' }),
       q: Object.freeze({ type: 'string', description: 'Only posts whose text contains this (case-insensitive)' }),
       order: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_ORDERS]), description: 'decision (default) | calendar' }),
-      view: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_VIEWS]), description: `full (default, verbatim copy) | index (one line each, up to ${PAGE_MAX.index})` }),
+      view: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_VIEWS]), description: `summary (the record at a glance, by standing, day, campaign — start here) | full (default, verbatim copy) | index (one line each, up to ${PAGE_MAX.index})` }),
       limit: Object.freeze({ type: 'number', description: `How many to return (full: ${PAGE_DEFAULT.full}, max ${PAGE_MAX.full}; index: ${PAGE_DEFAULT.index}, max ${PAGE_MAX.index})` }),
       offset: Object.freeze({ type: 'number', description: 'Skip this many — how you page through a long calendar' }),
     }),
@@ -282,12 +283,17 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
       // or it is nothing. `drawn.shown` is what actually crossed, which is
       // what the chip must count.
       const drawn = drawQueueSelection(selection, { budget });
+      // The chip names what was read: "staged" only for the open queue, never for a day of sent posts.
+      const what = selection.filters.status ? `${selection.filters.status} post(s)` : selection.defaulted === 'open' ? 'staged post(s)' : 'post(s)';
+      const when = selection.filters.day ? ` · ${selection.filters.day}` : '';
       _sendToolEvent(ws, companion, {
         tool,
         status: 'ok',
-        summary: drawn.shown < selection.matched
-          ? `${drawn.shown} of ${selection.matched} staged post(s)`
-          : `${drawn.shown} staged post(s)`,
+        summary: selection.view === 'summary'
+          ? `the queue at a glance · ${selection.matched} post(s)${when}`
+          : drawn.shown < selection.matched
+            ? `${drawn.shown} of ${selection.matched} ${what}${when}`
+            : `${drawn.shown} ${what}${when}`,
       });
       return { tool, status: 'ok', content: drawn.text, cap: capFor(drawn.text) };
     } catch (err) {

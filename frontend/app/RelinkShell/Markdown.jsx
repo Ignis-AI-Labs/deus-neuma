@@ -18,10 +18,13 @@ import { openPathDoor, openPathMenu, pathMenuAnchor } from './path-menu.js';
 import { CopyWord } from './copy-word.jsx';
 import { codeBlockText } from './copy-text.js';
 import { isShortCell } from './table-cell.js';
+import { recordDoor, remarkDoors } from './doors/record-door.js';
+import { openDoor } from './doors/open-door.js';
+import { useWindows } from '../windowing/use-windows.js';
 import './RelinkMarkdown.css';
 
 
-const PLUGINS = [remarkGfm];
+const PLUGINS = [remarkGfm, remarkDoors];
 
 // A code span whose whole content is a path is a DOOR. Plain click/Enter opens
 // it; right-click or Ctrl/⌘+click raises the existing options (PathOpener.jsx).
@@ -53,6 +56,19 @@ const PathSpan = ({ path, children, ...props }) => (
   </code>
 );
 
+// A house record or place a member names (an audience id, […]) is a DOOR to it:
+// one press opens the POSITIONS window on that tab with the record marked (doors/record-door.js).
+const DoorSpan = ({ door, children, ...props }) => {
+  const windows = useWindows();
+  if (!windows?.dispatch) return <code {...props}>{children}</code>;
+  const words = Array.isArray(children) ? children.join('') : children;
+  return (
+    <button type="button" className="relink-md-door" title={door.words} aria-label={`${words} — ${door.words}`} onClick={() => openDoor(door, windows)}>
+      <code {...props}>{children}</code>
+    </button>
+  );
+};
+
 const COMPONENTS = {
   a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
   // A table stands in its own frame (Design note, 2026-10-24: […]) — the frame scrolls sideways when the table is wider
@@ -75,10 +91,11 @@ const COMPONENTS = {
     // Only the whole-span-is-one-path case becomes a door; everything else is
     // an ordinary code span. A link that sometimes lands somewhere wrong is
     // worse than plain text, so the decision stays narrow (path-link.js).
-    const path = openablePath(
-      Array.isArray(children) ? children.join('') : children,
-      { relative: true },
-    );
+    const words = Array.isArray(children) ? children.join('') : children;
+    // A fenced block's text ends in a newline; only a span inside a sentence is a door.
+    const door = /\n/.test(String(words)) ? null : recordDoor(words);
+    if (door) return <DoorSpan door={door} {...props}>{children}</DoorSpan>;
+    const path = openablePath(words, { relative: true });
     if (!path) return <code {...props}>{children}</code>;
     return <PathSpan path={path} {...props}>{children}</PathSpan>;
   },

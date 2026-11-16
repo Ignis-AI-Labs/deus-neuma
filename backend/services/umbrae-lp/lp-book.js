@@ -23,7 +23,7 @@ import {
 } from '../../../core/wallet/lp-book-math.js';
 import { createLogger } from '../logger.js';
 import { readHoldings } from './lp-holdings.js';
-import { lpWalletAddress } from './lp-wallet.js';
+import { lpFundsAddress } from '../agent-vault/vault-store.js';
 import { lpBase } from './lp-base.js';
 
 const log = createLogger('LpBook');
@@ -201,7 +201,7 @@ export const lastSwapGas = (book) => [...(book?.journal ?? [])].reverse().find((
  * @param {{provider?: object}} [opts]
  */
 export const bookAct = (neumaId, meta, run, { provider } = {}) => serialized(neumaId, async () => {
-  const address = await lpWalletAddress(neumaId).catch(() => null);
+  const address = await lpFundsAddress(neumaId).catch(() => null);
   const before = address ? await readHoldings(address, { provider }).catch(() => null) : null;
   let book = before ? await readBook(neumaId).catch(() => null) : null;
   if (book) book = settle(book, before, Date.now()).book;

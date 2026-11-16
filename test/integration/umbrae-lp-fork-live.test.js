@@ -121,7 +121,7 @@ beforeAll(async () => {
   await workspace.create(LANE);
   await openLpWallet(LANE);
   signer = await lpSigner(LANE);
-  connections = connectionsOn(['umbrae-liquidity']);
+  connections = connectionsOn(['umbrae-liquidity', 'market-data']);
   log('throwaway LP wallet', signer.address);
 }, 120000);
 
@@ -253,7 +253,7 @@ describe.skipIf(!ASKED)('swaps through Umbrae\'s real router, on a fork of Base'
     await provider.send('anvil_setBalance', [signer.address, ethers.toQuantity(ethers.parseEther('0.05'))]);
     await dealUsdc(signer.address, 5_000_000n);
     const before = await held(WETH);
-    const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'WETH', amount: '2' }, { provider });
+    const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'WETH', amount: '2' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     if (!out.ok) log('swap refused:', out.reason);
     expect(out.ok).toBe(true);
     log('route', out.route.join(' → '), 'out', out.amountOut, 'WETH; transactions', out.txHashes.length);
@@ -269,18 +269,18 @@ describe.skipIf(!ASKED)('swaps through Umbrae\'s real router, on a fork of Base'
 
   test('a round trip across two pools of one pair runs only for a profit, and the profit lands', async () => {
     const before = await held(USDC);
-    const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'USDC', amount: '1' }, { provider });
+    const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'USDC', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     if (!out.ok) log('round trip refused:', out.reason);
     expect(out.ok).toBe(true);
     log('round trip', out.route.join(' → '), '1 USDC came back as', out.amountOut);
     expect(Number(out.amountOut)).toBeGreaterThan(1);
     expect(await held(USDC)).toBeGreaterThan(before);
-    const loss = await runSwap(LANE, { tokenIn: 'VIRTUAL', tokenOut: 'VIRTUAL', amount: '1' }, { provider });
+    const loss = await runSwap(LANE, { tokenIn: 'VIRTUAL', tokenOut: 'VIRTUAL', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     expect(loss.ok).toBe(false);
   }, 240000);
 
   test('a route of two pools: USDC to VIRTUAL through WETH', async () => {
-    const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'VIRTUAL', amount: '1' }, { provider });
+    const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'VIRTUAL', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     if (!out.ok) log('two-hop swap refused:', out.reason);
     expect(out.ok).toBe(true);
     log('route', out.route.join(' → '), 'out', out.amountOut, 'VIRTUAL');
@@ -294,16 +294,35 @@ describe.skipIf(!ASKED)('swaps through KyberSwap\'s aggregator, on a fork of Bas
 
   test('KyberSwap\'s real route is asked beside Umbrae\'s, the one paying more is taken, and its router\'s swap pays the wallet at least its floor', async () => {
     connections.restore();
-    connections = connectionsOn(['umbrae-liquidity', 'swap-aggregator']);
+    connections = connectionsOn(['umbrae-liquidity', 'swap-aggregator', 'market-data']);
     try {
-      // The live aggregator quotes unmodified Base, not pools moved by the fork-only swaps above.
-      await provider.send('anvil_reset', [{ forking: { jsonRpcUrl: 'https://mainnet.base.org' } }]);
+      // The live aggregator quotes unmodified Base. A fresh process also clears old pending transactions.
+      provider.destroy();
+      await fork.stop();
+      fork = await startFork();
+      provider = new ethers.JsonRpcProvider(fork.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 200 });
+      const lanePath = workspace._path(LANE);
+      const walletPath = workspace._path(signer.address.toLowerCase());
+      const nonceDir = `${walletPath}/config/lp-nonces`;
+      const beforeClaims = await fs.readdir(nonceDir).catch(() => []);
+      await fs.rm(nonceDir, { recursive: true, force: true });
+      await fs.rm(`${walletPath}/config/lp-nonce.json`, { force: true });
+      const afterClaims = await fs.readdir(nonceDir).catch(() => []);
+      log('fresh fork nonce reset', JSON.stringify({ lanePath, walletPath, beforeClaims, afterClaims, pendingNonce: await provider.getTransactionCount(signer.address, 'pending') }));
       await provider.send('anvil_setBalance', [signer.address, ethers.toQuantity(ethers.parseEther('0.05'))]);
       await dealUsdc(signer.address, 10_000_000n);
       const before = await held(WETH);
-      const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'WETH', amount: '3' }, { provider });
-      if (!out.ok) log('aggregator swap refused:', out.reason);
-      expect(out.ok).toBe(true);
+      const out = await runSwap(LANE, { tokenIn: 'USDC', tokenOut: 'WETH', amount: '3' }, { provider, receiptProvider: provider, receiptConfirmations: 1, receiptTimeoutMs: 10000 });
+      if (!out.ok) {
+        const hashes = [...new Set([...(out.txHashes ?? []), out.txHash].filter(Boolean))];
+        const transactions = await Promise.all(hashes.map(async (hash) => ({
+          hash,
+          transaction: await provider.getTransaction(hash).catch(() => null),
+          receipt: await provider.getTransactionReceipt(hash).catch(() => null),
+        })));
+        log('aggregator swap refused:', JSON.stringify({ reason: out.reason, latestNonce: await provider.getTransactionCount(signer.address), pendingNonce: await provider.getTransactionCount(signer.address, 'pending'), transactions }));
+      }
+      expect(out.ok, JSON.stringify(out)).toBe(true);
       log('road', out.via, (out.exchanges ?? []).join(', '), 'compared', JSON.stringify(out.compared), 'out', out.amountOut, 'WETH');
       const other = out.via === 'kyberswap' ? out.compared.umbrae : out.compared.kyberswap;
       const taken = out.via === 'kyberswap' ? out.compared.kyberswap : out.compared.umbrae;
@@ -322,7 +341,7 @@ describe.skipIf(!ASKED)('swaps through KyberSwap\'s aggregator, on a fork of Bas
       expect(allowance).toBe(0n); // the exact approval was spent whole
     } finally {
       connections.restore();
-      connections = connectionsOn(['umbrae-liquidity']);
+      connections = connectionsOn(['umbrae-liquidity', 'market-data']);
     }
   }, 240000);
 });
@@ -345,10 +364,24 @@ describe.skipIf(!ASKED)('a new pool on Umbrae\'s real factory, on a fork of Base
     constructor(url, fees) { super(url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 200 }); this.fees = fees; }
     async getFeeData() { return this.fees; }
   }
+  const readRealFees = async () => {
+    let lastError;
+    for (const url of ['https://mainnet.base.org', 'https://base-rpc.publicnode.com']) {
+      const live = new ethers.JsonRpcProvider(url, ethers.Network.from(8453), { staticNetwork: true });
+      try {
+        const fees = await live.getFeeData();
+        log('real fee source', url);
+        return fees;
+      } catch (error) {
+        lastError = error;
+      } finally {
+        live.destroy();
+      }
+    }
+    throw lastError;
+  };
   const signAtRealFees = async (tx, asked, maxApprove) => {
-    const live = new ethers.JsonRpcProvider('https://mainnet.base.org', ethers.Network.from(8453), { staticNetwork: true });
-    const fees = await live.getFeeData();
-    live.destroy();
+    const fees = await readRealFees();
     const p = new RealFees(fork.url, fees);
     try {
       const signed = await signLpTransaction({ signer, provider: p, tx, asked, maxApprove });

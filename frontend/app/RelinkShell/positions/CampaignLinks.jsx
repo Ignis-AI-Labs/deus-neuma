@@ -12,13 +12,14 @@ import { uiSound } from '../../../services/ui-sound.js';
 import { getHouseCampaigns, linkCampaigns, unlinkCampaigns } from '../../../services/positions-client.js';
 import { officeWords, linkChoices } from './campaign-links-view.js';
 
-const Row = ({ campaign, all, busy, onLink, onUnlink }) => {
+const Row = ({ campaign, all, busy, onLink, onUnlink, onOpen = null }) => {
   const [pick, setPick] = useState('');
   const choices = linkChoices(campaign, all);
   return (
     <li className="cline-sec" data-linked-campaign={campaign.key}>
       <p className="cline-h label-data">{campaign.name}{campaign.company ? ` · FOR ${campaign.company.toUpperCase()}` : ''} · {String(campaign.state).toUpperCase()}</p>
       <p className="cline-move-t">{campaign.summary}</p>
+      {onOpen ? <div className="cline-open"><button type="button" className="sec-scan label-data" disabled={busy} aria-label={`OPEN ${campaign.name} — its page, posts and results`} onClick={() => onOpen(campaign)}>OPEN {String(campaign.name).toUpperCase()}</button></div> : null}
       {campaign.links.length ? (
         <ul className="cline-ws-src" aria-label={`campaigns ${campaign.name} works with`}>
           {campaign.links.map((l) => (
@@ -41,14 +42,14 @@ const Row = ({ campaign, all, busy, onLink, onUnlink }) => {
   );
 };
 
-/** @param {{office: string}} props - the position whose campaigns are shown */
-export const CampaignLinks = ({ office }) => {
+// impure — every campaign of the house with its links, and the two moves; shared by the full panel below and by a
+// position that shows each link inside the campaign's own card (company-line/SalesCampaigns.jsx).
+export const useCampaignLinks = () => {
   const [all, setAll] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const load = useCallback(() => getHouseCampaigns().then((r) => { setAll(r.campaigns); setError(null); }, (e) => setError(e.message)), []);
   useEffect(() => { load(); }, [load]);
-
   const move = async (fn) => {
     uiSound('activate');
     setBusy(true);
@@ -61,6 +62,45 @@ export const CampaignLinks = ({ office }) => {
       setBusy(false);
     }
   };
+  return { all, busy, error, reload: load, link: (campaign, other) => move(() => linkCampaigns(campaign.key, other)), unlink: (campaign, other) => move(() => unlinkCampaigns(campaign.key, other.key)) };
+};
+
+/** One campaign's links, inside that campaign's own card: what it works with, and the press to link another. */
+export const CampaignLinkLine = ({ campaignKey, links }) => {
+  const [pick, setPick] = useState('');
+  const campaign = (links.all ?? []).find((c) => c.key === campaignKey);
+  if (!campaign) return null;
+  const choices = linkChoices(campaign, links.all);
+  if (!campaign.links.length && !choices.length) return null;
+  return (
+    <div className="cline-aud-in" data-linked-campaign={campaign.key}>
+      <p className="cline-aud-k label-data">WORKS WITH · {campaign.links.length}</p>
+      {links.error ? <p className="sec-error" role="alert">{links.error}</p> : null}
+      {campaign.links.length ? (
+        <ul className="cline-ws-src" aria-label={`campaigns ${campaign.name} works with`}>
+          {campaign.links.map((l) => (
+            <li key={l.key} data-link-with={l.key}>
+              {officeWords(l.office)} · {l.name} ({String(l.state).toUpperCase()}) — {l.summary}{l.note ? ` — ${l.note}` : ''}{' '}
+              <button type="button" className="sec-scan cline-mini cline-danger label-data" disabled={links.busy} aria-label={`UNLINK ${campaign.name} from ${l.name}`} onClick={() => links.unlink(campaign, l)}>UNLINK</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {choices.length ? (
+        <div className="cline-open">
+          <Select fill ariaLabel={`campaign to link with ${campaign.name}`} value={pick} onChange={setPick} disabled={links.busy}
+            placeholder="link with a campaign of another position" options={choices} />
+          <button type="button" className="sec-scan label-data" disabled={links.busy || !pick} aria-label={`LINK ${campaign.name}`}
+            onClick={() => { links.link(campaign, pick); setPick(''); }}>LINK</button>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+/** @param {{office: string, onOpen?: ?Function}} props - the position whose campaigns are shown; onOpen: the press onto one campaign's own page */
+export const CampaignLinks = ({ office, onOpen = null }) => {
+  const { all, busy, error, link, unlink } = useCampaignLinks();
   const mine = (all ?? []).filter((c) => c.office === office);
   return (
     <section className="cline-sec" aria-label="linked campaigns" data-campaign-links={office}>
@@ -68,11 +108,7 @@ export const CampaignLinks = ({ office }) => {
       {error ? <p className="sec-error" role="alert">{error}</p> : null}
       {all && !mine.length ? <EmptyState title="NO CAMPAIGN HERE YET" /> : null}
       <ul className="cline-list" aria-label={`${officeWords(office)} campaigns`}>
-        {mine.map((c) => (
-          <Row key={c.key} campaign={c} all={all} busy={busy}
-            onLink={(campaign, other) => move(() => linkCampaigns(campaign.key, other))}
-            onUnlink={(campaign, link) => move(() => unlinkCampaigns(campaign.key, link.key))} />
-        ))}
+        {mine.map((c) => <Row key={c.key} campaign={c} all={all} busy={busy} onLink={link} onUnlink={unlink} onOpen={onOpen} />)}
       </ul>
       <p className="cline-move-t">A link changes neither campaign. It makes the member who holds each one read the other, as it stands, at the top of every turn, so the two say the same offer to the same people at the same time.</p>
     </section>

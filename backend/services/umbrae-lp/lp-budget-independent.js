@@ -6,7 +6,7 @@ import { positionCountOnChain, withdrawalAmountsOnChain } from './lp-quotes.js';
 const DECIMALS = new ethers.Interface(['function decimals() view returns (uint8)']);
 const same = (a, b) => ethers.isAddress(a) && ethers.isAddress(b) && ethers.getAddress(a) === ethers.getAddress(b);
 
-const tokenPrice = async (token) => {
+export const independentTokenPrice = async (token) => {
   const [answer, gecko] = await Promise.all([tokenMarkets(token, 'base'), tokenPriceGecko(token, 'base')]);
   if (!answer.ok || !gecko.ok) return null;
   const markets = answer.data.map((market) => {
@@ -62,7 +62,7 @@ export const independentBudgetFigures = async ({ provider, fields, raw, wallet, 
       if (ethers.isAddress(pool.poolInfo?.mint_x)) tokens.add(ethers.getAddress(pool.poolInfo.mint_x));
       if (ethers.isAddress(pool.poolInfo?.mint_y)) tokens.add(ethers.getAddress(pool.poolInfo.mint_y));
     }
-    const prices = new Map(await Promise.all([...tokens].map(async (token) => [token, await tokenPrice(token)])));
+    const prices = new Map(await Promise.all([...tokens].map(async (token) => [token, await independentTokenPrice(token)])));
     if ([...prices.values()].some((value) => value === null)) return null;
     const [decimalsX, decimalsY] = await Promise.all([decimals(provider, fields.tokenX), decimals(provider, fields.tokenY)]);
     const deposit = depositMicroUsd({ ...raw, decimalsX, decimalsY, priceXUsd: prices.get(ethers.getAddress(fields.tokenX)), priceYUsd: prices.get(ethers.getAddress(fields.tokenY)) });

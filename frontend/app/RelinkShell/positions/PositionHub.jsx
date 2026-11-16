@@ -43,10 +43,13 @@ const Switches = ({ position, busy, onSwitch }) => (
 // What the seat still needs: each step with who does it, measured done or not, the exact words to follow,
 // and a press that takes the operator there — a tab of this position, a place on the desk, a page outside —
 // or hands it to the seat's holder with the ask drafted in their chat (never sent from here).
+// A label that already numbers its step ("1 · …") is shown as written.
+const numbered = (label) => /^\d+ · /.test(label);
+
 const Setup = ({ position, busy, onGo, onDoor, onHand }) => {
   const holder = position.holder;
   return (
-    <ol className="pos-setup" aria-label={`setting up ${position.plain}`}>
+    <ol className="pos-setup" aria-label={`setting up the ${position.seat}`}>
       {position.setup.steps.map((s) => (
         <li key={s.id} className={`pos-step${s.done ? ' is-done' : ''}`} data-setup-step={s.id} data-step-done={String(s.done)}>
           <p className="pos-step-h label-data">{stepWords(s)}</p>
@@ -54,13 +57,14 @@ const Setup = ({ position, busy, onGo, onDoor, onHand }) => {
             <>
               <p className="pos-covers">{s.how}</p>
               <div className="pos-step-ways">
-                {s.go ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`GO TO ${s.go.label} — ${s.label}`} onClick={() => onGo(s.go.tab)}>GO TO {s.go.label}</button> : null}
-                {s.door ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`OPEN ${s.door.label} — ${s.label}`} onClick={() => onDoor(s.door)}>OPEN {s.door.label}</button> : null}
+                {/* What is fetched outside comes first, then the exact place it goes. */}
                 {s.link ? <a className="sec-scan label-data pos-step-link" href={s.link.url} target="_blank" rel="noreferrer">{s.link.label} ↗</a> : null}
+                {s.go ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`GO TO ${s.go.label} — ${s.label}`} onClick={() => onGo(s.go.tab)}>{numbered(s.go.label) ? s.go.label : `GO TO ${s.go.label}`}</button> : null}
+                {s.door ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`OPEN ${s.door.label} — ${s.label}`} onClick={() => onDoor(s.door)}>{numbered(s.door.label) ? s.door.label : `OPEN ${s.door.label}`}</button> : null}
                 {holder && s.who === 'seat' && s.ask
                   ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`HAND TO ${holder.name} — ${s.label}`} title={`${holder.name}'s chat opens with the ask drafted; you send it`} onClick={() => onHand(holder, s.ask)}>HAND TO {holder.name.toUpperCase()}</button> : null}
                 {holder && s.who === 'operator'
-                  ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`ASK ${holder.name} to walk you through — ${s.label}`} title={`${holder.name}'s chat opens with the question drafted; you send it`} onClick={() => onHand(holder, helpAsk(s))}>ASK {holder.name.toUpperCase()}</button> : null}
+                  ? <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`${s.askLabel ?? 'ASK'} ${holder.name}${s.askLabel ? '' : ' to walk you through'} — ${s.label}`} title={`${holder.name}'s chat opens with the question drafted; you send it`} onClick={() => onHand(holder, s.ask ?? helpAsk(s))}>{s.askLabel ?? 'ASK'} {holder.name.toUpperCase()}</button> : null}
               </div>
             </>
           )}
@@ -88,19 +92,19 @@ const Eyes = ({ position, eyes }) => {
  *   Panel?: Function}} props — Panel renders one function in place; without it the function's sentence stands
  */
 export const PositionHub = ({ position, members, names, tab, now, busy, pick, confirmClear, eyes,
-  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onDoor = () => {}, onHand = () => {}, Panel = null }) => {
+  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onDoor = () => {}, onHand = () => {}, onChanged = () => {}, Panel = null }) => {
   const fn = position.functions.find((f) => f.id === tab) ?? null;
   // The control's name carries the words it shows (a spoken command must match what is seen).
   const placeholder = position.holder ? 'hand it to another member' : 'choose who holds it';
   const shown = members.find((m) => m.laneId === pick)?.name ?? placeholder;
   return (
-    <section className="pos-hub" aria-label={`${position.plain} position`} data-position={position.office}>
+    <section className="pos-hub" aria-label={`${position.seat} position`} data-position={position.office}>
       <header className="pos-head">
-        <h2 className="pos-name">{position.plain} <span className="pos-title label-data">{position.title}</span></h2>
+        <h2 className="pos-name">{position.seat} <span className="pos-title label-data">{position.acronym} · {position.title}</span></h2>
         <p className={`pos-holder label-data${position.holder ? '' : ' is-empty'}`}>{position.holder ? `HELD BY ${position.holder.name.toUpperCase()}` : 'NOBODY HOLDS THIS POSITION'}</p>
-        <p className="pos-covers">{position.covers}</p>
+        <p className="pos-covers"><span className="pos-function label-data">{position.plain}</span> {position.covers}</p>
         <div className="pos-seat">
-          <Select fill ariaLabel={`${shown}, for ${position.plain}`} value={pick} onChange={onPick} disabled={busy}
+          <Select fill ariaLabel={`${shown}, for the ${position.seat}`} value={pick} onChange={onPick} disabled={busy}
             placeholder={placeholder} options={seatOptions(members, position)} />
           <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
           {position.holder ? <button type="button" className="sec-scan label-data" disabled={busy} onClick={onTalk}>TALK</button> : null}
@@ -112,9 +116,9 @@ export const PositionHub = ({ position, members, names, tab, now, busy, pick, co
         </div>
       </header>
       <Waiting items={position.waiting} now={now} onOpen={onOpenWaiting} />
-      <DeskTabs items={hubTabs(position)} value={tab} onChange={onTab} label={`${position.plain} functions`}
+      <DeskTabs items={hubTabs(position)} value={tab} onChange={onTab} label={`${position.seat} functions`}
         className="pos-tabs" tabClassName="pos-tab label-data" panelClassName="pos-panel">
-        {fn && Panel ? <Panel office={position.office} fn={fn} names={names} /> : null}
+        {fn && Panel ? <Panel office={position.office} fn={fn} names={names} holder={position.holder} onHand={onHand} onChanged={onChanged} onDoor={onDoor} /> : null}
         {fn && !Panel ? <p className="pos-covers">{fn.what}</p> : null}
         {tab === '_switches' ? <Switches position={position} busy={busy} onSwitch={onSwitch} /> : null}
         {tab === '_eyes' ? <Eyes position={position} eyes={eyes} /> : null}

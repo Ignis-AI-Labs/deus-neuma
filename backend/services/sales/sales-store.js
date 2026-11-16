@@ -11,7 +11,7 @@ import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { foldSegments, judgeState, judgeRefile } from './segment-shape.js';
 import { foldProspects, poolRefusal, listable } from './prospect-shape.js';
 import { foldSuppressions, suppressionMatcher } from './suppress-shape.js';
-import { foldSalesFacts, judgeSheetReview } from './sales-facts.js';
+import { foldSalesFacts, judgeSheetReview, editSheetFact } from './sales-facts.js';
 import { foldCampaigns, openRefusal, judgeMove } from './campaign-shape.js';
 
 const serialize = createWriteChain();
@@ -70,6 +70,10 @@ export const addProspects = (wallet, prospects) => serialize(async () => {
   return { added, refused };
 });
 
+/** A person read on a company's pages after it was scored joins that prospect's people. */
+export const addProspectPerson = (wallet, id, person, by) => serialize(() =>
+  appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'people', id, people: [person], by, at: new Date().toISOString() }));
+
 /** Mark a prospect dropped (with why) or promoted (with its lead). Only a prospect still in the pool moves. */
 export const settleProspect = (wallet, id, event) => serialize(async () => {
   const prospect = (await readProspects(wallet)).find((p) => p.id === id);
@@ -122,6 +126,14 @@ export const fileSalesFacts = (wallet, sheet) => serialize(async () => {
   return { ok: true };
 });
 
+/** The operator rewrites or removes one fact of the latest sheet: a new sheet, waiting for their approval. */
+export const editSalesFact = (wallet, change) => serialize(async () => {
+  const judged = editSheetFact(await readSalesFacts(wallet), { ...change, now: new Date().toISOString() });
+  if (!judged.ok) return judged;
+  await appendJsonLine(fileOf(wallet, FACTS), { type: 'facts', sheet: judged.sheet, at: judged.sheet.filedAt });
+  return { ok: true, sheet: judged.sheet };
+});
+
 /** The operator approves or returns the latest sheet. */
 export const reviewSalesFacts = (wallet, review) => serialize(async () => {
   const judged = judgeSheetReview(await readSalesFacts(wallet), { ...review, now: new Date().toISOString() });
@@ -161,8 +173,11 @@ export const addCandidates = (wallet, segmentId, rows, by) => serialize(async ()
 });
 
 /** Keep what a contact-data provider returned for a company (the people, each with the page its address was found on). */
-export const noteContacts = (wallet, domain, source, people, by) => serialize(() =>
-  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain, source, people, by, at: new Date().toISOString() }));
+export const noteContacts = (wallet, domain, source, people, by, spent = 1) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain, source, people, spent, by, at: new Date().toISOString() }));
+
+/** Every paid lookup on record: which provider, for which company, what it spent and when (lead-spend.js counts the month). */
+export const readContactLookups = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts').map((e) => ({ domain: e.domain, source: e.source, spent: e.spent, found: (e.people ?? []).length, at: e.at }));
 
 // ── CAMPAIGNS — the operator's pushes, each holding the audiences that serve it (campaign-shape.js).
 

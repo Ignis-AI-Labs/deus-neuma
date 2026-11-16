@@ -1,5 +1,6 @@
 // StreamInput — the witness speaks. Chamfered control register; Enter sends,
-// Shift+Enter breaks the line, a severed link disables it (placeholder says
+// Shift+Enter breaks the line, Ctrl+Enter (Cmd+Enter) sends NOW — while a reply
+// streams it interjects instead of holding the word (Design note, 2026-11-16: […]), a severed link disables it (placeholder says
 // why). Above the field sits THE MODEL BAR (ModelBar.jsx): this being's
 // model, effort rung, and ULTRA where the vendor has one (sampling modes
 // moved to Settings › INFERENCE — the turn reads the saved one server-side).
@@ -321,6 +322,10 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                     onEscapeOrder();
                   }
                   escTapRef.current = step;
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  // NOW: mid-stream the word interjects (the urgent send) instead of waiting its turn.
+                  e.preventDefault();
+                  submit(Boolean(busy && canQueue && onSendUrgent));
                 } else if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   submit();
@@ -384,7 +389,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                     onClick={() => submit(true)}
                     disabled={!connected || uploading}
                     aria-label={urgentTitle || 'Interject now'}
-                    title={urgentTitle || 'Interject now — cut the reply and take the floor'}
+                    title={urgentTitle || 'Interject now (Ctrl+Enter) — cut the reply and take the floor'}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                       <path d="M13 2 L5 13 H11 L9.5 22 L19 9 H12.5 Z" />

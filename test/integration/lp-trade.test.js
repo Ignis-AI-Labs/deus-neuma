@@ -49,7 +49,7 @@ beforeAll(async () => {
   // A token contract that answers every call with 6: decimals 6, and a transfer that returns true.
   await provider.send('anvil_setCode', [USDC, '0x600660005260206000f3']);
   await provider.send('anvil_setCode', [WETH, '0x600660005260206000f3']);
-  umbrae = await startUmbraeStandIn({ provider });
+  umbrae = await startUmbraeStandIn({ provider, receiptProvider: provider, receiptConfirmations: 1 });
 }, 30000);
 
 afterAll(async () => {
@@ -64,7 +64,7 @@ afterAll(async () => {
 beforeEach(() => {
   umbrae.reset();
   connections?.restore();
-  connections = connectionsOn(['umbrae-liquidity']);
+  connections = connectionsOn(['umbrae-liquidity', 'market-data']);
 });
 
 describe('the house, as the places a send may reach', () => {
@@ -92,21 +92,21 @@ describe('the house, as the places a send may reach', () => {
 describe('sends', () => {
   test('ETH to another member by name lands in that member\'s liquidity wallet, mined from this one', async () => {
     const before = await balance(lp.rugevil);
-    const out = await runSend('tenekom', { to: 'Rugevil', amount: '0.01' }, { provider });
+    const out = await runSend('tenekom', { to: 'Rugevil', amount: '0.01' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     expect(out).toMatchObject({ ok: true, to: lp.rugevil, name: 'rugevil (liquidity)' });
     expect((await provider.getTransactionReceipt(out.txHashes[0])).from).toBe(lp.tenekom);
     expect((await balance(lp.rugevil)) - before).toBe(ethers.parseEther('0.01'));
   }, 60000);
 
   test('ETH to a member\'s main wallet and to the operator also lands', async () => {
-    const out = await runSend('tenekom', { to: 'rugevil main', amount: '0.001' }, { provider });
+    const out = await runSend('tenekom', { to: 'rugevil main', amount: '0.001' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     expect(out.to).toBe(main.rugevil);
     expect(await balance(main.rugevil)).toBe(ethers.parseEther('0.001'));
-    expect((await runSend('tenekom', { to: 'operator', amount: '0.001' }, { provider })).ok).toBe(true);
+    expect((await runSend('tenekom', { to: 'operator', amount: '0.001' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).ok).toBe(true);
   }, 60000);
 
   test('a pool token is sent by symbol to a house wallet', async () => {
-    const out = await runSend('tenekom', { to: 'rugevil', token: 'USDC', amount: '2.5' }, { provider });
+    const out = await runSend('tenekom', { to: 'rugevil', token: 'USDC', amount: '2.5' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
     expect(out.ok).toBe(true);
     const tx = await provider.getTransaction(out.txHashes[0]);
     expect(tx.to).toBe(USDC);
@@ -115,11 +115,11 @@ describe('sends', () => {
 
   test('outside the house nothing is signed: another house\'s member, a stranger\'s address, a token no pool trades', async () => {
     const before = await nonce(lp.tenekom);
-    expect((await runSend('tenekom', { to: 'far', amount: '0.01' }, { provider })).reason).toMatch(/not a wallet of the house/);
-    expect((await runSend('tenekom', { to: lp.far, amount: '0.01' }, { provider })).reason).toMatch(/not a wallet of the house/);
-    expect((await runSend('tenekom', { to: OUTSIDER, amount: '0.01' }, { provider })).reason).toMatch(/not a wallet of the house/);
-    expect((await runSend('tenekom', { to: 'rugevil', token: 'SCAM', amount: '1' }, { provider })).reason).toMatch(/ETH or a token Umbrae's pools trade/);
-    expect((await runSend('tenekom', { to: 'rugevil', amount: 'lots' }, { provider })).reason).toMatch(/plain decimal/);
+    expect((await runSend('tenekom', { to: 'far', amount: '0.01' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/not a wallet of the house/);
+    expect((await runSend('tenekom', { to: lp.far, amount: '0.01' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/not a wallet of the house/);
+    expect((await runSend('tenekom', { to: OUTSIDER, amount: '0.01' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/not a wallet of the house/);
+    expect((await runSend('tenekom', { to: 'rugevil', token: 'SCAM', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/ETH or a token Umbrae's pools trade/);
+    expect((await runSend('tenekom', { to: 'rugevil', amount: 'lots' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/plain decimal/);
     expect(await nonce(lp.tenekom)).toBe(before);
   }, 60000);
 });
@@ -127,16 +127,16 @@ describe('sends', () => {
 describe('swaps (the refusals a plain node can show)', () => {
   test('a token no pool trades, a bad slippage, more than the wallet holds, or no live route: nothing is signed', async () => {
     const before = await nonce(lp.tenekom);
-    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'SCAM', amount: '1' }, { provider })).reason).toMatch(/tokens Umbrae's pools trade: WETH, USDC/);
-    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '1', slippagePct: 20 }, { provider })).reason).toMatch(/between 0\.05 and 5 percent/);
-    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '7' }, { provider })).reason).toMatch(/holds 0\.000006 USDC/);
-    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000001' }, { provider })).reason).toMatch(/No Umbrae pool route/);
+    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'SCAM', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/tokens Umbrae's pools trade: WETH, USDC/);
+    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '1', slippagePct: 20 }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/between 0\.05 and 5 percent/);
+    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '7' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/holds 0\.000006 USDC/);
+    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000001' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/No Umbrae pool route/);
     expect(await nonce(lp.tenekom)).toBe(before);
   }, 60000);
 
   test('with the connection off there is no pool list, so no swap', async () => {
     connections.restore();
     connections = connectionsOn([]);
-    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '1' }, { provider })).reason).toMatch(/pool list did not answer/);
+    expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/pool list did not answer/);
   }, 60000);
 });

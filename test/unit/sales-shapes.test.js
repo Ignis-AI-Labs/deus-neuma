@@ -10,7 +10,14 @@ import { makeSuppression, suppressionMatcher } from '../../backend/services/sale
 import { upkeepDue, MAX_TOUCHES } from '../../backend/services/sales/lead-upkeep.js';
 import { isBounce, bouncedAddresses, asksToStop } from '../../backend/services/sales/reply-rules.js';
 import { judgeCover, rampCap, DAILY_CAP } from '../../backend/services/sales/sales-cover.js';
-import { makeSalesSheet, foldSalesFacts, judgeSheetReview, checkSalesEmail, SALES_DISCLOSURE } from '../../backend/services/sales/sales-facts.js';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { poolTiles, chipsOf, poolWords, audienceWaits } from '../../frontend/app/RelinkShell/company-line/lead-audience-view.js';
+import { segmentRows } from '../../frontend/app/RelinkShell/company-line/lead-engine-view.js';
+import { LeadAudienceCard } from '../../frontend/app/RelinkShell/company-line/LeadAudienceCard.jsx';
+import { leadEngineText } from '../../backend/services/sales/sales-briefing.js';
+import { makeSalesSheet, foldSalesFacts, judgeSheetReview, editSheetFact, checkSalesEmail, SALES_DISCLOSURE } from '../../backend/services/sales/sales-facts.js';
+import { sheetState, factsByCompany, factAsk, editReady, startChecked, factStanding, checkedWords, reviewWords } from '../../frontend/app/RelinkShell/company-line/lead-facts-view.js';
 import { parseClaims, claimsMessages } from '../../backend/services/sales/claims-reader.js';
 
 const NOW = '2026-11-13T08:00:00.000Z';
@@ -115,7 +122,8 @@ describe('the do-not-contact list', () => {
 describe('lead upkeep', () => {
   const now = Date.parse(NOW);
   const at = (days) => new Date(now - days * DAY).toISOString();
-  const lead = (id, status, contact, touches) => ({ id, name: id, status, contact, touches });
+  // People the house sells to: the sequence below is a buyer's (an unsorted lead is due a sort first, mail-scan.test.js).
+  const lead = (id, status, contact, touches) => ({ id, name: id, kind: 'buyer', status, contact, touches });
   const contacted = (n, daysAgo) => Array.from({ length: n }, () => ({ at: at(daysAgo), status: 'contacted' }));
 
   test('what is due, most urgent first: suppressed, answer, follow-up, close-out, duplicate, stale, unreachable', () => {
@@ -217,6 +225,91 @@ describe('the sales facts — what a buyer may be told, and the check every emai
     expect(() => makeSalesSheet({ facts: facts.slice(0, 2), by: 'm', now: NOW })).toThrow(/at least three/);
     expect(() => makeSalesSheet({ facts: [...facts, { company: 'ignis', claim: 'We are the best in the world', source: 'trust me' }], by: 'm', now: NOW })).toThrow(/facts\[3\]\.source/);
     expect(makeSalesSheet({ facts, by: 'm', now: NOW }).facts.map((f) => f.n)).toEqual([1, 2, 3]);
+  });
+
+  test('the operator rewrites or removes one fact: a new sheet that waits, numbered again; the approved one stands', () => {
+    const four = [...facts, { company: 'umbrae', claim: 'Liquidity providers keep 95% of every swap fee', figure: { value: 95, unit: '%' }, source: 'https://umbrae.io' }];
+    const sheet = makeSalesSheet({ facts: four, by: 'm', now: NOW });
+    const state = foldSalesFacts([{ type: 'facts', sheet }, { type: 'reviewed', sheetId: sheet.id, verdict: 'approved', at: NOW }]);
+    const edited = editSheetFact(state, { sheetId: sheet.id, n: 2, claim: 'A session costs 250 US dollars for one hour', now: NOW });
+    expect(edited.ok).toBe(true);
+    expect(edited.sheet).toMatchObject({ by: 'operator' });
+    expect(edited.sheet.id).not.toBe(sheet.id);
+    expect(edited.sheet.facts.map((f) => [f.n, f.claim.slice(0, 20), f.source])).toEqual(sheet.facts.map((f) => [f.n, f.n === 2 ? 'A session costs 250 ' : f.claim.slice(0, 20), f.source]));
+    expect(edited.sheet.facts[1].figure).toEqual({ value: 250, unit: 'USD' });
+    const after = foldSalesFacts([{ type: 'facts', sheet }, { type: 'reviewed', sheetId: sheet.id, verdict: 'approved', at: NOW }, { type: 'facts', sheet: edited.sheet }]);
+    expect([after.sheet.id, after.review, after.approved.id]).toEqual([edited.sheet.id, null, sheet.id]);
+    const removed = editSheetFact(state, { sheetId: sheet.id, n: 1, remove: true, now: NOW });
+    expect(removed.sheet.facts.map((f) => [f.n, f.company])).toEqual([[1, 'ignis'], [2, 'ignis'], [3, 'umbrae']]);
+    // Refused in words: a sheet no longer on screen, a fact that is not there, an empty rewrite, a sheet left under three.
+    expect(editSheetFact(state, { sheetId: 'fs-old', n: 1, remove: true, now: NOW }).reason).toMatch(/change the facts sheet on screen/);
+    expect(editSheetFact(state, { sheetId: sheet.id, n: 9, remove: true, now: NOW }).reason).toBe('there is no fact 9 on this sheet');
+    expect(editSheetFact(state, { sheetId: sheet.id, n: 2, claim: 'no', now: NOW }).reason).toMatch(/facts\[1\]\.claim: state the fact/);
+    expect(editSheetFact(state, { sheetId: sheet.id, n: 2, source: 'trust me', now: NOW }).reason).toMatch(/facts\[1\]\.source/);
+    const three = foldSalesFacts([{ type: 'facts', sheet: makeSalesSheet({ facts, by: 'm', now: NOW }) }]);
+    expect(editSheetFact(three, { sheetId: three.sheet.id, n: 1, remove: true, now: NOW }).reason).toMatch(/a sheet holds at least three facts/);
+  });
+
+  test('the operator approves only the facts they ticked: those stand, the rest are held for the seat to fix', () => {
+    const sheet = makeSalesSheet({ facts, by: 'm', now: NOW });
+    const waiting = foldSalesFacts([{ type: 'facts', sheet }]);
+    const part = judgeSheetReview(waiting, { sheetId: sheet.id, verdict: 'approved', only: [2, 1, 2, 9], note: 'fact 3 needs a public source', now: NOW });
+    expect(part).toMatchObject({ ok: true, event: { verdict: 'approved', only: [1, 2], note: 'fact 3 needs a public source' } });
+    const state = foldSalesFacts([{ type: 'facts', sheet }, part.event]);
+    expect([state.approved.id, state.approved.facts.map((f) => f.n), state.review.held.map((f) => f.n)]).toEqual([sheet.id, [1, 2], [3]]);
+    // Every fact ticked is a plain approval; none ticked is refused in words.
+    expect(judgeSheetReview(waiting, { sheetId: sheet.id, verdict: 'approved', only: [1, 2, 3], now: NOW }).event.only).toBeUndefined();
+    expect(judgeSheetReview(waiting, { sheetId: sheet.id, verdict: 'approved', only: [], now: NOW }).reason).toMatch(/check at least one fact/);
+    expect(foldSalesFacts([{ type: 'facts', sheet }, { type: 'reviewed', sheetId: sheet.id, verdict: 'approved', at: NOW }]).review.held).toEqual([]);
+    // A held fact's figure is not approved: an email may not carry it.
+    expect(checkSalesEmail({ subject: 'a', text: `It costs 250 USD. ${SALES_DISCLOSURE}`, approved: foldSalesFacts([{ type: 'facts', sheet }, { type: 'reviewed', sheetId: sheet.id, verdict: 'approved', only: [1, 3], at: NOW }]).approved }).ok).toBe(false);
+    // The seat reads which facts went back, and why.
+    const text = leadEngineText({ segments: [], prospects: [], leads: [], suppressions: [], facts: state, now: Date.parse(NOW) });
+    expect(text).toMatch(/NOT APPROVED by the operator \(1\): fact 3 needs a public source\. Fix each one[\s\S]*- \(ignis\) A customer launched his own product after the sessions — source: customer: Darren/);
+    // The screen: what was approved before starts ticked on a re-filed sheet; each fact's standing; the counts.
+    const refiled = foldSalesFacts([{ type: 'facts', sheet }, part.event, { type: 'facts', sheet: makeSalesSheet({ facts, by: 'm', now: NOW }) }]);
+    expect(startChecked(refiled)).toEqual([1, 2]);
+    expect(startChecked(waiting)).toEqual([]);
+    expect([factStanding(state, sheet.facts[0]), factStanding(state, sheet.facts[2]), factStanding(waiting, sheet.facts[0])]).toEqual(['approved', 'held', null]);
+    expect([checkedWords(2, 3), reviewWords(state), reviewWords(waiting)]).toEqual(['2 OF 3 CHECKED', '2 APPROVED · 1 SENT BACK TO FIX', null]);
+  });
+
+  test('under its campaign an audience is one line that opens onto its approvals, its companies, its leads and its pitch', () => {
+    const segment = { id: 's-e4f50ba1', name: 'Base token teams', state: 'approved', company: 'umbrae', campaign: 'k-1', offer: 'A pool on Umbrae', customerProblem: 'Thin liquidity', targetRole: 'Founder', countries: ['US'], positiveCriteria: ['Has a token on Base'], negativeCriteria: ['An exchange'], exampleClients: [], why: 'They need depth' };
+    const found = { id: 'p-1', segmentId: segment.id, name: 'Doppler', domain: 'doppler.finance', match: 3, stage: 'found', people: [], fit: [{ criterion: 'Has a token on Base', score: 5, reasoning: 'xdp trades on Base' }], misfit: [], source: 'https://doppler.finance' };
+    const lead = { ...found, id: 'p-2', name: 'Venice', domain: 'venice.ai', stage: 'promoted', people: [{ name: 'Venice support team', role: 'support' }] };
+    const [row] = segmentRows({ segments: [segment], prospects: [found, lead] });
+    expect(row.leads.map((p) => p.id)).toEqual(['p-2']);
+    expect(poolWords(row.pool, row.counts)).toBe('1 COMPANY TO JUDGE · 1 STRONG · 0 WEAK · 0 NO MATCH · 1 ON THE LEAD LIST');
+    // It stands open while it waits on the operator: a draft, or an approved one whose list is not yet approved.
+    expect([audienceWaits(row), audienceWaits({ ...row, listable: 0 }), audienceWaits({ ...row, listable: 0, segment: { ...segment, state: 'draft' } })]).toEqual([true, false, true]);
+    const html = renderToStaticMarkup(createElement(LeadAudienceCard, { row, busy: false, onMove: () => {}, onList: () => {}, mode: 'nested' }));
+    expect(html).toMatch(/^<li class="cline-aud is-nested" data-segment-id="s-e4f50ba1" data-segment-state="approved"><details open=""><summary class="cline-aud-sum">/);
+    expect(html).toContain('AUDIENCE · Base token teams');
+    expect(html).toContain('APPROVE THE LIST (1)');
+    expect(html).toContain('ON THE LEAD LIST · 1');
+    expect(html).toContain('<b>Venice</b> (venice.ai) — Venice support team, support');
+    expect(html).toContain('COMPANIES FOUND, NOT YET LEADS · 1');
+    expect(html).toContain('THE PITCH — THE OFFER, WHO IT REACHES, WHAT MAKES A FIT');
+    // The count tiles are the campaign's; the audience under it repeats none of them.
+    expect(html).not.toContain('cline-tile');
+  });
+
+  test('an audience reads as marks: the pool as count tiles, a written list as chips', () => {
+    expect(poolTiles([{}, {}], { strong: 1, weak: 1, none: 0, onLedger: 0 })).toEqual([{ label: 'COMPANIES', n: 2 }, { label: 'STRONG', n: 1, loud: true }, { label: 'WEAK', n: 1 }, { label: 'NO MATCH', n: 0 }, { label: 'ON THE LEAD LIST', n: 0, loud: false }]);
+    expect(chipsOf('CTO, Head of Engineering, Head of Security, or Founder/CEO on small teams')).toEqual(['CTO', 'Head of Engineering', 'Head of Security', 'Founder/CEO on small teams']);
+    expect([chipsOf('Founder'), chipsOf(''), chipsOf(null)]).toEqual([['Founder'], [], []]);
+  });
+
+  test('the screen groups the facts by company and drafts the question about one fact', () => {
+    const sheet = makeSalesSheet({ facts: [...facts, { company: 'umbrae', claim: 'Liquidity providers keep 95% of every swap fee', source: 'https://umbrae.io' }], by: 'm', now: NOW });
+    expect(factsByCompany(sheet, [{ id: 'ignis', name: 'Ignis AI Labs' }]).map((g) => [g.id, g.name, g.facts.map((f) => f.n)])).toEqual([['ignis', 'Ignis AI Labs', [1, 2, 3]], ['umbrae', 'umbrae', [4]]]);
+    expect(factsByCompany(null)).toEqual([]);
+    expect(sheetState({ sheet, review: null })).toBe('WAITS FOR YOUR APPROVAL');
+    expect(sheetState({ sheet, review: { verdict: 'returned', note: 'drop the price' } })).toBe('RETURNED — drop the price');
+    expect(factAsk(sheet.facts[3])).toBe('About fact 4 on the sales facts sheet (umbrae): "Liquidity providers keep 95% of every swap fee" (source: https://umbrae.io). Tell me exactly where it comes from and whether it is still true today, and propose a better wording if it needs one. Do not file a new sheet until I say so.');
+    const fact = sheet.facts[0];
+    expect([editReady({ claim: fact.claim, source: fact.source }, fact), editReady({ claim: `${fact.claim} each`, source: fact.source }, fact), editReady({ claim: 'short', source: fact.source }, fact)]).toEqual([false, true, false]);
   });
 
   test('the operator approves the latest sheet once; a newer filing waits while the approved one stands', () => {

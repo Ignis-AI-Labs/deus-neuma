@@ -72,6 +72,10 @@ const textOf = (value) => (typeof value === 'string' ? value : '');
 // Only an https link may become a press that leaves the desk.
 const httpsOrNull = (value) => (typeof value === 'string' && /^https:\/\//i.test(value) ? value : null);
 
+// A TikTok username is letters, digits, "_" and "." (at most 24); anything else builds no link.
+const handleUrlOrNull = (username) => (typeof username === 'string' && /^[A-Za-z0-9_.]{1,24}$/.test(username)
+  ? `https://www.tiktok.com/@${username}` : null);
+
 /**
  * The account as the view draws it. A field the connection may not read is
  * null, never invented. Pure.
@@ -85,8 +89,10 @@ export const accountView = (user) => Object.freeze({
   verified: typeof user?.is_verified === 'boolean' ? user.is_verified : null,
   // Pictures are judged by the relay (tiktok-image-relay.js), the only road they travel.
   avatarUrl: textOf(user?.avatar_url) || null,
-  // The desk opens it in the person's browser: the web page first, the app link otherwise.
-  profileUrl: httpsOrNull(user?.profile_web_link) || httpsOrNull(user?.profile_deep_link),
+  // The desk opens it in the person's browser: the @handle page first, then TikTok's links. Its
+  // profile_web_link is a /share/user/<id>?source= link whose redirect drops the "?" and lands
+  // on […] (seen live, 2026-11-10).
+  profileUrl: handleUrlOrNull(user?.username) || httpsOrNull(user?.profile_web_link) || httpsOrNull(user?.profile_deep_link),
   counts: Object.freeze({
     followers: countOf(user?.follower_count),
     following: countOf(user?.following_count),

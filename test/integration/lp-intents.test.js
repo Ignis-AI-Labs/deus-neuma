@@ -14,6 +14,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { startAnvil } from '../helpers/money-in-kit.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
 import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
+import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
 import { viaIntent } from '../helpers/intent-path.js';
 import { startUmbraeStandIn, POOL, USDC } from '../helpers/umbrae-stand-in.js';
@@ -35,12 +36,14 @@ let root;
 let originalRoot;
 let umbrae;
 let connections;
+let receiptRpc;
 let wallet;
 const priorRpc = process.env.BASE_MAINNET_RPC_URL;
 
 beforeAll(async () => {
   anvil = await startAnvil({ chainId: 8453 });
   provider = new ethers.JsonRpcProvider(anvil.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 100 });
+  receiptRpc = await startLpReceiptRpc(anvil.url);
   process.env.BASE_MAINNET_RPC_URL = anvil.url;
   _resetConfig();
   resetChainProviders();
@@ -65,6 +68,7 @@ beforeAll(async () => {
 afterAll(async () => {
   connections?.restore();
   await umbrae?.close();
+  await receiptRpc?.close();
   if (priorRpc === undefined) delete process.env.BASE_MAINNET_RPC_URL; else process.env.BASE_MAINNET_RPC_URL = priorRpc;
   _resetConfig();
   resetChainProviders();
@@ -77,7 +81,7 @@ afterAll(async () => {
 beforeEach(() => {
   umbrae.reset();
   connections?.restore();
-  connections = connectionsOn(['umbrae-liquidity']);
+  connections = connectionsOn(['umbrae-liquidity', 'market-data']);
 });
 
 const sends = () => umbrae.seen.filter((r) => r.url === '/api/v1/base/send');

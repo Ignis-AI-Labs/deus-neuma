@@ -32,6 +32,7 @@ import { extensionToolsFor } from './extensions/extension-being-tools.js';
 import { isAdvertisedTool, normalizeChatMode } from './tool-policy.js';
 import { ASK_OPERATOR_TOOL } from './operator-ask.js';
 import { PLAN_SUBMIT_TOOL } from './team-tool-defs.js';
+import { SHADOW_CLONE_TOOL } from './shadow-clone.js';
 import { PLAN_PRESENT_TOOL } from './plan-mode.js';
 import { SOVEREIGNTY_PROPOSALS_TOOL } from './sovereignty/gateway-tools.js';
 import { skillService } from './skill-service.js';
@@ -234,8 +235,9 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   const memoryTools = memoryToolsUnfiltered.filter(isAdvertisedTool);
   const askTools = [ASK_OPERATOR_TOOL];
   const planTools = connection.companion?.neumaId
-    // team/run + team/workspace-run are intents now (Stage 3); plan_submit stays.
-    ? [PLAN_SUBMIT_TOOL]
+    // team/run + team/workspace-run are intents now (Stage 3); plan_submit stays. A being splits
+    // into shadow clones from its own sitting — never from a clone's or a team part's.
+    ? [PLAN_SUBMIT_TOOL, ...(connection._shadowClone || connection._teamMember ? [] : [SHADOW_CLONE_TOOL])]
     : [];
   // PLAN MODE's presentation tool advertises ONLY while the chat bears PLAN —
   // the mode lives on the connection, so a mid-sitting flip lands next turn.

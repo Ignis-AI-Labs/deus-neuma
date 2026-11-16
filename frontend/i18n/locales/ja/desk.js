@@ -125,7 +125,7 @@ export default Object.freeze({
     retryIgnite: '点火を再試行',
     igniteTitle: 'ローカル基盤モデルを起動します',
     witnessTag: 'ウィットネス',
-    urgentTitle: '今すぐ割り込み — 返答を遮って発言します',
+    urgentTitle: '今すぐ割り込み (Ctrl+Enter) — 返答を遮って発言します',
     micBlocked: 'マイクがブロックされました — 入力なし、コンソールを確認してください',
     micOff: 'マイク — オフ',
     micOpening: 'マイクを開いています…',

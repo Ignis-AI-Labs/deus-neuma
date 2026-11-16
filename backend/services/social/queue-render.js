@@ -202,12 +202,34 @@ const _indexLine = (e, threads) => [
 const _echoFilters = (filters) => Object.entries(filters)
   .map(([k, v]) => `${k}: ${v}`).join(', ');
 
+// A read that named no standing says which one it got, and what else the record holds — so the
+// rest is one named call away, never a heap carried along for nothing (Design note, 2026-11-16.
+const DEFAULT_WORDS = Object.freeze({
+  open: 'open — draft, approved, sending, failed',
+  live: 'open and sent',
+});
+
 const _header = (sel) => {
   const scope = Object.keys(sel.filters).length ? ` matching {${_echoFilters(sel.filters)}}` : '';
-  const hidden = sel.dead && !sel.filters.status
+  const named = DEFAULT_WORDS[sel.defaulted];
+  const sentHidden = sel.defaulted === 'open' && sel.sent
+    ? ` · ${sel.sent} sent in the record, not shown (status:'sent' reads them; add day:'YYYY-MM-DD' for one day)`
+    : '';
+  const hidden = sel.dead && !sel.filters.status && sel.defaulted !== 'all'
     ? ` · ${sel.dead} withdrawn/declined left in the record, not shown (status:'${DEAD_STATUS_KEY}' reads them)`
     : '';
-  return `${sel.matched} post(s) in the campaign queue${scope}${hidden}:`;
+  const map = sentHidden || hidden ? " · queue_list {view:'summary'} maps the whole record by day" : '';
+  return `${sel.matched} post(s) in the campaign queue${named ? ` (${named})` : ''}${scope}${sentHidden}${hidden}${map}:`;
+};
+
+// The next call, whole: the same filters, the next offset — a hint that dropped them sent a
+// being paging one day's sent posts back to the open queue.
+const _nextCall = (sel, offset) => {
+  const parts = [`offset: ${offset}`,
+    ...Object.entries(sel.filters).map(([k, v]) => `${k}: '${v}'`),
+    ...(sel.order !== 'decision' ? [`order: '${sel.order}'`] : []),
+    ...(sel.view === 'index' ? ["view: 'index'"] : [])];
+  return `queue_list {${parts.join(', ')}}`;
 };
 
 // THE PAGING CONTRACT LIVES HERE. `shown` is what the render actually carried
@@ -223,7 +245,7 @@ const _tail = (sel, shown) => {
   const short = shown < sel.page.length
     ? ` (your context window held ${shown} of this page's ${sel.page.length} — whole entries only, never a cut one)`
     : '';
-  const next = `next: queue_list {offset: ${seen}${sel.view === 'index' ? ", view: 'index'" : ''}}`;
+  const next = `next: ${_nextCall(sel, seen)}`;
   // What this said until 2026-08-28 — […]
   // — the window has never been able to keep: the index of the live 155 renders
   // at 25,167 chars against a 4,000-char result cap. It is still the densest
@@ -254,13 +276,18 @@ const _tail = (sel, shown) => {
  */
 export const drawQueueSelection = (sel, { budget = null } = {}) => {
   if (!sel?.ok) return { text: sel?.error || 'the queue could not be read', shown: 0 };
+  if (sel.view === 'summary') return { text: sel.summary, shown: sel.matched };
   if (!sel.matched) {
     if (Object.keys(sel.filters).length) {
-      return { text: `Nothing in the campaign queue matches {${_echoFilters(sel.filters)}} — ${sel.total} post(s) stand in the record.`, shown: 0 };
+      return { text: `Nothing in the campaign queue matches {${_echoFilters(sel.filters)}} — ${sel.total} post(s) stand in the record; queue_list {view:'summary'} shows what is there, by day.`, shown: 0 };
     }
+    const rest = [
+      sel.sent ? `${sel.sent} sent post(s) (read them with status:'sent', or one day with day:'YYYY-MM-DD')` : null,
+      sel.dead ? `${sel.dead} withdrawn/declined post(s) (read them with status:'${DEAD_STATUS_KEY}')` : null,
+    ].filter(Boolean);
     return {
-      text: sel.dead
-        ? `Nothing live in the campaign queue — ${sel.dead} withdrawn/declined post(s) rest in the record; read them with status:'${DEAD_STATUS_KEY}'.`
+      text: rest.length
+        ? `Nothing open in the campaign queue — nothing awaits your operator and nothing is scheduled. The record holds ${rest.join(' and ')}; queue_list {view:'summary'} maps it by day.`
         : 'The campaign queue is empty — no posts are staged yet.',
       shown: 0,
     };

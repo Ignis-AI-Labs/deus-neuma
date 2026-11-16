@@ -131,11 +131,11 @@ const _videoMediaSchema = (video) => Object.freeze({
 
 const _queueMediaSchema = (channel) => (ownMediaChannel(channel?.id) ? _videoMediaSchema(ownMediaChannel(channel.id)) : Object.freeze({
   type: 'array',
-  description: 'Optional images to attach (up to 4). Each is {path, alt}: path is the ABSOLUTE path of an image file inside a folder your operator has open, and alt describes it for people who cannot see it. Always write alt text — an undescribed image is a post part of your audience cannot read.',
+  description: `Optional images to attach (up to 4). Each is {path, alt}: path is the ABSOLUTE path of an image file inside a folder your operator has open, and alt describes it for people who cannot see it. Always write alt text — an undescribed image is a post part of your audience cannot read.${channel?.id === 'x' ? ' An X post may carry ONE video (MP4, MOV or WebM) instead, on its own, never beside images.' : ''}`,
   items: Object.freeze({
     type: 'object',
     properties: Object.freeze({
-      path: Object.freeze({ type: 'string', description: 'Absolute path to a JPEG, PNG, GIF or WEBP inside an open folder' }),
+      path: Object.freeze({ type: 'string', description: `Absolute path to a JPEG, PNG, GIF or WEBP${channel?.id === 'x' ? ', or one video,' : ''} inside an open folder` }),
       alt: Object.freeze({ type: 'string', description: 'What the image shows, for a reader who cannot see it' }),
     }),
     required: Object.freeze(['path']),

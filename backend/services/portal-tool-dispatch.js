@@ -33,6 +33,7 @@ import { applyToolMode } from './tool-policy.js';
 import { ACT_REFUSALS } from './act-gate.js';
 import { isAskTool, handleAskOperator } from './operator-ask.js';
 import { isPlanTool } from './team-plan.js';
+import { isCloneTool, handleShadowClone } from './shadow-clone.js';
 import { isPlanPresentTool, handlePlanPresent, handlePlanSubmit as _handlePlanSubmit } from './plan-mode.js';
 import { isMindTool, handleMindTool } from './mind-tools.js';
 import { isSovereigntyTool, handleSovereigntyTool } from './sovereignty/gateway-handlers.js';
@@ -226,10 +227,10 @@ export const dispatchPlatformTool = async (match, ctx) => {
       break dispatch;
     }
 
-    // Platform capability: a team plan submitted for the operator's approval —
-    // execution pauses on their verdict. Never the MCP path.
-    if (isPlanTool(match)) {
-      results.push(await _handlePlanSubmit(connection, args));
+    // Platform capability: a team plan for the operator's approval (pauses on the verdict), or the
+    // speaker's SHADOW CLONES (shadow-clone.js; returns when every clone reports). Never the MCP path.
+    if (isPlanTool(match) || isCloneTool(match)) {
+      results.push(await (isCloneTool(match) ? handleShadowClone(connection, args) : _handlePlanSubmit(connection, args)));
       break dispatch;
     }
 

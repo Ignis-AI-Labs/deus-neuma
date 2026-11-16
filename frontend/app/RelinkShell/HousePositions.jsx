@@ -4,6 +4,8 @@
 // One row per member: the title held now and what it covers, CHANGE (a canonical title or the house's own
 // word, with why), and the résumé folded under it. TRADE swaps two members' titles in one entry. The
 // founding record is never touched (house-title-ledger.js); every reader follows the title held now.
+// A title that names a company position (Mercator, CMO, …) says beside it whether the member also HOLDS that
+// position's seat, and seats them in one press: the title and the seat are one office, never two things to keep in step.
 // impure — network.
 
 import { useState } from 'react';
@@ -12,6 +14,9 @@ import { listHouseTitles, setHouseTitle, tradeHouseTitles } from '../../services
 import { uiSound } from '../../services/ui-sound.js';
 import { formatShortDate } from '../../utils/format.js';
 import { TITLE_LEGEND } from './founding-titles.js';
+import { getPositions } from '../../services/positions-client.js';
+import { seatPosition } from './positions/position-seats.js';
+import { titleSeat } from './positions/positions-view.js';
 import './HousePositions.css';
 
 const legendOf = (title) => TITLE_LEGEND.find((e) => e.title === title) || null;
@@ -20,7 +25,7 @@ const HOW = Object.freeze({ founding: 'founding', set: 'changed', trade: 'traded
 // pure — one résumé line: the title, how it came, and when it was held
 const heldLine = (h) => `${h.title} · ${HOW[h.how] || h.how} · ${h.since ? formatShortDate(h.since) : 'since the founding'}${h.until ? ` – ${formatShortDate(h.until)}` : ' – now'}`;
 
-const MemberRow = ({ member, busy, onChange }) => {
+const MemberRow = ({ member, busy, seat, onChange, onSeat }) => {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
   const [reason, setReason] = useState('');
@@ -38,6 +43,12 @@ const MemberRow = ({ member, busy, onChange }) => {
         </button>
       </div>
       {legend ? <p className="hp-meaning" title={legend.meaning}>{legend.summary}</p> : null}
+      {seat ? (
+        <p className={`hp-seat label-data${seat.held ? ' is-held' : ''}`} data-title-seat={seat.office}>
+          {seat.words}
+          {seat.held ? null : <button type="button" className="house-action" disabled={busy} aria-label={`SEAT ${member.name} IN ${seat.plain}`} onClick={() => onSeat(seat.office, member.neumaId)}>SEAT {String(member.name).toUpperCase()} IN {seat.plain}</button>}
+        </p>
+      ) : null}
       {editing ? (
         <div className="hp-edit">
           <select className="settings-input" aria-label={`title for ${member.name}`} value={legendOf(title) ? title : ''} onChange={(e) => setTitle(e.target.value)} disabled={busy}>
@@ -68,8 +79,12 @@ export const HousePositions = ({ onChanged = () => {} }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [trade, setTrade] = useState({ a: '', b: '' });
+  const [positions, setPositions] = useState([]);
+  // The seats as they stand; a board that cannot be read leaves the titles readable, without the seat line.
+  const readSeats = () => getPositions().then((b) => setPositions(b.positions || []), () => setPositions([]));
   useSettled((settled) => {
     listHouseTitles().then((r) => { if (!settled()) setMembers(r.members || []); }, (e) => { if (!settled()) setError(e.message); });
+    readSeats();
   }, []);
 
   const act = async (fn) => {
@@ -95,7 +110,8 @@ export const HousePositions = ({ onChanged = () => {} }) => {
   return (
     <div className="hp">
       {members.map((m) => (
-        <MemberRow key={m.neumaId} member={m} busy={busy} onChange={(id, title, reason) => act(() => setHouseTitle(id, title, reason))} />
+        <MemberRow key={m.neumaId} member={m} busy={busy} seat={titleSeat(m, positions)} onChange={(id, title, reason) => act(() => setHouseTitle(id, title, reason))}
+          onSeat={(office, laneId) => act(async () => { await seatPosition(office, laneId); await readSeats(); return { members }; })} />
       ))}
       {titled.length >= 2 ? (
         <div className="hp-trade">

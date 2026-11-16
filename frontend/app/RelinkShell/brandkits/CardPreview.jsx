@@ -17,16 +17,13 @@
 import { Select } from '../Select.jsx';
 import { InlineSvg } from './InlineSvg.jsx';
 
-const TEMPLATES = [
-  { value: 'announcement', label: 'ANNOUNCEMENT' },
-  { value: 'launch', label: 'LAUNCH' },
-  { value: 'milestone', label: 'MILESTONE' },
-  { value: 'stat', label: 'STAT ROW' },
-  { value: 'listing', label: 'LISTING' },
-  { value: 'partnership', label: 'PARTNERSHIP' },
-];
+// Every card this company draws — its own designs and the shared ones (card-gallery.js); until
+// the list arrives, the one being drawn.
+const optionsOf = (cards, current) => (cards?.length
+  ? cards.map((c) => ({ value: c.name, label: `${(c.title || c.name).toUpperCase()}${c.source === 'company' ? ' · OWN' : ''}` }))
+  : [{ value: current, label: String(current).toUpperCase() }]);
 
-export const CardPreview = ({ preview, onCollapse }) => (
+export const CardPreview = ({ preview, cards = null, onCollapse }) => (
   <aside className="bk-preview">
     <header className="bk-preview-head">
       <span className="label-data">PREVIEW</span>
@@ -34,7 +31,7 @@ export const CardPreview = ({ preview, onCollapse }) => (
         id="bk-template"
         ariaLabel="which card to preview"
         value={preview.template}
-        options={TEMPLATES}
+        options={optionsOf(cards, preview.template)}
         onChange={preview.chooseTemplate}
       />
       <button type="button" className="bk-collapse" onClick={onCollapse} aria-label="hide the preview">–</button>

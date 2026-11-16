@@ -29,6 +29,10 @@ import { signalWake } from '../house-clock/wake-signal.js';
 import { poolBaseFactorOnChain, quoteDepositOnChain, quoteExitOnChain, tokenDecimalsOnChain } from './lp-quotes.js';
 import { independentBudgetFigures } from './lp-budget-independent.js';
 import { guardLpExecution, recordLpBroadcast, settleLpExecution } from './lp-executions.js';
+import { proveLpReceipt } from './lp-receipt-proof.js';
+import { assertLpNotPaused, reserveCapitalAssets } from './lp-capital-controls.js';
+import { broadcastLpTransaction, prepareLpBroadcast } from './lp-broadcast.js';
+import { readAgentVault } from '../agent-vault/vault-store.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('LpRun');
@@ -106,20 +110,27 @@ export const keyedCaller = (neumaId, firstKey) => {
 
 // impure — sign one Umbrae-built transaction, hand the bytes to Umbrae, and
 // wait until both Umbrae and our own Base node have it confirmed. (Shared with lp-pool.js.)
-export const signSendWait = async ({ signer, provider, keyed, pollMs, neumaId }, tx, asked, maxApprove) => {
-  const guard = await guardLpExecution({ neumaId, tx, asked, provider });
+export const signSendWait = async ({ signer, provider, keyed, pollMs, neumaId, receiptProvider, receiptConfirmations, vault }, tx, asked, maxApprove) => {
+  const evidence = { secondary: receiptProvider, minConfirmations: receiptConfirmations, timeoutMs: 120000 };
+  const ready = await prepareLpBroadcast({ neumaId });
+  if (!ready.ok) return refuse(ready.reason);
+  const guard = await guardLpExecution({ neumaId, tx, asked, provider, ...evidence });
   if (!guard.ok) return guard;
-  const signed = await signLpTransaction({ signer, provider, tx, asked, maxApprove });
+  const signed = await signLpTransaction({ signer, provider, tx, asked, maxApprove, vault });
   if (!signed.ok) return signed;
   const recorded = await recordLpBroadcast({ neumaId, actionHash: guard.actionHash, signed });
   if (!recorded.ok) return recorded;
   const mark = (state) => settleLpExecution({ neumaId, actionHash: guard.actionHash, state }).catch((error) => {
     log.error('LP execution settlement was not written', { neumaId, state, error: error.message });
   });
-  const sent = await keyed('send', { signedTransaction: signed.signedTransaction, walletAddress: signer.address });
+  const sent = await broadcastLpTransaction({
+    neumaId, signed, provider,
+    keyedSend: () => keyed('send', { signedTransaction: signed.signedTransaction, walletAddress: signer.address }),
+  });
   if (!sent.ok) {
-    await mark('unknown');
-    return refuse(sent.error, { txHash: signed.hash, uncertain: true });
+    const uncertain = sent.sent !== false;
+    await mark(uncertain ? 'unknown' : 'aborted');
+    return refuse(sent.reason, { txHash: signed.hash, ...(uncertain ? { uncertain: true } : {}) });
   }
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const status = await keyed('status', { txHash: signed.hash });
@@ -145,6 +156,11 @@ export const signSendWait = async ({ signer, provider, keyed, pollMs, neumaId },
       if (Number(receipt.status) !== 1) {
         await mark('reverted');
         return refuse('Base included the transaction but it reverted. No intended action completed.', { txHash: signed.hash });
+      }
+      const proof = await proveLpReceipt({ primary: provider, hash: signed.hash, ...evidence });
+      if (!proof.ok) {
+        await mark('unknown');
+        return refuse('The transaction has not been independently confirmed yet. Reconcile its hash before trying again.', { txHash: signed.hash, uncertain: true });
       }
       await mark('confirmed');
       return Object.freeze({ ok: true, txHash: signed.hash });
@@ -189,9 +205,13 @@ const budgetGate = async (neumaId, keyed, action, fields, raw, provider) => {
  * @returns {Promise<Readonly<{ok: true, type: string, txHashes: string[], tokenId: string|null, approvals: number}
  *   | {ok: false, reason: string, pending?: boolean, requestId?: string, txHash?: string}>>}
  */
-const actOnce = async (neumaId, action, { operatorApproved = false, provider, pollMs = 3000 } = {}) => {
+const actOnce = async (neumaId, action, { operatorApproved = false, provider, pollMs = 3000, receiptProvider, receiptConfirmations } = {}) => {
   const asked = readAction(action);
   if (!asked.ok) return asked;
+  if (DEPOSITS.includes(asked.type)) {
+    const allowed = await assertLpNotPaused(neumaId);
+    if (!allowed.ok) return allowed;
+  }
   const signer = await lpSigner(neumaId);
   if (!signer) return refuse('This house member has no LP wallet yet.');
   const pool = await callUmbrae('pool', { params: { address: asked.pool } });
@@ -199,12 +219,12 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
   if (!ethers.isAddress(pool.payload?.address) || ethers.getAddress(pool.payload.address) !== asked.pool) {
     return refuse('Umbrae returned a different pool than the one requested. Nothing was signed.');
   }
-  let fields = poolFields(pool.payload, signer.address);
-  if (!fields) return refuse('Umbrae\'s answer for that pool is missing its tokens.');
-
   const isDeposit = DEPOSITS.includes(asked.type);
   const base = provider ?? await lpBase();
   if (!base) return refuse('Base did not answer, so nothing can be signed.');
+  const vault = await readAgentVault(neumaId);
+  let fields = poolFields(pool.payload, vault?.safe ?? signer.address);
+  if (!fields) return refuse('Umbrae\'s answer for that pool is missing its tokens.');
   if (isDeposit) {
     try {
       const [baseFactor, tokenXDecimals, tokenYDecimals] = await Promise.all([
@@ -235,11 +255,18 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
   const enrolled = await umbraeKeyFor(neumaId);
   if (!enrolled.ok) return enrolled;
   const keyed = keyedCaller(neumaId, enrolled.key);
-  const ctx = { signer, provider: base, keyed, pollMs, neumaId };
+  const ctx = { signer, provider: base, keyed, pollMs, neumaId, receiptProvider, receiptConfirmations, vault };
 
   if (isDeposit && !operatorApproved) {
     const held = await budgetGate(neumaId, keyed, asked, fields, raw, base);
     if (held) return held;
+  }
+  if (isDeposit) {
+    const admitted = await reserveCapitalAssets(neumaId, [
+      { token: fields.tokenX, amount: raw.amountX, decimals: fields.tokenXDecimals },
+      { token: fields.tokenY, amount: raw.amountY, decimals: fields.tokenYDecimals },
+    ].filter((asset) => BigInt(asset.amount) > 0n));
+    if (!admitted.ok) return admitted;
   }
 
   const approvals = await keyed('approvals', body);

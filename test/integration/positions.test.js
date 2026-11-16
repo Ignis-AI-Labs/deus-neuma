@@ -19,6 +19,7 @@ import accountsRouter from '../../backend/routes/accounts-routes.js';
 import positionsRouter from '../../backend/routes/positions-routes.js';
 import { positionSection } from '../../backend/services/positions/position-board.js';
 import { POSITIONS } from '../../backend/services/positions/position-map.js';
+import { companyModelIntent } from '../../backend/services/intents/company-model-act.js';
 
 const PRIOR_KEY = process.env.DNA_ENCRYPTION_KEY;
 const PRIOR_ROOT = getWorkspacesRoot();
@@ -76,13 +77,13 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     const { positions } = await board();
     const sales = positions.find((p) => p.office === 'cro');
     expect(sales.holder.laneId).toBe('merc');
-    expect(sales.functions.map((f) => f.id)).toEqual(['campaigns', 'leads', 'deals', 'mailbox']);
+    expect(sales.functions.map((f) => f.id)).toEqual(['model', 'campaigns', 'leads', 'deals', 'mailbox']);
     expect(sales.connections).toMatchObject([{ id: 'mail-watch', name: 'House mailbox watch', on: false }, { id: 'lead-sources', name: 'Lead sources', on: false }]);
     expect(positions.find((p) => p.office === 'cao').holder.laneId).toBe('books');
     expect(positions.find((p) => p.office === 'cmo').holder).toBe(null);
     // What the seat still needs is measured from the house itself: the seat is filled, nothing else is yet.
-    expect(sales.setup).toMatchObject({ done: 1, total: 11 });
-    expect(sales.setup.open.map((s) => s.id)).toEqual(['mailbox', 'holder', 'mail-watch', 'lead-sources', 'site', 'campaign', 'facts', 'facts-approved', 'audience', 'audience-approved', 'provider']);
+    expect(sales.setup).toMatchObject({ done: 1, total: 12 });
+    expect(sales.setup.open.map((s) => s.id)).toEqual(['mailbox', 'holder', 'mail-watch', 'lead-sources', 'site', 'model', 'campaign', 'facts', 'facts-approved', 'audience', 'audience-approved', 'provider', 'paid-rule']);
     expect(positions.find((p) => p.office === 'cmo').setup.steps[0]).toMatchObject({ id: 'seat', done: false });
   });
 
@@ -97,19 +98,53 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
 
   test('the being reads its own position only; a member with no seat reads nothing', async () => {
     const merc = await positionSection(conn('merc'));
-    expect(merc).toContain('SALES (Mercator)');
-    expect(merc).not.toContain('BOOKS (Logista)');
+    expect(merc).toContain('CHIEF REVENUE OFFICER — CRO, the Mercator; its work is sales:');
+    expect(merc).not.toContain('CHIEF ACCOUNTING OFFICER — CAO, the Logista; its work is books:');
     // Every seat holder reads every company's file: what is known, and what is missing, named.
     expect(merc).toContain('## THE HOUSE\'S COMPANIES');
     // …and, while its position is not set up, the steps still open, the operator's in words to pass on.
     expect(merc).toContain('## SETTING UP YOUR POSITION');
-    expect(merc).toContain('- Connect the mailbox the house sends from. POSITIONS, SALES, MAILBOX');
+    expect(merc).toContain('- Connect the mailbox the house sends from. POSITIONS, CHIEF REVENUE OFFICER, MAILBOX');
     expect(merc).toMatch(/Umbrae \[umbrae\]: site NOT SET/);
-    expect(merc).toMatch(/MISSING: its site address \(the operator sets it in MARKETING, BRAND, SITE & CODE\); facts a buyer may be told/);
+    expect(merc).toMatch(/MISSING: its business model: [^;]+; its site address \(the operator sets it in MARKETING, BRAND, SITE & CODE\); facts a buyer may be told/);
     expect((await board()).companies.map((c) => c.id)).toEqual(['ignis', 'umbrae']);
-    expect(await positionSection(conn('books'))).toContain('BOOKS (Logista)');
+    expect(await positionSection(conn('books'))).toContain('CHIEF ACCOUNTING OFFICER — CAO, the Logista; its work is books:');
     expect(await positionSection(conn('idle'))).toBe('');
     expect(await positionSection({ companion: { neumaId: 'merc' }, walletAddress: `0x${'9'.repeat(40)}` })).toBe('');
+  });
+
+  test('a business model: the seat files one and it waits; the operator approves, returns or writes it; every seat then reads it', async () => {
+    const MODEL = { sells: 'A swap venue on Base where anyone opens a pool', buyer: 'Token teams on Base; the founder decides', problem: 'Thin liquidity makes every trade cost more', value: 'Their token trades with less slippage, shown on the pool page', price: 'Free to open; the venue earns 5% of each swap fee' };
+    const first = (await request(app).get('/api/v1/positions/companies').use(as)).body;
+    expect(first.fields.map((f) => f.key)).toEqual(['sells', 'buyer', 'problem', 'value', 'price', 'proof', 'next']);
+    expect(first.companies.find((c) => c.id === 'umbrae')).toMatchObject({ model: null, modelProposal: null });
+    // Only a member holding a seat that speaks for the companies files one; a vague or foreign one is refused in words.
+    expect(await companyModelIntent.availableFor({ connection: conn('idle') })).toBe(null);
+    expect(await companyModelIntent.validate({ company: 'umbrae', ...MODEL }, { connection: conn('idle') })).toMatchObject({ ok: false, status: 'denied' });
+    expect(await companyModelIntent.validate({ company: 'nope', ...MODEL }, { connection: conn('merc') })).toMatchObject({ ok: false, reason: expect.stringContaining('the house\'s companies are: ignis, umbrae') });
+    expect(await companyModelIntent.validate({ company: 'umbrae', ...MODEL, value: '' }, { connection: conn('merc') })).toMatchObject({ ok: false, reason: expect.stringContaining('value (what changes for them)') });
+    const judged = await companyModelIntent.validate({ company: 'umbrae', ...MODEL }, { connection: conn('merc') });
+    expect((await companyModelIntent.execute(judged.value)).detail).toMatch(/waits for your operator/);
+    // It waits: the step now asks for the approval, and the seat still reads the model as missing.
+    const step = (await board()).positions.find((p) => p.office === 'cro').setup.steps.find((s) => s.id === 'model');
+    expect(step).toMatchObject({ done: false, label: 'Approve the business model filed for Umbrae' });
+    expect(await positionSection(conn('merc'))).toContain('an approved business model (one waits for the operator in POSITIONS, COMPANY)');
+    // Returned with a note, it is gone; filed again and approved, it stands and the step is done.
+    expect((await request(app).post('/api/v1/positions/companies/umbrae/model/return').use(as).send({ note: 'say who decides' })).body.companies.find((c) => c.id === 'umbrae')).toMatchObject({ model: null, modelProposal: null, modelReturned: 'say who decides' });
+    expect((await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as)).status).toBe(409);
+    await companyModelIntent.execute(judged.value);
+    const approved = (await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as)).body;
+    expect(approved.companies.find((c) => c.id === 'umbrae')).toMatchObject({ model: MODEL, modelProposal: null });
+    expect((await board()).positions.find((p) => p.office === 'cro').setup.steps.find((s) => s.id === 'model').done).toBe(true);
+    const merc = await positionSection(conn('merc'));
+    expect(merc).toMatch(/Business model \(approved by the operator\):\n {2}- what you sell: A swap venue on Base where anyone opens a pool/);
+    expect(merc).toMatch(/the venue earns 5% of each swap fee\n {2}MISSING: its site address/);
+    // The operator who knows the model writes it: it stands at once; a half-written one is refused.
+    const mine = await request(app).put('/api/v1/positions/companies/ignis/model').use(as).send({ ...MODEL, sells: 'Sessions with a strategist', proof: '40 sessions held' });
+    expect(mine.body.companies.find((c) => c.id === 'ignis').model).toMatchObject({ sells: 'Sessions with a strategist', proof: '40 sessions held' });
+    expect((await request(app).put('/api/v1/positions/companies/ignis/model').use(as).send({ sells: 'x' })).status).toBe(409);
+    expect((await request(app).put('/api/v1/positions/companies/nope/model').use(as).send(MODEL)).status).toBe(404);
+    expect((await request(app).get('/api/v1/positions/companies')).status).toBe(401);
   });
 
   test('an unseated position stands empty again and tells nobody', async () => {

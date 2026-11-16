@@ -16,26 +16,17 @@
  */
 import { officeContext } from './revenue-acts.js';
 import { isConnectionOn } from '../connections/connection-switches.js';
-import { resolveUsableCredential } from '../oauth-token-broker.js';
 import { LEAD_SOURCES, GATHER_MAX, candidateLine } from '../sales/lead-sources.js';
-import { readSegments, readProspects, readCandidates, addCandidates, noteContacts } from '../sales/sales-store.js';
+import { readSegments, readProspects, readCandidates, addCandidates, noteContacts, readContactLookups } from '../sales/sales-store.js';
+import { readSpend, spentThisMonth, spendRefusal, attachedProviders } from '../sales/lead-spend.js';
 
 const officerRefusal = { ok: false, status: 'denied', reason: 'the lead engine is the Mercator office\'s — only the seated Mercator files to it (house/post reaches them; the operator seats the office)' };
-const offRefusal = { ok: false, status: 'denied', reason: 'the LEAD SOURCES connection is off — the operator turns it on in POSITIONS, SALES, SWITCHES; until then find companies by reading the web yourself' };
+const offRefusal = { ok: false, status: 'denied', reason: 'the LEAD SOURCES connection is off — the operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SWITCHES; until then find companies by reading the web yourself' };
 const invalid = (reason) => ({ ok: false, status: 'invalid', reason });
 const seated = async (connection) => (await officeContext(connection).catch(() => null)) || null;
 const availableFor = async ({ connection }) => ((await seated(connection)) && isConnectionOn('lead-sources') ? {} : null);
 const COMPANY_SOURCES = Object.entries(LEAD_SOURCES).filter(([, s]) => s.kind === 'companies');
 const PEOPLE_SOURCES = Object.entries(LEAD_SOURCES).filter(([, s]) => s.kind === 'people');
-
-// impure — the first people source whose key the operator attached, or null.
-const attachedPeopleSource = async () => {
-  for (const [id, source] of PEOPLE_SOURCES) {
-    const credential = await resolveUsableCredential(source.key).catch(() => null);
-    if (credential?.apiKey) return { id, source, apiKey: credential.apiKey };
-  }
-  return null;
-};
 
 const salesGatherIntent = Object.freeze({
   name: 'sales/gather',
@@ -67,8 +58,8 @@ const salesGatherIntent = Object.freeze({
 const salesContactsIntent = Object.freeze({
   name: 'sales/contacts',
   policyTool: 'sales.contacts',
-  fieldsForPrompt: '{domain}',
-  descriptionForPrompt: 'THE LEAD ENGINE. The people at one company you gathered or pooled, with each address and the page it was found on, from the contact-data provider your operator attached. Use a returned address in sales/lead with that page as emailSource. With no provider attached, read the address on the company\'s own pages.',
+  fieldsForPrompt: `{domain, source?: ${PEOPLE_SOURCES.map(([id]) => `"${id}"`).join(' | ')}}`,
+  descriptionForPrompt: `THE LEAD ENGINE. The people at one company you gathered or pooled, each with their address and where it comes from, from a contact-data provider your operator attached (${PEOPLE_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}). IT SPENDS YOUR OPERATOR'S CREDITS, so it runs only as your briefing's PAID LEAD DATA line allows; when that line says it is not allowed yet, ask your operator before anything else. source: which attached provider to ask (left out: the cheapest attached; when one holds nobody, try the next). Use a returned address in sales/lead with its page as emailSource. With no provider attached, read the address on the company's own pages.`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -76,18 +67,26 @@ const salesContactsIntent = Object.freeze({
     if (!isConnectionOn('lead-sources')) return offRefusal;
     const domain = String(payload?.domain ?? '').trim().toLowerCase();
     const [candidates, prospects] = await Promise.all([readCandidates(context.wallet), readProspects(context.wallet)]);
-    if (!candidates.some((c) => c.domain === domain) && !prospects.some((p) => p.domain === domain)) return invalid(`"${domain}" is not a company you gathered or pooled — contacts are looked up only for the house's own candidates`);
-    const attached = await attachedPeopleSource();
-    if (!attached) return { ok: false, status: 'denied', reason: `no contact-data provider is attached — the operator adds a key (${PEOPLE_SOURCES.map(([, s]) => s.label).join('; ')}) in SETTINGS, API, Service keys; until then read the address on the company's own pages` };
+    const scored = prospects.some((p) => p.domain === domain);
+    if (!candidates.some((c) => c.domain === domain) && !scored) return invalid(`"${domain}" is not a company you gathered or pooled — contacts are looked up only for the house's own candidates`);
+    const all = await attachedProviders();
+    if (!all.length) return { ok: false, status: 'denied', reason: `no contact-data provider is attached — the operator adds a key (${PEOPLE_SOURCES.map(([, s]) => s.label).join('; ')}) in SETTINGS, API, Service keys; until then read the address on the company's own pages` };
+    const named = String(payload?.source ?? '').trim();
+    const attached = named ? all.find((a) => a.id === named) : all[0];
+    if (!attached) return invalid(`source: one of the providers your operator attached (${all.map((a) => a.id).join(', ')})`);
+    // Money: nothing paid runs until the operator has said when it may, and never past the month's cap.
+    const [rule, lookups] = await Promise.all([readSpend(context.wallet), readContactLookups(context.wallet)]);
+    const refusal = spendRefusal({ rule, spent: spentThisMonth(lookups, Date.now()), cost: attached.source.cost, scored, providers: all.map((a) => a.id) });
+    if (refusal) return { ok: false, status: 'denied', reason: refusal };
     return { ok: true, value: { context, domain, attached } };
   },
-  summarize: (payload) => `contacts at ${payload?.domain ?? '?'}`,
+  summarize: (payload) => `contacts at ${payload?.domain ?? '?'}${payload?.source ? ` from ${payload.source}` : ''}`,
   execute: async ({ context, domain, attached }, { signal } = {}) => {
     const found = await attached.source.contacts({ domain, apiKey: attached.apiKey, signal });
     if (!found.ok) return { ok: false, reason: `The contacts could not be read from ${attached.id}: ${found.detail}.` };
-    await noteContacts(context.wallet, domain, attached.id, found.people, context.laneId);
-    if (!found.people.length) return { ok: true, detail: `${attached.id} holds nobody at ${domain} with a role and a page for their address. Read the company's own pages.` };
-    return { ok: true, detail: [`People at ${domain} (${attached.id}):`, ...found.people.map((p, i) => `- ${i}. ${p.name}, ${p.role} — ${p.email} — found on ${p.sourceUrl}`), 'File the ones you will write to under people in sales/prospect, then sales/lead with the address and its page as emailSource.'].join('\n') };
+    await noteContacts(context.wallet, domain, attached.id, found.people, context.laneId, found.spent);
+    if (!found.people.length) return { ok: true, detail: `${attached.id} holds nobody at ${domain} with a role and an address it can stand behind (${found.spent} credit(s) spent). Read the company's own pages, or ask another attached provider with source.` };
+    return { ok: true, detail: [`People at ${domain} (${attached.id}, ${found.spent} credit(s) spent):`, ...found.people.map((p, i) => `- ${i}. ${p.name}, ${p.role} — ${p.email} — ${p.basis === 'verified' ? `verified by ${attached.id}; their profile: ${p.sourceUrl}` : `found on ${p.sourceUrl}`}`), 'File the ones you will write to under people in sales/prospect, then sales/lead with the address and the page above as emailSource.'].join('\n') };
   },
 });
 

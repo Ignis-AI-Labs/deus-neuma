@@ -21,7 +21,7 @@ import { normalizePurpose } from '../../core/voice/purpose.js';
 import { handleVoiceFrame } from '../services/portal-voice-handlers.js';
 import { abortAudition } from '../services/voice/voice-audition.js';
 import { checkWsRateLimit } from '../services/rate-limiter.js';
-import { markNotificationsRead } from '../services/notification-store.js';
+import { markNotificationsRead, markNotificationsThrough } from '../services/notification-store.js';
 import { isValidId } from '../../core/runtime/notification-record.js';
 import { portalConnections } from './portal-connections.js';
 import { sendToWallet } from './portal-send.js';
@@ -289,12 +289,21 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       // the record contract's charset before it reaches the store. A batched
       // array rather than one frame per card, because the inbound rate limit is
       // 30 frames/60s and clearing a full tray card-by-card would trip it.
-      const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
-        .filter((id) => isValidId(id));
-      if (ids.length === 0) break;
       // `dismiss` takes the cards out of the tray too (the × and CLEAR), on
       // every desk and after a reload; the records stay in the file.
       const dismiss = message.dismiss === true;
+      // MARK ALL READ and CLEAR name no ids: `through` covers every card up to the newest one the
+      // operator was shown, the ones older than the tray's window included. Never past now.
+      if (Number.isFinite(message.through) && message.through > 0) {
+        const through = Math.min(Math.floor(message.through), Date.now());
+        markNotificationsThrough(connection.walletAddress, through, Date.now(), { dismiss })
+          .then(() => sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', through }))
+          .catch((error) => log.error('Notification through-marking failed', { error: error.message }));
+        break;
+      }
+      const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
+        .filter((id) => isValidId(id));
+      if (ids.length === 0) break;
       markNotificationsRead(connection.walletAddress, ids, Date.now(), { dismiss })
         .then(() => {
           sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', ids });

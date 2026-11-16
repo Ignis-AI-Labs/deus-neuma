@@ -6,16 +6,18 @@
  * from a segment reaches the ledger until it is approved — approves an
  * approved segment's list once (its leads' emails then go within the sales
  * cover, sales-cover.js), approves or returns the sales facts sheet, and puts
- * a person or company on the do-not-contact list.
+ * a person or company on the do-not-contact list, and says when paid lead
+ * data may be spent (POST /spend {mode, cap}).
  */
 
 import express from 'express';
-import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, readCandidates, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
+import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
 import { makeCampaign, campaignBoard } from '../services/sales/campaign-shape.js';
 import { listCompanies } from '../services/marketing/companies.js';
-import { leadLedgerFor } from '../services/leads/lead-ledger.js';
+import { leadLedgerFor, LEAD_KINDS, kindOf, sourceOf } from '../services/leads/lead-ledger.js';
+import { spendState, setSpend, SPEND_MODES } from '../services/sales/lead-spend.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('LeadEngine');
@@ -31,7 +33,10 @@ router.get('/', async (req, res) => {
     ]);
     const [campaigns, companies] = await Promise.all([readCampaigns(wallet), listCompanies(wallet).catch(() => [])]);
     const upkeep = upkeepDue({ leads, now: Date.now(), suppressed: suppressionMatcher(suppressions).email });
-    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
+    const spend = { ...(await spendState(wallet)), modes: SPEND_MODES };
+    // The lead list itself, each lead under what it is to the house (a buyer, an applicant, a partner, …).
+    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null }));
+    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, leads: list, leadKinds: LEAD_KINDS, ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
     log.error('Lead engine read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the lead engine' });
@@ -68,7 +73,7 @@ router.post('/segments/:id/list', async (req, res) => {
 // The operator approves or returns the latest facts sheet: no email reaches a lead before one is approved.
 router.post('/facts/:sheetId', async (req, res) => {
   try {
-    const reviewed = await reviewSalesFacts(req.walletAddress, { sheetId: req.params.sheetId, verdict: req.body?.verdict, note: req.body?.note });
+    const reviewed = await reviewSalesFacts(req.walletAddress, { sheetId: req.params.sheetId, verdict: req.body?.verdict, note: req.body?.note, only: req.body?.only });
     if (!reviewed.ok) return res.status(409).json({ error: reviewed.reason });
     log.info('Sales facts reviewed by the operator', { sheetId: req.params.sheetId, verdict: req.body?.verdict });
     res.json({ ok: true, facts: await readSalesFacts(req.walletAddress) });
@@ -129,6 +134,47 @@ router.post('/segments/:id/campaign', async (req, res) => {
   } catch (error) {
     log.error('Audience campaign move failed', { error: error.message });
     return res.status(500).json({ error: 'Could not move the audience' });
+  }
+});
+
+// The operator rewrites one fact of the sheet on screen, or takes it off: {n, claim?, source?, figure?} or {n, remove: true}.
+router.post('/facts/:sheetId/fact', async (req, res) => {
+  try {
+    const { n, remove, claim, source, figure } = req.body ?? {};
+    const edited = await editSalesFact(req.walletAddress, { sheetId: req.params.sheetId, n, remove: remove === true, claim, source, figure });
+    if (!edited.ok) return res.status(409).json({ error: edited.reason });
+    log.info('A sales fact was changed by the operator', { sheetId: req.params.sheetId, n, remove: remove === true });
+    return res.json({ ok: true, facts: await readSalesFacts(req.walletAddress) });
+  } catch (error) {
+    log.error('The fact could not be changed', { error: error.message });
+    return res.status(500).json({ error: 'Could not change the fact' });
+  }
+});
+
+// The operator re-files one lead under what it is to the house: {kind}.
+router.post('/leads/:id/kind', async (req, res) => {
+  try {
+    if (!LEAD_KINDS.includes(req.body?.kind)) return res.status(400).json({ error: `kind is one of: ${LEAD_KINDS.join(', ')}` });
+    const moved = await (await leadLedgerFor(req.walletAddress)).touch(req.params.id, { kind: req.body.kind, note: `re-filed as ${req.body.kind} by the operator`, by: 'operator' });
+    if (!moved.ok) return res.status(404).json({ error: moved.error });
+    log.info('A lead was re-filed by the operator', { id: req.params.id, kind: req.body.kind });
+    return res.json({ ok: true, lead: { id: moved.lead.id, kind: kindOf(moved.lead) } });
+  } catch (error) {
+    log.error('The lead could not be re-filed', { error: error.message });
+    return res.status(500).json({ error: 'Could not re-file the lead' });
+  }
+});
+
+// When paid lead data may be spent: the operator's one choice, and the month's cap (lead-spend.js).
+router.post('/spend', async (req, res) => {
+  try {
+    const set = await setSpend(req.walletAddress, { mode: req.body?.mode, cap: req.body?.cap });
+    if (!set.ok) return res.status(400).json({ error: set.reason });
+    log.info('The paid lead data rule was set by the operator', { mode: set.rule.mode, cap: set.rule.cap });
+    return res.json({ ok: true, rule: set.rule });
+  } catch (error) {
+    log.error('The paid lead data rule could not be set', { error: error.message });
+    return res.status(500).json({ error: 'Could not set the paid lead data rule' });
   }
 });
 

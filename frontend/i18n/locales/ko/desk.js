@@ -125,7 +125,7 @@ export default Object.freeze({
     retryIgnite: '점화 재시도',
     igniteTitle: '로컬 기판 모델을 시작합니다',
     witnessTag: '위트니스',
-    urgentTitle: '지금 끼어들기 — 답변을 끊고 발언합니다',
+    urgentTitle: '지금 끼어들기 (Ctrl+Enter) — 답변을 끊고 발언합니다',
     micBlocked: '마이크 차단됨 — 입력 없음, 콘솔을 확인하세요',
     micOff: '마이크 — 끔',
     micOpening: '마이크 여는 중…',

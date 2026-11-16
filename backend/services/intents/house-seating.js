@@ -23,7 +23,7 @@ export const houseSeatingIntent = Object.freeze({
   name: 'house/seating',
   policyTool: 'house.seating',
   fieldsForPrompt: '{seats, why}',
-  descriptionForPrompt: 'THE SEATING. When your house decides together who holds which position (a seating council), file what you decided: seats maps each position to the member who holds it, by the position\'s name (MANAGEMENT, SALES, MARKETING, LAW, SECURITY, TREASURY, BOOKS) and the member\'s name, e.g. {"SALES": "Rowan", "BOOKS": "Hale"}; one member holds one position; why says in a few lines how the house decided. It replaces any seating filed before, and it seats nobody: your operator applies it from POSITIONS.',
+  descriptionForPrompt: 'THE SEATING. When your house decides together who holds which position (a seating council), file what you decided: seats maps each position to the member who holds it, by the position\'s seat or its short form (COS, CRO, CMO, CLO, CSO, CFO, CAO) and the member\'s name, e.g. {"CRO": "Rowan", "CAO": "Hale"}; one member holds one position; why says in a few lines how the house decided. It replaces any seating filed before, and it seats nobody: your operator applies it from POSITIONS.',
 
   availableFor: async ({ connection }) => (connection?.walletAddress && connection?.companion?.neumaId ? {} : null),
 
@@ -44,7 +44,7 @@ export const houseSeatingIntent = Object.freeze({
       kind: KIND.houseWake,
       standing: STANDING.neuma,
       title: `${seating.byName} filed your house's seating: ${seating.seats.length} position${seating.seats.length === 1 ? '' : 's'}`,
-      detail: seating.seats.map((s) => `${s.plain}: ${s.name}`).join(' · ').slice(0, 300),
+      detail: seating.seats.map((s) => `${s.acronym || s.plain}: ${s.name}`).join(' · ').slice(0, 300),
       actor: { id: seating.by, name: seating.byName },
       ref: { seating: true },
     })).catch(() => {});

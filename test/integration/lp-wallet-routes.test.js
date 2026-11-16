@@ -15,6 +15,7 @@ import { claimOwner } from '../helpers/claim-owner.js';
 import { startAnvil } from '../helpers/money-in-kit.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
 import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
+import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
 import { startUmbraeStandIn, POOL } from '../helpers/umbrae-stand-in.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
@@ -26,13 +27,14 @@ import { UMBRAE_BASE } from '../../core/wallet/lp-tx-policy.js';
 import lpRouter from '../../backend/routes/lp-wallet-routes.js';
 
 const NEUMA_ID = 'lproutesecho';
-let app, root, originalRoot, anvil, provider, umbrae, connections, operator, operatorToken, strangerToken;
+let app, root, originalRoot, anvil, provider, umbrae, connections, receiptRpc, operator, operatorToken, strangerToken;
 const priorRpc = process.env.BASE_MAINNET_RPC_URL;
 const as = (token) => (req) => req.set('Authorization', `Bearer ${token}`);
 
 beforeAll(async () => {
   anvil = await startAnvil({ chainId: 8453 });
   provider = new ethers.JsonRpcProvider(anvil.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 100 });
+  receiptRpc = await startLpReceiptRpc(anvil.url);
   process.env.BASE_MAINNET_RPC_URL = anvil.url;
   _resetConfig();
   resetChainProviders();
@@ -58,6 +60,7 @@ beforeAll(async () => {
 afterAll(async () => {
   connections?.restore();
   await umbrae?.close();
+  await receiptRpc?.close();
   if (priorRpc === undefined) delete process.env.BASE_MAINNET_RPC_URL; else process.env.BASE_MAINNET_RPC_URL = priorRpc;
   _resetConfig();
   resetChainProviders();
@@ -100,6 +103,16 @@ describe('the operator\'s LP wallet routes', () => {
       expect((await as(operatorToken)(request(app).put(`${base}/budget`)).send({ budgetUsd })).status).toBe(400);
     }
     expect((await as(operatorToken)(request(app).get(base))).body.lp.budgetUsd).toBe(50.56);
+  });
+
+  test('only the lane owner changes capital controls, and the view exposes them', async () => {
+    const set = await as(operatorToken)(request(app).put(`${base}/controls`)).send({ maxActionUsd: 500, dailyNotionalUsd: 1000, privateBroadcastRequired: true, paused: true });
+    expect(set.status).toBe(200);
+    expect(set.body.capital).toMatchObject({ maxActionUsd: 500, dailyNotionalUsd: 1000, privateBroadcastRequired: true, paused: true });
+    expect((await as(strangerToken)(request(app).put(`${base}/controls`)).send({ maxActionUsd: 1 })).status).toBe(403);
+    expect((await as(operatorToken)(request(app).put(`${base}/controls`)).send({ maxActionUsd: -1 })).status).toBe(400);
+    expect((await as(operatorToken)(request(app).get(base))).body.lp.capital).toMatchObject({ maxActionUsd: 500, dailyNotionalUsd: 1000, privateBroadcastRequired: true, paused: true });
+    await as(operatorToken)(request(app).put(`${base}/controls`)).send({ privateBroadcastRequired: false, paused: false });
   });
 
   test('a deposit past the budget shows as waiting; the operator\'s yes runs it on Base; a second answer finds nothing', async () => {

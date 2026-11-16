@@ -57,7 +57,7 @@ beforeAll(async () => {
     { company: 'ignis', claim: 'A customer launched his own product after the sessions', source: 'customer: Darren, by email, 2026-10' },
   ] }));
   const ledger = await leadLedgerFor(auth.address);
-  const lead = await ledger.add({ name: 'Grace Hopper', contact: 'grace@navy.example', channelId: 'email', status: 'contacted', addedBy: 'merc' });
+  const lead = await ledger.add({ name: 'Grace Hopper', contact: 'grace@navy.example', channelId: 'email', kind: 'buyer', status: 'contacted', addedBy: 'merc' });
   await ledger.touch(lead.id, { direction: 'out', promised: 'two short written ideas on a field app', note: 'emailed: "Your field app"', by: 'merc' });
   await ledger.touch(lead.id, { status: 'replied', direction: 'in', note: 'asked for the price', by: 'operator' });
 
@@ -104,9 +104,13 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     const row = page.locator(`[data-segment-id="${segment.id}"]`);
     expect(await row.getAttribute('data-segment-state')).toBe('draft');
     expect(await row.locator('[data-state-words]').textContent()).toBe('DRAFT — WAITS FOR YOUR APPROVAL');
-    expect(await row.textContent()).toContain('REACH: Founder · WHERE: United States, United Kingdom · SIZE: 1–10');
-    expect(await row.locator('[data-countries]').textContent()).toBe('SENT ONLY TO: US, GB');
-    expect(await row.locator('[data-pool-counts]').textContent()).toBe('COMPANIES: 2 — STRONG 1 · WEAK 1 · NO MATCH 0 · ON THE LEAD LIST 0');
+    // The audience reads as marks: who and where as chips, the pool as count tiles, the signs of a fit as a ticked list.
+    expect(await row.locator('.cline-aud-chips').filter({ hasText: 'REACH' }).locator('.cline-chip').allTextContents()).toEqual(['Founder']);
+    expect(await row.locator('[data-countries] .cline-chip').allTextContents()).toEqual(['US', 'GB']);
+    expect(await row.locator('.cline-aud-chips').filter({ hasText: 'SIZE' }).locator('.cline-chip').allTextContents()).toEqual(['1–10']);
+    expect(await row.locator('[data-pool-counts] .cline-tile-l').allTextContents()).toEqual(['COMPANIES', 'STRONG', 'WEAK', 'NO MATCH', 'ON THE LEAD LIST']);
+    expect(await row.locator('[data-pool-counts] .cline-tile-n').allTextContents()).toEqual(['2', '1', '1', '0', '0']);
+    expect(await row.getByRole('list', { name: 'fits if' }).locator('li').count()).toBeGreaterThan(0);
     // Strongest first; the reasons fold one press away, opened by keyboard.
     const firstCompany = row.locator('[data-prospect-id]').first();
     expect(await firstCompany.locator('summary').textContent()).toBe('harbourapp (harbourapp.co.uk) — STRONG MATCH — Ada Lovelace, Founder');
@@ -118,17 +122,56 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     // The facts sheet waits for the operator: every fact with its source.
     expect(await page.locator('[data-facts-state]').textContent()).toBe('WAITS FOR YOUR APPROVAL');
     expect(await page.locator('[data-fact]').count()).toBe(3);
-    expect(await page.locator('[data-fact="2"]').textContent()).toBe('IGNIS — A session costs 250 US dollars an hour [250 USD] — https://ignislabs.ai/sessions');
+    // A section is a line first: the sheet and each company carry their counts on the line, open while they wait on you.
+    expect(await page.locator('[data-fold="company:facts"] > summary .fold-stat').allTextContents()).toEqual(['3 FACTS', 'WAITS FOR YOUR APPROVAL']);
+    expect(await page.locator('[data-fold="facts:ignis"] > summary .fold-title').textContent()).toBe('IGNIS AI LABS');
+    expect(await page.locator('[data-fold="facts:ignis"] > summary .fold-stat').allTextContents()).toEqual(['3 FACTS', '0 CHECKED']);
+    expect(await page.locator('[data-fold="company:facts"]').getAttribute('open')).not.toBe(null);
+    expect(await page.locator('[data-fact="2"] .cline-fact-claim').textContent()).toBe('2 A session costs 250 US dollars an hour [250 USD]');
+    expect(await page.locator('[data-fact="2"] .cline-fact-source').textContent()).toBe('FROM https://ignislabs.ai/sessions');
+    // One fact is rewritten in place: a new sheet stands on disk, still waiting, the figure and source kept.
+    await page.getByRole('button', { name: 'EDIT fact 2' }).click();
+    await page.getByLabel('Fact 2, the words').fill('A session costs 250 US dollars for one hour');
+    await page.getByRole('button', { name: 'SAVE fact 2' }).click();
+    await page.locator('[data-fact="2"] .cline-fact-claim').filter({ hasText: 'for one hour' }).waitFor();
+    expect((await readSalesFacts(auth.address)).sheet).toMatchObject({ by: 'operator', facts: [{}, { claim: 'A session costs 250 US dollars for one hour', figure: { value: 250, unit: 'USD' }, source: 'https://ignislabs.ai/sessions' }, {}] });
+    // A sheet holds at least three facts: taking one of three off is refused in words.
+    await page.getByRole('button', { name: 'DELETE fact 3' }).click();
+    await page.getByRole('button', { name: 'PRESS AGAIN TO DELETE fact 3' }).click();
+    await page.getByRole('alert').filter({ hasText: 'a sheet holds at least three facts' }).waitFor();
+    expect(await page.locator('[data-fact]').count()).toBe(3);
     const scanned = await a11yCheck(page, 'lead-engine', { include: '[data-lead-engine]' });
     expect(scanned.grown, scanned.detail).toEqual([]);
     await page.screenshot({ path: path.join(SHOTS, 'draft-1280.png'), fullPage: true });
 
-    // RETURN needs a reason; APPROVE lands on disk and the sheet's buttons go.
-    expect(await page.getByRole('button', { name: 'RETURN' }).isDisabled()).toBe(true);
-    await page.getByRole('button', { name: 'APPROVE THE FACTS' }).click();
+    // One bar over the sheet. RETURN ALL needs a reason; nothing ticked, so APPROVE CHECKED waits.
+    const bar = page.locator('[data-facts-bar]');
+    expect(await bar.getByRole('button', { name: /^RETURN ALL/ }).isDisabled()).toBe(true);
+    expect(await bar.locator('[data-facts-checked]').textContent()).toBe('0 OF 3 CHECKED');
+    expect(await bar.getByRole('button', { name: /^APPROVE CHECKED/ }).isDisabled()).toBe(true);
+    expect(await bar.getByRole('button', { name: /^APPROVE ALL \(3\)/ }).isEnabled()).toBe(true);
+    // Two facts ticked and approved: they stand on disk; the third goes back to the seat to fix.
+    await page.getByLabel('Approve fact 1').check();
+    await page.getByLabel('Approve fact 2').check();
+    expect(await bar.locator('[data-facts-checked]').textContent()).toBe('2 OF 3 CHECKED');
+    await bar.getByRole('button', { name: /^APPROVE CHECKED \(2\) · REST GO BACK — the other 1 go/ }).click();
     await page.locator('[data-facts-state]').filter({ hasText: 'APPROVED — EMAILS TO LEADS ARE CHECKED AGAINST IT' }).waitFor();
-    expect((await readSalesFacts(auth.address)).approved?.facts).toHaveLength(3);
-    expect(await page.getByRole('button', { name: 'APPROVE THE FACTS' }).count()).toBe(0);
+    expect(await page.locator('[data-facts-review]').textContent()).toBe('2 APPROVED · 1 SENT BACK TO FIX');
+    expect(await page.locator('[data-fact="3"]').getAttribute('data-fact-standing')).toBe('held');
+    expect(await page.locator('[data-fact="1"]').getAttribute('data-fact-standing')).toBe('approved');
+    const stands = await readSalesFacts(auth.address);
+    expect([stands.approved.facts.map((f) => f.n), stands.review.held.map((f) => f.n)]).toEqual([[1, 2], [3]]);
+    expect(await page.locator('[data-facts-bar]').count()).toBe(0);
+    // Decided, its line says what stands and what went back; it does not fold under the operator's hands,
+    // and one press folds it to that line.
+    expect(await page.locator('[data-fold="company:facts"] > summary .fold-stat').allTextContents()).toEqual(['3 FACTS', '2 APPROVED · 1 SENT BACK']);
+    expect(await page.locator('[data-fold="company:facts"]').getAttribute('open')).not.toBe(null);
+    await page.locator('[data-fold="company:facts"] > summary').click();
+    expect(await page.locator('[data-fold="company:facts"]').getAttribute('open')).toBe(null);
+    expect(await page.locator('[data-fact="1"]').isVisible()).toBe(false);
+    const after = await a11yCheck(page, 'lead-engine-reviewed', { include: '[data-lead-engine]' });
+    expect(after.grown, after.detail).toEqual([]);
+    await page.screenshot({ path: path.join(SHOTS, 'reviewed-1280.png'), fullPage: true });
 
     await row.getByRole('button', { name: `APPROVE ${segment.name}` }).click();
     await page.locator(`[data-segment-id="${segment.id}"][data-segment-state="approved"]`).waitFor();
@@ -147,6 +190,8 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect((await readProspects(auth.address)).every((p) => p.listApproved)).toBe(true);
 
     // The do-not-contact list: a malformed entry cannot be sent; a domain lands on disk and on screen.
+    expect(await page.locator('[data-fold="leads:dnc"] > summary .fold-stat').allTextContents()).toEqual(['0 ENTRIES']);
+    await page.locator('[data-fold="leads:dnc"] > summary').click();
     const field = page.getByLabel('Email address or company domain never to contact');
     const add = page.locator('[data-suppress-form]').getByRole('button', { name: 'ADD' });
     await field.fill('not an address');
@@ -155,7 +200,8 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     await add.click();
     await page.locator('[data-engine-notice]').filter({ hasText: 'rival.example is on the do-not-contact list.' }).waitFor();
     expect(await readSuppressions(auth.address)).toEqual([expect.objectContaining({ kind: 'domain', value: 'rival.example', reason: 'asked', by: 'operator' })]);
-    expect(await page.locator('[data-lead-engine] .cline-h').last().textContent()).toBe('DO NOT CONTACT · 1');
+    // The notice is said before the fresh read lands: wait for the count itself.
+    await page.locator('[data-fold="leads:dnc"] > summary .fold-stat').filter({ hasText: '1 ENTRY' }).waitFor();
     await page.screenshot({ path: path.join(SHOTS, 'approved-1280.png'), fullPage: true });
     expect(errors).toEqual([]);
     await page.context().close();

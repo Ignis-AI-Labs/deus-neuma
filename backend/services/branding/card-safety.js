@@ -1,0 +1,95 @@
+// card-safety — what a company's own card design may contain.
+//
+// The shared templates are this repo's source. A company's own design (card-designs.js) is
+// written by an operator or a house member, and the desk draws it INLINE (InlineSvg.jsx puts the
+// rendered SVG into a shadow root) and Chromium rasterizes it for a post. An SVG can carry script
+// (<script>, an onload= on any element, a javascript: link, an animation that sets one), reach
+// out (an external href, a CSS @import), or smuggle HTML (<foreignObject>). So a design is held to
+// what a card actually draws: shapes, text, gradients, patterns, filters, clips, masks and the
+// images the renderer itself mounts (the brand's marks, a guest logo) — and nothing else.
+//
+// ALLOWLIST, NOT DENYLIST. An element or construct this file does not name is refused by name,
+// so a vector nobody thought of is closed by default. Pure: text in, refusals out.
+
+// Every element the shared templates draw, and the drawing elements beside them.
+const ELEMENTS = new Set([
+  'svg', 'g', 'defs', 'symbol', 'use', 'title', 'desc', 'style',
+  'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'path', 'image',
+  'text', 'tspan', 'textPath',
+  'linearGradient', 'radialGradient', 'stop', 'pattern', 'clipPath', 'mask', 'marker',
+  'filter', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix',
+  'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feDropShadow', 'feFlood',
+  'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feMerge', 'feMergeNode',
+  'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile',
+  'feTurbulence',
+]);
+
+// An href may point inside the card (#grid), at what the renderer mounts ({{mark.*}},
+// {{guest.*}}), or carry an image inline (data:image/png or jpeg or webp or gif). Never
+// data:image/svg+xml — an SVG inside an <image> is sealed, but one inside <use> is not.
+const SAFE_HREF = /^(#[\w-]+|\{\{\s*(mark|guest)\.[a-zA-Z][\w]*\s*\}\}|data:image\/(png|jpeg|webp|gif);base64,[a-z0-9+/=\s]+)$/i;
+
+// Numeric character references decoded, so "&#106;avascript:" is read as what it spells.
+const decoded = (text) => text
+  .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16) || 32))
+  .replace(/&#(\d+);?/g, (_, dec) => String.fromCodePoint(Number(dec) || 32));
+
+/**
+ * Why this design may not be drawn, or [] when it may. Pure.
+ * @param {string} svg the design's source, placeholders and all
+ * @returns {Array<string>}
+ */
+export const designRefusals = (svg) => {
+  const source = typeof svg === 'string' ? svg : '';
+  if (!source.trim()) return ['the design is empty'];
+  // The brand lane rides a 100kb JSON limit (server.js), and a design travels in a preview with its kit.
+  if (source.length > 80_000) return [`the design is ${source.length} characters — a card is at most 80,000 (inline images belong in marks)`];
+  const out = [];
+  const text = decoded(source.replace(/<!--[\s\S]*?-->/g, ''));
+  if (!/^\s*<svg[\s>]/.test(text)) out.push('a design starts with <svg> (no XML prolog or doctype)');
+  if (/<!|<\?/.test(text)) out.push('a design carries no <!DOCTYPE>, <!ENTITY>, CDATA or processing instruction');
+
+  const elements = new Set([...text.matchAll(/<\s*\/?\s*([A-Za-z][\w:.-]*)/g)].map((m) => m[1]));
+  for (const name of elements) {
+    if (!ELEMENTS.has(name)) out.push(`<${name}> is not something a card draws — shapes, text, gradients, patterns, filters, clips, masks and images only`);
+  }
+  // Attributes are read inside tags only, so a headline that says "online = fast" is copy, not code.
+  for (const [tag] of text.matchAll(/<[A-Za-z][^>]*>/g)) {
+    for (const [, name] of tag.matchAll(/[\s"'/]([A-Za-z_:][\w:.-]*)\s*=/g)) {
+      if (/^on/i.test(name)) out.push(`${name}= runs script — a card does nothing when it is looked at`);
+    }
+    for (const m of tag.matchAll(/(?:xlink:)?href\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+      const value = (m[1] ?? m[2] ?? '').trim();
+      if (!SAFE_HREF.test(value)) out.push(`href "${value.slice(0, 60)}" reaches outside the card — use #id, {{mark.*}}, {{guest.*}} or an inline PNG/JPEG`);
+    }
+  }
+  if (/javascript\s*:|vbscript\s*:|data\s*:\s*text\/html/i.test(text)) out.push('a script address (javascript:, vbscript:, data:text/html) has no place in a card');
+  if (/@import/i.test(text)) out.push('@import reaches outside the card');
+  for (const [, inner] of text.matchAll(/url\(([^)]*)\)/gi)) {
+    const target = inner.trim().replace(/^['"]|['"]$/g, '').trim();
+    if (!/^#[\w-]+$/.test(target) && !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(target)) {
+      out.push(`url(${target.slice(0, 60)}) may point only inside the card (#id) or at an inline image`);
+    }
+  }
+  if (/expression\s*\(|-moz-binding|behavior\s*:/i.test(text)) out.push('CSS expressions and bindings have no place in a card');
+  return [...new Set(out)];
+};
+
+/**
+ * A design's fields sidecar, judged as data (pure): the same shape the shared templates carry
+ * ({title?, use?, size?, fields: {name: {required?, max?, label?}}, guest?}).
+ * @returns {Array<string>}
+ */
+export const specRefusals = (spec) => {
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return ['the design\'s fields are not an object'];
+  const out = [];
+  const fields = spec.fields;
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return ['the design declares no fields ({"fields": {"headline": {"required": true, "max": 40}}})'];
+  for (const [name, field] of Object.entries(fields)) {
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/.test(name)) out.push(`field "${name}" is not a name — letters, digits and _ only`);
+    if (!field || typeof field !== 'object') { out.push(`field "${name}" is not an object`); continue; }
+    if (field.max !== undefined && !(Number.isInteger(field.max) && field.max > 0 && field.max <= 2000)) out.push(`field "${name}": max is a whole number of characters, 1 to 2000`);
+  }
+  if (spec.title !== undefined && typeof spec.title !== 'string') out.push('title is words');
+  return out;
+};

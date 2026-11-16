@@ -8,6 +8,8 @@
  *                                                         its goals, and how it runs round the clock
  * POST /api/v1/neuma/:neumaId/lp/open                   — make it (once); its address
  * PUT  /api/v1/neuma/:neumaId/lp/budget                 — { budgetUsd }
+ * PUT  /api/v1/neuma/:neumaId/lp/controls               — capital limits, pause, and private-broadcast policy
+ * PUT  /api/v1/neuma/:neumaId/lp/vault                  — { safe, roles, treasury }: verify and register the restricted Safe vault
  * POST /api/v1/neuma/:neumaId/lp/pending/:id/approve    — run a waiting deposit
  * POST /api/v1/neuma/:neumaId/lp/pending/:id/decline    — end it
  * PUT  /api/v1/neuma/:neumaId/lp/pace                   — { minutes }: its portfolio round (0 = off)
@@ -21,6 +23,9 @@ import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { isWitnessLaneId } from '../services/witness-lane.js';
 import { openLpWallet } from '../services/umbrae-lp/lp-wallet.js';
 import { writeLpBudget } from '../services/umbrae-lp/lp-budget.js';
+import { writeLpCapitalControls } from '../services/umbrae-lp/lp-capital-controls.js';
+import { registerAgentVault } from '../services/agent-vault/vault-store.js';
+import { lpBase } from '../services/umbrae-lp/lp-base.js';
 import { readLpView } from '../services/umbrae-lp/lp-view.js';
 import { answerWaitingDeposit } from '../services/umbrae-lp/lp-run.js';
 import { readGoals, answerReward } from '../services/umbrae-lp/lp-rewards.js';
@@ -62,6 +67,26 @@ router.put('/:neumaId/lp/budget', ...owned(async (req, res) => {
   try {
     const budgetUsd = await writeLpBudget(req.params.neumaId, req.body?.budgetUsd);
     res.json({ neumaId: req.params.neumaId, budgetUsd });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}));
+
+router.put('/:neumaId/lp/controls', ...owned(async (req, res) => {
+  try {
+    const capital = await writeLpCapitalControls(req.params.neumaId, req.body ?? {});
+    res.json({ neumaId: req.params.neumaId, capital });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}));
+
+router.put('/:neumaId/lp/vault', ...owned(async (req, res) => {
+  try {
+    const base = await lpBase();
+    if (!base) return res.status(409).json({ error: 'Base did not answer, so the vault was not registered.' });
+    const vault = await registerAgentVault(req.params.neumaId, req.body ?? {}, base);
+    res.json({ neumaId: req.params.neumaId, vault });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

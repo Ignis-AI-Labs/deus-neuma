@@ -12,6 +12,8 @@ import { MATCH_WORDS } from './prospect-shape.js';
 import { suppressionMatcher } from './suppress-shape.js';
 import { FIRST_WORDS_MAX, SUBJECT_WORDS_MAX } from './first-email.js';
 import { upkeepDue, UPKEEP_ASK } from './lead-upkeep.js';
+import { spendLine, spendState } from './lead-spend.js';
+import { LEAD_KINDS, UNSORTED, kindOf, sourceOf } from '../leads/lead-ledger.js';
 
 const LIST_CAP = 8;
 const HOW = 'How: read the house\'s own site and its competitors\', then file an audience with sales/segment (the operator approves each pitch). For a segment, gather companies in bulk with sales/gather when the LEAD SOURCES switch is on, or search the web for companies that fit; read each one\'s own pages, and file them with sales/prospect, every sign of fit scored with why. From an APPROVED segment, put a weak or strong match on the ledger with sales/lead, using an address you read on a real page. Write with email/send: the mailbox records each email on the lead itself, and a reply marks it replied. Anyone who asks to be left alone goes on sales/suppress at once.';
@@ -30,8 +32,27 @@ const factLines = (facts) => {
   return [
     head,
     ...(shown ? ['What a buyer may be told (every number in an email to a lead must be one stated for its own company):', ...shown.facts.map((f) => `- ${f.company ? `(${f.company}) ` : ''}${f.claim}${f.figure ? ` [${f.figure.value} ${f.figure.unit}]` : ''}`)] : []),
+    ...(facts.review?.held?.length ? [`NOT APPROVED by the operator (${facts.review.held.length})${facts.review.note ? `: ${facts.review.note}` : ''}. Fix each one (truer words, a better source) or drop it, and file a new sheet with sales/facts that keeps the approved facts as they are:`, ...facts.review.held.map((f) => `- ${f.company ? `(${f.company}) ` : ''}${f.claim} — source: ${f.source}`)] : []),
     `Every email to a lead carries this line above your name: "${SALES_DISCLOSURE}"`,
   ];
+};
+
+// pure — the lead list counted by kind: a buyer is sold to; anyone else is answered, never pitched.
+const kindLines = (leads) => [...unsortedLines(leads), ...LEAD_KINDS.map((k) => [k, leads.filter((l) => kindOf(l) === k)]).filter(([, of]) => of.length)
+  .map(([k, of]) => `- ${k.toUpperCase()}: ${of.length} (${of.filter((l) => ['cold', 'contacted', 'replied', 'qualified'].includes(l.status)).length} open)${k === 'buyer' ? '' : ' — answered plainly; the sales pitch and its follow-ups are for buyers only'}`)];
+
+// pure — the leads nobody has sorted, each with what is known of it, so the seat can sort them all in one filing.
+const unsortedLines = (leads) => {
+  const of = leads.filter((l) => kindOf(l) === UNSORTED);
+  return of.length ? [`- NOT SORTED YET: ${of.length}. Nobody is a buyer until someone says so. Sort them all now in ONE sales/kind filing (leads: [{id, kind, why}, …]):`,
+    ...of.slice(0, 30).map((l) => `  · [${l.id.slice(0, 8)}] ${l.name || l.contact}${l.contact && l.name ? ` (${l.contact})` : ''} — came from ${sourceOf(l)}${l.touches?.at(-1)?.note ? ` — ${String(l.touches.at(-1).note).slice(0, 220)}` : ''}`)] : [];
+};
+
+// pure — where the leads came from, most first: the channel each was recorded on (email, x, linkedin, …).
+const sourceLine = (leads) => {
+  const by = new Map();
+  for (const l of leads) by.set(sourceOf(l), (by.get(sourceOf(l)) ?? 0) + 1);
+  return `Where they came from: ${[...by].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(', ')}. Record each new lead on the channel it really came through.`;
 };
 
 const mean = (p) => p.fit.reduce((n, s) => n + s.score, 0) / (p.fit.length || 1);
@@ -49,7 +70,7 @@ const segmentLines = (segments, prospects) => segments.filter((s) => s.state !==
  * pure — the section text.
  * @param {{segments: object[], prospects: object[], leads: object[], suppressions: object[], now: number}} state
  */
-export const leadEngineText = ({ segments, prospects, leads, suppressions, facts = null, candidates = [], campaigns = [], now }) => {
+export const leadEngineText = ({ segments, prospects, leads, suppressions, facts = null, candidates = [], campaigns = [], spend = null, now }) => {
   const board = campaignBoard({ campaigns: campaigns.filter((c) => c.state === 'open'), segments, candidates, prospects, leads });
   const waiting = candidates.filter((c) => c.state === 'waiting');
   const approved = new Set(segments.filter((s) => s.state === 'approved').map((s) => s.id));
@@ -63,6 +84,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     HOW,
     FIRST_EMAIL,
     ...factLines(facts),
+    ...(spend ? [spendLine(spend)] : []),
     ...(board.campaigns.length ? ['Your campaigns (sales/campaign opens, edits, archives or deletes one; file each audience under the one it serves, campaign: its id; campaigns/link ties one to a marketing campaign):', ...board.campaigns.map(campaignLine), ...(board.loose.length ? [`Audiences under no campaign: ${board.loose.map((s) => s.name).join('; ')}`] : [])] : ['No campaign is open: open one with sales/campaign (name, company, goal) before filing audiences, so each push is counted on its own.']),
     ...(segments.length ? ['Segments:', ...segmentLines(segments, prospects)] : ['No segments yet: start by filing the first one.']),
     ...(waiting.length ? [`Candidates gathered, waiting for your score (${waiting.length}; sales/prospect for the ones that fit, sales/contacts for their people):`, ...waiting.slice(0, LIST_CAP).map((c) => `- [${c.id}] ${candidateLine(c)}`)] : []),
@@ -70,6 +92,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     ...(due.length
       ? [`Upkeep due (${due.length}):`, ...due.slice(0, LIST_CAP * 2).map((d) => `- ${d.kind.toUpperCase()} [${d.leadId.slice(0, 8)}] ${d.name}${d.kind === 'answer' ? `, waiting ${d.hours} h${d.promised ? `, you promised: "${d.promised}"` : ''}` : (d.days ? `, ${d.days} days` : '')}${d.with ? ` (same as [${d.with.slice(0, 8)}])` : ''} — ${UPKEEP_ASK[d.kind]}`)]
       : ['Upkeep: nothing due on the ledger.']),
+    ...(kindLines(leads).length ? ['The lead list, by what each lead is to the house (sales/kind re-files one; sales/mail-scan finds people who wrote in and are on no list; sales/inbound files one of them):', ...kindLines(leads), sourceLine(leads)] : ['Nobody is on the lead list. People who wrote to the house on their own are found with sales/mail-scan and filed with sales/inbound.']),
     `Do-not-contact list: ${suppressions.length} entr${suppressions.length === 1 ? 'y' : 'ies'}.`,
   ].join('\n');
 };
@@ -77,5 +100,5 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
 /** The section for the house at `wallet`, with its ledger already read. impure. */
 export const leadEngineSection = async (wallet, leads) => {
   const [segments, prospects, suppressions, facts, candidates, campaigns] = await Promise.all([readSegments(wallet), readProspects(wallet), readSuppressions(wallet), readSalesFacts(wallet), readCandidates(wallet), readCampaigns(wallet)]);
-  return leadEngineText({ segments, prospects, leads, suppressions, facts, candidates, campaigns, now: Date.now() });
+  return leadEngineText({ segments, prospects, leads, suppressions, facts, candidates, campaigns, spend: await spendState(wallet).catch(() => null), now: Date.now() });
 };

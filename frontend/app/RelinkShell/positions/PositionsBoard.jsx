@@ -11,11 +11,12 @@ import { uiSound } from '../../../services/ui-sound.js';
 import { getPositions, getPositionEyes } from '../../../services/positions-client.js';
 import { setConnection } from '../../../services/connections-client.js';
 import { requestWaitingJump } from '../waiting/waiting-jump.js';
+import { onWaitingChanged } from '../waiting/waiting-changed.js';
 import { seatPosition, clearPosition } from './position-seats.js';
 import { railRow, railSummary, pickPosition, pickTab } from './positions-view.js';
 import { PositionHub } from './PositionHub.jsx';
 import { SeatingStrip } from './SeatingStrip.jsx';
-import { onPositionPlace, POSITION_PLACE_KEY } from '../../windowing/position-tiles.js';
+import { onPositionPlace, placeOn, POSITION_PLACE_KEY } from '../../windowing/position-tiles.js';
 import '../SecurityApp.css';
 import './Positions.css';
 
@@ -29,8 +30,8 @@ const Rail = ({ positions, chosen, onChoose }) => (
       <button key={row.office} type="button" className={`pos-row${row.office === chosen ? ' is-on' : ''}${row.holder ? '' : ' is-empty'}`}
         aria-current={row.office === chosen || undefined} onClick={() => onChoose(row.office)}>
         <span className="pos-light" aria-hidden="true" />
-        <span className="pos-row-name">{row.plain}</span>
-        <span className="pos-row-who label-data">{row.title} · {row.holder ?? 'NOBODY'}</span>
+        <span className="pos-row-name">{row.seat}</span>
+        <span className="pos-row-who label-data">{row.acronym} · {row.title} · {row.holder ?? 'NOBODY'}</span>
         {row.setupOpen ? <span className="pos-row-setup label-data" aria-label={`setup ${row.setup}`}>SETUP {row.setup}</span> : null}
         {row.waiting ? <span className="pos-row-n label-data" aria-label={`${row.waiting} waiting on you`}>{row.waiting}</span> : null}
       </button>
@@ -55,11 +56,14 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
   const [eyes, setEyes] = useState(null);
 
   const load = useCallback(() => getPositions().then((b) => { setBoard(b); setError(null); }, (e) => setError(e.message)), []);
-  // The board follows the desk's waiting account: a decision answered anywhere leaves this window too.
+  // The board follows the desk's waiting account: a decision answered anywhere leaves this window too,
+  // and one taken in this window's own panels reads the board again at once (waiting-changed.js).
   useEffect(() => { load(); }, [load, waitingCount]);
+  useEffect(() => onWaitingChanged(() => { load(); }), [load]);
 
   // A launcher tile names a position while this window is open: stand on it.
-  useEffect(() => onPositionPlace((office) => setPlace((p) => ({ ...p, office }))), []);
+  // …and a door from a member's words names the tab too (doors/record-door.js).
+  useEffect(() => onPositionPlace((office, tab) => setPlace((p) => placeOn(p, office, tab))), []);
 
   const position = board ? pickPosition(board.positions, place.office) : null;
   const tab = position ? pickTab(position, place.tabs?.[position.office]) : null;
@@ -121,6 +125,7 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
           onSwitch={(c) => move(() => setConnection(c.id, !c.on))}
           onDoor={(door) => { uiSound('open'); onDoor(door); }}
           onHand={(member, prompt) => { uiSound('open'); onHand(member, prompt); }}
+          onChanged={load}
         />
       </div>
     </div>

@@ -131,6 +131,16 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     expect(onLedger).toMatchObject({ name: 'Ada Lovelace, Founder at acme', contact: 'ada@acme.dev', status: 'cold', ownerNeumaId: 'merc', channelId: 'email' });
     expect(onLedger.source).toContain(`lead engine [${segment.id}]`);
     expect((await engine()).prospects[0]).toMatchObject({ stage: 'promoted', leadId: onLedger.id });
+    // The address is often read AFTER the company was scored (found live, 2026-11-15): the person is filed with the lead.
+    expect((await act('merc', { type: 'sales/prospect', segment: segment.id, companies: [company('delta.dev', 4, { people: [] })] })).status).toBe('ok');
+    const delta = (await engine()).prospects.find((p) => p.domain === 'delta.dev');
+    expect(delta.people).toEqual([]);
+    const late = { type: 'sales/lead', id: delta.id, email: 'team@delta.dev', emailSource: 'https://delta.dev/contact' };
+    expect(await act('merc', { ...late, person: 0 })).toMatchObject({ status: 'error', error: expect.stringMatching(/has no person filed yet — give \{name, role\}/) });
+    expect(await act('merc', { ...late, person: { name: 'Delta team', role: '' } })).toMatchObject({ status: 'error', error: expect.stringMatching(/person: \{name, role\} — who the address belongs to/) });
+    expect((await act('merc', { ...late, person: { name: 'Delta team', role: 'contact' } })).status).toBe('ok');
+    expect((await (await leadLedgerFor(me.address)).load()).find((l) => l.contact === 'team@delta.dev')).toMatchObject({ name: 'Delta team, contact at delta', status: 'cold' });
+    expect((await engine()).prospects.find((p) => p.domain === 'delta.dev')).toMatchObject({ stage: 'promoted', people: [{ name: 'Delta team', role: 'contact', sourceUrl: 'https://delta.dev/contact' }] });
   });
 
   test('the do-not-contact list holds, from the operator or the Mercator', async () => {
@@ -148,7 +158,7 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
   test('the Mercator reads the engine in its briefing; re-aiming an approved pitch sends it back for approval', async () => {
     const briefing = await mercatorBriefingSection(conn('merc'));
     expect(briefing).toContain('## LEAD ENGINE');
-    expect(briefing).toMatch(/\[s-[a-f0-9]{8}\] Non-developer founders \(for ignis\) — APPROVED — role: Founder — sends only to US — pool 2 \(strong 1, weak 0, none 1\), on the ledger 1/);
+    expect(briefing).toMatch(/\[s-[a-f0-9]{8}\] Non-developer founders \(for ignis\) — APPROVED — role: Founder — sends only to US — pool 2 \(strong 1, weak 0, none 1\), on the ledger 2/);
     expect(briefing).toMatch(/SUPPRESSED \[[a-f0-9]{8}\] Ada Lovelace/);
     expect(await mercatorBriefingSection(conn('scout'))).toBe('');
     const [segment] = (await engine()).segments;

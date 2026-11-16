@@ -29,6 +29,9 @@ export const openLp = (neumaId) => call('POST', `${base(neumaId)}/open`);
 /** Set the budget in dollars. */
 export const setLpBudget = (neumaId, budgetUsd) => call('PUT', `${base(neumaId)}/budget`, { budgetUsd });
 
+/** Change the operator's capital limits, pause state, or private-broadcast requirement. */
+export const setLpCapital = (neumaId, patch) => call('PUT', `${base(neumaId)}/controls`, patch);
+
 /** Answer a waiting deposit: 'approve' runs it on Base, 'decline' ends it. */
 export const answerLpDeposit = (neumaId, id, verdict) => call('POST', `${base(neumaId)}/pending/${encodeURIComponent(id)}/${verdict}`);
 

@@ -90,12 +90,17 @@ const toolEvent = (frame) => ({
  * @param {Function} [args.onTool] - each tool event ({ tool, status, summary, detail, sources })
  * @param {Function} [args.onSession] - the part's sitting, the moment it is known
  * @param {Function} [args.onLine] - its place in the substrate line ({ state, position?, ahead? })
+ * @param {?{kind: string, label: string, refusal: string, askAnswer: string, reach: object}} [args.as]
+ *   - a SHADOW CLONE's seat (shadow-clone.js) instead of a team member's: its place in line
+ *   (kind, label), the original's own reach (reach: {grantedReadRoots, grantedWriteRoots,
+ *   toolWorkspace}) in place of a team workspace, its original's toolMode, and a refusal and an ask answer of its own —
+ *   nobody watches a clone's sitting, so its governed acts and questions go back to its original
  * @returns {Promise<{text: string, sessionId: ?string}>}
  */
 export const runMemberTurn = async ({
   neumaId, name, wallet, brief, workspace, sessionId = null, teamRun = null,
   signal = null, onText = () => {}, onReasoning = () => {}, onTool = () => {},
-  onSession = () => {}, onLine = () => {},
+  onSession = () => {}, onLine = () => {}, as = null,
 }) => {
   let text = '';
   // Where the speech after the member's LAST act begins (see finalWord).
@@ -135,10 +140,16 @@ export const runMemberTurn = async ({
   };
   const connection = createPortalConnection({ ws, walletAddress: wallet });
   connection.companion = { name, neumaId };
-  connection.toolMode = 'ask';
+  connection.toolMode = as?.toolMode || 'ask';
   connection._teamMember = true;
   connection._teamWorkspace = workspace;
-  connection._approvalRefusal = MEMBER_APPROVAL_REFUSAL;
+  connection._approvalRefusal = as?.refusal || MEMBER_APPROVAL_REFUSAL;
+  if (as) {
+    connection._shadowClone = true;
+    connection._grantedReadRoots = [...(as.reach?.grantedReadRoots || [])];
+    connection._grantedWriteRoots = [...(as.reach?.grantedWriteRoots || [])];
+    if (as.reach?.toolWorkspace) connection.toolWorkspace = as.reach.toolWorkspace;
+  }
   if (teamRun) connection._teamRun = teamRun;
   // The intents this member files are its own to settle — never its being's
   // chat's, and its sweep never touches the chat's (intent-owners.js).
@@ -162,9 +173,11 @@ export const runMemberTurn = async ({
   // A member holds what a wake holds: money out, and every act the charter escalates, go to the
   // operator even where a grant would let them run card-free (protocol-guard.js holdForWake).
   connection._wakeHolds = member.holds;
-  connection._approvalRoute = memberApprovalRoute(member);
+  // A clone's governed acts are refused at once and its questions answered with where they go:
+  // back to its original, who is in the room (shadow-clone.js).
+  connection._approvalRoute = as ? null : memberApprovalRoute(member);
   // A question for the operator is filed under the house's charter and the part goes on (no card waits here).
-  connection._askRoute = memberDecisionRoute(member);
+  connection._askRoute = as ? (async () => as.askAnswer) : memberDecisionRoute(member);
 
   // A STOP that lands while the turn is still being assembled (no decode
   // yet) must still cut it: the turn reads the flag the moment it begins.
@@ -179,7 +192,7 @@ export const runMemberTurn = async ({
     // never takes the operator's last slot, and holds its place through all its rounds. The run
     // shows where it stands: waiting behind others, or working.
     await withLease({
-      kind: 'member', label: `${name} (team)`, neumaId, signal,
+      kind: as?.kind || 'member', label: as?.label || `${name} (team)`, neumaId, signal,
       onWait: ({ position, ahead }) => onLine({ state: 'waiting', position, ahead: (ahead || []).map((a) => a.label) }),
       onAdmit: () => onLine({ state: 'running' }),
     }, () => streamConsciousness(connection, { thought: brief }));

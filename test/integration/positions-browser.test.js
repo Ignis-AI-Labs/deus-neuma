@@ -22,6 +22,7 @@ import { croDesignation } from '../../backend/services/revenue/cro-designation.j
 import { caoDesignation } from '../../backend/services/accounts/cao-designation.js';
 import { isConnectionOn } from '../../backend/services/connections/connection-switches.js';
 import { readCampaigns } from '../../backend/services/sales/sales-store.js';
+import { readModels } from '../../backend/services/positions/business-model.js';
 import { houseSeatingIntent } from '../../backend/services/intents/house-seating.js';
 import { readSeating } from '../../backend/services/positions/position-seating.js';
 
@@ -100,21 +101,22 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const nav = page.getByRole('navigation', { name: 'house positions' });
     expect(await nav.getByRole('button').count()).toBe(7);
     expect(await nav.locator('.pos-h').textContent()).toBe('1/7 HELD · 0 WAITING ON YOU');
-    expect(await rail(page, /LAW/).textContent()).toContain('CLO · NOBODY');
+    // Every row reads the same way: the seat, then its short form, its title and who holds it.
+    expect(await rail(page, /CHIEF LEGAL OFFICER/).textContent()).toContain('CLO · Praetor · NOBODY');
 
-    await rail(page, /SALES/).click();
+    await rail(page, /CHIEF REVENUE OFFICER/).click();
     const hub = page.locator('[data-position="cro"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('HELD BY MERC');
-    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/11', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/2', 'THEIR EYES']);
+    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/12', 'COMPANY', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/2', 'THEIR EYES']);
     // SETUP leads while the seat is not ready: each step says who does it, and an open one says exactly how.
     const setup = hub.locator('[data-setup-step]');
-    expect(await setup.count()).toBe(12);
-    expect(await hub.locator('[data-setup-step="seat"] .pos-step-h').textContent()).toBe('DONE — Seat a member in SALES');
+    expect(await setup.count()).toBe(14);
+    expect(await hub.locator('[data-setup-step="seat"] .pos-step-h').textContent()).toBe('DONE — Seat a member as CHIEF REVENUE OFFICER');
     expect(await hub.locator('[data-setup-step="mailbox"]').textContent()).toContain('YOURS — Connect the mailbox the house sends from');
     expect(await hub.locator('[data-setup-step="mailbox"]').textContent()).toContain('myaccount.google.com/apppasswords');
     // A step is one press from its place: GO TO MAILBOX lands on the mailbox tab, and SETUP is still there to come back to.
-    await hub.getByRole('button', { name: /^GO TO MAILBOX — Connect the mailbox/ }).click();
+    await hub.getByRole('button', { name: /^GO TO 2 · ENTER IT IN MAILBOX — Connect the mailbox/ }).click();
     expect(await hub.getByRole('tab', { name: 'MAILBOX' }).getAttribute('aria-selected')).toBe('true');
     await hub.getByRole('tab', { name: /^SETUP/ }).click();
     expect(await hub.locator('[data-setup-step="mailbox"] a').getAttribute('href')).toBe('https://myaccount.google.com/apppasswords');
@@ -137,8 +139,41 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     expect((await readCampaigns(auth.address)).map((c) => [c.name, c.company, c.state])).toEqual([['User acquisition', 'umbrae', 'open']]);
     await page.screenshot({ path: path.join(SHOTS, 'sales-campaigns-1280.png'), fullPage: true });
 
+    // COMPANY (the business model, then the facts a buyer may be told): the operator who knows the model types it; it stands at once and the setup count is measured again.
+    await hub.getByRole('tab', { name: 'COMPANY' }).click();
+    const umbrae = hub.locator('[data-model-company="umbrae"]');
+    await umbrae.waitFor();
+    expect(await umbrae.locator('summary .fold-title').textContent()).toBe('Umbrae');
+    expect(await umbrae.locator('summary .fold-stat').allTextContents()).toEqual(['NOT WRITTEN YET']);
+    expect(await umbrae.getByRole('button', { name: 'SAVE the business model of Umbrae' }).isDisabled()).toBe(true);
+    expect(await umbrae.getByRole('button', { name: /^WORK IT OUT WITH merc/ }).count()).toBe(1);
+    const answers = ['A swap venue on Base where anyone opens a pool', 'Token teams on Base; the founder decides', 'Thin liquidity makes every trade cost more', 'Their token trades with less slippage, shown on the pool page', 'Free to open; the venue earns 5% of each swap fee'];
+    for (const [i, words] of answers.entries()) await umbrae.locator('textarea').nth(i).fill(words);
+    await umbrae.getByRole('button', { name: 'SAVE the business model of Umbrae' }).click();
+    await hub.locator('[data-model-company="umbrae"][data-model-state="approved"]').waitFor();
+    // Written, it folds to its line and reads as text, not boxes, when opened.
+    expect(await umbrae.locator('summary .fold-stat').allTextContents()).toEqual(['APPROVED', '5 OF 7 ANSWERED']);
+    expect(await umbrae.locator('textarea').count()).toBe(0);
+    expect(await umbrae.locator('[data-model-read] dd').first().textContent()).toBe('A swap venue on Base where anyone opens a pool');
+    expect(await hub.locator('[data-model-notice]').textContent()).toBe('The business model of Umbrae is saved and stands.');
+    expect((await readModels(auth.address)).get('umbrae').approved.value).toBe('Their token trades with less slippage, shown on the pool page');
+    await hub.getByRole('tab', { name: 'SETUP · 3/12' }).waitFor();
+    const modelScan = await a11yCheck(page, 'positions-model', { include: '.pos' });
+    expect(modelScan.grown, modelScan.detail).toEqual([]);
+    await page.screenshot({ path: path.join(SHOTS, 'business-model-1280.png'), fullPage: true });
+
+    // Each tab carries only its own data: the facts stand on COMPANY, the audiences on CAMPAIGNS, and LEADS holds leads.
+    await hub.locator('[data-lead-engine="facts"]').waitFor({ timeout: 60000 });
+    expect(await hub.locator('[data-facts-sheet]').count()).toBe(1);
+    // CAMPAIGNS is one flow: a campaign's audiences stand under it, never as a second list of cards.
+    await hub.getByRole('tab', { name: 'CAMPAIGNS' }).click();
+    await hub.locator('[data-campaign-id] [data-campaign-audiences]').waitFor({ timeout: 60000 });
+    expect(await hub.locator('[data-campaign-id] [data-campaign-audiences]').textContent()).toBe('NO AUDIENCE YET — THE SALES SEAT FILES ONE UNDER THIS CAMPAIGN');
+    expect(await hub.locator('[data-facts-sheet], [data-paid-lead], [data-suppress-form], [data-lead-engine], [data-campaign-links]').count()).toBe(0);
     await hub.getByRole('tab', { name: 'LEADS' }).click();
-    await hub.locator('[data-lead-engine]').waitFor({ timeout: 60000 });
+    await hub.locator('[data-lead-engine="leads"]').waitFor({ timeout: 60000 });
+    expect(await hub.locator('[data-facts-sheet], [data-business-model], [data-sales-campaigns], [data-segment-id]').count()).toBe(0);
+    expect(await hub.locator('[data-paid-lead], [data-suppress-form]').count()).toBe(2);
 
     await hub.getByRole('tab', { name: 'DEALS' }).click();
     await hub.locator('[data-sales]').waitFor();
@@ -146,7 +181,7 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
 
     await hub.getByRole('tab', { name: /SWITCHES/ }).click();
     expect(isConnectionOn('mail-watch')).toBe(false);
-    await hub.getByRole('button', { name: 'OFF' }).first().click();
+    await hub.getByRole('button', { name: 'OFF', exact: true }).first().click(); // exact: "OFF" is also inside OFFICER
     await hub.getByRole('tab', { name: 'SWITCHES · 1/2' }).waitFor();
     expect(isConnectionOn('mail-watch')).toBe(true);
 
@@ -164,13 +199,13 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
 
   it('seats and unseats a position from the one control, and the house record follows', async () => {
     const { page, errors } = await open(700);
-    await rail(page, /BOOKS/).click();
+    await rail(page, /CHIEF ACCOUNTING OFFICER/).click();
     const hub = page.locator('[data-position="cao"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('NOBODY HOLDS THIS POSITION');
     expect(await hub.getByRole('button', { name: 'SEAT', exact: true }).isDisabled()).toBe(true);
-    await hub.getByRole('button', { name: 'choose who holds it, for BOOKS', exact: true }).click();
-    await page.getByRole('listbox', { name: 'choose who holds it, for BOOKS' }).getByText('books', { exact: true }).click();
+    await hub.getByRole('button', { name: 'choose who holds it, for the CHIEF ACCOUNTING OFFICER', exact: true }).click();
+    await page.getByRole('listbox', { name: 'choose who holds it, for the CHIEF ACCOUNTING OFFICER' }).getByText('books', { exact: true }).click();
     await hub.getByRole('button', { name: 'SEAT', exact: true }).click();
     await hub.locator('.pos-holder').filter({ hasText: 'HELD BY BOOKS' }).waitFor();
     expect((await caoDesignation.getOfficer(auth.address)).laneId).toBe('books');
@@ -207,7 +242,7 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const filed = page.locator('.pos-seating-filed');
     await filed.waitFor();
     expect(await filed.locator('.pos-h').textContent()).toBe("THE HOUSE'S SEATING · FILED BY MERC");
-    expect(await filed.locator('li').allTextContents()).toEqual(['SALES · Mercatormerc (already)', 'BOOKS · Logistabooks']);
+    expect(await filed.locator('li').allTextContents()).toEqual(['CHIEF REVENUE OFFICER · CRO · Mercatormerc (already)', 'CHIEF ACCOUNTING OFFICER · CAO · Logistabooks']);
     await page.screenshot({ path: path.join(SHOTS, 'seating-filed-1280.png'), fullPage: true });
     await filed.getByRole('button', { name: 'APPLY THE SEATING' }).click();
     await page.locator('.pos-seating-ways').waitFor();

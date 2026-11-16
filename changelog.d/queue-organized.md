@@ -1,0 +1,4 @@
+Changed
+- Your members now read the post queue organized, not as one heap. A new summary shows the whole queue at a glance with no post text: how many posts are drafts, approved, sent, failed, withdrawn or declined, the days posts went out, were pulled or are coming, and each campaign and channel. From there a member reads exactly one slice, for example the posts sent on one day or the ones withdrawn yesterday.
+- A plain read of the queue now shows only what can still move: drafts, approved posts, and posts sending or failed. Sent and withdrawn posts are counted and named, and read when a member asks for them. A search of the queue's text still covers sent posts, so a member can check it is not repeating itself.
+- Everyday words such as "pending" or "scheduled" now work when a member asks for posts by standing, instead of failing.

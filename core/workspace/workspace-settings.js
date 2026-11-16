@@ -22,6 +22,8 @@ import path from 'path';
 import crypto from 'crypto';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 import { createToolPolicyDomain } from './workspace-tool-policy.js';
+import { createLpNonceDomain } from './lp-nonce-domain.js';
+import { createLpNotionalDomain } from './lp-notional-domain.js';
 
 /**
  * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
@@ -29,6 +31,8 @@ import { createToolPolicyDomain } from './workspace-tool-policy.js';
  */
 export const createSettingsDomain = (deps) => Object.freeze({
   ...createToolPolicyDomain(deps),
+  ...createLpNonceDomain(),
+  ...createLpNotionalDomain(),
 
   /**
    * Read the saved settings for a neuma.

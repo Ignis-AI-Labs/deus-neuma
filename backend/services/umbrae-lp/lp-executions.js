@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ethers } from 'ethers';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
+import { proveLpReceipt } from './lp-receipt-proof.js';
 
 const ACTIVE = new Set(['broadcast', 'unknown']);
 const actionHash = (tx, asked) => crypto.createHash('sha256').update(JSON.stringify({
@@ -20,7 +21,7 @@ const read = async (neumaId, hash) => {
 };
 const write = (neumaId, hash, record) => neumaWorkspace._writeJSON(fileFor(neumaId, hash), record);
 
-const reconcile = async (neumaId, record, provider) => {
+const reconcile = async (neumaId, record, provider, secondary, minConfirmations) => {
   if (!ACTIVE.has(record.state)) return record;
   let receipt;
   try {
@@ -33,16 +34,19 @@ const reconcile = async (neumaId, record, provider) => {
     return record;
   }
   if (!receipt) return record;
-  const next = { ...record, state: Number(receipt.status) === 1 ? 'confirmed' : 'reverted', updatedAt: new Date().toISOString() };
+  const proof = Number(receipt.status) === 1
+    ? await proveLpReceipt({ primary: provider, secondary, minConfirmations, timeoutMs: 120000, hash: record.hash })
+    : { ok: false };
+  const next = { ...record, state: proof.ok ? 'confirmed' : Number(receipt.status) === 1 ? 'unknown' : 'reverted', updatedAt: new Date().toISOString() };
   await write(neumaId, record.actionHash, next);
   return next;
 };
 
-export const guardLpExecution = async ({ neumaId, tx, asked, provider }) => {
+export const guardLpExecution = async ({ neumaId, tx, asked, provider, secondary, minConfirmations }) => {
   const hash = actionHash(tx, asked);
   const existing = await read(neumaId, hash);
   if (!existing) return { ok: true, actionHash: hash };
-  const current = await reconcile(neumaId, existing, provider);
+  const current = await reconcile(neumaId, existing, provider, secondary, minConfirmations);
   if (ACTIVE.has(current.state)) return { ok: false, uncertain: true, txHash: current.hash, reason: 'This action has an unresolved broadcast. Reconcile its hash before retrying.' };
   return { ok: true, actionHash: hash };
 };

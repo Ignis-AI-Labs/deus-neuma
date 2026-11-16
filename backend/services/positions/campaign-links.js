@@ -63,7 +63,7 @@ export const withLinks = (campaigns, links) => campaigns.map((c) => ({
  */
 export const linkedText = (offices, campaigns) => {
   const lines = campaigns.filter((c) => offices.includes(c.office) && c.links.length).flatMap((c) => c.links.map((l) =>
-    `- Your campaign "${c.name}" works with ${positionOf(l.office)?.plain ?? l.office}'s campaign "${l.name}" (${l.state}): ${l.summary}${l.note ? ` — why they are linked: ${l.note}` : ''}`));
+    `- Your campaign "${c.name}" works with the ${positionOf(l.office)?.seat ?? l.office}'s campaign "${l.name}" (${l.state}): ${l.summary}${l.note ? ` — why they are linked: ${l.note}` : ''}`));
   return lines.length ? [
     '## LINKED CAMPAIGNS — keep these in step',
     ...lines,

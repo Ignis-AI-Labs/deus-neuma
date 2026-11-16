@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'vitest';
 import {
-  DISPLAY_CAP, initialNotifications, notificationReducer,
+  DISPLAY_CAP, initialNotifications, newestStamp, notificationReducer,
 } from '../../frontend/app/RelinkShell/NotificationTray/notification-reducer.js';
 import {
   shouldRaise, shouldNotifyOS,
@@ -147,6 +147,18 @@ describe('notificationReducer', () => {
     // The server leaves dismissed cards out of its hydrate; HYDRATE replaces.
     state = notificationReducer(state, { type: 'HYDRATE', records: [card('b', { ts: T0 + 1 })] });
     expect(state.records.map((r) => r.id)).toEqual(['b']);
+  });
+
+  test('CLEAR and MARK ALL READ reach through a stamp: every card at or before it, none after', () => {
+    const three = [card('a'), card('b', { ts: T0 + 1 }), card('c', { ts: T0 + 2 })];
+    expect(newestStamp(three)).toBe(T0 + 2);
+    expect(newestStamp([])).toBe(null);
+    let state = notificationReducer(initialNotifications, { type: 'HYDRATE', records: three });
+    state = notificationReducer(state, { type: 'MARK_READ', through: T0 + 1 });
+    expect(state.records.map((r) => [r.id, r.read])).toEqual([['c', false], ['b', true], ['a', true]]);
+    state = notificationReducer(state, { type: 'DISMISS', through: T0 + 1 });
+    expect(state.records.map((r) => r.id)).toEqual(['c']);
+    expect(notificationReducer(state, { type: 'DISMISS', through: T0 + 1 })).toBe(state);
   });
 
   test('caps what it holds in memory', () => {

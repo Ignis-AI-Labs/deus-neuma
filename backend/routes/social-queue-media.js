@@ -38,8 +38,10 @@ export const previewQueueMedia = async (req, res) => {
     if (!verified.ok) {
       return res.status(404).json({ error: `the staged media no longer stands — ${verified.detail}` });
     }
-    if (postsOwnMedia(entry.channelId)) {
-      const video = await readVideoHead(verified.path);
+    // a video channel's post, or the one video an X post may carry
+    const headed = await readVideoHead(verified.path);
+    if (postsOwnMedia(entry.channelId) || headed.ok) {
+      const video = headed;
       if (!video.ok) return res.status(404).json({ error: `the staged media is unreadable — ${video.detail}` });
       res.set({ 'Content-Type': video.contentType, 'Content-Length': String(video.size), 'Cache-Control': 'private, no-store' });
       return createReadStream(video.path)

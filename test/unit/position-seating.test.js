@@ -17,10 +17,10 @@ describe('the seating the house files', () => {
 
   test('every refusal names what to fix', () => {
     expect(seatingFields({ seats: {}, why: 'x' }, MEMBERS).reason).toMatch(/maps each position/);
-    expect(seatingFields({ seats: { DESIGN: 'Rugevil' }, why: 'x' }, MEMBERS).reason).toMatch(/no position is called "DESIGN" — the positions are MANAGEMENT, SALES/);
+    expect(seatingFields({ seats: { DESIGN: 'Rugevil' }, why: 'x' }, MEMBERS).reason).toMatch(/no position is called "DESIGN" — the positions are CHIEF OF STAFF \(COS\), CHIEF REVENUE OFFICER \(CRO\)/);
     expect(seatingFields({ seats: { SALES: 'Orrin' }, why: 'x' }, MEMBERS).reason).toMatch(/"Orrin" is not a member of this house — its members are Firepos, Zezebur, Rugevil/);
     expect(seatingFields({ seats: { SALES: 'Rugevil', BOOKS: 'rugevil' }, why: 'x' }, MEMBERS).reason).toMatch(/Rugevil is given two positions/);
-    expect(seatingFields({ seats: { SALES: 'Rugevil', cro: 'Zezebur' }, why: 'x' }, MEMBERS).reason).toMatch(/SALES is named twice/);
+    expect(seatingFields({ seats: { SALES: 'Rugevil', cro: 'Zezebur' }, why: 'x' }, MEMBERS).reason).toMatch(/the CHIEF REVENUE OFFICER is named twice/);
     expect(seatingFields({ seats: { SALES: 'Rugevil' } }, MEMBERS).reason).toMatch(/how the house decided/);
   });
 });

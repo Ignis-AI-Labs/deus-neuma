@@ -23,6 +23,8 @@ import { umbraeKeyFor } from './lp-enroll.js';
 import { lpSigner } from './lp-wallet.js';
 import { poolTokens } from './lp-holdings.js';
 import { keyedCaller, signSendWait } from './lp-run.js';
+import { reserveCapitalAssets } from './lp-capital-controls.js';
+import { readAgentVault } from '../agent-vault/vault-store.js';
 import { bookAct } from './lp-book.js';
 
 const ERC20 = new ethers.Interface(['function balanceOf(address) view returns (uint256)', 'function symbol() view returns (string)']);
@@ -108,11 +110,13 @@ const balanceOf = (base, token, wallet) => base.send('eth_call', [{ to: token, d
   .then((raw) => BigInt(raw), () => null);
 
 // The run itself (runCreatePool's body); may throw on an unanswered read.
-const createOnce = async (neumaId, a, { provider, pollMs = 3000 } = {}) => {
+const createOnce = async (neumaId, a, { provider, pollMs = 3000, receiptProvider, receiptConfirmations } = {}) => {
   const signer = await lpSigner(neumaId);
   if (!signer) return refuse('This house member has no LP wallet yet.');
   const base = provider ?? await lpBase();
   if (!base) return refuse('Base did not answer, so nothing can be signed.');
+  const vault = await readAgentVault(neumaId);
+  const funds = vault?.safe ?? signer.address;
   const enrolled = await umbraeKeyFor(neumaId);
   if (!enrolled.ok) return enrolled;
   const keyed = keyedCaller(neumaId, enrolled.key);
@@ -146,14 +150,19 @@ const createOnce = async (neumaId, a, { provider, pollMs = 3000 } = {}) => {
   const dBase = Number(plan.baseToken.decimals);
   const dQuote = Number(plan.quoteToken.decimals);
   const raw = { base: ethers.parseUnits(plan.seed.amountBase, dBase), quote: ethers.parseUnits(plan.seed.amountQuote, dQuote) };
-  const [haveBase, haveQuote] = await Promise.all([balanceOf(base, a.base, signer.address), balanceOf(base, a.quote, signer.address)]);
+  const [haveBase, haveQuote] = await Promise.all([balanceOf(base, a.base, funds), balanceOf(base, a.quote, funds)]);
   if (haveBase === null || haveQuote === null) return refuse('Base did not answer for the seed tokens, so nothing was signed.');
   if (haveBase < raw.base || haveQuote < raw.quote) {
     return refuse(`The seed is ${plan.seed.amountBase} ${plan.baseToken.symbol} + ${plan.seed.amountQuote} ${plan.quoteToken.symbol}; the wallet holds ${ethers.formatUnits(haveBase, dBase)} ${plan.baseToken.symbol} and ${ethers.formatUnits(haveQuote, dQuote)} ${plan.quoteToken.symbol}.`);
   }
   const amountX = baseIsX ? raw.base : raw.quote;
   const amountY = baseIsX ? raw.quote : raw.base;
-  const ctx = { signer, provider: base, keyed, pollMs, neumaId };
+  const admitted = await reserveCapitalAssets(neumaId, [
+    { token: a.base, amount: raw.base, decimals: dBase },
+    { token: a.quote, amount: raw.quote, decimals: dQuote },
+  ].filter((asset) => BigInt(asset.amount) > 0n));
+  if (!admitted.ok) return admitted;
+  const ctx = { signer, provider: base, keyed, pollMs, neumaId, receiptProvider, receiptConfirmations, vault };
   const txHashes = [];
 
   const approvals = await keyed('approvals', plan.next.approvals);

@@ -65,19 +65,51 @@ export const factsFor = (approved, company) => (!approved || !company ? approved
 export const foldSalesFacts = (events) => events.reduce((s, e) => {
   if (e?.type === 'facts' && e.sheet?.id) return { ...s, sheet: e.sheet, review: null };
   if (e?.type === 'reviewed' && s.sheet?.id === e.sheetId) {
-    return { ...s, review: { verdict: e.verdict, note: e.note, at: e.at }, approved: e.verdict === 'approved' ? s.sheet : s.approved };
+    // Approved in part (`only`: the facts the operator checked): those stand; the rest are HELD for the seat to fix.
+    const only = e.verdict === 'approved' && Array.isArray(e.only) ? new Set(e.only) : null;
+    const held = only ? s.sheet.facts.filter((f) => !only.has(f.n)) : [];
+    const approved = e.verdict !== 'approved' ? s.approved : only ? { ...s.sheet, facts: s.sheet.facts.filter((f) => only.has(f.n)) } : s.sheet;
+    return { ...s, review: { verdict: e.verdict, note: e.note, at: e.at, held }, approved };
   }
   return s;
 }, { sheet: null, review: null, approved: null });
 
+/**
+ * The operator changes ONE fact of the sheet on screen: rewrites it, or takes
+ * it off. The answer is a new sheet (the same facts with that change, numbered
+ * again) which waits for the operator's approval like any other; the sheet
+ * approved before stands until then. pure, but for the new sheet's id.
+ * @param {object} state - foldSalesFacts' answer
+ * @param {{sheetId: string, n: number, remove?: boolean, claim?: string, source?: string, figure?: ?{value: number, unit: string}, now: string}} change
+ * @returns {{ok: true, sheet: object} | {ok: false, reason: string}}
+ */
+export const editSheetFact = (state, { sheetId, n, remove = false, claim, source, figure, now }) => {
+  if (!state?.sheet || state.sheet.id !== sheetId) return { ok: false, reason: 'change the facts sheet on screen — a newer one was filed, or none' };
+  const at = state.sheet.facts.findIndex((f) => f.n === Number(n));
+  if (at < 0) return { ok: false, reason: `there is no fact ${n} on this sheet` };
+  const facts = state.sheet.facts.map((f) => ({ company: f.company, claim: f.claim, figure: f.figure, source: f.source }));
+  if (remove) facts.splice(at, 1);
+  else facts[at] = { ...facts[at], ...(claim !== undefined ? { claim } : {}), ...(source !== undefined ? { source } : {}), ...(figure !== undefined ? { figure } : {}) };
+  try {
+    return { ok: true, sheet: makeSalesSheet({ facts, by: 'operator', now }) };
+  } catch (err) {
+    return { ok: false, reason: remove && facts.length < 3 ? 'a sheet holds at least three facts — return the sheet instead, or ask the seat for more' : err.message };
+  }
+};
+
 /** The operator's review of the latest sheet, or the refusal. pure. */
-export const judgeSheetReview = (state, { sheetId, verdict, note, now }) => {
+export const judgeSheetReview = (state, { sheetId, verdict, note, only, now }) => {
   if (!state?.sheet || state.sheet.id !== sheetId) return { ok: false, reason: 'review the facts sheet on screen — a newer one was filed, or none' };
   if (state.review) return { ok: false, reason: `this sheet was already ${state.review.verdict}` };
   if (!['approved', 'returned'].includes(verdict)) return { ok: false, reason: 'the verdict is approved or returned' };
   const n = clean(note, 600);
   if (verdict === 'returned' && n.length < 5) return { ok: false, reason: 'say what should change' };
-  return { ok: true, event: { type: 'reviewed', sheetId, verdict, note: n || null, by: 'operator', at: now } };
+  // `only`: approve just the facts checked; the others go back to the seat. Every fact checked is a plain approval.
+  const all = state.sheet.facts.map((f) => f.n);
+  const picked = verdict === 'approved' && Array.isArray(only) ? [...new Set(only.map(Number))].filter((x) => all.includes(x)).sort((a, b) => a - b) : null;
+  if (picked && !picked.length) return { ok: false, reason: 'check at least one fact to approve, or return the sheet' };
+  const part = picked && picked.length < all.length ? { only: picked } : {};
+  return { ok: true, event: { type: 'reviewed', sheetId, verdict, ...part, note: n || null, by: 'operator', at: now } };
 };
 
 /**

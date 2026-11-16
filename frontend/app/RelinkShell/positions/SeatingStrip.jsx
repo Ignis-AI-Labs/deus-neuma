@@ -17,7 +17,7 @@ import { seatPosition } from './position-seats.js';
 // pure — the words the operator opens a seating council with: every position and what it covers
 export const seatingCouncilWords = (positions) => [
   'This council is to seat our house. Decide together who holds each position:',
-  ...positions.map((p) => `- ${p.plain} (${p.title})${p.covers ? `: ${p.covers}` : ''}`),
+  ...positions.map((p) => `- ${p.seat} (${p.acronym}, the ${p.title})${p.covers ? `: ${p.covers}` : ''}`),
   'Say which position you want and why, hear each other out, and settle it between you. One member holds one position.',
   'When you agree, one of you files it with house/seating, every position and who holds it, and I will apply it.',
 ].join('\n');
@@ -38,7 +38,7 @@ export const SeatingStrip = ({ positions, members, seating, onCouncil = null, on
     const refused = [];
     for (const seat of seating.seats) {
       if (holderOf(seat.office) === seat.laneId) continue;
-      try { await seatPosition(seat.office, seat.laneId); } catch (e) { refused.push({ plain: seat.plain, why: e.message }); }
+      try { await seatPosition(seat.office, seat.laneId); } catch (e) { refused.push({ plain: seat.seat || seat.plain, why: e.message }); }
     }
     if (refused.length === 0) await clearSeating().catch(() => {});
     setFailed(refused);
@@ -64,7 +64,7 @@ export const SeatingStrip = ({ positions, members, seating, onCouncil = null, on
               const now = holderOf(s.office);
               return (
                 <li key={s.office} className="label-data">
-                  <span>{s.plain} · {s.title}</span>
+                  <span>{s.seat || s.plain} · {s.acronym ? `${s.acronym} · ` : ''}{s.title}</span>
                   <span>{s.name}{now && now !== s.laneId ? ` (now ${nameOf(now)})` : now === s.laneId ? ' (already)' : ''}</span>
                 </li>
               );

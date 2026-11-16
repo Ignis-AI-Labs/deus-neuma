@@ -12,6 +12,7 @@ import { treasuryApp } from '../TreasuryApp.jsx';
 import { LeadEngineSection } from '../company-line/LeadEngineSection.jsx';
 import { SalesCampaigns } from '../company-line/SalesCampaigns.jsx';
 import { CampaignLinks } from './CampaignLinks.jsx';
+import { BusinessModel } from './BusinessModel.jsx';
 import { SalesSection } from '../company-line/SalesSection.jsx';
 import { BooksSection } from '../company-line/BooksSection.jsx';
 import { EmailSection } from '../EmailSection.jsx';
@@ -84,19 +85,30 @@ const Door = ({ app, label, what }) => {
 const body = (app) => () => <app.Body />;
 const door = (app) => ({ fn }) => <Door app={app} label={fn.label} what={fn.what} />;
 
+// COMPANY: what is true of each company, together — its business model, then the facts a buyer may be told.
+// The facts are the sales seat's to file, so ASK reaches that seat's holder only from the SALES position.
+const Company = ({ office, ...props }) => (
+  <div className="cline">
+    <BusinessModel {...props} />
+    <LeadEngineSection parts={['facts']} holder={office === 'cro' ? props.holder : null} onHand={office === 'cro' ? props.onHand : null} />
+  </div>
+);
+
 const PANELS = Object.freeze({
+  'cos.model': Company, 'cro.model': Company, 'cmo.model': Company,
   'cos.staff': body(staffApp), 'cos.clock': door('houseclock'),
-  'cro.campaigns': () => <div className="cline"><SalesCampaigns /><CampaignLinks office="cro" /></div>,
-  'cmo.campaigns': () => <div className="cline"><CampaignLinks office="cmo" /></div>,
-  'cro.leads': () => <div className="cline"><LeadEngineSection /></div>, 'cro.deals': Deals, 'cro.mailbox': Mailbox,
+  'cro.campaigns': () => <div className="cline"><SalesCampaigns /></div>,
+  // Each marketing campaign once: what it is, what it works with, and one press onto its own page in MARKETING.
+  'cmo.campaigns': ({ onDoor }) => <div className="cline"><CampaignLinks office="cmo" onOpen={onDoor ? (c) => onDoor({ kind: 'marketing', campaignId: c.id }) : null} /></div>,
+  'cro.leads': ({ holder, onHand }) => <div className="cline"><LeadEngineSection parts={['leads']} holder={holder} onHand={onHand} /></div>, 'cro.deals': Deals, 'cro.mailbox': Mailbox,
   'cmo.marketing': door(MARKETING_WINDOW), 'cmo.gallery': door('gallery'),
   'clo.legal': body(legalApp), 'cso.security': body(securityApp),
   'cfo.treasury': body(treasuryApp), 'cfo.wallet': door('wallet'),
   'cao.books': Books,
 });
 
-/** One function of one position, in place. @param {{office: string, fn: object, names: Record<string, string>}} props */
-export const PositionPanel = ({ office, fn, names }) => {
+/** One function of one position, in place. @param {{office: string, fn: object, names: Record<string, string>, holder?: ?object, onHand?: Function, onChanged?: Function}} props */
+export const PositionPanel = ({ office, fn, names, holder = null, onHand, onChanged, onDoor }) => {
   const Panel = PANELS[`${office}.${fn.id}`];
-  return Panel ? <Panel fn={fn} names={names} /> : <p className="pos-covers">{fn.what}</p>;
+  return Panel ? <Panel office={office} fn={fn} names={names} holder={holder} onHand={onHand} onChanged={onChanged} onDoor={onDoor} /> : <p className="pos-covers">{fn.what}</p>;
 };

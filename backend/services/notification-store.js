@@ -149,6 +149,30 @@ export const markNotificationsRead = async (wallet, ids, nowMs, { dismiss = fals
 };
 
 /**
+ * Append one marker that reads (or, with `dismiss`, dismisses) EVERY card stamped at or before
+ * `through` — MARK ALL READ and CLEAR. The tray holds only the newest READ_WINDOW cards, so a
+ * marker naming just the ids it held left every older card in the file to fill the tray again on
+ * the next hydrate: Design note, 2026-11-15, […]. `through` is the newest card the operator was shown, so a card that lands
+ * after the press stays.
+ *
+ * impure
+ * @returns {Promise<boolean>} whether a marker was written
+ */
+export const markNotificationsThrough = async (wallet, through, nowMs, { dismiss = false } = {}) => {
+  if (!Number.isFinite(through) || through <= 0) return false;
+  const file = notificationPath(wallet);
+  try {
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    const ts = Number.isFinite(nowMs) ? Math.floor(nowMs) : 0;
+    await fs.appendFile(file, `${JSON.stringify({ marker: dismiss ? DISMISS_MARKER : READ_MARKER, through: Math.floor(through), ts })}\n`);
+  } catch (error) {
+    log.error('Notification through-marker append failed', { error: error.message });
+    throw error;
+  }
+  return true;
+};
+
+/**
  * Read the operator's recent notifications, newest first, with read state folded
  * in and dismissed cards left out.
  *
@@ -177,6 +201,9 @@ export const readNotifications = async (wallet, { limit = READ_WINDOW } = {}) =>
   const byId = new Map();
   const readIds = new Set();
   const dismissedIds = new Set();
+  // MARK ALL READ and CLEAR: every card stamped at or before these (markNotificationsThrough)
+  let readThrough = -Infinity;
+  let dismissedThrough = -Infinity;
   let skipped = 0;
 
   for (const line of tail) {
@@ -192,6 +219,10 @@ export const readNotifications = async (wallet, { limit = READ_WINDOW } = {}) =>
     if (parsed?.marker === READ_MARKER || parsed?.marker === DISMISS_MARKER) {
       const into = parsed.marker === DISMISS_MARKER ? dismissedIds : readIds;
       for (const id of Array.isArray(parsed.ids) ? parsed.ids : []) into.add(id);
+      if (Number.isFinite(parsed.through)) {
+        if (parsed.marker === DISMISS_MARKER) dismissedThrough = Math.max(dismissedThrough, parsed.through);
+        else readThrough = Math.max(readThrough, parsed.through);
+      }
       continue;
     }
     // An unknown schema version is skipped rather than guessed at — the whole
@@ -208,10 +239,10 @@ export const readNotifications = async (wallet, { limit = READ_WINDOW } = {}) =>
   }
 
   const records = [...byId.values()]
-    .filter((rec) => !dismissedIds.has(rec.id))
+    .filter((rec) => !dismissedIds.has(rec.id) && !(rec.ts <= dismissedThrough))
     .sort(compareRecords)
     .slice(0, Math.max(0, limit))
-    .map((rec) => Object.freeze({ ...rec, read: readIds.has(rec.id) }));
+    .map((rec) => Object.freeze({ ...rec, read: readIds.has(rec.id) || rec.ts <= readThrough }));
 
   return {
     records,

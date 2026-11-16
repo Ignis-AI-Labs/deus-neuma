@@ -13,17 +13,20 @@
 //   base-protocols  every DeFi protocol on Base, from DefiLlama's public list
 //                   (one read): site, X handle, category, value locked.
 // ATTACHED SOURCES (the operator's own key, Settings, API, Service keys):
-//   hunter          the people at a company's domain with their addresses
-//                   and the page each address was found on.
+//   hunter, tomba, apollo — the people at a company's domain with their
+//                   addresses (lead-providers.js). They spend the operator's
+//                   credits, so lead-spend.js decides when one may run.
 // Free first (Design note, 2026-11-15: […]). A new source is one entry in LEAD_SOURCES.
 // The parsing is PURE; every gather is impure (network), behind the
 // `lead-sources` connection switch.
 
 import process from 'node:process';
+import { PEOPLE_PROVIDERS, peopleOfHunter } from './lead-providers.js';
+
+export { peopleOfHunter };
 
 export const GECKO_URL = 'https://api.geckoterminal.com/api/v2';
 export const LLAMA_URL = 'https://api.llama.fi';
-export const HUNTER_URL = 'https://api.hunter.io/v2';
 // Each list's address, read per call: a test serves the same list from this machine.
 const urlOf = (name, real) => process.env[`NEUMA_LEAD_SOURCE_${name}`] || real;
 export const GATHER_MAX = 25;
@@ -123,24 +126,6 @@ export const protocolsOnBase = (list) => (Array.isArray(list) ? list : [])
     sourceUrl: `https://defillama.com/protocol/${encodeURIComponent(String(p.slug ?? p.name).toLowerCase().replace(/\s+/g, '-'))}`,
   }));
 
-/**
- * pure — the people Hunter found at a domain: only a person with a name, a
- * role and an address that has a page it was found on (an address is never
- * taken on a guess), most certain first.
- * @returns {Array<{name: string, role: string, email: string, confidence: number, sourceUrl: string}>}
- */
-export const peopleOfHunter = (answer) => (answer?.data?.emails ?? [])
-  .map((e) => ({
-    name: [e.first_name, e.last_name].filter(Boolean).join(' ').trim(),
-    role: String(e.position ?? '').trim(),
-    email: String(e.value ?? '').toLowerCase(),
-    confidence: num(e.confidence),
-    sourceUrl: (e.sources ?? []).map((s) => s?.uri).find((u) => /^https:\/\//.test(String(u))) ?? null,
-  }))
-  .filter((p) => p.name && p.role && p.email && p.sourceUrl)
-  .sort((x, y) => y.confidence - x.confidence)
-  .slice(0, 10);
-
 const wait = (ms, signal) => new Promise((resolve, reject) => {
   const t = setTimeout(resolve, ms);
   signal?.addEventListener('abort', () => { clearTimeout(t); reject(new Error('interrupted')); }, { once: true });
@@ -209,24 +194,11 @@ export const gatherBaseProtocols = async ({ count = GATHER_MAX, known = { domain
 };
 
 /**
- * The people at one company's domain, from Hunter, with the operator's own key. impure. Never throws.
- * @returns {Promise<{ok: true, people: object[]} | {ok: false, detail: string}>}
- */
-export const hunterContacts = async ({ domain, apiKey, baseUrl = urlOf('HUNTER', HUNTER_URL), signal }) => {
-  try {
-    const answer = await getJson(`${baseUrl}/domain-search?domain=${encodeURIComponent(domain)}&limit=10&api_key=${encodeURIComponent(apiKey)}`, signal, BUSY_WAIT_MS);
-    return { ok: true, people: peopleOfHunter(answer) };
-  } catch (err) {
-    return { ok: false, detail: err.message };
-  }
-};
-
-/**
  * Every source, free first. kind: what it returns. key: the service key it
  * needs (null: free). A new source is one entry here.
  */
 export const LEAD_SOURCES = Object.freeze({
   'base-protocols': Object.freeze({ kind: 'companies', key: null, label: 'DeFi protocols on Base (DefiLlama, free)', gather: gatherBaseProtocols }),
   'base-tokens': Object.freeze({ kind: 'companies', key: null, label: 'tokens trading on Base (GeckoTerminal, free, about 50 an hour)', gather: gatherBaseTokens }),
-  hunter: Object.freeze({ kind: 'people', key: 'hunter', label: 'people and addresses at a company (Hunter, your own key)', contacts: hunterContacts }),
+  ...PEOPLE_PROVIDERS,
 });

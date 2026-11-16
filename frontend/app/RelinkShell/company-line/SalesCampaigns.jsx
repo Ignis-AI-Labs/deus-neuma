@@ -10,6 +10,9 @@ import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
 import { useLeadEngine } from './use-lead-engine.js';
 import { FUNNEL, funnelOf, channelWords } from './sales-campaign-view.js';
+import { segmentRows } from './lead-engine-view.js';
+import { LeadAudienceCard } from './LeadAudienceCard.jsx';
+import { useCampaignLinks, CampaignLinkLine } from '../positions/CampaignLinks.jsx';
 
 const Funnel = ({ campaign }) => (
   <div className="cline-tiles cline-tiles-flat" data-campaign-funnel="">
@@ -22,7 +25,7 @@ const Funnel = ({ campaign }) => (
   </div>
 );
 
-const Campaign = ({ campaign, loose, busy, onMove, onPut }) => {
+const Campaign = ({ campaign, rows, loose, busy, links, onMove, onPut, onSegment, onList }) => {
   const [pick, setPick] = useState('');
   const [edit, setEdit] = useState(null); // {name, goal} while editing
   const [sure, setSure] = useState(false);
@@ -37,9 +40,12 @@ const Campaign = ({ campaign, loose, busy, onMove, onPut }) => {
           {campaign.channels.map((c) => <li key={c.channel} data-campaign-channel={c.channel}>{channelWords(c)}</li>)}
         </ul>
       ) : <p className="cline-move-t">NO LEAD YET — NOTHING TO SHOW BY CHANNEL</p>}
-      <p className="cline-move-t" data-campaign-audiences="">
-        AUDIENCES: {campaign.audiences.length ? campaign.audiences.map((a) => `${a.name} (${a.state.toUpperCase()})`).join(' · ') : 'NONE YET'}
-      </p>
+      {rows.length ? (
+        <ul className="cline-aud-list is-nested" aria-label={`audiences of ${campaign.name}`} data-campaign-audiences="">
+          {rows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={onSegment} onList={onList} mode="nested" />)}
+        </ul>
+      ) : <p className="cline-move-t" data-campaign-audiences="">NO AUDIENCE YET — THE SALES SEAT FILES ONE UNDER THIS CAMPAIGN</p>}
+      <CampaignLinkLine campaignKey={`cro:${campaign.id}`} links={links} />
       {open && loose.length ? (
         <div className="cline-open">
           <Select fill ariaLabel={`audience to put under ${campaign.name}`} value={pick} onChange={setPick} disabled={busy}
@@ -71,7 +77,11 @@ const Campaign = ({ campaign, loose, busy, onMove, onPut }) => {
 };
 
 export const SalesCampaigns = () => {
-  const { engine, busy, error, notice, refresh, openCampaign, moveCampaign, putAudience } = useLeadEngine();
+  const { engine, busy, error, notice, refresh, openCampaign, moveCampaign, putAudience, moveSegment, approveList } = useLeadEngine();
+  const links = useCampaignLinks();
+  const rows = segmentRows(engine);
+  const known = new Set((engine?.campaigns ?? []).map((c) => c.id));
+  const looseRows = rows.filter((r) => !known.has(r.segment.campaign));
   const [draft, setDraft] = useState({ name: '', company: '', goal: '' });
   const campaigns = engine?.campaigns ?? [];
   const loose = engine?.loose ?? [];
@@ -84,9 +94,17 @@ export const SalesCampaigns = () => {
       {notice ? <p className="cline-move-t" role="status" data-campaign-notice="">{notice}</p> : null}
       {engine && !campaigns.length ? <EmptyState title="NO CAMPAIGN YET" /> : null}
       <ul className="cline-list" aria-label="campaigns">
-        {campaigns.map((c) => <Campaign key={c.id} campaign={c} loose={loose.filter((s) => s.company === c.company)} busy={busy} onMove={moveCampaign} onPut={putAudience} />)}
+        {campaigns.map((c) => <Campaign key={c.id} campaign={c} rows={rows.filter((r) => r.segment.campaign === c.id)} loose={loose.filter((s) => s.company === c.company)} busy={busy} links={links}
+          onMove={(...args) => moveCampaign(...args).then(links.reload)} onPut={putAudience} onSegment={moveSegment} onList={approveList} />)}
       </ul>
-      {loose.length ? <p className="cline-move-t" data-campaign-loose="">UNDER NO CAMPAIGN: {loose.map((s) => s.name).join(' · ')}</p> : null}
+      {looseRows.length ? (
+        <div data-campaign-loose="">
+          <p className="cline-h label-data">AUDIENCES UNDER NO CAMPAIGN · {looseRows.length} — PUT EACH UNDER THE CAMPAIGN IT SERVES, ABOVE</p>
+          <ul className="cline-aud-list is-nested" aria-label="audiences under no campaign">
+            {looseRows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} mode="nested" />)}
+          </ul>
+        </div>
+      ) : null}
       <p className="cline-h label-data">OPEN A CAMPAIGN</p>
       <div className="cline-open" data-campaign-form="">
         <input className="cline-input" aria-label="Campaign name" placeholder="User acquisition" maxLength={60} disabled={busy}
@@ -96,7 +114,7 @@ export const SalesCampaigns = () => {
         <input className="cline-input" aria-label="What the campaign is meant to bring in" placeholder="What it is meant to bring in" maxLength={300} disabled={busy}
           value={draft.goal} onChange={(e) => setDraft({ ...draft, goal: e.target.value })} />
         <button type="button" className="sec-scan label-data" disabled={busy || !ready} aria-label="OPEN the campaign"
-          onClick={() => { openCampaign(draft); setDraft({ name: '', company: '', goal: '' }); }}>OPEN</button>
+          onClick={() => { openCampaign(draft).then(links.reload); setDraft({ name: '', company: '', goal: '' }); }}>OPEN</button>
       </div>
       <p className="cline-move-t">{FUNNEL}</p>
     </section>

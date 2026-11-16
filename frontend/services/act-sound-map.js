@@ -56,7 +56,7 @@ export const ACT_FAMILIES = Object.freeze({
     'security.scan', // a scan IS a hunt for what is not yet known to be there
     'legal.scan',    // …and the legal watch hunts the same way
     'tool_search',       // hunting the catalog for a capability, same shape
-    'sales.gather', 'sales.contacts', // companies gathered from public lists, the people found at one — hunts
+    'sales.gather', 'sales.contacts', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
   ]),
   // Changing something that already existed.
   actEdit: Object.freeze([
@@ -69,6 +69,7 @@ export const ACT_FAMILIES = Object.freeze({
     'marketing.board-arrange', // the operator's marketing board laid out anew — the board already existed
     'accounts.void', // a booked entry voided with why — the books already held it
     'house.charter', // a member sets its house's charter — the charter already existed
+    'house.wake', // a member sets what wakes it — its own rules, edited in place
     'campaigns.link', 'marketing.account-holder', 'marketing.account-company', // links and holders of what already exists
   ]),
   // Bringing something into being on disk.
@@ -95,7 +96,7 @@ export const ACT_FAMILIES = Object.freeze({
     // a deal, a booked entry, a deadline, a raise's mandate, facts, investor and terms, an invoice issued.
     'company.open', 'company.hands', 'revenue.deal', 'accounts.book', 'accounts.deadline',
     'raise.mandate', 'raise.facts', 'raise.investor', 'raise.terms', 'treasury.invoice', 'programme.open',
-    'sales.segment', 'sales.prospect', 'sales.lead', 'sales.facts', 'sales.campaign', // the lead engine's records, brought into being
+    'sales.segment', 'sales.prospect', 'sales.lead', 'sales.facts', 'sales.campaign', 'company.model', 'sales.inbound', // the lead engine's records and a company's business model, brought into being
     'house.seating', // the seating the members decided together, filed for the operator
     'lp.goal', 'lp.create-pool', // a named goal; a new pool's first liquidity
   ]),
@@ -115,7 +116,8 @@ export const ACT_FAMILIES = Object.freeze({
     // a mark on a record (the intents' names, Stage 3).
     'ksp.command', 'security.circuit-breaker', 'team.run', 'team.workspace-run',
     'ground_sync', 'sandbox_recover', // a checkout fast-forwarded, a shell rebuilt
-    'bench_run']), // a benchmark launched — the GPU put to work
+    'bench_run', // a benchmark launched — the GPU put to work
+    'shadow_clone']), // the being split into copies of itself — every slot of the rig put to work
   // Reaching OUTSIDE the house to read. Egress — audibly different from a
   // local read, because the difference matters.
   // The platform's own numbers are reached for, not remembered: the read
@@ -150,7 +152,7 @@ export const ACT_FAMILIES = Object.freeze({
     'company.hand-on', 'company.inspect', 'revenue.move', 'accounts.deadline-met',
     'raise.clear', 'raise.update', 'raise.terms-check', 'treasury.invoice-paid', 'programme.close',
     'meditate', // a standing request marked for the cycle — nothing acts yet
-    'label_email', 'sales.suppress', 'marketing.account-handle', // a label; a do-not-contact mark; a recorded handle
+    'label_email', 'sales.suppress', 'sales.kind', 'marketing.account-handle', // a label; a do-not-contact mark; a lead re-filed under what it is; a recorded handle
   ]),
   // The being sensing its own state — capacity, adapters, its own birth sky.
   actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'mandate_read', 'post_check',

@@ -26,8 +26,8 @@ import { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { StagedBirthHandler } from '../../core/birth/staged-birth-handler.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { notifyOperator, __resetCoalesce } from '../../backend/services/notification-bus.js';
-import { readNotifications } from '../../backend/services/notification-store.js';
-import { KIND, STANDING } from '../../core/runtime/notification-record.js';
+import { READ_WINDOW, appendNotification, readNotifications } from '../../backend/services/notification-store.js';
+import { KIND, STANDING, makeRecord } from '../../core/runtime/notification-record.js';
 
 const makeOperator = async () => {
   const keypair = generateKeypair();
@@ -262,6 +262,63 @@ describe('notification bus over the real portal', () => {
       deskThree?.ws.close();
     }
   }, 20000);
+
+  // Design note, 2026-11-15: […].
+  // The tray held the newest READ_WINDOW cards and CLEAR named only those, so the next hydrate
+  // filled it with the older ones.
+  it('CLEAR reaches every card up to the newest shown, past the tray window; a card after it stays', async () => {
+    const start = Date.now() - 600_000;
+    for (let i = 0; i < READ_WINDOW + 40; i += 1) {
+      await appendNotification(alice.address, makeRecord({
+        id: `older-${i}`, ts: start + i, kind: KIND.turnDone, standing: STANDING.neuma,
+        title: 'Fenna finished a turn', actor: { id: 'lane-1', name: 'Fenna' }, ref: { sessionId: 's-1' },
+      }));
+    }
+    const deskOne = await openDesk(wsUrl, alice);
+    const deskTwo = await openDesk(wsUrl, alice);
+    let deskThree = null;
+    try {
+      await settle(400);
+      const shown = of(deskOne, 'notification:hydrate').at(-1)?.records ?? [];
+      expect(shown).toHaveLength(READ_WINDOW);
+      const through = Math.max(...shown.map((r) => r.ts));
+
+      deskOne.ws.send(JSON.stringify({ type: 'notification:read', through, dismiss: true }));
+      await settle(400);
+      expect(of(deskTwo, 'notification:dismissed')[0].through).toBe(through);
+
+      const after = await turnFor(alice.address, { actor: { id: 'lane-n', name: 'After' } });
+      await settle();
+      deskThree = await openDesk(wsUrl, alice);
+      await settle(400);
+      const hydrated = of(deskThree, 'notification:hydrate').at(-1)?.records ?? [];
+      expect(hydrated.map((r) => r.id)).toEqual([after.id]);
+      expect((await readNotifications(alice.address)).records.map((r) => r.id)).toEqual([after.id]);
+    } finally {
+      deskOne.ws.close();
+      deskTwo.ws.close();
+      deskThree?.ws.close();
+    }
+  }, 30000);
+
+  it('MARK ALL READ reads the cards past the tray window too', async () => {
+    for (let i = 0; i < READ_WINDOW + 10; i += 1) {
+      await appendNotification(alice.address, makeRecord({
+        id: `unread-${i}`, ts: Date.now() - 600_000 + i, kind: KIND.turnDone, standing: STANDING.neuma,
+        title: 'Fenna finished a turn', actor: { id: 'lane-1', name: 'Fenna' }, ref: { sessionId: 's-1' },
+      }));
+    }
+    const desk = await openDesk(wsUrl, alice);
+    try {
+      await settle(400);
+      const shown = of(desk, 'notification:hydrate').at(-1)?.records ?? [];
+      desk.ws.send(JSON.stringify({ type: 'notification:read', through: Math.max(...shown.map((r) => r.ts)) }));
+      await settle(400);
+      expect((await readNotifications(alice.address, { limit: READ_WINDOW * 2 })).unread).toBe(0);
+    } finally {
+      desk.ws.close();
+    }
+  }, 30000);
 
   it('accepts a batched read so clearing a full tray cannot trip the rate limit', async () => {
     const desk = await openDesk(wsUrl, alice);

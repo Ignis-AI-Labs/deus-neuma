@@ -10,69 +10,29 @@
 import { useState } from 'react';
 import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
+import { PaidLeadData } from './PaidLeadData.jsx';
+import { spendStats } from './paid-lead-view.js';
+import { Fold } from '../fold/Fold.jsx';
+import { LeadList } from './LeadList.jsx';
 import { useLeadEngine } from './use-lead-engine.js';
 import { LeadFactsSheet } from './LeadFactsSheet.jsx';
-import {
-  MATCH_WORDS, STATE_WORDS, UPKEEP_WORDS, upkeepAge, SUPPRESS_REASONS, LIST_WORDS, segmentRows, segmentMoves, suppressTargetOk,
-} from './lead-engine-view.js';
+import { LeadAudienceCard } from './LeadAudienceCard.jsx';
+import { UPKEEP_WORDS, upkeepAge, SUPPRESS_REASONS, segmentRows, suppressTargetOk } from './lead-engine-view.js';
 
 const SHOWN_DUE = 12;
 
-const Criteria = ({ title, items }) => (items.length ? <p className="cline-move-t">{title}: {items.join(' · ')}</p> : null);
+// Each part stands where its data belongs (Design note, 2026-11-16: […]; […]): 'facts' on a
+// position's COMPANY tab; 'leads' (what is due on the lead list, do-not-contact, paid data: the things that
+// belong to no one campaign) on LEADS. In the POSITIONS window an audience stands UNDER ITS CAMPAIGN
+// (SalesCampaigns.jsx), with its companies and its leads; 'audiences' here is the old COMPANY LINE
+// window's flat list, which still shows all three parts.
+const HEADS = Object.freeze({ facts: 'THE FACTS — WHAT A BUYER MAY BE TOLD', audiences: 'AUDIENCES — WHO EACH CAMPAIGN REACHES, AND THE OFFER', leads: 'THE LEAD LIST — WHAT IS DUE, WHO IS NEVER WRITTEN TO, AND WHAT MAY BE SPENT' });
+const ALL_PARTS = Object.freeze(['facts', 'audiences', 'leads']);
 
-const Prospect = ({ p }) => (
-  <li data-prospect-id={p.id}>
-    <details>
-      <summary>
-        <b>{p.name}</b> ({p.domain}) — <span data-match="">{MATCH_WORDS[p.match]}</span>{p.listApproved ? <span data-listed=""> — ON THE APPROVED LIST</span> : null}
-        {p.people.length ? ` — ${p.people.map((m) => `${m.name}, ${m.role}`).join('; ')}` : ' — nobody read yet'}
-      </summary>
-      <ul aria-label={`why ${p.name} was scored so`}>
-        {[...p.fit, ...p.misfit.map((s) => ({ ...s, criterion: `NOT A FIT IF: ${s.criterion}` }))].map((s) => (
-          <li key={s.criterion}>{s.criterion} — {s.score}/5: {s.reasoning}</li>
-        ))}
-        <li>FOUND ON <a className="cline-link" href={p.source} target="_blank" rel="noreferrer noopener">{p.source}</a></li>
-      </ul>
-    </details>
-  </li>
-);
-
-const Segment = ({ row, busy, onMove, onList }) => {
-  const { segment: s, pool, counts, listable } = row;
-  return (
-    <li className="cline-sec" data-segment-id={s.id} data-segment-state={s.state}>
-      <p className="cline-h label-data">{s.name} · <span data-state-words="">{STATE_WORDS[s.state]}</span></p>
-      <p className="cline-move-t">OFFER: {s.offer}</p>
-      <p className="cline-move-t">THEIR PROBLEM: {s.customerProblem}</p>
-      <p className="cline-move-t">{s.company ? `FOR ${s.company.toUpperCase()} · ` : ''}REACH: {s.targetRole} · WHERE: {s.targetGeography}{s.targetCompanySize ? ` · SIZE: ${s.targetCompanySize}` : ''}</p>
-      <p className="cline-move-t" data-countries="">SENT ONLY TO: {(s.countries ?? []).join(', ') || 'NO COUNTRY NAMED — NOTHING CAN BE SENT'}</p>
-      <Criteria title="FITS IF" items={s.positiveCriteria} />
-      <Criteria title="NOT A FIT IF" items={s.negativeCriteria} />
-      <Criteria title="LIKE" items={s.exampleClients} />
-      <p className="cline-move-t">WHY THEM: {s.why}</p>
-      <div className="cline-open">
-        {segmentMoves(s.state).map((m) => (
-          <button key={m.state} type="button" className={`sec-scan label-data${m.state === 'retired' ? ' cline-danger' : ''}`} disabled={busy}
-            aria-label={`${m.label} ${s.name}`} onClick={() => onMove(s, m.state)}>{m.label}</button>
-        ))}
-      </div>
-      <p className="cline-move-t" data-pool-counts="">
-        COMPANIES: {pool.length} — STRONG {counts.strong} · WEAK {counts.weak} · NO MATCH {counts.none} · ON THE LEAD LIST {counts.onLedger}
-      </p>
-      {listable ? (
-        <div className="cline-open" data-list-approve="">
-          <p className="cline-move-t">{LIST_WORDS}</p>
-          <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE THE LIST of ${listable} for ${s.name}`}
-            onClick={() => onList(s, listable)}>APPROVE THE LIST ({listable})</button>
-        </div>
-      ) : null}
-      {pool.length ? <ul className="cline-ws-src" aria-label={`companies for ${s.name}`}>{pool.map((p) => <Prospect key={p.id} p={p} />)}</ul> : null}
-    </li>
-  );
-};
-
-export const LeadEngineSection = () => {
-  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress } = useLeadEngine();
+/** @param {{holder?: ?{laneId: string, name: string}, onHand?: Function, parts?: string[]}} props - the seat's holder and the door to their chat, where the screen has them; parts: which of 'facts', 'audiences', 'leads' this screen carries */
+export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PARTS }) => {
+  const has = (part) => parts.includes(part);
+  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, setSpend, changeFact, refileLead } = useLeadEngine();
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('asked');
   const rows = segmentRows(engine);
@@ -80,8 +40,9 @@ export const LeadEngineSection = () => {
   const waiting = (engine?.candidates ?? []).filter((c) => c.state === 'waiting').length;
   const okTarget = suppressTargetOk(target);
   return (
-    <section className="cline-sec" aria-label="lead engine" data-lead-engine="">
-      <p className="cline-h label-data">LEAD ENGINE — WHO THE MERCATOR SELLS TO, AND WHAT IS DUE</p>
+    <section className="cline-sec" aria-label={parts.length === 1 ? HEADS[parts[0]].split(' — ')[0].toLowerCase() : 'lead engine'} data-lead-engine={parts.join(' ')}>
+      {/* The facts fold names itself; a second heading over it would say the same thing twice. */}
+      {parts.length === 1 && parts[0] === 'facts' ? null : <p className="cline-h label-data">{parts.length === 1 ? HEADS[parts[0]] : 'LEAD ENGINE — WHO THE MERCATOR SELLS TO, AND WHAT IS DUE'}</p>}
       <div className="cline-open">
         <button type="button" className="sec-scan label-data" disabled={busy} onClick={refresh}>REFRESH</button>
       </div>
@@ -89,35 +50,44 @@ export const LeadEngineSection = () => {
       <p className="cline-move-t" aria-live="polite" data-engine-notice="">{notice}</p>
       {!engine ? null : (
         <>
-          <LeadFactsSheet facts={engine.facts} busy={busy} onReview={reviewFacts} />
-          {rows.length === 0
+          {has('facts') ? <LeadFactsSheet key={engine.facts?.sheet?.id ?? 'none'} facts={engine.facts} companies={engine.companies} busy={busy} onReview={reviewFacts} onChange={changeFact} holder={holder} onHand={onHand} /> : null}
+          {has('audiences') ? (rows.length === 0
             ? <EmptyState title="NO AUDIENCE YET" />
-            : <ul className="cline-ws-src" aria-label="audiences">{rows.map((r) => <Segment key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} />)}</ul>}
-          <p className="cline-move-t" data-candidates="">GATHERED FROM LEAD SOURCES: {(engine?.candidates ?? []).length} — {waiting} WAITING FOR THE SALES SEAT TO SCORE</p>
-          <p className="cline-h label-data">LEAD LIST UPKEEP · {due.length ? `${due.length} DUE` : 'NOTHING DUE'}</p>
-          {due.length ? (
-            <ul className="cline-ws-src" aria-label="lead list upkeep">
-              {due.slice(0, SHOWN_DUE).map((d) => (
-                <li key={`${d.kind}:${d.leadId}`} data-upkeep={d.kind}>{d.name} — {UPKEEP_WORDS[d.kind]}{upkeepAge(d)}{d.promised ? <span data-promised=""> — PROMISED: {d.promised}</span> : null}</li>
-              ))}
-            </ul>
-          ) : null}
-          <p className="cline-h label-data">DO NOT CONTACT · {engine.suppressions.length}</p>
-          <div className="cline-open" data-suppress-form="">
-            <input className="cline-input" aria-label="Email address or company domain never to contact" placeholder="jo@example.com or example.com"
-              disabled={busy} value={target} onChange={(e) => setTarget(e.target.value)} />
-            <Select fill ariaLabel={`Why never to contact: ${SUPPRESS_REASONS.find((r) => r.value === reason)?.label ?? ''}`}
-              value={reason} onChange={setReason} disabled={busy} options={SUPPRESS_REASONS} />
-            <button type="button" className="sec-scan label-data" disabled={busy || !okTarget}
-              onClick={() => { suppress(target, reason); setTarget(''); }}>ADD</button>
-          </div>
-          {engine.suppressions.length ? (
-            <details>
-              <summary className="cline-move-t">SHOW THE LIST</summary>
-              <ul className="cline-ws-src" aria-label="do not contact">
-                {engine.suppressions.map((e) => <li key={`${e.kind}:${e.value}`} data-suppressed={e.value}>{e.value} — {e.reason}</li>)}
-              </ul>
-            </details>
+            : <ul className="cline-aud-list" aria-label="audiences">{rows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} />)}</ul>) : null}
+          {has('leads') ? (
+            <>
+              <LeadList leads={engine.leads ?? []} kinds={engine.leadKinds ?? []} busy={busy} onKind={refileLead} holder={holder} onHand={onHand} />
+              {engine.spend ? (
+                <Fold id="leads:paid" title="PAID LEAD DATA" waits={!engine.spend.rule.chosen && engine.spend.attached.length > 0} stats={spendStats(engine.spend)}>
+                  <PaidLeadData key={`${engine.spend.rule.mode}:${engine.spend.rule.cap}`} spend={engine.spend} busy={busy} onSet={setSpend} />
+                </Fold>
+              ) : null}
+              <Fold id="leads:upkeep" title="LEAD LIST UPKEEP" waits={due.length > 0} stats={[due.length ? { text: `${due.length} DUE`, tone: 'alert' } : { text: 'NOTHING DUE', tone: 'on' }, `${(engine?.candidates ?? []).length} GATHERED · ${waiting} WAITING TO BE SCORED`]}>
+                <p className="cline-move-t" data-candidates="">GATHERED FROM LEAD SOURCES: {(engine?.candidates ?? []).length} — {waiting} WAITING FOR THE SALES SEAT TO SCORE</p>
+                {due.length ? (
+                  <ul className="cline-ws-src" aria-label="lead list upkeep">
+                    {due.slice(0, SHOWN_DUE).map((d) => (
+                      <li key={`${d.kind}:${d.leadId}`} data-upkeep={d.kind}>{d.name} — {UPKEEP_WORDS[d.kind]}{upkeepAge(d)}{d.promised ? <span data-promised=""> — PROMISED: {d.promised}</span> : null}</li>
+                    ))}
+                  </ul>
+                ) : <p className="cline-move-t">Nobody on the lead list is owed an answer or a follow-up today.</p>}
+              </Fold>
+              <Fold id="leads:dnc" title="DO NOT CONTACT" stats={[`${engine.suppressions.length} ENTR${engine.suppressions.length === 1 ? 'Y' : 'IES'}`]}>
+                <div className="cline-open" data-suppress-form="">
+                  <input className="cline-input" aria-label="Email address or company domain never to contact" placeholder="jo@example.com or example.com"
+                    disabled={busy} value={target} onChange={(e) => setTarget(e.target.value)} />
+                  <Select fill ariaLabel={`Why never to contact: ${SUPPRESS_REASONS.find((r) => r.value === reason)?.label ?? ''}`}
+                    value={reason} onChange={setReason} disabled={busy} options={SUPPRESS_REASONS} />
+                  <button type="button" className="sec-scan label-data" disabled={busy || !okTarget}
+                    onClick={() => { suppress(target, reason); setTarget(''); }}>ADD</button>
+                </div>
+                {engine.suppressions.length ? (
+                  <ul className="cline-ws-src" aria-label="do not contact">
+                    {engine.suppressions.map((e) => <li key={`${e.kind}:${e.value}`} data-suppressed={e.value}>{e.value} — {e.reason}</li>)}
+                  </ul>
+                ) : null}
+              </Fold>
+            </>
           ) : null}
         </>
       )}

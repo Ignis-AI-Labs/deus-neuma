@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-702 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+714 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
 
 ## /api/v1/accounts
 
@@ -100,6 +100,10 @@
 | GET | `/api/v1/brands` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | GET | `/api/v1/brands/:brand` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | PUT | `/api/v1/brands/:brand` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
+| GET | `/api/v1/brands/:brand/cards` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
+| DELETE | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
+| GET | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
+| PUT | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | GET | `/api/v1/brands/:brand/marks` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | POST | `/api/v1/brands/:brand/marks` | `mapLaneQueryToken`, `(inline check)`, `requireAuth`, `multerMiddleware` |
 | GET | `/api/v1/brands/:brand/new` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
@@ -608,6 +612,11 @@
 | GET | `/api/v1/positions/campaigns` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/positions/campaigns/link` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/positions/campaigns/unlink` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/positions/companies` | `mapLaneQueryToken`, `requireAuth` |
+| PUT | `/api/v1/positions/companies/:id/model` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/positions/companies/:id/model/approve` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/positions/companies/:id/model/return` | `mapLaneQueryToken`, `requireAuth` |
+| DELETE | `/api/v1/positions/seating` | `mapLaneQueryToken`, `requireAuth` |
 
 ## /api/v1/preflight
 
@@ -686,9 +695,12 @@
 | POST | `/api/v1/revenue/lead-engine/campaigns/:id` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/campaigns/:id/close` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/facts/:sheetId` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/facts/:sheetId/fact` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/list` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/state` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/spend` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/suppress` | `mapLaneQueryToken`, `requireAuth` |
 | DELETE | `/api/v1/revenue/seat` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/revenue/seat` | `mapLaneQueryToken`, `requireAuth` |

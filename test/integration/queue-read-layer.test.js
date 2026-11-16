@@ -82,7 +82,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
       const list = SOCIAL_TOOLS.find((t) => t.name === 'queue_list');
       // It advertised `properties: {}` — no way to ask for anything.
       expect(Object.keys(list.inputSchema.properties).sort()).toEqual([
-        'campaignId', 'channelId', 'from', 'kind', 'limit', 'offset',
+        'campaignId', 'channelId', 'day', 'from', 'kind', 'limit', 'offset',
         'order', 'pillar', 'q', 'status', 'to', 'view',
       ]);
       // Every one optional: a standing plan that calls it bare still answers.
@@ -285,7 +285,7 @@ describe('the queue read layer — a being can enumerate the whole month, not on
       expect(badTime.status).toBe('error');
       expect(badTime.error).toContain('ISO-8601');
 
-      const badView = await call('queue_list', { view: 'summary' });
+      const badView = await call('queue_list', { view: 'nonsense' });
       expect(badView.status).toBe('error');
       expect(badView.error).toContain('unknown view');
     });

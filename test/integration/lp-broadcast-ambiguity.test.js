@@ -58,7 +58,7 @@ beforeAll(async () => {
   const lp = (await openLpWallet('sender')).address;
   await chain.send('anvil_setBalance', [lp, ethers.toQuantity(ethers.parseEther('1'))]);
   umbrae = await startUmbraeStandIn({ provider: chain });
-  connections = connectionsOn(['umbrae-liquidity']);
+  connections = connectionsOn(['umbrae-liquidity', 'market-data']);
 }, 30000);
 
 afterAll(async () => {
@@ -76,17 +76,17 @@ afterAll(async () => {
 });
 
 test('an accepted but unresolved transaction cannot be duplicated; reconciliation unlocks a deliberate new act', async () => {
-  const first = await runSend('sender', { to: 'receiver', amount: '0.01' }, { provider, receiptTimeoutMs: 100 });
+  const first = await runSend('sender', { to: 'receiver', amount: '0.01' }, { provider, receiptProvider: chain, receiptConfirmations: 1, receiptTimeoutMs: 100 });
   expect(first, JSON.stringify(first)).toMatchObject({ ok: false, uncertain: true });
   expect(first.txHash).toBeTruthy();
   expect(broadcasts, JSON.stringify(first)).toBe(1);
 
-  const retry = await runSend('sender', { to: 'receiver', amount: '0.01' }, { provider, receiptTimeoutMs: 100 });
+  const retry = await runSend('sender', { to: 'receiver', amount: '0.01' }, { provider, receiptProvider: chain, receiptConfirmations: 1, receiptTimeoutMs: 100 });
   expect(retry).toMatchObject({ ok: false, uncertain: true });
   expect(broadcasts).toBe(1);
 
   holdReceipts = false;
-  const afterReceipt = await runSend('sender', { to: 'receiver', amount: '0.01' }, { provider, receiptTimeoutMs: 100 });
+  const afterReceipt = await runSend('sender', { to: 'receiver', amount: '0.01' }, { provider, receiptProvider: chain, receiptConfirmations: 1, receiptTimeoutMs: 100 });
   expect(afterReceipt.ok).toBe(true);
   expect(broadcasts).toBe(2);
   expect(Number((await chain.getTransactionReceipt(first.txHash)).status)).toBe(1);

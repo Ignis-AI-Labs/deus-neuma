@@ -1,0 +1,2 @@
+Added
+- When a member tells you to do something and names the place ("POSITIONS → SALES → LEADS") or a record by its id (an audience, a company, a facts sheet, a campaign), that text in the chat is now a button. Press it and the POSITIONS window opens on that position and tab, with the record brought into view and marked. Every member holding a position is told to name places and records this way, and to ask for one action at a time.

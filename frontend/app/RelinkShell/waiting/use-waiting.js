@@ -20,6 +20,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getWaiting } from '../../../services/waiting-client.js';
 import { playSound } from '../../../services/sound-engine.js';
 import { useVisibleInterval } from '../use-visible-interval.js';
+import { onWaitingChanged } from './waiting-changed.js';
 import { arrivals, arrivalSounds } from './waiting-view.js';
 import { OS_NOTICE_EVENT, isOsNoticeOn, osNoticeAvailable } from '../../../services/os-notice.js';
 
@@ -99,8 +100,11 @@ export const useWaiting = (wsService) => {
     let timer = null;
     const soon = () => { clearTimeout(timer); timer = setTimeout(refresh, 250); };
     for (const type of CHANGE_FRAMES) wsService.on(type, soon);
+    // …and a decision the operator took inside a window (waiting-changed.js)
+    const stop = onWaitingChanged(soon);
     return () => {
       clearTimeout(timer);
+      stop();
       for (const type of CHANGE_FRAMES) wsService.off(type, soon);
     };
   }, [wsService, refresh]);

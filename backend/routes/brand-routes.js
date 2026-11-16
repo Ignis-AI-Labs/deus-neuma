@@ -39,6 +39,7 @@ import { readinessReport } from '../services/branding/kit-readiness.js';
 import { createLogger } from '../services/logger.js';
 import assetRoutes from './brand-asset-routes.js';
 import previewRoutes from './brand-preview-routes.js';
+import cardRoutes from './brand-card-routes.js';
 
 const router = Router();
 const log = createLogger('Brands');
@@ -70,6 +71,7 @@ router.use(requireAuth);
 // sub-routers sit behind the one requireAuth above rather than repeating it.
 router.use('/', assetRoutes);
 router.use('/', previewRoutes);
+router.use('/', cardRoutes);
 
 /** Every kit the signer can reach, workspace shadowing repo. */
 router.get('/', async (req, res) => {

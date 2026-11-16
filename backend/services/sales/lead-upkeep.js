@@ -10,6 +10,7 @@
 
 import { normalizeEmail } from './suppress-shape.js';
 import { promiseOf } from './first-email.js';
+import { kindOf, UNSORTED } from '../leads/lead-ledger.js';
 
 export const FOLLOW_UP_DAYS = 3;
 // The first email and two follow-ups.
@@ -18,7 +19,7 @@ export const STALE_DAYS = 14;
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 const OPEN = new Set(['cold', 'contacted', 'replied', 'qualified']);
-const ORDER = ['suppressed', 'answer', 'follow-up', 'close-out', 'duplicate', 'stale', 'unreachable'];
+const ORDER = ['suppressed', 'sort', 'answer', 'follow-up', 'close-out', 'duplicate', 'stale', 'unreachable'];
 
 // pure — the moment the lead last moved, and how many times the house wrote
 // to it: a touch marked out, or (before touches carried a direction) one
@@ -38,9 +39,12 @@ export const theyWroteLast = (lead) => {
 const dueOn = (lead, now, suppressed) => {
   const days = Math.floor((now - lastAt(lead)) / DAY_MS);
   if (lead.contact && suppressed(lead.contact)) return { kind: 'suppressed', days };
+  // Before anything else is done with a lead, someone says what it is: nobody is worked as a buyer by default.
+  if (kindOf(lead) === UNSORTED) return { kind: 'sort', days };
   // A reply is answered in hours, with what the house said it would send.
   if (theyWroteLast(lead)) return { kind: 'answer', days, hours: Math.floor((now - lastAt(lead)) / HOUR_MS), promised: promiseOf(lead) };
-  if (lead.status === 'contacted' && days >= FOLLOW_UP_DAYS) {
+  // The follow-up sequence is a sales cadence: it runs for buyers only. Anyone else is answered, never chased.
+  if (lead.status === 'contacted' && days >= FOLLOW_UP_DAYS && kindOf(lead) === 'buyer') {
     return contactTouches(lead) >= MAX_TOUCHES ? { kind: 'close-out', days } : { kind: 'follow-up', days, touches: contactTouches(lead) };
   }
   if (days >= STALE_DAYS) return { kind: 'stale', days };
@@ -57,7 +61,7 @@ export const upkeepDue = ({ leads, now, suppressed = () => false }) => {
   const open = leads.filter((l) => OPEN.has(l.status));
   const items = open.flatMap((lead) => {
     const due = dueOn(lead, now, suppressed);
-    return due ? [{ ...due, leadId: lead.id, name: lead.name || lead.contact || 'unnamed' }] : [];
+    return due ? [{ ...due, leadId: lead.id, name: lead.name || lead.contact || 'unnamed', leadKind: kindOf(lead) }] : [];
   });
   const firstByEmail = new Map();
   for (const lead of open) {
@@ -73,6 +77,7 @@ export const upkeepDue = ({ leads, now, suppressed = () => false }) => {
 /** What each kind of item asks of the Mercator, in one line. pure. */
 export const UPKEEP_ASK = Object.freeze({
   suppressed: 'on the do-not-contact list: close it (lost, say why) and write nothing more',
+  sort: 'not sorted yet: say what they are to the house with sales/kind (several at once in one filing), from what their own words show',
   answer: 'they replied: answer it today — send exactly what you promised, then one clear next step',
   'follow-up': 'no reply yet: one short follow-up that adds something new, or close it',
   'close-out': `no reply after ${MAX_TOUCHES} emails: close it as lost (no reply)`,

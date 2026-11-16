@@ -13,6 +13,7 @@ import tls from 'tls';
 import { parseMimeHeaders, decodeEncodedWords, extractTextPart } from './mime.js';
 
 export const INBOX_MAX_MESSAGES = 20;
+export const SCAN_MAX_MESSAGES = 300;
 export const READ_BODY_CAP_BYTES = 262144;
 const SESSION_TIMEOUT_MS = 30000;
 
@@ -202,8 +203,9 @@ const _withSession = (credentials, { signal, write = false } = {}, work) => new 
  *   |{ok: false, detail: string}>}
  */
 // impure — network
-export const listInbox = (credentials, { limit, signal } = {}) => {
-  const take = Math.min(Math.max(parseInt(limit, 10) || 10, 1), INBOX_MAX_MESSAGES);
+export const listInbox = (credentials, { limit, signal, max = INBOX_MAX_MESSAGES } = {}) => {
+  // `max`: a scan for missed leads reads further back than a look at the inbox (envelopes only, never bodies).
+  const take = Math.min(Math.max(parseInt(limit, 10) || 10, 1), Math.min(Math.max(max, 1), SCAN_MAX_MESSAGES));
   return _withSession(credentials, { signal }, async (exec) => {
     const search = await exec('UID SEARCH ALL');
     if (!search.ok) return { ok: false, detail: `inbox search failed: ${search.status.slice(0, 120)}` };

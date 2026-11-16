@@ -120,7 +120,7 @@ describe('the mailbox and the lead engine', () => {
 
   test('an email to a lead passes the facts check first: an approved sheet, only its numbers, the disclosure line, no false urgency', async () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    await ledger.add({ name: 'Fay, Founder at Facts', contact: 'fay@facts.example', channelId: 'email', status: 'cold', addedBy: LANE });
+    await ledger.add({ name: 'Fay, Founder at Facts', contact: 'fay@facts.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
     const before = smtp.received.length;
     const noSheet = await send({ to: 'fay@facts.example', subject: 'Hello', text: signed('A short note.') });
     expect(noSheet.receipt.status).toBe('error');
@@ -165,7 +165,7 @@ describe('the mailbox and the lead engine', () => {
 
   test('a FIRST email to a lead is short, plainly titled, asks one thing and names its promise — or it stops before any card', async () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    await ledger.add({ name: 'Zed, Founder at Zeta', contact: 'zed@zeta.example', channelId: 'email', status: 'cold', addedBy: LANE });
+    await ledger.add({ name: 'Zed, Founder at Zeta', contact: 'zed@zeta.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
     const before = smtp.received.length;
     const refused = async (payload, why) => {
       const { receipt, cards } = await send({ to: 'zed@zeta.example', subject: 'Your field app', text: signed('A short note.'), ...payload });
@@ -183,7 +183,7 @@ describe('the mailbox and the lead engine', () => {
 
   test('an email to a lead leaves, and the lead records it itself — contacted, the house wrote last', async () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    const lead = await ledger.add({ name: 'Ann, Founder at Acme', contact: 'ann@acme.example', channelId: 'email', status: 'cold', addedBy: LANE });
+    const lead = await ledger.add({ name: 'Ann, Founder at Acme', contact: 'ann@acme.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
     const { receipt } = await send({ to: 'Ann@Acme.example', subject: 'Building your field app', text: signed('A short note from the Mercator.') }, 'allow');
     expect(receipt.status).toBe('ok');
     expect(smtp.received.at(-1).to).toEqual(['Ann@Acme.example']);
@@ -240,7 +240,7 @@ describe('the sales cover through the real sweep — the operator approved the l
     });
     await addProspects(POSITION_HOUSE, [prospect]);
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    const lead = await ledger.add({ name: 'Rosa, Founder at Quay', contact: 'rosa@quay.example', channelId: 'email', status: 'cold', addedBy: LANE });
+    const lead = await ledger.add({ name: 'Rosa, Founder at Quay', contact: 'rosa@quay.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
     await settleProspect(POSITION_HOUSE, prospect.id, { type: 'promoted', leadId: lead.id, by: LANE });
 
     // Before the list is approved: it asks.

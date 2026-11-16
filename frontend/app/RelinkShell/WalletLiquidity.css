@@ -119,3 +119,7 @@
 .lpw-form select.lpw-in { min-width: 11em; }
 .lpw-goal-state { align-self: flex-start; }
 .lpw-chip.is-ask { border-color: rgba(255, 184, 107, 0.45); color: var(--warn); }
+.lpw-capital-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); align-items: end; }
+.lpw-capital-form label { display: flex; flex-direction: column; gap: var(--space-2); }
+.lpw-capital-form .lpw-in { width: 100%; box-sizing: border-box; }
+.lpw-capital-form .lpw-btn { min-height: 38px; }

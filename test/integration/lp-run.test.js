@@ -75,7 +75,7 @@ beforeEach(async () => {
   await installLpPool(provider, POOL);
 });
 
-const run = (action, opts = {}) => runLpAction(NEUMA_ID, action, { provider, pollMs: 50, ...opts });
+const run = (action, opts = {}) => runLpAction(NEUMA_ID, action, { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50, ...opts });
 const sends = () => seen.filter((r) => r.url === '/api/v1/base/send');
 const minedFrom = async (hashes) => Promise.all(hashes.map(async (h) => (await provider.getTransactionReceipt(h))?.from));
 const audit = () => fs.readFile(path.join(workspace._path(NEUMA_ID), 'audit', 'audit.jsonl'), 'utf8');
@@ -156,8 +156,8 @@ describe('a deposit runs on its own unless a budget cap holds it', () => {
     expect(out.reason).toMatch(/past the \$0 budget/);
     expect(sends()).toEqual([]);
     expect((await listPendingDeposits(NEUMA_ID)).map((r) => r.id)).toContain(out.requestId);
-    expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'declined', { provider, pollMs: 50 })).declined).toBe(true);
-    expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, pollMs: 50 })).reason).toMatch(/no longer waiting/);
+    expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'declined', { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 })).declined).toBe(true);
+    expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 })).reason).toMatch(/no longer waiting/);
     expect(sends()).toEqual([]);
   }, 60000);
 
@@ -177,10 +177,10 @@ describe('a deposit runs on its own unless a budget cap holds it', () => {
     expect(out).toMatchObject({ ok: false, pending: true });
     expect(out.reason).toMatch(/\$5\.0 would take the total past the \$9 budget/);
     expect(sends()).toEqual([]);
-    const yes = await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, pollMs: 50 });
+    const yes = await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 });
     expect(yes).toMatchObject({ ok: true, type: 'open', tokenId: '77' });
     expect(await minedFrom(yes.txHashes)).toEqual([wallet]);
-    expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, pollMs: 50 })).ok).toBe(false);
+    expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 })).ok).toBe(false);
   }, 60000);
 });
 

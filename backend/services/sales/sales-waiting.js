@@ -1,0 +1,50 @@
+// What the sales office and the company record owe the operator, as WAITING
+// ON YOU rows (Design note, 2026-11-16: no function in two places; a decision that
+// waits is shown where every other decision is, and one press opens it). Each
+// was only visible inside its own tab before:
+//   - a facts sheet filed and not yet reviewed            → POSITIONS, CHIEF REVENUE OFFICER, COMPANY
+//   - an audience still a draft                            → POSITIONS, CHIEF REVENUE OFFICER, CAMPAIGNS
+//   - an approved audience with companies off its list     → POSITIONS, CHIEF REVENUE OFFICER, CAMPAIGNS
+//   - a business model a member filed                      → POSITIONS, CHIEF REVENUE OFFICER, COMPANY
+// impure (store reads); the rows are pure.
+
+import { readSalesFacts, readSegments, readProspects } from './sales-store.js';
+import { listable } from './prospect-shape.js';
+import { readModels } from '../positions/business-model.js';
+import { listCompanies } from '../marketing/companies.js';
+
+const TEXT_MAX = 200;
+const who = (laneId, names) => (laneId && laneId !== 'operator' ? { laneId, name: names.get(laneId) ?? null } : null);
+const at = (office, tab, mark) => ({ app: 'positions', office, tab, ...mark });
+
+/**
+ * pure — the rows, from what was read.
+ * @param {{facts: ?object, segments: object[], prospects: object[], models: Map<string, object>, companies: object[]}} read
+ * @param {Map<string, string>} names - lane id → the name it goes by
+ */
+export const salesWaitingRows = ({ facts, segments, prospects, models, companies }, names) => [
+  ...(facts?.sheet && !facts.review ? [{
+    id: `sales-facts:${facts.sheet.id}`, kind: 'sales-facts', who: who(facts.sheet.by, names), at: facts.sheet.filedAt,
+    title: `${facts.sheet.facts.length} facts a buyer may be told wait for your approval`, where: at('cro', 'model', { factsSheet: facts.sheet.id }),
+  }] : []),
+  ...segments.filter((s) => s.state === 'draft').map((s) => ({
+    id: `sales-audience:${s.id}:${s.filedAt ?? s.at ?? ''}`, kind: 'sales-audience', who: who(s.by, names), at: s.filedAt ?? s.at ?? null,
+    title: `Audience "${s.name}" waits for your approval`, where: at('cro', 'campaigns', { segmentId: s.id }),
+  })),
+  ...segments.filter((s) => s.state === 'approved').map((s) => ({ s, n: listable(prospects, s.id).length })).filter(({ n }) => n > 0).map(({ s, n }) => ({
+    id: `sales-list:${s.id}:${n}`, kind: 'sales-list', who: who(s.by, names), at: prospects.filter((p) => p.segmentId === s.id).map((p) => p.foundAt).filter(Boolean).sort().at(-1) ?? null,
+    title: `${n} compan${n === 1 ? 'y' : 'ies'} found for "${s.name}" wait${n === 1 ? 's' : ''} for your list approval`, where: at('cro', 'campaigns', { segmentId: s.id }),
+  })),
+  ...companies.filter((c) => models.get(c.id)?.proposal).map((c) => ({
+    id: `business-model:${c.id}:${models.get(c.id).at}`, kind: 'business-model', who: who(models.get(c.id).by, names), at: models.get(c.id).at,
+    title: `The business model of ${c.name} waits for your approval`, where: at('cro', 'model', { modelCompany: c.id }),
+  })),
+].map((row) => Object.freeze({ ...row, title: row.title.slice(0, TEXT_MAX), at: row.at ?? new Date(0).toISOString() }));
+
+/** impure — the rows for one house. */
+export const salesWaitingItems = async (wallet, names) => {
+  const [facts, segments, prospects, models, companies] = await Promise.all([
+    readSalesFacts(wallet), readSegments(wallet), readProspects(wallet), readModels(wallet), listCompanies(wallet).catch(() => []),
+  ]);
+  return salesWaitingRows({ facts, segments, prospects, models, companies }, names);
+};

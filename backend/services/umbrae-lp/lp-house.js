@@ -10,6 +10,7 @@ import { toAllowlist } from '../../../core/wallet/spend-policy.js';
 import { getAddress as identityAddress } from '../neuma-wallet.js';
 import { laneName } from '../house-titles.js';
 import { lpWalletAddress } from './lp-wallet.js';
+import { lpFundsAddress } from '../agent-vault/vault-store.js';
 
 /**
  * The house, as the places a send may reach. The wallet itself is left out.
@@ -22,10 +23,11 @@ export const houseRecipients = async (neumaId) => {
   const owner = await neumaWorkspace.readOwner(neumaId);
   if (!owner?.wallet || !ethers.isAddress(owner.wallet)) return [];
   const self = await lpWalletAddress(neumaId);
+  const selfFunds = await lpFundsAddress(neumaId);
   const out = [{ address: ethers.getAddress(owner.wallet), name: 'operator', lane: null, wallet: 'operator' }];
   for (const { neumaId: lane, owner: record } of await neumaWorkspace.listNeumaByOwner(owner.wallet)) {
     const name = (await laneName(lane, record).catch(() => null)) || lane;
-    const [main, liquidity] = await Promise.all([identityAddress(lane).catch(() => null), lpWalletAddress(lane).catch(() => null)]);
+    const [main, liquidity] = await Promise.all([identityAddress(lane).catch(() => null), lpFundsAddress(lane).catch(() => null)]);
     if (main && ethers.isAddress(main)) out.push({ address: ethers.getAddress(main), name, lane, wallet: 'main' });
     if (liquidity) out.push({ address: ethers.getAddress(liquidity), name, lane, wallet: 'liquidity' });
   }
@@ -33,7 +35,7 @@ export const houseRecipients = async (neumaId) => {
   for (const entry of allowlist.entries) {
     if (ethers.isAddress(entry.address)) out.push({ address: ethers.getAddress(entry.address), name: entry.label || 'allowlisted', lane: null, wallet: 'allowlist' });
   }
-  const seen = new Set(self ? [ethers.getAddress(self)] : []);
+  const seen = new Set([self, selfFunds].filter(Boolean).map(ethers.getAddress));
   return out.filter((r) => (seen.has(r.address) ? false : (seen.add(r.address), true)));
 };
 

@@ -15,6 +15,7 @@ import { requestBrandSection } from '../brandkits/brand-landing.js';
 import { requestSettingsFocus } from '../settings-focus.js';
 import { cardSelector } from './waiting-view.js';
 import { MARKETING_WINDOW, isMarketingPlatform } from '../../windowing/retired-windows.js';
+import { requestPositionPlace } from '../../windowing/position-tiles.js';
 
 const EVENT = 'neuma:waiting-jump';
 const FIND_MS = 6000;
@@ -46,6 +47,8 @@ export const jumpActions = (item, windows) => {
 const latchLanding = (item) => {
   const w = item?.where || {};
   if (w.app === 'houseclock') requestHouseClockTab(w.tab || 'asks');
+  // A position's own decision lands on that position and tab (the POSITIONS window keeps the place).
+  else if (w.app === 'positions' && w.office) requestPositionPlace(w.office, w.tab || null);
   else if (w.app === 'settings' && w.focus) requestSettingsFocus(w.focus);
   else if (w.app === 'sovereignty') requestCardLanding('sovereignty', { neumaId: w.neumaId, proposalId: w.proposalId });
   else if (w.channelId) requestCardLanding(w.channelId, { entryId: w.entryId, section: w.section, ...(w.accountId ? { accountId: w.accountId } : {}), ...(w.code ? { code: w.code } : {}) });

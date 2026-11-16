@@ -25,3 +25,12 @@ export const linkCampaigns = (a, b, note) => positionsCall('POST', '/campaigns/l
 
 /** Take the link between two campaigns away. impure. */
 export const unlinkCampaigns = (a, b) => positionsCall('POST', '/campaigns/unlink', { body: { a, b }, errorPrefix: 'Could not unlink the campaigns' });
+
+/** Each company's file with its business model, and the parts a model is made of. impure. */
+export const getCompanies = () => positionsCall('GET', '/companies', { errorPrefix: 'Could not read the companies' });
+
+/** The operator writes a company's business model; it stands at once. impure. */
+export const saveModel = (company, model) => positionsCall('PUT', `/companies/${encodeURIComponent(company)}/model`, { body: model, errorPrefix: 'Could not save the business model' });
+
+/** The operator's answer to a model a member filed: approve it, or return it with a note. impure. */
+export const settleModel = (company, approve, note) => positionsCall('POST', `/companies/${encodeURIComponent(company)}/model/${approve ? 'approve' : 'return'}`, { body: { note }, errorPrefix: 'Could not answer the business model' });

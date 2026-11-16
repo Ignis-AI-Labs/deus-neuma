@@ -46,7 +46,11 @@
 .pos-row-name { font-size: var(--text-md, 15px); letter-spacing: 0.1em; }
 .pos-row-who { grid-column: 2 / 4; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
 .pos-row.is-empty .pos-row-who { color: var(--alert); }
+/* The waiting count stands top right on its row, so every row's light and name line up the same
+   (it used to fall into the light's column and push one name in). */
 .pos-row-n {
+  grid-column: 3;
+  grid-row: 1;
   min-width: 1.6em;
   text-align: center;
   padding: 0 6px;
@@ -61,6 +65,7 @@
 .pos-holder { margin: 0; letter-spacing: 0.14em; color: var(--signal); }
 .pos-holder.is-empty { color: var(--alert); }
 .pos-covers { margin: 0; font-size: 14px; line-height: 1.5; color: var(--color-text-secondary); }
+.pos-function { margin-right: var(--space-2); color: var(--color-text-tertiary); letter-spacing: 0.14em; }
 .pos-seat { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .pos-seat > :first-child { flex: 1 1 14rem; }
 .pos-danger:hover:not(:disabled) { color: var(--alert); border-color: var(--alert-dim); }
@@ -147,3 +152,12 @@
 .pos-seating-why { margin: 0; font-size: 0.82rem; }
 .pos-seating-acts { display: flex; gap: 0.5rem; }
 @media (max-width: 720px) { .pos-seating-ways { grid-template-columns: 1fr; } }
+
+/* BUSINESS MODEL: one question, its hint, its answer. */
+.pos-model-field { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-3); }
+.pos-model-field > .label-data { letter-spacing: 0.12em; color: var(--color-text-primary); }
+/* The whole answer shows: the box grows with its words (rows as the floor where the engine cannot size to content). */
+.pos-model-text { font-size: 14px; line-height: 1.5; padding: var(--space-3); field-sizing: content; min-height: 3.5em; resize: vertical; }
+
+/* A company on the COMPANY tab is a fold, not a bulleted item. */
+.pos-model-company { list-style: none; }

@@ -117,9 +117,10 @@ export const CHANNEL_CATALOG = Object.freeze([
     maxChars: 3000,
     fields: Object.freeze([
       // CONNECT signs in with the operator's own LinkedIn app (linkedin-connect.js) and sets the three
-      // fields below; an account connected before CONNECT existed keeps working without a client.
-      field('clientId', 'LinkedIn App Client ID', false, 'LINKEDIN_CLIENT_ID', 'none'),
-      field('clientSecret', 'LinkedIn App Client Secret', true, 'LINKEDIN_CLIENT_SECRET', 'none'),
+      // fields below; an account connected before CONNECT existed keeps working without a client (the two
+      // client fields are `optional`: empty, they are absent and never read as set).
+      Object.freeze({ ...field('clientId', 'LinkedIn App Client ID', false, 'LINKEDIN_CLIENT_ID'), optional: true }),
+      Object.freeze({ ...field('clientSecret', 'LinkedIn App Client Secret', true, 'LINKEDIN_CLIENT_SECRET'), optional: true }),
       Object.freeze({ ...field('personUrn', 'Person URN (set by CONNECT)', false, 'LINKEDIN_PERSON_URN'), connect: true }),
       connectField('accessToken', 'Access Token (set by CONNECT)', 'LINKEDIN_ACCESS_TOKEN'),
       // REQUIRED, not optional: LinkedIn issues 60-day access tokens and gates
@@ -197,6 +198,8 @@ export const resolveChannelCredentials = (channel, storeEntry, env) => {
     const isStored = typeof stored === 'string' && stored.length > 0;
     const isEnv = !isStored && typeof fromEnv === 'string' && fromEnv.length > 0;
     const value = isStored ? stored : isEnv ? fromEnv : f.fallback;
+    // An optional field left empty is simply absent: the credential is whole without it.
+    if ((typeof value !== 'string' || value.length === 0) && f.optional) continue;
     if (typeof value !== 'string' || value.length === 0) return null;
     if (f.secret && isEnv) envSecret = true;
     if (isStored && DESTINATION_KEYS.has(f.key)) storedDestination = true;
@@ -233,6 +236,7 @@ export const maskChannelCredentials = (channel, storeEntry, env) => Object.freez
       source: stored ? 'store' : fromEnv ? 'env' : hasFallback ? 'default' : 'none',
       ...(f.connect ? { connect: true } : {}),
       ...(f.app ? { app: true } : {}),
+      ...(f.optional ? { optional: true } : {}),
     });
   })),
 });

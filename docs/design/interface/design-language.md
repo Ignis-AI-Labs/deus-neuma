@@ -261,6 +261,34 @@ Together they ask for less text carrying the same data — all of it.
    person. A neuma's own voice stays its own; this binds what is written for
    the operator to read, never how a being speaks.
 
+## FOLD — a section is a line first (Design note, 2026-11-16
+
+> […]
+
+This is the rule for EVERY section of every window that holds records (a hub tab, a board, a ledger). It is how
+LESS TEXT, NOT LESS DATA is carried out on a screen with many sections. One component draws it
+(`frontend/app/RelinkShell/fold/Fold.jsx`); a section that is not built from it does not ship.
+
+1. **A section is a line first.** Its name, its state, its counts. A screen of ten sections is ten lines, read
+   in one look.
+2. **The line carries the numbers.** Every count and every state stands on the line itself (SHINKEI: each is the
+   length of the list it opens). Folding a section hides sentences and controls, never a number.
+3. **What waits on you stands open.** A section opens by itself only when it owes the operator a decision, and
+   it is marked. Everything else arrives folded. The operator's own press to open or fold is kept for that
+   section, and nothing folds under their hands.
+4. **Read first, edit on a press.** A stored record shows as text under its labels. Boxes appear when the
+   operator presses EDIT, or when nothing is written yet.
+5. **One thing, one place, nested where it belongs.** A record stands on one tab. What belongs to another thing
+   sits folded under it (an audience under its campaign, its leads under the audience), never as a second list.
+   Two rows of tiles that count the same records are one row.
+6. **At most three levels.** Section, item, detail. A fourth level is a sign the tab holds two subjects.
+7. **A tab holds only its own subject.** If a section's name would not make sense under the tab's name, it is on
+   the wrong tab.
+
+Checklist, per surface before it ships: can every number on this tab be read with every section folded; does
+anything open that does not wait on the operator; is any record or count shown twice; is any stored value
+sitting in a box nobody asked to edit.
+
 ## SHOW, DON'T TELL — the next step, still SHINKEI
 
 Design note, 2026-10-24: *[…]* *[…]* *[…]*

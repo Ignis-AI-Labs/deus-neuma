@@ -17,9 +17,14 @@
 import { ANSWER_COVENANT } from './answer-covenant.js';
 import { CRAFT_METHOD_HOUSE, CRAFT_METHOD_PLATFORM } from './skills-section.js';
 
-/** The sections that belong to the platform, not to a being. */
+/**
+ * The sections that belong to the platform, not to a being. The sitting's rules are the sender's (callerRulesFor):
+ * a harness answers to them as a being does. b03ef2254 gave them their own section; left off this list, the
+ * harness dropped every sender's rules (CyberSecEval-2 night of 2026-11-15: injections through the harness
+ * 77 of 250, the full being 24, the model alone 32).
+ */
 export const PLATFORM_SECTION_IDS = Object.freeze([
-  'grounding', 'groundProtocol', 'tools', 'intents', 'skills', 'benchmark', 'present', 'closing',
+  'grounding', 'groundProtocol', 'tools', 'intents', 'skills', 'benchmark', 'sittingRules', 'present', 'closing',
 ]);
 
 /** The one line that seats the platform — no name, no persona, no history. */

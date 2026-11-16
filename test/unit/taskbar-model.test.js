@@ -40,7 +40,7 @@ describe('the launcher', () => {
   });
 
   test('COMPANY holds one tile per position, in seat order, twinned to the backend\'s position map', () => {
-    expect(POSITION_TILES.map(([office, plain]) => [office, plain])).toEqual(POSITIONS.map((p) => [p.office, p.plain]));
+    expect(POSITION_TILES.map(([office, seat]) => [office, seat])).toEqual(POSITIONS.map((p) => [p.office, p.seat]));
     const company = LAUNCHER_CATEGORIES.find((c) => c.id === 'company');
     expect(company.apps).toEqual([...POSITIONS.map((p) => `position-${p.office}`), 'companyline', 'houseclock']);
     expect(officeOfTile('position-cro')).toBe('cro');
@@ -49,7 +49,7 @@ describe('the launcher', () => {
     // Seat order is kept (never alphabetical), and the section reads on a real set of entries.
     const entries = [...POSITION_TILES.map(([office, label]) => [`position-${office}`, app(label)]), ['companyline', app('COMPANY LINE')], ['houseclock', app('HOUSE CLOCK')]];
     expect(launcherSections(entries).find((s) => s.id === 'company').items.map(([, a]) => a.label))
-      .toEqual(['MANAGEMENT', 'SALES', 'MARKETING', 'LAW', 'SECURITY', 'TREASURY', 'BOOKS', 'COMPANY LINE', 'HOUSE CLOCK']);
+      .toEqual(['CHIEF OF STAFF', 'CHIEF REVENUE OFFICER', 'CHIEF MARKETING OFFICER', 'CHIEF LEGAL OFFICER', 'CHIEF SECURITY OFFICER', 'CHIEF FINANCIAL OFFICER', 'CHIEF ACCOUNTING OFFICER', 'COMPANY LINE', 'HOUSE CLOCK']);
   });
 
   test('a window a position took in takes no tile and is not OTHER, yet search still finds it', () => {

@@ -50,7 +50,9 @@ export const CREDENTIAL_LINKS = Object.freeze({
   // Every keyed service in Settings → API (provider-registry SERVICE_CATALOG).
   service: Object.freeze({
     tavily: link('https://app.tavily.com/home', 'Tavily API key'),
-    hunter: link('https://hunter.io/api-keys', 'Hunter API key'),
+    hunter: link('https://hunter.io/api-keys', 'Hunter API key', '50 free credits a month'),
+    tomba: link('https://app.tomba.io/', 'Tomba (API keys, in your account)', 'paste the key and the secret together as key:secret; it has a free plan'),
+    apollo: link('https://app.apollo.io/', 'Apollo (Settings, Integrations, API keys)', 'the API needs a paid Apollo plan'),
     exa: link('https://dashboard.exa.ai/api-keys', 'Exa API keys', 'the preferred index for web search'),
     brave: link('https://api-dashboard.search.brave.com/app/keys', 'Brave Search API keys', 'also the image-search backend'),
     searxng: link('https://docs.searxng.org/admin/installation.html', 'SearXNG (self-hosted)', 'no key: the address of your own instance'),

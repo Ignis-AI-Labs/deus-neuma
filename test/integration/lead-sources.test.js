@@ -22,6 +22,9 @@ import revenueRouter from '../../backend/routes/revenue-routes.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
 import { readCandidates } from '../../backend/services/sales/sales-store.js';
 import { tokensOfPools, candidateOf, protocolsOnBase, peopleOfHunter, candidateLine, LEAD_SOURCES } from '../../backend/services/sales/lead-sources.js';
+import { peopleOfTomba, apolloToReveal, personOfApollo } from '../../backend/services/sales/lead-providers.js';
+import { foldSpend, makeRule, spentThisMonth, spendRefusal, spendLine } from '../../backend/services/sales/lead-spend.js';
+import { SPEND_CHOICES, attachedWords, spentWords, capOk } from '../../frontend/app/RelinkShell/company-line/paid-lead-view.js';
 import { getService } from '../../backend/services/provider-registry.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { campaignStoreFor } from '../../backend/services/marketing/campaign-store.js';
@@ -29,7 +32,7 @@ import { cmoDesignation } from '../../backend/services/marketing/cmo-designation
 import { houseCampaigns } from '../../backend/services/positions/campaign-links.js';
 
 const { processToolCalls } = __test;
-const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_CONNECTIONS_PATH', 'NEUMA_LEAD_SOURCE_GECKO', 'NEUMA_LEAD_SOURCE_LLAMA', 'NEUMA_LEAD_SOURCE_HUNTER', 'HUNTER_API_KEY'].map((k) => [k, process.env[k]]));
+const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_CONNECTIONS_PATH', 'NEUMA_LEAD_SOURCE_GECKO', 'NEUMA_LEAD_SOURCE_LLAMA', 'NEUMA_LEAD_SOURCE_HUNTER', 'HUNTER_API_KEY', 'NEUMA_LEAD_SOURCE_TOMBA', 'TOMBA_API_KEY', 'NEUMA_LEAD_SOURCE_APOLLO', 'APOLLO_API_KEY'].map((k) => [k, process.env[k]]));
 const PRIOR_ROOT = getWorkspacesRoot();
 
 const tok = (address, symbol, name) => ({ id: `base_${address}`, type: 'token', attributes: { address, symbol, name } });
@@ -55,6 +58,62 @@ const HUNTER = { data: { emails: [
   { value: 'guess@limitless.exchange', first_name: 'No', last_name: 'Page', position: 'CEO', confidence: 99, sources: [] },
   { value: 'info@limitless.exchange', first_name: null, last_name: null, position: null, confidence: 80, sources: [{ uri: 'https://limitless.exchange/contact' }] },
 ] } };
+
+// Tomba and Apollo, in the shape their own API documentation states (read 2026-11-15).
+const TOMBA = { data: { emails: [
+  { email: 'Roberto@Olivetree.Example', first_name: 'Roberto', last_name: 'Diaz', full_name: 'Roberto Diaz', position: 'Founder', score: 91, sources: [{ uri: 'https://olivetree.example/about' }] },
+  { email: 'nopage@olivetree.example', full_name: 'No Page', position: 'CTO', score: 99, sources: [] },
+] } };
+const APOLLO_SEARCH = { total_entries: 4, people: [
+  { id: 'p1', first_name: 'Dima', last_name_obfuscated: 'H***', title: 'Chief Product Officer', has_email: true },
+  { id: 'p2', first_name: 'Ann', title: 'Engineer', has_email: true },
+  { id: 'p3', first_name: 'Cy', title: 'CEO', has_email: false },
+  { id: 'p4', first_name: 'No', title: '', has_email: true },
+] };
+const APOLLO_MATCH = {
+  p1: { person: { name: 'Dima Horshkov', title: 'Chief Product Officer', email: 'Dima@Limitless.Exchange', email_status: 'verified', linkedin_url: 'https://www.linkedin.com/in/dima-h' } },
+  p2: { person: { name: 'Ann Lee', title: 'Engineer', email: 'ann@limitless.exchange', email_status: 'unverified', linkedin_url: 'https://www.linkedin.com/in/ann-lee' } },
+};
+
+describe('paid lead data: the providers and the rule on spending (pure)', () => {
+  test('Tomba offers a person only with a name, a role and the page the address stands on', () => {
+    expect(peopleOfTomba(TOMBA)).toEqual([{ name: 'Roberto Diaz', role: 'Founder', email: 'roberto@olivetree.example', confidence: 91, sourceUrl: 'https://olivetree.example/about', basis: 'published' }]);
+    expect(peopleOfTomba({})).toEqual([]);
+  });
+
+  test('Apollo reveals only people with a title and an address on file, and keeps only a verified address with a public profile', () => {
+    expect(apolloToReveal(APOLLO_SEARCH)).toEqual(['p1', 'p2']);
+    expect(personOfApollo(APOLLO_MATCH.p1)).toEqual({ name: 'Dima Horshkov', role: 'Chief Product Officer', email: 'dima@limitless.exchange', confidence: 100, sourceUrl: 'https://www.linkedin.com/in/dima-h', basis: 'verified' });
+    expect(personOfApollo(APOLLO_MATCH.p2)).toBe(null);
+    expect(personOfApollo({})).toBe(null);
+  });
+
+  test('nothing paid runs until the operator chooses; free first waits for a scored company; the cap holds the month', () => {
+    expect(foldSpend([])).toEqual({ mode: 'ask', cap: 100, chosen: false, at: null });
+    expect(foldSpend([{ type: 'rule', mode: 'paid-first', cap: 50, at: 't1' }, { type: 'rule', mode: 'free-first', cap: 20, at: 't2' }])).toEqual({ mode: 'free-first', cap: 20, chosen: true, at: 't2' });
+    expect(() => makeRule({ mode: 'always', cap: 5 })).toThrow(/mode is one of: ask, free-first, paid-first/);
+    expect(() => makeRule({ mode: 'ask', cap: 1.5 })).toThrow(/a whole number of credits a month/);
+    const lookups = [{ at: '2026-11-02T10:00:00.000Z', spent: 2 }, { at: '2026-11-14T10:00:00.000Z' }, { at: '2026-10-30T10:00:00.000Z', spent: 9 }];
+    expect(spentThisMonth(lookups, Date.parse('2026-11-15T00:00:00Z'))).toBe(3);
+    const at = (extra) => spendRefusal({ rule: { mode: 'paid-first', cap: 10 }, spent: 3, cost: 1, scored: false, providers: ['hunter'], ...extra });
+    expect(at({})).toBe(null);
+    expect(at({ rule: { mode: 'ask', cap: 10 } })).toMatch(/^paid lead data is not allowed yet\. Ask your operator now[\s\S]*hunter can give me the people at each company[\s\S]*PAID LEAD DATA/);
+    expect(at({ rule: { mode: 'free-first', cap: 10 } })).toMatch(/FREE FIRST: read this company's own pages/);
+    expect(at({ rule: { mode: 'free-first', cap: 10 }, scored: true })).toBe(null);
+    expect(at({ spent: 8, cost: 5 })).toMatch(/this month's cap is 10 credit\(s\) and 8 are spent; this lookup may spend 5/);
+    expect(spendLine({ rule: { mode: 'ask', cap: 100 }, spent: 0, attached: [] })).toMatch(/no provider is attached/);
+    expect(spendLine({ rule: { mode: 'free-first', cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): FREE FIRST. Read and score each company from its own pages; use sales/contacts only for a scored company whose pages gave no address. Spent this month: 4 of 100 credit(s).');
+  });
+
+  test('the leads screen words the choice, what is attached and what the month has spent', () => {
+    expect(SPEND_CHOICES.map((c) => [c.mode, c.label])).toEqual([['ask', 'ASK ME FIRST'], ['free-first', 'FREE FIRST'], ['paid-first', 'PAID FROM THE START']]);
+    expect(attachedWords({ attached: [] })).toMatch(/^NO PROVIDER ATTACHED — ADD A KEY IN SETTINGS, API, LEAD DATA/);
+    expect(attachedWords({ attached: ['hunter', 'tomba'] })).toBe('ATTACHED: HUNTER · TOMBA');
+    expect(spentWords({ spent: 4, rule: { cap: 100, chosen: true } })).toBe('SPENT THIS MONTH: 4 OF 100 CREDITS');
+    expect(spentWords({ spent: 0, rule: { cap: 100, chosen: false } })).toMatch(/YOU HAVE NOT CHOSEN YET, SO NOTHING PAID RUNS$/);
+    expect([capOk('250'), capOk('2.5'), capOk(''), capOk('-1')]).toEqual([true, false, false, false]);
+  });
+});
 
 describe('the lead sources, read as they answer (pure)', () => {
   test('a token page gives each non-major token once, with its deepest pool; a profile gives the team\'s own site or nothing', () => {
@@ -82,8 +141,10 @@ describe('the lead sources, read as they answer (pure)', () => {
   });
 
   test('free sources come first and need no key; the people source names the operator\'s own key', () => {
-    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['hunter', 'people', 'hunter']]);
-    expect(getService('hunter')).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
+    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
+    for (const id of ['hunter', 'tomba', 'apollo']) expect(getService(id), id).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
+    // Every paid source says the most one lookup may spend.
+    expect(Object.values(LEAD_SOURCES).filter((s) => s.kind === 'people').map((s) => s.cost)).toEqual([1, 1, 5]);
   });
 });
 
@@ -123,10 +184,13 @@ describe('GATHERING through the real stack (gnosis)', () => {
     list.get('/gecko/networks/base/tokens/:address/info', (req, res) => (INFO[req.params.address] ? res.json(INFO[req.params.address]) : res.status(404).json({})));
     list.get('/llama/protocols', (req, res) => res.json(PROTOCOLS));
     list.get('/hunter/domain-search', (req, res) => (req.query.api_key === 'the-operators-key' ? res.json(req.query.domain === 'limitless.exchange' ? HUNTER : { data: { emails: [] } }) : res.status(401).json({})));
+    list.get('/tomba/domain-search', (req, res) => (req.get('X-Tomba-Key') === 'tk' && req.get('X-Tomba-Secret') === 'ts' ? res.json(req.query.domain === 'limitless.exchange' ? TOMBA : { data: { emails: [] } }) : res.status(401).json({})));
+    list.post('/apollo/mixed_people/api_search', (req, res) => (req.get('x-api-key') === 'apollo-key' ? res.json([req.query.q_organization_domains_list].flat()[0] === 'limitless.exchange' ? APOLLO_SEARCH : { people: [] }) : res.status(401).json({})));
+    list.post('/apollo/people/match', (req, res) => (req.get('x-api-key') === 'apollo-key' ? res.json(APOLLO_MATCH[req.query.id] ?? {}) : res.status(401).json({})));
     lists = await new Promise((resolve) => { const s = list.listen(0, '127.0.0.1', () => resolve(s)); });
     const base = `http://127.0.0.1:${lists.address().port}`;
-    Object.assign(process.env, { NEUMA_LEAD_SOURCE_GECKO: `${base}/gecko`, NEUMA_LEAD_SOURCE_LLAMA: `${base}/llama`, NEUMA_LEAD_SOURCE_HUNTER: `${base}/hunter` });
-    delete process.env.HUNTER_API_KEY;
+    Object.assign(process.env, { NEUMA_LEAD_SOURCE_GECKO: `${base}/gecko`, NEUMA_LEAD_SOURCE_LLAMA: `${base}/llama`, NEUMA_LEAD_SOURCE_HUNTER: `${base}/hunter`, NEUMA_LEAD_SOURCE_TOMBA: `${base}/tomba`, NEUMA_LEAD_SOURCE_APOLLO: `${base}/apollo` });
+    for (const k of ['HUNTER_API_KEY', 'TOMBA_API_KEY', 'APOLLO_API_KEY']) delete process.env[k];
 
     app = express();
     app.use(express.json());
@@ -232,16 +296,48 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect((await houseCampaigns(me.address)).every((c) => c.links.length === 0)).toBe(true);
   });
 
-  test('people come only from the operator\'s own key; without one the seat is sent to the company\'s pages; an address with no page is never offered', async () => {
+  test('people come only from the operator\'s own key, and only once the operator has said paid data may be spent', async () => {
+    const spend = async () => (await request(app).get('/api/v1/revenue/lead-engine').use(as)).body.spend;
+    const rule = (mode, cap) => request(app).post('/api/v1/revenue/lead-engine/spend').use(as).send({ mode, cap });
     expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/no contact-data provider is attached/) });
-    expect(hits.some((h) => h.startsWith('/hunter/'))).toBe(false);
+    expect(await spend()).toMatchObject({ rule: { mode: 'ask', cap: 100, chosen: false }, spent: 0, attached: [], modes: ['ask', 'free-first', 'paid-first'] });
     process.env.HUNTER_API_KEY = 'the-operators-key';
     expect(await act('merc', { type: 'sales/contacts', domain: 'stranger.example' })).toMatchObject({ status: 'error', error: expect.stringMatching(/not a company you gathered or pooled/) });
+    // A key alone spends nothing: until the operator chooses, the seat is told to ask them, in words.
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/paid lead data is not allowed yet\. Ask your operator now/) });
+    expect(await mercatorBriefingSection(conn('merc'))).toContain('PAID LEAD DATA (hunter attached; it spends your operator\'s credits): NOT ALLOWED YET.');
+    // FREE FIRST: a company the seat has not scored from its own pages is not paid for.
+    expect((await rule('sometimes', 3)).status).toBe(400);
+    expect((await rule('free-first', 3)).body.rule).toMatchObject({ mode: 'free-first', cap: 3, chosen: true });
+    expect(await act('merc', { type: 'sales/contacts', domain: 'syntetika.io' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/FREE FIRST: read this company's own pages/) });
+    expect(hits.some((h) => /^\/(hunter|tomba|apollo)\//.test(h))).toBe(false);
+    // PAID FROM THE START: the cheapest attached provider answers; an address with no page is never offered.
+    expect((await rule('paid-first', 3)).status).toBe(200);
     const people = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' });
     expect(people.status).toBe('ok');
+    expect(people.content).toContain('People at limitless.exchange (hunter, 1 credit(s) spent):');
     expect(people.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — found on https://limitless.exchange/team');
     expect(people.content).not.toContain('guess@limitless.exchange');
     expect(people.content).not.toContain('the-operators-key');
-    expect((await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).content).toMatch(/holds nobody at yo\.xyz/);
+    // More providers attached: the seat names one. Tomba takes its key and secret together.
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'tomba' })).toMatchObject({ status: 'error', error: expect.stringMatching(/one of the providers your operator attached \(hunter\)/) });
+    Object.assign(process.env, { TOMBA_API_KEY: 'tk:ts', APOLLO_API_KEY: 'apollo-key' });
+    const tomba = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'tomba' });
+    expect(tomba.content).toContain('- 0. Roberto Diaz, Founder — roberto@olivetree.example — found on https://olivetree.example/about');
+    expect(tomba.content).not.toContain('nopage@');
+    // The month's cap holds: Apollo may spend 5, 2 are spent, the cap is 3.
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/this month's cap is 3 credit\(s\) and 2 are spent; this lookup may spend 5/) });
+    expect(hits.some((h) => h.startsWith('/apollo/'))).toBe(false);
+    expect((await rule('paid-first', 10)).status).toBe(200);
+    const apollo = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' });
+    expect(apollo.content).toContain('People at limitless.exchange (apollo, 2 credit(s) spent):');
+    expect(apollo.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — verified by apollo; their profile: https://www.linkedin.com/in/dima-h');
+    expect(apollo.content).not.toContain('ann@limitless.exchange');
+    expect(apollo.content).not.toContain('apollo-key');
+    expect((await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).content).toMatch(/hunter holds nobody at yo\.xyz/);
+    // The operator reads what the month spent, counted from the lookups themselves.
+    expect(await spend()).toMatchObject({ rule: { mode: 'paid-first', cap: 10 }, spent: 5, attached: ['hunter', 'tomba', 'apollo'] });
+    expect((await spend()).lookups[0]).toMatchObject({ domain: 'yo.xyz', source: 'hunter', spent: 1, found: 0 });
+    expect((await request(app).post('/api/v1/revenue/lead-engine/spend').send({ mode: 'ask', cap: 1 })).status).toBe(401);
   });
 });

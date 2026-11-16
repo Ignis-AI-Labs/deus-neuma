@@ -1,0 +1,72 @@
+/* CARDS — the company's cards as a gallery, and one card's designer (CardsSection.jsx,
+   CardDesigner.jsx). Tones: own = the accent, shared = muted, alike = warning. */
+
+.bk-card-grid {
+  list-style: none;
+  margin: var(--space-3, 12px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.bk-card-tile {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  padding: var(--space-2, 8px);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bk-card-tile:hover,
+.bk-card-tile:focus-visible { border-color: var(--accent-primary); color: var(--text-primary); }
+
+.bk-card-thumb { display: block; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--border-subtle); }
+.bk-card-thumb .bk-empty { display: block; padding: var(--space-3, 12px); }
+.bk-card-name { font-size: var(--text-label); letter-spacing: 0.1em; }
+.bk-card-standing { font-size: var(--text-label); letter-spacing: 0.08em; }
+
+.bk-card-tone-own .bk-card-standing { color: var(--accent-primary); }
+.bk-card-tone-shared .bk-card-standing { color: var(--text-muted); }
+.bk-card-tone-alike .bk-card-standing,
+.bk-note.bk-card-tone-alike,
+.bk-note.bk-card-tone-shared { color: var(--accent-warning, #ff9d3c); }
+.bk-card-tone-error .bk-card-standing { color: var(--accent-danger); }
+
+.bk-quiet,
+.bk-back {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-label);
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.bk-back { border-color: transparent; padding-left: 0; margin-bottom: var(--space-2, 8px); }
+.bk-quiet:hover:not(:disabled),
+.bk-back:hover { color: var(--text-primary); border-color: var(--accent-primary); }
+.bk-back:hover { border-color: transparent; }
+.bk-quiet:disabled { opacity: 0.4; cursor: default; }
+
+.bk-designer-stage { border: 1px solid var(--border-subtle); min-height: 160px; margin-bottom: var(--space-3, 12px); }
+.bk-designer-acts { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin: var(--space-2, 8px) 0; }
+.bk-designer-acts .bk-save { margin-left: 0; }
+.bk-designer .bk-raw textarea { font-family: var(--font-mono, monospace); font-size: 13px; line-height: 1.5; }
+.bk-designer-help { margin-top: var(--space-3, 12px); }
+.bk-designer-help summary { cursor: pointer; font-size: var(--text-label); color: var(--text-secondary); }
+.bk-designer-help .bk-note { word-break: break-word; }
+
+.bk-card-new {
+  display: grid;
+  gap: var(--space-2, 8px);
+  margin: var(--space-3, 12px) 0;
+  padding: var(--space-3, 12px);
+  border: 1px solid var(--border-default);
+}
+.bk-card-why { display: block; margin-top: 6px; letter-spacing: 0; text-transform: none; line-height: 1.4; color: var(--text-muted); }

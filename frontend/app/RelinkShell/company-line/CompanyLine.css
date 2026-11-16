@@ -143,3 +143,65 @@
 .cline-stage.is-in-hand { border-top-color: var(--signal); }
 .cline-stage.is-in-hand .cline-stage-n,
 .cline-stage.is-in-hand .cline-stage-m { color: var(--signal); }
+
+/* The sales facts sheet: one company, then its facts, each a readable line with its source and its own hands. */
+.cline-fact-group { margin-top: var(--space-4); }
+.cline-fact-company { margin: 0 0 var(--space-2); letter-spacing: 0.14em; color: var(--signal); display: flex; gap: var(--space-2); align-items: center; }
+.cline-fact-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.cline-fact { border-left: 2px solid var(--line); padding-left: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.cline-fact-claim { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.5; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.cline-fact-n { color: var(--color-text-tertiary); margin-right: var(--space-1); }
+.cline-fact-figure { color: var(--signal); }
+.cline-fact-source { margin: 0; font-size: var(--text-label); color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.cline-fact-edit { font-size: 14px; line-height: 1.5; }
+
+/* The monthly cap is a short number, not a sentence. */
+[data-paid-lead] .cline-open .cline-input { flex: 0 0 8rem; }
+
+/* The facts sheet's one bar, the tick on each fact, and each fact's own small hands. */
+.cline-fact-bar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); margin-top: var(--space-2); border: 1px solid var(--line-hover); background: var(--color-void); position: sticky; top: 0; z-index: 3; box-shadow: 0 8px 12px var(--color-void); }
+/* The bar stays in view while the facts scroll UNDER it: its ground is solid, so nothing shows through. */
+.cline-fact-bar .cline-input { flex: 1 1 12rem; width: auto; }
+.cline-fact-all { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-primary); }
+.cline-fact-tick { width: 16px; height: 16px; accent-color: var(--signal); flex: 0 0 auto; margin: 3px 0 0; }
+.cline-fact-row { display: flex; gap: var(--space-2); align-items: flex-start; }
+.cline-fact-foot { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; }
+.cline-fact-hands { display: flex; gap: var(--space-1); }
+.cline-mini { padding: 2px var(--space-2); font-size: 11px; }
+.cline-fact.is-checked, .cline-fact.is-approved { border-left-color: var(--signal); }
+.cline-fact.is-held { border-left-color: var(--alert); }
+.cline-fact-standing { font-weight: 400; color: var(--color-text-secondary); }
+.cline-fact.is-held .cline-fact-standing { color: var(--alert); }
+
+/* One audience as marks: tiles for the pool, two columns of reading text, chips, ticked and crossed lists. */
+.cline-aud-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.cline-aud { display: flex; flex-direction: column; gap: var(--space-3); border: 1px solid var(--line); padding: var(--space-3) var(--space-4); }
+.cline-aud-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.cline-aud-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-4); }
+.cline-aud-k { margin: 0 0 var(--space-1); letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.cline-aud-text { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.5; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.cline-aud-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.cline-aud-chips .cline-aud-k { margin: 0; min-width: 7rem; }
+.cline-chip { border: 1px solid var(--line); padding: 2px var(--space-2); font-size: 13px; color: var(--color-text-primary); background: var(--color-glass-light); }
+.cline-aud-signs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cline-aud-signs li { display: flex; gap: var(--space-2); font-family: var(--font-voice); font-size: 14px; line-height: 1.45; color: var(--color-text-primary); }
+.cline-aud-mark { flex: 0 0 auto; color: var(--signal); }
+.cline-aud-signs.is-misfit .cline-aud-mark { color: var(--alert); }
+.cline-aud-why > summary { cursor: pointer; }
+.cline-aud-list { margin-top: var(--space-4); }
+
+/* An audience folded under its campaign: one line that opens onto its approvals, its companies, its leads and its pitch. */
+.cline-aud-list.is-nested { margin-top: var(--space-2); gap: var(--space-2); }
+.cline-aud.is-nested { border: none; border-left: 2px solid var(--signal-dim); padding: 0 0 0 var(--space-3); gap: 0; }
+.cline-aud-sum { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; cursor: pointer; padding: var(--space-2) 0; }
+.cline-aud-name { letter-spacing: 0.12em; color: var(--color-text-primary); }
+.cline-aud-count { color: var(--color-text-secondary); }
+.cline-chip.is-on { border-color: var(--signal); color: var(--signal); }
+.cline-aud-in { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) 0 var(--space-3); }
+
+/* The lead list: one lead a row — who, where it stands, and the control that files it under what it is. */
+.cline-lead-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.cline-lead { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr)); gap: var(--space-2) var(--space-3); align-items: center; border-left: 2px solid var(--line); padding-left: var(--space-3); min-width: 0; }
+.cline-lead-who, .cline-lead-state { margin: 0; font-size: 14px; overflow-wrap: anywhere; color: var(--color-text-primary); }
+.cline-lead-last { color: var(--color-text-secondary); font-size: 13px; }
+.cline-chip.is-alert { border-color: var(--alert); color: var(--alert); }
