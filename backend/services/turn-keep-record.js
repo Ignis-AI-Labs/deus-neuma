@@ -10,7 +10,7 @@
 // where they stopped. Pure: frames in, state out.
 
 import { isInflightStatus } from '../../core/runtime/tool-status.js';
-import { applyCloneFrame, CLONE_TOOL } from '../../frontend/app/RelinkShell/clone-split.js';
+import { applyCloneFrame, CLONE_TOOL } from '../../frontend/app/RelinkShell/clone-frames.js';
 
 /** What the being reads at the end of a take the app's close cut short (and the desk shows). */
 export const CUT_MARK = '[the app closed mid-reply — cut off here]';
