@@ -350,10 +350,12 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(await mercatorBriefingSection(conn('merc'))).toContain('): ON. It is one of the ways you may find a person\'s address.');
     const people = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' });
     expect(people.status).toBe('ok');
-    expect(people.content).toContain('People at limitless.exchange (hunter, 1 credit(s) spent):');
+    expect(people.content).toContain('People at limitless.exchange (hunter, 1 credit(s) spent), top first:');
     expect(people.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — found on https://limitless.exchange/team');
     expect(people.content).not.toContain('guess@limitless.exchange');
     expect(people.content).not.toContain('the-operators-key');
+    // TOP FIRST: the company's decision makers are what Hunter is asked for.
+    expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).at(-1)).toContain('decision_maker=true');
     // More providers attached: the seat names one. Tomba takes its key and secret together.
     expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'tomba' })).toMatchObject({ status: 'error', error: expect.stringMatching(/one of the providers your operator attached \(hunter\)/) });
     Object.assign(process.env, { TOMBA_API_KEY: 'tk:ts', APOLLO_API_KEY: 'apollo-key' });
@@ -365,7 +367,7 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(hits.some((h) => h.startsWith('/apollo/'))).toBe(false);
     expect((await rule('on', 10)).status).toBe(200);
     const apollo = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' });
-    expect(apollo.content).toContain('People at limitless.exchange (apollo, 2 credit(s) spent):');
+    expect(apollo.content).toContain('People at limitless.exchange (apollo, 2 credit(s) spent), top first:');
     expect(apollo.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — verified by apollo; their profile: https://www.linkedin.com/in/dima-h');
     expect(apollo.content).not.toContain('ann@limitless.exchange');
     expect(apollo.content).not.toContain('apollo-key');
@@ -432,6 +434,13 @@ describe('GATHERING through the real stack (gnosis)', () => {
     const calls = hits.filter((h) => h.startsWith('/hunter/domain-search')).length;
     expect(await act('merc', { type: 'sales/contacts', domain: 'nmkr.io' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/Hunter already said it holds no named person at nmkr\.io \(4 general addresses\) — no credit was spent/) });
     expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).length).toBe(calls);
+    // A PULL OF SEVERAL COMPANIES AT ONCE: each looked up top first, the empty one never asked, one credit a company that held somebody.
+    const pull = await act('merc', { type: 'sales/contacts', domains: ['limitless.exchange', 'yo.xyz', 'nmkr.io'] });
+    expect(pull.status, pull.error).toBe('ok');
+    expect(pull.content).toMatch(/^2 companies looked up, 1 credit\(s\) spent\.\nPeople at limitless\.exchange \(hunter, 1 credit\(s\) spent\), top first:\n- 0\. Dima Horshkov/);
+    expect(pull.content).toContain('hunter holds nobody at yo.xyz');
+    expect(pull.content).toContain('Not asked (Hunter holds no named person there, no credit spent): nmkr.io (4 general addresses).');
+    expect(await act('merc', { type: 'sales/contacts', domains: Array.from({ length: 11 }, (_, i) => `c${i}.io`) })).toMatchObject({ status: 'error', error: expect.stringMatching(/at most 10 companies a lookup/) });
     expect((await request(app).post('/api/v1/revenue/lead-engine/spend').send({ mode: 'on', cap: 1 })).status).toBe(401);
     // Off again: nothing more is spent.
     expect((await rule('off', 10)).body.rule).toMatchObject({ mode: 'off', on: false });

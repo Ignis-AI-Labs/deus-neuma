@@ -16,6 +16,7 @@ import { spendLine, spendState } from './lead-spend.js';
 import { outboxText, readOutbox } from './email-outbox.js';
 import { LEAD_KINDS, UNSORTED, kindOf, sourceOf } from '../leads/lead-ledger.js';
 import { foldContacts, contactLine } from './contact-book.js';
+import { peopleByCompany, TOP_FIRST_RULE } from './top-first.js';
 
 const LIST_CAP = 8;
 const HOW = 'How: read the house\'s own site and its competitors\', then file an audience with sales/segment (the operator approves each pitch). For a segment, gather companies in bulk with sales/gather when the LEAD SOURCES switch is on, or search the web for companies that fit; read each one\'s own pages, and file them with sales/prospect, every sign of fit scored with why. From an APPROVED segment, put a weak or strong match on the ledger with sales/lead, using an address you read on a real page. Write with email/send: the mailbox records each email on the lead itself, and a reply marks it replied. Anyone who asks to be left alone goes on sales/suppress at once.';
@@ -80,10 +81,11 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     .filter((p) => p.stage === 'found' && p.match >= 2 && approved.has(p.segmentId))
     .sort((a, b) => b.match - a.match || mean(b) - mean(a))
     .slice(0, LIST_CAP);
-  const due = upkeepDue({ leads, now, suppressed: suppressionMatcher(suppressions).email });
+  const due = upkeepDue({ leads, now, suppressed: suppressionMatcher(suppressions).email, held: peopleByCompany(lookups) });
   return [
     '## LEAD ENGINE — find them, score them, keep the ledger clean',
     HOW,
+    TOP_FIRST_RULE,
     FIRST_EMAIL,
     ...factLines(facts),
     ...(spend ? [spendLine(spend)] : []),
@@ -93,7 +95,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     ...(waiting.length ? [`Candidates gathered, waiting for your score (${waiting.length}; sales/prospect for the ones that fit, sales/contacts for their people):`, ...waiting.slice(0, LIST_CAP).map((c) => `- [${c.id}] ${candidateLine(c)}`)] : []),
     ...(ready.length ? ['Ready for the ledger (approved segment, not yet contacted):', ...ready.map((p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]}, ${p.people.length} person(s) read`)] : []),
     ...(due.length
-      ? [`Upkeep due (${due.length}):`, ...due.slice(0, LIST_CAP * 2).map((d) => `- ${d.kind.toUpperCase()} [${d.leadId.slice(0, 8)}] ${d.name}${d.kind === 'answer' ? `, waiting ${d.hours} h${d.promised ? `, you promised: "${d.promised}"` : ''}` : (d.days ? `, ${d.days} days` : '')}${d.with ? ` (same as [${d.with.slice(0, 8)}])` : ''} — ${UPKEEP_ASK[d.kind]}`)]
+      ? [`Upkeep due (${due.length}):`, ...due.slice(0, LIST_CAP * 2).map((d) => `- ${d.kind.toUpperCase()} [${d.leadId.slice(0, 8)}] ${d.name}${d.kind === 'answer' ? `, waiting ${d.hours} h${d.promised ? `, you promised: "${d.promised}"` : ''}` : (d.days ? `, ${d.days} days` : '')}${d.with ? ` (same as [${d.with.slice(0, 8)}])` : ''} — ${UPKEEP_ASK[d.kind]}${d.next ? `: ${d.next.name}, ${d.next.role} — ${d.next.email} (at ${d.domain}; found on ${d.next.sourceUrl ?? 'the lookup'})` : ''}`)]
       : ['Upkeep: nothing due on the ledger.']),
     ...(kindLines(leads).length ? ['The lead list, by what each lead is to the house (sales/kind re-files one; sales/mail-scan finds people who wrote in and are on no list; sales/inbound files one of them):', ...kindLines(leads), sourceLine(leads)] : ['Nobody is on the lead list. People who wrote to the house on their own are found with sales/mail-scan and filed with sales/inbound.']),
     contactLine(foldContacts({ leads, prospects, lookups, suppressions, segments, candidates })),

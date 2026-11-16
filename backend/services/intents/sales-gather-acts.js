@@ -21,6 +21,7 @@ import { isConnectionOn } from '../connections/connection-switches.js';
 import { resolveUsableCredential } from '../oauth-token-broker.js';
 import { LEAD_SOURCES, GATHER_MAX, INDEX_GATHER_MAX, candidateLine } from '../sales/lead-sources.js';
 import { DISCOVER_MAX, previewDiscover, industryRefusal, heldWords } from '../sales/hunter-discover.js';
+import { topFirst } from '../sales/top-first.js';
 import { readAudienceSites } from '../sales/site-reads.js';
 import { READ_MAX, siteLine } from '../sales/company-reader.js';
 import { SIZES, trafficOf, trafficLoaded, trafficWords } from '../sales/company-index.js';
@@ -124,22 +125,32 @@ const salesDiscoverIntent = Object.freeze({
   },
 });
 
+// One person as the seat reads them: rank, name, role, address, and where the address stands.
+const personLine = (p, i, by) => `- ${i}. ${p.name}, ${p.role}${p.seniority ? ` (${p.seniority}${p.department ? `, ${p.department}` : ''})` : ''} — ${p.email}${p.checked === 'valid' ? ' (the address exists: checked)' : p.checked ? ` (${p.checked})` : ''} — ${p.basis === 'verified' ? `verified by ${by}; their profile: ${p.sourceUrl}` : `found on ${p.sourceUrl}`}`;
+const CONTACTS_MAX = 10;
+
 const salesContactsIntent = Object.freeze({
   name: 'sales/contacts',
   policyTool: 'sales.contacts',
-  fieldsForPrompt: `{domain, source?: ${PEOPLE_SOURCES.map(([id]) => `"${id}"`).join(' | ')}}`,
-  descriptionForPrompt: `THE LEAD ENGINE. The people at one company you gathered or pooled, each with their address and where it comes from, from a contact-data provider your operator attached (${PEOPLE_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}). IT SPENDS YOUR OPERATOR'S CREDITS, so it runs only while your briefing's PAID LEAD DATA line says ON, and within the month's limit. Use what is free first. source: which attached provider to ask (left out: the cheapest attached; when one holds nobody, try the next). Use a returned address in sales/lead with its page as emailSource. With no provider attached, read the address on the company's own pages.`,
+  fieldsForPrompt: `{domain | domains: [up to ${CONTACTS_MAX}], source?: ${PEOPLE_SOURCES.map(([id]) => `"${id}"`).join(' | ')}}`,
+  descriptionForPrompt: `THE LEAD ENGINE. The people at companies you gathered or pooled (one, or up to ${CONTACTS_MAX} at once: domains), each with their address and where it comes from, TOP FIRST: the company's decision makers are asked for first, and each list starts with the founder or chief executive. From a contact-data provider your operator attached (${PEOPLE_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}). IT SPENDS YOUR OPERATOR'S CREDITS (one a company that has somebody), so it runs only while your briefing's PAID LEAD DATA line says ON, and within the month's limit. Pull the companies Hunter's search says hold people (it counts them for free). source: which attached provider to ask (left out: the cheapest attached; when one holds nobody, try the next). Use a returned address in sales/lead with its page as emailSource — the top person first. With no provider attached, read the address on the company's own pages.`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
     if (!context) return officerRefusal;
     if (!isConnectionOn('lead-sources')) return offRefusal;
-    const domain = String(payload?.domain ?? '').trim().toLowerCase();
+    const asked = [...new Set([payload?.domain, ...(Array.isArray(payload?.domains) ? payload.domains : [])].map((d) => String(d ?? '').trim().toLowerCase()).filter(Boolean))];
+    if (!asked.length) return invalid(`domain: the company to look up (or domains: up to ${CONTACTS_MAX})`);
+    if (asked.length > CONTACTS_MAX) return invalid(`at most ${CONTACTS_MAX} companies a lookup — ${asked.length} were named`);
     const [candidates, prospects] = await Promise.all([readCandidates(context.wallet), readProspects(context.wallet)]);
-    const scored = prospects.some((p) => p.domain === domain);
-    if (!candidates.some((c) => c.domain === domain) && !scored) return invalid(`"${domain}" is not a company you gathered or pooled — contacts are looked up only for the house's own candidates`);
-    const held = candidates.find((c) => c.domain === domain)?.hunterEmails;
-    if (held && !held.personal && (!payload?.source || payload.source === 'hunter')) return { ok: false, status: 'denied', reason: `Hunter already said it holds no named person at ${domain} (${held.generic} general address${held.generic === 1 ? '' : 'es'}) — no credit was spent. Read the company's own pages with sales/read-sites, or name another provider.` };
+    const strangers = asked.filter((d) => !candidates.some((c) => c.domain === d) && !prospects.some((p) => p.domain === d));
+    if (strangers.length) return invalid(`${strangers.map((d) => `"${d}"`).join(', ')} ${strangers.length === 1 ? 'is not a company' : 'are not companies'} you gathered or pooled — contacts are looked up only for the house's own candidates`);
+    // Hunter already said (for free) where it holds nobody with a name: those cost nothing and are not asked.
+    const byHunter = !payload?.source || payload.source === 'hunter';
+    const empty = byHunter ? asked.filter((d) => { const held = candidates.find((c) => c.domain === d)?.hunterEmails; return held && !held.personal; }) : [];
+    const domains = asked.filter((d) => !empty.includes(d));
+    const emptyWords = (d) => { const held = candidates.find((c) => c.domain === d).hunterEmails; return `${d} (${held.generic} general address${held.generic === 1 ? '' : 'es'})`; };
+    if (!domains.length) return { ok: false, status: 'denied', reason: `Hunter already said it holds no named person at ${empty.map(emptyWords).join(', ')} — no credit was spent. Read the company's own pages with sales/read-sites, or name another provider.` };
     const all = await attachedProviders();
     if (!all.length) return { ok: false, status: 'denied', reason: `no contact-data provider is attached — the operator adds a key (${PEOPLE_SOURCES.map(([, s]) => s.label).join('; ')}) in SETTINGS, API, Service keys; until then read the address on the company's own pages` };
     const named = String(payload?.source ?? '').trim();
@@ -147,17 +158,32 @@ const salesContactsIntent = Object.freeze({
     if (!attached) return invalid(`source: one of the providers your operator attached (${all.map((a) => a.id).join(', ')})`);
     // Money: nothing paid runs until the operator has said when it may, and never past the month's cap.
     const [rule, lookups] = await Promise.all([readSpend(context.wallet), readContactLookups(context.wallet)]);
-    const refusal = spendRefusal({ rule, spent: spentThisMonth(lookups, Date.now()), cost: attached.source.cost });
+    const refusal = spendRefusal({ rule, spent: spentThisMonth(lookups, Date.now()), cost: attached.source.cost * domains.length });
     if (refusal) return { ok: false, status: 'denied', reason: refusal };
-    return { ok: true, value: { context, domain, attached } };
+    return { ok: true, value: { context, domains, empty: empty.map(emptyWords), attached } };
   },
-  summarize: (payload) => `contacts at ${payload?.domain ?? '?'}${payload?.source ? ` from ${payload.source}` : ''}`,
-  execute: async ({ context, domain, attached }, { signal } = {}) => {
-    const found = await attached.source.contacts({ domain, apiKey: attached.apiKey, signal });
-    if (!found.ok) return { ok: false, reason: `The contacts could not be read from ${attached.id}: ${found.detail}.` };
-    await noteContacts(context.wallet, domain, attached.id, found.people, context.laneId, found.spent);
-    if (!found.people.length) return { ok: true, detail: `${attached.id} holds nobody at ${domain} with a role and an address it can stand behind (${found.spent} credit(s) spent). Read the company's own pages, or ask another attached provider with source.` };
-    return { ok: true, detail: [`People at ${domain} (${attached.id}, ${found.spent} credit(s) spent):`, ...found.people.map((p, i) => `- ${i}. ${p.name}, ${p.role}${p.seniority ? ` (${p.seniority}${p.department ? `, ${p.department}` : ''})` : ''} — ${p.email}${p.checked === 'valid' ? ' (the address exists: checked)' : p.checked ? ` (${p.checked})` : ''} — ${p.basis === 'verified' ? `verified by ${attached.id}; their profile: ${p.sourceUrl}` : `found on ${p.sourceUrl}`}`), 'File the ones you will write to under people in sales/prospect, then sales/lead with the address and the page above as emailSource.'].join('\n') };
+  summarize: (payload) => `contacts at ${payload?.domain ?? (Array.isArray(payload?.domains) ? payload.domains.join(', ') : '?')}${payload?.source ? ` from ${payload.source}` : ''}`,
+  execute: async ({ context, domains, empty = [], attached }, { signal } = {}) => {
+    const blocks = [];
+    let spent = 0;
+    for (const domain of domains) {
+      const found = await attached.source.contacts({ domain, apiKey: attached.apiKey, signal });
+      // One company that could not be read is the act's failure; among several, it is one line.
+      if (!found.ok && domains.length === 1) return { ok: false, reason: `The contacts could not be read from ${attached.id}: ${found.detail}.` };
+      if (!found.ok) { blocks.push(`${domain}: could not be read from ${attached.id}: ${found.detail}.`); continue; }
+      await noteContacts(context.wallet, domain, attached.id, found.people, context.laneId, found.spent);
+      spent += found.spent;
+      const people = topFirst(found.people);
+      blocks.push(people.length
+        ? [`People at ${domain} (${attached.id}, ${found.spent} credit(s) spent), top first:`, ...people.map((p, i) => personLine(p, i, attached.id))].join('\n')
+        : `${attached.id} holds nobody at ${domain} with a role and an address it can stand behind (${found.spent} credit(s) spent). Read the company's own pages, or ask another attached provider with source.`);
+    }
+    return { ok: true, detail: [
+      ...(domains.length > 1 ? [`${domains.length} companies looked up, ${spent} credit(s) spent.`] : []),
+      ...blocks,
+      ...(empty.length ? [`Not asked (Hunter holds no named person there, no credit spent): ${empty.join(', ')}.`] : []),
+      'Write to the top person first: file them under people in sales/prospect, then sales/lead with the address and the page above as emailSource. If they never answer, the upkeep names the next one at the company.',
+    ].join('\n').slice(0, 9000) };
   },
 });
 

@@ -25,7 +25,7 @@ const ROW_STATUS = Object.freeze({ cold: 'NOT WRITTEN TO', replied: 'THEY WROTE'
 export const rowStatus = (lead) => ROW_STATUS[lead.status] ?? statusWords(lead);
 
 /** What is due on a person, short enough for their row (the long form is the chip's hover). */
-export const DUE_SHORT = Object.freeze({ suppressed: 'ON DO-NOT-CONTACT — CLOSE IT', sort: 'SORT IT', answer: 'ANSWER OWED', 'follow-up': 'FOLLOW-UP DUE', 'close-out': 'NO REPLY × 3 — CLOSE IT', duplicate: 'DUPLICATE', stale: 'UNTOUCHED 2 WEEKS', unreachable: 'NO WAY TO REACH' });
+export const DUE_SHORT = Object.freeze({ suppressed: 'ON DO-NOT-CONTACT — CLOSE IT', sort: 'SORT IT', answer: 'ANSWER OWED', 'follow-up': 'FOLLOW-UP DUE', 'next-up': 'NO REPLY × 3 — NEXT PERSON UP', 'close-out': 'NO REPLY × 3 — CLOSE IT', duplicate: 'DUPLICATE', stale: 'UNTOUCHED 2 WEEKS', unreachable: 'NO WAY TO REACH' });
 
 /** How sure an address is, as one word for a row. */
 export const PROOF_SHORT = Object.freeze({ none: 'NO ADDRESS', published: 'ON A PAGE', verified: 'VERIFIED', confirmed: 'CONFIRMED', bounced: 'BOUNCED' });

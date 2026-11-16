@@ -1,8 +1,10 @@
 // LEAD UPKEEP — the maintenance half of the lead engine: what on the house's
 // lead ledger needs a hand today, most urgent first. A lead that replied waits
 // on an answer; a contacted lead with no reply is due a follow-up, until the
-// sequence runs out and it is closed as no reply (who wrote last is read
-// from each touch's direction, which the mailbox records itself); a lead
+// sequence runs out and it is closed as no reply — and when the house holds
+// someone else at that company, the next one up is named to write to instead
+// (top-first.js: the top first, then down the team); who wrote last is read
+// from each touch's direction, which the mailbox records itself; a lead
 // nobody touched in two weeks has gone stale; two leads with one address are one person; a lead on
 // the do-not-contact list is closed. The ledger records what IS — this reads
 // it and says what is due; nothing here moves a lead.
@@ -11,6 +13,7 @@
 import { normalizeEmail } from './suppress-shape.js';
 import { promiseOf } from './first-email.js';
 import { kindOf, UNSORTED } from '../leads/lead-ledger.js';
+import { nextUp, domainOfAddress } from './top-first.js';
 
 export const FOLLOW_UP_DAYS = 3;
 // The first email and two follow-ups.
@@ -19,7 +22,7 @@ export const STALE_DAYS = 14;
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 const OPEN = new Set(['cold', 'contacted', 'replied', 'qualified']);
-const ORDER = ['suppressed', 'sort', 'answer', 'follow-up', 'close-out', 'duplicate', 'stale', 'unreachable'];
+const ORDER = ['suppressed', 'sort', 'answer', 'follow-up', 'next-up', 'close-out', 'duplicate', 'stale', 'unreachable'];
 
 // pure — the moment the lead last moved, and how many times the house wrote
 // to it: a touch marked out, or (before touches carried a direction) one
@@ -35,8 +38,8 @@ export const theyWroteLast = (lead) => {
   return last ? last.direction === 'in' : lead.status === 'replied';
 };
 
-// pure — the one item due on this lead, or null.
-const dueOn = (lead, now, suppressed) => {
+// pure — the one item due on this lead, or null. `next` names whom to write to at the lead's company once it ran out of touches.
+const dueOn = (lead, now, suppressed, next = () => null) => {
   const days = Math.floor((now - lastAt(lead)) / DAY_MS);
   if (lead.contact && suppressed(lead.contact)) return { kind: 'suppressed', days };
   // Before anything else is done with a lead, someone says what it is: nobody is worked as a buyer by default.
@@ -45,7 +48,10 @@ const dueOn = (lead, now, suppressed) => {
   if (theyWroteLast(lead)) return { kind: 'answer', days, hours: Math.floor((now - lastAt(lead)) / HOUR_MS), promised: promiseOf(lead) };
   // The follow-up sequence is a sales cadence: it runs for buyers only. Anyone else is answered, never chased.
   if (lead.status === 'contacted' && days >= FOLLOW_UP_DAYS && kindOf(lead) === 'buyer') {
-    return contactTouches(lead) >= MAX_TOUCHES ? { kind: 'close-out', days } : { kind: 'follow-up', days, touches: contactTouches(lead) };
+    if (contactTouches(lead) < MAX_TOUCHES) return { kind: 'follow-up', days, touches: contactTouches(lead) };
+    // Silence from the top is not a closed company: the next person up at it is named, when the house holds one.
+    const after = next(lead);
+    return after ? { kind: 'next-up', days, next: after, domain: domainOfAddress(lead.contact) } : { kind: 'close-out', days };
   }
   if (days >= STALE_DAYS) return { kind: 'stale', days };
   if (lead.status === 'cold' && !lead.contact) return { kind: 'unreachable', days };
@@ -54,13 +60,16 @@ const dueOn = (lead, now, suppressed) => {
 
 /**
  * What is due on the ledger, most urgent first.
- * @param {{leads: object[], now: number, suppressed?: (contact: string) => boolean}} state
+ * @param {{leads: object[], now: number, suppressed?: (contact: string) => boolean, held?: Map<string, object[]>}} state
+ *   held: everyone the house holds at each company, top first (top-first.js peopleByCompany)
  * @returns {Array<{kind: string, leadId: string, name: string, days: number, hours?: number, promised?: ?string, touches?: number, with?: string}>}
  */
-export const upkeepDue = ({ leads, now, suppressed = () => false }) => {
+export const upkeepDue = ({ leads, now, suppressed = () => false, held = new Map() }) => {
   const open = leads.filter((l) => OPEN.has(l.status));
+  const onLedger = new Set(leads.map((l) => normalizeEmail(l.contact)).filter(Boolean));
+  const next = (lead) => nextUp(lead, held, onLedger, suppressed);
   const items = open.flatMap((lead) => {
-    const due = dueOn(lead, now, suppressed);
+    const due = dueOn(lead, now, suppressed, next);
     return due ? [{ ...due, leadId: lead.id, name: lead.name || lead.contact || 'unnamed', leadKind: kindOf(lead) }] : [];
   });
   const firstByEmail = new Map();
@@ -80,6 +89,7 @@ export const UPKEEP_ASK = Object.freeze({
   sort: 'not sorted yet: say what they are to the house with sales/kind (several at once in one filing), from what their own words show',
   answer: 'they replied: answer it today — send exactly what you promised, then one clear next step',
   'follow-up': 'no reply yet: one short follow-up that adds something new, or close it',
+  'next-up': `no reply after ${MAX_TOUCHES} emails: close it as lost (no reply), and write to the next person at their company, named here, top first`,
   'close-out': `no reply after ${MAX_TOUCHES} emails: close it as lost (no reply)`,
   duplicate: 'the same person as another lead: keep one, remove the other',
   stale: 'untouched for two weeks: move it, or close it and say why',

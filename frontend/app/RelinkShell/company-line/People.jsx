@@ -44,7 +44,7 @@ const columnsFor = ({ kinds, busy, onKind }) => [
   { head: 'STANDS', cell: (r) => (r.lead ? rowStatus(r.lead) : null), attrs: (r) => ({ 'data-lead-status': r.lead?.status }) },
   { head: 'FROM', cell: (r) => (r.lead ? sourceWords(r.lead.channel) : null), attrs: (r) => ({ 'data-lead-source': r.lead?.channel }) },
   { head: 'DUE', tone: (r) => (r.due.length ? 'alert' : null), cell: (r) => (r.due.length
-    ? r.due.map((d) => <span key={d.kind} data-upkeep={d.kind} title={[UPKEEP_WORDS[d.kind], promisedOf(r) ? `PROMISED: ${promisedOf(r)}` : null].filter(Boolean).join(' — ')}>{DUE_SHORT[d.kind] ?? UPKEEP_WORDS[d.kind]}{upkeepAge(d)} </span>)
+    ? r.due.map((d) => <span key={d.kind} data-upkeep={d.kind} title={[UPKEEP_WORDS[d.kind], d.next ? `NEXT: ${d.next.name}, ${d.next.role} (${d.next.email})` : null, promisedOf(r) ? `PROMISED: ${promisedOf(r)}` : null].filter(Boolean).join(' — ')}>{DUE_SHORT[d.kind] ?? UPKEEP_WORDS[d.kind]}{upkeepAge(d)} </span>)
     : null) },
 ];
 const Note = ({ r }) => {

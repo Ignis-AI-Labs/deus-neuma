@@ -20,6 +20,7 @@
 // The parsing is PURE; every lookup is impure (network), never throws.
 
 import process from 'node:process';
+import { rankOf } from './top-first.js';
 
 export const HUNTER_URL = 'https://api.hunter.io/v2';
 export const TOMBA_URL = 'https://api.tomba.io/v1';
@@ -43,7 +44,8 @@ export const peopleOfHunter = (answer) => whole((answer?.data?.emails ?? []).map
   sourceUrl: (e.sources ?? []).map((s) => https(s?.uri)).find(Boolean) ?? null,
   // What else Hunter says about the person: how senior, which department, whether it has confirmed the address exists.
   seniority: e.seniority || null, department: e.department || null, checked: e.verification?.status || null, linkedin: https(e.linkedin) ?? null,
-})).sort((x, y) => Number(y.checked === 'valid') - Number(x.checked === 'valid') || Number(y.seniority === 'executive') - Number(x.seniority === 'executive')));
+  decisionMaker: e.decision_maker === true,
+}))).sort((x, y) => rankOf(x) - rankOf(y) || Number(y.checked === 'valid') - Number(x.checked === 'valid')); // TOP FIRST (top-first.js)
 
 /** pure — Tomba's answer, the same law: a name, a role, an address, and the page it stands on. */
 export const peopleOfTomba = (answer) => whole((answer?.data?.emails ?? []).map((e) => ({
@@ -80,9 +82,13 @@ export const hunterContacts = ({ domain, apiKey, baseUrl = urlOf('HUNTER', HUNTE
   // Only named people with a role are asked for: Hunter counts a search only when it returns something, so a
   // company where it holds nobody the house could write to costs no credit (2026-11-16: every lookup used to
   // ask for everything, pay, and then throw the nameless addresses away).
-  const got = await ask(`${baseUrl}/domain-search?domain=${encodeURIComponent(domain)}&type=personal&required_field=full_name,position&limit=10&api_key=${encodeURIComponent(apiKey)}`, { signal });
+  // THE TOP FIRST (Design note, 2026-11-16: […]): the company's decision makers are
+  // asked for first; only when Hunter holds none (which costs nothing) is everyone named asked for.
+  const search = (extra) => ask(`${baseUrl}/domain-search?domain=${encodeURIComponent(domain)}&type=personal&required_field=full_name,position&limit=10${extra}&api_key=${encodeURIComponent(apiKey)}`, { signal });
+  const top = await search('&decision_maker=true');
+  const got = (top?.data?.emails ?? []).length ? top : await search('');
   const people = peopleOfHunter(got).map((p) => ({ ...p, basis: 'published' }));
-  return { ok: true, people, spent: (got?.data?.emails ?? []).length ? 1 : 0 };
+  return { ok: true, people, spent: (got?.data?.emails ?? []).length ? 1 : 0, deciders: got === top };
 });
 
 /** Tomba takes a key and a secret: the operator saves them together as `key:secret`. */

@@ -14,6 +14,7 @@ import express from 'express';
 import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readContactPeople, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign, readAddressChecks } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
+import { peopleByCompany } from '../services/sales/top-first.js';
 import { makeCampaign, campaignBoard, leadOrigins } from '../services/sales/campaign-shape.js';
 import { listCompanies } from '../services/marketing/companies.js';
 import { leadLedgerFor, LEAD_KINDS, kindOf, sourceOf } from '../services/leads/lead-ledger.js';
@@ -36,14 +37,15 @@ router.get('/', async (req, res) => {
       readSegments(wallet), readProspects(wallet), readSuppressions(wallet), leadLedgerFor(wallet).then((l) => l.load()), readSalesFacts(wallet), readCandidates(wallet),
     ]);
     const [campaigns, companies] = await Promise.all([readCampaigns(wallet), listCompanies(wallet).catch(() => [])]);
-    const upkeep = upkeepDue({ leads, now: Date.now(), suppressed: suppressionMatcher(suppressions).email });
+    const lookups = await readContactPeople(wallet);
+    const upkeep = upkeepDue({ leads, now: Date.now(), suppressed: suppressionMatcher(suppressions).email, held: peopleByCompany(lookups) });
     const spend = { ...(await spendState(wallet)), modes: SPEND_MODES };
     // The lead list itself, each lead under what it is to the house (a buyer, an applicant, a partner, …).
     // …and tied to the campaign and the audience that found it, so the sheet says who is being written to for what.
     const origins = leadOrigins({ campaigns, segments, prospects, leads });
     const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null, origin: origins.get(l.id) ?? null }));
     // The contact book: every person the house knows, one record each, read from the records above.
-    const contacts = foldContacts({ leads, prospects, lookups: await readContactPeople(wallet), suppressions, segments, candidates, checks: await readAddressChecks(wallet) });
+    const contacts = foldContacts({ leads, prospects, lookups, suppressions, segments, candidates, checks: await readAddressChecks(wallet) });
     const outbox = await readOutbox(wallet);
     res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, outbox: { review: outbox.review, drafts: outbox.drafts.slice(0, 200) }, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
