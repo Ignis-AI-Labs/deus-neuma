@@ -30,6 +30,7 @@ export const KIND_LABEL = Object.freeze({
   'sales-facts': 'FACTS',
   'sales-audience': 'AUDIENCE',
   'sales-list': 'LEAD LIST',
+  'sales-email': 'EMAILS TO REVIEW',
   'business-model': 'BUSINESS MODEL',
 });
 

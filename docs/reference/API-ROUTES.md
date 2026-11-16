@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-718 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+723 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
 
 ## /api/v1/accounts
 
@@ -700,6 +700,10 @@
 | POST | `/api/v1/revenue/lead-engine/facts/:sheetId` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/facts/:sheetId/fact` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/:id` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/:id/return` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/review` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/send` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/list` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/read-sites` | `mapLaneQueryToken`, `requireAuth` |
@@ -1146,6 +1150,7 @@
 | GET | `/api/v1/workspace/:id/self-check` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
 | POST | `/api/v1/workspace/:id/self-check` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
 | GET | `/api/v1/workspace/:id/session-search` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/workspace/:id/session-threads` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/workspace/:id/sessions` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/workspace/:id/sessions/:sessionId` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/workspace/:id/sessions/:sessionId/turns/:turnId` | `mapLaneQueryToken`, `requireAuth` |

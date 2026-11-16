@@ -33,6 +33,7 @@ import { linePlace, leaseKind, withLineKind } from './substrate-lease.js';
 import { listingRoom } from './read-room.js';
 import { sendToolEvent } from './portal-tools/tool-events.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
+import { noteSubChat } from './chat-threads.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('ShadowClone');
@@ -191,7 +192,11 @@ export const handleShadowClone = async (connection, args) => {
             if (state === 'running' && !admitted) { admitted = true; running += 1; together = Math.max(together, running); }
             tell({ type: 'clone:state', index, state: state === 'running' ? 'working' : 'waiting', position: position ?? null });
           },
-          onSession: (sessionId) => tell({ type: 'clone:state', index, sessionId }),
+          onSession: (sessionId) => {
+            tell({ type: 'clone:state', index, sessionId });
+            // The clone's sitting is a chat of its own: filed under the chat it was split from (chat-threads.js).
+            noteSubChat(laneId, { child: sessionId, parent: connection.sessionId, kind: 'clone', title: `Clone ${index}: ${task.title}` });
+          },
           onText: (chunk) => tell({ type: 'clone:text', index, chunk }),
           onTool: (event) => {
             const act = { tool: event.tool, status: event.status, summary: event.summary ?? '' };

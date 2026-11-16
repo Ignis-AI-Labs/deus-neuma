@@ -28,7 +28,7 @@ const WETH = '0x4200000000000000000000000000000000000006';
 const TRANSFER_LIMIT = 100_000_000n;
 const INITIAL_USDC = 1_000_000_000n;
 let fork; let provider; let treasury; let agent; let attacker; let safe; let roles; let safeAddress; let rolesAddress; let usdc; let vault; let swapPool;
-let root; let originalRoot; let connections;
+let root; let originalRoot; let connections; let rolesDeployedBlock; let rolesInitializedBlock;
 
 const applyOwnerTransaction = async (transaction) => {
   const nonce = await provider.send('eth_getTransactionCount', [treasury.address, 'pending']);
@@ -75,6 +75,8 @@ beforeAll(async () => {
   safe = await deploySafe({ provider, owner: treasury });
   safeAddress = await safe.getAddress();
   roles = await deployRoles({ provider, owner: treasury, safe });
+  rolesDeployedBlock = roles.deploymentBlock;
+  rolesInitializedBlock = roles.initializedBlock;
   rolesAddress = await roles.getAddress();
   const enabled = await safeCall({
     to: safeAddress,
@@ -92,7 +94,7 @@ beforeAll(async () => {
     transferLimit: TRANSFER_LIMIT, approvalLimit: 200_000_000n,
   });
   for (const transaction of configuration) await applyOwnerTransaction(transaction);
-  vault = await registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: treasury.address }, provider);
+  vault = await registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: treasury.address, rolesDeployedBlock, rolesInitializedBlock }, provider);
 }, 180000);
 
 afterAll(async () => {
@@ -117,18 +119,33 @@ describe.skipIf(!ASKED)('a compromised agent key against canonical Safe and Role
   });
 
   test('registration refuses a treasury that is not a Safe owner', async () => {
-    await expect(registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: attacker.address }, provider)).rejects.toThrow(/treasuryOwner/);
+    await expect(registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: attacker.address, rolesDeployedBlock, rolesInitializedBlock }, provider)).rejects.toThrow(/treasuryOwner/);
     expect((await readAgentVault(LANE)).treasury).toBe(treasury.address);
+  });
+
+  test('registration rejects a block without the Safe’s Roles deployment event', async () => {
+    await expect(registerAgentVault(LANE, {
+      safe: safeAddress, roles: rolesAddress, treasury: treasury.address, rolesDeployedBlock, rolesInitializedBlock: rolesInitializedBlock - 1,
+    }, provider)).rejects.toThrow(/deployment event/);
   });
 
   test('registration refuses a Safe with an additional module and recovers after it is removed', async () => {
     const safeInterface = new ethers.Interface(SAFE_ABI);
     const enabled = await safeCall({ to: safeAddress, data: safeInterface.encodeFunctionData('enableModule', [attacker.address]) });
     expect(enabled.status).toBe(1);
-    await expect(registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: treasury.address }, provider)).rejects.toThrow(/onlyRolesModule/);
+    await expect(registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: treasury.address, rolesDeployedBlock, rolesInitializedBlock }, provider)).rejects.toThrow(/onlyRolesModule/);
     const disabled = await safeCall({ to: safeAddress, data: safeInterface.encodeFunctionData('disableModule', ['0x0000000000000000000000000000000000000001', attacker.address]) });
     expect(disabled.status).toBe(1);
     expect(await safe.isModuleEnabled(attacker.address)).toBe(false);
+  });
+
+  test('registration rejects an additional active agent role and accepts once that role is revoked', async () => {
+    const extraRole = ethers.id('unexpected-agent-role');
+    const rolesInterface = new ethers.Interface(ROLES_ABI);
+    await applyOwnerTransaction({ to: rolesAddress, data: rolesInterface.encodeFunctionData('assignRoles', [agent.address, [extraRole], [true]]) });
+    await expect(registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: treasury.address, rolesDeployedBlock, rolesInitializedBlock }, provider)).rejects.toThrow(/unexpectedAgentRole/);
+    await applyOwnerTransaction({ to: rolesAddress, data: rolesInterface.encodeFunctionData('assignRoles', [agent.address, [extraRole], [false]]) });
+    await expect(registerAgentVault(LANE, { safe: safeAddress, roles: rolesAddress, treasury: treasury.address, rolesDeployedBlock, rolesInitializedBlock }, provider)).resolves.toMatchObject({ safe: safeAddress });
   });
 
   test('an attacker recipient, ETH send, or delegate call is rejected without moving value', async () => {

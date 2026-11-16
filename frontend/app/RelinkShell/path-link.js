@@ -60,3 +60,29 @@ export const openablePath = (raw, { relative = false } = {}) => {
   return normalized;
 };
 
+// The endings a bare name must carry to be read as a site with no "https://" in front of it. Kept to endings that
+// are not also common file extensions: `notes.md`, `build.sh`, `lib.so`, `main.rs` and `data.json` stay files.
+const SITE_ENDINGS = new Set(['com', 'org', 'net', 'io', 'ai', 'co', 'dev', 'app', 'xyz', 'gov', 'edu', 'info', 'finance', 'exchange', 'fi', 'eu', 'uk', 'de', 'us', 'ca', 'tech', 'cloud', 'gg', 'tv']);
+const HOST = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+([a-z]{2,24})$/i;
+
+/**
+ * The web address a code span names, or null (Design note, 2026-11-16, right-clicking `peopledatalabs.com/data-lab/…` in a
+ * member's words and being offered […]: […]). A span is a web address when its WHOLE content is one: it starts with http:// or https://, or with
+ * www., or its first part is a site name with a well-known ending. It is judged BEFORE the path rule, because a
+ * site with a path after it reads as a relative path otherwise.
+ * @param {unknown} raw - the code span's text content
+ * @returns {string|null} the address with https:// in front, or null
+ */
+export const webAddress = (raw) => {
+  if (typeof raw !== 'string') return null;
+  const text = raw.trim().replace(TRAILING_PUNCT, '');
+  if (text.length < 4 || text.length > 2048 || /[\s<>"'`\\]/.test(text)) return null;
+  const schemed = /^https?:\/\//i.test(text);
+  const rest = schemed ? text.replace(/^https?:\/\//i, '') : text;
+  const host = rest.split(/[/?#]/)[0].replace(/:\d{1,5}$/, '');
+  const ending = HOST.exec(host)?.[1]?.toLowerCase();
+  if (!ending) return null;
+  if (!schemed && !/^www\./i.test(host) && !SITE_ENDINGS.has(ending)) return null;
+  try { return new URL(schemed ? text : `https://${text}`).href; } catch { return null; }
+};
+

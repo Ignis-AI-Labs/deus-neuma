@@ -79,6 +79,8 @@ const LINES = Object.freeze({
   },
   // The member's LP wallet: its portfolio round and the market's events (umbrae-lp/lp-watch.js).
   lp: (i) => lpWakeLine(i),
+  // A wake rule the member set for itself (wake-rules.js): its label, what happened, its own note.
+  rule: (i) => `Your own wake rule${i.detail?.label ? ` "${clip(i.detail.label, 60)}"` : ''} fired [${i.ref}]: ${clip(i.detail?.what, 170) || 'its moment came'}.${i.detail?.note ? ` Your note to yourself: "${clip(i.detail.note, 150)}"` : ''} (house/wake {list: true} shows your rules; change them there.)`,
   'charge-due': (i, now) => `Your charge [${i.detail?.id ?? i.ref}] "${clip(i.detail?.title, 120)}" from ${i.detail?.from ?? 'the Optio'} ${lateWords(i, now) ?? 'reached its due time'} and is still open — finish it, or ack where it stands (staff/ack).`,
   'run-lost': (i) => `Your team run ${i.ref}${i.detail?.name ? ` ("${clip(i.detail.name, 80)}")` : ''} was LOST when the backend stopped${Number.isInteger(i.detail?.completed) ? ` (${i.detail.completed} of ${i.detail.steps} parts done)` : ''}. Decide: pick it up by filing team/run {"resume": "${i.ref}"}, or say why it should not resume.`,
   'plan-verdict': (i) => {

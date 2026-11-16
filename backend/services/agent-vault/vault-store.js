@@ -2,16 +2,19 @@ import path from 'node:path';
 import { ethers } from 'ethers';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { lpSigner, lpWalletAddress } from '../umbrae-lp/lp-wallet.js';
-import { BASE_AGENT_VAULT, SAFE_ABI, ROLES_ABI } from './contracts.js';
+import { AGENT_ROLE_KEY, BASE_AGENT_VAULT, SAFE_ABI, ROLES_ABI } from './contracts.js';
 
+const MAX_ROLE_HISTORY_BLOCKS = 200_000;
 const fileFor = (neumaId) => path.join(neumaWorkspace._path(neumaId), 'config', 'agent-vault.json');
 const validAddress = (value) => typeof value === 'string' && ethers.isAddress(value) && ethers.getAddress(value) !== ethers.ZeroAddress;
+const validBlock = (value) => Number.isSafeInteger(value) && value > 0;
 
 // impure — the lane's encrypted Safe/Roles binding, or null when not configured.
 export const readAgentVault = async (neumaId) => {
   try {
     const record = await neumaWorkspace._readTrustedJSON(fileFor(neumaId));
-    if (record?.version !== 1 || ![record.safe, record.roles, record.treasury, record.agent].every(validAddress)) {
+    if (record?.version !== 1 || ![record.safe, record.roles, record.treasury, record.agent].every(validAddress)
+        || !validBlock(record.rolesDeployedBlock) || !validBlock(record.rolesInitializedBlock)) {
       throw new Error('Agent vault record is invalid');
     }
     return Object.freeze(record);
@@ -21,8 +24,49 @@ export const readAgentVault = async (neumaId) => {
   }
 };
 
+// impure — replay the dedicated proxy's assignments and reject every active role except ours.
+const verifyRoleHistory = async ({ modifier, safe, rolesDeployedBlock, rolesInitializedBlock, agent }) => {
+  const latest = Number(BigInt(await modifier.runner.provider.send('eth_blockNumber', [])));
+  if (!validBlock(rolesDeployedBlock) || !validBlock(rolesInitializedBlock)
+      || rolesInitializedBlock < rolesDeployedBlock || rolesInitializedBlock > latest
+      || latest - rolesDeployedBlock > MAX_ROLE_HISTORY_BLOCKS) {
+    throw new Error('Roles deployment blocks are invalid or too old; deploy a dedicated vault');
+  }
+  const previousCode = await modifier.runner.provider.getCode(await modifier.getAddress(), rolesDeployedBlock - 1);
+  if (previousCode !== '0x') throw new Error('Roles contract already existed before its claimed deployment block');
+  const deployments = await modifier.queryFilter('RolesModSetup', rolesInitializedBlock, rolesInitializedBlock);
+  if (deployments.length !== 1
+      || ethers.getAddress(deployments[0].args.avatar) !== ethers.getAddress(safe)
+      || ethers.getAddress(deployments[0].args.target) !== ethers.getAddress(safe)) {
+    throw new Error('Roles deployment event was not found at the claimed block for this Safe');
+  }
+  const logs = await modifier.runner.provider.getLogs({
+    address: await modifier.getAddress(), fromBlock: rolesDeployedBlock, toBlock: latest,
+  });
+  const events = logs.map((log) => {
+    try {
+      return modifier.interface.parseLog(log);
+    } catch {
+      return null;
+    }
+  }).filter((event) => event?.name === 'AssignRoles');
+  const active = new Set();
+  const wanted = agent.toLowerCase();
+  for (const event of events) {
+    const { module, roleKeys, memberOf } = event.args;
+    if (module.toLowerCase() !== wanted) continue;
+    for (let index = 0; index < roleKeys.length; index += 1) {
+      if (memberOf[index]) active.add(roleKeys[index].toLowerCase());
+      else active.delete(roleKeys[index].toLowerCase());
+    }
+  }
+  if (active.size !== 1 || !active.has(AGENT_ROLE_KEY.toLowerCase())) {
+    throw new Error(`unexpectedAgentRole: ${[...active].join(',')}`);
+  }
+};
+
 // impure — reads the actual Safe and Roles state before a binding can be stored.
-export const verifyAgentVault = async ({ provider, safe, roles, treasury, agent }) => {
+export const verifyAgentVault = async ({ provider, safe, roles, treasury, agent, rolesDeployedBlock, rolesInitializedBlock }) => {
   if (!provider || ![safe, roles, treasury, agent].every(validAddress)) throw new Error('Agent vault addresses are invalid');
   const account = new ethers.Contract(safe, SAFE_ABI, provider);
   const modifier = new ethers.Contract(roles, ROLES_ABI, provider);
@@ -51,16 +95,17 @@ export const verifyAgentVault = async ({ provider, safe, roles, treasury, agent 
   };
   const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
   if (failed.length) throw new Error(`Agent vault verification failed: ${failed.join(', ')}`);
-  return checks;
+  await verifyRoleHistory({ modifier, safe, rolesDeployedBlock, rolesInitializedBlock, agent });
+  return { ...checks, roleHistory: true };
 };
 
 // impure — owner-route registration; the session key must be this lane's LP key.
-export const registerAgentVault = async (neumaId, { safe, roles, treasury }, provider) => {
+export const registerAgentVault = async (neumaId, { safe, roles, treasury, rolesDeployedBlock, rolesInitializedBlock }, provider) => {
   const signer = await lpSigner(neumaId);
   if (!signer) throw new Error('Open the LP wallet before registering its vault.');
-  await verifyAgentVault({ provider, safe, roles, treasury, agent: signer.address });
+  await verifyAgentVault({ provider, safe, roles, treasury, agent: signer.address, rolesDeployedBlock, rolesInitializedBlock });
   const record = Object.freeze({
-    version: 1, chainId: 8453,
+    version: 1, chainId: 8453, rolesDeployedBlock, rolesInitializedBlock,
     safe: ethers.getAddress(safe), roles: ethers.getAddress(roles),
     treasury: ethers.getAddress(treasury), agent: ethers.getAddress(signer.address),
     registeredAt: new Date().toISOString(),

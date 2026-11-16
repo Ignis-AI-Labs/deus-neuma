@@ -35,6 +35,7 @@ const fetchPage = async (url) => {
   served.push(`${u.hostname}${u.pathname}`);
   const res = await fetch(`${base}/${u.hostname}${u.pathname}`, { redirect: 'manual' });
   if (res.status >= 300 && res.status < 400) return fetchPage(res.headers.get('location'));
+  if (res.status === 403) return { ok: false, blocked: true, why: 'it turns automated readers away (answered 403)' };
   return res.status === 200 ? { ok: true, url, html: await res.text() } : { ok: false, why: `it answered ${res.status}` };
 };
 
@@ -43,6 +44,7 @@ beforeAll(async () => {
   server = http.createServer((req, res) => {
     const page = { '/harbor.example/': HOME, '/harbor.example/contact': CONTACT, '/harbor.example/about-us': '<html><body>We are two people.</body></html>', '/bare.example/': '<html><head><title>Bare</title></head><body>hi</body></html>', '/newowner.example/': '<html><head><title>New Owner</title></head><body>x</body></html>' }[req.url];
     if (req.url === '/sold.example/') { res.writeHead(301, { location: 'https://newowner.example/' }); return res.end(); }
+    if (req.url === '/walled.example/') { res.writeHead(403); return res.end('are you human'); }
     if (!page) { res.writeHead(404); return res.end('gone'); }
     res.writeHead(200, { 'content-type': 'text/html' });
     return res.end(page);
@@ -85,6 +87,12 @@ describe('reading a company', () => {
     expect(await readCompanySite('bare.example', { fetchPage })).toMatchObject({ alive: true, description: 'Bare', emails: [], socials: {}, pagesRead: 1 });
     expect(await readCompanySite('sold.example', { fetchPage })).toMatchObject({ alive: true, movedTo: 'newowner.example' });
     expect((await readSites(['harbor.example', 'gone.example', 'bare.example'], { fetchPage, concurrency: 2 })).map((r) => [r.domain, r.site.alive])).toEqual([['harbor.example', true], ['gone.example', false], ['bare.example', true]]);
+    // A site that turns automated readers away is alive and not read: never a dead end (found live 2026-11-16: a busy site answered 403).
+    const walled = await readCompanySite('walled.example', { fetchPage, now: () => 'NOW' });
+    expect(walled).toMatchObject({ alive: true, blocked: true, emails: [], pagesRead: 0 });
+    expect(siteLine('walled.example', walled)).toBe('walled.example — ALIVE, NOT READ: it turns automated readers away (answered 403); open its pages yourself');
+    const [row] = companyRows({ gathered: [{ domain: 'walled.example', name: 'Walled', site: 'https://walled.example', siteRead: walled, trafficRank: 5861 }] });
+    expect([contactShort(row), isDeadEnd(row)]).toEqual(['READ IT BY HAND', false]);
     expect(READ_MAX).toBe(60);
   });
 
@@ -96,7 +104,7 @@ describe('reading a company', () => {
 
 describe('an audience\'s gathered companies are read once, kept, and shown', () => {
   test('the most visited unread ones are read; what was read stays with the company and fills the list', async () => {
-    const row = (domain, name, trafficRank) => ({ source: 'company-index', domain, name, description: '', signal: '1-10 people', categories: ['computer software'], country: 'US', size: '1-10', trafficRank });
+    const row = (domain, name, trafficRank) => ({ source: 'company-index', domain, name, site: `https://${domain}`, description: '', signal: '1-10 people', categories: ['computer software'], country: 'US', size: '1-10', trafficRank });
     await addCandidates(WALLET, 's-1', [row('gone.example', 'Gone', null), row('harbor.example', 'Harbor', 5000), row('bare.example', 'Bare', 90000)], 'merc');
     await addCandidates(WALLET, 's-2', [row('other.example', 'Other Audience', 1)], 'merc');
 
@@ -112,8 +120,10 @@ describe('an audience\'s gathered companies are read once, kept, and shown', () 
     const kept = (await readCandidates(WALLET)).filter((c) => c.segmentId === 's-1');
     const harbor = kept.find((c) => c.domain === 'harbor.example');
     expect(harbor.description).toBe('Harbor builds field apps for marine surveyors: inspections filed from the dock.');
-    expect(harbor.site.emails).toHaveLength(3);
-    expect((await readCandidates(WALLET)).find((c) => c.domain === 'other.example').site).toBeUndefined();
+    expect(harbor.siteRead.emails).toHaveLength(3);
+    // Its web address is still its web address: the reading stands beside it, never over it.
+    expect(harbor.site).toBe('https://harbor.example');
+    expect((await readCandidates(WALLET)).find((c) => c.domain === 'other.example').siteRead).toBeUndefined();
 
     // The list: what it is, how to reach it, and the dead end named and hidden on a press.
     const rows = companyRows({ gathered: kept });

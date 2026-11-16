@@ -13,8 +13,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { renderLatexSymbols } from '../../utils/latex-symbols.js';
 import { softenBreakTags } from '../../utils/markdown-breaks.js';
-import { openablePath } from './path-link.js';
-import { openPathDoor, openPathMenu, pathMenuAnchor } from './path-menu.js';
+import { openablePath, webAddress } from './path-link.js';
+import { openPathDoor, openPathMenu, pathMenuAnchor, openWebLink } from './path-menu.js';
 import { CopyWord } from './copy-word.jsx';
 import { codeBlockText } from './copy-text.js';
 import { isShortCell } from './table-cell.js';
@@ -28,6 +28,24 @@ const PLUGINS = [remarkGfm, remarkDoors];
 
 // A code span whose whole content is a path is a DOOR. Plain click/Enter opens
 // it; right-click or Ctrl/⌘+click raises the existing options (PathOpener.jsx).
+
+// A code span whose whole content is a web address is a LINK: a click opens it in the browser; right-click (or the
+// menu key) offers Open link and Copy link, never the file manager.
+const WebSpan = ({ url, children, node: _node, ...props }) => (
+  <a
+    {...props}
+    className="relink-md-path relink-md-web"
+    href={url}
+    target="_blank"
+    rel="noreferrer noopener"
+    title={`${url}\nClick to open in your browser · Right-click for options`}
+    onClick={(e) => { e.preventDefault(); openWebLink(url); }}
+    onContextMenu={(e) => { e.preventDefault(); openPathMenu(url, e.clientX, e.clientY); }}
+    onKeyDown={(e) => { if (e.key === 'ContextMenu') { e.preventDefault(); openPathMenu(url, ...pathMenuAnchor(e.currentTarget)); } }}
+  >
+    <code>{children}</code>
+  </a>
+);
 
 const PathSpan = ({ path, children, ...props }) => (
   <code
@@ -95,6 +113,9 @@ const COMPONENTS = {
     // A fenced block's text ends in a newline; only a span inside a sentence is a door.
     const door = /\n/.test(String(words)) ? null : recordDoor(words);
     if (door) return <DoorSpan door={door} {...props}>{children}</DoorSpan>;
+    // A web address first: a site with a path after it would otherwise read as a folder on this machine.
+    const web = /\n/.test(String(words)) ? null : webAddress(words);
+    if (web) return <WebSpan url={web} {...props}>{children}</WebSpan>;
     const path = openablePath(words, { relative: true });
     if (!path) return <code {...props}>{children}</code>;
     return <PathSpan path={path} {...props}>{children}</PathSpan>;

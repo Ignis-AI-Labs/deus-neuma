@@ -29,6 +29,8 @@ import { getService } from '../../backend/services/provider-registry.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { campaignStoreFor } from '../../backend/services/marketing/campaign-store.js';
 import { cmoDesignation } from '../../backend/services/marketing/cmo-designation.js';
+import { checkBeforeFirstEmail, mayWrite, checkWords } from '../../backend/services/sales/address-check.js';
+import { readAddressChecks } from '../../backend/services/sales/sales-store.js';
 import { houseCampaigns } from '../../backend/services/positions/campaign-links.js';
 
 const { processToolCalls } = __test;
@@ -103,13 +105,13 @@ describe('paid lead data: the providers and the rule on spending (pure)', () => 
     expect(at({ rule: { on: false, cap: 10 } })).toBe('PAID LEAD DATA is off. Your operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS. Until then read each address on the company\'s own pages');
     expect(at({ spent: 8, cost: 5 })).toMatch(/this month's limit is 10 credit\(s\) and 8 are spent; this lookup may spend 5/);
     expect(spendLine({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatch(/no provider is attached/);
-    expect(spendLine({ rule: { on: true, cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): ON. It is one of the ways you may find a person\'s address. Use what is free first (the company\'s own pages); pay for a lookup when those give none. Spent this month: 4 of 100 credit(s).');
+    expect(spendLine({ rule: { on: true, cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): ON. It is one of the ways you may find a person\'s address. Use what is free first (the company\'s own pages); pay for a lookup when those give none. Spent this month: 4 of 100 credit(s). Hunter\'s company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says.');
     expect(spendLine({ rule: { on: false, cap: 100 }, spent: 0, attached: ['hunter'] })).toContain('OFF. Do not ask for it');
   });
 
   test('on the position\'s SETTINGS it is one row: its name, on or off, its limit and what the month has used', () => {
-    expect(spendSwitch({ rule: { on: true, cap: 250 }, spent: 4, attached: ['hunter', 'tomba'] })).toEqual({ id: 'paid-lead-data', kind: 'spend', on: true, cap: 250, spent: 4, attached: ['hunter', 'tomba'], name: 'Paid lead data (Hunter, Tomba)', whileOff: 'your sales seat reads each address on the company\'s own pages and spends none of your credits' });
-    expect(spendSwitch({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatchObject({ name: 'Paid lead data', on: false, whileOff: 'no provider key is attached yet; add one in Settings, API, Lead data' });
+    expect(spendSwitch({ rule: { on: true, cap: 250 }, spent: 4, attached: ['hunter', 'tomba'] })).toEqual({ id: 'paid-lead-data', kind: 'spend', on: true, cap: 250, spent: 4, attached: ['hunter', 'tomba'], note: null, name: 'Paid lead data (Hunter, Tomba)', whileOff: 'your sales seat reads each address on the company\'s own pages and spends none of your credits' });
+    expect(spendSwitch({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatchObject({ name: 'Paid lead data', on: false, whileOff: 'no provider key is attached yet. A free Hunter account (hunter.io) gives your sales seat a company search that spends nothing and 50 credits a month to look people up; add its key in Settings, API, Lead data' });
     expect([capOk('250'), capOk('2.5'), capOk(''), capOk('-1')]).toEqual([true, false, false, false]);
   });
 });
@@ -135,12 +137,12 @@ describe('the lead sources, read as they answer (pure)', () => {
   });
 
   test('a person is offered only with a name, a role and the page the address was found on', () => {
-    expect(peopleOfHunter(HUNTER)).toEqual([{ name: 'Dima Horshkov', role: 'Chief Product Officer', email: 'dima@limitless.exchange', confidence: 94, sourceUrl: 'https://limitless.exchange/team' }]);
+    expect(peopleOfHunter(HUNTER)).toMatchObject([{ name: 'Dima Horshkov', role: 'Chief Product Officer', email: 'dima@limitless.exchange', confidence: 94, sourceUrl: 'https://limitless.exchange/team' }]);
     expect(peopleOfHunter({})).toEqual([]);
   });
 
   test('free sources come first and need no key; the people source names the operator\'s own key', () => {
-    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['company-index', 'companies', null], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
+    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['company-index', 'companies', null], ['hunter-discover', 'companies', 'hunter'], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
     for (const id of ['hunter', 'tomba', 'apollo']) expect(getService(id), id).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
     // Every paid source says the most one lookup may spend.
     expect(Object.values(LEAD_SOURCES).filter((s) => s.kind === 'people').map((s) => s.cost)).toEqual([1, 1, 5]);
@@ -149,6 +151,7 @@ describe('the lead sources, read as they answer (pure)', () => {
 
 describe('GATHERING through the real stack (gnosis)', () => {
   let me, app, httpServer, wss, serverWs, client, lists, hits;
+  const discoverAsked = [];
   const conn = (neumaId) => ({ ws: serverWs, companion: { name: neumaId, neumaId }, walletAddress: me.address, sessionId: `sess-${neumaId}` });
   const as = (req) => req.set('Authorization', `Bearer ${me.token}`);
   let filed = 0;
@@ -182,6 +185,27 @@ describe('GATHERING through the real stack (gnosis)', () => {
     list.get('/gecko/networks/base/pools', (req, res) => res.json(req.query.page === '1' ? POOLS : { data: [] }));
     list.get('/gecko/networks/base/tokens/:address/info', (req, res) => (INFO[req.params.address] ? res.json(INFO[req.params.address]) : res.status(404).json({})));
     list.get('/llama/protocols', (req, res) => res.json(PROTOCOLS));
+    // Hunter's free company search: a sentence is answered with the filters it was read as; filters are answered with companies.
+    list.post('/hunter/discover', express.json(), (req, res) => {
+      if (req.query.api_key !== 'the-operators-key') return res.status(401).json({ errors: [{ details: 'No user found for the API key supplied' }] });
+      discoverAsked.push(req.body);
+      if (req.body.query) return res.json({ data: [], meta: { results: 1139, filters: { keywords: { match: 'any', include: ['defi', 'token'] } } } });
+      const size = req.body.headcount?.[0];
+      const rows = { '1-10': [{ domain: 'indexcoop.com', organization: 'Index Coop', emails_count: { personal: 21, generic: 10, total: 31 } }, { domain: 'limitless.exchange', organization: 'Limitless', emails_count: { personal: 3, generic: 1, total: 4 } }], '11-50': [{ domain: 'nmkr.io', organization: 'NMKR', emails_count: { personal: 0, generic: 4, total: 4 } }, { domain: 'not a domain', organization: 'Broken' }] }[size] ?? [];
+      return res.json({ data: rows, meta: { results: rows.length } });
+    });
+    // Hunter's verifier and finder, as their documentation shapes the answers.
+    list.get('/hunter/email-verifier', (req, res) => {
+      if (req.query.api_key !== 'the-operators-key') return res.status(401).json({});
+      const status = { 'dima@limitless.exchange': 'valid', 'gone@limitless.exchange': 'invalid', 'team@indexcoop.com': 'accept_all' }[req.query.email] ?? 'unknown';
+      return res.json({ data: { status, score: status === 'valid' ? 97 : 20, email: req.query.email, mx_records: true, smtp_check: status === 'valid' } });
+    });
+    list.get('/hunter/email-finder', (req, res) => {
+      if (req.query.api_key !== 'the-operators-key') return res.status(401).json({});
+      const found = { 'Ada Lovelace': { email: 'Ada@limitless.exchange', score: 96, position: 'Head of Partnerships', linkedin_url: 'https://www.linkedin.com/in/ada', verification: { status: 'valid' }, sources: [{ uri: 'https://limitless.exchange/team' }] }, 'Guess Work': { email: 'guess.work@limitless.exchange', score: 41, verification: { status: 'accept_all' }, sources: [] } }[req.query.full_name];
+      return res.json({ data: found ?? { email: null, score: null } });
+    });
+    list.get('/hunter/account', (req, res) => (req.query.api_key === 'the-operators-key' ? res.json({ data: { plan_name: 'Free', reset_date: '2026-12-01', requests: { credits: { used: 1, available: 50 } } } }) : res.status(401).json({})));
     list.get('/hunter/domain-search', (req, res) => (req.query.api_key === 'the-operators-key' ? res.json(req.query.domain === 'limitless.exchange' ? HUNTER : { data: { emails: [] } }) : res.status(401).json({})));
     list.get('/tomba/domain-search', (req, res) => (req.get('X-Tomba-Key') === 'tk' && req.get('X-Tomba-Secret') === 'ts' ? res.json(req.query.domain === 'limitless.exchange' ? TOMBA : { data: { emails: [] } }) : res.status(401).json({})));
     list.post('/apollo/mixed_people/api_search', (req, res) => (req.get('x-api-key') === 'apollo-key' ? res.json([req.query.q_organization_domains_list].flat()[0] === 'limitless.exchange' ? APOLLO_SEARCH : { people: [] }) : res.status(401).json({})));
@@ -313,7 +337,11 @@ describe('GATHERING through the real stack (gnosis)', () => {
     // A key alone spends nothing: the switch is off until the operator turns it on, and the seat is told so.
     expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/PAID LEAD DATA is off\. Your operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS/) });
     expect(await mercatorBriefingSection(conn('merc'))).toContain('PAID LEAD DATA (hunter attached; it spends your operator\'s credits): OFF.');
-    expect(hits.some((h) => /^\/(hunter|tomba|apollo)\//.test(h))).toBe(false);
+    // …nothing but the free read of what the account holds, which the settings row shows.
+    expect(hits.filter((h) => /^\/(hunter|tomba|apollo)\//.test(h)).every((h) => h.startsWith('/hunter/account'))).toBe(true);
+    expect((await spend()).accounts).toEqual({ hunter: { plan: 'Free', used: 1, available: 50, resetsOn: '2026-12-01' } });
+    expect(spendSwitch(await spend()).note).toBe('HUNTER · FREE PLAN · 49 OF 50 CREDITS LEFT THIS MONTH · ITS COMPANY SEARCH SPENDS NONE');
+    expect(await mercatorBriefingSection(conn('merc'))).toContain('Hunter\'s company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says. Hunter\'s own count: 49 of 50 credits left this month (Free plan).');
     expect((await rule('sometimes', 3)).status).toBe(400);
     // ON: the cheapest attached provider answers, for any company gathered; an address with no page is never offered.
     expect((await rule('on', 3)).body.rule).toMatchObject({ mode: 'on', on: true, cap: 3, chosen: true });
@@ -341,8 +369,53 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(apollo.content).not.toContain('apollo-key');
     expect((await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).content).toMatch(/hunter holds nobody at yo\.xyz/);
     // The operator reads what the month spent, counted from the lookups themselves.
-    expect(await spend()).toMatchObject({ rule: { mode: 'on', cap: 10 }, spent: 5, attached: ['hunter', 'tomba', 'apollo'] });
-    expect((await spend()).lookups[0]).toMatchObject({ domain: 'yo.xyz', source: 'hunter', spent: 1, found: 0 });
+    // A company where Hunter holds nobody with a name and a role costs no credit: Hunter counts only a search that returns something.
+    expect(await spend()).toMatchObject({ rule: { mode: 'on', cap: 10 }, spent: 4, attached: ['hunter', 'tomba', 'apollo'] });
+    expect((await spend()).lookups[0]).toMatchObject({ domain: 'yo.xyz', source: 'hunter', spent: 0, found: 0 });
+    expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).every((h) => h.includes('type=personal') && /required_field=full_name(,|%2C)position/.test(h))).toBe(true);
+
+    // HUNTER'S FREE COMPANY SEARCH: words in, companies out with how many people Hunter holds at each; no credit, no spending rule.
+    expect(await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'short' })).toMatchObject({ status: 'error', error: expect.stringMatching(/needs words: one plain sentence/) });
+    const found = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'token projects on Base that need deeper liquidity', sizes: ['1-10', '11-50'] });
+    expect(found.status, found.error).toBe('ok');
+    // The words were read once by Hunter; its filters were then asked a size at a time, in the audience's own countries.
+    expect(discoverAsked[0]).toEqual({ query: 'token projects on Base that need deeper liquidity', limit: 1 });
+    expect(discoverAsked.slice(1).map((b) => [b.headcount, b.keywords.include, b.limit, b.headquarters_location.include.length > 0])).toEqual([[['1-10'], ['defi', 'token'], 100, true], [['11-50'], ['defi', 'token'], 100, true]]);
+    // limitless.exchange was gathered before, so it is not gathered twice; the broken row is left out.
+    expect(found.content).toMatch(/2 new candidate\(s\)/);
+    expect(found.content).toContain('Index Coop — indexcoop.com — 1-10 people · Hunter holds 21 named people there and 10 general addresses');
+    expect(found.content).toContain('NMKR — nmkr.io — 11-50 people · Hunter holds no named person there, only 4 general addresses');
+    expect(await spend()).toMatchObject({ spent: 4 });
+    // ONE NAMED PERSON'S ADDRESS (Hunter's finder): kept when Hunter saw it on a page or confirmed it exists; a guess is told as a guess and not kept.
+    expect(await act('merc', { type: 'sales/find-address', domain: 'limitless.exchange', name: 'Ada' })).toMatchObject({ status: 'error', error: expect.stringMatching(/full name, first and last/) });
+    expect(await act('merc', { type: 'sales/find-address', domain: 'stranger.example', name: 'Ada Lovelace' })).toMatchObject({ status: 'error', error: expect.stringMatching(/not a company you gathered or pooled/) });
+    const ada = await act('merc', { type: 'sales/find-address', domain: 'limitless.exchange', name: 'Ada Lovelace' });
+    expect(ada.content).toBe('Ada Lovelace at limitless.exchange: ada@limitless.exchange — the address exists (Hunter checked it); seen on https://limitless.exchange/team (1 credit spent). File them under people in sales/prospect with this address and that page, then sales/lead.');
+    expect((await act('merc', { type: 'sales/find-address', domain: 'limitless.exchange', name: 'Guess Work' })).content).toMatch(/^Hunter GUESSED guess\.work@limitless\.exchange .* It is not kept, and you do not write to it \(1 credit spent\)\.$/);
+    expect((await act('merc', { type: 'sales/find-address', domain: 'limitless.exchange', name: 'No Body' })).content).toMatch(/Hunter holds no address for No Body at limitless\.exchange \(no credit spent\)/);
+    expect(await spend()).toMatchObject({ spent: 6 });
+    expect(JSON.stringify(ada)).not.toContain('the-operators-key');
+
+    // THE ADDRESS CHECK BEFORE A FIRST EMAIL (Hunter's verifier, half a credit, once an address).
+    expect(await checkBeforeFirstEmail(me.address, ['Dima@limitless.exchange'])).toEqual({ refusal: null, notes: ['dima@limitless.exchange exists (Hunter checked it)'] });
+    expect(await spend()).toMatchObject({ spent: 6.5 });
+    const asked = hits.filter((h) => h.startsWith('/hunter/email-verifier')).length;
+    expect((await checkBeforeFirstEmail(me.address, ['dima@limitless.exchange'])).notes).toEqual(['dima@limitless.exchange exists (Hunter checked it)']);
+    expect(hits.filter((h) => h.startsWith('/hunter/email-verifier')).length).toBe(asked);
+    // An address that does not exist stops the email; one whose server will not say goes.
+    expect((await checkBeforeFirstEmail(me.address, ['gone@limitless.exchange'])).refusal).toMatch(/^the address gone@limitless\.exchange does not exist \(Hunter checked it\) — nothing was sent\./);
+    expect(await checkBeforeFirstEmail(me.address, ['team@indexcoop.com'])).toMatchObject({ refusal: null, notes: ['team@indexcoop.com could not be confirmed: its server accepts every address'] });
+    expect((await readAddressChecks(me.address)).map((c) => [c.email, c.status]).sort()).toEqual([['dima@limitless.exchange', 'valid'], ['gone@limitless.exchange', 'invalid'], ['team@indexcoop.com', 'accept_all']]);
+    // With paid lead data off nothing is checked and nothing spent, and it says so.
+    expect((await rule('off', 10)).status).toBe(200);
+    expect(await checkBeforeFirstEmail(me.address, ['new@nmkr.io'])).toEqual({ refusal: null, notes: ['new@nmkr.io was not checked before sending: PAID LEAD DATA is off'] });
+    expect((await rule('on', 10)).status).toBe(200);
+    expect([mayWrite('valid'), mayWrite('invalid'), mayWrite('disposable'), mayWrite('unknown'), checkWords('webmail')]).toEqual([true, false, false, true, 'is a personal mailbox, which Hunter does not confirm']);
+
+    // …and a paid lookup is refused, unspent, where Hunter already said it holds nobody to write to.
+    const calls = hits.filter((h) => h.startsWith('/hunter/domain-search')).length;
+    expect(await act('merc', { type: 'sales/contacts', domain: 'nmkr.io' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/Hunter already said it holds no named person at nmkr\.io \(4 general addresses\) — no credit was spent/) });
+    expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).length).toBe(calls);
     expect((await request(app).post('/api/v1/revenue/lead-engine/spend').send({ mode: 'on', cap: 1 })).status).toBe(401);
     // Off again: nothing more is spent.
     expect((await rule('off', 10)).body.rule).toMatchObject({ mode: 'off', on: false });

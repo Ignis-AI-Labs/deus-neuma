@@ -32,6 +32,8 @@ import { croDesignation } from '../../backend/services/revenue/cro-designation.j
 import { makeSuppression } from '../../backend/services/sales/suppress-shape.js';
 import { upkeepDue } from '../../backend/services/sales/lead-upkeep.js';
 import { startTlsSmtp } from '../helpers/smtp-tls-kit.js';
+import { readOutbox, setReview, editDraft, returnDraft, sendDraft, outboxText, foldOutbox } from '../../backend/services/sales/email-outbox.js';
+import { salesWaitingItems } from '../../backend/services/sales/sales-waiting.js';
 import { startLocalProvider } from '../helpers/local-provider.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
 import { usePositionHouse, ownLane, POSITION_HOUSE } from '../helpers/position-house.js';
@@ -98,6 +100,8 @@ beforeAll(async () => {
   });
   await emailBinding.bind(POSITION_HOUSE, 'email', { neumaId: LANE });
   await addSuppression(POSITION_HOUSE, makeSuppression({ target: 'nope.example', reason: 'asked', by: 'operator', now: new Date().toISOString() }));
+  // The cases below prove a SEND and the sales cover; REVIEW FIRST (on by default) is proven in its own block at the end.
+  await setReview(POSITION_HOUSE, false);
 }, 60000);
 
 afterAll(async () => {
@@ -271,3 +275,88 @@ describe('the sales cover through the real sweep — the operator approved the l
     expect(smtp.received.length).toBe(sentBefore + 1);
   });
 });
+
+describe('REVIEW FIRST — the seat stages, the operator reads, and only then does an email leave', () => {
+  const stage = async (payload) => {
+    filed += 1;
+    const intents = path.join(workspace.pathFor(LANE), 'intents');
+    await fsp.mkdir(intents, { recursive: true });
+    await fsp.writeFile(path.join(intents, `draft-${filed}.json`), JSON.stringify({ type: 'sales/draft-email', promise: PROMISE, ...payload }));
+    const r = rig();
+    const [receipt] = await sweepIntents(r.connection, { mode: 'ask', lanePolicy: null, emit: () => {} });
+    return { receipt, cards: r.sent.filter((m) => m.type === 'tool:approval_request') };
+  };
+  const GOOD = signed('A 60 minute session is 250 dollars, one to one.');
+
+  test('it is on until the operator turns it off', () => {
+    expect(foldOutbox([])).toEqual({ review: true, drafts: [] });
+    expect(foldOutbox([{ type: 'review', on: false }]).review).toBe(false);
+  });
+
+  test('with it on, an email to a lead cannot be sent directly; staged, it is checked like a send and waits, unsent', async () => {
+    await croDesignation.designate(POSITION_HOUSE, LANE);
+    await setReview(POSITION_HOUSE, true);
+    const ledger = await leadLedgerFor(POSITION_HOUSE);
+    await ledger.add({ name: 'Otto, Owner at Outbox', contact: 'otto@outbox.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
+    const before = smtp.received.length;
+    // A direct send is refused before any card, and says where the email goes instead.
+    const direct = await send({ to: 'otto@outbox.example', subject: 'Your build', text: GOOD });
+    expect(direct.receipt.status).toBe('denied');
+    expect(direct.receipt.error).toMatch(/REVIEW FIRST is on\): stage this one with sales\/draft-email/);
+    expect(direct.cards).toEqual([]);
+    // A draft that fails a send's checks is refused with the reason, and nothing is staged.
+    const bad = await stage({ to: 'otto@outbox.example', subject: 'Your build', text: signed('Our 90 minute session doubles output.') });
+    expect(bad.receipt.error).toMatch(/90 is not on the approved facts sheet/);
+    expect((await readOutbox(POSITION_HOUSE)).drafts).toEqual([]);
+    expect((await stage({ to: 'Bob@Nope.example', subject: 'Hello', text: GOOD })).receipt.error).toMatch(/do-not-contact list/);
+    // One that passes waits: no card, nothing on the wire, the lead untouched.
+    const staged = await stage({ to: 'otto@outbox.example', subject: 'Your build', text: GOOD });
+    expect(staged.receipt.status, staged.receipt.error).toBe('ok');
+    expect(staged.receipt.content).toMatch(/^Staged for your operator's review \[m-[0-9a-f]{8}\]: to otto@outbox\.example, "Your build"\. It has NOT been sent\./);
+    expect(staged.cards).toEqual([]);
+    expect(smtp.received.length).toBe(before);
+    expect((await ledger.load()).find((l) => l.contact === 'otto@outbox.example').status).toBe('cold');
+    const [draft] = (await readOutbox(POSITION_HOUSE)).drafts;
+    expect(draft).toMatchObject({ to: ['otto@outbox.example'], subject: 'Your build', text: GOOD, promise: PROMISE, by: LANE, state: 'waiting', edited: false });
+    // One email a person at a time.
+    expect((await stage({ to: 'otto@outbox.example', subject: 'Again', text: GOOD })).receipt.error).toMatch(/already waits for your operator \("Your build"\)/);
+    // It stands where every other decision stands, and the seat is told what waits.
+    expect((await salesWaitingItems(POSITION_HOUSE, new Map([[LANE, 'Mercator']]))).filter((i) => i.kind === 'sales-email').map((i) => [i.title, i.where.tab])).toEqual([['1 email to leads waits for your review', 'leads']]);
+    expect(outboxText(await readOutbox(POSITION_HOUSE))).toMatch(/^REVIEW FIRST is ON[\s\S]*Staged and waiting for your operator: 1 \(otto@outbox\.example\)/);
+  }, 60000);
+
+  test('the operator returns one with what should change; the seat is told and stages it again', async () => {
+    const [draft] = (await readOutbox(POSITION_HOUSE)).drafts;
+    expect(await returnDraft(POSITION_HOUSE, draft.id, 'Open with his product, not ours.')).toEqual({ ok: true });
+    const box = await readOutbox(POSITION_HOUSE);
+    expect(box.drafts[0]).toMatchObject({ state: 'returned', note: 'Open with his product, not ours.' });
+    expect(outboxText(box)).toContain('RETURNED by your operator — to otto@outbox.example, "Your build": Open with his product, not ours. Rewrite it and stage it again.');
+    expect(await sendDraft(POSITION_HOUSE, draft.id)).toMatchObject({ ok: false, reason: 'no such email waits in the outbox' });
+    expect((await stage({ to: 'otto@outbox.example', subject: 'Your field app', text: GOOD })).receipt.status).toBe('ok');
+  }, 60000);
+
+  test('the operator changes its words, and a send from the outbox is a real send: the mailbox, the lead contacted, once', async () => {
+    const draft = (await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.state === 'waiting');
+    const before = smtp.received.length;
+    // A change that breaks the facts is caught when it is sent, not let through because a person made it.
+    expect(await editDraft(POSITION_HOUSE, draft.id, { text: signed('Our 90 minute session doubles output.') })).toEqual({ ok: true });
+    const refused = await sendDraft(POSITION_HOUSE, draft.id);
+    expect(refused.ok).toBe(false);
+    expect(refused.reason).toMatch(/90 is not on the approved facts sheet/);
+    expect(smtp.received.length).toBe(before);
+    expect(await editDraft(POSITION_HOUSE, draft.id, { subject: 'Your field app, Otto', text: GOOD })).toEqual({ ok: true });
+    const sent = await sendDraft(POSITION_HOUSE, draft.id);
+    expect(sent).toMatchObject({ ok: true, to: ['otto@outbox.example'] });
+    expect(smtp.received.length).toBe(before + 1);
+    expect(smtp.received.at(-1).data).toContain('Subject: Your field app, Otto');
+    const lead = (await (await leadLedgerFor(POSITION_HOUSE)).load()).find((l) => l.contact === 'otto@outbox.example');
+    expect(lead.status).toBe('contacted');
+    expect(lead.touches.at(-1)).toMatchObject({ direction: 'out' });
+    expect((await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === draft.id)).toMatchObject({ state: 'sent', edited: true });
+    // Sent once: a second press finds nothing waiting, and nothing more leaves.
+    expect((await sendDraft(POSITION_HOUSE, draft.id)).ok).toBe(false);
+    expect(smtp.received.length).toBe(before + 1);
+    expect((await salesWaitingItems(POSITION_HOUSE, new Map())).filter((i) => i.kind === 'sales-email')).toEqual([]);
+  }, 60000);
+});
+

@@ -64,7 +64,7 @@ import { keepTurn } from './turn-keep.js';
 import { refuseUnboundTurn, refuseRetryAttachments, takeTurnOrigin } from './portal-turn-guards.js';
 import { withShedSections } from './turn-envelope.js';
 import { compactBeforeTurn } from './context-overflow.js';
-import { settleCitationHold } from './legal/answer-hold.js';
+import { settleTurnChecks } from './turn-checks.js';
 import { finishResearchTurn } from './research-mode.js';
 
 const log = createLogger('Portal');
@@ -399,7 +399,7 @@ export const streamConsciousness = async (connection, message) => {
     if (rounds.error) throw rounds.error;
     const { latestResponse, turnUsage, standingUsage, turnAffect, toolContextSections, standingCacheTelemetry } = rounds;
     await finishResearchTurn(connection, latestResponse, { ws, companion, interrupted: interrupt.signal.aborted }); // RESEARCH: the report kept (research-mode.js)
-    await settleCitationHold({ connection, text: latestResponse, interrupted: interrupt.signal.aborted, origin, recent: memories.recentConversation, thought }); // the CLO's unchecked law is held (legal/answer-hold.js)
+    await settleTurnChecks({ connection, text: latestResponse, interrupted: interrupt.signal.aborted, origin, recent: memories.recentConversation, thought }); // the CLO's unchecked law is held; a queue change said but not made is sent back (turn-checks.js)
 
     const interrupted = interrupt.signal.aborted;
     const turnTools = turnRecordFor(ws);

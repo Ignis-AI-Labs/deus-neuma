@@ -11,16 +11,17 @@
  */
 
 import express from 'express';
-import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readContactPeople, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
+import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readContactPeople, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign, readAddressChecks } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
-import { makeCampaign, campaignBoard } from '../services/sales/campaign-shape.js';
+import { makeCampaign, campaignBoard, leadOrigins } from '../services/sales/campaign-shape.js';
 import { listCompanies } from '../services/marketing/companies.js';
 import { leadLedgerFor, LEAD_KINDS, kindOf, sourceOf } from '../services/leads/lead-ledger.js';
 import { spendState, setSpend, SPEND_MODES } from '../services/sales/lead-spend.js';
 import { foldContacts, contactStats } from '../services/sales/contact-book.js';
 import { readAudienceSites } from '../services/sales/site-reads.js';
 import { isConnectionOn } from '../services/connections/connection-switches.js';
+import { readOutbox, setReview, sendDraft, returnDraft, editDraft } from '../services/sales/email-outbox.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('LeadEngine');
@@ -38,10 +39,13 @@ router.get('/', async (req, res) => {
     const upkeep = upkeepDue({ leads, now: Date.now(), suppressed: suppressionMatcher(suppressions).email });
     const spend = { ...(await spendState(wallet)), modes: SPEND_MODES };
     // The lead list itself, each lead under what it is to the house (a buyer, an applicant, a partner, …).
-    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null }));
+    // …and tied to the campaign and the audience that found it, so the sheet says who is being written to for what.
+    const origins = leadOrigins({ campaigns, segments, prospects, leads });
+    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null, origin: origins.get(l.id) ?? null }));
     // The contact book: every person the house knows, one record each, read from the records above.
-    const contacts = foldContacts({ leads, prospects, lookups: await readContactPeople(wallet), suppressions, segments, candidates });
-    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
+    const contacts = foldContacts({ leads, prospects, lookups: await readContactPeople(wallet), suppressions, segments, candidates, checks: await readAddressChecks(wallet) });
+    const outbox = await readOutbox(wallet);
+    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, outbox: { review: outbox.review, drafts: outbox.drafts.slice(0, 200) }, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
     log.error('Lead engine read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the lead engine' });
@@ -87,6 +91,40 @@ router.post('/segments/:id/read-sites', async (req, res) => {
     log.error('Company sites could not be read', { error: error.message });
     return res.status(500).json({ error: 'Could not read the sites' });
   }
+});
+
+// THE OUTBOX (sales/email-outbox.js): emails the sales seat staged. The operator sends, changes or returns each; nothing leaves before.
+router.post('/outbox/review', async (req, res) => {
+  if (typeof req.body?.on !== 'boolean') return res.status(400).json({ error: 'send {on: true} or {on: false}' });
+  log.info('REVIEW FIRST set by the operator', { on: req.body.on });
+  return res.json(await setReview(req.walletAddress, req.body.on));
+});
+
+router.post('/outbox/send', async (req, res) => {
+  const ids = (Array.isArray(req.body?.ids) ? req.body.ids : []).map(String).slice(0, 100);
+  if (!ids.length) return res.status(400).json({ error: 'name the emails to send: {ids: [...]}' });
+  try {
+    // One after another: each is its own send from the house mailbox, and one that is refused stops only itself.
+    const results = [];
+    for (const id of ids) results.push(await sendDraft(req.walletAddress, id));
+    log.info('Outbox emails sent by the operator', { asked: ids.length, sent: results.filter((r) => r.ok).length });
+    return res.json({ ok: true, sent: results.filter((r) => r.ok).map((r) => ({ id: r.id, to: r.to, from: r.from })), refused: results.filter((r) => !r.ok).map((r) => ({ id: r.id, reason: r.reason })) });
+  } catch (error) {
+    log.error('Outbox send failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not send from the outbox' });
+  }
+});
+
+router.post('/outbox/:id/return', async (req, res) => {
+  const note = String(req.body?.note ?? '').trim();
+  if (note.length < 5) return res.status(400).json({ error: 'say what should change' });
+  const back = await returnDraft(req.walletAddress, req.params.id, note);
+  return back.ok ? res.json(back) : res.status(404).json({ error: back.reason });
+});
+
+router.post('/outbox/:id', async (req, res) => {
+  const changed = await editDraft(req.walletAddress, req.params.id, { subject: req.body?.subject, text: req.body?.text });
+  return changed.ok ? res.json(changed) : res.status(changed.reason.startsWith('no such') ? 404 : 400).json({ error: changed.reason });
 });
 
 // The operator approves or returns the latest facts sheet: no email reaches a lead before one is approved.

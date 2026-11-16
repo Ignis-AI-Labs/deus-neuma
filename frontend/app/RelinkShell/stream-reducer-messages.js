@@ -115,8 +115,8 @@ export const toHistoryMessages = (messages, base, prefix) =>
     const shared = {
       id: `${prefix}${base + k}`,
       // The platform's own lines — a watch's report, a house wake's note, another chat's link, the citation law's hold,
-      // CONTINUE on a cut reply — never the operator's bubble.
-      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link', 'hold', 'resume'].includes(m.origin) ? m.origin : 'user',
+      // CONTINUE on a cut reply, a queue change said but not made — never the operator's bubble.
+      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link', 'hold', 'resume', 'unacted'].includes(m.origin) ? m.origin : 'user',
       streaming: false,
       isHistory: true,
       at: m.at ?? null,
@@ -166,7 +166,7 @@ export const withDisplayedAsk = (message, text) => ({
 
 export const pushMessage = (state, role, text, images, at, holdId = null, docs = []) => ({
   ...state,
-  thinking: role === 'user' || role === 'watch' || role === 'link' || role === 'hold' || role === 'resume', // a watch's report, a chat link, a held answer and CONTINUE open a turn too
+  thinking: role === 'user' || role === 'watch' || role === 'link' || role === 'hold' || role === 'resume' || role === 'unacted', // a watch's report, a chat link, a held answer, CONTINUE and NOT DONE open a turn too
   seq: state.seq + 1,
   messages: [
     ...state.messages,

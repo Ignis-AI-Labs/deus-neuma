@@ -19,7 +19,7 @@ export const companyRows = ({ gathered = [], pool = [], leads = [] } = {}) => {
   for (const c of gathered) {
     by.set(c.domain, { domain: c.domain, name: c.name, about: c.description || c.signal || '', country: c.country ?? null, size: c.size ?? null, industry: c.categories?.[0] ?? null, founded: c.founded ?? null, rank: c.trafficRank ?? null, ranked: 'trafficRank' in c, standing: 'gathered', people: 0, site: typeof c.site === 'string' ? c.site : `https://${c.domain}`,
       // what its own site said when it was read (company-reader.js): null until then
-      read: c.site && typeof c.site === 'object' ? { alive: Boolean(c.site.alive), why: c.site.why ?? null, emails: (c.site.emails ?? []).map((e) => e.email), socials: c.site.socials ?? {}, movedTo: c.site.movedTo ?? null } : null });
+      read: c.siteRead ? { alive: Boolean(c.siteRead.alive), blocked: Boolean(c.siteRead.blocked), why: c.siteRead.why ?? null, emails: (c.siteRead.emails ?? []).map((e) => e.email), socials: c.siteRead.socials ?? {}, movedTo: c.siteRead.movedTo ?? null } : null });
   }
   const scored = (p, standing) => {
     const prior = by.get(p.domain) ?? { domain: p.domain, name: p.name, about: '', country: null, size: null, industry: null, founded: null, rank: null, ranked: false, site: `https://${p.domain}`, read: null };
@@ -59,6 +59,7 @@ export const isDeadEnd = (r) => (r.read ? !r.read.alive : false) || (r.ranked &&
 export const contactShort = (r) => {
   if (!r.read) return '—';
   if (!r.read.alive) return 'NO SITE';
+  if (r.read.blocked) return 'READ IT BY HAND';
   const [first, ...rest] = r.read.emails;
   if (first) return `${first}${rest.length ? ` +${rest.length}` : ''}`;
   const social = r.read.socials.x ?? r.read.socials.linkedin ?? r.read.socials.telegram ?? null;

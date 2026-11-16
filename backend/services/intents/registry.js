@@ -53,6 +53,8 @@ import { housePostIntent } from './house-post.js';
 import { chatSendIntent } from './chat-send.js';
 import { houseReviewPacketIntent } from './house-review-packet.js';
 import { houseSeatingIntent } from './house-seating.js';
+import { houseCharterIntent } from './house-charter-act.js';
+import { houseWakeIntent } from './house-wake-act.js';
 import { kspCommandIntent } from './ksp-command.js';
 import { voiceSealIntent, voiceClaimIntent } from './voice-rites.js';
 import { speechAcceptIntent, speechAnotherIntent } from './speech-accept.js';
@@ -81,6 +83,7 @@ import { marketingBoardArrangeIntent } from './marketing-board-arrange.js';
 import { marketingCompanyLinksIntent } from './marketing-company-links.js';
 import { marketingAccountIntents } from './marketing-account-acts.js';
 import { marketingCardIntent } from './marketing-card-acts.js';
+import { registryLookupIntent } from './registry-lookup.js';
 import {
   memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
   memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
@@ -89,7 +92,7 @@ import {
 const TYPES = new Map(
   [
     socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent, ...lpIntents, lpSwapIntent, lpSendIntent, lpGoalIntent, lpRewardIntent, lpCreatePoolIntent,
-    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, houseSeatingIntent, kspCommandIntent,
+    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, houseSeatingIntent, houseCharterIntent, houseWakeIntent, kspCommandIntent,
     chatSendIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
@@ -103,7 +106,7 @@ const TYPES = new Map(
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
     campaignCreateIntent, campaignUpdateIntent, campaignAskIntent,
-    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent, ...marketingAccountIntents, marketingCardIntent,
+    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent, ...marketingAccountIntents, marketingCardIntent, registryLookupIntent,
     memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
     memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
   ].map((t) => [t.name, t]),

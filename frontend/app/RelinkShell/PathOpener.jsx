@@ -25,7 +25,7 @@ import { dirOf, isAbsolutePath } from '../../utils/path.js';
 import { isImagePath } from './files/image-view-model.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { CtxMenu } from './CtxMenu.jsx';
-import { pathMenuItems } from './path-menu.js';
+import { pathMenuItems, isWebAddress, openWebLink } from './path-menu.js';
 
 // How long a refusal stays on screen. Long enough to read, short enough that
 // it never becomes furniture.
@@ -131,6 +131,12 @@ const PathOpenerView = () => {
   }, [resolvePath, kindOf, focusFolder, openFile]);
 
   const onAct = useCallback(async (id) => {
+    // A web address never touches the folder in focus: it opens in the browser, or its address is copied.
+    if (isWebAddress(menu?.path)) {
+      if (id === 'open-link') openWebLink(menu.path);
+      else if (id === 'copy-link') { try { await navigator.clipboard.writeText(menu.path); } catch { setNote('The clipboard refused the link.'); } }
+      return;
+    }
     const path = resolvePath(menu?.path);
     if (!path) { setNote('A relative path needs a focused folder.'); return; }
     if (id === 'open-file') await openFile(path);

@@ -33,13 +33,17 @@ import { openDatabase } from '../drivers/sqlite-binding.js';
 export const SIZES = Object.freeze(['1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5001-10000', '10001+']);
 export const INDEX_ATTRIBUTION = 'People Data Labs free company dataset (CC BY 4.0)';
 const BATCH = 20000;
+const RECORD_MAX = 4000;
 
 /** Where the index lives (a test names its own file). */
 export const indexPath = () => process.env.NEUMA_COMPANY_INDEX || path.join(getDataRoot(), 'lead-index', 'companies.sqlite');
 
 // ── pure ────────────────────────────────────────────────────────────────────
 
-/** pure — one CSV line as its cells (quoted cells may hold commas and doubled quotes). */
+/**
+ * pure — one CSV line as its cells. A quoted cell may hold commas, and a quote inside it written either way files
+ * are found to write it: doubled ("") or after a backslash (\"), which is how the free company file does it.
+ */
 export const csvCells = (line, sep = ',') => {
   const cells = [];
   let cell = '';
@@ -47,7 +51,7 @@ export const csvCells = (line, sep = ',') => {
   for (let i = 0; i < line.length; i += 1) {
     const ch = line[i];
     if (quoted) {
-      if (ch === '"' && line[i + 1] === '"') { cell += '"'; i += 1; } else if (ch === '"') quoted = false; else cell += ch;
+      if (ch === '\\' && line[i + 1] === '"') { cell += '"'; i += 1; } else if (ch === '"' && line[i + 1] === '"') { cell += '"'; i += 1; } else if (ch === '"') quoted = false; else cell += ch;
     } else if (ch === '"') quoted = true;
     else if (ch === sep) { cells.push(cell); cell = ''; } else cell += ch;
   }
@@ -55,8 +59,8 @@ export const csvCells = (line, sep = ',') => {
   return cells;
 };
 
-/** pure — whether a line ends inside a quoted cell (so the record goes on in the next line). */
-export const csvOpen = (line) => (line.match(/"/g) ?? []).length % 2 === 1;
+/** pure — whether a line ends inside a quoted cell (so the record goes on in the next line). A quote after a backslash is text, not an end. */
+export const csvOpen = (line) => (line.replace(/\\"/g, '').match(/"/g) ?? []).length % 2 === 1;
 
 const REGIONS = (() => {
   const names = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -110,8 +114,19 @@ export const companyRow = (r) => {
   };
 };
 
-/** pure — search words as a full-text query: each word a prefix, any of them matching; '' when there are none. */
-export const wordsQuery = (words) => [...new Set(String(words ?? '').toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? [])].slice(0, 12).map((w) => `"${w}"*`).join(' OR ');
+/** pure — the distinct words of a search, lowercased (at most twelve). */
+export const wordTokens = (words) => [...new Set(String(words ?? '').toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? [])].slice(0, 12);
+
+/**
+ * pure — search words as a full-text query over a company's NAME and INDUSTRY: any of the words, each as a whole
+ * word (and its plural or singular); '' when there are none. Whole words, because a prefix made "defi" find
+ * "deficit", "definite" and the town of Defiance (found by a seated sales member, 2026-11-16); name and industry
+ * only, because a city is what a company is in, never what it is.
+ */
+export const wordsQuery = (words) => {
+  const forms = wordTokens(words).flatMap((w) => [w, w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : `${w}s`]);
+  return forms.length ? `{name industry} : (${[...new Set(forms)].map((w) => `"${w}"`).join(' OR ')})` : '';
+};
 
 const list = (v) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x).trim()).filter(Boolean);
 
@@ -199,14 +214,16 @@ export const closeIndex = () => {
   held = null;
 };
 
-// impure — every record of a delimited file, as an object keyed by its header.
-async function* records(file, sep) {
+/** impure — every record of a delimited file, as an object keyed by its header (lowercased, trimmed). */
+export async function* records(file, sep = ',') {
   const lines = createInterface({ input: createReadStream(file, 'utf8'), crlfDelay: Infinity });
   let header = null;
   let held = '';
   for await (const raw of lines) {
     const line = held ? `${held}\n${raw}` : raw;
-    if (csvOpen(line)) { held = line; continue; }
+    // A record that runs on is waited for, but never for long: a stray quote must cost one row, not the file
+    // (2026-11-16: the first real load stalled on exactly that, holding every later line).
+    if (csvOpen(line) && line.length < RECORD_MAX) { held = line; continue; }
     held = '';
     if (!line.trim()) continue;
     const cells = csvCells(line, sep);
@@ -223,6 +240,10 @@ const setMeta = (db, key, value) => db.prepare('INSERT INTO meta (key, value) VA
  * @returns {Promise<{read: number, kept: number, skipped: number}>}
  */
 export const loadCompanies = async (file, { db = openIndex({ create: true }), onProgress = () => {} } = {}) => {
+  // Tens of millions of rows, keyed by site: a large page cache and no wait on the disk for each batch make the
+  // difference between minutes and an hour. A load that is cut short is simply run again (rows replace, never double).
+  db.pragma('cache_size = -1000000');
+  db.pragma('synchronous = OFF');
   const sep = /\.(psv|txt)$/i.test(file) ? '|' : ',';
   const insert = db.prepare('INSERT INTO companies (domain, name, industry, size, founded, locality, region, country, iso, linkedin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(domain) DO UPDATE SET name = excluded.name, industry = excluded.industry, size = excluded.size, founded = excluded.founded, locality = excluded.locality, region = excluded.region, country = excluded.country, iso = excluded.iso, linkedin = excluded.linkedin');
   const flush = db.transaction((rows) => { for (const r of rows) insert.run(r.domain, r.name, r.industry, r.size, r.founded, r.locality, r.region, r.country, r.iso, r.linkedin); });
@@ -237,6 +258,7 @@ export const loadCompanies = async (file, { db = openIndex({ create: true }), on
   if (read && !kept) throw new Error('no row of this file has a name and a website — it needs the columns name, website, industry, size, founded, locality, region, country, linkedin_url');
   db.exec(INDEXES);
   db.exec("INSERT INTO company_words (company_words) VALUES ('rebuild')");
+  db.pragma('synchronous = NORMAL');
   setMeta(db, 'companiesLoadedAt', new Date().toISOString());
   setMeta(db, 'companiesSource', INDEX_ATTRIBUTION);
   return { read, kept, skipped: read - kept };

@@ -59,9 +59,9 @@ const rebaseMarks = (entries, raw) =>
 
 // A user-role row the PLATFORM wrote — a watch's report, a house wake's
 // opening note, another chat's link, the citation law's hold, CONTINUE on a
-// cut reply — keeps its origin, so a resumed sitting
+// cut reply, a queue change said but not made — keeps its origin, so a resumed sitting
 // draws it as that line and never as the operator's bubble (stream-reducer-messages.js).
-const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold', 'resume']);
+const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold', 'resume', 'unacted']);
 const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: m.origin } : {});
 
 // A compaction summary row as the display carries it: the counts the marker
@@ -186,6 +186,22 @@ export const listSessions = async (neumaId) => {
     return Array.isArray(body?.sessions) ? body.sessions : [];
   } catch {
     return [];
+  }
+};
+
+/**
+ * Which chats are sub-chats, and of which chat: { child: { parent, kind, title } } (backend chat-threads.js).
+ * A failed read is no threads: the list still shows every chat, only flat.
+ */
+// impure
+export const listChatThreads = async (neumaId) => {
+  try {
+    const headers = authHeaders();
+    if (!neumaId || !headers) return {};
+    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/session-threads`, { headers });
+    return body?.threads && typeof body.threads === 'object' ? body.threads : {};
+  } catch {
+    return {};
   }
 };
 

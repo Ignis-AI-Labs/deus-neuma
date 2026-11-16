@@ -4,7 +4,8 @@
 // its own words, and how it can be reached, from the one source nobody has to pay for: its site.
 //
 // For one company: the home page, then at most two of its own contact / about / team pages.
-//   alive        the site answered with a page (a site that does not is a dead end, said so with why)
+//   alive        the site answered with a page (a site that does not is a dead end, said so with why;
+//                one that turns automated readers away is alive and marked not read, never a dead end)
 //   description  what the company says it is (its own meta description, else its title)
 //   emails       the addresses it publishes, each with the page it stands on (protected ones decoded)
 //   socials      its own X, LinkedIn, Telegram, Discord and GitHub links
@@ -115,7 +116,7 @@ export const siteOf = (domain, pages, readAt) => {
 };
 
 /** pure — one company's reading in one line, as the sales seat reads it. */
-export const siteLine = (domain, site) => (site.alive
+export const siteLine = (domain, site) => (site.blocked ? `${domain} — ALIVE, NOT READ: ${site.why}; open its pages yourself` : site.alive
   ? [`${domain} — ALIVE`, site.movedTo ? `now answers from ${site.movedTo}` : null, site.description || 'says nothing about itself', site.emails.length ? `publishes ${site.emails.map((e) => e.email).join(', ')}` : 'publishes no address', Object.keys(site.socials).length ? Object.values(site.socials).join(' ') : null].filter(Boolean).join(' — ')
   : `${domain} — NO SITE: ${site.why}`);
 
@@ -139,6 +140,8 @@ export const guardedPage = async (target, { signal } = {}) => {
       url = next;
       continue;
     }
+    // A site that turns automated readers away (a bot wall) is THERE: it is said so, never called dead.
+    if ([401, 403, 429].includes(res.statusCode)) { res.destroy(); return { ok: false, blocked: true, why: `it turns automated readers away (answered ${res.statusCode})` }; }
     if (res.statusCode !== 200) { res.destroy(); return { ok: false, why: `it answered ${res.statusCode}` }; }
     if (!/html|text\/plain/i.test(String(res.headers['content-type'] ?? 'text/html'))) { res.destroy(); return { ok: false, why: 'it serves no page' }; }
     const { buf } = await readBounded(res, PAGE_BYTES);
@@ -157,6 +160,7 @@ export const readCompanySite = async (domain, { fetchPage = guardedPage, signal,
   try {
     let home = await fetchPage(`https://${domain}/`, { signal });
     if (!home.ok) {
+      if (home.blocked) return { alive: true, blocked: true, why: home.why, description: '', title: '', emails: [], socials: {}, movedTo: null, pagesRead: 0, readAt: now() };
       const plain = await fetchPage(`http://${domain}/`, { signal });
       if (!plain.ok) return { alive: false, why: home.why, readAt: now() };
       home = plain;

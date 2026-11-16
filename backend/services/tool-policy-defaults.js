@@ -400,7 +400,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // house.review-packet: the seated Optio orders what already waits on the
       // operator (validate re-verifies the seat and every ask) — it answers and
       // grants nothing, so it rides a wake with no card. house.charter: a member sets its house's charter (Founder 11-13); the operator's three fields and the pause stay theirs. house.seating: the members' seating; it seats nobody, the operator applies it from POSITIONS.
-      'house.review-packet', 'house.charter', 'house.seating',
+      'house.review-packet', 'house.charter', 'house.seating', 'house.wake',
       // campaigns.ask: the seated CMO's word to its operator on a campaign (or
       // its answer to theirs) — nothing leaves the house and nothing changes
       // the campaign's declaration, so it carries no card (validate re-verifies
@@ -410,7 +410,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // account-handle: a record the social check re-reads live (marketing-account-acts.js); its holder and company acts ask.
       'marketing.board-arrange', 'marketing.company-links', 'marketing.account-handle', 'marketing.card',
       // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, sales.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, the lead engine (Design note, 2026-11-13; the email itself rides email.send), books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'sales.segment', 'sales.prospect', 'sales.drop', 'sales.lead', 'sales.suppress', 'sales.facts', 'sales.gather', 'sales.read-sites', 'sales.contacts', 'sales.campaign', 'campaigns.link', 'company.model', 'sales.mail-scan', 'sales.inbound', 'sales.kind', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'sales.segment', 'sales.prospect', 'sales.drop', 'sales.lead', 'sales.suppress', 'sales.facts', 'sales.gather', 'sales.read-sites', 'sales.find-address', 'sales.draft-email', 'registry.lookup', 'sales.contacts', 'sales.campaign', 'campaigns.link', 'company.model', 'sales.mail-scan', 'sales.inbound', 'sales.kind', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [

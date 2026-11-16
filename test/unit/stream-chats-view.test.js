@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sessionLabel, chatTitleOf, chatRows, shortStamp, shortWhen, filterRows,
-  rowTip, tipPlacement,
+  rowTip, tipPlacement, threadRows, shownRows,
 } from '../../frontend/app/RelinkShell/stream-chats-view.js';
 import { formatDateTime } from '../../frontend/utils/format.js';
 
@@ -168,5 +168,32 @@ describe('tipPlacement — a fixed layer, because the rail clips its own overflo
     const p = tipPlacement(null, null);
     expect(Number.isFinite(p.top) && Number.isFinite(p.right)).toBe(true);
     expect(p).toEqual({ top: 8, right: 8 });
+  });
+});
+
+describe('sub-chats are filed under the chat they were spawned from', () => {
+  const [A, B, C1, C2, D, ORPHAN] = ['session-1000000000001', 'session-1000000000002', 'session-1000000000003', 'session-1000000000004', 'session-1000000000005', 'session-1000000000006'];
+  // newest first, as the list arrives
+  const sessions = [ORPHAN, D, C2, C1, B, A];
+  const threads = { [C1]: { parent: B, kind: 'clone', title: 'Clone 1: read the docs' }, [C2]: { parent: B, kind: 'clone', title: 'Clone 2: check prices' }, [D]: { parent: C1, kind: 'clone', title: '' }, [ORPHAN]: { parent: 'session-1999999999999', kind: 'clone', title: 'Clone 1: lost parent' } };
+
+  it('each sub-chat follows its parent, oldest first, two levels at most; one whose parent is gone stands alone', () => {
+    const rows = chatRows(sessions, { [`n:${B}`]: 'Funding' }, 'n', C2, threads);
+    expect(rows.map((r) => [r.id, r.depth, r.parent, r.subs])).toEqual([[ORPHAN, 0, null, 0], [B, 0, null, 3], [C1, 1, B, 0], [C2, 1, B, 0], [D, 1, B, 0], [A, 0, null, 0]]);
+    // An unnamed sub-chat wears what it was spawned to do, never a bare time.
+    expect(rows.find((r) => r.id === C1).label).toBe('Clone 1: read the docs');
+    expect(rows.find((r) => r.id === D).label).toBe(shortWhen(D));
+    expect(rows.find((r) => r.id === B).label).toBe('Funding');
+  });
+
+  it('without links every chat is an ordinary chat', () => {
+    expect(chatRows(sessions, {}, 'n', null).every((r) => r.depth === 0 && r.parent === null && r.subs === 0)).toBe(true);
+    expect(threadRows([], threads)).toEqual([]);
+  });
+
+  it('sub-chats stay folded until their parent is opened; the one on screen always shows', () => {
+    const rows = chatRows(sessions, {}, 'n', C2, threads);
+    expect(shownRows(rows).map((r) => r.id)).toEqual([ORPHAN, B, C2, A]);
+    expect(shownRows(rows, new Set([B])).map((r) => r.id)).toEqual([ORPHAN, B, C1, C2, D, A]);
   });
 });

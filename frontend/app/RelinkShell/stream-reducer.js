@@ -161,6 +161,10 @@ export const reducer = (state, action) => {
     case 'CONTINUED':
       return pushMessage(state, 'resume', action.text, [], action.at);
 
+    // A reply said queued posts changed and no act touched them (social/queue-claim-check.js) — the platform sends the being back.
+    case 'QUEUE_UNACTED':
+      return pushMessage(state, 'unacted', action.text, [], action.at);
+
     // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
     case 'QUEUE_CLEAR':

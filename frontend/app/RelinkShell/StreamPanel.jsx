@@ -320,12 +320,14 @@ const cutOffOf = (message) => (message.takes ? message.takes[message.takeIndex -
 // A HOLD is the citation law sending the CLO back to check its last answer
 // (legal/answer-hold.js): the platform's words, never the operator's.
 // PICKED UP is CONTINUE on a reply the app's close cut (portal-turn-adopt.js).
+// NOT DONE is a reply that said queued posts changed when no act touched them (queue-claim-check.js).
 const PLATFORM_LINES = Object.freeze({
   watch: Object.freeze({ tag: 'WATCH', head: /^\[A WATCH YOU SET[^\]]*\]\s*/ }),
   wake: Object.freeze({ tag: 'WAKE', head: /^\[A WAKE[^\]]*\]\s*/ }),
   link: Object.freeze({ tag: 'LINK', head: /^\[CHAT LINK[^\]]*\]\s*/ }),
   hold: Object.freeze({ tag: 'HELD', head: /^\[HELD BY THE CITATION LAW[^\]]*\]\s*/ }),
   resume: Object.freeze({ tag: 'PICKED UP', head: /^\[THE APP CLOSED MID-REPLY[^\]]*\]\s*/ }),
+  unacted: Object.freeze({ tag: 'NOT DONE', head: /^\[NOT DONE[^\]]*\]\s*/ }),
 });
 const WatchLine = ({ message }) => (
   <div className="relink-watch-line" role="status">

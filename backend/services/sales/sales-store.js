@@ -155,7 +155,9 @@ export const readCandidates = async (wallet) => {
   return all.filter((e) => e?.type === 'gathered' && e.candidate?.domain)
     .map((e) => {
       const site = sites.get(e.candidate.domain) ?? null;
-      return { ...e.candidate, ...(site ? { site, description: e.candidate.description || site.description || '' } : {}), id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' };
+      // Kept as `siteRead`: `site` is the company's own web address, which every list source already sets
+      // (2026-11-16: both under one name made every company with an address look already read).
+      return { ...e.candidate, ...(site ? { siteRead: site, description: e.candidate.description || site.description || '' } : {}), id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' };
     });
 };
 
@@ -186,6 +188,13 @@ export const addCandidates = (wallet, segmentId, rows, by) => serialize(async ()
 /** Keep what a contact-data provider returned for a company (the people, each with the page its address was found on). */
 export const noteContacts = (wallet, domain, source, people, by, spent = 1) => serialize(() =>
   appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain, source, people, spent, by, at: new Date().toISOString() }));
+
+/** Keep what Hunter's verifier said about one address (address-check.js); its cost counts toward the month like any lookup. */
+export const noteAddressCheck = (wallet, { email, check, spent, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain: String(email).split('@')[1] ?? '', source: 'hunter-verify', people: [], spent, check: { email, ...check }, by, at: new Date().toISOString() }));
+
+/** Every address check on record, the latest for each address: { email, status, score, at }. */
+export const readAddressChecks = async (wallet) => [...new Map((await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts' && e.check?.email).map((e) => [e.check.email, { ...e.check, at: e.at }])).values()];
 
 /** Every paid lookup on record: which provider, for which company, what it spent and when (lead-spend.js counts the month). */
 export const readContactLookups = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts').map((e) => ({ domain: e.domain, source: e.source, spent: e.spent, found: (e.people ?? []).length, at: e.at }));

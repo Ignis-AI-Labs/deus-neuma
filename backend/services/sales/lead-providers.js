@@ -11,7 +11,9 @@
 // and what it spent; lead-spend.js decides whether a lookup may run at all.
 //
 // Read from each provider's own API documentation on 2026-11-15:
-//   hunter  GET  /domain-search?domain=&api_key=           1 credit per search
+//   hunter  GET  /domain-search?domain=&type=personal&required_field=full_name,position&api_key=
+//           1 credit, counted only when the call returns at least one result: asked
+//           only for named people with a role, a company with none costs nothing
 //   tomba   GET  /domain-search?domain=  (X-Tomba-Key, X-Tomba-Secret)   1 per search
 //   apollo  POST /mixed_people/api_search (free) then POST /people/match per person
 //           (x-api-key; 1 credit per address returned)
@@ -29,6 +31,7 @@ export const APOLLO_REVEAL_MAX = 5;
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const https = (u) => (/^https:\/\/\S+$/.test(String(u ?? '')) ? String(u) : null);
+// Kept in the order given when equal: a caller may have put the people worth writing to first.
 const whole = (rows) => rows.filter((p) => p.name && p.role && p.email && p.sourceUrl).sort((x, y) => y.confidence - x.confidence).slice(0, PEOPLE_MAX);
 
 /** pure — Hunter's answer: only a person with a name, a role and an address found on a page. */
@@ -38,7 +41,9 @@ export const peopleOfHunter = (answer) => whole((answer?.data?.emails ?? []).map
   email: String(e.value ?? '').toLowerCase(),
   confidence: num(e.confidence),
   sourceUrl: (e.sources ?? []).map((s) => https(s?.uri)).find(Boolean) ?? null,
-})));
+  // What else Hunter says about the person: how senior, which department, whether it has confirmed the address exists.
+  seniority: e.seniority || null, department: e.department || null, checked: e.verification?.status || null, linkedin: https(e.linkedin) ?? null,
+})).sort((x, y) => Number(y.checked === 'valid') - Number(x.checked === 'valid') || Number(y.seniority === 'executive') - Number(x.seniority === 'executive')));
 
 /** pure — Tomba's answer, the same law: a name, a role, an address, and the page it stands on. */
 export const peopleOfTomba = (answer) => whole((answer?.data?.emails ?? []).map((e) => ({
@@ -72,8 +77,12 @@ const answer = async (fn) => { try { return await fn(); } catch (err) { return {
 
 /** @returns {Promise<{ok: true, people: object[], spent: number} | {ok: false, detail: string}>} */
 export const hunterContacts = ({ domain, apiKey, baseUrl = urlOf('HUNTER', HUNTER_URL), signal }) => answer(async () => {
-  const people = peopleOfHunter(await ask(`${baseUrl}/domain-search?domain=${encodeURIComponent(domain)}&limit=10&api_key=${encodeURIComponent(apiKey)}`, { signal })).map((p) => ({ ...p, basis: 'published' }));
-  return { ok: true, people, spent: 1 };
+  // Only named people with a role are asked for: Hunter counts a search only when it returns something, so a
+  // company where it holds nobody the house could write to costs no credit (2026-11-16: every lookup used to
+  // ask for everything, pay, and then throw the nameless addresses away).
+  const got = await ask(`${baseUrl}/domain-search?domain=${encodeURIComponent(domain)}&type=personal&required_field=full_name,position&limit=10&api_key=${encodeURIComponent(apiKey)}`, { signal });
+  const people = peopleOfHunter(got).map((p) => ({ ...p, basis: 'published' }));
+  return { ok: true, people, spent: (got?.data?.emails ?? []).length ? 1 : 0 };
 });
 
 /** Tomba takes a key and a secret: the operator saves them together as `key:secret`. */

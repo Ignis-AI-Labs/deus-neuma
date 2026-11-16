@@ -28,7 +28,8 @@ import { leadEmailRefusal } from '../../backend/services/sales/email-ledger.js';
 import { addSuppression } from '../../backend/services/sales/sales-store.js';
 import { makeSuppression } from '../../backend/services/sales/suppress-shape.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
-import { peopleRows, viewCounts, firstView, kindCounts, sourceCounts, narrow, peopleLine, statusWords, SCAN_ASK, SORT_ASK, sourceWords } from '../../frontend/app/RelinkShell/company-line/people-view.js';
+import { leadOrigins } from '../../backend/services/sales/campaign-shape.js';
+import { campaignWords, originWords, campaignCounts, peopleRows, viewCounts, firstView, kindCounts, sourceCounts, narrow, peopleLine, statusWords, SCAN_ASK, SORT_ASK, sourceWords } from '../../frontend/app/RelinkShell/company-line/people-view.js';
 
 const [mailScan, inbound, refile] = salesInboundIntents;
 const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH'].map((k) => [k, process.env[k]]));
@@ -74,6 +75,28 @@ describe('who wrote to the house, read from envelopes (pure)', () => {
     expect(peopleRows({ contacts: [], leads: [leads[0]] }).map((r) => [r.name, r.lead.id])).toEqual([['Ana', '1']]);
     expect([statusWords({ status: 'replied' }), statusWords({ status: 'cold' })]).toEqual(['THEY WROTE — OWED AN ANSWER', 'NOT WRITTEN TO YET']);
     expect(SCAN_ASK).toMatch(/sales\/mail-scan[\s\S]*sales\/inbound[\s\S]*Do not answer anyone yet/);
+  });
+});
+
+describe('which campaign a lead is tied to', () => {
+  test('through the scored company it was made from, else the audience its source names; a lead that wrote in is tied to none', () => {
+    const campaigns = [{ id: 'k-1', name: 'Base launch' }];
+    const segments = [{ id: 's-1', name: 'Base token teams', company: 'umbrae', campaign: 'k-1' }, { id: 's-2', name: 'Audit buyers', company: 'ignis', campaign: null }];
+    const prospects = [{ id: 'p-1', segmentId: 's-1', leadId: 'l-1' }];
+    const leads = [{ id: 'l-1', source: 'lead engine [s-1] Base token teams · address: https://a.example' }, { id: 'l-2', source: 'lead engine [s-2] Audit buyers · address: https://b.example' }, { id: 'l-3', source: 'wrote in' }, { id: 'l-4', source: 'lead engine [s-gone] Retired' }];
+    const origins = leadOrigins({ campaigns, segments, prospects, leads });
+    expect(origins.get('l-1')).toEqual({ audienceId: 's-1', audience: 'Base token teams', company: 'umbrae', campaignId: 'k-1', campaign: 'Base launch' });
+    expect(origins.get('l-2')).toEqual({ audienceId: 's-2', audience: 'Audit buyers', company: 'ignis', campaignId: null, campaign: null });
+    expect([origins.has('l-3'), origins.has('l-4')]).toEqual([false, false]);
+
+    // The sheet: the campaign in its own column, the rest on hover, and one control that narrows by campaign.
+    const rows = peopleRows({ leads: leads.slice(0, 3).map((l, i) => ({ ...l, name: `P${i}`, status: 'cold', kind: 'buyer', channel: 'email', origin: origins.get(l.id) ?? null })) });
+    expect(rows.map((r) => campaignWords(r.lead))).toEqual(['Base launch', 'NO CAMPAIGN', null]);
+    expect(originWords(rows[0].lead)).toBe('campaign: Base launch · audience: Base token teams · for umbrae');
+    expect(originWords(rows[2].lead)).toBe('not found by an audience: it wrote in, or was added by hand');
+    expect(campaignCounts(rows, 'all').map((c) => [c.id, c.label, c.n]).sort()).toEqual([['(none)', 'NO CAMPAIGN (WROTE IN OR ADDED BY HAND)', 1], ['audience:s-2', 'NO CAMPAIGN · Audit buyers', 1], ['k-1', 'Base launch', 1]]);
+    expect(narrow(rows, { campaign: 'k-1' }).map((r) => r.name)).toEqual(['P0']);
+    expect(narrow(rows, { query: 'base token' }).map((r) => r.name)).toEqual(['P0']);
   });
 });
 

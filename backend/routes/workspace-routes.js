@@ -29,6 +29,7 @@ import { createLogger } from '../services/logger.js';
 import { assertPatchAllowed } from '../../core/identity/dna-protected.js';
 import { canonicalJson } from '../../core/shared/plain-data-canonical.js';
 import { stageOperatorChange, stagedReply, stageRefusalStatus } from '../services/sovereignty/operator-change.js';
+import { readThreads } from '../services/chat-threads.js';
 import { settleCutTurn } from '../services/turn-keep.js';
 
 const log = createLogger('Workspace');
@@ -221,6 +222,16 @@ router.get('/:id/sessions', async (req, res) => {
   } catch (error) {
     log.error('Sessions list', { error: error.message });
     res.status(500).json({ error: 'Failed to list sessions' });
+  }
+});
+
+// Which chats are sub-chats, and of which chat (chat-threads.js): the chat list files each under its parent.
+router.get('/:id/session-threads', async (req, res) => {
+  try {
+    res.json({ threads: await readThreads(req.params.id) });
+  } catch (error) {
+    log.error('Session threads', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the chat threads' });
   }
 });
 

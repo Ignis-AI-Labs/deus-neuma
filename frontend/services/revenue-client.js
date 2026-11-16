@@ -31,6 +31,11 @@ export const suppressContact = (target, reason) => revenueCall('POST', '/lead-en
 /** Approve an approved audience's company list as it stands; its leads' emails then go within the daily limits. impure. @param {string} id */
 /** Have the next gathered companies' own sites read (alive or not, what each says it is, its published addresses). */
 export const readSegmentSites = (id, count = 40) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(id)}/read-sites`, { body: { count }, errorPrefix: 'Could not read the sites' });
+/** THE OUTBOX: emails the sales seat staged for the operator's review. */
+export const sendOutbox = (ids) => revenueCall('POST', '/lead-engine/outbox/send', { body: { ids }, errorPrefix: 'Could not send from the outbox' });
+export const returnOutboxEmail = (id, note) => revenueCall('POST', `/lead-engine/outbox/${encodeURIComponent(id)}/return`, { body: { note }, errorPrefix: 'Could not return the email' });
+export const editOutboxEmail = (id, change) => revenueCall('POST', `/lead-engine/outbox/${encodeURIComponent(id)}`, { body: change, errorPrefix: 'Could not change the email' });
+export const setEmailReview = (on) => revenueCall('POST', '/lead-engine/outbox/review', { body: { on }, errorPrefix: 'Could not change the review setting' });
 export const approveSegmentList = (id) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(id)}/list`, { errorPrefix: 'Could not approve the list' });
 
 /** Approve or return the Mercator's latest sales facts sheet. impure. @param {string} sheetId @param {'approved'|'returned'} verdict @param {string} [note] */

@@ -86,7 +86,8 @@ export const notificationTarget = (record) => {
     // card about something filed for them — an ask, the Optio's packet — opens
     // on the ASKS tab, where it is answered.
     case KIND.houseWake: {
-      const tab = ref.askId || ref.packetAt ? 'asks' : null;
+      // a member's change to the charter (house/charter) opens on the CHARTER tab, where every version is kept
+      const tab = ref.askId || ref.packetAt ? 'asks' : ref.charterVersion ? 'charter' : null;
       if (!ref.wakeId && !tab) return { appId: 'houseclock', payload: null };
       return {
         appId: 'houseclock',

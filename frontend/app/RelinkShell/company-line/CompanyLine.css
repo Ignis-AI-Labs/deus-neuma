@@ -209,3 +209,9 @@
 .cline-bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
 
 .cline-ppl-tools .cline-input { flex: 2 1 14rem; }
+
+/* The outbox: one staged email read whole, exactly as it would leave (Outbox.jsx). */
+.cline-out-mail { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) 0; max-width: 46rem; }
+.cline-out-subject { margin: 0; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.cline-out-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-voice, inherit); font-size: 14px; line-height: 1.55; color: var(--color-text-primary); background: var(--color-glass-light); border-left: 2px solid var(--line); padding: var(--space-3); }
+textarea.cline-out-text { border: 1px solid var(--line); width: 100%; }

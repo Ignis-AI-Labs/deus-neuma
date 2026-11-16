@@ -19,11 +19,11 @@ import { ChatBatchItems } from './ChatBatchItems.jsx';
 import { useWindows } from '../windowing/use-windows.js';
 import { ChatSearch } from './ChatSearch.jsx';
 import { useChatSearch } from './use-chat-search.js';
-import { listSessions } from './workspace-sessions.js';
+import { listSessions, listChatThreads } from './workspace-sessions.js';
 import { useTitlingJob } from './use-titling-job.js';
 import { TitlingProgress } from './TitlingProgress.jsx';
 import { getChatLabels, setChatLabel } from '../../services/chat-labels.js';
-import { chatRows, rowTip, tipPlacement } from './stream-chats-view.js';
+import { chatRows, rowTip, tipPlacement, shownRows } from './stream-chats-view.js';
 import { CHAT_LABELS_EVENT, announceChatLabels } from './chat-labels-bus.js';
 import { setOpenRail } from './stream-rail-state.js';
 import { useRailItem } from './StreamRail.jsx';
@@ -77,6 +77,8 @@ export const StreamChats = () => {
   }, [wsService]);
 
   const [sessions, setSessions] = useState(null); // null = loading
+  const [threads, setThreads] = useState({}); // which chats are sub-chats, and of which chat
+  const [opened, setOpened] = useState(() => new Set()); // the parents whose sub-chats are showing
   const [labels, setLabels] = useState({});
   // Naming, in the operator's two registers: the conduit names from what was
   // said (AUTO-TITLE / TITLE), the operator names by hand (RENAME). `menu`
@@ -89,7 +91,8 @@ export const StreamChats = () => {
   const [note, setNote] = useState('');
   const refresh = useCallback(async (settled) => {
     if (!neumaId) { setSessions([]); return; }
-    const [s, l] = await Promise.all([listSessions(neumaId), getChatLabels()]);
+    const [s, l, th] = await Promise.all([listSessions(neumaId), getChatLabels(), listChatThreads(neumaId)]);
+    setThreads(th);
     if (settled?.()) return;
     setSessions(s);
     setLabels(l);
@@ -129,7 +132,7 @@ export const StreamChats = () => {
     };
   }, [menu]);
 
-  const search = useChatSearch(neumaId, sessions, labels, isOpen, chatId);
+  const search = useChatSearch(neumaId, sessions, labels, isOpen, chatId, threads);
 
   const keyOf = (id) => `${neumaId}:${id}`;
 
@@ -165,8 +168,10 @@ export const StreamChats = () => {
   // whether it is open or shut.
   if (!isOpen) return null;
 
-  const all = chatRows(sessions || [], labels, neumaId, chatId);
-  const rows = search.rows;
+  const all = chatRows(sessions || [], labels, neumaId, chatId, threads);
+  // A sub-chat stands folded under its parent until the parent is opened; a search shows every match, flat.
+  const rows = search.query.trim() ? search.rows : shownRows(search.rows, opened);
+  const toggleSubs = (id) => { uiSound('toggle'); setOpened((was) => { const next = new Set(was); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
   return (
     <aside className="stream-chats cham" aria-label="Chats">
       <div className="stream-chats-in cham-in">
@@ -213,7 +218,7 @@ export const StreamChats = () => {
         ) : (
           <ul className="stream-chats-list">
             {rows.map((r) => (
-              <li key={r.id}>
+              <li key={r.id} className={`stream-chats-item${r.depth ? ' is-sub' : ''}`} data-chat-row={r.id} data-chat-parent={r.parent ?? undefined}>
                 {renaming === r.id ? (
                   <div className="stream-chats-rename">
                     <input
@@ -249,6 +254,12 @@ export const StreamChats = () => {
                     {r.excerpt ? <span className="chat-content-excerpt">{r.excerpt}</span> : null}
                   </button>
                 )}
+                {r.subs && renaming !== r.id && !search.query.trim() ? (
+                  <button type="button" className="stream-chats-subs label-data" aria-expanded={opened.has(r.id)} onClick={() => toggleSubs(r.id)}
+                    aria-label={`${r.subs} sub-chat${r.subs === 1 ? '' : 's'} of ${r.label} — ${opened.has(r.id) ? 'fold them away' : 'show them'}`} title={`${r.subs} sub-chat${r.subs === 1 ? '' : 's'} spawned from this chat`}>
+                    {opened.has(r.id) ? '▾' : '▸'} {r.subs}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>

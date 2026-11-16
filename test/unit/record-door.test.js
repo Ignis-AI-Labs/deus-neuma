@@ -71,3 +71,21 @@ describe('a record or place named in a member\'s words is a door', () => {
     expect(recordDoor('POSITIONS → CHIEF REVENUE OFFICER → LEADS')).not.toBe(null);
   });
 });
+
+describe('a web address in a member\'s words is a link, not a folder', () => {
+  it('a site with a path, with or without https, is a web address; files and folders are not', async () => {
+    const { webAddress, openablePath } = await import('../../frontend/app/RelinkShell/path-link.js');
+    const { pathMenuItems, isWebAddress } = await import('../../frontend/app/RelinkShell/path-menu.js');
+    expect(webAddress('peopledatalabs.com/data-lab/dataset/company-dataset')).toBe('https://peopledatalabs.com/data-lab/dataset/company-dataset');
+    expect(webAddress('https://hunter.io/api-keys.')).toBe('https://hunter.io/api-keys');
+    expect(webAddress('www.example.museum')).toBe('https://www.example.museum/');
+    expect(webAddress('umbrae.io')).toBe('https://umbrae.io/');
+    // Names that end like files, and real paths, stay what they are.
+    for (const text of ['scripts/load-company-index.mjs', 'notes.md', 'build.sh', 'data.json', '/workspace/data/companies.csv', 'docs/design/plan.md', 'node scripts/x.mjs', 'a b.com', 'v1.2']) expect(webAddress(text), text).toBe(null);
+    expect(openablePath('/workspace/data/companies.csv')).toBe('/workspace/data/companies.csv');
+    // Its menu offers the browser and the clipboard, never the file manager.
+    expect(isWebAddress('https://umbrae.io/')).toBe(true);
+    expect(pathMenuItems('https://peopledatalabs.com/data-lab', { desktop: true }).map((i) => i.label)).toEqual(['Open link', 'Copy link']);
+    expect(pathMenuItems('/workspace/data', { desktop: true }).map((i) => i.label)).toContain('Show in file manager');
+  });
+});

@@ -156,16 +156,18 @@ export const chatTitleLine = (title, started) => (title.named
  * @returns {Array<{id: string, label: string, stamp: string, named: boolean, live: boolean}>}
  */
 // pure
-export const chatRows = (sessions, labels, neumaId, chatId) =>
+export const chatRows = (sessions, labels, neumaId, chatId, threads = null) => threadRows(
   (Array.isArray(sessions) ? sessions : [])
     .filter((id) => !isCouncilSession(id))
     .map((id) => {
       const named = Boolean(neumaId && (labels || {})[`${neumaId}:${id}`]);
+      // A sub-chat nobody named wears what it was spawned to do (a clone's task), never a bare time.
+      const task = threads?.[id]?.title || '';
       return {
         id,
         // Short forms in the RAIL only. The title line keeps sessionLabel's
         // long form — it has one line's worth of room and no list to scan.
-        label: named ? labels[`${neumaId}:${id}`] : shortWhen(id),
+        label: named ? labels[`${neumaId}:${id}`] : task || shortWhen(id),
         stamp: shortStamp(id),
         // The full timestamp still rides the row, for its hover title: short
         // on screen, exact when you ask.
@@ -173,4 +175,30 @@ export const chatRows = (sessions, labels, neumaId, chatId) =>
         named,
         live: id === chatId,
       };
-    });
+    }), threads);
+
+/**
+ * File each sub-chat under the chat it was spawned from (Design note, 2026-11-16: […]). A row gains `parent` (its parent's id, or null), `depth`
+ * (0 a chat, 1 a sub-chat) and `subs` (how many sub-chats it has); each parent is followed at once by its
+ * sub-chats, oldest first. A sub-chat whose parent is not in the list (deleted, or filtered out) stands as an
+ * ordinary chat. A sub-chat of a sub-chat is filed under the top chat: the list has two levels, never more.
+ */
+// pure
+export const threadRows = (rows, threads) => {
+  if (!threads || !Object.keys(threads).length) return rows.map((r) => ({ ...r, parent: null, depth: 0, subs: 0 }));
+  const ids = new Set(rows.map((r) => r.id));
+  const topOf = (id, hops = 0) => { const parent = threads[id]?.parent; return parent && ids.has(parent) && hops < 8 ? topOf(parent, hops + 1) : id; };
+  const under = new Map();
+  for (const r of rows) {
+    const top = topOf(r.id);
+    if (top !== r.id) under.set(top, [...(under.get(top) ?? []), r]);
+  }
+  const filed = new Set([...under.values()].flat().map((r) => r.id));
+  return rows.filter((r) => !filed.has(r.id)).flatMap((r) => {
+    const subs = (under.get(r.id) ?? []).sort((a, b) => a.id.localeCompare(b.id));
+    return [{ ...r, parent: null, depth: 0, subs: subs.length }, ...subs.map((s) => ({ ...s, parent: r.id, depth: 1, subs: 0, kind: threads[s.id]?.kind ?? 'sub' }))];
+  });
+};
+
+/** The rows that show: a sub-chat is hidden until its parent is opened, unless it is the chat on screen or a search found it. Pure. */
+export const shownRows = (rows, opened = new Set()) => rows.filter((r) => r.depth === 0 || opened.has(r.parent) || r.live || r.excerpt);

@@ -125,5 +125,27 @@ export const campaignBoard = ({ campaigns, segments, candidates, prospects, lead
   return { campaigns: board, loose: live.filter((s) => !known.has(s.campaign)).map((s) => ({ id: s.id, name: s.name, company: s.company })) };
 };
 
+/**
+ * Where each lead came from: the audience that found it and the campaign that audience serves (Design note, 2026-11-16:
+ * […]). A lead is tied through the scored company it was made from; one made before that link was kept
+ * is tied through the audience its own source names ([…]). A lead nobody's audience found
+ * (it wrote in, or was added by hand) has no entry. pure.
+ * @param {{campaigns: object[], segments: object[], prospects: object[], leads: object[]}} read
+ * @returns {Map<string, {audienceId: string, audience: string, company: ?string, campaignId: ?string, campaign: ?string}>}
+ */
+export const leadOrigins = ({ campaigns = [], segments = [], prospects = [], leads = [] }) => {
+  const segmentById = new Map(segments.map((s) => [s.id, s]));
+  const campaignById = new Map(campaigns.map((c) => [c.id, c]));
+  const viaProspect = new Map(prospects.filter((p) => p.leadId).map((p) => [p.leadId, p.segmentId]));
+  const origins = new Map();
+  for (const lead of leads) {
+    const segment = segmentById.get(viaProspect.get(lead.id) ?? /^lead engine \[([^\]]+)\]/.exec(String(lead.source ?? ''))?.[1]);
+    if (!segment) continue;
+    const campaign = campaignById.get(segment.campaign) ?? null;
+    origins.set(lead.id, { audienceId: segment.id, audience: segment.name, company: segment.company ?? null, campaignId: campaign?.id ?? null, campaign: campaign?.name ?? null });
+  }
+  return origins;
+};
+
 /** pure — one campaign as the sales seat reads it. */
 export const campaignLine = (c) => `- [${c.id}] ${c.name} (for ${c.company}, ${c.state}) — goal: ${c.goal} — ${c.audiences.length} audience(s), ${c.gathered} gathered, ${c.scored} scored, ${c.leads} on the lead list, ${STAGES.map((s) => `${c[s]} ${s}`).join(', ')}`;

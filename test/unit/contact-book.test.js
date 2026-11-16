@@ -60,6 +60,11 @@ describe('the contact book', () => {
     expect(contactLine([])).toMatch(/^The contact book is empty\./);
   });
 
+  test('an address a checker confirmed exists stands as verified', () => {
+    const book = foldContacts({ candidates: [{ name: 'Harbor', domain: 'harbor.example', segmentId: 's-1', site: 'https://harbor.example', siteRead: { readAt: NOW, emails: [{ email: 'hello@harbor.example', page: 'https://harbor.example/' }, { email: 'ada@harbor.example', page: 'https://harbor.example/contact' }] } }], checks: [{ email: 'ada@harbor.example', status: 'valid' }, { email: 'hello@harbor.example', status: 'accept_all' }] });
+    expect(book.map((c) => [c.email, c.state]).sort()).toEqual([['ada@harbor.example', 'verified'], ['hello@harbor.example', 'published']]);
+  });
+
   test('a seat files a person\'s published address with them, and only a real address is kept', () => {
     const filed = makeProspect({ segment: { id: 's-1', positiveCriteria: ['Fits'], negativeCriteria: [] }, domain: 'acme.example', name: 'Acme', country: 'US', source: 'https://acme.example', scores: [{ criterion: 'Fits', score: 5, reasoning: 'their site says so' }],
       people: [{ name: 'Bo Chen', role: 'Head of Security', sourceUrl: 'https://acme.example/team', email: ' Bo@Acme.example ' }, { name: 'Ada Lovelace', role: 'CTO', sourceUrl: 'https://acme.example/team', email: 'not an address' }], by: 'merc', now: NOW });
@@ -75,10 +80,11 @@ describe('the contact book', () => {
     expect(narrow(rows, { query: 'security' }).map((r) => r.name)).toEqual(['Bo Chen']);
     expect(narrow(rows, { query: 'zeta.example' }).map((r) => r.company)).toEqual(['Zeta Labs']);
     expect(narrow(rows, { query: 'nobody at all' })).toEqual([]);
-    const csv = contactsCsv(book).split('\r\n');
-    expect(csv[0]).toBe('"name","title","company","domain","email","address is","other way to reach","filed as","lead status","came from","first seen","source"');
+    const leadId = book.find((c) => c.lead)?.lead.id;
+    const csv = contactsCsv(book, [{ id: leadId, origin: { campaign: 'Base launch', audience: 'Base token teams' } }]).split('\r\n');
+    expect(csv[0]).toBe('"name","title","company","domain","email","address is","other way to reach","filed as","lead status","came from","campaign","audience","first seen","source"');
     expect(csv).toHaveLength(5);
-    expect(csv.find((l) => l.startsWith('"Bo Chen"'))).toContain('"bo@acme.example","confirmed","","buyer","contacted","email"');
+    expect(csv.find((l) => l.startsWith('"Bo Chen"'))).toContain('"bo@acme.example","confirmed","","buyer","contacted","email","Base launch","Base token teams"');
     expect(Object.keys(STATE_WORDS)).toEqual(EMAIL_STATES);
   });
 });

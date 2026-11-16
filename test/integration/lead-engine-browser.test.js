@@ -123,7 +123,7 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect(await grace.locator('[data-lead-status]').textContent()).toBe('THEY WROTE');
     expect(await grace.locator('[data-upkeep="answer"]').getAttribute('title')).toContain('PROMISED: two short written ideas on a field app');
     // One person, one line: a sheet row with a cell for each fact.
-    expect(await page.locator('[data-sheet="people"] thead th').allTextContents()).toEqual(['NAME', 'COMPANY', 'TITLE', 'EMAIL OR REACH', 'PROOF', 'FILED AS', 'STANDS', 'FROM', 'DUE']);
+    expect(await page.locator('[data-sheet="people"] thead th').allTextContents()).toEqual(['NAME', 'COMPANY', 'TITLE', 'CAMPAIGN', 'EMAIL OR REACH', 'PROOF', 'FILED AS', 'STANDS', 'FROM', 'DUE']);
     expect(await grace.locator('[data-person-reach]').textContent()).toBe('grace@navy.example');
     expect(await page.locator('[data-people-stat]').first().textContent()).toMatch(/ACTIVE LEAD/);
     // The facts sheet waits for the operator: every fact with its source.

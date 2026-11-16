@@ -17,6 +17,7 @@ import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { resolveUsableCredential } from '../oauth-token-broker.js';
 import { readContactLookups } from './sales-store.js';
+import { hunterAccount, accountWords } from './hunter-discover.js';
 import { PEOPLE_PROVIDERS } from './lead-providers.js';
 
 const serialize = createWriteChain();
@@ -61,8 +62,11 @@ export const spendRefusal = ({ rule, spent, cost }) => {
 };
 
 /** pure — the setting as the seat reads it. */
-export const spendLine = ({ rule, spent, attached }) => {
-  if (!attached.length) return 'PAID LEAD DATA: no provider is attached. Read each address on the company\'s own pages.';
+export const spendLine = ({ rule, spent, attached, accounts = {} }) => {
+  if (!attached.length) return 'PAID LEAD DATA: no provider is attached. Read each address on the company\'s own pages. (A free Hunter account would give you a company search that spends nothing and 50 people lookups a month: tell your operator.)';
+  return `${spendLineBody({ rule, spent, attached })}${attached.includes('hunter') ? ` Hunter's company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says.${accounts.hunter ? ` Hunter's own count: ${Math.max(0, accounts.hunter.available - accounts.hunter.used)} of ${accounts.hunter.available} credits left this month (${accounts.hunter.plan} plan).` : ''}` : ''}`;
+};
+const spendLineBody = ({ rule, spent, attached }) => {
   return `PAID LEAD DATA (${attached.join(', ')} attached; it spends your operator's credits): ${rule.on ? `ON. It is one of the ways you may find a person's address. Use what is free first (the company's own pages); pay for a lookup when those give none` : 'OFF. Do not ask for it; read each address on the company\'s own pages'}. Spent this month: ${spent} of ${rule.cap} credit(s).`;
 };
 
@@ -70,10 +74,12 @@ export const spendLine = ({ rule, spent, attached }) => {
  * pure — the setting as a row of the position's SETTINGS tab, beside its connection switches.
  * @param {{rule: object, spent: number, attached: string[]}} state
  */
-export const spendSwitch = ({ rule, spent, attached }) => ({
+export const spendSwitch = ({ rule, spent, attached, accounts = {} }) => ({
   id: 'paid-lead-data', kind: 'spend', on: rule.on, cap: rule.cap, spent, attached,
+  // what the attached account itself says it has left, where it can be read (Hunter today)
+  note: accountWords(accounts.hunter ?? null),
   name: `Paid lead data${attached.length ? ` (${attached.map((a) => a[0].toUpperCase() + a.slice(1)).join(', ')})` : ''}`,
-  whileOff: attached.length ? 'your sales seat reads each address on the company\'s own pages and spends none of your credits' : 'no provider key is attached yet; add one in Settings, API, Lead data',
+  whileOff: attached.length ? 'your sales seat reads each address on the company\'s own pages and spends none of your credits' : 'no provider key is attached yet. A free Hunter account (hunter.io) gives your sales seat a company search that spends nothing and 50 credits a month to look people up; add its key in Settings, API, Lead data',
 });
 
 /** impure — the rule of one house. */
@@ -102,5 +108,6 @@ export const attachedProviders = async () => {
 /** impure — where the house stands: the rule, what the month has spent, which providers are attached (ids only). */
 export const spendState = async (wallet) => {
   const [rule, lookups, attached] = await Promise.all([readSpend(wallet), readContactLookups(wallet), attachedProviders()]);
-  return { rule, spent: spentThisMonth(lookups, Date.now()), attached: attached.map((a) => a.id), lookups: lookups.slice(-10).reverse() };
+  const hunter = attached.find((a) => a.id === 'hunter');
+  return { rule, spent: spentThisMonth(lookups, Date.now()), attached: attached.map((a) => a.id), accounts: hunter ? { hunter: await hunterAccount(hunter.apiKey) } : {}, lookups: lookups.slice(-10).reverse() };
 };

@@ -13,6 +13,7 @@ import { suppressionMatcher } from './suppress-shape.js';
 import { FIRST_WORDS_MAX, SUBJECT_WORDS_MAX } from './first-email.js';
 import { upkeepDue, UPKEEP_ASK } from './lead-upkeep.js';
 import { spendLine, spendState } from './lead-spend.js';
+import { outboxText, readOutbox } from './email-outbox.js';
 import { LEAD_KINDS, UNSORTED, kindOf, sourceOf } from '../leads/lead-ledger.js';
 import { foldContacts, contactLine } from './contact-book.js';
 
@@ -71,7 +72,7 @@ const segmentLines = (segments, prospects) => segments.filter((s) => s.state !==
  * pure — the section text.
  * @param {{segments: object[], prospects: object[], leads: object[], suppressions: object[], now: number}} state
  */
-export const leadEngineText = ({ segments, prospects, leads, suppressions, facts = null, candidates = [], campaigns = [], spend = null, lookups = [], now }) => {
+export const leadEngineText = ({ segments, prospects, leads, suppressions, facts = null, candidates = [], campaigns = [], spend = null, lookups = [], outbox = null, now }) => {
   const board = campaignBoard({ campaigns: campaigns.filter((c) => c.state === 'open'), segments, candidates, prospects, leads });
   const waiting = candidates.filter((c) => c.state === 'waiting');
   const approved = new Set(segments.filter((s) => s.state === 'approved').map((s) => s.id));
@@ -86,6 +87,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     FIRST_EMAIL,
     ...factLines(facts),
     ...(spend ? [spendLine(spend)] : []),
+    ...(outbox ? [outboxText(outbox)] : []),
     ...(board.campaigns.length ? ['Your campaigns (sales/campaign opens, edits, archives or deletes one; file each audience under the one it serves, campaign: its id; campaigns/link ties one to a marketing campaign):', ...board.campaigns.map(campaignLine), ...(board.loose.length ? [`Audiences under no campaign: ${board.loose.map((s) => s.name).join('; ')}`] : [])] : ['No campaign is open: open one with sales/campaign (name, company, goal) before filing audiences, so each push is counted on its own.']),
     ...(segments.length ? ['Segments:', ...segmentLines(segments, prospects)] : ['No segments yet: start by filing the first one.']),
     ...(waiting.length ? [`Candidates gathered, waiting for your score (${waiting.length}; sales/prospect for the ones that fit, sales/contacts for their people):`, ...waiting.slice(0, LIST_CAP).map((c) => `- [${c.id}] ${candidateLine(c)}`)] : []),
@@ -102,5 +104,5 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
 /** The section for the house at `wallet`, with its ledger already read. impure. */
 export const leadEngineSection = async (wallet, leads) => {
   const [segments, prospects, suppressions, facts, candidates, campaigns, lookups] = await Promise.all([readSegments(wallet), readProspects(wallet), readSuppressions(wallet), readSalesFacts(wallet), readCandidates(wallet), readCampaigns(wallet), readContactPeople(wallet)]);
-  return leadEngineText({ segments, prospects, leads, suppressions, facts, candidates, campaigns, lookups, spend: await spendState(wallet).catch(() => null), now: Date.now() });
+  return leadEngineText({ segments, prospects, leads, suppressions, facts, candidates, campaigns, lookups, spend: await spendState(wallet).catch(() => null), outbox: await readOutbox(wallet).catch(() => null), now: Date.now() });
 };

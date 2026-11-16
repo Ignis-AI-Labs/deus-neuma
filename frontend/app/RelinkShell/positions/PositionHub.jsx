@@ -52,6 +52,7 @@ const Switches = ({ position, busy, onSwitch, onLimit }) => (
           {c.on ? 'ON' : 'OFF'}
         </button>
         {c.kind === 'spend' ? <Limit key={c.cap} c={c} busy={busy} onLimit={onLimit} /> : null}
+        {c.note ? <p className="pos-covers" data-switch-note="">{c.note}</p> : null}
         {!c.on && c.whileOff ? <p className="pos-covers">While it is off: {c.whileOff}.</p> : null}
       </li>
     ))}

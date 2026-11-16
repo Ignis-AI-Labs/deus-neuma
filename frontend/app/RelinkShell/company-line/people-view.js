@@ -100,12 +100,22 @@ export const kindCounts = (rows, view) => {
 };
 export const sourceCounts = (rows, view) => tally(inView(rows, view), (r) => r.lead?.channel, sourceWords);
 
-const hit = (r, q) => [r.name, r.title, r.company, r.domain, r.email, r.reach].some((v) => String(v ?? '').toLowerCase().includes(q));
+/** The campaign a lead is tied to, as the sheet says it: its name; an audience under no campaign; or nothing for a lead no audience found. */
+export const campaignWords = (lead) => (lead?.origin ? lead.origin.campaign ?? 'NO CAMPAIGN' : null);
+/** …and in full, for the cell's hover: the campaign, the audience that found the lead, the company it is sold for. */
+export const originWords = (lead) => (lead?.origin ? [lead.origin.campaign ? `campaign: ${lead.origin.campaign}` : 'under no campaign', `audience: ${lead.origin.audience}`, lead.origin.company ? `for ${lead.origin.company}` : null].filter(Boolean).join(' · ') : 'not found by an audience: it wrote in, or was added by hand');
+const NO_ORIGIN = '(none)';
+/** Within a view: the campaigns the leads are tied to, each with its count (leads tied to none counted together). */
+export const campaignCounts = (rows, view) => tally(inView(rows, view).filter((r) => r.lead), (r) => r.lead.origin?.campaignId ?? (r.lead.origin ? `audience:${r.lead.origin.audienceId}` : NO_ORIGIN),
+  (id) => { const lead = rows.find((r) => r.lead && (r.lead.origin?.campaignId ?? (r.lead.origin ? `audience:${r.lead.origin.audienceId}` : NO_ORIGIN)) === id)?.lead; return id === NO_ORIGIN ? 'NO CAMPAIGN (WROTE IN OR ADDED BY HAND)' : lead.origin.campaign ?? `NO CAMPAIGN · ${lead.origin.audience}`; });
+const campaignKey = (lead) => lead.origin?.campaignId ?? (lead.origin ? `audience:${lead.origin.audienceId}` : NO_ORIGIN);
+
+const hit = (r, q) => [r.name, r.title, r.company, r.domain, r.email, r.reach, r.lead?.origin?.campaign, r.lead?.origin?.audience].some((v) => String(v ?? '').toLowerCase().includes(q));
 
 /** The rows that show: one view, narrowed by kind, by source and by the search words. */
-export const narrow = (rows, { view = 'all', kind = '', source = '', query = '' } = {}) => {
+export const narrow = (rows, { view = 'all', kind = '', source = '', campaign = '', query = '' } = {}) => {
   const q = String(query).trim().toLowerCase();
-  return inView(rows, view).filter((r) => (!kind || r.lead?.kind === kind) && (!source || r.lead?.channel === source) && (!q || hit(r, q)));
+  return inView(rows, view).filter((r) => (!kind || r.lead?.kind === kind) && (!source || r.lead?.channel === source) && (!campaign || (r.lead && campaignKey(r.lead) === campaign)) && (!q || hit(r, q)));
 };
 
 /** The tab's own line: every count that matters, nothing else. */
@@ -132,7 +142,10 @@ export const SORT_ASK = 'Sort every lead your briefing lists as NOT SORTED YET, 
 const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 /** The whole book as a spreadsheet file's text (one person a row). */
-export const contactsCsv = (contacts = []) => [
-  ['name', 'title', 'company', 'domain', 'email', 'address is', 'other way to reach', 'filed as', 'lead status', 'came from', 'first seen', 'source'].map(cell).join(','),
-  ...contacts.map((c) => [c.name, c.title, c.company, c.domain, c.email, c.state, c.reach, c.lead?.kind, c.lead?.status, c.lead?.channel, c.at, c.source].map(cell).join(',')),
+export const contactsCsv = (contacts = [], leads = []) => {
+  const origin = new Map(leads.map((l) => [l.id, l.origin ?? null]));
+  return [
+  ['name', 'title', 'company', 'domain', 'email', 'address is', 'other way to reach', 'filed as', 'lead status', 'came from', 'campaign', 'audience', 'first seen', 'source'].map(cell).join(','),
+  ...contacts.map((c) => [c.name, c.title, c.company, c.domain, c.email, c.state, c.reach, c.lead?.kind, c.lead?.status, c.lead?.channel, origin.get(c.lead?.id)?.campaign, origin.get(c.lead?.id)?.audience, c.at, c.source].map(cell).join(',')),
 ].join('\r\n');
+};

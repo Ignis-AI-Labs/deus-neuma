@@ -56,7 +56,7 @@ export const ACT_FAMILIES = Object.freeze({
     'security.scan', // a scan IS a hunt for what is not yet known to be there
     'legal.scan',    // …and the legal watch hunts the same way
     'tool_search',       // hunting the catalog for a capability, same shape
-    'sales.gather', 'sales.read-sites', 'sales.contacts', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
+    'sales.gather', 'sales.read-sites', 'sales.contacts', 'sales.find-address', 'sales.draft-email', 'registry.lookup', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
   ]),
   // Changing something that already existed.
   actEdit: Object.freeze([

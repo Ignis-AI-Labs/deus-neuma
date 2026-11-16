@@ -37,6 +37,8 @@ export const ROLES_ABI = Object.freeze([
   'function owner() view returns (address)',
   'function avatar() view returns (address)',
   'function target() view returns (address)',
+  'event AssignRoles(address module,bytes32[] roleKeys,bool[] memberOf)',
+  'event RolesModSetup(address indexed initiator,address indexed owner,address indexed avatar,address target)',
 ]);
 export const VAULT_ERC20_ABI = Object.freeze([
   'function transfer(address to,uint256 amount) returns (bool)',

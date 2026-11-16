@@ -26,6 +26,8 @@ import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { listCompanies } from '../marketing/companies.js';
 import { salesGatherIntents } from './sales-gather-acts.js';
+import { salesHunterIntents } from './sales-hunter-acts.js';
+import { salesOutboxIntents } from './sales-outbox-acts.js';
 import { campaignManageIntents } from './campaign-manage-acts.js';
 import { companyModelIntent } from './company-model-act.js';
 import { salesInboundIntents } from './sales-inbound-acts.js';
@@ -241,4 +243,4 @@ const salesFactsIntent = Object.freeze({
   },
 });
 
-export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...campaignManageIntents, companyModelIntent, ...salesInboundIntents]);
+export const salesIntents = Object.freeze([salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...salesHunterIntents, ...salesOutboxIntents, ...campaignManageIntents, companyModelIntent, ...salesInboundIntents]);

@@ -17,7 +17,7 @@ import { readSites, READ_MAX } from './company-reader.js';
  */
 export const readAudienceSites = async (wallet, segmentId, { count = 30, by, fetchPage, signal, onProgress } = {}) => {
   const want = Math.min(Math.max(parseInt(count, 10) || 30, 1), READ_MAX);
-  const unread = (await readCandidates(wallet)).filter((c) => c.segmentId === segmentId && c.state === 'waiting' && !c.site)
+  const unread = (await readCandidates(wallet)).filter((c) => c.segmentId === segmentId && c.state === 'waiting' && !c.siteRead)
     .sort((a, b) => Number(!a.trafficRank) - Number(!b.trafficRank) || (a.trafficRank ?? 0) - (b.trafficRank ?? 0));
   if (!unread.length) return { ok: false, reason: 'every company gathered for this audience and not yet scored has already been read' };
   const read = await readSites(unread.slice(0, want).map((c) => c.domain), { ...(fetchPage ? { fetchPage } : {}), ...(onProgress ? { onProgress } : {}), signal });

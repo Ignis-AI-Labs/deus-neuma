@@ -20,7 +20,7 @@
 // The fold is PURE; contactBook reads.
 
 import { normalizeEmail } from './suppress-shape.js';
-import { readProspects, readSegments, readSuppressions, readContactPeople, readCandidates } from './sales-store.js';
+import { readProspects, readSegments, readSuppressions, readContactPeople, readCandidates, readAddressChecks } from './sales-store.js';
 import { leadLedgerFor, kindOf, sourceOf } from '../leads/lead-ledger.js';
 
 export const EMAIL_STATES = Object.freeze(['none', 'published', 'verified', 'confirmed', 'bounced']);
@@ -55,10 +55,12 @@ const keyOf = (c) => (c.email ? `e:${c.email}` : `n:${c.name.toLowerCase()}|${c.
 
 /**
  * pure — the book, from the house's own records.
- * @param {{leads: object[], prospects: object[], lookups: object[], suppressions: object[], segments: object[], candidates?: object[]}} read
+ * @param {{leads: object[], prospects: object[], lookups: object[], suppressions: object[], segments: object[], candidates?: object[], checks?: object[]}} read
  * @returns {object[]} one record per person, strongest proof first within each company
  */
-export const foldContacts = ({ leads = [], prospects = [], lookups = [], suppressions = [], segments = [], candidates = [] }) => {
+export const foldContacts = ({ leads = [], prospects = [], lookups = [], suppressions = [], segments = [], candidates = [], checks = [] }) => {
+  // An address a checker confirmed exists (address-check.js) stands as verified, wherever it was first read.
+  const exists = new Set(checks.filter((c) => c.status === 'valid').map((c) => c.email));
   const companyName = new Map([...candidates.map((c) => [c.domain, c.name]), ...prospects.map((p) => [p.domain, p.name])]);
   const houseCompany = (segmentId) => segments.find((s) => s.id === segmentId)?.company ?? null;
   const seen = [];
@@ -69,8 +71,8 @@ export const foldContacts = ({ leads = [], prospects = [], lookups = [], suppres
   }
   // An address a company publishes on its own site (company-reader.js): a way in, with the page it stands on.
   for (const c of candidates) {
-    for (const e of c.site?.emails ?? []) {
-      seen.push(sighting({ name: '', title: '', company: c.name, domain: c.domain, email: e.email, state: 'published', source: e.page, at: c.site.readAt, forCompany: houseCompany(c.segmentId) }));
+    for (const e of c.siteRead?.emails ?? []) {
+      seen.push(sighting({ name: '', title: '', company: c.name, domain: c.domain, email: e.email, state: 'published', source: e.page, at: c.siteRead.readAt, forCompany: houseCompany(c.segmentId) }));
     }
   }
   for (const look of lookups) {
@@ -105,7 +107,7 @@ export const foldContacts = ({ leads = [], prospects = [], lookups = [], suppres
   }
   const bounced = new Set(suppressions.filter((s) => s.reason === 'bounced' && s.kind === 'email').map((s) => s.value));
   return [...by.values()]
-    .map((c) => ({ ...c, state: c.email && bounced.has(c.email) ? 'bounced' : c.state, company: c.company || companyName.get(c.domain) || '' }))
+    .map((c) => ({ ...c, state: c.email && bounced.has(c.email) ? 'bounced' : c.email && exists.has(c.email) && RANK[c.state] < RANK.verified ? 'verified' : c.state, company: c.company || companyName.get(c.domain) || '' }))
     // By company (people with no company known stand last), the strongest proof first within each.
     .sort((a, b) => Number(!a.company) - Number(!b.company) || a.company.localeCompare(b.company) || RANK[b.state] - RANK[a.state] || a.name.localeCompare(b.name));
 };
@@ -126,8 +128,8 @@ export const contactLine = (contacts) => {
 
 /** impure — one house's contact book. */
 export const contactBook = async (wallet) => {
-  const [leads, prospects, lookups, suppressions, segments, candidates] = await Promise.all([
-    leadLedgerFor(wallet).then((l) => l.load()), readProspects(wallet), readContactPeople(wallet), readSuppressions(wallet), readSegments(wallet), readCandidates(wallet),
+  const [leads, prospects, lookups, suppressions, segments, candidates, checks] = await Promise.all([
+    leadLedgerFor(wallet).then((l) => l.load()), readProspects(wallet), readContactPeople(wallet), readSuppressions(wallet), readSegments(wallet), readCandidates(wallet), readAddressChecks(wallet),
   ]);
-  return foldContacts({ leads, prospects, lookups, suppressions, segments, candidates });
+  return foldContacts({ leads, prospects, lookups, suppressions, segments, candidates, checks });
 };

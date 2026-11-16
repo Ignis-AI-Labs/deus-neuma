@@ -13,6 +13,7 @@ import { EmptyState } from '../empty-state.jsx';
 import { Fold } from '../fold/Fold.jsx';
 import { Sheet } from '../sheet/Sheet.jsx';
 import { People } from './People.jsx';
+import { Outbox } from './Outbox.jsx';
 import { useLeadEngine } from './use-lead-engine.js';
 import { LeadFactsSheet } from './LeadFactsSheet.jsx';
 import { LeadAudienceCard } from './LeadAudienceCard.jsx';
@@ -29,7 +30,7 @@ const ALL_PARTS = Object.freeze(['facts', 'audiences', 'leads']);
 /** @param {{holder?: ?{laneId: string, name: string}, onHand?: Function, parts?: string[]}} props - the seat's holder and the door to their chat, where the screen has them; parts: which of 'facts', 'audiences', 'leads' this screen carries */
 export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PARTS }) => {
   const has = (part) => parts.includes(part);
-  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, changeFact, refileLead } = useLeadEngine();
+  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, changeFact, refileLead, sendEmails, returnEmail, editEmail } = useLeadEngine();
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('asked');
   const rows = segmentRows(engine);
@@ -54,6 +55,7 @@ export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PA
             : <ul className="cline-aud-list" aria-label="audiences">{rows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} />)}</ul>) : null}
           {has('leads') ? (
             <>
+              <Outbox outbox={engine.outbox ?? null} leads={engine.leads ?? []} busy={busy} onSend={sendEmails} onReturn={returnEmail} onEdit={editEmail} />
               <People engine={engine} busy={busy} onKind={refileLead} onRefresh={refresh} holder={holder} onHand={onHand} />
               <Fold id="leads:dnc" title="DO NOT CONTACT" stats={[`${engine.suppressions.length} ENTR${engine.suppressions.length === 1 ? 'Y' : 'IES'}`]}>
                 <div className="cline-open" data-suppress-form="">

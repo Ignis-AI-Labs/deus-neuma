@@ -1,0 +1,4 @@
+### Added
+- A lead's address is checked before the first email goes to it. With a Hunter key attached and paid lead data on, the address is asked of Hunter's verifier (half a credit, once per address, counted toward the month's limit). An address that does not exist, or a throwaway one, stops the email with the reason; one that exists reads as verified in the contact book. With paid lead data off, emails go as before and nothing is spent.
+- The sales seat can find one named person's address with `sales/find-address` (Hunter's Email Finder; a credit only when an address is found). An address Hunter only guessed from the company's pattern is told to the seat as a guess and is never kept.
+- A people lookup now keeps each person's seniority, department and whether Hunter has confirmed the address, and lists confirmed and executive people first.

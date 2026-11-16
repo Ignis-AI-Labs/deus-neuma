@@ -9,6 +9,17 @@
 
 import { openablePath } from './path-link.js';
 
+/** Pure — is this a web address (as path-link.js webAddress returns one)? */
+export const isWebAddress = (path) => /^https?:\/\//i.test(String(path || ''));
+
+/** impure — open a web address in the operator's own browser (the desktop app hands it over; a browser tab otherwise). */
+export const openWebLink = (url) => {
+  if (!isWebAddress(url)) return false;
+  if (typeof window.neuma?.openExternal === 'function') window.neuma.openExternal(url);
+  else window.open(url, '_blank', 'noopener,noreferrer');
+  return true;
+};
+
 /**
  * Pure — does this path read as a file (its last segment carries an
  * extension)? A guess for the menu's wording only; the act checks the disk.
@@ -26,6 +37,8 @@ export const looksLikeFile = (path) => /\.[A-Za-z0-9_-]{1,12}$/.test(String(path
  * @returns {Array<{kind: 'item'|'separator', id?: string, label?: string}>}
  */
 export const pathMenuItems = (path, { desktop = false, kits = [] } = {}) => {
+  // A web address is not a place on this machine: it opens in the browser, and its address can be copied.
+  if (isWebAddress(path)) return [{ kind: 'item', id: 'open-link', label: 'Open link' }, { kind: 'item', id: 'copy-link', label: 'Copy link' }];
   const file = looksLikeFile(path);
   // THE PRESS (Design note, 2026-10-06: […]): a markdown or text file presses into a PDF — one
   // item per brand kit, and the neutral look.

@@ -15,6 +15,7 @@ import { claimsRead } from './claims-reader.js';
 import { checkFirstEmail, writtenBefore, cleanPromise } from './first-email.js';
 import { normalizeEmail, suppressionMatcher } from './suppress-shape.js';
 import { leadLedgerFor, kindOf, UNSORTED } from '../leads/lead-ledger.js';
+import { checkBeforeFirstEmail } from './address-check.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('Sales.EmailLedger');
@@ -60,6 +61,10 @@ export const leadEmailRefusal = async (wallet, { to, subject, text, promise, lan
   // The first email to a lead: short, one ask, and the promise it makes named (first-email.js).
   const shape = leads.some((l) => !writtenBefore(l)) ? checkFirstEmail({ subject, text, promise }) : [];
   if (shape.length) return `this is the first email to a lead: ${shape.join('; ')}`;
+  // The address itself, before the first email to it: one that does not exist is never written to (address-check.js).
+  const fresh = leads.filter((l) => !writtenBefore(l)).map((l) => l.contact);
+  const address = fresh.length ? await checkBeforeFirstEmail(wallet, fresh, { by: laneId ?? 'send' }) : { refusal: null };
+  if (address.refusal) return `this email goes to a lead, and ${address.refusal}`;
   // Words, not just numbers: the house's own model names the fact behind every claim (claims-reader.js).
   const claims = await claimsRead({ laneId, facts: approved.facts, subject, text });
   return claims.ok ? null : `this email goes to a lead, and ${claims.reason}`;

@@ -30,8 +30,13 @@ export const observationToText = (obs) => {
 
 // Who spoke an exchange's first words, by the row's origin: the operator,
 // unless another open chat sent them (chat-link) or the platform did (CONTINUE
-// on a reply the app's close cut, turn-keep.js) — never remembered as the operator's.
-const SPEAKER_BY_ORIGIN = Object.freeze({ link: 'A housemate wrote (chat link)', resume: 'The platform said (a reply cut off by the app closing, picked up again)' });
+// on a reply the app's close cut, turn-keep.js; NOT DONE, queue-claim-check.js)
+// — never remembered as the operator's.
+const SPEAKER_BY_ORIGIN = Object.freeze({
+  link: 'A housemate wrote (chat link)',
+  resume: 'The platform said (a reply cut off by the app closing, picked up again)',
+  unacted: 'The platform said (your reply claimed queue changes no act made)',
+});
 
 /**
  * Render a structured observation into the human-readable string the prompt

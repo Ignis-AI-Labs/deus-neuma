@@ -30,6 +30,14 @@ import { houseCampaigns, linkedText } from './campaign-links.js';
 import { readSetupState, setupOf, setupText } from './position-setup.js';
 import { saleProcessText, SALE_STAGES, SALE_LAWS, SALE_PARTS } from '../makoto.js';
 import { spendState, spendSwitch } from '../sales/lead-spend.js';
+import { readOutbox } from '../sales/email-outbox.js';
+
+/** pure — REVIEW FIRST as a row of the sales position's SETTINGS: on until the operator turns it off. */
+export const reviewSwitch = (outbox) => ({
+  id: 'email-review', kind: 'review', on: outbox.review, name: 'Review every sales email before it goes',
+  note: outbox.review ? 'Your sales member stages each email; it leaves only when you send it from LEADS.' : null,
+  whileOff: 'emails to leads on a list you approved go by themselves within the daily limit; everything else still asks you on a card',
+});
 
 const SEATS = Object.freeze({
   cos: cosDesignation, cro: croDesignation, cmo: cmoDesignation, clo: cloDesignation,
@@ -49,7 +57,7 @@ export const readHolders = async (wallet) => Object.fromEntries(await Promise.al
  * pure — the board, from what was read.
  * @param {{holders: Record<string, ?string>, names: Map<string, string>, waiting: object[], connections: object[]}} read
  */
-export const foldBoard = ({ holders, names, waiting, connections, setupState = null, spend = null }) => POSITIONS.map((p) => {
+export const foldBoard = ({ holders, names, waiting, connections, setupState = null, spend = null, outbox = null }) => POSITIONS.map((p) => {
   const laneId = holders[p.office] ?? null;
   return {
     office: p.office, seat: p.seat, acronym: p.acronym, title: p.title, plain: p.plain, covers: p.covers,
@@ -63,13 +71,13 @@ export const foldBoard = ({ holders, names, waiting, connections, setupState = n
     connections: [...p.connections.map((id) => {
       const row = connections.find((c) => c.id === id);
       return { id, name: row?.name ?? id, on: row?.on === true, whileOff: row?.whileOff ?? null };
-    }), ...(p.office === 'cro' && spend ? [spendSwitch(spend)] : [])],
+    }), ...(p.office === 'cro' && spend ? [spendSwitch(spend)] : []), ...(p.office === 'cro' && outbox ? [reviewSwitch(outbox)] : [])],
   };
 });
 
 /** impure — one house's board. */
 export const positionsBoard = async (wallet) => {
-  const [holders, lanes, account, connections, setupState, spend] = await Promise.all([
+  const [holders, lanes, account, connections, setupState, spend, outbox] = await Promise.all([
     // (the paid lead data setting rides last; a store that cannot be read leaves the row out)
     readHolders(wallet),
     neumaWorkspace.listNeumaByOwner(wallet).catch(() => []),
@@ -77,10 +85,11 @@ export const positionsBoard = async (wallet) => {
     connectionStates(),
     readSetupState(wallet),
     spendState(wallet).catch(() => null),
+    readOutbox(wallet).catch(() => null),
   ]);
   const names = new Map(await Promise.all(lanes.map(async ({ neumaId, owner }) => [neumaId, (await laneName(neumaId, owner)) ?? neumaId])));
   return {
-    positions: foldBoard({ holders, names, waiting: account.items ?? [], connections, setupState, spend }),
+    positions: foldBoard({ holders, names, waiting: account.items ?? [], connections, setupState, spend, outbox }),
     members: [...names].map(([laneId, name]) => ({ laneId, name })),
     // the one process every sale follows: its stages, the law each keeps, and each seat's part (makoto.js)
     sale: { stages: SALE_STAGES, laws: SALE_LAWS, parts: SALE_PARTS },

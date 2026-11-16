@@ -341,6 +341,8 @@ export const createStreamHandlers = ({
     ['citation:held', onCitationHeld],
     // CONTINUE on a cut reply: the platform's line that opens the turn picking it up (portal-turn-adopt.js).
     ['turn:continued', (data) => { if (typeof data?.text === 'string' && data.text) dispatch({ type: 'CONTINUED', text: data.text, at: data.at ?? Date.now() }); }],
+    // NOT DONE: a reply said queued posts changed and no act touched them; the being is sent back (social/queue-claim-check.js).
+    ['queue:unacted', (data) => { if (typeof data?.text === 'string' && data.text) dispatch({ type: 'QUEUE_UNACTED', text: data.text, at: data.at ?? Date.now() }); }],
     // A /compact, drawn in the thread where it happened (compact-marker.js).
     ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     // A shadow clone split, filed into its sub-channels on the turn's chip (clone-split.js).

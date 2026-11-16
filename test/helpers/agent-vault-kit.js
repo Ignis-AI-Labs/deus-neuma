@@ -58,9 +58,11 @@ export const deployRoles = async ({ provider, owner, safe }) => {
   const deployed = await (await owner.connect(provider).sendTransaction({ data: creation, gasLimit: 2_000_000n })).wait();
   if (deployed.status !== 1 || !deployed.contractAddress) throw new Error('Roles proxy deployment failed');
   const roles = new ethers.Contract(deployed.contractAddress, ROLES_ABI, provider);
+  Object.defineProperty(roles, 'deploymentBlock', { value: deployed.blockNumber });
   const avatar = await safe.getAddress();
   const initialized = await (await roles.connect(owner.connect(provider)).setUp(ethers.AbiCoder.defaultAbiCoder().encode(['address', 'address', 'address'], [owner.address, avatar, avatar]), { gasLimit: 3_000_000n })).wait();
   if (initialized.status !== 1) throw new Error('Roles initialization failed');
+  Object.defineProperty(roles, 'initializedBlock', { value: initialized.blockNumber });
   return roles;
 };
 

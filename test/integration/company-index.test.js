@@ -44,6 +44,11 @@ describe('reading the files (pure)', () => {
     expect(csvCells('a,"b, c","d ""e""",')).toEqual(['a', 'b, c', 'd "e"', '']);
     expect(csvCells('a|b,c|d', '|')).toEqual(['a', 'b,c', 'd']);
     expect([csvOpen('x,"open'), csvOpen('x,"closed"')]).toEqual([true, false]);
+    // The free company file writes a quote inside a cell after a backslash: it is text, and the record ends on its line.
+    const real = 'ukraine,2015,KNJ,retail,linkedin.com/company/x,novomoskovsk,"тов \\"тд \\"агроальянс\\"",dnipropetrovsk,1001-5000,agroaliance.com.ua';
+    expect(csvOpen(real)).toBe(false);
+    expect(csvCells(real)[6]).toBe('тов "тд "агроальянс"');
+    expect(csvCells(real)).toHaveLength(10);
   });
   test('a country is its code, a website is its domain, and a company with no site is no row', () => {
     expect(['united states', 'United Kingdom', 'south korea', 'germany', 'gb', 'atlantis'].map(isoOf)).toEqual(['US', 'GB', 'KR', 'DE', 'GB', '']);
@@ -54,11 +59,11 @@ describe('reading the files (pure)', () => {
     expect(companyRow({ name: 'odd', website: 'odd.example', size: 'huge', founded: 'soon' })).toMatchObject({ size: '', founded: null });
   });
   test('a search is words as prefixes plus exact filters, most visited first', () => {
-    expect(wordsQuery('DeFi, wallets & "pay"')).toBe('"defi"* OR "wallets"* OR "pay"*');
+    expect(wordsQuery('DeFi, wallets & "pay"')).toBe('{name industry} : ("defi" OR "defis" OR "wallets" OR "wallet" OR "pay" OR "pays")');
     expect(wordsQuery('  ')).toBe('');
     const q = searchSql({ words: 'software', countries: ['us'], sizes: ['1-10', '11-50'], foundedFrom: 2015, live: true });
     expect(q.sql).toMatch(/company_words MATCH \?.*c\.iso IN \(\?\).*c\.size IN \(\?, \?\).*c\.founded >= \?.*t\.rank IS NOT NULL.*ORDER BY \(t\.rank IS NULL\), t\.rank/);
-    expect(q.values).toEqual(['"software"*', 'US', '1-10', '11-50', 2015]);
+    expect(q.values).toEqual(['{name industry} : ("software" OR "softwares")', 'US', '1-10', '11-50', 2015]);
     expect(searchSql({}).sql).not.toMatch(/WHERE/);
     expect([trafficWords(188), trafficWords(null)]).toEqual(['traffic rank 188 of the million most visited sites', 'not among the million most visited sites']);
   });
@@ -87,6 +92,10 @@ describe('the index on disk', () => {
     expect(searchIndex({ words: 'software', live: true }).rows.map((r) => r.domain)).toEqual(['peopledatalabs.com']);
     expect(searchIndex({ words: 'software', sizes: ['1-10'] }).rows.map((r) => r.name)).toEqual(['quiet harbor software, inc.']);
     expect(searchIndex({ words: 'harbor portland' }).rows.map((r) => r.domain)).toEqual(['quietharbor.example']);
+    // Whole words in the name and industry only: a prefix made "defi" find "deficit", and a city is where a company is, never what it is.
+    expect(searchIndex({ words: 'soft' }).rows).toEqual([]);
+    expect(searchIndex({ words: 'portland' }).rows).toEqual([]);
+    expect(searchIndex({ words: 'softwares' }).rows.length).toBe(3);
     expect(searchIndex({ words: 'software', foundedFrom: 2019 }).rows.map((r) => r.domain)).toEqual(['quietharbor.example', 'twolines.example']);
     expect(searchIndex({ industries: ['financial services'] }, { count: 2, known: new Set(['coinbase.com']) }).rows.map((r) => r.domain)).toEqual(['wise.com', 'n26.com']);
   });

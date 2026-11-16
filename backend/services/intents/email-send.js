@@ -15,6 +15,7 @@ import { journalEmailCall } from '../email/email-being-tools.js';
 import { fromFor } from '../email/send-as.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { suppressedRecipients, recordSent, leadEmailRefusal, companyOfRecipients } from '../sales/email-ledger.js';
+import { reviewRefusal } from '../sales/email-outbox.js';
 
 // impure — the mailbox position: this lane holds its own house's mailbox AND
 // that house's account resolves.
@@ -65,6 +66,9 @@ export const emailSendIntent = Object.freeze({
       return { ok: false, status: 'denied', reason: `the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is sent until they can` };
     }
     if (blocked.length) return { ok: false, status: 'denied', reason: `${blocked.join(', ')} ${blocked.length === 1 ? 'is' : 'are'} on the house's do-not-contact list — never written to again` };
+    // REVIEW FIRST (sales/email-outbox.js): while it is on, an email to a lead goes through the operator's outbox, never straight out.
+    const staged = wallet ? await reviewRefusal(wallet, to).catch(() => null) : null;
+    if (staged) return { ok: false, status: 'denied', reason: staged };
     if (unchecked) return { ok: false, status: 'invalid', reason: unchecked };
     // The address it leaves from: one the mailbox really sends as, decided before the operator's card.
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);

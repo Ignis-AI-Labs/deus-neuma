@@ -16,6 +16,9 @@
 //                   (company-index.js): 22M+ companies with industry, size,
 //                   country, founding year and a traffic rank, searched by
 //                   words and filters. Hundreds at a time, nothing leaves.
+//   hunter-discover Hunter's company search (hunter-discover.js): free with the
+//                   operator's own key, plain words in, companies out with how
+//                   many addresses Hunter holds for each.
 // ATTACHED SOURCES (the operator's own key, Settings, API, Service keys):
 //   hunter, tomba, apollo — the people at a company's domain with their
 //                   addresses (lead-providers.js). They spend the operator's
@@ -26,6 +29,7 @@
 
 import process from 'node:process';
 import { PEOPLE_PROVIDERS, peopleOfHunter } from './lead-providers.js';
+import { gatherHunterDiscover, DISCOVER_MAX } from './hunter-discover.js';
 import { searchIndex, indexStats, industriesOf, candidateOfCompany, SIZES } from './company-index.js';
 
 export { peopleOfHunter };
@@ -238,5 +242,6 @@ export const LEAD_SOURCES = Object.freeze({
   'base-protocols': Object.freeze({ kind: 'companies', key: null, label: 'DeFi protocols on Base (DefiLlama, free)', gather: gatherBaseProtocols }),
   'base-tokens': Object.freeze({ kind: 'companies', key: null, label: 'tokens trading on Base (GeckoTerminal, free, about 50 an hour)', gather: gatherBaseTokens }),
   'company-index': Object.freeze({ kind: 'companies', key: null, local: true, max: INDEX_GATHER_MAX, label: `the house's own company database: 22M+ companies with industry, size, country, founding year and traffic rank (free, on this machine, up to ${INDEX_GATHER_MAX} at a time)`, gather: gatherCompanyIndex }),
+  'hunter-discover': Object.freeze({ kind: 'companies', key: 'hunter', free: true, max: DISCOVER_MAX, label: `Hunter's company search with your own key: describe the companies in plain words; each comes back with how many people Hunter holds there (FREE, it spends no credits; up to ${DISCOVER_MAX} at a time)`, gather: gatherHunterDiscover }),
   ...PEOPLE_PROVIDERS,
 });

@@ -6,12 +6,14 @@
 //   - an audience still a draft                            → POSITIONS, CHIEF REVENUE OFFICER, CAMPAIGNS
 //   - an approved audience with companies off its list     → POSITIONS, CHIEF REVENUE OFFICER, CAMPAIGNS
 //   - a business model a member filed                      → POSITIONS, CHIEF REVENUE OFFICER, COMPANY
+//   - emails the sales seat staged for review             → POSITIONS, CHIEF REVENUE OFFICER, LEADS
 // impure (store reads); the rows are pure.
 
 import { readSalesFacts, readSegments, readProspects } from './sales-store.js';
 import { listable } from './prospect-shape.js';
 import { readModels } from '../positions/business-model.js';
 import { listCompanies } from '../marketing/companies.js';
+import { readOutbox } from './email-outbox.js';
 
 const TEXT_MAX = 200;
 const who = (laneId, names) => (laneId && laneId !== 'operator' ? { laneId, name: names.get(laneId) ?? null } : null);
@@ -22,7 +24,13 @@ const at = (office, tab, mark) => ({ app: 'positions', office, tab, ...mark });
  * @param {{facts: ?object, segments: object[], prospects: object[], models: Map<string, object>, companies: object[]}} read
  * @param {Map<string, string>} names - lane id → the name it goes by
  */
-export const salesWaitingRows = ({ facts, segments, prospects, models, companies }, names) => [
+export const salesWaitingRows = ({ facts, segments, prospects, models, companies, outbox = null }, names) => [
+  // emails the sales seat staged: one row for the lot, opening on the outbox
+  ...((outbox?.drafts ?? []).some((d) => d.state === 'waiting') ? (() => {
+    const waiting = outbox.drafts.filter((d) => d.state === 'waiting');
+    return [{ id: `sales-email:${waiting.map((d) => d.id).join('.')}`, kind: 'sales-email', who: who(waiting[0].by, names), at: waiting.at(-1).at,
+      title: `${waiting.length} email${waiting.length === 1 ? '' : 's'} to leads wait${waiting.length === 1 ? 's' : ''} for your review`, where: at('cro', 'leads', { outbox: true }) }];
+  })() : []),
   ...(facts?.sheet && !facts.review ? [{
     id: `sales-facts:${facts.sheet.id}`, kind: 'sales-facts', who: who(facts.sheet.by, names), at: facts.sheet.filedAt,
     title: `${facts.sheet.facts.length} facts a buyer may be told wait for your approval`, where: at('cro', 'model', { factsSheet: facts.sheet.id }),
@@ -43,8 +51,8 @@ export const salesWaitingRows = ({ facts, segments, prospects, models, companies
 
 /** impure — the rows for one house. */
 export const salesWaitingItems = async (wallet, names) => {
-  const [facts, segments, prospects, models, companies] = await Promise.all([
-    readSalesFacts(wallet), readSegments(wallet), readProspects(wallet), readModels(wallet), listCompanies(wallet).catch(() => []),
+  const [facts, segments, prospects, models, companies, outbox] = await Promise.all([
+    readSalesFacts(wallet), readSegments(wallet), readProspects(wallet), readModels(wallet), listCompanies(wallet).catch(() => []), readOutbox(wallet).catch(() => null),
   ]);
-  return salesWaitingRows({ facts, segments, prospects, models, companies }, names);
+  return salesWaitingRows({ facts, segments, prospects, models, companies, outbox }, names);
 };

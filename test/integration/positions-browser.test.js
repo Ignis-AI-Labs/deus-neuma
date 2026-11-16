@@ -109,7 +109,7 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const hub = page.locator('[data-position="cro"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('HELD BY MERC');
-    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/12', 'COMPANY', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SETTINGS · 0/3', 'THEIR EYES']);
+    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/12', 'COMPANY', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SETTINGS · 1/4', 'THEIR EYES']);
     // SETUP leads while the seat is not ready: each step says who does it, and an open one says exactly how.
     const setup = hub.locator('[data-setup-step]');
     expect(await setup.count()).toBe(14);
@@ -179,7 +179,9 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     expect(await hub.locator('[data-switch-limit], [data-paid-lead]').count()).toBe(0);
     // LEADS is one list of people and the do-not-contact list: no second list, nothing nested.
     expect(await hub.locator('[data-suppress-form], [data-people]').count()).toBe(2);
-    expect(await hub.locator('[data-lead-engine="leads"] details').count()).toBe(1);
+    // …with the outbox over it (emails staged for review) and do-not-contact under it: two folded lines, nothing nested.
+    expect(await hub.locator('[data-lead-engine="leads"] details').count()).toBe(2);
+    expect(await hub.locator('[data-outbox] .fold-stat').allTextContents()).toEqual(['NOTHING WAITS', '0 SENT']);
 
     await hub.getByRole('tab', { name: 'DEALS' }).click();
     await hub.locator('[data-sales]').waitFor();
@@ -188,16 +190,18 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     // SETTINGS: everything the position may be switched on or off to use, each one ON/OFF. Paid lead data is one of
     // them, with its monthly limit beside it, and nothing else to choose.
     await hub.getByRole('tab', { name: /SETTINGS/ }).click();
-    expect(await hub.locator('[data-switch]').evaluateAll((rows) => rows.map((r) => r.dataset.switch))).toEqual(['mail-watch', 'lead-sources', 'paid-lead-data']);
+    expect(await hub.locator('[data-switch]').evaluateAll((rows) => rows.map((r) => r.dataset.switch))).toEqual(['mail-watch', 'lead-sources', 'paid-lead-data', 'email-review']);
+    // REVIEW FIRST stands ON until the operator turns it off: every sales email waits for them in LEADS.
+    expect(await hub.getByRole('button', { name: 'ON — Review every sales email before it goes' }).count()).toBe(1);
     expect(isConnectionOn('mail-watch')).toBe(false);
     await hub.getByRole('button', { name: 'OFF — House mailbox watch' }).click();
-    await hub.getByRole('tab', { name: 'SETTINGS · 1/3' }).waitFor();
+    await hub.getByRole('tab', { name: 'SETTINGS · 2/4' }).waitFor();
     expect(isConnectionOn('mail-watch')).toBe(true);
     const paid = hub.locator('[data-switch="paid-lead-data"]');
     expect(await paid.locator('.pos-switch-name').textContent()).toBe('Paid lead data');
     expect(await paid.locator('[data-switch-limit]').textContent()).toBe('USED 0 OFCREDITS THIS MONTHSET LIMIT');
     await paid.getByRole('button', { name: 'OFF — Paid lead data' }).click();
-    await hub.getByRole('tab', { name: 'SETTINGS · 2/3' }).waitFor();
+    await hub.getByRole('tab', { name: 'SETTINGS · 3/4' }).waitFor();
     expect(await readSpend(auth.address)).toMatchObject({ mode: 'on', on: true, cap: 100, chosen: true });
     await paid.getByLabel('Paid lead data: the most credits a month').fill('250');
     await paid.getByRole('button', { name: 'SET LIMIT for Paid lead data' }).click();
