@@ -205,8 +205,6 @@
 .cline-chip.is-alert { border-color: var(--alert); color: var(--alert); }
 
 /* The contact book: one person a row — who and what they do, the address and how sure it is, where they stand. */
-.cline-person { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100
-/* The contact book: one person a row — who and what they do, the address and how sure it is, where they stand. */
 .cline-person { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr)); gap: var(--space-1) var(--space-3); align-items: center; border-left: 2px solid var(--line); padding-left: var(--space-3); min-width: 0; }
 .cline-person[data-contact-state="confirmed"] { border-left-color: var(--signal); }
 .cline-person[data-contact-state="bounced"] { border-left-color: var(--alert); }
